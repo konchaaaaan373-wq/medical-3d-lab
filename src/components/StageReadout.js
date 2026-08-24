@@ -42,6 +42,14 @@ export function createStageReadout({ meta, onSeek }) {
   const nameEn = el('h2', { class: 'stage-name lang-en' });
   const nameJa = el('p', { class: 'stage-name-ja lang-ja' });
   const percent = el('span', { class: 'stage-percent' });
+  // The number is a position along the modelled change, not a severity score —
+  // label it so nobody reads "70%" as "70% of the way to severe disease".
+  const progressCaption = meta.progressLabel
+    ? el('span', { class: 'stage-progress-label' }, [
+        el('span', { class: 'lang-en', text: meta.progressLabel.label }),
+        el('span', { class: 'lang-ja', text: meta.progressLabel.labelJa }),
+      ])
+    : null;
   const summaryEn = el('p', { class: 'stage-summary lang-en' });
   const summaryJa = el('p', { class: 'stage-summary-ja lang-ja' });
 
@@ -49,7 +57,7 @@ export function createStageReadout({ meta, onSeek }) {
     track,
     el('div', { class: 'stage-heading' }, [
       el('div', {}, [nameEn, nameJa]),
-      percent,
+      el('span', { class: 'stage-progress' }, [progressCaption, percent]),
     ]),
     summaryEn,
     summaryJa,

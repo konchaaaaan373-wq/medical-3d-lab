@@ -4,7 +4,18 @@ import { FibrilRibbons } from './FibrilRibbons.js';
 import { PlaqueCores } from './PlaqueCores.js';
 import { Neuron } from './Neuron.js';
 import { buildAggregationLayout } from './aggregationLayout.js';
-import { ANNOTATIONS, STAGES, LEGEND, RANGE, PALETTE, DISCLAIMER, DISCLAIMER_JA } from '../../data/amyloidBeta.js';
+import {
+  ANNOTATIONS,
+  STAGES,
+  LEGEND,
+  RANGE,
+  PROGRESS_LABEL,
+  PALETTE,
+  DISCLAIMER,
+  DISCLAIMER_JA,
+  DISCLAIMER_SHORT,
+  DISCLAIMER_SHORT_JA,
+} from '../../data/amyloidBeta.js';
 import { disposeObject } from '../../utils/dispose.js';
 
 /** Direction the hero shot looks from, reused for every stage close-up. */
@@ -37,14 +48,17 @@ export class AmyloidBetaScene {
     id: 'amyloid-beta',
     title: 'Amyloid-β Accumulation',
     titleJa: 'アミロイドβの蓄積',
-    subtitle: "Alzheimer's disease · simplified 3D model",
-    subtitleJa: 'アルツハイマー病 ｜ 教育用3Dモデル',
+    subtitle: "Aβ aggregation in Alzheimer's disease · simplified 3D model",
+    subtitleJa: 'アルツハイマー病における Aβ の凝集 ｜ 教育用3Dモデル',
     stages: STAGES,
     legend: LEGEND,
     range: RANGE,
+    progressLabel: PROGRESS_LABEL,
     palette: PALETTE,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,
+    disclaimerShort: DISCLAIMER_SHORT,
+    disclaimerShortJa: DISCLAIMER_SHORT_JA,
   };
 
   /** Framing chosen to look good as a still: subject slightly left, plaques catching the light. */

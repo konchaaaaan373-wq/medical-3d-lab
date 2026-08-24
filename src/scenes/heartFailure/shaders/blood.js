@@ -1,11 +1,14 @@
 /**
  * Shader for the blood particles.
  *
- * One shader serves two populations:
- *  - cavity blood, whose slots are normalised and scaled by the beating cavity,
- *    and a fraction of which (the ejection fraction) leaves and returns each cycle;
- *  - the congestion pool, which uses absolute positions, never ejects, and fades
- *    in particle by particle as blood backs up.
+ * Particles follow prescribed paths; this is a teaching animation, not a
+ * computational-fluid-dynamics simulation. Blood only ever travels in the
+ * physiological direction: atrium -> ventricle during filling, ventricle ->
+ * aorta during ejection. Pulmonary congestion is drawn separately, as pressure
+ * (see CongestionOverlay.js), never as blood moving backwards.
+ *
+ * Slots are stored normalised and scaled by the beating cavity; the share of
+ * particles given by the ejection fraction leaves and returns each cycle.
  */
 
 export const bloodVertexShader = /* glsl */ `
@@ -14,7 +17,7 @@ export const bloodVertexShader = /* glsl */ `
   uniform float uEject;         // ejection fraction, 0..1
   uniform float uPhase;         // 0..1 through the cardiac cycle
   uniform float uSystole;       // fraction of the cycle spent ejecting
-  uniform float uFill;          // how much of this population is present, 0..1
+  uniform float uFill;          // how much of the population is present, 0..1
   uniform float uTime;
   uniform float uOpacity;
   uniform float uParticleScale;
@@ -62,10 +65,12 @@ export const bloodVertexShader = /* glsl */ `
     vec3 p = mix(cavity, away, travel) + swirl;
 
     vColor = mix(uStaticColor, uFlowColor, ejects);
-    // Particles fade as they leave the frame of the model and fade back in on return,
-    // which hides the fact that the systemic circulation is not drawn.
+    // A particle fades out as it leaves up the aorta and fades back in from the
+    // atrium during filling. The systemic circulation is not drawn, so this both
+    // hides the hand-off and — importantly — means nothing is ever visible
+    // travelling backwards down the aorta.
     float present = smoothstep(aAppear, aAppear + 0.12, uFill);
-    vAlpha = uOpacity * present * (1.0 - travel * 0.92) * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
+    vAlpha = uOpacity * present * (1.0 - travel * 0.96) * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;

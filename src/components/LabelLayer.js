@@ -16,7 +16,12 @@ const FADE = 0.06;
 export function createLabelLayer({ viewer, annotations }) {
   const element = el('div', { class: 'label-layer' });
 
-  const items = annotations.map((annotation) => {
+  // Small screens cannot carry six floating labels without becoming noise.
+  // Annotations may opt out with `compact: false`; everything else is kept.
+  const compact = window.innerWidth < 720;
+  const shown = compact ? annotations.filter((a) => a.compact !== false) : annotations;
+
+  const items = shown.map((annotation) => {
     const node = el('div', { class: 'label3d' }, [
       el('span', { class: 'label-dot' }),
       el('span', { class: 'label-body' }, [
@@ -59,8 +64,12 @@ export function createLabelLayer({ viewer, annotations }) {
         const offscreen = projected.z > 1 || Math.abs(projected.x) > 1.15 || Math.abs(projected.y) > 1.15;
         item.node.style.visibility = offscreen ? 'hidden' : 'visible';
         if (offscreen) continue;
-        const x = (projected.x * 0.5 + 0.5) * width;
-        const y = (-projected.y * 0.5 + 0.5) * height;
+        // Keep labels inside the frame. The small clamp costs a few pixels of
+        // pointing accuracy but stops annotations being cut off at the edges.
+        const x = clamp((projected.x * 0.5 + 0.5) * width, 70, Math.max(70, width - 70));
+        // The lower third of the screen belongs to the console, so labels are
+        // kept above it rather than being clamped underneath the panel.
+        const y = clamp((-projected.y * 0.5 + 0.5) * height, 34, Math.max(34, height * 0.68));
         item.node.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         item.node.style.opacity = item.opacity.toFixed(3);
       }

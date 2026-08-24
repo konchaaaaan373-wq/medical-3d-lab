@@ -3,11 +3,12 @@ import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
 import { SYSTOLE_FRACTION } from './hemodynamics.js';
 
 /**
- * A cloud of blood particles.
+ * Blood inside the left ventricle.
  *
- * Used twice: once for the ventricular cavity (normalised slots that follow the
- * beating chamber, with the ejected fraction looping out and back), and once for
- * the congestion pool (absolute positions that simply fill up).
+ * Normalised slots follow the beating chamber, and the share given by the
+ * ejection fraction loops out through the aorta and back in through the mitral
+ * valve each cycle — always in the physiological direction. Pulmonary
+ * congestion is a separate component (CongestionOverlay) and is not blood.
  */
 export class BloodField extends THREE.Points {
   /**

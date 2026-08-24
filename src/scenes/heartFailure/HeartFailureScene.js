@@ -2,21 +2,27 @@ import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
 import { BloodField } from './BloodField.js';
 import { Vessels } from './Vessels.js';
-import { ANATOMY, ANCHORS, buildCavityBlood, buildCongestionPool } from './anatomy.js';
+import { CongestionOverlay } from './CongestionOverlay.js';
+import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
 import {
   sampleHemodynamics,
-  muscleVolumeFor,
+  myocardialVolumeFor,
   ventricleShape,
   cavityVolumeAt,
+  advanceCardiacPhase,
+  fillingPressureLabel,
 } from './hemodynamics.js';
 import {
   STAGES,
   LEGEND,
   RANGE,
+  PROGRESS_LABEL,
   PALETTE,
   ANNOTATIONS,
   DISCLAIMER,
   DISCLAIMER_JA,
+  DISCLAIMER_SHORT,
+  DISCLAIMER_SHORT_JA,
 } from '../../data/heartFailure.js';
 import { disposeObject } from '../../utils/dispose.js';
 
@@ -46,21 +52,24 @@ export class HeartFailureScene {
     id: 'heart-failure',
     title: 'Heart Failure',
     titleJa: '心不全 — 左室リモデリング',
-    subtitle: 'Left ventricular remodelling · simplified 3D model',
-    subtitleJa: '左室リモデリングとうっ血 ｜ 教育用3Dモデル',
+    subtitle: 'Illustrative LV remodeling in HFrEF · simplified 3D model',
+    subtitleJa: 'HFrEFでみられる左室リモデリングの一例 ｜ 教育用3Dモデル',
     stages: STAGES,
     legend: LEGEND,
     range: RANGE,
+    progressLabel: PROGRESS_LABEL,
     palette: PALETTE,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,
+    disclaimerShort: DISCLAIMER_SHORT,
+    disclaimerShortJa: DISCLAIMER_SHORT_JA,
   };
 
   static cameraPose = {
     // The scene is tall (apex to aortic arch), so it needs more distance than
     // its width alone would suggest.
-    position: new THREE.Vector3(0.0, -2.2, 0.3).addScaledVector(VIEW_DIRECTION, 26.5),
-    target: new THREE.Vector3(0.0, -2.2, 0.3),
+    position: new THREE.Vector3(-0.3, -1.8, 0.3).addScaledVector(VIEW_DIRECTION, 28),
+    target: new THREE.Vector3(-0.3, -1.8, 0.3),
   };
 
   constructor({ viewer }) {
@@ -70,7 +79,9 @@ export class HeartFailureScene {
     this.progress = 0;
     this.phase = 0; // position in the cardiac cycle, 0..1
     this.state = sampleHemodynamics(0);
-    this.muscleVolume = muscleVolumeFor(this.state);
+    // Recomputed whenever the disease state changes, then held constant through
+    // each cardiac cycle — see hemodynamics.js for why the model is two-layer.
+    this.myocardialVolumeMl = myocardialVolumeFor(this.state);
   }
 
   build() {
@@ -91,12 +102,7 @@ export class HeartFailureScene {
       flowColor: PALETTE.flow,
       staticColor: PALETTE.residual,
     });
-    this.congestion = new BloodField(buildCongestionPool(compact ? 450 : 800), {
-      flowColor: PALETTE.congestion,
-      staticColor: PALETTE.congestion,
-      normalised: false,
-    });
-    this.congestion.setFill(0);
+    this.congestion = new CongestionOverlay(compact ? 380 : 700);
     // The cavity is a small, densely filled volume; full opacity reads as a blob.
     this.blood.material.uniforms.uOpacity.value = 0.8;
 
@@ -130,14 +136,14 @@ export class HeartFailureScene {
   setProgress(value) {
     this.progress = value;
     this.state = sampleHemodynamics(value);
-    this.muscleVolume = muscleVolumeFor(this.state);
-    this.congestion.setFill(this.state.congestion);
-    this.vessels.setProgress(value, this.state.congestion);
+    this.myocardialVolumeMl = myocardialVolumeFor(this.state);
+    this.congestion.setPressure(this.state.fillingPressureIndex);
+    this.vessels.setFillingPressure(this.state.fillingPressureIndex);
   }
 
   update(dt, elapsed) {
     // The heart keeps beating even when the progression slider is paused.
-    this.phase = (this.phase + (dt * this.state.heartRate) / 60) % 1;
+    this.phase = advanceCardiacPhase(this.phase, dt, this.state.hr);
     this._applyShape();
     this.blood.setCycle(this.phase, this.state.ejectionFraction);
     this.blood.update(elapsed);
@@ -145,20 +151,37 @@ export class HeartFailureScene {
   }
 
   _applyShape() {
-    const cavityVolume = cavityVolumeAt(this.phase, this.state);
+    const cavityVolumeMl = cavityVolumeAt(this.phase, this.state);
     const shape = ventricleShape({
-      cavityVolume,
-      muscleVolume: this.muscleVolume,
-      sphericity: this.state.sphericity,
+      cavityVolumeMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: this.state.longToShortAxisRatio,
     });
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
     this.blood.setCavity(shape.cavityRadius, shape.cavitySemiLength);
     this.shape = shape;
   }
 
-  /** Live read-out shown next to the 3D view. */
+  /**
+   * Live read-out shown next to the 3D view.
+   *
+   * Precision is deliberately coarse: volumes to the nearest mL, wall thickness
+   * to 0.1 mm, EF to a whole percent. The chamber is a truncated-ellipsoid
+   * approximation, so anything finer would imply accuracy the model lacks.
+   * Myocardial mass is computed internally but not shown, for the same reason.
+   */
   getMetrics() {
-    const { edv, esv, strokeVolume, ejectionFraction, heartRate } = this.state;
+    const {
+      edvMl,
+      esvMl,
+      strokeVolumeMl,
+      ejectionFraction,
+      cardiacOutputLMin,
+      hr,
+      wallMm,
+      fillingPressureIndex,
+    } = this.state;
+    const pressure = fillingPressureLabel(fillingPressureIndex);
     return [
       {
         id: 'ef',
@@ -168,30 +191,47 @@ export class HeartFailureScene {
         unit: '%',
         emphasis: true,
       },
-      { id: 'edv', label: 'End-diastolic volume', labelJa: '拡張末期容積', value: Math.round(edv), unit: 'mL' },
-      { id: 'esv', label: 'End-systolic volume', labelJa: '収縮末期容積', value: Math.round(esv), unit: 'mL' },
-      { id: 'sv', label: 'Stroke volume', labelJa: '1回拍出量', value: Math.round(strokeVolume), unit: 'mL' },
+      { id: 'edv', label: 'End-diastolic volume', labelJa: '拡張末期容積', value: Math.round(edvMl), unit: 'mL' },
+      { id: 'esv', label: 'End-systolic volume', labelJa: '収縮末期容積', value: Math.round(esvMl), unit: 'mL' },
+      { id: 'sv', label: 'Stroke volume', labelJa: '1回拍出量', value: Math.round(strokeVolumeMl), unit: 'mL' },
+      { id: 'hr', label: 'Heart rate', labelJa: '心拍数', value: Math.round(hr), unit: '/min' },
+      {
+        id: 'co',
+        label: 'Cardiac output',
+        labelJa: '心拍出量',
+        value: cardiacOutputLMin.toFixed(1),
+        unit: 'L/min',
+      },
       {
         id: 'wall',
-        label: 'Wall thickness',
+        label: 'Wall thickness (ED)',
         labelJa: '壁厚（拡張末期）',
-        value: this.state.wall.toFixed(1),
+        value: wallMm.toFixed(1),
         unit: 'mm',
       },
-      { id: 'hr', label: 'Heart rate', labelJa: '心拍数', value: Math.round(heartRate), unit: '/min' },
+      {
+        id: 'filling',
+        label: 'LV filling pressure',
+        labelJa: '左室充満圧',
+        value: pressure.value,
+        valueJa: pressure.valueJa,
+        unit: '',
+      },
     ];
   }
 
   getStageView(stageId) {
     switch (stageId) {
-      case 'hypertrophy':
-        return framing(new THREE.Vector3(1.6, -0.4, 0.6), 16);
+      case 'concentric-remodeling':
+        return framing(new THREE.Vector3(1.6, -0.6, 0.6), 19);
       case 'dilation':
-        return framing(new THREE.Vector3(0.1, -1.0, 0.3), 21);
-      case 'reduced-ef':
-        return framing(new THREE.Vector3(0.2, -0.4, 0.4), 22);
+        return framing(new THREE.Vector3(0.1, -1.2, 0.3), 23);
+      case 'systolic-dysfunction':
+        return framing(new THREE.Vector3(0.2, -0.8, 0.4), 24);
       case 'congestion':
-        return framing(new THREE.Vector3(-2.4, 3.4, -1.0), 18);
+        // Keep the ventricle in frame: the pressure has to be seen coming FROM
+        // the left ventricle, not floating in the lung on its own.
+        return framing(new THREE.Vector3(-1.7, 1.2, -0.4), 24);
       default:
         return null;
     }

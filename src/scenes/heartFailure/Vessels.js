@@ -50,11 +50,17 @@ export class Vessels extends THREE.Group {
     this.add(valveRing(ANATOMY.mitralValve, 0.62, this.valveMaterial));
   }
 
-  /** The atrium distends as blood backs up behind the failing ventricle. */
-  setProgress(progress, congestion) {
-    const swell = lerp(1, 1.34, smoothstep(0, 1, congestion));
-    this.atrium.scale.set(swell, 0.86 * swell, swell);
-    this.wallMaterial.opacity = lerp(0.2, 0.28, smoothstep(0.5, 1, progress));
+  /**
+   * The atrium distends as filling pressure rises. This is chamber distension
+   * under pressure, not blood arriving from the wrong direction — the pressure
+   * itself is drawn by CongestionOverlay.
+   *
+   * @param {number} fillingPressureIndex 0..1 model index
+   */
+  setFillingPressure(fillingPressureIndex) {
+    const distension = lerp(1, 1.3, smoothstep(0, 1, fillingPressureIndex));
+    this.atrium.scale.set(distension, 0.86 * distension, distension);
+    this.wallMaterial.opacity = lerp(0.2, 0.28, smoothstep(0.4, 1, fillingPressureIndex));
   }
 }
 

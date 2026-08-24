@@ -379,11 +379,25 @@
   color: var(--ink-dim);
 }
 
+.stage-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+}
+
+.stage-progress-label {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  opacity: 0.8;
+}
+
 .stage-percent {
   font-size: 13px;
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
-  flex: none;
 }
 
 .stage-summary,
@@ -589,6 +603,8 @@
  * buttons read "Play 再生" and captions run together on one line.
  */
 #ui[data-lang='both'] .step-name-ja,
+#ui[data-lang='both'] .stage-progress-label .lang-ja,
+#ui[data-lang='both'] .metric-figure .lang-ja,
 #ui[data-lang='both'] .scene-pill .lang-ja,
 #ui[data-lang='both'] .btn-label.lang-ja,
 #ui[data-lang='both'] .capture-option .lang-en,
@@ -615,6 +631,10 @@
   opacity: 0.72;
 }
 
+.disclaimer-short {
+  display: none;
+}
+
 /* ---------- responsive ---------- */
 @media (max-width: 860px) {
   .title-card {
@@ -637,6 +657,14 @@
   #ui[data-lang='both'] .stage-summary,
   #ui[data-lang='both'] .disclaimer-en {
     display: none;
+  }
+
+  .disclaimer-full {
+    display: none;
+  }
+
+  .disclaimer-short {
+    display: block;
   }
 
   .legend-en {

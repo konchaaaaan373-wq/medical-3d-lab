@@ -29,7 +29,9 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
     max: '1000',
     step: '1',
     value: '0',
-    'aria-label': 'Disease progression',
+    // Not "disease progression": these scenes model a physical process
+    // (aggregation, remodelling), not clinical severity.
+    'aria-label': meta.progressLabel?.label ?? 'Model progression',
     on: { input: (event) => onSeek(Number(event.target.value) / 1000) },
   });
 
@@ -63,9 +65,13 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
       storyButton.element,
       capture.element,
     ]),
+    // The notice must always be visible, so a shorter wording is swapped in on
+    // narrow screens rather than the notice being dropped.
     el('p', { class: 'disclaimer' }, [
-      el('span', { class: 'lang-ja', text: `⚠︎ ${meta.disclaimerJa}` }),
-      el('span', { class: 'disclaimer-en lang-en', text: meta.disclaimer }),
+      el('span', { class: 'disclaimer-full lang-ja', text: `⚠︎ ${meta.disclaimerJa}` }),
+      el('span', { class: 'disclaimer-full disclaimer-en lang-en', text: meta.disclaimer }),
+      el('span', { class: 'disclaimer-short lang-ja', text: `⚠︎ ${meta.disclaimerShortJa ?? meta.disclaimerJa}` }),
+      el('span', { class: 'disclaimer-short disclaimer-en lang-en', text: meta.disclaimerShort ?? meta.disclaimer }),
     ]),
   ]);
 

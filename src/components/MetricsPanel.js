@@ -18,20 +18,25 @@ export function createMetricsPanel() {
       for (const metric of metrics) {
         let row = rows.get(metric.id);
         if (!row) {
-          const value = el('span', { class: 'metric-value' });
+          // Numbers are language-independent, but a qualitative read-out
+          // ("raised" / "上昇") needs both languages.
+          const bilingual = metric.valueJa != null;
+          const value = el('span', { class: `metric-value${bilingual ? ' lang-en' : ''}` });
+          const valueJa = bilingual ? el('span', { class: 'metric-value lang-ja' }) : null;
           const unit = el('span', { class: 'metric-unit', text: metric.unit });
           const node = el('div', { class: `metric${metric.emphasis ? ' is-key' : ''}` }, [
             el('span', { class: 'metric-label' }, [
               el('span', { class: 'lang-en', text: metric.label }),
               el('span', { class: 'lang-ja', text: metric.labelJa }),
             ]),
-            el('span', { class: 'metric-figure' }, [value, unit]),
+            el('span', { class: 'metric-figure' }, [value, valueJa, unit]),
           ]);
           element.append(node);
-          row = { value, unit };
+          row = { value, valueJa, unit };
           rows.set(metric.id, row);
         }
         row.value.textContent = String(metric.value);
+        if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
         row.unit.textContent = metric.unit;
       }
     },

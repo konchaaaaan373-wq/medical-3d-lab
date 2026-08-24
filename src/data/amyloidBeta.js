@@ -17,11 +17,13 @@ export const PALETTE = {
 };
 
 /**
- * The five teaching stages.
+ * Five teaching stages describing the *aggregation state* of Aβ.
  *
- * `at` is the progression value (0..1) where the stage label takes over.
- * The 3D transitions are continuous and deliberately overlap the boundaries —
- * aggregation in vivo is a gradient, not a set of discrete switches.
+ * These are NOT clinical stages of Alzheimer's disease and they are not a
+ * severity scale. `at` is the progression value (0..1) where the stage label
+ * takes over; the 3D transitions are continuous and deliberately overlap the
+ * boundaries, because the different Aβ species coexist and interconvert rather
+ * than converting cleanly one into the next.
  */
 export const STAGES = [
   {
@@ -30,9 +32,9 @@ export const STAGES = [
     nameJa: '正常に近い状態',
     at: 0.0,
     summary:
-      'Aβ is produced and cleared continuously. Only small amounts of soluble monomer are present in the extracellular space.',
+      'Aβ is produced and cleared continuously in the healthy brain, so soluble monomer is normally present in small amounts.',
     summaryJa:
-      'Aβ は日常的に産生され、同じくらいの速度で排出されます。細胞外にあるのは少量の可溶性モノマーだけです。',
+      'Aβ は健常な脳でも日常的に産生・排出されています。細胞外に少量の可溶性モノマーが存在するのは正常なことです。',
   },
   {
     id: 'monomer',
@@ -40,9 +42,9 @@ export const STAGES = [
     nameJa: 'モノマーの増加',
     at: 0.16,
     summary:
-      'When production outpaces clearance, soluble Aβ monomers accumulate around neurons and synapses.',
+      'What matters is the balance: when production outpaces clearance, soluble Aβ accumulates in the extracellular space.',
     summaryJa:
-      '産生と排出のバランスが崩れると、可溶性 Aβ モノマーが神経細胞やシナプス周囲に溜まっていきます。',
+      '問題になるのは「存在すること」ではなくバランスです。産生が排出を上回ると、可溶性 Aβ が細胞外に蓄積していきます。',
   },
   {
     id: 'oligomer',
@@ -50,9 +52,9 @@ export const STAGES = [
     nameJa: 'オリゴマー形成',
     at: 0.4,
     summary:
-      'Monomers associate into small soluble oligomers. These are widely regarded as an important species for synaptic dysfunction.',
+      'Monomers associate into small soluble oligomers. These species are considered biologically important and have been associated with synaptic dysfunction.',
     summaryJa:
-      'モノマー同士が集まり、小さな可溶性オリゴマーを形成します。シナプス機能障害に関与する重要な分子種と考えられています。',
+      'モノマー同士が集まり、小さな可溶性オリゴマーを形成します。生物学的に重要な分子種と考えられ、シナプス機能障害との関連が報告されています。',
   },
   {
     id: 'fibril',
@@ -60,9 +62,9 @@ export const STAGES = [
     nameJa: '線維（フィブリル）形成',
     at: 0.62,
     summary:
-      'Oligomers extend into ordered β-sheet fibrils, which grow by adding further Aβ at their ends.',
+      'Some aggregates extend into ordered β-sheet fibrils, which grow by adding further Aβ at their ends.',
     summaryJa:
-      'オリゴマーが規則的な β シート構造の線維へと伸長し、末端に Aβ を付加しながら成長していきます。',
+      '一部の凝集体が規則的な β シート構造の線維へと伸長し、末端に Aβ を付加しながら成長します。すべてが線維になるわけではありません。',
   },
   {
     id: 'plaque',
@@ -70,9 +72,9 @@ export const STAGES = [
     nameJa: 'プラーク（老人斑）形成',
     at: 0.84,
     summary:
-      'Fibrils pack into dense extracellular deposits — senile plaques — one of the neuropathological hallmarks of Alzheimer’s disease.',
+      'Fibrils pack into dense extracellular deposits — plaques — one of the neuropathological hallmarks of Alzheimer’s disease. Monomers and soluble aggregates remain present alongside them.',
     summaryJa:
-      '線維が密に集まり、細胞外に老人斑（プラーク）を形成します。アルツハイマー病の神経病理学的特徴のひとつです。',
+      '線維が密に集まり、細胞外に老人斑（プラーク）を形成します。アルツハイマー病の神経病理学的特徴のひとつですが、この状態でもモノマーや可溶性凝集体は併存しています。',
   },
 ];
 
@@ -88,10 +90,16 @@ export const LEGEND = [
 
 /** Captions at each end of the progression slider. */
 export const RANGE = {
-  start: 'Normal',
-  startJa: '正常',
-  end: 'Plaque',
-  endJa: 'プラーク',
+  start: 'Low aggregation',
+  startJa: '凝集 少',
+  end: 'High aggregation',
+  endJa: '凝集 多',
+};
+
+/** What the slider actually moves along — deliberately not "disease severity". */
+export const PROGRESS_LABEL = {
+  label: 'Aggregation state',
+  labelJa: '凝集の状態',
 };
 
 /**
@@ -112,6 +120,7 @@ export const ANNOTATIONS = [
     sub: '細胞外スペース',
     anchor: 'space',
     range: [0.06, 0.44],
+    compact: false,
   },
   {
     id: 'oligomer',
@@ -138,6 +147,10 @@ export const ANNOTATIONS = [
 
 /** Shown permanently, small, under the controls. */
 export const DISCLAIMER =
-  'Simplified educational model — not a molecular simulation. Shapes, counts and timing are illustrative.';
+  'Simplified educational model of Aβ aggregation — not a molecular simulation. Aβ species coexist and interconvert; this does not represent clinical disease stages or symptom severity.';
 export const DISCLAIMER_JA =
-  '教育目的の簡易モデルです。分子シミュレーションではなく、形・数・時間経過はイメージ図として描いています。';
+  '教育目的の簡易モデルです。分子シミュレーションではありません。各凝集種は共存・相互変換し得るため、臨床病期や症状の重さを表すものではありません。';
+
+/** Shown instead of the full notice on narrow screens, where space is scarce. */
+export const DISCLAIMER_SHORT = 'Educational model of Aβ aggregation — not clinical disease stages.';
+export const DISCLAIMER_SHORT_JA = '教育用の簡易モデルです。臨床病期や症状の重さを表すものではありません。';

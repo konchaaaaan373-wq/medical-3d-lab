@@ -7,7 +7,7 @@
 | テーマ | 内容 | URL |
 | --- | --- | --- |
 | **アミロイドβの蓄積** | アルツハイマー病における Aβ の凝集カスケード | `#/amyloid-beta` |
-| **心不全** | 左室リモデリングと駆出率の低下、うっ血 | `#/heart-failure` |
+| **心不全** | HFrEF における左室リモデリングと肺うっ血の一例 | `#/heart-failure` |
 
 Interactive 3D visualisations of disease mechanisms, built for medical education,
 social posts and short explainer videos.
@@ -23,11 +23,16 @@ social posts and short explainer videos.
 と連続的に変化していきます。
 
 **心不全** — 左室を切り欠いた模式図で、
-**代償性肥大 → 心腔の拡大 → 駆出率の低下 → うっ血**
-を表示します。壁の厚さ・内腔の大きさ・拍動・画面右の EF / EDV / ESV は
-すべて 1 つの血行動態モデル（`hemodynamics.js`）から導かれているため、
-**絵と数値が食い違うことが構造的に起きません**。心筋は非圧縮として扱っているので、
-収縮期の壁の肥厚もモデルから自動的に出てきます。
+**求心性リモデリング → 左室の拡大 → 収縮機能の低下（HFrEF） → 肺うっ血**
+というパターンのひとつを表示します。壁の厚さ・内腔の大きさ・拍動・画面右の
+EF / EDV / ESV / SV / HR / CO は、**同じ state パラメータ**
+（`hemodynamics.js`）から導かれているため、絵と数値が食い違うことが起きません。
+心筋は「1 心拍の中では」非圧縮として扱うので、収縮期の壁の肥厚は
+モデルから自動的に出てきます（病態ステージ間では心筋量そのものが変化します）。
+
+肺うっ血は **血液の逆流としては描いていません**。血流は生理的な向きにしか動かず、
+うっ血は充満圧の上昇として、左房 → 肺静脈 → 肺血管床 へ広がる圧のフロントと、
+血管の外側に現れる間質の水分として表現しています。
 
 - 3D ビューは回転・ズーム可能（OrbitControls）
 - 5 段階のステージ表示と解説テキスト（日英併記 / 日本語 / English を切替）
@@ -54,6 +59,7 @@ line・custom shader だけで構成しているため、追加のアセット�
 ```bash
 npm install     # 依存関係のインストール（three + vite のみ）
 npm run dev     # 開発サーバー起動 → http://localhost:5173
+npm test        # モデルの整合性テスト（追加の依存なし / node:test）
 ```
 
 その他のコマンド:
@@ -62,6 +68,10 @@ npm run dev     # 開発サーバー起動 → http://localhost:5173
 npm run build   # dist/ に静的ファイルを出力
 npm run preview # ビルド結果をローカルで確認
 ```
+
+`npm test` は、EF / EDV / ESV / SV / CO の算術整合性、スライダー全域での
+幾何の妥当性、Aβ 各凝集種の共存などを検証します（`tests/`）。
+医学的な数値やステージを変更したら、必ず通してください。
 
 `vite.config.js` の `base: './'` により、`dist/` はそのまま GitHub Pages や
 Netlify などの静的ホスティングに置けます（すべて無料枠で運用できます）。
@@ -91,9 +101,11 @@ medical-3d-lab/
 ├─ index.html                  エントリ HTML（UI は JS 側で生成）
 ├─ vite.config.js
 ├─ public/                     静的ファイル置き場（現状は空）
+├─ tests/                      モデル整合性テスト（node --test）
 ├─ docs/
 │  ├─ adding-a-scene.md        新しいテーマを追加する手順
-│  └─ medical-notes.md         医学的な表現の方針と注意
+│  ├─ medical-notes.md         医学的な表現の方針と注意
+│  └─ medical-audit-2026-08-24.md  医学監査の記録
 └─ src/
    ├─ main.js                  起動処理とローディング表示
    ├─ app/
@@ -141,6 +153,11 @@ medical-3d-lab/
 `#ui[data-lang]` で表示を切り替えています。再描画が発生しないので、
 言語を変えてもアニメーションが途切れません。短い UI ラベル（ボタン等）は
 併記モードでも片方だけを出す、という使い分けをしています。
+
+**医学パラメータと演出パラメータを分ける。** 臨床的な意味を持つ値は臨床的な名前と
+単位で（`edvMl`, `wallMm`, `hr`）、見た目だけの値はそれと分かる名前で
+（`longToShortAxisRatio`, `congestionGlowIntensity`）書いています。
+モデルの精度を超える桁数は UI に出しません（左室心筋重量は内部計算のみ）。
 
 **色は寒色 → 暖色。** モノマー（シアン）→ オリゴマー（琥珀）→ 線維（橙）→ プラーク（赤）と
 進むので、色を見ただけで進行方向が直感的に分かります。

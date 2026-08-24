@@ -182,17 +182,25 @@ export class Neuron extends THREE.Group {
     this._spineMesh.instanceMatrix.needsUpdate = true;
   }
 
-  /** @param {number} progress 0..1 */
+  /**
+   * @param {number} progress 0..1
+   *
+   * Deliberately understated. Synaptic change is *associated* with Aβ
+   * pathology, but the amount of aggregate is not a measure of neuronal injury
+   * or of symptoms, so this must not look like a dose-response readout: the
+   * cell dims a little and spines shrink a little. Nothing dies, nothing is
+   * labelled as damage, and the effect saturates early rather than tracking the
+   * slider all the way to the end.
+   */
   setProgress(progress) {
     if (Math.abs(progress - this._progress) < 0.002) return;
     this._progress = progress;
-    // Subtle, intentionally understated: the cell dims rather than dies.
-    const stress = smoothstep(0.45, 0.95, progress);
-    this.membraneMaterial.emissiveIntensity = lerp(0.22, 0.07, stress);
-    this.membraneMaterial.opacity = lerp(0.92, 0.78, stress);
-    this.neuriteMaterial.emissiveIntensity = lerp(0.16, 0.05, stress);
-    this.neuriteMaterial.opacity = lerp(0.9, 0.66, stress);
-    this._spineMesh.material.emissiveIntensity = lerp(0.5, 0.12, stress);
-    this._applySpineScale(lerp(1, 0.4, stress));
+    const change = smoothstep(0.4, 0.8, progress);
+    this.membraneMaterial.emissiveIntensity = lerp(0.22, 0.13, change);
+    this.membraneMaterial.opacity = lerp(0.92, 0.84, change);
+    this.neuriteMaterial.emissiveIntensity = lerp(0.16, 0.09, change);
+    this.neuriteMaterial.opacity = lerp(0.9, 0.78, change);
+    this._spineMesh.material.emissiveIntensity = lerp(0.5, 0.28, change);
+    this._applySpineScale(lerp(1, 0.72, change));
   }
 }

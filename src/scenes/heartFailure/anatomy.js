@@ -15,7 +15,7 @@ export const ANATOMY = {
   mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
   atriumCentre: new THREE.Vector3(-1.6, 3.5, -0.1),
   atriumRadius: 1.65,
-  pulmonaryBed: new THREE.Vector3(-4.9, 4.3, -2.6),
+  pulmonaryBed: new THREE.Vector3(-4.9, 3.7, -2.6),
 };
 
 /** Ascending aorta and arch. Stops before it would intersect the ventricle. */
@@ -57,7 +57,8 @@ export const ANCHORS = {
   wall: new THREE.Vector3(3.5, 0.4, 1.6),
   aorta: AORTA.getPointAt(0.42),
   residual: new THREE.Vector3(0.1, -3.6, 1.0),
-  congestion: new THREE.Vector3(-3.4, 4.6, -1.6),
+  pressure: new THREE.Vector3(-2.4, 3.3, -0.5),
+  fluid: new THREE.Vector3(-5.4, 4.8, -2.4),
 };
 
 /**
@@ -124,42 +125,49 @@ export function buildCavityBlood(count, seed = 90210) {
 }
 
 /**
- * The congestion pool: blood backing up into the atrium, the pulmonary veins
- * and the vascular bed beyond. Particles appear in that order as the pressure
- * rises, so the direction of the backing-up is legible.
+ * Interstitial fluid in the lung, for the congestion stage.
+ *
+ * These particles are deliberately NOT blood: they sit *outside* the pulmonary
+ * veins, use their own colour and size, and never move along a vessel. They
+ * stand for fluid driven out of the capillaries into the interstitium when
+ * pulmonary capillary hydrostatic pressure rises — which is what pulmonary
+ * congestion is. Blood is never drawn travelling backwards into the lung.
  */
-export function buildCongestionPool(count, seed = 31337) {
+export function buildInterstitialFluid(count, seed = 31337) {
   const rnd = createRandom(seed);
-  const buffers = createBuffers(count);
+  const positions = new Float32Array(count * 3);
+  const appear = new Float32Array(count);
+  const seeds = new Float32Array(count);
+  const sizes = new Float32Array(count);
+
+  // Sampled points along the veins, used to keep the fluid extravascular.
+  const veinSamples = [];
+  for (const vein of PULMONARY_VEINS) {
+    for (let i = 0; i <= 16; i++) veinSamples.push(vein.getPointAt(i / 16));
+  }
+
   const dir = new THREE.Vector3();
   const tmp = new THREE.Vector3();
-
-  for (let i = 0; i < count; i++) {
-    const zone = rnd();
-    if (zone < 0.4) {
-      // Left atrium
-      randomDirection(rnd, dir);
-      tmp.copy(dir).multiplyScalar(ANATOMY.atriumRadius * 0.9 * Math.cbrt(rnd())).add(ANATOMY.atriumCentre);
-      buffers.appear[i] = rnd() * 0.34;
-    } else if (zone < 0.78) {
-      // Pulmonary veins
-      const vein = PULMONARY_VEINS[rnd() < 0.5 ? 0 : 1];
-      vein.getPointAt(Math.min(0.99, rnd()), tmp);
-      jitter(tmp, rnd, 0.28);
-      buffers.appear[i] = 0.28 + rnd() * 0.42;
-    } else {
-      // Pulmonary vascular bed
-      randomDirection(rnd, dir);
-      tmp.copy(dir).multiplyScalar(1.9 * Math.cbrt(rnd())).add(ANATOMY.pulmonaryBed);
-      buffers.appear[i] = 0.58 + rnd() * 0.42;
-    }
-    write(buffers.slots, i, tmp);
-    buffers.ranks[i] = 2; // never ejected
-    buffers.seeds[i] = rnd();
-    buffers.sizes[i] = 0.55 + rnd() * 0.5;
+  let written = 0;
+  let guard = 0;
+  while (written < count && guard++ < count * 40) {
+    randomDirection(rnd, dir);
+    tmp.copy(dir).multiplyScalar(2.5 * Math.cbrt(rnd())).add(ANATOMY.pulmonaryBed);
+    // Stay clear of the vessel lumen — this is extravascular fluid.
+    if (veinSamples.some((sample) => sample.distanceTo(tmp) < 0.8)) continue;
+    write(positions, written, tmp);
+    // Fluid closer to the veins appears first as pressure rises.
+    const proximity = Math.min(...veinSamples.map((sample) => sample.distanceTo(tmp)));
+    appear[written] = clamp01((proximity - 0.8) / 3.2) * 0.8 + rnd() * 0.2;
+    seeds[written] = rnd();
+    sizes[written] = 0.5 + rnd() * 0.55;
+    written++;
   }
-  return buffers;
+
+  return { count: written, positions, appear, seeds, sizes };
 }
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 function createBuffers(count) {
   return {
