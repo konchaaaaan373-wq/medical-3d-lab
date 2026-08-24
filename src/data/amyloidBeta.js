@@ -78,11 +78,21 @@ export const STAGES = [
 
 /** Legend entries shown under the 3D view. */
 export const LEGEND = [
-  { key: 'monomer', label: 'Aβ monomer', labelJa: 'モノマー' },
-  { key: 'oligomer', label: 'Oligomer', labelJa: 'オリゴマー' },
-  { key: 'fibril', label: 'Fibril', labelJa: '線維' },
-  { key: 'plaque', label: 'Plaque', labelJa: 'プラーク' },
+  // `activeFrom` is the progression at which the species becomes present; the
+  // legend entry stays dimmed until then.
+  { key: 'monomer', label: 'Aβ monomer', labelJa: 'モノマー', activeFrom: 0 },
+  { key: 'oligomer', label: 'Oligomer', labelJa: 'オリゴマー', activeFrom: 0.34 },
+  { key: 'fibril', label: 'Fibril', labelJa: '線維', activeFrom: 0.56 },
+  { key: 'plaque', label: 'Plaque', labelJa: 'プラーク', activeFrom: 0.78 },
 ];
+
+/** Captions at each end of the progression slider. */
+export const RANGE = {
+  start: 'Normal',
+  startJa: '正常',
+  end: 'Plaque',
+  endJa: 'プラーク',
+};
 
 /**
  * Floating 3D labels. `range` is the progression window in which the label is visible,

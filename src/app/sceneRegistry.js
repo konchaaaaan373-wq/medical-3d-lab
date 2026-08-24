@@ -8,10 +8,16 @@
 export const SCENES = [
   {
     id: 'amyloid-beta',
-    label: 'Amyloid-β accumulation',
+    label: 'Amyloid-β',
+    labelJa: 'アミロイドβ',
     load: () => import('../scenes/amyloidBeta/index.js'),
   },
-  // { id: 'heart-failure', label: 'Heart failure', load: () => import('../scenes/heartFailure/index.js') },
+  {
+    id: 'heart-failure',
+    label: 'Heart failure',
+    labelJa: '心不全',
+    load: () => import('../scenes/heartFailure/index.js'),
+  },
 ];
 
 export const DEFAULT_SCENE_ID = SCENES[0].id;

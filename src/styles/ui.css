@@ -98,6 +98,98 @@
   color: var(--ink-faint);
 }
 
+.top-left {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* ---------- topic switcher ---------- */
+.scene-switcher {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+}
+
+.scene-pill {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  text-decoration: none;
+  transition: color 160ms ease, background 160ms ease;
+  white-space: nowrap;
+}
+
+.scene-pill:hover {
+  color: var(--ink);
+}
+
+.scene-pill.is-current {
+  color: #04121a;
+  background: var(--accent);
+}
+
+/* ---------- metrics read-out ---------- */
+.metrics {
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 176px;
+}
+
+.metric {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  line-height: 1.25;
+}
+
+.metric-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.metric-unit {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+.metric.is-key {
+  padding-bottom: 5px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric.is-key .metric-label {
+  color: var(--ink-dim);
+  font-size: 11px;
+}
+
+.metric.is-key .metric-value {
+  font-size: 21px;
+  color: var(--accent);
+}
+
 .rail-buttons {
   display: flex;
   gap: 6px;
@@ -497,6 +589,7 @@
  * buttons read "Play 再生" and captions run together on one line.
  */
 #ui[data-lang='both'] .step-name-ja,
+#ui[data-lang='both'] .scene-pill .lang-ja,
 #ui[data-lang='both'] .btn-label.lang-ja,
 #ui[data-lang='both'] .capture-option .lang-en,
 #ui[data-lang='both'] .slider-cap .lang-ja,
@@ -548,6 +641,28 @@
 
   .legend-en {
     font-size: 10.5px;
+  }
+
+  .metrics {
+    min-width: 0;
+    padding: 8px 10px;
+    gap: 4px;
+  }
+
+  /* On phones only the headline figure is worth the space. */
+  .metric:not(.is-key) {
+    display: none;
+  }
+
+  .metric.is-key {
+    border-bottom: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+  }
+
+  .scene-pill {
+    padding: 5px 10px;
+    font-size: 11px;
   }
 
   .console {

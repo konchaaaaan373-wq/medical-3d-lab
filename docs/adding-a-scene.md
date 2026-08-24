@@ -61,6 +61,24 @@ export class HeartFailureScene {
 }
 ```
 
+### 任意で実装できるフック
+
+| メソッド / プロパティ | 効果 |
+| --- | --- |
+| `getStageView(stageId)` | ストーリーモードで、そのステージのカメラ位置に寄ります。`null` を返すと establishing shot のままです |
+| `getMetrics()` | 数値の読み取りパネルが 3D ビュー横に表示されます（`heart-failure` の EF / EDV など） |
+| `meta.range` | 進行度スライダー両端のラベル（`{ start, startJa, end, endJa }`） |
+| `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
+
+`getMetrics()` は次の形式の配列を返します。
+
+```js
+[{ id: 'ef', label: 'Ejection fraction', labelJa: '駆出率 (EF)',
+   value: 58, unit: '%', emphasis: true }]
+```
+
+`emphasis: true` の項目は大きく表示され、スマホではこの項目だけが残ります。
+
 `index.js` は 1 行です。
 
 ```js
@@ -92,3 +110,8 @@ export { HeartFailureScene as default, HeartFailureScene } from './HeartFailureS
   ラベルを間引くなどの分岐を入れてください。
 - **キャプチャ映えを意識する。** `cameraPose` は「静止画として成立する構図」に
   してください。UI 非表示（`H` キー）と PNG 書き出しは共通機能として使えます。
+  縦長画面や 4:5 書き出し向けのカメラ距離はアプリ側が自動調整します。
+- **数値を出すなら、絵と同じモデルから出す。** `heart-failure` では、壁の厚さ・
+  内腔の大きさ・拍動・パネルの EF がすべて 1 つの血行動態モデル
+  （`hemodynamics.js`）から導かれています。こうすると「絵と数字が食い違う」
+  という、教材として一番まずい状態が構造的に起きません。

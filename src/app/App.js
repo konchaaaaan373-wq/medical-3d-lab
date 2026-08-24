@@ -1,5 +1,5 @@
 import { Viewer } from './Viewer.js';
-import { loadScene, resolveSceneId } from './sceneRegistry.js';
+import { SCENES, loadScene, resolveSceneId } from './sceneRegistry.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { el } from '../utils/dom.js';
@@ -8,6 +8,8 @@ import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { createMetricsPanel } from '../components/MetricsPanel.js';
+import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 
 /**
@@ -87,6 +89,10 @@ export async function createApp({ stage, ui }) {
     ui.dataset.lang = mode;
   });
 
+  // Optional: scenes that expose a model can show a live read-out beside the view.
+  const metricsPanel = scene.getMetrics ? createMetricsPanel() : null;
+  const sceneSwitcher = createSceneSwitcher({ scenes: SCENES, currentId: resolveSceneId() });
+
   const uiToggle = el('button', {
     class: 'ui-toggle',
     type: 'button',
@@ -102,8 +108,12 @@ export async function createApp({ stage, ui }) {
 
   ui.append(
     el('div', { class: 'top-bar' }, [
-      createTitleCard(meta),
-      el('div', { class: 'rail' }, [legend.element, el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle])]),
+      el('div', { class: 'top-left' }, [createTitleCard(meta), sceneSwitcher?.element]),
+      el('div', { class: 'rail' }, [
+        legend.element,
+        metricsPanel?.element,
+        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+      ]),
     ]),
     el('div', { class: 'panel console' }, [stageReadout.element, controlPanel.element]),
     labels.element
@@ -118,6 +128,7 @@ export async function createApp({ stage, ui }) {
     legend.update(value);
     labels.update(value);
     controlPanel.update(value, playing);
+    if (metricsPanel) metricsPanel.update(scene.getMetrics());
 
     const index = stageIndexFor(value, meta.stages);
     if (index !== lastStageIndex) {

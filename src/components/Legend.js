@@ -13,20 +13,21 @@ export function createLegend(meta) {
         el('span', { class: 'legend-ja lang-ja', text: entry.labelJa }),
       ]),
     ]);
-    return { key: entry.key, node };
+    return { key: entry.key, activeFrom: entry.activeFrom, node };
   });
 
   const element = el('ul', { class: 'panel legend' }, items.map((item) => item.node));
 
-  /** Presence thresholds mirror the shader's join thresholds, roughly. */
-  // Monomer is present even in the "normal" state, so it is never dimmed.
-  const ACTIVE_FROM = { monomer: 0, oligomer: 0.34, fibril: 0.56, plaque: 0.78 };
-
   return {
     element,
+    /**
+     * Entries dim until their species is actually present, so the legend acts as
+     * a second read-out of the progression. Each scene declares its own
+     * thresholds in `data/`; anything without one is always shown.
+     */
     update(progress) {
       for (const item of items) {
-        item.node.classList.toggle('is-active', progress >= ACTIVE_FROM[item.key]);
+        item.node.classList.toggle('is-active', progress >= (item.activeFrom ?? 0));
       }
     },
   };

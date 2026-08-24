@@ -4,7 +4,7 @@ import { FibrilRibbons } from './FibrilRibbons.js';
 import { PlaqueCores } from './PlaqueCores.js';
 import { Neuron } from './Neuron.js';
 import { buildAggregationLayout } from './aggregationLayout.js';
-import { ANNOTATIONS, STAGES, LEGEND, PALETTE, DISCLAIMER, DISCLAIMER_JA } from '../../data/amyloidBeta.js';
+import { ANNOTATIONS, STAGES, LEGEND, RANGE, PALETTE, DISCLAIMER, DISCLAIMER_JA } from '../../data/amyloidBeta.js';
 import { disposeObject } from '../../utils/dispose.js';
 
 /** Direction the hero shot looks from, reused for every stage close-up. */
@@ -41,6 +41,7 @@ export class AmyloidBetaScene {
     subtitleJa: 'アルツハイマー病 ｜ 教育用3Dモデル',
     stages: STAGES,
     legend: LEGEND,
+    range: RANGE,
     palette: PALETTE,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,

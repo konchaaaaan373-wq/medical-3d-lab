@@ -47,13 +47,13 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
   const element = el('div', { class: 'controls' }, [
     el('div', { class: 'slider-row' }, [
       el('span', { class: 'slider-cap' }, [
-        el('span', { class: 'lang-en', text: 'Normal' }),
-        el('span', { class: 'lang-ja', text: '正常' }),
+        el('span', { class: 'lang-en', text: meta.range?.start ?? '' }),
+        el('span', { class: 'lang-ja', text: meta.range?.startJa ?? '' }),
       ]),
       slider,
       el('span', { class: 'slider-cap' }, [
-        el('span', { class: 'lang-en', text: 'Plaque' }),
-        el('span', { class: 'lang-ja', text: 'プラーク' }),
+        el('span', { class: 'lang-en', text: meta.range?.end ?? '' }),
+        el('span', { class: 'lang-ja', text: meta.range?.endJa ?? '' }),
       ]),
     ]),
     el('div', { class: 'button-row' }, [

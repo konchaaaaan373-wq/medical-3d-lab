@@ -1,18 +1,33 @@
 # medical-3d-lab
 
 医療教育向けの、ブラウザで動くインタラクティブ 3D コンテンツ集です。
-最初のテーマとして **アルツハイマー病におけるアミロイドβ（Aβ）の蓄積過程** を実装しています。
+
+現在 2 テーマを実装しています。
+
+| テーマ | 内容 | URL |
+| --- | --- | --- |
+| **アミロイドβの蓄積** | アルツハイマー病における Aβ の凝集カスケード | `#/amyloid-beta` |
+| **心不全** | 左室リモデリングと駆出率の低下、うっ血 | `#/heart-failure` |
 
 Interactive 3D visualisations of disease mechanisms, built for medical education,
-social posts and short explainer videos. First theme: **amyloid-β accumulation**.
+social posts and short explainer videos.
 
 ---
 
 ## 概要 / Overview
 
-進行度スライダーを 0 → 100% に動かすと、細胞外スペースの Aβ が
+どのテーマも共通で、**進行度スライダー（0 → 100%）ひとつ**で病態が連続的に変化します。
+
+**アミロイドβ** — 細胞外スペースの Aβ が
 **モノマー増加 → オリゴマー形成 → 線維（フィブリル）形成 → プラーク（老人斑）形成**
 と連続的に変化していきます。
+
+**心不全** — 左室を切り欠いた模式図で、
+**代償性肥大 → 心腔の拡大 → 駆出率の低下 → うっ血**
+を表示します。壁の厚さ・内腔の大きさ・拍動・画面右の EF / EDV / ESV は
+すべて 1 つの血行動態モデル（`hemodynamics.js`）から導かれているため、
+**絵と数値が食い違うことが構造的に起きません**。心筋は非圧縮として扱っているので、
+収縮期の壁の肥厚もモデルから自動的に出てきます。
 
 - 3D ビューは回転・ズーム可能（OrbitControls）
 - 5 段階のステージ表示と解説テキスト（日英併記 / 日本語 / English を切替）
@@ -144,13 +159,18 @@ medical-3d-lab/
 ```text
 src/scenes/
 ├─ amyloidBeta/          ✅ 実装済み
-├─ heartFailure/         心不全（前負荷・後負荷とリモデリング）
+├─ heartFailure/         ✅ 実装済み
 ├─ atrialFibrillation/   心房細動（興奮伝播と血栓形成）
 └─ cerebralInfarction/   脳梗塞（灌流低下とペナンブラ）
 ```
 
-URL のハッシュ（例: `#/amyloid-beta`）でテーマを切り替えられる仕組みは
-すでに入っています。テーマが 2 つ以上になった時点で、UI にセレクタを追加してください。
+テーマの切り替えは画面左上のセレクタ、または URL のハッシュ
+（例: `#/heart-failure`）で行えます。表示していないテーマのコードは
+ダウンロードされません（動的 import）。
+
+シーンが任意で実装できる共通フック（ステージ別カメラ、数値パネル、
+スライダーのラベル、凡例の点灯条件）は
+[`docs/adding-a-scene.md`](docs/adding-a-scene.md) にまとめています。
 
 ---
 
