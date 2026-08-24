@@ -19,7 +19,12 @@ export const PALETTE = {
 };
 
 /**
- * Five illustrative stages.
+ * The structural / functional axis: how the ventricle itself changes.
+ *
+ * Pulmonary congestion is deliberately NOT one of these. Congestion is a
+ * haemodynamic state that follows raised left-sided filling pressure, not the
+ * structural stage that comes after HFrEF — and it is not specific to HFrEF
+ * either. It is carried by `congestionLevel` below and drawn as an overlay.
  *
  * IMPORTANT: this is *one* pattern of remodelling seen in HFrEF, not a universal
  * natural history. Many patients never pass through all of these, and heart
@@ -38,14 +43,17 @@ export const STAGES = [
       '左室は拡張期に血液で満たされ、収縮期にその半分強を駆出します。壁の厚さと内腔の大きさのバランスが保たれています。',
   },
   {
-    id: 'concentric-remodeling',
-    name: 'Concentric remodeling',
-    nameJa: '求心性リモデリング',
+    // Named for what the model actually does: myocardial volume rises ~77 %
+    // while the cavity does not enlarge and relative wall thickness climbs.
+    // Increased RWT *with* increased mass is hypertrophy, not remodelling.
+    id: 'concentric-hypertrophy',
+    name: 'Concentric hypertrophy',
+    nameJa: '求心性肥大',
     at: 0.18,
     summary:
-      'Under a sustained pressure load the wall thickens while the cavity does not enlarge, so relative wall thickness rises.',
+      'Under a sustained pressure load the wall thickens and muscle mass increases while the cavity does not enlarge, so relative wall thickness rises.',
     summaryJa:
-      '持続する圧負荷に対して壁が厚くなり、内腔は拡大しません。相対的壁厚（RWT）が上昇した状態です。',
+      '持続する圧負荷に対して壁が厚くなり、心筋量が増加します。内腔は拡大しないため、相対的壁厚（RWT）が上昇します。',
   },
   {
     id: 'dilation',
@@ -63,19 +71,9 @@ export const STAGES = [
     nameJa: '収縮機能の低下（HFrEF）',
     at: 0.64,
     summary:
-      'Ejection fraction falls. Stroke volume declines gradually; a faster rate keeps resting cardiac output close to normal for a time.',
+      'Ejection fraction falls and the ventricle empties less completely. Resting cardiac output may stay close to normal for a time. Filling pressure rises alongside — pulmonary congestion is drawn as a separate haemodynamic overlay, not as a later structural stage.',
     summaryJa:
-      '駆出率が低下します。1回拍出量は徐々に減りますが、心拍数の増加などにより安静時の心拍出量はしばらく正常近くに保たれることがあります。',
-  },
-  {
-    id: 'congestion',
-    name: 'Pulmonary congestion',
-    nameJa: '肺うっ血',
-    at: 0.85,
-    summary:
-      'Raised LV filling pressure is transmitted back to the atrium and pulmonary veins, raising pulmonary capillary pressure and driving fluid into the interstitium.',
-    summaryJa:
-      '左室の充満圧の上昇が左房・肺静脈へ伝わり、肺毛細血管圧が上昇して間質へ水分が移動します（血液が肺へ逆流するわけではありません）。',
+      '駆出率が低下し、心室は完全には空になりません。安静時の心拍出量はしばらく正常近くに保たれることがあります。並行して充満圧が上昇しますが、肺うっ血は「次の構造的ステージ」ではなく、独立した血行動態のオーバーレイとして描いています。',
   },
 ];
 
@@ -96,8 +94,10 @@ export const LEGEND = [
 export const RANGE = {
   start: 'Normal',
   startJa: '正常',
-  end: 'Congestion',
-  endJa: '肺うっ血',
+  // Deliberately structural: the right-hand end of this axis is a dilated,
+  // poorly emptying ventricle — not "congestion", which is an overlay.
+  end: 'Dilated, low EF',
+  endJa: '拡大・EF低下',
 };
 
 /** What the slider actually moves along — deliberately not "disease severity". */
@@ -178,20 +178,28 @@ export const DISCLAIMER_SHORT_JA =
 /**
  * Haemodynamic keyframes, interpolated across the progression.
  *
- * Plausible textbook-style values for each pattern, chosen so that the direction
- * of change is right — they are not measurements, and no patient is described.
+ * Plausible textbook-style values for one illustrative course, chosen so that
+ * the direction of change is right. They are not measurements, no patient is
+ * described, and they are not a universal HFrEF trajectory — other courses,
+ * including ones where stroke volume or cardiac output behave differently, are
+ * entirely possible.
  *
- * Deliberate properties of this set, checked by tests/hemodynamics.test.js:
- *   - stroke volume falls monotonically (70 -> 51 mL);
- *   - resting cardiac output is broadly maintained early (~5.0 L/min) and then
- *     declines — in chronic HFrEF it is exercise reserve, not resting output,
- *     that fails first;
- *   - relative wall thickness rises with concentric remodelling and falls once
+ * Properties of *this dataset*, checked by tests/hemodynamics.test.js:
+ *   - stroke volume does not rise above the healthy value as remodelling
+ *     advances (an earlier version of these numbers had the failing ventricle
+ *     out-pumping the healthy one);
+ *   - resting cardiac output stays in a plausible band (~5.0 -> 4.5 L/min) and
+ *     never becomes supranormal;
+ *   - relative wall thickness rises with concentric hypertrophy and falls once
  *     the chamber dilates;
- *   - myocardial mass stays elevated once remodelling has occurred.
+ *   - myocardial volume stays elevated once remodelling has occurred.
  *
  * `wallMm` is the *end-diastolic* wall thickness. Systolic thickening is not
  * listed here: it is derived (see hemodynamics.js).
+ *
+ * `congestionLevel` is a separate axis: a 0..1 index of left-sided filling
+ * pressure driving the congestion overlay. It rides along the same slider for
+ * simplicity, but it is not a structural stage and is not specific to HFrEF.
  */
 export const HEMODYNAMICS = [
   {
@@ -200,7 +208,7 @@ export const HEMODYNAMICS = [
     esvMl: 50,
     wallMm: 9.0,
     hr: 70,
-    fillingPressureIndex: 0.0,
+    congestionLevel: 0.0,
     longToShortAxisRatio: 1.9,
   },
   {
@@ -209,7 +217,7 @@ export const HEMODYNAMICS = [
     esvMl: 45,
     wallMm: 14.0,
     hr: 74,
-    fillingPressureIndex: 0.06,
+    congestionLevel: 0.06,
     longToShortAxisRatio: 1.86,
   },
   {
@@ -218,7 +226,7 @@ export const HEMODYNAMICS = [
     esvMl: 104,
     wallMm: 11.6,
     hr: 76,
-    fillingPressureIndex: 0.24,
+    congestionLevel: 0.24,
     longToShortAxisRatio: 1.6,
   },
   {
@@ -227,7 +235,7 @@ export const HEMODYNAMICS = [
     esvMl: 145,
     wallMm: 10.4,
     hr: 82,
-    fillingPressureIndex: 0.52,
+    congestionLevel: 0.52,
     longToShortAxisRatio: 1.45,
   },
   {
@@ -236,7 +244,7 @@ export const HEMODYNAMICS = [
     esvMl: 182,
     wallMm: 9.8,
     hr: 88,
-    fillingPressureIndex: 0.88,
+    congestionLevel: 0.88,
     longToShortAxisRatio: 1.35,
   },
   {
@@ -245,7 +253,7 @@ export const HEMODYNAMICS = [
     esvMl: 197,
     wallMm: 9.4,
     hr: 89,
-    fillingPressureIndex: 1.0,
+    congestionLevel: 1.0,
     longToShortAxisRatio: 1.32,
   },
 ];

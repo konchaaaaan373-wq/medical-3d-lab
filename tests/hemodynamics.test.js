@@ -48,15 +48,17 @@ test('basic physiological invariants hold everywhere on the slider', () => {
     assert.ok(h.hr > 0, `HR must be positive at ${p}`);
     assert.ok(h.longToShortAxisRatio > 1, `cavity must stay elongated-or-round at ${p}`);
     assert.ok(
-      h.fillingPressureIndex >= 0 && h.fillingPressureIndex <= 1,
-      `filling pressure index out of range at ${p}`
+      h.congestionLevel >= 0 && h.congestionLevel <= 1,
+      `congestion level out of range at ${p}`
     );
   }
 });
 
-test('the failing ventricle does not pump more than the healthy one', () => {
-  // The bug this guards against: interpolating EDV and ESV independently once
-  // produced a stroke volume and cardiac output that ROSE as failure advanced.
+test('this illustrative dataset never has the failing ventricle out-pumping the healthy one', () => {
+  // A property of these particular keyframes, not a claim that stroke volume or
+  // cardiac output must fall monotonically in heart failure. The bug it guards
+  // against: interpolating EDV and ESV independently once produced a stroke
+  // volume and cardiac output that ROSE as failure advanced.
   const normal = sampleHemodynamics(0);
   let previousSv = Infinity;
   for (const p of SWEEP.slice().sort((a, b) => a - b)) {
@@ -69,8 +71,9 @@ test('the failing ventricle does not pump more than the healthy one', () => {
       h.strokeVolumeMl <= normal.strokeVolumeMl + 1e-9,
       `stroke volume must never exceed the healthy value (at ${p})`
     );
-    // Resting cardiac output is broadly maintained in chronic HFrEF, but it
-    // must never become supranormal.
+    // Resting cardiac output may stay relatively preserved in some patients
+    // despite a reduced EF, so a flat-ish curve is acceptable here — but a
+    // failing ventricle producing more than a healthy one is not.
     assert.ok(
       h.cardiacOutputLMin <= normal.cardiacOutputLMin * 1.1,
       `cardiac output must not become supranormal (at ${p})`
@@ -88,7 +91,63 @@ test('ejection fraction falls once systolic dysfunction is reached', () => {
     byId['systolic-dysfunction'].ejectionFraction < 0.4,
     'the HFrEF stage must show a clearly reduced EF'
   );
-  assert.ok(byId.congestion.ejectionFraction < byId['systolic-dysfunction'].ejectionFraction);
+  assert.ok(
+    sampleHemodynamics(1).ejectionFraction < byId['systolic-dysfunction'].ejectionFraction,
+    'EF should keep falling towards the end of the axis'
+  );
+});
+
+test('pulmonary congestion is not a structural stage', () => {
+  // Congestion follows raised left-sided filling pressure. It is not the
+  // structural stage after HFrEF, and it is not specific to HFrEF either, so it
+  // must not appear as a step on the structural axis.
+  for (const stage of STAGES) {
+    assert.ok(
+      !/congestion|うっ血/i.test(`${stage.id} ${stage.name} ${stage.nameJa}`),
+      `"${stage.name}" presents congestion as a structural stage`
+    );
+  }
+  // The last structural stage is the functional one, not a congestion stage.
+  assert.equal(STAGES[STAGES.length - 1].id, 'systolic-dysfunction');
+});
+
+test('congestion rides its own axis and still reaches the overlay', () => {
+  const level = (p) => sampleHemodynamics(p).congestionLevel;
+  assert.ok(level(0) < 0.02, 'a normal ventricle should show no congestion overlay');
+  // The overlay hides itself below 0.02 (see CongestionOverlay.setCongestionLevel),
+  // so the far end of the axis must be comfortably above that.
+  assert.ok(level(1) > 0.9, 'the overlay must be fully available at the end of the axis');
+  // It rises with, but is not identical to, the structural axis: it must already
+  // be present before the last stage, so it never reads as "what comes after".
+  const hfrefStart = STAGES.find((s) => s.id === 'systolic-dysfunction').at;
+  assert.ok(level(hfrefStart) > 0.3, 'filling pressure should already be raised as HFrEF begins');
+  let previous = -1;
+  for (const p of SWEEP.slice().sort((a, b) => a - b)) {
+    const value = level(p);
+    assert.ok(value >= previous - 1e-9, `congestion level should not fall back at ${p}`);
+    previous = value;
+  }
+});
+
+test('the concentric state is named for what the model actually does', () => {
+  // Increased relative wall thickness with increased mass is hypertrophy;
+  // "remodeling" is the term for increased RWT with normal mass.
+  const stage = STAGES.find((s) => s.id === 'concentric-hypertrophy');
+  assert.ok(stage, 'the concentric stage should be identified as hypertrophy');
+  const normal = sampleHemodynamics(0);
+  const concentric = sampleHemodynamics(stage.at);
+  const shapeOf = (h) =>
+    ventricleShape({
+      cavityVolumeMl: h.edvMl,
+      myocardialVolumeMl: myocardialVolumeFor(h),
+      longToShortAxisRatio: h.longToShortAxisRatio,
+    });
+  assert.ok(
+    myocardialVolumeFor(concentric) > myocardialVolumeFor(normal) * 1.1,
+    'the model must genuinely add myocardium for "hypertrophy" to be the right word'
+  );
+  assert.ok(shapeOf(concentric).relativeWallThickness > shapeOf(normal).relativeWallThickness);
+  assert.ok(concentric.edvMl <= normal.edvMl, 'the cavity must not enlarge in a concentric pattern');
 });
 
 test('remodelling geometry moves in the right direction', () => {
@@ -214,7 +273,7 @@ test('every field the scene reads off the state object exists', () => {
     'cardiacOutputLMin',
     'wallMm',
     'hr',
-    'fillingPressureIndex',
+    'congestionLevel',
     'longToShortAxisRatio',
   ]) {
     assert.ok(Number.isFinite(state[key]), `state.${key} must be a finite number`);

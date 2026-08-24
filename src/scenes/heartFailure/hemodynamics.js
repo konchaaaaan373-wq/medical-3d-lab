@@ -53,8 +53,12 @@ export function sampleHemodynamics(progress) {
     cardiacOutputLMin: (strokeVolumeMl * hr) / 1000,
     wallMm: lerp(lower.wallMm, upper.wallMm, t),
     hr,
-    /** 0..1 model index of LV filling pressure. Not a pressure in mmHg. */
-    fillingPressureIndex: lerp(lower.fillingPressureIndex, upper.fillingPressureIndex, t),
+    /**
+     * Separate haemodynamic axis, 0..1, driving the pulmonary congestion
+     * overlay. It stands for raised left-sided filling pressure; it is not a
+     * pressure in mmHg, not a structural stage, and not specific to HFrEF.
+     */
+    congestionLevel: lerp(lower.congestionLevel, upper.congestionLevel, t),
     /**
      * Cavity long-axis to short-axis ratio used to build the geometry. It moves
      * in the same direction as the clinical sphericity index (a ventricle that
@@ -95,6 +99,11 @@ export function radiusForVolume(volumeMl, longToShortAxisRatio) {
 
 /**
  * Myocardial volume implied by a disease state's end-diastolic geometry.
+ *
+ * Used internally for geometric consistency. Multiplying it by
+ * MYOCARDIAL_DENSITY_G_PER_ML gives a mass figure, but that figure is a
+ * property of this ellipsoid approximation and must not be read as a clinical
+ * echocardiographic LV mass measurement — which is why it is never displayed.
  *
  * This is the OUTER half of a deliberately two-layer model:
  *
@@ -159,9 +168,9 @@ export function advanceCardiacPhase(phase, dt, hr) {
  * produce a defensible pressure in mmHg, and inventing one would be worse than
  * saying "raised".
  */
-export function fillingPressureLabel(index) {
-  if (index < 0.2) return { value: 'normal', valueJa: '正常範囲' };
-  if (index < 0.5) return { value: 'slightly ↑', valueJa: 'やや上昇' };
-  if (index < 0.8) return { value: '↑', valueJa: '上昇' };
+export function fillingPressureLabel(congestionLevel) {
+  if (congestionLevel < 0.2) return { value: 'normal', valueJa: '正常範囲' };
+  if (congestionLevel < 0.5) return { value: 'slightly ↑', valueJa: 'やや上昇' };
+  if (congestionLevel < 0.8) return { value: '↑', valueJa: '上昇' };
   return { value: '↑↑', valueJa: '高度上昇' };
 }

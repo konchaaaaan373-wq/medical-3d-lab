@@ -49,16 +49,19 @@ export class CongestionOverlay extends THREE.Group {
     this.fluid = createFluidPoints(fluid);
     this.add(this.fluid);
 
-    this.setPressure(0);
+    this.setCongestionLevel(0);
   }
 
-  /** @param {number} fillingPressureIndex 0..1 model index (not mmHg) */
-  setPressure(fillingPressureIndex) {
-    this.pressureMaterial.uniforms.uPressure.value = fillingPressureIndex;
+  /**
+   * @param {number} congestionLevel 0..1 index of raised left-sided filling
+   *   pressure. A separate axis from the structural stages: this overlay can be
+   *   shown at any point on them, and is not specific to HFrEF.
+   */
+  setCongestionLevel(congestionLevel) {
+    this.pressureMaterial.uniforms.uPressure.value = congestionLevel;
     // Fluid only starts to move into the interstitium once pressure is high.
-    const fluidFill = smoothstep(0.55, 1, fillingPressureIndex);
-    this.fluid.material.uniforms.uFill.value = fluidFill;
-    this.visible = fillingPressureIndex > 0.02;
+    this.fluid.material.uniforms.uFill.value = smoothstep(0.55, 1, congestionLevel);
+    this.visible = congestionLevel > 0.02;
   }
 
   update(elapsed) {

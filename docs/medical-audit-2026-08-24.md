@@ -75,15 +75,20 @@ Resulting model, at each stage boundary:
 | Stage | EDV | ESV | SV | EF | HR | CO | ED wall | RWT | Myocardial mass* |
 |---|--:|--:|--:|--:|--:|--:|--:|--:|--:|
 | Normal | 120 mL | 50 mL | 70 mL | 58 % | 70 | 4.9 L/min | 9.0 mm | 0.36 | ~190 g |
-| Concentric remodeling | 112 mL | 45 mL | 67 mL | 60 % | 74 | 5.0 L/min | 14.0 mm | 0.58 | ~340 g |
+| Concentric hypertrophy | 112 mL | 45 mL | 67 mL | 60 % | 74 | 5.0 L/min | 14.0 mm | 0.58 | ~340 g |
 | LV dilation | 170 mL | 104 mL | 66 mL | 39 % | 76 | 5.0 L/min | 11.6 mm | 0.39 | ~310 g |
 | Systolic dysfunction (HFrEF) | 205 mL | 145 mL | 60 mL | 29 % | 82 | 4.9 L/min | 10.4 mm | 0.32 | ~280 g |
-| Pulmonary congestion | 235 mL | 182 mL | 53 mL | 23 % | 88 | 4.7 L/min | 9.8 mm | 0.28 | ~275 g |
+| (congestion overlay high) | 235 mL | 182 mL | 53 mL | 23 % | 88 | 4.7 L/min | 9.8 mm | 0.28 | ~275 g |
 | (slider end) | 248 mL | 197 mL | 51 mL | 21 % | 89 | 4.5 L/min | 9.4 mm | 0.26 | ~270 g |
 
-\* Computed internally from the ellipsoid approximation and **not displayed**.
-The approximation over-estimates a normal LV mass (~190 g against a typical
-120–160 g), which is exactly why it is kept out of the UI.
+\* Computed internally for geometric consistency and **not displayed**. It is a
+property of this ellipsoid approximation and must not be read as a clinical
+echocardiographic LV mass measurement — clinical reference values themselves
+depend on sex, body size, method and indexing. Only the *direction* of change
+between states is meaningful here.
+
+The last two rows are positions on the structural axis where the congestion
+overlay is strong; they are not stages named after congestion (see below).
 
 ## Accepted simplifications
 
@@ -111,8 +116,21 @@ Amyloid beta:
 - Aβ40/Aβ42 are not distinguished; the scene shows generic Aβ aggregation.
 - The neuron is a schematic, and its slight dimming is an association cue only.
 
+## Residual conceptual risk resolved (follow-up)
+
+Two items raised after the first pass, both fixed:
+
+| Severity | Issue | Why it matters | Action |
+|---|---|---|---|
+| High | Pulmonary congestion was the fifth entry in the structural stage list, after HFrEF | Reads as "the structural stage after HFrEF is congestion". Congestion is a haemodynamic state following raised left-sided filling pressure, and it is not specific to HFrEF — HFpEF and other causes of raised filling pressure produce it too | Split the model into two axes. The structural/functional axis now has four stages (Normal → Concentric hypertrophy → LV dilation → Systolic dysfunction (HFrEF)). Congestion is carried by an independent `congestionLevel` state parameter driving `CongestionOverlay`; it rides the same slider for simplicity but is never a stage label, and the slider's far end is captioned structurally ("Dilated, low EF"). The HFrEF caption says in both languages that congestion is drawn as a separate haemodynamic overlay, not a later structural stage |
+| Moderate | The concentric state was called `Concentric remodeling` / 求心性リモデリング while the model increases myocardial volume by ~77 % | In the echo classification, increased RWT with *normal* mass is concentric remodeling; increased RWT with *increased* mass is concentric hypertrophy. The clinical term did not match what the model draws | Renamed `Concentric hypertrophy` / 求心性肥大, and the caption now states that muscle mass increases. The naming rests on the direction of change the model produces, not on the absolute mass, which stays out of the UI. A test asserts the model really does add myocardium, so the name cannot drift from the model |
+| Low | Cardiac output behaviour was described as what chronic HFrEF does | Presented one illustrative course as a general rule | Softened in the data comments, the docs and the test names: resting output may stay relatively preserved in some patients, and nothing claims SV or CO must fall monotonically |
+| Low | LV mass was compared against a single normal range | LV mass reference values depend on sex, body size, method and indexing | Removed. The docs now say only that the model-derived figure is for internal geometric consistency and is not a clinical LV mass measurement |
+
 ## Remaining limitations
 
+- ~~**Congestion looked like the stage after HFrEF.**~~ **Resolved** — see the
+  follow-up section above.
 - ~~**The stage sequence is still a sequence.**~~ **Addressed after the audit.**
   A single left-to-right slider inevitably suggests an ordered path, and no
   wording fully counters that. A comparison mode (`Compare`, or `C`) now places
@@ -125,10 +143,11 @@ Amyloid beta:
   plausible textbook-style figure chosen to show a direction of change. No
   patient, cohort or measurement protocol stands behind any of them, and the
   ellipsoid geometry is not a validated volumetric method.
-- **Cardiac output is nearly flat across the whole sweep.** That is deliberate
-  and defensible for chronic compensated HFrEF at rest, but it means the scene
-  does not show *why* patients are symptomatic — exercise reserve, which is what
-  actually fails, is not modelled.
+- **Cardiac output is nearly flat across the whole sweep.** Resting cardiac
+  output may remain relatively preserved in some patients despite a reduced EF;
+  the values here are illustrative and are not a universal HFrEF trajectory.
+  It does mean the scene does not show *why* patients are symptomatic, since
+  exercise reserve is not modelled at all.
 - **The pressure front is a metaphor.** Pressure does not propagate as a
   visible glow front, and no pressure–volume relationship, compliance or
   time constant is modelled. It communicates direction and magnitude only.

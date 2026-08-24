@@ -156,8 +156,8 @@ export class HeartFailureScene {
     this.progress = value;
     this.state = sampleHemodynamics(value);
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
-    this.congestion.setPressure(this.state.fillingPressureIndex);
-    this.vessels.setFillingPressure(this.state.fillingPressureIndex);
+    this.congestion.setCongestionLevel(this.state.congestionLevel);
+    this.vessels.setCongestionLevel(this.state.congestionLevel);
   }
 
   update(dt, elapsed) {
@@ -202,9 +202,9 @@ export class HeartFailureScene {
       cardiacOutputLMin,
       hr,
       wallMm,
-      fillingPressureIndex,
+      congestionLevel,
     } = this.state;
-    const pressure = fillingPressureLabel(fillingPressureIndex);
+    const pressure = fillingPressureLabel(congestionLevel);
     // While comparing, each row also carries the healthy value it is measured
     // against — the same numbers the reference heart is drawn from.
     const ref = this.comparing ? sampleHemodynamics(0) : null;
@@ -279,7 +279,7 @@ export class HeartFailureScene {
     this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.blood.setExitFalloff(enabled ? 3.5 : 1.2);
     this.vessels.visible = !enabled;
-    this.congestion.visible = !enabled && this.state.fillingPressureIndex > 0.02;
+    this.congestion.visible = !enabled && this.state.congestionLevel > 0.02;
   }
 
   /**
@@ -294,16 +294,15 @@ export class HeartFailureScene {
 
   getStageView(stageId) {
     switch (stageId) {
-      case 'concentric-remodeling':
+      case 'concentric-hypertrophy':
         return framing(new THREE.Vector3(1.6, -0.6, 0.6), 19);
       case 'dilation':
         return framing(new THREE.Vector3(0.1, -1.2, 0.3), 23);
       case 'systolic-dysfunction':
-        return framing(new THREE.Vector3(0.2, -0.8, 0.4), 24);
-      case 'congestion':
-        // Keep the ventricle in frame: the pressure has to be seen coming FROM
-        // the left ventricle, not floating in the lung on its own.
-        return framing(new THREE.Vector3(-1.7, 1.2, -0.4), 24);
+        // Framed to hold the ventricle *and* the atrium/pulmonary region, so the
+        // congestion overlay is visible as something arising from the raised
+        // filling pressure of this ventricle rather than as a separate scene.
+        return framing(new THREE.Vector3(-1.0, -0.2, 0.2), 26);
       default:
         return null;
     }

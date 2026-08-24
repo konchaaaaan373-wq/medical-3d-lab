@@ -55,12 +55,12 @@ export class Vessels extends THREE.Group {
    * under pressure, not blood arriving from the wrong direction — the pressure
    * itself is drawn by CongestionOverlay.
    *
-   * @param {number} fillingPressureIndex 0..1 model index
+   * @param {number} congestionLevel 0..1 index of raised filling pressure
    */
-  setFillingPressure(fillingPressureIndex) {
-    const distension = lerp(1, 1.3, smoothstep(0, 1, fillingPressureIndex));
+  setCongestionLevel(congestionLevel) {
+    const distension = lerp(1, 1.3, smoothstep(0, 1, congestionLevel));
     this.atrium.scale.set(distension, 0.86 * distension, distension);
-    this.wallMaterial.opacity = lerp(0.2, 0.28, smoothstep(0.4, 1, fillingPressureIndex));
+    this.wallMaterial.opacity = lerp(0.2, 0.28, smoothstep(0.4, 1, congestionLevel));
   }
 }
 

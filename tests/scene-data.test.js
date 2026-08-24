@@ -85,6 +85,25 @@ test('the heart-failure scene states that it shows one HFrEF pattern', () => {
   assert.match(heartFailure.DISCLAIMER, /not a fluid-dynamics simulation/i);
 });
 
+test('heart-failure terminology matches between languages', () => {
+  const byId = Object.fromEntries(heartFailure.STAGES.map((s) => [s.id, s]));
+  // "リモデリング" is the Japanese for remodeling, which in the echo
+  // classification means increased RWT with *normal* mass. This model adds
+  // mass, so the concentric stage must not carry that word in either language.
+  const concentric = byId['concentric-hypertrophy'];
+  assert.ok(concentric, 'the concentric stage should be identified as hypertrophy');
+  assert.match(concentric.name, /hypertrophy/i);
+  assert.match(concentric.nameJa, /肥大/);
+  assert.doesNotMatch(concentric.name, /remodel/i);
+  assert.doesNotMatch(concentric.nameJa, /リモデリング/);
+  // HFrEF must be labelled as such in both languages.
+  assert.match(byId['systolic-dysfunction'].name, /HFrEF/);
+  assert.match(byId['systolic-dysfunction'].nameJa, /HFrEF/);
+  // The slider's far end stays on the structural axis, not on congestion.
+  assert.doesNotMatch(heartFailure.RANGE.end, /congestion/i);
+  assert.doesNotMatch(heartFailure.RANGE.endJa, /うっ血/);
+});
+
 test('the amyloid scene states that species coexist and that it is not a clinical stage', () => {
   assert.match(amyloid.DISCLAIMER, /coexist/i);
   assert.match(amyloid.DISCLAIMER, /not represent clinical disease stages/i);
