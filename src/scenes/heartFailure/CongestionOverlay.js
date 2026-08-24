@@ -64,6 +64,20 @@ export class CongestionOverlay extends THREE.Group {
     this.visible = congestionLevel > 0.02;
   }
 
+  /**
+   * Presentation emphasis, 0..1. Visualization only: it makes the pressure
+   * field easier to read without changing `congestionLevel`, the amount of
+   * interstitial fluid, or anything else the model produces.
+   *
+   * @param {number} emphasis
+   */
+  setPresentationEmphasis(emphasis) {
+    const uniforms = this.pressureMaterial.uniforms;
+    uniforms.uGlowIntensity.value = 0.95 + 1.15 * emphasis;
+    uniforms.uWaveStrength.value = 0.28 + 0.32 * emphasis;
+    uniforms.uFieldOpacity.value = 0.6 + 0.34 * emphasis;
+  }
+
   update(elapsed) {
     this.pressureMaterial.uniforms.uTime.value = elapsed;
     this.fluid.material.uniforms.uTime.value = elapsed;
@@ -99,6 +113,12 @@ function createPressureMaterial(color) {
       uColor: { value: color },
       // Visualization-only: how bright the pressure glow gets at full pressure.
       uGlowIntensity: { value: 0.95 },
+      // Visualization-only: amplitude of the wave that runs along the pathway.
+      // Raised for presentation, where the direction of transmission is the
+      // whole point; it carries no physiological meaning.
+      uWaveStrength: { value: 0.28 },
+      // Visualization-only: overall opacity of the pressure field.
+      uFieldOpacity: { value: 0.6 },
     },
     vertexShader: /* glsl */ `
       uniform float uPressure;
@@ -123,15 +143,19 @@ function createPressureMaterial(color) {
       uniform float uPressure;
       uniform float uTime;
       uniform float uGlowIntensity;
+      uniform float uWaveStrength;
+      uniform float uFieldOpacity;
       varying float vFresnel;
       varying float vGate;
       varying float vPath;
       void main() {
         // Slow wave running outward, so the direction of pressure transmission
         // is visible without moving any blood.
-        float wave = 0.72 + 0.28 * sin(uTime * 1.3 - vPath * 7.0);
+        // The wave runs outward along the pathway, so the direction of pressure
+        // transmission is visible. Pressure travels this way; blood never does.
+        float wave = (1.0 - uWaveStrength) + uWaveStrength * sin(uTime * 1.1 - vPath * 7.0);
         float a = vFresnel * vGate * uPressure;
-        gl_FragColor = vec4(uColor * uGlowIntensity * wave, a * 0.6);
+        gl_FragColor = vec4(uColor * uGlowIntensity * wave, a * uFieldOpacity);
       }
     `,
   });

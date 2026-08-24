@@ -58,9 +58,29 @@ export class Vessels extends THREE.Group {
    * @param {number} congestionLevel 0..1 index of raised filling pressure
    */
   setCongestionLevel(congestionLevel) {
+    this.congestionLevel = congestionLevel;
     const distension = lerp(1, 1.3, smoothstep(0, 1, congestionLevel));
     this.atrium.scale.set(distension, 0.86 * distension, distension);
-    this.wallMaterial.opacity = lerp(0.2, 0.28, smoothstep(0.4, 1, congestionLevel));
+    this._applyOpacity();
+  }
+
+  /**
+   * Presentation emphasis, 0..1. Visualization only: the vessel walls become
+   * more visible so the pressure field reads as being *in the atrium and
+   * pulmonary veins* rather than floating beside the heart. Nothing about the
+   * model changes.
+   *
+   * @param {number} emphasis
+   */
+  setPresentationEmphasis(emphasis) {
+    this.presentationEmphasis = emphasis;
+    this._applyOpacity();
+  }
+
+  _applyOpacity() {
+    const base = lerp(0.2, 0.28, smoothstep(0.4, 1, this.congestionLevel ?? 0));
+    this.wallMaterial.opacity = lerp(base, 0.46, this.presentationEmphasis ?? 0);
+    this.valveMaterial.opacity = lerp(0.75, 0.9, this.presentationEmphasis ?? 0);
   }
 }
 

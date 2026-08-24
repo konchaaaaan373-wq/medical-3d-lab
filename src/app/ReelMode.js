@@ -28,12 +28,24 @@ export const REEL_FORMATS = [
  *   - the canvas is resized to the target aspect and centred, so recording the
  *     frame gives a correctly composed 9:16 video with no application chrome.
  */
-export function createReelMode({ viewer, scene, ui, stage, reel, setComparison, setProgress, getLanguage }) {
+export function createReelMode({
+  viewer,
+  scene,
+  ui,
+  stage,
+  reel,
+  setComparison,
+  setProgress,
+  getLanguage,
+  captureState,
+  restoreState,
+}) {
   const overlay = createReelOverlay();
   let formatId = 'reel';
   let active = false;
   let metrics = null;
-  let restoreProgress = 0;
+  /** Everything the interactive session looked like before the reel took over. */
+  let sessionSnapshot = null;
 
   const chrome = createReelChrome({
     formats: REEL_FORMATS,
@@ -89,6 +101,7 @@ export function createReelMode({ viewer, scene, ui, stage, reel, setComparison, 
 
     scene.setCardiacPhase(reel.cardiacPhaseAt(t));
     scene.setCongestionVisibleInComparison(reel.congestionVisibleAt(t));
+    scene.setCongestionEmphasis?.(reel.congestionEmphasisAt?.(t) ?? 0);
 
     const shot = reel.cameraAt(t, baseFraming());
     target.set(shot.targetX, shot.targetY, shot.targetZ);
@@ -142,7 +155,9 @@ export function createReelMode({ viewer, scene, ui, stage, reel, setComparison, 
   function enter() {
     if (active) return;
     active = true;
-    restoreProgress = reel.progress;
+    // Taken before anything is touched, so leaving is exact no matter how many
+    // times the viewer comes and goes.
+    sessionSnapshot = captureState?.() ?? null;
 
     ui.classList.add('is-reel');
     stage.classList.add('is-reel');
@@ -172,9 +187,16 @@ export function createReelMode({ viewer, scene, ui, stage, reel, setComparison, 
     stage.classList.remove('is-reel');
     stage.style.removeProperty('--reel-aspect');
 
+    // Undo the sequence's own scene changes first, then hand the rest of the
+    // session back to the app.
+    scene.setCongestionEmphasis?.(0);
     scene.setCardiacPhaseDriven(false);
     scene.setCongestionVisibleInComparison(true);
     viewer.controls.enabled = true;
+
+    if (sessionSnapshot) restoreState?.(sessionSnapshot);
+    sessionSnapshot = null;
+
     requestAnimationFrame(() => viewer.resize());
   }
 
@@ -193,8 +215,9 @@ export function createReelMode({ viewer, scene, ui, stage, reel, setComparison, 
     get formatId() {
       return formatId;
     },
-    get progress() {
-      return restoreProgress;
+    /** The session state the reel will hand back, for tests and debugging. */
+    get snapshot() {
+      return sessionSnapshot;
     },
     enter,
     exit,

@@ -10,6 +10,7 @@ import {
   cardiacPhaseAt,
   cameraAt,
   congestionVisibleAt,
+  congestionEmphasisAt,
   overlayAt,
 } from './reelStoryboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
@@ -51,6 +52,17 @@ const VIEW_DIRECTION = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
  * cut instead.
  */
 const REEL_VIEW_DIRECTION = new THREE.Vector3(0, 0.2, 1).normalize();
+
+/**
+ * Where the sequence looks from during the congestion beat.
+ *
+ * That beat is not a comparison, so it is free to leave the head-on axis. It
+ * rises above the heart rather than swinging to the side: the pulmonary veins
+ * run backwards and away in a near-horizontal plane, so from above their whole
+ * course is laid out, while a lateral view would both foreshorten them and
+ * stack the two hearts one behind the other.
+ */
+const REEL_CONGESTION_DIRECTION = new THREE.Vector3(0.16, 0.5, 0.85).normalize();
 
 /**
  * How far each heart moves aside in comparison mode, in scene units (cm).
@@ -115,6 +127,8 @@ export class HeartFailureScene {
     this.cardiacPhaseDriven = false;
     /** Whether the congestion overlay may show while comparing. */
     this.congestionInComparison = true;
+    /** Visualization-only presentation emphasis on the congestion story, 0..1. */
+    this.congestionEmphasis = 0;
     this.state = sampleHemodynamics(0);
     // Recomputed whenever the disease state changes, then held constant through
     // each cardiac cycle — see hemodynamics.js for why the model is two-layer.
@@ -312,6 +326,37 @@ export class HeartFailureScene {
   _applyCongestionVisibility() {
     const allowed = this.comparing ? this.congestionInComparison : true;
     this.congestion.visible = allowed && this.state.congestionLevel > 0.02;
+    // Outside comparison the vessels are always drawn. Inside it they are
+    // normally hidden to keep two hearts legible — but while the congestion
+    // story is being emphasised they come back, because the pressure field is
+    // only interpretable when the atrium and pulmonary veins it fills are
+    // visible around it.
+    this.vessels.visible = !this.comparing || this.congestionEmphasis > 0.02;
+  }
+
+  /**
+   * Presentation emphasis on the pulmonary congestion story, 0..1.
+   *
+   * Visualization only. It changes nothing the model produces: `congestionLevel`
+   * is untouched, no extra interstitial fluid is created, and blood still moves
+   * only in the physiological direction. What it changes is legibility — the
+   * pressure field brightens and its outward wave deepens, the atrium and
+   * pulmonary veins become visible around it, and the healthy heart steps back
+   * so attention lands on the side the pressure belongs to.
+   *
+   * @param {number} emphasis
+   */
+  setCongestionEmphasis(emphasis) {
+    this.congestionEmphasis = emphasis;
+    this.congestion.setPresentationEmphasis(emphasis);
+    this.vessels.setPresentationEmphasis(emphasis);
+    this.reference?.setPresence(1 - emphasis * 0.62);
+    this._applyCongestionVisibility();
+  }
+
+  /** @returns {number} current position in the cardiac cycle, 0..1 */
+  getCardiacPhase() {
+    return this.phase;
   }
 
   /**
@@ -329,7 +374,7 @@ export class HeartFailureScene {
       // so the EF on screen never changes mid-video.
       progress: STAGES.find((stage) => stage.id === 'systolic-dysfunction').at,
       viewDirection: REEL_VIEW_DIRECTION.clone(),
-      alternateViewDirection: VIEW_DIRECTION.clone(),
+      alternateViewDirection: REEL_CONGESTION_DIRECTION.clone(),
       framing: {
         // World half-extents the base framing must hold. Wider than the two
         // hearts actually are (about 9.8 either side) so the sequence's dolly-in
@@ -343,6 +388,7 @@ export class HeartFailureScene {
       cardiacPhaseAt,
       cameraAt,
       congestionVisibleAt,
+      congestionEmphasisAt,
       overlayAt,
     };
   }
@@ -369,6 +415,7 @@ export class HeartFailureScene {
     }
 
     if (this.reference) {
+      this.reference.setPresence(enabled ? 1 - this.congestionEmphasis * 0.62 : 0);
       this.reference.visible = enabled;
       this.reference.position.x = enabled ? -COMPARISON_OFFSET : 0;
       if (enabled) this.reference.setPhase(this.phase);
@@ -376,7 +423,6 @@ export class HeartFailureScene {
 
     this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.blood.setExitFalloff(enabled ? 3.5 : 1.2);
-    this.vessels.visible = !enabled;
     // Comparison hides the overlay by default; the reel re-enables it for the
     // congestion beat via setCongestionVisibleInComparison().
     this.congestionInComparison = enabled ? false : true;

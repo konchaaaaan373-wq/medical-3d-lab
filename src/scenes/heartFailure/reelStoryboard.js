@@ -60,8 +60,8 @@ const DISTANCE_TRACK = [
   { t: 9.5, value: 0.84 },
   { t: 10.4, value: 0.96 },
   { t: 11.5, value: 0.96 },
-  { t: 12.4, value: 0.8 },
-  { t: 13.5, value: 0.8 },
+  { t: 12.4, value: 0.86 },
+  { t: 13.5, value: 0.86 },
   { t: 14.3, value: 1.02 },
   { t: 15.0, value: 1.02 },
 ];
@@ -70,8 +70,8 @@ const DISTANCE_TRACK = [
 const TARGET_X_TRACK = [
   { t: 0.0, value: 0 },
   { t: 11.5, value: 0 },
-  { t: 12.4, value: 2.2 },
-  { t: 13.5, value: 2.2 },
+  { t: 12.4, value: 2.4 },
+  { t: 13.5, value: 2.4 },
   { t: 14.3, value: 0 },
   { t: 15.0, value: 0 },
 ];
@@ -99,8 +99,8 @@ const TARGET_Y_TRACK = [
   { t: 0.0, value: 3.6 },
   { t: 1.9, value: 0 },
   { t: 11.5, value: 0 },
-  { t: 12.4, value: 2.2 },
-  { t: 13.5, value: 2.2 },
+  { t: 12.4, value: 3.6 },
+  { t: 13.5, value: 3.6 },
   { t: 14.3, value: 0 },
   { t: 15.0, value: 0 },
 ];
@@ -124,6 +124,26 @@ export function cameraAt(t, base) {
 export function congestionVisibleAt(t) {
   return t >= 11.3 && t < 14.0;
 }
+
+/**
+ * Visualization-only emphasis on the congestion story, 0..1.
+ *
+ * Ramps up for the congestion beat and back down for the take-home. It drives
+ * legibility only — brightness, the outward wave, vessel visibility and how far
+ * the healthy heart steps back. No physiological value depends on it.
+ */
+export function congestionEmphasisAt(t) {
+  return sampleTrack(EMPHASIS_TRACK, t);
+}
+
+const EMPHASIS_TRACK = [
+  { t: 0.0, value: 0 },
+  { t: 11.4, value: 0 },
+  { t: 12.2, value: 1 },
+  { t: 13.4, value: 1 },
+  { t: 14.1, value: 0 },
+  { t: 15.0, value: 0 },
+];
 
 /** Picks one language. The video never shows both — social viewers read little. */
 function pick(language, en, ja) {

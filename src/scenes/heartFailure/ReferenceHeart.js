@@ -80,6 +80,18 @@ export class ReferenceHeart extends THREE.Group {
     this.shape = shape;
   }
 
+  /**
+   * Presence, 0..1. Visualization only — used when the sequence needs attention
+   * on the remodelled heart rather than on the comparison.
+   *
+   * @param {number} presence
+   */
+  setPresence(presence) {
+    this.ventricle.material.opacity = 0.97 * presence;
+    this.blood.material.uniforms.uOpacity.value = 0.55 * presence;
+    this.visible = presence > 0.02;
+  }
+
   update(elapsed) {
     this.blood.material.uniforms.uTime.value = elapsed;
   }

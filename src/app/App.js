@@ -3,6 +3,7 @@ import { SCENES, loadScene, resolveSceneId } from './sceneRegistry.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { framePose, distanceScaleForAspect } from './framing.js';
+import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
@@ -229,16 +230,21 @@ export async function createApp({ stage, ui }) {
           playback.set(value);
         },
         getLanguage: () => ui.dataset.lang ?? 'both',
+        captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
+        restoreState: (state) => {
+          restoreSessionState(state, { playback, viewer, scene, setComparison });
+          // setComparison queues a camera tween; the restored camera must win.
+          view.active = false;
+        },
       })
     : null;
 
   function toggleReel() {
     if (!reelMode) return;
     if (reelMode.active) {
+      // Everything the viewer had before the reel is restored by the snapshot
+      // the mode took on entry — including the camera.
       reelMode.exit();
-      // Hand the camera back to the interactive framing the viewer was using.
-      setShot(comparisonOrStageShot());
-      view.active = true;
     } else {
       reelMode.enter();
     }
