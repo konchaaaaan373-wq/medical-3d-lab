@@ -20,6 +20,7 @@ export const bloodVertexShader = /* glsl */ `
   uniform float uFill;          // how much of the population is present, 0..1
   uniform float uTime;
   uniform float uOpacity;
+  uniform float uExitFalloff;   // how quickly ejected blood fades on its way out
   uniform float uParticleScale;
   uniform float uHeightScale;
   uniform vec3 uFlowColor;
@@ -70,7 +71,8 @@ export const bloodVertexShader = /* glsl */ `
     // hides the hand-off and — importantly — means nothing is ever visible
     // travelling backwards down the aorta.
     float present = smoothstep(aAppear, aAppear + 0.12, uFill);
-    vAlpha = uOpacity * present * (1.0 - travel * 0.96) * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
+    float leaving = pow(clamp(1.0 - travel, 0.0, 1.0), uExitFalloff);
+    vAlpha = uOpacity * present * leaving * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;

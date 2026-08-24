@@ -113,11 +113,14 @@ Amyloid beta:
 
 ## Remaining limitations
 
-- **The stage sequence is still a sequence.** A single left-to-right slider
-  inevitably suggests an ordered path. The notice and the stage names say this
-  is one illustrative pattern, but the interface form itself leans towards
-  "this is what happens next". A comparison view showing normal and remodelled
-  states side by side would weaken that pull more than any wording can.
+- ~~**The stage sequence is still a sequence.**~~ **Addressed after the audit.**
+  A single left-to-right slider inevitably suggests an ordered path, and no
+  wording fully counters that. A comparison mode (`Compare`, or `C`) now places
+  a normal ventricle beside the remodelled one, presenting them as two states
+  rather than two points on one path. The reference heart is this scene's own
+  model evaluated at progress 0, so it cannot drift from the model. Residual
+  concern: the slider is still the primary interaction, and comparison is
+  opt-in, so a viewer who never presses the button sees only the sequence.
 - **Numbers are representative, not measured.** Every haemodynamic value is a
   plausible textbook-style figure chosen to show a direction of change. No
   patient, cohort or measurement protocol stands behind any of them, and the

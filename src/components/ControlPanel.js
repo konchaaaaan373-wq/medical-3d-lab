@@ -21,7 +21,16 @@ export const CAPTURE_PRESETS = [
  *   onStoryToggle: (enabled: boolean) => void,
  * }} options
  */
-export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetView, onCapture, onStoryToggle }) {
+export function createControlPanel({
+  meta,
+  onSeek,
+  onToggle,
+  onReset,
+  onResetView,
+  onCapture,
+  onStoryToggle,
+  onCompareToggle,
+}) {
   const slider = el('input', {
     class: 'slider',
     type: 'range',
@@ -44,6 +53,19 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
   storyButton.element.setAttribute('aria-pressed', 'false');
   storyButton.element.title = 'Story mode — pause on each stage and move the camera';
 
+  // Only scenes that implement a comparison get the button.
+  const compareButton = onCompareToggle
+    ? button('compare', [meta.comparison?.label ?? 'Compare', meta.comparison?.labelJa ?? '比較'], () => {
+        const enabled = compareButton.element.classList.toggle('is-on');
+        compareButton.element.setAttribute('aria-pressed', String(enabled));
+        onCompareToggle(enabled);
+      })
+    : null;
+  if (compareButton) {
+    compareButton.element.setAttribute('aria-pressed', 'false');
+    compareButton.element.title = meta.comparison?.hint ?? 'Compare with a normal state';
+  }
+
   const capture = createCaptureButton(onCapture);
 
   const element = el('div', { class: 'controls' }, [
@@ -63,6 +85,7 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
       button('reset', ['Reset', 'リセット'], onReset).element,
       button('frame', ['View', '視点'], onResetView).element,
       storyButton.element,
+      compareButton?.element,
       capture.element,
     ]),
     // The notice must always be visible, so a shorter wording is swapped in on
@@ -77,6 +100,12 @@ export function createControlPanel({ meta, onSeek, onToggle, onReset, onResetVie
 
   return {
     element,
+    /** Lets the app keep the button in sync with a keyboard shortcut. */
+    setComparison(enabled) {
+      if (!compareButton) return;
+      compareButton.element.classList.toggle('is-on', enabled);
+      compareButton.element.setAttribute('aria-pressed', String(enabled));
+    },
     update(progress, playing) {
       // Do not fight the user while they are dragging the handle.
       if (document.activeElement !== slider) slider.value = String(Math.round(progress * 1000));

@@ -10,6 +10,7 @@ import {
   advanceCardiacPhase,
   SYSTOLE_FRACTION,
 } from '../src/scenes/heartFailure/hemodynamics.js';
+import { COMPARISON_OFFSET } from '../src/scenes/heartFailure/HeartFailureScene.js';
 
 /** Fine sweep across the whole slider, including every keyframe boundary. */
 const SWEEP = [];
@@ -218,4 +219,27 @@ test('every field the scene reads off the state object exists', () => {
   ]) {
     assert.ok(Number.isFinite(state[key]), `state.${key} must be a finite number`);
   }
+});
+
+test('the two hearts in comparison mode never overlap', () => {
+  // Comparison mode moves the healthy and remodelled ventricles to ±OFFSET.
+  // If the remodelled chamber ever grew past the gap they would intersect, which
+  // would read as one malformed organ rather than as two states.
+  const outerRadiusAt = (p) => {
+    const h = sampleHemodynamics(p);
+    return ventricleShape({
+      cavityVolumeMl: h.edvMl, // largest the chamber ever gets
+      myocardialVolumeMl: myocardialVolumeFor(h),
+      longToShortAxisRatio: h.longToShortAxisRatio,
+    }).outerRadius;
+  };
+
+  const reference = outerRadiusAt(0);
+  let widest = 0;
+  for (const p of SWEEP) widest = Math.max(widest, outerRadiusAt(p));
+
+  assert.ok(
+    reference + widest < 2 * COMPARISON_OFFSET,
+    `hearts would touch: ${(reference + widest).toFixed(2)} >= ${2 * COMPARISON_OFFSET}`
+  );
 });

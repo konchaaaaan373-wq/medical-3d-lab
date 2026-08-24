@@ -44,6 +44,8 @@ export class BloodField extends THREE.Points {
         uFill: { value: 1 },
         uTime: { value: 0 },
         uOpacity: { value: 1 },
+        // 1 ≈ linear fade along the outflow; higher makes blood vanish sooner.
+        uExitFalloff: { value: 1.2 },
         uParticleScale: { value: 0.13 },
         uHeightScale: { value: 900 },
         uFlowColor: { value: new THREE.Color(flowColor) },
@@ -63,6 +65,15 @@ export class BloodField extends THREE.Points {
   setCycle(phase, ejectionFraction) {
     this.material.uniforms.uPhase.value = phase;
     this.material.uniforms.uEject.value = ejectionFraction;
+  }
+
+  /**
+   * How quickly ejected blood fades on its way out. Raised in comparison mode,
+   * where the vessels are hidden and a long outflow trail would float in empty
+   * space away from either heart.
+   */
+  setExitFalloff(value) {
+    this.material.uniforms.uExitFalloff.value = value;
   }
 
   setFill(value) {

@@ -68,6 +68,9 @@ export class HeartFailureScene {
 | `getStageView(stageId)` | ストーリーモードで、そのステージのカメラ位置に寄ります。`null` を返すと establishing shot のままです |
 | `getMetrics()` | 数値の読み取りパネルが 3D ビュー横に表示されます（`heart-failure` の EF / EDV など） |
 | `meta.range` | 進行度スライダー両端のラベル（`{ start, startJa, end, endJa }`） |
+| `meta.progressLabel` | パーセント表示が「何の進行度か」を示すラベル |
+| `setComparison(enabled)` | 正常な状態と並べる比較モード。実装したシーンだけ `Compare` ボタンが出ます |
+| `getComparisonView()` | 比較モードのカメラ（両方が画面に収まる構図） |
 | `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
 
 `getMetrics()` は次の形式の配列を返します。
@@ -78,6 +81,11 @@ export class HeartFailureScene {
 ```
 
 `emphasis: true` の項目は大きく表示され、スマホではこの項目だけが残ります。
+比較モード中は `reference` を付けると「正常値 → 現在値」の形式で表示されます。
+
+比較モードを実装する場合、**比較対象は必ず同じモデルから導いてください**。
+`heart-failure` では正常な左室を `sampleHemodynamics(0)` で評価して描いています。
+別途チューニングした「正常っぽい絵」を置くと、いつか本体のモデルと食い違います。
 
 `index.js` は 1 行です。
 

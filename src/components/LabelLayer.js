@@ -21,6 +21,8 @@ export function createLabelLayer({ viewer, annotations }) {
   const compact = window.innerWidth < 720;
   const shown = compact ? annotations.filter((a) => a.compact !== false) : annotations;
 
+  let comparing = false;
+
   const items = shown.map((annotation) => {
     const node = el('div', { class: 'label3d' }, [
       el('span', { class: 'label-dot' }),
@@ -38,9 +40,21 @@ export function createLabelLayer({ viewer, annotations }) {
   return {
     element,
 
+    /**
+     * Comparison mode moves the subject apart, so the ordinary annotations would
+     * point at empty space. Each mode shows only its own labels.
+     */
+    setComparison(enabled) {
+      comparing = enabled;
+    },
+
     /** Visibility follows the progression window each annotation declares. */
     update(progress) {
       for (const item of items) {
+        if (Boolean(item.annotation.comparisonOnly) !== comparing) {
+          item.opacity = 0;
+          continue;
+        }
         const [from, to] = item.annotation.range;
         // A window that opens at 0 is visible immediately — no fade-in from nothing.
         const fadeIn = from <= 0 ? 1 : smoothstep(from, from + FADE, progress);

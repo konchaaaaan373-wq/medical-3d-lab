@@ -134,6 +134,37 @@ export const ANNOTATIONS = [
   },
 ];
 
+/**
+ * Shown only in comparison mode, where the two hearts are moved apart and the
+ * ordinary annotations would point at empty space between them.
+ */
+export const COMPARISON_ANNOTATIONS = [
+  {
+    id: 'reference-heart',
+    text: 'Normal',
+    sub: '正常（比較用）',
+    anchor: 'comparisonReference',
+    range: [0.0, 1.0],
+    comparisonOnly: true,
+  },
+  {
+    id: 'remodelled-heart',
+    text: 'Remodeled LV',
+    sub: 'リモデリング後の左室',
+    anchor: 'comparisonDisease',
+    range: [0.0, 1.0],
+    comparisonOnly: true,
+  },
+];
+
+/** Caption for the compare toggle. */
+export const COMPARISON_LABEL = {
+  label: 'Compare',
+  labelJa: '比較',
+  hint: 'Side by side with a normal ventricle — two states, not two points on one path',
+  hintJa: '正常な左室と並べて表示します。順番ではなく、別の状態として比べるためのものです',
+};
+
 export const DISCLAIMER =
   'Simplified educational model of one pattern of LV remodeling and pulmonary congestion in HFrEF. Not all heart failure follows this course. Particle motion is not a fluid-dynamics simulation.';
 export const DISCLAIMER_JA =

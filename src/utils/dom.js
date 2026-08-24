@@ -42,6 +42,9 @@ export const ICONS = {
   story: icon(
     '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H11v16H6.5A2.5 2.5 0 0 0 4 21.5zM13 3h4.5A2.5 2.5 0 0 1 20 5.5v16A2.5 2.5 0 0 0 17.5 19H13z"/>'
   ),
+  compare: icon(
+    '<path d="M11 3h2v18h-2zM3 6h6v2H3zm0 4h6v2H3zm0 4h6v2H3zM15 6h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>'
+  ),
   eye: icon(
     '<path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>'
   ),

@@ -161,6 +161,7 @@
   align-items: baseline;
   gap: 3px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .metric-value {
@@ -172,6 +173,17 @@
 .metric-unit {
   font-size: 9.5px;
   color: var(--ink-faint);
+}
+
+/* The healthy value a metric is being compared against. */
+.metric-reference {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  opacity: 0.75;
+}
+
+.metric-reference:not(:empty) {
+  margin-right: 3px;
 }
 
 .metric.is-key {
@@ -715,7 +727,12 @@
   }
 
   .btn {
-    padding: 9px 12px;
+    padding: 9px 10px;
+  }
+
+  /* Six controls have to fit on one row once Compare is available. */
+  .button-row {
+    gap: 6px;
   }
 
   .btn.primary {

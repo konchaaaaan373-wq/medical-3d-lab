@@ -73,12 +73,13 @@ export async function createApp({ stage, ui }) {
     },
     onResetView: resetView,
     onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
+    onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onStoryToggle: (enabled) => {
       playback.holdsEnabled = enabled;
       // Turning story mode on should immediately frame the current stage.
       if (enabled) focusStage(stageIndexFor(playback.value, meta.stages), true);
       else {
-        setShot(SceneClass.cameraPose);
+        setShot(comparisonOrStageShot());
         view.active = true;
         viewer.controls.autoRotate = false;
       }
@@ -137,10 +138,39 @@ export async function createApp({ stage, ui }) {
     }
   };
 
+  let comparing = false;
+
+  /**
+   * Side-by-side with a healthy reference. The camera widens to hold both, and
+   * the annotation layer swaps to the comparison labels.
+   */
+  function setComparison(enabled) {
+    if (!scene.setComparison) return;
+    comparing = enabled;
+    scene.setComparison(enabled);
+    labels.setComparison(enabled);
+    labels.update(playback.value);
+    controlPanel.setComparison(enabled);
+    if (metricsPanel) metricsPanel.update(scene.getMetrics());
+    // Leaving comparison during story mode should return to the stage close-up
+    // the viewer was on, not all the way out to the establishing shot.
+    const stageId = playback.holdsEnabled ? meta.stages[lastStageIndex]?.id : undefined;
+    setShot(comparisonOrStageShot(stageId));
+    view.active = true;
+    viewer.controls.autoRotate = false;
+  }
+
+  /** Comparison framing wins over a stage close-up: both hearts must stay in frame. */
+  function comparisonOrStageShot(stageId) {
+    if (comparing) return scene.getComparisonView?.() ?? SceneClass.cameraPose;
+    if (stageId) return scene.getStageView?.(stageId) ?? SceneClass.cameraPose;
+    return SceneClass.cameraPose;
+  }
+
   /** Moves the camera to the stage's own framing (story mode only). */
   function focusStage(index, immediate = false) {
     const stage = meta.stages[index];
-    setShot(scene.getStageView?.(stage.id) ?? SceneClass.cameraPose);
+    setShot(comparisonOrStageShot(stage.id));
     view.active = true;
     viewer.controls.autoRotate = false;
     if (immediate) {
@@ -157,7 +187,7 @@ export async function createApp({ stage, ui }) {
   }
 
   function resetView() {
-    setShot(SceneClass.cameraPose);
+    setShot(comparisonOrStageShot());
     view.active = true;
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
@@ -175,7 +205,14 @@ export async function createApp({ stage, ui }) {
     labels.render();
   });
 
-  bindKeyboard({ playback, seek, resetView, ui, uiToggle });
+  bindKeyboard({
+    playback,
+    seek,
+    resetView,
+    ui,
+    uiToggle,
+    toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
+  });
 
   languageToggle.init();
   playback.set(0);
@@ -189,7 +226,7 @@ export async function createApp({ stage, ui }) {
   });
 
   // Exposed for debugging and for automated screenshots.
-  window.__app = { viewer, scene, playback };
+  window.__app = { viewer, scene, playback, setComparison, isComparing: () => comparing };
   return window.__app;
 }
 
@@ -238,8 +275,8 @@ function tweenPose(viewer, pose, dt) {
   return true;
 }
 
-/** Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, arrows = step. */
-function bindKeyboard({ playback, seek, resetView, ui, uiToggle }) {
+/** Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, C = compare, arrows = step. */
+function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison }) {
   window.addEventListener('keydown', (event) => {
     if (event.target instanceof HTMLInputElement && event.key !== 'Escape') return;
     switch (event.key) {
@@ -258,6 +295,10 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle }) {
         uiToggle.textContent = hidden ? 'Show UI' : 'Hide UI';
         break;
       }
+      case 'c':
+      case 'C':
+        toggleComparison?.();
+        break;
       case 'ArrowRight':
         seek(playback.value + (event.shiftKey ? 0.1 : 0.02));
         break;
