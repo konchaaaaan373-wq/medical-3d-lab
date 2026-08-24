@@ -4,6 +4,14 @@ import { BloodField } from './BloodField.js';
 import { Vessels } from './Vessels.js';
 import { CongestionOverlay } from './CongestionOverlay.js';
 import { ReferenceHeart } from './ReferenceHeart.js';
+import {
+  REEL_DURATION,
+  REEL_CUES,
+  cardiacPhaseAt,
+  cameraAt,
+  congestionVisibleAt,
+  overlayAt,
+} from './reelStoryboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
 import {
   sampleHemodynamics,
@@ -22,6 +30,7 @@ import {
   ANNOTATIONS,
   COMPARISON_ANNOTATIONS,
   COMPARISON_LABEL,
+  REEL_LABEL,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -31,6 +40,17 @@ import { disposeObject } from '../../utils/dispose.js';
 
 /** Direction the hero shot looks from — into the cut wedge. */
 const VIEW_DIRECTION = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
+
+/**
+ * Head-on direction used by the social sequence.
+ *
+ * The interactive comparison looks in from one side, which puts the right-hand
+ * heart closer to the camera and makes it project larger. For a video whose
+ * whole point is "these two differ", that is a visual bias: both hearts must be
+ * the same distance from the camera, so the sequence looks straight down the
+ * cut instead.
+ */
+const REEL_VIEW_DIRECTION = new THREE.Vector3(0, 0.2, 1).normalize();
 
 /**
  * How far each heart moves aside in comparison mode, in scene units (cm).
@@ -69,6 +89,7 @@ export class HeartFailureScene {
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
     comparison: COMPARISON_LABEL,
+    reel: REEL_LABEL,
     palette: PALETTE,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,
@@ -89,6 +110,11 @@ export class HeartFailureScene {
     this.root.name = HeartFailureScene.meta.id;
     this.progress = 0;
     this.phase = 0; // position in the cardiac cycle, 0..1
+    // When true the phase is supplied from outside (the reel drives it from
+    // elapsed time so a recording is reproducible) instead of being integrated.
+    this.cardiacPhaseDriven = false;
+    /** Whether the congestion overlay may show while comparing. */
+    this.congestionInComparison = true;
     this.state = sampleHemodynamics(0);
     // Recomputed whenever the disease state changes, then held constant through
     // each cardiac cycle — see hemodynamics.js for why the model is two-layer.
@@ -158,11 +184,14 @@ export class HeartFailureScene {
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
     this.congestion.setCongestionLevel(this.state.congestionLevel);
     this.vessels.setCongestionLevel(this.state.congestionLevel);
+    this._applyCongestionVisibility();
   }
 
   update(dt, elapsed) {
     // The heart keeps beating even when the progression slider is paused.
-    this.phase = advanceCardiacPhase(this.phase, dt, this.state.hr);
+    if (!this.cardiacPhaseDriven) {
+      this.phase = advanceCardiacPhase(this.phase, dt, this.state.hr);
+    }
     this._applyShape();
     this.blood.setCycle(this.phase, this.state.ejectionFraction);
     this.blood.update(elapsed);
@@ -250,6 +279,75 @@ export class HeartFailureScene {
   }
 
   /**
+   * Hands the cardiac phase over to an external driver.
+   *
+   * SNS comparison visualization uses synchronized phase for side-by-side
+   * interpretability: the reel computes one phase from elapsed time and both
+   * hearts follow it, so they reach end-diastole and end-systole together even
+   * though the model gives them different heart rates. The physiological model
+   * itself is unchanged — normal interactive playback still integrates the
+   * state's own rate.
+   *
+   * @param {boolean} driven
+   */
+  setCardiacPhaseDriven(driven) {
+    this.cardiacPhaseDriven = driven;
+  }
+
+  /** @param {number} phase 0..1 */
+  setCardiacPhase(phase) {
+    this.phase = phase;
+  }
+
+  /**
+   * Whether the congestion overlay is allowed while the comparison is on.
+   * Off by default in comparison mode because it crowds a two-heart frame, but
+   * the reel turns it on for the congestion beat.
+   */
+  setCongestionVisibleInComparison(visible) {
+    this.congestionInComparison = visible;
+    this._applyCongestionVisibility();
+  }
+
+  _applyCongestionVisibility() {
+    const allowed = this.comparing ? this.congestionInComparison : true;
+    this.congestion.visible = allowed && this.state.congestionLevel > 0.02;
+  }
+
+  /**
+   * The 15-second social sequence for this scene.
+   *
+   * Everything specific to the content lives here; `ReelMode` supplies the
+   * generic machinery, so another scene can add its own sequence by returning
+   * the same shape.
+   */
+  getReel() {
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      // The state the video is about: the HFrEF stage, held for all 15 seconds
+      // so the EF on screen never changes mid-video.
+      progress: STAGES.find((stage) => stage.id === 'systolic-dysfunction').at,
+      viewDirection: REEL_VIEW_DIRECTION.clone(),
+      alternateViewDirection: VIEW_DIRECTION.clone(),
+      framing: {
+        // World half-extents the base framing must hold. Wider than the two
+        // hearts actually are (about 9.8 either side) so the sequence's dolly-in
+        // has somewhere to go: at its closest the pair fills the frame, and at
+        // its widest there is breathing room for the opening headline.
+        halfWidth: 12.4,
+        halfHeight: 6.6,
+        minimumDistance: 18,
+        target: new THREE.Vector3(0, -2.2, 0.3),
+      },
+      cardiacPhaseAt,
+      cameraAt,
+      congestionVisibleAt,
+      overlayAt,
+    };
+  }
+
+  /**
    * Side-by-side with a healthy ventricle.
    *
    * Built on first use rather than up front: it doubles the chamber geometry and
@@ -279,7 +377,10 @@ export class HeartFailureScene {
     this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.blood.setExitFalloff(enabled ? 3.5 : 1.2);
     this.vessels.visible = !enabled;
-    this.congestion.visible = !enabled && this.state.congestionLevel > 0.02;
+    // Comparison hides the overlay by default; the reel re-enables it for the
+    // congestion beat via setCongestionVisibleInComparison().
+    this.congestionInComparison = enabled ? false : true;
+    this._applyCongestionVisibility();
   }
 
   /**

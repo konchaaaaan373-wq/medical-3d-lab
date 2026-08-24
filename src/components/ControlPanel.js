@@ -3,6 +3,7 @@ import { el, ICONS } from '../utils/dom.js';
 /** Social-friendly export sizes. Rendered off-screen, so the window can stay any size. */
 export const CAPTURE_PRESETS = [
   { id: 'view', label: 'Current view', labelJa: '現在の画面', size: null },
+  { id: 'reel', label: 'Reel / Shorts 1080 × 1920', labelJa: 'リール 9:16', size: { width: 1080, height: 1920 } },
   { id: 'portrait', label: '1080 × 1350 (4:5)', labelJa: '縦 4:5', size: { width: 1080, height: 1350 } },
   { id: 'square', label: '1080 × 1080 (1:1)', labelJa: '正方形 1:1', size: { width: 1080, height: 1080 } },
   { id: 'wide', label: '1920 × 1080 (16:9)', labelJa: '横 16:9', size: { width: 1920, height: 1080 } },
@@ -30,6 +31,7 @@ export function createControlPanel({
   onCapture,
   onStoryToggle,
   onCompareToggle,
+  onReel,
 }) {
   const slider = el('input', {
     class: 'slider',
@@ -66,6 +68,12 @@ export function createControlPanel({
     compareButton.element.title = meta.comparison?.hint ?? 'Compare with a normal state';
   }
 
+  // Only scenes that ship a social sequence get the button.
+  const reelButton = onReel
+    ? button('reel', [meta.reel?.label ?? 'Reel', meta.reel?.labelJa ?? 'リール'], onReel)
+    : null;
+  if (reelButton) reelButton.element.title = meta.reel?.hint ?? '15-second social sequence';
+
   const capture = createCaptureButton(onCapture);
 
   const element = el('div', { class: 'controls' }, [
@@ -86,6 +94,7 @@ export function createControlPanel({
       button('frame', ['View', '視点'], onResetView).element,
       storyButton.element,
       compareButton?.element,
+      reelButton?.element,
       capture.element,
     ]),
     // The notice must always be visible, so a shorter wording is swapped in on

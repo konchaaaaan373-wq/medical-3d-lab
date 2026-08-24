@@ -45,6 +45,9 @@ export const ICONS = {
   compare: icon(
     '<path d="M11 3h2v18h-2zM3 6h6v2H3zm0 4h6v2H3zm0 4h6v2H3zM15 6h6v2h-6zm0 4h6v2h-6zm0 4h6v2h-6z"/>'
   ),
+  reel: icon(
+    '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 3.5v9l7-4.5z"/>'
+  ),
   eye: icon(
     '<path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>'
   ),

@@ -2,6 +2,7 @@ import { Viewer } from './Viewer.js';
 import { SCENES, loadScene, resolveSceneId } from './sceneRegistry.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
+import { framePose, distanceScaleForAspect } from './framing.js';
 import { el } from '../utils/dom.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
@@ -10,6 +11,7 @@ import { createControlPanel } from '../components/ControlPanel.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
+import { createReelMode } from './ReelMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 
 /**
@@ -74,6 +76,7 @@ export async function createApp({ stage, ui }) {
     onResetView: resetView,
     onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
+    onReel: scene.getReel ? () => toggleReel() : undefined,
     onStoryToggle: (enabled) => {
       playback.holdsEnabled = enabled;
       // Turning story mode on should immediately frame the current stage.
@@ -198,12 +201,48 @@ export async function createApp({ stage, ui }) {
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
     scene.update(dt, elapsed);
+    if (reelMode?.active) {
+      // The sequence owns the camera while it runs, so the interactive tween
+      // must stay out of the way. It advances on the wall clock rather than on
+      // the render delta, so a recording is 15 real seconds even if frames drop.
+      reelMode.tick();
+      return;
+    }
     if (view.active) {
       view.active = tweenPose(viewer, shot, dt);
       if (!view.active) viewer.controls.autoRotate = true;
     }
     labels.render();
   });
+
+  // --- social sequence ------------------------------------------------------
+  const reelMode = scene.getReel
+    ? createReelMode({
+        viewer,
+        scene,
+        ui,
+        stage,
+        reel: scene.getReel(),
+        setComparison,
+        setProgress: (value) => {
+          playback.pause();
+          playback.set(value);
+        },
+        getLanguage: () => ui.dataset.lang ?? 'both',
+      })
+    : null;
+
+  function toggleReel() {
+    if (!reelMode) return;
+    if (reelMode.active) {
+      reelMode.exit();
+      // Hand the camera back to the interactive framing the viewer was using.
+      setShot(comparisonOrStageShot());
+      view.active = true;
+    } else {
+      reelMode.enter();
+    }
+  }
 
   bindKeyboard({
     playback,
@@ -212,6 +251,9 @@ export async function createApp({ stage, ui }) {
     ui,
     uiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
+    exitReel: () => {
+      if (reelMode?.active) toggleReel();
+    },
   });
 
   languageToggle.init();
@@ -226,28 +268,8 @@ export async function createApp({ stage, ui }) {
   });
 
   // Exposed for debugging and for automated screenshots.
-  window.__app = { viewer, scene, playback, setComparison, isComparing: () => comparing };
+  window.__app = { viewer, scene, playback, setComparison, isComparing: () => comparing, reel: reelMode };
   return window.__app;
-}
-
-/**
- * How much further back the camera has to sit for a given aspect ratio.
- * Narrow frames show far less horizontally, so they need more distance.
- */
-function distanceScaleForAspect(aspect) {
-  return aspect < 0.85 ? 1.28 : aspect < 1.25 ? 1.12 : 1;
-}
-
-/**
- * Scales the scene's authored framing to the current aspect ratio, so the whole
- * subject stays inside the frame on a phone as well as on a wide screen.
- */
-function framePose(pose, aspect) {
-  const scale = distanceScaleForAspect(aspect);
-  return {
-    position: pose.target.clone().add(pose.position.clone().sub(pose.target).multiplyScalar(scale)),
-    target: pose.target.clone(),
-  };
 }
 
 /**
@@ -275,10 +297,17 @@ function tweenPose(viewer, pose, dt) {
   return true;
 }
 
-/** Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, C = compare, arrows = step. */
-function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison }) {
+/**
+ * Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, C = compare,
+ * arrows = step, Escape = leave the social sequence.
+ */
+function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison, exitReel }) {
   window.addEventListener('keydown', (event) => {
-    if (event.target instanceof HTMLInputElement && event.key !== 'Escape') return;
+    if (event.key === 'Escape') {
+      exitReel?.();
+      return;
+    }
+    if (event.target instanceof HTMLInputElement) return;
     switch (event.key) {
       case ' ':
         event.preventDefault();

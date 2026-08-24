@@ -157,12 +157,71 @@ export const COMPARISON_ANNOTATIONS = [
   },
 ];
 
+/** Caption for the social sequence button. */
+export const REEL_LABEL = {
+  label: 'Reel',
+  labelJa: 'リール',
+  hint: '15-second social sequence — press Escape to leave',
+  hintJa: '15秒のSNS用シーケンス（Escape で終了）',
+};
+
 /** Caption for the compare toggle. */
 export const COMPARISON_LABEL = {
   label: 'Compare',
   labelJa: '比較',
   hint: 'Side by side with a normal ventricle — two states, not two points on one path',
   hintJa: '正常な左室と並べて表示します。順番ではなく、別の状態として比べるためのものです',
+};
+
+/**
+ * Copy for the 15-second social sequence.
+ *
+ * `{normalEf}` / `{hfrefEf}` and the volume placeholders are filled from the
+ * scene's own state at runtime — never hard-coded — so the video follows the
+ * model if the model ever changes.
+ *
+ * One message per screen: social viewers read very little, and the medical
+ * detail belongs in the interactive UI and the docs, not on a Reel.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'EF {normalEf}% vs {hfrefEf}%',
+    titleJa: 'EF {normalEf}% と {hfrefEf}%',
+    subtitle: 'What changes inside the heart?',
+    subtitleJa: '心臓の動きはどう違う？',
+  },
+  cards: {
+    normal: { label: 'Normal', labelJa: '正常' },
+    hfref: { label: 'HFrEF', labelJa: 'HFrEF' },
+  },
+  residual: {
+    label: 'Blood remaining after contraction',
+    labelJa: '収縮後に残る血液',
+  },
+  beat: {
+    caption: 'One beat, slowed down',
+    captionJa: 'ゆっくり 1 拍',
+    endDiastole: { tag: 'ED', label: 'End-diastole', labelJa: '拡張末期' },
+    endSystole: { tag: 'ES', label: 'End-systole', labelJa: '収縮末期' },
+  },
+  ejectionFraction: {
+    caption: 'EF = the fraction of ventricular blood ejected per beat',
+    captionJa: 'EF ＝ 1 回の拍動で送り出された血液の割合',
+  },
+  congestion: {
+    caption: 'Elevated filling pressure → pulmonary congestion',
+    captionJa: '充満圧の上昇 → 肺うっ血',
+    note: 'Schematic · simplified educational model',
+    noteJa: '模式的表現 ・ 教育用模式図',
+  },
+  takeHome: {
+    title: 'A lower EF means a smaller fraction is ejected per beat.',
+    titleJa: 'EF が低下すると、1 回で駆出される割合が低下する。',
+  },
+  note: {
+    text: 'Simplified educational model',
+    textJa: '教育用模式図',
+  },
 };
 
 export const DISCLAIMER =

@@ -1,0 +1,389 @@
+/*
+ * Social / Reel mode.
+ *
+ * The canvas is resized to the chosen format and centred, so screen-recording
+ * that rectangle gives a correctly composed video. Everything here is sized in
+ * `--reel-unit` (1% of the frame width), so type scales with the format rather
+ * than with the browser window.
+ */
+
+/* The canvas box becomes the video frame. */
+#stage.is-reel {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, calc(100vh * var(--reel-aspect, 0.5625)));
+  height: min(100vh, calc(100vw / var(--reel-aspect, 0.5625)));
+  box-shadow: 0 0 0 1px rgba(140, 175, 225, 0.14);
+}
+
+/* Clean mode: nothing but the video and the out-of-frame controls. */
+#ui.is-reel > .top-bar,
+#ui.is-reel > .console,
+#ui.is-reel > .label-layer {
+  display: none;
+}
+
+.reel-frame {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(100vw, calc(100vh * var(--reel-aspect, 0.5625)));
+  height: min(100vh, calc(100vw / var(--reel-aspect, 0.5625)));
+  pointer-events: none;
+  font-size: var(--reel-unit, 10px);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+/* Contrast behind the opening headline, without hiding the beating hearts. */
+.reel-scrim {
+  position: absolute;
+  inset: 0;
+  /* Centred on the headline, not on the hearts, so they stay visible behind it. */
+  background: radial-gradient(58% 30% at 50% 34%, rgba(4, 6, 12, 0.9) 0%, rgba(4, 6, 12, 0.55) 55%, rgba(4, 6, 12, 0) 100%);
+  opacity: 0;
+  transition: opacity 120ms linear;
+}
+
+/*
+ * Safe area. Instagram and TikTok overlay their own UI at the top and bottom of
+ * a 9:16 video, so nothing that has to be read sits in the outer bands.
+ */
+.reel-safe {
+  position: absolute;
+  inset: 0;
+  padding: 9% 6.5% 13%;
+  display: block;
+}
+
+/* ---------- comparison cards ---------- */
+.reel-cards {
+  position: absolute;
+  left: 6.5%;
+  right: 6.5%;
+  top: 10%;
+  display: flex;
+  gap: 3em;
+  justify-content: space-between;
+}
+
+.reel-card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35em;
+  text-align: center;
+}
+
+.reel-card-label {
+  font-size: 3.4em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+}
+
+.reel-card.is-hfref .reel-card-label {
+  color: #ffb0bc;
+}
+
+.reel-card-ef-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-card-ef-key {
+  font-size: 2.4em;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.reel-card-ef {
+  font-size: 9em;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.reel-card.is-normal .reel-card-ef {
+  color: #7fe8f5;
+}
+
+.reel-card.is-hfref .reel-card-ef {
+  color: #ff8a9c;
+}
+
+.reel-card-ef-unit {
+  font-size: 3em;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.reel-card-volumes {
+  font-size: 2.3em;
+  line-height: 1.35;
+  color: var(--ink-faint);
+  white-space: pre-line;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- ED / ES marker ---------- */
+.reel-marker {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1em;
+  padding: 0.5em 1.4em;
+  border-radius: 999px;
+  background: rgba(6, 11, 20, 0.72);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(6px);
+}
+
+.reel-marker-tag {
+  font-size: 4.2em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.reel-marker-label {
+  font-size: 2.1em;
+  color: var(--ink-faint);
+}
+
+/* ---------- residual-blood callout ---------- */
+.reel-residual {
+  position: absolute;
+  right: 6.5%;
+  top: 64%;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  max-width: 52%;
+  padding: 0.55em 1.1em;
+  border-radius: 0.9em;
+  background: rgba(6, 11, 20, 0.74);
+  border: 1px solid var(--border);
+  text-align: right;
+}
+
+.reel-residual-dot {
+  width: 0.9em;
+  height: 0.9em;
+  border-radius: 50%;
+  background: #a06ae0;
+  box-shadow: 0 0 1em #a06ae0;
+  flex: none;
+}
+
+.reel-residual-text {
+  font-size: 2.8em;
+  line-height: 1.3;
+  color: var(--ink-dim);
+}
+
+/* ---------- headline ---------- */
+.reel-centre {
+  position: absolute;
+  left: 6.5%;
+  right: 6.5%;
+  top: 50%;
+  transform: translateY(-50%);
+  text-align: center;
+}
+
+.reel-title {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+
+.reel-title[data-variant='hook'] {
+  font-size: 9.5em;
+}
+
+.reel-subtitle {
+  margin: 0.5em 0 0;
+  font-size: 3.4em;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+/* The opening headline sits above the hearts rather than across them. */
+.reel-centre:has(.reel-title[data-variant='hook']) {
+  top: 34%;
+}
+
+/* The take-home sits below the hearts so the comparison stays visible. */
+.reel-centre:has(.reel-title[data-variant='take-home']) {
+  top: auto;
+  bottom: 20%;
+  transform: none;
+}
+
+.reel-title[data-variant='take-home'] {
+  font-size: 5em;
+}
+
+/* ---------- bottom band ---------- */
+.reel-bottom {
+  position: absolute;
+  left: 6.5%;
+  right: 6.5%;
+  bottom: 16%;
+  text-align: center;
+}
+
+.reel-caption {
+  margin: 0;
+  font-size: 3.5em;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.reel-note {
+  margin: 0.9em 0 0;
+  font-size: 2.1em;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+}
+
+/* ---------- out-of-frame controls ---------- */
+.reel-chrome {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(8, 13, 24, 0.9);
+  border: 1px solid var(--border);
+  pointer-events: auto;
+}
+
+.reel-chip-row {
+  display: flex;
+  gap: 3px;
+}
+
+.reel-chip {
+  appearance: none;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-faint);
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reel-chip:hover {
+  color: var(--ink);
+}
+
+.reel-chip.is-current {
+  color: #04121a;
+  background: var(--accent);
+}
+
+.reel-chip.is-exit {
+  color: var(--ink-dim);
+  border: 1px solid var(--border);
+}
+
+/* ---------- format-specific placement ---------- */
+/* Wider frames have far less vertical room, so the bands tighten up. */
+.reel-frame[data-format='wide'] .reel-safe,
+.reel-frame[data-format='square'] .reel-safe {
+  padding: 6% 5% 9%;
+}
+
+.reel-frame[data-format='wide'] .reel-cards {
+  top: 6%;
+}
+
+.reel-frame[data-format='wide'] .reel-card-ef {
+  font-size: 6em;
+}
+
+.reel-frame[data-format='wide'] .reel-title[data-variant='hook'] {
+  font-size: 6.5em;
+}
+
+.reel-frame[data-format='wide'] .reel-title[data-variant='take-home'] {
+  font-size: 3.4em;
+}
+
+.reel-frame[data-format='wide'] .reel-caption,
+.reel-frame[data-format='square'] .reel-caption {
+  font-size: 2.6em;
+}
+
+.reel-frame[data-format='wide'] .reel-bottom {
+  bottom: 8%;
+}
+
+.reel-frame[data-format='wide'] .reel-marker {
+  top: 24%;
+}
+
+.reel-frame[data-format='wide'] .reel-residual,
+.reel-frame[data-format='square'] .reel-residual {
+  top: 70%;
+}
+
+/* 4:5 — Instagram feed. Between 9:16 and 1:1 in every dimension. */
+.reel-frame[data-format='portrait'] .reel-safe {
+  padding: 7% 6% 11%;
+}
+
+.reel-frame[data-format='portrait'] .reel-card-ef {
+  font-size: 7.5em;
+}
+
+.reel-frame[data-format='portrait'] .reel-title[data-variant='hook'] {
+  font-size: 8em;
+}
+
+.reel-frame[data-format='portrait'] .reel-title[data-variant='take-home'] {
+  font-size: 4.2em;
+}
+
+.reel-frame[data-format='portrait'] .reel-caption {
+  font-size: 3em;
+}
+
+.reel-frame[data-format='portrait'] .reel-centre:has(.reel-title[data-variant='take-home']) {
+  bottom: 17%;
+}
+
+.reel-frame[data-format='square'] .reel-card-ef {
+  font-size: 6.5em;
+}
+
+.reel-frame[data-format='square'] .reel-title[data-variant='hook'] {
+  font-size: 7em;
+}
+
+.reel-frame[data-format='square'] .reel-title[data-variant='take-home'] {
+  font-size: 3.8em;
+}

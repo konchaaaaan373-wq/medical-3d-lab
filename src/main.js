@@ -1,5 +1,6 @@
 import './styles/base.css';
 import './styles/ui.css';
+import './styles/reel.css';
 import { createApp } from './app/App.js';
 
 const stage = document.getElementById('stage');
