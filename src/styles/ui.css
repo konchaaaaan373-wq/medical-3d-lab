@@ -98,6 +98,11 @@
   color: var(--ink-faint);
 }
 
+.rail-buttons {
+  display: flex;
+  gap: 6px;
+}
+
 .ui-toggle {
   pointer-events: auto;
   display: inline-flex;
@@ -405,6 +410,100 @@
   background: #6bf0fa;
 }
 
+.btn.is-on {
+  color: var(--accent);
+  border-color: rgba(56, 225, 239, 0.55);
+  background: rgba(56, 225, 239, 0.12);
+}
+
+/* ---------- capture menu ---------- */
+.capture {
+  position: relative;
+}
+
+.capture-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 172px;
+  padding: 6px;
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+
+.capture.is-open .capture-menu {
+  display: flex;
+}
+
+.capture-option {
+  appearance: none;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-align: left;
+  padding: 7px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  white-space: nowrap;
+}
+
+.capture-option:hover {
+  background: rgba(56, 225, 239, 0.12);
+  color: var(--ink);
+}
+
+.capture-option-ja {
+  font-size: 10px;
+  color: var(--ink-faint);
+}
+
+/* ---------- language switch ---------- */
+/* Both languages are always in the DOM; only the visibility changes. */
+#ui[data-lang='ja'] .lang-en,
+#ui[data-lang='en'] .lang-ja {
+  display: none;
+}
+
+/* With English hidden, the Japanese lines take over the headline roles. */
+#ui[data-lang='ja'] .title-ja {
+  margin: 0;
+  font-size: clamp(18px, 2.4vw, 26px);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+#ui[data-lang='ja'] .stage-name-ja {
+  margin: 0;
+  font-size: clamp(17px, 2.2vw, 22px);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+/*
+ * Bilingual mode stacks both languages for *content* (title, stage name,
+ * summary, legend, 3D labels) but picks one for short UI chrome — otherwise
+ * buttons read "Play 再生" and captions run together on one line.
+ */
+#ui[data-lang='both'] .step-name-ja,
+#ui[data-lang='both'] .btn-label.lang-ja,
+#ui[data-lang='both'] .capture-option .lang-en,
+#ui[data-lang='both'] .slider-cap .lang-ja,
+#ui[data-lang='both'] .subtitle .lang-en {
+  display: none;
+}
+
 .btn-icon {
   display: inline-flex;
 }
@@ -439,7 +538,11 @@
     padding: 9px 11px;
   }
 
-  .legend-ja {
+  /* Space is tight: in bilingual mode keep the shorter line of each pair. */
+  #ui[data-lang='both'] .legend-ja,
+  #ui[data-lang='both'] .label-ja,
+  #ui[data-lang='both'] .stage-summary,
+  #ui[data-lang='both'] .disclaimer-en {
     display: none;
   }
 
@@ -460,10 +563,6 @@
     grid-template-columns: repeat(5, 1fr);
   }
 
-  .stage-summary {
-    display: none; /* keep the Japanese line on small screens */
-  }
-
   .slider-cap {
     display: none;
   }
@@ -481,17 +580,12 @@
     padding: 9px 16px;
   }
 
-  .btn.primary .btn-label {
+  #ui[data-lang='both'] .btn.primary .btn-label.lang-en,
+  #ui[data-lang='ja'] .btn.primary .btn-label.lang-ja,
+  #ui[data-lang='en'] .btn.primary .btn-label.lang-en {
     display: inline;
   }
 
-  .disclaimer-en {
-    display: none;
-  }
-
-  .label-ja {
-    display: none;
-  }
 }
 
 @media (max-height: 560px) {

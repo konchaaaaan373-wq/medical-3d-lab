@@ -28,7 +28,8 @@ export function createStageReadout({ meta, onSeek }) {
       },
     }, [
       el('span', { class: 'step-dot' }),
-      el('span', { class: 'step-name', text: stage.name }),
+      el('span', { class: 'step-name lang-en', text: stage.name }),
+      el('span', { class: 'step-name step-name-ja lang-ja', text: stage.nameJa }),
     ])
   );
 
@@ -38,11 +39,11 @@ export function createStageReadout({ meta, onSeek }) {
     el('div', { class: 'steps' }, steps),
   ]);
 
-  const nameEn = el('h2', { class: 'stage-name' });
-  const nameJa = el('p', { class: 'stage-name-ja' });
+  const nameEn = el('h2', { class: 'stage-name lang-en' });
+  const nameJa = el('p', { class: 'stage-name-ja lang-ja' });
   const percent = el('span', { class: 'stage-percent' });
-  const summaryEn = el('p', { class: 'stage-summary' });
-  const summaryJa = el('p', { class: 'stage-summary-ja' });
+  const summaryEn = el('p', { class: 'stage-summary lang-en' });
+  const summaryJa = el('p', { class: 'stage-summary-ja lang-ja' });
 
   const element = el('div', { class: 'stage-readout' }, [
     track,

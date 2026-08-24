@@ -9,8 +9,8 @@ export function createLegend(meta) {
     const node = el('li', { class: 'legend-item' }, [
       el('span', { class: 'legend-dot', style: `--dot:${meta.palette[entry.key]}` }),
       el('span', { class: 'legend-label' }, [
-        el('span', { class: 'legend-en', text: entry.label }),
-        el('span', { class: 'legend-ja', text: entry.labelJa }),
+        el('span', { class: 'legend-en lang-en', text: entry.label }),
+        el('span', { class: 'legend-ja lang-ja', text: entry.labelJa }),
       ]),
     ]);
     return { key: entry.key, node };
@@ -19,7 +19,8 @@ export function createLegend(meta) {
   const element = el('ul', { class: 'panel legend' }, items.map((item) => item.node));
 
   /** Presence thresholds mirror the shader's join thresholds, roughly. */
-  const ACTIVE_FROM = { monomer: 0.02, oligomer: 0.34, fibril: 0.56, plaque: 0.78 };
+  // Monomer is present even in the "normal" state, so it is never dimmed.
+  const ACTIVE_FROM = { monomer: 0, oligomer: 0.34, fibril: 0.56, plaque: 0.78 };
 
   return {
     element,

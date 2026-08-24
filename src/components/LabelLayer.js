@@ -20,8 +20,8 @@ export function createLabelLayer({ viewer, annotations }) {
     const node = el('div', { class: 'label3d' }, [
       el('span', { class: 'label-dot' }),
       el('span', { class: 'label-body' }, [
-        el('span', { class: 'label-en', text: annotation.text }),
-        el('span', { class: 'label-ja', text: annotation.sub }),
+        el('span', { class: 'label-en lang-en', text: annotation.text }),
+        el('span', { class: 'label-ja lang-ja', text: annotation.sub }),
       ]),
     ]);
     element.append(node);

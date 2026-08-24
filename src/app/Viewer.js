@@ -17,7 +17,11 @@ export class Viewer {
     this.container = container;
     this.clock = new THREE.Clock();
     this.frameHandlers = new Set();
+    this.resizeHandlers = new Set();
     this.running = false;
+    /** Lowered automatically if the frame budget is missed (see _watchPerformance). */
+    this.quality = 'high';
+    this._frameSamples = [];
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -66,16 +70,31 @@ export class Viewer {
     return () => this.frameHandlers.delete(handler);
   }
 
+  /**
+   * Register a callback for "the drawing buffer changed size".
+   * Scenes use this to keep resolution-dependent uniforms in sync — including
+   * during an off-screen snapshot, which resizes without a window event.
+   */
+  onResize(handler) {
+    this.resizeHandlers.add(handler);
+    handler(this.camera, this.renderer);
+    return () => this.resizeHandlers.delete(handler);
+  }
+
   resize() {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
     this.camera.aspect = width / height;
-    // On tall phone screens a narrow FOV crops the subject; widen it a little.
-    this.camera.fov = this.camera.aspect < 0.85 ? 56 : 42;
+    this.camera.fov = fovForAspect(this.camera.aspect);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.composer.setSize(width, height);
     this.bloomPass?.setSize(width, height);
+    this._notifyResize();
+  }
+
+  _notifyResize() {
+    for (const handler of this.resizeHandlers) handler(this.camera, this.renderer);
   }
 
   start() {
@@ -97,12 +116,77 @@ export class Viewer {
     this.controls.update();
     for (const handler of this.frameHandlers) handler(dt, elapsed);
     this.composer.render();
+    this._watchPerformance(dt);
   }
 
-  /** Returns a PNG data URL of the current frame (used by the capture button). */
-  snapshot() {
+  /**
+   * Two-step graceful degradation. Older phones cannot afford both bloom and a
+   * high pixel ratio; rather than stutter, drop bloom first, then resolution.
+   */
+  _watchPerformance(dt) {
+    if (this.quality === 'low') return;
+    this._frameSamples.push(dt);
+    if (this._frameSamples.length < 90) return;
+    const average = this._frameSamples.reduce((a, b) => a + b, 0) / this._frameSamples.length;
+    this._frameSamples.length = 0;
+    if (average < 0.026) return; // ~38 fps or better: leave it alone
+
+    if (this.quality === 'high' && this.bloomPass) {
+      this.quality = 'medium';
+      this.bloomPass.enabled = false;
+      console.info('[viewer] frame budget missed — bloom disabled');
+    } else {
+      this.quality = 'low';
+      this.renderer.setPixelRatio(1);
+      this.resize();
+      console.info('[viewer] frame budget missed — pixel ratio reduced');
+    }
+  }
+
+  /**
+   * PNG data URL of the current frame.
+   *
+   * With `size` the frame is re-rendered off-screen at an exact pixel size —
+   * that is how the 4:5 and 1:1 social presets are produced without the user
+   * having to resize their browser window.
+   *
+   * @param {{ width: number, height: number }} [size]
+   */
+  snapshot(size) {
+    if (!size) {
+      this.composer.render();
+      return this.renderer.domElement.toDataURL('image/png');
+    }
+
+    const previous = {
+      size: this.renderer.getSize(new THREE.Vector2()),
+      pixelRatio: this.renderer.getPixelRatio(),
+      aspect: this.camera.aspect,
+      fov: this.camera.fov,
+    };
+
+    this.renderer.setPixelRatio(1);
+    // `updateStyle: false` keeps the on-screen canvas visually unchanged.
+    this.renderer.setSize(size.width, size.height, false);
+    this.composer.setSize(size.width, size.height);
+    this.bloomPass?.setSize(size.width, size.height);
+    this.camera.aspect = size.width / size.height;
+    this.camera.fov = fovForAspect(this.camera.aspect);
+    this.camera.updateProjectionMatrix();
+    this._notifyResize();
     this.composer.render();
-    return this.renderer.domElement.toDataURL('image/png');
+    const url = this.renderer.domElement.toDataURL('image/png');
+
+    this.renderer.setPixelRatio(previous.pixelRatio);
+    this.renderer.setSize(previous.size.x, previous.size.y, false);
+    this.composer.setSize(previous.size.x, previous.size.y);
+    this.bloomPass?.setSize(previous.size.x, previous.size.y);
+    this.camera.aspect = previous.aspect;
+    this.camera.fov = previous.fov;
+    this.camera.updateProjectionMatrix();
+    this._notifyResize();
+    this.composer.render();
+    return url;
   }
 
   dispose() {
@@ -113,6 +197,11 @@ export class Viewer {
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
+}
+
+/** On tall/narrow frames a narrow FOV crops the subject, so widen it a little. */
+export function fovForAspect(aspect) {
+  return aspect < 0.85 ? 56 : 42;
 }
 
 /**

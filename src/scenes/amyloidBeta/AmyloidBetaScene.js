@@ -7,6 +7,17 @@ import { buildAggregationLayout } from './aggregationLayout.js';
 import { ANNOTATIONS, STAGES, LEGEND, PALETTE, DISCLAIMER, DISCLAIMER_JA } from '../../data/amyloidBeta.js';
 import { disposeObject } from '../../utils/dispose.js';
 
+/** Direction the hero shot looks from, reused for every stage close-up. */
+const VIEW_DIRECTION = new THREE.Vector3(0.57, 0.27, 0.78).normalize();
+
+/** @returns {{ position: THREE.Vector3, target: THREE.Vector3 }} */
+function framing(target, distance) {
+  return {
+    position: target.clone().addScaledVector(VIEW_DIRECTION, distance),
+    target: target.clone(),
+  };
+}
+
 /**
  * Scene module: "Amyloid-β accumulation".
  *
@@ -60,6 +71,11 @@ export class AmyloidBetaScene {
     this.neuron = new Neuron();
 
     this.root.add(this._createLights(), this.neuron, this.fibrils, this.plaques, this.field);
+
+    // Particle size is expressed in world units, so it has to be recomputed
+    // whenever the drawing buffer changes — including during an off-screen capture.
+    this._offResize = this.viewer.onResize((camera, renderer) => this.field.syncViewport(camera, renderer));
+
     this.setProgress(0);
     return this.root;
   }
@@ -88,8 +104,35 @@ export class AmyloidBetaScene {
 
   update(dt, elapsed) {
     this.field.update(elapsed);
-    this.field.syncViewport(this.viewer.camera, this.viewer.renderer);
     this.plaques.update(dt);
+  }
+
+  /**
+   * Camera framing per stage, used by story mode.
+   * Derived from the generated layout so the shots always point at the real
+   * geometry rather than at hard-coded coordinates that could drift.
+   *
+   * @param {string} stageId
+   * @returns {{ position: THREE.Vector3, target: THREE.Vector3 } | null}
+   */
+  getStageView(stageId) {
+    const anchors = this.layout.anchors;
+    switch (stageId) {
+      case 'monomer':
+        return framing(new THREE.Vector3(0.4, 0.2, 0.2), 18);
+      case 'oligomer':
+        return framing(anchors.oligomer.clone().lerp(new THREE.Vector3(0.4, 0, 0), 0.35), 12.5);
+      case 'fibril':
+        return framing(anchors.fibril.clone().lerp(new THREE.Vector3(0.4, 0, 0), 0.3), 12);
+      case 'plaque': {
+        const centre = new THREE.Vector3();
+        for (const plaque of this.layout.plaques) centre.add(plaque.center);
+        centre.divideScalar(this.layout.plaques.length);
+        return framing(centre, 15);
+      }
+      default:
+        return null; // "Normal" uses the scene's establishing shot
+    }
   }
 
   /** Floating labels; the UI decides where they land on screen. */
@@ -107,6 +150,7 @@ export class AmyloidBetaScene {
   }
 
   dispose() {
+    this._offResize?.();
     disposeObject(this.root);
   }
 }

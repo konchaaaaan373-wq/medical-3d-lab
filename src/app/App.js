@@ -5,8 +5,9 @@ import { damp } from '../utils/math.js';
 import { el } from '../utils/dom.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
-import { createStageReadout } from '../components/StageReadout.js';
+import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
+import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 
 /**
@@ -28,18 +29,23 @@ export async function createApp({ stage, ui }) {
   const meta = SceneClass.meta;
   document.title = `${meta.title} — medical-3d-lab`;
 
-  const pose = SceneClass.cameraPose;
-  const hero = heroPose(pose, viewer.camera.aspect);
-  viewer.camera.position.copy(hero.position);
-  viewer.controls.target.copy(hero.target);
+  // `shot` is wherever the camera should currently be resting: the scene's
+  // establishing framing, or a stage close-up while story mode is running.
+  const shot = framePose(SceneClass.cameraPose, viewer.camera.aspect);
+  let shotSource = SceneClass.cameraPose;
+  viewer.camera.position.copy(shot.position);
+  viewer.controls.target.copy(shot.target);
   viewer.controls.update();
 
+  const setShot = (pose) => {
+    shotSource = pose;
+    const next = framePose(pose, viewer.camera.aspect);
+    shot.position.copy(next.position);
+    shot.target.copy(next.target);
+  };
+
   // Re-frame on rotate/resize: a portrait phone needs a lot more distance than a laptop.
-  window.addEventListener('resize', () => {
-    const next = heroPose(pose, viewer.camera.aspect);
-    hero.position.copy(next.position);
-    hero.target.copy(next.target);
-  });
+  window.addEventListener('resize', () => setShot(shotSource));
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false };
@@ -49,6 +55,8 @@ export async function createApp({ stage, ui }) {
 
   // --- UI -------------------------------------------------------------------
   const playback = new Playback({ duration: 26 });
+  // Story mode pauses on each stage boundary; skip 0, which is where it starts.
+  playback.setHoldPoints(meta.stages.map((stage) => stage.at).filter((at) => at > 0));
 
   const legend = createLegend(meta);
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
@@ -62,7 +70,21 @@ export async function createApp({ stage, ui }) {
       resetView();
     },
     onResetView: resetView,
-    onCapture: () => capture(viewer, meta, stageReadout.stage, playback.value),
+    onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
+    onStoryToggle: (enabled) => {
+      playback.holdsEnabled = enabled;
+      // Turning story mode on should immediately frame the current stage.
+      if (enabled) focusStage(stageIndexFor(playback.value, meta.stages), true);
+      else {
+        setShot(SceneClass.cameraPose);
+        view.active = true;
+        viewer.controls.autoRotate = false;
+      }
+    },
+  });
+
+  const languageToggle = createLanguageToggle((mode) => {
+    ui.dataset.lang = mode;
   });
 
   const uiToggle = el('button', {
@@ -81,20 +103,42 @@ export async function createApp({ stage, ui }) {
   ui.append(
     el('div', { class: 'top-bar' }, [
       createTitleCard(meta),
-      el('div', { class: 'rail' }, [legend.element, uiToggle]),
+      el('div', { class: 'rail' }, [legend.element, el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle])]),
     ]),
     el('div', { class: 'panel console' }, [stageReadout.element, controlPanel.element]),
     labels.element
   );
 
   // --- state flow -----------------------------------------------------------
+  let lastStageIndex = -1;
+
   playback.onChange = (value, playing) => {
     scene.setProgress(value);
     stageReadout.update(value);
     legend.update(value);
     labels.update(value);
     controlPanel.update(value, playing);
+
+    const index = stageIndexFor(value, meta.stages);
+    if (index !== lastStageIndex) {
+      lastStageIndex = index;
+      if (playback.holdsEnabled) focusStage(index);
+    }
   };
+
+  /** Moves the camera to the stage's own framing (story mode only). */
+  function focusStage(index, immediate = false) {
+    const stage = meta.stages[index];
+    setShot(scene.getStageView?.(stage.id) ?? SceneClass.cameraPose);
+    view.active = true;
+    viewer.controls.autoRotate = false;
+    if (immediate) {
+      viewer.camera.position.copy(shot.position);
+      viewer.controls.target.copy(shot.target);
+      view.active = false;
+      viewer.controls.autoRotate = true;
+    }
+  }
 
   function seek(value) {
     playback.pause();
@@ -102,6 +146,7 @@ export async function createApp({ stage, ui }) {
   }
 
   function resetView() {
+    setShot(SceneClass.cameraPose);
     view.active = true;
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
@@ -113,7 +158,7 @@ export async function createApp({ stage, ui }) {
     playback.update(dt);
     scene.update(dt, elapsed);
     if (view.active) {
-      view.active = tweenPose(viewer, hero, dt);
+      view.active = tweenPose(viewer, shot, dt);
       if (!view.active) viewer.controls.autoRotate = true;
     }
     labels.render();
@@ -121,6 +166,7 @@ export async function createApp({ stage, ui }) {
 
   bindKeyboard({ playback, seek, resetView, ui, uiToggle });
 
+  languageToggle.init();
   playback.set(0);
   viewer.start();
 
@@ -137,11 +183,19 @@ export async function createApp({ stage, ui }) {
 }
 
 /**
+ * How much further back the camera has to sit for a given aspect ratio.
+ * Narrow frames show far less horizontally, so they need more distance.
+ */
+function distanceScaleForAspect(aspect) {
+  return aspect < 0.85 ? 1.28 : aspect < 1.25 ? 1.12 : 1;
+}
+
+/**
  * Scales the scene's authored framing to the current aspect ratio, so the whole
  * subject stays inside the frame on a phone as well as on a wide screen.
  */
-function heroPose(pose, aspect) {
-  const scale = aspect < 0.85 ? 1.28 : aspect < 1.25 ? 1.12 : 1;
+function framePose(pose, aspect) {
+  const scale = distanceScaleForAspect(aspect);
   return {
     position: pose.target.clone().add(pose.position.clone().sub(pose.target).multiplyScalar(scale)),
     target: pose.target.clone(),
@@ -206,11 +260,27 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle }) {
 }
 
 /** Saves the current frame as a PNG — the fastest path from browser to social post. */
-function capture(viewer, meta, stage, progress) {
-  const url = viewer.snapshot();
-  const name = `${meta.id}_${stage?.id ?? 'stage'}_${Math.round(progress * 100)}.png`;
+function capture(viewer, meta, stage, progress, preset) {
+  const url = preset?.size ? captureAtSize(viewer, preset.size) : viewer.snapshot();
+  const suffix = preset && preset.id !== 'view' ? `_${preset.id}` : '';
+  const name = `${meta.id}_${stage?.id ?? 'stage'}_${Math.round(progress * 100)}${suffix}.png`;
   const link = document.createElement('a');
   link.href = url;
   link.download = name;
   link.click();
+}
+
+/**
+ * Renders a fixed-size frame while keeping the viewer's current angle.
+ * Only the distance is adjusted, so a 4:5 export frames the subject properly
+ * instead of cropping whatever happened to fit the browser window.
+ */
+function captureAtSize(viewer, size) {
+  const target = viewer.controls.target;
+  const saved = viewer.camera.position.clone();
+  const scale = distanceScaleForAspect(size.width / size.height);
+  viewer.camera.position.copy(target).addScaledVector(saved.clone().sub(target), scale / distanceScaleForAspect(viewer.camera.aspect));
+  const url = viewer.snapshot(size);
+  viewer.camera.position.copy(saved);
+  return url;
 }
