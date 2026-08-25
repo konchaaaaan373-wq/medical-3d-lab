@@ -11,7 +11,7 @@
  * @param {{
  *   playback: { value: number, playing: boolean, holdsEnabled: boolean },
  *   viewer: { camera: any, controls: any },
- *   scene: { getCardiacPhase?: () => number },
+ *   scene: { getCardiacPhase?: () => number, getModelControls?: () => any[] },
  *   comparing: boolean,
  * }} context
  */
@@ -26,6 +26,10 @@ export function captureSessionState({ playback, viewer, scene, comparing }) {
     cameraPosition: viewer.camera.position.toArray(),
     controlsTarget: viewer.controls.target.toArray(),
     cardiacPhase: scene.getCardiacPhase?.() ?? 0,
+    // Any loading conditions the viewer had set. The reel returns them to the
+    // modelled state so the video is always about the state itself; this is
+    // what puts the viewer's own settings back afterwards.
+    modelControls: scene.getModelControls?.().map(({ id, value }) => ({ id, value })) ?? [],
   };
 }
 
@@ -48,6 +52,7 @@ export function restoreSessionState(state, { playback, viewer, scene, setCompari
   playback.set(state.progress);
 
   scene.setCardiacPhase?.(state.cardiacPhase);
+  for (const control of state.modelControls ?? []) scene.setModelControl?.(control.id, control.value);
 
   viewer.camera.position.fromArray(state.cameraPosition);
   viewer.controls.target.fromArray(state.controlsTarget);

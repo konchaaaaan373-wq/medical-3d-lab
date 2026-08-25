@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from '../../data/heartFailure.js';
 import { ANATOMY, PULMONARY_VEINS, buildInterstitialFluid } from './anatomy.js';
-import { smoothstep } from '../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -49,19 +48,26 @@ export class CongestionOverlay extends THREE.Group {
     this.fluid = createFluidPoints(fluid);
     this.add(this.fluid);
 
-    this.setCongestionLevel(0);
+    this.setCongestion(0, 0);
   }
 
   /**
-   * @param {number} congestionLevel 0..1 index of raised left-sided filling
-   *   pressure. A separate axis from the structural stages: this overlay can be
-   *   shown at any point on them, and is not specific to HFrEF.
+   * Both inputs come from the solved mean pulmonary venous pressure rather than
+   * from the structural stage, so this overlay is a separate axis from the
+   * remodelling stages: it can be shown at any point on them, and it is not
+   * specific to HFrEF.
+   *
+   * @param {number} front 0..1 spread of the pressure front, from pulmonary
+   *   venous pressure between the two landmarks in `CONGESTION_PRESSURE`
+   * @param {number} fluid 0..1 interstitial fluid, which only appears once the
+   *   pressure passes the range where transudation is expected. It is passed in
+   *   rather than derived here so nothing can create fluid the state does not
+   *   produce.
    */
-  setCongestionLevel(congestionLevel) {
-    this.pressureMaterial.uniforms.uPressure.value = congestionLevel;
-    // Fluid only starts to move into the interstitium once pressure is high.
-    this.fluid.material.uniforms.uFill.value = smoothstep(0.55, 1, congestionLevel);
-    this.visible = congestionLevel > 0.02;
+  setCongestion(front, fluid) {
+    this.pressureMaterial.uniforms.uPressure.value = front;
+    this.fluid.material.uniforms.uFill.value = fluid;
+    this.visible = front > 0.02;
   }
 
   /**

@@ -71,6 +71,9 @@ export class HeartFailureScene {
 | `meta.progressLabel` | パーセント表示が「何の進行度か」を示すラベル |
 | `setComparison(enabled)` | 正常な状態と並べる比較モード。実装したシーンだけ `Compare` ボタンが出ます |
 | `getComparisonView()` | 比較モードのカメラ（両方が画面に収まる構図） |
+| `getReel()` | 15 秒の SNS シーケンス。実装したシーンだけ `Reel` ボタンが出ます |
+| `getPressureVolume()` | 圧-容積ループのパネルが出ます（後述） |
+| `getModelControls()` / `setModelControl(id, value)` / `resetModelControls()` | モデルの入力を動かすスライダー群。3 つ揃って実装します |
 | `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
 
 `getMetrics()` は次の形式の配列を返します。
@@ -86,6 +89,32 @@ export class HeartFailureScene {
 比較モードを実装する場合、**比較対象は必ず同じモデルから導いてください**。
 `heart-failure` では正常な左室を `sampleHemodynamics(0)` で評価して描いています。
 別途チューニングした「正常っぽい絵」を置くと、いつか本体のモデルと食い違います。
+
+### モデルの入力を触らせるとき
+
+`getModelControls()` はスライダーの定義を返し、`setModelControl(id, value)` が
+呼ばれたらモデルを**解き直します**。出力を後から補正するのではなく、
+入力を変えて全部を再計算するのが要点です。そうしないと、数値パネルと 3D と
+グラフが少しずつ違うことを言い始めます。
+
+```js
+getModelControls() {
+  return [{ id: 'preload', label: 'Preload', labelJa: '前負荷',
+            min: 0.85, max: 1.15, step: 0.01, value: this.loading.preload,
+            format: (v) => `×${v.toFixed(2)}` }];
+}
+```
+
+設定した値は `sessionState.js` がスナップショットに含めるので、Reel モードに
+入って戻ってきても viewer の設定は失われません。Reel 中は
+`resetModelControls()` が呼ばれ、動画は常にモデルどおりの状態を写します。
+
+### 圧-容積ループなどのグラフ
+
+`getPressureVolume()` は `{ current, reference, phase }` を返します。
+`current` / `reference` は `{ loop, endSystolic, endDiastolic, markers }` で、
+いずれも `{ volume, pressure }` の配列です。**曲線は必ずモデルが使っている式から
+生成してください。** グラフ用に別の近似を書くと、そこから食い違いが始まります。
 
 `index.js` は 1 行です。
 

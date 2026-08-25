@@ -12,7 +12,7 @@ import {
 import { REEL_FORMATS } from '../src/app/ReelMode.js';
 import { CAPTURE_PRESETS } from '../src/components/ControlPanel.js';
 import { REEL_COPY, STAGES } from '../src/data/heartFailure.js';
-import { SYSTOLE_FRACTION } from '../src/scenes/heartFailure/hemodynamics.js';
+import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
 
 /** Stand-in for what the scene reports; deliberately not the real numbers. */
 const METRICS = {
@@ -83,10 +83,15 @@ test('the sequence is a pure function of elapsed time', () => {
 test('the slowed beat starts at end-diastole and reaches end-systole on screen', () => {
   const beat = REEL_CUES.find((c) => c.id === 'beat');
   assert.equal(cardiacPhaseAt(beat.at), 0, 'the slow beat must begin at end-diastole');
+  // Where end-systole actually falls is solved, not assumed: the ventricle the
+  // sequence shows takes longer to reach its smallest volume than a healthy one.
+  const { endSystolePhase } = sampleHemodynamics(
+    STAGES.find((stage) => stage.id === 'systolic-dysfunction').at
+  );
   // End-systole arrives within the cue, not after it.
   let esTime = null;
   for (let t = beat.at; t < beat.until; t += 0.01) {
-    if (Math.abs(cardiacPhaseAt(t) - SYSTOLE_FRACTION) < 0.005) {
+    if (Math.abs(cardiacPhaseAt(t) - endSystolePhase) < 0.005) {
       esTime = t;
       break;
     }

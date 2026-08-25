@@ -16,7 +16,8 @@ export const bloodVertexShader = /* glsl */ `
   uniform float uSemiLength;    // cavity semi-axis (y)
   uniform float uEject;         // ejection fraction, 0..1
   uniform float uPhase;         // 0..1 through the cardiac cycle
-  uniform float uSystole;       // fraction of the cycle spent ejecting
+  uniform float uEjectStart;    // phase at which the aortic valve opens
+  uniform float uEjectEnd;      // phase at which it closes
   uniform float uFill;          // how much of the population is present, 0..1
   uniform float uTime;
   uniform float uOpacity;
@@ -45,12 +46,16 @@ export const bloodVertexShader = /* glsl */ `
     float stagger = aRank * 0.45;
     float travel;
     vec3 away;
-    if (uPhase < uSystole) {
-      float local = uPhase / uSystole;
+    if (uPhase < uEjectStart) {
+      // Isovolumic contraction: both valves are shut, so nothing leaves yet.
+      travel = 0.0;
+      away = aExit;
+    } else if (uPhase < uEjectEnd) {
+      float local = (uPhase - uEjectStart) / max(uEjectEnd - uEjectStart, 1e-3);
       travel = smoothstep(stagger, stagger + 0.55, local);
       away = aExit;
     } else {
-      float local = (uPhase - uSystole) / (1.0 - uSystole);
+      float local = (uPhase - uEjectEnd) / max(1.0 - uEjectEnd, 1e-3);
       travel = 1.0 - smoothstep(stagger, stagger + 0.55, local);
       away = aEntry;
     }

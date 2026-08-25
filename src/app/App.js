@@ -11,6 +11,8 @@ import { createStageReadout, stageIndexFor } from '../components/StageReadout.js
 import { createControlPanel } from '../components/ControlPanel.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
+import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
+import { createModelControls } from '../components/ModelControls.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
@@ -50,7 +52,10 @@ export async function createApp({ stage, ui }) {
   };
 
   // Re-frame on rotate/resize: a portrait phone needs a lot more distance than a laptop.
-  window.addEventListener('resize', () => setShot(shotSource));
+  window.addEventListener('resize', () => {
+    setShot(shotSource);
+    pvPanel?.resize();
+  });
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false };
@@ -96,6 +101,34 @@ export async function createApp({ stage, ui }) {
 
   // Optional: scenes that expose a model can show a live read-out beside the view.
   const metricsPanel = scene.getMetrics ? createMetricsPanel() : null;
+  // Optional: a scene whose model produces pressures can plot its own loop.
+  const pvPanel = scene.getPressureVolume
+    ? createPressureVolumePanel({
+        title: meta.pressureVolume?.label ?? 'Pressure-volume loop',
+        titleJa: meta.pressureVolume?.labelJa ?? '圧-容積ループ',
+      })
+    : null;
+  // Optional: sliders for the conditions the scene's model is solved under.
+  const modelControls = scene.getModelControls
+    ? createModelControls({
+        controls: scene.getModelControls(),
+        onChange: (id, value) => {
+          scene.setModelControl(id, value);
+          refreshModelReadouts();
+        },
+        onReset: () => {
+          scene.resetModelControls();
+          modelControls.sync(scene.getModelControls());
+          refreshModelReadouts();
+        },
+      })
+    : null;
+
+  /** Everything that reads back off the model after it is re-solved. */
+  function refreshModelReadouts() {
+    if (metricsPanel) metricsPanel.update(scene.getMetrics());
+    if (pvPanel) pvPanel.update(scene.getPressureVolume());
+  }
   const sceneSwitcher = createSceneSwitcher({ scenes: SCENES, currentId: resolveSceneId() });
 
   const uiToggle = el('button', {
@@ -113,7 +146,15 @@ export async function createApp({ stage, ui }) {
 
   ui.append(
     el('div', { class: 'top-bar' }, [
-      el('div', { class: 'top-left' }, [createTitleCard(meta), sceneSwitcher?.element]),
+      // The model panels go on the left, where there is room for them: the rail
+      // already carries the legend and the read-out, and stacking four panels
+      // there pushes the console off a laptop screen.
+      el('div', { class: 'top-left' }, [
+        createTitleCard(meta),
+        sceneSwitcher?.element,
+        pvPanel?.element,
+        modelControls?.element,
+      ]),
       el('div', { class: 'rail' }, [
         legend.element,
         metricsPanel?.element,
@@ -133,7 +174,7 @@ export async function createApp({ stage, ui }) {
     legend.update(value);
     labels.update(value);
     controlPanel.update(value, playing);
-    if (metricsPanel) metricsPanel.update(scene.getMetrics());
+    refreshModelReadouts();
 
     const index = stageIndexFor(value, meta.stages);
     if (index !== lastStageIndex) {
@@ -155,7 +196,7 @@ export async function createApp({ stage, ui }) {
     labels.setComparison(enabled);
     labels.update(playback.value);
     controlPanel.setComparison(enabled);
-    if (metricsPanel) metricsPanel.update(scene.getMetrics());
+    refreshModelReadouts();
     // Leaving comparison during story mode should return to the stage close-up
     // the viewer was on, not all the way out to the establishing shot.
     const stageId = playback.holdsEnabled ? meta.stages[lastStageIndex]?.id : undefined;
@@ -202,6 +243,8 @@ export async function createApp({ stage, ui }) {
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
     scene.update(dt, elapsed);
+    // The loop marker tracks the beating heart, so it is redrawn every frame.
+    if (pvPanel && !reelMode?.active) pvPanel.update(scene.getPressureVolume());
     if (reelMode?.active) {
       // The sequence owns the camera while it runs, so the interactive tween
       // must stay out of the way. It advances on the wall clock rather than on
@@ -233,6 +276,8 @@ export async function createApp({ stage, ui }) {
         captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
         restoreState: (state) => {
           restoreSessionState(state, { playback, viewer, scene, setComparison });
+          if (modelControls) modelControls.sync(scene.getModelControls());
+          refreshModelReadouts();
           // setComparison queues a camera tween; the restored camera must win.
           view.active = false;
         },
@@ -264,6 +309,8 @@ export async function createApp({ stage, ui }) {
 
   languageToggle.init();
   playback.set(0);
+  // The canvas has no size until it is in the document.
+  pvPanel?.resize();
   viewer.start();
 
   // Switching themes via the URL hash is rare enough that a reload is fine —

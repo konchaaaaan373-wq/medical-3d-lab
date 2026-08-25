@@ -158,6 +158,12 @@ export const COMPARISON_ANNOTATIONS = [
 ];
 
 /** Caption for the social sequence button. */
+/** Heading for the pressure-volume panel. */
+export const PRESSURE_VOLUME_LABEL = {
+  label: 'Pressure-volume loop',
+  labelJa: '圧-容積ループ',
+};
+
 export const REEL_LABEL = {
   label: 'Reel',
   labelJa: 'リール',
@@ -235,84 +241,162 @@ export const DISCLAIMER_SHORT_JA =
   '教育用の模式図です。HFrEFの一例であり、すべての心不全がこの経過をたどるわけではありません。';
 
 /**
- * Haemodynamic keyframes, interpolated across the progression.
+ * Fixed properties of the circulation that the disease state does not change.
  *
- * Plausible textbook-style values for one illustrative course, chosen so that
- * the direction of change is right. They are not measurements, no patient is
- * described, and they are not a universal HFrEF trajectory — other courses,
- * including ones where stroke volume or cardiac output behave differently, are
- * entirely possible.
+ * These are the compartments the left ventricle works against. They are held
+ * constant so that what the slider moves is unambiguous: the mechanics of the
+ * left ventricle, its afterload, and the volume it is asked to carry.
  *
- * Properties of *this dataset*, checked by tests/hemodynamics.test.js:
- *   - stroke volume does not rise above the healthy value as remodelling
- *     advances (an earlier version of these numbers had the failing ventricle
- *     out-pumping the healthy one);
- *   - resting cardiac output stays in a plausible band (~5.0 -> 4.5 L/min) and
- *     never becomes supranormal;
- *   - relative wall thickness rises with concentric hypertrophy and falls once
- *     the chamber dilates;
- *   - myocardial volume stays elevated once remodelling has occurred.
- *
- * `wallMm` is the *end-diastolic* wall thickness. Systolic thickening is not
- * listed here: it is derived (see hemodynamics.js).
- *
- * `congestionLevel` is a separate axis: a 0..1 index of left-sided filling
- * pressure driving the congestion overlay. It rides along the same slider for
- * simplicity, but it is not a structural stage and is not specific to HFrEF.
+ * The right ventricle is here because the loop has to close. It is never drawn,
+ * but without it blood could not back up into the pulmonary veins when the left
+ * ventricle fails — which is the mechanism the congestion overlay depends on.
  */
-export const HEMODYNAMICS = [
+export const CIRCULATION_CONSTANTS = {
+  rightVentricle: { ees: 0.85, v0: 15, edpvrA: 0.35, edpvrB: 0.02 },
+  leftAtrium: { ees: 0.35, v0: 5, edpvrA: 0.35, edpvrB: 0.035 },
+  /** Scale factor of the LV end-diastolic pressure-volume relationship. */
+  lvEdpvrA: 0.4,
+  systemicArterialCompliance: 1.1,
+  systemicVenousCompliance: 120,
+  pulmonaryArterialCompliance: 4.0,
+  /**
+   * The downstream pulmonary compartment lumps the capillary bed together with
+   * the veins, so its pressure is the hydrostatic pressure that drives fluid
+   * into the interstitium — which is what the congestion overlay reads. That is
+   * why it carries a real resistance down to the atrium rather than a token
+   * one: a few mmHg of capillary-to-atrium gradient is right, and it also keeps
+   * the reservoir exchange between veins and atrium during atrial contraction
+   * to the size of a physiological wave instead of a lumped-model artefact.
+   */
+  pulmonaryVenousCompliance: 5.0,
+  pulmonaryResistance: 0.08,
+  pulmonaryVenousResistance: 0.03,
+  mitralResistance: 0.008,
+  aorticResistance: 0.012,
+  tricuspidResistance: 0.008,
+  pulmonicResistance: 0.012,
+};
+
+/**
+ * What the progression slider actually changes.
+ *
+ * Every entry is a *mechanical* property of the ventricle or its load. Nothing
+ * haemodynamic is listed, because nothing haemodynamic is chosen any more:
+ * end-diastolic volume, ejection fraction, stroke volume, cardiac output,
+ * filling pressure and pulmonary venous pressure are all solved for by
+ * circulation.js and can only be read out, never set.
+ *
+ *   ees                  end-systolic elastance, mmHg/mL — contractility
+ *   v0                   unstressed volume, mL — how far the chamber has
+ *                        remodelled outward (a rightward shift of the whole
+ *                        pressure-volume relationship)
+ *   edpvrB               curvature of the end-diastolic pressure-volume
+ *                        relationship, 1/mL — chamber stiffness
+ *   systemicResistance   afterload, mmHg·s/mL
+ *   circulatingVolume    stressed volume, mL — volume status / fluid retention
+ *   hr                   beats per minute
+ *
+ *   wallMm               end-diastolic wall thickness, mm — a structural
+ *                        property of the drawing, not of the circulation
+ *   longToShortAxisRatio cavity shape parameter (see hemodynamics.js)
+ *
+ * The values were chosen so that the emergent haemodynamics land on the same
+ * illustrative course reviewed in docs/medical-audit-2026-08-24.md, and a test
+ * fails if they drift away from it. They remain one plausible course, not a
+ * universal trajectory.
+ */
+export const CIRCULATION_KEYFRAMES = [
   {
     at: 0.0,
-    edvMl: 120,
-    esvMl: 50,
-    wallMm: 9.0,
+    ees: 2.74,
+    v0: 10,
+    edpvrB: 0.0277,
+    systemicResistance: 1.1,
+    circulatingVolume: 689,
     hr: 70,
-    congestionLevel: 0.0,
+    wallMm: 9.0,
     longToShortAxisRatio: 1.9,
   },
   {
+    // Pressure overload: afterload up, muscle stronger and stiffer, cavity not
+    // enlarged. Ejection fraction is preserved at this point.
     at: 0.18,
-    edvMl: 112,
-    esvMl: 45,
-    wallMm: 14.0,
+    ees: 3.35,
+    v0: 8,
+    edpvrB: 0.0345,
+    systemicResistance: 1.28,
+    circulatingVolume: 767,
     hr: 74,
-    congestionLevel: 0.06,
+    wallMm: 14.0,
     longToShortAxisRatio: 1.86,
   },
   {
+    // Eccentric remodelling: contractility falls and the whole relationship
+    // shifts right, which is what "the chamber dilates" means mechanically.
     at: 0.42,
-    edvMl: 170,
-    esvMl: 104,
-    wallMm: 11.6,
+    ees: 1.64,
+    v0: 34,
+    edpvrB: 0.0284,
+    systemicResistance: 1.18,
+    circulatingVolume: 885,
     hr: 76,
-    congestionLevel: 0.24,
+    wallMm: 11.6,
     longToShortAxisRatio: 1.6,
   },
   {
     at: 0.64,
-    edvMl: 205,
-    esvMl: 145,
-    wallMm: 10.4,
+    ees: 1.22,
+    v0: 54,
+    edpvrB: 0.0272,
+    systemicResistance: 1.22,
+    circulatingVolume: 990,
     hr: 82,
-    congestionLevel: 0.52,
+    wallMm: 10.4,
     longToShortAxisRatio: 1.45,
   },
   {
+    // Neurohormonal activation: vasoconstriction and fluid retention both rise.
     at: 0.85,
-    edvMl: 235,
-    esvMl: 182,
-    wallMm: 9.8,
+    ees: 0.97,
+    v0: 66,
+    edpvrB: 0.0252,
+    systemicResistance: 1.3,
+    circulatingVolume: 1070,
     hr: 88,
-    congestionLevel: 0.88,
+    wallMm: 9.8,
     longToShortAxisRatio: 1.35,
   },
   {
     at: 1.0,
-    edvMl: 248,
-    esvMl: 197,
-    wallMm: 9.4,
+    ees: 0.89,
+    v0: 72,
+    edpvrB: 0.0246,
+    systemicResistance: 1.34,
+    circulatingVolume: 1120,
     hr: 89,
-    congestionLevel: 1.0,
+    wallMm: 9.4,
     longToShortAxisRatio: 1.32,
   },
 ];
+
+/**
+ * Mean pulmonary capillary/venous pressure, in mmHg, mapped to how far the
+ * congestion overlay has spread and whether interstitial fluid appears.
+ *
+ * Anchored to the usual clinical landmarks rather than to an invented index: a
+ * normal wedge pressure sits around 6-12 mmHg, interstitial oedema is
+ * conventionally described above roughly 18-20 mmHg, and frank alveolar oedema
+ * above roughly 25. The pressure itself comes out of the circulation model, so
+ * these four numbers are the only judgement left in the overlay — everything
+ * else about it is a consequence of the mechanics.
+ *
+ * They are a rendering map, not a physiological threshold: real patients vary
+ * widely in the pressure at which congestion becomes apparent, and chronic
+ * heart failure tolerates pressures that would cause oedema acutely.
+ */
+export const CONGESTION_PRESSURE = {
+  frontFrom: 10,
+  frontTo: 25,
+  interstitialFluidFrom: 20,
+  interstitialFluidTo: 28,
+};

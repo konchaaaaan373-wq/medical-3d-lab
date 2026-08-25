@@ -1,6 +1,8 @@
 import { REEL_COPY } from '../../data/heartFailure.js';
 import { cueOpacity, sampleTrack } from '../../utils/Timeline.js';
-import { SYSTOLE_FRACTION } from './hemodynamics.js';
+import { STAGES } from '../../data/heartFailure.js';
+import { sampleHemodynamics } from './hemodynamics.js';
+import { volumeAtPhase } from './circulation.js';
 
 /** Total length of the sequence, in seconds. */
 export const REEL_DURATION = 15.0;
@@ -154,18 +156,44 @@ const format = (template, values) =>
   template.replace(/\{(\w+)\}/g, (_, key) => (values[key] == null ? '' : String(values[key])));
 
 /**
- * A short bump around a target cardiac phase, used for the ED / ES markers.
- * Wraps, so a marker at phase 0 also lights up just before the cycle ends.
+ * The beat the sequence is showing, solved once and kept.
+ *
+ * Memoised because the storyboard is evaluated every frame and solving is not
+ * free.
  */
-function phaseMarker(phase, centre, width = 0.09) {
-  const distance = Math.min(
-    Math.abs(phase - centre),
-    Math.abs(phase - centre - 1),
-    Math.abs(phase - centre + 1)
-  );
-  if (distance >= width) return 0;
-  const value = 1 - distance / width;
-  return value * value * (3 - 2 * value);
+let cachedBeat = null;
+function beat() {
+  if (cachedBeat === null) {
+    const progress = STAGES.find((stage) => stage.id === 'systolic-dysfunction').at;
+    cachedBeat = sampleHemodynamics(progress);
+  }
+  return cachedBeat;
+}
+
+/**
+ * How strongly an ED or ES marker should show, from where the ventricle on
+ * screen actually is in its volume range.
+ *
+ * Volume rather than phase, because a ventricle sits at each of those volumes
+ * for a stretch of the cycle rather than passing through an instant: it holds
+ * end-diastolic volume through isovolumic contraction and end-systolic volume
+ * through isovolumic relaxation. A fixed phase would put the tag beside a heart
+ * that had already moved on, and would need re-tuning every time the model
+ * changed. This does not.
+ *
+ * @param {number} phase 0..1
+ * @param {'ed'|'es'} which
+ */
+function volumeMarker(phase, which) {
+  const state = beat();
+  const span = state.edvMl - state.esvMl;
+  if (!(span > 0)) return 0;
+  const target = which === 'ed' ? state.edvMl : state.esvMl;
+  const volume = volumeAtPhase(state.cycle, phase);
+  // Within a sixth of the stroke volume counts as "at" that end of the beat.
+  const closeness = 1 - Math.abs(volume - target) / (span * 0.17);
+  if (closeness <= 0) return 0;
+  return closeness * closeness * (3 - 2 * closeness);
 }
 
 /**
@@ -230,12 +258,12 @@ export function overlayAt(t, { language, metrics }) {
     endDiastole: {
       text: REEL_COPY.beat.endDiastole.tag,
       sub: pick(language, REEL_COPY.beat.endDiastole.label, REEL_COPY.beat.endDiastole.labelJa),
-      opacity: beatWindow ? phaseMarker(phase, 0) * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
+      opacity: beatWindow ? volumeMarker(phase, 'ed') * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
     },
     endSystole: {
       text: REEL_COPY.beat.endSystole.tag,
       sub: pick(language, REEL_COPY.beat.endSystole.label, REEL_COPY.beat.endSystole.labelJa),
-      opacity: beatWindow ? phaseMarker(phase, SYSTOLE_FRACTION) * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
+      opacity: beatWindow ? volumeMarker(phase, 'es') * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
     },
     caption: captionAt(t, language),
     note: {

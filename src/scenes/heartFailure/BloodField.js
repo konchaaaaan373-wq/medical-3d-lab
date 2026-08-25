@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
-import { SYSTOLE_FRACTION } from './hemodynamics.js';
 
 /**
  * Blood inside the left ventricle.
@@ -40,7 +39,8 @@ export class BloodField extends THREE.Points {
         uSemiLength: { value: normalised ? 4 : 1 },
         uEject: { value: 0 },
         uPhase: { value: 0 },
-        uSystole: { value: SYSTOLE_FRACTION },
+        uEjectStart: { value: 0.06 },
+        uEjectEnd: { value: 0.39 },
         uFill: { value: 1 },
         uTime: { value: 0 },
         uOpacity: { value: 1 },
@@ -65,6 +65,21 @@ export class BloodField extends THREE.Points {
   setCycle(phase, ejectionFraction) {
     this.material.uniforms.uPhase.value = phase;
     this.material.uniforms.uEject.value = ejectionFraction;
+  }
+
+  /**
+   * When the aortic valve opens and closes, as fractions of the cycle.
+   *
+   * Both come from the circulation model rather than from a fixed systolic
+   * fraction, so the gap before `start` is the isovolumic contraction the
+   * pressures actually produce, and it lengthens as contractility falls.
+   *
+   * @param {number} start
+   * @param {number} end
+   */
+  setEjectionWindow(start, end) {
+    this.material.uniforms.uEjectStart.value = start;
+    this.material.uniforms.uEjectEnd.value = end;
   }
 
   /**

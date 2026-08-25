@@ -8,7 +8,6 @@ import {
   myocardialVolumeFor,
   ventricleShape,
   cavityVolumeAt,
-  SYSTOLE_FRACTION,
 } from './hemodynamics.js';
 
 /**
@@ -53,6 +52,9 @@ export class ReferenceHeart extends THREE.Group {
 
     this.blood = new THREE.Points(bloodGeometry, createReferenceBloodMaterial());
     this.blood.frustumCulled = false;
+    // The healthy heart ejects on its own solved timing, not the diseased one's.
+    this.blood.material.uniforms.uEjectStart.value = this.state.ejectionStartPhase;
+    this.blood.material.uniforms.uEjectEnd.value = this.state.ejectionEndPhase;
 
     this.add(this.ventricle, this.blood);
     this.setPhase(0);
@@ -127,7 +129,8 @@ function createReferenceBloodMaterial() {
       uSemiLength: { value: 4 },
       uEject: { value: 0.58 },
       uPhase: { value: 0 },
-      uSystole: { value: SYSTOLE_FRACTION },
+      uEjectStart: { value: 0.06 },
+      uEjectEnd: { value: 0.39 },
       uFill: { value: 1 },
       uTime: { value: 0 },
       uOpacity: { value: 0.55 },

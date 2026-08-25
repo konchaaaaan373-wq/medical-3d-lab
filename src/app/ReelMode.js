@@ -166,6 +166,9 @@ export function createReelMode({
     // Park the model on the state the video is about, then turn on the existing
     // comparison so both hearts are present and already phase-locked.
     setProgress(reel.progress);
+    // The video is about the modelled state, so any loading conditions the
+    // viewer was exploring are set aside for its duration and restored on exit.
+    scene.resetModelControls?.();
     setComparison(true);
     scene.setCardiacPhaseDriven(true);
 

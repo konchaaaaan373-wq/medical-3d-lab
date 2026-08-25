@@ -21,10 +21,20 @@ function createHarness() {
   };
   let comparing = false;
   let cardiacPhase = 0;
+  const loading = { preload: 1, afterload: 1 };
   const scene = {
     getCardiacPhase: () => cardiacPhase,
     setCardiacPhase: (value) => {
       cardiacPhase = value;
+    },
+    getModelControls: () =>
+      Object.entries(loading).map(([id, value]) => ({ id, value, format: (v) => `×${v}` })),
+    setModelControl: (id, value) => {
+      loading[id] = value;
+    },
+    resetModelControls: () => {
+      loading.preload = 1;
+      loading.afterload = 1;
     },
   };
   const context = {
@@ -53,6 +63,7 @@ function createHarness() {
     setPhase: (value) => {
       cardiacPhase = value;
     },
+    loading,
     capture: () => captureSessionState({ playback, viewer, scene, comparing }),
     restore: (state) => restoreSessionState(state, context),
   };
@@ -199,4 +210,30 @@ test('the restore works when the scene exposes no cardiac phase', () => {
   enterReelLike(h);
   h.restore(before);
   assert.deepEqual(h.viewer.camera.position.toArray(), [2, 3, 4]);
+});
+
+test('loading conditions the viewer set survive the reel', () => {
+  const harness = createHarness();
+  // Someone exploring Frank-Starling before opening the sequence.
+  harness.scene.setModelControl('preload', 1.12);
+  harness.scene.setModelControl('afterload', 0.84);
+  const snapshot = harness.capture();
+
+  // The reel parks the model on the state the video is about.
+  harness.scene.resetModelControls();
+  enterReelLike(harness);
+  assert.equal(harness.loading.preload, 1, 'the sequence should run on the modelled state');
+
+  harness.restore(snapshot);
+  assert.equal(harness.loading.preload, 1.12, 'preload should come back');
+  assert.equal(harness.loading.afterload, 0.84, 'afterload should come back');
+});
+
+test('the restore works when the scene exposes no loading conditions', () => {
+  const harness = createHarness();
+  delete harness.scene.getModelControls;
+  delete harness.scene.setModelControl;
+  const snapshot = harness.capture();
+  assert.deepEqual(snapshot.modelControls, []);
+  assert.doesNotThrow(() => harness.restore(snapshot));
 });

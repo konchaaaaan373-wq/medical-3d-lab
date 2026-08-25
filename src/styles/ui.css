@@ -5,6 +5,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+  min-height: 0;
 }
 
 /* ---------- title ---------- */
@@ -50,6 +51,24 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+  /* Scrolls rather than overflowing: on a short window the loop and the loading
+     sliders would otherwise sit under the console, or push it out of reach. */
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.rail::-webkit-scrollbar {
+  width: 5px;
+}
+
+.rail::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
 }
 
 .legend {
@@ -103,6 +122,23 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  /* Same reasoning as .rail: scroll rather than push the console away. */
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.top-left::-webkit-scrollbar {
+  width: 5px;
+}
+
+.top-left::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
 }
 
 /* ---------- topic switcher ---------- */
@@ -200,6 +236,142 @@
 .metric.is-key .metric-value {
   font-size: 21px;
   color: var(--accent);
+}
+
+/* ---------- pressure-volume loop ---------- */
+.pv {
+  padding: 9px 11px 8px;
+  width: 236px;
+}
+
+.pv-head {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  letter-spacing: 0.03em;
+  margin-bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.pv-canvas {
+  display: block;
+  width: 100%;
+  height: 118px;
+}
+
+.pv-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  margin-top: 4px;
+}
+
+.pv-key-item {
+  display: flex;
+  flex-direction: column;
+  font-size: 9px;
+  color: var(--ink-faint);
+  line-height: 1.25;
+  padding-left: 11px;
+  position: relative;
+}
+
+.pv-key-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 8px;
+  height: 0;
+  border-top: 2px solid currentColor;
+}
+
+.pv-key-loop::before {
+  border-top-color: rgba(255, 150, 168, 0.95);
+}
+
+.pv-key-espvr::before {
+  border-top: 2px dashed rgba(230, 120, 140, 0.75);
+}
+
+.pv-key-edpvr::before {
+  border-top: 2px dashed rgba(140, 190, 255, 0.7);
+}
+
+/* ---------- loading-condition sliders ---------- */
+.model-controls {
+  padding: 9px 11px 10px;
+  width: 236px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.model-controls-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  letter-spacing: 0.03em;
+}
+
+.model-controls-title {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.model-control-reset {
+  margin-left: auto;
+  flex: none;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9px;
+  color: var(--ink-faint);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.model-control-reset:hover {
+  color: var(--ink-dim);
+}
+
+.model-control {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.model-control-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  line-height: 1.25;
+}
+
+.model-control-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.model-control-value {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+  min-width: 34px;
+  text-align: right;
+}
+
+.slider-sm {
+  height: 14px;
 }
 
 .rail-buttons {
@@ -619,6 +791,8 @@
 #ui[data-lang='both'] .metric-figure .lang-ja,
 #ui[data-lang='both'] .scene-pill .lang-ja,
 #ui[data-lang='both'] .btn-label.lang-ja,
+#ui[data-lang='both'] .model-control-reset .lang-ja,
+#ui[data-lang='both'] .pv-key-item .lang-ja,
 #ui[data-lang='both'] .capture-option .lang-en,
 #ui[data-lang='both'] .slider-cap .lang-ja,
 #ui[data-lang='both'] .subtitle .lang-en {
@@ -694,6 +868,13 @@
     display: none;
   }
 
+  /* The loop and the loading sliders need room to be readable at all, and a
+     phone does not have it — the figures in the read-out still carry the model. */
+  .pv,
+  .model-controls {
+    display: none;
+  }
+
   .metric.is-key {
     border-bottom: 0;
     padding-bottom: 0;
@@ -749,6 +930,11 @@
 }
 
 @media (max-height: 560px) {
+  .pv,
+  .model-controls {
+    display: none;
+  }
+
   .stage-summary,
   .stage-summary-ja,
   .disclaimer-en {

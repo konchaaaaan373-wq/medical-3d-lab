@@ -160,3 +160,99 @@ Two items raised after the first pass, both fixed:
   intensity, drawing a slightly dimmer neuron alongside more aggregate places
   the two in the same frame, and viewers may read causation the visualization
   does not claim.
+
+
+---
+
+## Addendum — 2026-08-25: the haemodynamics became a model
+
+Two of the limitations recorded above were properties of *how the numbers were
+produced*, not of any individual figure:
+
+> **Numbers are representative, not measured.** Every haemodynamic value is a
+> plausible textbook-style figure chosen to show a direction of change.
+
+> **The pressure front is a metaphor.** … no pressure–volume relationship,
+> compliance or time constant is modelled.
+
+The hand-placed EDV/ESV/wall keyframe table has now been replaced by a
+closed-loop, time-varying-elastance circulation model (`circulation.js`). The
+slider moves *mechanical* parameters only — end-systolic elastance, unstressed
+volume, end-diastolic stiffness, systemic resistance, circulating volume, heart
+rate — and every haemodynamic figure is an integration result.
+
+**What this changes**
+
+| Before | After |
+| --- | --- |
+| EDV, ESV read from a keyframe table | Solved from the pressure–volume mechanics |
+| EF = a tabulated number | EF = (EDV − ESV) / EDV, both solved |
+| Filling pressure shown as "raised / 上昇" | LV end-diastolic pressure in mmHg |
+| Congestion driven by a 0–1 index tied to progress | Driven by solved mean pulmonary venous pressure against clinical landmarks |
+| Ejection assumed to occupy a fixed 34 % of the cycle | Ejection is whenever the aortic valve is open; isovolumic periods emerge |
+| No pressures at all | LVEDP, mean LAP, mean pulmonary venous and arterial pressures, systolic/diastolic/mean arterial pressure |
+| — | Pressure–volume loop with ESPVR and EDPVR, drawn from the same equations |
+| — | Preload and afterload sliders that re-solve the circulation |
+
+**What the model now demonstrates rather than asserts.** Frank–Starling
+(raising preload raises EDV and stroke volume, and filling pressure with them);
+afterload sensitivity, and that it is *greater* in a ventricle with a low Ees;
+that a falling Ees lowers EF with the rest of the circulation held still; that
+isovolumic contraction lengthens as contractility falls. None of these are
+encoded — each is a consequence, and each has a test.
+
+**What has not changed.** Every medical constraint recorded in this audit still
+holds and is still enforced by tests: pulmonary congestion remains a
+haemodynamic overlay rather than a structural stage and is not specific to
+HFrEF; blood never crosses a valve backwards; end-systolic residual blood is not
+stasis; model-derived myocardial mass stays out of the UI; particle motion is
+not CFD; the trajectory is one illustrative pattern, not a natural history. The
+illustrative figures the medical review looked at are reproduced by the new
+model to within the ranges recorded in `tests/hemodynamics.test.js`.
+
+**The trajectory the model now produces**
+
+| Stage | EDV | ESV | SV | EF | HR | CO | LVEDP | Mean PVP | BP | ED wall | RWT |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Normal | 122 mL | 51 mL | 71 mL | 58 % | 70 | 5.0 L/min | 9 mmHg | 6 mmHg | 113/70 | 9.0 mm | 0.36 |
+| Concentric hypertrophy | 116 mL | 46 mL | 69 mL | 60 % | 74 | 5.1 L/min | 16 mmHg | 9 mmHg | 130/88 | 14.0 mm | 0.57 |
+| LV dilation | 175 mL | 108 mL | 67 mL | 38 % | 76 | 5.1 L/min | 21 mmHg | 13 mmHg | 121/80 | 11.6 mm | 0.39 |
+| Systolic dysfunction (HFrEF) | 211 mL | 152 mL | 59 mL | 28 % | 82 | 4.8 L/min | 28 mmHg | 19 mmHg | 119/82 | 10.4 mm | 0.32 |
+| (congestion overlay high) | 241 mL | 189 mL | 52 mL | 22 % | 88 | 4.6 L/min | 32 mmHg | 24 mmHg | 118/85 | 9.8 mm | 0.28 |
+| (slider end) | 254 mL | 204 mL | 50 mL | 20 % | 89 | 4.4 L/min | 35 mmHg | 27 mmHg | 117/85 | 9.4 mm | 0.26 |
+
+Every column except HR, ED wall and RWT is now solved rather than tabulated;
+heart rate, wall thickness and the cavity axis ratio remain prescribed inputs
+because the circulation model says nothing about them. Compared with the table
+audited above, the volumes and EF are essentially unchanged, the arterial
+pressure now rises at the hypertensive concentric stage and falls back as
+output declines, and the filling pressures are new.
+
+**New limitations introduced by the model itself**
+
+- **It is a lumped-parameter model.** Each compartment carries a single
+  pressure. There is no inertance and no wave propagation, so fine features of
+  the pressure waveforms (the dicrotic notch, for one) are absent.
+- **The pulmonary venous compartment lumps the capillary bed with the veins.**
+  Its pressure is used as the hydrostatic pressure driving transudation, which
+  is the right quantity for the overlay, but it is not separately a pulmonary
+  capillary wedge pressure and should not be read as a measured one.
+- **The vein-to-atrium segment has no valve**, so blood moves back into the
+  pulmonary veins during atrial contraction. This is real — it is the atrial
+  reversal wave on pulmonary venous Doppler — but the lumped approximation makes
+  it larger than it should be (about 8–13 mL per beat here). Net transport over
+  a beat is forward and equals stroke volume, and nothing in the visualization
+  draws it.
+- **Mean arterial pressure stays near 95–110 mmHg across the whole trajectory.**
+  Internally consistent, because systemic resistance rises as cardiac output
+  falls only modestly — but flatter than many real HFrEF courses, where blood
+  pressure falls. Recorded here rather than tuned away, because the parameters
+  that produce it are the ones that produce the reviewed volumes and pressures.
+- **The congestion landmarks remain a judgement.** Four numbers map pulmonary
+  venous pressure onto how much overlay is drawn. They are anchored to the usual
+  clinical landmarks, but real patients vary widely, and chronic heart failure
+  tolerates pressures that would cause oedema acutely.
+- **No neurohumoral control.** Heart rate, circulating volume and systemic
+  resistance are prescribed along the trajectory rather than regulated. There is
+  no baroreflex, no RAAS, no exercise reserve — so the model still cannot show
+  *why* a patient is symptomatic.

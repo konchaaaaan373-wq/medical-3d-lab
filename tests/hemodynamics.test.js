@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { HEMODYNAMICS, STAGES } from '../src/data/heartFailure.js';
+import { CIRCULATION_KEYFRAMES, STAGES } from '../src/data/heartFailure.js';
 import {
   sampleHemodynamics,
   cavityVolumeAt,
@@ -8,14 +8,23 @@ import {
   myocardialVolumeFor,
   radiusForVolume,
   advanceCardiacPhase,
-  SYSTOLE_FRACTION,
+  circulationParameters,
+  congestionFromPressure,
+  pressureVolumeCurves,
 } from '../src/scenes/heartFailure/hemodynamics.js';
+import { solveSteadyState, walkBeat, COMPARTMENTS } from '../src/scenes/heartFailure/circulation.js';
 import { COMPARISON_OFFSET } from '../src/scenes/heartFailure/HeartFailureScene.js';
 
-/** Fine sweep across the whole slider, including every keyframe boundary. */
+/**
+ * Sweep across the whole slider, including every keyframe and stage boundary.
+ *
+ * Coarser than it used to be because each point is now a solved circulation
+ * rather than a table look-up. The solution cache is keyed on progress rounded
+ * to 1/400, so these land on cache slots and the sweep costs one solve each.
+ */
 const SWEEP = [];
-for (let i = 0; i <= 400; i++) SWEEP.push(i / 400);
-for (const kf of HEMODYNAMICS) SWEEP.push(kf.at);
+for (let i = 0; i <= 200; i++) SWEEP.push(i / 200);
+for (const kf of CIRCULATION_KEYFRAMES) SWEEP.push(kf.at);
 for (const stage of STAGES) SWEEP.push(stage.at);
 
 const near = (a, b, tol = 1e-9) => Math.abs(a - b) <= tol;
@@ -54,18 +63,27 @@ test('basic physiological invariants hold everywhere on the slider', () => {
   }
 });
 
-test('this illustrative dataset never has the failing ventricle out-pumping the healthy one', () => {
-  // A property of these particular keyframes, not a claim that stroke volume or
-  // cardiac output must fall monotonically in heart failure. The bug it guards
-  // against: interpolating EDV and ESV independently once produced a stroke
-  // volume and cardiac output that ROSE as failure advanced.
+test('this illustrative trajectory never has the failing ventricle out-pumping the healthy one', () => {
+  // A property of this particular set of mechanical parameters, not a claim
+  // that stroke volume or cardiac output must fall monotonically in heart
+  // failure. The bug it guards against: interpolating EDV and ESV independently
+  // once produced a stroke volume and cardiac output that ROSE as failure
+  // advanced.
+  //
+  // Since stroke volume became a solved result rather than a tabulated one it
+  // wanders by a few tenths of a millilitre between neighbouring states — the
+  // circulation re-balancing as contractility, stiffness and resistance move
+  // together. That is the model working, so the sample-to-sample test allows
+  // it; what must hold strictly is the direction across the whole trajectory
+  // and the comparison with the healthy state.
   const normal = sampleHemodynamics(0);
+  const WANDER_ML = 0.5;
   let previousSv = Infinity;
   for (const p of SWEEP.slice().sort((a, b) => a - b)) {
     const h = sampleHemodynamics(p);
     assert.ok(
-      h.strokeVolumeMl <= previousSv + 1e-9,
-      `stroke volume must not rise as remodelling advances (at ${p})`
+      h.strokeVolumeMl <= previousSv + WANDER_ML,
+      `stroke volume must not climb as remodelling advances (at ${p})`
     );
     assert.ok(
       h.strokeVolumeMl <= normal.strokeVolumeMl + 1e-9,
@@ -79,6 +97,14 @@ test('this illustrative dataset never has the failing ventricle out-pumping the 
       `cardiac output must not become supranormal (at ${p})`
     );
     previousSv = h.strokeVolumeMl;
+  }
+
+  // Stage to stage, with the wander averaged out, the direction is strict.
+  let previousStageSv = Infinity;
+  for (const stage of STAGES) {
+    const sv = sampleHemodynamics(stage.at).strokeVolumeMl;
+    assert.ok(sv < previousStageSv, `stroke volume should fall by the ${stage.id} stage`);
+    previousStageSv = sv;
   }
 });
 
@@ -114,7 +140,7 @@ test('pulmonary congestion is not a structural stage', () => {
 test('congestion rides its own axis and still reaches the overlay', () => {
   const level = (p) => sampleHemodynamics(p).congestionLevel;
   assert.ok(level(0) < 0.02, 'a normal ventricle should show no congestion overlay');
-  // The overlay hides itself below 0.02 (see CongestionOverlay.setCongestionLevel),
+  // The overlay hides itself below 0.02 (see CongestionOverlay.setCongestion),
   // so the far end of the axis must be comfortably above that.
   assert.ok(level(1) > 0.9, 'the overlay must be fully available at the end of the axis');
   // It rises with, but is not identical to, the structural axis: it must already
@@ -229,7 +255,10 @@ test('myocardium is incompressible within a beat, and the wall thickens in systo
 
 test('the cardiac cycle stays between ESV and EDV and ends where it starts', () => {
   const h = sampleHemodynamics(0.5);
-  const tolerance = 1e-6;
+  // The solver stops once end-diastolic and end-systolic volume settle to
+  // within 0.02 mL of the previous beat, so the recorded cycle is periodic to
+  // about that much rather than exactly. Anything larger would be a real drift.
+  const tolerance = 0.05;
   for (let i = 0; i <= 200; i++) {
     const phase = i / 200;
     const v = cavityVolumeAt(phase, h);
@@ -237,8 +266,8 @@ test('the cardiac cycle stays between ESV and EDV and ends where it starts', () 
   }
   assert.ok(Math.abs(cavityVolumeAt(0, h) - h.edvMl) < tolerance, 'cycle should start at end-diastole');
   assert.ok(
-    Math.abs(cavityVolumeAt(SYSTOLE_FRACTION - 1e-6, h) - h.esvMl) < 1e-3,
-    'end of systole should reach end-systolic volume'
+    Math.abs(cavityVolumeAt(h.endSystolePhase, h) - h.esvMl) < tolerance,
+    'the solved end-systolic phase should be where the volume bottoms out'
   );
 });
 
@@ -302,3 +331,281 @@ test('the two hearts in comparison mode never overlap', () => {
     `hearts would touch: ${(reference + widest).toFixed(2)} >= ${2 * COMPARISON_OFFSET}`
   );
 });
+
+// ---------------------------------------------------------------------------
+// The circulation model itself.
+//
+// The tests above check what the scene reads off the state. These check the
+// thing that now produces it: a closed-loop, time-varying-elastance model whose
+// EF, stroke volume and pressures are integration results. The point of the
+// rewrite was that those numbers stop being assertions the data file makes and
+// start being consequences — so what is worth testing is the physics, not the
+// figures.
+// ---------------------------------------------------------------------------
+
+const solve = (progress, options = {}) => solveSteadyState(circulationParameters(progress, options));
+
+test('blood is conserved: the compartments always add up to the circulating volume', () => {
+  for (const p of [0, 0.18, 0.42, 0.64, 0.85, 1]) {
+    const parameters = circulationParameters(p);
+    const { volumes } = solve(p);
+    let total = 0;
+    for (let i = 0; i < COMPARTMENTS; i++) {
+      assert.ok(volumes[i] > 0, `compartment ${i} must hold blood at ${p}`);
+      total += volumes[i];
+    }
+    // Every flow leaves one compartment and enters another, so the sum can only
+    // drift through integration error. A leak here would be a sign error.
+    assert.ok(
+      Math.abs(total - parameters.circulatingVolume) < 0.5,
+      `circulating volume drifted by ${(total - parameters.circulatingVolume).toFixed(3)} mL at ${p}`
+    );
+  }
+});
+
+test('valves are one-way: blood never crosses one backwards', () => {
+  // This is the invariant behind the whole congestion overlay. Raised left-sided
+  // filling pressure is transmitted backwards through the circulation; blood is
+  // not. If a valve could pass flow the wrong way, the model itself would be
+  // saying the thing the overlay was rewritten to stop implying.
+  const VALVES = ['mitral', 'aortic', 'tricuspid', 'pulmonic'];
+  for (const p of [0, 0.42, 0.85, 1]) {
+    const parameters = circulationParameters(p);
+    walkBeat(solve(p), parameters, 480, ({ phase, flows }) => {
+      for (const valve of VALVES) {
+        assert.ok(flows[valve] >= 0, `${valve} flow ran backwards at progress ${p}, phase ${phase}`);
+      }
+    });
+  }
+});
+
+test('the pulmonary veins act as a reservoir, not as a route for backward flow', () => {
+  // The vein-to-atrium segment has no valve, so blood can move back into the
+  // pulmonary veins while the atrium contracts — which is real, and visible on
+  // pulmonary venous Doppler as the atrial reversal wave. What must be true is
+  // that it stays the size of a wave rather than becoming a route: the net
+  // transport over a beat is forwards and equals the stroke volume.
+  for (const p of [0, 0.64, 1]) {
+    const parameters = circulationParameters(p);
+    const solution = solve(p);
+    const { cycle } = solution;
+    let net = 0;
+    let backwards = 0;
+    walkBeat(solution, parameters, 480, ({ dt, flows }) => {
+      net += flows.pulmonaryVenous * dt;
+      if (flows.pulmonaryVenous < 0) backwards -= flows.pulmonaryVenous * dt;
+    });
+    assert.ok(
+      Math.abs(net - cycle.strokeVolume) < 1,
+      `net pulmonary venous transport should equal stroke volume at ${p}`
+    );
+    assert.ok(
+      backwards < cycle.strokeVolume * 0.45,
+      `the atrial reversal wave is too large to read as a reservoir at ${p} (${backwards.toFixed(1)} mL)`
+    );
+  }
+});
+
+test('solved pressures stay in a physiological range and in the right order', () => {
+  for (const p of SWEEP) {
+    const h = sampleHemodynamics(p);
+    assert.ok(
+      h.systolicPressureMmHg > h.diastolicPressureMmHg,
+      `systolic must exceed diastolic at ${p}`
+    );
+    assert.ok(
+      h.meanArterialPressureMmHg > h.diastolicPressureMmHg &&
+        h.meanArterialPressureMmHg < h.systolicPressureMmHg,
+      `mean arterial pressure must sit between systolic and diastolic at ${p}`
+    );
+    // Pressure falls along the direction of flow through the left heart.
+    assert.ok(
+      h.meanPulmonaryArterialPressureMmHg > h.meanPulmonaryVenousPressureMmHg,
+      `pulmonary artery must be above pulmonary vein at ${p}`
+    );
+    assert.ok(
+      h.meanPulmonaryVenousPressureMmHg > h.meanAtrialPressureMmHg,
+      `pulmonary vein must be above the left atrium at ${p}`
+    );
+    // Loose, because these are the bounds of "not obviously wrong", not targets.
+    assert.ok(h.systolicPressureMmHg > 60 && h.systolicPressureMmHg < 220, `systolic out of range at ${p}`);
+    assert.ok(h.endDiastolicPressureMmHg > 0 && h.endDiastolicPressureMmHg < 45, `LVEDP out of range at ${p}`);
+  }
+});
+
+test('a normal state and a failing state land where the reviewed illustration says', () => {
+  // These are the figures the medical review looked at. They are not inputs any
+  // more — no table contains them — so this test is what tells us the mechanical
+  // parameters still produce the trajectory that was reviewed. A change here
+  // means the illustration moved and needs looking at again, not that a number
+  // needs editing.
+  const expected = [
+    { at: 0, ef: [0.55, 0.62], edv: [112, 132], lvedp: [5, 12], pvp: [4, 9] },
+    { at: 0.18, ef: [0.55, 0.65], edv: [106, 126], lvedp: [12, 20], pvp: [6, 13] },
+    { at: 0.42, ef: [0.33, 0.44], edv: [162, 190], lvedp: [17, 26], pvp: [10, 17] },
+    { at: 0.64, ef: [0.23, 0.33], edv: [198, 226], lvedp: [24, 32], pvp: [15, 23] },
+    { at: 1, ef: [0.15, 0.25], edv: [240, 270], lvedp: [30, 39], pvp: [22, 31] },
+  ];
+  for (const row of expected) {
+    const h = sampleHemodynamics(row.at);
+    const within = (value, [low, high], label) =>
+      assert.ok(value >= low && value <= high, `${label} = ${value.toFixed(2)} outside [${low}, ${high}] at ${row.at}`);
+    within(h.ejectionFraction, row.ef, 'EF');
+    within(h.edvMl, row.edv, 'EDV');
+    within(h.endDiastolicPressureMmHg, row.lvedp, 'LVEDP');
+    within(h.meanPulmonaryVenousPressureMmHg, row.pvp, 'mean PVP');
+  }
+});
+
+test('Frank-Starling: raising preload raises end-diastolic volume and stroke volume', () => {
+  for (const p of [0, 0.42, 0.85]) {
+    const low = sampleHemodynamics(p, { preload: 0.9 });
+    const base = sampleHemodynamics(p, { preload: 1 });
+    const high = sampleHemodynamics(p, { preload: 1.1 });
+    assert.ok(low.edvMl < base.edvMl && base.edvMl < high.edvMl, `EDV must rise with preload at ${p}`);
+    assert.ok(
+      low.strokeVolumeMl < base.strokeVolumeMl && base.strokeVolumeMl < high.strokeVolumeMl,
+      `stroke volume must rise with end-diastolic volume at ${p}`
+    );
+    // And the price of that filling is a higher filling pressure, which is why
+    // more preload is not simply "better".
+    assert.ok(
+      high.endDiastolicPressureMmHg > base.endDiastolicPressureMmHg,
+      `filling pressure must rise with preload at ${p}`
+    );
+  }
+});
+
+test('afterload sensitivity is real, and greater in the failing ventricle', () => {
+  const drop = (p) => {
+    const base = sampleHemodynamics(p, { afterload: 1 });
+    const loaded = sampleHemodynamics(p, { afterload: 1.3 });
+    assert.ok(
+      loaded.strokeVolumeMl < base.strokeVolumeMl,
+      `raising resistance must reduce stroke volume at ${p}`
+    );
+    assert.ok(
+      loaded.meanArterialPressureMmHg > base.meanArterialPressureMmHg,
+      `raising resistance must raise arterial pressure at ${p}`
+    );
+    return (base.strokeVolumeMl - loaded.strokeVolumeMl) / base.strokeVolumeMl;
+  };
+  // A ventricle with a low end-systolic elastance loses more of its stroke
+  // volume to the same rise in resistance — the afterload sensitivity of a
+  // failing heart. This falls out of the elastance model; nothing encodes it.
+  assert.ok(drop(1) > drop(0) * 1.5, 'the failing ventricle should be the more afterload-sensitive one');
+});
+
+test('contractility drives ejection fraction, independent of the disease trajectory', () => {
+  // Holding the whole circulation still and moving only Ees must move EF.
+  const base = circulationParameters(0.42);
+  const efFor = (ees) => {
+    const parameters = { ...base, lv: { ...base.lv, ees } };
+    return solveSteadyState(parameters).cycle.ejectionFraction;
+  };
+  const weak = efFor(base.lv.ees * 0.7);
+  const same = efFor(base.lv.ees);
+  const strong = efFor(base.lv.ees * 1.4);
+  assert.ok(weak < same && same < strong, 'EF must follow end-systolic elastance');
+});
+
+test('the pressure-volume loop closes and meets the relationships that generate it', () => {
+  for (const p of [0, 0.42, 1]) {
+    const { loop, endSystolic, endDiastolic, markers } = pressureVolumeCurves(p);
+    const h = sampleHemodynamics(p);
+
+    // A closed loop: the beat returns to where it started.
+    const first = loop[0];
+    const last = loop[loop.length - 1];
+    assert.ok(Math.abs(first.volume - last.volume) < 1.5, `loop does not close in volume at ${p}`);
+
+    // The loop spans exactly the volumes the read-out reports.
+    const volumes = loop.map((point) => point.volume);
+    assert.ok(Math.abs(Math.max(...volumes) - h.edvMl) < 0.05, `loop maximum is not EDV at ${p}`);
+    assert.ok(Math.abs(Math.min(...volumes) - h.esvMl) < 0.05, `loop minimum is not ESV at ${p}`);
+
+    // Its top-left corner sits on the end-systolic elastance line and its
+    // bottom-right corner on the end-diastolic relation — because those are the
+    // equations the solver integrated, not because a curve was fitted.
+    const peak = Math.max(...loop.map((point) => point.pressure));
+    assert.ok(
+      Math.abs(markers.endSystole.pressure - peak) < peak * 0.05,
+      `the loop should reach the end-systolic line at ${p}`
+    );
+    const onEdpvr = interpolateAt(endDiastolic, markers.endDiastole.volume);
+    assert.ok(
+      Math.abs(onEdpvr - markers.endDiastole.pressure) < 1.5,
+      `end-diastole should sit on the end-diastolic relation at ${p}`
+    );
+    // Both relationships rise with volume, as any elastance must.
+    for (const curve of [endSystolic, endDiastolic]) {
+      for (let i = 1; i < curve.length; i++) {
+        assert.ok(curve[i].pressure >= curve[i - 1].pressure - 1e-9, `relationship must not fall at ${p}`);
+      }
+    }
+  }
+});
+
+test('congestion is read from pressure, against fixed landmarks', () => {
+  // The overlay is driven by a solved pressure, so the two thresholds are the
+  // only place a judgement is made — and they are the clinical landmarks, not a
+  // level tied to a structural stage.
+  assert.equal(congestionFromPressure(0).front, 0);
+  assert.equal(congestionFromPressure(10).front, 0);
+  assert.ok(congestionFromPressure(25).front > 0.99);
+  // Interstitial fluid appears only well above the pressure at which the front
+  // starts to spread, and never before it.
+  assert.equal(congestionFromPressure(18).fluid, 0);
+  assert.ok(congestionFromPressure(28).fluid > 0.99);
+  for (let mmHg = 0; mmHg <= 40; mmHg += 0.5) {
+    const { front, fluid } = congestionFromPressure(mmHg);
+    assert.ok(front >= 0 && front <= 1 && fluid >= 0 && fluid <= 1, `out of range at ${mmHg} mmHg`);
+    assert.ok(fluid <= front + 1e-9, `fluid must never outrun the pressure front at ${mmHg} mmHg`);
+  }
+});
+
+test('the solver is deterministic and converged', () => {
+  const a = solve(0.6);
+  const b = solve(0.6);
+  assert.equal(a.cycle.edv, b.cycle.edv, 'the same parameters must give the same beat');
+  assert.equal(a.cycle.ejectionFraction, b.cycle.ejectionFraction);
+  assert.ok(a.beats > 1 && a.beats < 240, 'the solve should settle without hitting the beat cap');
+
+  // Integration error: a much finer step must not move the answer, or the
+  // displayed figures would be a property of the step size rather than of the
+  // model. This is what lets the default be chosen for responsiveness.
+  const coarse = solveSteadyState(circulationParameters(0.6), { stepsPerBeat: 240 });
+  const fine = solveSteadyState(circulationParameters(0.6), { stepsPerBeat: 1920 });
+  assert.ok(
+    Math.abs(coarse.cycle.ejectionFraction - fine.cycle.ejectionFraction) < 0.005,
+    'ejection fraction must not depend on the integration step'
+  );
+  assert.ok(
+    Math.abs(coarse.cycle.edv - fine.cycle.edv) < 1.5,
+    'end-diastolic volume must not depend on the integration step'
+  );
+});
+
+test('stroke volume out of the left heart matches what the aortic valve passes', () => {
+  // Independent of EDV - ESV: one is the chamber emptying, the other is the
+  // integral of the flow that left it. They agree only if the ODEs are right.
+  for (const p of [0, 0.42, 1]) {
+    const { cycle } = solve(p);
+    assert.ok(
+      Math.abs(cycle.ejectedVolume - cycle.strokeVolume) < 0.5,
+      `ejected volume and stroke volume disagree at ${p}`
+    );
+  }
+});
+
+/** Linear read of a sampled relationship at a volume. */
+function interpolateAt(curve, volume) {
+  for (let i = 1; i < curve.length; i++) {
+    if (curve[i].volume >= volume) {
+      const span = curve[i].volume - curve[i - 1].volume;
+      const t = span > 0 ? (volume - curve[i - 1].volume) / span : 0;
+      return curve[i - 1].pressure + (curve[i].pressure - curve[i - 1].pressure) * t;
+    }
+  }
+  return curve[curve.length - 1].pressure;
+}

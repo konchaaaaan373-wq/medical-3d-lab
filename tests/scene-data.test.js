@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as amyloid from '../src/data/amyloidBeta.js';
 import * as heartFailure from '../src/data/heartFailure.js';
+import { HeartFailureScene } from '../src/scenes/heartFailure/HeartFailureScene.js';
+import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
 
 const SCENES = [
   ['amyloid-beta', amyloid],
@@ -108,4 +110,52 @@ test('the amyloid scene states that species coexist and that it is not a clinica
   assert.match(amyloid.DISCLAIMER, /coexist/i);
   assert.match(amyloid.DISCLAIMER, /not represent clinical disease stages/i);
   assert.match(amyloid.DISCLAIMER_JA, /共存/);
+});
+
+test('the read-out reports what the model solved, at the precision it supports', () => {
+  const scene = new HeartFailureScene({ viewer: {} });
+  scene.setProgress(0.85);
+  const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+
+  // Every pressure the panel shows must be a solved one, in real units.
+  for (const id of ['lvedp', 'pvp', 'bp']) {
+    assert.equal(rows[id].unit, 'mmHg', `${id} should be reported in mmHg`);
+  }
+  const state = sampleHemodynamics(0.85);
+  assert.equal(rows.lvedp.value, Math.round(state.endDiastolicPressureMmHg));
+  assert.equal(rows.pvp.value, Math.round(state.meanPulmonaryVenousPressureMmHg));
+  assert.equal(rows.ef.value, Math.round(state.ejectionFraction * 100));
+
+  // Whole units for volumes and pressures, one decimal at most elsewhere: the
+  // chamber is a truncated-ellipsoid approximation driven by a lumped
+  // circulation, and more digits would imply accuracy it does not have.
+  for (const row of Object.values(rows)) {
+    const decimals = String(row.value).split('.')[1];
+    assert.ok(!decimals || decimals.length <= 1, `${row.id} shows more precision than the model supports`);
+  }
+
+  // Model-derived myocardial volume and mass are internal. They belong to this
+  // ellipsoid approximation, not to an echocardiographic measurement, so they
+  // must never appear as a figure a viewer could read as a clinical LV mass.
+  const text = JSON.stringify(scene.getMetrics()).toLowerCase();
+  assert.ok(!/\bmass\b|\bg\/m|質量|心筋重量/.test(text), 'LV mass must not reach the UI');
+});
+
+test('the loading sliders are inputs to the model, not overrides of its output', () => {
+  const scene = new HeartFailureScene({ viewer: {} });
+  scene.setProgress(0.42);
+  const before = scene.getMetrics().find((row) => row.id === 'sv').value;
+
+  scene.setModelControl('preload', 1.1);
+  const after = scene.getMetrics().find((row) => row.id === 'sv').value;
+  // The read-out has to move, and move the way the circulation says it should.
+  assert.ok(after > before, 'raising preload should raise the reported stroke volume');
+  assert.equal(after, Math.round(sampleHemodynamics(0.42, { preload: 1.1 }).strokeVolumeMl));
+
+  scene.resetModelControls();
+  assert.equal(scene.getMetrics().find((row) => row.id === 'sv').value, before);
+  assert.deepEqual(
+    scene.getModelControls().map((control) => control.value),
+    [1, 1]
+  );
 });

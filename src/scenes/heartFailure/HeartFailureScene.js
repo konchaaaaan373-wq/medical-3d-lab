@@ -20,7 +20,7 @@ import {
   ventricleShape,
   cavityVolumeAt,
   advanceCardiacPhase,
-  fillingPressureLabel,
+  pressureVolumeCurves,
 } from './hemodynamics.js';
 import {
   STAGES,
@@ -32,6 +32,7 @@ import {
   COMPARISON_ANNOTATIONS,
   COMPARISON_LABEL,
   REEL_LABEL,
+  PRESSURE_VOLUME_LABEL,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -102,6 +103,7 @@ export class HeartFailureScene {
     progressLabel: PROGRESS_LABEL,
     comparison: COMPARISON_LABEL,
     reel: REEL_LABEL,
+    pressureVolume: PRESSURE_VOLUME_LABEL,
     palette: PALETTE,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,
@@ -129,7 +131,15 @@ export class HeartFailureScene {
     this.congestionInComparison = true;
     /** Visualization-only presentation emphasis on the congestion story, 0..1. */
     this.congestionEmphasis = 0;
-    this.state = sampleHemodynamics(0);
+    /**
+     * Exploratory multipliers on the circulation model's inputs. 1 is the
+     * disease state as modelled; moving them scales circulating volume and
+     * systemic resistance so the Frank-Starling and afterload relationships can
+     * be felt directly. They are inputs to the model, not overrides of its
+     * outputs — EF, stroke volume and every pressure are still solved.
+     */
+    this.loading = { preload: 1, afterload: 1 };
+    this.state = sampleHemodynamics(0, this.loading);
     // Recomputed whenever the disease state changes, then held constant through
     // each cardiac cycle — see hemodynamics.js for why the model is two-layer.
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
@@ -194,10 +204,34 @@ export class HeartFailureScene {
 
   setProgress(value) {
     this.progress = value;
-    this.state = sampleHemodynamics(value);
+    this._resolve();
+  }
+
+  /**
+   * Multipliers on the model's loading conditions, both 1 by default.
+   *
+   * @param {{ preload?: number, afterload?: number }} loading
+   */
+  setLoading(loading) {
+    this.loading = { ...this.loading, ...loading };
+    this._resolve();
+  }
+
+  /** Re-solves the circulation and pushes the result into everything drawn. */
+  _resolve() {
+    this.state = sampleHemodynamics(this.progress, this.loading);
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
-    this.congestion.setCongestionLevel(this.state.congestionLevel);
+    // The model is usable before anything is built — `getMetrics()` and the
+    // pressure-volume curves need no GPU — so the visual half is skipped until
+    // there is something to push it into.
+    if (!this.congestion) return;
+    // Both congestion inputs are pressures the model solved for, not a level
+    // read off the stage: the overlay spreads with mean pulmonary venous
+    // pressure, and interstitial fluid appears only once that pressure reaches
+    // the range where transudation is expected.
+    this.congestion.setCongestion(this.state.congestionLevel, this.state.interstitialFluidLevel);
     this.vessels.setCongestionLevel(this.state.congestionLevel);
+    this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
     this._applyCongestionVisibility();
   }
 
@@ -231,10 +265,13 @@ export class HeartFailureScene {
   /**
    * Live read-out shown next to the 3D view.
    *
-   * Precision is deliberately coarse: volumes to the nearest mL, wall thickness
-   * to 0.1 mm, EF to a whole percent. The chamber is a truncated-ellipsoid
-   * approximation, so anything finer would imply accuracy the model lacks.
-   * Myocardial mass is computed internally but not shown, for the same reason.
+   * Every figure here is an output of the circulation model, including the
+   * pressures: nothing is a table look-up. Precision is deliberately coarse —
+   * volumes to the nearest mL, pressures to the nearest mmHg, EF to a whole
+   * percent — because the chamber is a truncated-ellipsoid approximation driven
+   * by a lumped-parameter circulation, and anything finer would imply accuracy
+   * the model does not have. Myocardial mass is computed internally but never
+   * shown, for the same reason.
    */
   getMetrics() {
     const {
@@ -245,12 +282,15 @@ export class HeartFailureScene {
       cardiacOutputLMin,
       hr,
       wallMm,
-      congestionLevel,
+      endDiastolicPressureMmHg,
+      systolicPressureMmHg,
+      diastolicPressureMmHg,
+      meanPulmonaryVenousPressureMmHg,
     } = this.state;
-    const pressure = fillingPressureLabel(congestionLevel);
     // While comparing, each row also carries the healthy value it is measured
     // against — the same numbers the reference heart is drawn from.
     const ref = this.comparing ? sampleHemodynamics(0) : null;
+    const mmHg = (value) => Math.round(value);
     return [
       {
         id: 'ef',
@@ -274,6 +314,31 @@ export class HeartFailureScene {
         unit: 'L/min',
       },
       {
+        id: 'lvedp',
+        label: 'LV end-diastolic pressure',
+        labelJa: '左室拡張末期圧',
+        value: mmHg(endDiastolicPressureMmHg),
+        reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
+        unit: 'mmHg',
+        emphasis: true,
+      },
+      {
+        id: 'pvp',
+        label: 'Mean pulmonary venous pressure',
+        labelJa: '平均肺静脈圧',
+        value: mmHg(meanPulmonaryVenousPressureMmHg),
+        reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
+        unit: 'mmHg',
+      },
+      {
+        id: 'bp',
+        label: 'Arterial pressure',
+        labelJa: '動脈圧',
+        value: `${mmHg(systolicPressureMmHg)}/${mmHg(diastolicPressureMmHg)}`,
+        reference: ref ? `${mmHg(ref.systolicPressureMmHg)}/${mmHg(ref.diastolicPressureMmHg)}` : undefined,
+        unit: 'mmHg',
+      },
+      {
         id: 'wall',
         label: 'Wall thickness (ED)',
         labelJa: '壁厚（拡張末期）',
@@ -281,15 +346,68 @@ export class HeartFailureScene {
         reference: ref ? ref.wallMm.toFixed(1) : undefined,
         unit: 'mm',
       },
+    ];
+  }
+
+  /**
+   * The two loading conditions the viewer may vary.
+   *
+   * They are exposed as *model inputs*: the app sends a value back through
+   * `setModelControl` and the whole circulation is re-solved, so the read-out
+   * and the geometry move together. Nothing downstream is nudged directly.
+   */
+  getModelControls() {
+    return [
       {
-        id: 'filling',
-        label: 'LV filling pressure',
-        labelJa: '左室充満圧',
-        value: pressure.value,
-        valueJa: pressure.valueJa,
-        unit: '',
+        id: 'preload',
+        label: 'Preload (circulating volume)',
+        labelJa: '前負荷（循環血液量）',
+        min: 0.85,
+        max: 1.15,
+        step: 0.01,
+        value: this.loading.preload,
+        format: (value) => `×${value.toFixed(2)}`,
+      },
+      {
+        id: 'afterload',
+        label: 'Afterload (systemic resistance)',
+        labelJa: '後負荷（体血管抵抗）',
+        min: 0.7,
+        max: 1.4,
+        step: 0.01,
+        value: this.loading.afterload,
+        format: (value) => `×${value.toFixed(2)}`,
       },
     ];
+  }
+
+  /** @param {'preload'|'afterload'} id @param {number} value */
+  setModelControl(id, value) {
+    this.setLoading({ [id]: value });
+  }
+
+  /** Resets both loading conditions to the modelled disease state. */
+  resetModelControls() {
+    this.setLoading({ preload: 1, afterload: 1 });
+  }
+
+  /**
+   * The pressure-volume loop for the current state, with the two relationships
+   * that generate it.
+   *
+   * This is the model's own working shown directly: the loop is the solved beat
+   * plotted as pressure against volume, and it meets the end-systolic elastance
+   * line at its top-left corner and the end-diastolic relation at its
+   * bottom-right because those are the equations that produced it — not because
+   * a curve was drawn to fit.
+   */
+  getPressureVolume() {
+    const ref = this.comparing ? pressureVolumeCurves(0) : null;
+    return {
+      current: pressureVolumeCurves(this.progress, this.loading),
+      reference: ref,
+      phase: this.phase,
+    };
   }
 
   /**
