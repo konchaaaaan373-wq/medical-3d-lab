@@ -112,9 +112,16 @@ getModelControls() {
 ### 圧-容積ループなどのグラフ
 
 `getPressureVolume()` は `{ current, reference, phase }` を返します。
-`current` / `reference` は `{ loop, endSystolic, endDiastolic, markers }` で、
-いずれも `{ volume, pressure }` の配列です。**曲線は必ずモデルが使っている式から
-生成してください。** グラフ用に別の近似を書くと、そこから食い違いが始まります。
+`current` / `reference` は `{ loop, endSystolic, endDiastolic, markers, waveform }` で、
+`loop` と 2 本の関係式は `{ volume, pressure }` の配列、`waveform` は
+`{ phase, ventricular, arterial, atrial, cycleLengthSeconds, ejection }` です。
+1 回の呼び出しでループと圧波形の両方のパネルが更新されるので、
+2 つのグラフが違う拍を描くことは起きません。
+
+**曲線は必ずモデルが使っている式から生成してください。**
+グラフ用に別の近似を書くと、そこから食い違いが始まります。同じ理由で、
+`ejection` の区間は「2 本の線が交わって見える場所」ではなく
+**解かれた流量から**求めています。
 
 `index.js` は 1 行です。
 

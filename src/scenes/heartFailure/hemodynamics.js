@@ -228,12 +228,25 @@ export function pressureVolumeCurves(progress, options = {}) {
       endDiastole: { volume: cycle.edv, pressure: cycle.endDiastolicPressure },
       endSystole: { volume: cycle.esv, pressure: ees * (cycle.esv - v0) },
     },
-    /** Pressure waveforms over the same beat, for the strip below the loop. */
+    /**
+     * The same beat plotted against time instead of volume.
+     *
+     * The loop shows what the ventricle did; this shows why. The aortic valve
+     * opens where the ventricular trace crosses the arterial one and closes
+     * where it falls back through it, so the isovolumic periods are the gaps
+     * between those crossings and the start and end of the volume change —
+     * visible rather than asserted. The atrial trace is on the same axis
+     * because raised filling pressure is the thing the congestion overlay is
+     * about, and here it is a line rather than a glow.
+     */
     waveform: {
       phase: trace.phase.slice(),
       ventricular: trace.lvPressure.slice(),
       arterial: trace.aorticPressure.slice(),
       atrial: trace.atrialPressure.slice(),
+      cycleLengthSeconds: cycle.cycleLength,
+      /** Where the aortic valve is open, from the solved flows. */
+      ejection: { from: cycle.ejectionStartPhase, to: cycle.ejectionEndPhase },
     },
     contractilityEes: ees,
     unstressedVolumeMl: v0,

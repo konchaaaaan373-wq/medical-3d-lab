@@ -192,6 +192,7 @@ rate — and every haemodynamic figure is an integration result.
 | Ejection assumed to occupy a fixed 34 % of the cycle | Ejection is whenever the aortic valve is open; isovolumic periods emerge |
 | No pressures at all | LVEDP, mean LAP, mean pulmonary venous and arterial pressures, systolic/diastolic/mean arterial pressure |
 | — | Pressure–volume loop with ESPVR and EDPVR, drawn from the same equations |
+| — | Ventricular, arterial and atrial pressure over one beat, with the ejection window taken from the solved flows |
 | — | Preload and afterload sliders that re-solve the circulation |
 
 **What the model now demonstrates rather than asserts.** Frank–Starling

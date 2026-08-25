@@ -609,3 +609,77 @@ function interpolateAt(curve, volume) {
   }
   return curve[curve.length - 1].pressure;
 }
+
+test('the pressure waveforms are the same beat the loop is, and the valve events line up', () => {
+  for (const p of [0, 0.42, 1]) {
+    const { waveform } = pressureVolumeCurves(p);
+    const h = sampleHemodynamics(p);
+    const n = waveform.phase.length;
+    for (const key of ['ventricular', 'arterial', 'atrial']) {
+      assert.equal(waveform[key].length, n, `${key} trace has a different length at ${p}`);
+      assert.ok(waveform[key].every(Number.isFinite), `${key} trace has a non-finite value at ${p}`);
+    }
+    assert.ok(
+      Math.abs(waveform.cycleLengthSeconds - 60 / h.hr) < 1e-9,
+      `the beat should last 60/HR seconds at ${p}`
+    );
+    assert.equal(waveform.ejection.from, h.ejectionStartPhase);
+    assert.equal(waveform.ejection.to, h.ejectionEndPhase);
+
+    // The shaded band is drawn from the solved flows; the two lines crossing is
+    // what a reader sees. They have to be the same event, or the picture would
+    // be telling a different story from the model.
+    for (let i = 0; i < n; i++) {
+      const phase = waveform.phase[i];
+      const inside = phase > waveform.ejection.from + 0.02 && phase < waveform.ejection.to - 0.02;
+      if (!inside) continue;
+      assert.ok(
+        waveform.ventricular[i] >= waveform.arterial[i] - 1e-9,
+        `ventricular pressure should be at or above arterial while ejecting, at ${phase} (progress ${p})`
+      );
+    }
+    // And outside it — with the isovolumic periods excluded, since that is
+    // exactly where ventricular pressure crosses the arterial line.
+    for (let i = 0; i < n; i++) {
+      const phase = waveform.phase[i];
+      if (phase > waveform.ejection.from - 0.02 && phase < waveform.ejection.to + 0.12) continue;
+      assert.ok(
+        waveform.ventricular[i] < waveform.arterial[i],
+        `the aortic valve should be shut at ${phase} (progress ${p})`
+      );
+    }
+  }
+});
+
+test('filling is driven by the atrium being at the higher pressure', () => {
+  // Not a decorative third line: the mitral valve opens because left atrial
+  // pressure exceeds ventricular pressure, and that is what the raised atrial
+  // trace in the failing beat is showing.
+  for (const p of [0, 0.85]) {
+    const { waveform } = pressureVolumeCurves(p);
+    const h = sampleHemodynamics(p);
+    let fillingSamples = 0;
+    for (let i = 0; i < waveform.phase.length; i++) {
+      const phase = waveform.phase[i];
+      // Mid-diastole, clear of both isovolumic periods.
+      if (phase < h.ejectionEndPhase + 0.2 || phase > 0.9) continue;
+      fillingSamples++;
+      assert.ok(
+        waveform.atrial[i] >= waveform.ventricular[i] - 0.5,
+        `the atrium should not be below the ventricle while filling, at ${phase} (progress ${p})`
+      );
+    }
+    assert.ok(fillingSamples > 5, `too few filling samples to check at ${p}`);
+  }
+});
+
+test('isovolumic contraction lengthens as the ventricle weakens', () => {
+  // A weaker ventricle takes longer to raise its pressure to aortic, so the
+  // aortic valve opens later in the cycle. Nothing sets this; it falls out of
+  // the elastance model, and it is visible as the gap before the shaded band.
+  const early = sampleHemodynamics(0).ejectionStartPhase;
+  const late = sampleHemodynamics(1).ejectionStartPhase;
+  assert.ok(late > early, 'ejection should begin later once contractility has fallen');
+  // Both still leave most of the cycle for ejection and filling.
+  assert.ok(early > 0 && late < 0.2, 'isovolumic contraction should stay a small part of the beat');
+});

@@ -257,7 +257,7 @@
 .pv-canvas {
   display: block;
   width: 100%;
-  height: 118px;
+  height: 106px;
 }
 
 .pv-key {
@@ -297,6 +297,75 @@
 
 .pv-key-edpvr::before {
   border-top: 2px dashed rgba(140, 190, 255, 0.7);
+}
+
+/* ---------- pressure waveforms ---------- */
+.wave {
+  padding: 9px 11px 8px;
+  width: 236px;
+}
+
+.wave-head {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  letter-spacing: 0.03em;
+  margin-bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.wave-canvas {
+  display: block;
+  width: 100%;
+  height: 84px;
+}
+
+.wave-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  margin-top: 4px;
+}
+
+.wave-key-item {
+  display: flex;
+  flex-direction: column;
+  font-size: 9px;
+  color: var(--ink-faint);
+  line-height: 1.25;
+  padding-left: 11px;
+  position: relative;
+}
+
+.wave-key-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 8px;
+  height: 0;
+  border-top: 2px solid currentColor;
+}
+
+.wave-key-lv::before {
+  border-top-color: rgba(255, 150, 168, 0.95);
+}
+
+.wave-key-ao::before {
+  border-top-color: rgba(255, 196, 140, 0.9);
+}
+
+.wave-key-la::before {
+  border-top-color: rgba(140, 190, 255, 0.8);
+}
+
+/* The ejection band is a fill, not a line — the swatch has to match. */
+.wave-key-ejection::before {
+  top: 2px;
+  height: 6px;
+  border-top: 0;
+  background: rgba(255, 150, 168, 0.28);
 }
 
 /* ---------- loading-condition sliders ---------- */
@@ -793,6 +862,10 @@
 #ui[data-lang='both'] .btn-label.lang-ja,
 #ui[data-lang='both'] .model-control-reset .lang-ja,
 #ui[data-lang='both'] .pv-key-item .lang-ja,
+#ui[data-lang='both'] .wave-key-item .lang-ja,
+#ui[data-lang='both'] .pv-head .lang-ja,
+#ui[data-lang='both'] .wave-head .lang-ja,
+#ui[data-lang='both'] .model-controls-title .lang-ja,
 #ui[data-lang='both'] .capture-option .lang-en,
 #ui[data-lang='both'] .slider-cap .lang-ja,
 #ui[data-lang='both'] .subtitle .lang-en {
@@ -871,6 +944,7 @@
   /* The loop and the loading sliders need room to be readable at all, and a
      phone does not have it — the figures in the read-out still carry the model. */
   .pv,
+  .wave,
   .model-controls {
     display: none;
   }
@@ -929,8 +1003,64 @@
 
 }
 
+/*
+ * A 900px-tall laptop cannot hold the title, both plots, the loading sliders and
+ * a ten-row read-out in bilingual mode. Rather than let the last panel fall off
+ * the bottom of a scrolling column, drop the second language from the rows that
+ * are already labelled by their units and their position — the same trade the
+ * narrow-width rules make. Headline figures keep both languages.
+ */
+@media (max-height: 1000px) {
+  #ui[data-lang='both'] .metric:not(.is-key) .metric-label .lang-ja,
+  #ui[data-lang='both'] .model-control-label .lang-ja {
+    display: none;
+  }
+
+  .metrics {
+    gap: 5px;
+  }
+}
+
+/*
+ * Below this the four panels genuinely do not fit, so the plots give up some
+ * height and the title gives up its strapline. Measured against a 1440x900
+ * laptop, which is where this first stopped fitting.
+ */
+@media (max-height: 940px) {
+  .top-left {
+    gap: 6px;
+  }
+
+  .title-card {
+    padding: 11px 14px 12px;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .pv,
+  .wave {
+    padding: 7px 10px 6px;
+  }
+
+  .pv-canvas {
+    height: 88px;
+  }
+
+  .wave-canvas {
+    height: 72px;
+  }
+
+  .model-controls {
+    padding: 7px 10px 8px;
+    gap: 6px;
+  }
+}
+
 @media (max-height: 560px) {
   .pv,
+  .wave,
   .model-controls {
     display: none;
   }

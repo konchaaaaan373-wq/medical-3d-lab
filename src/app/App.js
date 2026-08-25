@@ -12,6 +12,7 @@ import { createControlPanel } from '../components/ControlPanel.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
+import { createPressureWavePanel } from '../components/PressureWavePanel.js';
 import { createModelControls } from '../components/ModelControls.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
@@ -55,6 +56,7 @@ export async function createApp({ stage, ui }) {
   window.addEventListener('resize', () => {
     setShot(shotSource);
     pvPanel?.resize();
+    wavePanel?.resize();
   });
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
@@ -108,6 +110,13 @@ export async function createApp({ stage, ui }) {
         titleJa: meta.pressureVolume?.labelJa ?? '圧-容積ループ',
       })
     : null;
+  // The same solved beat, plotted against time instead of volume.
+  const wavePanel = scene.getPressureVolume
+    ? createPressureWavePanel({
+        title: meta.pressureWave?.label ?? 'Pressure over one beat',
+        titleJa: meta.pressureWave?.labelJa ?? '1 拍の圧波形',
+      })
+    : null;
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
     ? createModelControls({
@@ -127,7 +136,11 @@ export async function createApp({ stage, ui }) {
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
     if (metricsPanel) metricsPanel.update(scene.getMetrics());
-    if (pvPanel) pvPanel.update(scene.getPressureVolume());
+    if (!pvPanel) return;
+    // One read of the model, shared by both plots, so they cannot disagree.
+    const pressureVolume = scene.getPressureVolume();
+    pvPanel.update(pressureVolume);
+    wavePanel?.update(pressureVolume);
   }
   const sceneSwitcher = createSceneSwitcher({ scenes: SCENES, currentId: resolveSceneId() });
 
@@ -153,6 +166,7 @@ export async function createApp({ stage, ui }) {
         createTitleCard(meta),
         sceneSwitcher?.element,
         pvPanel?.element,
+        wavePanel?.element,
         modelControls?.element,
       ]),
       el('div', { class: 'rail' }, [
@@ -243,8 +257,13 @@ export async function createApp({ stage, ui }) {
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
     scene.update(dt, elapsed);
-    // The loop marker tracks the beating heart, so it is redrawn every frame.
-    if (pvPanel && !reelMode?.active) pvPanel.update(scene.getPressureVolume());
+    // Both plots carry a cursor that tracks the beating heart, so they are
+    // redrawn every frame — from a single read of the model.
+    if (pvPanel && !reelMode?.active) {
+      const pressureVolume = scene.getPressureVolume();
+      pvPanel.update(pressureVolume);
+      wavePanel?.update(pressureVolume);
+    }
     if (reelMode?.active) {
       // The sequence owns the camera while it runs, so the interactive tween
       // must stay out of the way. It advances on the wall clock rather than on
@@ -309,8 +328,9 @@ export async function createApp({ stage, ui }) {
 
   languageToggle.init();
   playback.set(0);
-  // The canvas has no size until it is in the document.
+  // The canvases have no size until they are in the document.
   pvPanel?.resize();
+  wavePanel?.resize();
   viewer.start();
 
   // Switching themes via the URL hash is rare enough that a reload is fine —

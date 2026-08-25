@@ -164,6 +164,12 @@ export const PRESSURE_VOLUME_LABEL = {
   labelJa: '圧-容積ループ',
 };
 
+/** Heading for the pressure waveform panel. */
+export const PRESSURE_WAVE_LABEL = {
+  label: 'Pressure over one beat',
+  labelJa: '1 拍の圧波形',
+};
+
 export const REEL_LABEL = {
   label: 'Reel',
   labelJa: 'リール',
