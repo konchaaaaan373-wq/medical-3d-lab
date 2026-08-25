@@ -273,38 +273,46 @@ pressures made a defect visible that the read-out had hidden: on the waveform,
 the whole left-atrial trace and the normal ventricle's diastolic pressure sat on
 the floor of the axis.
 
-### Finding 1 — the left atrium was far too compliant
+### Finding 1 — the left atrium's passive term was calibrated too low
 
-**Not** the reported LVEDP, which was already 8.6 mmHg and inside the normal
-6–12 range. The defect was one compartment upstream.
+**Not** the reported LVEDP, which at 8.6 mmHg was already inside the 6–10 mmHg
+band this was checked against. The defect was one compartment upstream.
 
-The atrium's end-diastolic pressure–volume relationship gave it a passive
-compliance of 20–80 mL/mmHg across its operating volume (physiological ≈ 10–20),
-so its passive pressure never exceeded about 2.5 mmHg and essentially all of its
-pressure came from the contraction term. Three consequences, all visible once
-plotted:
+The atrium's end-diastolic pressure–volume relationship carried a scale factor
+(`edpvrA`) of 0.35, so across the volume the atrium actually operates over its
+passive term contributed only 1–3 mmHg. Essentially all of its pressure came
+from the contraction term instead, and two things followed — both visible only
+once the pressures were plotted:
 
-| | Before | After | Physiological |
+| Normal state | Before | After | Test guard |
 |---|--:|--:|---|
-| Normal mean LA pressure | 3.8 mmHg | 7.5 mmHg | 6–12 |
-| Normal LA trough | 0.7 mmHg | 4.8 mmHg | 2–6 |
-| Normal v-wave | 5.6 mmHg | 12.1 mmHg | taller than the a-wave |
-| Normal a-wave | 11.4 mmHg | 8.0 mmHg | shorter than the v-wave |
-| Normal LVEDP − mean LAP | 4.8 mmHg | −0.3 mmHg | ≈ 0 |
-| Normal mean pulmonary venous | 6.3 mmHg | 9.9 mmHg | 6–12 |
+| LV end-diastolic pressure | 8.6 mmHg | 7.2 mmHg | 6–10 |
+| Mean left atrial pressure | 3.8 mmHg | 7.5 mmHg | 6–12 |
+| Mean pulmonary venous pressure | 6.3 mmHg | 9.9 mmHg | 6–13 |
+| Atrial trough | 0.7 mmHg | 4.8 mmHg | above zero |
+| v-wave, above the trough | +4.9 mmHg | +7.3 mmHg | a real excursion |
+| a-wave, above the trough | +11.1 mmHg | +3.2 mmHg | a real excursion |
 
-The a-wave being taller than the v-wave is backwards for the left atrium, and it
-was a symptom of the same cause: with a near-infinitely compliant atrium,
-filling it from the pulmonary veins against a shut mitral valve barely raises its
-pressure, so no v-wave forms. The mean-LAP-below-LVEDP gap is the same defect
-seen from the other side — and it is what left the pulmonary circulation only
-loosely coupled to the ventricle it is supposed to be backing up behind.
+First, the v-wave — the atrium filling from the pulmonary veins against a shut
+mitral valve — barely registered, because filling a near-incompressible-pressure
+reservoir does not raise its pressure. Second, and the reason it mattered here,
+mean atrial pressure sat several mmHg under the ventricle's end-diastolic
+pressure, which left the pulmonary circulation only loosely coupled to the
+ventricle it is supposed to be backing up behind.
 
 **Fix.** `leftAtrium` moved from `{ ees: 0.35, v0: 5, edpvrA: 0.35 }` to
-`{ ees: 0.25, v0: 15, edpvrA: 2.0 }`, putting the passive compliance in the
-10–20 mL/mmHg range. Circulating volume was raised 3 % across the keyframes to
-hold stroke volume where it was after the stiffer atrium redistributed blood out
-of the ventricle. Nothing was offset at the display layer.
+`{ ees: 0.25, v0: 15, edpvrA: 2.0 }`, raising the passive term to roughly
+4–12 mmHg over the same operating volume. Circulating volume was raised 3 %
+across the keyframes to hold stroke volume where it was after the stiffer atrium
+redistributed blood out of the ventricle. Nothing was offset at the display
+layer.
+
+These are **calibration parameters of this lumped model**, not measurements. The
+local slope of the relationship is not a clinical atrial compliance and should
+not be read against one: it is a single exponential fitted to make one
+compartment of a seven-compartment loop produce pressures in the right range,
+with no atrial wall mechanics, no viscoelasticity and no reservoir/conduit/pump
+decomposition behind it.
 
 **Re-verified after the change:** EF (58 → 19 %), stroke volume (68 → 49 mL),
 cardiac output (4.7 → 4.3 L/min), valve opening and closing phases, PV loop
@@ -343,12 +351,45 @@ reserve, and this model varies only some of those. Reworded throughout — panel
 documentation, notes, audit and the test name — to "the simulated HFrEF state
 opens its aortic valve later than the simulated normal one".
 
-The atrial trace is **not** flat: it carries a v-wave and an a-wave, now in the
-right order. What it does not carry is documented in `docs/medical-notes.md` —
-no separable x and y descents, no c-wave, and no dicrotic notch on the arterial
-trace, all consequences of the lumped-parameter approximation.
+The atrial trace is **not** flat: it carries a v-wave during ventricular systole
+and an a-wave in late diastole, each a real excursion above the trough and each
+falling where its mechanism puts it. Which of the two is taller is left as an
+outcome rather than asserted — in real left atria the v-wave usually is, but that
+ordering moves with rate, atrial contractility and loading, and this model is not
+in a position to guarantee it. What the trace does not carry is documented in
+`docs/medical-notes.md` — no separable x and y descents, no c-wave, and no
+dicrotic notch on the arterial trace, all consequences of the lumped-parameter
+approximation.
 
 ### Scope
 
 Model and documentation only. No new features. The UI components, reel sequence
 and amyloid scene were not touched, beyond the panel wording above.
+
+### Follow-up — tightening the claims, not the model
+
+A pass over what the tests and notes were *asserting*, with the recalibration
+itself left alone. Three claims were stronger than the model can support and
+have been withdrawn:
+
+- **`mean LA pressure ≈ LVEDP` as an invariant.** Often true in a healthy heart,
+  and it is why a wedge pressure is a useful proxy — but how close the two run
+  depends on rate, ventricular stiffness and the valve, so it is not something to
+  hold a model to. The two are now range-checked independently, and the coupling
+  is asserted where the valve actually enforces it: a bounded trans-mitral
+  gradient during filling that has closed to under 1 mmHg by valve closure.
+- **`v-wave > a-wave` as a requirement.** Replaced by checks that both waves
+  exist as real excursions, that the v-wave precedes the a-wave, and that the
+  v-wave peaks while the ventricle is ejecting or just after — its mechanism —
+  with the whole trace bounded below by zero and above by arterial systolic.
+- **"physiological atrial compliance is 10–20 mL/mmHg".** Removed. It was also
+  arithmetically wrong for these parameters: the figure came from the slope at
+  the unstressed volume, whereas over the volume the atrium actually operates the
+  exponential has stiffened to a few mL/mmHg. The EDPVR coefficients are
+  described as calibration parameters throughout now, with no clinical compliance
+  claim attached.
+
+Normal-state figures were re-read from the model and made consistent across the
+notes, this audit and the tests: LVEDP **7.2 mmHg**, mean LA pressure **7.5**,
+mean pulmonary venous **9.9**, atrial trough **4.8**, v-wave **12.1**, a-wave
+**8.0**.

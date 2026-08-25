@@ -260,17 +260,21 @@ export const DISCLAIMER_SHORT_JA =
 export const CIRCULATION_CONSTANTS = {
   rightVentricle: { ees: 0.85, v0: 15, edpvrA: 0.35, edpvrB: 0.02 },
   /**
-   * The atrium's passive stiffness matters more than its contractility.
+   * The atrium's passive term matters more than its contractility.
    *
-   * With a very compliant atrium almost all of its pressure comes from the
-   * contraction term, which gives an a-wave and essentially no v-wave, holds
-   * mean atrial pressure well below left ventricular end-diastolic pressure,
-   * and — the reason it mattered here — decouples the pulmonary side from the
-   * ventricle it is supposed to be backing up behind. These values put the
-   * passive compliance in the 10-20 mL/mmHg range instead, which brings mean
-   * atrial pressure up alongside end-diastolic pressure (the relationship that
-   * makes a wedge pressure a useful proxy at all) and makes the v-wave the
-   * larger of the two, as it is in the left atrium.
+   * `edpvrA` used to be 0.35, which over the volume the atrium actually operates
+   * across left the passive term worth only 1-3 mmHg. Almost all of the
+   * atrium's pressure then came from its contraction: the v-wave barely
+   * registered, and mean atrial pressure sat several mmHg under the ventricle's
+   * end-diastolic pressure, which decoupled the pulmonary side from the
+   * ventricle it is supposed to be backing up behind. At 2.0 the passive term
+   * is worth roughly 4-12 mmHg over the same range.
+   *
+   * These are calibration parameters of this lumped model, not measurements.
+   * The local slope of the relationship is not a clinical atrial compliance and
+   * should not be read against one — it is one exponential fitted so that one
+   * compartment of a seven-compartment loop lands in a plausible pressure
+   * range, with no wall mechanics or viscoelasticity behind it.
    */
   leftAtrium: { ees: 0.25, v0: 15, edpvrA: 2.0, edpvrB: 0.035 },
   /** Scale factor of the LV end-diastolic pressure-volume relationship. */
