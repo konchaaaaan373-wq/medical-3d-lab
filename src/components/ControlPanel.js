@@ -20,6 +20,7 @@ export const CAPTURE_PRESETS = [
  *   onResetView: () => void,
  *   onCapture: (preset: typeof CAPTURE_PRESETS[number]) => void,
  *   onStoryToggle: (enabled: boolean) => void,
+ *   onLearn?: () => void,
  * }} options
  */
 export function createControlPanel({
@@ -32,6 +33,7 @@ export function createControlPanel({
   onStoryToggle,
   onCompareToggle,
   onReel,
+  onLearn,
 }) {
   const slider = el('input', {
     class: 'slider',
@@ -68,6 +70,12 @@ export function createControlPanel({
     compareButton.element.title = meta.comparison?.hint ?? 'Compare with a normal state';
   }
 
+  // Only scenes that ship guided lessons get the button.
+  const learnButton = onLearn
+    ? button('learn', [meta.learning?.label ?? 'Learn', meta.learning?.labelJa ?? '学ぶ'], onLearn)
+    : null;
+  if (learnButton) learnButton.element.title = meta.learning?.hint ?? 'Guided lesson';
+
   // Only scenes that ship a social sequence get the button.
   const reelButton = onReel
     ? button('reel', [meta.reel?.label ?? 'Reel', meta.reel?.labelJa ?? 'リール'], onReel)
@@ -94,6 +102,7 @@ export function createControlPanel({
       button('frame', ['View', '視点'], onResetView).element,
       storyButton.element,
       compareButton?.element,
+      learnButton?.element,
       reelButton?.element,
       capture.element,
     ]),

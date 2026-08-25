@@ -48,6 +48,10 @@ export const ICONS = {
   reel: icon(
     '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 3.5v9l7-4.5z"/>'
   ),
+  // A lightbulb: predict, then find out.
+  learn: icon(
+    '<path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zM9.5 19h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1zm.5 2h4a2 2 0 0 1-4 0z"/>'
+  ),
   eye: icon(
     '<path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>'
   ),

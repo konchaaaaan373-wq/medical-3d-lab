@@ -1,6 +1,6 @@
 # Product principles
 
-> **Make invisible physiology visible, interactive, and understandable.**
+> **Make invisible mechanisms of health and disease visible, interactive, and understandable.**
 
 このプロジェクトの設計判断の基準となる文書です。新しいテーマ・新しい機能・
 新しい表現を追加するかどうかは、最終的にここに書かれた原則で決めます。
@@ -27,7 +27,7 @@
 
 ## 1. Mission
 
-**Make invisible physiology visible, interactive, and understandable.**
+**Make invisible mechanisms of health and disease visible, interactive, and understandable.**
 
 ここでの physiology は広く読みます。圧・流量・容積のような生理学だけでなく、
 リモデリングのような形態変化、Aβ 凝集のような分子・病理過程も含みます。
@@ -323,7 +323,7 @@ getState()            // その瞬間の医学 state
 getMetrics()          // 読み取りパネル          … 実装済み
 getStageView()        // ステージ別カメラ        … 実装済み
 getReel()             // SNS シーケンス          … 実装済み
-getLearningModules()  // Educational Module      … 未実装
+getLearningModules()  // Educational Module      … 実装済み
 ```
 
 現在の実装済みフック一覧は [`adding-a-scene.md`](adding-a-scene.md) にあります。
@@ -339,6 +339,10 @@ getLearningModules()  // Educational Module      … 未実装
 | SNS | 「止まって見たくなるか」 |
 | Interactive | 「触ったことで理解が深まるか」 |
 | Educational | 「予測 → 操作 → 説明で概念を理解できるか」 |
+
+教材については、もう 1 つ機械的に確かめられる指標があります:
+**その教材の答えは、モデルから再導出できるか？** できないなら、それは
+モデルについての教材ではなく、モデルの横に置かれた別の主張です。
 
 > **この機能はどの層の、どのユーザー価値を改善するのか？**
 > に答えられない機能は、原則として追加しません。
@@ -362,13 +366,24 @@ preload・afterload / pulmonary congestion overlay / Reel mode。
 simulator** に近い構造です。**この方向性を今後の基準としてください。**
 
 ```text
-SNS          ✓
-Interactive  ✓
-Educational  ← 次
+SNS          ✓  15 秒 Reel
+Interactive  ✓  循環モデル / PV ループ / 圧波形 / 前負荷・後負荷
+Educational  ✓  「後負荷を上げると SV はどう変わる？」
 ```
 
-**新テーマを増やす前に、Heart Failure で 3 層すべてを一度完成させる方針を
-推奨します。**
+**3 層すべてが実物として揃った最初のコンテンツです。**
+
+Educational Module は 1 本だけです。これは意図的で、**1 モジュール = 1 つの
+因果関係**という原則の適用です。PV ループの読み方全部や圧波形の解説を最初から
+教え込むのではなく、`後負荷 ↑ → ESV ↑ → SV ↓` という 1 本の鎖だけを、
+予測 → 操作 → 観察 → 説明 → 応用 で辿らせます。
+
+教材が主張することは**モデルから再導出してテストします**
+（`tests/learning.test.js`）。「SV は減る」という保存された答えも、
+「HFrEF のほうが影響が大きい」という応用問題の答えも、CI がモデルに問い直します。
+物理が変わって教材が成り立たなくなったら、静かに嘘を教えるのではなく
+ビルドが落ちます。**これが Educational 層がモデルを fork しないということの
+実装上の意味です。**
 
 ### Amyloid-β — time-dependent molecular / pathological process
 

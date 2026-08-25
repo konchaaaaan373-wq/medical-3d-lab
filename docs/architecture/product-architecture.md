@@ -82,7 +82,7 @@ Reel が「うっ血ビートを目立たせたい」ときに動かしてよい
 | metrics | `components/MetricsPanel.js` `LabelLayer.js` |
 | presentation | `app/framing.js` `Viewer.js` / Scene の `set*Emphasis()` |
 | Reel | `app/ReelMode.js` + Scene の `getReel()` |
-| Learning | 未実装（`getLearningModules()` を想定） |
+| Learning | `components/LearningPanel.js` + Scene の `getLearningModules()` |
 
 ---
 
@@ -98,3 +98,22 @@ Reel が「うっ血ビートを目立たせたい」ときに動かしてよい
 4 に該当する場合は、Scene 側に**汎用フック**を足してから使ってください。
 `setCardiacPhaseDriven()` がその例です — Reel 専用ロジックではなく
 「位相を外部から駆動できる」という一般的な能力として実装されています。
+
+## Learning 層が model を fork しないということ
+
+Educational Module は、モデルへの privileged path を持ちません。
+
+- スライダーと**同じ** `setModelControl()` / `setProgress()` を通して操作する
+- 数値は**同じ** `getMetrics()` から読む。教材専用の計算はしない
+- 応用問題の「どちらが大きいか」は、教材が**その場でモデルを 2 回解いて測る**。
+  文章に書いた値ではない
+
+そのうえで、教材が保存している「正解」は `tests/learning.test.js` が
+**モデルから再導出して照合**します。教材はモデルについての主張なので、
+その主張は CI で検証できなければなりません。
+
+```text
+lesson copy  ──asserts──▶  model behaviour
+      ▲                          │
+      └────── CI re-derives ─────┘
+```

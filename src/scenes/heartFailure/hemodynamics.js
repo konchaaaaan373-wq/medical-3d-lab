@@ -133,6 +133,13 @@ export function sampleHemodynamics(progress, options = {}) {
     endDiastolicPressureMmHg: cycle.endDiastolicPressure,
     meanArterialPressureMmHg: cycle.meanArterialPressure,
     systolicPressureMmHg: cycle.systolicArterialPressure,
+    /**
+     * Peak pressure inside the ventricle, which is what the ventricle has to
+     * generate rather than what the artery sees. The two are close while the
+     * valve is open and diverge as afterload rises, which is the point of the
+     * afterload lesson.
+     */
+    peakVentricularPressureMmHg: cycle.peakSystolicPressure,
     diastolicPressureMmHg: cycle.diastolicArterialPressure,
     meanAtrialPressureMmHg: cycle.meanAtrialPressure,
     meanPulmonaryVenousPressureMmHg: cycle.meanPulmonaryVenousPressure,

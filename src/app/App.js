@@ -14,6 +14,7 @@ import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
 import { createPressureWavePanel } from '../components/PressureWavePanel.js';
 import { createModelControls } from '../components/ModelControls.js';
+import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
@@ -85,6 +86,7 @@ export async function createApp({ stage, ui }) {
     onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
+    onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
     onStoryToggle: (enabled) => {
       playback.holdsEnabled = enabled;
       // Turning story mode on should immediately frame the current stage.
@@ -133,6 +135,24 @@ export async function createApp({ stage, ui }) {
       })
     : null;
 
+  // Optional: a scene that ships guided lessons gets a Learn button. The lesson
+  // drives the model through the same setters the sliders use — it has no
+  // private path into the medical model, by design.
+  const learningPanel = scene.getLearningModules
+    ? createLearningPanel({
+        module: scene.getLearningModules()[0],
+        setProgress: (value) => seek(value),
+        setControl: (id, value) => {
+          scene.setModelControl(id, value);
+          modelControls?.sync(scene.getModelControls());
+          refreshModelReadouts();
+        },
+        readMetrics: () => scene.getMetrics(),
+        readControls: () => scene.getModelControls(),
+        onExit: () => setLearning(false),
+      })
+    : null;
+
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
     if (metricsPanel) metricsPanel.update(scene.getMetrics());
@@ -175,7 +195,11 @@ export async function createApp({ stage, ui }) {
         el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
       ]),
     ]),
-    el('div', { class: 'panel console' }, [stageReadout.element, controlPanel.element]),
+    el('div', { class: 'panel console' }, [
+      stageReadout.element,
+      learningPanel?.element,
+      controlPanel.element,
+    ]),
     labels.element
   );
 
@@ -257,6 +281,10 @@ export async function createApp({ stage, ui }) {
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
     scene.update(dt, elapsed);
+    if (learning) {
+      learningPanel.tick();
+      metricsPanel?.highlight(learningPanel.watched);
+    }
     // Both plots carry a cursor that tracks the beating heart, so they are
     // redrawn every frame — from a single read of the model.
     if (pvPanel && !reelMode?.active) {
@@ -303,6 +331,37 @@ export async function createApp({ stage, ui }) {
       })
     : null;
 
+  let learning = false;
+  /** The interactive session as it was before the lesson took over. */
+  let learningSnapshot = null;
+
+  /**
+   * A lesson parks the model on the state it starts from, so it takes the same
+   * snapshot the reel does and hands everything back on the way out.
+   */
+  function setLearning(enabled) {
+    if (!learningPanel || enabled === learning) return;
+    learning = enabled;
+    ui.classList.toggle('is-learning', enabled);
+    if (enabled) {
+      learningSnapshot = captureSessionState({ playback, viewer, scene, comparing });
+      learningPanel.start();
+    } else {
+      if (learningSnapshot) {
+        restoreSessionState(learningSnapshot, { playback, viewer, scene, setComparison });
+        modelControls?.sync(scene.getModelControls());
+        refreshModelReadouts();
+        view.active = false;
+      }
+      learningSnapshot = null;
+      metricsPanel?.highlight([]);
+    }
+  }
+
+  function toggleLearning() {
+    setLearning(!learning);
+  }
+
   function toggleReel() {
     if (!reelMode) return;
     if (reelMode.active) {
@@ -323,6 +382,7 @@ export async function createApp({ stage, ui }) {
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     exitReel: () => {
       if (reelMode?.active) toggleReel();
+      else if (learning) setLearning(false);
     },
   });
 
@@ -341,7 +401,15 @@ export async function createApp({ stage, ui }) {
   });
 
   // Exposed for debugging and for automated screenshots.
-  window.__app = { viewer, scene, playback, setComparison, isComparing: () => comparing, reel: reelMode };
+  window.__app = {
+    viewer,
+    scene,
+    playback,
+    setComparison,
+    isComparing: () => comparing,
+    reel: reelMode,
+    learning: learningPanel ? { panel: learningPanel, set: setLearning, isActive: () => learning } : null,
+  };
   return window.__app;
 }
 

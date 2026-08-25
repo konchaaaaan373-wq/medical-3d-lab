@@ -170,6 +170,109 @@ export const PRESSURE_WAVE_LABEL = {
   labelJa: '1 拍の圧波形',
 };
 
+/** Button that opens the guided lessons. */
+export const LEARNING_LABEL = {
+  label: 'Learn',
+  labelJa: '学ぶ',
+  hint: 'Guided lesson — predict, then test it on the model',
+};
+
+/**
+ * Guided lessons.
+ *
+ * **One module teaches one causal relationship.** Not the whole pressure-volume
+ * loop, not how to read a pressure waveform — one chain of cause and effect that
+ * the learner predicts first and then tests against the model.
+ *
+ * The copy lives here; the numbers do not. Every figure a lesson shows is read
+ * from the circulation model at the moment it runs, and `answer` is checked
+ * against the model in the test suite — so a lesson cannot drift away from the
+ * thing it is teaching about.
+ */
+export const LEARNING_MODULES = [
+  {
+    id: 'afterload-and-stroke-volume',
+    title: 'Afterload and stroke volume',
+    titleJa: '後負荷と 1 回拍出量',
+    /** Where the model starts. Restored to the viewer's own state on exit. */
+    setup: { progress: 0, preload: 1, afterload: 1 },
+
+    question: {
+      text: 'If afterload rises, what happens to stroke volume?',
+      textJa: 'Afterload（後負荷）を上げると、Stroke Volume はどうなりますか？',
+      options: [
+        { id: 'up', label: '↑  Increases', labelJa: '↑  増える' },
+        { id: 'same', label: '→  Unchanged', labelJa: '→  変わらない' },
+        { id: 'down', label: '↓  Decreases', labelJa: '↓  減る' },
+      ],
+      answer: 'down',
+    },
+
+    manipulation: {
+      control: 'afterload',
+      to: 1.3,
+      seconds: 1.4,
+      text: 'Raise afterload by 30 % and watch everything move together.',
+      textJa: 'Afterload を +30 % にして、同時に何が動くかを見てください。',
+      action: 'Raise afterload +30 %',
+      actionJa: 'Afterload を +30 % にする',
+      hint: 'You can also drag the afterload slider yourself.',
+      hintJa: '左の Afterload スライダーを自分で動かしても構いません。',
+    },
+
+    /** Metric ids to show before and after, and to highlight in the read-out. */
+    watch: ['esv', 'sv', 'lvp'],
+    observation: {
+      text: 'Three things changed.',
+      textJa: '変化したのは次の 3 つです。',
+    },
+
+    explanation: {
+      text:
+        'A higher afterload means the ventricle must generate a higher pressure before ' +
+        'the aortic valve opens. With contractility unchanged, it cannot empty as far — ' +
+        'more blood stays behind at end-systole, and stroke volume falls.',
+      textJa:
+        '後負荷が上がると、大動脈弁が開くまでに心室が発生しなければならない圧が高くなります。' +
+        '収縮性が同じままなら、そこまで小さくなれません。収縮末期に残る血液（ESV）が増え、' +
+        '1 回拍出量（SV）が減ります。',
+      footnote:
+        'Stroke volume falls by less than end-systolic volume gains, because ' +
+        'end-diastolic volume rises a little at the same time.',
+      footnoteJa:
+        'SV の減少は ESV の増加より小さくなります。同時に EDV もわずかに増えるためです。',
+    },
+
+    transfer: {
+      /** Same manipulation, run on the HFrEF state. */
+      atStage: 'systolic-dysfunction',
+      text: 'In HFrEF, is the effect of the same rise in afterload larger or smaller?',
+      textJa: 'HFrEF では、同じ afterload 上昇の影響は Normal より大きい？ 小さい？',
+      options: [
+        { id: 'larger', label: 'Larger', labelJa: '大きい' },
+        { id: 'same', label: 'About the same', labelJa: '同じくらい' },
+        { id: 'smaller', label: 'Smaller', labelJa: '小さい' },
+      ],
+      answer: 'larger',
+      explanation: {
+        text:
+          'The weaker the ventricle, the more of its stroke volume the same rise in ' +
+          'afterload costs. Nothing in the model encodes this — it follows from a ' +
+          'lower end-systolic elastance.',
+        textJa:
+          '収縮性（Ees）が低い心室ほど、同じ後負荷上昇で失う 1 回拍出量の割合が大きくなります。' +
+          'これはモデルに書き込まれた挙動ではなく、Ees が低いことから出てくる帰結です。',
+      },
+    },
+
+    /** Shown when the lesson ends, to send the learner back to exploring. */
+    outro: {
+      text: 'Try the preload slider next, and watch which way filling pressure goes.',
+      textJa: '次は Preload スライダーを動かして、充満圧がどちらに動くか見てみてください。',
+    },
+  },
+];
+
 export const REEL_LABEL = {
   label: 'Reel',
   labelJa: 'リール',

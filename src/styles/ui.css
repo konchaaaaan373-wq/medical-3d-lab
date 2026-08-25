@@ -238,6 +238,41 @@
   color: var(--accent);
 }
 
+/* A guided lesson asking the learner to watch these rows. Presentation only. */
+.metrics.is-focused .metric:not(.is-watched) {
+  display: none;
+}
+
+/*
+ * Higher specificity than the phone rule that normally keeps only the headline
+ * figures: while a lesson names rows, those are the rows worth the space, and
+ * the headline ones are not what the lesson is about.
+ */
+.metrics.is-focused .metric.is-watched {
+  display: flex;
+}
+
+.metric.is-watched {
+  position: relative;
+}
+
+.metric.is-watched .metric-label,
+.metric.is-watched .metric-value {
+  color: var(--accent);
+}
+
+.metric.is-watched::before {
+  content: '';
+  position: absolute;
+  left: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 70%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
 /* ---------- pressure-volume loop ---------- */
 .pv {
   padding: 9px 11px 8px;
@@ -366,6 +401,297 @@
   height: 6px;
   border-top: 0;
   background: rgba(255, 150, 168, 0.28);
+}
+
+/* ---------- guided lesson ---------- */
+#ui.is-learning .stage-track,
+#ui.is-learning .stage-heading,
+#ui.is-learning .stage-summary,
+#ui.is-learning .stage-summary-ja {
+  display: none;
+}
+
+.learn {
+  display: none;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
+#ui.is-learning .learn {
+  display: block;
+}
+
+.learn-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.learn-title {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.learn-dots {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.learn-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.learn-dot.is-done {
+  background: var(--ink-faint);
+}
+
+.learn-dot.is-current {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.learn-close {
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+.learn-close:hover {
+  color: var(--ink);
+}
+
+.learn-kicker {
+  display: flex;
+  flex-direction: column;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.learn-prompt {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.learn-text {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.learn-hint {
+  margin: 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.learn-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.learn-choice {
+  flex: 1 1 140px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.learn-choice:hover {
+  border-color: var(--accent);
+  background: rgba(56, 225, 239, 0.09);
+}
+
+.learn-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.learn-action {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 0;
+  background: var(--accent);
+  color: #04121a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.learn-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Before → after for the rows the lesson is about. */
+.learn-table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.learn-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 5px 9px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.learn-row-label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--ink-dim);
+}
+
+.learn-row-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.learn-was {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.learn-arrow {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.learn-row.is-up .learn-arrow,
+.learn-row.is-up .learn-now {
+  color: #ff96a8;
+}
+
+.learn-row.is-down .learn-arrow,
+.learn-row.is-down .learn-now {
+  color: #7fd4ff;
+}
+
+.learn-now {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.learn-unit {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+.learn-drop {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff96a8;
+  margin-left: 4px;
+}
+
+.learn-verdict {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.learn-verdict.is-right {
+  color: var(--accent);
+}
+
+.learn-verdict.is-wrong {
+  color: #ffc48c;
+}
+
+.learn-nav {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.learn-nav-btn {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.learn-nav-btn:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+.learn-nav-btn.primary {
+  margin-left: auto;
+  border-color: transparent;
+  background: var(--accent);
+  color: #04121a;
 }
 
 /* ---------- loading-condition sliders ---------- */
@@ -860,6 +1186,10 @@
 #ui[data-lang='both'] .metric-figure .lang-ja,
 #ui[data-lang='both'] .scene-pill .lang-ja,
 #ui[data-lang='both'] .btn-label.lang-ja,
+#ui[data-lang='both'] .learn-kicker .lang-ja,
+#ui[data-lang='both'] .learn-nav-btn .lang-ja,
+#ui[data-lang='both'] .learn-action .lang-ja,
+#ui[data-lang='both'] .learn-choice .lang-en,
 #ui[data-lang='both'] .model-control-reset .lang-ja,
 #ui[data-lang='both'] .pv-key-item .lang-ja,
 #ui[data-lang='both'] .wave-key-item .lang-ja,

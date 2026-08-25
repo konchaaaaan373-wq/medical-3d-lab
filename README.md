@@ -1,6 +1,6 @@
 # medical-3d-lab
 
-> **Make invisible physiology visible, interactive, and understandable.**
+> **Make invisible mechanisms of health and disease visible, interactive, and understandable.**
 >
 > 見えない病態生理を、3D で動かし、触って理解する。
 
@@ -24,11 +24,13 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 心不全は **reference implementation** です。閉ループの循環モデル・PV ループ・
 圧波形・前負荷/後負荷スライダーまで実装されており、単なる 3D heart viewer では
 なく interactive cardiovascular physiology simulator に近い構造になっています。
+`Learn` ボタンから、**「後負荷を上げると SV はどう変わる？」** を予測して
+自分で確かめるガイド付き教材も 1 本試せます。
 
 コンテンツは 3 層で考えます。**SNS** で興味を持たせ（15 秒・入口）、
 **Interactive Web** で理解させ（中核）、**Educational Module** で定着させる
-（予測 → 操作 → 説明・未実装）。3 層は同じ医学モデルを共有し、層ごとに別の
-数値を持つことはありません。
+（予測 → 操作 → 観察 → 説明 → 応用）。3 層は同じ医学モデルを共有し、層ごとに別の
+数値を持つことはありません。心不全では 3 層すべてが揃っています。
 
 ---
 
@@ -77,6 +79,8 @@ EF / EDV / ESV / SV / CO / 左室拡張末期圧 / 肺静脈圧 / 動脈圧は
 - **圧波形**（心不全）：同じ 1 拍の左室圧・大動脈圧・左房圧。弁が開く瞬間と
   等容性収縮期の長さが目で追えます
 - **前負荷 / 後負荷スライダー**（心不全）：循環を解き直し、数値もループも同時に動きます
+- **ガイド付き教材**（心不全）：予測 → 操作 → 観察 → 説明 → 応用。
+  1 モジュール = 1 つの因果関係。答えはモデルから計算されます
 - **SNS / Reel モード**（心不全）：15秒の自動再生。そのまま画面録画すれば投稿できます
 - **PNG 書き出し**（現在の画面 / 4:5 / 1:1 / 16:9 を実サイズでレンダリング）と
   **UI 非表示モード** — SNS 投稿・動画素材づくり向け
@@ -133,6 +137,7 @@ Netlify などの静的ホスティングに置けます（すべて無料枠で
 | Reel ボタン / `Esc` で終了 | SNS / Reel モード（対応シーンのみ表示） |
 | PNG ボタン | 書き出しサイズを選んで画像として保存 |
 | 前負荷 / 後負荷スライダー | 循環モデルの負荷条件を変更（対応シーンのみ表示） |
+| Learn ボタン / `Esc` で終了 | ガイド付き教材（対応シーンのみ表示） |
 | 言語ボタン（右上） | 日英併記 / 日本語 / English を切替（設定は保存されます） |
 
 ---
@@ -272,9 +277,12 @@ SNS → Interactive → Educational が成立しているほうを高く評価�
 Module を足して 3 層を一度完成させること**です。
 
 ```text
-Heart Failure    SNS ✓   Interactive ✓   Educational ← 次
+Heart Failure    SNS ✓   Interactive ✓   Educational ✓
 Amyloid-β        SNS —   Interactive ✓   Educational —
 ```
+
+心不全で 3 層が実物として揃いました。次は教材を増やすか、新テーマに移るかの
+判断になります。
 
 新しいテーマを検討するときは、まず
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) の

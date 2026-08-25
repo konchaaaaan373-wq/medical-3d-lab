@@ -32,6 +32,8 @@ import {
   COMPARISON_ANNOTATIONS,
   COMPARISON_LABEL,
   REEL_LABEL,
+  LEARNING_LABEL,
+  LEARNING_MODULES,
   PRESSURE_VOLUME_LABEL,
   PRESSURE_WAVE_LABEL,
   DISCLAIMER,
@@ -104,6 +106,7 @@ export class HeartFailureScene {
     progressLabel: PROGRESS_LABEL,
     comparison: COMPARISON_LABEL,
     reel: REEL_LABEL,
+    learning: LEARNING_LABEL,
     pressureVolume: PRESSURE_VOLUME_LABEL,
     pressureWave: PRESSURE_WAVE_LABEL,
     palette: PALETTE,
@@ -287,6 +290,7 @@ export class HeartFailureScene {
       endDiastolicPressureMmHg,
       systolicPressureMmHg,
       diastolicPressureMmHg,
+      peakVentricularPressureMmHg,
       meanPulmonaryVenousPressureMmHg,
     } = this.state;
     // While comparing, each row also carries the healthy value it is measured
@@ -338,6 +342,17 @@ export class HeartFailureScene {
         labelJa: '動脈圧',
         value: `${mmHg(systolicPressureMmHg)}/${mmHg(diastolicPressureMmHg)}`,
         reference: ref ? `${mmHg(ref.systolicPressureMmHg)}/${mmHg(ref.diastolicPressureMmHg)}` : undefined,
+        unit: 'mmHg',
+      },
+      {
+        id: 'lvp',
+        // What the ventricle has to generate, as opposed to what the artery
+        // sees. The two track each other while the valve is open and separate
+        // as afterload rises, which is what the afterload lesson is about.
+        label: 'LV peak systolic pressure',
+        labelJa: '左室収縮期最高圧',
+        value: mmHg(peakVentricularPressureMmHg),
+        reference: ref ? mmHg(ref.peakVentricularPressureMmHg) : undefined,
         unit: 'mmHg',
       },
       {
@@ -511,6 +526,27 @@ export class HeartFailureScene {
       congestionEmphasisAt,
       overlayAt,
     };
+  }
+
+  /**
+   * Guided lessons for this scene.
+   *
+   * Pure data: what to ask, what to move, what to watch. The lesson never
+   * touches the model itself — it goes back through `setModelControl` and
+   * `setProgress` like any other control, and reads its figures out of
+   * `getMetrics()`. So a lesson cannot show a number the rest of the UI
+   * disagrees with, and cannot teach a relationship the model does not have.
+   */
+  getLearningModules() {
+    return LEARNING_MODULES.map((module) => ({
+      ...module,
+      transfer: {
+        ...module.transfer,
+        // Resolved here rather than written into the data, so the lesson stays
+        // pointed at the right state if the stage boundaries ever move.
+        progress: STAGES.find((stage) => stage.id === module.transfer.atStage).at,
+      },
+    }));
   }
 
   /**

@@ -163,6 +163,7 @@ export class HeartFailureScene {
 | `getReel()` | 15 秒の SNS シーケンス。実装したシーンだけ `Reel` ボタンが出ます |
 | `getPressureVolume()` | 圧-容積ループのパネルが出ます（後述） |
 | `getModelControls()` / `setModelControl(id, value)` / `resetModelControls()` | モデルの入力を動かすスライダー群。3 つ揃って実装します |
+| `getLearningModules()` | ガイド付き教材。実装したシーンだけ `Learn` ボタンが出ます（後述） |
 | `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
 
 `getMetrics()` は次の形式の配列を返します。
@@ -197,6 +198,26 @@ getModelControls() {
 設定した値は `sessionState.js` がスナップショットに含めるので、Reel モードに
 入って戻ってきても viewer の設定は失われません。Reel 中は
 `resetModelControls()` が呼ばれ、動画は常にモデルどおりの状態を写します。
+
+### ガイド付き教材（Educational Module）
+
+`getLearningModules()` は教材の定義を**データとして**返します。パネル
+（`components/LearningPanel.js`）は生理学を一切知らず、渡された定義に従って
+予測 → 操作 → 観察 → 説明 → 応用 を進めるだけです。
+
+**教材はモデルへの近道を持ちません。**
+
+- 操作はスライダーと同じ `setModelControl()` / `setProgress()` を通す
+- 数値は同じ `getMetrics()` から読む。教材専用の計算をしない
+- 「どちらが大きいか」のような比較は、その場でモデルを解いて**測る**
+
+そして **教材が保存している「正解」は、テストがモデルから再導出して照合します**
+（`tests/learning.test.js`）。教材はモデルについての主張なので、その主張は CI で
+検証できなければなりません。物理を変えて教材が成り立たなくなったら、
+静かに誤ったことを教えるのではなくビルドが落ちます。
+
+**1 モジュール = 1 つの因果関係。** グラフの読み方を全部教えようとしないでください。
+教材が実行中は、数値パネルも `watch` に挙げた行だけに絞られます。
 
 ### 圧-容積ループなどのグラフ
 

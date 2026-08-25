@@ -13,6 +13,20 @@ export function createMetricsPanel() {
 
   return {
     element,
+    /**
+     * Rows a guided lesson is asking the learner to watch.
+     *
+     * Presentation only — it changes nothing about what any row says. While a
+     * lesson names rows, the others are hidden rather than merely dimmed: one
+     * lesson teaches one relationship, and eleven numbers on screen is not that.
+     *
+     * @param {string[]} ids empty to go back to showing everything
+     */
+    highlight(ids) {
+      const wanted = new Set(ids);
+      for (const [id, row] of rows) row.node.classList.toggle('is-watched', wanted.has(id));
+      element.classList.toggle('is-focused', wanted.size > 0);
+    },
     /** @param {{id:string,label:string,labelJa:string,value:number|string,unit:string,emphasis?:boolean}[]} metrics */
     update(metrics) {
       for (const metric of metrics) {
@@ -35,7 +49,7 @@ export function createMetricsPanel() {
             el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit]),
           ]);
           element.append(node);
-          row = { value, valueJa, reference, unit };
+          row = { value, valueJa, reference, unit, node };
           rows.set(metric.id, row);
         }
         row.value.textContent = String(metric.value);
