@@ -440,11 +440,11 @@ test('a normal state and a failing state land where the reviewed illustration sa
   // means the illustration moved and needs looking at again, not that a number
   // needs editing.
   const expected = [
-    { at: 0, ef: [0.55, 0.62], edv: [112, 132], lvedp: [5, 12], pvp: [4, 9] },
-    { at: 0.18, ef: [0.55, 0.65], edv: [106, 126], lvedp: [12, 20], pvp: [6, 13] },
-    { at: 0.42, ef: [0.33, 0.44], edv: [162, 190], lvedp: [17, 26], pvp: [10, 17] },
-    { at: 0.64, ef: [0.23, 0.33], edv: [198, 226], lvedp: [24, 32], pvp: [15, 23] },
-    { at: 1, ef: [0.15, 0.25], edv: [240, 270], lvedp: [30, 39], pvp: [22, 31] },
+    { at: 0, ef: [0.55, 0.62], edv: [108, 126], lvedp: [6, 10], pvp: [7, 13] },
+    { at: 0.18, ef: [0.55, 0.65], edv: [100, 118], lvedp: [9, 15], pvp: [11, 18] },
+    { at: 0.42, ef: [0.33, 0.44], edv: [154, 178], lvedp: [14, 21], pvp: [15, 22] },
+    { at: 0.64, ef: [0.23, 0.33], edv: [192, 216], lvedp: [19, 27], pvp: [20, 28] },
+    { at: 1, ef: [0.15, 0.25], edv: [238, 264], lvedp: [28, 37], pvp: [27, 35] },
   ];
   for (const row of expected) {
     const h = sampleHemodynamics(row.at);
@@ -551,12 +551,12 @@ test('congestion is read from pressure, against fixed landmarks', () => {
   // only place a judgement is made — and they are the clinical landmarks, not a
   // level tied to a structural stage.
   assert.equal(congestionFromPressure(0).front, 0);
-  assert.equal(congestionFromPressure(10).front, 0);
-  assert.ok(congestionFromPressure(25).front > 0.99);
+  assert.equal(congestionFromPressure(12).front, 0);
+  assert.ok(congestionFromPressure(30).front > 0.99);
   // Interstitial fluid appears only well above the pressure at which the front
   // starts to spread, and never before it.
-  assert.equal(congestionFromPressure(18).fluid, 0);
-  assert.ok(congestionFromPressure(28).fluid > 0.99);
+  assert.equal(congestionFromPressure(22).fluid, 0);
+  assert.ok(congestionFromPressure(32).fluid > 0.99);
   for (let mmHg = 0; mmHg <= 40; mmHg += 0.5) {
     const { front, fluid } = congestionFromPressure(mmHg);
     assert.ok(front >= 0 && front <= 1 && fluid >= 0 && fluid <= 1, `out of range at ${mmHg} mmHg`);
@@ -655,31 +655,192 @@ test('filling is driven by the atrium being at the higher pressure', () => {
   // Not a decorative third line: the mitral valve opens because left atrial
   // pressure exceeds ventricular pressure, and that is what the raised atrial
   // trace in the failing beat is showing.
-  for (const p of [0, 0.85]) {
-    const { waveform } = pressureVolumeCurves(p);
-    const h = sampleHemodynamics(p);
-    let fillingSamples = 0;
-    for (let i = 0; i < waveform.phase.length; i++) {
-      const phase = waveform.phase[i];
-      // Mid-diastole, clear of both isovolumic periods.
-      if (phase < h.ejectionEndPhase + 0.2 || phase > 0.9) continue;
-      fillingSamples++;
-      assert.ok(
-        waveform.atrial[i] >= waveform.ventricular[i] - 0.5,
-        `the atrium should not be below the ventricle while filling, at ${phase} (progress ${p})`
-      );
+  //
+  // Checked against the valve rather than against a stretch of the cycle,
+  // because diastole is not one continuous fill: an early wave, then diastasis
+  // with the valve shut while the atrium refills from the pulmonary veins, then
+  // the atrial kick reopening it. A phase window would have to guess where
+  // those fall; the flow does not.
+  for (const p of [0, 0.42, 0.85, 1]) {
+    const parameters = circulationParameters(p);
+    let open = 0;
+    const inflow = [];
+    walkBeat(solve(p), parameters, 480, ({ phase, pressures, flows }) => {
+      if (flows.mitral > 0) {
+        open++;
+        assert.ok(
+          pressures.la >= pressures.lv,
+          `the atrium must be the higher pressure while the mitral valve is open, at ${phase} (progress ${p})`
+        );
+      }
+      inflow.push(flows.mitral);
+    });
+    assert.ok(open > 40, `the mitral valve should be open for a real part of the beat at ${p}`);
+
+    // Filling is not one smooth ramp: an early wave as the ventricle relaxes,
+    // then the atrial kick. That shows up as inflow rising again after it has
+    // been falling — stated without naming a phase, because where diastasis
+    // lands moves with heart rate and with how stiff the ventricle is.
+    const peak = inflow.indexOf(Math.max(...inflow));
+    let trough = Infinity;
+    let rebound = 0;
+    for (let i = peak; i < inflow.length; i++) {
+      // The largest rise above any preceding low, kept across the whole of
+      // diastole — inflow returns to zero at the end of the beat, so a running
+      // figure that reset at each new low would forget the kick it just saw.
+      trough = Math.min(trough, inflow[i]);
+      rebound = Math.max(rebound, inflow[i] - trough);
     }
-    assert.ok(fillingSamples > 5, `too few filling samples to check at ${p}`);
+    assert.ok(rebound > 5, `the atrial kick should show as a second filling wave at ${p}`);
   }
 });
 
-test('isovolumic contraction lengthens as the ventricle weakens', () => {
-  // A weaker ventricle takes longer to raise its pressure to aortic, so the
-  // aortic valve opens later in the cycle. Nothing sets this; it falls out of
-  // the elastance model, and it is visible as the gap before the shaded band.
+test('the simulated failing state opens its aortic valve later than the normal one', () => {
+  // Along this trajectory a lower end-systolic elastance takes longer to raise
+  // ventricular pressure to aortic, so the valve opens later in the cycle and
+  // the gap before the shaded band grows. Nothing sets this; it falls out of the
+  // elastance model.
+  //
+  // It is a property of these two simulated states, not a general fact about
+  // HFrEF: isovolumic contraction time in real patients also moves with heart
+  // rate, loading, conduction and contractile reserve, and this model varies
+  // only some of those.
   const early = sampleHemodynamics(0).ejectionStartPhase;
   const late = sampleHemodynamics(1).ejectionStartPhase;
-  assert.ok(late > early, 'ejection should begin later once contractility has fallen');
+  assert.ok(late > early, 'ejection should begin later in the simulated failing state');
   // Both still leave most of the cycle for ejection and filling.
   assert.ok(early > 0 && late < 0.2, 'isovolumic contraction should stay a small part of the beat');
+});
+
+// ---------------------------------------------------------------------------
+// Calibration of the low-pressure side.
+//
+// These exist because of a specific defect: a left atrium compliant enough that
+// almost all of its pressure came from its own contraction. That gave an a-wave
+// and essentially no v-wave, held mean atrial pressure several mmHg below left
+// ventricular end-diastolic pressure, and left the pulmonary side only loosely
+// coupled to the ventricle it is meant to be backing up behind.
+// ---------------------------------------------------------------------------
+
+test('the normal state sits in the normal range on the low-pressure side too', () => {
+  const normal = sampleHemodynamics(0);
+  const within = (value, [low, high], label) =>
+    assert.ok(value >= low && value <= high, `${label} = ${value.toFixed(1)} outside [${low}, ${high}]`);
+
+  // A healthy ventricle does not fill at zero pressure. Ranges are the usual
+  // resting ones, deliberately wide: what is being guarded is that the model is
+  // calibrated at all, not that it hits a particular figure.
+  within(normal.endDiastolicPressureMmHg, [6, 10], 'normal LVEDP');
+  within(normal.meanAtrialPressureMmHg, [6, 12], 'normal mean LA pressure');
+  within(normal.meanPulmonaryVenousPressureMmHg, [6, 13], 'normal mean pulmonary venous pressure');
+  within(normal.meanPulmonaryArterialPressureMmHg, [10, 20], 'normal mean pulmonary arterial pressure');
+
+  // Mean atrial pressure tracking end-diastolic pressure is the relationship
+  // that makes a wedge pressure a useful proxy for it. A large gap in either
+  // direction would mean the two are not really connected in the model.
+  assert.ok(
+    Math.abs(normal.meanAtrialPressureMmHg - normal.endDiastolicPressureMmHg) < 3,
+    'mean atrial pressure should sit close to LV end-diastolic pressure in a normal heart'
+  );
+});
+
+test('the left atrial trace has a v-wave, and it is the larger of the two', () => {
+  // In the left atrium the v-wave — the atrium filling from the pulmonary veins
+  // against a shut mitral valve — is normally at least as tall as the a-wave.
+  // A model whose atrium is too compliant produces the opposite, because the
+  // only thing that can raise its pressure is its own contraction.
+  for (const p of [0, 0.85]) {
+    const parameters = circulationParameters(p);
+    const h = sampleHemodynamics(p);
+    let vWave = -Infinity;
+    let aWave = -Infinity;
+    let trough = Infinity;
+    walkBeat(solve(p), parameters, 480, ({ phase, pressures }) => {
+      trough = Math.min(trough, pressures.la);
+      // The v-wave peaks around the end of ejection, the a-wave late in diastole.
+      if (phase > h.ejectionStartPhase && phase < h.ejectionEndPhase + 0.15) {
+        vWave = Math.max(vWave, pressures.la);
+      }
+      if (phase > 0.8) aWave = Math.max(aWave, pressures.la);
+    });
+    assert.ok(vWave > aWave, `the v-wave should be the taller of the two at ${p}`);
+    assert.ok(vWave - trough > 3, `the atrial trace should have real waves, not a flat line, at ${p}`);
+    assert.ok(
+      aWave - trough > 1,
+      `the atrial kick should still be visible in the pressure trace at ${p}`
+    );
+  }
+});
+
+test('the pulmonary side follows left atrial pressure, continuously', () => {
+  // The overlay is driven by mean pulmonary venous pressure rather than by LV
+  // end-diastolic pressure directly, and both of those come out of the same
+  // solution. What must hold is that the chain is actually connected: as
+  // atrial pressure rises, so does the pressure just upstream of it, and so
+  // does the overlay — with no step anywhere.
+  const states = SWEEP.slice().sort((a, b) => a - b).map((p) => ({ p, h: sampleHemodynamics(p) }));
+  let previousLa = -Infinity;
+  let previousPvp = -Infinity;
+  let previousFront = -Infinity;
+  for (const { p, h } of states) {
+    assert.ok(h.meanAtrialPressureMmHg >= previousLa - 0.2, `atrial pressure should not fall back at ${p}`);
+    assert.ok(h.meanPulmonaryVenousPressureMmHg >= previousPvp - 0.2, `pulmonary venous pressure should not fall back at ${p}`);
+    assert.ok(h.congestionLevel >= previousFront - 1e-9, `the overlay should not fall back at ${p}`);
+    // Pressure is transmitted upstream, so the vein is always above the atrium.
+    assert.ok(
+      h.meanPulmonaryVenousPressureMmHg > h.meanAtrialPressureMmHg,
+      `the pulmonary vein must stay above the atrium at ${p}`
+    );
+    previousLa = h.meanAtrialPressureMmHg;
+    previousPvp = h.meanPulmonaryVenousPressureMmHg;
+    previousFront = h.congestionLevel;
+  }
+
+  // The contradiction this is here to prevent: an atrium in the twenties with
+  // nothing happening on the pulmonary side. Any such state must show a
+  // substantial overlay — the overlay hides itself below 0.02.
+  const raised = states.filter(({ h }) => h.meanAtrialPressureMmHg >= 20);
+  assert.ok(raised.length > 0, 'the trajectory should reach a raised atrial pressure at all');
+  for (const { p, h } of raised) {
+    assert.ok(
+      h.congestionLevel > 0.5,
+      `mean LA pressure of ${h.meanAtrialPressureMmHg.toFixed(1)} mmHg must show on the pulmonary side (at ${p})`
+    );
+  }
+  // And the converse: a normal atrium shows nothing at all.
+  assert.equal(sampleHemodynamics(0).congestionLevel, 0);
+  assert.equal(sampleHemodynamics(0).interstitialFluidLevel, 0);
+});
+
+test('the drawn valve events are the ones the flows actually produce', () => {
+  // Both plots mark the same two moments — the shaded ejection band on the
+  // waveform, the corners of the loop — and both take them from the state's
+  // ejection window. That window has to be exactly where the aortic valve is
+  // open, or the picture would be marking something the model did not do.
+  for (const p of [0, 0.42, 0.85, 1]) {
+    const parameters = circulationParameters(p);
+    const h = sampleHemodynamics(p);
+    let firstOpen = null;
+    let lastOpen = null;
+    let openOutside = 0;
+    walkBeat(solve(p), parameters, 480, ({ phase, flows }) => {
+      if (flows.aortic <= 0) {
+        // Nothing may leave the ventricle outside the band that is drawn.
+        return;
+      }
+      if (firstOpen === null) firstOpen = phase;
+      lastOpen = phase;
+      if (phase < h.ejectionStartPhase - 0.01 || phase > h.ejectionEndPhase + 0.01) openOutside++;
+    });
+    assert.equal(openOutside, 0, `the aortic valve is open outside the drawn band at ${p}`);
+    // The solver records the window at its own step size; the check runs at a
+    // finer one, so they agree to within a step rather than exactly.
+    assert.ok(Math.abs(firstOpen - h.ejectionStartPhase) < 0.01, `band starts off the valve at ${p}`);
+    assert.ok(Math.abs(lastOpen - h.ejectionEndPhase) < 0.01, `band ends off the valve at ${p}`);
+    // And the volume the band accounts for is the stroke volume.
+    assert.ok(
+      Math.abs(h.esvMl - cavityVolumeAt(h.ejectionEndPhase, h)) < 0.5,
+      `the end of the band should be end-systolic volume at ${p}`
+    );
+  }
 });

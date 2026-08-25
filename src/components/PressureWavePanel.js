@@ -7,9 +7,10 @@ import { el } from '../utils/dom.js';
  * The loop panel shows what the ventricle did; this shows why it did it. The
  * aortic valve opens where the ventricular trace crosses the arterial one and
  * closes where it falls back through it, so the isovolumic periods are visible
- * as the gaps at either end of the shaded ejection band. In a failing ventricle
- * that band starts later and the atrial line sits higher — both consequences of
- * the mechanics, not annotations.
+ * as the gaps at either end of the shaded ejection band. In the simulated HFrEF
+ * state the band starts later than in the simulated normal one and the atrial
+ * line sits higher — consequences of these particular parameters, not a claim
+ * about what HFrEF does in general.
  *
  * Fed by the same `getPressureVolume()` result as the loop panel, so the two
  * can never disagree about the beat they are showing.

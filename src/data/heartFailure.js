@@ -259,7 +259,20 @@ export const DISCLAIMER_SHORT_JA =
  */
 export const CIRCULATION_CONSTANTS = {
   rightVentricle: { ees: 0.85, v0: 15, edpvrA: 0.35, edpvrB: 0.02 },
-  leftAtrium: { ees: 0.35, v0: 5, edpvrA: 0.35, edpvrB: 0.035 },
+  /**
+   * The atrium's passive stiffness matters more than its contractility.
+   *
+   * With a very compliant atrium almost all of its pressure comes from the
+   * contraction term, which gives an a-wave and essentially no v-wave, holds
+   * mean atrial pressure well below left ventricular end-diastolic pressure,
+   * and — the reason it mattered here — decouples the pulmonary side from the
+   * ventricle it is supposed to be backing up behind. These values put the
+   * passive compliance in the 10-20 mL/mmHg range instead, which brings mean
+   * atrial pressure up alongside end-diastolic pressure (the relationship that
+   * makes a wedge pressure a useful proxy at all) and makes the v-wave the
+   * larger of the two, as it is in the left atrium.
+   */
+  leftAtrium: { ees: 0.25, v0: 15, edpvrA: 2.0, edpvrB: 0.035 },
   /** Scale factor of the LV end-diastolic pressure-volume relationship. */
   lvEdpvrA: 0.4,
   systemicArterialCompliance: 1.1,
@@ -318,7 +331,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 10,
     edpvrB: 0.0277,
     systemicResistance: 1.1,
-    circulatingVolume: 689,
+    circulatingVolume: 710,
     hr: 70,
     wallMm: 9.0,
     longToShortAxisRatio: 1.9,
@@ -331,7 +344,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 8,
     edpvrB: 0.0345,
     systemicResistance: 1.28,
-    circulatingVolume: 767,
+    circulatingVolume: 790,
     hr: 74,
     wallMm: 14.0,
     longToShortAxisRatio: 1.86,
@@ -344,7 +357,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 34,
     edpvrB: 0.0284,
     systemicResistance: 1.18,
-    circulatingVolume: 885,
+    circulatingVolume: 912,
     hr: 76,
     wallMm: 11.6,
     longToShortAxisRatio: 1.6,
@@ -355,7 +368,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 54,
     edpvrB: 0.0272,
     systemicResistance: 1.22,
-    circulatingVolume: 990,
+    circulatingVolume: 1020,
     hr: 82,
     wallMm: 10.4,
     longToShortAxisRatio: 1.45,
@@ -367,7 +380,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 66,
     edpvrB: 0.0252,
     systemicResistance: 1.3,
-    circulatingVolume: 1070,
+    circulatingVolume: 1102,
     hr: 88,
     wallMm: 9.8,
     longToShortAxisRatio: 1.35,
@@ -378,7 +391,7 @@ export const CIRCULATION_KEYFRAMES = [
     v0: 72,
     edpvrB: 0.0246,
     systemicResistance: 1.34,
-    circulatingVolume: 1120,
+    circulatingVolume: 1154,
     hr: 89,
     wallMm: 9.4,
     longToShortAxisRatio: 1.32,
@@ -396,13 +409,18 @@ export const CIRCULATION_KEYFRAMES = [
  * these four numbers are the only judgement left in the overlay — everything
  * else about it is a consequence of the mechanics.
  *
- * They are a rendering map, not a physiological threshold: real patients vary
- * widely in the pressure at which congestion becomes apparent, and chronic
- * heart failure tolerates pressures that would cause oedema acutely.
+ * They are a rendering map, not a physiological threshold, and emphatically not
+ * a quantification of lung water: real patients vary widely in the pressure at
+ * which congestion becomes apparent, chronic heart failure tolerates pressures
+ * that would cause oedema acutely, and how much fluid actually crosses into the
+ * interstitium depends on capillary permeability, oncotic pressure and lymphatic
+ * clearance — none of which this model has. What the mapping is for is that the
+ * overlay rises and falls *with* a pressure the model solved, rather than with a
+ * number someone typed next to a stage.
  */
 export const CONGESTION_PRESSURE = {
-  frontFrom: 10,
-  frontTo: 25,
-  interstitialFluidFrom: 20,
-  interstitialFluidTo: 28,
+  frontFrom: 12,
+  frontTo: 30,
+  interstitialFluidFrom: 22,
+  interstitialFluidTo: 32,
 };

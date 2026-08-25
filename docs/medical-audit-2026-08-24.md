@@ -199,8 +199,13 @@ rate — and every haemodynamic figure is an integration result.
 (raising preload raises EDV and stroke volume, and filling pressure with them);
 afterload sensitivity, and that it is *greater* in a ventricle with a low Ees;
 that a falling Ees lowers EF with the rest of the circulation held still; that
-isovolumic contraction lengthens as contractility falls. None of these are
-encoded — each is a consequence, and each has a test.
+the simulated failing state opens its aortic valve later than the simulated
+normal one, visible as a longer gap before the shaded ejection band. None of
+these are encoded — each is a consequence, and each has a test. That last one is
+a statement about these two simulated states rather than about HFrEF in general:
+isovolumic contraction time in real patients also moves with heart rate,
+loading, conduction and contractile reserve, and this model varies only some of
+those.
 
 **What has not changed.** Every medical constraint recorded in this audit still
 holds and is still enforced by tests: pulmonary congestion remains a
@@ -213,14 +218,14 @@ model to within the ranges recorded in `tests/hemodynamics.test.js`.
 
 **The trajectory the model now produces**
 
-| Stage | EDV | ESV | SV | EF | HR | CO | LVEDP | Mean PVP | BP | ED wall | RWT |
-|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
-| Normal | 122 mL | 51 mL | 71 mL | 58 % | 70 | 5.0 L/min | 9 mmHg | 6 mmHg | 113/70 | 9.0 mm | 0.36 |
-| Concentric hypertrophy | 116 mL | 46 mL | 69 mL | 60 % | 74 | 5.1 L/min | 16 mmHg | 9 mmHg | 130/88 | 14.0 mm | 0.57 |
-| LV dilation | 175 mL | 108 mL | 67 mL | 38 % | 76 | 5.1 L/min | 21 mmHg | 13 mmHg | 121/80 | 11.6 mm | 0.39 |
-| Systolic dysfunction (HFrEF) | 211 mL | 152 mL | 59 mL | 28 % | 82 | 4.8 L/min | 28 mmHg | 19 mmHg | 119/82 | 10.4 mm | 0.32 |
-| (congestion overlay high) | 241 mL | 189 mL | 52 mL | 22 % | 88 | 4.6 L/min | 32 mmHg | 24 mmHg | 118/85 | 9.8 mm | 0.28 |
-| (slider end) | 254 mL | 204 mL | 50 mL | 20 % | 89 | 4.4 L/min | 35 mmHg | 27 mmHg | 117/85 | 9.4 mm | 0.26 |
+| Stage | EDV | ESV | SV | EF | HR | CO | LVEDP | Mean LAP | Mean PVP | BP | ED wall | RWT |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Normal | 116 mL | 49 mL | 68 mL | 58 % | 70 | 4.7 L/min | 7 mmHg | 7 mmHg | 10 mmHg | 107/67 | 9.0 mm | 0.37 |
+| Concentric hypertrophy | 107 mL | 44 mL | 64 mL | 59 % | 74 | 4.7 L/min | 12 mmHg | 12 mmHg | 14 mmHg | 120/81 | 14.0 mm | 0.58 |
+| LV dilation | 165 mL | 103 mL | 62 mL | 38 % | 76 | 4.7 L/min | 17 mmHg | 16 mmHg | 19 mmHg | 113/75 | 11.6 mm | 0.40 |
+| Systolic dysfunction (HFrEF) | 203 mL | 147 mL | 56 mL | 28 % | 82 | 4.6 L/min | 23 mmHg | 22 mmHg | 24 mmHg | 113/78 | 10.4 mm | 0.32 |
+| (congestion overlay high) | 236 mL | 185 mL | 51 mL | 21 % | 88 | 4.5 L/min | 29 mmHg | 26 mmHg | 28 mmHg | 115/82 | 9.8 mm | 0.28 |
+| (slider end) | 251 mL | 202 mL | 49 mL | 19 % | 89 | 4.3 L/min | 32 mmHg | 29 mmHg | 31 mmHg | 115/84 | 9.4 mm | 0.26 |
 
 Every column except HR, ED wall and RWT is now solved rather than tabulated;
 heart rate, wall thickness and the cavity axis ratio remain prescribed inputs
@@ -257,3 +262,93 @@ output declines, and the filling pressures are new.
   resistance are prescribed along the trajectory rather than regulated. There is
   no baroreflex, no RAAS, no exercise reserve — so the model still cannot show
   *why* a patient is symptomatic.
+
+
+---
+
+## Addendum — 2026-08-25 (second pass): calibrating the low-pressure side
+
+A consistency audit after the pressure-waveform panel went in. Plotting the
+pressures made a defect visible that the read-out had hidden: on the waveform,
+the whole left-atrial trace and the normal ventricle's diastolic pressure sat on
+the floor of the axis.
+
+### Finding 1 — the left atrium was far too compliant
+
+**Not** the reported LVEDP, which was already 8.6 mmHg and inside the normal
+6–12 range. The defect was one compartment upstream.
+
+The atrium's end-diastolic pressure–volume relationship gave it a passive
+compliance of 20–80 mL/mmHg across its operating volume (physiological ≈ 10–20),
+so its passive pressure never exceeded about 2.5 mmHg and essentially all of its
+pressure came from the contraction term. Three consequences, all visible once
+plotted:
+
+| | Before | After | Physiological |
+|---|--:|--:|---|
+| Normal mean LA pressure | 3.8 mmHg | 7.5 mmHg | 6–12 |
+| Normal LA trough | 0.7 mmHg | 4.8 mmHg | 2–6 |
+| Normal v-wave | 5.6 mmHg | 12.1 mmHg | taller than the a-wave |
+| Normal a-wave | 11.4 mmHg | 8.0 mmHg | shorter than the v-wave |
+| Normal LVEDP − mean LAP | 4.8 mmHg | −0.3 mmHg | ≈ 0 |
+| Normal mean pulmonary venous | 6.3 mmHg | 9.9 mmHg | 6–12 |
+
+The a-wave being taller than the v-wave is backwards for the left atrium, and it
+was a symptom of the same cause: with a near-infinitely compliant atrium,
+filling it from the pulmonary veins against a shut mitral valve barely raises its
+pressure, so no v-wave forms. The mean-LAP-below-LVEDP gap is the same defect
+seen from the other side — and it is what left the pulmonary circulation only
+loosely coupled to the ventricle it is supposed to be backing up behind.
+
+**Fix.** `leftAtrium` moved from `{ ees: 0.35, v0: 5, edpvrA: 0.35 }` to
+`{ ees: 0.25, v0: 15, edpvrA: 2.0 }`, putting the passive compliance in the
+10–20 mL/mmHg range. Circulating volume was raised 3 % across the keyframes to
+hold stroke volume where it was after the stiffer atrium redistributed blood out
+of the ventricle. Nothing was offset at the display layer.
+
+**Re-verified after the change:** EF (58 → 19 %), stroke volume (68 → 49 mL),
+cardiac output (4.7 → 4.3 L/min), valve opening and closing phases, PV loop
+closure and tangency to both relationships, Frank–Starling, and afterload
+sensitivity — which remains about twice as large in the failing state (13.3 %
+stroke-volume loss for a 30 % resistance rise, against 6.6 % in the normal
+state). Resting cardiac output is now ~4.7 L/min rather than ~5.0; still well
+within the normal range, and a result rather than a target.
+
+### Finding 2 — the congestion overlay was already model-derived, but weakly coupled
+
+The overlay was **not** a hand-entered level, and it was **not** driven by LVEDP:
+it already read the solved mean pulmonary venous pressure. What was wrong was
+the strength of the coupling, which is Finding 1 again — a state with an atrium
+in the twenties reached the pulmonary side only weakly.
+
+With the atrium recalibrated, mean LA pressure and mean pulmonary venous pressure
+now track the ventricle across the whole trajectory (7 → 29 and 10 → 31 mmHg),
+and the landmarks were re-anchored to the new pressures: the front spreads
+linearly from 12 to 30 mmHg, interstitial fluid appears as a soft threshold
+between 22 and 32. A test now asserts that any state with a mean LA pressure of
+20 mmHg or more shows a substantial overlay, that the chain LA → pulmonary vein →
+overlay is monotone with no step, and that a normal atrium shows nothing at all.
+
+The four landmarks remain the only judgement in the overlay, and they remain a
+rendering map rather than a quantification of lung water: how much fluid actually
+crosses into the interstitium depends on capillary permeability, oncotic pressure
+and lymphatic clearance, none of which this model has.
+
+### Finding 3 — over-generalised wording on the waveform
+
+"Isovolumic contraction lengthens as the ventricle weakens" was stated as a
+general fact. It is a property of these two simulated states: real isovolumic
+contraction time also moves with heart rate, loading, conduction and contractile
+reserve, and this model varies only some of those. Reworded throughout — panel
+documentation, notes, audit and the test name — to "the simulated HFrEF state
+opens its aortic valve later than the simulated normal one".
+
+The atrial trace is **not** flat: it carries a v-wave and an a-wave, now in the
+right order. What it does not carry is documented in `docs/medical-notes.md` —
+no separable x and y descents, no c-wave, and no dicrotic notch on the arterial
+trace, all consequences of the lumped-parameter approximation.
+
+### Scope
+
+Model and documentation only. No new features. The UI components, reel sequence
+and amyloid scene were not touched, beyond the panel wording above.
