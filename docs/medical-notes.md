@@ -1,5 +1,8 @@
 # 医学的な表現について / Medical notes
 
+> 設計思想の全体は [`product-principles.md`](product-principles.md)。
+> この文書はそのうち **医学表現の方針** を扱います。
+
 共通の原則:
 
 - どのテーマも **教育目的の簡易モデル** であり、症例の計測値でも

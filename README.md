@@ -1,16 +1,34 @@
 # medical-3d-lab
 
-医療教育向けの、ブラウザで動くインタラクティブ 3D コンテンツ集です。
+> **Make invisible physiology visible, interactive, and understandable.**
+>
+> 見えない病態生理を、3D で動かし、触って理解する。
+
+**3D モデルを集めたサイトではありません。** 中核は、医学モデルを 1 つ持ち、
+それを**触って確かめられる** interactive web です。心臓の形も、EF も、
+PV ループも、圧波形も、すべて同じモデルの解から出ています。
+
+3D は目的ではなく手段です。時間とともに変化し、複数の変数が連動し、静止画では
+因果関係が追えない——そういう概念にだけ使います。
+
+設計思想の全体は **[`docs/product-principles.md`](docs/product-principles.md)**
+にまとめてあります。新しいテーマや機能を追加する前に、まずそちらを読んでください。
 
 現在 2 テーマを実装しています。
 
-| テーマ | 内容 | URL |
+| テーマ | 中心にある問い | URL |
 | --- | --- | --- |
-| **アミロイドβの蓄積** | アルツハイマー病における Aβ の凝集カスケード | `#/amyloid-beta` |
-| **心不全** | HFrEF における左室リモデリングと肺うっ血の一例 | `#/heart-failure` |
+| **心不全** | 後負荷を上げると SV はなぜ下がる？ EF 58% と 29% では何が違う？ | `#/heart-failure` |
+| **アミロイドβの蓄積** | Aβ はどうやって小さな分子からプラークになる？ | `#/amyloid-beta` |
 
-Interactive 3D visualisations of disease mechanisms, built for medical education,
-social posts and short explainer videos.
+心不全は **reference implementation** です。閉ループの循環モデル・PV ループ・
+圧波形・前負荷/後負荷スライダーまで実装されており、単なる 3D heart viewer では
+なく interactive cardiovascular physiology simulator に近い構造になっています。
+
+コンテンツは 3 層で考えます。**SNS** で興味を持たせ（15 秒・入口）、
+**Interactive Web** で理解させ（中核）、**Educational Module** で定着させる
+（予測 → 操作 → 説明・未実装）。3 層は同じ医学モデルを共有し、層ごとに別の
+数値を持つことはありません。
 
 ---
 
@@ -162,9 +180,12 @@ medical-3d-lab/
 ├─ public/                     静的ファイル置き場（現状は空）
 ├─ tests/                      モデル整合性テスト（node --test）
 ├─ docs/
-│  ├─ adding-a-scene.md        新しいテーマを追加する手順
+│  ├─ product-principles.md    ★ 設計思想（source of truth）
+│  ├─ adding-a-scene.md        新しいテーマを追加する手順 + 採否チェック
 │  ├─ medical-notes.md         医学的な表現の方針と注意
-│  └─ medical-audit-2026-08-24.md  医学監査の記録
+│  ├─ medical-audit-2026-08-24.md  医学監査の記録
+│  └─ architecture/
+│     └─ product-architecture.md  層の依存関係
 └─ src/
    ├─ main.js                  起動処理とローディング表示
    ├─ app/
@@ -243,27 +264,32 @@ EF・充満圧・圧波形を得ています。表を編集して数値を変え
 
 ## 今後の拡張方針 / Roadmap
 
-新しいテーマ（`heart-failure` など）は `src/scenes/<theme>/` を追加し、
-`src/app/sceneRegistry.js` に 1 行足すだけで動きます。
-`App.js` や `Viewer.js` を変更する必要はありません。
-手順の詳細は [`docs/adding-a-scene.md`](docs/adding-a-scene.md) にあります。
+**テーマ数は指標にしません。** 10 疾患の浅い 3D より、1 テーマで
+SNS → Interactive → Educational が成立しているほうを高く評価します
+（[`docs/product-principles.md`](docs/product-principles.md) §9, §11）。
 
-想定しているテーマ:
+次の一手は、新テーマを増やすことではなく **Heart Failure に Educational
+Module を足して 3 層を一度完成させること**です。
 
 ```text
-src/scenes/
-├─ amyloidBeta/          ✅ 実装済み
-├─ heartFailure/         ✅ 実装済み
-├─ atrialFibrillation/   心房細動（興奮伝播と血栓形成）
-└─ cerebralInfarction/   脳梗塞（灌流低下とペナンブラ）
+Heart Failure    SNS ✓   Interactive ✓   Educational ← 次
+Amyloid-β        SNS —   Interactive ✓   Educational —
 ```
 
+新しいテーマを検討するときは、まず
+[`docs/adding-a-scene.md`](docs/adding-a-scene.md) の
+**Scene suitability check**（7 問）と **Scene proposal template** に答えてください。
+「3D にすると理解が明確に改善するか」に答えられないテーマは扱いません。
+
+技術的には、`src/scenes/<theme>/` を追加して
+`src/app/sceneRegistry.js` に 1 行足すだけで動きます。
+`App.js` や `Viewer.js` を変更する必要はありません。
 テーマの切り替えは画面左上のセレクタ、または URL のハッシュ
 （例: `#/heart-failure`）で行えます。表示していないテーマのコードは
 ダウンロードされません（動的 import）。
 
 シーンが任意で実装できる共通フック（ステージ別カメラ、数値パネル、
-スライダーのラベル、凡例の点灯条件）は
+圧-容積ループ、負荷条件スライダー、SNS シーケンス）は
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) にまとめています。
 
 ---

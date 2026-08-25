@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Interactive 3D visualisations of disease mechanisms for medical education.",
+  "description": "Interactive 3D for understanding dynamic physiology and disease — one medical model, driving the geometry, the numbers and the graphs alike.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

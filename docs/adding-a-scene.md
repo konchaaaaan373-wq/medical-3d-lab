@@ -4,6 +4,95 @@
 `App.js` はシーンの中身を知りません。決められたインターフェースさえ満たせば、
 どんなテーマでも同じ UI に載ります。
 
+---
+
+## 0. Scene suitability check — 実装を始める前に
+
+**コードを 1 行も書く前に、この 7 問に答えてください。**
+答えられない項目があるなら、そのテーマはまだ実装の段階にありません。
+判断基準の背景は [`product-principles.md`](product-principles.md)。
+
+| # | 問い | 落ちる例 |
+| --- | --- | --- |
+| 1 | **Why does this need 3D?** 2D の静止画や図表より理解が明確に改善するか？ | 「回せると格好いいから」 |
+| 2 | **What changes over time?** 時間とともに何が変化するか？ | 何も動かない構造模型 |
+| 3 | **What can the user manipulate?** ユーザーが動かせるものは何か？ | 眺めるだけ |
+| 4 | **What is the central question?** 中心にある「理解すべき一つの問い」は？ | 「心臓について」のような疾患名だけ |
+| 5 | **What is the SNS hook?** 15 秒で伝わるものは何か？ | 説明を読まないと何も分からない |
+| 6 | **What could become a Learning Module?** 予測 → 操作 → 説明にできるか？ | 予測しようのない事実の列挙 |
+| 7 | **What is the medical source of truth?** 絵と数値を両方生む単一のモデルは何か？ | 絵は絵、数値は別の表 |
+
+**1 に「改善する」と答えられないテーマは、このプロジェクトで扱う必要が
+ありません。** 表や模式図で十分なものを無理に 3D 化しないでください。
+
+答えがそろったら、次節のテンプレートに書き出してから実装に入ります。
+
+---
+
+## 0.5. Scene proposal template
+
+新しい Scene は、この形で提案してから作ります
+（PR 本文、`docs/proposals/<scene-id>.md`、あるいは issue のいずれでも）。
+
+```markdown
+# Scene Proposal
+
+## Central Question
+
+What should the learner understand?
+
+## Why 3D?
+
+Why is 3D better than a diagram or video?
+
+## Medical Model
+
+What variables actually drive the scene?
+
+## Interactive Element
+
+What can the user manipulate?
+
+## Visual Outputs
+
+- 3D
+- metrics
+- graphs
+- labels
+
+## SNS Hook
+
+What can be understood in 15 seconds?
+
+## Educational Module
+
+What can the learner predict and test?
+
+## Accepted Simplifications
+
+What are we intentionally not modeling?
+
+## Validation
+
+What must remain medically true?
+```
+
+### 記入例（Heart Failure を後から書き起こしたもの）
+
+| 項目 | 内容 |
+| --- | --- |
+| Central Question | 後負荷を上げると SV はなぜ下がる？ EF 58% と 29% では何が違う？ |
+| Why 3D? | 壁厚・内腔・拍動・圧が同時に連動する。静止画では因果が追えない |
+| Medical Model | time-varying elastance の閉ループ循環（Ees, V0, EDPVR, Rsys, 循環血液量, HR） |
+| Interactive Element | 進行度スライダー / preload / afterload / Compare / 再生・停止 |
+| Visual Outputs | 3D 心室 + 血液粒子 / PV ループ / 圧波形 / 10 行の read-out / 3D ラベル |
+| SNS Hook | EF 58% vs 29% を同期拍動で並べ、ED → ES の残血量の差を見せる |
+| Educational Module | 「Afterload を上げると SV は？」→ スライダー操作 → PV ループの変化 → 説明 |
+| Accepted Simplifications | 弁は理想的一方向抵抗 / 集中定数（慣性・波動伝播なし）/ 神経体液性調節なし |
+| Validation | 血液が弁を逆行しない / SV = EDV − ESV / 圧の大小関係 / うっ血は圧のオーバーレイであって血液の逆流ではない |
+
+---
+
 ## 1. フォルダを作る
 
 ```text
@@ -169,3 +258,10 @@ export { HeartFailureScene as default, HeartFailureScene } from './HeartFailureS
   内腔の大きさ・拍動・パネルの EF がすべて 1 つの血行動態モデル
   （`hemodynamics.js`）から導かれています。こうすると「絵と数字が食い違う」
   という、教材として一番まずい状態が構造的に起きません。
+
+---
+
+判断に迷ったら [`product-principles.md`](product-principles.md) に戻ってください。
+とくに「3D は目的ではなく手段」「one medical state, multiple representations」
+「SNS 映えのために臨床パラメータを変えない」の 3 つが、この文書のほとんどの
+ルールの理由になっています。
