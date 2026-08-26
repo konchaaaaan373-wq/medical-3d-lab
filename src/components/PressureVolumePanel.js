@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { drawPhaseName } from './plotPhaseName.js';
 
 /**
  * The model's pressure-volume loop, drawn on a small canvas beside the view.
@@ -71,6 +72,11 @@ export function createPressureVolumePanel({ title, titleJa }) {
     if (data.reference) drawSet(context, data.reference, x, y, { muted: true });
     drawSet(context, data.current, x, y, { muted: false });
 
+    // The leg of the loop being traversed right now, brightened over the rest.
+    // Its bounds are the scene's solved valve times, the same ones the shaded
+    // band on the waveform uses.
+    if (data.beat) drawLeg(context, data.current.loop, data.beat, x, y);
+
     // Where in the beat the heart on screen currently is.
     const point = pointAtPhase(data.current.loop, data.phase);
     if (point) {
@@ -78,6 +84,12 @@ export function createPressureVolumePanel({ title, titleJa }) {
       context.beginPath();
       context.arc(x(point.volume), y(point.pressure), 3, 0, Math.PI * 2);
       context.fill();
+    }
+
+    // Names the leg the marker is on, in the top-right — a corner of the plot
+    // a pressure-volume loop never reaches.
+    if (data.beat) {
+      drawPhaseName(context, data.beat, padding.left + plotWidth, padding.top);
     }
   }
 
@@ -109,6 +121,17 @@ function drawSet(context, set, x, y, { muted }) {
   context.lineWidth = muted ? 1.2 : 1.8;
   context.strokeStyle = muted ? rgba(200, 200, 215, 0.5) : rgba(255, 150, 168, 0.95);
   trace(context, set.loop, x, y, true);
+}
+
+/** Re-stroke the samples inside one phase window, brighter and heavier. */
+function drawLeg(context, loop, beat, x, y) {
+  const inside = loop.filter((point) => point.phase >= beat.from && point.phase <= beat.to);
+  if (inside.length < 2) return;
+  context.lineWidth = 3;
+  context.lineCap = 'round';
+  context.strokeStyle = rgba(255, 217, 221, 0.95);
+  trace(context, inside, x, y);
+  context.lineCap = 'butt';
 }
 
 function trace(context, points, x, y, close = false) {

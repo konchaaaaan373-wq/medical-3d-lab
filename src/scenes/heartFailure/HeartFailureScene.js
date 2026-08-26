@@ -506,6 +506,10 @@ export class HeartFailureScene {
       current: pressureVolumeCurves(this.progress, this.loading),
       reference: ref,
       phase: this.phase,
+      // The same four names the 3D is labelled with, from the same phase and
+      // the same solved valve times — so the plot and the heart never disagree
+      // about which part of the beat is on screen.
+      beat: this.getBeatPhase(),
     };
   }
 
@@ -596,16 +600,53 @@ export class HeartFailureScene {
   getBeatPhase() {
     const phase = this.phase - Math.floor(this.phase);
     const { ejectionStartPhase, ejectionEndPhase } = this.state;
+    // Boundaries come from the solved valve times, so the name, the band on the
+    // waveform and the highlighted leg of the loop are all the same partition
+    // of the same beat. `from`/`to` are carried so the plots can show which leg
+    // the 3D is currently on without re-deriving it.
+    const relaxationEnd = ejectionEndPhase + 0.12;
     if (phase < ejectionStartPhase) {
-      return { id: 'isovolumic', label: 'Systole — contraction begins', labelJa: '収縮期 — 収縮開始' };
+      return {
+        id: 'isovolumic',
+        label: 'Systole — contraction begins',
+        labelJa: '収縮期 — 収縮開始',
+        short: 'Isovolumic contraction',
+        shortJa: '等容性収縮',
+        from: 0,
+        to: ejectionStartPhase,
+      };
     }
     if (phase < ejectionEndPhase) {
-      return { id: 'ejection', label: 'Systole — ejection', labelJa: '収縮期 — 駆出' };
+      return {
+        id: 'ejection',
+        label: 'Systole — ejection',
+        labelJa: '収縮期 — 駆出',
+        short: 'Ejection',
+        shortJa: '駆出',
+        from: ejectionStartPhase,
+        to: ejectionEndPhase,
+      };
     }
-    if (phase < ejectionEndPhase + 0.12) {
-      return { id: 'end-systole', label: 'End systole', labelJa: '収縮末期' };
+    if (phase < relaxationEnd) {
+      return {
+        id: 'end-systole',
+        label: 'End systole',
+        labelJa: '収縮末期',
+        short: 'Isovolumic relaxation',
+        shortJa: '等容性弛緩',
+        from: ejectionEndPhase,
+        to: relaxationEnd,
+      };
     }
-    return { id: 'filling', label: 'Diastole — filling', labelJa: '拡張期 — 充満' };
+    return {
+      id: 'filling',
+      label: 'Diastole — filling',
+      labelJa: '拡張期 — 充満',
+      short: 'Filling',
+      shortJa: '充満',
+      from: relaxationEnd,
+      to: 1,
+    };
   }
 
   /**

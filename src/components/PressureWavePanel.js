@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { drawPhaseName } from './plotPhaseName.js';
 
 /**
  * The solved beat plotted against time: ventricular, arterial and atrial
@@ -91,6 +92,12 @@ export function createPressureWavePanel({ title, titleJa }) {
     context.moveTo(x(phase), padding.top);
     context.lineTo(x(phase), padding.top + plotHeight);
     context.stroke();
+
+    // The same name the loop panel shows, from the same `beat` — the two plots
+    // and the 3D are one read of one model.
+    if (data.beat) {
+      drawPhaseName(context, data.beat, padding.left + plotWidth, padding.top);
+    }
   }
 
   return {
