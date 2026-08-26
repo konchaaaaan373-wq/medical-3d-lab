@@ -48,11 +48,13 @@ function vertexAt(kit, k, i) {
   return { x: p[idx], y: p[idx + 1], z: p[idx + 2] };
 }
 
-/** Radius about the (drifted) long axis for a lathe vertex at profile t. */
+/** Radius about the (drifted, bowed) long axis for a lathe vertex at profile t. */
 function radiusAboutAxis(kit, shape, k, i, t) {
   const v = vertexAt(kit, k, i);
   const w = (1 - t) * (1 - t);
-  const dx = VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength * w;
+  const dx =
+    VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength * w +
+    Math.sin(Math.PI * t) * VENTRICLE_SHAPING.longAxisBow * shape.outerSemiLength;
   const dz = VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength * w;
   return Math.hypot(v.x - dx, v.z - dz);
 }
@@ -72,8 +74,10 @@ test('the drawn cavity tracks the solved cavity radius', () => {
         Math.pow(Math.sin(t * innerMax), VENTRICLE_SHAPING.cavityProfileExponent);
       const measured = radiusAboutAxis(kit, shape, k, profileCount - 1 - i, t);
       const ratio = measured / analytic;
+      // Lower bound allows the trabecular relief, which protrudes into the
+      // cavity by up to trabecularDepth of the local radius.
       assert.ok(
-        ratio > 0.9 && ratio < 1.1,
+        ratio > 0.88 - VENTRICLE_SHAPING.trabecularDepth && ratio < 1.1,
         `cavity vertex strays from the solved surface: ratio ${ratio.toFixed(3)} at t=${t.toFixed(2)}`
       );
       sum += ratio;

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
+import { ValveApparatus } from './ValveApparatus.js';
 import { ANATOMY } from './anatomy.js';
 import { CavityOutline } from './CavityOutline.js';
 import { PALETTE } from '../../data/heartFailure.js';
@@ -70,7 +71,11 @@ export class ReferenceHeart extends THREE.Group {
     this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: '#b9d0e4' });
     this.outline.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
 
-    this.add(this.ventricle, this.blood, this.outline);
+    // The same valve apparatus as the disease heart, so a comparison always
+    // compares two states of one drawing.
+    this.apparatus = new ValveApparatus({ variant: 'reference' });
+
+    this.add(this.ventricle, this.apparatus, this.blood, this.outline);
     this.setPhase(0);
   }
 
@@ -100,6 +105,7 @@ export class ReferenceHeart extends THREE.Group {
     );
 
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
+    this.apparatus.update({ ...shape, baseY: ANATOMY.baseY }, phase, this.state, descent);
 
     const uniforms = this.blood.material.uniforms;
     uniforms.uRadius.value = shape.cavityRadius;
@@ -129,6 +135,9 @@ export class ReferenceHeart extends THREE.Group {
   setPresence(presence) {
     this.presence = presence;
     this.ventricle.setOpacity(presence);
+    this.apparatus.materials.papillary.opacity = presence;
+    this.apparatus.materials.leaflet.opacity = 0.92 * presence;
+    this.apparatus.materials.chordae.opacity = 0.95 * presence;
     this.blood.material.uniforms.uOpacity.value = 0.55 * presence;
     this.visible = presence > 0.02;
   }
@@ -160,6 +169,7 @@ export class ReferenceHeart extends THREE.Group {
     // Textures are shared with the disease heart's materials, so only the
     // material objects themselves are released here.
     for (const material of this.ventricle.material) material.dispose();
+    this.apparatus.dispose();
     this.blood.material.dispose(); // geometry is shared and owned by the disease scene
   }
 }

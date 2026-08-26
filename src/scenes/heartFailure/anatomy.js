@@ -13,7 +13,7 @@ export const ANATOMY = {
   cutAngle: Math.PI * 0.55,
   aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
   mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.6, 3.5, -0.1),
+  atriumCentre: new THREE.Vector3(-1.6, 3.25, -0.1),
   atriumRadius: 1.65,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
@@ -53,10 +53,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.75, 4.2, -0.85), // left superior
-  new THREE.Vector3(-2.95, 3.0, -0.7), // left inferior
-  new THREE.Vector3(-0.55, 4.15, -0.95), // right superior
-  new THREE.Vector3(-0.4, 2.95, -0.85), // right inferior
+  new THREE.Vector3(-2.75, 3.95, -0.85), // left superior
+  new THREE.Vector3(-2.95, 2.8, -0.7), // left inferior
+  new THREE.Vector3(-0.55, 3.9, -0.95), // right superior
+  new THREE.Vector3(-0.4, 2.75, -0.85), // right inferior
 ];
 
 /**

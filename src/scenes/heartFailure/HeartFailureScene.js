@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
+import { ValveApparatus } from './ValveApparatus.js';
 import { CavityOutline } from './CavityOutline.js';
 import { BloodField } from './BloodField.js';
 import { Vessels } from './Vessels.js';
@@ -211,6 +212,7 @@ export class HeartFailureScene {
     });
 
     this.vessels = new Vessels();
+    this.apparatus = new ValveApparatus({ variant: 'disease' });
 
     this.blood = new BloodField(buildCavityBlood(compact ? 1400 : 2000), {
       flowColor: PALETTE.flow,
@@ -218,7 +220,7 @@ export class HeartFailureScene {
     });
     this.congestion = new CongestionOverlay(compact ? 380 : 700);
     // The cavity is a small, densely filled volume; full opacity reads as a blob.
-    this.blood.material.uniforms.uOpacity.value = 0.8;
+    this.blood.material.uniforms.uOpacity.value = 0.6;
 
     // Everything that belongs to the diseased heart lives in one group, so
     // comparison mode can slide it aside without touching the lights.
@@ -231,7 +233,7 @@ export class HeartFailureScene {
     this.comparisonOutline = false;
     this.storyOutline = 0;
 
-    this.primary.add(this.vessels, this.ventricle, this.blood, this.congestion, this.outline);
+    this.primary.add(this.vessels, this.ventricle, this.apparatus, this.blood, this.congestion, this.outline);
     this.root.add(this._createLights(), this.primary);
     this._quality = { segments: compact ? 40 : 56, profilePoints: compact ? 22 : 30 };
     this.comparing = false;
@@ -401,6 +403,7 @@ export class HeartFailureScene {
     );
 
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
+    this.apparatus.update({ ...shape, baseY: ANATOMY.baseY }, this.phase, this.state, descent);
     this.blood.setCavity(shape.cavityRadius, shape.cavitySemiLength);
     this.blood.setApexDrift(
       VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength,
@@ -845,6 +848,7 @@ export class HeartFailureScene {
   dispose() {
     this._offResize?.();
     this.reference?.dispose();
+    this.apparatus?.dispose();
     disposeObject(this.root);
   }
 }

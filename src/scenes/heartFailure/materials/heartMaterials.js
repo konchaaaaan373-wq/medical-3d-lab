@@ -169,8 +169,8 @@ function fiberTexture() {
       const x = rnd() * w;
       const len = 26 + rnd() * 80;
       const dark = rnd() > 0.42;
-      const v = dark ? 78 + rnd() * 26 : 190 + rnd() * 40;
-      ctx.strokeStyle = `rgba(${v},${v * 0.9},${v * 0.92},${0.28 + rnd() * 0.26})`;
+      const v = dark ? 98 + rnd() * 24 : 180 + rnd() * 30;
+      ctx.strokeStyle = `rgba(${v},${v * 0.9},${v * 0.92},${0.18 + rnd() * 0.18})`;
       ctx.lineWidth = 0.6 + rnd() * 1.4;
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -294,7 +294,7 @@ export function createHeartMaterials(variant = 'disease') {
     color: new THREE.Color(tint.cut),
     map: hasDom ? fiberTexture() : null,
     bumpMap: hasDom ? fiberTexture() : null,
-    bumpScale: 2.2,
+    bumpScale: 1.4,
     roughnessMap: hasDom ? fiberTexture() : null,
     roughness: 0.88,
     metalness: 0,
@@ -318,13 +318,14 @@ export function createHeartMaterials(variant = 'disease') {
     roughnessMap: hasDom ? endocardiumTexture() : null,
     roughness: 0.55,
     metalness: 0,
-    // Wetter than the outside: the lining is bathed in blood.
-    clearcoat: 0.5,
-    clearcoatRoughness: 0.35,
+    // Moist, but matte enough that the cavity never throws one big smooth
+    // highlight — the lamp-like blob was the single worst plastic cue.
+    clearcoat: 0.22,
+    clearcoatRoughness: 0.5,
     sheen: 0.35,
     sheenRoughness: 0.5,
     sheenColor: new THREE.Color('#e89a92'),
-    envMapIntensity: 0.6,
+    envMapIntensity: 0.5,
     // Lifts the cavity where lights cannot reach; kept faint so the vertex
     // AO baked into the geometry still shapes it.
     emissive: new THREE.Color('#3a1418'),
@@ -336,4 +337,67 @@ export function createHeartMaterials(variant = 'disease') {
   });
 
   return [epicardium, cut, endocardium];
+}
+
+/** Tints for the valve apparatus per variant. */
+const APPARATUS_VARIANTS = {
+  disease: { papillary: '#ad6570', leaflet: '#d5c4c2', chordae: '#c6b4ab' },
+  reference: { papillary: '#8d6b75', leaflet: '#bdb2b2', chordae: '#b2a69f' },
+};
+
+/**
+ * Materials for the papillary muscles, valve leaflets and chordae.
+ *
+ * The papillary muscles share the endocardial texture so they read as the
+ * same tissue as the wall they rise from; leaflets and chordae are pale,
+ * membranous, and slightly translucent — fibrous valve tissue, not muscle.
+ *
+ * @param {'disease'|'reference'} variant
+ */
+export function createApparatusMaterials(variant = 'disease') {
+  const tint = APPARATUS_VARIANTS[variant] ?? APPARATUS_VARIANTS.disease;
+  const hasDom = typeof document !== 'undefined';
+
+  const papillary = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(tint.papillary),
+    map: hasDom ? endocardiumTexture() : null,
+    bumpMap: hasDom ? endocardiumTexture() : null,
+    bumpScale: 1.0,
+    roughness: 0.62,
+    metalness: 0,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.55,
+    sheen: 0.3,
+    sheenRoughness: 0.6,
+    sheenColor: new THREE.Color('#e2837c'),
+    envMapIntensity: 0.45,
+    transparent: true,
+    opacity: 1,
+  });
+
+  const leaflet = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(tint.leaflet),
+    map: hasDom ? mottleTexture() : null,
+    roughness: 0.5,
+    metalness: 0,
+    clearcoat: 0.35,
+    clearcoatRoughness: 0.4,
+    sheen: 0.4,
+    sheenRoughness: 0.45,
+    sheenColor: new THREE.Color('#f0dcd4'),
+    envMapIntensity: 0.5,
+    transparent: true,
+    opacity: 0.92,
+    side: THREE.DoubleSide,
+  });
+
+  const chordae = new THREE.MeshStandardMaterial({
+    color: new THREE.Color(tint.chordae),
+    roughness: 0.7,
+    metalness: 0,
+    transparent: true,
+    opacity: 0.85,
+  });
+
+  return { papillary, leaflet, chordae };
 }

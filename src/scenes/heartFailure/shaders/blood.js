@@ -131,6 +131,6 @@ export const bloodFragmentShader = /* glsl */ `
     // Blood fills a small volume densely, so keep the additive boost low and
     // the edge soft — the cavity must never blow out to white, and a hard
     // bright rim on every particle is what reads as glitter.
-    gl_FragColor = vec4(vColor * (0.3 + 0.48 * core), pow(core, 2.1) * vAlpha);
+    gl_FragColor = vec4(vColor * (0.26 + 0.42 * core), pow(core, 2.2) * vAlpha);
   }
 `;

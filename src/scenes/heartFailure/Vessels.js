@@ -24,7 +24,7 @@ export class Vessels extends THREE.Group {
 
     // --- materials ------------------------------------------------------
     this.arterialMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#b8848c'),
+      color: new THREE.Color('#a8737d'),
       roughness: 0.48,
       metalness: 0,
       clearcoat: 0.35,
@@ -40,7 +40,7 @@ export class Vessels extends THREE.Group {
     // uDusk shifts the tint toward a deep, congested blue-violet.
     this.venousUniforms = { uEngorge: { value: 0 }, uDusk: { value: 0 } };
     this.venousMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#ab8e9c'),
+      color: new THREE.Color('#a2818f'),
       roughness: 0.5,
       metalness: 0,
       clearcoat: 0.3,
@@ -110,14 +110,6 @@ export class Vessels extends THREE.Group {
     this.annulus.name = 'annulus';
     this.annulus.add(valveRing(ANATOMY.aorticValve, 0.5, this.valveMaterial));
     this.annulus.add(valveRing(ANATOMY.mitralValve, 0.62, this.valveMaterial));
-    // Mitral inflow funnel: a short translucent frustum below the ring,
-    // hinting at the leaflet cone without claiming leaflet anatomy.
-    const funnel = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.6, 0.34, 0.7, 22, 1, true),
-      this.venousMaterial
-    );
-    funnel.position.copy(ANATOMY.mitralValve).add(new THREE.Vector3(0, -0.4, 0));
-    this.annulus.add(funnel);
     this.add(this.annulus);
   }
 
@@ -166,8 +158,8 @@ export class Vessels extends THREE.Group {
   _applyOpacity() {
     const congested = smoothstep(0.4, 1, this.congestionLevel ?? 0);
     const emphasis = this.presentationEmphasis ?? 0;
-    this.arterialMaterial.opacity = lerp(0.26, 0.4, emphasis);
-    this.venousMaterial.opacity = lerp(lerp(0.28, 0.38, congested), 0.52, emphasis);
+    this.arterialMaterial.opacity = lerp(0.3, 0.44, emphasis);
+    this.venousMaterial.opacity = lerp(lerp(0.33, 0.42, congested), 0.55, emphasis);
     this.valveMaterial.opacity = lerp(0.6, 0.8, emphasis);
   }
 }

@@ -77,11 +77,23 @@ export const VENTRICLE_SHAPING = {
    * fraction), so the cutaway ends above the tip instead of splitting it —
    * the way an illustrator's cutaway leaves the apex whole.
    */
-  apexSealEnd: 0.34,
+  apexSealEnd: 0.3,
 
   /** The base shoulder rounds off slightly toward the atrioventricular groove. */
   rimTaper: 0.055,
   rimTaperStart: 0.75,
+
+  /**
+   * Trabeculae carneae: ridged muscle bundles protruding into the cavity,
+   * concentrated apical-to-mid, irregular, and sparing the smooth outflow
+   * tract — depth as a fraction of the local cavity radius.
+   */
+  trabecularDepth: 0.07,
+  /** Azimuth of the (smooth) outflow tract region, radians. */
+  lvotPhi: 1.27,
+
+  /** A gentle bow of the long axis, so no meridian is a straight line. */
+  longAxisBow: 0.02,
 };
 
 /** Largest lateral extent the RV lobe can add, in scene units, for tests. */
@@ -110,6 +122,69 @@ function surfaceNoise(t, phi) {
     0.3 * Math.sin(5.3 * phi + 4.1 * t + 2.0) +
     0.15 * Math.sin(8.1 * phi - 3.1 * t + 0.9) * (1 - t)
   );
+}
+
+/** How far the cut wedge is open at profile fraction t: 0 sealed, 1 fully. */
+function sealOpenFraction(t) {
+  return smooth(0.08, VENTRICLE_SHAPING.apexSealEnd, t);
+}
+
+/**
+ * Azimuth remap that closes the wedge toward the apex: lathe columns are
+ * spread about the far side (π) so the two cut boundaries converge at the
+ * tip. Shared by the position update and the static uv layout, so the
+ * texture never compresses where the surface closes.
+ */
+function sealSpanScale(t, halfCut) {
+  const open = sealOpenFraction(t);
+  return (Math.PI - halfCut * open) / (Math.PI - halfCut);
+}
+
+/**
+ * Trabeculae carneae as an endocardial relief field, 0..1. Irregular ridges
+ * running roughly along the long axis, strongest apical-to-mid, absent at
+ * the base and over the smooth outflow tract.
+ */
+export function trabecularField(t, phi) {
+  const S = VENTRICLE_SHAPING;
+  const along = smooth(0.03, 0.15, t) * (1 - smooth(0.4, 0.68, t));
+  if (along <= 0) return 0;
+  const ridges = Math.pow(
+    0.5 + 0.5 * Math.sin(9 * phi + 3.1 * t + 1.4 * Math.sin(2.3 * phi + 6.2 * t)),
+    1.6
+  );
+  // Patchy coverage: bundles come and go around the circumference.
+  const patchy = Math.max(0, 0.45 + 0.55 * Math.sin(3.7 * phi - 2.0 * t + 1.0));
+  const lvot = 1 - angularBump(phi, S.lvotPhi, 1.0) * smooth(0.28, 0.5, t);
+  return along * ridges * patchy * lvot;
+}
+
+/**
+ * A point on the (analytic) endocardial surface, in chamber-local space —
+ * shared with the valve apparatus so papillary muscles rise from the same
+ * wall the mesh draws. Skips the noise and trabecular relief.
+ *
+ * @param {{ cavityRadius: number, cavitySemiLength: number,
+ *   outerSemiLength: number, baseY: number }} shape
+ * @param {number} t 0 apex .. 1 base
+ * @param {number} phi azimuth
+ * @param {THREE.Vector3} out
+ */
+export function cavitySurfacePoint(shape, t, phi, out) {
+  const S = VENTRICLE_SHAPING;
+  const innerMax = Math.acos(
+    THREE.MathUtils.clamp(-shape.baseY / shape.cavitySemiLength, -1, 1)
+  );
+  const a = t * innerMax;
+  const r = shape.cavityRadius * Math.pow(Math.sin(a), S.cavityProfileExponent) * cavityAngularShape(phi);
+  const w = (1 - t) * (1 - t);
+  const bow = Math.sin(Math.PI * t) * S.longAxisBow * shape.outerSemiLength;
+  out.set(
+    r * Math.sin(phi) + S.apexDriftX * shape.outerSemiLength * w + bow,
+    -shape.cavitySemiLength * Math.cos(a),
+    r * Math.cos(phi) + S.apexDriftZ * shape.outerSemiLength * w
+  );
+  return out;
 }
 
 /** Wall-thickness multiplier field w(t, phi); t = 0 apex, 1 base. */
@@ -235,12 +310,15 @@ export function buildVentricleGeometry({
 
   // --- static uvs
   // Lathe surface: u wraps with azimuth (three repeats keep texel density
-  // reasonable), v runs apex (0) -> base (1) on both surfaces.
+  // reasonable), v runs apex (0) -> base (1) on both surfaces. u follows the
+  // same apex-seal remap the positions use, so the texture stays uniform
+  // where the wedge closes instead of compressing into stripes.
   for (let k = 0; k <= S; k++) {
     for (let i = 0; i < profileCount; i++) {
       const v = i < N ? i / (N - 1) : 1 - (i - N) / (N - 1);
       const idx = (k * profileCount + i) * 2;
-      uvs[idx] = (basePhi[k] / (Math.PI * 2)) * 3;
+      const phiSealed = Math.PI + (basePhi[k] - Math.PI) * sealSpanScale(v, basePhi[0]);
+      uvs[idx] = (phiSealed / (Math.PI * 2)) * 3;
       uvs[idx + 1] = v;
     }
   }
@@ -356,8 +434,7 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   // so the two cut boundaries converge and close the tip.
   const spanScale = new Float32Array(N);
   for (let i = 0; i < N; i++) {
-    const open = smooth(0.06, SH.apexSealEnd, tArr[i]);
-    spanScale[i] = (Math.PI - basePhi[0] * open) / (Math.PI - basePhi[0]);
+    spanScale[i] = sealSpanScale(tArr[i], basePhi[0]);
   }
 
   /**
@@ -372,7 +449,10 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     const sin = Math.sin(phi);
     const cos = Math.cos(phi);
 
-    const cavR = rC[i] * cavityAngularShape(phi0) * (1 + SH.endocardialNoise * surfaceNoise(t, phi0 + 2.4));
+    let cavR = rC[i] * cavityAngularShape(phi0) * (1 + SH.endocardialNoise * surfaceNoise(t, phi0 + 2.4));
+    // Trabeculae protrude into the cavity: local inward relief, never a
+    // change of the chamber's overall size.
+    cavR *= 1 - SH.trabecularDepth * trabecularField(t, phi0);
     const cavY = yC[i];
 
     const w = wallThicknessFactor(t, phi0);
@@ -384,7 +464,10 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     outR *= 1 - SH.rimTaper * smooth(SH.rimTaperStart, 1, t);
     if (contextLobe) outR += rvLobe(t, phi0) * outerSemiLength;
 
-    const dx = driftX * driftW[i];
+    // Lateral offset of the long axis: apex drift plus a gentle bow, so no
+    // meridian is a mathematically straight line.
+    const bow = Math.sin(Math.PI * t) * SH.longAxisBow * outerSemiLength;
+    const dx = driftX * driftW[i] + bow;
     const dz = driftZ * driftW[i];
 
     if (outIndex >= 0) {
@@ -412,11 +495,40 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     const phi0 = c === 0 ? basePhi[0] : basePhi[S];
     const base = (kit.surfaceVerts + c * kit.capVerts) * 3;
     for (let i = 0; i < N; i++) {
-      writePair(i, phi0, base + i * 3, base + (profileCount - 1 - i) * 3);
+      const outIdx = base + i * 3;
+      const inIdx = base + (profileCount - 1 - i) * 3;
+      writePair(i, phi0, outIdx, inIdx);
+      // Below the seal the two cap planes coincide; collapsing each sliver
+      // to its outer edge removes the z-fighting seam up the closed apex.
+      if (sealOpenFraction(tArr[i]) < 0.04) {
+        positions[inIdx] = positions[outIdx];
+        positions[inIdx + 1] = positions[outIdx + 1];
+        positions[inIdx + 2] = positions[outIdx + 2];
+      }
     }
   }
 
   kit.geometry.attributes.position.needsUpdate = true;
   kit.geometry.computeVertexNormals();
+
+  // Where the wedge has closed, the first and last lathe columns coincide;
+  // averaging their normals welds the shading across the seam so the sealed
+  // apex reads as one continuous surface instead of a crease.
+  const normals = kit.geometry.attributes.normal.array;
+  for (let i = 0; i < N; i++) {
+    if (sealOpenFraction(tArr[i]) > 0.45) continue;
+    for (const idx of [i, profileCount - 1 - i]) {
+      const a = idx * 3;
+      const b = (S * profileCount + idx) * 3;
+      const nx = normals[a] + normals[b];
+      const ny = normals[a + 1] + normals[b + 1];
+      const nz = normals[a + 2] + normals[b + 2];
+      const len = Math.hypot(nx, ny, nz) || 1;
+      normals[a] = normals[b] = nx / len;
+      normals[a + 1] = normals[b + 1] = ny / len;
+      normals[a + 2] = normals[b + 2] = nz / len;
+    }
+  }
+  kit.geometry.attributes.normal.needsUpdate = true;
   kit.geometry.computeBoundingSphere();
 }
