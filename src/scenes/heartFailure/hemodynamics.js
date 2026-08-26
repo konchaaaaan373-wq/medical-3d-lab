@@ -345,3 +345,76 @@ export function advanceCardiacPhase(phase, dt, hr) {
   const next = (phase + (dt * hr) / 60) % 1;
   return next < 0 ? next + 1 : next;
 }
+
+/**
+ * Which part of the beat a phase is in, named.
+ *
+ * The partition is the solved valve times, not fixed fractions of the cycle:
+ * `ejectionStartPhase` and `ejectionEndPhase` are when the model's aortic valve
+ * actually opens and shuts, so the isovolumic periods lengthen or shorten with
+ * the state rather than staying where a constant put them.
+ *
+ * It lives here, with the model, because everything that names a moment has to
+ * name the same one — the label over the 3D, the phase caption on the loop, the
+ * highlighted leg of the loop, and the shaded band on the waveform are all this
+ * function read at the same phase.
+ *
+ * `from`/`to` are carried so a plot can highlight the leg without re-deriving
+ * the boundaries and drifting out of step with the label.
+ *
+ * @param {number} phase 0..1, or anything that wraps into it
+ * @param {{ ejectionStartPhase: number, ejectionEndPhase: number }} state
+ * @returns {{ id: string, label: string, labelJa: string, short: string,
+ *   shortJa: string, from: number, to: number }}
+ */
+export function beatPhaseAt(phase, state) {
+  const wrapped = phase - Math.floor(phase);
+  const { ejectionStartPhase, ejectionEndPhase } = state;
+  // Relaxation has no second valve event to end it — the mitral valve opens
+  // when the ventricle falls below the atrium, which the solver gives as a
+  // pressure crossing rather than as a stored time. This is a presentation
+  // constant for how long "end systole" stays named, not a model value.
+  const relaxationEnd = ejectionEndPhase + 0.12;
+  if (wrapped < ejectionStartPhase) {
+    return {
+      id: 'isovolumic',
+      label: 'Systole — contraction begins',
+      labelJa: '収縮期 — 収縮開始',
+      short: 'Isovolumic contraction',
+      shortJa: '等容性収縮',
+      from: 0,
+      to: ejectionStartPhase,
+    };
+  }
+  if (wrapped < ejectionEndPhase) {
+    return {
+      id: 'ejection',
+      label: 'Systole — ejection',
+      labelJa: '収縮期 — 駆出',
+      short: 'Ejection',
+      shortJa: '駆出',
+      from: ejectionStartPhase,
+      to: ejectionEndPhase,
+    };
+  }
+  if (wrapped < relaxationEnd) {
+    return {
+      id: 'end-systole',
+      label: 'End systole',
+      labelJa: '収縮末期',
+      short: 'Isovolumic relaxation',
+      shortJa: '等容性弛緩',
+      from: ejectionEndPhase,
+      to: relaxationEnd,
+    };
+  }
+  return {
+    id: 'filling',
+    label: 'Diastole — filling',
+    labelJa: '拡張期 — 充満',
+    short: 'Filling',
+    shortJa: '充満',
+    from: relaxationEnd,
+    to: 1,
+  };
+}

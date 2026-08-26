@@ -34,6 +34,7 @@ import {
   sampleHemodynamics,
   myocardialVolumeFor,
   ventricleShape,
+  beatPhaseAt,
   cavityVolumeAt,
   advanceCardiacPhase,
   pressureVolumeCurves,
@@ -578,17 +579,6 @@ export class HeartFailureScene {
   }
 
   /**
-   * Reveals the congestion overlay in causal order, 0..1 each.
-   *
-   * Both are multipliers on what the model solved, so 1 shows exactly the
-   * state's own congestion and anything less shows part of it. Raising `front`
-   * alone spreads the pressure field outward along atrium → pulmonary veins →
-   * vascular bed, which is what transmitted pressure does; `fluid` is what
-   * follows it. Blood is not involved in either, and never moves backwards.
-   *
-   * @param {{ front?: number, fluid?: number }} reveal
-   */
-  /**
    * Where the beat currently is, named.
    *
    * Read from the same phase everything else is drawn from and from the same
@@ -596,58 +586,10 @@ export class HeartFailureScene {
    * is not in. Shown only while the beat is the subject — a permanent readout
    * would just be another thing on screen.
    *
-   * @returns {{ id: string, label: string, labelJa: string }}
+   * @returns {ReturnType<typeof beatPhaseAt>}
    */
   getBeatPhase() {
-    const phase = this.phase - Math.floor(this.phase);
-    const { ejectionStartPhase, ejectionEndPhase } = this.state;
-    // Boundaries come from the solved valve times, so the name, the band on the
-    // waveform and the highlighted leg of the loop are all the same partition
-    // of the same beat. `from`/`to` are carried so the plots can show which leg
-    // the 3D is currently on without re-deriving it.
-    const relaxationEnd = ejectionEndPhase + 0.12;
-    if (phase < ejectionStartPhase) {
-      return {
-        id: 'isovolumic',
-        label: 'Systole — contraction begins',
-        labelJa: '収縮期 — 収縮開始',
-        short: 'Isovolumic contraction',
-        shortJa: '等容性収縮',
-        from: 0,
-        to: ejectionStartPhase,
-      };
-    }
-    if (phase < ejectionEndPhase) {
-      return {
-        id: 'ejection',
-        label: 'Systole — ejection',
-        labelJa: '収縮期 — 駆出',
-        short: 'Ejection',
-        shortJa: '駆出',
-        from: ejectionStartPhase,
-        to: ejectionEndPhase,
-      };
-    }
-    if (phase < relaxationEnd) {
-      return {
-        id: 'end-systole',
-        label: 'End systole',
-        labelJa: '収縮末期',
-        short: 'Isovolumic relaxation',
-        shortJa: '等容性弛緩',
-        from: ejectionEndPhase,
-        to: relaxationEnd,
-      };
-    }
-    return {
-      id: 'filling',
-      label: 'Diastole — filling',
-      labelJa: '拡張期 — 充満',
-      short: 'Filling',
-      shortJa: '充満',
-      from: relaxationEnd,
-      to: 1,
-    };
+    return beatPhaseAt(this.phase, this.state);
   }
 
   /**
@@ -691,6 +633,17 @@ export class HeartFailureScene {
     this.reference?.setEmphasis(emphasis);
   }
 
+  /**
+   * Reveals the congestion overlay in causal order, 0..1 each.
+   *
+   * Both are multipliers on what the model solved, so 1 shows exactly the
+   * state's own congestion and anything less shows part of it. Raising `front`
+   * alone spreads the pressure field outward along atrium → pulmonary veins →
+   * vascular bed, which is what transmitted pressure does; `fluid` is what
+   * follows it. Blood is not involved in either, and never moves backwards.
+   *
+   * @param {{ front?: number, fluid?: number }} reveal
+   */
   setCongestionReveal(reveal) {
     this.congestionReveal = { ...this.congestionReveal, ...reveal };
     this._resolve();
