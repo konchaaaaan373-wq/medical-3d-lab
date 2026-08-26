@@ -40,7 +40,16 @@ Framing for the ventricle alone pushed the pulmonary side off the top of the
 frame, which is the end of the causal chain the scene exists to show.
 
 The ascending aorta and arch may crop at the top. They are context, and framing
-for them costs the subject about a fifth of the frame.
+for them costs the subject about a fifth of the frame — but that is a default,
+not a limit. The camera control (`− ⛶ +`, next to the utilities) zooms out far
+enough to bring them back and in far enough that the cavity fills the window,
+and the zoom is remembered as a **multiplier on the framing** rather than as a
+camera distance, so it survives stage changes, the view toggle and a resize.
+`View` — the middle of the three — puts both the framing and the zoom back.
+
+Wheel and pinch feed the same number, so the gesture and the buttons never
+disagree. The general-purpose model can therefore stay information-dense while a
+viewer explaining one point to one person pushes everything else out of frame.
 
 ### Two axes, two names
 

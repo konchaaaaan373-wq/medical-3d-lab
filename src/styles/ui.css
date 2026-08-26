@@ -1082,7 +1082,9 @@
 .console {
   pointer-events: auto;
   align-self: center;
-  width: min(980px, 100%);
+  /* Wide enough that the button row stays on one line with the camera control
+     in it — a second row costs 44px of the frame, which is the subject's. */
+  width: min(1000px, 100%);
   padding: 14px 18px 13px;
   display: flex;
   flex-direction: column;
@@ -1353,6 +1355,50 @@
 /* Separates the two tiers without a divider line. */
 .button-gap {
   flex: 0 0 14px;
+}
+
+/* The camera control: zoom out, recentre, zoom in, joined into one thing so it
+   reads as a single control rather than three more utilities in the row. */
+.camera-group {
+  display: inline-flex;
+}
+
+.camera-group .btn.compact {
+  padding: 8px 10px;
+  gap: 0;
+}
+
+.camera-group .btn.compact:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-color: transparent;
+}
+
+.camera-group .btn.compact:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Icon-only: the labels stay in the DOM for screen readers and for the title,
+   but three words here would triple the width of the control. */
+.camera-group .btn.compact .lang-en,
+.camera-group .btn.compact .lang-ja {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.btn.is-limit {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.btn.is-limit:hover {
+  color: var(--ink-dim);
+  background: rgba(30, 44, 70, 0.5);
 }
 
 .btn.is-on {

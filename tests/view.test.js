@@ -10,6 +10,7 @@ import {
 import { beatPhaseAt, sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
 import { STAGES } from '../src/data/heartFailure.js';
 import { stageIndexFor } from '../src/components/StageReadout.js';
+import { ZOOM_RANGE, steppedZoom, zoomedDistance } from '../src/app/zoom.js';
 
 const POSE = { target: new Vector3(0, -1.8, 0.3), position: new Vector3(0, -1.8, 28.3) };
 const WIDE = 1440 / 900;
@@ -104,4 +105,39 @@ test('every stage on the track is reachable and selects itself', () => {
   });
   assert.equal(stageIndexFor(0, STAGES), 0);
   assert.equal(stageIndexFor(1, STAGES), STAGES.length - 1);
+});
+
+test('a zoom step in and back out returns to where it started', () => {
+  for (const start of [1, 0.8, 1.6]) {
+    const there = steppedZoom(start, 1);
+    assert.ok(Math.abs(steppedZoom(there, -1) - start) < 1e-9, `round trip from ${start}`);
+  }
+});
+
+test('the zoom cannot be stepped past its range, however many presses', () => {
+  let zoom = 1;
+  for (let i = 0; i < 50; i++) zoom = steppedZoom(zoom, 1);
+  assert.equal(zoom, ZOOM_RANGE[0], 'stops at the near limit');
+  for (let i = 0; i < 50; i++) zoom = steppedZoom(zoom, -1);
+  assert.equal(zoom, ZOOM_RANGE[1], 'stops at the far limit');
+});
+
+test('the range reaches past the framing in both directions', () => {
+  assert.ok(ZOOM_RANGE[0] < 1, 'closer than the authored framing is reachable');
+  assert.ok(ZOOM_RANGE[1] > 1, 'further back than the authored framing is reachable');
+  // Far enough out that the whole subject, aortic arch included, comes into a
+  // frame the authored distance deliberately crops.
+  assert.ok(ZOOM_RANGE[1] >= 1.3, 'far enough to recover the cropped arch');
+});
+
+test('the zoomed distance stays inside the orbit controls own limits', () => {
+  const limits = { minDistance: 5, maxDistance: 55 };
+  for (const distance of [8, 24, 40]) {
+    for (const zoom of [ZOOM_RANGE[0], 1, ZOOM_RANGE[1]]) {
+      const result = zoomedDistance(distance, zoom, limits);
+      assert.ok(result >= limits.minDistance, `${distance}x${zoom} not inside the minimum`);
+      assert.ok(result <= limits.maxDistance, `${distance}x${zoom} not past the maximum`);
+    }
+  }
+  assert.equal(zoomedDistance(24, 1, limits), 24, 'no zoom leaves the framing alone');
 });

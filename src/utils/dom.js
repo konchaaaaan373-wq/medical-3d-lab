@@ -57,4 +57,13 @@ export const ICONS = {
   eye: icon(
     '<path d="M12 5c5 0 9 4.5 9 7s-4 7-9 7-9-4.5-9-7 4-7 9-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/>'
   ),
+  // A magnifier rather than a bare +/-: on its own a plus reads as "add".
+  // Stroked rather than filled — at 18px a filled ring closes up and the sign
+  // inside it disappears, which is exactly the detail that carries the meaning.
+  zoomIn: icon(
+    '<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.3" cy="10.3" r="6.4"/><path d="M15.2 15.2 20.6 20.6"/><path d="M10.3 7.4v5.8M7.4 10.3h5.8"/></g>'
+  ),
+  zoomOut: icon(
+    '<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.3" cy="10.3" r="6.4"/><path d="M15.2 15.2 20.6 20.6"/><path d="M7.4 10.3h5.8"/></g>'
+  ),
 };

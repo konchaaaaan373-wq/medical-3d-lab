@@ -1,7 +1,9 @@
+import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { SCENES, loadScene, resolveSceneId } from './sceneRegistry.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
+import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
 import { framePose, distanceScaleForAspect } from './framing.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
@@ -72,18 +74,76 @@ export async function createApp({ stage, ui }) {
   viewer.controls.target.copy(shot.target);
   viewer.controls.update();
 
+  /**
+   * The viewer's own zoom, as a multiplier on whatever distance the framing
+   * works out.
+   *
+   * It is kept here rather than left in the camera because the framing is
+   * recomputed on every stage change, view toggle and resize: without this,
+   * someone who pulled back to see the aortic arch would be snapped to the
+   * ventricle again the moment they clicked the next stage. It survives all of
+   * those, and only `resetView()` clears it.
+   *
+   * The scene frames itself for the ventricle and lets the top of the arch
+   * crop — that is the right default for a scene about the ventricle, but the
+   * choice belongs to whoever is looking. Zooming out gets the surrounding
+   * vessels back; zooming in pushes everything but the chamber out of frame,
+   * which is what explaining a single point to one person wants.
+   */
+  let userZoom = 1;
+
+  /** The scene's authored framing for the current view and window, before zoom. */
+  const framedPose = (pose) =>
+    framePose(pose, viewer.camera.aspect, dataView ? 'data' : 'learning', viewer.camera.fov, bottomInset());
+
   const setShot = (pose) => {
     shotSource = pose;
-    const next = framePose(
-      pose,
-      viewer.camera.aspect,
-      dataView ? 'data' : 'learning',
-      viewer.camera.fov,
-      bottomInset()
-    );
-    shot.position.copy(next.position);
+    const next = framedPose(pose);
     shot.target.copy(next.target);
+    applyZoomedPosition(shot.position, next.target, next.position);
   };
+
+  /** Writes `from`'s direction at the zoomed distance into `out`. */
+  const zoomScratch = new THREE.Vector3();
+  function applyZoomedPosition(out, target, from) {
+    zoomScratch.copy(from).sub(target);
+    const distance = zoomedDistance(zoomScratch.length());
+    out.copy(target).addScaledVector(zoomScratch.normalize(), distance);
+  }
+
+  /** A framed distance with the viewer's zoom applied, inside the orbit limits. */
+  const zoomedDistance = (distance) => zoomed(distance, userZoom, viewer.controls);
+
+  /**
+   * Step the zoom. Moves along the direction the viewer is currently looking
+   * from, not along the framing's — they may have orbited, and a zoom that also
+   * put the camera back where the framing wants it would be a reset, not a zoom.
+   *
+   * @param {number} direction +1 to move in, -1 to move out
+   */
+  function zoomBy(direction) {
+    const next = steppedZoom(userZoom, direction);
+    if (next === userZoom) return;
+    const applied = next / userZoom;
+    userZoom = next;
+
+    const offset = viewer.camera.position.clone().sub(viewer.controls.target);
+    const distance = zoomed(offset.length() * applied, 1, viewer.controls);
+    viewer.camera.position.copy(viewer.controls.target).add(offset.setLength(distance));
+    viewer.controls.update();
+
+    // Keep the pending framing in step, so the next stage change or view toggle
+    // arrives at the distance the viewer chose rather than undoing it.
+    setShot(shotSource);
+    syncZoomLimits();
+  }
+
+  function syncZoomLimits() {
+    controlPanel?.setZoomLimits({
+      canZoomIn: userZoom > ZOOM_RANGE[0],
+      canZoomOut: userZoom < ZOOM_RANGE[1],
+    });
+  }
 
   // Re-frame on rotate/resize: a portrait phone needs a lot more distance than a laptop.
   window.addEventListener('resize', () => {
@@ -96,6 +156,20 @@ export async function createApp({ stage, ui }) {
   const view = { active: false };
   viewer.controls.addEventListener('start', () => {
     view.active = false;
+  });
+
+  // A wheel or a pinch is the same intent as the buttons, so it is read back
+  // into the same number. Without this the two would disagree: scrolling out
+  // and then clicking a stage would snap back, while the buttons would not.
+  viewer.controls.addEventListener('end', () => {
+    if (view.active || storyMode?.active || reelMode?.active) return;
+    const framed = framedPose(shotSource);
+    const base = framed.position.distanceTo(framed.target);
+    if (!base) return;
+    const actual = viewer.camera.position.distanceTo(viewer.controls.target);
+    userZoom = clampZoom(actual / base);
+    setShot(shotSource);
+    syncZoomLimits();
   });
 
   // --- UI -------------------------------------------------------------------
@@ -120,6 +194,7 @@ export async function createApp({ stage, ui }) {
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
     onDataToggle: scene.getMetrics ? (enabled) => setDataView(enabled) : undefined,
+    onZoom: (direction) => zoomBy(direction),
     onStoryToggle: (enabled) => {
       if (enabled) storyMode?.enter();
       else storyMode?.exit();
@@ -298,6 +373,9 @@ export async function createApp({ stage, ui }) {
   }
 
   function resetView() {
+    // "View" means the framing the scene authored, so it puts the zoom back too.
+    userZoom = 1;
+    syncZoomLimits();
     setShot(comparisonOrStageShot());
     view.active = true;
     // Auto-rotate would pull against the tween and stall it half-way;
@@ -324,8 +402,10 @@ export async function createApp({ stage, ui }) {
       storyMode.tick();
       // The sequence names where the camera should be; the same damped tween
       // the rest of the app uses carries it there, so the motion matches.
-      shot.position.copy(storyMode.pose.position);
+      // The sequence authors each step's distance, but how much of the scene the
+      // viewer wants in frame is still theirs.
       shot.target.copy(storyMode.pose.target);
+      applyZoomedPosition(shot.position, storyMode.pose.target, storyMode.pose.position);
       tweenPose(viewer, shot, dt);
       labels.render();
       if (pvPanel) {
@@ -492,6 +572,7 @@ export async function createApp({ stage, ui }) {
     ui,
     uiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
+    zoomBy,
     exitReel: () => {
       if (reelMode?.active) toggleReel();
       else if (storyMode?.active) storyMode.exit();
@@ -571,9 +652,9 @@ function tweenPose(viewer, pose, dt) {
 
 /**
  * Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, C = compare,
- * arrows = step, Escape = leave the social sequence.
+ * arrows = step, +/- = zoom, Escape = leave the social sequence.
  */
-function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison, exitReel }) {
+function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison, exitReel, zoomBy }) {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       exitReel?.();
@@ -584,6 +665,16 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleCompariso
       case ' ':
         event.preventDefault();
         playback.toggle();
+        break;
+      // Zoom from the keyboard, matching the two buttons. '=' and '_' are the
+      // unshifted keys the '+' and '-' sit on.
+      case '+':
+      case '=':
+        zoomBy?.(1);
+        break;
+      case '-':
+      case '_':
+        zoomBy?.(-1);
         break;
       case 'r':
       case 'R':

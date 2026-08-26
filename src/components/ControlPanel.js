@@ -35,6 +35,7 @@ export function createControlPanel({
   onReel,
   onLearn,
   onDataToggle,
+  onZoom,
 }) {
   const slider = el('input', {
     class: 'slider',
@@ -104,6 +105,34 @@ export function createControlPanel({
     : null;
   if (reelButton) reelButton.element.title = meta.reel?.hint ?? '15-second social sequence';
 
+  /**
+   * One camera control: out, back to the authored framing, in.
+   *
+   * Orbit controls already zoom on scroll and pinch, but neither is
+   * discoverable and neither is obvious on a trackpad. The scene frames itself
+   * for the ventricle and lets the top of the aortic arch crop, which is the
+   * right default for a scene about the ventricle — but how much of the picture
+   * someone wants is theirs to decide. Out for the surrounding vessels; in to
+   * push everything but the chamber out of frame, which is what explaining one
+   * point to one person wants.
+   *
+   * The three are joined and icon-only, in the arrangement a map uses: the
+   * recentre control between the two zooms. That also buys back the width the
+   * pair costs, so the row still fits on one line.
+   */
+  const frameButton = button('frame', ['View', '視点'], onResetView, 'utility');
+  frameButton.element.title = 'Back to the framing the scene sets (also resets the zoom)';
+  const zoomOutButton = onZoom ? button('zoomOut', ['Zoom out', '縮小'], () => onZoom(-1), 'utility') : null;
+  const zoomInButton = onZoom ? button('zoomIn', ['Zoom in', '拡大'], () => onZoom(1), 'utility') : null;
+  const cameraGroup = onZoom
+    ? el('span', { class: 'camera-group' }, [zoomOutButton.element, frameButton.element, zoomInButton.element])
+    : frameButton.element;
+  if (onZoom) {
+    for (const b of [zoomOutButton, frameButton, zoomInButton]) b.element.classList.add('compact');
+    zoomOutButton.element.title = 'Zoom out — see more of the surrounding vessels (−)';
+    zoomInButton.element.title = 'Zoom in — fill the frame with the chamber (+)';
+  }
+
   const capture = createCaptureButton(onCapture);
 
   const element = el('div', { class: 'controls' }, [
@@ -130,7 +159,7 @@ export function createControlPanel({
       el('span', { class: 'button-gap' }),
       playButton.element,
       button('reset', ['Reset', 'リセット'], onReset, 'utility').element,
-      button('frame', ['View', '視点'], onResetView, 'utility').element,
+      cameraGroup,
       learnButton?.element,
       reelButton?.element,
       capture.element,
@@ -155,6 +184,19 @@ export function createControlPanel({
       if (!dataButton) return;
       dataButton.element.classList.toggle('is-on', enabled);
       dataButton.element.setAttribute('aria-pressed', String(enabled));
+    },
+    /**
+     * Grey out whichever end of the zoom range has been reached, so pressing a
+     * button that cannot do anything is visibly a no-op rather than a mystery.
+     *
+     * @param {{ canZoomIn: boolean, canZoomOut: boolean }} limits
+     */
+    setZoomLimits({ canZoomIn, canZoomOut }) {
+      if (!onZoom) return;
+      zoomInButton.element.classList.toggle('is-limit', !canZoomIn);
+      zoomOutButton.element.classList.toggle('is-limit', !canZoomOut);
+      zoomInButton.element.setAttribute('aria-disabled', String(!canZoomIn));
+      zoomOutButton.element.setAttribute('aria-disabled', String(!canZoomOut));
     },
     /** Lets the app keep the button in sync with a keyboard shortcut. */
     setComparison(enabled) {
