@@ -60,18 +60,30 @@ export function resolveSceneId(hash = window.location.hash) {
  * no tab.
  */
 export function organsWithScenes(scenes = SCENES, organs = ORGANS) {
-  return organs
+  const grouped = organs
     .map((organ) => ({ ...organ, scenes: scenes.filter((scene) => scene.organ === organ.id) }))
     .filter((organ) => organ.scenes.length > 0);
-}
 
-/** Which organ a scene belongs to, or null if it names one that does not exist. */
-export function organIdFor(sceneId, scenes = SCENES) {
-  return scenes.find((scene) => scene.id === sceneId)?.organ ?? null;
+  // A scene naming an organ that does not exist would stay reachable by URL and
+  // vanish from the navigation — the kind of failure that is only noticed by
+  // whoever goes looking for it. `tests/scene-registry.test.js` fails on it, and
+  // this says so in the console for anyone who gets there another way.
+  const placed = grouped.reduce((count, organ) => count + organ.scenes.length, 0);
+  if (placed !== scenes.length) {
+    const orphans = scenes.filter((scene) => !organs.some((organ) => organ.id === scene.organ));
+    console.warn(
+      `sceneRegistry: ${orphans.length} scene(s) name an organ that is not registered and will not appear in the ` +
+        `navigation: ${orphans.map((scene) => `${scene.id} -> "${scene.organ}"`).join(', ')}`
+    );
+  }
+  return grouped;
 }
 
 export async function loadScene(id) {
-  const entry = SCENES.find((scene) => scene.id === id) ?? SCENES[0];
+  // Falls back to the same scene `resolveSceneId` does, so an id that gets here
+  // without going through it cannot load one scene while the UI marks another
+  // as current.
+  const entry = SCENES.find((scene) => scene.id === id) ?? SCENES.find((scene) => scene.id === DEFAULT_SCENE_ID);
   const module = await entry.load();
   return module.default;
 }
