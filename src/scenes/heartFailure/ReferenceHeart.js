@@ -4,6 +4,8 @@ import { ANATOMY } from './anatomy.js';
 import { CavityOutline } from './CavityOutline.js';
 import { PALETTE } from '../../data/heartFailure.js';
 import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
+import { VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
+import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX } from './HeartFailureScene.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
@@ -21,7 +23,10 @@ import {
  * inevitable path, which no amount of wording can do on its own.
  *
  * It reuses the disease scene's own model at progress 0, so the reference is
- * never a separately tuned drawing that could drift away from the model.
+ * never a separately tuned drawing that could drift away from the model. It
+ * also shares the disease heart's geometry code and motion rules (apex
+ * pinning, torsion), so a comparison compares states — never two different
+ * renderers.
  *
  * Only the chamber and its blood are drawn — vessels and the congestion overlay
  * are context that would crowd the comparison without adding to it.
@@ -32,13 +37,18 @@ export class ReferenceHeart extends THREE.Group {
    *   blood field: same particle slots, different material and cavity uniforms
    * @param {{ segments?: number, profilePoints?: number }} quality
    */
-  constructor(bloodGeometry, { segments = 48, profilePoints = 26 } = {}) {
+  constructor(bloodGeometry, { segments = 56, profilePoints = 30 } = {}) {
     super();
     this.name = 'reference-heart';
 
     // Reference state is this scene's own model evaluated at progress 0.
     this.state = sampleHemodynamics(0);
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
+    this.edShape = ventricleShape({
+      cavityVolumeMl: this.state.edvMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: this.state.longToShortAxisRatio,
+    });
 
     this.ventricle = new Chamber({
       cutAngle: ANATOMY.cutAngle,
@@ -46,9 +56,7 @@ export class ReferenceHeart extends THREE.Group {
       profilePoints,
       // Desaturated, so the eye reads the remodelled heart as the subject and
       // this one as the yardstick.
-      wallColor: new THREE.Color('#8d6f7c'),
-      liningColor: new THREE.Color('#b9959c'),
-      cutColor: new THREE.Color('#5b3d46'),
+      variant: 'reference',
     });
 
     this.blood = new THREE.Points(bloodGeometry, createReferenceBloodMaterial());
@@ -60,14 +68,7 @@ export class ReferenceHeart extends THREE.Group {
     // Same end-diastolic mark as the subject heart, so the two strokes can be
     // read against each other and not just the two chamber sizes.
     this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: '#b9d0e4' });
-    this.outline.setShape({
-      ...ventricleShape({
-        cavityVolumeMl: this.state.edvMl,
-        myocardialVolumeMl: this.myocardialVolumeMl,
-        longToShortAxisRatio: this.state.longToShortAxisRatio,
-      }),
-      baseY: ANATOMY.baseY,
-    });
+    this.outline.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
 
     this.add(this.ventricle, this.blood, this.outline);
     this.setPhase(0);
@@ -86,14 +87,37 @@ export class ReferenceHeart extends THREE.Group {
       myocardialVolumeMl: this.myocardialVolumeMl,
       longToShortAxisRatio: this.state.longToShortAxisRatio,
     });
+
+    // Same motion rules as the disease heart: apex pinned, annulus descends,
+    // apex twists with the emptying stroke.
+    const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
+    this.ventricle.position.y = descent;
+    this.blood.position.y = descent;
+    this.ventricle.setTorsion(
+      TORSION_ILLUSTRATIVE_MAX *
+        this.emptiedFraction() *
+        Math.min(1, this.state.ejectionFraction / 0.58)
+    );
+
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
 
     const uniforms = this.blood.material.uniforms;
     uniforms.uRadius.value = shape.cavityRadius;
     uniforms.uSemiLength.value = shape.cavitySemiLength;
+    uniforms.uApexDrift.value.set(
+      VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength,
+      VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength
+    );
     uniforms.uPhase.value = phase;
     uniforms.uEject.value = this.state.ejectionFraction;
     this.shape = shape;
+  }
+
+  /** Same presentation emphasis as the diseased heart, so a comparison matches. */
+  setEmphasis({ ejection, residual }) {
+    const uniforms = this.blood.material.uniforms;
+    if (ejection !== undefined) uniforms.uEjectEmphasis.value = ejection;
+    if (residual !== undefined) uniforms.uResidualEmphasis.value = residual;
   }
 
   /**
@@ -102,16 +126,9 @@ export class ReferenceHeart extends THREE.Group {
    *
    * @param {number} presence
    */
-  /** Same presentation emphasis as the diseased heart, so a comparison matches. */
-  setEmphasis({ ejection, residual }) {
-    const uniforms = this.blood.material.uniforms;
-    if (ejection !== undefined) uniforms.uEjectEmphasis.value = ejection;
-    if (residual !== undefined) uniforms.uResidualEmphasis.value = residual;
-  }
-
   setPresence(presence) {
     this.presence = presence;
-    this.ventricle.material.opacity = 0.97 * presence;
+    this.ventricle.setOpacity(presence);
     this.blood.material.uniforms.uOpacity.value = 0.55 * presence;
     this.visible = presence > 0.02;
   }
@@ -140,7 +157,9 @@ export class ReferenceHeart extends THREE.Group {
 
   dispose() {
     this.ventricle.geometry.dispose();
-    this.ventricle.material.dispose();
+    // Textures are shared with the disease heart's materials, so only the
+    // material objects themselves are released here.
+    for (const material of this.ventricle.material) material.dispose();
     this.blood.material.dispose(); // geometry is shared and owned by the disease scene
   }
 }
@@ -161,6 +180,7 @@ function createReferenceBloodMaterial() {
     uniforms: {
       uRadius: { value: 2.6 },
       uSemiLength: { value: 4 },
+      uApexDrift: { value: new THREE.Vector2(0, 0) },
       uEject: { value: 0.58 },
       uPhase: { value: 0 },
       uEjectStart: { value: 0.06 },
@@ -173,7 +193,7 @@ function createReferenceBloodMaterial() {
       uExitFalloff: { value: 3.5 },
       uEjectEmphasis: { value: 0 },
       uResidualEmphasis: { value: 0 },
-      uParticleScale: { value: 0.13 },
+      uParticleScale: { value: 0.105 },
       uHeightScale: { value: 900 },
       uFlowColor: { value: muted },
       uStaticColor: { value: mutedResidual },

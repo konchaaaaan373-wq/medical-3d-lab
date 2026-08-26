@@ -37,6 +37,7 @@ export class BloodField extends THREE.Points {
       uniforms: {
         uRadius: { value: normalised ? 2.6 : 1 },
         uSemiLength: { value: normalised ? 4 : 1 },
+        uApexDrift: { value: new THREE.Vector2(0, 0) },
         uEject: { value: 0 },
         uPhase: { value: 0 },
         uEjectStart: { value: 0.06 },
@@ -48,7 +49,7 @@ export class BloodField extends THREE.Points {
         uExitFalloff: { value: 1.2 },
         uEjectEmphasis: { value: 0 },
         uResidualEmphasis: { value: 0 },
-        uParticleScale: { value: 0.13 },
+        uParticleScale: { value: 0.105 },
         uHeightScale: { value: 900 },
         uFlowColor: { value: new THREE.Color(flowColor) },
         uStaticColor: { value: new THREE.Color(staticColor) },
@@ -62,6 +63,11 @@ export class BloodField extends THREE.Points {
   setCavity(radius, semiLength) {
     this.material.uniforms.uRadius.value = radius;
     this.material.uniforms.uSemiLength.value = semiLength;
+  }
+
+  /** Lateral apex drift, so the blood tracks the leaning long axis. */
+  setApexDrift(x, z) {
+    this.material.uniforms.uApexDrift.value.set(x, z);
   }
 
   setCycle(phase, ejectionFraction) {

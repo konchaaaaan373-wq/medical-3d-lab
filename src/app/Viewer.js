@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createControls } from '../controls/createControls.js';
 
 /**
@@ -38,8 +39,17 @@ export class Viewer {
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x05070d, 0.022);
+    this.scene.fog = new THREE.FogExp2(0x05070d, 0.017);
     this.scene.add(createBackdrop());
+
+    // Image-based ambient: a neutral studio environment at low intensity.
+    // This is what gives tissue and vessel surfaces their soft, believable
+    // reflections — point lights alone are what made them look like plastic.
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.environmentTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    this.scene.environment = this.environmentTexture;
+    this.scene.environmentIntensity = 0.45;
 
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
     this.camera.position.set(9.5, 4.2, 13.5);
@@ -48,13 +58,15 @@ export class Viewer {
       target: new THREE.Vector3(0, 0.2, 0),
     });
 
-    // Bloom is what makes the particles glow — the single biggest visual win —
-    // so it stays on everywhere; the pixel-ratio cap above pays for it on phones.
+    // Bloom is kept, but restrained: a raised threshold keeps tissue out of it
+    // entirely, so only genuinely emissive things (particles, the pressure
+    // field) get a soft halo. Broad low-threshold bloom was a large part of
+    // the old game-VFX look.
     this.useBloom = bloom;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     if (this.useBloom) {
-      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.55, 0.8, 0.15);
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, 0.5);
       this.composer.addPass(this.bloomPass);
     }
     this.composer.addPass(new OutputPass());
@@ -194,6 +206,7 @@ export class Viewer {
     window.removeEventListener('resize', this._onResize);
     this.controls.dispose();
     this.composer.dispose();
+    this.environmentTexture?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
