@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
 import { ANATOMY } from './anatomy.js';
+import { CavityOutline } from './CavityOutline.js';
 import { PALETTE } from '../../data/heartFailure.js';
 import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
 import {
@@ -56,7 +57,19 @@ export class ReferenceHeart extends THREE.Group {
     this.blood.material.uniforms.uEjectStart.value = this.state.ejectionStartPhase;
     this.blood.material.uniforms.uEjectEnd.value = this.state.ejectionEndPhase;
 
-    this.add(this.ventricle, this.blood);
+    // Same end-diastolic mark as the subject heart, so the two strokes can be
+    // read against each other and not just the two chamber sizes.
+    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: '#b9d0e4' });
+    this.outline.setShape({
+      ...ventricleShape({
+        cavityVolumeMl: this.state.edvMl,
+        myocardialVolumeMl: this.myocardialVolumeMl,
+        longToShortAxisRatio: this.state.longToShortAxisRatio,
+      }),
+      baseY: ANATOMY.baseY,
+    });
+
+    this.add(this.ventricle, this.blood, this.outline);
     this.setPhase(0);
   }
 
@@ -66,6 +79,7 @@ export class ReferenceHeart extends THREE.Group {
    * The rate difference between the two is in the read-out instead.
    */
   setPhase(phase) {
+    this.phase = phase;
     const cavityVolumeMl = cavityVolumeAt(phase, this.state);
     const shape = ventricleShape({
       cavityVolumeMl,
@@ -88,10 +102,30 @@ export class ReferenceHeart extends THREE.Group {
    *
    * @param {number} presence
    */
+  /** Same presentation emphasis as the diseased heart, so a comparison matches. */
+  setEmphasis({ ejection, residual }) {
+    const uniforms = this.blood.material.uniforms;
+    if (ejection !== undefined) uniforms.uEjectEmphasis.value = ejection;
+    if (residual !== undefined) uniforms.uResidualEmphasis.value = residual;
+  }
+
   setPresence(presence) {
+    this.presence = presence;
     this.ventricle.material.opacity = 0.97 * presence;
     this.blood.material.uniforms.uOpacity.value = 0.55 * presence;
     this.visible = presence > 0.02;
+  }
+
+  /** @param {number} value 0..1 — the end-diastolic mark is a comparison aid. */
+  setOutline(value) {
+    this.outline.setOpacity(value * (this.presence ?? 1));
+  }
+
+  /** How far through its own stroke this heart is, 0 at ED, 1 at ES. */
+  emptiedFraction() {
+    const { edvMl, esvMl } = this.state;
+    const volume = cavityVolumeAt(this.phase ?? 0, this.state);
+    return Math.min(1, Math.max(0, (edvMl - volume) / Math.max(1, edvMl - esvMl)));
   }
 
   update(elapsed) {
@@ -137,6 +171,8 @@ function createReferenceBloodMaterial() {
       // The reference is only ever shown in comparison mode, where the vessels
       // are hidden, so its outflow always fades quickly.
       uExitFalloff: { value: 3.5 },
+      uEjectEmphasis: { value: 0 },
+      uResidualEmphasis: { value: 0 },
       uParticleScale: { value: 0.13 },
       uHeightScale: { value: 900 },
       uFlowColor: { value: muted },

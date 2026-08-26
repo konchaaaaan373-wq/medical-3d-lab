@@ -17,6 +17,7 @@ import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
+import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 
 /**
@@ -119,14 +120,8 @@ export async function createApp({ stage, ui }) {
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
     onDataToggle: scene.getMetrics ? (enabled) => setDataView(enabled) : undefined,
     onStoryToggle: (enabled) => {
-      playback.holdsEnabled = enabled;
-      // Turning story mode on should immediately frame the current stage.
-      if (enabled) focusStage(stageIndexFor(playback.value, meta.stages), true);
-      else {
-        setShot(comparisonOrStageShot());
-        view.active = true;
-        viewer.controls.autoRotate = false;
-      }
+      if (enabled) storyMode?.enter();
+      else storyMode?.exit();
     },
   });
 
@@ -264,7 +259,7 @@ export async function createApp({ stage, ui }) {
     comparing = enabled;
     scene.setComparison(enabled);
     labels.setComparison(enabled);
-    labels.update(playback.value);
+    applyLabelFocus();
     controlPanel.setComparison(enabled);
     refreshModelReadouts();
     // Leaving comparison during story mode should return to the stage close-up
@@ -323,6 +318,21 @@ export async function createApp({ stage, ui }) {
       const pressureVolume = scene.getPressureVolume();
       pvPanel.update(pressureVolume);
       wavePanel?.update(pressureVolume);
+    }
+    if (storyMode?.active) {
+      storyMode.tick();
+      // The sequence names where the camera should be; the same damped tween
+      // the rest of the app uses carries it there, so the motion matches.
+      shot.position.copy(storyMode.pose.position);
+      shot.target.copy(storyMode.pose.target);
+      tweenPose(viewer, shot, dt);
+      labels.render();
+      if (pvPanel) {
+        const pressureVolume = scene.getPressureVolume();
+        pvPanel.update(pressureVolume);
+        wavePanel?.update(pressureVolume);
+      }
+      return;
     }
     if (reelMode?.active) {
       // The sequence owns the camera while it runs, so the interactive tween
@@ -390,7 +400,10 @@ export async function createApp({ stage, ui }) {
    * detail.
    */
   function applyLabelFocus() {
-    if (storyFocus) labels.setFocus(storyFocus);
+    // The comparison has its own two labels and no stage focus list mentions
+    // them, so narrowing there would leave both hearts unnamed.
+    if (comparing) labels.setFocus(null);
+    else if (storyFocus) labels.setFocus(storyFocus);
     else if (dataView) labels.setFocus(null);
     else labels.setFocus(meta.stages[stageIndexFor(playback.value, meta.stages)]?.focus ?? ['lv']);
     labels.update(playback.value);
@@ -432,6 +445,34 @@ export async function createApp({ stage, ui }) {
     setLearning(!learning);
   }
 
+  // The guided sequence. Owns the camera, the caption and the label focus while
+  // it runs, and hands the session back on the way out.
+  const storyMode = scene.getStory
+    ? createStoryMode({
+        viewer,
+        scene,
+        ui,
+        story: scene.getStory(),
+        setProgress: (value) => {
+          playback.pause();
+          playback.set(value);
+        },
+        setLabelFocus: (ids) => {
+          storyFocus = ids;
+          applyLabelFocus();
+        },
+        captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
+        restoreState: (state) => {
+          restoreSessionState(state, { playback, viewer, scene, setComparison });
+          modelControls?.sync(scene.getModelControls?.() ?? []);
+          refreshModelReadouts();
+          controlPanel.setStory(false);
+          setShot(comparisonOrStageShot());
+          view.active = true;
+        },
+      })
+    : null;
+
   function toggleReel() {
     if (!reelMode) return;
     if (reelMode.active) {
@@ -452,6 +493,7 @@ export async function createApp({ stage, ui }) {
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     exitReel: () => {
       if (reelMode?.active) toggleReel();
+      else if (storyMode?.active) storyMode.exit();
       else if (learning) setLearning(false);
     },
   });
@@ -488,6 +530,7 @@ export async function createApp({ stage, ui }) {
     setComparison,
     isComparing: () => comparing,
     reel: reelMode,
+    story: storyMode,
     setDataView,
     isDataView: () => dataView,
     learning: learningPanel ? { panel: learningPanel, set: setLearning, isActive: () => learning } : null,

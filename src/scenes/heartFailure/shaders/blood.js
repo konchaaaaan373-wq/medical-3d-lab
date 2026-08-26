@@ -22,6 +22,8 @@ export const bloodVertexShader = /* glsl */ `
   uniform float uTime;
   uniform float uOpacity;
   uniform float uExitFalloff;   // how quickly ejected blood fades on its way out
+  uniform float uEjectEmphasis; // 0..1 — brighten and stretch blood on its way out
+  uniform float uResidualEmphasis; // 0..1 — pick out what is still in the chamber
   uniform float uParticleScale;
   uniform float uHeightScale;
   uniform vec3 uFlowColor;
@@ -38,6 +40,7 @@ export const bloodVertexShader = /* glsl */ `
   varying float vAlpha;
 
   void main() {
+    float vSize = 1.0;
     float ejects = step(aRank, uEject);
 
     vec3 cavity = vec3(position.x * uRadius, position.y * uSemiLength, position.z * uRadius);
@@ -70,7 +73,27 @@ export const bloodVertexShader = /* glsl */ `
 
     vec3 p = mix(cavity, away, travel) + swirl;
 
+    // How fast this particle is moving along its exit path right now. It peaks
+    // mid-ejection and is zero whenever the valve is shut, so it can carry the
+    // "this is leaving, and that way" reading without any colour change.
+    float ejecting = 0.0;
+    if (uPhase >= uEjectStart && uPhase < uEjectEnd) {
+      float local = (uPhase - uEjectStart) / max(uEjectEnd - uEjectStart, 1e-3);
+      ejecting = ejects * smoothstep(stagger, stagger + 0.55, local)
+                        * (1.0 - smoothstep(stagger + 0.55, stagger + 1.0, local));
+    }
+
+    // A short trail, drawn by pulling the point back along the direction it is
+    // travelling. Cheap, and it only exists while the valve is open.
+    vec3 heading = normalize(away - cavity + vec3(1e-5));
+    p -= heading * ejecting * uEjectEmphasis * 0.5;
+
     vColor = mix(uStaticColor, uFlowColor, ejects);
+    // Blood still in the chamber at end-systole is the point of the scene, so
+    // it can be picked out without recolouring anything: the residual
+    // population is what is left when travel is zero and the particle is not
+    // one of the ones that leaves.
+    vColor = mix(vColor, uStaticColor * 1.9, uResidualEmphasis * (1.0 - ejects));
     // A particle fades out as it leaves up the aorta and fades back in from the
     // atrium during filling. The systemic circulation is not drawn, so this both
     // hides the hand-off and — importantly — means nothing is ever visible
@@ -78,10 +101,14 @@ export const bloodVertexShader = /* glsl */ `
     float present = smoothstep(aAppear, aAppear + 0.12, uFill);
     float leaving = pow(clamp(1.0 - travel, 0.0, 1.0), uExitFalloff);
     vAlpha = uOpacity * present * leaving * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
+    // Emphasis is brightness and size, never a different colour: the legend has
+    // to keep meaning what it says.
+    vAlpha *= 1.0 + ejecting * uEjectEmphasis * 1.4 + uResidualEmphasis * (1.0 - ejects) * 0.8;
+    vSize = 1.0 + ejecting * uEjectEmphasis * 0.9 + uResidualEmphasis * (1.0 - ejects) * 0.5;
 
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 64.0);
+    gl_PointSize = clamp(aSize * vSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 64.0);
   }
 `;
 

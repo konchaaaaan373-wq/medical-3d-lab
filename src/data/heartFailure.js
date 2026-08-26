@@ -16,6 +16,7 @@ export const PALETTE = {
   pressure: '#6f7ce8', // raised filling / pulmonary venous pressure (NOT blood)
   fluid: '#a8d8f0', // interstitial fluid (NOT blood)
   vessel: '#8fa8c8',
+  endDiastolicMark: '#9fe4ff', // where the cavity wall was at end-diastole (NOT tissue)
 };
 
 /**
@@ -92,7 +93,16 @@ export const LEGEND = [
     activeFrom: 0.46,
   },
   { key: 'pressure', label: 'Raised pressure', labelJa: '充満圧の上昇', activeFrom: 0.6 },
-  { key: 'fluid', label: 'Interstitial fluid', labelJa: '間質の水分', activeFrom: 0.82 },
+  { key: 'fluid', label: 'Interstitial fluid', labelJa: '間質の水分', activeFrom: 0.7 },
+  {
+    // Not a species — a measurement mark, so it is drawn as a ring rather than
+    // a filled swatch. Only appears where a stroke is being compared.
+    key: 'endDiastolicMark',
+    label: 'End-diastolic outline',
+    labelJa: '拡張末期の輪郭',
+    activeFrom: 0,
+    outline: true,
+  },
 ];
 
 /** Captions at each end of the progression slider. */
@@ -131,10 +141,15 @@ export const ANNOTATIONS = [
   },
   {
     id: 'fluid',
+    // The window follows what the model actually produces: interstitial fluid
+    // is already ~0.2 of full here and climbing, so the label appears with the
+    // thing it names rather than long after it. Still last in the ladder —
+    // residual (0.55) -> filling pressure (0.62) -> fluid — because that is the
+    // order the chain runs in.
     text: 'Interstitial fluid',
     sub: '間質への水分移動',
     anchor: 'fluid',
-    range: [0.84, 1.0],
+    range: [0.7, 1.0],
     compact: false,
   },
 ];

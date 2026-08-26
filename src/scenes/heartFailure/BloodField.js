@@ -46,6 +46,8 @@ export class BloodField extends THREE.Points {
         uOpacity: { value: 1 },
         // 1 ≈ linear fade along the outflow; higher makes blood vanish sooner.
         uExitFalloff: { value: 1.2 },
+        uEjectEmphasis: { value: 0 },
+        uResidualEmphasis: { value: 0 },
         uParticleScale: { value: 0.13 },
         uHeightScale: { value: 900 },
         uFlowColor: { value: new THREE.Color(flowColor) },
@@ -80,6 +82,23 @@ export class BloodField extends THREE.Points {
   setEjectionWindow(start, end) {
     this.material.uniforms.uEjectStart.value = start;
     this.material.uniforms.uEjectEnd.value = end;
+  }
+
+  /**
+   * Presentation emphasis, 0..1 each. Visualization only — neither changes what
+   * the model produced, only how easy it is to read.
+   *
+   * `ejection` brightens and lengthens blood while the aortic valve is open, so
+   * the outflow is recognisable by its motion rather than by its colour.
+   * `residual` picks out what is still in the chamber, which is what a failing
+   * ventricle leaves behind.
+   *
+   * @param {{ ejection?: number, residual?: number }} emphasis
+   */
+  setEmphasis({ ejection, residual }) {
+    const uniforms = this.material.uniforms;
+    if (ejection !== undefined) uniforms.uEjectEmphasis.value = ejection;
+    if (residual !== undefined) uniforms.uResidualEmphasis.value = residual;
   }
 
   /**

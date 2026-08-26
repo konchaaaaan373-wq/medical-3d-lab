@@ -101,6 +101,14 @@
   flex: none;
 }
 
+/* A measurement mark, not a species: an open ring so it never reads as a
+   colour that something in the scene is drawn in. */
+.legend-dot.is-outline {
+  background: none;
+  border: 1.5px solid var(--dot);
+  box-shadow: none;
+}
+
 .legend-label {
   display: flex;
   flex-direction: column;
@@ -471,6 +479,161 @@
   height: 6px;
   border-top: 0;
   background: rgba(255, 150, 168, 0.28);
+}
+
+/* ---------- guided sequence ---------- */
+/*
+ * While the sequence runs, everything that is not the subject or the caption
+ * steps aside. The console would otherwise keep competing with the animation
+ * the sequence is asking the viewer to watch.
+ */
+#ui.is-story .console,
+#ui.is-story .rail,
+#ui.is-story .top-left > *:not(.title-card) {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+#ui.is-story .title-card {
+  opacity: 0.45;
+}
+
+.story-bar {
+  position: absolute;
+  left: 50%;
+  bottom: max(22px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 40px));
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 12px;
+  border-radius: var(--radius);
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(14px);
+}
+
+.story-line {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 40px;
+}
+
+.story-part {
+  flex: none;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  padding-top: 2px;
+}
+
+.story-bar[data-part='beat'] .story-part {
+  color: #ff96a8;
+}
+
+.story-caption {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  opacity: var(--story-caption-opacity, 1);
+}
+
+.story-caption-text {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.story-caption-text.lang-ja {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+/* Named only while the beat itself is the subject. */
+.story-beat {
+  flex: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.story-beat:empty {
+  display: none;
+}
+
+.story-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.story-dots {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.story-dot {
+  flex: 1;
+  height: 3px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--border);
+  cursor: pointer;
+  transition: background 200ms ease;
+}
+
+.story-dot.is-done {
+  background: var(--ink-faint);
+}
+
+.story-dot.is-current {
+  background: var(--accent);
+}
+
+.story-dot:hover {
+  background: var(--ink-dim);
+}
+
+.story-exit {
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--ink-faint);
+}
+
+.story-exit:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 720px) {
+  .story-bar {
+    width: calc(100vw - 24px);
+    padding: 12px 14px 10px;
+  }
+
+  .story-caption-text {
+    font-size: 13.5px;
+  }
+
+  .story-beat {
+    display: none;
+  }
 }
 
 /* ---------- guided lesson ---------- */

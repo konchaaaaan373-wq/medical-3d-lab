@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
+import { CavityOutline } from './CavityOutline.js';
 import { BloodField } from './BloodField.js';
 import { Vessels } from './Vessels.js';
 import { CongestionOverlay } from './CongestionOverlay.js';
@@ -13,6 +14,20 @@ import {
   congestionEmphasisAt,
   overlayAt,
 } from './reelStoryboard.js';
+import {
+  STORY_DURATION,
+  STORY_STEPS,
+  STORY_CUES,
+  stepAt,
+  cardiacPhaseAt as storyCardiacPhaseAt,
+  cameraAt as storyCameraAt,
+  captionAt as storyCaptionAt,
+  emphasisAt as storyEmphasisAt,
+  revealAt as storyRevealAt,
+  outlineAt as storyOutlineAt,
+  beatDrivenAt,
+  beatNamedAt,
+} from './storyboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
 import {
   sampleHemodynamics,
@@ -137,6 +152,17 @@ export class HeartFailureScene {
     /** Visualization-only presentation emphasis on the congestion story, 0..1. */
     this.congestionEmphasis = 0;
     /**
+     * How much of the congestion the overlay is currently allowed to draw.
+     *
+     * Visualization only, and it can only ever scale *down* what the model
+     * produced — pressure first, then fluid. The guided sequence uses it to
+     * reveal the chain in the order it happens (filling pressure rises, that
+     * pressure reaches the pulmonary side, fluid follows) instead of showing
+     * the finished state all at once. It never creates congestion the state
+     * does not have.
+     */
+    this.congestionReveal = { front: 1, fluid: 1 };
+    /**
      * Exploratory multipliers on the circulation model's inputs. 1 is the
      * disease state as modelled; moving them scales circulating volume and
      * systemic resistance so the Frank-Starling and afterload relationships can
@@ -176,7 +202,14 @@ export class HeartFailureScene {
     // comparison mode can slide it aside without touching the lights.
     this.primary = new THREE.Group();
     this.primary.name = 'diseased-heart';
-    this.primary.add(this.vessels, this.ventricle, this.blood, this.congestion);
+    // Where the cavity wall was at end-diastole. Off outside the comparison,
+    // where there is nothing to compare the stroke against.
+    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle });
+    this.outline.visible = false;
+    this.comparisonOutline = false;
+    this.storyOutline = 0;
+
+    this.primary.add(this.vessels, this.ventricle, this.blood, this.congestion, this.outline);
     this.root.add(this._createLights(), this.primary);
     this._quality = { segments: compact ? 36 : 48, profilePoints: compact ? 20 : 26 };
     this.comparing = false;
@@ -234,8 +267,12 @@ export class HeartFailureScene {
     // read off the stage: the overlay spreads with mean pulmonary venous
     // pressure, and interstitial fluid appears only once that pressure reaches
     // the range where transudation is expected.
-    this.congestion.setCongestion(this.state.congestionLevel, this.state.interstitialFluidLevel);
+    this.congestion.setCongestion(
+      this.state.congestionLevel * this.congestionReveal.front,
+      this.state.interstitialFluidLevel * this.congestionReveal.fluid
+    );
     this.vessels.setCongestionLevel(this.state.congestionLevel);
+    this._applyOutlineShape();
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
     this._applyCongestionVisibility();
   }
@@ -246,6 +283,7 @@ export class HeartFailureScene {
       this.phase = advanceCardiacPhase(this.phase, dt, this.state.hr);
     }
     this._applyShape();
+    this._applyOutlineVisibility();
     this.blood.setCycle(this.phase, this.state.ejectionFraction);
     this.blood.update(elapsed);
     this.congestion.update(elapsed);
@@ -253,6 +291,50 @@ export class HeartFailureScene {
       this.reference.setPhase(this.phase);
       this.reference.update(elapsed);
     }
+  }
+
+  /**
+   * Show the end-diastolic mark, 0..1. Presentation only: the mark itself is
+   * the solved end-diastolic cavity and this only decides whether it is drawn.
+   *
+   * @param {number} value
+   */
+  setOutline(value) {
+    this.storyOutline = value;
+    this._applyOutlineVisibility();
+  }
+
+  _applyOutlineVisibility() {
+    const wanted = Math.max(this.comparisonOutline ? 1 : 0, this.storyOutline ?? 0);
+    // The mark is only worth drawing once the wall has left it. At end-diastole
+    // it lies exactly on the lining, where it would be a grid over the cavity
+    // and nothing else; through systole it emerges as the gap opens. The
+    // fraction is the model's own emptying, so what fades in is the stroke.
+    this.outline?.setOpacity(wanted * this._emptiedFraction());
+    this.reference?.setOutline(this.comparing ? this.reference.emptiedFraction() : 0);
+  }
+
+  /** How far through its stroke the cavity is right now, 0 at ED, 1 at ES. */
+  _emptiedFraction() {
+    const { edvMl, esvMl } = this.state;
+    const volume = cavityVolumeAt(this.phase, this.state);
+    return Math.min(1, Math.max(0, (edvMl - volume) / Math.max(1, edvMl - esvMl)));
+  }
+
+  /**
+   * The end-diastolic mark, re-cut whenever the state changes. It follows the
+   * solved EDV — nothing about it is drawn by hand.
+   */
+  _applyOutlineShape() {
+    if (!this.outline) return;
+    this.outline.setShape({
+      ...ventricleShape({
+        cavityVolumeMl: this.state.edvMl,
+        myocardialVolumeMl: this.myocardialVolumeMl,
+        longToShortAxisRatio: this.state.longToShortAxisRatio,
+      }),
+      baseY: ANATOMY.baseY,
+    });
   }
 
   _applyShape() {
@@ -460,7 +542,8 @@ export class HeartFailureScene {
 
   _applyCongestionVisibility() {
     const allowed = this.comparing ? this.congestionInComparison : true;
-    this.congestion.visible = allowed && this.state.congestionLevel > 0.02;
+    this.congestion.visible =
+      allowed && this.state.congestionLevel * this.congestionReveal.front > 0.02;
     // Outside comparison the vessels are always drawn. Inside it they are
     // normally hidden to keep two hearts legible — but while the congestion
     // story is being emphasised they come back, because the pressure field is
@@ -487,6 +570,87 @@ export class HeartFailureScene {
     this.vessels.setPresentationEmphasis(emphasis);
     this.reference?.setPresence(1 - emphasis * 0.62);
     this._applyCongestionVisibility();
+  }
+
+  /**
+   * Reveals the congestion overlay in causal order, 0..1 each.
+   *
+   * Both are multipliers on what the model solved, so 1 shows exactly the
+   * state's own congestion and anything less shows part of it. Raising `front`
+   * alone spreads the pressure field outward along atrium → pulmonary veins →
+   * vascular bed, which is what transmitted pressure does; `fluid` is what
+   * follows it. Blood is not involved in either, and never moves backwards.
+   *
+   * @param {{ front?: number, fluid?: number }} reveal
+   */
+  /**
+   * Where the beat currently is, named.
+   *
+   * Read from the same phase everything else is drawn from and from the same
+   * solved valve timings, so the caption cannot describe a moment the geometry
+   * is not in. Shown only while the beat is the subject — a permanent readout
+   * would just be another thing on screen.
+   *
+   * @returns {{ id: string, label: string, labelJa: string }}
+   */
+  getBeatPhase() {
+    const phase = this.phase - Math.floor(this.phase);
+    const { ejectionStartPhase, ejectionEndPhase } = this.state;
+    if (phase < ejectionStartPhase) {
+      return { id: 'isovolumic', label: 'Systole — contraction begins', labelJa: '収縮期 — 収縮開始' };
+    }
+    if (phase < ejectionEndPhase) {
+      return { id: 'ejection', label: 'Systole — ejection', labelJa: '収縮期 — 駆出' };
+    }
+    if (phase < ejectionEndPhase + 0.12) {
+      return { id: 'end-systole', label: 'End systole', labelJa: '収縮末期' };
+    }
+    return { id: 'filling', label: 'Diastole — filling', labelJa: '拡張期 — 充満' };
+  }
+
+  /**
+   * The guided sequence for this scene.
+   *
+   * Data only: what the model is set to at each step, where the camera goes,
+   * which label is pointed at, and what the caption says. `StoryMode` supplies
+   * the machinery, so another scene can ship its own sequence by returning the
+   * same shape.
+   */
+  getStory() {
+    return {
+      duration: STORY_DURATION,
+      steps: STORY_STEPS,
+      cues: STORY_CUES,
+      viewDirection: VIEW_DIRECTION.clone(),
+      stepAt,
+      cardiacPhaseAt: storyCardiacPhaseAt,
+      cameraAt: storyCameraAt,
+      captionAt: storyCaptionAt,
+      emphasisAt: storyEmphasisAt,
+      revealAt: storyRevealAt,
+      outlineAt: storyOutlineAt,
+      beatDrivenAt,
+      beatNamedAt,
+    };
+  }
+
+  /**
+   * Presentation emphasis on the two moments of the beat that carry the
+   * teaching: blood leaving, and blood that did not.
+   *
+   * Visualization only — no model value changes, and both hearts get the same
+   * treatment so a comparison stays a comparison.
+   *
+   * @param {{ ejection?: number, residual?: number }} emphasis
+   */
+  setBeatEmphasis(emphasis) {
+    this.blood.setEmphasis(emphasis);
+    this.reference?.setEmphasis(emphasis);
+  }
+
+  setCongestionReveal(reveal) {
+    this.congestionReveal = { ...this.congestionReveal, ...reveal };
+    this._resolve();
   }
 
   /** @returns {number} current position in the cardiac cycle, 0..1 */
@@ -576,6 +740,12 @@ export class HeartFailureScene {
       this.reference.position.x = enabled ? -COMPARISON_OFFSET : 0;
       if (enabled) this.reference.setPhase(this.phase);
     }
+
+    // The stroke mark earns its place where a stroke is the subject: in the
+    // comparison, and in the part of the sequence that is about how little
+    // leaves. Outside those it is one more thing on screen.
+    this.comparisonOutline = enabled;
+    this._applyOutlineVisibility();
 
     this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.blood.setExitFalloff(enabled ? 3.5 : 1.2);

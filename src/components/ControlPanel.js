@@ -147,6 +147,10 @@ export function createControlPanel({
 
   return {
     element,
+    setStory(enabled) {
+      storyButton.element.classList.toggle('is-on', enabled);
+      storyButton.element.setAttribute('aria-pressed', String(enabled));
+    },
     setDataView(enabled) {
       if (!dataButton) return;
       dataButton.element.classList.toggle('is-on', enabled);

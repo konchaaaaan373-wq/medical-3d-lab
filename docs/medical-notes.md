@@ -415,3 +415,21 @@ EDPVR の硬さ（β）                     大動脈圧（収縮期 / 拡張期
 少なくありません。
 
 **EF の値だけで心不全の重症度は判断できません。**
+
+## The end-diastolic outline
+
+In the comparison, and during the two beat steps of the guided sequence, a thin
+cage marks where the endocardial surface sat at end-diastole. It is drawn from
+`ventricleShape()` evaluated at the state's own `edvMl` — the same function that
+draws the beating chamber, at a different volume. Nothing about it is hand-drawn,
+and it carries no value the model does not already produce.
+
+It is drawn as lines rather than as a surface so that it cannot be read as
+tissue: it is a measurement mark, and the gap between it and the moving lining is
+the stroke. Its opacity follows how far through the stroke the cavity currently
+is, so at end-diastole (where it lies exactly on the lining) it is not drawn at
+all.
+
+What it is **not**: it is not an imaging measurement, not a wall-motion score,
+and the gap is not a quantified stroke volume. It is there so that "this
+ventricle empties less" is something the viewer sees rather than reads.

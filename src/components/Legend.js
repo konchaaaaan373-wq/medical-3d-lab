@@ -7,7 +7,10 @@ import { el } from '../utils/dom.js';
 export function createLegend(meta) {
   const items = meta.legend.map((entry) => {
     const node = el('li', { class: 'legend-item' }, [
-      el('span', { class: 'legend-dot', style: `--dot:${meta.palette[entry.key]}` }),
+      el('span', {
+        class: entry.outline ? 'legend-dot is-outline' : 'legend-dot',
+        style: `--dot:${meta.palette[entry.key]}`,
+      }),
       el('span', { class: 'legend-label' }, [
         el('span', { class: 'legend-en lang-en', text: entry.label }),
         el('span', { class: 'legend-ja lang-ja', text: entry.labelJa }),
