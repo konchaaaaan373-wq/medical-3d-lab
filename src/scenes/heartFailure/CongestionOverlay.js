@@ -7,7 +7,7 @@ import {
   buildInterstitialFluid,
 } from './anatomy.js';
 import { variableTube } from './Vessels.js';
-import { lerp } from '../../utils/math.js';
+import { lerp, smoothstep } from '../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -42,13 +42,19 @@ export class CongestionOverlay extends THREE.Group {
     this.pressureMaterial = createPressureMaterial(new THREE.Color(PALETTE.pressure));
 
     // --- pressure front along atrium -> veins -> vascular branches
-    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.08, 28, 20);
-    atrium.translate(ANATOMY.atriumCentre.x, ANATOMY.atriumCentre.y, ANATOMY.atriumCentre.z);
-    this.add(sheath(atrium, () => 0.12, this.pressureMaterial));
+    // Sized past the lobed atrium's fullest extent (appendage included) and
+    // rescaled with its distension in setCongestion, so the tint always sits
+    // just outside the wall it labels.
+    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.32, 28, 20);
+    this.atriumSheath = sheath(atrium, () => 0.12, this.pressureMaterial);
+    this.atriumSheath.position.copy(ANATOMY.atriumCentre);
+    this.add(this.atriumSheath);
 
+    // Vessel sheath radii allow for the walls' engorgement at full
+    // congestion (Vessels inflates them by up to 0.12 along the normal).
     for (const vein of PULMONARY_VEINS) {
       // Curves run bed -> atrium, so uv.x = 0 at the far (bed) end.
-      const tube = variableTube(vein, 40, 10, () => 0.5);
+      const tube = variableTube(vein, 40, 10, () => 0.56);
       this.add(sheath(tube, (uvX) => 0.2 + (1 - uvX) * 0.5, this.pressureMaterial));
     }
 
@@ -61,7 +67,7 @@ export class CongestionOverlay extends THREE.Group {
           fan.curves[i],
           primary ? 18 : 10,
           8,
-          (t) => (primary ? lerp(0.44, 0.26, t) : lerp(0.24, 0.14, t))
+          (t) => (primary ? lerp(0.52, 0.38, t) : lerp(0.37, 0.3, t))
         );
         this.add(
           sheath(tube, (uvX) => (primary ? 0.72 + uvX * 0.2 : 0.85 + uvX * 0.15), this.pressureMaterial)
@@ -93,6 +99,9 @@ export class CongestionOverlay extends THREE.Group {
   setCongestion(front, fluid) {
     this.pressureMaterial.uniforms.uPressure.value = front;
     this.fluid.material.uniforms.uFill.value = fluid;
+    // Track the atrium's own distension (same easing as Vessels), so the
+    // sheath keeps hugging the wall it labels as the chamber swells.
+    this.atriumSheath.scale.setScalar(lerp(1, 1.22, smoothstep(0, 1, front)));
     this.visible = front > 0.02;
   }
 

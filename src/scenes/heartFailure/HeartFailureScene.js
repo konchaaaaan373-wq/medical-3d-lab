@@ -31,7 +31,7 @@ import {
   beatNamedAt,
 } from './storyboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
-import { VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
+import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
@@ -93,27 +93,6 @@ const REEL_CONGESTION_DIRECTION = new THREE.Vector3(0.16, 0.5, 0.85).normalize()
  * asserted by tests/hemodynamics.test.js.
  */
 export const COMPARISON_OFFSET = 5.4;
-
-/**
- * How firmly the apex is pinned in space across the beat, 0..1.
- *
- * A real ventricle contracts base-toward-apex: the apex barely moves while the
- * mitral annulus descends. The solved geometry gives the *amount* of long-axis
- * shortening; this constant only chooses where that shortening is anchored —
- * 1 would fix the apex exactly, 0 would fix the base (the old behaviour).
- */
-export const APEX_PINNING = 0.85;
-
-/**
- * Peak apical torsion at a normal ejection fraction, radians (~12°).
- *
- * Torsion is real ventricular mechanics (the apex rotates against the base
- * through systole, and twist falls as systolic function falls), but this model
- * does not solve for it — it is presented at an illustrative amplitude scaled
- * by the solved beat: it rises with how far the stroke has emptied and shrinks
- * with the state's ejection fraction. See docs/medical-notes.md.
- */
-export const TORSION_ILLUSTRATIVE_MAX = 0.21;
 
 function framing(target, distance) {
   return {
@@ -390,7 +369,9 @@ export class HeartFailureScene {
     // plane — the rings, and the blood's frame of reference — rides along.
     const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
     this.ventricle.position.y = descent;
-    this.blood.position.y = descent;
+    // The blood's cavity frame descends too, but its exit/entry paths are
+    // world-anchored to the drawn aorta and atrium — handled in the shader.
+    this.blood.setDescent(descent);
     this.vessels.setAnnularDescent(descent);
 
     // Apical torsion, illustrative amplitude scaled by the solved beat: it

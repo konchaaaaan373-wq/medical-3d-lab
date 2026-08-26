@@ -5,8 +5,7 @@ import { ANATOMY } from './anatomy.js';
 import { CavityOutline } from './CavityOutline.js';
 import { PALETTE } from '../../data/heartFailure.js';
 import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
-import { VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
-import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX } from './HeartFailureScene.js';
+import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
@@ -97,7 +96,7 @@ export class ReferenceHeart extends THREE.Group {
     // apex twists with the emptying stroke.
     const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
     this.ventricle.position.y = descent;
-    this.blood.position.y = descent;
+    this.blood.material.uniforms.uDescent.value = descent;
     this.ventricle.setTorsion(
       TORSION_ILLUSTRATIVE_MAX *
         this.emptiedFraction() *
@@ -191,6 +190,7 @@ function createReferenceBloodMaterial() {
       uRadius: { value: 2.6 },
       uSemiLength: { value: 4 },
       uApexDrift: { value: new THREE.Vector2(0, 0) },
+      uDescent: { value: 0 },
       uEject: { value: 0.58 },
       uPhase: { value: 0 },
       uEjectStart: { value: 0.06 },

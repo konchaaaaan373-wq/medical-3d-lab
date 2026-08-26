@@ -38,6 +38,7 @@ export class BloodField extends THREE.Points {
         uRadius: { value: normalised ? 2.6 : 1 },
         uSemiLength: { value: normalised ? 4 : 1 },
         uApexDrift: { value: new THREE.Vector2(0, 0) },
+        uDescent: { value: 0 },
         uEject: { value: 0 },
         uPhase: { value: 0 },
         uEjectStart: { value: 0.06 },
@@ -68,6 +69,11 @@ export class BloodField extends THREE.Points {
   /** Lateral apex drift, so the blood tracks the leaning long axis. */
   setApexDrift(x, z) {
     this.material.uniforms.uApexDrift.value.set(x, z);
+  }
+
+  /** Annular descent of the chamber frame; exit/entry paths stay put. */
+  setDescent(descent) {
+    this.material.uniforms.uDescent.value = descent;
   }
 
   setCycle(phase, ejectionFraction) {

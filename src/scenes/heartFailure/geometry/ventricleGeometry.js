@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { smoothstep as smooth } from '../../../utils/math.js';
 
 /**
  * Anatomically-shaped left-ventricle shell geometry.
@@ -96,6 +97,27 @@ export const VENTRICLE_SHAPING = {
   longAxisBow: 0.02,
 };
 
+/**
+ * How firmly the apex is pinned in space across the beat, 0..1.
+ *
+ * A real ventricle contracts base-toward-apex: the apex barely moves while the
+ * mitral annulus descends. The solved geometry gives the *amount* of long-axis
+ * shortening; this constant only chooses where that shortening is anchored —
+ * 1 would fix the apex exactly, 0 would fix the base.
+ */
+export const APEX_PINNING = 0.85;
+
+/**
+ * Peak apical torsion at a normal ejection fraction, radians (~12°).
+ *
+ * Torsion is real ventricular mechanics (the apex rotates against the base
+ * through systole, and twist falls as systolic function falls), but the model
+ * does not solve for it — it is presented at an illustrative amplitude scaled
+ * by the solved beat: it rises with how far the stroke has emptied and shrinks
+ * with the state's ejection fraction. See docs/medical-notes.md.
+ */
+export const TORSION_ILLUSTRATIVE_MAX = 0.21;
+
 /** Largest lateral extent the RV lobe can add, in scene units, for tests. */
 export function rvLobeMaxExtent(outerSemiLength) {
   return VENTRICLE_SHAPING.rvLobeAmplitude * outerSemiLength;
@@ -108,12 +130,6 @@ function angularBump(phi, centre, halfWidth) {
   if (d >= halfWidth) return 0;
   return 0.5 * (1 + Math.cos((d / halfWidth) * Math.PI));
 }
-
-const clamp01 = (v) => Math.min(1, Math.max(0, v));
-const smooth = (a, b, x) => {
-  const t = clamp01((x - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
 
 /** Smooth, deterministic surface irregularity. Centred on 0, range ~±1. */
 function surfaceNoise(t, phi) {
@@ -380,6 +396,17 @@ export function buildVentricleGeometry({
     basePhi,
     flip: flip ? -1 : 1,
     contextLobe,
+    // Per-profile scratch, reused every frame instead of reallocated.
+    scratch: {
+      tArr: new Float32Array(N),
+      rO: new Float32Array(N),
+      yO: new Float32Array(N),
+      rC: new Float32Array(N),
+      yC: new Float32Array(N),
+      driftW: new Float32Array(N),
+      twistW: new Float32Array(N),
+      spanScale: new Float32Array(N),
+    },
   };
 }
 
@@ -406,13 +433,7 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   const innerMax = Math.acos(THREE.MathUtils.clamp(-baseY / cavitySemiLength, -1, 1));
 
   // Per-profile-sample scalars that do not depend on azimuth.
-  const tArr = new Float32Array(N);
-  const rO = new Float32Array(N);
-  const yO = new Float32Array(N);
-  const rC = new Float32Array(N);
-  const yC = new Float32Array(N);
-  const driftW = new Float32Array(N);
-  const twistW = new Float32Array(N);
+  const { tArr, rO, yO, rC, yC, driftW, twistW, spanScale } = kit.scratch;
   for (let i = 0; i < N; i++) {
     const t = i / (N - 1);
     tArr[i] = t;
@@ -432,7 +453,6 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   // How far the wedge is open at each profile sample: sealed at the apex,
   // fully open by apexSealEnd. Azimuths are remapped about the far side (π)
   // so the two cut boundaries converge and close the tip.
-  const spanScale = new Float32Array(N);
   for (let i = 0; i < N; i++) {
     spanScale[i] = sealSpanScale(tArr[i], basePhi[0]);
   }

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { cavitySurfacePoint } from './geometry/ventricleGeometry.js';
 
 /**
  * A thin cage marking where the cavity wall sat at end-diastole.
@@ -12,6 +13,11 @@ import * as THREE from 'three';
  * contracts inside it. The gap between lining and outline is the stroke, drawn
  * rather than stated: wide in a normal ventricle, narrow in a failing one, at a
  * glance and from any angle.
+ *
+ * The cage samples the same endocardial surface function the chamber mesh is
+ * built from (`cavitySurfacePoint` — including the leaning, bowed long axis and
+ * the angular shaping), so at end-diastole it lies on the drawn lining rather
+ * than on an idealised spheroid the lining no longer follows.
  *
  * Drawn as lines, not as a surface, precisely so it cannot be mistaken for
  * tissue. It is a measurement mark.
@@ -48,58 +54,43 @@ export class CavityOutline extends THREE.LineSegments {
 
     const phiStart = cutAngle / 2;
     const phiSpan = Math.PI * 2 - cutAngle;
-    this._sin = new Float32Array(M);
-    this._cos = new Float32Array(M);
-    for (let k = 0; k < M; k++) {
-      const phi = phiStart + (k / (M - 1)) * phiSpan;
-      this._sin[k] = Math.sin(phi);
-      this._cos[k] = Math.cos(phi);
-    }
+    this._phi = new Float32Array(M);
+    for (let k = 0; k < M; k++) this._phi[k] = phiStart + (k / (M - 1)) * phiSpan;
     // Latitude rings sit between apex and rim, skipping both ends: the apex is
     // a point and the rim is already the top of every meridian.
     this._ringAt = Array.from({ length: rings }, (_, r) => (r + 1) / (rings + 1));
+    this._sample = new THREE.Vector3();
   }
 
   /**
-   * @param {{ cavityRadius: number, cavitySemiLength: number, baseY: number }} shape
-   *   the end-diastolic cavity, in the same terms `Chamber.setShape` takes
+   * @param {{ cavityRadius: number, cavitySemiLength: number,
+   *   outerSemiLength: number, baseY: number }} shape
+   *   the end-diastolic geometry, in the same terms `Chamber.setShape` takes
    */
-  setShape({ cavityRadius, cavitySemiLength, baseY }) {
+  setShape(shape) {
     const { N, M } = this;
-    const maxAngle = Math.acos(THREE.MathUtils.clamp(-baseY / cavitySemiLength, -1, 1));
-    const r = new Float32Array(N);
-    const y = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      const a = (i / (N - 1)) * maxAngle;
-      r[i] = cavityRadius * Math.sin(a);
-      y[i] = -cavitySemiLength * Math.cos(a) * this.flip;
-    }
-
     const positions = this.geometry.attributes.position.array;
+    const sample = this._sample;
     let p = 0;
-    const put = (radius, height, k) => {
-      positions[p++] = radius * this._sin[k];
-      positions[p++] = height;
-      positions[p++] = radius * this._cos[k];
+    const put = (t, k) => {
+      cavitySurfacePoint(shape, t, this._phi[k], sample);
+      positions[p++] = sample.x;
+      positions[p++] = sample.y * this.flip;
+      positions[p++] = sample.z;
     };
 
     // Meridians: apex to rim, one polyline per angle, emitted as segments.
     for (let k = 0; k < M; k++) {
       for (let i = 0; i < N - 1; i++) {
-        put(r[i], y[i], k);
-        put(r[i + 1], y[i + 1], k);
+        put(i / (N - 1), k);
+        put((i + 1) / (N - 1), k);
       }
     }
-    // Latitude rings, following the same arc so they land on the surface.
+    // Latitude rings, sampled on the same surface so they land on it.
     for (const t of this._ringAt) {
-      const i = t * (N - 1);
-      const lo = Math.floor(i);
-      const mix = i - lo;
-      const radius = r[lo] + (r[Math.min(N - 1, lo + 1)] - r[lo]) * mix;
-      const height = y[lo] + (y[Math.min(N - 1, lo + 1)] - y[lo]) * mix;
       for (let k = 0; k < M - 1; k++) {
-        put(radius, height, k);
-        put(radius, height, k + 1);
+        put(t, k);
+        put(t, k + 1);
       }
     }
 

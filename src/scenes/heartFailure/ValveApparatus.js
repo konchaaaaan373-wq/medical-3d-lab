@@ -66,16 +66,13 @@ export class ValveApparatus extends THREE.Group {
         material: this.materials.leaflet,
       }),
     ];
-    // The posterior leaflet is yawed 180 degrees, so its local +X points the
-    // opposite way in world space; edgeSign folds that back out so chord
-    // attachment sides are stated in world terms.
-    this.leaflets[0].edgeSign = 1;
-    this.leaflets[1].edgeSign = -1;
     for (const leaflet of this.leaflets) this.add(leaflet.group);
 
     // --- chordae tendineae ------------------------------------------------
-    // A representative few: each papillary tip sends one chord to the edge
-    // of each leaflet on its own side.
+    // A representative few: each papillary tip sends one chord toward two
+    // stations on each leaflet's free edge. Which side of the edge is
+    // resolved at update time — always the side nearest the muscle, so a
+    // chord never crosses the cavity like a rigging line.
     this.chordae = [];
     for (let p = 0; p < 2; p++) {
       for (let l = 0; l < 2; l++) {
@@ -99,8 +96,9 @@ export class ValveApparatus extends THREE.Group {
         length: this.aorticRadius * 1.12,
         halfWidth: this.aorticRadius * 0.66,
         closedAngle: -0.32,
-        // Open cusps fold back toward the sinus wall, i.e. rotate upward.
-        openAngle: 0.95,
+        // Open cusps swing up nearly parallel to the root wall, leaving the
+        // central orifice clear.
+        openAngle: 1.35,
         material: this.materials.leaflet,
       });
       this.add(cusp.group);
@@ -145,10 +143,11 @@ export class ValveApparatus extends THREE.Group {
       const pap = this.papillaries[p];
       const base = cavitySurfacePoint(shape, pap.t, pap.phi, this._v.c);
       base.y += descent;
-      // Aim at the annulus, offset toward this muscle's own commissure.
+      // Aim at the annulus, leaning each muscle toward its own side of the
+      // ring so the pair diverges instead of converging on the centre.
       const target = this._v.a
         .copy(ANATOMY.mitralValve)
-        .add({ x: 0, y: descent - 0.15, z: pap.side * this.mitralRadius * 0.7 });
+        .add({ x: pap.side * this.mitralRadius * 0.7, y: descent - 0.15, z: -0.25 });
       const dir = this._v.b.copy(target).sub(base);
       const span = dir.length();
       dir.normalize();
@@ -165,13 +164,12 @@ export class ValveApparatus extends THREE.Group {
     for (const chord of this.chordae) {
       const from = this.papillaries[chord.pap].tip;
       const leaflet = this.leaflets[chord.leaflet];
-      const to = leafletEdgePoint(
-        leaflet,
-        chord.widthFrac * this.papillaries[chord.pap].side * leaflet.edgeSign,
-        this._v.a
-      );
+      // Of the two symmetric edge stations, take the one nearer the muscle.
+      const near = leafletEdgePoint(leaflet, chord.widthFrac, this._v.a);
+      const far = leafletEdgePoint(leaflet, -chord.widthFrac, this._v.b);
+      const to = near.distanceToSquared(from) <= far.distanceToSquared(from) ? near : far;
       const mesh = chord.mesh;
-      const dir = this._v.b.copy(to).sub(from);
+      const dir = this._v.c.copy(to).sub(from);
       const length = dir.length();
       mesh.position.copy(from);
       mesh.quaternion.setFromUnitVectors(UP, dir.normalize());
@@ -278,8 +276,11 @@ function makeLeaflet({ hingeDir, ringRadius, length, halfWidth, closedAngle, ope
   const group = new THREE.Group();
   group.add(mesh);
 
-  // Orient the group so local -Z points from the hinge across the ring.
-  const yaw = Math.atan2(-hingeDir.x, -hingeDir.z);
+  // Orient the group so local -Z (the direction the leaflet extends) points
+  // from the hinge back across the ring, i.e. along -hingeDir. R_y(yaw)
+  // maps (0,0,-1) to (-sin(yaw), 0, -cos(yaw)), so yaw must satisfy
+  // (sin(yaw), cos(yaw)) = (hingeDir.x, hingeDir.z).
+  const yaw = Math.atan2(hingeDir.x, hingeDir.z);
   group.rotation.y = yaw;
 
   return { group, mesh, hingeDir: hingeDir.clone(), ringRadius, length, halfWidth, closedAngle, openAngle };
