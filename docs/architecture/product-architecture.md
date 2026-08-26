@@ -117,3 +117,9 @@ lesson copy  ──asserts──▶  model behaviour
       ▲                          │
       └────── CI re-derives ─────┘
 ```
+
+---
+
+See also [`learning-first-view.md`](learning-first-view.md): why the Heart
+Failure scene defaults to a 3D-first view with the data one click away, and
+what that arrangement is not allowed to break.
