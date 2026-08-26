@@ -10,7 +10,7 @@
  */
 
 export const PALETTE = {
-  myocardium: '#c85466', // heart muscle
+  myocardium: '#96434d', // heart muscle — matches the epicardial tissue tint
   flow: '#ff6b7f', // blood taking part in ejection
   residual: '#a06ae0', // blood still in the ventricle at end-systole
   pressure: '#6f7ce8', // raised filling / pulmonary venous pressure (NOT blood)

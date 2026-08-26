@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { PALETTE } from '../../data/heartFailure.js';
-import { ANATOMY, PULMONARY_VEINS, buildInterstitialFluid } from './anatomy.js';
+import {
+  ANATOMY,
+  PULMONARY_VEINS,
+  buildVascularFans,
+  buildInterstitialFluid,
+} from './anatomy.js';
+import { variableTube } from './Vessels.js';
+import { lerp } from '../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -14,9 +21,15 @@ import { ANATOMY, PULMONARY_VEINS, buildInterstitialFluid } from './anatomy.js';
  * particles:
  *   1. a pressure front that spreads outward along the pathway
  *      (LV -> atrium -> pulmonary veins -> vascular bed) as filling pressure
- *      rises. Pressure travels backwards; blood never does.
- *   2. pale interstitial fluid particles *outside* the vessels, appearing only
- *      once pressure is high.
+ *      rises, drawn as a restrained fresnel tint hugging the vessel walls —
+ *      pressure travels backwards; blood never does.
+ *   2. pale interstitial fluid *outside* the vessels: a perivascular haze
+ *      around the engorged veins and their branches, appearing only once
+ *      pressure is high.
+ *
+ * The physical response of the vessels themselves (atrial distension, venous
+ * engorgement, dusky tint) lives in Vessels.js — this overlay only carries
+ * the two things that are not tissue: transmitted pressure and transudate.
  *
  * Built once; per-frame cost is two uniform writes.
  */
@@ -28,20 +41,33 @@ export class CongestionOverlay extends THREE.Group {
 
     this.pressureMaterial = createPressureMaterial(new THREE.Color(PALETTE.pressure));
 
-    // --- pressure front along atrium -> veins -> vascular bed
-    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.1, 28, 20);
+    // --- pressure front along atrium -> veins -> vascular branches
+    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.08, 28, 20);
     atrium.translate(ANATOMY.atriumCentre.x, ANATOMY.atriumCentre.y, ANATOMY.atriumCentre.z);
     this.add(sheath(atrium, () => 0.12, this.pressureMaterial));
 
     for (const vein of PULMONARY_VEINS) {
-      // The curve runs bed -> atrium, so uv.x = 1 at the atrium end.
-      const tube = new THREE.TubeGeometry(vein, 48, 0.62, 12, false);
+      // Curves run bed -> atrium, so uv.x = 0 at the far (bed) end.
+      const tube = variableTube(vein, 40, 10, () => 0.5);
       this.add(sheath(tube, (uvX) => 0.2 + (1 - uvX) * 0.5, this.pressureMaterial));
     }
 
-    const bed = new THREE.SphereGeometry(1.95, 28, 20);
-    bed.translate(ANATOMY.pulmonaryBed.x, ANATOMY.pulmonaryBed.y, ANATOMY.pulmonaryBed.z);
-    this.add(sheath(bed, () => 0.85, this.pressureMaterial));
+    // The pressure reaches the vascular bed last: sheaths over the branch
+    // fans, path distance growing outward along each branch.
+    for (const fan of buildVascularFans()) {
+      for (let i = 0; i < fan.curves.length; i++) {
+        const primary = fan.generations[i] === 0;
+        const tube = variableTube(
+          fan.curves[i],
+          primary ? 18 : 10,
+          8,
+          (t) => (primary ? lerp(0.44, 0.26, t) : lerp(0.24, 0.14, t))
+        );
+        this.add(
+          sheath(tube, (uvX) => (primary ? 0.72 + uvX * 0.2 : 0.85 + uvX * 0.15), this.pressureMaterial)
+        );
+      }
+    }
 
     // --- interstitial fluid
     const fluid = buildInterstitialFluid(fluidCount);
@@ -79,9 +105,9 @@ export class CongestionOverlay extends THREE.Group {
    */
   setPresentationEmphasis(emphasis) {
     const uniforms = this.pressureMaterial.uniforms;
-    uniforms.uGlowIntensity.value = 0.95 + 1.15 * emphasis;
-    uniforms.uWaveStrength.value = 0.28 + 0.32 * emphasis;
-    uniforms.uFieldOpacity.value = 0.6 + 0.34 * emphasis;
+    uniforms.uGlowIntensity.value = 0.55 + 0.85 * emphasis;
+    uniforms.uWaveStrength.value = 0.22 + 0.3 * emphasis;
+    uniforms.uFieldOpacity.value = 0.42 + 0.34 * emphasis;
   }
 
   update(elapsed) {
@@ -117,14 +143,16 @@ function createPressureMaterial(color) {
       uPressure: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: color },
-      // Visualization-only: how bright the pressure glow gets at full pressure.
-      uGlowIntensity: { value: 0.95 },
+      // Visualization-only: how bright the pressure tint gets at full
+      // pressure. Deliberately restrained — the engorged vessels carry the
+      // story; this is the label on them, not a lightshow.
+      uGlowIntensity: { value: 0.55 },
       // Visualization-only: amplitude of the wave that runs along the pathway.
       // Raised for presentation, where the direction of transmission is the
       // whole point; it carries no physiological meaning.
-      uWaveStrength: { value: 0.28 },
+      uWaveStrength: { value: 0.22 },
       // Visualization-only: overall opacity of the pressure field.
-      uFieldOpacity: { value: 0.6 },
+      uFieldOpacity: { value: 0.42 },
     },
     vertexShader: /* glsl */ `
       uniform float uPressure;
@@ -136,7 +164,7 @@ function createPressureMaterial(color) {
         vec4 mv = modelViewMatrix * vec4(position, 1.0);
         vec3 n = normalize(normalMatrix * normal);
         vec3 v = normalize(-mv.xyz);
-        vFresnel = pow(clamp(1.0 - abs(dot(n, v)), 0.0, 1.0), 2.0);
+        vFresnel = pow(clamp(1.0 - abs(dot(n, v)), 0.0, 1.0), 2.4);
         vPath = aPathDistance;
         // The front advances away from the ventricle as filling pressure rises.
         float front = uPressure * 1.15;
@@ -155,10 +183,9 @@ function createPressureMaterial(color) {
       varying float vGate;
       varying float vPath;
       void main() {
-        // Slow wave running outward, so the direction of pressure transmission
-        // is visible without moving any blood.
-        // The wave runs outward along the pathway, so the direction of pressure
-        // transmission is visible. Pressure travels this way; blood never does.
+        // Slow wave running outward along the pathway, so the direction of
+        // pressure transmission is visible. Pressure travels this way; blood
+        // never does.
         float wave = (1.0 - uWaveStrength) + uWaveStrength * sin(uTime * 1.1 - vPath * 7.0);
         float a = vFresnel * vGate * uPressure;
         gl_FragColor = vec4(uColor * uGlowIntensity * wave, a * uFieldOpacity);
@@ -173,7 +200,9 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
   geometry.setAttribute('aAppear', new THREE.BufferAttribute(appear.subarray(0, count), 1));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds.subarray(0, count), 1));
   geometry.setAttribute('aSize', new THREE.BufferAttribute(sizes.subarray(0, count), 1));
-  geometry.boundingSphere = new THREE.Sphere(ANATOMY.pulmonaryBed.clone(), 5);
+  // Fluid now surrounds both vascular regions.
+  const mid = ANATOMY.pulmonaryBed.clone().lerp(ANATOMY.pulmonaryBedRight, 0.5);
+  geometry.boundingSphere = new THREE.Sphere(mid, 8);
 
   const material = new THREE.ShaderMaterial({
     transparent: true,
@@ -183,7 +212,7 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
       uFill: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(PALETTE.fluid) },
-      uParticleScale: { value: 0.1 },
+      uParticleScale: { value: 0.24 },
       uHeightScale: { value: 900 },
     },
     vertexShader: /* glsl */ `
@@ -199,14 +228,14 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         float phase = aSeed * 6.2831853;
         // Slow settling drift: fluid accumulating, not flowing along a vessel.
         vec3 drift = vec3(
-          sin(uTime * 0.18 + phase) * 0.12,
-          -0.18 * fract(uTime * 0.045 + aSeed),
-          cos(uTime * 0.15 + phase) * 0.12
+          sin(uTime * 0.18 + phase) * 0.1,
+          -0.16 * fract(uTime * 0.045 + aSeed),
+          cos(uTime * 0.15 + phase) * 0.1
         );
         vec4 mv = modelViewMatrix * vec4(position + drift, 1.0);
         gl_Position = projectionMatrix * mv;
-        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.6;
-        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 48.0);
+        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.3;
+        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 52.0);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -216,9 +245,10 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         vec2 uv = gl_PointCoord - 0.5;
         float d = length(uv);
         if (d > 0.5) discard;
-        // Soft, hazy edge — reads as fluid rather than as a discrete particle.
-        float core = smoothstep(0.5, 0.1, d);
-        gl_FragColor = vec4(uColor * (0.5 + 0.5 * core), pow(core, 2.0) * vAlpha);
+        // Soft, hazy edge — reads as mist in the interstitium rather than as
+        // a discrete glowing particle.
+        float core = smoothstep(0.5, 0.08, d);
+        gl_FragColor = vec4(uColor * (0.35 + 0.35 * core), pow(core, 2.6) * vAlpha);
       }
     `,
   });

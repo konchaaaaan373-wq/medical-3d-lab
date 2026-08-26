@@ -30,6 +30,7 @@ import {
   beatNamedAt,
 } from './storyboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
+import { VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
@@ -91,6 +92,27 @@ const REEL_CONGESTION_DIRECTION = new THREE.Vector3(0.16, 0.5, 0.85).normalize()
  * asserted by tests/hemodynamics.test.js.
  */
 export const COMPARISON_OFFSET = 5.4;
+
+/**
+ * How firmly the apex is pinned in space across the beat, 0..1.
+ *
+ * A real ventricle contracts base-toward-apex: the apex barely moves while the
+ * mitral annulus descends. The solved geometry gives the *amount* of long-axis
+ * shortening; this constant only chooses where that shortening is anchored —
+ * 1 would fix the apex exactly, 0 would fix the base (the old behaviour).
+ */
+export const APEX_PINNING = 0.85;
+
+/**
+ * Peak apical torsion at a normal ejection fraction, radians (~12°).
+ *
+ * Torsion is real ventricular mechanics (the apex rotates against the base
+ * through systole, and twist falls as systolic function falls), but this model
+ * does not solve for it — it is presented at an illustrative amplitude scaled
+ * by the solved beat: it rises with how far the stroke has emptied and shrinks
+ * with the state's ejection fraction. See docs/medical-notes.md.
+ */
+export const TORSION_ILLUSTRATIVE_MAX = 0.21;
 
 function framing(target, distance) {
   return {
@@ -183,11 +205,9 @@ export class HeartFailureScene {
 
     this.ventricle = new Chamber({
       cutAngle: ANATOMY.cutAngle,
-      segments: compact ? 36 : 48,
-      profilePoints: compact ? 20 : 26,
-      wallColor: new THREE.Color(PALETTE.myocardium),
-      liningColor: new THREE.Color('#dd8c96'),
-      cutColor: new THREE.Color('#7d2f3d'),
+      segments: compact ? 40 : 56,
+      profilePoints: compact ? 22 : 30,
+      variant: 'disease',
     });
 
     this.vessels = new Vessels();
@@ -213,7 +233,7 @@ export class HeartFailureScene {
 
     this.primary.add(this.vessels, this.ventricle, this.blood, this.congestion, this.outline);
     this.root.add(this._createLights(), this.primary);
-    this._quality = { segments: compact ? 36 : 48, profilePoints: compact ? 20 : 26 };
+    this._quality = { segments: compact ? 40 : 56, profilePoints: compact ? 22 : 30 };
     this.comparing = false;
 
     this._offResize = this.viewer.onResize((camera, renderer) => {
@@ -227,17 +247,25 @@ export class HeartFailureScene {
     return this.root;
   }
 
+  /**
+   * Three-point studio setup around the environment light: one soft warm key
+   * from the upper front-right, a faint warm fill from the lower left so the
+   * shadow side keeps its colour, and a cool rim from behind-left to cut the
+   * silhouette off the dark backdrop. Directional key/rim give coherent form
+   * shading across the whole chamber — a nearby point light was what made the
+   * old surface read as plastic.
+   */
   _createLights() {
     const group = new THREE.Group();
     group.name = 'lights';
-    group.add(new THREE.HemisphereLight(0xffd9dd, 0x141c2e, 0.9));
+    group.add(new THREE.HemisphereLight(0xffe3de, 0x18202e, 0.45));
 
-    const key = new THREE.PointLight(0xfff0e8, 220, 90, 2);
-    key.position.set(7, 9, 14);
-    const rim = new THREE.PointLight(0x8fc0ff, 120, 80, 2);
-    rim.position.set(-10, 3, -9);
-    const fill = new THREE.PointLight(0xffc2c8, 90, 60, 2);
-    fill.position.set(-3, -6, 9);
+    const key = new THREE.DirectionalLight(0xfff1e4, 2.3);
+    key.position.set(7, 10, 12);
+    const rim = new THREE.DirectionalLight(0x9bc2ff, 1.15);
+    rim.position.set(-10, 4, -9);
+    const fill = new THREE.PointLight(0xffc5c0, 60, 60, 2);
+    fill.position.set(-5, -5, 9);
     group.add(key, rim, fill);
     return group;
   }
@@ -261,6 +289,13 @@ export class HeartFailureScene {
   _resolve() {
     this.state = sampleHemodynamics(this.progress, this.loading);
     this.myocardialVolumeMl = myocardialVolumeFor(this.state);
+    // End-diastolic geometry for this state: the anchor for apex pinning
+    // (annular descent is measured against the fullest moment of the beat).
+    this.edShape = ventricleShape({
+      cavityVolumeMl: this.state.edvMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: this.state.longToShortAxisRatio,
+    });
     // The model is usable before anything is built — `getMetrics()` and the
     // pressure-volume curves need no GPU — so the visual half is skipped until
     // there is something to push it into.
@@ -346,8 +381,31 @@ export class HeartFailureScene {
       myocardialVolumeMl: this.myocardialVolumeMl,
       longToShortAxisRatio: this.state.longToShortAxisRatio,
     });
+
+    // Contraction runs base-toward-apex: the apex stays put while the annulus
+    // descends. The amount of long-axis shortening is the model's; only its
+    // anchor point is chosen here (APEX_PINNING). Everything at the valve
+    // plane — the rings, and the blood's frame of reference — rides along.
+    const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
+    this.ventricle.position.y = descent;
+    this.blood.position.y = descent;
+    this.vessels.setAnnularDescent(descent);
+
+    // Apical torsion, illustrative amplitude scaled by the solved beat: it
+    // follows the emptying of the stroke and shrinks with ejection fraction —
+    // a low-EF ventricle both shortens and twists less.
+    this.ventricle.setTorsion(
+      TORSION_ILLUSTRATIVE_MAX *
+        this._emptiedFraction() *
+        Math.min(1, this.state.ejectionFraction / 0.58)
+    );
+
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
     this.blood.setCavity(shape.cavityRadius, shape.cavitySemiLength);
+    this.blood.setApexDrift(
+      VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength,
+      VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength
+    );
     this.shape = shape;
   }
 

@@ -14,6 +14,7 @@
 export const bloodVertexShader = /* glsl */ `
   uniform float uRadius;        // cavity semi-axis (x/z); 1.0 for absolute-position fields
   uniform float uSemiLength;    // cavity semi-axis (y)
+  uniform vec2 uApexDrift;      // lateral drift of the apex (x, z), scene units
   uniform float uEject;         // ejection fraction, 0..1
   uniform float uPhase;         // 0..1 through the cardiac cycle
   uniform float uEjectStart;    // phase at which the aortic valve opens
@@ -44,6 +45,10 @@ export const bloodVertexShader = /* glsl */ `
     float ejects = step(aRank, uEject);
 
     vec3 cavity = vec3(position.x * uRadius, position.y * uSemiLength, position.z * uRadius);
+    // The chamber's long axis leans: its apex drifts laterally (see
+    // ventricleGeometry.js), so the blood follows the same tilt.
+    float apexness = clamp((0.33 - position.y) / 1.33, 0.0, 1.0);
+    cavity.xz += uApexDrift * apexness * apexness;
 
     // Ordered departure and return, so the flow reads as a wave rather than a jump.
     float stagger = aRank * 0.45;
@@ -100,7 +105,9 @@ export const bloodVertexShader = /* glsl */ `
     // travelling backwards down the aorta.
     float present = smoothstep(aAppear, aAppear + 0.12, uFill);
     float leaving = pow(clamp(1.0 - travel, 0.0, 1.0), uExitFalloff);
-    vAlpha = uOpacity * present * leaving * (0.85 + 0.15 * sin(uTime * 2.2 + phase));
+    // Kept nearly steady: strong per-particle flicker reads as glitter, and
+    // the particles are a supporting cue under the contracting wall.
+    vAlpha = uOpacity * present * leaving * (0.93 + 0.07 * sin(uTime * 2.2 + phase));
     // Emphasis is brightness and size, never a different colour: the legend has
     // to keep meaning what it says.
     vAlpha *= 1.0 + ejecting * uEjectEmphasis * 1.4 + uResidualEmphasis * (1.0 - ejects) * 0.8;
@@ -121,8 +128,9 @@ export const bloodFragmentShader = /* glsl */ `
     float d = length(uv);
     if (d > 0.5) discard;
     float core = smoothstep(0.5, 0.0, d);
-    // Blood fills a small volume densely, so keep the additive boost lower than
-    // the amyloid field's — otherwise the cavity blows out to white.
-    gl_FragColor = vec4(vColor * (0.42 + 0.6 * core), pow(core, 1.6) * vAlpha);
+    // Blood fills a small volume densely, so keep the additive boost low and
+    // the edge soft — the cavity must never blow out to white, and a hard
+    // bright rim on every particle is what reads as glitter.
+    gl_FragColor = vec4(vColor * (0.3 + 0.48 * core), pow(core, 2.1) * vAlpha);
   }
 `;
