@@ -5,6 +5,7 @@ import { damp } from '../utils/math.js';
 import { framePose, distanceScaleForAspect } from './framing.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
+import { prefersReducedMotion } from '../utils/motion.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
@@ -287,7 +288,7 @@ export async function createApp({ stage, ui }) {
       viewer.camera.position.copy(shot.position);
       viewer.controls.target.copy(shot.target);
       view.active = false;
-      viewer.controls.autoRotate = true;
+      viewer.controls.autoRotate = !prefersReducedMotion();
     }
   }
 
@@ -343,7 +344,7 @@ export async function createApp({ stage, ui }) {
     }
     if (view.active) {
       view.active = tweenPose(viewer, shot, dt);
-      if (!view.active) viewer.controls.autoRotate = true;
+      if (!view.active) viewer.controls.autoRotate = !prefersReducedMotion();
     }
     labels.render();
   });
@@ -545,7 +546,12 @@ export async function createApp({ stage, ui }) {
 function tweenPose(viewer, pose, dt) {
   const camera = viewer.camera;
   const target = viewer.controls.target;
-  if (camera.position.distanceToSquared(pose.position) < 1e-4 && target.distanceToSquared(pose.target) < 1e-4) {
+  // A camera move carries no information the destination does not: for a viewer
+  // who has asked for reduced motion it becomes a cut.
+  const arrived =
+    prefersReducedMotion() ||
+    (camera.position.distanceToSquared(pose.position) < 1e-4 && target.distanceToSquared(pose.target) < 1e-4);
+  if (arrived) {
     camera.position.copy(pose.position);
     target.copy(pose.target);
     return false;

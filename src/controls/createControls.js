@@ -1,4 +1,5 @@
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { prefersReducedMotion } from '../utils/motion.js';
 
 /**
  * Orbit controls tuned for "look at one object" educational scenes:
@@ -16,7 +17,9 @@ export function createControls(camera, domElement, { target, minDistance = 5, ma
   // Keep the camera out of the poles so the scene never reads as "upside down".
   controls.minPolarAngle = Math.PI * 0.16;
   controls.maxPolarAngle = Math.PI * 0.86;
-  controls.autoRotate = true;
+  // The idle drift says nothing the still frame does not, so it is the first
+  // thing to go for a viewer who has asked for reduced motion.
+  controls.autoRotate = !prefersReducedMotion();
   controls.autoRotateSpeed = 0.35;
   if (target) controls.target.copy(target);
 

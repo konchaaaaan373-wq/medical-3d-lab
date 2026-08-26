@@ -20,12 +20,20 @@ export function distanceScaleForAspect(aspect) {
  * subject still has to fit at end-diastole, which is why this is a modest
  * factor rather than an arbitrary one.
  */
-export function distanceScaleForView(view) {
+export function distanceScaleForView(view, aspect = 1.6) {
+  if (view !== 'learning') return 1;
   // A little short of what would exactly fill the usable band: the console
   // grows and shrinks with the stage description, and the ventricle is at its
   // largest only at end-diastole, so the framing keeps a margin rather than
   // being retuned every time either changes.
-  return view === 'learning' ? 0.81 : 1;
+  //
+  // On a portrait frame some of the aspect allowance above is given back. That
+  // allowance exists to keep the subject clear of the side panels; in learning
+  // view on a phone there are no side panels, and the extra distance was
+  // leaving a ventricle a quarter of the frame tall on the one screen with the
+  // least room to waste. Checked against the widest state the model produces —
+  // a fully dilated ventricle at end-diastole still clears both edges.
+  return aspect < 0.85 ? 0.81 * 0.88 : 0.81;
 }
 
 /**
@@ -60,7 +68,7 @@ export function verticalOffsetForView(view, bottomInset = 0) {
  * @param {number} [bottomInset] fraction of the frame the console covers
  */
 export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomInset = 0) {
-  const scale = distanceScaleForAspect(aspect) * distanceScaleForView(view);
+  const scale = distanceScaleForAspect(aspect) * distanceScaleForView(view, aspect);
   const position = pose.target.clone().add(pose.position.clone().sub(pose.target).multiplyScalar(scale));
   const target = pose.target.clone();
 

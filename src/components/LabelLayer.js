@@ -133,8 +133,11 @@ export function createLabelLayer({ viewer, annotations }) {
         // pointing accuracy but stops annotations being cut off at the edges.
         const x = clamp((projected.x * 0.5 + 0.5) * width, 70, Math.max(70, width - 70));
         // The lower third of the screen belongs to the console, so labels are
-        // kept above it rather than being clamped underneath the panel.
-        const y = separate(placed, x, clamp((-projected.y * 0.5 + 0.5) * height, 34, Math.max(34, height * 0.68)));
+        // kept above it rather than being clamped underneath the panel. On a
+        // narrow frame the top belongs to the title card and the scene switcher,
+        // which stack down the left instead of sitting beside each other.
+        const top = compact ? 150 : 34;
+        const y = separate(placed, x, clamp((-projected.y * 0.5 + 0.5) * height, top, Math.max(top, height * 0.68)));
         placed.push({ x, y });
         item.node.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         item.node.style.opacity = item.opacity.toFixed(3);
