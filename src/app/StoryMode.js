@@ -149,6 +149,10 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     active = false;
     timeline.stop();
     ui.classList.remove('is-story');
+    // Taken out of the DOM, not just faded: it sits over the console, and a
+    // leftover caption bar would swallow the clicks meant for the buttons
+    // underneath it.
+    element.remove();
 
     scene.setCardiacPhaseDriven?.(false);
     scene.setBeatEmphasis?.({ ejection: 0, residual: 0 });
