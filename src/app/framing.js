@@ -23,9 +23,11 @@ export function distanceScaleForAspect(aspect) {
 export function distanceScaleForView(view, aspect = 1.6) {
   if (view !== 'learning') return 1;
   // A little short of what would exactly fill the usable band: the console
-  // grows and shrinks with the stage description, and the ventricle is at its
+  // grows and shrinks with the stage description, and the subject is at its
   // largest only at end-diastole, so the framing keeps a margin rather than
-  // being retuned every time either changes.
+  // being retuned every time either changes. Set against the whole subject —
+  // ventricle, atrium, pulmonary veins and the congestion overlay — not against
+  // the ventricle alone, which is what left the pulmonary side off the frame.
   //
   // On a portrait frame some of the aspect allowance above is given back. That
   // allowance exists to keep the subject clear of the side panels; in learning
@@ -33,7 +35,7 @@ export function distanceScaleForView(view, aspect = 1.6) {
   // leaving a ventricle a quarter of the frame tall on the one screen with the
   // least room to waste. Checked against the widest state the model produces —
   // a fully dilated ventricle at end-diastole still clears both edges.
-  return aspect < 0.85 ? 0.81 * 0.88 : 0.81;
+  return aspect < 0.85 ? 0.86 * 0.88 : 0.86;
 }
 
 /**
@@ -53,7 +55,14 @@ export function distanceScaleForView(view, aspect = 1.6) {
  * description — instead of being retuned for each.
  */
 export function verticalOffsetForView(view, bottomInset = 0) {
-  return view === 'learning' ? bottomInset : 0;
+  // Only part of the inset is given back, because the authored framing already
+  // sits the subject high: its target is on the ventricle, while the atrium,
+  // the pulmonary veins and the congestion overlay all rise above it. Taking
+  // the full inset on top of that pushed the pulmonary side off the top of the
+  // frame — measured at 1440x900 and 1280x800 across the progression, where the
+  // subject overflowed the top by ~150px while ~500px sat unused on each side.
+  // The fraction is what centres the whole subject in the usable band.
+  return view === 'learning' ? bottomInset * 0.4 : 0;
 }
 
 /**
