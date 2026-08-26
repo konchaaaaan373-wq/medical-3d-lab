@@ -5,6 +5,33 @@ import { clamp, smoothstep } from '../utils/math.js';
 const FADE = 0.06;
 
 /**
+ * Minimum spacing between two labels, in px. Roughly a label's own height plus
+ * a little air; anything closer and the two boxes overlap and neither reads.
+ */
+const STACK_GAP = 34;
+/** How far apart horizontally two labels have to be before they can share a row. */
+const COLUMN_GAP = 150;
+
+/**
+ * Nudge a label down until it is clear of the ones already placed.
+ *
+ * Anchors move with the camera and two of them can end up in the same few
+ * pixels — most easily when the sequence points at a chain of structures that
+ * are genuinely close together. Losing one of the two labels to an overlap is
+ * worse than pointing a few pixels off, so the later one steps down instead.
+ */
+function separate(placed, x, y) {
+  let result = y;
+  // One settling pass per already-placed label is enough: they were themselves
+  // placed top-down, so a single sweep leaves everything clear.
+  for (const other of placed) {
+    if (Math.abs(other.x - x) > COLUMN_GAP) continue;
+    if (Math.abs(other.y - result) < STACK_GAP) result = other.y + STACK_GAP;
+  }
+  return result;
+}
+
+/**
  * HTML labels pinned to 3D anchor points.
  *
  * Done with plain DOM + `Vector3.project` rather than CSS2DRenderer: it is a few
@@ -90,6 +117,7 @@ export function createLabelLayer({ viewer, annotations }) {
     render() {
       const width = viewer.container.clientWidth;
       const height = viewer.container.clientHeight;
+      const placed = [];
       for (const item of items) {
         if (item.opacity < 0.01) {
           item.node.style.opacity = '0';
@@ -106,7 +134,8 @@ export function createLabelLayer({ viewer, annotations }) {
         const x = clamp((projected.x * 0.5 + 0.5) * width, 70, Math.max(70, width - 70));
         // The lower third of the screen belongs to the console, so labels are
         // kept above it rather than being clamped underneath the panel.
-        const y = clamp((-projected.y * 0.5 + 0.5) * height, 34, Math.max(34, height * 0.68));
+        const y = separate(placed, x, clamp((-projected.y * 0.5 + 0.5) * height, 34, Math.max(34, height * 0.68)));
+        placed.push({ x, y });
         item.node.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         item.node.style.opacity = item.opacity.toFixed(3);
       }

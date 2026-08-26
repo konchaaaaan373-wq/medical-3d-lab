@@ -102,12 +102,15 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     scene.setBeatEmphasis?.(story.emphasisAt(t));
     scene.setCongestionReveal?.(story.revealAt(t));
     scene.setOutline?.(story.outlineAt?.(t) ?? 0);
+    scene.setCongestionEmphasis?.(story.contextAt?.(t) ?? 0);
     setLabelFocus(step.focus);
 
     // --- camera
     const shot = story.cameraAt(t);
     pose.target.copy(shot.target);
-    pose.position.copy(shot.target).addScaledVector(story.viewDirection, shot.distance);
+    // The storyboard may swing the view round for a step whose subject is
+    // elsewhere in the anatomy; it falls back to the scene's own direction.
+    pose.position.copy(shot.target).addScaledVector(shot.view ?? story.viewDirection, shot.distance);
 
     // --- caption
     const caption = story.captionAt(t);
@@ -151,6 +154,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     scene.setBeatEmphasis?.({ ejection: 0, residual: 0 });
     scene.setCongestionReveal?.({ front: 1, fluid: 1 });
     scene.setOutline?.(0);
+    scene.setCongestionEmphasis?.(0);
     setLabelFocus(null);
     if (snapshot) restoreState?.(snapshot);
     snapshot = null;

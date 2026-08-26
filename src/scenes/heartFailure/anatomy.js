@@ -58,6 +58,7 @@ export const ANCHORS = {
   aorta: AORTA.getPointAt(0.42),
   residual: new THREE.Vector3(0.1, -3.6, 1.0),
   pressure: new THREE.Vector3(-2.4, 3.3, -0.5),
+  pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.8, -1.4, 0)),
   fluid: new THREE.Vector3(-5.4, 4.8, -2.4),
   // Comparison mode moves each heart aside by COMPARISON_OFFSET (5.4).
   comparisonReference: new THREE.Vector3(-5.4, 2.4, 1.2),

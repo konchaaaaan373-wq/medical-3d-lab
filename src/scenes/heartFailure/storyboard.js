@@ -42,6 +42,24 @@ const wide = (x, y, z, distance) => ({
   distance,
 });
 
+/**
+ * Where the sequence looks from for most of its length: the same three-quarter
+ * view the scene opens on, so nothing about the ventricle steps has to be
+ * re-learned.
+ */
+const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
+
+/**
+ * Where it looks from once the subject is the pulmonary side.
+ *
+ * The pulmonary veins run backwards and away in a near-horizontal plane, so
+ * from the opening view they recede almost straight into the screen and the
+ * pressure front spreading along them cannot be seen at all. Rising above the
+ * heart lays their whole course out across the frame — the same reason the
+ * social sequence leaves the head-on axis for its congestion beat.
+ */
+const PULMONARY_VIEW = new THREE.Vector3(0.05, 0.62, 0.78).normalize();
+
 export const STORY_DURATION = 42;
 
 /**
@@ -183,8 +201,12 @@ export const STORY_STEPS = [
     until: 39.5,
     progress: BEAT_PROGRESS,
     beat: true,
-    focus: ['pressure'],
-    camera: wide(-1.2, 0.4, 0.3, 29),
+    focus: ['pressure', 'pulmonary-bed'],
+    camera: wide(-2.0, 1.5, -0.5, 26),
+    view: PULMONARY_VIEW,
+    // Brings the atrium and pulmonary veins up out of the dark, so the front is
+    // seen spreading *inside* a pathway rather than through empty space.
+    context: 1,
     // The front spreads outward along atrium -> veins -> bed. It is pressure
     // being transmitted backwards, which is what happens; blood is not, and
     // never moves that way in this scene.
@@ -199,8 +221,10 @@ export const STORY_STEPS = [
     until: STORY_DURATION,
     progress: BEAT_PROGRESS,
     beat: true,
-    focus: ['fluid'],
-    camera: wide(-1.0, 0.2, 0.3, 30),
+    focus: ['fluid', 'pulmonary-bed'],
+    camera: wide(-2.4, 1.8, -0.6, 25.5),
+    view: PULMONARY_VIEW,
+    context: 1,
     reveal: { front: 1, fluid: 1 },
     caption: 'And fluid moves into the lung interstitium',
     captionJa: 'そして肺の間質へ水分が移動する',
@@ -263,31 +287,47 @@ export function beatNamedAt(t) {
   return BEAT_ANCHORS[stepAt(t).step.id] !== undefined;
 }
 
-/** Camera for a moment, interpolated across the step boundary. */
+/**
+ * Camera for a moment, interpolated across the step boundary.
+ *
+ * The direction is carried here too, not only the target and distance: a step
+ * whose subject is somewhere else in the anatomy needs to be looked at from
+ * somewhere else, and swinging round is itself part of the explanation. Most
+ * steps share one direction so the move happens rarely and means something when
+ * it does.
+ */
 export function cameraAt(t) {
   const index = STORY_STEPS.findIndex((entry) => t >= entry.at && t < entry.until);
   const step = STORY_STEPS[index] ?? STORY_STEPS[STORY_STEPS.length - 1];
   const previous = STORY_STEPS[Math.max(0, index - 1)] ?? step;
-  const BLEND = 1.1;
-  const since = t - step.at;
-  // A short cross-fade at each boundary. Long enough to read as a move, short
-  // enough that the viewer never loses where they are in the scene.
-  const mix = Math.min(1, Math.max(0, since / BLEND));
+  // Long enough to read as a move, short enough that the viewer never loses
+  // where they are. The swing round to the pulmonary side is given more room
+  // than the small adjustments between ventricle steps.
+  const from = previous.view ?? DEFAULT_VIEW;
+  const to = step.view ?? DEFAULT_VIEW;
+  const blend = from.equals(to) ? 1.1 : 2.2;
+  const mix = Math.min(1, Math.max(0, (t - step.at) / blend));
   const eased = mix * mix * (3 - 2 * mix);
   return {
     target: previous.camera.target.clone().lerp(step.camera.target, eased),
     distance: previous.camera.distance + (step.camera.distance - previous.camera.distance) * eased,
+    view: from.clone().lerp(to, eased).normalize(),
   };
 }
 
 /** Caption, with a short fade at each end so text never snaps. */
 export function captionAt(t) {
   const { step } = stepAt(t);
+  // The fade-out is there to make room for the next caption. The last step has
+  // no next, and the sequence deliberately holds on its final frame rather than
+  // snapping away — so its caption stays up with the picture it belongs to.
+  const last = step === STORY_STEPS[STORY_STEPS.length - 1];
+  const rise = Math.min(1, Math.max(0, (t - step.at) / 0.3));
   return {
     text: step.caption,
     textJa: step.captionJa,
     part: step.part,
-    opacity: cueOpacity(t, step.at, step.until, 0.3),
+    opacity: last ? rise * rise * (3 - 2 * rise) : cueOpacity(t, step.at, step.until, 0.3),
   };
 }
 
@@ -318,6 +358,19 @@ export function revealAt(t) {
     front: from.front + (to.front - from.front) * eased,
     fluid: from.fluid + (to.fluid - from.fluid) * eased,
   };
+}
+
+/**
+ * How much the surrounding pathway — atrium, pulmonary veins, vascular bed —
+ * should be brought forward. Presentation only; the same control the reel uses.
+ */
+export function contextAt(t) {
+  const { step, local } = stepAt(t);
+  const previous = STORY_STEPS[Math.max(0, STORY_STEPS.indexOf(step) - 1)];
+  const from = previous?.context ?? 0;
+  const to = step.context ?? 0;
+  const eased = local * local * (3 - 2 * local);
+  return from + (to - from) * eased;
 }
 
 /**

@@ -140,6 +140,18 @@ export const ANNOTATIONS = [
     range: [0.62, 1.0],
   },
   {
+    // Names where the pressure is going, so the region it spreads into reads as
+    // the pulmonary side rather than as a shape floating beside the heart. The
+    // sphere it points at is a schematic vascular bed — the scene draws no lung
+    // anatomy, and claiming any would be more than the model supports.
+    id: 'pulmonary-bed',
+    text: 'Pulmonary vascular bed',
+    sub: '肺血管床',
+    anchor: 'pulmonaryBed',
+    range: [0.6, 1.0],
+    compact: false,
+  },
+  {
     id: 'fluid',
     // The window follows what the model actually produces: interstitial fluid
     // is already ~0.2 of full here and climbing, so the label appears with the

@@ -25,6 +25,7 @@ import {
   emphasisAt as storyEmphasisAt,
   revealAt as storyRevealAt,
   outlineAt as storyOutlineAt,
+  contextAt as storyContextAt,
   beatDrivenAt,
   beatNamedAt,
 } from './storyboard.js';
@@ -670,6 +671,7 @@ export class HeartFailureScene {
       emphasisAt: storyEmphasisAt,
       revealAt: storyRevealAt,
       outlineAt: storyOutlineAt,
+      contextAt: storyContextAt,
       beatDrivenAt,
       beatNamedAt,
     };
