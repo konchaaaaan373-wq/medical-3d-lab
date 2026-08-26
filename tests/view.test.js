@@ -11,6 +11,8 @@ import { beatPhaseAt, sampleHemodynamics } from '../src/scenes/heartFailure/hemo
 import { STAGES } from '../src/data/heartFailure.js';
 import { stageIndexFor } from '../src/components/StageReadout.js';
 import { ZOOM_RANGE, steppedZoom, zoomedDistance } from '../src/app/zoom.js';
+import { Timeline } from '../src/utils/Timeline.js';
+import { separate, STACK_GAP, COLUMN_GAP } from '../src/components/LabelLayer.js';
 
 const POSE = { target: new Vector3(0, -1.8, 0.3), position: new Vector3(0, -1.8, 28.3) };
 const WIDE = 1440 / 900;
@@ -140,4 +142,54 @@ test('the zoomed distance stays inside the orbit controls own limits', () => {
     }
   }
   assert.equal(zoomedDistance(24, 1, limits), 24, 'no zoom leaves the framing alone');
+});
+
+test('a jump renders even when the sequence has stopped on its last frame', () => {
+  const frames = [];
+  const timeline = new Timeline({
+    duration: 10,
+    cues: [
+      { id: 'a', at: 0, until: 5 },
+      { id: 'b', at: 5, until: 10 },
+    ],
+    onFrame: (t, cueId) => frames.push([t, cueId]),
+  });
+
+  timeline.start();
+  timeline.tick(10); // runs to the end, which stops the clock
+  assert.equal(timeline.running, false);
+
+  const before = frames.length;
+  timeline.seek(1);
+  assert.equal(frames.length, before + 1, 'seeking rendered a frame');
+  assert.deepEqual(frames[frames.length - 1], [1, 'a'], 'and rendered the moment asked for');
+});
+
+test('a jump is clamped to the sequence', () => {
+  const timeline = new Timeline({ duration: 10, cues: [{ id: 'a', at: 0, until: 10 }] });
+  timeline.seek(-5);
+  assert.equal(timeline.elapsed, 0);
+  timeline.seek(99);
+  assert.equal(timeline.elapsed, 10);
+});
+
+test('two labels never end up on top of each other, whatever order they arrive in', () => {
+  // The order labels are placed in is annotation order, which has nothing to do
+  // with where they land on screen — so the sweep must not depend on it.
+  const placed = [];
+  for (const y of [234, 100, 200, 190, 205]) placed.push({ x: 0, y: separate(placed, 0, y) });
+  for (let i = 0; i < placed.length; i++) {
+    for (let j = i + 1; j < placed.length; j++) {
+      assert.ok(
+        Math.abs(placed[i].y - placed[j].y) >= STACK_GAP,
+        `labels at ${placed[i].y} and ${placed[j].y} are closer than ${STACK_GAP}px`
+      );
+    }
+  }
+});
+
+test('labels far apart horizontally are left where they are', () => {
+  const placed = [{ x: 0, y: 200 }];
+  assert.equal(separate(placed, COLUMN_GAP + 1, 200), 200, 'a different column does not push');
+  assert.ok(separate(placed, 0, 200) > 200, 'the same column does');
 });

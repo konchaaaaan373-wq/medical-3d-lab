@@ -8,24 +8,29 @@ const FADE = 0.06;
  * Minimum spacing between two labels, in px. Roughly a label's own height plus
  * a little air; anything closer and the two boxes overlap and neither reads.
  */
-const STACK_GAP = 34;
+export const STACK_GAP = 34;
 /** How far apart horizontally two labels have to be before they can share a row. */
-const COLUMN_GAP = 150;
+export const COLUMN_GAP = 150;
 
 /**
  * Nudge a label down until it is clear of the ones already placed.
+ *
+ * Exported for the tests: it is pure geometry, and the property that matters —
+ * that no two labels end up closer than `STACK_GAP` — is worth pinning.
  *
  * Anchors move with the camera and two of them can end up in the same few
  * pixels — most easily when the sequence points at a chain of structures that
  * are genuinely close together. Losing one of the two labels to an overlap is
  * worse than pointing a few pixels off, so the later one steps down instead.
  */
-function separate(placed, x, y) {
+export function separate(placed, x, y) {
+  // Sorted, because the sweep pushes downwards: checking a lower label before a
+  // higher one can move this label onto a row the sweep has already passed.
+  const column = placed
+    .filter((other) => Math.abs(other.x - x) <= COLUMN_GAP)
+    .sort((a, b) => a.y - b.y);
   let result = y;
-  // One settling pass per already-placed label is enough: they were themselves
-  // placed top-down, so a single sweep leaves everything clear.
-  for (const other of placed) {
-    if (Math.abs(other.x - x) > COLUMN_GAP) continue;
+  for (const other of column) {
     if (Math.abs(other.y - result) < STACK_GAP) result = other.y + STACK_GAP;
   }
   return result;

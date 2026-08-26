@@ -49,7 +49,14 @@ export async function createApp({ stage, ui }) {
    * scene. Everything stays mounted; what changes is what competes for
    * attention, and how close the camera sits.
    */
-  let dataView = false;
+  /**
+   * Learning view hides everything marked `.data-only` and offers a Data button
+   * to bring it back. A scene with nothing to put in Data view gets no button —
+   * and then hiding its `.data-only` controls would be a one-way door, so it
+   * starts in Data view and the split simply does not apply to it.
+   */
+  const hasDataView = Boolean(scene.getMetrics);
+  let dataView = !hasDataView;
   /** Set while the guided sequence is running; null the rest of the time. */
   let storyFocus = null;
 
@@ -68,7 +75,13 @@ export async function createApp({ stage, ui }) {
     return Math.min(0.45, Math.max(0, (height - rect.top) / height));
   };
 
-  const shot = framePose(SceneClass.cameraPose, viewer.camera.aspect, 'learning', viewer.camera.fov, 0.26);
+  const shot = framePose(
+    SceneClass.cameraPose,
+    viewer.camera.aspect,
+    dataView ? 'data' : 'learning',
+    viewer.camera.fov,
+    0.26
+  );
   let shotSource = SceneClass.cameraPose;
   viewer.camera.position.copy(shot.position);
   viewer.controls.target.copy(shot.target);
@@ -174,8 +187,6 @@ export async function createApp({ stage, ui }) {
 
   // --- UI -------------------------------------------------------------------
   const playback = new Playback({ duration: 26 });
-  // Story mode pauses on each stage boundary; skip 0, which is where it starts.
-  playback.setHoldPoints(meta.stages.map((stage) => stage.at).filter((at) => at > 0));
 
   const legend = createLegend(meta);
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
@@ -195,10 +206,14 @@ export async function createApp({ stage, ui }) {
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
     onDataToggle: scene.getMetrics ? (enabled) => setDataView(enabled) : undefined,
     onZoom: (direction) => zoomBy(direction),
-    onStoryToggle: (enabled) => {
-      if (enabled) storyMode?.enter();
-      else storyMode?.exit();
-    },
+    // Only scenes that ship a guided sequence get the button; without this it
+    // latched on and did nothing on a scene with no storyboard.
+    onStoryToggle: scene.getStory
+      ? (enabled) => {
+          if (enabled) storyMode.enter();
+          else storyMode.exit();
+        }
+      : undefined,
   });
 
   const languageToggle = createLanguageToggle((mode) => {
@@ -306,8 +321,6 @@ export async function createApp({ stage, ui }) {
   );
 
   // --- state flow -----------------------------------------------------------
-  let lastStageIndex = -1;
-
   playback.onChange = (value, playing) => {
     scene.setProgress(value);
     stageReadout.update(value);
@@ -317,11 +330,6 @@ export async function createApp({ stage, ui }) {
     refreshModelReadouts();
     applyLabelFocus();
 
-    const index = stageIndexFor(value, meta.stages);
-    if (index !== lastStageIndex) {
-      lastStageIndex = index;
-      if (playback.holdsEnabled) focusStage(index);
-    }
   };
 
   let comparing = false;
@@ -338,33 +346,22 @@ export async function createApp({ stage, ui }) {
     applyLabelFocus();
     controlPanel.setComparison(enabled);
     refreshModelReadouts();
-    // Leaving comparison during story mode should return to the stage close-up
-    // the viewer was on, not all the way out to the establishing shot.
-    const stageId = playback.holdsEnabled ? meta.stages[lastStageIndex]?.id : undefined;
-    setShot(comparisonOrStageShot(stageId));
+    setShot(comparisonOrStageShot());
     view.active = true;
     viewer.controls.autoRotate = false;
   }
 
-  /** Comparison framing wins over a stage close-up: both hearts must stay in frame. */
-  function comparisonOrStageShot(stageId) {
+  /**
+   * Where the camera rests.
+   *
+   * The comparison has its own framing because both hearts have to stay in the
+   * frame. Everything else uses the scene's own establishing shot: the redesign
+   * settled on one camera for the interactive view, and the guided sequence is
+   * where a moving camera belongs.
+   */
+  function comparisonOrStageShot() {
     if (comparing) return scene.getComparisonView?.() ?? SceneClass.cameraPose;
-    if (stageId) return scene.getStageView?.(stageId) ?? SceneClass.cameraPose;
     return SceneClass.cameraPose;
-  }
-
-  /** Moves the camera to the stage's own framing (story mode only). */
-  function focusStage(index, immediate = false) {
-    const stage = meta.stages[index];
-    setShot(comparisonOrStageShot(stage.id));
-    view.active = true;
-    viewer.controls.autoRotate = false;
-    if (immediate) {
-      viewer.camera.position.copy(shot.position);
-      viewer.controls.target.copy(shot.target);
-      view.active = false;
-      viewer.controls.autoRotate = !prefersReducedMotion();
-    }
   }
 
   function seek(value) {
@@ -461,7 +458,7 @@ export async function createApp({ stage, ui }) {
     controlPanel.setDataView(enabled);
     applyLabelFocus();
     // The camera can sit closer when the panels are not crowding the frame.
-    setShot(comparisonOrStageShot(currentStageId()));
+    setShot(comparisonOrStageShot());
     view.active = true;
     viewer.controls.autoRotate = false;
     // The canvases are laid out only when they become visible.
@@ -490,18 +487,20 @@ export async function createApp({ stage, ui }) {
     labels.update(playback.value);
   }
 
-  /** The stage the progression value currently sits in, when framing wants it. */
-  function currentStageId() {
-    return playback.holdsEnabled ? meta.stages[stageIndexFor(playback.value, meta.stages)]?.id : undefined;
-  }
-
   let learning = false;
   /** The interactive session as it was before the lesson took over. */
   let learningSnapshot = null;
+  /** Which view the lesson interrupted, so it can be handed back. */
+  let learningPreviousView = false;
 
   /**
    * A lesson parks the model on the state it starts from, so it takes the same
    * snapshot the reel does and hands everything back on the way out.
+   *
+   * It also switches to Data view for its duration. The lesson asks the viewer
+   * to move a loading slider and then to read what ESV and SV did — both of
+   * which live in the panels learning view puts away, so running one in
+   * learning view pointed at controls and numbers that were not on screen.
    */
   function setLearning(enabled) {
     if (!learningPanel || enabled === learning) return;
@@ -509,8 +508,11 @@ export async function createApp({ stage, ui }) {
     ui.classList.toggle('is-learning', enabled);
     if (enabled) {
       learningSnapshot = captureSessionState({ playback, viewer, scene, comparing });
+      learningPreviousView = dataView;
+      setDataView(true);
       learningPanel.start();
     } else {
+      setDataView(learningPreviousView);
       if (learningSnapshot) {
         restoreSessionState(learningSnapshot, { playback, viewer, scene, setComparison });
         modelControls?.sync(scene.getModelControls());
@@ -581,7 +583,7 @@ export async function createApp({ stage, ui }) {
   });
 
   languageToggle.init();
-  ui.dataset.view = 'learning';
+  ui.dataset.view = dataView ? 'data' : 'learning';
   playback.set(0);
 
   // The opening framing used an assumed console height; now that the UI is in

@@ -84,7 +84,6 @@ function enterReelLike(harness) {
 test('a snapshot captures everything the reel changes', () => {
   const h = createHarness();
   h.setComparing(true);
-  h.playback.holdsEnabled = true;
   h.playback.set(0.31);
   h.setPhase(0.77);
   h.viewer.camera.position.set(1, 2, 3);
@@ -93,7 +92,6 @@ test('a snapshot captures everything the reel changes', () => {
 
   const state = h.capture();
   assert.equal(state.comparing, true);
-  assert.equal(state.storyHolds, true);
   assert.equal(state.progress, 0.31);
   assert.equal(state.playing, false);
   assert.equal(state.cardiacPhase, 0.77);
@@ -106,7 +104,6 @@ test('a snapshot captures everything the reel changes', () => {
 test('leaving the reel restores the session exactly', () => {
   const h = createHarness();
   h.playback.set(0.28);
-  h.playback.holdsEnabled = true;
   h.setPhase(0.62);
   h.viewer.camera.position.set(12.4, 5.2, 16.8);
   h.viewer.controls.target.set(0.4, -0.3, 0.1);
@@ -125,7 +122,6 @@ test('leaving the reel restores the session exactly', () => {
 test('repeated entries and exits never drift', () => {
   const h = createHarness();
   h.setComparing(true);
-  h.playback.holdsEnabled = true;
   h.playback.set(0.42);
   h.setPhase(0.19);
   h.viewer.camera.position.set(-7.5, 3.25, 21);

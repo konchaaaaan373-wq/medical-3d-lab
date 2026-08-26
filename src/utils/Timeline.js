@@ -39,6 +39,26 @@ export class Timeline {
     this.running = false;
   }
 
+  /**
+   * Jump to a moment and render it.
+   *
+   * Deliberately not routed through `tick`: a sequence that has reached its end
+   * is stopped, and that is exactly when someone is most likely to want to go
+   * back to a step. Rendering has to work whether or not the clock is running.
+   *
+   * @param {number} t seconds
+   */
+  seek(t) {
+    this.elapsed = Math.min(this.duration, Math.max(0, t));
+    const cueId = cueIdAt(this.cues, this.elapsed);
+    if (cueId !== this.currentCue) {
+      const previous = this.currentCue;
+      this.currentCue = cueId;
+      this.onCue(cueId, previous);
+    }
+    this.onFrame(this.elapsed, cueId);
+  }
+
   /** @param {number} dt seconds since the previous frame */
   tick(dt) {
     if (!this.running) return;

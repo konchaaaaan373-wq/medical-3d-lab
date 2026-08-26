@@ -9,7 +9,7 @@
 
 /**
  * @param {{
- *   playback: { value: number, playing: boolean, holdsEnabled: boolean },
+ *   playback: { value: number, playing: boolean },
  *   viewer: { camera: any, controls: any },
  *   scene: { getCardiacPhase?: () => number, getModelControls?: () => any[] },
  *   comparing: boolean,
@@ -20,7 +20,6 @@ export function captureSessionState({ playback, viewer, scene, comparing }) {
     comparing,
     progress: playback.value,
     playing: playback.playing,
-    storyHolds: playback.holdsEnabled,
     autoRotate: viewer.controls.autoRotate,
     controlsEnabled: viewer.controls.enabled,
     cameraPosition: viewer.camera.position.toArray(),
@@ -46,7 +45,6 @@ export function captureSessionState({ playback, viewer, scene, comparing }) {
 export function restoreSessionState(state, { playback, viewer, scene, setComparison }) {
   setComparison(state.comparing);
 
-  playback.holdsEnabled = state.storyHolds;
   if (state.playing) playback.play();
   else playback.pause();
   playback.set(state.progress);

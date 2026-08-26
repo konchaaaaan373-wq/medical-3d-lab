@@ -56,14 +56,19 @@ export function createControlPanel({
   const playButton = button('play', ['Progression', '進行'], onToggle, 'utility');
   playButton.element.title = 'Step through the remodelling stages automatically. The heart beats regardless.';
 
-  const storyButton = button('story', ['Story', 'ストーリー'], () => {
-    const enabled = storyButton.element.classList.toggle('is-on');
-    storyButton.element.setAttribute('aria-pressed', String(enabled));
-    onStoryToggle(enabled);
-  });
-  storyButton.element.setAttribute('aria-pressed', 'false');
-  storyButton.element.classList.add('primary');
-  storyButton.element.title = 'Guided sequence — remodelling, then inside one failing beat';
+  // Only scenes that ship a guided sequence get the button.
+  const storyButton = onStoryToggle
+    ? button('story', ['Story', 'ストーリー'], () => {
+        const enabled = storyButton.element.classList.toggle('is-on');
+        storyButton.element.setAttribute('aria-pressed', String(enabled));
+        onStoryToggle(enabled);
+      })
+    : null;
+  if (storyButton) {
+    storyButton.element.setAttribute('aria-pressed', 'false');
+    storyButton.element.classList.add('primary');
+    storyButton.element.title = 'Guided sequence — remodelling, then inside one failing beat';
+  }
 
   // Only scenes that implement a comparison get the button.
   const compareButton = onCompareToggle
@@ -153,7 +158,7 @@ export function createControlPanel({
     // Ordered by weight: the guided sequence first, then the two ways of
     // looking wider, then the utilities.
     el('div', { class: 'button-row' }, [
-      storyButton.element,
+      storyButton?.element,
       compareButton?.element,
       dataButton?.element,
       el('span', { class: 'button-gap' }),
@@ -177,6 +182,7 @@ export function createControlPanel({
   return {
     element,
     setStory(enabled) {
+      if (!storyButton) return;
       storyButton.element.classList.toggle('is-on', enabled);
       storyButton.element.setAttribute('aria-pressed', String(enabled));
     },

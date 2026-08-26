@@ -58,7 +58,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       title: step.caption,
       // Steps are addressable: someone who wants to see the residual moment
       // again should not have to sit through the remodelling first.
-      on: { click: () => timeline.seek(step.at + 0.01) },
+      on: { click: () => seek(step.at + 0.01) },
     })
   );
   dots.append(...stepDots);
@@ -80,12 +80,22 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     },
   });
 
-  /** Seeking is not part of the base Timeline, so it is added here. */
-  timeline.seek = (t) => {
-    timeline.elapsed = Math.min(story.duration, Math.max(0, t));
-    timeline.currentCue = null;
-    timeline.tick(0);
-  };
+  /**
+   * Jump to a moment and carry on from there.
+   *
+   * The sequence stops itself on its last frame, so this also restarts the
+   * clock when the destination is not the end — otherwise picking a step dot
+   * after the sequence had finished would paint that step and then sit there.
+   *
+   * @param {number} t seconds
+   */
+  function seek(t) {
+    timeline.seek(t);
+    if (active && timeline.elapsed < story.duration) {
+      timeline.running = true;
+      lastTimestamp = null;
+    }
+  }
 
   function renderAt(t) {
     const { step } = story.stepAt(t);
@@ -182,7 +192,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
      *
      * @param {number} t seconds
      */
-    seek: (t) => timeline.seek(t),
+    seek,
     /** @returns {number} seconds elapsed */
     get elapsed() {
       return timeline.elapsed;
