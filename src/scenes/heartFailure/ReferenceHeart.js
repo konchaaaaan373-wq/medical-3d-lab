@@ -67,7 +67,11 @@ export class ReferenceHeart extends THREE.Group {
 
     // Same end-diastolic mark as the subject heart, so the two strokes can be
     // read against each other and not just the two chamber sizes.
-    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: '#b9d0e4' });
+    // Same colour as the subject's mark, deliberately: the rest of this heart is
+    // desaturated so it reads as the yardstick, but the mark is the measuring
+    // instrument itself. Dimming it on one side only would make the stroke
+    // harder to read on exactly the side it is being compared against.
+    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle });
     this.outline.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
 
     this.add(this.ventricle, this.blood, this.outline);
