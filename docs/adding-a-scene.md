@@ -245,10 +245,32 @@ export { HeartFailureScene as default, HeartFailureScene } from './HeartFailureS
 表示していないテーマのコードはダウンロードされません。
 
 ```js
-{ id: 'heart-failure', label: 'Heart failure', load: () => import('../scenes/heartFailure/index.js') },
+{
+  id: 'heart-failure',
+  organ: 'heart',
+  label: 'Heart failure',
+  labelJa: '心不全',
+  load: () => import('../scenes/heartFailure/index.js'),
+},
 ```
 
 `http://localhost:5173/#/heart-failure` で開けるようになります。
+
+### `organ` は必須です
+
+ナビゲーションの第 1 階層は臓器です。「アミロイドβ」と「心不全」を横に
+並べると同じ種類のものに見えますが、実際には片方は脳の分子過程、もう片方は
+心臓の力学的破綻で、粒度が違います。**どの臓器の話なのか**が最初の分岐です。
+
+新しい臓器なら `ORGANS` にも 1 行足してください（英語名と日本語名の両方）。
+臓器タブは head to toe の順に並べます。
+
+同じ臓器に 2 つ目の Scene が入ると、臓器タブの下に Scene のタブが自動的に
+現れます。1 つしかないうちは出ません — 選択肢が 1 つのタブ列は、
+ありもしない選択を約束することになるためです。
+
+Scene の `id` は URL（`#/<id>`）です。**一度公開した id は変えないでください。**
+臓器のグループ分けは表示だけの話で、既存のリンクはそのまま動きます。
 
 ## 押さえておきたい点
 

@@ -152,8 +152,37 @@
 /* ---------- topic switcher ---------- */
 .scene-switcher {
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  gap: 2px;
   padding: 4px;
+}
+
+.scene-row {
+  display: flex;
+  gap: 4px;
+}
+
+/* The topic row is subordinate to the organ row: same shape, quieter, and
+   inset so it reads as "inside the organ above" rather than as a second set of
+   equals. */
+.scene-topics {
+  padding: 2px 2px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+
+.scene-pill.scene-topic {
+  font-size: 11px;
+  padding: 5px 10px;
+}
+
+/* The selected topic is marked, not shouted: a solid accent pill here would
+   weigh the same as the organ above it and the two rows would read as one
+   flat list of equals. */
+.scene-pill.scene-topic.is-current {
+  color: var(--accent);
+  background: rgba(56, 225, 239, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(56, 225, 239, 0.4);
 }
 
 .scene-pill {

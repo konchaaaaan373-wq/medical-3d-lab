@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
-import { SCENES, loadScene, resolveSceneId } from './sceneRegistry.js';
+import { loadScene, organsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -279,7 +279,7 @@ export async function createApp({ stage, ui }) {
     pvPanel.update(pressureVolume);
     wavePanel?.update(pressureVolume);
   }
-  const sceneSwitcher = createSceneSwitcher({ scenes: SCENES, currentId: resolveSceneId() });
+  const sceneSwitcher = createSceneSwitcher({ organs: organsWithScenes(), currentId: resolveSceneId() });
 
   const uiToggle = el('button', {
     class: 'ui-toggle',
