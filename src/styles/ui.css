@@ -273,6 +273,76 @@
   background: var(--accent);
 }
 
+/* ==========================================================================
+   Learning view vs Data view
+   --------------------------------------------------------------------------
+   Learning view is the default. The 3D subject, the stage it is in, and the
+   way in — nothing else competing. Data view brings the plots, the read-out
+   and the loading sliders back, and keeps the 3D.
+
+   Nothing is unmounted: every panel stays in the DOM and stays subscribed, so
+   toggling views costs no rebuild and loses no state.
+   ========================================================================== */
+
+/* The bottom console carries the stage headline and one short line in
+   learning view; the full bilingual description and the model parameters come
+   back in Data view. */
+#ui[data-view='learning'] .console {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+#ui[data-view='learning'] .stage-summary-ja,
+#ui[data-view='learning'] .disclaimer-full {
+  display: none;
+}
+
+#ui[data-view='learning'] .disclaimer-short {
+  display: block;
+}
+
+#ui[data-view='learning'] .stage-summary {
+  /* One line at a glance; the rest is a hover away and all of it is in Data. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+#ui[data-view='learning'] .pv,
+#ui[data-view='learning'] .wave,
+#ui[data-view='learning'] .model-controls,
+#ui[data-view='learning'] .metrics,
+#ui[data-view='learning'] .data-only {
+  display: none;
+}
+
+/* The legend duplicates the 3D labels. In learning view it collapses to a
+   single line that expands on hover or focus. */
+#ui[data-view='learning'] .legend {
+  padding: 7px 10px;
+  gap: 0;
+  max-height: 26px;
+  overflow: hidden;
+  transition: max-height 200ms ease, gap 200ms ease;
+}
+
+#ui[data-view='learning'] .legend::before {
+  content: 'Legend';
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  padding-bottom: 6px;
+}
+
+#ui[data-view='learning'] .legend:hover,
+#ui[data-view='learning'] .legend:focus-within {
+  max-height: 220px;
+  gap: 9px;
+}
+
 /* ---------- pressure-volume loop ---------- */
 .pv {
   padding: 9px 11px 8px;
@@ -1093,6 +1163,33 @@
 
 .btn.primary:hover {
   background: #6bf0fa;
+}
+
+/* Weight tiers. Story is the way in; Compare and Data are the two ways of
+   looking wider; everything else is a utility and should not shout. */
+.btn.secondary {
+  border-color: rgba(140, 175, 225, 0.3);
+}
+
+.btn.utility {
+  padding: 7px 11px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.btn.utility:hover {
+  color: var(--ink-dim);
+}
+
+.btn.utility .btn-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Separates the two tiers without a divider line. */
+.button-gap {
+  flex: 0 0 14px;
 }
 
 .btn.is-on {

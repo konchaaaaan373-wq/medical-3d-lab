@@ -34,6 +34,8 @@ export const PALETTE = {
 export const STAGES = [
   {
     id: 'normal',
+    /** Annotation ids learning view points at while this stage is current. */
+    focus: ['lv'],
     name: 'Normal',
     nameJa: '正常な左室',
     at: 0.0,
@@ -47,6 +49,7 @@ export const STAGES = [
     // while the cavity does not enlarge and relative wall thickness climbs.
     // Increased RWT *with* increased mass is hypertrophy, not remodelling.
     id: 'concentric-hypertrophy',
+    focus: ['wall'],
     name: 'Concentric hypertrophy',
     nameJa: '求心性肥大',
     at: 0.18,
@@ -57,6 +60,7 @@ export const STAGES = [
   },
   {
     id: 'dilation',
+    focus: ['lv'],
     name: 'LV dilation',
     nameJa: '左室の拡大（遠心性）',
     at: 0.42,
@@ -67,6 +71,7 @@ export const STAGES = [
   },
   {
     id: 'systolic-dysfunction',
+    focus: ['residual', 'pressure'],
     name: 'Systolic dysfunction (HFrEF)',
     nameJa: '収縮機能の低下（HFrEF）',
     at: 0.64,
@@ -172,8 +177,10 @@ export const PRESSURE_WAVE_LABEL = {
 
 /** Button that opens the guided lessons. */
 export const LEARNING_LABEL = {
-  label: 'Learn',
-  labelJa: '学ぶ',
+  // "Learn" would collide with the learning-vs-data view split; this button is
+  // one specific guided lesson, so it says so.
+  label: 'Lesson',
+  labelJa: 'レッスン',
   hint: 'Guided lesson — predict, then test it on the model',
 };
 

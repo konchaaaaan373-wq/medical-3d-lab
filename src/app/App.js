@@ -38,9 +38,33 @@ export async function createApp({ stage, ui }) {
   const meta = SceneClass.meta;
   document.title = `${meta.title} — medical-3d-lab`;
 
+  /**
+   * Learning view is the default: the 3D subject, the stage it is in, and the
+   * way in. Data view brings back the plots, the read-out and the loading
+   * sliders — without taking the 3D away, which is the whole point of the
+   * scene. Everything stays mounted; what changes is what competes for
+   * attention, and how close the camera sits.
+   */
+  let dataView = false;
+  /** Set while the guided sequence is running; null the rest of the time. */
+  let storyFocus = null;
+
   // `shot` is wherever the camera should currently be resting: the scene's
   // establishing framing, or a stage close-up while story mode is running.
-  const shot = framePose(SceneClass.cameraPose, viewer.camera.aspect);
+  /**
+   * How much of the frame the bottom console is covering, measured rather than
+   * assumed — it changes with the window, the view and whether a lesson panel
+   * is open, and the camera has to keep the subject clear of it in all of them.
+   */
+  const bottomInset = () => {
+    const height = viewer.container.clientHeight;
+    const panel = ui.querySelector('.console');
+    if (!panel || !height) return 0;
+    const rect = panel.getBoundingClientRect();
+    return Math.min(0.45, Math.max(0, (height - rect.top) / height));
+  };
+
+  const shot = framePose(SceneClass.cameraPose, viewer.camera.aspect, 'learning', viewer.camera.fov, 0.26);
   let shotSource = SceneClass.cameraPose;
   viewer.camera.position.copy(shot.position);
   viewer.controls.target.copy(shot.target);
@@ -48,7 +72,13 @@ export async function createApp({ stage, ui }) {
 
   const setShot = (pose) => {
     shotSource = pose;
-    const next = framePose(pose, viewer.camera.aspect);
+    const next = framePose(
+      pose,
+      viewer.camera.aspect,
+      dataView ? 'data' : 'learning',
+      viewer.camera.fov,
+      bottomInset()
+    );
     shot.position.copy(next.position);
     shot.target.copy(next.target);
   };
@@ -87,6 +117,7 @@ export async function createApp({ stage, ui }) {
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
+    onDataToggle: scene.getMetrics ? (enabled) => setDataView(enabled) : undefined,
     onStoryToggle: (enabled) => {
       playback.holdsEnabled = enabled;
       // Turning story mode on should immediately frame the current stage.
@@ -213,6 +244,7 @@ export async function createApp({ stage, ui }) {
     labels.update(value);
     controlPanel.update(value, playing);
     refreshModelReadouts();
+    applyLabelFocus();
 
     const index = stageIndexFor(value, meta.stages);
     if (index !== lastStageIndex) {
@@ -331,6 +363,44 @@ export async function createApp({ stage, ui }) {
       })
     : null;
 
+  function setDataView(enabled) {
+    if (dataView === enabled) return;
+    dataView = enabled;
+    ui.dataset.view = enabled ? 'data' : 'learning';
+    controlPanel.setDataView(enabled);
+    applyLabelFocus();
+    // The camera can sit closer when the panels are not crowding the frame.
+    setShot(comparisonOrStageShot(currentStageId()));
+    view.active = true;
+    viewer.controls.autoRotate = false;
+    // The canvases are laid out only when they become visible.
+    requestAnimationFrame(() => {
+      pvPanel?.resize();
+      wavePanel?.resize();
+      refreshModelReadouts();
+    });
+  }
+
+  /**
+   * What the labels should point at right now.
+   *
+   * The guided sequence wins when it is running; otherwise learning view shows
+   * the one label the current stage is about, and Data view shows everything
+   * whose window is open — someone reading the plots has already asked for
+   * detail.
+   */
+  function applyLabelFocus() {
+    if (storyFocus) labels.setFocus(storyFocus);
+    else if (dataView) labels.setFocus(null);
+    else labels.setFocus(meta.stages[stageIndexFor(playback.value, meta.stages)]?.focus ?? ['lv']);
+    labels.update(playback.value);
+  }
+
+  /** The stage the progression value currently sits in, when framing wants it. */
+  function currentStageId() {
+    return playback.holdsEnabled ? meta.stages[stageIndexFor(playback.value, meta.stages)]?.id : undefined;
+  }
+
   let learning = false;
   /** The interactive session as it was before the lesson took over. */
   let learningSnapshot = null;
@@ -387,7 +457,17 @@ export async function createApp({ stage, ui }) {
   });
 
   languageToggle.init();
+  ui.dataset.view = 'learning';
   playback.set(0);
+
+  // The opening framing used an assumed console height; now that the UI is in
+  // the document, re-frame from the measured one and snap the camera there
+  // rather than tweening from a guess.
+  setShot(SceneClass.cameraPose);
+  viewer.camera.position.copy(shot.position);
+  viewer.controls.target.copy(shot.target);
+  viewer.controls.update();
+  view.active = false;
   // The canvases have no size until they are in the document.
   pvPanel?.resize();
   wavePanel?.resize();
@@ -408,6 +488,8 @@ export async function createApp({ stage, ui }) {
     setComparison,
     isComparing: () => comparing,
     reel: reelMode,
+    setDataView,
+    isDataView: () => dataView,
     learning: learningPanel ? { panel: learningPanel, set: setLearning, isActive: () => learning } : null,
   };
   return window.__app;

@@ -22,6 +22,17 @@ export function createLabelLayer({ viewer, annotations }) {
   const shown = compact ? annotations.filter((a) => a.compact !== false) : annotations;
 
   let comparing = false;
+  /**
+   * Ids the current step wants pointed out, or null for "whatever the
+   * progression window says".
+   *
+   * Labels explain the visualization; they must not become the visualization.
+   * Six of them at once hid the subject they were pointing at, so learning view
+   * and the guided sequence name what matters right now and everything else
+   * steps back. `null` restores the old progression-window behaviour, which is
+   * what Data view and the comparison still use.
+   */
+  let focus = null;
 
   const items = shown.map((annotation) => {
     const node = el('div', { class: 'label3d' }, [
@@ -48,6 +59,14 @@ export function createLabelLayer({ viewer, annotations }) {
       comparing = enabled;
     },
 
+    /**
+     * @param {string[]|null} ids annotation ids to show, or null for all the
+     *   ones whose progression window is open
+     */
+    setFocus(ids) {
+      focus = ids;
+    },
+
     /** Visibility follows the progression window each annotation declares. */
     update(progress) {
       for (const item of items) {
@@ -59,7 +78,11 @@ export function createLabelLayer({ viewer, annotations }) {
         // A window that opens at 0 is visible immediately — no fade-in from nothing.
         const fadeIn = from <= 0 ? 1 : smoothstep(from, from + FADE, progress);
         const fadeOut = to >= 1 ? 1 : 1 - smoothstep(to - FADE, to, progress);
-        item.opacity = clamp(fadeIn * fadeOut);
+        const inWindow = clamp(fadeIn * fadeOut);
+        // A focused label still has to be in its own window — the sequence can
+        // ask for a label that does not apply yet, and it should stay quiet
+        // rather than point at something that is not there.
+        item.opacity = focus ? (focus.includes(item.annotation.id) ? inWindow : 0) : inWindow;
       }
     },
 

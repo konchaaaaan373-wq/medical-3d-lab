@@ -57,7 +57,7 @@ export function createStageReadout({ meta, onSeek }) {
     track,
     el('div', { class: 'stage-heading' }, [
       el('div', {}, [nameEn, nameJa]),
-      el('span', { class: 'stage-progress' }, [progressCaption, percent]),
+      el('span', { class: 'stage-progress data-only' }, [progressCaption, percent]),
     ]),
     summaryEn,
     summaryJa,

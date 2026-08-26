@@ -34,6 +34,7 @@ export function createControlPanel({
   onCompareToggle,
   onReel,
   onLearn,
+  onDataToggle,
 }) {
   const slider = el('input', {
     class: 'slider',
@@ -48,14 +49,20 @@ export function createControlPanel({
     on: { input: (event) => onSeek(Number(event.target.value) / 1000) },
   });
 
-  const playButton = button('play', ['Play', '再生'], onToggle, 'primary');
+  // Not "Play": the heart beats on its own the whole time, and calling this
+  // Play made two different clocks look like one. This one steps the *other*
+  // axis — the remodelling trajectory — from Normal to HFrEF.
+  const playButton = button('play', ['Progression', '進行'], onToggle, 'utility');
+  playButton.element.title = 'Step through the remodelling stages automatically. The heart beats regardless.';
+
   const storyButton = button('story', ['Story', 'ストーリー'], () => {
     const enabled = storyButton.element.classList.toggle('is-on');
     storyButton.element.setAttribute('aria-pressed', String(enabled));
     onStoryToggle(enabled);
   });
   storyButton.element.setAttribute('aria-pressed', 'false');
-  storyButton.element.title = 'Story mode — pause on each stage and move the camera';
+  storyButton.element.classList.add('primary');
+  storyButton.element.title = 'Guided sequence — remodelling, then inside one failing beat';
 
   // Only scenes that implement a comparison get the button.
   const compareButton = onCompareToggle
@@ -66,26 +73,44 @@ export function createControlPanel({
       })
     : null;
   if (compareButton) {
+    compareButton.element.classList.add('secondary');
     compareButton.element.setAttribute('aria-pressed', 'false');
     compareButton.element.title = meta.comparison?.hint ?? 'Compare with a normal state';
   }
 
   // Only scenes that ship guided lessons get the button.
   const learnButton = onLearn
-    ? button('learn', [meta.learning?.label ?? 'Learn', meta.learning?.labelJa ?? '学ぶ'], onLearn)
+    ? button('learn', [meta.learning?.label ?? 'Lesson', meta.learning?.labelJa ?? 'レッスン'], onLearn, 'utility')
     : null;
   if (learnButton) learnButton.element.title = meta.learning?.hint ?? 'Guided lesson';
 
+  // Learning view is the default; this reveals the plots, the read-out and the
+  // loading sliders without taking the 3D away.
+  const dataButton = onDataToggle
+    ? button('data', ['Data', 'データ'], () => {
+        const enabled = dataButton.element.classList.toggle('is-on');
+        dataButton.element.setAttribute('aria-pressed', String(enabled));
+        onDataToggle(enabled);
+      }, 'secondary')
+    : null;
+  if (dataButton) {
+    dataButton.element.setAttribute('aria-pressed', 'false');
+    dataButton.element.title = 'Pressure-volume loop, waveforms, read-out and loading conditions';
+  }
+
   // Only scenes that ship a social sequence get the button.
   const reelButton = onReel
-    ? button('reel', [meta.reel?.label ?? 'Reel', meta.reel?.labelJa ?? 'リール'], onReel)
+    ? button('reel', [meta.reel?.label ?? 'Reel', meta.reel?.labelJa ?? 'リール'], onReel, 'utility')
     : null;
   if (reelButton) reelButton.element.title = meta.reel?.hint ?? '15-second social sequence';
 
   const capture = createCaptureButton(onCapture);
 
   const element = el('div', { class: 'controls' }, [
-    el('div', { class: 'slider-row' }, [
+    // The continuous slider interpolates between stages. It is a model
+    // parameter, not a clinical index, so it belongs with the other model
+    // inputs in Data view rather than under the stage headline.
+    el('div', { class: 'slider-row data-only' }, [
       el('span', { class: 'slider-cap' }, [
         el('span', { class: 'lang-en', text: meta.range?.start ?? '' }),
         el('span', { class: 'lang-ja', text: meta.range?.startJa ?? '' }),
@@ -96,12 +121,16 @@ export function createControlPanel({
         el('span', { class: 'lang-ja', text: meta.range?.endJa ?? '' }),
       ]),
     ]),
+    // Ordered by weight: the guided sequence first, then the two ways of
+    // looking wider, then the utilities.
     el('div', { class: 'button-row' }, [
-      playButton.element,
-      button('reset', ['Reset', 'リセット'], onReset).element,
-      button('frame', ['View', '視点'], onResetView).element,
       storyButton.element,
       compareButton?.element,
+      dataButton?.element,
+      el('span', { class: 'button-gap' }),
+      playButton.element,
+      button('reset', ['Reset', 'リセット'], onReset, 'utility').element,
+      button('frame', ['View', '視点'], onResetView, 'utility').element,
       learnButton?.element,
       reelButton?.element,
       capture.element,
@@ -118,6 +147,11 @@ export function createControlPanel({
 
   return {
     element,
+    setDataView(enabled) {
+      if (!dataButton) return;
+      dataButton.element.classList.toggle('is-on', enabled);
+      dataButton.element.setAttribute('aria-pressed', String(enabled));
+    },
     /** Lets the app keep the button in sync with a keyboard shortcut. */
     setComparison(enabled) {
       if (!compareButton) return;
@@ -128,7 +162,7 @@ export function createControlPanel({
       // Do not fight the user while they are dragging the handle.
       if (document.activeElement !== slider) slider.value = String(Math.round(progress * 1000));
       playButton.setIcon(playing ? 'pause' : 'play');
-      playButton.setLabel(playing ? ['Pause', '一時停止'] : ['Play', '再生']);
+      playButton.setLabel(playing ? ['Pause', '一時停止'] : ['Progression', '進行']);
     },
   };
 }

@@ -48,6 +48,8 @@ export const ICONS = {
   reel: icon(
     '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 3.5v9l7-4.5z"/>'
   ),
+  // Stacked bars: the numbers behind the picture.
+  data: icon('<path d="M4 19h16v2H4zM6 10h3v7H6zM10.5 5h3v12h-3zM15 12h3v5h-3z"/>'),
   // A lightbulb: predict, then find out.
   learn: icon(
     '<path d="M12 2a7 7 0 0 0-4 12.7V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.3A7 7 0 0 0 12 2zM9.5 19h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1 0-1zm.5 2h4a2 2 0 0 1-4 0z"/>'
