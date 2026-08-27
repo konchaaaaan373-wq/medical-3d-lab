@@ -12,7 +12,13 @@ import { framePose, verticalOffsetForView } from '../src/app/framing.js';
  * context, and framing for it costs the subject a fifth of the frame.
  */
 const POSE = { target: new Vector3(-0.3, -1.8, 0.3), position: new Vector3(-0.3, -1.8, 28.3) };
-const SUBJECT = { top: 5.6, bottom: -6.4 };
+/**
+ * Measured from the built scene, over the progression and the whole beat.
+ * Re-measure when the anatomy changes: this grew from 5.6 at the top when the
+ * ventricle geometry was rebuilt, which is what made the old vertical offset
+ * clip the frame.
+ */
+const SUBJECT = { top: 6.4, bottom: -6.4 };
 const FOV = 42;
 
 /** Where a world y lands in the frame, 0 at the top and 1 at the bottom. */
@@ -23,7 +29,10 @@ function screenFraction(framed, worldY) {
 }
 
 test('learning view holds the whole subject above the console', () => {
-  for (const [aspect, inset] of [[1440 / 900, 0.26], [1280 / 800, 0.29], [1024 / 768, 0.3], [390 / 844, 0.26]]) {
+  // Insets are the *tallest* the console gets at each size — measured with the
+  // longest stage description, because the camera does not re-frame when the
+  // stage changes.
+  for (const [aspect, inset] of [[1440 / 900, 0.26], [1280 / 800, 0.30], [1024 / 768, 0.31], [390 / 844, 0.26]]) {
     const framed = framePose(POSE, aspect, 'learning', FOV, inset);
     const top = screenFraction(framed, SUBJECT.top);
     const bottom = screenFraction(framed, SUBJECT.bottom);

@@ -29,13 +29,18 @@ export function distanceScaleForView(view, aspect = 1.6) {
   // ventricle, atrium, pulmonary veins and the congestion overlay — not against
   // the ventricle alone, which is what left the pulmonary side off the frame.
   //
+  // Went 0.86 -> 0.90 when the ventricle geometry was rebuilt: the subject grew
+  // about 0.8 world units taller, and at 1280x800 with the longest stage
+  // description there was no longer room for it between the top edge and the
+  // console.
+  //
   // On a portrait frame some of the aspect allowance above is given back. That
   // allowance exists to keep the subject clear of the side panels; in learning
   // view on a phone there are no side panels, and the extra distance was
   // leaving a ventricle a quarter of the frame tall on the one screen with the
   // least room to waste. Checked against the widest state the model produces —
   // a fully dilated ventricle at end-diastole still clears both edges.
-  return aspect < 0.85 ? 0.86 * 0.88 : 0.86;
+  return aspect < 0.85 ? 0.9 * 0.88 : 0.9;
 }
 
 /**
@@ -58,11 +63,19 @@ export function verticalOffsetForView(view, bottomInset = 0) {
   // Only part of the inset is given back, because the authored framing already
   // sits the subject high: its target is on the ventricle, while the atrium,
   // the pulmonary veins and the congestion overlay all rise above it. Taking
-  // the full inset on top of that pushed the pulmonary side off the top of the
-  // frame — measured at 1440x900 and 1280x800 across the progression, where the
-  // subject overflowed the top by ~150px while ~500px sat unused on each side.
-  // The fraction is what centres the whole subject in the usable band.
-  return view === 'learning' ? bottomInset * 0.4 : 0;
+  // the full inset on top of that pushes the pulmonary side off the top of the
+  // frame.
+  //
+  // The fraction is what centres the whole subject in the usable band, and it
+  // is a measurement, not a preference: re-measure it whenever the anatomy or
+  // the console changes.
+  //
+  // Note the inset used here is whatever the console is when the framing runs,
+  // and the console grows with the stage description. The camera deliberately
+  // does not re-frame on every stage change — that would drift the subject each
+  // time a stage is picked — so the pair of constants has to hold at the
+  // *tallest* console, which is what tests/framing-subject.test.js checks.
+  return view === 'learning' ? bottomInset * 0.36 : 0;
 }
 
 /**

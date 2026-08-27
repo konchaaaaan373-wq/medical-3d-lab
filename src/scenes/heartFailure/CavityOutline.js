@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { cavitySurfacePoint } from './geometry/ventricleGeometry.js';
+import { buildVentricleGeometry, updateVentricleGeometry } from './geometry/ventricleGeometry.js';
 
 /**
  * A thin cage marking where the cavity wall sat at end-diastole.
@@ -14,23 +14,47 @@ import { cavitySurfacePoint } from './geometry/ventricleGeometry.js';
  * rather than stated: wide in a normal ventricle, narrow in a failing one, at a
  * glance and from any angle.
  *
- * The cage samples the same endocardial surface function the chamber mesh is
- * built from (`cavitySurfacePoint` — including the leaning, bowed long axis and
- * the angular shaping), so at end-diastole it lies on the drawn lining rather
- * than on an idealised spheroid the lining no longer follows.
- *
  * Drawn as lines, not as a surface, precisely so it cannot be mistaken for
  * tissue. It is a measurement mark.
+ *
+ * It samples the *same* geometry builder the chamber does, at the same shape,
+ * rather than re-deriving the endocardial profile. The cavity is not a plain
+ * spheroid — it carries a profile exponent, an angular shape, apex drift and a
+ * wedge that seals toward the tip — and a mark that traced a simpler surface
+ * would sit off the wall it is measuring, which is worse than not drawing it.
  */
 export class CavityOutline extends THREE.LineSegments {
   /**
    * @param {{ profilePoints?: number, meridians?: number, rings?: number,
    *   cutAngle?: number, flip?: boolean, color?: THREE.ColorRepresentation }} options
    */
-  constructor({ profilePoints = 20, meridians = 13, rings = 4, cutAngle = Math.PI * 0.55, flip = false, color = '#9fe4ff' } = {}) {
+  constructor({ profilePoints = 20, meridians = 13, rings = 4, cutAngle = Math.PI * 0.55, flip = false, color = '#7ff0ff' } = {}) {
+    // A private, low-resolution copy of the chamber's geometry. It is never
+    // drawn — it is only somewhere to ask "where is the cavity wall at this
+    // shape?" and read the answer off. The context lobe is left out: the mark
+    // is about the left ventricular cavity, and the right-sided bulge is not
+    // part of it.
+    const kit = buildVentricleGeometry({
+      profilePoints,
+      segments: meridians - 1,
+      cutAngle,
+      flip,
+      contextLobe: false,
+    });
+
     const N = profilePoints;
     const M = meridians;
-    const positions = new Float32Array((M * (N - 1) + rings * (M - 1)) * 2 * 3);
+    // How much of the run nearest the valve plane to leave undrawn.
+    //
+    // The mark is fixed at end-diastole while the chamber's annulus descends
+    // through systole, so the top of the cage would otherwise stand clear above
+    // the tissue as a row of thin spikes — read as an artifact, not as a
+    // measurement. What it would be marking up there is long-axis shortening,
+    // which the descending annulus already shows; the cage is for the radial
+    // gap along the body of the cavity, and that is all it now draws.
+    const trimStart = Math.round(0.16 * (N - 1));
+    const span = N - 1 - trimStart;
+    const positions = new Float32Array((M * span + rings * (M - 1)) * 2 * 3);
 
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -40,57 +64,63 @@ export class CavityOutline extends THREE.LineSegments {
       new THREE.LineBasicMaterial({
         color: new THREE.Color(color),
         transparent: true,
-        opacity: 0.62,
+        // Nearly opaque: WebGL ignores line width, so contrast is the only
+        // control there is, and the rebuilt myocardium is far lighter than the
+        // tissue this was first set against.
+        opacity: 0.95,
         // Never occludes the subject, and never writes depth over it.
         depthWrite: false,
       })
     );
     this.name = 'cavity-outline';
 
+    this.kit = kit;
     this.N = N;
     this.M = M;
-    this.rings = rings;
-    this.flip = flip ? -1 : 1;
-
-    const phiStart = cutAngle / 2;
-    const phiSpan = Math.PI * 2 - cutAngle;
-    this._phi = new Float32Array(M);
-    for (let k = 0; k < M; k++) this._phi[k] = phiStart + (k / (M - 1)) * phiSpan;
-    // Latitude rings sit between apex and rim, skipping both ends: the apex is
-    // a point and the rim is already the top of every meridian.
-    this._ringAt = Array.from({ length: rings }, (_, r) => (r + 1) / (rings + 1));
-    this._sample = new THREE.Vector3();
+    this.trimStart = trimStart;
+    // Latitude rings sit inside the drawn span, skipping both ends: the apex is
+    // a point and the top is already the top of every meridian.
+    this._ringAt = Array.from({ length: rings }, (_, r) => trimStart + Math.round(((r + 1) / (rings + 1)) * span));
   }
 
   /**
    * @param {{ cavityRadius: number, cavitySemiLength: number,
-   *   outerSemiLength: number, baseY: number }} shape
-   *   the end-diastolic geometry, in the same terms `Chamber.setShape` takes
+   *   outerRadius: number, outerSemiLength: number, baseY: number }} shape
+   *   the end-diastolic ventricle, in the same terms `Chamber.setShape` takes
    */
   setShape(shape) {
+    // No torsion: the beat's twist follows the emptying, so it is zero at the
+    // moment this mark records.
+    updateVentricleGeometry(this.kit, shape, { torsion: 0 });
+
     const { N, M } = this;
+    const source = this.kit.geometry.attributes.position.array;
+    const profileCount = N * 2;
+    // The inner (endocardial) run is stored rim -> apex, right after the outer
+    // run. `j` counts down from the rim.
+    const cavity = (k, j) => (k * profileCount + N + j) * 3;
+
     const positions = this.geometry.attributes.position.array;
-    const sample = this._sample;
     let p = 0;
-    const put = (t, k) => {
-      cavitySurfacePoint(shape, t, this._phi[k], sample);
-      positions[p++] = sample.x;
-      positions[p++] = sample.y * this.flip;
-      positions[p++] = sample.z;
+    const put = (index) => {
+      positions[p++] = source[index];
+      positions[p++] = source[index + 1];
+      positions[p++] = source[index + 2];
     };
 
-    // Meridians: apex to rim, one polyline per angle, emitted as segments.
+    // Meridians: below the annulus down to the apex, one polyline per column,
+    // emitted as segments.
     for (let k = 0; k < M; k++) {
-      for (let i = 0; i < N - 1; i++) {
-        put(i / (N - 1), k);
-        put((i + 1) / (N - 1), k);
+      for (let j = this.trimStart; j < N - 1; j++) {
+        put(cavity(k, j));
+        put(cavity(k, j + 1));
       }
     }
-    // Latitude rings, sampled on the same surface so they land on it.
-    for (const t of this._ringAt) {
+    // Latitude rings, on the same samples, so they land on the surface.
+    for (const j of this._ringAt) {
       for (let k = 0; k < M - 1; k++) {
-        put(t, k);
-        put(t, k + 1);
+        put(cavity(k, j));
+        put(cavity(k + 1, j));
       }
     }
 
@@ -100,12 +130,13 @@ export class CavityOutline extends THREE.LineSegments {
 
   /** @param {number} value 0..1 */
   setOpacity(value) {
-    this.material.opacity = value * 0.62;
+    this.material.opacity = value * 0.95;
     this.visible = value > 0.01;
   }
 
   dispose() {
     this.geometry.dispose();
     this.material.dispose();
+    this.kit.geometry.dispose();
   }
 }
