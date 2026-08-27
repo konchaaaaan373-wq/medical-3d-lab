@@ -605,49 +605,204 @@
   gap: 12px;
 }
 
-.story-dots {
-  display: flex;
-  gap: 6px;
+/* One continuous timeline: a filling track with chapter markers, never a row
+   of separate bars that appear to reset. */
+.story-track {
+  position: relative;
   flex: 1;
+  height: 22px;
+  margin-top: 14px;
+  cursor: pointer;
 }
 
-.story-dot {
-  flex: 1;
+.story-track::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
   height: 3px;
-  padding: 0;
-  border: 0;
   border-radius: 2px;
   background: var(--border);
+}
+
+.story-fill {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.story-tick {
+  position: absolute;
+  top: 9px;
+  width: 1px;
+  height: 5px;
+  background: color-mix(in srgb, var(--ink-faint) 55%, transparent);
+  pointer-events: none;
+}
+
+.story-chapter {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  background: none;
+  border: 0;
+  padding: 0;
   cursor: pointer;
-  transition: background 200ms ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: var(--ink-faint);
+  min-width: 30px;
 }
 
-.story-dot.is-done {
-  background: var(--ink-faint);
+.story-chapter-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-faint);
+  background: var(--panel-strong);
+  transition: border-color 200ms ease, background 200ms ease;
 }
 
-.story-dot.is-current {
+.story-chapter.is-done .story-chapter-dot {
+  border-color: var(--accent);
   background: var(--accent);
 }
 
-.story-dot:hover {
-  background: var(--ink-dim);
+.story-chapter.is-current .story-chapter-dot {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
 }
 
-.story-exit {
+.story-chapter-name {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.story-chapter.is-current .story-chapter-name {
+  color: var(--ink);
+}
+
+.story-count {
   flex: none;
+  align-self: flex-end;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  padding-bottom: 2px;
+}
+
+/* A labelled way out, not just a small ✕. */
+.story-leave {
+  flex: none;
+  align-self: flex-end;
   background: none;
-  border: 0;
-  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
   cursor: pointer;
   font: inherit;
-  font-size: 13px;
-  line-height: 1;
-  color: var(--ink-faint);
+  font-size: 11.5px;
+  line-height: 1.2;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 34px;
+  justify-content: center;
 }
 
-.story-exit:hover {
+.story-leave .lang-ja {
+  font-size: 10.5px;
+}
+
+.story-leave:hover {
   color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+/* Completion: the story says it is done and offers the next actions. */
+.story-complete {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.story-bar.is-complete .story-complete {
+  display: flex;
+}
+
+.story-bar.is-complete .story-foot {
+  display: none;
+}
+
+.story-complete-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.story-complete-text .lang-ja {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+.story-complete-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.story-cta {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.story-cta .lang-ja {
+  font-size: 10.5px;
+}
+
+.story-cta:hover {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.story-cta-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04121a;
+}
+
+.story-cta-primary:hover {
+  color: #04121a;
+  filter: brightness(1.08);
 }
 
 @media (max-width: 720px) {
@@ -662,6 +817,34 @@
 
   .story-beat {
     display: none;
+  }
+
+  .story-chapter-name .lang-en,
+  .story-chapter-name .lang-ja {
+    display: none;
+  }
+
+  .story-count {
+    display: none;
+  }
+
+  .story-leave {
+    min-height: 44px;
+    padding: 8px 12px;
+  }
+
+  .story-cta {
+    min-height: 44px;
+  }
+
+  .story-complete {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .story-complete-actions {
+    justify-content: center;
   }
 }
 
@@ -1080,6 +1263,27 @@
   backdrop-filter: blur(6px);
   white-space: nowrap;
   will-change: transform, opacity;
+}
+
+.label3d-led .label-dot {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.label-leader {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  background: color-mix(in srgb, var(--ink-faint) 70%, transparent);
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+.label3d-led .label-body {
+  position: absolute;
+  left: 0;
+  top: 0;
 }
 
 .label-dot {

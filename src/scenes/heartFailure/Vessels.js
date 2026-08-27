@@ -81,9 +81,26 @@ export class Vessels extends THREE.Group {
     // --- aorta: outflow tract, sinuses of Valsalva, arch ---------------
     this.add(new THREE.Mesh(aortaGeometry(), this.arterialMaterial));
 
+    // A more present material for the atrium itself: the chamber must read
+    // as an organ wall, not a soap bubble — noticeably more opaque than the
+    // vein tubes and writing depth so it sorts as a solid. It shares the
+    // engorgement/dusk uniforms so congestion still reaches it.
+    this.atriumMaterial = this.venousMaterial.clone();
+    this.atriumMaterial.opacity = 0.62;
+    this.atriumMaterial.depthWrite = true;
+    this.atriumMaterial.color = new THREE.Color('#997384');
+    this.atriumMaterial.onBeforeCompile = this.venousMaterial.onBeforeCompile;
+
     // --- pulmonary veins into the atrium -------------------------------
+    // Each vein flares into a trumpet as it meets the atrial wall, so the
+    // junction reads as a blended ostium rather than a tube stuck into a ball.
     for (const vein of PULMONARY_VEINS) {
-      this.add(new THREE.Mesh(variableTube(vein, 56, 12, () => 0.34), this.venousMaterial));
+      this.add(
+        new THREE.Mesh(
+          variableTube(vein, 56, 12, (t) => 0.3 * (1 + 0.85 * smoothstep(0.78, 1, t)) * (1 - 0.12 * smoothstep(0.5, 0, t))),
+          this.venousMaterial
+        )
+      );
     }
 
     // --- proximal pulmonary vasculature: branching fans ----------------
@@ -101,7 +118,7 @@ export class Vessels extends THREE.Group {
     }
 
     // --- left atrium ----------------------------------------------------
-    this.atrium = new THREE.Mesh(atriumGeometry(ANATOMY.atriumRadius * 0.92), this.venousMaterial);
+    this.atrium = new THREE.Mesh(atriumGeometry(ANATOMY.atriumRadius * 0.92), this.atriumMaterial);
     this.atrium.position.copy(ANATOMY.atriumCentre);
     this.add(this.atrium);
 
@@ -160,6 +177,7 @@ export class Vessels extends THREE.Group {
     const emphasis = this.presentationEmphasis ?? 0;
     this.arterialMaterial.opacity = lerp(0.3, 0.44, emphasis);
     this.venousMaterial.opacity = lerp(lerp(0.33, 0.42, congested), 0.55, emphasis);
+    this.atriumMaterial.opacity = lerp(lerp(0.62, 0.68, congested), 0.74, emphasis);
     this.valveMaterial.opacity = lerp(0.6, 0.8, emphasis);
   }
 }
@@ -255,20 +273,24 @@ function atriumGeometry(radius) {
     p.fromBufferAttribute(positions, i);
     dir.copy(p).normalize();
 
-    // Base ovoid: wider than tall, slightly deep.
-    p.x *= 1.16;
-    p.y *= 0.9;
-    p.z *= 1.04;
+    // Base ovoid: clearly wider than tall, flattened front-to-back the way
+    // the atrium is pressed against the structures ahead of it.
+    p.x *= 1.24;
+    p.y *= 0.8;
+    p.z *= 0.98;
 
     let bulge = 0;
     // Appendage: one soft lobe.
-    bulge += 0.42 * Math.pow(Math.max(0, dir.dot(appendageDir)), 5);
+    bulge += 0.4 * Math.pow(Math.max(0, dir.dot(appendageDir)), 5);
+    // A broad second lobe over the posterosuperior body, so the silhouette
+    // is lobulated rather than one arc.
+    bulge += 0.18 * Math.pow(Math.max(0, dir.dot(BODY_LOBE_DIR)), 3);
     // Ostia: small out-turned funnels where each vein enters.
-    for (const ostium of ostiaDirs) bulge += 0.22 * Math.pow(Math.max(0, dir.dot(ostium)), 14);
+    for (const ostium of ostiaDirs) bulge += 0.24 * Math.pow(Math.max(0, dir.dot(ostium)), 12);
     // Funnel toward the mitral valve, keeping atrium and annulus continuous.
-    bulge += 0.3 * Math.pow(Math.max(0, dir.dot(mitralDir)), 7);
+    bulge += 0.34 * Math.pow(Math.max(0, dir.dot(mitralDir)), 6);
     // Gentle irregularity so no profile is a perfect arc.
-    bulge += 0.035 * Math.sin(4.1 * dir.x + 6.3 * dir.y + 5.2 * dir.z + 1.7);
+    bulge += 0.05 * Math.sin(4.1 * dir.x + 6.3 * dir.y + 5.2 * dir.z + 1.7);
 
     p.addScaledVector(dir, bulge);
     positions.setXYZ(i, p.x, p.y, p.z);
@@ -276,6 +298,8 @@ function atriumGeometry(radius) {
   geometry.computeVertexNormals();
   return geometry;
 }
+
+const BODY_LOBE_DIR = new THREE.Vector3(0.35, 0.75, -0.55).normalize();
 
 function valveRing(position, radius, material) {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.07, 10, 28), material);

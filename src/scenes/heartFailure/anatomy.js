@@ -13,8 +13,8 @@ export const ANATOMY = {
   cutAngle: Math.PI * 0.55,
   aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
   mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.6, 3.25, -0.1),
-  atriumRadius: 1.65,
+  atriumCentre: new THREE.Vector3(-1.5, 2.95, -0.7),
+  atriumRadius: 1.42,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
    * left one carries the label and the congestion story; the right one exists
@@ -43,7 +43,7 @@ export const AORTA = new THREE.CatmullRomCurve3([
 /** Mitral inflow: atrium down through the valve. */
 export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
   ANATOMY.atriumCentre.clone(),
-  new THREE.Vector3(-1.4, 2.6, 0.15),
+  new THREE.Vector3(-1.35, 2.4, -0.1),
   ANATOMY.mitralValve.clone(),
 ]);
 
@@ -53,10 +53,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.75, 3.95, -0.85), // left superior
-  new THREE.Vector3(-2.95, 2.8, -0.7), // left inferior
-  new THREE.Vector3(-0.55, 3.9, -0.95), // right superior
-  new THREE.Vector3(-0.4, 2.75, -0.85), // right inferior
+  new THREE.Vector3(-2.55, 3.6, -1.3), // left superior
+  new THREE.Vector3(-2.75, 2.5, -1.25), // left inferior
+  new THREE.Vector3(-0.5, 3.55, -1.4), // right superior
+  new THREE.Vector3(-0.35, 2.45, -1.35), // right inferior
 ];
 
 /**
@@ -290,7 +290,7 @@ export function buildInterstitialFluid(count, seed = 31337) {
     // Perivascular shell: pick a vessel sample, offset by 0.45..1.6 units.
     const anchor = vesselSamples[Math.floor(rnd() * vesselSamples.length)];
     randomDirection(rnd, dir);
-    tmp.copy(dir).multiplyScalar(0.42 + Math.pow(rnd(), 1.4) * 0.85).add(anchor);
+    tmp.copy(dir).multiplyScalar(0.55 + Math.pow(rnd(), 1.3) * 1.0).add(anchor);
     // Stay clear of every lumen — this is extravascular fluid.
     if (vesselSamples.some((sample) => sample.distanceTo(tmp) < 0.4)) continue;
     write(positions, written, tmp);
@@ -298,7 +298,7 @@ export function buildInterstitialFluid(count, seed = 31337) {
     const proximity = Math.min(...vesselSamples.map((sample) => sample.distanceTo(tmp)));
     appear[written] = clamp((proximity - 0.4) / 1.6) * 0.8 + rnd() * 0.2;
     seeds[written] = rnd();
-    sizes[written] = 0.6 + rnd() * 0.7;
+    sizes[written] = 2.4 + rnd() * 2.6;
     written++;
   }
 

@@ -31,7 +31,80 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   const captionJa = el('span', { class: 'story-caption-text lang-ja' });
   const partLabel = el('span', { class: 'story-part' });
   const beatLabel = el('span', { class: 'story-beat' });
-  const dots = el('div', { class: 'story-dots' });
+
+  // --- one continuous timeline -------------------------------------------
+  // A single track that fills with real story time — no segmented bars, no
+  // resets at step boundaries. Chapters sit on it as the few markers a viewer
+  // navigates by; individual steps are only small ticks.
+  const fill = el('div', { class: 'story-fill' });
+  const track = el('div', {
+    class: 'story-track',
+    role: 'progressbar',
+    'aria-label': 'Story progress',
+    'aria-valuemin': '0',
+    'aria-valuemax': '100',
+    on: {
+      click: (event) => {
+        const rect = track.getBoundingClientRect();
+        const frac = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+        seek(frac * story.duration);
+      },
+    },
+  });
+  track.append(fill);
+  for (const step of story.steps) {
+    if (step.at === 0) continue;
+    track.append(
+      el('span', { class: 'story-tick', style: `left:${((step.at / story.duration) * 100).toFixed(2)}%` })
+    );
+  }
+  const chapterButtons = (story.chapters ?? []).map((chapter) =>
+    el('button', {
+      class: 'story-chapter',
+      type: 'button',
+      style: `left:${((chapter.at / story.duration) * 100).toFixed(2)}%`,
+      'aria-label': `${chapter.label} — jump to this chapter`,
+      on: { click: (event) => (event.stopPropagation(), seek(chapter.at + 0.01)) },
+    }, [
+      el('span', { class: 'story-chapter-dot' }),
+      el('span', { class: 'story-chapter-name' }, [
+        el('span', { class: 'lang-en', text: chapter.label }),
+        el('span', { class: 'lang-ja', text: chapter.labelJa }),
+      ]),
+    ])
+  );
+  track.append(...chapterButtons);
+  const counter = el('span', { class: 'story-count', 'aria-hidden': 'true' });
+
+  // --- completion state ---------------------------------------------------
+  // After the last scene the sequence does not just stop on a tiny ✕: it says
+  // it is done and offers the two things a viewer actually does next.
+  const completion = el('div', { class: 'story-complete', role: 'group', 'aria-label': 'Story finished' }, [
+    el('span', { class: 'story-complete-text' }, [
+      el('span', { class: 'lang-en', text: "That's the end of the guided tour." }),
+      el('span', { class: 'lang-ja', text: '解説は以上です。' }),
+    ]),
+    el('div', { class: 'story-complete-actions' }, [
+      el('button', {
+        class: 'story-cta story-cta-primary',
+        type: 'button',
+        'aria-label': 'Back to exploring',
+        on: { click: () => exit() },
+      }, [
+        el('span', { class: 'lang-en', text: 'Back to exploring' }),
+        el('span', { class: 'lang-ja', text: '探索に戻る' }),
+      ]),
+      el('button', {
+        class: 'story-cta',
+        type: 'button',
+        'aria-label': 'Watch again',
+        on: { click: () => replay() },
+      }, [
+        el('span', { class: 'lang-en', text: 'Watch again' }),
+        el('span', { class: 'lang-ja', text: 'もう一度見る' }),
+      ]),
+    ]),
+  ]);
 
   const element = el('div', { class: 'story-bar' }, [
     el('div', { class: 'story-line' }, [
@@ -40,28 +113,21 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       beatLabel,
     ]),
     el('div', { class: 'story-foot' }, [
-      dots,
+      track,
+      counter,
       el('button', {
-        class: 'story-exit',
+        class: 'story-leave',
         type: 'button',
-        title: 'Leave the sequence (Escape)',
-        text: '✕',
+        title: 'Leave the story (Escape)',
+        'aria-label': 'Leave the story',
         on: { click: () => exit() },
-      }),
+      }, [
+        el('span', { class: 'lang-en', text: '← Back to exploring' }),
+        el('span', { class: 'lang-ja', text: '← 探索に戻る' }),
+      ]),
     ]),
+    completion,
   ]);
-
-  const stepDots = story.steps.map((step) =>
-    el('button', {
-      class: 'story-dot',
-      type: 'button',
-      title: step.caption,
-      // Steps are addressable: someone who wants to see the residual moment
-      // again should not have to sit through the remodelling first.
-      on: { click: () => seek(step.at + 0.01) },
-    })
-  );
-  dots.append(...stepDots);
 
   let active = false;
   let snapshot = null;
@@ -74,9 +140,12 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     cues: story.cues,
     onFrame: (t, cueId) => renderAt(t, cueId),
     onEnd: () => {
-      // Hold on the last frame rather than snapping away — the final state is
-      // the conclusion, and jumping out of it would undo the point.
+      // Hold on the last frame — the final state is the conclusion — and
+      // switch the bar into its completion state, which says so and offers
+      // the next actions instead of leaving only a tiny ✕.
       timeline.stop();
+      element.classList.add('is-complete');
+      completion.querySelector('.story-cta-primary')?.focus?.({ preventScroll: true });
     },
   });
 
@@ -84,17 +153,23 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
    * Jump to a moment and carry on from there.
    *
    * The sequence stops itself on its last frame, so this also restarts the
-   * clock when the destination is not the end — otherwise picking a step dot
+   * clock when the destination is not the end — otherwise picking a chapter
    * after the sequence had finished would paint that step and then sit there.
    *
    * @param {number} t seconds
    */
   function seek(t) {
+    element.classList.remove('is-complete');
     timeline.seek(t);
     if (active && timeline.elapsed < story.duration) {
       timeline.running = true;
       lastTimestamp = null;
     }
+  }
+
+  /** Restart from the beginning — the completion state's second action. */
+  function replay() {
+    seek(0);
   }
 
   function renderAt(t) {
@@ -136,10 +211,18 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     beatLabel.textContent = named ? named.label : '';
     beatLabel.dataset.ja = named ? named.labelJa : '';
 
+    // --- continuous progress: real story time, never a step count
+    const frac = Math.min(1, t / story.duration);
+    fill.style.width = `${(frac * 100).toFixed(2)}%`;
+    track.setAttribute('aria-valuenow', String(Math.round(frac * 100)));
     const index = story.steps.indexOf(step);
-    stepDots.forEach((dot, i) => {
-      dot.classList.toggle('is-current', i === index);
-      dot.classList.toggle('is-done', i < index);
+    counter.textContent = `${index + 1} / ${story.steps.length}`;
+    const chapters = story.chapters ?? [];
+    chapterButtons.forEach((button, i) => {
+      const from = chapters[i].at;
+      const to = chapters[i + 1]?.at ?? story.duration;
+      button.classList.toggle('is-current', t >= from && t < to);
+      button.classList.toggle('is-done', t >= to);
     });
   }
 
@@ -158,6 +241,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     if (!active) return;
     active = false;
     timeline.stop();
+    element.classList.remove('is-complete');
     ui.classList.remove('is-story');
     // Taken out of the DOM, not just faded: it sits over the console, and a
     // leftover caption bar would swallow the clicks meant for the buttons

@@ -164,15 +164,31 @@ test('the wall is thickest at the septum and thinnest at the apex', () => {
   );
 });
 
-test('the annulus stays on the valve plane', () => {
-  const { kit } = buildAt(0.64);
+test('the cavity rim stays on the valve plane and the shoulder closes above it', () => {
+  const { kit, shape } = buildAt(0.64);
   const { N, S, profileCount } = kit;
+  const shoulderTop =
+    ANATOMY.baseY -
+    VENTRICLE_SHAPING.shoulderDip * shape.outerSemiLength +
+    VENTRICLE_SHAPING.shoulderHeight * shape.outerSemiLength;
   for (let k = 0; k <= S; k += 6) {
     const outerRim = vertexAt(kit, k, N - 1);
     const innerRim = vertexAt(kit, k, N);
-    assert.ok(Math.abs(outerRim.y - ANATOMY.baseY) < 1e-3, `outer rim off plane: ${outerRim.y}`);
+    // The endocardial rim is the valve plane — where the annulus lives.
     assert.ok(Math.abs(innerRim.y - ANATOMY.baseY) < 1e-3, `inner rim off plane: ${innerRim.y}`);
+    // The epicardium no longer stops on that plane: it rounds over it into
+    // the basal shoulder, ending at the basal opening above.
+    assert.ok(
+      Math.abs(outerRim.y - shoulderTop) < 0.02,
+      `basal opening off the shoulder top: ${outerRim.y} vs ${shoulderTop}`
+    );
+    // And the opening must clear the cavity rim, so the collar never overhangs
+    // into the chamber.
+    const rimR = Math.hypot(outerRim.x, outerRim.z);
+    const cavR = Math.hypot(innerRim.x, innerRim.z);
+    assert.ok(rimR > cavR, `basal opening (${rimR.toFixed(2)}) inside cavity rim (${cavR.toFixed(2)})`);
   }
+  assert.ok(profileCount === N * 2);
 });
 
 test('the RV context lobe never closes the comparison gap', () => {

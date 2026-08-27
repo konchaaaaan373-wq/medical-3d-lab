@@ -116,7 +116,7 @@ export class CongestionOverlay extends THREE.Group {
     const uniforms = this.pressureMaterial.uniforms;
     uniforms.uGlowIntensity.value = 0.55 + 0.85 * emphasis;
     uniforms.uWaveStrength.value = 0.22 + 0.3 * emphasis;
-    uniforms.uFieldOpacity.value = 0.42 + 0.34 * emphasis;
+    uniforms.uFieldOpacity.value = 0.34 + 0.28 * emphasis;
   }
 
   update(elapsed) {
@@ -161,7 +161,7 @@ function createPressureMaterial(color) {
       // whole point; it carries no physiological meaning.
       uWaveStrength: { value: 0.22 },
       // Visualization-only: overall opacity of the pressure field.
-      uFieldOpacity: { value: 0.42 },
+      uFieldOpacity: { value: 0.34 },
     },
     vertexShader: /* glsl */ `
       uniform float uPressure;
@@ -221,7 +221,7 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
       uFill: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(PALETTE.fluid) },
-      uParticleScale: { value: 0.24 },
+      uParticleScale: { value: 0.42 },
       uHeightScale: { value: 900 },
     },
     vertexShader: /* glsl */ `
@@ -237,14 +237,14 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         float phase = aSeed * 6.2831853;
         // Slow settling drift: fluid accumulating, not flowing along a vessel.
         vec3 drift = vec3(
-          sin(uTime * 0.18 + phase) * 0.1,
-          -0.16 * fract(uTime * 0.045 + aSeed),
-          cos(uTime * 0.15 + phase) * 0.1
+          sin(uTime * 0.11 + phase) * 0.14,
+          -0.1 * fract(uTime * 0.03 + aSeed),
+          cos(uTime * 0.09 + phase) * 0.14
         );
         vec4 mv = modelViewMatrix * vec4(position + drift, 1.0);
         gl_Position = projectionMatrix * mv;
-        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.3;
-        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 52.0);
+        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.09;
+        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 260.0);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -256,8 +256,8 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         if (d > 0.5) discard;
         // Soft, hazy edge — reads as mist in the interstitium rather than as
         // a discrete glowing particle.
-        float core = smoothstep(0.5, 0.08, d);
-        gl_FragColor = vec4(uColor * (0.35 + 0.35 * core), pow(core, 2.6) * vAlpha);
+        float core = smoothstep(0.5, 0.04, d);
+        gl_FragColor = vec4(uColor * (0.4 + 0.25 * core), pow(core, 1.7) * vAlpha);
       }
     `,
   });

@@ -207,7 +207,7 @@ function createReferenceBloodMaterial() {
       uExitFalloff: { value: 3.5 },
       uEjectEmphasis: { value: 0 },
       uResidualEmphasis: { value: 0 },
-      uParticleScale: { value: 0.105 },
+      uParticleScale: { value: 0.13 },
       uHeightScale: { value: 900 },
       uFlowColor: { value: muted },
       uStaticColor: { value: mutedResidual },
