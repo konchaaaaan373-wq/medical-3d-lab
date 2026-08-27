@@ -14,7 +14,7 @@ export const PALETTE = {
   flow: '#ff6b7f', // blood taking part in ejection
   residual: '#a06ae0', // blood still in the ventricle at end-systole
   pressure: '#6f7ce8', // raised filling / pulmonary venous pressure (NOT blood)
-  fluid: '#a8d8f0', // interstitial fluid (NOT blood)
+  fluid: '#9fb9c9', // interstitial fluid (NOT blood)
   vessel: '#8fa8c8',
   endDiastolicMark: '#9fe4ff', // where the cavity wall was at end-diastole (NOT tissue)
 };
@@ -122,15 +122,16 @@ export const PROGRESS_LABEL = {
 };
 
 export const ANNOTATIONS = [
-  { id: 'lv', text: 'Left ventricle', sub: '左室', anchor: 'cavity', range: [0.0, 1.0] },
-  { id: 'wall', text: 'Wall thickness', sub: '壁の厚さ', anchor: 'wall', range: [0.1, 0.6] },
-  { id: 'aorta', text: 'Aorta', sub: '大動脈', anchor: 'aorta', range: [0.0, 0.5], compact: false },
+  { id: 'lv', text: 'Left ventricle', sub: '左室', anchor: 'cavity', range: [0.0, 1.0], lead: [-215, 60] },
+  { id: 'wall', text: 'Wall thickness', sub: '壁の厚さ', anchor: 'wall', range: [0.1, 0.6], lead: [120, -30] },
+  { id: 'aorta', text: 'Aorta', sub: '大動脈', anchor: 'aorta', range: [0.0, 0.5], compact: false, lead: [150, -40] },
   {
     id: 'residual',
     text: 'End-systolic residual',
     sub: '収縮末期の残存血液',
     anchor: 'residual',
     range: [0.55, 1.0],
+    lead: [180, 70],
   },
   {
     id: 'pressure',
@@ -138,6 +139,7 @@ export const ANNOTATIONS = [
     sub: '充満圧の上昇',
     anchor: 'pressure',
     range: [0.62, 1.0],
+    lead: [235, -60],
   },
   {
     // Names where the pressure is going, so the region it spreads into reads as
@@ -150,6 +152,7 @@ export const ANNOTATIONS = [
     anchor: 'pulmonaryBed',
     range: [0.6, 1.0],
     compact: false,
+    lead: [-60, 95],
   },
   {
     id: 'fluid',
@@ -163,6 +166,7 @@ export const ANNOTATIONS = [
     anchor: 'fluid',
     range: [0.7, 1.0],
     compact: false,
+    lead: [-40, -85],
   },
 ];
 

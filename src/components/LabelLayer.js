@@ -67,15 +67,27 @@ export function createLabelLayer({ viewer, annotations }) {
   let focus = null;
 
   const items = shown.map((annotation) => {
-    const node = el('div', { class: 'label3d' }, [
+    // `lead` pushes the text box away from the anchor (screen px) so the
+    // label never sits on top of the structure it names; a leader line runs
+    // from the anchor dot to the box. Labels without a lead keep the old
+    // anchored placement.
+    const lead = annotation.lead ? [...annotation.lead] : null;
+    if (lead && compact) {
+      lead[0] *= 0.55;
+      lead[1] *= 0.55;
+    }
+    const leader = lead ? el('span', { class: 'label-leader' }) : null;
+    const body = el('span', { class: 'label-body' }, [
+      el('span', { class: 'label-en lang-en', text: annotation.text }),
+      el('span', { class: 'label-ja lang-ja', text: annotation.sub }),
+    ]);
+    const node = el('div', { class: lead ? 'label3d label3d-led' : 'label3d' }, [
       el('span', { class: 'label-dot' }),
-      el('span', { class: 'label-body' }, [
-        el('span', { class: 'label-en lang-en', text: annotation.text }),
-        el('span', { class: 'label-ja lang-ja', text: annotation.sub }),
-      ]),
+      ...(leader ? [leader] : []),
+      body,
     ]);
     element.append(node);
-    return { annotation, node, opacity: 0 };
+    return { annotation, node, body, leader, lead, opacity: 0 };
   });
 
   const projected = new THREE.Vector3();
@@ -134,15 +146,32 @@ export function createLabelLayer({ viewer, annotations }) {
         const offscreen = projected.z > 1 || Math.abs(projected.x) > 1.15 || Math.abs(projected.y) > 1.15;
         item.node.style.visibility = offscreen ? 'hidden' : 'visible';
         if (offscreen) continue;
-        // Keep labels inside the frame. The small clamp costs a few pixels of
-        // pointing accuracy but stops annotations being cut off at the edges.
-        const x = clamp((projected.x * 0.5 + 0.5) * width, 70, Math.max(70, width - 70));
-        // The lower third of the screen belongs to the console, so labels are
-        // kept above it rather than being clamped underneath the panel. On a
-        // narrow frame the top belongs to the title card and the scene switcher,
-        // which stack down the left instead of sitting beside each other.
         const top = compact ? 150 : 34;
-        const y = separate(placed, x, clamp((-projected.y * 0.5 + 0.5) * height, top, Math.max(top, height * 0.68)));
+        const ax = (projected.x * 0.5 + 0.5) * width;
+        const ay = (-projected.y * 0.5 + 0.5) * height;
+
+        if (item.lead) {
+          // The dot marks the anchor; the text box sits at the end of its
+          // lead, kept on screen and clear of the other labels, with the
+          // leader line redrawn between them.
+          const bx = clamp(ax + item.lead[0], 70, Math.max(70, width - 70));
+          const by = separate(placed, bx, clamp(ay + item.lead[1], top, Math.max(top, height * 0.72)));
+          placed.push({ x: bx, y: by });
+          item.node.style.transform = `translate(${ax.toFixed(1)}px, ${ay.toFixed(1)}px)`;
+          const dx = bx - ax;
+          const dy = by - ay;
+          const len = Math.hypot(dx, dy);
+          const angle = Math.atan2(dy, dx);
+          item.leader.style.width = `${Math.max(0, len - 10).toFixed(1)}px`;
+          item.leader.style.transform = `rotate(${angle.toFixed(4)}rad)`;
+          item.body.style.transform = `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) translate(-50%, -50%)`;
+          item.node.style.opacity = item.opacity.toFixed(3);
+          continue;
+        }
+
+        // Anchored placement, for annotations that already sit off the organ.
+        const x = clamp(ax, 70, Math.max(70, width - 70));
+        const y = separate(placed, x, clamp(ay, top, Math.max(top, height * 0.68)));
         placed.push({ x, y });
         item.node.style.transform = `translate(-50%, -100%) translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
         item.node.style.opacity = item.opacity.toFixed(3);

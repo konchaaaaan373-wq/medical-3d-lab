@@ -100,7 +100,7 @@ function epicardiumTexture() {
 
     const drawBranch = (x, y, angle, width, length, depth) => {
       if (depth <= 0 || width < 0.5) return;
-      ctx.strokeStyle = `rgba(60,32,44,${0.24 + width * 0.04})`;
+      ctx.strokeStyle = `rgba(64,36,46,${0.11 + width * 0.02})`;
       ctx.lineWidth = width;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -112,19 +112,6 @@ function epicardiumTexture() {
         angle += (rnd() - 0.5) * 0.55;
         cx += Math.cos(angle) * (length / steps);
         cy += Math.sin(angle) * (length / steps);
-        ctx.lineTo(cx, cy);
-      }
-      ctx.stroke();
-      // A faint parallel highlight, hinting at a rounded vessel.
-      ctx.strokeStyle = `rgba(214,178,170,${0.06 + width * 0.012})`;
-      ctx.lineWidth = Math.max(0.4, width * 0.4);
-      ctx.beginPath();
-      ctx.moveTo(x - width * 0.6, y);
-      cx = x - width * 0.6;
-      cy = y;
-      for (let s = 0; s < steps; s++) {
-        cx += Math.cos(angle) * (length / steps) * 0.96;
-        cy += Math.sin(angle) * (length / steps) * 0.96;
         ctx.lineTo(cx, cy);
       }
       ctx.stroke();
@@ -145,7 +132,7 @@ function epicardiumTexture() {
     // and descend. u wraps three times around the heart, so three trees give
     // roughly one visible main vessel per aspect.
     for (const u of [0.14, 0.47, 0.8]) {
-      drawBranch(u * w, h * 0.04, Math.PI / 2 + (rnd() - 0.5) * 0.5, 3.6, h * 0.4, 4);
+      drawBranch(u * w, h * 0.04, Math.PI / 2 + (rnd() - 0.5) * 0.5, 3.0, h * 0.36, 3);
     }
   });
 }
@@ -163,24 +150,30 @@ function fiberTexture() {
       const a = 0.05 + rnd() * 0.06;
       blob(ctx, rnd() * w, rnd() * h, 24 + rnd() * 60, rnd() > 0.5 ? `rgba(196,158,150,${a})` : `rgba(96,82,90,${a})`);
     }
-    // Striations: long, slightly wavy strokes along u.
-    for (let i = 0; i < 640; i++) {
+    // Low-frequency tissue heterogeneity: large soft irregular patches, so
+    // no scale of the surface reads as a repeating pattern.
+    for (let i = 0; i < 110; i++) {
+      const a = 0.09 + rnd() * 0.12;
+      blob(ctx, rnd() * w, rnd() * h, 26 + rnd() * 80, rnd() > 0.5 ? `rgba(200,164,154,${a})` : `rgba(88,72,80,${a})`);
+    }
+    // A sparse, faint suggestion of fibre direction: short strokes at gently
+    // varying angles — never rows, never stripes.
+    for (let i = 0; i < 170; i++) {
       const y = rnd() * h;
       const x = rnd() * w;
-      const len = 26 + rnd() * 80;
-      const dark = rnd() > 0.42;
-      const v = dark ? 98 + rnd() * 24 : 180 + rnd() * 30;
-      ctx.strokeStyle = `rgba(${v},${v * 0.9},${v * 0.92},${0.18 + rnd() * 0.18})`;
-      ctx.lineWidth = 0.6 + rnd() * 1.4;
+      const len = 18 + rnd() * 42;
+      const angle = (rnd() - 0.5) * 0.7;
+      const dark = rnd() > 0.5;
+      const v = dark ? 108 + rnd() * 22 : 172 + rnd() * 26;
+      ctx.strokeStyle = `rgba(${v},${v * 0.9},${v * 0.92},${0.07 + rnd() * 0.09})`;
+      ctx.lineWidth = 0.7 + rnd() * 1.6;
       ctx.beginPath();
       ctx.moveTo(x, y);
-      ctx.bezierCurveTo(
-        x + len * 0.33,
-        y + (rnd() - 0.5) * 7,
-        x + len * 0.66,
-        y + (rnd() - 0.5) * 7,
-        x + len,
-        y + (rnd() - 0.5) * 4
+      ctx.quadraticCurveTo(
+        x + Math.cos(angle) * len * 0.5,
+        y + Math.sin(angle) * len * 0.5 + (rnd() - 0.5) * 4,
+        x + Math.cos(angle) * len,
+        y + Math.sin(angle) * len
       );
       ctx.stroke();
     }
@@ -241,7 +234,7 @@ function endocardiumTexture() {
 /** Tints per variant. Presentation values, not measurements. */
 const VARIANTS = {
   disease: {
-    epicardium: '#96434d',
+    epicardium: '#8d3e49',
     endocardium: '#b26e76',
     cut: '#7e343f',
   },
@@ -276,14 +269,14 @@ export function createHeartMaterials(variant = 'disease') {
     roughness: 0.72,
     metalness: 0,
     // A soft, rough clearcoat: serous moisture, not gloss.
-    clearcoat: 0.32,
-    clearcoatRoughness: 0.52,
+    clearcoat: 0.18,
+    clearcoatRoughness: 0.6,
     // Sheen gives the broad, soft backscatter of organic surfaces — the
     // closest cheap stand-in for subsurface scattering.
-    sheen: 0.4,
-    sheenRoughness: 0.6,
+    sheen: 0.3,
+    sheenRoughness: 0.65,
     sheenColor: new THREE.Color('#e2837c'),
-    envMapIntensity: 0.7,
+    envMapIntensity: 0.6,
     vertexColors: true,
     transparent: true,
     opacity: 1,
@@ -294,7 +287,7 @@ export function createHeartMaterials(variant = 'disease') {
     color: new THREE.Color(tint.cut),
     map: hasDom ? fiberTexture() : null,
     bumpMap: hasDom ? fiberTexture() : null,
-    bumpScale: 1.4,
+    bumpScale: 1.05,
     roughnessMap: hasDom ? fiberTexture() : null,
     roughness: 0.88,
     metalness: 0,

@@ -55,8 +55,8 @@ export const VENTRICLE_SHAPING = {
   lateralThicknessTrim: 0.05,
 
   /** Apex lateral drift as a fraction of the outer semi-length. */
-  apexDriftX: 0.1,
-  apexDriftZ: 0.035,
+  apexDriftX: 0.13,
+  apexDriftZ: 0.05,
 
   /** Amplitude of the smooth surface irregularity, as a radius fraction. */
   epicardialNoise: 0.013,
@@ -80,10 +80,6 @@ export const VENTRICLE_SHAPING = {
    */
   apexSealEnd: 0.3,
 
-  /** The base shoulder rounds off slightly toward the atrioventricular groove. */
-  rimTaper: 0.055,
-  rimTaperStart: 0.75,
-
   /**
    * Trabeculae carneae: ridged muscle bundles protruding into the cavity,
    * concentrated apical-to-mid, irregular, and sparing the smooth outflow
@@ -94,7 +90,31 @@ export const VENTRICLE_SHAPING = {
   lvotPhi: 1.27,
 
   /** A gentle bow of the long axis, so no meridian is a straight line. */
-  longAxisBow: 0.02,
+  longAxisBow: 0.032,
+
+  /**
+   * Basal shoulder: instead of ending on a flat plane, the epicardium rounds
+   * over past the valve plane and closes toward a basal opening that follows
+   * the cavity rim. shoulderStartT is where (in profile fraction) the outer
+   * run leaves the ventricular body; the arc rises shoulderHeight (fraction
+   * of the outer semi-length) from slightly below the plane (shoulderDip).
+   */
+  shoulderStartT: 0.78,
+  shoulderHeight: 0.095,
+  shoulderDip: 0.02,
+  /** Radial gap between the basal opening and the cavity rim, scene units. */
+  collarMargin: 0.16,
+
+  /**
+   * Organic cut boundary: each cut edge bows with a gentle, side-specific
+   * S-curve instead of lying in a flat radial plane. Amplitudes in radians;
+   * the warp fades into the surface over cutCurveFalloff of the columns.
+   */
+  cutCurveA: 0.1,
+  cutCurveB: 0.045,
+  cutCurveA2: 0.075,
+  cutCurveB2: 0.03,
+  cutCurveFalloff: 0.16,
 };
 
 /**
@@ -237,7 +257,7 @@ function cavityAngularShape(phi) {
 /** RV context lobe height at (t, phi), as a fraction of outer semi-length. */
 function rvLobe(t, phi) {
   const S = VENTRICLE_SHAPING;
-  const alongAxis = smooth(0.1, 0.42, t) * (1 - smooth(0.7, 0.97, t));
+  const alongAxis = smooth(0.1, 0.42, t) * (1 - smooth(0.58, 0.78, t));
   return S.rvLobeAmplitude * alongAxis * angularBump(phi, S.septalPhi, S.rvLobePhiWidth);
 }
 
@@ -406,6 +426,7 @@ export function buildVentricleGeometry({
       driftW: new Float32Array(N),
       twistW: new Float32Array(N),
       spanScale: new Float32Array(N),
+      shoulderArc: new Float32Array(N),
     },
   };
 }
@@ -428,27 +449,43 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
 
   const positions = kit.geometry.attributes.position.array;
 
-  // Truncation angles: where each surface meets the valve plane.
-  const outerMax = Math.acos(THREE.MathUtils.clamp(-baseY / outerSemiLength, -1, 1));
+  // Truncation angles. The cavity meets the valve plane; the epicardium runs
+  // to just below it and then rounds over into the basal shoulder.
+  const dip = SH.shoulderDip * outerSemiLength;
+  const outerMax = Math.acos(THREE.MathUtils.clamp(-(baseY - dip) / outerSemiLength, -1, 1));
   const innerMax = Math.acos(THREE.MathUtils.clamp(-baseY / cavitySemiLength, -1, 1));
+  const shoulderH = SH.shoulderHeight * outerSemiLength;
+  const ts = SH.shoulderStartT;
 
-  // Per-profile-sample scalars that do not depend on azimuth.
-  const { tArr, rO, yO, rC, yC, driftW, twistW, spanScale } = kit.scratch;
+  // Per-profile-sample scalars that do not depend on azimuth. For the
+  // shoulder rows (t > ts), rO/yO hold the arc blend factors instead of a
+  // radius: the final radius depends on the cavity rim at that azimuth.
+  const { tArr, rO, yO, rC, yC, driftW, twistW, spanScale, shoulderArc } = kit.scratch;
   for (let i = 0; i < N; i++) {
     const t = i / (N - 1);
     tArr[i] = t;
-    const aO = t * outerMax;
     const aC = t * innerMax;
-    rO[i] = outerRadius * Math.pow(Math.sin(aO), SH.outerProfileExponent);
-    yO[i] = -outerSemiLength * Math.cos(aO) * flip;
     rC[i] = cavityRadius * Math.pow(Math.sin(aC), SH.cavityProfileExponent);
     yC[i] = -cavitySemiLength * Math.cos(aC) * flip;
+    if (t <= ts) {
+      shoulderArc[i] = -1;
+      const aO = (t / ts) * outerMax;
+      rO[i] = outerRadius * Math.pow(Math.sin(aO), SH.outerProfileExponent);
+      yO[i] = -outerSemiLength * Math.cos(aO) * flip;
+    } else {
+      // Quarter-arc over the base: 0 at the groove, 1 at the basal opening.
+      const arc = ((t - ts) / (1 - ts)) * (Math.PI / 2);
+      shoulderArc[i] = 1 - Math.cos(arc); // radial closure, 0 -> 1
+      rO[i] = outerRadius * Math.pow(Math.sin(outerMax), SH.outerProfileExponent);
+      yO[i] = ((baseY - dip) + shoulderH * Math.sin(arc)) * flip;
+    }
     const apexness = 1 - t;
     driftW[i] = apexness * apexness;
     twistW[i] = Math.pow(apexness, SH.torsionFalloffExponent);
   }
   const driftX = SH.apexDriftX * outerSemiLength;
   const driftZ = SH.apexDriftZ * outerSemiLength;
+  const cavRim = cavityRadius * Math.sin(innerMax);
 
   // How far the wedge is open at each profile sample: sealed at the apex,
   // fully open by apexSealEnd. Azimuths are remapped about the far side (π)
@@ -462,9 +499,19 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
    * cavity point and outer point, with the thickness field blended between
    * them so the myocardium is redistributed rather than resized.
    */
-  const writePair = (i, phiBase, outIndex, inIndex) => {
+  const writePair = (i, phiBase, edge0, edge1, outIndex, inIndex) => {
     const t = tArr[i];
-    const phi0 = Math.PI + (phiBase - Math.PI) * spanScale[i];
+    // The cut boundaries bow with side-specific S-curves rather than lying
+    // in flat radial planes; the warp fades into the surface columns.
+    const cutWarp =
+      edge0 > 0
+        ? edge0 * (SH.cutCurveA * Math.sin(Math.PI * t + 0.25) + SH.cutCurveB * Math.sin(2.2 * Math.PI * t + 1.1))
+        : 0;
+    const cutWarp1 =
+      edge1 > 0
+        ? -edge1 * (SH.cutCurveA2 * Math.sin(Math.PI * t + 0.55) + SH.cutCurveB2 * Math.sin(1.7 * Math.PI * t + 0.3))
+        : 0;
+    const phi0 = Math.PI + (phiBase - Math.PI) * spanScale[i] + (cutWarp + cutWarp1) * sealOpenFraction(t);
     const phi = phi0 + torsion * twistW[i];
     const sin = Math.sin(phi);
     const cos = Math.cos(phi);
@@ -476,17 +523,29 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     const cavY = yC[i];
 
     const w = wallThicknessFactor(t, phi0);
-    const outAnalyticR = rO[i] * outerAngularShape(phi0);
-    let outR = cavR + (outAnalyticR - cavR) * w;
-    const outY = cavY + (yO[i] - cavY) * w;
+    let outR;
+    let outY;
+    if (shoulderArc[i] < 0) {
+      const outAnalyticR = rO[i] * outerAngularShape(phi0);
+      outR = cavR + (outAnalyticR - cavR) * w;
+      outY = cavY + (yO[i] - cavY) * w;
+    } else {
+      // Basal shoulder: the epicardium arcs from the groove radius over and
+      // inward toward the basal opening, which follows the cavity rim at
+      // this azimuth. Height is analytic; the thickness field only modulates
+      // the radial fullness of the shoulder, gently.
+      const rTop = cavRim * cavityAngularShape(phi0) + SH.collarMargin;
+      const rDip = rO[i] * outerAngularShape(phi0);
+      const wSoft = 1 + (w - 1) * 0.45;
+      outR = (rDip - (rDip - rTop) * shoulderArc[i]) * wSoft;
+      outY = yO[i];
+    }
     outR *= 1 + SH.epicardialNoise * surfaceNoise(t, phi0);
-    // The shoulder rounds off toward the atrioventricular groove.
-    outR *= 1 - SH.rimTaper * smooth(SH.rimTaperStart, 1, t);
     if (contextLobe) outR += rvLobe(t, phi0) * outerSemiLength;
 
     // Lateral offset of the long axis: apex drift plus a gentle bow, so no
     // meridian is a mathematically straight line.
-    const bow = Math.sin(Math.PI * t) * SH.longAxisBow * outerSemiLength;
+    const bow = Math.sin(Math.PI * Math.min(t, 1)) * SH.longAxisBow * outerSemiLength;
     const dx = driftX * driftW[i] + bow;
     const dz = driftZ * driftW[i];
 
@@ -503,11 +562,14 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   };
 
   // --- lathe surface
+  const falloff = Math.max(1, S * SH.cutCurveFalloff);
   for (let k = 0; k <= S; k++) {
     const phi0 = basePhi[k];
+    const e0 = Math.max(0, 1 - k / falloff) ** 2;
+    const e1 = Math.max(0, 1 - (S - k) / falloff) ** 2;
     const offset = k * profileCount * 3;
     for (let i = 0; i < N; i++) {
-      writePair(i, phi0, offset + i * 3, offset + (profileCount - 1 - i) * 3);
+      writePair(i, phi0, e0, e1, offset + i * 3, offset + (profileCount - 1 - i) * 3);
     }
   }
   // --- cut faces, same math at the two bounding azimuths
@@ -517,7 +579,7 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     for (let i = 0; i < N; i++) {
       const outIdx = base + i * 3;
       const inIdx = base + (profileCount - 1 - i) * 3;
-      writePair(i, phi0, outIdx, inIdx);
+      writePair(i, phi0, c === 0 ? 1 : 0, c === 1 ? 1 : 0, outIdx, inIdx);
       // Below the seal the two cap planes coincide; collapsing each sliver
       // to its outer edge removes the z-fighting seam up the closed apex.
       if (sealOpenFraction(tArr[i]) < 0.04) {

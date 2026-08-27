@@ -19,6 +19,7 @@ import {
   STORY_DURATION,
   STORY_STEPS,
   STORY_CUES,
+  STORY_CHAPTERS,
   stepAt,
   cardiacPhaseAt as storyCardiacPhaseAt,
   cameraAt as storyCameraAt,
@@ -193,13 +194,13 @@ export class HeartFailureScene {
     this.vessels = new Vessels();
     this.apparatus = new ValveApparatus({ variant: 'disease' });
 
-    this.blood = new BloodField(buildCavityBlood(compact ? 1400 : 2000), {
+    this.blood = new BloodField(buildCavityBlood(compact ? 460 : 640), {
       flowColor: PALETTE.flow,
       staticColor: PALETTE.residual,
     });
-    this.congestion = new CongestionOverlay(compact ? 380 : 700);
+    this.congestion = new CongestionOverlay(compact ? 70 : 110);
     // The cavity is a small, densely filled volume; full opacity reads as a blob.
-    this.blood.material.uniforms.uOpacity.value = 0.6;
+    this.blood.material.uniforms.uOpacity.value = 0.55;
 
     // Everything that belongs to the diseased heart lives in one group, so
     // comparison mode can slide it aside without touching the lights.
@@ -647,6 +648,7 @@ export class HeartFailureScene {
       duration: STORY_DURATION,
       steps: STORY_STEPS,
       cues: STORY_CUES,
+      chapters: STORY_CHAPTERS,
       viewDirection: VIEW_DIRECTION.clone(),
       stepAt,
       cardiacPhaseAt: storyCardiacPhaseAt,

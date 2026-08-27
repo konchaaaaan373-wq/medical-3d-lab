@@ -50,7 +50,7 @@ export class BloodField extends THREE.Points {
         uExitFalloff: { value: 1.2 },
         uEjectEmphasis: { value: 0 },
         uResidualEmphasis: { value: 0 },
-        uParticleScale: { value: 0.105 },
+        uParticleScale: { value: 0.13 },
         uHeightScale: { value: 900 },
         uFlowColor: { value: new THREE.Color(flowColor) },
         uStaticColor: { value: new THREE.Color(staticColor) },

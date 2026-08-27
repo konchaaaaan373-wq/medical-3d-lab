@@ -119,8 +119,8 @@ export const STORY_STEPS = [
     progress: HFREF,
     focus: ['lv'],
     camera: wide(-0.3, -1.6, 0.3, 27),
-    caption: 'And it no longer empties completely',
-    captionJa: 'そして、完全には空にならなくなる',
+    caption: 'Now it ejects a smaller fraction of its blood',
+    captionJa: 'そして、1拍で駆出される血液の割合が低下する',
   },
 
   // --- Part B: inside one failing beat ------------------------------------
@@ -163,8 +163,8 @@ export const STORY_STEPS = [
     // "Only part" is a claim about distance, so the end-diastolic mark comes up
     // and the wall is seen falling short of it.
     outline: 1,
-    caption: 'The valve opens — but only part of the blood leaves',
-    captionJa: '弁が開く — しかし出ていくのは一部だけ',
+    caption: 'The valve opens, but the weakened ventricle ejects less blood with each beat',
+    captionJa: '弁は開く — しかし弱った心室が1拍で送り出せる血液は少ない',
   },
   {
     id: 'residual',
@@ -191,8 +191,8 @@ export const STORY_STEPS = [
     camera: wide(-0.8, -1.2, 0.3, 24),
     // Pressure only. Nothing has reached the pulmonary side yet.
     reveal: { front: 0.35, fluid: 0 },
-    caption: 'More blood left behind means a higher filling pressure',
-    captionJa: '残る血液が多いほど、充満圧が高くなる',
+    caption: 'As ventricular volumes rise, filling now occurs at a higher pressure',
+    captionJa: '心室の容積が増すにつれ、充満はより高い圧のもとで起こるようになる',
   },
   {
     id: 'transmission',
@@ -232,6 +232,17 @@ export const STORY_STEPS = [
 ];
 
 export const STORY_CUES = STORY_STEPS.map(({ id, at, until }) => ({ id, at, until }));
+
+/**
+ * Four chapters over the continuous timeline — the granularity a viewer
+ * actually navigates by. Individual steps stay addressable as small ticks.
+ */
+export const STORY_CHAPTERS = [
+  { id: 'normal', label: 'Normal', labelJa: '正常', at: 0 },
+  { id: 'remodeling', label: 'Remodeling', labelJa: 'リモデリング', at: 4 },
+  { id: 'pump-failure', label: 'Pump failure', labelJa: 'ポンプ機能低下', at: 16 },
+  { id: 'congestion', label: 'Congestion', labelJa: 'うっ血', at: 33 },
+];
 
 /** The step covering a moment, and how far through it that moment is. */
 export function stepAt(t) {
@@ -305,12 +316,17 @@ export function cameraAt(t) {
   // than the small adjustments between ventricle steps.
   const from = previous.view ?? DEFAULT_VIEW;
   const to = step.view ?? DEFAULT_VIEW;
-  const blend = from.equals(to) ? 1.1 : 2.2;
+  const swings = !from.equals(to);
+  const blend = swings ? 2.2 : 1.1;
   const mix = Math.min(1, Math.max(0, (t - step.at) / blend));
   const eased = mix * mix * (3 - 2 * mix);
+  // When the view swings to another part of the anatomy, the move is staged:
+  // the camera dollies out through the middle of the orbit and settles back
+  // in as it arrives, so orientation is never lost in a flat pan.
+  const dollyOut = swings ? Math.sin(Math.PI * eased) * 4.2 : 0;
   return {
     target: previous.camera.target.clone().lerp(step.camera.target, eased),
-    distance: previous.camera.distance + (step.camera.distance - previous.camera.distance) * eased,
+    distance: previous.camera.distance + (step.camera.distance - previous.camera.distance) * eased + dollyOut,
     view: from.clone().lerp(to, eased).normalize(),
   };
 }

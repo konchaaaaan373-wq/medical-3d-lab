@@ -73,13 +73,19 @@ export class ValveApparatus extends THREE.Group {
     // stations on each leaflet's free edge. Which side of the edge is
     // resolved at update time — always the side nearest the muscle, so a
     // chord never crosses the cavity like a rigging line.
+    //
+    // Each logical chord is drawn as a small bundle — a sagging proximal
+    // segment, a thinner distal segment, and a short branchlet to a second
+    // insertion point — so it reads as fibrous cord, not a straight rod.
     this.chordae = [];
     for (let p = 0; p < 2; p++) {
       for (let l = 0; l < 2; l++) {
         for (const widthFrac of [0.35, 0.65]) {
-          const mesh = new THREE.Mesh(chordGeometry(), this.materials.chordae);
-          this.add(mesh);
-          this.chordae.push({ pap: p, leaflet: l, widthFrac, mesh });
+          const proximal = new THREE.Mesh(chordGeometry(0.02, 0.024), this.materials.chordae);
+          const distal = new THREE.Mesh(chordGeometry(0.013, 0.019), this.materials.chordae);
+          const branch = new THREE.Mesh(chordGeometry(0.009, 0.012), this.materials.chordae);
+          this.add(proximal, distal, branch);
+          this.chordae.push({ pap: p, leaflet: l, widthFrac, proximal, distal, branch });
         }
       }
     }
@@ -164,16 +170,31 @@ export class ValveApparatus extends THREE.Group {
     for (const chord of this.chordae) {
       const from = this.papillaries[chord.pap].tip;
       const leaflet = this.leaflets[chord.leaflet];
-      // Of the two symmetric edge stations, take the one nearer the muscle.
-      const near = leafletEdgePoint(leaflet, chord.widthFrac, this._v.a);
-      const far = leafletEdgePoint(leaflet, -chord.widthFrac, this._v.b);
-      const to = near.distanceToSquared(from) <= far.distanceToSquared(from) ? near : far;
-      const mesh = chord.mesh;
-      const dir = this._v.c.copy(to).sub(from);
-      const length = dir.length();
-      mesh.position.copy(from);
-      mesh.quaternion.setFromUnitVectors(UP, dir.normalize());
-      mesh.scale.set(1, length, 1);
+      // Of the two symmetric edge stations, take the side nearer the muscle.
+      const near = leafletEdgePoint(leaflet, chord.widthFrac, CH_A);
+      const far = leafletEdgePoint(leaflet, -chord.widthFrac, CH_B);
+      const nearSide = near.distanceToSquared(from) <= far.distanceToSquared(from);
+      const to = nearSide ? near : far;
+      const sideFrac = nearSide ? chord.widthFrac : -chord.widthFrac;
+
+      // Mid-point sags below the straight line — a cord under partial
+      // tension, not a wire. The sag eases off as the leaflet closes and the
+      // chord tautens.
+      const taut = 1 - (leaflet.openFraction ?? 0) * 0.65;
+      const span = CH_MID.copy(to).sub(from).length();
+      CH_MID.copy(from).lerp(to, 0.52);
+      CH_MID.y -= span * 0.085 * (1 - taut * 0.55);
+      CH_MID.x += span * 0.02;
+
+      placeSegment(chord.proximal, from, CH_MID);
+      placeSegment(chord.distal, CH_MID, to);
+
+      // Branchlet: forks off the distal segment to a second insertion point
+      // a little further along the free edge. The fork point is fixed before
+      // CH_B is reused for the second insertion.
+      CH_FORK.copy(CH_MID).lerp(to, 0.4);
+      const second = leafletEdgePoint(leaflet, THREE.MathUtils.clamp(sideFrac + (sideFrac > 0 ? 0.22 : -0.22), -1, 1), CH_B);
+      placeSegment(chord.branch, CH_FORK, second);
     }
   }
 
@@ -181,12 +202,30 @@ export class ValveApparatus extends THREE.Group {
     for (const pap of this.papillaries) pap.mesh.geometry.dispose();
     for (const leaflet of this.leaflets) leaflet.mesh.geometry.dispose();
     for (const cusp of this.cusps) cusp.mesh.geometry.dispose();
-    for (const chord of this.chordae) chord.mesh.geometry.dispose();
+    for (const chord of this.chordae) {
+      chord.proximal.geometry.dispose();
+      chord.distal.geometry.dispose();
+      chord.branch.geometry.dispose();
+    }
     for (const material of Object.values(this.materials)) material.dispose();
   }
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
+const CH_A = new THREE.Vector3();
+const CH_B = new THREE.Vector3();
+const CH_MID = new THREE.Vector3();
+const CH_FORK = new THREE.Vector3();
+const SEG_DIR = new THREE.Vector3();
+
+/** Stretches a unit chord segment between two points. */
+function placeSegment(mesh, from, to) {
+  SEG_DIR.copy(to).sub(from);
+  const length = SEG_DIR.length();
+  mesh.position.copy(from);
+  mesh.quaternion.setFromUnitVectors(UP, SEG_DIR.normalize());
+  mesh.scale.set(1, length, 1);
+}
 
 /**
  * A tapering, slightly bent muscle column: unit height along +Y with a
@@ -230,9 +269,9 @@ function papillaryGeometry(side) {
   return geometry;
 }
 
-/** A thin unit chord along +Y. */
-function chordGeometry() {
-  const geometry = new THREE.CylinderGeometry(0.028, 0.038, 1, 6, 1, true);
+/** A thin unit chord segment along +Y, tapering from bottom to top radius. */
+function chordGeometry(topRadius, bottomRadius) {
+  const geometry = new THREE.CylinderGeometry(topRadius, bottomRadius, 1, 6, 1, true);
   geometry.translate(0, 0.5, 0);
   return geometry;
 }
