@@ -15,6 +15,7 @@ export const bloodVertexShader = /* glsl */ `
   uniform float uRadius;        // cavity semi-axis (x/z); 1.0 for absolute-position fields
   uniform float uSemiLength;    // cavity semi-axis (y)
   uniform vec2 uApexDrift;      // lateral drift of the apex (x, z), scene units
+  uniform float uDescent;       // annular descent of the chamber frame, scene units
   uniform float uEject;         // ejection fraction, 0..1
   uniform float uPhase;         // 0..1 through the cardiac cycle
   uniform float uEjectStart;    // phase at which the aortic valve opens
@@ -49,6 +50,11 @@ export const bloodVertexShader = /* glsl */ `
     // ventricleGeometry.js), so the blood follows the same tilt.
     float apexness = clamp((0.33 - position.y) / 1.33, 0.0, 1.0);
     cavity.xz += uApexDrift * apexness * apexness;
+    // The chamber frame rides the annular descent, but the exit and entry
+    // paths are world-anchored (the drawn aorta and atrium do not move) —
+    // so the offset applies to the cavity term only, and mix() fades it out
+    // as a particle travels onto its path.
+    cavity.y += uDescent;
 
     // Ordered departure and return, so the flow reads as a wave rather than a jump.
     float stagger = aRank * 0.45;
@@ -131,6 +137,6 @@ export const bloodFragmentShader = /* glsl */ `
     // Blood fills a small volume densely, so keep the additive boost low and
     // the edge soft — the cavity must never blow out to white, and a hard
     // bright rim on every particle is what reads as glitter.
-    gl_FragColor = vec4(vColor * (0.3 + 0.48 * core), pow(core, 2.1) * vAlpha);
+    gl_FragColor = vec4(vColor * (0.26 + 0.42 * core), pow(core, 2.2) * vAlpha);
   }
 `;

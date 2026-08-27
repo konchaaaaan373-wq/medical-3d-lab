@@ -39,6 +39,13 @@ export async function createApp({ stage, ui }) {
   const scene = new SceneClass({ viewer });
   viewer.scene.add(scene.build());
 
+  // Visual-QA hook: `?qa` exposes the viewer and scene so a screenshot
+  // harness can set exact camera poses and cardiac phases. Dev-only surface —
+  // it renders nothing and changes nothing unless explicitly driven.
+  if (new URLSearchParams(window.location.search).has('qa')) {
+    window.__lab = { viewer, scene };
+  }
+
   const meta = SceneClass.meta;
   document.title = `${meta.title} — medical-3d-lab`;
 

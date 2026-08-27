@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Chamber } from './Chamber.js';
+import { ValveApparatus } from './ValveApparatus.js';
 import { CavityOutline } from './CavityOutline.js';
 import { BloodField } from './BloodField.js';
 import { Vessels } from './Vessels.js';
@@ -30,7 +31,7 @@ import {
   beatNamedAt,
 } from './storyboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
-import { VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
+import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
@@ -92,27 +93,6 @@ const REEL_CONGESTION_DIRECTION = new THREE.Vector3(0.16, 0.5, 0.85).normalize()
  * asserted by tests/hemodynamics.test.js.
  */
 export const COMPARISON_OFFSET = 5.4;
-
-/**
- * How firmly the apex is pinned in space across the beat, 0..1.
- *
- * A real ventricle contracts base-toward-apex: the apex barely moves while the
- * mitral annulus descends. The solved geometry gives the *amount* of long-axis
- * shortening; this constant only chooses where that shortening is anchored —
- * 1 would fix the apex exactly, 0 would fix the base (the old behaviour).
- */
-export const APEX_PINNING = 0.85;
-
-/**
- * Peak apical torsion at a normal ejection fraction, radians (~12°).
- *
- * Torsion is real ventricular mechanics (the apex rotates against the base
- * through systole, and twist falls as systolic function falls), but this model
- * does not solve for it — it is presented at an illustrative amplitude scaled
- * by the solved beat: it rises with how far the stroke has emptied and shrinks
- * with the state's ejection fraction. See docs/medical-notes.md.
- */
-export const TORSION_ILLUSTRATIVE_MAX = 0.21;
 
 function framing(target, distance) {
   return {
@@ -211,6 +191,7 @@ export class HeartFailureScene {
     });
 
     this.vessels = new Vessels();
+    this.apparatus = new ValveApparatus({ variant: 'disease' });
 
     this.blood = new BloodField(buildCavityBlood(compact ? 1400 : 2000), {
       flowColor: PALETTE.flow,
@@ -218,7 +199,7 @@ export class HeartFailureScene {
     });
     this.congestion = new CongestionOverlay(compact ? 380 : 700);
     // The cavity is a small, densely filled volume; full opacity reads as a blob.
-    this.blood.material.uniforms.uOpacity.value = 0.8;
+    this.blood.material.uniforms.uOpacity.value = 0.6;
 
     // Everything that belongs to the diseased heart lives in one group, so
     // comparison mode can slide it aside without touching the lights.
@@ -231,7 +212,7 @@ export class HeartFailureScene {
     this.comparisonOutline = false;
     this.storyOutline = 0;
 
-    this.primary.add(this.vessels, this.ventricle, this.blood, this.congestion, this.outline);
+    this.primary.add(this.vessels, this.ventricle, this.apparatus, this.blood, this.congestion, this.outline);
     this.root.add(this._createLights(), this.primary);
     this._quality = { segments: compact ? 40 : 56, profilePoints: compact ? 22 : 30 };
     this.comparing = false;
@@ -388,7 +369,9 @@ export class HeartFailureScene {
     // plane — the rings, and the blood's frame of reference — rides along.
     const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
     this.ventricle.position.y = descent;
-    this.blood.position.y = descent;
+    // The blood's cavity frame descends too, but its exit/entry paths are
+    // world-anchored to the drawn aorta and atrium — handled in the shader.
+    this.blood.setDescent(descent);
     this.vessels.setAnnularDescent(descent);
 
     // Apical torsion, illustrative amplitude scaled by the solved beat: it
@@ -401,6 +384,7 @@ export class HeartFailureScene {
     );
 
     this.ventricle.setShape({ ...shape, baseY: ANATOMY.baseY });
+    this.apparatus.update({ ...shape, baseY: ANATOMY.baseY }, this.phase, this.state, descent);
     this.blood.setCavity(shape.cavityRadius, shape.cavitySemiLength);
     this.blood.setApexDrift(
       VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength,
@@ -845,6 +829,7 @@ export class HeartFailureScene {
   dispose() {
     this._offResize?.();
     this.reference?.dispose();
+    this.apparatus?.dispose();
     disposeObject(this.root);
   }
 }

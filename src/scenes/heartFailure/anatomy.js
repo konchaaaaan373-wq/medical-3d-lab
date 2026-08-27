@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createRandom, randomDirection, lerp } from '../../utils/math.js';
+import { clamp, createRandom, randomDirection, lerp } from '../../utils/math.js';
 
 /**
  * Fixed landmarks of the schematic heart, in scene units (1 unit = 1 cm).
@@ -13,7 +13,7 @@ export const ANATOMY = {
   cutAngle: Math.PI * 0.55,
   aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
   mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.6, 3.5, -0.1),
+  atriumCentre: new THREE.Vector3(-1.6, 3.25, -0.1),
   atriumRadius: 1.65,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
@@ -53,10 +53,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.75, 4.2, -0.85), // left superior
-  new THREE.Vector3(-2.95, 3.0, -0.7), // left inferior
-  new THREE.Vector3(-0.55, 4.15, -0.95), // right superior
-  new THREE.Vector3(-0.4, 2.95, -0.85), // right inferior
+  new THREE.Vector3(-2.75, 3.95, -0.85), // left superior
+  new THREE.Vector3(-2.95, 2.8, -0.7), // left inferior
+  new THREE.Vector3(-0.55, 3.9, -0.95), // right superior
+  new THREE.Vector3(-0.4, 2.75, -0.85), // right inferior
 ];
 
 /**
@@ -102,7 +102,10 @@ export const PULMONARY_VEINS = [
  *   generations: number[] }[]} one fan per bed; `generations[i]` is 0 for a
  *   primary branch and 1 for a secondary, matching `curves[i]`
  */
+let cachedFans = null;
+
 export function buildVascularFans() {
+  if (cachedFans) return cachedFans;
   const rnd = createRandom(5513);
   const fans = [];
 
@@ -156,6 +159,7 @@ export function buildVascularFans() {
     }
     fans.push({ origin: start.clone(), curves, generations });
   }
+  cachedFans = fans;
   return fans;
 }
 
@@ -292,7 +296,7 @@ export function buildInterstitialFluid(count, seed = 31337) {
     write(positions, written, tmp);
     // Fluid closest to the vessels appears first as pressure rises.
     const proximity = Math.min(...vesselSamples.map((sample) => sample.distanceTo(tmp)));
-    appear[written] = clamp01((proximity - 0.4) / 1.6) * 0.8 + rnd() * 0.2;
+    appear[written] = clamp((proximity - 0.4) / 1.6) * 0.8 + rnd() * 0.2;
     seeds[written] = rnd();
     sizes[written] = 0.6 + rnd() * 0.7;
     written++;
@@ -300,8 +304,6 @@ export function buildInterstitialFluid(count, seed = 31337) {
 
   return { count: written, positions, appear, seeds, sizes };
 }
-
-const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 function createBuffers(count) {
   return {
