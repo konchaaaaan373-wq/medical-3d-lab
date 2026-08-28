@@ -135,38 +135,56 @@ export function smoothCurve(points, { closed = false, tension = 0.5 } = {}) {
 }
 
 /**
- * A serpentine coil that stays inside a box — the small bowel, folded.
+ * A long tube folded into a small volume — the small bowel.
+ *
+ * Written as a rosette of loops radiating from a centre rather than as a
+ * serpentine of rows. The serpentine is the obvious way to fold a line into a
+ * box and it renders as a stack of horizontal sausages: every row is parallel,
+ * so nothing passes in front of anything and the eye reads a pile, not loops.
+ * Petals that leave and return to the middle overlap each other from any angle.
  *
  * Deterministic given `seed`: the loops wander, but they wander the same way on
  * every reload.
  *
- * @param {{ turns?: number, width?: number, height?: number, depth?: number,
- *           seed?: number, jitter?: number }} [options]
+ * @param {{ loops?: number, inner?: number, outer?: number, depth?: number,
+ *           height?: number, seed?: number, jitter?: number }} [options]
  */
-export function coilCurve({ turns = 5, width = 2.6, height = 2.4, depth = 1.1, seed = 7, jitter = 0.22 } = {}) {
+export function coilCurve({
+  loops = 7,
+  inner = 0.42,
+  outer = 1.25,
+  depth = 0.95,
+  height = 1,
+  seed = 7,
+  jitter = 0.28,
+} = {}) {
   const random = createRandom(seed);
   const points = [];
-  const rows = turns * 2;
-  for (let i = 0; i <= rows; i++) {
-    const t = i / rows;
-    const y = height * (0.5 - t);
-    const swing = i % 2 === 0 ? -1 : 1;
-    // Each row is also thrown forwards or backwards, alternating out of step
-    // with the left-right swing. Without it the coil folds flat and reads as a
-    // stack of ribbons rather than as loops of bowel lying over each other.
-    const front = i % 4 < 2 ? 1 : -1;
-    // Two points per row — the turn-around and the middle of the run — so the
-    // spline bulges out at the ends instead of cutting the corner.
-    points.push([
-      swing * width * (0.5 + (random() - 0.5) * jitter),
-      y + (random() - 0.5) * jitter * height * 0.3,
-      front * depth * (0.45 + random() * 0.55),
-    ]);
-    points.push([
-      -swing * width * (0.18 + (random() - 0.5) * jitter),
-      y - height / rows / 2,
-      -front * depth * (0.3 + random() * 0.5),
-    ]);
+  const wobble = (scale) => (random() - 0.5) * jitter * scale;
+
+  for (let i = 0; i <= loops; i++) {
+    // Each petal takes a little more than its share of the circle, so
+    // successive loops lie across their neighbours instead of beside them.
+    const angle = (i / loops) * Math.PI * 2 * 1.15;
+    const span = ((Math.PI * 2) / loops) * 0.62;
+    const reach = outer * (0.72 + random() * 0.42);
+    const near = inner * (0.8 + random() * 0.5);
+    // Alternating depth: the loop goes out in front and comes back behind, or
+    // the other way round, which is what makes them overlap.
+    const front = i % 2 === 0 ? 1 : -1;
+
+    const at = (a, r, z) => [
+      Math.cos(a) * r + wobble(0.4),
+      Math.sin(a) * r * height + wobble(0.4),
+      z + wobble(0.5),
+    ];
+
+    points.push(at(angle, near, front * depth * 0.22));
+    points.push(at(angle + span * 0.4, reach * 0.92, front * depth * 0.5));
+    points.push(at(angle + span * 0.75, reach, front * depth * 0.2));
+    points.push(at(angle + span * 1.1, reach * 0.85, -front * depth * 0.3));
+    points.push(at(angle + span * 1.45, near * 1.1, -front * depth * 0.45));
   }
-  return smoothCurve(points, { tension: 0.55 });
+
+  return smoothCurve(points, { tension: 0.5 });
 }

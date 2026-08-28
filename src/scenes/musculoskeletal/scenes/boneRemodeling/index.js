@@ -69,6 +69,9 @@ function createModel() {
 
   return {
     object,
+    // The streams reach well past the bone on both sides; framing on all of it
+    // left the bone off-centre with a column of empty space beside it.
+    focus: bone.object,
     anchors: bone.anchors,
     setProgress(value) {
       balance = value;

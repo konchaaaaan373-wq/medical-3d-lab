@@ -14,7 +14,7 @@ import { tissueMaterial } from '../../shared/materials.js';
 export function buildSpleen({ color = '#7c3f52', opacity = 0.78, detail = 8 } = {}) {
   const geometry = shapedSphere({
     detail,
-    scale: [0.95, 1.35, 0.72],
+    scale: [0.86, 1.5, 0.7],
     warp: (v) => {
       const { x, y, z } = v;
 
@@ -24,10 +24,13 @@ export function buildSpleen({ color = '#7c3f52', opacity = 0.78, detail = 8 } = 
       // Hilum: a groove along that concave face.
       v.x -= 0.16 * Math.exp(-Math.pow((y - 0.05) / 0.28, 2)) * Math.exp(-Math.pow(z / 0.5, 2)) * Math.max(0, v.x);
 
-      // Notches on the superior border — two of them, shallow.
-      for (const at of [0.34, 0.62]) {
+      // Notches on the superior border. They are the feature an enlarged
+      // spleen is recognised by on examination, so they are cut deep enough to
+      // survive being seen from the front — shallower, the organ was an ovoid
+      // that could have been anything.
+      for (const at of [0.3, 0.58]) {
         const d = y - at;
-        v.multiplyScalar(1 - 0.09 * Math.exp(-(d * d) / 0.004) * Math.exp(-Math.pow((x + 0.35) / 0.6, 2)));
+        v.multiplyScalar(1 - 0.17 * Math.exp(-(d * d) / 0.006) * Math.exp(-Math.pow((x + 0.4) / 0.7, 2)));
       }
 
       v.multiplyScalar(1 + 0.014 * ripple(x, y, z, 3.2, 1.1));

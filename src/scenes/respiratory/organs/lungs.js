@@ -33,9 +33,11 @@ function lungWarp({ medial = 1, cardiacNotch = false, fissures = [] }) {
     v.z *= taper;
 
     // Diaphragmatic surface: scooped upwards in the middle, not a round bottom.
-    const low = smoothstep(-0.4, -1, seedY);
+    // Deep enough that the sweep of the lower border shows in a frontal
+    // silhouette — the concavity itself faces the floor and is never seen.
+    const low = smoothstep(-0.35, -1, seedY);
     const rho = Math.min(1, Math.hypot(v.x, v.z));
-    v.y += 0.46 * low * (1 - rho * rho);
+    v.y += 0.62 * low * (1 - rho * rho * 0.85);
 
     // Mediastinal surface: flat where the lung meets the middle of the chest.
     flattenSide(v, { sign: medial, edge: 0.3, strength: 0.55 });

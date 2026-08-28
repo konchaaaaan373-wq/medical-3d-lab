@@ -94,10 +94,17 @@ export function buildUterus({
       cervix: new THREE.Vector3(0.5, -1.15, 0.5),
       ovary: new THREE.Vector3(1.95, 0.95, 0.3),
     },
-    /** 0 = just shed and thin, 1 = at its thickest. */
+    /**
+     * 0 = just shed and thin, 1 = at its thickest.
+     *
+     * The upper bound matters medically: the myometrium is much the thicker
+     * layer at every point in the cycle, and a lining drawn out to the wall
+     * teaches that the uterus is mostly endometrium. Even at its thickest it
+     * stays well inside the muscle.
+     */
     setLining(value) {
       const v = Math.max(0, Math.min(1, value));
-      const radial = lerp(0.42, 0.94, v);
+      const radial = lerp(0.3, 0.66, v);
       lining.scale.set(radial, lerp(0.94, 1, v), radial);
       // The lining is not just thicker but more vascular by then; the shift is
       // presentational and small on purpose.

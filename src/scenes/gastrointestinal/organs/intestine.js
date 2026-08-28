@@ -14,12 +14,15 @@ import { travellingWave } from '../../shared/motion/rhythm.js';
  * on the left of the frame.
  */
 export function buildSmallIntestine({ color = '#d99a7c', seed = 12, radius = 0.21 } = {}) {
-  // Fewer, fatter loops thrown well forward and back. Packed tighter than this
-  // the coil flattens into a stack of ribbons, which is what it looked like.
-  const curve = coilCurve({ turns: 5, width: 2.0, height: 2.4, depth: 1.55, seed, jitter: 0.42 });
+  // Loops radiating from the middle of the abdomen, overlapping each other.
+  const curve = coilCurve({ loops: 8, inner: 0.5, outer: 1.62, depth: 1.1, height: 0.95, seed, jitter: 0.4 });
   const surface = new TubeSurface(curve, { radius: () => radius, steps: 300, radial: 16 });
   const mesh = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.96 }));
   mesh.name = 'small-intestine';
+  // A little off-axis, so the rosette is not seen dead on, and sitting where
+  // the loops actually lie — below the transverse colon, not centred on it.
+  mesh.rotation.set(0.06, 0.24, 0.1);
+  mesh.position.y = -0.18;
 
   return {
     object: mesh,
