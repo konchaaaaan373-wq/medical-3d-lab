@@ -279,15 +279,20 @@ export function createHeartMaterials(variant = 'disease') {
     roughnessMap: hasDom ? mottleTexture() : null,
     roughness: 0.72,
     metalness: 0,
-    // A soft, rough clearcoat: serous moisture, not gloss.
-    clearcoat: 0.18,
-    clearcoatRoughness: 0.6,
+    // A soft, rough clearcoat: serous moisture, not gloss. Kept low because a
+    // clearcoat highlight is white whatever colour the tissue underneath is,
+    // and at a grazing silhouette edge Fresnel drives it toward full
+    // reflectance — which is how one corner of the basal shoulder was
+    // rendering as a pure white blob, the brightest thing in the close-up by
+    // some margin, on a piece of muscle.
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.78,
     // Sheen gives the broad, soft backscatter of organic surfaces — the
     // closest cheap stand-in for subsurface scattering.
     sheen: 0.3,
     sheenRoughness: 0.65,
     sheenColor: new THREE.Color('#e2837c'),
-    envMapIntensity: 0.6,
+    envMapIntensity: 0.34,
     vertexColors: true,
     transparent: true,
     opacity: 1,

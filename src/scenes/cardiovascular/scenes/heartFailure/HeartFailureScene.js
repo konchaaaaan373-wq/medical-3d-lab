@@ -246,7 +246,16 @@ export class HeartFailureScene {
 
     const key = new THREE.DirectionalLight(0xfff1e4, 2.3);
     key.position.set(7, 10, 12);
-    const rim = new THREE.DirectionalLight(0x9bc2ff, 1.15);
+    // Cool rim from behind, to separate the heart from the background. Turned
+    // down hard from 1.15, and the measurement is why: sweeping its intensity
+    // and reading the frame back, the mean brightness along the silhouette
+    // barely moved (47.1 to 47.9 across the whole range) while one specular
+    // spot on the basal shoulder went from 243 to 212. At full strength this
+    // light was contributing almost nothing to the separation it exists for,
+    // and almost all of a pure-white blowout on a piece of muscle — the
+    // brightest thing in the close-up. It also hid its own first reduction,
+    // because a saturated highlight looks identical at 1.15 and at 0.62.
+    const rim = new THREE.DirectionalLight(0x9bc2ff, 0.28);
     rim.position.set(-10, 4, -9);
     const fill = new THREE.PointLight(0xffc5c0, 60, 60, 2);
     fill.position.set(-5, -5, 9);

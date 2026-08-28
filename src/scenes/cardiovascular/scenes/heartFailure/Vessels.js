@@ -252,7 +252,13 @@ export class Vessels extends THREE.Group {
     // The atrium and the ventricle were two parts floating near each other.
     // A short collar from the mitral annulus up into the atrial floor gives
     // the junction the continuity a real AV groove has.
-    this.avJunction = new THREE.Mesh(avJunctionGeometry(), this.atriumMaterial);
+    // Double-sided: it is an open funnel, and the camera goes inside it during
+    // the close-up beats. Back-face culled, the near wall vanishes and the
+    // junction reads as a hole.
+    this.avJunctionMaterial = this.atriumMaterial.clone();
+    this.avJunctionMaterial.side = THREE.DoubleSide;
+    this.avJunctionMaterial.onBeforeCompile = this.atriumMaterial.onBeforeCompile;
+    this.avJunction = new THREE.Mesh(avJunctionGeometry(), this.avJunctionMaterial);
     this.add(this.avJunction);
 
     // --- lung context ----------------------------------------------------
@@ -400,6 +406,7 @@ export class Vessels extends THREE.Group {
     this.arterialMaterial.opacity = resolveOpacity(VESSEL_OPACITY.arterial, congested, emphasis);
     this.venousMaterial.opacity = resolveOpacity(VESSEL_OPACITY.venous, congested, emphasis);
     this.atriumMaterial.opacity = resolveOpacity(VESSEL_OPACITY.atrium, congested, emphasis);
+    this.avJunctionMaterial.opacity = this.atriumMaterial.opacity;
     this.valveMaterial.opacity = resolveOpacity(VESSEL_OPACITY.valve, congested, emphasis);
     // The lungs come up slightly once the story is about them, so the haze has
     // something to sit inside. Eased off the raw level rather than the 0.4
@@ -599,27 +606,48 @@ const BODY_LOBE_DIR = new THREE.Vector3(-0.35, 0.75, -0.55).normalize();
 function avJunctionGeometry() {
   const from = ANATOMY.mitralValve;
   const to = ANATOMY.atriumCentre;
-  const height = Math.max(0.3, to.y - from.y - ANATOMY.atriumRadius * 0.95);
-  const geometry = new THREE.CylinderGeometry(0.7, 0.64, height, 26, 4, true);
+
+  // The atrium's underside sits only about 0.2 above the valve plane, so a
+  // collar drawn between the two surfaces came out 0.3 tall and 0.7 wide: a
+  // washer, not a junction, and in close-up it read as a flat pale plate with
+  // a hard rim lying across the annulus.
+  //
+  // So it is drawn as a funnel that overshoots at both ends instead. The lower
+  // rim starts below the valve plane, inside the basal myocardium and behind
+  // the annulus ring; the upper rim finishes inside the atrium. Neither edge
+  // is ever the thing you see — what shows is the continuous wall between
+  // them, which is what an atrioventricular junction looks like.
+  // Just enough below the valve plane to tuck the lower rim behind the annulus
+  // ring, and no more. Further down and the funnel hangs into the chamber in
+  // front of the mitral leaflets, which are the thing the cutaway is there to
+  // show.
+  const below = 0.08;
+  const into = 0.55;
+  const height = Math.max(0.3, to.y - from.y - ANATOMY.atriumRadius * 0.95) + below + into;
+
+  // Narrower than the mitral annulus ring at the bottom, so it passes inside
+  // it rather than poking through, and opening out toward the atrium.
+  const geometry = new THREE.CylinderGeometry(0.8, 0.6, height, 30, 6, true);
   const positions = geometry.attributes.position;
   const p = new THREE.Vector3();
   for (let i = 0; i < positions.count; i++) {
     p.fromBufferAttribute(positions, i);
-    // Flare at both ends so it blends into the annulus below and the atrial
-    // floor above rather than butting against them.
     const t = p.y / height + 0.5;
-    const flare = 1 + 0.16 * Math.pow(Math.max(0, 1 - t * 1.8), 2) + 0.2 * Math.pow(Math.max(0, (t - 0.6) / 0.4), 2);
-    p.x *= flare;
-    p.z *= flare;
+    // Concave: the funnel's wall curves rather than running straight, so the
+    // silhouette is a throat and not a cone.
+    const throat = 1 + 0.14 * Math.sin(Math.PI * t) * -1 + 0.22 * Math.pow(Math.max(0, (t - 0.55) / 0.45), 2);
+    p.x *= throat;
+    p.z *= throat;
     // Lean toward the atrium, which sits posterior to the valve plane.
-    const lean = (t - 0.5) * (to.z - from.z) * 0.9;
-    p.z += lean;
+    p.z += (t - 0.5) * (to.z - from.z) * 0.9;
+    p.x += (t - 0.5) * (to.x - from.x) * 0.9;
     positions.setXYZ(i, p.x, p.y, p.z);
   }
   geometry.computeVertexNormals();
-  geometry.translate(from.x - 0.05, from.y + height / 2 - 0.05, from.z);
+  geometry.translate(from.x, from.y + height / 2 - below, from.z);
   return geometry;
 }
+
 
 /**
  * Very quiet lung silhouettes.
