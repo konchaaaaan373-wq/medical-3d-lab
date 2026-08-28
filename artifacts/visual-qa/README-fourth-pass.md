@@ -53,10 +53,30 @@ Same requirements as uicheck: a preview build and Playwright.
 
     node scenecheck.mjs
 
-Last run: 11/11.
+Last run: 12/12.
 
 Two of these were worth the trouble immediately. Comparing the aorta's and the
 myocardium's *material colours* said the aorta was 2.6x too bright; sampling
 the rendered pixels said it is very slightly darker. The texture and the
 lighting close the gap, and the proxy would have sent someone off to fix a
 problem that was not there.
+
+
+### What measuring found that looking did not
+
+The white blob on the basal shoulder had been in the close-up for several
+passes, described in reports as "a blown-out specular point" and never
+tracked down, because every plausible cause was wrong:
+
+- raising the bloom threshold shrank it but did not remove it
+- lowering the epicardium's clearcoat and environment intensity did nothing
+- halving the rim light from 1.15 to 0.62 did nothing *visible*, which is
+  what made it so hard to attribute — a saturated highlight looks identical
+  at both, so the correct fix, applied once, looked like a failed one
+
+Hiding one object at a time found the mesh; hiding one light at a time found
+the light; sweeping that light's intensity and reading the frame back found
+the answer. Across the whole sweep the mean brightness along the silhouette
+moved from 47.1 to 47.9 while the spot moved from 243 to 212: the rim light
+was contributing essentially nothing to the separation it exists for, and
+almost all of a pure-white blowout on muscle. It now runs at 0.28.

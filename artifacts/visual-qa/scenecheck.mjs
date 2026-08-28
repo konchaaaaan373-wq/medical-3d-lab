@@ -29,6 +29,16 @@ const ORIGIN = 'http://localhost:4173';
  * so much brighter that the eye lands on the vessel before the heart.
  */
 const MAX_AORTA_BRIGHTNESS = 1.9;
+
+/**
+ * How bright any pixel may get. This is a regression guard, not a target: it
+ * sits just above the brightest pixel the scene currently produces (236, a
+ * rim highlight on the basal shoulder at the close-up framing), so anything
+ * that makes the picture hotter trips it. The blowout it replaced measured
+ * 250+ and was pure white. Deliberate emissive marks — the label dots — sit
+ * around 210.
+ */
+const MAX_TISSUE_LUMINANCE = 240;
 const ok = [];
 const fails = [];
 const check = (cond, msg) => (cond ? ok.push(msg) : fails.push(msg));
@@ -189,6 +199,37 @@ check(
 check(
   resting.lungOpacity !== null && resting.lungOpacity < 0.3,
   `the lungs stay quiet enough not to compete (${resting.lungOpacity})`
+);
+
+// Nothing made of tissue may blow out to white. A specular streak on the
+// basal shoulder did exactly that for several passes, and it took measuring
+// the frame to find it: at a glance it reads as a highlight, and only a pixel
+// histogram says it is the brightest thing on screen and pure white.
+const hottest = await page.evaluate(() => {
+  const { viewer } = window.__lab;
+  viewer.composer ? viewer.composer.render() : viewer.renderer.render(viewer.scene, viewer.camera);
+  const c = viewer.renderer.domElement;
+  const flat = document.createElement('canvas');
+  flat.width = c.width;
+  flat.height = c.height;
+  const ctx = flat.getContext('2d');
+  ctx.drawImage(c, 0, 0);
+  const d = ctx.getImageData(0, 0, flat.width, flat.height).data;
+  let best = 0;
+  let at = null;
+  for (let i = 0; i < d.length; i += 4) {
+    const lum = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    if (lum > best) {
+      best = lum;
+      at = [(i / 4) % flat.width, Math.floor(i / 4 / flat.width)];
+    }
+  }
+  return { luminance: +best.toFixed(1), at };
+});
+
+check(
+  hottest.luminance < MAX_TISSUE_LUMINANCE,
+  `nothing blows out to white (brightest pixel ${hottest.luminance} at ${hottest.at})`
 );
 
 // Drive the remodelling slider to its far end and re-probe: the values must
