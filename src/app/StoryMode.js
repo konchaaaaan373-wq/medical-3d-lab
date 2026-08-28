@@ -140,6 +140,10 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   const applyLanguage = (mode) => {
     partNames.beat = mode === 'en' ? 'One beat' : '1 拍';
     partNames.remodeling = mode === 'en' ? 'Remodeling' : 'リモデリング';
+    // The kicker is written by renderAt, so switching language while the
+    // timeline is stopped — paused, or on the completion screen — would leave
+    // the previous language's word sitting beside the caption.
+    if (lastRenderedAt !== null) renderAt(lastRenderedAt);
   };
 
   let active = false;
@@ -185,7 +189,11 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     seek(0);
   }
 
+  /** The last time renderAt was called for, so a language switch can repeat it. */
+  let lastRenderedAt = null;
+
   function renderAt(t) {
+    lastRenderedAt = t;
     const { step } = story.stepAt(t);
 
     // --- model: one progression value per step, held for the whole step

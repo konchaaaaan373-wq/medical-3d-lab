@@ -18,6 +18,13 @@ import { lerp, smoothstep } from '../../utils/math.js';
  * veins engorge (their walls inflate outward) and the venous tree takes on a
  * dusky tint. The pressure itself is drawn by CongestionOverlay.
  */
+/**
+ * Resting opacity of the great vessels and of the valve rings. Presentation
+ * emphasis raises them from here; it must never redefine them.
+ */
+const ARTERIAL_OPACITY = 0.82;
+const VALVE_OPACITY = 0.38;
+
 export class Vessels extends THREE.Group {
   constructor() {
     super();
@@ -28,7 +35,11 @@ export class Vessels extends THREE.Group {
     // saturated than myocardium, essentially opaque. A translucent pink pipe
     // was the single strongest "procedural tube" cue in the frame.
     this.arterialMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#c69a90'),
+      // Tuned against the material actually rendering at ARTERIAL_OPACITY.
+      // The earlier tint was picked while _applyOpacity was silently holding
+      // this at 0.3, so the black background was doing half the darkening;
+      // at its real opacity that tint was the brightest thing in the frame.
+      color: new THREE.Color('#ab7f77'),
       roughness: 0.55,
       metalness: 0,
       clearcoat: 0.16,
@@ -36,14 +47,14 @@ export class Vessels extends THREE.Group {
       sheen: 0.28,
       sheenRoughness: 0.7,
       sheenColor: new THREE.Color('#e0b0a4'),
-      envMapIntensity: 0.5,
+      envMapIntensity: 0.38,
       map: vesselDetailTexture(),
       bumpMap: vesselDetailTexture(),
       bumpScale: 0.35,
       transparent: true,
       // Not a window, but not a wall either: the ascending aorta crosses the
       // cutaway, and at full opacity it hid the cavity the scene is about.
-      opacity: 0.82,
+      opacity: ARTERIAL_OPACITY,
       depthWrite: true,
       side: THREE.DoubleSide,
     });
@@ -51,7 +62,7 @@ export class Vessels extends THREE.Group {
     this.arterialMaterial.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <opaque_fragment>',
-        '\tdiffuseColor.a *= 1.0 - smoothstep(0.58, 0.94, vUv.x);\n#include <opaque_fragment>'
+        '\tdiffuseColor.a *= 1.0 - smoothstep(0.5, 0.88, vUv.x);\n#include <opaque_fragment>'
       );
     };
 
@@ -98,7 +109,7 @@ export class Vessels extends THREE.Group {
       emissive: new THREE.Color('#6b5450'),
       emissiveIntensity: 0.04,
       transparent: true,
-      opacity: 0.38,
+      opacity: VALVE_OPACITY,
       depthWrite: false,
     });
 
@@ -206,7 +217,7 @@ export class Vessels extends THREE.Group {
       // The right lung is the larger of the two, and the asymmetry matters
       // here for a non-anatomical reason as well: two identical mirrored
       // shapes either side of the heart read as an artefact of the render.
-      const bigger = side < 0;
+      const bigger = side > 0;
       lung.scale.set(bigger ? 1.0 : 0.87, bigger ? 1.0 : 0.94, bigger ? 1.0 : 0.92);
       lung.frustumCulled = false;
       this.lungs.add(lung);
@@ -269,10 +280,23 @@ export class Vessels extends THREE.Group {
   _applyOpacity() {
     const congested = smoothstep(0.4, 1, this.congestionLevel ?? 0);
     const emphasis = this.presentationEmphasis ?? 0;
-    this.arterialMaterial.opacity = lerp(0.3, 0.44, emphasis);
+    // The arterial and valve baselines belong to the materials, not here: this
+    // method used to reassign both from scratch every frame, which silently
+    // reverted the aorta to a translucent tube the moment the first frame ran.
+    this.arterialMaterial.opacity = lerp(ARTERIAL_OPACITY, 0.9, emphasis);
     this.venousMaterial.opacity = lerp(lerp(0.33, 0.42, congested), 0.55, emphasis);
     this.atriumMaterial.opacity = lerp(lerp(0.88, 0.92, congested), 0.94, emphasis);
-    this.valveMaterial.opacity = lerp(0.6, 0.8, emphasis);
+    this.valveMaterial.opacity = lerp(VALVE_OPACITY, 0.62, emphasis);
+  }
+
+  /**
+   * How far the atrium is currently distended, so the pressure sheath drawn
+   * over it can follow the wall it labels. Read by CongestionOverlay, which
+   * is driven by a different input (the story's reveal fraction) and would
+   * otherwise sit inside an opaque, depth-writing chamber.
+   */
+  get atriumDistension() {
+    return this.atrium.scale.x;
   }
 }
 
@@ -282,16 +306,24 @@ export class Vessels extends THREE.Group {
  * above the valve, then a gentle taper around the arch.
  */
 function aortaGeometry() {
-  const sinus = (t) => Math.exp(-((t - 0.11) ** 2) / (2 * 0.05 ** 2));
+  // Every constant here is a fraction of AORTA's *arc length*, and the curve
+  // now runs the descending aorta out of frame as well: the root and arch
+  // together are only the first ~45% of it. Landmarks placed for the old,
+  // arch-only curve land on the wrong vessel — the sinuses of Valsalva were
+  // swelling in the mid-ascending aorta. Anything added to AORTA moves these.
+  const sinus = (t) => Math.exp(-((t - AORTA_SINUS_T) ** 2) / (2 * 0.014 ** 2));
   return variableTube(AORTA, 110, 18, (t, theta) => {
-    let r = lerp(0.5, 0.38, smoothstep(0.2, 0.6, t)) * lerp(1, 0.88, smoothstep(0.6, 1, t));
-    // Outflow flare below the valve, tucking the root into the ventricle.
-    r *= 1 + 0.26 * (1 - smoothstep(0, 0.08, t));
+    let r = lerp(0.5, 0.4, smoothstep(0.03, 0.3, t)) * lerp(1, 0.85, smoothstep(0.45, 0.9, t));
+    // A short flare at the annulus itself, where the root meets the valve.
+    r *= 1 + 0.22 * (1 - smoothstep(0, 0.018, t));
     // Sinuses: a swell with three soft lobes around the circumference.
     r *= 1 + sinus(t) * (0.2 + 0.12 * Math.max(0, Math.cos(3 * theta)));
     return r;
   });
 }
+
+/** Where along AORTA the sinuses of Valsalva sit: just above the valve. */
+const AORTA_SINUS_T = 0.028;
 
 /**
  * A tube along a curve whose radius may vary with position along the curve

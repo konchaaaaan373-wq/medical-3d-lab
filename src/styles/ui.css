@@ -584,10 +584,13 @@
   line-height: 1.4;
 }
 
+/* Styled as the narration it now is. It was the secondary line back when the
+   English caption sat above it; in Japanese-first mode it is the only line
+   there is, and it was still rendering as a demoted subtitle. */
 .story-caption-text.lang-ja {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--ink-dim);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 /* Named only while the beat itself is the subject. */
@@ -650,12 +653,21 @@
   pointer-events: none;
 }
 
-.story-chapter:first-child {
+/* Anchored by type, not position: the track's first children are the fill bar
+   and the beat ticks, so :first-child never matched a chapter and the opening
+   label overhung the left edge while the closing one was correctly pulled in.
+   The chapter buttons are the only <button>s in the track.
+
+   The second chapter is anchored the same way. It begins early enough that,
+   centred on its own mark, its label runs back into the opening one — which
+   the overhanging first label had been hiding. */
+.story-chapter:first-of-type,
+.story-chapter:first-of-type + .story-chapter {
   transform: none;
   align-items: flex-start;
 }
 
-.story-chapter:last-child {
+.story-chapter:last-of-type {
   transform: translateX(-100%);
   align-items: flex-end;
 }
@@ -847,7 +859,8 @@
     padding: 12px 14px 10px;
   }
 
-  .story-caption-text {
+  .story-caption-text,
+  .story-caption-text.lang-ja {
     font-size: 13.5px;
   }
 
@@ -1986,6 +1999,7 @@
 
   .stage-summary,
   .stage-summary-ja,
+  #ui[data-lang='ja'][data-view='learning'] .stage-summary-ja,
   .disclaimer-en {
     display: none;
   }

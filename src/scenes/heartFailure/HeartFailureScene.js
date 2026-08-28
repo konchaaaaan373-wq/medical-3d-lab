@@ -288,11 +288,12 @@ export class HeartFailureScene {
     // read off the stage: the overlay spreads with mean pulmonary venous
     // pressure, and interstitial fluid appears only once that pressure reaches
     // the range where transudation is expected.
+    this.vessels.setCongestionLevel(this.state.congestionLevel);
     this.congestion.setCongestion(
       this.state.congestionLevel * this.congestionReveal.front,
-      this.state.interstitialFluidLevel * this.congestionReveal.fluid
+      this.state.interstitialFluidLevel * this.congestionReveal.fluid,
+      this.vessels.atriumDistension
     );
-    this.vessels.setCongestionLevel(this.state.congestionLevel);
     this._applyOutlineShape();
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
     this._applyCongestionVisibility();

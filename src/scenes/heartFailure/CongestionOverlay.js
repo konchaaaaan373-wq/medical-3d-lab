@@ -7,7 +7,7 @@ import {
   buildInterstitialFluid,
 } from './anatomy.js';
 import { atriumGeometry, variableTube } from './Vessels.js';
-import { lerp, smoothstep } from '../../utils/math.js';
+import { lerp } from '../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -98,12 +98,15 @@ export class CongestionOverlay extends THREE.Group {
    *   rather than derived here so nothing can create fluid the state does not
    *   produce.
    */
-  setCongestion(front, fluid) {
+  setCongestion(front, fluid, atriumDistension = 1) {
     this.pressureMaterial.uniforms.uPressure.value = front;
     this.fluid.material.uniforms.uFill.value = fluid;
-    // Track the atrium's own distension (same easing as Vessels), so the
-    // sheath keeps hugging the wall it labels as the chamber swells.
-    this.atriumSheath.scale.setScalar(lerp(1, 1.22, smoothstep(0, 1, front)));
+    // The sheath has to track the atrium's *actual* scale, which is driven by
+    // congestionLevel while `front` is that level times the story's reveal
+    // fraction. Deriving it from `front` here left the sheath lagging behind
+    // the wall it labels, and the atrium is opaque and writes depth, so a
+    // lagging sheath is an invisible one.
+    this.atriumSheath.scale.setScalar(atriumDistension);
     this.visible = front > 0.02;
   }
 

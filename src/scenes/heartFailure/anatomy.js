@@ -185,7 +185,9 @@ function jitterVec(rnd, amount) {
 export const ANCHORS = {
   cavity: new THREE.Vector3(0.2, -1.2, 1.6),
   wall: new THREE.Vector3(3.5, 0.4, 1.6),
-  aorta: AORTA.getPointAt(0.42),
+  // On the ascending aorta, not the arch: at 0.42 of the lengthened curve
+  // this anchor sat on the distal arch, among the congestion labels.
+  aorta: AORTA.getPointAt(0.05),
   residual: new THREE.Vector3(0.1, -3.6, 1.0),
   pressure: new THREE.Vector3(-2.4, 3.3, -0.5),
   pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.8, -1.4, 0)),
@@ -245,8 +247,13 @@ export function buildCavityBlood(count, seed = 90210) {
     buffers.seeds[i] = rnd();
     buffers.sizes[i] = 0.62 + rnd() * 0.6;
 
-    // Where it goes during ejection, and where it comes back from while filling.
-    AORTA.getPointAt(lerp(0.36, 0.99, rnd()), tmp);
+    // Where it goes during ejection, and where it comes back from while
+    // filling. The range is a fraction of AORTA's arc length, and AORTA now
+    // carries the descending aorta out of frame: the old [0.36, 0.99] was the
+    // ascending aorta and arch on the short curve, but on this one it reaches
+    // ten units below the apex, so ejected blood streamed off the bottom of
+    // the screen. [0.16, 0.44] is the arch again. Revisit if AORTA changes.
+    AORTA.getPointAt(lerp(0.16, 0.44, rnd()), tmp);
     jitter(tmp, rnd, 0.22);
     write(buffers.exits, i, tmp);
 
