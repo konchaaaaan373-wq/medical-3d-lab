@@ -551,7 +551,7 @@ export function atriumGeometry(radius) {
   const positions = geometry.attributes.position;
 
   const centre = ANATOMY.atriumCentre;
-  const appendageDir = new THREE.Vector3(-0.55, 0.2, 0.82).normalize();
+  const appendageDir = new THREE.Vector3(0.55, 0.2, 0.82).normalize();
   const mitralDir = ANATOMY.mitralValve.clone().sub(centre).normalize();
   const ostiaDirs = PULMONARY_VEIN_OSTIA.map((o) => o.clone().sub(centre).normalize());
 
@@ -587,7 +587,7 @@ export function atriumGeometry(radius) {
   return geometry;
 }
 
-const BODY_LOBE_DIR = new THREE.Vector3(0.35, 0.75, -0.55).normalize();
+const BODY_LOBE_DIR = new THREE.Vector3(-0.35, 0.75, -0.55).normalize();
 
 /**
  * The atrioventricular junction: a short, slightly flared collar running from

@@ -47,7 +47,7 @@ const wide = (x, y, z, distance) => ({
  * view the scene opens on, so nothing about the ventricle steps has to be
  * re-learned.
  */
-const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
+const DEFAULT_VIEW = new THREE.Vector3(-0.4, 0.24, 0.88).normalize();
 
 /**
  * Where it looks from once the subject is the pulmonary side.
@@ -58,7 +58,7 @@ const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
  * heart lays their whole course out across the frame — the same reason the
  * social sequence leaves the head-on axis for its congestion beat.
  */
-const PULMONARY_VIEW = new THREE.Vector3(0.05, 0.62, 0.78).normalize();
+const PULMONARY_VIEW = new THREE.Vector3(-0.05, 0.62, 0.78).normalize();
 
 export const STORY_DURATION = 42;
 
@@ -206,7 +206,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['pressure', 'pulmonary-bed'],
-    camera: wide(-1.7, 1.4, -0.7, 27.5),
+    camera: wide(1.7, 1.4, -0.7, 27.5),
     view: PULMONARY_VIEW,
     // Brings the atrium and pulmonary veins up out of the dark, so the front is
     // seen spreading *inside* a pathway rather than through empty space.
@@ -226,7 +226,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['fluid', 'pulmonary-bed'],
-    camera: wide(-2.0, 1.6, -0.8, 27),
+    camera: wide(2.0, 1.6, -0.8, 27),
     view: PULMONARY_VIEW,
     context: 1,
     reveal: { front: 1, fluid: 1 },

@@ -16,6 +16,14 @@ import {
 } from '../src/scenes/heartFailure/anatomy.js';
 import { buildSegmentedPath } from '../src/scenes/heartFailure/geometry/segmentedPath.js';
 import { Vessels } from '../src/scenes/heartFailure/Vessels.js';
+import { VENTRICLE_SHAPING } from '../src/scenes/heartFailure/geometry/ventricleGeometry.js';
+
+/**
+ * How far past the end of the arch an ejection destination may land, as a
+ * fraction of the aorta's length: the jitter applied to each destination,
+ * with room to spare.
+ */
+const EJECTION_BOUNDARY_TOLERANCE = 0.02;
 
 /**
  * These tests are about anatomical meaning, not about numbers.
@@ -115,9 +123,15 @@ test('ejected blood is aimed at the aorta it would actually occupy', () => {
       if (exit.distanceTo(sample.point) < exit.distanceTo(nearest.point)) nearest = sample;
     }
     const part = AORTA_MODEL.segmentAt(nearest.t);
+    // Destinations are jittered by up to 0.22 units, so one generated at the
+    // very end of the arch can be nearest a sample just past the boundary.
+    // What must not happen is a particle heading *down* the descending aorta
+    // and out of the picture, so allow the junction and measure the rest.
+    const pastArch = nearest.t - AORTA_SEGMENTS.arch.endT;
     assert.ok(
-      allowed.has(part),
-      `ejection destination ${i} landed on the ${part}; blood must not stream out of frame`
+      allowed.has(part) || pastArch < EJECTION_BOUNDARY_TOLERANCE,
+      `ejection destination ${i} landed ${pastArch.toFixed(3)} into the ${part}; ` +
+        'blood must not stream out of frame'
     );
     // And never back down below the valve it just left through.
     assert.ok(
@@ -155,23 +169,31 @@ test('anatomical axes agree with every structure that names a side', () => {
   );
 });
 
-test('the scene is mirrored, and says so', () => {
-  // This asserts a known inaccuracy rather than a desired property, so that
-  // nobody reads the axes block as a claim about real handedness — and so that
-  // whoever corrects the mirroring is told by a failing test to update the
-  // documentation with it.
+test('the anatomical frame is right-handed and self-consistent', () => {
+  // The scene was built with the ventricle on one convention and the vessels
+  // on the mirror of it: every structure sat on the correct side of the ones
+  // beside it, so nothing looked wrong close up, and the heart as a whole was
+  // a mirror image. This is the check that would have caught it.
   //
-  // With superior at +y and anterior at +z, a real subject's left is at
-  // POSITIVE x. This scene puts left-sided structures at negative x, so the
-  // whole assembly is a mirror image. Every structure is on the correct side of
-  // every other structure; the assembly as a whole is flipped.
+  // With superior at +y and anterior at +z, a subject's left is at +x.
   const impliedLeft = new THREE.Vector3()
     .crossVectors(ANATOMICAL_AXES.superior, ANATOMICAL_AXES.anterior)
     .normalize();
   assert.ok(
-    impliedLeft.dot(ANATOMICAL_AXES.left) < 0,
-    'if this passes as > 0 the mirroring has been fixed — update the axes block ' +
-      'in anatomy.js and the note in docs/medical-notes.md, then delete this test'
+    impliedLeft.dot(ANATOMICAL_AXES.left) > 0.99,
+    'the declared left must be the left those axes imply, or the scene is mirrored'
+  );
+
+  // And the two halves of the scene must agree with the frame. The septum and
+  // the right-ventricular lobe face the right; the free wall faces the left.
+  const septalX = Math.sin(VENTRICLE_SHAPING.septalPhi);
+  const lateralX = Math.sin(VENTRICLE_SHAPING.lateralPhi);
+  assert.equal(anatomicalSide(septalX), 'right', 'the septum faces the right ventricle');
+  assert.equal(anatomicalSide(lateralX), 'left', 'the free wall faces left');
+  assert.equal(
+    anatomicalSide(ANATOMY.atriumCentre),
+    anatomicalSide(lateralX),
+    'the left atrium is on the same side as the left ventricular free wall'
   );
 });
 
