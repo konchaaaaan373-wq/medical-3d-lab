@@ -14,10 +14,14 @@ export function createTitleCard(meta) {
       el('span', { class: 'lang-ja', text: status.labelJa }),
     ]);
 
+  // The badge sits outside both title lines on purpose. Nested in the English
+  // heading it disappeared in Japanese-only mode, which hides `.lang-en` —
+  // taking the badge away from the readers its Japanese label was written for.
   return el('header', { class: 'panel title-card' }, [
     el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
-    el('h1', { class: 'title lang-en' }, [document.createTextNode(meta.title), badge || null]),
+    el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
+    badge || null,
     el('p', { class: 'subtitle' }, [
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),

@@ -254,8 +254,7 @@ a.explorer-scene:hover {
 }
 
 .title-card .status-badge {
-  margin-left: 8px;
-  vertical-align: middle;
+  margin-top: 7px;
 }
 
 @media (max-width: 720px) {

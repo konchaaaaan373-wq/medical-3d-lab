@@ -31,6 +31,11 @@ export function createSceneSwitcher({ groups, currentId }) {
   if (total < 2) return null; // nothing to switch between yet
 
   const current = groups.find((group) => group.scenes.some((scene) => scene.id === currentId)) ?? groups[0];
+  // Routes are built from slugs everywhere else in this file; the link back to
+  // the current scene has to use one too, or it breaks the day a published
+  // scene's slug stops matching its id — which is the reason the field exists.
+  const currentSlug =
+    groups.flatMap((group) => group.scenes).find((scene) => scene.id === currentId)?.slug ?? currentId;
 
   /** @param {{label: string, labelJa?: string}} entry */
   const pill = (entry, { href, isCurrent, className = '', title }) =>
@@ -56,7 +61,7 @@ export function createSceneSwitcher({ groups, currentId }) {
         // A system tab leads to its first scene; once inside, the second row
         // takes over. The names are in the tooltip so the tab still says what
         // is behind it while it is the only row on screen.
-        href: `#/${group.id === current.id ? currentId : group.scenes[0].slug ?? group.scenes[0].id}`,
+        href: `#/${group.id === current.id ? currentSlug : (group.scenes[0].slug ?? group.scenes[0].id)}`,
         isCurrent: group.id === current.id,
         title: group.scenes.map((scene) => scene.label).join(' · '),
       })

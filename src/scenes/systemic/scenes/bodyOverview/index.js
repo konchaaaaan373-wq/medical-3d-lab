@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { definePrototypeScene } from '../../../shared/PrototypeScene.js';
-import { breathCycle, oscillate } from '../../../shared/motion/rhythm.js';
+import { breathShape, oscillate } from '../../../shared/motion/rhythm.js';
 import { clamp, smoothstep } from '../../../../utils/math.js';
 import { BODY_OVERVIEW } from '../../../../data/prototypes/systemic.js';
 import { buildBodyShell } from '../../organs/bodyShell.js';
@@ -89,6 +89,9 @@ function createModel() {
   object.add(shell.object);
 
   let shown = 0;
+  /** Both rhythms carry their own phase; nothing here reads the wall clock. */
+  let beat = 0;
+  let breath = 0;
 
   return {
     object,
@@ -105,19 +108,24 @@ function createModel() {
     setProgress(value) {
       shown = value;
       for (const part of parts) {
-        // Each system fades in as the progression reaches it, and stays.
-        const reveal = smoothstep(part.at - 0.02, part.at + 0.12, shown);
+        // Each system is fully there by the time its own stage begins, and
+        // stays. Fading in *after* the threshold left the opening frame — the
+        // one the scene loads and resets to — as an empty silhouette with a
+        // label pointing at a five-percent smudge of brain.
+        const reveal = smoothstep(part.at - 0.14, part.at, shown);
         for (const material of part.materials) {
           material.opacity = clamp(material.userData.baseOpacity * reveal, 0, 1);
           material.visible = reveal > 0.01;
         }
       }
     },
-    update(dt, elapsed) {
+    update(dt) {
       // Two rhythms, at their own rates, so the body reads as alive rather
       // than as a still. Neither is a measured rate.
-      heart.setBeat(oscillate(elapsed, 1.05));
-      lungs.setInflation(breathCycle(elapsed, 13) * 0.75);
+      beat = (beat + dt * 1.05) % 1;
+      breath = (breath + (dt * 13) / 60) % 1;
+      heart.setBeat(oscillate(beat, 1));
+      lungs.setInflation(breathShape(breath) * 0.75);
     },
     dispose() {
       for (const part of parts) part.built.dispose?.();

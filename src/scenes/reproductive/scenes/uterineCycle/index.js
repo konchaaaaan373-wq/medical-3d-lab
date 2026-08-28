@@ -28,6 +28,8 @@ function createModel() {
   object.add(uterus.object);
 
   let cycle = 0;
+  /** The idle rhythm carries its own phase; nothing here reads the wall clock. */
+  let idlePhase = 0;
 
   return {
     object,
@@ -40,10 +42,11 @@ function createModel() {
       const lost = smoothstep(0.9, 1, cycle);
       uterus.setLining(clamp(grown - lost * 0.85));
     },
-    update(dt, elapsed) {
+    update(dt) {
       // The myometrium is quietly active even between contractions; a very
       // small idle motion, so the organ does not read as a still image.
-      const idle = 1 + 0.006 * oscillate(elapsed, 0.18);
+      idlePhase = (idlePhase + dt * 0.18) % 1;
+      const idle = 1 + 0.006 * oscillate(idlePhase, 1);
       uterus.object.scale.set(idle, idle, idle);
     },
     dispose() {

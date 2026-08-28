@@ -19,14 +19,16 @@ import { buildColon, buildSmallIntestine } from '../../organs/intestine.js';
 function createModel() {
   const object = new THREE.Group();
   const small = buildSmallIntestine({ color: INTESTINAL_TRANSIT.palette.small });
-  const colon = buildColon({ color: INTESTINAL_TRANSIT.palette.colon });
-
   // The colon sits behind and around the small-bowel coil, as it does in life.
-  colon.object.position.z -= 0.35;
+  // The offset goes into the builder so that the curve the contents follow and
+  // the anchors the labels hang from move with it.
+  const colon = buildColon({ color: INTESTINAL_TRANSIT.palette.colon, offset: [0, 0, -0.35] });
 
+  // Both curves are already where their tubes are drawn, so the contents run
+  // inside the bowel rather than beside it.
   const lumen = smoothCurve([
     ...small.curve.getSpacedPoints(26).map((p) => [p.x, p.y, p.z]),
-    ...colon.curve.getSpacedPoints(20).map((p) => [p.x, p.y, p.z - 0.35]),
+    ...colon.curve.getSpacedPoints(20).map((p) => [p.x, p.y, p.z]),
   ]);
   const contents = createFlowStream({
     curves: [lumen],
@@ -46,13 +48,7 @@ function createModel() {
 
   return {
     object,
-    // The colon is set back from the coil; its labels move with it.
-    anchors: {
-      ...small.anchors,
-      ...Object.fromEntries(
-        Object.entries(colon.anchors).map(([name, point]) => [name, point.clone().setZ(point.z - 0.35)])
-      ),
-    },
+    anchors: { ...small.anchors, ...colon.anchors },
     setProgress(value) {
       pattern = value;
     },

@@ -24,6 +24,8 @@ function createModel() {
   object.add(muscle.object);
 
   let activation = 0;
+  /** Where in the twitch we are. Accumulated, because the rate moves. */
+  let phase = 0;
 
   return {
     object,
@@ -33,9 +35,13 @@ function createModel() {
     },
     update(dt, elapsed) {
       // Rate rises with activation; the individual twitches stop being
-      // separable once they overlap, which is what fusion looks like.
+      // separable once they overlap, which is what fusion looks like. The phase
+      // is carried forward rather than recomputed from the clock: multiplying
+      // elapsed time by a rate the slider moves jumps the muscle to an
+      // unrelated length, right where the scene is teaching fusion.
       const rate = lerp(1.1, 9, activation);
-      const twitch = oscillate(elapsed, rate);
+      phase = (phase + dt * rate) % 1;
+      const twitch = oscillate(phase, 1);
       const fusion = smoothstep(0.35, 0.8, activation);
       // Below fusion the muscle relaxes fully between twitches; above it, it
       // never returns to rest and the mean shortening carries the movement.

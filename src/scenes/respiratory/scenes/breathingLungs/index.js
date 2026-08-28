@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { definePrototypeScene } from '../../../shared/PrototypeScene.js';
 import { createFlowStream } from '../../../shared/motion/flow.js';
-import { breathCycle } from '../../../shared/motion/rhythm.js';
+import { breathShape } from '../../../shared/motion/rhythm.js';
 import { lerp } from '../../../../utils/math.js';
 import { BREATHING_LUNGS } from '../../../../data/prototypes/respiratory.js';
 import { buildLungs } from '../../organs/lungs.js';
@@ -43,6 +43,8 @@ function createModel() {
 
   /** Depth of breathing, 0..1 — how much of the modelled excursion is used. */
   let depth = 0;
+  /** Where in the breath we are. Accumulated, because the rate moves. */
+  let phase = 0;
   let previous = 0;
 
   return {
@@ -54,8 +56,11 @@ function createModel() {
     update(dt, elapsed) {
       // Faster breathing as well as deeper: both change with demand, and a
       // deep breath at a resting rate reads as a sigh rather than as effort.
+      // The phase is carried forward rather than recomputed from the clock, so
+      // that moving the slider changes the rate without also jumping the breath.
       const rate = lerp(13, 22, depth);
-      const cycle = breathCycle(elapsed, rate);
+      phase = (phase + (dt * rate) / 60) % 1;
+      const cycle = breathShape(phase);
       const excursion = lerp(0.3, 1, depth);
       lungs.setInflation(cycle * excursion);
 

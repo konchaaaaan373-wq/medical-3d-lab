@@ -124,6 +124,31 @@ export function smoothProfile(points) {
   };
 }
 
+/**
+ * The same curve, moved.
+ *
+ * Placing a tube by transforming its *mesh* leaves the curve behind: anything
+ * else that reads the curve — a particle path, a label anchor — then describes
+ * a tube that is no longer where it is drawn. Moving the curve instead keeps
+ * the two in step by construction.
+ *
+ * @param {THREE.Curve<THREE.Vector3>} curve
+ * @param {{ rotation?: [number, number, number], position?: [number, number, number], samples?: number }} placement
+ */
+export function placeCurve(curve, { rotation = [0, 0, 0], position = [0, 0, 0], samples = 96 } = {}) {
+  const matrix = new THREE.Matrix4().compose(
+    new THREE.Vector3(...position),
+    new THREE.Quaternion().setFromEuler(new THREE.Euler(...rotation)),
+    new THREE.Vector3(1, 1, 1)
+  );
+  return new THREE.CatmullRomCurve3(
+    curve.getSpacedPoints(samples).map((point) => point.applyMatrix4(matrix)),
+    false,
+    'catmullrom',
+    0.5
+  );
+}
+
 /** A Catmull-Rom curve through `points`, given as `[x, y, z]` triples. */
 export function smoothCurve(points, { closed = false, tension = 0.5 } = {}) {
   return new THREE.CatmullRomCurve3(
