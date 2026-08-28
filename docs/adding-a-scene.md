@@ -93,19 +93,128 @@ What must remain medically true?
 
 ---
 
-## 1. フォルダを作る
+## 1. どこに置くか
+
+構成は **system → organ → scene** の 3 段です。
 
 ```text
-src/scenes/heartFailure/
-├─ HeartFailureScene.js   シーン本体
-├─ index.js               再エクスポート
-└─ ...                    そのテーマ専用の部品
+src/catalog/
+├─ taxonomy.js            どんな system / organ / status があるか
+├─ scenes.js              どんな scene があるか（= 唯一の登録先）
+└─ index.js               カタログへの問い合わせと検証
+
+src/scenes/
+├─ shared/                全臓器シーンが載る土台
+│  ├─ PrototypeScene.js   scene interface の実装（camera / lights / labels）
+│  ├─ prototypeMeta.js    meta の組み立てと PROTOTYPE の注記
+│  ├─ materials.js        tissue / wall / mucosa / mineral / ghost / particle
+│  ├─ lighting.js         共通のスタジオライト
+│  ├─ geometry/           shapedSphere / latheFromProfile / TubeSurface / coilCurve
+│  └─ motion/             flow particles / breathCycle / travellingWave
+├─ respiratory/
+│  ├─ organs/lungs.js     肺のジオメトリ（疾患シーン間で再利用する）
+│  ├─ organs/airway.js
+│  └─ scenes/breathingLungs/index.js
+└─ cardiovascular/
+   ├─ organs/heart.js     概観用の心臓
+   └─ scenes/heartFailure/   reference implementation（独自 UI を持つ）
+
+src/data/
+├─ heartFailure.js        深く作り込んだシーンの文言
+└─ prototypes/<system>.js prototype シーンの文言（1 system に 1 ファイル）
 ```
 
-`src/data/heartFailure.js` にステージ定義・配色・解説文をまとめます。
-描画コードに文章を書かないでください（文言の修正が楽になります）。
+**`organs/` と `scenes/` を混ぜないでください。** `organs/lungs.js` は
+「肺とはどういう形か」だけを知っていて、呼吸・喘息・肺水腫のことは知りません。
+その分離があるから、`asthma` シーンは同じ `buildLungs()` を別パラメータで
+呼ぶだけで済みます。臓器ジオメトリに疾患名が出てきたら、設計を間違えています。
 
-## 2. シーンクラスを実装する
+臓器ビルダーは `{ object, anchors, ... }` を返します。`object` が描画物、
+`anchors` はラベルを吊るす座標、あとはその臓器を動かす関数
+（`setInflation` / `setWave` / `setFill` / `setContraction` …）です。
+
+---
+
+## 2. まず既存の臓器を探す
+
+新しいシーンで必要な臓器の多くは、もう誰かが作っています。
+system をまたいで import して構いません——むしろそれが狙いです。
+
+| 臓器 | ビルダー |
+| --- | --- |
+| 肺・気管・気管支 | `respiratory/organs/lungs.js`, `airway.js` |
+| 食道・胃 | `gastrointestinal/organs/stomach.js` |
+| 小腸・大腸・十二指腸 | `gastrointestinal/organs/intestine.js` |
+| 肝臓・胆嚢 | `hepatobiliary/organs/liver.js` |
+| 膵臓 | `hepatobiliary/organs/pancreas.js` |
+| 腎臓・尿管・膀胱 | `renal/organs/kidney.js` |
+| 甲状腺 | `endocrine/organs/thyroid.js` |
+| 副腎 | `endocrine/organs/adrenal.js` |
+| 脾臓 | `hematologic/organs/spleen.js` |
+| 骨・骨格筋 | `musculoskeletal/organs/bone.js`, `muscle.js` |
+| 子宮・前立腺 | `reproductive/organs/uterus.js`, `prostate.js` |
+| 脳（概観用） | `nervous/organs/brain.js` |
+| 心臓（概観用） | `cardiovascular/organs/heart.js` |
+| 人体のシルエット | `systemic/organs/bodyShell.js` |
+
+`systemic/scenes/bodyOverview/` はこれらを 9 個 import しているだけです。
+全身像を作り直してはいません。
+
+ないものを新しく作るときは `src/scenes/shared/geometry/` の道具を使います。
+
+- `shapedSphere({ detail, scale, warp })` — 球を臓器の形に押し込む。
+  `warp` は単位球上の 1 頂点を受け取って動かす関数で、
+  「内側面を平らにする」「底をえぐる」といった解剖の言葉で書けます
+- `latheFromProfile(profile, { arc })` — 回転体。`arc` を 2π 未満にすると
+  断面が開くので、子宮や長管骨の cutaway はこれで作ります
+- `TubeSurface(curve, { radius })` — **半径を毎フレーム書き換えられる管**。
+  蠕動・収縮・拡張はすべてこれです（`refresh(modifier)`）
+- `coilCurve(...)` — 折り畳まれた管（小腸）
+
+---
+
+## 3. Prototype シーンを作る
+
+`definePrototypeScene()` が scene interface（`meta` / `cameraPose` / `build` /
+`setProgress` / `update` / `getAnnotations` / `dispose`）を実装します。
+新しい臓器シーンが書くのは**モデルだけ**です。
+
+```js
+// src/scenes/respiratory/scenes/breathingLungs/index.js
+export default definePrototypeScene({
+  copy: BREATHING_LUNGS,                 // src/data/prototypes/respiratory.js
+  cameraPose: { position: [1.6, 1.4, 11.8], target: [0, 0.35, 0] },
+  createModel,                           // () => model
+});
+```
+
+`createModel()` が返すもの:
+
+| キー | 役割 |
+| --- | --- |
+| `object` | 描画する `THREE.Object3D`（必須） |
+| `setProgress(value)` | 0..1。UI が動かす唯一の状態 |
+| `update(dt, elapsed)` | 毎フレームの動き |
+| `anchors` | `{ name: Vector3 }`。`copy.annotations[].anchor` から引かれます |
+| `stageViews` | `{ stageId: { position, target } }`。ストーリーモードの寄り |
+| `dispose()` | `object` の外で確保したもの（particle stream など） |
+
+**カメラの距離は書かなくて構いません。** `cameraPose` は「どちらから見るか」
+だけを決め、距離と注視点は build 時に**実際に組み上がったモデルの外接球から**
+計算されます（`fitPose`）。手で詰めた距離は、ジオメトリを変えるたびに
+壊れて被写体が見切れます。
+
+文言（`copy`）は `src/data/prototypes/<system>.js` に置きます。
+`id` / `title` / `titleJa` / `subtitle` / `subtitleJa` / `palette` / `legend` /
+`stages` / `range` / `progressLabel` / `annotations` が必要で、
+不足はテストが落とします。disclaimer は共通の PROTOTYPE 文が自動で入ります。
+
+**進行度スライダーが何を動かすのかを 1 つに決めてください。** 呼吸の深さ、
+運動パターン、刺激の強さ、周期上の位置——「重症度」ではありません。
+
+---
+
+## 4. 深く作り込むシーンを実装する
 
 ```js
 export class HeartFailureScene {
@@ -239,38 +348,147 @@ getModelControls() {
 export { HeartFailureScene as default, HeartFailureScene } from './HeartFailureScene.js';
 ```
 
-## 3. レジストリに登録する
+## 5. カタログに登録する
 
-`src/app/sceneRegistry.js` に追記します。動的 import なので、
-表示していないテーマのコードはダウンロードされません。
+`src/catalog/scenes.js` に 1 エントリ追加します。動的 import なので、
+表示していないシーンのコードはダウンロードされません（**import 先は必ず
+リテラルで書いてください**。変数にすると Vite が分割できず、全臓器が
+1 つのバンドルに入ります）。
 
 ```js
 {
-  id: 'heart-failure',
-  organ: 'heart',
-  label: 'Heart failure',
-  labelJa: '心不全',
-  load: () => import('../scenes/heartFailure/index.js'),
-},
+  id: 'breathing-lungs',        // URL（#/<slug>）。公開後は変えない
+  slug: 'breathing-lungs',
+  titleEn: 'Breathing lungs',
+  titleJa: '呼吸と肺',
+  system: 'respiratory',
+  organ: 'lungs',               // どこに分類されるか
+  organs: ['lungs', 'airway'],  // 実際に描いている臓器すべて（省略時は [organ]）
+  disease: null,                // 正常生理なら null、疾患シーンなら疾患 id
+  status: 'prototype',
+  description: '...',           // Organ Explorer のカード（英）
+  descriptionJa: '...',         //                        （日）
+  tags: ['ventilation', 'cycle'],
+  load: () => import('../scenes/respiratory/scenes/breathingLungs/index.js'),
+}
 ```
 
-`http://localhost:5173/#/heart-failure` で開けるようになります。
+これだけで **routing・シーン切替タブ・Organ Explorer・テスト**が同時に増えます。
+`src/app/` にも `src/components/` にも手を入れません。手作業で route を
+足している自分に気づいたら、それは設計が壊れた合図です。
 
-### `organ` は必須です
+登録し忘れ・重複・参照切れは `npm test`（`tests/catalog.test.js` と
+`tests/prototype-scenes.test.js`）が落とします。
 
-ナビゲーションの第 1 階層は臓器です。「アミロイドβ」と「心不全」を横に
-並べると同じ種類のものに見えますが、実際には片方は脳の分子過程、もう片方は
-心臓の力学的破綻で、粒度が違います。**どの臓器の話なのか**が最初の分岐です。
+### 新しい system を足す
 
-新しい臓器なら `ORGANS` にも 1 行足してください（英語名と日本語名の両方）。
-臓器タブは head to toe の順に並べます。
+`src/catalog/taxonomy.js` の `SYSTEMS` に 1 行（英名と日本語名）。
+順番は head to toe です。ディレクトリ `src/scenes/<system>/{organs,scenes}/`
+を作ります。scene が 1 つも無い system はナビゲーションに出ません。
 
-同じ臓器に 2 つ目の Scene が入ると、臓器タブの下に Scene のタブが自動的に
-現れます。1 つしかないうちは出ません — 選択肢が 1 つのタブ列は、
-ありもしない選択を約束することになるためです。
+### 新しい organ を足す
 
-Scene の `id` は URL（`#/<id>`）です。**一度公開した id は変えないでください。**
-臓器のグループ分けは表示だけの話で、既存のリンクはそのまま動きます。
+`ORGANS` に 1 行（`id` / `system` / 英名 / 日本語名）。
+**シーンが無い臓器を登録しても構いません。** Organ Explorer は
+「シーン未実装」として表示します。空白は情報であり、backlog そのものです。
+
+---
+
+## 6. 疾患シーンを足す
+
+このアーキテクチャが存在する理由です。手順は上と同じで、違うのは 2 点だけ。
+
+1. **臓器ジオメトリを作り直さない。** `organs/` の既存ビルダーを、
+   疾患に対応するパラメータで呼びます。無ければ**パラメータを足します**
+   （例: `buildLungs({ airTrapping })`）。疾患シーン側でジオメトリを
+   コピーした瞬間、正常と疾患が別々に劣化していきます
+2. `disease` に疾患 id を入れ、`organ` は同じままにします。
+   Organ Explorer では同じ臓器の下に正常シーンと並びます
+
+```text
+src/scenes/respiratory/
+├─ organs/lungs.js                  ← 1 つだけ
+└─ scenes/
+   ├─ breathingLungs/               normal physiology
+   ├─ asthma/                       disease: 'asthma'
+   └─ pulmonaryEdema/               disease: 'pulmonary-edema'
+```
+
+まだ実装していない疾患シーンは `src/catalog/scenes.js` の `PLANNED_SCENES`
+に書いておけます。Organ Explorer が「予定」として薄く表示します。
+実装したら `SCENE_MANIFEST` に移すだけです。
+
+**疾患シーンは正常シーンの色違いではありません。** 「何が変わると、何が
+起きるのか」を 1 つ選び、それが見えるように作ってください。答えられないなら、
+それはまだ scene ではなく organ です。
+
+---
+
+## 7. Prototype visual acceptance criteria
+
+**prototype を追加したら、ブラウザで開いて 8 項目を自分で確認してください。**
+コードを読んで判断しないこと。以下はすべて、実際に描画して初めて分かった問題から
+作った基準です（2026-08 の全身プロトタイプ監査）。
+
+| # | 基準 | 落ちている状態（実例） |
+| --- | --- | --- |
+| 1 | **Silhouette recognizability**<br>説明文を読まずに、その臓器だと分かる | 肝臓が「きのこの傘」に見える／膵臓が半透明の板に見える／膀胱が皿に見える。球や円柱の寄せ集めに見えるなら、特徴的な輪郭（腎門・心切痕・ハウストラ・骨幹端）を 1〜2 個足す |
+| 2 | **Basic anatomical orientation**<br>正面から見て左右・上下・前後が正しい | 正面図なので **患者の右は画面の左**。肝臓は画面左、胃は画面右。心臓はやや画面右（患者の左）。腎臓は他臓器より後方 |
+| 3 | **Structures actually connect**<br>つながっているものがつながって見える | 気管支が肺に届かず宙で終わる／食道が胃の手前で切れる／幽門から内容物が空中へ流れ出す。接続部は「重ねる」だけでなく、片方を相手の奥へ差し込む |
+| 4 | **Meaningful motion**<br>動きが「何の動きか」を語る | 蠕動が伝わる向きが分かるか／吸気と呼気が区別できるか／粒子が方向と勢い以上のことを主張していないか。**意味のない粒子は消す。** 動きが小さすぎて静止画に見えるなら、演出値として誇張してよい（誇張したことをコメントと medical-notes に書く） |
+| 5 | **Camera framing**<br>被写体が下部コンソールと重ならず、フレームに収まる | 距離は `fitPose` が計算する。臓器より大きい文脈（血管・隣接臓器）を描くときは `focus` でフレーム対象を絞り、寄りすぎるなら `framing.headroom` で引く |
+| 6 | **Labels sit on what they name**<br>ラベルが対象の上にある | **臓器ビルダーの `anchors` はそのビルダーの座標系。** シーン側で臓器を動かしたら、ラベルも同じだけ動かすか、シーン側で world 座標として書き直す |
+| 7 | **Mobile usability**<br>390×844 で主題が見え、操作できる | 被写体が上部パネルやコンソールに隠れていないか。シーン切替は横スクロールになる。ラベルは `compact: false` で間引く |
+| 8 | **No major physiological misconception**<br>明らかな誤学習を生まない | 流れの向き・臓器の位置関係・「どの層が変化しているか」。精度は不要だが、**誤りは不可** |
+| 9 | **Stable rendering**<br>コンソールにエラーが出ない、NaN が出ない | `tests/prototype-scenes.test.js` が 0→1 を 21 点で走らせる。加えて、実ブラウザで進行度を端から端まで動かす |
+| 10 | **Prototype badge**<br>status が `prototype` で登録され、バッジと注記が出る | バッジが出ていないなら、カタログの status が `production` になっている |
+
+チェックの記録は `artifacts/prototype-audit/` にスクリーンショットとして残します。
+
+### よくある描画上の落とし穴
+
+- **piecewise な半径関数は管に筋を作ります。** 折れ点ごとに輪状の折り目が出るので、
+  `smoothProfile([[u, r], ...])` を使ってください
+- **加算合成の粒子は簡単に白く飽和します。** bloom と重なると被写体より明るくなるので、
+  opacity は 0.3〜0.6 程度に抑える
+- **断面は「奥半分を残す」。** 手前半分を残すと閉じた臓器に見えます
+  （`latheFromProfile` の `arcStart`）
+- **半透明は中を見せるためだけに使う。** 全部を半透明にすると立体感が消えます
+- **同じ折り返しの繰り返しは「積み重ね」に見えます。** 平行に並んだ列は前後関係が
+  生まれないので、管を折り畳むときは互いに重なる向き（放射状のループなど）にする
+
+### コードレビューで見つかった規則（テストが強制します）
+
+- **アニメーションの位相は自分で積算する。`elapsed` から計算しない。**
+  `phase += dt * rate` と書きます。`f(elapsed * rate)` は rate が進行度で変わる
+  瞬間に位相が飛び、肺が満気から空へ 1 フレームで切り替わりました。
+  `tests/prototype-motion.test.js` が「同じ 10 フレームを別の絶対時刻で与えても
+  同じ結果になること」を検査します
+- **curve を公開する臓器ビルダーは、mesh ではなく curve を動かす**
+  （`placeCurve`）。mesh だけ動かすと、curve を読む粒子経路やラベルが
+  「描かれていない場所」を指します。密に折り畳まれた臓器では静止画で気づけません
+- **言語で消える要素の中に、言語非依存の情報を入れない。** status バッジを
+  `.lang-en` の見出しに入れていたため、日本語表示のときだけバッジが消えていました
+
+---
+
+## 8. status を上げる条件
+
+| status | 意味 | 上げる条件 |
+| --- | --- | --- |
+| `prototype` | 形は概略、動きは仮 | 初期状態 |
+| `alpha` | 医学モデルが動かしている | ① 形と動きが**式かデータ**から出ている（手打ちのアニメーションではない）② 医学的に意味のある入力を触れる ③ その入力と出力の関係がテストで固定されている |
+| `reviewed` | 医学的レビュー済み | ④ 臨床の目でレビューを受けた ⑤ 簡略化した点が `docs/medical-notes.md` に列挙されている ⑥ 臨床的な値と演出値が名前で区別されている |
+| `production` | 他シーンの基準 | ⑦ 数値・グラフ・3D が同じ 1 つのモデルから出ている ⑧ Learn / Reel など SNS・Educational 層まで揃っている ⑨ そのモデルについての主張がテストで再導出・照合されている |
+
+`production` になれば **Prototype バッジが消えます**。
+バッジが消えるということは「ここに書いてある数字は信じてよい」と言うことなので、
+④ を飛ばして上げないでください。
+
+status は `src/catalog/scenes.js` の 1 か所だけで管理します。
+シーン側に書き写さないでください（UI はカタログの値を表示します）。
+
+---
 
 ## 押さえておきたい点
 
@@ -308,3 +526,19 @@ Scene の `id` は URL（`#/<id>`）です。**一度公開した id は変え�
 とくに「3D は目的ではなく手段」「one medical state, multiple representations」
 「SNS 映えのために臨床パラメータを変えない」の 3 つが、この文書のほとんどの
 ルールの理由になっています。
+
+### 全身に広げたあとで効いてくる点
+
+- **臓器の左右は画面の左右と逆です。** 正面から見た図なので、患者の右肺は
+  画面の左に来ます。既存の臓器ビルダーはすべてこの向きで作ってあります。
+- **中を見せたい断面は、カメラ側ではなく反対側を残します。** 手前半分を
+  残すと「閉じた臓器」に見えます（`uterus.js` の `arcStart` 参照）。
+- **半透明は演出値です。** 肝臓や膵臓を透かしているのは中の流れを見せるため
+  であって、臓器の性質ではありません。コメントにそう書いてください。
+- **粒子は流れの「向きと勢い」の表現であって、流量ではありません。**
+  `speed` / `rate` は presentation 値の名前です。臨床的な名前を付けないこと。
+- **prototype でも NaN は許しません。** `tests/prototype-scenes.test.js` が
+  全シーンを 0→1 まで 21 点で走らせ、geometry・transform・opacity・uniform を
+  すべて検査します。ゼロ除算や `Math.pow` の負値はここで落ちます。
+- **モバイルを忘れない。** シーン切替は 720px 以下で横スクロールになります。
+  ラベルは `compact: false` で間引けます。

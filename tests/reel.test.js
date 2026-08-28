@@ -8,11 +8,11 @@ import {
   cameraAt,
   congestionVisibleAt,
   overlayAt,
-} from '../src/scenes/heartFailure/reelStoryboard.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/reelStoryboard.js';
 import { REEL_FORMATS } from '../src/app/ReelMode.js';
 import { CAPTURE_PRESETS } from '../src/components/ControlPanel.js';
 import { REEL_COPY, STAGES } from '../src/data/heartFailure.js';
-import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 /** Stand-in for what the scene reports; deliberately not the real numbers. */
 const METRICS = {

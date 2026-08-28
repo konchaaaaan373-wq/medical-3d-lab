@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ANNOTATIONS, STAGES } from '../src/data/heartFailure.js';
 import { stageIndexFor } from '../src/components/StageReadout.js';
-import { VIEW_SUBJECTS } from '../src/scenes/heartFailure/anatomy.js';
+import { VIEW_SUBJECTS } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 import {
   STORY_STEPS,
   STORY_CUES,
@@ -18,8 +18,8 @@ import {
   revealAt,
   outlineAt,
   contextAt,
-} from '../src/scenes/heartFailure/storyboard.js';
-import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/storyboard.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 /** Every tenth of a second of the sequence, plus a little either side. */
 const TIMES = [];

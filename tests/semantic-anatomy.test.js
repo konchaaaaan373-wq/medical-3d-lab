@@ -13,10 +13,10 @@ import {
   EJECTION_REACH,
   anatomicalSide,
   buildCavityBlood,
-} from '../src/scenes/heartFailure/anatomy.js';
-import { buildSegmentedPath } from '../src/scenes/heartFailure/geometry/segmentedPath.js';
-import { Vessels } from '../src/scenes/heartFailure/Vessels.js';
-import { VENTRICLE_SHAPING } from '../src/scenes/heartFailure/geometry/ventricleGeometry.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
+import { buildSegmentedPath } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/segmentedPath.js';
+import { Vessels } from '../src/scenes/cardiovascular/scenes/heartFailure/Vessels.js';
+import { VENTRICLE_SHAPING } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
 
 /**
  * How far past the end of the arch an ejection destination may land, as a

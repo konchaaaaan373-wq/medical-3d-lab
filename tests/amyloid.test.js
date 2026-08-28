@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAggregationLayout, SPACE } from '../src/scenes/amyloidBeta/aggregationLayout.js';
+import { buildAggregationLayout, SPACE } from '../src/scenes/nervous/scenes/amyloidBeta/aggregationLayout.js';
 
 const COUNT = 2800;
 const layout = buildAggregationLayout(COUNT);
