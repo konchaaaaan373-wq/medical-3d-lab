@@ -4,9 +4,26 @@ const fails = [];
 const ok = [];
 const check = (cond, msg) => (cond ? ok.push(msg) : fails.push(msg));
 
+const ORIGIN = 'http://localhost:4173';
+const consoleErrors = [];
+
 async function openScene(size) {
   const page = await browser.newPage({ viewport: size, deviceScaleFactor: 1 });
-  await page.goto('http://localhost:4173/#heart-failure', { waitUntil: 'networkidle' });
+  // Attached before navigation, on every page. Attaching it at the end of the
+  // run watched half a second of an idle page and could never fail.
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    if (m.location()?.url && !m.location().url.startsWith(ORIGIN)) return;
+    consoleErrors.push(`${size.width}x${size.height}: ${m.text()}`);
+  });
+  // Only the app's own requests. The webfont is fetched from a third-party
+  // host that this sandbox cannot reach, and the page falls back to its stack
+  // — a check that fails on the network the check runs on tells you nothing.
+  page.on('requestfailed', (r) => {
+    if (r.url().startsWith(ORIGIN)) consoleErrors.push(`REQ ${r.url()} ${r.failure()?.errorText}`);
+  });
+  page.on('pageerror', (e) => consoleErrors.push(`${size.width}x${size.height}: ${e.message}`));
+  await page.goto(`${ORIGIN}/#heart-failure`, { waitUntil: 'networkidle' });
   await page.waitForTimeout(2200);
   return page;
 }
@@ -117,14 +134,13 @@ for (const [name, size] of Object.entries({
   check(leaked.length === 0, `EN view shows no stale Japanese (leaked: ${JSON.stringify(leaked)})`);
   check(ja2.part.every(hasJa), `JA view shows no stale English (part=${JSON.stringify(ja2.part)})`);
 
-  const errors = [];
-  page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
-  await page.waitForTimeout(500);
-  check(errors.length === 0, `no console errors (${errors.join(' | ')})`);
   await page.close();
 }
 
 await browser.close();
+check(consoleErrors.length === 0, `no console errors across any viewport (${consoleErrors.join(' | ') || 'none'})`);
+
+// A beat phase name must appear in the active language, not just in English.
 console.log(ok.map((m) => 'PASS  ' + m).join('\n'));
 if (fails.length) { console.log('\n' + fails.map((m) => 'FAIL  ' + m).join('\n')); process.exit(1); }
 console.log(`\nall ${ok.length} UI checks passed`);

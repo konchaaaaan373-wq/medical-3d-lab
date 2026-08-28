@@ -444,6 +444,9 @@ const SINUS_ROOT_WIDTH = 0.34;
 const SINUS_BULGE = 0.2;
 const SINUS_LOBE_DEPTH = 0.12;
 
+/** Where along the root the sinuses have closed back onto the vessel wall. */
+const SINUS_CLOSE_U = 0.72;
+
 /**
  * The aorta as one continuous variable-radius tube, shaped part by part: a
  * flare at the annulus, the three-lobed swell of the sinuses of Valsalva
@@ -461,8 +464,13 @@ function aortaGeometry() {
       const u = seg.root.pathTToLocal(t);
       let r = lerp(AORTA_CALIBRE.annulus, AORTA_CALIBRE.sinotubularJunction, smoothstep(0, 1, u));
       r *= 1 + ANNULAR_FLARE * (1 - smoothstep(0, 0.3, u));
-      // Three soft lobes around the circumference, centred on the sinuses.
-      const swell = Math.exp(-(((u - sinusU) / SINUS_ROOT_WIDTH) ** 2));
+      // Three soft lobes around the circumference, centred on the sinuses and
+      // closed off at the sinotubular junction — which is what that junction
+      // is. Left un-tapered, the gaussian was still 17% wide at u = 1 and the
+      // radius dropped through it in a single quad, putting a visible step in
+      // the vessel exactly where it should be smoothest.
+      const swell =
+        Math.exp(-(((u - sinusU) / SINUS_ROOT_WIDTH) ** 2)) * (1 - smoothstep(SINUS_CLOSE_U, 1, u));
       r *= 1 + swell * (SINUS_BULGE + SINUS_LOBE_DEPTH * Math.max(0, Math.cos(3 * theta)));
       return r;
     }

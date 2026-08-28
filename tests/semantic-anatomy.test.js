@@ -148,9 +148,30 @@ test('anatomical axes agree with every structure that names a side', () => {
   assert.equal(anatomicalSide(ANATOMY.pulmonaryBed), 'left', 'the labelled left bed is on the left');
   assert.equal(anatomicalSide(ANATOMY.pulmonaryBedRight), 'right');
   assert.equal(anatomicalSide(ANATOMY.aorticValve), 'right', 'the aortic valve is right of mitral');
+  assert.equal(anatomicalSide(AORTA_LANDMARKS.archEnd.position), 'left', 'the arch sweeps left');
   assert.ok(
     ANATOMY.atriumCentre.z < ANATOMY.mitralValve.z,
     'the atrium sits posterior to the valve plane'
+  );
+});
+
+test('the scene is mirrored, and says so', () => {
+  // This asserts a known inaccuracy rather than a desired property, so that
+  // nobody reads the axes block as a claim about real handedness — and so that
+  // whoever corrects the mirroring is told by a failing test to update the
+  // documentation with it.
+  //
+  // With superior at +y and anterior at +z, a real subject's left is at
+  // POSITIVE x. This scene puts left-sided structures at negative x, so the
+  // whole assembly is a mirror image. Every structure is on the correct side of
+  // every other structure; the assembly as a whole is flipped.
+  const impliedLeft = new THREE.Vector3()
+    .crossVectors(ANATOMICAL_AXES.superior, ANATOMICAL_AXES.anterior)
+    .normalize();
+  assert.ok(
+    impliedLeft.dot(ANATOMICAL_AXES.left) < 0,
+    'if this passes as > 0 the mirroring has been fixed — update the axes block ' +
+      'in anatomy.js and the note in docs/medical-notes.md, then delete this test'
   );
 });
 

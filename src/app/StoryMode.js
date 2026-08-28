@@ -42,7 +42,8 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   // cannot go stale.
   const partJa = el('span', { class: 'story-part lang-ja' });
   const partEn = el('span', { class: 'story-part lang-en' });
-  const beatLabel = el('span', { class: 'story-beat' });
+  const beatJa = el('span', { class: 'story-beat lang-ja' });
+  const beatEn = el('span', { class: 'story-beat lang-en' });
 
   // --- one continuous timeline -------------------------------------------
   // A single track that fills with real story time — no segmented bars, no
@@ -83,7 +84,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       class: 'story-chapter',
       type: 'button',
       'data-chapter': chapter.id,
-      'data-anchor': chapterAnchor(chapters, index),
+      'data-anchor': chapterAnchor(chapters, index, story.duration),
       style: `left:${percent.toFixed(2)}%`,
       'aria-label': `${chapter.labelJa}（${chapter.label}）へ移動`,
       on: { click: (event) => (event.stopPropagation(), seek(chapter.at + 0.01)) },
@@ -134,7 +135,8 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       partJa,
       partEn,
       el('span', { class: 'story-caption' }, [captionEn, captionJa, noteEn, noteJa]),
-      beatLabel,
+      beatJa,
+      beatEn,
     ]),
     el('div', { class: 'story-foot' }, [
       track,
@@ -245,8 +247,11 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     // The beat phase is worth naming only while the beat is the subject — not
     // for the whole of Part B, where the later steps are about what follows it.
     const named = story.beatNamedAt(t) ? scene.getBeatPhase?.() : null;
-    beatLabel.textContent = named ? named.label : '';
-    beatLabel.dataset.ja = named ? named.labelJa : '';
+    // Both languages, as spans, for the same reason as the kicker: this used to
+    // write English into textContent and Japanese into a data attribute that no
+    // stylesheet read, so the beat phase stayed English in Japanese mode.
+    beatEn.textContent = named ? named.label : '';
+    beatJa.textContent = named ? named.labelJa ?? named.label : '';
 
     // --- continuous progress: real story time, never a step count
     const frac = Math.min(1, t / story.duration);
@@ -335,30 +340,40 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
 
 /**
  * How a chapter label should sit relative to its mark on the track: centred
- * normally, but anchored inward at the ends so it stays inside the track, and
- * anchored the same way when its neighbour is close enough to collide.
+ * normally, but anchored inward near the ends so it stays inside the track,
+ * and anchored the same way when its neighbour is close enough to collide.
  *
- * Deciding this from the chapter times is the point. The previous rule read
- * DOM position, which is a fact about how the markup happens to be assembled
- * rather than about where the labels actually are, and it was both wrong and
- * hiding a second problem.
+ * Decided from where the mark actually is, as a fraction of the *track*. An
+ * earlier version took the ends from array position instead, which is not the
+ * same question: the last chapter starts at 33s of a 42s story, three quarters
+ * of the way along, and pulling its label a full width left of its own dot
+ * detached the label from the mark it names.
  *
  * @param {{at: number}[]} chapters in order
  * @param {number} index
+ * @param {number} duration seconds of story the track represents
  * @returns {'start' | 'end' | 'centre'}
  */
-function chapterAnchor(chapters, index) {
-  if (index === 0) return 'start';
-  if (index === chapters.length - 1) return 'end';
-  // Close behind the opening chapter, which is pinned to the left edge and so
-  // cannot move out of the way: anchor this one to its mark too.
-  const span = chapters[chapters.length - 1].at - chapters[0].at;
-  const gap = (chapters[index].at - chapters[index - 1].at) / Math.max(0.001, span);
-  return gap < CHAPTER_CROWDING_GAP ? 'start' : 'centre';
+function chapterAnchor(chapters, index, duration) {
+  const position = chapters[index].at / duration;
+  if (position <= CHAPTER_EDGE_MARGIN) return 'start';
+  if (position >= 1 - CHAPTER_EDGE_MARGIN) return 'end';
+  // Close behind a chapter that is pinned to the left edge and so cannot move
+  // out of the way: anchor this one to its mark too.
+  const previous = chapters[index - 1];
+  const previousPinned = previous.at / duration <= CHAPTER_EDGE_MARGIN;
+  const gap = (chapters[index].at - previous.at) / duration;
+  return previousPinned && gap < CHAPTER_CROWDING_GAP ? 'start' : 'centre';
 }
 
 /**
- * Below this fraction of the timeline, two chapter marks are close enough that
+ * Within this fraction of either end of the track, a centred label would hang
+ * off the edge, so it is anchored to its mark instead.
+ */
+const CHAPTER_EDGE_MARGIN = 0.06;
+
+/**
+ * Below this fraction of the track, two chapter marks are close enough that
  * their labels would overlap if both were centred.
  */
 const CHAPTER_CROWDING_GAP = 0.2;

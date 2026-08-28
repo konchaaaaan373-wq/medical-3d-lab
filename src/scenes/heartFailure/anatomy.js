@@ -11,21 +11,35 @@ import { buildSegmentedPath } from './geometry/segmentedPath.js';
  * the wrong side of the heart, agreeing with its own comment and disagreeing
  * with the atrium two files away.
  *
- * The layout is fixed by the structures that name a side: the *left* atrium
- * sits at negative x, the *left* pulmonary veins and the labelled *left*
- * pulmonary bed are further out along the same axis. So:
+ * The layout is fixed by the structures that name a side, and they all agree:
+ * the *left* atrium sits at negative x, so do the *left* pulmonary veins and
+ * the labelled *left* pulmonary bed, the ascending aorta leaves to positive x
+ * while the arch sweeps to negative x and the descending aorta runs down there,
+ * and the atrium sits at negative z, posterior to the valve plane.
  *
  *   -x  anatomical LEFT        +x  anatomical RIGHT
  *   +y  superior               -y  inferior
  *   +z  anterior               -z  posterior
  *
- * One consequence is worth stating plainly, because it is easy to get backwards:
- * the default camera looks from anterior (+z) toward the heart, so anatomical
- * left appears on the *viewer's left*. This scene is laid out as a labelled
- * diagram seen from the subject's own left and right — not as a mirrored
- * clinical anterior view, where the patient's left would appear on the
- * viewer's right. Anything that decides a side must use these vectors.
+ * KNOWN INACCURACY, and it follows from the three lines above rather than from
+ * anything else in the code. In a real body those axes cannot all hold at once:
+ * with superior at +y and anterior at +z, the subject's left is at *positive*
+ * x. So this heart is laid out as a mirror image of a real one. Every structure
+ * is on the correct side *of every other structure* — the relationships the
+ * scene teaches are right — but the whole assembly is flipped, the way a
+ * diagram drawn without checking handedness is.
+ *
+ * It is recorded here, and in docs/medical-notes.md, rather than quietly fixed:
+ * un-mirroring it means negating x throughout the anatomy, the ventricle's own
+ * septal and right-ventricular shaping, and every authored camera in the
+ * storyboard, and it needs its own visual pass. Until then, do not reason about
+ * this scene's handedness from the axes alone, and do not use it to decide
+ * which side of a real patient anything is on.
+ *
+ * Anything that decides a side must use these vectors, so that the layout stays
+ * self-consistent and one flip will fix all of it at once.
  */
+
 export const ANATOMICAL_AXES = Object.freeze({
   left: Object.freeze(new THREE.Vector3(-1, 0, 0)),
   right: Object.freeze(new THREE.Vector3(1, 0, 0)),
@@ -36,9 +50,10 @@ export const ANATOMICAL_AXES = Object.freeze({
 });
 
 /**
- * Which anatomical side a point lies on. Use this rather than testing the sign
- * of x by hand: the sign is a fact about this scene's axes, and the axes are
- * stated in exactly one place.
+ * Which anatomical side a point lies on, as this scene lays sides out. Use this
+ * rather than testing the sign of x by hand: the sign is a fact about the
+ * scene's axes, and the axes are stated in exactly one place — which is also
+ * the one place that will change if the mirroring above is ever corrected.
  *
  * @param {THREE.Vector3 | number} pointOrX
  * @returns {'left' | 'right'}
@@ -54,12 +69,11 @@ export function anatomicalSide(pointOrX) {
  * these, so nudging a valve moves its blood stream with it.
  */
 /**
- * Root-local coordinates, 0 at the annulus and 1 at the sinotubular junction.
- * These are parameters of the aortic root itself, so they stay correct however
- * the rest of the vessel is reshaped — which is the point of writing them here
- * rather than as fractions of the whole aorta.
+ * Root-local coordinate, 0 at the annulus and 1 at the sinotubular junction.
+ * This is a parameter of the aortic root itself, so it stays correct however
+ * the rest of the vessel is reshaped — which is the point of writing it here
+ * rather than as a fraction of the whole aorta.
  */
-const AORTIC_VALVE_ROOT_U = 0.29;
 const SINUS_ROOT_U = 0.55;
 
 export const ANATOMY = {
@@ -139,7 +153,8 @@ export const AORTA_MODEL = buildSegmentedPath(
   {
     // Each of these is a fraction along the part it belongs to, so it keeps
     // its anatomical meaning when any other part changes length.
-    aorticValve: { segment: 'root', u: AORTIC_VALVE_ROOT_U },
+    // The valve is a control point of the root, not a fraction near one.
+    aorticValve: { segment: 'root', point: 1 },
     sinusOfValsalva: { segment: 'root', u: SINUS_ROOT_U },
     sinotubularJunction: { segment: 'root', u: 1 },
     ascendingAortaStart: { segment: 'ascending', u: 0 },

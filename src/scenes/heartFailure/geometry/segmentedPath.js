@@ -56,9 +56,22 @@ export function buildSegmentedPath(segments, landmarkSpecs = {}) {
   const bounds = [];
   for (const segment of segments) {
     const first = points.length === 0 ? 0 : points.length - 1;
-    for (let i = 0; i < segment.points.length; i++) {
-      // The shared boundary point is listed by both segments; keep one copy.
-      if (points.length > 0 && i === 0) continue;
+    if (points.length > 0) {
+      // The boundary point is listed by both segments and only one copy is
+      // kept — so it had better be the same point. Dropping a leading point
+      // that was *not* the previous segment's last one would remove it from
+      // the curve entirely, shifting every boundary and every landmark after
+      // it: precisely the silent drift this module exists to stop.
+      const previousEnd = points[points.length - 1];
+      const shared = segment.points[0];
+      if (previousEnd.distanceTo(shared) > 1e-6) {
+        throw new Error(
+          `Segment "${segment.id}" must start at the previous segment's last point ` +
+            `(${previousEnd.toArray().join(', ')}), but starts at ${shared.toArray().join(', ')}`
+        );
+      }
+    }
+    for (let i = points.length > 0 ? 1 : 0; i < segment.points.length; i++) {
       points.push(segment.points[i]);
     }
     bounds.push({ id: segment.id, first, last: points.length - 1 });
@@ -87,15 +100,21 @@ export function buildSegmentedPath(segments, landmarkSpecs = {}) {
 
   /** @type {Record<string, PathLandmark>} */
   const landmarks = {};
+  const bySegmentId = new Map(segments.map((segment) => [segment.id, segment]));
   for (const [name, spec] of Object.entries(landmarkSpecs)) {
     const segment = byId[spec.segment];
     if (!segment) throw new Error(`Landmark "${name}" names unknown segment "${spec.segment}"`);
-    const pathT = segment.localToPathT(spec.u);
+    // A landmark that *is* one of the control points says so, rather than
+    // carrying a fraction hand-fitted to land near it. Fitted fractions drift
+    // the moment the segment is reshaped, and they drift by a little — which
+    // is worse than drifting by a lot, because nothing looks wrong.
+    const u = spec.point === undefined ? spec.u : controlPointU(bySegmentId.get(spec.segment), spec.point);
+    const pathT = segment.localToPathT(u);
     landmarks[name] = {
       position: curve.getPointAt(pathT),
       tangent: curve.getTangentAt(pathT),
       segment: spec.segment,
-      localU: spec.u,
+      localU: u,
       pathT,
     };
   }
@@ -147,4 +166,24 @@ function arcLengthMapper(curve, pointCount) {
     const high = Math.min(low + 1, lengths.length - 1);
     return lerp(lengths[low], lengths[high], scaled - low) / total;
   };
+}
+
+/**
+ * Where one of a segment's own control points sits along that segment, by arc
+ * length. Lets a landmark be declared as "the second point of the root"
+ * instead of as a fraction that happens to land near it.
+ */
+function controlPointU(segment, index) {
+  const points = segment.points;
+  if (index < 0 || index >= points.length) {
+    throw new Error(`Segment "${segment.id}" has no control point ${index}`);
+  }
+  const local = new THREE.CatmullRomCurve3(points);
+  const lengths = local.getLengths(local.arcLengthDivisions);
+  const total = lengths[lengths.length - 1];
+  if (total === 0) return 0;
+  const scaled = (index / (points.length - 1)) * (lengths.length - 1);
+  const low = Math.floor(scaled);
+  const high = Math.min(low + 1, lengths.length - 1);
+  return lerp(lengths[low], lengths[high], scaled - low) / total;
 }
