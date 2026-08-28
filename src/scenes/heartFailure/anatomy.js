@@ -6,43 +6,31 @@ import { buildSegmentedPath } from './geometry/segmentedPath.js';
  * The scene's anatomical coordinate system, stated once so nothing has to
  * guess it.
  *
- * This is not decoration. A comment reading `// left` beside a `+x` that the
- * code elsewhere treats as the right side is how the larger lung ended up on
- * the wrong side of the heart, agreeing with its own comment and disagreeing
- * with the atrium two files away.
- *
- * The layout is fixed by the structures that name a side, and they all agree:
- * the *left* atrium sits at negative x, so do the *left* pulmonary veins and
- * the labelled *left* pulmonary bed, the ascending aorta leaves to positive x
- * while the arch sweeps to negative x and the descending aorta runs down there,
- * and the atrium sits at negative z, posterior to the valve plane.
- *
- *   -x  anatomical LEFT        +x  anatomical RIGHT
+ *   +x  anatomical LEFT        -x  anatomical RIGHT
  *   +y  superior               -y  inferior
  *   +z  anterior               -z  posterior
  *
- * KNOWN INACCURACY, and it follows from the three lines above rather than from
- * anything else in the code. In a real body those axes cannot all hold at once:
- * with superior at +y and anterior at +z, the subject's left is at *positive*
- * x. So this heart is laid out as a mirror image of a real one. Every structure
- * is on the correct side *of every other structure* — the relationships the
- * scene teaches are right — but the whole assembly is flipped, the way a
- * diagram drawn without checking handedness is.
+ * Right-handed, and consistent with itself: with superior at +y and anterior
+ * at +z, the subject's left is at +x. The default camera looks from anterior,
+ * so this renders as a true anterior view — anatomical left appears on the
+ * viewer's right, the way it does facing a patient or reading a chest film.
  *
- * It is recorded here, and in docs/medical-notes.md, rather than quietly fixed:
- * un-mirroring it means negating x throughout the anatomy, the ventricle's own
- * septal and right-ventricular shaping, and every authored camera in the
- * storyboard, and it needs its own visual pass. Until then, do not reason about
- * this scene's handedness from the axes alone, and do not use it to decide
- * which side of a real patient anything is on.
+ * This is not decoration, and it was not free. Two halves of the scene had
+ * disagreed about it from the beginning. The ventricle was built correctly:
+ * its septum and right-ventricular lobe sit at -x, the free wall at +x. The
+ * vessels were built mirrored: the left atrium, the left pulmonary veins and
+ * the aortic arch all sat on the wrong side, each agreeing with its own
+ * neighbours and with nothing else. Nothing failed, because every structure
+ * was on the correct side *of the structures near it* — the error was only
+ * visible from outside, in the frame as a whole. The vessels have since been
+ * reflected onto the ventricle's frame.
  *
- * Anything that decides a side must use these vectors, so that the layout stays
- * self-consistent and one flip will fix all of it at once.
+ * So: anything that decides a side takes it from these vectors, and the axes
+ * are the one thing in the scene that gets to say which way is which.
  */
-
 export const ANATOMICAL_AXES = Object.freeze({
-  left: Object.freeze(new THREE.Vector3(-1, 0, 0)),
-  right: Object.freeze(new THREE.Vector3(1, 0, 0)),
+  left: Object.freeze(new THREE.Vector3(1, 0, 0)),
+  right: Object.freeze(new THREE.Vector3(-1, 0, 0)),
   superior: Object.freeze(new THREE.Vector3(0, 1, 0)),
   inferior: Object.freeze(new THREE.Vector3(0, -1, 0)),
   anterior: Object.freeze(new THREE.Vector3(0, 0, 1)),
@@ -81,9 +69,9 @@ export const ANATOMY = {
   baseY: 1.6,
   /** Wedge left out of the chamber walls so the cavity is visible. */
   cutAngle: Math.PI * 0.55,
-  aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
-  mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.45, 2.86, -1.15),
+  aorticValve: new THREE.Vector3(-1.15, 1.6, 0.35),
+  mitralValve: new THREE.Vector3(1.2, 1.6, 0.2),
+  atriumCentre: new THREE.Vector3(1.45, 2.86, -1.15),
   atriumRadius: 1.1,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
@@ -91,8 +79,8 @@ export const ANATOMY = {
    * so four veins converge on the atrium the way the real ones do, instead of
    * a single stalk.
    */
-  pulmonaryBed: new THREE.Vector3(-4.9, 3.7, -2.6),
-  pulmonaryBedRight: new THREE.Vector3(1.9, 4.5, -3.3),
+  pulmonaryBed: new THREE.Vector3(4.9, 3.7, -2.6),
+  pulmonaryBedRight: new THREE.Vector3(-1.9, 4.5, -3.3),
 };
 
 /**
@@ -110,10 +98,15 @@ export const ANATOMY = {
  * and once as the start of the next — so each part reads as a whole vessel
  * segment. `buildSegmentedPath` keeps one copy.
  */
-const AORTIC_ANNULUS = new THREE.Vector3(1.08, 1.34, 0.28);
-const SINOTUBULAR_JUNCTION = new THREE.Vector3(1.36, 2.24, 0.08);
-const ASCENDING_END = new THREE.Vector3(1.9, 4.9, -0.85);
-const ARCH_END = new THREE.Vector3(-3.1, 5.1, -2.4);
+// At the valve plane, not below it. Tucked into the outflow tract the tube's
+// proximal opening is inside the ventricle, and which side of the heart the
+// root sits on decides whether the cutaway exposes it — on one side the basal
+// wall hid it, on the other it read as a cut pipe floating in the cavity. At
+// the plane itself the annulus ring and the cusps cap it from every angle.
+const AORTIC_ANNULUS = new THREE.Vector3(-1.13, 1.56, 0.32);
+const SINOTUBULAR_JUNCTION = new THREE.Vector3(-1.36, 2.24, 0.08);
+const ASCENDING_END = new THREE.Vector3(-1.9, 4.9, -0.85);
+const ARCH_END = new THREE.Vector3(3.1, 5.1, -2.4);
 
 export const AORTA_MODEL = buildSegmentedPath(
   [
@@ -126,14 +119,14 @@ export const AORTA_MODEL = buildSegmentedPath(
     },
     {
       id: 'ascending',
-      points: [SINOTUBULAR_JUNCTION, new THREE.Vector3(1.62, 3.1, -0.35), ASCENDING_END],
+      points: [SINOTUBULAR_JUNCTION, new THREE.Vector3(-1.62, 3.1, -0.35), ASCENDING_END],
     },
     {
       id: 'arch',
       points: [
         ASCENDING_END,
-        new THREE.Vector3(0.7, 6.3, -1.1),
-        new THREE.Vector3(-1.4, 6.1, -1.8),
+        new THREE.Vector3(-0.7, 6.3, -1.1),
+        new THREE.Vector3(1.4, 6.1, -1.8),
         ARCH_END,
       ],
     },
@@ -144,9 +137,9 @@ export const AORTA_MODEL = buildSegmentedPath(
       id: 'descending',
       points: [
         ARCH_END,
-        new THREE.Vector3(-4.3, 2.2, -3.6),
-        new THREE.Vector3(-4.9, -3.4, -4.2),
-        new THREE.Vector3(-5.2, -9.0, -4.6),
+        new THREE.Vector3(4.3, 2.2, -3.6),
+        new THREE.Vector3(4.9, -3.4, -4.2),
+        new THREE.Vector3(5.2, -9.0, -4.6),
       ],
     },
   ],
@@ -187,7 +180,7 @@ export const EJECTION_REACH = {
 /** Mitral inflow: atrium down through the valve. */
 export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
   ANATOMY.atriumCentre.clone(),
-  new THREE.Vector3(-1.3, 2.3, -0.45),
+  new THREE.Vector3(1.3, 2.3, -0.45),
   ANATOMY.mitralValve.clone(),
 ]);
 
@@ -197,10 +190,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.28, 3.36, -1.62), // left superior
-  new THREE.Vector3(-2.4, 2.5, -1.6), // left inferior
-  new THREE.Vector3(-0.66, 3.3, -1.72), // right superior
-  new THREE.Vector3(-0.55, 2.44, -1.7), // right inferior
+  new THREE.Vector3(2.28, 3.36, -1.62), // left superior
+  new THREE.Vector3(2.4, 2.5, -1.6), // left inferior
+  new THREE.Vector3(0.66, 3.3, -1.72), // right superior
+  new THREE.Vector3(0.55, 2.44, -1.7), // right inferior
 ];
 
 /**
@@ -210,25 +203,25 @@ export const PULMONARY_VEIN_OSTIA = [
  */
 export const PULMONARY_VEINS = [
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.2, 0.6, 0.3)),
-    new THREE.Vector3(-3.9, 4.5, -1.7),
+    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.2, 0.6, 0.3)),
+    new THREE.Vector3(3.9, 4.5, -1.7),
     PULMONARY_VEIN_OSTIA[0].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.1, -1.2, 0.2)),
-    new THREE.Vector3(-4.0, 2.7, -1.5),
+    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.1, -1.2, 0.2)),
+    new THREE.Vector3(4.0, 2.7, -1.5),
     PULMONARY_VEIN_OSTIA[1].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(0.2, 0.5, 0.1)),
-    new THREE.Vector3(0.7, 4.9, -2.4),
-    new THREE.Vector3(0.05, 4.5, -1.5),
+    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(-0.2, 0.5, 0.1)),
+    new THREE.Vector3(-0.7, 4.9, -2.4),
+    new THREE.Vector3(-0.05, 4.5, -1.5),
     PULMONARY_VEIN_OSTIA[2].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(-0.2, -1.1, 0.3)),
-    new THREE.Vector3(0.8, 3.1, -2.2),
-    new THREE.Vector3(0.1, 2.9, -1.3),
+    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(0.2, -1.1, 0.3)),
+    new THREE.Vector3(-0.8, 3.1, -2.2),
+    new THREE.Vector3(-0.1, 2.9, -1.3),
     PULMONARY_VEIN_OSTIA[3].clone(),
   ]),
 ];
@@ -321,9 +314,9 @@ export const ANCHORS = {
   wall: new THREE.Vector3(3.5, 0.4, 1.6),
   aorta: AORTA_LANDMARKS.ascendingAortaMid.position.clone(),
   residual: new THREE.Vector3(0.1, -3.6, 1.0),
-  pressure: new THREE.Vector3(-2.4, 3.3, -0.5),
-  pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.8, -1.4, 0)),
-  fluid: new THREE.Vector3(-5.4, 4.8, -2.4),
+  pressure: new THREE.Vector3(2.4, 3.3, -0.5),
+  pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.8, -1.4, 0)),
+  fluid: new THREE.Vector3(5.4, 4.8, -2.4),
   // Comparison mode moves each heart aside by COMPARISON_OFFSET (5.4).
   comparisonReference: new THREE.Vector3(-5.4, 2.4, 1.2),
   comparisonDisease: new THREE.Vector3(5.4, 2.4, 1.2),
