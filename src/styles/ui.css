@@ -408,8 +408,12 @@
   transition: max-height 200ms ease, gap 200ms ease;
 }
 
-#ui[data-view='learning'] .legend::before {
+#ui[data-lang='en'][data-view='learning'] .legend::before {
   content: 'Legend';
+}
+
+#ui[data-view='learning'] .legend::before {
+  content: '凡例';
   display: block;
   font-size: 10px;
   letter-spacing: 0.1em;
@@ -624,10 +628,13 @@
   line-height: 1.4;
 }
 
+/* Styled as the narration it now is. It was the secondary line back when the
+   English caption sat above it; in Japanese-first mode it is the only line
+   there is, and it was still rendering as a demoted subtitle. */
 .story-caption-text.lang-ja {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--ink-dim);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 /* Named only while the beat itself is the subject. */
@@ -664,29 +671,46 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 10px;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--border);
+  top: 9px;
+  height: 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
 }
 
 .story-fill {
   position: absolute;
   left: 0;
-  top: 10px;
-  height: 3px;
-  border-radius: 2px;
+  top: 9px;
+  height: 4px;
+  border-radius: 3px;
   background: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 45%, transparent);
   pointer-events: none;
 }
 
 .story-tick {
   position: absolute;
-  top: 9px;
+  top: 8px;
   width: 1px;
-  height: 5px;
-  background: color-mix(in srgb, var(--ink-faint) 55%, transparent);
+  height: 6px;
+  background: color-mix(in srgb, var(--ink-faint) 45%, transparent);
   pointer-events: none;
+}
+
+/* Edge anchoring is decided in StoryMode from the chapter times and arrives as
+   data-anchor. It used to be a :first-child / :last-child pair, which is a
+   claim about DOM order rather than about where a label sits: :first-child
+   never matched (the track's first child is the fill bar), the opening label
+   overhung the track, and that overhang was quietly hiding it colliding with
+   the chapter after it. */
+.story-chapter[data-anchor='start'] {
+  transform: none;
+  align-items: flex-start;
+}
+
+.story-chapter[data-anchor='end'] {
+  transform: translateX(-100%);
+  align-items: flex-end;
 }
 
 .story-chapter {
@@ -728,14 +752,35 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: 9px;
-  letter-spacing: 0.04em;
-  line-height: 1.2;
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  line-height: 1.25;
   white-space: nowrap;
 }
 
 .story-chapter.is-current .story-chapter-name {
   color: var(--ink);
+  font-weight: 600;
+}
+
+.story-chapter.is-done .story-chapter-name {
+  color: var(--ink-dim);
+}
+
+/* Short chapter words on narrow frames, full ones everywhere else. */
+.chapter-narrow {
+  display: none;
+}
+
+/* The premise line under the opening caption. */
+.story-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.story-note:empty {
+  display: none;
 }
 
 .story-count {
@@ -855,7 +900,8 @@
     padding: 12px 14px 10px;
   }
 
-  .story-caption-text {
+  .story-caption-text,
+  .story-caption-text.lang-ja {
     font-size: 13.5px;
   }
 
@@ -863,9 +909,23 @@
     display: none;
   }
 
-  .story-chapter-name .lang-en,
-  .story-chapter-name .lang-ja {
+  .story-chapter-name {
+    /* Small enough that four Japanese chapter words fit the 390px track
+       without the first two touching, which they did at 9.5px. */
+    font-size: 8.5px;
+    letter-spacing: 0;
+  }
+
+  #ui[data-lang='ja'] .chapter-wide {
     display: none;
+  }
+
+  #ui[data-lang='ja'] .chapter-narrow {
+    display: block;
+  }
+
+  .story-note {
+    font-size: 10.5px;
   }
 
   .story-count {
@@ -1971,16 +2031,82 @@
   }
 }
 
+/* Responsive visibility policy — see the block at the end of this file. */
 @media (max-height: 560px) {
   .pv,
   .wave,
   .model-controls {
     display: none;
   }
+}
 
+
+/* ==========================================================================
+   Japanese-first typography
+   --------------------------------------------------------------------------
+   With English hidden, the Japanese line is no longer a subtitle under an
+   English one — it is the label. These rules hand it the primary role
+   everywhere the English string used to hold it.
+   ========================================================================== */
+
+#ui[data-lang='ja'] .legend-ja {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+#ui[data-lang='ja'] .label-ja {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.01em;
+}
+
+/* The stage description: learning view hid the Japanese line because the
+   English one carried it. In Japanese mode it is the only one there is. */
+#ui[data-lang='ja'][data-view='learning'] .stage-summary-ja {
+  display: block;
+}
+
+#ui[data-lang='ja'] .stage-summary-ja {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+#ui[data-lang='ja'] .metric-label .lang-ja {
+  font-size: 10.5px;
+}
+
+#ui[data-lang='ja'] .step-name-ja,
+#ui[data-lang='ja'] .stage-progress-label .lang-ja {
+  font-size: 11px;
+}
+
+
+/* ==========================================================================
+   Responsive visibility policy
+
+   What fits on a screen is not a matter of taste, and it must not lose an
+   argument with a rule about which language or which detail level is showing.
+   The Japanese-first block above needs high specificity to reveal a line the
+   English layout hides — and that specificity was quietly beating the rule
+   that hides the same line on a short viewport, so a 560px-tall window got a
+   stage summary it had no room for.
+
+   So every "there is no space for this" rule lives here, last in the file, and
+   marked !important. That is the one thing !important is genuinely for: a
+   policy that must not lose an argument, decided by what the screen can hold
+   rather than by which selector happens to be more specific. Matching the
+   specificity of today's rules instead would only move the race one round on —
+   the next three-attribute selector would win it again, silently, exactly as
+   this one did. Add responsive hides here, not next to the component.
+   ========================================================================== */
+
+@media (max-height: 560px) {
   .stage-summary,
   .stage-summary-ja,
-  .disclaimer-en {
-    display: none;
+  .disclaimer-en,
+  .story-note {
+    display: none !important;
   }
 }

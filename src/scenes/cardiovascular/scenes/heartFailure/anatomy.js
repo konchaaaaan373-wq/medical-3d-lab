@@ -1,49 +1,186 @@
 import * as THREE from 'three';
 import { clamp, createRandom, randomDirection, lerp } from '../../../../utils/math.js';
+import { buildSegmentedPath } from './geometry/segmentedPath.js';
+
+/**
+ * The scene's anatomical coordinate system, stated once so nothing has to
+ * guess it.
+ *
+ *   +x  anatomical LEFT        -x  anatomical RIGHT
+ *   +y  superior               -y  inferior
+ *   +z  anterior               -z  posterior
+ *
+ * Right-handed, and consistent with itself: with superior at +y and anterior
+ * at +z, the subject's left is at +x. The default camera looks from anterior,
+ * so this renders as a true anterior view — anatomical left appears on the
+ * viewer's right, the way it does facing a patient or reading a chest film.
+ *
+ * This is not decoration, and it was not free. Two halves of the scene had
+ * disagreed about it from the beginning. The ventricle was built correctly:
+ * its septum and right-ventricular lobe sit at -x, the free wall at +x. The
+ * vessels were built mirrored: the left atrium, the left pulmonary veins and
+ * the aortic arch all sat on the wrong side, each agreeing with its own
+ * neighbours and with nothing else. Nothing failed, because every structure
+ * was on the correct side *of the structures near it* — the error was only
+ * visible from outside, in the frame as a whole. The vessels have since been
+ * reflected onto the ventricle's frame.
+ *
+ * So: anything that decides a side takes it from these vectors, and the axes
+ * are the one thing in the scene that gets to say which way is which.
+ */
+export const ANATOMICAL_AXES = Object.freeze({
+  left: Object.freeze(new THREE.Vector3(1, 0, 0)),
+  right: Object.freeze(new THREE.Vector3(-1, 0, 0)),
+  superior: Object.freeze(new THREE.Vector3(0, 1, 0)),
+  inferior: Object.freeze(new THREE.Vector3(0, -1, 0)),
+  anterior: Object.freeze(new THREE.Vector3(0, 0, 1)),
+  posterior: Object.freeze(new THREE.Vector3(0, 0, -1)),
+});
+
+/**
+ * Which anatomical side a point lies on, as this scene lays sides out. Use this
+ * rather than testing the sign of x by hand: the sign is a fact about the
+ * scene's axes, and the axes are stated in exactly one place — which is also
+ * the one place that will change if the mirroring above is ever corrected.
+ *
+ * @param {THREE.Vector3 | number} pointOrX
+ * @returns {'left' | 'right'}
+ */
+export function anatomicalSide(pointOrX) {
+  const x = typeof pointOrX === 'number' ? pointOrX : pointOrX.x;
+  return x * ANATOMICAL_AXES.left.x > 0 ? 'left' : 'right';
+}
 
 /**
  * Fixed landmarks of the schematic heart, in scene units (1 unit = 1 cm).
  * Everything else — vessels, particle targets, label anchors — is derived from
  * these, so nudging a valve moves its blood stream with it.
  */
+/**
+ * Root-local coordinate, 0 at the annulus and 1 at the sinotubular junction.
+ * This is a parameter of the aortic root itself, so it stays correct however
+ * the rest of the vessel is reshaped — which is the point of writing it here
+ * rather than as a fraction of the whole aorta.
+ */
+const SINUS_ROOT_U = 0.55;
+
 export const ANATOMY = {
   /** Valve plane: the ventricle hangs below it, the atrium sits above it. */
   baseY: 1.6,
   /** Wedge left out of the chamber walls so the cavity is visible. */
   cutAngle: Math.PI * 0.55,
-  aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
-  mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.5, 2.95, -0.7),
-  atriumRadius: 1.42,
+  aorticValve: new THREE.Vector3(-1.15, 1.6, 0.35),
+  mitralValve: new THREE.Vector3(1.2, 1.6, 0.2),
+  atriumCentre: new THREE.Vector3(1.45, 2.86, -1.15),
+  atriumRadius: 1.1,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
    * left one carries the label and the congestion story; the right one exists
    * so four veins converge on the atrium the way the real ones do, instead of
    * a single stalk.
    */
-  pulmonaryBed: new THREE.Vector3(-4.9, 3.7, -2.6),
-  pulmonaryBedRight: new THREE.Vector3(1.9, 4.5, -3.3),
+  pulmonaryBed: new THREE.Vector3(4.9, 3.7, -2.6),
+  pulmonaryBedRight: new THREE.Vector3(-1.9, 4.5, -3.3),
 };
 
 /**
- * Ascending aorta and arch. Starts just below the aortic valve (inside the
- * ventricular outflow tract) so the root stays visually continuous with the
- * chamber while the annulus descends during systole.
+ * The aorta, as four named parts rather than one anonymous curve.
+ *
+ * Everything that attaches to the aorta — the sinuses of Valsalva in the
+ * geometry, the destination of ejected blood, the label anchor — refers to a
+ * landmark or a segment below, never to a fraction of the whole curve. That
+ * indirection is the whole point: when the descending aorta was added, three
+ * separate consumers were still quoting arc-length fractions measured against
+ * the shorter curve, and the sinuses ended up swelling in the mid-ascending
+ * aorta with every test still passing.
+ *
+ * Boundary points are written twice on purpose — once as the end of one part
+ * and once as the start of the next — so each part reads as a whole vessel
+ * segment. `buildSegmentedPath` keeps one copy.
  */
-export const AORTA = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(1.0, 0.7, 0.3),
-  ANATOMY.aorticValve.clone(),
-  new THREE.Vector3(1.5, 3.1, 0.15),
-  new THREE.Vector3(1.8, 4.9, -0.35),
-  new THREE.Vector3(0.7, 6.3, -1.1),
-  new THREE.Vector3(-1.4, 6.1, -1.8),
-  new THREE.Vector3(-3.1, 5.1, -2.4),
-]);
+// At the valve plane, not below it. Tucked into the outflow tract the tube's
+// proximal opening is inside the ventricle, and which side of the heart the
+// root sits on decides whether the cutaway exposes it — on one side the basal
+// wall hid it, on the other it read as a cut pipe floating in the cavity. At
+// the plane itself the annulus ring and the cusps cap it from every angle.
+const AORTIC_ANNULUS = new THREE.Vector3(-1.13, 1.56, 0.32);
+const SINOTUBULAR_JUNCTION = new THREE.Vector3(-1.36, 2.24, 0.08);
+const ASCENDING_END = new THREE.Vector3(-1.9, 4.9, -0.85);
+const ARCH_END = new THREE.Vector3(3.1, 5.1, -2.4);
+
+export const AORTA_MODEL = buildSegmentedPath(
+  [
+    {
+      // Annulus to sinotubular junction. The valve plane is inside this part,
+      // not below it: what lies below the aortic valve is left ventricular
+      // outflow tract, and the ventricle draws that.
+      id: 'root',
+      points: [AORTIC_ANNULUS, ANATOMY.aorticValve.clone(), SINOTUBULAR_JUNCTION],
+    },
+    {
+      id: 'ascending',
+      points: [SINOTUBULAR_JUNCTION, new THREE.Vector3(-1.62, 3.1, -0.35), ASCENDING_END],
+    },
+    {
+      id: 'arch',
+      points: [
+        ASCENDING_END,
+        new THREE.Vector3(-0.7, 6.3, -1.1),
+        new THREE.Vector3(1.4, 6.1, -1.8),
+        ARCH_END,
+      ],
+    },
+    {
+      // The descending aorta continues past the frame. An artery that stopped
+      // in mid-air read as a cut pipe; running it out of shot is what an atlas
+      // plate does, and it costs three control points.
+      id: 'descending',
+      points: [
+        ARCH_END,
+        new THREE.Vector3(4.3, 2.2, -3.6),
+        new THREE.Vector3(4.9, -3.4, -4.2),
+        new THREE.Vector3(5.2, -9.0, -4.6),
+      ],
+    },
+  ],
+  {
+    // Each of these is a fraction along the part it belongs to, so it keeps
+    // its anatomical meaning when any other part changes length.
+    // The valve is a control point of the root, not a fraction near one.
+    aorticValve: { segment: 'root', point: 1 },
+    sinusOfValsalva: { segment: 'root', u: SINUS_ROOT_U },
+    sinotubularJunction: { segment: 'root', u: 1 },
+    ascendingAortaStart: { segment: 'ascending', u: 0 },
+    ascendingAortaMid: { segment: 'ascending', u: 0.5 },
+    archStart: { segment: 'arch', u: 0 },
+    archApex: { segment: 'arch', u: 0.42 },
+    archEnd: { segment: 'arch', u: 1 },
+    descendingAortaStart: { segment: 'descending', u: 0 },
+  }
+);
+
+/** Landmarks of the aorta, by anatomical name. */
+export const AORTA_LANDMARKS = AORTA_MODEL.landmarks;
+/** Named parts of the aorta: root, ascending, arch, descending. */
+export const AORTA_SEGMENTS = AORTA_MODEL.segments;
+/** The aorta as a plain curve, for anything that just needs to sample it. */
+export const AORTA = AORTA_MODEL.curve;
+
+/**
+ * How far up the aorta ejected blood is drawn before it fades out: from the
+ * valve it leaves through to the end of the arch. Past that the vessel is
+ * heading out of frame, and a particle that follows it there is a particle
+ * leaving the picture.
+ */
+export const EJECTION_REACH = {
+  startT: AORTA_LANDMARKS.aorticValve.pathT,
+  endT: AORTA_SEGMENTS.arch.endT,
+};
 
 /** Mitral inflow: atrium down through the valve. */
 export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
   ANATOMY.atriumCentre.clone(),
-  new THREE.Vector3(-1.35, 2.4, -0.1),
+  new THREE.Vector3(1.3, 2.3, -0.45),
   ANATOMY.mitralValve.clone(),
 ]);
 
@@ -53,10 +190,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.55, 3.6, -1.3), // left superior
-  new THREE.Vector3(-2.75, 2.5, -1.25), // left inferior
-  new THREE.Vector3(-0.5, 3.55, -1.4), // right superior
-  new THREE.Vector3(-0.35, 2.45, -1.35), // right inferior
+  new THREE.Vector3(2.28, 3.36, -1.62), // left superior
+  new THREE.Vector3(2.4, 2.5, -1.6), // left inferior
+  new THREE.Vector3(0.66, 3.3, -1.72), // right superior
+  new THREE.Vector3(0.55, 2.44, -1.7), // right inferior
 ];
 
 /**
@@ -66,25 +203,25 @@ export const PULMONARY_VEIN_OSTIA = [
  */
 export const PULMONARY_VEINS = [
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.2, 0.6, 0.3)),
-    new THREE.Vector3(-3.9, 4.5, -1.7),
+    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.2, 0.6, 0.3)),
+    new THREE.Vector3(3.9, 4.5, -1.7),
     PULMONARY_VEIN_OSTIA[0].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.1, -1.2, 0.2)),
-    new THREE.Vector3(-4.0, 2.7, -1.5),
+    ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.1, -1.2, 0.2)),
+    new THREE.Vector3(4.0, 2.7, -1.5),
     PULMONARY_VEIN_OSTIA[1].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(0.2, 0.5, 0.1)),
-    new THREE.Vector3(0.7, 4.9, -2.4),
-    new THREE.Vector3(0.05, 4.5, -1.5),
+    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(-0.2, 0.5, 0.1)),
+    new THREE.Vector3(-0.7, 4.9, -2.4),
+    new THREE.Vector3(-0.05, 4.5, -1.5),
     PULMONARY_VEIN_OSTIA[2].clone(),
   ]),
   new THREE.CatmullRomCurve3([
-    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(-0.2, -1.1, 0.3)),
-    new THREE.Vector3(0.8, 3.1, -2.2),
-    new THREE.Vector3(0.1, 2.9, -1.3),
+    ANATOMY.pulmonaryBedRight.clone().add(new THREE.Vector3(0.2, -1.1, 0.3)),
+    new THREE.Vector3(-0.8, 3.1, -2.2),
+    new THREE.Vector3(-0.1, 2.9, -1.3),
     PULMONARY_VEIN_OSTIA[3].clone(),
   ]),
 ];
@@ -175,11 +312,11 @@ function jitterVec(rnd, amount) {
 export const ANCHORS = {
   cavity: new THREE.Vector3(0.2, -1.2, 1.6),
   wall: new THREE.Vector3(3.5, 0.4, 1.6),
-  aorta: AORTA.getPointAt(0.42),
+  aorta: AORTA_LANDMARKS.ascendingAortaMid.position.clone(),
   residual: new THREE.Vector3(0.1, -3.6, 1.0),
-  pressure: new THREE.Vector3(-2.4, 3.3, -0.5),
-  pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(-0.8, -1.4, 0)),
-  fluid: new THREE.Vector3(-5.4, 4.8, -2.4),
+  pressure: new THREE.Vector3(2.4, 3.3, -0.5),
+  pulmonaryBed: ANATOMY.pulmonaryBed.clone().add(new THREE.Vector3(0.8, -1.4, 0)),
+  fluid: new THREE.Vector3(5.4, 4.8, -2.4),
   // Comparison mode moves each heart aside by COMPARISON_OFFSET (5.4).
   comparisonReference: new THREE.Vector3(-5.4, 2.4, 1.2),
   comparisonDisease: new THREE.Vector3(5.4, 2.4, 1.2),
@@ -235,8 +372,12 @@ export function buildCavityBlood(count, seed = 90210) {
     buffers.seeds[i] = rnd();
     buffers.sizes[i] = 0.62 + rnd() * 0.6;
 
-    // Where it goes during ejection, and where it comes back from while filling.
-    AORTA.getPointAt(lerp(0.36, 0.99, rnd()), tmp);
+    // Where it goes during ejection, and where it comes back from while
+    // filling. Ejected blood is spread over the run of aorta it would actually
+    // occupy — valve to the end of the arch — asked for by name. Quoting arc
+    // length here is what once sent it ten units below the apex and off the
+    // bottom of the screen when the descending aorta was added.
+    AORTA.getPointAt(lerp(EJECTION_REACH.startT, EJECTION_REACH.endT, rnd()), tmp);
     jitter(tmp, rnd, 0.22);
     write(buffers.exits, i, tmp);
 

@@ -141,7 +141,7 @@ export class ReferenceHeart extends THREE.Group {
     this.apparatus.materials.papillary.opacity = presence;
     this.apparatus.materials.leaflet.opacity = 0.92 * presence;
     this.apparatus.materials.chordae.opacity = 0.95 * presence;
-    this.blood.material.uniforms.uOpacity.value = 0.55 * presence;
+    this.blood.material.uniforms.uOpacity.value = 0.38 * presence;
     this.visible = presence > 0.02;
   }
 

@@ -50,7 +50,7 @@ export class ValveApparatus extends THREE.Group {
       makeLeaflet({
         hingeDir: towardAorta,
         ringRadius: this.mitralRadius,
-        length: this.mitralRadius * 1.5,
+        length: this.mitralRadius * 1.25,
         halfWidth: this.mitralRadius * 0.82,
         closedAngle: -0.5,
         openAngle: -1.32,
@@ -59,7 +59,7 @@ export class ValveApparatus extends THREE.Group {
       makeLeaflet({
         hingeDir: towardAorta.clone().negate(),
         ringRadius: this.mitralRadius,
-        length: this.mitralRadius * 1.05,
+        length: this.mitralRadius * 0.95,
         halfWidth: this.mitralRadius * 0.9,
         closedAngle: -0.78,
         openAngle: -1.45,
@@ -81,11 +81,21 @@ export class ValveApparatus extends THREE.Group {
     for (let p = 0; p < 2; p++) {
       for (let l = 0; l < 2; l++) {
         for (const widthFrac of [0.35, 0.65]) {
-          const proximal = new THREE.Mesh(chordGeometry(0.02, 0.024), this.materials.chordae);
-          const distal = new THREE.Mesh(chordGeometry(0.013, 0.019), this.materials.chordae);
-          const branch = new THREE.Mesh(chordGeometry(0.009, 0.012), this.materials.chordae);
-          this.add(proximal, distal, branch);
-          this.chordae.push({ pap: p, leaflet: l, widthFrac, proximal, distal, branch });
+          // Four short pieces along a bowed curve rather than one span: three
+          // straight cylinders end to end still read as a wire, and a wire is
+          // the thing a chorda must not look like.
+          const links = [];
+          for (let k = 0; k < CHORD_LINKS; k++) {
+            const t = k / CHORD_LINKS;
+            // Tapers from the muscle toward the leaflet, as the real cord does.
+            const r = 0.016 * (1 - t) + 0.008 * t;
+            const link = new THREE.Mesh(chordGeometry(r, r * 1.2), this.materials.chordae);
+            links.push(link);
+            this.add(link);
+          }
+          const branch = new THREE.Mesh(chordGeometry(0.0075, 0.009), this.materials.chordae);
+          this.add(branch);
+          this.chordae.push({ pap: p, leaflet: l, widthFrac, links, branch });
         }
       }
     }
@@ -177,22 +187,30 @@ export class ValveApparatus extends THREE.Group {
       const to = nearSide ? near : far;
       const sideFrac = nearSide ? chord.widthFrac : -chord.widthFrac;
 
-      // Mid-point sags below the straight line — a cord under partial
-      // tension, not a wire. The sag eases off as the leaflet closes and the
-      // chord tautens.
+      // The cord bows away from the straight line — slack tissue under partial
+      // tension, not a rigging line. The bow eases off as the leaflet closes
+      // and the chord tautens, but never all the way to a straight span.
       const taut = 1 - (leaflet.openFraction ?? 0) * 0.65;
       const span = CH_MID.copy(to).sub(from).length();
-      CH_MID.copy(from).lerp(to, 0.52);
-      CH_MID.y -= span * 0.085 * (1 - taut * 0.55);
-      CH_MID.x += span * 0.02;
+      const bow = span * (0.09 + 0.15 * (1 - taut));
+      CH_MID.copy(from).lerp(to, 0.5);
+      CH_MID.y -= bow;
+      // A little lateral bow too, alternating per chord, so a bundle of cords
+      // curves apart instead of collapsing onto one plane.
+      CH_MID.x += bow * 0.55 * (chord.widthFrac > 0.5 ? 1 : -1);
+      CH_MID.z += bow * 0.3 * (chord.pap === 0 ? 1 : -1);
 
-      placeSegment(chord.proximal, from, CH_MID);
-      placeSegment(chord.distal, CH_MID, to);
+      // Quadratic Bezier from muscle tip to leaflet edge, drawn as short links.
+      for (let k = 0; k < chord.links.length; k++) {
+        bezier(from, CH_MID, to, k / chord.links.length, CH_P0);
+        bezier(from, CH_MID, to, (k + 1) / chord.links.length, CH_P1);
+        placeSegment(chord.links[k], CH_P0, CH_P1);
+      }
 
       // Branchlet: forks off the distal segment to a second insertion point
       // a little further along the free edge. The fork point is fixed before
       // CH_B is reused for the second insertion.
-      CH_FORK.copy(CH_MID).lerp(to, 0.4);
+      bezier(from, CH_MID, to, 0.72, CH_FORK);
       const second = leafletEdgePoint(leaflet, THREE.MathUtils.clamp(sideFrac + (sideFrac > 0 ? 0.22 : -0.22), -1, 1), CH_B);
       placeSegment(chord.branch, CH_FORK, second);
     }
@@ -203,8 +221,7 @@ export class ValveApparatus extends THREE.Group {
     for (const leaflet of this.leaflets) leaflet.mesh.geometry.dispose();
     for (const cusp of this.cusps) cusp.mesh.geometry.dispose();
     for (const chord of this.chordae) {
-      chord.proximal.geometry.dispose();
-      chord.distal.geometry.dispose();
+      for (const link of chord.links) link.geometry.dispose();
       chord.branch.geometry.dispose();
     }
     for (const material of Object.values(this.materials)) material.dispose();
@@ -216,6 +233,21 @@ const CH_A = new THREE.Vector3();
 const CH_B = new THREE.Vector3();
 const CH_MID = new THREE.Vector3();
 const CH_FORK = new THREE.Vector3();
+const CH_P0 = new THREE.Vector3();
+const CH_P1 = new THREE.Vector3();
+
+/** How many short links each chord is drawn with. */
+const CHORD_LINKS = 4;
+
+/** Quadratic Bezier sample, written into `out`. */
+function bezier(a, b, c, t, out) {
+  const u = 1 - t;
+  return out
+    .copy(a)
+    .multiplyScalar(u * u)
+    .addScaledVector(b, 2 * u * t)
+    .addScaledVector(c, t * t);
+}
 const SEG_DIR = new THREE.Vector3();
 
 /** Stretches a unit chord segment between two points. */
@@ -295,7 +327,7 @@ function makeLeaflet({ hingeDir, ringRadius, length, halfWidth, closedAngle, ope
       const edge = Math.sqrt(Math.max(0, 1 - (u * 2) ** 2));
       const z = -v * length * (0.35 + 0.65 * edge);
       const x = u * 2 * halfWidth;
-      const y = -0.16 * length * v * (1 - (u * 2) ** 2) - 0.03 * Math.sin(u * 9) * v;
+      const y = -0.3 * length * v * (1 - (u * 2) ** 2) - 0.035 * Math.sin(u * 9) * v;
       positions.push(x, y, z);
     }
   }

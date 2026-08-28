@@ -261,6 +261,9 @@ export async function createApp({ stage, ui }) {
       : undefined,
   });
 
+  // One switch, one place. Every string in the interface exists in both
+  // languages in the DOM and is chosen by a single CSS rule on this attribute,
+  // so nothing can be left holding the previous language.
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
@@ -330,11 +333,11 @@ export async function createApp({ stage, ui }) {
     class: 'ui-toggle',
     type: 'button',
     title: 'Hide interface for capture (H)',
-    text: 'Hide UI',
+    text: 'UIを隠す',
     on: {
       click: () => {
         const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'Show UI' : 'Hide UI';
+        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
       },
     },
   });
@@ -741,7 +744,7 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleCompariso
       case 'h':
       case 'H': {
         const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'Show UI' : 'Hide UI';
+        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
         break;
       }
       case 'c':

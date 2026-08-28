@@ -231,6 +231,17 @@ function endocardiumTexture() {
   });
 }
 
+/**
+ * The same organic mottle the myocardium uses, for the vessel and atrial
+ * walls. Without it those surfaces are perfectly smooth, which is what made
+ * them read as moulded rubber next to the textured chamber.
+ *
+ * Returns null where there is no DOM (the Node test runner).
+ */
+export function vesselDetailTexture() {
+  return typeof document === 'undefined' ? null : mottleTexture();
+}
+
 /** Tints per variant. Presentation values, not measurements. */
 const VARIANTS = {
   disease: {
@@ -307,18 +318,23 @@ export function createHeartMaterials(variant = 'disease') {
     color: new THREE.Color(tint.endocardium),
     map: hasDom ? endocardiumTexture() : null,
     bumpMap: hasDom ? endocardiumTexture() : null,
-    bumpScale: 1.2,
+    bumpScale: 1.55,
     roughnessMap: hasDom ? endocardiumTexture() : null,
-    roughness: 0.55,
+    // Rougher than it was: a smooth lining threw one long white specular
+    // streak down the cavity, which is what read as wax rather than as a wet
+    // biological surface. Broken up by the bump, never mirror-flat. Raised
+    // again after the apical trabecular relief still caught one broad pale
+    // sheet of highlight in close-up.
+    roughness: 0.78,
     metalness: 0,
     // Moist, but matte enough that the cavity never throws one big smooth
     // highlight — the lamp-like blob was the single worst plastic cue.
-    clearcoat: 0.22,
-    clearcoatRoughness: 0.5,
-    sheen: 0.35,
-    sheenRoughness: 0.5,
+    clearcoat: 0.05,
+    clearcoatRoughness: 0.72,
+    sheen: 0.3,
+    sheenRoughness: 0.6,
     sheenColor: new THREE.Color('#e89a92'),
-    envMapIntensity: 0.5,
+    envMapIntensity: 0.24,
     // Lifts the cavity where lights cannot reach; kept faint so the vertex
     // AO baked into the geometry still shapes it.
     emissive: new THREE.Color('#3a1418'),
@@ -334,8 +350,8 @@ export function createHeartMaterials(variant = 'disease') {
 
 /** Tints for the valve apparatus per variant. */
 const APPARATUS_VARIANTS = {
-  disease: { papillary: '#ad6570', leaflet: '#d5c4c2', chordae: '#c6b4ab' },
-  reference: { papillary: '#8d6b75', leaflet: '#bdb2b2', chordae: '#b2a69f' },
+  disease: { papillary: '#ad6570', leaflet: '#d6c3b6', chordae: '#ab958c' },
+  reference: { papillary: '#8d6b75', leaflet: '#cdc2ba', chordae: '#9c8a83' },
 };
 
 /**
@@ -371,25 +387,32 @@ export function createApparatusMaterials(variant = 'disease') {
   const leaflet = new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(tint.leaflet),
     map: hasDom ? mottleTexture() : null,
-    roughness: 0.5,
+    roughness: 0.56,
     metalness: 0,
-    clearcoat: 0.35,
-    clearcoatRoughness: 0.4,
-    sheen: 0.4,
-    sheenRoughness: 0.45,
-    sheenColor: new THREE.Color('#f0dcd4'),
-    envMapIntensity: 0.5,
+    clearcoat: 0.2,
+    clearcoatRoughness: 0.5,
+    // Sheen carries most of the reading: a valve leaflet is a thin fibrous
+    // membrane that glows softly at grazing angles rather than reflecting.
+    sheen: 0.55,
+    sheenRoughness: 0.4,
+    sheenColor: new THREE.Color('#f4e4d8'),
+    envMapIntensity: 0.35,
     transparent: true,
-    opacity: 0.92,
+    // Thin enough that the cavity behind it shows faintly through — a plate
+    // at full opacity was what made the valves read as mechanical parts.
+    opacity: 0.7,
     side: THREE.DoubleSide,
   });
 
+  // Chordae read best when they are only just visible: at full brightness a
+  // bundle of pale cords across a pink cavity reads as harp strings, which is
+  // the one thing they must not look like.
   const chordae = new THREE.MeshStandardMaterial({
     color: new THREE.Color(tint.chordae),
-    roughness: 0.7,
+    roughness: 0.88,
     metalness: 0,
     transparent: true,
-    opacity: 0.85,
+    opacity: 0.6,
   });
 
   return { papillary, leaflet, chordae };

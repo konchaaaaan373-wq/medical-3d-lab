@@ -47,7 +47,7 @@ const wide = (x, y, z, distance) => ({
  * view the scene opens on, so nothing about the ventricle steps has to be
  * re-learned.
  */
-const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
+const DEFAULT_VIEW = new THREE.Vector3(-0.4, 0.24, 0.88).normalize();
 
 /**
  * Where it looks from once the subject is the pulmonary side.
@@ -58,7 +58,7 @@ const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
  * heart lays their whole course out across the frame — the same reason the
  * social sequence leaves the head-on axis for its congestion beat.
  */
-const PULMONARY_VIEW = new THREE.Vector3(0.05, 0.62, 0.78).normalize();
+const PULMONARY_VIEW = new THREE.Vector3(-0.05, 0.62, 0.78).normalize();
 
 export const STORY_DURATION = 42;
 
@@ -85,9 +85,13 @@ export const STORY_STEPS = [
     until: 4,
     progress: 0,
     focus: ['lv'],
-    camera: wide(-0.3, -1.8, 0.3, 26),
+    camera: wide(-0.3, -1.7, 0.3, 27.5),
     caption: 'A normal left ventricle, filling and emptying',
-    captionJa: '正常な左室 — 充満と駆出',
+    captionJa: '正常な左室。拡張期に充満し、収縮期に駆出する',
+    // Said once, at the start: this is one representative course, not the
+    // natural history of heart failure.
+    note: 'This model shows one representative remodeling pathway from chronic pressure overload to systolic dysfunction.',
+    noteJa: '慢性的な後負荷増大から収縮機能低下へ進む、代表的なリモデリング過程を示します。',
   },
   {
     id: 'hypertrophy',
@@ -96,9 +100,9 @@ export const STORY_STEPS = [
     until: 8,
     progress: STAGES.find((s) => s.id === 'concentric-hypertrophy').at,
     focus: ['wall'],
-    camera: wide(1.2, -0.9, 0.5, 21),
+    camera: wide(0.9, -1.0, 0.5, 23.5),
     caption: 'Against a higher load, the wall thickens',
-    captionJa: '負荷が高いと、壁が厚くなる',
+    captionJa: '後負荷の増大に適応し、左室壁が肥厚する',
   },
   {
     id: 'dilation',
@@ -107,9 +111,9 @@ export const STORY_STEPS = [
     until: 12,
     progress: STAGES.find((s) => s.id === 'dilation').at,
     focus: ['lv'],
-    camera: wide(0.1, -1.4, 0.3, 25),
+    camera: wide(0.1, -1.5, 0.3, 26.5),
     caption: 'Later the chamber enlarges instead',
-    captionJa: 'その後、内腔が拡大する',
+    captionJa: 'やがて左室腔が拡大し、より球形に近づく',
   },
   {
     id: 'hfref',
@@ -118,9 +122,9 @@ export const STORY_STEPS = [
     until: 16,
     progress: HFREF,
     focus: ['lv'],
-    camera: wide(-0.3, -1.6, 0.3, 27),
+    camera: wide(-0.3, -1.6, 0.3, 28),
     caption: 'Now it ejects a smaller fraction of its blood',
-    captionJa: 'そして、1拍で駆出される血液の割合が低下する',
+    captionJa: '収縮力が低下し、1拍で駆出される血液の割合が減少する',
   },
 
   // --- Part B: inside one failing beat ------------------------------------
@@ -133,9 +137,9 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['lv'],
-    camera: wide(-0.6, -2.4, 0.3, 21),
+    camera: wide(-0.5, -2.1, 0.3, 23),
     caption: 'Watch one beat. First it fills',
-    captionJa: '1 拍を見てみます。まず充満します',
+    captionJa: '1 拍を追う。まず拡張期に左室が充満する',
   },
   {
     id: 'contraction',
@@ -145,9 +149,9 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['lv'],
-    camera: wide(-0.6, -2.4, 0.3, 20),
+    camera: wide(-0.5, -2.1, 0.3, 22.5),
     caption: 'Contraction begins — pressure rises before anything leaves',
-    captionJa: '収縮開始 — 何も出ないまま圧が上がる',
+    captionJa: '収縮が始まる。等容性収縮期には、駆出されないまま左室圧が上昇する',
   },
   {
     id: 'ejection',
@@ -157,14 +161,14 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: [],
-    camera: wide(-0.4, -1.6, 0.4, 22),
+    camera: wide(-0.3, -1.5, 0.4, 24),
     // Emphasis, not colour: the outflow is recognisable because it moves.
     emphasis: { ejection: 1 },
     // "Only part" is a claim about distance, so the end-diastolic mark comes up
     // and the wall is seen falling short of it.
     outline: 1,
     caption: 'The valve opens, but the weakened ventricle ejects less blood with each beat',
-    captionJa: '弁は開く — しかし弱った心室が1拍で送り出せる血液は少ない',
+    captionJa: '大動脈弁が開く。しかし収縮力の低下した左室が送り出せる血液は少ない',
   },
   {
     id: 'residual',
@@ -174,11 +178,11 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['residual'],
-    camera: wide(-0.6, -2.6, 0.3, 19),
+    camera: wide(-0.5, -2.4, 0.3, 21.5),
     emphasis: { residual: 1 },
     outline: 1,
     caption: 'Blood remains after systole',
-    captionJa: '収縮が終わっても、血液が残る',
+    captionJa: '収縮の終わりにも、多くの血液が左室内に残る',
   },
   {
     id: 'filling-pressure',
@@ -188,11 +192,11 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['pressure'],
-    camera: wide(-0.8, -1.2, 0.3, 24),
+    camera: wide(-0.7, -1.1, 0.3, 25.5),
     // Pressure only. Nothing has reached the pulmonary side yet.
     reveal: { front: 0.35, fluid: 0 },
     caption: 'As ventricular volumes rise, filling now occurs at a higher pressure',
-    captionJa: '心室の容積が増すにつれ、充満はより高い圧のもとで起こるようになる',
+    captionJa: '左室容積の増大に伴い、充満はより高い圧のもとで起こるようになる',
   },
   {
     id: 'transmission',
@@ -202,7 +206,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['pressure', 'pulmonary-bed'],
-    camera: wide(-2.0, 1.5, -0.5, 26),
+    camera: wide(1.7, 1.4, -0.7, 27.5),
     view: PULMONARY_VIEW,
     // Brings the atrium and pulmonary veins up out of the dark, so the front is
     // seen spreading *inside* a pathway rather than through empty space.
@@ -212,7 +216,7 @@ export const STORY_STEPS = [
     // never moves that way in this scene.
     reveal: { front: 1, fluid: 0 },
     caption: 'That pressure is transmitted back to the atrium and pulmonary veins',
-    captionJa: 'その圧が左房・肺静脈へ伝わる',
+    captionJa: '上昇した左室充満圧は、左房から肺静脈へと後方に伝わる',
   },
   {
     id: 'congestion',
@@ -222,12 +226,12 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['fluid', 'pulmonary-bed'],
-    camera: wide(-2.4, 1.8, -0.6, 25.5),
+    camera: wide(2.0, 1.6, -0.8, 27),
     view: PULMONARY_VIEW,
     context: 1,
     reveal: { front: 1, fluid: 1 },
     caption: 'And fluid moves into the lung interstitium',
-    captionJa: 'そして肺の間質へ水分が移動する',
+    captionJa: '肺毛細血管圧が上昇し、間質へ水分が移動する — 肺うっ血',
   },
 ];
 
@@ -238,10 +242,10 @@ export const STORY_CUES = STORY_STEPS.map(({ id, at, until }) => ({ id, at, unti
  * actually navigates by. Individual steps stay addressable as small ticks.
  */
 export const STORY_CHAPTERS = [
-  { id: 'normal', label: 'Normal', labelJa: '正常', at: 0 },
-  { id: 'remodeling', label: 'Remodeling', labelJa: 'リモデリング', at: 4 },
-  { id: 'pump-failure', label: 'Pump failure', labelJa: 'ポンプ機能低下', at: 16 },
-  { id: 'congestion', label: 'Congestion', labelJa: 'うっ血', at: 33 },
+  { id: 'normal', label: 'Normal', labelJa: '正常', labelJaShort: '正常', at: 0 },
+  { id: 'remodeling', label: 'Remodeling', labelJa: 'リモデリング', labelJaShort: '肥厚', at: 4 },
+  { id: 'pump-failure', label: 'Pump failure', labelJa: '収縮機能低下', labelJaShort: '収縮低下', at: 16 },
+  { id: 'congestion', label: 'Congestion', labelJa: '肺うっ血', labelJaShort: 'うっ血', at: 33 },
 ];
 
 /** The step covering a moment, and how far through it that moment is. */
@@ -342,6 +346,11 @@ export function captionAt(t) {
   return {
     text: step.caption,
     textJa: step.captionJa,
+    // Shown under the first caption only, and only while that step is on
+    // screen: the course this model draws is one pattern, not the natural
+    // history of heart failure, and that has to be said before it is drawn.
+    note: step.note ?? '',
+    noteJa: step.noteJa ?? '',
     part: step.part,
     opacity: last ? rise * rise * (3 - 2 * rise) : cueOpacity(t, step.at, step.until, 0.3),
   };

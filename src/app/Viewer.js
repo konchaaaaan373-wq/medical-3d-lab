@@ -52,7 +52,7 @@ export class Viewer {
     this.scene.environmentIntensity = 0.45;
 
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
-    this.camera.position.set(9.5, 4.2, 13.5);
+    this.camera.position.set(-9.5, 4.2, 13.5);
 
     this.controls = createControls(this.camera, this.renderer.domElement, {
       target: new THREE.Vector3(0, 0.2, 0),

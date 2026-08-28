@@ -82,6 +82,25 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 - 単純化したことは [`docs/medical-notes.md`](docs/medical-notes.md) に必ず書く
 - 医学的な値を変えたら `npm test` を通す
 
+### アーキテクチャ規則
+
+3D シーンで静かに壊れたバグの再発防止として、以下を守ってください。
+詳細と実例は
+[`docs/architecture-rules.md`](docs/architecture-rules.md)。
+
+1. **Semantic geometry** — geometry の利用側は解剖学的な名前で位置を指す。
+   曲線の正規化座標（`curve.getPointAt(0.11)`）を利用側に書かない
+2. **Local coordinates** — 部分構造は、その部分自身のローカル座標で定義する。
+   Valsalva 洞は「大動脈全長の 2.8%」ではなく「大動脈基部の 55%」
+3. **Single state ownership** — 描画プロパティの最終値を決める場所は 1 つだけ。
+   複数箇所から `material.opacity = ...` を書かない
+4. **Physiology vs presentation** — 生理状態と Story の reveal / emphasis を
+   分ける。Story は見せ方であり、解剖のサイズを変えてはならない
+5. **Anatomical axes** — シーンの解剖軸をコード上に定義し、左右をそこから引く。
+   `+x` / `-x` を各自が推測する状態にしない
+6. **Visual regression** — 3D シーンは unit test の合格だけでは完成としない。
+   実レンダリングの確認まで含めて Definition of Done とする
+
 ### 新しいシーンを足すとき
 
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) の
