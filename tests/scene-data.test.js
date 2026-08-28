@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as amyloid from '../src/data/amyloidBeta.js';
 import * as heartFailure from '../src/data/heartFailure.js';
-import { HeartFailureScene } from '../src/scenes/heartFailure/HeartFailureScene.js';
-import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 const SCENES = [
   ['amyloid-beta', amyloid],

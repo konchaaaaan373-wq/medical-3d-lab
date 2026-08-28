@@ -17,8 +17,8 @@ import {
   revealAt,
   outlineAt,
   contextAt,
-} from '../src/scenes/heartFailure/storyboard.js';
-import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/storyboard.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 /** Every tenth of a second of the sequence, plus a little either side. */
 const TIMES = [];

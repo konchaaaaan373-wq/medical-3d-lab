@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { LEARNING_MODULES, STAGES } from '../src/data/heartFailure.js';
-import { HeartFailureScene } from '../src/scenes/heartFailure/HeartFailureScene.js';
-import { sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 /**
  * A lesson is content that makes a claim about the model. These tests are what

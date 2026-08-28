@@ -11,9 +11,9 @@ import {
   circulationParameters,
   congestionFromPressure,
   pressureVolumeCurves,
-} from '../src/scenes/heartFailure/hemodynamics.js';
-import { solveSteadyState, walkBeat, COMPARTMENTS } from '../src/scenes/heartFailure/circulation.js';
-import { COMPARISON_OFFSET } from '../src/scenes/heartFailure/HeartFailureScene.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
+import { solveSteadyState, walkBeat, COMPARTMENTS } from '../src/scenes/cardiovascular/scenes/heartFailure/circulation.js';
+import { COMPARISON_OFFSET } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 
 /**
  * Sweep across the whole slider, including every keyframe and stage boundary.

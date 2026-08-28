@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Vessels } from '../src/scenes/heartFailure/Vessels.js';
-import { CongestionOverlay } from '../src/scenes/heartFailure/CongestionOverlay.js';
-import { STORY_CHAPTERS } from '../src/scenes/heartFailure/storyboard.js';
+import { Vessels } from '../src/scenes/cardiovascular/scenes/heartFailure/Vessels.js';
+import { CongestionOverlay } from '../src/scenes/cardiovascular/scenes/heartFailure/CongestionOverlay.js';
+import { STORY_CHAPTERS } from '../src/scenes/cardiovascular/scenes/heartFailure/storyboard.js';
 
 /**
  * Every bug these guard against had one shape: a value that was correct when it

@@ -75,7 +75,7 @@ Reel が「うっ血ビートを目立たせたい」ときに動かしてよい
 
 | 層 | 実装 |
 | --- | --- |
-| Shared Medical Model | `scenes/heartFailure/circulation.js`, `hemodynamics.js` / `scenes/amyloidBeta/aggregationLayout.js` |
+| Shared Medical Model | `cardiovascular/scenes/heartFailure/circulation.js`, `hemodynamics.js` / `nervous/scenes/amyloidBeta/aggregationLayout.js` |
 | state | `Playback` の進行度 1 つ + Scene が解いた state |
 | 3D | `Chamber.js` `BloodField.js` `CongestionOverlay.js` `AggregationField.js` |
 | charts | `components/PressureVolumePanel.js` `PressureWavePanel.js` |
