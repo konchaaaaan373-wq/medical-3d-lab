@@ -174,15 +174,47 @@ export async function createApp({ stage, ui }) {
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false };
+
+  /**
+   * The viewer's own vantage during the guided sequence.
+   *
+   * The sequence authors where to look and from how far, but which side the
+   * viewer looks from is theirs — a guided explanation someone cannot turn to
+   * see the septum from is a video, not a model. `orbit` is the rotation from
+   * the step's authored view direction to the one they dragged to; it is
+   * re-applied to every later step, so the sequence keeps re-framing while
+   * their angle survives. `dragging` suspends the camera tween outright, so
+   * nothing fights the drag itself.
+   */
+  const storyView = { dragging: false, orbit: new THREE.Quaternion() };
+  const storyOffset = new THREE.Vector3();
+  const storyCurrent = new THREE.Vector3();
+
   viewer.controls.addEventListener('start', () => {
     view.active = false;
+    storyView.dragging = true;
   });
 
   // A wheel or a pinch is the same intent as the buttons, so it is read back
   // into the same number. Without this the two would disagree: scrolling out
   // and then clicking a stage would snap back, while the buttons would not.
   viewer.controls.addEventListener('end', () => {
-    if (view.active || storyMode?.active || reelMode?.active) return;
+    storyView.dragging = false;
+    if (storyMode?.active) {
+      // Same read-back as below, against the step's authored pose rather than
+      // the stage framing: the angle becomes an offset the sequence carries,
+      // and the distance becomes the same zoom the buttons drive.
+      storyOffset.copy(storyMode.pose.position).sub(storyMode.pose.target);
+      storyCurrent.copy(viewer.camera.position).sub(viewer.controls.target);
+      const authored = storyOffset.length();
+      const actual = storyCurrent.length();
+      if (!authored || !actual) return;
+      storyView.orbit.setFromUnitVectors(storyOffset.normalize(), storyCurrent.normalize());
+      userZoom = clampZoom(actual / authored);
+      syncZoomLimits();
+      return;
+    }
+    if (view.active || reelMode?.active) return;
     const framed = framedPose(shotSource);
     const base = framed.position.distanceTo(framed.target);
     if (!base) return;
@@ -217,6 +249,7 @@ export async function createApp({ stage, ui }) {
     // latched on and did nothing on a scene with no storyboard.
     onStoryToggle: scene.getStory
       ? (enabled) => {
+          storyView.orbit.identity();
           if (enabled) storyMode.enter();
           else storyMode.exit();
         }
@@ -377,8 +410,10 @@ export async function createApp({ stage, ui }) {
   }
 
   function resetView() {
-    // "View" means the framing the scene authored, so it puts the zoom back too.
+    // "View" means the framing the scene authored, so it puts the zoom back
+    // too — and, inside the guided sequence, the vantage it authored as well.
     userZoom = 1;
+    storyView.orbit.identity();
     syncZoomLimits();
     setShot(comparisonOrStageShot());
     view.active = true;
@@ -409,8 +444,14 @@ export async function createApp({ stage, ui }) {
       // The sequence authors each step's distance, but how much of the scene the
       // viewer wants in frame is still theirs.
       shot.target.copy(storyMode.pose.target);
-      applyZoomedPosition(shot.position, storyMode.pose.target, storyMode.pose.position);
-      tweenPose(viewer, shot, dt);
+      // The step's own direction, turned by however far the viewer has orbited
+      // and pulled to whatever distance they zoomed to.
+      storyOffset.copy(storyMode.pose.position).sub(storyMode.pose.target).applyQuaternion(storyView.orbit);
+      const storyDistance = zoomedDistance(storyOffset.length());
+      shot.position.copy(shot.target).addScaledVector(storyOffset.normalize(), storyDistance);
+      // While the pointer is down the controls own the camera outright;
+      // damping toward the authored pose here is what used to drag it back.
+      if (!storyView.dragging) tweenPose(viewer, shot, dt);
       labels.render();
       if (pvPanel) {
         const pressureVolume = scene.getPressureVolume();
