@@ -258,6 +258,9 @@ export async function createApp({ stage, ui }) {
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
+    // A couple of one-word strings are picked rather than stacked, so they
+    // have to be told which language the rest of the UI is in.
+    storyMode?.setLanguage?.(mode);
   });
 
   // Optional: scenes that expose a model can show a live read-out beside the view.
@@ -325,11 +328,11 @@ export async function createApp({ stage, ui }) {
     class: 'ui-toggle',
     type: 'button',
     title: 'Hide interface for capture (H)',
-    text: 'Hide UI',
+    text: 'UIを隠す',
     on: {
       click: () => {
         const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'Show UI' : 'Hide UI';
+        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
       },
     },
   });
@@ -734,7 +737,7 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleCompariso
       case 'h':
       case 'H': {
         const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'Show UI' : 'Hide UI';
+        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
         break;
       }
       case 'c':

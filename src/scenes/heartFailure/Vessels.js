@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ANATOMY, AORTA, PULMONARY_VEINS, PULMONARY_VEIN_OSTIA, buildVascularFans } from './anatomy.js';
+import { vesselDetailTexture } from './materials/heartMaterials.js';
 import { lerp, smoothstep } from '../../utils/math.js';
 
 /**
@@ -23,28 +24,51 @@ export class Vessels extends THREE.Group {
     this.name = 'vessels';
 
     // --- materials ------------------------------------------------------
+    // The aorta is a thick-walled artery, not a window: pale red-brown, less
+    // saturated than myocardium, essentially opaque. A translucent pink pipe
+    // was the single strongest "procedural tube" cue in the frame.
     this.arterialMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#a8737d'),
-      roughness: 0.48,
+      color: new THREE.Color('#c69a90'),
+      roughness: 0.55,
       metalness: 0,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.45,
+      clearcoat: 0.16,
+      clearcoatRoughness: 0.55,
+      sheen: 0.28,
+      sheenRoughness: 0.7,
+      sheenColor: new THREE.Color('#e0b0a4'),
+      envMapIntensity: 0.5,
+      map: vesselDetailTexture(),
+      bumpMap: vesselDetailTexture(),
+      bumpScale: 0.35,
       transparent: true,
-      opacity: 0.3,
-      depthWrite: false,
+      // Not a window, but not a wall either: the ascending aorta crosses the
+      // cutaway, and at full opacity it hid the cavity the scene is about.
+      opacity: 0.82,
+      depthWrite: true,
       side: THREE.DoubleSide,
     });
+    this.arterialMaterial.defines = { ...(this.arterialMaterial.defines ?? {}), USE_UV: '' };
+    this.arterialMaterial.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        '\tdiffuseColor.a *= 1.0 - smoothstep(0.58, 0.94, vUv.x);\n#include <opaque_fragment>'
+      );
+    };
 
     // Shared by veins, atrium and fans, patched with two uniforms:
     // uEngorge inflates every wall along its normal (venous engorgement) and
     // uDusk shifts the tint toward a deep, congested blue-violet.
     this.venousUniforms = { uEngorge: { value: 0 }, uDusk: { value: 0 } };
     this.venousMaterial = new THREE.MeshPhysicalMaterial({
-      color: new THREE.Color('#a2818f'),
-      roughness: 0.5,
+      color: new THREE.Color('#8d6476'),
+      map: vesselDetailTexture(),
+      bumpMap: vesselDetailTexture(),
+      bumpScale: 0.3,
+      roughness: 0.58,
       metalness: 0,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.5,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.6,
+      envMapIntensity: 0.35,
       transparent: true,
       opacity: 0.3,
       depthWrite: false,
@@ -64,17 +88,17 @@ export class Vessels extends THREE.Group {
         'uniform float uDusk;\n' +
         shader.fragmentShader.replace(
           '#include <color_fragment>',
-          '#include <color_fragment>\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.38, 0.35, 0.55), uDusk);'
+          '#include <color_fragment>\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.12, 0.1, 0.21), uDusk);'
         );
     };
 
     this.valveMaterial = new THREE.MeshStandardMaterial({
-      color: new THREE.Color('#b4c1d2'),
-      roughness: 0.6,
-      emissive: new THREE.Color('#8fa8c8'),
-      emissiveIntensity: 0.05,
+      color: new THREE.Color('#c9b3ad'),
+      roughness: 0.72,
+      emissive: new THREE.Color('#6b5450'),
+      emissiveIntensity: 0.04,
       transparent: true,
-      opacity: 0.5,
+      opacity: 0.38,
       depthWrite: false,
     });
 
@@ -86,9 +110,13 @@ export class Vessels extends THREE.Group {
     // vein tubes and writing depth so it sorts as a solid. It shares the
     // engorgement/dusk uniforms so congestion still reaches it.
     this.atriumMaterial = this.venousMaterial.clone();
-    this.atriumMaterial.opacity = 0.62;
+    this.atriumMaterial.opacity = 0.88;
     this.atriumMaterial.depthWrite = true;
-    this.atriumMaterial.color = new THREE.Color('#997384');
+    this.atriumMaterial.color = new THREE.Color('#7d5566');
+    this.atriumMaterial.roughness = 0.72;
+    this.atriumMaterial.clearcoat = 0.08;
+    this.atriumMaterial.envMapIntensity = 0.28;
+    this.atriumMaterial.sheen = 0.15;
     this.atriumMaterial.onBeforeCompile = this.venousMaterial.onBeforeCompile;
 
     // --- pulmonary veins into the atrium -------------------------------
@@ -121,6 +149,69 @@ export class Vessels extends THREE.Group {
     this.atrium = new THREE.Mesh(atriumGeometry(ANATOMY.atriumRadius * 0.92), this.atriumMaterial);
     this.atrium.position.copy(ANATOMY.atriumCentre);
     this.add(this.atrium);
+
+    // --- atrioventricular junction --------------------------------------
+    // The atrium and the ventricle were two parts floating near each other.
+    // A short collar from the mitral annulus up into the atrial floor gives
+    // the junction the continuity a real AV groove has.
+    this.avJunction = new THREE.Mesh(avJunctionGeometry(), this.atriumMaterial);
+    this.add(this.avJunction);
+
+    // --- lung context ----------------------------------------------------
+    this.lungMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#5f7280'),
+      transparent: true,
+      opacity: 0.11,
+      depthWrite: false,
+      // Additive, and only ever additive. A normally-blended shell this large
+      // sits between the camera and the background and can only take light
+      // away, which is how two lungs turned into two black eggs behind the
+      // heart. Adding light cannot do that: the worst this can be is invisible.
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+    });
+    // Unlit, so no light ever puts a highlight on a lung.
+    //
+    // The alpha profile took three tries. A hard silhouette read as two dark
+    // beans pasted behind the heart. Weighting the alpha toward the contour
+    // instead drew the right shape, but any shape with a hard boundary reads
+    // as an object, and measured against the background these were only
+    // 20/255 brighter — so the eye was reading the *edge*, not the value.
+    //
+    // So the alpha now falls to zero exactly at the silhouette: the shape has
+    // no boundary to find, and what is left is a gradient in the dark behind
+    // the pulmonary vessels. Faint enough not to compete, present enough that
+    // the vascular bed is somewhere rather than nowhere.
+    this.lungMaterial.onBeforeCompile = (shader) => {
+      shader.vertexShader =
+        'varying vec3 vLungNormal;\nvarying vec3 vLungView;\n' +
+        shader.vertexShader.replace(
+          '#include <begin_vertex>',
+          '#include <begin_vertex>\n\tvLungNormal = normalize(normalMatrix * normal);\n\tvLungView = -(modelViewMatrix * vec4(transformed, 1.0)).xyz;'
+        );
+      shader.fragmentShader =
+        'varying vec3 vLungNormal;\nvarying vec3 vLungView;\n' +
+        shader.fragmentShader.replace(
+          '#include <opaque_fragment>',
+          '\tfloat lungFacing = abs(dot(normalize(vLungNormal), normalize(vLungView)));\n' +
+            '\tdiffuseColor.a *= pow(lungFacing, 2.2);\n#include <opaque_fragment>'
+        );
+    };
+    this.lungs = new THREE.Group();
+    this.lungs.name = 'lung-context';
+    for (const side of [-1, 1]) {
+      const lung = new THREE.Mesh(lungGeometry(side), this.lungMaterial);
+      lung.position.set(side * 5.2, 0.6, -5.2);
+      lung.rotation.z = side * -0.06;
+      // The right lung is the larger of the two, and the asymmetry matters
+      // here for a non-anatomical reason as well: two identical mirrored
+      // shapes either side of the heart read as an artefact of the render.
+      const bigger = side < 0;
+      lung.scale.set(bigger ? 1.0 : 0.87, bigger ? 1.0 : 0.94, bigger ? 1.0 : 0.92);
+      lung.frustumCulled = false;
+      this.lungs.add(lung);
+    }
+    this.add(this.lungs);
 
     // --- valves: rings that ride the annulus, with funnel hints --------
     this.annulus = new THREE.Group();
@@ -156,6 +247,9 @@ export class Vessels extends THREE.Group {
     this.atrium.scale.setScalar(distension);
     this.venousUniforms.uEngorge.value = 0.12 * eased;
     this.venousUniforms.uDusk.value = 0.45 * eased;
+    // The lungs come up slightly once the story is about them, so the haze
+    // has something to sit inside. Still far quieter than the heart.
+    this.lungMaterial.opacity = lerp(0.11, 0.19, eased);
     this._applyOpacity();
   }
 
@@ -177,7 +271,7 @@ export class Vessels extends THREE.Group {
     const emphasis = this.presentationEmphasis ?? 0;
     this.arterialMaterial.opacity = lerp(0.3, 0.44, emphasis);
     this.venousMaterial.opacity = lerp(lerp(0.33, 0.42, congested), 0.55, emphasis);
-    this.atriumMaterial.opacity = lerp(lerp(0.62, 0.68, congested), 0.74, emphasis);
+    this.atriumMaterial.opacity = lerp(lerp(0.88, 0.92, congested), 0.94, emphasis);
     this.valveMaterial.opacity = lerp(0.6, 0.8, emphasis);
   }
 }
@@ -188,9 +282,9 @@ export class Vessels extends THREE.Group {
  * above the valve, then a gentle taper around the arch.
  */
 function aortaGeometry() {
-  const sinus = (t) => Math.exp(-((t - 0.13) ** 2) / (2 * 0.045 ** 2));
-  return variableTube(AORTA, 96, 16, (t, theta) => {
-    let r = lerp(0.56, 0.42, smoothstep(0.2, 1, t));
+  const sinus = (t) => Math.exp(-((t - 0.11) ** 2) / (2 * 0.05 ** 2));
+  return variableTube(AORTA, 110, 18, (t, theta) => {
+    let r = lerp(0.5, 0.38, smoothstep(0.2, 0.6, t)) * lerp(1, 0.88, smoothstep(0.6, 1, t));
     // Outflow flare below the valve, tucking the root into the ventricle.
     r *= 1 + 0.26 * (1 - smoothstep(0, 0.08, t));
     // Sinuses: a swell with three soft lobes around the circumference.
@@ -258,7 +352,7 @@ export function variableTube(curve, segments, radialSegments, radiusAt) {
  * ostia where the pulmonary veins arrive, a funnel toward the mitral valve,
  * and low-amplitude surface irregularity.
  */
-function atriumGeometry(radius) {
+export function atriumGeometry(radius) {
   const geometry = new THREE.SphereGeometry(radius, 48, 36);
   const positions = geometry.attributes.position;
 
@@ -300,6 +394,69 @@ function atriumGeometry(radius) {
 }
 
 const BODY_LOBE_DIR = new THREE.Vector3(0.35, 0.75, -0.55).normalize();
+
+/**
+ * The atrioventricular junction: a short, slightly flared collar running from
+ * the mitral annulus up into the floor of the atrium.
+ *
+ * Without it the two chambers read as separate parts placed near each other.
+ * It is deliberately plain — the junction's job is continuity, not detail.
+ */
+function avJunctionGeometry() {
+  const from = ANATOMY.mitralValve;
+  const to = ANATOMY.atriumCentre;
+  const height = Math.max(0.3, to.y - from.y - ANATOMY.atriumRadius * 0.95);
+  const geometry = new THREE.CylinderGeometry(0.7, 0.64, height, 26, 4, true);
+  const positions = geometry.attributes.position;
+  const p = new THREE.Vector3();
+  for (let i = 0; i < positions.count; i++) {
+    p.fromBufferAttribute(positions, i);
+    // Flare at both ends so it blends into the annulus below and the atrial
+    // floor above rather than butting against them.
+    const t = p.y / height + 0.5;
+    const flare = 1 + 0.16 * Math.pow(Math.max(0, 1 - t * 1.8), 2) + 0.2 * Math.pow(Math.max(0, (t - 0.6) / 0.4), 2);
+    p.x *= flare;
+    p.z *= flare;
+    // Lean toward the atrium, which sits posterior to the valve plane.
+    const lean = (t - 0.5) * (to.z - from.z) * 0.9;
+    p.z += lean;
+    positions.setXYZ(i, p.x, p.y, p.z);
+  }
+  geometry.computeVertexNormals();
+  geometry.translate(from.x - 0.05, from.y + height / 2 - 0.05, from.z);
+  return geometry;
+}
+
+/**
+ * Very quiet lung silhouettes.
+ *
+ * Their whole job is to stop the pulmonary vascular bed floating in the dark:
+ * with them the chain LA -> pulmonary veins -> vascular bed -> interstitium
+ * has somewhere to be. They carry no texture, almost no specular and very low
+ * opacity — if a viewer notices the lungs before the heart, they are wrong.
+ */
+function lungGeometry(side) {
+  const geometry = new THREE.SphereGeometry(1, 32, 24);
+  const positions = geometry.attributes.position;
+  const p = new THREE.Vector3();
+  for (let i = 0; i < positions.count; i++) {
+    p.fromBufferAttribute(positions, i);
+    // Tall, deep, narrow — and hollowed on the side facing the heart, the way
+    // the cardiac notch is.
+    p.set(p.x * 2.6, p.y * 4.2, p.z * 2.9);
+    const inward = side > 0 ? Math.max(0, -p.x) : Math.max(0, p.x);
+    const notch = Math.exp(-((p.y + 1.1) ** 2) / 9) * inward * 0.42;
+    p.x += side * notch;
+    // Apex narrows, base spreads.
+    const t = (p.y / 4.2 + 1) / 2;
+    const taper = 0.6 + 0.55 * (1 - t) + 0.12 * Math.sin(3.1 * t);
+    p.x *= taper;
+    p.z *= taper;
+    positions.setXYZ(i, p.x, p.y, p.z);
+  }
+  geometry.computeVertexNormals();
+  return geometry;
+}
 
 function valveRing(position, radius, material) {
   const ring = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.07, 10, 28), material);

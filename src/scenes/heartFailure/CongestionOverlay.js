@@ -6,7 +6,7 @@ import {
   buildVascularFans,
   buildInterstitialFluid,
 } from './anatomy.js';
-import { variableTube } from './Vessels.js';
+import { atriumGeometry, variableTube } from './Vessels.js';
 import { lerp, smoothstep } from '../../utils/math.js';
 
 /**
@@ -42,10 +42,12 @@ export class CongestionOverlay extends THREE.Group {
     this.pressureMaterial = createPressureMaterial(new THREE.Color(PALETTE.pressure));
 
     // --- pressure front along atrium -> veins -> vascular branches
-    // Sized past the lobed atrium's fullest extent (appendage included) and
-    // rescaled with its distension in setCongestion, so the tint always sits
-    // just outside the wall it labels.
-    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.32, 28, 20);
+    // The sheath is the atrium's own lobed shape, a little oversized, rather
+    // than a sphere around it: a sphere had to be big enough to clear the
+    // appendage, and at that size an additive tint over it read as a lavender
+    // balloon that out-competed the ventricle the scene is about.
+    const atrium = atriumGeometry(ANATOMY.atriumRadius * 0.92);
+    atrium.scale(1.06, 1.06, 1.06);
     this.atriumSheath = sheath(atrium, () => 0.12, this.pressureMaterial);
     this.atriumSheath.position.copy(ANATOMY.atriumCentre);
     this.add(this.atriumSheath);
@@ -221,7 +223,7 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
       uFill: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(PALETTE.fluid) },
-      uParticleScale: { value: 0.42 },
+      uParticleScale: { value: 0.92 },
       uHeightScale: { value: 900 },
     },
     vertexShader: /* glsl */ `
@@ -243,8 +245,11 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         );
         vec4 mv = modelViewMatrix * vec4(position + drift, 1.0);
         gl_Position = projectionMatrix * mv;
-        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.09;
-        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 260.0);
+        vAlpha = smoothstep(aAppear, aAppear + 0.3, uFill) * 0.055;
+        // Distance fade: far puffs thin out, so the haze has depth rather than
+        // reading as a flat sheet of identical discs.
+        vAlpha *= mix(0.55, 1.0, clamp((28.0 + mv.z) / 22.0, 0.0, 1.0));
+        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 640.0);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -256,8 +261,10 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         if (d > 0.5) discard;
         // Soft, hazy edge — reads as mist in the interstitium rather than as
         // a discrete glowing particle.
-        float core = smoothstep(0.5, 0.04, d);
-        gl_FragColor = vec4(uColor * (0.4 + 0.25 * core), pow(core, 1.7) * vAlpha);
+        // A gaussian-ish falloff all the way to the rim: no visible disc edge,
+        // which is what made the haze read as sprites rather than as mist.
+        float core = exp(-d * d * 11.0);
+        gl_FragColor = vec4(uColor * (0.45 + 0.2 * core), core * vAlpha);
       }
     `,
   });

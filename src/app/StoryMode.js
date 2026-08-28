@@ -29,6 +29,10 @@ import { el } from '../utils/dom.js';
 export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabelFocus, captureState, restoreState }) {
   const captionEn = el('span', { class: 'story-caption-text lang-en' });
   const captionJa = el('span', { class: 'story-caption-text lang-ja' });
+  // A one-line premise under the opening caption: what course this model
+  // draws, said before it is drawn rather than in a modal nobody reads.
+  const noteEn = el('span', { class: 'story-note lang-en' });
+  const noteJa = el('span', { class: 'story-note lang-ja' });
   const partLabel = el('span', { class: 'story-part' });
   const beatLabel = el('span', { class: 'story-beat' });
 
@@ -40,7 +44,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   const track = el('div', {
     class: 'story-track',
     role: 'progressbar',
-    'aria-label': 'Story progress',
+    'aria-label': '解説の進行',
     'aria-valuemin': '0',
     'aria-valuemax': '100',
     on: {
@@ -63,13 +67,14 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       class: 'story-chapter',
       type: 'button',
       style: `left:${((chapter.at / story.duration) * 100).toFixed(2)}%`,
-      'aria-label': `${chapter.label} — jump to this chapter`,
+      'aria-label': `${chapter.labelJa}（${chapter.label}）へ移動`,
       on: { click: (event) => (event.stopPropagation(), seek(chapter.at + 0.01)) },
     }, [
       el('span', { class: 'story-chapter-dot' }),
       el('span', { class: 'story-chapter-name' }, [
+        el('span', { class: 'lang-ja chapter-wide', text: chapter.labelJa }),
+        el('span', { class: 'lang-ja chapter-narrow', text: chapter.labelJaShort ?? chapter.labelJa }),
         el('span', { class: 'lang-en', text: chapter.label }),
-        el('span', { class: 'lang-ja', text: chapter.labelJa }),
       ]),
     ])
   );
@@ -79,29 +84,29 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   // --- completion state ---------------------------------------------------
   // After the last scene the sequence does not just stop on a tiny ✕: it says
   // it is done and offers the two things a viewer actually does next.
-  const completion = el('div', { class: 'story-complete', role: 'group', 'aria-label': 'Story finished' }, [
+  const completion = el('div', { class: 'story-complete', role: 'group', 'aria-label': '解説の終了' }, [
     el('span', { class: 'story-complete-text' }, [
-      el('span', { class: 'lang-en', text: "That's the end of the guided tour." }),
       el('span', { class: 'lang-ja', text: '解説は以上です。' }),
+      el('span', { class: 'lang-en', text: "That's the end of the guided tour." }),
     ]),
     el('div', { class: 'story-complete-actions' }, [
       el('button', {
         class: 'story-cta story-cta-primary',
         type: 'button',
-        'aria-label': 'Back to exploring',
+        'aria-label': '自由操作に戻る',
         on: { click: () => exit() },
       }, [
+        el('span', { class: 'lang-ja', text: '自由操作に戻る' }),
         el('span', { class: 'lang-en', text: 'Back to exploring' }),
-        el('span', { class: 'lang-ja', text: '探索に戻る' }),
       ]),
       el('button', {
         class: 'story-cta',
         type: 'button',
-        'aria-label': 'Watch again',
+        'aria-label': 'もう一度見る',
         on: { click: () => replay() },
       }, [
-        el('span', { class: 'lang-en', text: 'Watch again' }),
         el('span', { class: 'lang-ja', text: 'もう一度見る' }),
+        el('span', { class: 'lang-en', text: 'Watch again' }),
       ]),
     ]),
   ]);
@@ -109,7 +114,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   const element = el('div', { class: 'story-bar' }, [
     el('div', { class: 'story-line' }, [
       partLabel,
-      el('span', { class: 'story-caption' }, [captionEn, captionJa]),
+      el('span', { class: 'story-caption' }, [captionEn, captionJa, noteEn, noteJa]),
       beatLabel,
     ]),
     el('div', { class: 'story-foot' }, [
@@ -118,16 +123,24 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       el('button', {
         class: 'story-leave',
         type: 'button',
-        title: 'Leave the story (Escape)',
-        'aria-label': 'Leave the story',
+        title: '解説を終了する（Esc）',
+        'aria-label': '自由操作に戻る',
         on: { click: () => exit() },
       }, [
+        el('span', { class: 'lang-ja', text: '← 自由操作に戻る' }),
         el('span', { class: 'lang-en', text: '← Back to exploring' }),
-        el('span', { class: 'lang-ja', text: '← 探索に戻る' }),
       ]),
     ]),
     completion,
   ]);
+
+  // The kicker beside the caption is one short word, so it is picked rather
+  // than stacked; it follows the language the rest of the bar is in.
+  const partNames = { beat: '1 拍', remodeling: 'リモデリング' };
+  const applyLanguage = (mode) => {
+    partNames.beat = mode === 'en' ? 'One beat' : '1 拍';
+    partNames.remodeling = mode === 'en' ? 'Remodeling' : 'リモデリング';
+  };
 
   let active = false;
   let snapshot = null;
@@ -201,8 +214,10 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     const caption = story.captionAt(t);
     captionEn.textContent = caption.text;
     captionJa.textContent = caption.textJa;
+    noteEn.textContent = caption.note ?? '';
+    noteJa.textContent = caption.noteJa ?? '';
     element.style.setProperty('--story-caption-opacity', caption.opacity.toFixed(3));
-    partLabel.textContent = caption.part === 'beat' ? 'One beat' : 'Remodeling';
+    partLabel.textContent = caption.part === 'beat' ? partNames.beat : partNames.remodeling;
     element.dataset.part = caption.part;
 
     // The beat phase is worth naming only while the beat is the subject — not
@@ -269,6 +284,8 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     },
     enter,
     exit,
+    /** @param {string} mode 'ja' | 'en' */
+    setLanguage: applyLanguage,
     toggle: () => (active ? exit() : enter()),
     /**
      * Jump to a moment. Used by the step dots, and by the tests to reach a step

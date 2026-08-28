@@ -13,8 +13,8 @@ export const ANATOMY = {
   cutAngle: Math.PI * 0.55,
   aorticValve: new THREE.Vector3(1.15, 1.6, 0.35),
   mitralValve: new THREE.Vector3(-1.2, 1.6, 0.2),
-  atriumCentre: new THREE.Vector3(-1.5, 2.95, -0.7),
-  atriumRadius: 1.42,
+  atriumCentre: new THREE.Vector3(-1.45, 2.86, -1.15),
+  atriumRadius: 1.1,
   /**
    * The two schematic pulmonary vascular regions the veins drain from. The
    * left one carries the label and the congestion story; the right one exists
@@ -31,19 +31,29 @@ export const ANATOMY = {
  * chamber while the annulus descends during systole.
  */
 export const AORTA = new THREE.CatmullRomCurve3([
-  new THREE.Vector3(1.0, 0.7, 0.3),
+  // The root starts at the valve plane, not below it. Started lower, the tube
+  // ran down into the ventricle and ended on a cut disc in mid-cavity — an
+  // opaque pipe crossing the one space the cutaway exists to show. Below the
+  // aortic valve the outflow tract is ventricle, and the ventricle draws it.
+  new THREE.Vector3(1.08, 1.34, 0.28),
   ANATOMY.aorticValve.clone(),
-  new THREE.Vector3(1.5, 3.1, 0.15),
-  new THREE.Vector3(1.8, 4.9, -0.35),
+  new THREE.Vector3(1.62, 3.1, -0.35),
+  new THREE.Vector3(1.9, 4.9, -0.85),
   new THREE.Vector3(0.7, 6.3, -1.1),
   new THREE.Vector3(-1.4, 6.1, -1.8),
   new THREE.Vector3(-3.1, 5.1, -2.4),
+  // The descending aorta continues past the frame. An artery that stopped in
+  // mid-air read as a cut pipe; running it out of shot is what an atlas plate
+  // does, and it costs one control point.
+  new THREE.Vector3(-4.3, 2.2, -3.6),
+  new THREE.Vector3(-4.9, -3.4, -4.2),
+  new THREE.Vector3(-5.2, -9.0, -4.6),
 ]);
 
 /** Mitral inflow: atrium down through the valve. */
 export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
   ANATOMY.atriumCentre.clone(),
-  new THREE.Vector3(-1.35, 2.4, -0.1),
+  new THREE.Vector3(-1.3, 2.3, -0.45),
   ANATOMY.mitralValve.clone(),
 ]);
 
@@ -53,10 +63,10 @@ export const MITRAL_INFLOW = new THREE.CatmullRomCurve3([
  * single stalk into the centre.
  */
 export const PULMONARY_VEIN_OSTIA = [
-  new THREE.Vector3(-2.55, 3.6, -1.3), // left superior
-  new THREE.Vector3(-2.75, 2.5, -1.25), // left inferior
-  new THREE.Vector3(-0.5, 3.55, -1.4), // right superior
-  new THREE.Vector3(-0.35, 2.45, -1.35), // right inferior
+  new THREE.Vector3(-2.28, 3.36, -1.62), // left superior
+  new THREE.Vector3(-2.4, 2.5, -1.6), // left inferior
+  new THREE.Vector3(-0.66, 3.3, -1.72), // right superior
+  new THREE.Vector3(-0.55, 2.44, -1.7), // right inferior
 ];
 
 /**
