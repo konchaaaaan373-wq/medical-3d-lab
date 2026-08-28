@@ -8,15 +8,31 @@ npm test           # node --test "tests/*.test.js"
 npm run build      # vite build
 ```
 
+- `src/catalog/` — **どんな system / organ / scene が存在するか**。ここが唯一の登録先
 - `src/app/` — シーンと UI の接続。`App.js` はシーンの中身を知らない
-- `src/scenes/<theme>/` — 1 テーマ = 1 シーンモジュール
-- `src/data/<theme>.js` — ステージ定義・配色・文言。描画コードに文章を書かない
+- `src/scenes/<system>/organs/<organ>.js` — 臓器のジオメトリ。疾患シーン間で再利用する
+- `src/scenes/<system>/scenes/<scene>/` — 1 シーン = 1 モジュール
+- `src/scenes/shared/` — 全臓器シーンが載る土台（shell / materials / geometry / motion）
+- `src/data/<theme>.js`, `src/data/prototypes/<system>.js` — ステージ定義・配色・文言。
+  描画コードに文章を書かない
 - `src/components/` — 素の DOM の UI パーツ
-- `tests/` — 医学モデルの整合性テスト（`node --test`）
+- `tests/` — カタログ整合性と医学モデルの整合性テスト（`node --test`）
+
+ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
+（別名 `#/explore`）が全身の Organ Explorer。ルートは `src/catalog/scenes.js`
+から生成されるので、**シーンを増やしても routing に手を入れません**。
 
 ---
 
-## Product principles
+## Product definition
+
+> **Make invisible physiology visible, interactive, and understandable.**
+> 見えない病態生理を、3D で動かし、触って理解する。
+
+対象は心臓と脳だけではなく **人体全体** です。最終的に anatomy / physiology /
+pathology / disease progression / treatment mechanism を臓器横断的に扱います。
+ただし **anatomy atlas を作るのが目的ではありません**。中心はあくまで
+「疾患・病態を理解するための 3D visualization」です。
 
 設計判断の source of truth は
 [`docs/product-principles.md`](docs/product-principles.md) です。
@@ -37,8 +53,25 @@ npm run build      # vite build
 - **Every feature should serve SNS / Interactive / Educational value.**
   「この機能はどの層の、どのユーザー価値を改善するのか？」に答えられない機能は
   追加しない。Interactive Web が中核、SNS は入口、Educational は定着
-- **Heart Failure is the reference implementation.** 新しい実装は
-  `src/scenes/heartFailure/` の構造を基準にする
+- **Heart Failure is the reference implementation.** 深く作り込むときは
+  `src/scenes/cardiovascular/scenes/heartFailure/` の構造を基準にする
+
+### Organ と Disease を混ぜない
+
+臓器のジオメトリは `src/scenes/<system>/organs/` に、
+それを使う 1 つの主題は `src/scenes/<system>/scenes/<scene>/` に置きます。
+`normal-lung` と `asthma` は**同じ肺のジオメトリをパラメータ違いで使う 2 つのシーン**
+であって、肺を 2 回モデリングしたものではありません。
+臓器ビルダーに疾患名を持ち込まないでください。
+
+### Scene status
+
+カタログの各シーンは `prototype → alpha → reviewed → production` のどれかです。
+`production` 以外は UI に **Prototype** バッジが出ます。
+昇格の条件は [`docs/adding-a-scene.md`](docs/adding-a-scene.md) にあります。
+
+**prototype は「形は概略、動きは仮」という約束です。** prototype のまま
+臨床的な数値を出したり、精度を主張したりしないでください。
 
 ### 医学表現
 
@@ -53,3 +86,6 @@ npm run build      # vite build
 
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) の
 **Scene suitability check**（7 問）と **Scene proposal template** に先に答える。
+prototype を 1 つ足すだけなら 7 問すべてに答える必要はありませんが、
+**「何が時間とともに変化するのか」** には必ず答えてください。
+動かないものを 3D にする理由はありません。

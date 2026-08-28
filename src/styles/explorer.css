@@ -1,0 +1,282 @@
+/* The organ explorer, and the status badge it shares with the scene view. */
+
+/* The explorer is a document, not an overlay: it scrolls, and there is no
+   canvas behind it to keep clear of. Both `html` and `body` are pinned to the
+   viewport for the 3D view, so both have to be released here. */
+html[data-route='explorer'],
+html[data-route='explorer'] body {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+html[data-route='explorer'] #stage {
+  display: none;
+}
+
+html[data-route='explorer'] #ui {
+  position: static;
+  inset: auto;
+  display: block;
+  pointer-events: auto;
+  min-height: 100%;
+}
+
+.explorer {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 8px 0 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.explorer-header {
+  padding: 22px 24px;
+  position: relative;
+}
+
+.explorer-header .title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.explorer-header .title .lang-ja {
+  font-size: 0.6em;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+.explorer-header .subtitle {
+  max-width: 62ch;
+  line-height: 1.6;
+  font-size: 12px;
+}
+
+.explorer-header .subtitle .lang-ja {
+  display: block;
+}
+
+.explorer-header .ui-toggle {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
+.explorer-jump {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.explorer-jump .scene-pill {
+  border: 1px solid var(--border);
+}
+
+.explorer-jump .scene-pill .lang-ja {
+  margin-left: 5px;
+  opacity: 0.7;
+}
+
+.explorer-system {
+  padding: 4px 4px 10px;
+  scroll-margin-top: 16px;
+}
+
+.explorer-system-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 18px 0 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 15px;
+  letter-spacing: 0.02em;
+}
+
+.explorer-system-name .lang-ja {
+  font-size: 12px;
+  color: var(--ink-dim);
+  font-weight: 500;
+}
+
+.explorer-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.explorer-organ {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 14px;
+  padding: 10px 0;
+  align-items: start;
+}
+
+.explorer-organ.is-empty {
+  opacity: 0.55;
+}
+
+.explorer-organ-name {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.explorer-organ-name .lang-ja {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.explorer-scenes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.explorer-scene {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 230px;
+  max-width: 340px;
+  flex: 1 1 230px;
+  padding: 11px 13px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  text-decoration: none;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+a.explorer-scene:hover {
+  border-color: rgba(56, 225, 239, 0.5);
+  background: var(--panel-strong);
+  transform: translateY(-1px);
+}
+
+.explorer-scene.is-planned {
+  opacity: 0.5;
+  border-style: dashed;
+  min-width: 150px;
+  flex: 0 1 auto;
+}
+
+.explorer-scene-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.explorer-scene-title .lang-ja {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+.explorer-scene-note {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.explorer-scene-note .lang-ja {
+  display: block;
+}
+
+.explorer-footer {
+  padding: 14px 18px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+.explorer-footer .lang-ja {
+  display: block;
+}
+
+/* ---------- status badge ----------
+   Shown on anything that is not production, in the explorer and on the scene's
+   own title card. A viewer should never have to guess whether what they are
+   looking at has been checked. */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #ffd8a8;
+  background: rgba(255, 168, 76, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 168, 76, 0.36);
+  white-space: nowrap;
+}
+
+.status-badge .lang-ja {
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+.status-badge.is-reviewed {
+  color: #a8e6c4;
+  background: rgba(76, 220, 150, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(76, 220, 150, 0.32);
+}
+
+.status-badge.is-planned {
+  color: var(--ink-faint);
+  background: rgba(140, 175, 225, 0.08);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+.title-card .status-badge {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@media (max-width: 720px) {
+  .explorer {
+    padding: 4px 0 48px;
+  }
+
+  .explorer-organ {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .explorer-scene {
+    min-width: 0;
+    flex-basis: 100%;
+  }
+
+  .explorer-header .ui-toggle {
+    position: static;
+    margin-top: 12px;
+  }
+}
+
+/* The scene view drops the subtitle on a small screen to protect the 3D frame.
+   The explorer has no 3D frame to protect and the line is what says what this
+   project is, so it stays. */
+@media (max-width: 720px) {
+  .explorer-header .subtitle {
+    display: block;
+  }
+}

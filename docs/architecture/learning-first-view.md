@@ -1,7 +1,7 @@
 # Learning-first view
 
 **Status:** accepted · 2026-08-26 · applies to `src/app/`, `src/components/`,
-`src/scenes/heartFailure/`
+`src/scenes/cardiovascular/scenes/heartFailure/`
 
 ## The problem
 

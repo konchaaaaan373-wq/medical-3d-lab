@@ -7,7 +7,7 @@ import {
   verticalOffsetForView,
   framePose,
 } from '../src/app/framing.js';
-import { beatPhaseAt, sampleHemodynamics } from '../src/scenes/heartFailure/hemodynamics.js';
+import { beatPhaseAt, sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 import { STAGES } from '../src/data/heartFailure.js';
 import { stageIndexFor } from '../src/components/StageReadout.js';
 import { ZOOM_RANGE, steppedZoom, zoomedDistance } from '../src/app/zoom.js';

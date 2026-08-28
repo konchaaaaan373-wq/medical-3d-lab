@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
-import { loadScene, organsWithScenes, resolveSceneId } from './sceneRegistry.js';
+import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
+import { sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -46,7 +47,11 @@ export async function createApp({ stage, ui }) {
     window.__lab = { viewer, scene };
   }
 
-  const meta = SceneClass.meta;
+  // The catalogue owns how far a scene has been taken, so the badge on screen
+  // cannot drift from the entry the explorer draws. A scene that does not know
+  // its own status is not a special case — it simply reads it from here.
+  const entry = sceneById(resolveSceneId());
+  const meta = { ...SceneClass.meta, status: entry?.status ?? SceneClass.meta.status ?? 'production' };
   document.title = `${meta.title} — medical-3d-lab`;
 
   /**
@@ -319,7 +324,7 @@ export async function createApp({ stage, ui }) {
     pvPanel.update(pressureVolume);
     wavePanel?.update(pressureVolume);
   }
-  const sceneSwitcher = createSceneSwitcher({ organs: organsWithScenes(), currentId: resolveSceneId() });
+  const sceneSwitcher = createSceneSwitcher({ groups: systemsWithScenes(), currentId: resolveSceneId() });
 
   const uiToggle = el('button', {
     class: 'ui-toggle',
@@ -647,11 +652,13 @@ export async function createApp({ stage, ui }) {
   wavePanel?.resize();
   viewer.start();
 
-  // Switching themes via the URL hash is rare enough that a reload is fine —
-  // and it guarantees a clean GPU state.
-  let currentSceneId = resolveSceneId();
+  // Switching scenes via the URL hash is rare enough that a reload is fine —
+  // and it guarantees a clean GPU state. Compared as *routes* rather than as
+  // scene ids: leaving for the organ explorer is a navigation too, and
+  // resolving it to a scene id would have made that link do nothing.
+  let currentHash = window.location.hash;
   window.addEventListener('hashchange', () => {
-    if (resolveSceneId() !== currentSceneId) window.location.reload();
+    if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
   });
 
   // Exposed for debugging and for automated screenshots.

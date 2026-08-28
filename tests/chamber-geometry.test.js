@@ -7,14 +7,14 @@ import {
   wallThicknessFactor,
   rvLobeMaxExtent,
   VENTRICLE_SHAPING,
-} from '../src/scenes/heartFailure/geometry/ventricleGeometry.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
 import {
   sampleHemodynamics,
   myocardialVolumeFor,
   ventricleShape,
-} from '../src/scenes/heartFailure/hemodynamics.js';
-import { COMPARISON_OFFSET } from '../src/scenes/heartFailure/HeartFailureScene.js';
-import { ANATOMY } from '../src/scenes/heartFailure/anatomy.js';
+} from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
+import { COMPARISON_OFFSET } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
+import { ANATOMY } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 
 // ---------------------------------------------------------------------------
 // The chamber mesh carries anatomical shaping (tapered profile, septal

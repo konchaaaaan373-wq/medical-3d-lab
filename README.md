@@ -14,12 +14,27 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 設計思想の全体は **[`docs/product-principles.md`](docs/product-principles.md)**
 にまとめてあります。新しいテーマや機能を追加する前に、まずそちらを読んでください。
 
-現在 2 テーマを実装しています。
+対象は心臓と脳だけではなく **人体全体** です。現在 11 の系統・22 の臓器を
+カタログに登録し、16 シーンを実装しています。全身の一覧は
+**`#/organs`**（Organ Explorer）から。
+
+**深く作り込んだシーン（production）**
 
 | テーマ | 中心にある問い | URL |
 | --- | --- | --- |
 | **心不全** | 後負荷を上げると SV はなぜ下がる？ EF 58% と 29% では何が違う？ | `#/heart-failure` |
 | **アミロイドβの蓄積** | Aβ はどうやって小さな分子からプラークになる？ | `#/amyloid-beta` |
+
+**全身プロトタイプ（prototype）** — 呼吸と肺 / 嚥下と胃の蠕動 / 腸管の輸送 /
+門脈血流と胆汁 / 膵臓の分泌 / 濾過から膀胱まで / 甲状腺ホルモンの放出 /
+副腎の反応 / 脾臓での血球処理 / 骨のリモデリング / 骨格筋の収縮 /
+子宮内膜の周期 / 前立腺と尿流 / 全身の概観。
+
+prototype は **「形は概略、動きは仮」** という約束です。画面上に
+`PROTOTYPE — NOT ANATOMICALLY VALIDATED` と表示され、数値は一切出しません。
+何を表現していないかは [`docs/medical-notes.md`](docs/medical-notes.md) に
+シーンごとに列挙してあります。昇格の条件は
+[`docs/adding-a-scene.md`](docs/adding-a-scene.md) にあります。
 
 心不全は **reference implementation** です。閉ループの循環モデル・PV ループ・
 圧波形・前負荷/後負荷スライダーまで実装されており、単なる 3D heart viewer では
@@ -186,41 +201,62 @@ medical-3d-lab/
 ├─ tests/                      モデル整合性テスト（node --test）
 ├─ docs/
 │  ├─ product-principles.md    ★ 設計思想（source of truth）
-│  ├─ adding-a-scene.md        新しいテーマを追加する手順 + 採否チェック
+│  ├─ adding-a-scene.md        シーン・臓器・疾患を追加する手順 + 採否チェック
 │  ├─ medical-notes.md         医学的な表現の方針と注意
 │  ├─ medical-audit-2026-08-24.md  医学監査の記録
 │  └─ architecture/
 │     └─ product-architecture.md  層の依存関係
 └─ src/
-   ├─ main.js                  起動処理とローディング表示
+   ├─ main.js                  起動処理とルート分岐（scene / explorer）
+   ├─ catalog/                 ★ どんな system / organ / scene があるか
+   │  ├─ taxonomy.js           11 系統・22 臓器・status の定義
+   │  ├─ scenes.js             シーンの manifest（唯一の登録先）+ 予定の疾患シーン
+   │  └─ index.js              カタログへの問い合わせと整合性検証
    ├─ app/
    │  ├─ App.js                シーンと UI の接続（状態は進行度ひとつだけ）
+   │  ├─ router.js             `#/<slug>` と `#/organs` の解決
+   │  ├─ Explorer.js           全身の Organ Explorer（3D を一切ロードしない）
    │  ├─ ReelMode.js           SNS シーケンスの実行（フレーム整形・クリーン表示）
    │  ├─ framing.js            アスペクトに応じたカメラ距離の計算
    │  ├─ Viewer.js             renderer / camera / bloom / アニメーションループ
-   │  └─ sceneRegistry.js      テーマの一覧と遅延ロード
+   │  └─ sceneRegistry.js      カタログを UI の形に合わせるアダプタ
    ├─ scenes/
-   │  ├─ heartFailure/         ★ 心不全（血行動態モデル）
-   │  │  ├─ HeartFailureScene.js  シーン本体（共通インターフェース実装）
-   │  │  ├─ circulation.js        閉ループ循環モデル（time-varying elastance / RK4）
-   │  │  ├─ hemodynamics.js       病態 → 力学パラメータ → 解、のブリッジ
-   │  │  ├─ Chamber.js            変形する心腔のジオメトリ
-   │  │  ├─ BloodField.js         左室内の血液粒子（生理的な向きのみ）
-   │  │  ├─ CongestionOverlay.js  圧のフロントと間質の水分（血流とは別言語）
-   │  │  ├─ ReferenceHeart.js     比較用の正常心（同じモデルの progress = 0）
-   │  │  └─ reelStoryboard.js     15秒シーケンスの台本
-   │  └─ amyloidBeta/          ★ 最初のテーマ
-   │     ├─ AmyloidBetaScene.js   シーン本体（共通インターフェース実装）
-   │     ├─ aggregationLayout.js  粒子の配置と閾値を決定論的に生成
-   │     ├─ AggregationField.js   Aβ 粒子フィールド（THREE.Points + shader）
-   │     ├─ FibrilRibbons.js      線維の描画（drawRange で伸長）
-   │     ├─ PlaqueCores.js        プラークの塊とフレネル光輪
-   │     ├─ Neuron.js             神経細胞の簡易構造
-   │     └─ shaders/particles.js  粒子用 GLSL
+   │  ├─ shared/               ★ 全臓器シーンが載る土台
+   │  │  ├─ PrototypeScene.js     scene interface の実装 + 被写体に合わせた構図
+   │  │  ├─ materials.js          組織・管腔・粘膜・骨・半透明・粒子のマテリアル
+   │  │  ├─ lighting.js           共通のスタジオライト
+   │  │  ├─ geometry/shapes.js    球を臓器の形に押し込む / 回転体・断面
+   │  │  ├─ geometry/tube.js      半径を毎フレーム書き換えられる管（蠕動・収縮）
+   │  │  └─ motion/               粒子の流れ・呼吸周期・伝わる波
+   │  ├─ cardiovascular/
+   │  │  ├─ organs/heart.js       概観用の心臓
+   │  │  └─ scenes/heartFailure/  ★ 心不全（血行動態モデル・reference implementation）
+   │  │     ├─ HeartFailureScene.js  シーン本体（共通インターフェース実装）
+   │  │     ├─ circulation.js        閉ループ循環モデル（time-varying elastance / RK4）
+   │  │     ├─ hemodynamics.js       病態 → 力学パラメータ → 解、のブリッジ
+   │  │     ├─ Chamber.js            変形する心腔のジオメトリ
+   │  │     ├─ BloodField.js         左室内の血液粒子（生理的な向きのみ）
+   │  │     ├─ CongestionOverlay.js  圧のフロントと間質の水分（血流とは別言語）
+   │  │     ├─ ReferenceHeart.js     比較用の正常心（同じモデルの progress = 0）
+   │  │     └─ reelStoryboard.js     15秒シーケンスの台本
+   │  ├─ nervous/
+   │  │  ├─ organs/brain.js       概観用の脳
+   │  │  └─ scenes/amyloidBeta/   ★ 最初のテーマ
+   │  │     ├─ AmyloidBetaScene.js   シーン本体（共通インターフェース実装）
+   │  │     ├─ aggregationLayout.js  粒子の配置と閾値を決定論的に生成
+   │  │     ├─ AggregationField.js   Aβ 粒子フィールド（THREE.Points + shader）
+   │  │     ├─ FibrilRibbons.js      線維の描画（drawRange で伸長）
+   │  │     ├─ PlaqueCores.js        プラークの塊とフレネル光輪
+   │  │     ├─ Neuron.js             神経細胞の簡易構造
+   │  │     └─ shaders/particles.js  粒子用 GLSL
+   │  ├─ respiratory/ gastrointestinal/ hepatobiliary/ renal/
+   │  ├─ endocrine/ hematologic/ musculoskeletal/ reproductive/ systemic/
+   │  │     各系統は organs/（臓器ジオメトリ）と scenes/（シーン）に分かれます
    ├─ components/              UI パーツ（素の DOM、フレームワーク非依存）
    ├─ controls/                OrbitControls の設定
    ├─ data/                    ステージ定義・配色・文言（コンテンツはここに集約）
-   ├─ styles/                  base.css / ui.css / reel.css
+   │  └─ prototypes/           全身プロトタイプの文言（1 系統に 1 ファイル）
+   ├─ styles/                  base.css / ui.css / reel.css / explorer.css
    └─ utils/                   数学・DOM・再生制御・破棄処理
 ```
 
@@ -289,12 +325,17 @@ Amyloid-β        SNS —   Interactive ✓   Educational —
 **Scene suitability check**（7 問）と **Scene proposal template** に答えてください。
 「3D にすると理解が明確に改善するか」に答えられないテーマは扱いません。
 
-技術的には、`src/scenes/<theme>/` を追加して
-`src/app/sceneRegistry.js` に 1 行足すだけで動きます。
+技術的には、`src/scenes/<system>/scenes/<scene>/` を追加して
+`src/catalog/scenes.js` に 1 エントリ足すだけで動きます。
+routing・シーン切替タブ・Organ Explorer・テストはそこから生成されるので、
 `App.js` や `Viewer.js` を変更する必要はありません。
-テーマの切り替えは画面左上のセレクタ、または URL のハッシュ
-（例: `#/heart-failure`）で行えます。表示していないテーマのコードは
-ダウンロードされません（動的 import）。
+シーンの切り替えは画面左上のセレクタ、`#/organs` の Organ Explorer、
+または URL のハッシュ（例: `#/heart-failure`）で行えます。
+表示していないシーンのコードはダウンロードされません（動的 import）。
+
+臓器のジオメトリは `src/scenes/<system>/organs/` にあり、シーンから独立して
+います。`normal-lung` と `asthma` は同じ肺を別パラメータで呼ぶ 2 つのシーンで、
+肺を 2 回モデリングしたものではありません。
 
 シーンが任意で実装できる共通フック（ステージ別カメラ、数値パネル、
 圧-容積ループ、負荷条件スライダー、SNS シーケンス）は
