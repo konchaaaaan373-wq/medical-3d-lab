@@ -23,7 +23,7 @@ export function buildThyroid({ color = '#b4565f', follicleColor = '#ffd9a0', fol
     const mesh = new THREE.Mesh(
       shapedSphere({
         detail: 7,
-        scale: [0.3, 0.62, 0.3],
+        scale: [0.31, 0.62, 0.35],
         warp: (v) => {
           // Superior pole tapers, inferior pole is blunt.
           const up = smoothstep(-0.1, 1, v.y);

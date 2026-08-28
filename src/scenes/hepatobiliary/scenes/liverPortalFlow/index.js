@@ -35,8 +35,8 @@ function createModel() {
 
   // Portal vein: up from the gut into the porta hepatis, then branching.
   const portalTrunk = smoothCurve([
-    [0.1, -2.1, 0.55],
-    [0.0, -1.5, 0.6],
+    [0.16, -1.85, 0.5],
+    [0.02, -1.4, 0.58],
     [-0.1, -1.0, 0.62],
     [-0.15, -0.7, 0.6],
   ]);
@@ -45,11 +45,12 @@ function createModel() {
     vesselMaterial
   );
 
-  // Hepatic veins: out of the superior surface towards the inferior vena cava.
+  // Hepatic veins: out of the superior surface towards the inferior vena cava,
+  // which runs *behind* the liver. Drawn straight up it looked like a chimney.
   const hepaticTrunk = smoothCurve([
-    [-0.1, 0.5, -0.2],
-    [-0.05, 0.9, -0.25],
-    [0.0, 1.6, -0.3],
+    [-0.12, 0.36, -0.2],
+    [-0.06, 0.6, -0.42],
+    [0.0, 0.84, -0.66],
   ]);
   const hepaticMesh = new THREE.Mesh(
     new TubeSurface(hepaticTrunk, { radius: (u) => 0.13 + 0.03 * u, steps: 30, radial: 14 }).geometry,
@@ -111,9 +112,13 @@ function createModel() {
     opacity: 0,
   });
 
+  // Framed on the organ, not on the plumbing: the vessels reach well past it,
+  // and framing on all of it left the liver small and high in the frame.
+  const focus = new THREE.Group();
+  focus.add(liver.object, gallbladder.object);
+
   object.add(
-    liver.object,
-    gallbladder.object,
+    focus,
     duodenum.object,
     portalMesh,
     hepaticMesh,
@@ -127,6 +132,7 @@ function createModel() {
 
   return {
     object,
+    focus,
     anchors: {
       ...liver.anchors,
       ...gallbladder.anchors,

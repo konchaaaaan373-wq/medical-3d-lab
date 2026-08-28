@@ -92,7 +92,10 @@ function createModel() {
       rightHilum: new THREE.Vector3(-0.7, 1.2, 0.5),
       leftCortex: new THREE.Vector3(2.7, 2.35, 0.5),
       ureter: new THREE.Vector3(-1.35, -0.55, 0.5),
-      ...bladder.anchors,
+      // In world coordinates: the bladder builder's own anchor is relative to
+      // the bladder, and the bladder sits low in this scene. Spread in as it
+      // came, the label floated a body's width above the organ it names.
+      bladder: new THREE.Vector3(0.95, -2.05, 0.6),
     },
     setProgress(value) {
       filling = value;

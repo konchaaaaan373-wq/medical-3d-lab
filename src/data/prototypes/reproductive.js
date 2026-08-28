@@ -9,8 +9,10 @@ export const UTERINE_CYCLE = {
   subtitleJa: '1 周期にわたる子宮内膜の変化（断面）｜ プロトタイプ',
 
   palette: {
-    myometrium: '#b5666e',
-    endometrium: '#e08a94',
+    // Deliberately far apart: the whole scene is "which layer is changing", and
+    // two similar pinks made the section read as one translucent pear.
+    myometrium: '#8f4a55',
+    endometrium: '#f2a3ac',
     ovary: '#d9b06a',
     tube: '#c99aa0',
   },

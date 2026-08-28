@@ -88,5 +88,37 @@ export function createSceneSwitcher({ groups, currentId }) {
 
   const element = el('nav', { class: 'panel scene-switcher', 'aria-label': 'Scenes' }, children);
 
+  // The row scrolls, so two things have to be true on arrival: the system you
+  // are in is visible in it, and the row says which way the rest of the list
+  // is. Both are re-checked on scroll and on resize.
+  const rows = [systemRow, ...children.slice(1)];
+
+  const markEdges = (row) => {
+    const max = row.scrollWidth - row.clientWidth;
+    row.classList.toggle('has-more-start', row.scrollLeft > 2);
+    row.classList.toggle('has-more-end', row.scrollLeft < max - 2);
+  };
+
+  const settle = () => {
+    for (const row of rows) {
+      // Only scrolled when the current pill would not otherwise be on screen:
+      // centring it unconditionally pushed the first system half out of view
+      // for no reason.
+      const current = row.querySelector('.is-current');
+      if (current) {
+        const start = current.offsetLeft;
+        const end = start + current.clientWidth;
+        if (start < row.scrollLeft || end > row.scrollLeft + row.clientWidth) {
+          row.scrollLeft = start - row.clientWidth / 2 + current.clientWidth / 2;
+        }
+      }
+      markEdges(row);
+    }
+  };
+
+  for (const row of rows) row.addEventListener('scroll', () => markEdges(row), { passive: true });
+  requestAnimationFrame(settle);
+  window.addEventListener('resize', settle);
+
   return { element };
 }

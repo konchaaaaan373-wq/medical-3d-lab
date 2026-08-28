@@ -49,7 +49,11 @@ html[data-route='explorer'] #ui {
   font-weight: 600;
 }
 
+/* The scene view hides the subtitle on a short or narrow window to protect the
+   3D frame. The explorer has no 3D frame to protect, and this line is what says
+   what the project is — so it is restored at every size. */
 .explorer-header .subtitle {
+  display: block;
   max-width: 62ch;
   line-height: 1.6;
   font-size: 12px;
@@ -142,6 +146,9 @@ html[data-route='explorer'] #ui {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  /* Planned scenes are one-line chips; stretched to the height of a real card
+     they read as scenes with the description missing. */
+  align-items: flex-start;
 }
 
 .explorer-scene {
@@ -275,8 +282,4 @@ a.explorer-scene:hover {
 /* The scene view drops the subtitle on a small screen to protect the 3D frame.
    The explorer has no 3D frame to protect and the line is what says what this
    project is, so it stays. */
-@media (max-width: 720px) {
-  .explorer-header .subtitle {
-    display: block;
-  }
-}
+

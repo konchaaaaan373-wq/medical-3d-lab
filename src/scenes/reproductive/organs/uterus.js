@@ -16,8 +16,8 @@ import { mucosaMaterial, tissueMaterial } from '../../shared/materials.js';
  * `setLining` is a shape, not a thickness in millimetres.
  */
 export function buildUterus({
-  myometrium = '#b5666e',
-  endometrium = '#e08a94',
+  myometrium = '#8f4a55',
+  endometrium = '#f2a3ac',
   ovary = '#d9b06a',
   tube = '#c99aa0',
 } = {}) {
@@ -101,7 +101,7 @@ export function buildUterus({
       lining.scale.set(radial, lerp(0.94, 1, v), radial);
       // The lining is not just thicker but more vascular by then; the shift is
       // presentational and small on purpose.
-      lining.material.emissiveIntensity = lerp(0.06, 0.16, v);
+      lining.material.emissiveIntensity = lerp(0.08, 0.22, v);
     },
     dispose() {
       for (const surface of tubeSurfaces) surface.dispose();

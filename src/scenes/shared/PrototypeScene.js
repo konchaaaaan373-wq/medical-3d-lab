@@ -26,6 +26,7 @@ import { prototypeMeta } from './prototypeMeta.js';
  *   setProgress(value)        0..1, the one state the UI drives
  *   update(dt, elapsed)       per-frame motion
  *   anchors                   { name: Vector3 } — where the labels hang
+ *   focus                     optional Object3D the camera should frame on
  *   dispose()                 optional; anything not owned by `object`
  *
  * @param {{ copy: object,
@@ -58,7 +59,11 @@ export function definePrototypeScene({ copy, cameraPose, createModel, framing, l
       // out from what was actually built, so a scene cannot be authored to
       // crop its own subject and does not have to be re-tuned every time the
       // geometry changes. See `fitPose`.
-      PrototypeScene.cameraPose = fitPose(this.model.object, PrototypeScene.cameraPose, framing);
+      // Framed on `focus` when the model names one. Several scenes draw context
+      // that is much larger than their subject — a vessel running off to the
+      // midline, a duodenal loop, a kidney under an adrenal gland — and framing
+      // on the whole group pushes the subject into a corner.
+      PrototypeScene.cameraPose = fitPose(this.model.focus ?? this.model.object, PrototypeScene.cameraPose, framing);
       this.setProgress(0);
       return this.root;
     }
@@ -115,7 +120,7 @@ export function definePrototypeScene({ copy, cameraPose, createModel, framing, l
  * @param {THREE.Object3D} subject
  * @param {{ position: THREE.Vector3, target: THREE.Vector3 }} authored
  */
-export function fitPose(subject, authored, { headroom = 1, lift = 0.1 } = {}) {
+export function fitPose(subject, authored, { headroom = 1, lift = 0.09 } = {}) {
   subject.updateWorldMatrix(true, true);
   const sphere = new THREE.Box3().setFromObject(subject).getBoundingSphere(new THREE.Sphere());
   if (!Number.isFinite(sphere.radius) || sphere.radius <= 0) return authored;
@@ -124,8 +129,12 @@ export function fitPose(subject, authored, { headroom = 1, lift = 0.1 } = {}) {
   // narrow window and re-frames accordingly, so this only has to be right for
   // the shape of the subject, not for the size of the window.
   const halfFov = THREE.MathUtils.degToRad(21);
-  // Only about two thirds of the frame height is clear of the console.
-  const usable = 0.66;
+  // How much of the frame height the subject may use, and how far the target
+  // drops to lift it clear of the console. The two are related: the subject
+  // spans `usable` of the frame around the target, so the lift can be at most
+  // (1 - usable) / 2 of it before the top of the subject leaves the frame —
+  // which is exactly how the whole-body view lost the top of its head.
+  const usable = 0.7;
   const distance = (sphere.radius / (usable * Math.tan(halfFov))) * headroom;
 
   const direction = authored.position.clone().sub(authored.target);

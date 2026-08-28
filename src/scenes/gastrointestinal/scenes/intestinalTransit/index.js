@@ -46,7 +46,13 @@ function createModel() {
 
   return {
     object,
-    anchors: { ...small.anchors, ...colon.anchors },
+    // The colon is set back from the coil; its labels move with it.
+    anchors: {
+      ...small.anchors,
+      ...Object.fromEntries(
+        Object.entries(colon.anchors).map(([name, point]) => [name, point.clone().setZ(point.z - 0.35)])
+      ),
+    },
     setProgress(value) {
       pattern = value;
     },

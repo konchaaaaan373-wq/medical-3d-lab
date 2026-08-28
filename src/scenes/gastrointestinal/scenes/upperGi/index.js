@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { definePrototypeScene } from '../../../shared/PrototypeScene.js';
 import { createFlowStream } from '../../../shared/motion/flow.js';
-import { smoothCurve } from '../../../shared/geometry/tube.js';
+import { TubeSurface, smoothCurve } from '../../../shared/geometry/tube.js';
+import { wallMaterial } from '../../../shared/materials.js';
 import { lerp, smoothstep } from '../../../../utils/math.js';
 import { UPPER_GI } from '../../../../data/prototypes/gastrointestinal.js';
 import { buildEsophagus, buildStomach } from '../../organs/stomach.js';
@@ -23,12 +24,25 @@ function createModel() {
   const stomach = buildStomach({ color: UPPER_GI.palette.stomach, pylorusColor: UPPER_GI.palette.mucosa });
   const esophagus = buildEsophagus({ color: UPPER_GI.palette.esophagus });
 
-  // Contents follow the lumen: down the oesophagus, round the stomach, out
-  // through the pylorus. One path, so the particles cannot leave the organ.
+  // The first part of the duodenum. It is here because the alternative was
+  // gastric contents streaming out of the pylorus into empty space, which is
+  // both wrong and the first thing the eye goes to.
+  const duodenalCurve = smoothCurve([
+    [-1.12, -0.28, 0],
+    [-1.5, -0.16, 0],
+    [-1.78, 0.08, -0.02],
+    [-1.86, 0.42, -0.04],
+  ]);
+  const duodenalBulb = new TubeSurface(duodenalCurve, { radius: (u) => 0.24 - 0.05 * u, steps: 30, radial: 16 });
+  const duodenum = new THREE.Mesh(duodenalBulb.geometry, wallMaterial({ color: UPPER_GI.palette.esophagus, opacity: 0.84 }));
+  duodenum.name = 'duodenal-bulb';
+
+  // Contents follow the lumen: down the oesophagus, round the stomach, through
+  // the pylorus and into the duodenum. One path, so nothing leaves the tract.
   const lumen = smoothCurve([
     ...esophagus.curve.getSpacedPoints(8).map((p) => [p.x, p.y, p.z]),
     ...stomach.curve.getSpacedPoints(14).map((p) => [p.x, p.y, p.z]),
-    [-1.5, -0.12, 0],
+    ...duodenalCurve.getSpacedPoints(4).map((p) => [p.x, p.y, p.z]),
   ]);
   const contents = createFlowStream({
     curves: [lumen],
@@ -41,7 +55,7 @@ function createModel() {
     opacity: 0.6,
   });
 
-  object.add(esophagus.object, stomach.object, contents.object);
+  object.add(esophagus.object, stomach.object, duodenum, contents.object);
 
   let motility = 0;
   let phase = 0;
@@ -71,6 +85,7 @@ function createModel() {
       contents.update(dt);
     },
     dispose() {
+      duodenalBulb.dispose();
       contents.dispose();
       stomach.dispose();
       esophagus.dispose();

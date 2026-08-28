@@ -46,12 +46,16 @@ export function buildMuscle({ color = '#b3454a', tendonColor = '#e6e0d2', fascic
     fascicleGroup.add(new THREE.Mesh(surface.geometry, tissueMaterial({ color: '#d9737a', roughness: 0.45 })));
   }
 
-  const tendonGeometry = new THREE.ConeGeometry(0.12, 0.55, 18);
+  // Tapered cylinders rather than cones: a cone ends in a point, and a muscle
+  // that ends in two spikes reads as an arrow, not as a tendon running on to an
+  // attachment outside the frame.
+  const tendonGeometry = new THREE.CylinderGeometry(0.075, 0.13, 0.62, 20, 1, true);
   const tendonMaterial = mineralMaterial({ color: tendonColor, roughness: 0.45 });
+  tendonMaterial.side = THREE.DoubleSide;
   const topTendon = new THREE.Mesh(tendonGeometry, tendonMaterial);
-  topTendon.position.set(0, span + 0.2, 0);
+  topTendon.position.set(0, span + 0.24, 0);
   const bottomTendon = new THREE.Mesh(tendonGeometry, tendonMaterial);
-  bottomTendon.position.set(0, -span - 0.2, 0);
+  bottomTendon.position.set(0, -span - 0.24, 0);
   bottomTendon.rotation.z = Math.PI;
 
   object.add(bellyMesh, fascicleGroup, topTendon, bottomTendon);
@@ -77,8 +81,8 @@ export function buildMuscle({ color = '#b3454a', tendonColor = '#e6e0d2', fascic
       object.scale.set(1, shorten, 1);
       bellyMesh.scale.set(thicken, 1, thicken);
       fascicleGroup.scale.set(thicken, 1, thicken);
-      topTendon.position.y = span + 0.2;
-      bottomTendon.position.y = -span - 0.2;
+      topTendon.position.y = span + 0.24;
+      bottomTendon.position.y = -span - 0.24;
       // The tendons are not elastic here: they keep their own thickness while
       // the belly changes around them.
       topTendon.scale.set(1 / thicken, 1 / shorten, 1 / thicken);

@@ -25,20 +25,23 @@ function createModel() {
     ductColor: PANCREATIC_SECRETION.palette.duct,
     isletColor: PANCREATIC_SECRETION.palette.islet,
   });
+  // Scaled and placed so the pancreatic head sits inside the C of it, which is
+  // the one spatial fact this pair of organs is for.
   const duodenum = buildDuodenum();
-  duodenum.object.position.set(-0.35, -0.35, 0.1);
-  duodenum.object.scale.setScalar(0.85);
+  duodenum.object.position.set(-0.42, -0.12, -0.12);
+  duodenum.object.scale.setScalar(0.72);
 
-  // A vein running behind the gland — where the islets secrete to.
+  // A vein running behind the gland — where the islets secrete to. Curved and
+  // kept short: drawn as a long straight rod it read as a ruler, not a vessel.
   const veinCurve = smoothCurve([
-    [-1.5, -0.95, -0.45],
-    [-0.4, -0.7, -0.5],
-    [0.8, -0.5, -0.55],
-    [1.9, -0.3, -0.6],
+    [-1.15, -0.72, -0.5],
+    [-0.35, -0.62, -0.56],
+    [0.5, -0.44, -0.52],
+    [1.25, -0.2, -0.4],
   ]);
   const veinMesh = new THREE.Mesh(
-    new TubeSurface(veinCurve, { radius: () => 0.11, steps: 40, radial: 12 }).geometry,
-    tissueMaterial({ color: '#6f7fd6', roughness: 0.4, opacity: 0.8 })
+    new TubeSurface(veinCurve, { radius: (u) => 0.13 - 0.05 * u, steps: 40, radial: 12 }).geometry,
+    tissueMaterial({ color: '#6f7fd6', roughness: 0.4, opacity: 0.85 })
   );
 
   // Exocrine: along the duct, out through the head into the duodenum.
@@ -83,7 +86,9 @@ function createModel() {
 
   return {
     object,
-    anchors: { ...pancreas.anchors, duodenum: new THREE.Vector3(-2.4, -1.15, 0.5) },
+    // The gland is the subject; the duodenum and the vein are context.
+    focus: pancreas.object,
+    anchors: { ...pancreas.anchors, duodenum: new THREE.Vector3(-2.1, -1.05, 0.5) },
     setProgress(value) {
       drive = value;
       // The exocrine stream leads; the islet response is shown building later,
@@ -108,6 +113,7 @@ function createModel() {
 
 export default definePrototypeScene({
   copy: PANCREATIC_SECRETION,
-  cameraPose: { position: [0.5, 0.8, 6.6], target: [0, 0.05, 0] },
+  // Looking slightly down on it: seen edge-on, a gland this flat is a line.
+  cameraPose: { position: [0.35, 1.5, 5.4], target: [0, 0.05, 0] },
   createModel,
 });

@@ -47,7 +47,7 @@ function lungWarp({ medial = 1, cardiacNotch = false, fissures = [] }) {
 
     // Cardiac notch: the left lung gives way to the heart, anteriorly and low.
     if (cardiacNotch && v.x * medial < 0.15) {
-      v.x += medial * 0.46 * bump(seedY, seedZ, { atY: -0.34, atZ: 0.5, spreadY: 0.42, spreadZ: 0.44 });
+      v.x += medial * 0.58 * bump(seedY, seedZ, { atY: -0.3, atZ: 0.52, spreadY: 0.46, spreadZ: 0.46 });
     }
 
     // Fissures: shallow grooves, so the lobes read as lobes.
@@ -88,7 +88,10 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
     material
   );
   right.name = 'right-lung';
-  right.position.set(-1.42, 0, 0);
+  // Close to the midline and high enough that the apices are above the carina:
+  // set wider or lower, the bronchi appear to stop in mid-air beside the lungs
+  // instead of entering them.
+  right.position.set(-1.24, 0.3, 0);
 
   const left = new THREE.Mesh(
     shapedSphere({
@@ -99,7 +102,7 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
     material
   );
   left.name = 'left-lung';
-  left.position.set(1.42, 0, 0);
+  left.position.set(1.24, 0.3, 0);
 
   object.add(right, left);
 
@@ -109,10 +112,10 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
     object,
     material,
     anchors: {
-      rightLung: new THREE.Vector3(-2.1, 0.6, 0.7),
-      leftLung: new THREE.Vector3(2.1, 0.6, 0.7),
-      base: new THREE.Vector3(0, -1.75, 0.9),
-      hilum: new THREE.Vector3(-0.75, 0.15, -0.2),
+      rightLung: new THREE.Vector3(-1.95, 0.9, 0.7),
+      leftLung: new THREE.Vector3(1.95, 0.9, 0.7),
+      base: new THREE.Vector3(0, -1.5, 0.9),
+      hilum: new THREE.Vector3(-0.62, 0.45, -0.2),
     },
     /**
      * Inflation, 0 at end-expiration and 1 at the top of the modelled breath.
@@ -124,9 +127,14 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
      */
     setInflation(value) {
       const v = Math.max(0, Math.min(1, value));
-      const sx = 1 + 0.045 * v;
-      const sy = 1 + 0.085 * v;
-      const sz = 1 + 0.06 * v;
+      // Larger than life. At a true tidal excursion the lungs barely move on
+      // screen and the scene reads as a still picture of two lungs; the shape
+      // change is exaggerated so that inspiration and expiration are legible,
+      // which is the whole subject. It is a presentation value, and no volume
+      // is being claimed.
+      const sx = 1 + 0.07 * v;
+      const sy = 1 + 0.13 * v;
+      const sz = 1 + 0.09 * v;
       for (const [mesh, home] of [
         [right, rest.right],
         [left, rest.left],
@@ -134,7 +142,7 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
         mesh.scale.set(sx, sy, sz);
         // Anchored at the apex: the top of the lung is held by the airway and
         // barely moves, so the growth has to go downwards.
-        mesh.position.set(home.x, home.y - 0.16 * v, home.z);
+        mesh.position.set(home.x, home.y - 0.24 * v, home.z);
       }
     },
   };

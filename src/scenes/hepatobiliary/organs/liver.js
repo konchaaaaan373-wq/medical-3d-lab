@@ -21,18 +21,23 @@ export function buildLiver({ color = '#8f3f43', opacity = 0.82, detail = 9 } = {
     warp: (v) => {
       const { x, y, z } = v;
 
-      // The left lobe thins out towards the patient's left (screen right).
-      const left = smoothstep(-0.1, 1, x);
-      v.y *= 1 - 0.42 * left;
-      v.z *= 1 - 0.5 * left;
-      v.x += 0.12 * left;
+      // The left lobe thins to an edge towards the patient's left (screen
+      // right). Without this the liver is a dome, and a dome is a mushroom.
+      const left = smoothstep(-0.25, 1, x);
+      v.y *= 1 - 0.56 * left;
+      v.z *= 1 - 0.6 * left;
+      v.x += 0.16 * left;
+
+      // The superior surface is domed on the right and falls away to the left,
+      // which is what gives a liver its wedge profile from the front.
+      if (v.y > 0) v.y *= 1 - 0.3 * left;
 
       // Visceral (inferior) surface: flat, not round.
-      if (v.y < -0.28) v.y = lerp(v.y, -0.34, 0.66);
+      if (v.y < -0.24) v.y = lerp(v.y, -0.3, 0.78);
 
       // Falciform ligament: the groove that divides the two lobes.
-      const groove = Math.exp(-Math.pow((x - 0.24) / 0.1, 2)) * smoothstep(-0.1, 0.5, y);
-      v.multiplyScalar(1 - 0.13 * groove);
+      const groove = Math.exp(-Math.pow((x - 0.24) / 0.11, 2)) * smoothstep(-0.15, 0.45, y);
+      v.multiplyScalar(1 - 0.17 * groove);
 
       // Gallbladder fossa, on the underside of the right lobe.
       if (v.y < -0.1) v.y += 0.16 * bump(x, z, { atY: -0.5, atZ: 0.42, spreadY: 0.3, spreadZ: 0.34 });
@@ -63,20 +68,24 @@ export function buildLiver({ color = '#8f3f43', opacity = 0.82, detail = 9 } = {
 export function buildGallbladder({ color = '#c9b23c' } = {}) {
   const geometry = shapedSphere({
     detail: 7,
-    scale: [0.3, 0.62, 0.3],
+    scale: [0.42, 0.56, 0.4],
     warp: (v) => {
       // Taper towards the neck (+y), round at the fundus (-y).
-      const t = smoothstep(-0.2, 1, v.y);
-      v.x *= 1 - 0.62 * t;
-      v.z *= 1 - 0.62 * t;
-      v.y += 0.18 * t;
+      // Rounded fundus, narrowing to the neck — but not to a blade: tapered
+      // this hard from a flat shape it read as a leaf hanging off the liver.
+      const t = smoothstep(-0.15, 1, v.y);
+      v.x *= 1 - 0.5 * t;
+      v.z *= 1 - 0.5 * t;
+      v.y += 0.14 * t;
     },
   });
   const mesh = new THREE.Mesh(geometry, tissueMaterial({ color, roughness: 0.36, emissiveIntensity: 0.08 }));
   mesh.name = 'gallbladder';
-  mesh.position.set(-0.55, -0.72, 0.55);
-  mesh.rotation.z = -0.42;
-  mesh.rotation.x = -0.2;
+  // Hanging off the underside of the right lobe, fundus pointing down and
+  // forwards — the direction it is felt from in life.
+  mesh.position.set(-0.62, -0.66, 0.6);
+  mesh.rotation.z = -0.22;
+  mesh.rotation.x = -0.42;
 
   return {
     object: mesh,

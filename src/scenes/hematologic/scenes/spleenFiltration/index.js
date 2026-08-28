@@ -22,23 +22,27 @@ function createModel() {
   const object = new THREE.Group();
   const spleen = buildSpleen({ color: SPLEEN_FILTRATION.palette.spleen });
 
+  // Both vessels meet the organ at the hilum and taper as they branch into it.
+  // Straight, constant-calibre tubes read as rods laid against the spleen.
   const arteryCurve = smoothCurve([
-    [2.4, 0.45, 0.1],
-    [1.55, 0.28, 0.05],
+    [2.15, 0.72, -0.1],
+    [1.5, 0.42, 0.02],
+    [1.05, 0.2, 0.02],
     [0.85, 0.1, 0],
   ]);
   const veinCurve = smoothCurve([
     [0.8, -0.25, 0],
-    [1.6, -0.5, 0.05],
-    [2.5, -0.7, 0.1],
+    [1.15, -0.4, 0.04],
+    [1.6, -0.62, 0.02],
+    [2.2, -0.95, -0.08],
   ]);
   const artery = new THREE.Mesh(
-    new TubeSurface(arteryCurve, { radius: () => 0.11, steps: 24, radial: 12 }).geometry,
-    tissueMaterial({ color: SPLEEN_FILTRATION.palette.artery, roughness: 0.4, opacity: 0.85 })
+    new TubeSurface(arteryCurve, { radius: (u) => 0.13 - 0.05 * u, steps: 30, radial: 14 }).geometry,
+    tissueMaterial({ color: SPLEEN_FILTRATION.palette.artery, roughness: 0.4, opacity: 0.9 })
   );
   const vein = new THREE.Mesh(
-    new TubeSurface(veinCurve, { radius: () => 0.13, steps: 24, radial: 12 }).geometry,
-    tissueMaterial({ color: SPLEEN_FILTRATION.palette.vein, roughness: 0.4, opacity: 0.85 })
+    new TubeSurface(veinCurve, { radius: (u) => 0.1 + 0.06 * u, steps: 30, radial: 14 }).geometry,
+    tissueMaterial({ color: SPLEEN_FILTRATION.palette.vein, roughness: 0.4, opacity: 0.9 })
   );
 
   // Routes through the pulp: in at the hilum, out at the hilum, by way of the

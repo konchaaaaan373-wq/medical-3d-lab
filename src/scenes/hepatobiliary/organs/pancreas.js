@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
+import { TubeSurface, smoothCurve, smoothProfile } from '../../shared/geometry/tube.js';
 import { shapedSphere } from '../../shared/geometry/shapes.js';
 import { mucosaMaterial, tissueMaterial } from '../../shared/materials.js';
 import { createRandom } from '../../../utils/math.js';
@@ -35,19 +35,23 @@ export function buildPancreas({
     [1.72, 0.52, -0.3],
   ]);
 
-  const radius = (u) => {
-    if (u < 0.2) return 0.46 - 0.16 * (u / 0.2); // head
-    if (u < 0.34) return 0.3 - 0.06 * ((u - 0.2) / 0.14); // neck
-    if (u < 0.72) return 0.24 + 0.06 * Math.sin(((u - 0.34) / 0.38) * Math.PI); // body
-    return 0.24 - 0.15 * ((u - 0.72) / 0.28); // tail
-  };
+  // The head is much the bulkiest part; the tail thins to a point. Drawn thin
+  // and translucent the whole organ read as a ramp rather than as a gland.
+  const radius = smoothProfile([
+    [0, 0.56], // head
+    [0.2, 0.4],
+    [0.34, 0.3], // neck
+    [0.55, 0.34], // body
+    [0.78, 0.26],
+    [1, 0.08], // tail
+  ]);
 
   const gland = new TubeSurface(curve, { radius, steps: 120, radial: 22 });
-  const glandMesh = new THREE.Mesh(gland.geometry, tissueMaterial({ color, roughness: 0.6, opacity: 0.72 }));
+  const glandMesh = new THREE.Mesh(gland.geometry, tissueMaterial({ color, roughness: 0.6, opacity: 0.84 }));
   glandMesh.name = 'gland';
 
   // Main duct: thin, central, draining towards the head.
-  const duct = new TubeSurface(curve, { radius: () => 0.045, steps: 120, radial: 10 });
+  const duct = new TubeSurface(curve, { radius: () => 0.055, steps: 120, radial: 10 });
   const ductMesh = new THREE.Mesh(duct.geometry, mucosaMaterial({ color: ductColor }));
   ductMesh.name = 'pancreatic-duct';
 

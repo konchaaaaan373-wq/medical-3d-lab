@@ -27,10 +27,11 @@ export function buildKidney({ side = 'left', color = '#a0555c', medullaColor = '
     v.x *= taper;
     v.z *= taper;
 
-    // Medial concavity, deepest at mid height: this is what makes it a bean.
+    // Medial concavity, deepest at mid height: this is what makes it a bean
+    // rather than an egg, so it is worth overdoing slightly.
     if (v.x * medial < 0) {
-      const depth = bump(y, z, { atY: 0, atZ: 0, spreadY: 0.62, spreadZ: 0.85 });
-      v.x += medial * 0.62 * depth * Math.min(1, -v.x * medial);
+      const depth = bump(y, z, { atY: 0, atZ: 0, spreadY: 0.58, spreadZ: 0.9 });
+      v.x += medial * 0.78 * depth * Math.min(1, -v.x * medial);
     }
 
     v.multiplyScalar(1 + 0.012 * ripple(x, y, z, 3.6, 2.1));
@@ -124,16 +125,19 @@ export function buildBladder({ color = '#c8a6b8', fluidColor = '#e8d75f' } = {})
   const wall = new THREE.Mesh(
     shapedSphere({
       detail: 7,
-      scale: [0.72, 0.6, 0.62],
+      scale: [0.7, 0.68, 0.64],
       warp: (v) => {
-        // Flat-ish top, tapering towards the neck below.
-        v.y -= 0.14 * smoothstep(0.2, 1, v.y);
-        const low = smoothstep(-0.35, -1, v.y);
-        v.x *= 1 - 0.42 * low;
-        v.z *= 1 - 0.42 * low;
+        // Domed above, tapering to the neck below. Flattened much further than
+        // this it stops reading as a container and starts reading as a disc.
+        v.y -= 0.06 * smoothstep(0.35, 1, v.y);
+        // Only the last of it narrows towards the neck: taper the whole lower
+        // half and the organ reads as a bowl with a lip.
+        const low = smoothstep(-0.55, -1, v.y);
+        v.x *= 1 - 0.4 * low;
+        v.z *= 1 - 0.4 * low;
       },
     }),
-    tissueMaterial({ color, roughness: 0.45, opacity: 0.42 })
+    tissueMaterial({ color, roughness: 0.45, opacity: 0.5 })
   );
   wall.name = 'bladder-wall';
 
@@ -151,15 +155,15 @@ export function buildBladder({ color = '#c8a6b8', fluidColor = '#e8d75f' } = {})
     /** 0 = empty and flattened, 1 = full and round. */
     setFill(value) {
       const v = Math.max(0, Math.min(1, value));
-      wall.scale.set(0.86 + 0.22 * v, 0.62 + 0.5 * v, 0.86 + 0.22 * v);
-      wall.position.y = -0.12 + 0.16 * v;
+      wall.scale.set(0.84 + 0.26 * v, 0.7 + 0.42 * v, 0.84 + 0.26 * v);
+      wall.position.y = -0.1 + 0.18 * v;
       // The contents grow faster than the wall early on: the bladder becomes
       // round before it becomes big.
       const fill = Math.pow(v, 0.7);
       // Kept inside the wall: the contents must never reach it, or the organ
       // stops reading as a container and starts reading as a solid.
-      fluid.scale.set(0.44 + 0.46 * fill, 0.3 + 0.54 * fill, 0.44 + 0.46 * fill);
-      fluid.position.y = -0.24 + 0.28 * fill;
+      fluid.scale.set(0.44 + 0.44 * fill, 0.36 + 0.56 * fill, 0.44 + 0.44 * fill);
+      fluid.position.y = -0.2 + 0.24 * fill;
       fluid.visible = v > 0.02;
     },
   };

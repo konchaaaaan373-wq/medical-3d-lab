@@ -13,11 +13,11 @@ import { travellingWave } from '../../shared/motion/rhythm.js';
  * illustrative. Screen-left is the patient's right, so the ascending colon is
  * on the left of the frame.
  */
-export function buildSmallIntestine({ color = '#d99a7c', seed = 12, radius = 0.17 } = {}) {
-  // Narrow, many loops, folded through the depth of the frame: the small bowel
-  // has to read as something long packed into a small space.
-  const curve = coilCurve({ turns: 7, width: 2.0, height: 2.5, depth: 1.35, seed, jitter: 0.34 });
-  const surface = new TubeSurface(curve, { radius: () => radius, steps: 340, radial: 14 });
+export function buildSmallIntestine({ color = '#d99a7c', seed = 12, radius = 0.21 } = {}) {
+  // Fewer, fatter loops thrown well forward and back. Packed tighter than this
+  // the coil flattens into a stack of ribbons, which is what it looked like.
+  const curve = coilCurve({ turns: 5, width: 2.0, height: 2.4, depth: 1.55, seed, jitter: 0.42 });
+  const surface = new TubeSurface(curve, { radius: () => radius, steps: 300, radial: 16 });
   const mesh = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.96 }));
   mesh.name = 'small-intestine';
 

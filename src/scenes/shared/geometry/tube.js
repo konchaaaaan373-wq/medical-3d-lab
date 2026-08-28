@@ -97,6 +97,33 @@ export class TubeSurface {
   }
 }
 
+/**
+ * A calibre profile as a smooth function of position along a tube.
+ *
+ * `points` are `[u, radius]` control points. Interpolating them linearly — or
+ * writing the profile as a chain of `if` branches, which is the same thing —
+ * leaves a slope discontinuity at every control point, and a swept surface
+ * shows each of those as a crease running right round the tube. Smoothstep
+ * between neighbours removes them.
+ *
+ * @param {[number, number][]} points sorted by u
+ * @returns {(u: number) => number}
+ */
+export function smoothProfile(points) {
+  return (u) => {
+    const t = Math.min(1, Math.max(0, u));
+    if (t <= points[0][0]) return points[0][1];
+    for (let i = 1; i < points.length; i++) {
+      const [u1, r1] = points[i];
+      if (t > u1) continue;
+      const [u0, r0] = points[i - 1];
+      const k = (t - u0) / (u1 - u0);
+      return r0 + (r1 - r0) * k * k * (3 - 2 * k);
+    }
+    return points[points.length - 1][1];
+  };
+}
+
 /** A Catmull-Rom curve through `points`, given as `[x, y, z]` triples. */
 export function smoothCurve(points, { closed = false, tension = 0.5 } = {}) {
   return new THREE.CatmullRomCurve3(

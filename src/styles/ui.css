@@ -156,34 +156,46 @@
   gap: 2px;
   padding: 4px;
   /* Eleven body systems do not fit on one line at any width worth designing
-     for, so the rows wrap. Without the max-width the panel would stretch the
-     whole way across the window and sit under the rail. */
-  max-width: min(62vw, 620px);
+     for. They scroll sideways rather than wrapping: wrapped, the panel grew to
+     three rows and covered the top third of every scene — including the great
+     vessels of the reference scene it was never allowed to touch. */
+  max-width: min(52vw, 470px);
 }
 
 .scene-row {
   display: flex;
-  flex-wrap: wrap;
   gap: 4px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* On a phone the systems do not wrap — eight wrapped rows would cover the
-   subject. They scroll sideways instead, which keeps the switcher one line
-   tall and still reaches all of them. */
+.scene-row::-webkit-scrollbar {
+  display: none;
+}
+
+/* The fade is the only affordance that says "there is more this way", so it is
+   not decoration — and it is applied only on the side that really does have
+   more, or a row scrolled to its end looks permanently cut off. */
+.scene-row.has-more-end {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to right, #000 calc(100% - 26px), transparent);
+}
+
+.scene-row.has-more-start {
+  -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to left, #000 calc(100% - 26px), transparent);
+}
+
+.scene-row.has-more-start.has-more-end {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 26px, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 26px, #000 calc(100% - 26px), transparent);
+}
+
 @media (max-width: 720px) {
   .scene-switcher {
     max-width: min(86vw, 430px);
-  }
-
-  .scene-row {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .scene-row::-webkit-scrollbar {
-    display: none;
   }
 }
 

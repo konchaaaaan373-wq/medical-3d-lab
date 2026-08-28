@@ -19,7 +19,7 @@ export function buildProstate({ color = '#c08a7a', urethraColor = '#8fd6c4', opa
   const gland = new THREE.Mesh(
     shapedSphere({
       detail: 7,
-      scale: [0.68, 0.52, 0.6],
+      scale: [0.56, 0.56, 0.53],
       warp: (v) => {
         // Chestnut: broader above, tapering to the apex below.
         const down = smoothstep(0.1, -1, v.y);
@@ -34,11 +34,11 @@ export function buildProstate({ color = '#c08a7a', urethraColor = '#8fd6c4', opa
   gland.name = 'gland';
 
   const urethraCurve = smoothCurve([
-    [0, 1.15, 0],
-    [0, 0.45, 0.02],
+    [0, 0.95, 0],
+    [0, 0.42, 0.02],
     [0, -0.05, 0.03],
-    [0, -0.55, 0.02],
-    [0, -1.25, 0],
+    [0, -0.5, 0.02],
+    [0, -1.1, 0],
   ]);
   const urethra = new TubeSurface(urethraCurve, { radius: () => 0.085, steps: 60, radial: 14 });
   const urethraMesh = new THREE.Mesh(urethra.geometry, mucosaMaterial({ color: urethraColor }));

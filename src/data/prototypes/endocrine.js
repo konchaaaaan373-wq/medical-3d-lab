@@ -11,7 +11,7 @@ export const THYROID_HORMONE = {
   palette: {
     gland: '#b4565f',
     follicle: '#ffd9a0',
-    trachea: '#b9c6db',
+    trachea: '#7f8b9e',
     hormone: '#ffb066',
   },
 

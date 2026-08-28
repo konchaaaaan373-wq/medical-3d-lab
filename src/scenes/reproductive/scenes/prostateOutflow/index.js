@@ -21,17 +21,22 @@ function createModel() {
   const object = new THREE.Group();
   const prostate = buildProstate({ color: PROSTATE_OUTFLOW.palette.gland, urethraColor: PROSTATE_OUTFLOW.palette.urethra });
 
+  // Sitting directly on the gland: the bladder neck opens into the prostatic
+  // urethra, and a gap between them loses exactly the relationship the scene
+  // is about.
   const bladder = buildBladder({ color: PROSTATE_OUTFLOW.palette.bladder, fluidColor: PROSTATE_OUTFLOW.palette.urine });
-  bladder.object.position.set(0, 1.65, 0);
-  bladder.object.scale.setScalar(0.95);
-  bladder.setFill(0.75);
+  bladder.object.position.set(0, 1.32, 0);
+  // Clearly the larger of the two: at similar sizes the pair reads as a
+  // snowman rather than as a gland sitting under a reservoir.
+  bladder.object.scale.setScalar(1.15);
+  bladder.setFill(0.7);
 
   const flowPath = smoothCurve([
-    [0, 1.5, 0],
-    [0, 0.9, 0.01],
-    [0, 0.2, 0.03],
-    [0, -0.5, 0.02],
-    [0, -1.35, 0],
+    [0, 1.15, 0],
+    [0, 0.6, 0.01],
+    [0, 0.1, 0.03],
+    [0, -0.45, 0.02],
+    [0, -1.15, 0],
   ]);
   const flow = createFlowStream({
     curves: [flowPath],
@@ -50,7 +55,7 @@ function createModel() {
 
   return {
     object,
-    anchors: { ...prostate.anchors, bladderNeck: new THREE.Vector3(-1.1, 1.75, 0.5) },
+    anchors: { ...prostate.anchors, bladderNeck: new THREE.Vector3(-1.25, 1.72, 0.5) },
     setProgress(value) {
       enlargement = value;
       prostate.setEnlargement(enlargement);

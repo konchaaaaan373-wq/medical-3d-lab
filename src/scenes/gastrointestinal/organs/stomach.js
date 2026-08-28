@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
+import { TubeSurface, smoothCurve, smoothProfile } from '../../shared/geometry/tube.js';
 import { wallMaterial } from '../../shared/materials.js';
 import { travellingWave } from '../../shared/motion/rhythm.js';
 
@@ -31,15 +31,19 @@ export function buildStomach({ color = '#d08a86', pylorusColor = '#f0b9ae' } = {
   ]);
 
   /** Calibre along the stomach; the antrum is a genuinely narrower tube. */
-  const baseRadius = (u) => {
-    if (u < 0.28) return 0.5 + 0.16 * Math.sin((u / 0.28) * Math.PI); // fundus and upper body
-    if (u < 0.55) return 0.56 - 0.14 * ((u - 0.28) / 0.27); // body, narrowing at the incisura
-    if (u < 0.85) return 0.42 - 0.2 * ((u - 0.55) / 0.3); // antrum
-    return 0.22 - 0.11 * ((u - 0.85) / 0.15); // pyloric canal
-  };
+  const baseRadius = smoothProfile([
+    [0, 0.5], // fundus
+    [0.14, 0.62],
+    [0.42, 0.54], // body
+    [0.62, 0.38], // incisura
+    [0.82, 0.24], // antrum
+    [1, 0.11], // pyloric canal
+  ]);
 
   const surface = new TubeSurface(curve, { radius: baseRadius, steps: 132, radial: 26 });
-  const body = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.95 }));
+  // Translucent enough to see what is inside it: a stomach whose contents are
+  // hidden is a stomach that only appears to be doing something.
+  const body = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.84 }));
   body.name = 'gastric-body';
 
   // A ring at the pylorus: the sphincter is the reason emptying is a trickle
@@ -76,8 +80,10 @@ export function buildStomach({ color = '#d08a86', pylorusColor = '#f0b9ae' } = {
     setWave(phase, amplitude, { count = 2 } = {}) {
       surface.refresh((u, base) => {
         const distal = Math.pow(Math.max(0, (u - 0.25) / 0.75), 1.4);
-        const depth = amplitude * (0.18 + 0.75 * distal);
-        return base * (1 - depth * travellingWave(u, phase, { width: 0.075, count }));
+        const depth = amplitude * (0.14 + 0.62 * distal);
+        // Wider than it is deep: a narrow, deep notch reads as a crease in the
+        // surface rather than as a ring of muscle closing.
+        return base * (1 - depth * travellingWave(u, phase, { width: 0.11, count }));
       });
     },
     dispose() {
@@ -91,23 +97,27 @@ export function buildStomach({ color = '#d08a86', pylorusColor = '#f0b9ae' } = {
  *
  * PROTOTYPE. A straight muscular tube; the sphincters are not drawn.
  */
-export function buildEsophagus({ color = '#c9a2a6', top = 3.6 } = {}) {
+export function buildEsophagus({ color = '#c9a2a6', top = 2.9 } = {}) {
+  // The last stretch runs backwards as well as down, so the tube passes behind
+  // the fundus and into it. Ending it in front of the stomach made a tube that
+  // stopped short of an organ it is continuous with.
   const curve = smoothCurve([
-    [0.24, top, -0.2],
-    [0.3, top - 1.1, -0.14],
-    [0.36, top - 2.1, -0.05],
-    [0.62, 1.68, 0.02],
-    [0.86, 1.24, 0.03],
+    [0.24, top, -0.24],
+    [0.3, top - 0.8, -0.2],
+    [0.4, 1.75, -0.14],
+    [0.66, 1.5, -0.16],
+    [0.92, 1.24, -0.2],
+    [1.05, 1.06, -0.26],
   ]);
   const surface = new TubeSurface(curve, { radius: () => 0.17, steps: 90, radial: 18 });
-  const mesh = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.95 }));
+  const mesh = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.9 }));
   mesh.name = 'esophagus';
 
   return {
     object: mesh,
     surface,
     curve,
-    anchors: { esophagus: new THREE.Vector3(-0.4, top - 1.2, 0.3) },
+    anchors: { esophagus: new THREE.Vector3(-0.45, top - 0.9, 0.3) },
     /** One ring of contraction, travelling down. `amplitude` 0 leaves it at rest. */
     setWave(phase, amplitude) {
       surface.refresh((u, base) => base * (1 - amplitude * 0.72 * travellingWave(u, phase, { width: 0.06 })));

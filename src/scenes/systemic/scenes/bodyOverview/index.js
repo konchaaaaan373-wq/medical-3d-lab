@@ -55,27 +55,35 @@ function createModel() {
   };
 
   const brain = place('brain', buildBrain(), { position: [0, 3.62, 0.05], scale: 0.62, at: 0 });
-  const heart = place('heart', buildHeart(), { position: [0.16, 1.05, 0.24], scale: 0.62, at: 0.18 });
-  const lungs = place('lungs', buildLungs({ opacity: 0.72 }), { position: [0, 1.35, -0.1], scale: 0.46, at: 0.36 });
-  const liver = place('liver', buildLiver({ opacity: 0.92 }), { position: [-0.34, -0.15, 0.1], scale: 0.52, at: 0.56 });
-  const stomach = place('stomach', buildStomach(), { position: [0.62, -0.15, -0.05], scale: 0.42, at: 0.56 });
+  // The lungs, not the heart, fill the chest: the heart sits in the notch the
+  // left lung leaves for it. Drawn the other way round — a large heart in front
+  // of two small lungs — the thorax reads as a heart with decorations.
+  const lungs = place('lungs', buildLungs({ opacity: 0.7 }), { position: [0, 1.62, -0.12], scale: 0.56, at: 0.36 });
+  const heart = place('heart', buildHeart(), { position: [0.2, 1.1, 0.3], scale: 0.46, at: 0.18 });
+  // A gap below the heart and lungs, where the diaphragm would be. Without it
+  // the liver and the stomach ran into the lungs and the trunk read as one mass.
+  const liver = place('liver', buildLiver({ opacity: 0.92 }), { position: [-0.34, -0.45, 0.1], scale: 0.5, at: 0.56 });
+  const stomach = place('stomach', buildStomach(), { position: [0.66, -0.42, -0.08], scale: 0.4, at: 0.56 });
   const smallBowel = place('small-intestine', buildSmallIntestine(), {
-    position: [0, -1.5, 0.12],
-    scale: 0.42,
+    position: [0, -1.6, 0.14],
+    scale: 0.4,
     at: 0.56,
   });
-  const colon = place('colon', buildColon(), { position: [0, -1.35, -0.1], scale: 0.44, at: 0.56 });
+  const colon = place('colon', buildColon(), { position: [0, -1.5, -0.06], scale: 0.44, at: 0.56 });
+  // Further out to the side than the bowel reaches, so that they are still
+  // visible at the back rather than completely behind it — the retroperitoneal
+  // position is the point, but an organ nobody can see teaches nothing.
   const rightKidney = place('right-kidney', buildKidney({ side: 'right' }), {
-    position: [-0.62, -0.55, -0.42],
-    scale: 0.5,
+    position: [-0.86, -0.72, -0.44],
+    scale: 0.52,
     at: 0.78,
   });
   const leftKidney = place('left-kidney', buildKidney({ side: 'left' }), {
-    position: [0.62, -0.45, -0.42],
-    scale: 0.5,
+    position: [0.86, -0.62, -0.44],
+    scale: 0.52,
     at: 0.78,
   });
-  const bladder = place('bladder', buildBladder(), { position: [0, -2.55, 0.05], scale: 0.62, at: 0.78 });
+  const bladder = place('bladder', buildBladder(), { position: [0, -2.6, 0.05], scale: 0.6, at: 0.78 });
   bladder.setFill(0.55);
 
   object.add(shell.object);
@@ -86,13 +94,13 @@ function createModel() {
     object,
     anchors: {
       brain: new THREE.Vector3(0.95, 4.0, 0.4),
-      heart: new THREE.Vector3(1.15, 1.5, 0.6),
-      lungs: new THREE.Vector3(-1.35, 1.85, 0.5),
-      liver: new THREE.Vector3(-1.45, -0.05, 0.6),
-      stomach: new THREE.Vector3(1.4, 0.35, 0.5),
-      intestine: new THREE.Vector3(-1.3, -1.75, 0.7),
-      kidney: new THREE.Vector3(1.5, -0.75, -0.3),
-      bladder: new THREE.Vector3(0.9, -2.85, 0.5),
+      heart: new THREE.Vector3(1.2, 1.35, 0.6),
+      lungs: new THREE.Vector3(-1.45, 2.15, 0.5),
+      liver: new THREE.Vector3(-1.5, -0.35, 0.6),
+      stomach: new THREE.Vector3(1.45, 0.05, 0.5),
+      intestine: new THREE.Vector3(-1.3, -1.85, 0.7),
+      kidney: new THREE.Vector3(1.6, -0.85, -0.3),
+      bladder: new THREE.Vector3(0.9, -2.9, 0.5),
     },
     setProgress(value) {
       shown = value;
