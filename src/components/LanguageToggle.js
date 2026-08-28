@@ -1,7 +1,12 @@
 import { el } from '../utils/dom.js';
 
+/**
+ * Japanese is the product's language, not a translation of an English one:
+ * it is the default, and it is shown on its own. English is here for the
+ * people who need it, one click away — never stacked under every Japanese
+ * line, which is what made the UI read as a localised import.
+ */
 const MODES = [
-  { id: 'both', label: '日 / EN' },
   { id: 'ja', label: '日本語' },
   { id: 'en', label: 'English' },
 ];
@@ -49,8 +54,10 @@ export function createLanguageToggle(onChange) {
 
 function readStored() {
   try {
-    return localStorage.getItem(STORAGE_KEY) ?? 'both';
+    // 'both' was the old default; anyone carrying it comes back to Japanese.
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === 'en' ? 'en' : 'ja';
   } catch {
-    return 'both';
+    return 'ja';
   }
 }

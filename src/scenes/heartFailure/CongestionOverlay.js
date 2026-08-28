@@ -6,8 +6,8 @@ import {
   buildVascularFans,
   buildInterstitialFluid,
 } from './anatomy.js';
-import { variableTube } from './Vessels.js';
-import { lerp, smoothstep } from '../../utils/math.js';
+import { atriumGeometry, variableTube } from './Vessels.js';
+import { lerp } from '../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -42,10 +42,12 @@ export class CongestionOverlay extends THREE.Group {
     this.pressureMaterial = createPressureMaterial(new THREE.Color(PALETTE.pressure));
 
     // --- pressure front along atrium -> veins -> vascular branches
-    // Sized past the lobed atrium's fullest extent (appendage included) and
-    // rescaled with its distension in setCongestion, so the tint always sits
-    // just outside the wall it labels.
-    const atrium = new THREE.SphereGeometry(ANATOMY.atriumRadius * 1.32, 28, 20);
+    // The sheath is the atrium's own lobed shape, a little oversized, rather
+    // than a sphere around it: a sphere had to be big enough to clear the
+    // appendage, and at that size an additive tint over it read as a lavender
+    // balloon that out-competed the ventricle the scene is about.
+    const atrium = atriumGeometry(ANATOMY.atriumRadius * 0.92);
+    atrium.scale(1.06, 1.06, 1.06);
     this.atriumSheath = sheath(atrium, () => 0.12, this.pressureMaterial);
     this.atriumSheath.position.copy(ANATOMY.atriumCentre);
     this.add(this.atriumSheath);
@@ -80,28 +82,37 @@ export class CongestionOverlay extends THREE.Group {
     this.fluid = createFluidPoints(fluid);
     this.add(this.fluid);
 
-    this.setCongestion(0, 0);
+    this.setCongestion({ pressureFront: 0, interstitialFluid: 0, atriumDistension: 1 });
   }
 
   /**
-   * Both inputs come from the solved mean pulmonary venous pressure rather than
-   * from the structural stage, so this overlay is a separate axis from the
-   * remodelling stages: it can be shown at any point on them, and it is not
-   * specific to HFrEF.
+   * The two kinds of state are passed separately and on purpose.
    *
-   * @param {number} front 0..1 spread of the pressure front, from pulmonary
-   *   venous pressure between the two landmarks in `CONGESTION_PRESSURE`
-   * @param {number} fluid 0..1 interstitial fluid, which only appears once the
-   *   pressure passes the range where transudation is expected. It is passed in
-   *   rather than derived here so nothing can create fluid the state does not
-   *   produce.
+   * `physiology` is what the model solved: how far raised filling pressure has
+   * been transmitted back along the pathway, how much fluid has moved into the
+   * interstitium, and how far the atrium has distended in response.
+   * `presentation` is how much of that the story is currently showing.
+   *
+   * The rule they enforce is that reveal never reaches anatomy. The sheath is
+   * *sized* from the atrium's real distension and only *faded* by the reveal —
+   * because reveal is driven by the story and distension is not, sizing the
+   * sheath from the reveal once left it lagging inside an opaque chamber and
+   * therefore invisible on exactly the beats it exists for.
+   *
+   * Both physiological levels are read off the solved mean pulmonary venous
+   * pressure rather than the structural stage, so this overlay is a separate
+   * axis from the remodelling stages: it can be shown at any point on them,
+   * and it is not specific to HFrEF.
+   *
+   * @param {{pressureFront: number, interstitialFluid: number,
+   *   atriumDistension: number}} physiology
+   * @param {{front: number, fluid: number}} presentation reveal fractions, 0..1
    */
-  setCongestion(front, fluid) {
+  setCongestion(physiology, presentation = { front: 1, fluid: 1 }) {
+    const front = physiology.pressureFront * presentation.front;
     this.pressureMaterial.uniforms.uPressure.value = front;
-    this.fluid.material.uniforms.uFill.value = fluid;
-    // Track the atrium's own distension (same easing as Vessels), so the
-    // sheath keeps hugging the wall it labels as the chamber swells.
-    this.atriumSheath.scale.setScalar(lerp(1, 1.22, smoothstep(0, 1, front)));
+    this.fluid.material.uniforms.uFill.value = physiology.interstitialFluid * presentation.fluid;
+    this.atriumSheath.scale.setScalar(physiology.atriumDistension);
     this.visible = front > 0.02;
   }
 
@@ -221,7 +232,7 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
       uFill: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: new THREE.Color(PALETTE.fluid) },
-      uParticleScale: { value: 0.42 },
+      uParticleScale: { value: 0.92 },
       uHeightScale: { value: 900 },
     },
     vertexShader: /* glsl */ `
@@ -243,8 +254,11 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         );
         vec4 mv = modelViewMatrix * vec4(position + drift, 1.0);
         gl_Position = projectionMatrix * mv;
-        vAlpha = smoothstep(aAppear, aAppear + 0.25, uFill) * 0.09;
-        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 260.0);
+        vAlpha = smoothstep(aAppear, aAppear + 0.3, uFill) * 0.055;
+        // Distance fade: far puffs thin out, so the haze has depth rather than
+        // reading as a flat sheet of identical discs.
+        vAlpha *= mix(0.55, 1.0, clamp((28.0 + mv.z) / 22.0, 0.0, 1.0));
+        gl_PointSize = clamp(aSize * uParticleScale * uHeightScale / max(0.001, -mv.z), 1.0, 640.0);
       }
     `,
     fragmentShader: /* glsl */ `
@@ -256,8 +270,10 @@ function createFluidPoints({ count, positions, appear, seeds, sizes }) {
         if (d > 0.5) discard;
         // Soft, hazy edge — reads as mist in the interstitium rather than as
         // a discrete glowing particle.
-        float core = smoothstep(0.5, 0.04, d);
-        gl_FragColor = vec4(uColor * (0.4 + 0.25 * core), pow(core, 1.7) * vAlpha);
+        // A gaussian-ish falloff all the way to the rim: no visible disc edge,
+        // which is what made the haze read as sprites rather than as mist.
+        float core = exp(-d * d * 11.0);
+        gl_FragColor = vec4(uColor * (0.45 + 0.2 * core), core * vAlpha);
       }
     `,
   });

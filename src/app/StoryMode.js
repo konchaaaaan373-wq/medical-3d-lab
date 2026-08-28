@@ -29,8 +29,21 @@ import { el } from '../utils/dom.js';
 export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabelFocus, captureState, restoreState }) {
   const captionEn = el('span', { class: 'story-caption-text lang-en' });
   const captionJa = el('span', { class: 'story-caption-text lang-ja' });
-  const partLabel = el('span', { class: 'story-part' });
-  const beatLabel = el('span', { class: 'story-beat' });
+  // A one-line premise under the opening caption: what course this model
+  // draws, said before it is drawn rather than in a modal nobody reads.
+  const noteEn = el('span', { class: 'story-note lang-en' });
+  const noteJa = el('span', { class: 'story-note lang-ja' });
+  // Both languages, always in the DOM, hidden by the same single CSS rule that
+  // governs every other pair of strings in the interface. This used to be one
+  // span written by JS from a mutable table, which meant it was the one piece
+  // of story text with its own copy of the language state — and switching
+  // language while the timeline was stopped left the previous language's word
+  // beside a caption in the new one. Text that never holds language state
+  // cannot go stale.
+  const partJa = el('span', { class: 'story-part lang-ja' });
+  const partEn = el('span', { class: 'story-part lang-en' });
+  const beatJa = el('span', { class: 'story-beat lang-ja' });
+  const beatEn = el('span', { class: 'story-beat lang-en' });
 
   // --- one continuous timeline -------------------------------------------
   // A single track that fills with real story time — no segmented bars, no
@@ -40,7 +53,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   const track = el('div', {
     class: 'story-track',
     role: 'progressbar',
-    'aria-label': 'Story progress',
+    'aria-label': '解説の進行',
     'aria-valuemin': '0',
     'aria-valuemax': '100',
     on: {
@@ -58,59 +71,72 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       el('span', { class: 'story-tick', style: `left:${((step.at / story.duration) * 100).toFixed(2)}%` })
     );
   }
-  const chapterButtons = (story.chapters ?? []).map((chapter) =>
-    el('button', {
+  // Each chapter carries its own identity and its own edge anchoring, decided
+  // here from the data rather than by a CSS selector counting DOM position.
+  // `:first-child` never matched a chapter — the track's first child is the
+  // fill bar — and the label it was supposed to pull in had been overhanging
+  // the track's edge unnoticed, because the overhang was hiding a collision
+  // with the chapter after it.
+  const chapters = story.chapters ?? [];
+  const chapterButtons = chapters.map((chapter, index) => {
+    const percent = (chapter.at / story.duration) * 100;
+    return el('button', {
       class: 'story-chapter',
       type: 'button',
-      style: `left:${((chapter.at / story.duration) * 100).toFixed(2)}%`,
-      'aria-label': `${chapter.label} — jump to this chapter`,
+      'data-chapter': chapter.id,
+      'data-anchor': chapterAnchor(chapters, index, story.duration),
+      style: `left:${percent.toFixed(2)}%`,
+      'aria-label': `${chapter.labelJa}（${chapter.label}）へ移動`,
       on: { click: (event) => (event.stopPropagation(), seek(chapter.at + 0.01)) },
     }, [
       el('span', { class: 'story-chapter-dot' }),
       el('span', { class: 'story-chapter-name' }, [
+        el('span', { class: 'lang-ja chapter-wide', text: chapter.labelJa }),
+        el('span', { class: 'lang-ja chapter-narrow', text: chapter.labelJaShort ?? chapter.labelJa }),
         el('span', { class: 'lang-en', text: chapter.label }),
-        el('span', { class: 'lang-ja', text: chapter.labelJa }),
       ]),
-    ])
-  );
+    ]);
+  });
   track.append(...chapterButtons);
   const counter = el('span', { class: 'story-count', 'aria-hidden': 'true' });
 
   // --- completion state ---------------------------------------------------
   // After the last scene the sequence does not just stop on a tiny ✕: it says
   // it is done and offers the two things a viewer actually does next.
-  const completion = el('div', { class: 'story-complete', role: 'group', 'aria-label': 'Story finished' }, [
+  const completion = el('div', { class: 'story-complete', role: 'group', 'aria-label': '解説の終了' }, [
     el('span', { class: 'story-complete-text' }, [
-      el('span', { class: 'lang-en', text: "That's the end of the guided tour." }),
       el('span', { class: 'lang-ja', text: '解説は以上です。' }),
+      el('span', { class: 'lang-en', text: "That's the end of the guided tour." }),
     ]),
     el('div', { class: 'story-complete-actions' }, [
       el('button', {
         class: 'story-cta story-cta-primary',
         type: 'button',
-        'aria-label': 'Back to exploring',
+        'aria-label': '自由操作に戻る',
         on: { click: () => exit() },
       }, [
+        el('span', { class: 'lang-ja', text: '自由操作に戻る' }),
         el('span', { class: 'lang-en', text: 'Back to exploring' }),
-        el('span', { class: 'lang-ja', text: '探索に戻る' }),
       ]),
       el('button', {
         class: 'story-cta',
         type: 'button',
-        'aria-label': 'Watch again',
+        'aria-label': 'もう一度見る',
         on: { click: () => replay() },
       }, [
-        el('span', { class: 'lang-en', text: 'Watch again' }),
         el('span', { class: 'lang-ja', text: 'もう一度見る' }),
+        el('span', { class: 'lang-en', text: 'Watch again' }),
       ]),
     ]),
   ]);
 
   const element = el('div', { class: 'story-bar' }, [
     el('div', { class: 'story-line' }, [
-      partLabel,
-      el('span', { class: 'story-caption' }, [captionEn, captionJa]),
-      beatLabel,
+      partJa,
+      partEn,
+      el('span', { class: 'story-caption' }, [captionEn, captionJa, noteEn, noteJa]),
+      beatJa,
+      beatEn,
     ]),
     el('div', { class: 'story-foot' }, [
       track,
@@ -118,16 +144,25 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       el('button', {
         class: 'story-leave',
         type: 'button',
-        title: 'Leave the story (Escape)',
-        'aria-label': 'Leave the story',
+        title: '解説を終了する（Esc）',
+        'aria-label': '自由操作に戻る',
         on: { click: () => exit() },
       }, [
+        el('span', { class: 'lang-ja', text: '← 自由操作に戻る' }),
         el('span', { class: 'lang-en', text: '← Back to exploring' }),
-        el('span', { class: 'lang-ja', text: '← 探索に戻る' }),
       ]),
     ]),
     completion,
   ]);
+
+  // The kicker beside the caption is one short word, so it is picked rather
+  // than stacked; it follows the language the rest of the bar is in.
+  // The kicker beside the caption is one short word, so it is picked rather
+  // than stacked. Both languages are written every time; CSS shows one.
+  const PART_NAMES = {
+    beat: { ja: '1 拍', en: 'One beat' },
+    remodeling: { ja: 'リモデリング', en: 'Remodeling' },
+  };
 
   let active = false;
   let snapshot = null;
@@ -201,15 +236,22 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     const caption = story.captionAt(t);
     captionEn.textContent = caption.text;
     captionJa.textContent = caption.textJa;
+    noteEn.textContent = caption.note ?? '';
+    noteJa.textContent = caption.noteJa ?? '';
     element.style.setProperty('--story-caption-opacity', caption.opacity.toFixed(3));
-    partLabel.textContent = caption.part === 'beat' ? 'One beat' : 'Remodeling';
+    const part = PART_NAMES[caption.part] ?? PART_NAMES.remodeling;
+    partJa.textContent = part.ja;
+    partEn.textContent = part.en;
     element.dataset.part = caption.part;
 
     // The beat phase is worth naming only while the beat is the subject — not
     // for the whole of Part B, where the later steps are about what follows it.
     const named = story.beatNamedAt(t) ? scene.getBeatPhase?.() : null;
-    beatLabel.textContent = named ? named.label : '';
-    beatLabel.dataset.ja = named ? named.labelJa : '';
+    // Both languages, as spans, for the same reason as the kicker: this used to
+    // write English into textContent and Japanese into a data attribute that no
+    // stylesheet read, so the beat phase stayed English in Japanese mode.
+    beatEn.textContent = named ? named.label : '';
+    beatJa.textContent = named ? named.labelJa ?? named.label : '';
 
     // --- continuous progress: real story time, never a step count
     const frac = Math.min(1, t / story.duration);
@@ -269,6 +311,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     },
     enter,
     exit,
+    /** @param {string} mode 'ja' | 'en' */
     toggle: () => (active ? exit() : enter()),
     /**
      * Jump to a moment. Used by the step dots, and by the tests to reach a step
@@ -294,3 +337,43 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     },
   };
 }
+
+/**
+ * How a chapter label should sit relative to its mark on the track: centred
+ * normally, but anchored inward near the ends so it stays inside the track,
+ * and anchored the same way when its neighbour is close enough to collide.
+ *
+ * Decided from where the mark actually is, as a fraction of the *track*. An
+ * earlier version took the ends from array position instead, which is not the
+ * same question: the last chapter starts at 33s of a 42s story, three quarters
+ * of the way along, and pulling its label a full width left of its own dot
+ * detached the label from the mark it names.
+ *
+ * @param {{at: number}[]} chapters in order
+ * @param {number} index
+ * @param {number} duration seconds of story the track represents
+ * @returns {'start' | 'end' | 'centre'}
+ */
+function chapterAnchor(chapters, index, duration) {
+  const position = chapters[index].at / duration;
+  if (position <= CHAPTER_EDGE_MARGIN) return 'start';
+  if (position >= 1 - CHAPTER_EDGE_MARGIN) return 'end';
+  // Close behind a chapter that is pinned to the left edge and so cannot move
+  // out of the way: anchor this one to its mark too.
+  const previous = chapters[index - 1];
+  const previousPinned = previous.at / duration <= CHAPTER_EDGE_MARGIN;
+  const gap = (chapters[index].at - previous.at) / duration;
+  return previousPinned && gap < CHAPTER_CROWDING_GAP ? 'start' : 'centre';
+}
+
+/**
+ * Within this fraction of either end of the track, a centred label would hang
+ * off the edge, so it is anchored to its mark instead.
+ */
+const CHAPTER_EDGE_MARGIN = 0.06;
+
+/**
+ * Below this fraction of the track, two chapter marks are close enough that
+ * their labels would overlap if both were centred.
+ */
+const CHAPTER_CROWDING_GAP = 0.2;

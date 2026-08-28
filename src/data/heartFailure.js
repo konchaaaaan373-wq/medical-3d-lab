@@ -13,7 +13,7 @@ export const PALETTE = {
   myocardium: '#96434d', // heart muscle — matches the epicardial tissue tint
   flow: '#ff6b7f', // blood taking part in ejection
   residual: '#a06ae0', // blood still in the ventricle at end-systole
-  pressure: '#6f7ce8', // raised filling / pulmonary venous pressure (NOT blood)
+  pressure: '#7c88c4', // raised filling / pulmonary venous pressure (NOT blood)
   fluid: '#9fb9c9', // interstitial fluid (NOT blood)
   vessel: '#8fa8c8',
   endDiastolicMark: '#9fe4ff', // where the cavity wall was at end-diastole (NOT tissue)

@@ -117,9 +117,9 @@ export class HeartFailureScene {
   static meta = {
     id: 'heart-failure',
     title: 'Heart Failure',
-    titleJa: '心不全 — 左室リモデリング',
+    titleJa: '心不全',
     subtitle: 'Illustrative LV remodeling in HFrEF · simplified 3D model',
-    subtitleJa: 'HFrEFでみられる左室リモデリングの一例 ｜ 教育用3Dモデル',
+    subtitleJa: '左室リモデリング',
     stages: STAGES,
     legend: LEGEND,
     range: RANGE,
@@ -198,9 +198,11 @@ export class HeartFailureScene {
       flowColor: PALETTE.flow,
       staticColor: PALETTE.residual,
     });
-    this.congestion = new CongestionOverlay(compact ? 70 : 110);
-    // The cavity is a small, densely filled volume; full opacity reads as a blob.
-    this.blood.material.uniforms.uOpacity.value = 0.55;
+    this.congestion = new CongestionOverlay(compact ? 34 : 52);
+    // The cavity is a small, densely filled volume; full opacity reads as a
+    // blob, and anything above roughly a third reads as confetti scattered over
+    // the endocardium once the camera comes in close.
+    this.blood.material.uniforms.uOpacity.value = 0.38;
 
     // Everything that belongs to the diseased heart lives in one group, so
     // comparison mode can slide it aside without touching the lights.
@@ -286,11 +288,15 @@ export class HeartFailureScene {
     // read off the stage: the overlay spreads with mean pulmonary venous
     // pressure, and interstitial fluid appears only once that pressure reaches
     // the range where transudation is expected.
-    this.congestion.setCongestion(
-      this.state.congestionLevel * this.congestionReveal.front,
-      this.state.interstitialFluidLevel * this.congestionReveal.fluid
-    );
     this.vessels.setCongestionLevel(this.state.congestionLevel);
+    this.congestion.setCongestion(
+      {
+        pressureFront: this.state.congestionLevel,
+        interstitialFluid: this.state.interstitialFluidLevel,
+        atriumDistension: this.vessels.atriumDistension,
+      },
+      this.congestionReveal
+    );
     this._applyOutlineShape();
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
     this._applyCongestionVisibility();
