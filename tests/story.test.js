@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ANNOTATIONS, STAGES } from '../src/data/heartFailure.js';
 import { stageIndexFor } from '../src/components/StageReadout.js';
+import { VIEW_SUBJECTS } from '../src/scenes/heartFailure/anatomy.js';
 import {
   STORY_STEPS,
   STORY_CUES,
@@ -152,3 +153,39 @@ test('every label a step asks for exists, and its window is open where the step 
     }
   }
 });
+
+test('every story beat names the structure it is looking at', () => {
+  // A beat whose framing is a raw coordinate stops meaning anything the moment
+  // the anatomy moves. When the vessels were reflected onto the ventricle's
+  // frame, the two beats framing the atrium and the pulmonary bed had to be
+  // corrected by hand; these assertions are what make that automatic.
+  for (const step of STORY_STEPS) {
+    const subject = VIEW_SUBJECTS[step.camera.subject];
+    assert.ok(subject, `step "${step.id}" names an unknown view subject`);
+    const nudge = step.camera.target.distanceTo(subject);
+    assert.ok(
+      nudge < MAX_FRAMING_NUDGE,
+      `step "${step.id}" sits ${nudge.toFixed(2)} from ${step.camera.subject}: ` +
+        'that is far enough that the beat is not really framing that structure'
+    );
+  }
+});
+
+test('the beats about the pulmonary side actually look at it', () => {
+  const pulmonary = STORY_STEPS.filter((step) => step.camera.subject !== 'leftVentricle' &&
+    step.camera.subject !== 'ventricularApex');
+  assert.ok(pulmonary.length >= 2, 'the story ends on the pulmonary circulation');
+  for (const step of pulmonary) {
+    const subject = VIEW_SUBJECTS[step.camera.subject];
+    assert.ok(
+      subject.distanceTo(VIEW_SUBJECTS.leftVentricle) > 3,
+      `step "${step.id}" claims a pulmonary subject that sits on the ventricle`
+    );
+  }
+});
+
+/**
+ * How far a beat's target may sit from the structure it names. Beyond this the
+ * name is decoration rather than a claim about what is being framed.
+ */
+const MAX_FRAMING_NUDGE = 2.2;

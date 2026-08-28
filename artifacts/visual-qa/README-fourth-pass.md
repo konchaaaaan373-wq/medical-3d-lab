@@ -31,3 +31,32 @@ exploring" and the shot captured the free-exploration view instead. It now
 waits for `.story-bar.is-complete`. A test that quietly measures the wrong
 thing is the same failure this whole pass is about — it just happened to be
 in the harness rather than in the scene.
+
+
+## scenecheck.mjs — runtime assertions
+
+`uicheck.mjs` covers the DOM. `scenecheck.mjs` covers the rendered scene, and
+exists because unit tests kept passing while the picture was wrong. It drives
+the built app — free exploration, a slider change, the story running to
+congestion — and asserts what someone would otherwise have to check by eye:
+
+- the aorta renders opaque, and stays opaque across a state change and through
+  the story (the bug that shipped twice)
+- the aorta does not out-brighten the myocardium, measured on the pixels
+  actually drawn at points projected from the geometry, not on base colours
+- the atrium distends with filling pressure, and the pressure sheath tracks it
+  exactly rather than lagging inside an opaque chamber
+- the right lung is the larger one and the lungs stay quiet
+- every 3D label lands inside the canvas
+
+Same requirements as uicheck: a preview build and Playwright.
+
+    node scenecheck.mjs
+
+Last run: 11/11.
+
+Two of these were worth the trouble immediately. Comparing the aorta's and the
+myocardium's *material colours* said the aorta was 2.6x too bright; sampling
+the rendered pixels said it is very slightly darker. The texture and the
+lighting close the gap, and the proxy would have sent someone off to fix a
+problem that was not there.

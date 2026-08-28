@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { STAGES } from '../../data/heartFailure.js';
 import { cueOpacity } from '../../utils/Timeline.js';
 import { sampleHemodynamics } from './hemodynamics.js';
+import { VIEW_SUBJECTS } from './anatomy.js';
 
 /**
  * The guided sequence: what the scene shows, in the order the physiology
@@ -36,9 +37,27 @@ const HFREF = STAGES.find((stage) => stage.id === 'systolic-dysfunction').at;
  */
 const BEAT_PROGRESS = 0.85;
 
-/** Whole-subject framing, shared by the Part A steps. */
-const wide = (x, y, z, distance) => ({
-  target: new THREE.Vector3(x, y, z),
+/**
+ * Framing, expressed as "look at this structure, from this far, nudged this
+ * much for composition".
+ *
+ * The nudge is a framing decision and reads as one — it is scene units of
+ * slack, not anatomy. The subject is the part that has to survive the anatomy
+ * moving: when the vessels were reflected onto the ventricle's coordinate
+ * frame, the two beats that framed the atrium and the pulmonary bed by raw
+ * coordinate had to be found and corrected by hand, and the beats that frame
+ * the ventricle needed nothing. Naming the subject is what makes that
+ * automatic.
+ *
+ * @param {keyof typeof VIEW_SUBJECTS} subject
+ * @param {number} distance
+ * @param {{x?: number, y?: number, z?: number}} nudge composition only
+ */
+const on = (subject, distance, nudge = {}) => ({
+  subject,
+  target: VIEW_SUBJECTS[subject]
+    .clone()
+    .add(new THREE.Vector3(nudge.x ?? 0, nudge.y ?? 0, nudge.z ?? 0)),
   distance,
 });
 
@@ -85,7 +104,7 @@ export const STORY_STEPS = [
     until: 4,
     progress: 0,
     focus: ['lv'],
-    camera: wide(-0.3, -1.7, 0.3, 27.5),
+    camera: on('leftVentricle', 27.5, { x: -0.3 }),
     caption: 'A normal left ventricle, filling and emptying',
     captionJa: '正常な左室。拡張期に充満し、収縮期に駆出する',
     // Said once, at the start: this is one representative course, not the
@@ -100,7 +119,7 @@ export const STORY_STEPS = [
     until: 8,
     progress: STAGES.find((s) => s.id === 'concentric-hypertrophy').at,
     focus: ['wall'],
-    camera: wide(0.9, -1.0, 0.5, 23.5),
+    camera: on('leftVentricle', 23.5, { x: 0.9, y: 0.7, z: 0.2 }),
     caption: 'Against a higher load, the wall thickens',
     captionJa: '後負荷の増大に適応し、左室壁が肥厚する',
   },
@@ -111,7 +130,7 @@ export const STORY_STEPS = [
     until: 12,
     progress: STAGES.find((s) => s.id === 'dilation').at,
     focus: ['lv'],
-    camera: wide(0.1, -1.5, 0.3, 26.5),
+    camera: on('leftVentricle', 26.5, { x: 0.1, y: 0.2 }),
     caption: 'Later the chamber enlarges instead',
     captionJa: 'やがて左室腔が拡大し、より球形に近づく',
   },
@@ -122,7 +141,7 @@ export const STORY_STEPS = [
     until: 16,
     progress: HFREF,
     focus: ['lv'],
-    camera: wide(-0.3, -1.6, 0.3, 28),
+    camera: on('leftVentricle', 28, { x: -0.3, y: 0.1 }),
     caption: 'Now it ejects a smaller fraction of its blood',
     captionJa: '収縮力が低下し、1拍で駆出される血液の割合が減少する',
   },
@@ -137,7 +156,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['lv'],
-    camera: wide(-0.5, -2.1, 0.3, 23),
+    camera: on('leftVentricle', 23, { x: -0.5, y: -0.4 }),
     caption: 'Watch one beat. First it fills',
     captionJa: '1 拍を追う。まず拡張期に左室が充満する',
   },
@@ -149,7 +168,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['lv'],
-    camera: wide(-0.5, -2.1, 0.3, 22.5),
+    camera: on('leftVentricle', 22.5, { x: -0.5, y: -0.4 }),
     caption: 'Contraction begins — pressure rises before anything leaves',
     captionJa: '収縮が始まる。等容性収縮期には、駆出されないまま左室圧が上昇する',
   },
@@ -161,7 +180,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: [],
-    camera: wide(-0.3, -1.5, 0.4, 24),
+    camera: on('leftVentricle', 24, { x: -0.3, y: 0.2, z: 0.1 }),
     // Emphasis, not colour: the outflow is recognisable because it moves.
     emphasis: { ejection: 1 },
     // "Only part" is a claim about distance, so the end-diastolic mark comes up
@@ -178,7 +197,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['residual'],
-    camera: wide(-0.5, -2.4, 0.3, 21.5),
+    camera: on('ventricularApex', 21.5, { x: -0.5, y: 0.1 }),
     emphasis: { residual: 1 },
     outline: 1,
     caption: 'Blood remains after systole',
@@ -192,7 +211,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['pressure'],
-    camera: wide(-0.7, -1.1, 0.3, 25.5),
+    camera: on('leftVentricle', 25.5, { x: -0.7, y: 0.6 }),
     // Pressure only. Nothing has reached the pulmonary side yet.
     reveal: { front: 0.35, fluid: 0 },
     caption: 'As ventricular volumes rise, filling now occurs at a higher pressure',
@@ -206,7 +225,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['pressure', 'pulmonary-bed'],
-    camera: wide(1.7, 1.4, -0.7, 27.5),
+    camera: on('leftAtrium', 27.5, { x: 0.25, y: -1.46, z: 0.45 }),
     view: PULMONARY_VIEW,
     // Brings the atrium and pulmonary veins up out of the dark, so the front is
     // seen spreading *inside* a pathway rather than through empty space.
@@ -226,7 +245,7 @@ export const STORY_STEPS = [
     progress: BEAT_PROGRESS,
     beat: true,
     focus: ['fluid', 'pulmonary-bed'],
-    camera: wide(2.0, 1.6, -0.8, 27),
+    camera: on('pulmonaryVenousJunction', 27, { x: 0.53, y: -1.3, z: 0.86 }),
     view: PULMONARY_VIEW,
     context: 1,
     reveal: { front: 1, fluid: 1 },
