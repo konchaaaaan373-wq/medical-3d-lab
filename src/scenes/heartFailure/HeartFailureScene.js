@@ -290,9 +290,12 @@ export class HeartFailureScene {
     // the range where transudation is expected.
     this.vessels.setCongestionLevel(this.state.congestionLevel);
     this.congestion.setCongestion(
-      this.state.congestionLevel * this.congestionReveal.front,
-      this.state.interstitialFluidLevel * this.congestionReveal.fluid,
-      this.vessels.atriumDistension
+      {
+        pressureFront: this.state.congestionLevel,
+        interstitialFluid: this.state.interstitialFluidLevel,
+        atriumDistension: this.vessels.atriumDistension,
+      },
+      this.congestionReveal
     );
     this._applyOutlineShape();
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);

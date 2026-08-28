@@ -33,7 +33,15 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
   // draws, said before it is drawn rather than in a modal nobody reads.
   const noteEn = el('span', { class: 'story-note lang-en' });
   const noteJa = el('span', { class: 'story-note lang-ja' });
-  const partLabel = el('span', { class: 'story-part' });
+  // Both languages, always in the DOM, hidden by the same single CSS rule that
+  // governs every other pair of strings in the interface. This used to be one
+  // span written by JS from a mutable table, which meant it was the one piece
+  // of story text with its own copy of the language state — and switching
+  // language while the timeline was stopped left the previous language's word
+  // beside a caption in the new one. Text that never holds language state
+  // cannot go stale.
+  const partJa = el('span', { class: 'story-part lang-ja' });
+  const partEn = el('span', { class: 'story-part lang-en' });
   const beatLabel = el('span', { class: 'story-beat' });
 
   // --- one continuous timeline -------------------------------------------
@@ -62,11 +70,21 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       el('span', { class: 'story-tick', style: `left:${((step.at / story.duration) * 100).toFixed(2)}%` })
     );
   }
-  const chapterButtons = (story.chapters ?? []).map((chapter) =>
-    el('button', {
+  // Each chapter carries its own identity and its own edge anchoring, decided
+  // here from the data rather than by a CSS selector counting DOM position.
+  // `:first-child` never matched a chapter — the track's first child is the
+  // fill bar — and the label it was supposed to pull in had been overhanging
+  // the track's edge unnoticed, because the overhang was hiding a collision
+  // with the chapter after it.
+  const chapters = story.chapters ?? [];
+  const chapterButtons = chapters.map((chapter, index) => {
+    const percent = (chapter.at / story.duration) * 100;
+    return el('button', {
       class: 'story-chapter',
       type: 'button',
-      style: `left:${((chapter.at / story.duration) * 100).toFixed(2)}%`,
+      'data-chapter': chapter.id,
+      'data-anchor': chapterAnchor(chapters, index),
+      style: `left:${percent.toFixed(2)}%`,
       'aria-label': `${chapter.labelJa}（${chapter.label}）へ移動`,
       on: { click: (event) => (event.stopPropagation(), seek(chapter.at + 0.01)) },
     }, [
@@ -76,8 +94,8 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
         el('span', { class: 'lang-ja chapter-narrow', text: chapter.labelJaShort ?? chapter.labelJa }),
         el('span', { class: 'lang-en', text: chapter.label }),
       ]),
-    ])
-  );
+    ]);
+  });
   track.append(...chapterButtons);
   const counter = el('span', { class: 'story-count', 'aria-hidden': 'true' });
 
@@ -113,7 +131,8 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
 
   const element = el('div', { class: 'story-bar' }, [
     el('div', { class: 'story-line' }, [
-      partLabel,
+      partJa,
+      partEn,
       el('span', { class: 'story-caption' }, [captionEn, captionJa, noteEn, noteJa]),
       beatLabel,
     ]),
@@ -136,14 +155,11 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
 
   // The kicker beside the caption is one short word, so it is picked rather
   // than stacked; it follows the language the rest of the bar is in.
-  const partNames = { beat: '1 拍', remodeling: 'リモデリング' };
-  const applyLanguage = (mode) => {
-    partNames.beat = mode === 'en' ? 'One beat' : '1 拍';
-    partNames.remodeling = mode === 'en' ? 'Remodeling' : 'リモデリング';
-    // The kicker is written by renderAt, so switching language while the
-    // timeline is stopped — paused, or on the completion screen — would leave
-    // the previous language's word sitting beside the caption.
-    if (lastRenderedAt !== null) renderAt(lastRenderedAt);
+  // The kicker beside the caption is one short word, so it is picked rather
+  // than stacked. Both languages are written every time; CSS shows one.
+  const PART_NAMES = {
+    beat: { ja: '1 拍', en: 'One beat' },
+    remodeling: { ja: 'リモデリング', en: 'Remodeling' },
   };
 
   let active = false;
@@ -189,11 +205,7 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     seek(0);
   }
 
-  /** The last time renderAt was called for, so a language switch can repeat it. */
-  let lastRenderedAt = null;
-
   function renderAt(t) {
-    lastRenderedAt = t;
     const { step } = story.stepAt(t);
 
     // --- model: one progression value per step, held for the whole step
@@ -225,7 +237,9 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     noteEn.textContent = caption.note ?? '';
     noteJa.textContent = caption.noteJa ?? '';
     element.style.setProperty('--story-caption-opacity', caption.opacity.toFixed(3));
-    partLabel.textContent = caption.part === 'beat' ? partNames.beat : partNames.remodeling;
+    const part = PART_NAMES[caption.part] ?? PART_NAMES.remodeling;
+    partJa.textContent = part.ja;
+    partEn.textContent = part.en;
     element.dataset.part = caption.part;
 
     // The beat phase is worth naming only while the beat is the subject — not
@@ -293,7 +307,6 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     enter,
     exit,
     /** @param {string} mode 'ja' | 'en' */
-    setLanguage: applyLanguage,
     toggle: () => (active ? exit() : enter()),
     /**
      * Jump to a moment. Used by the step dots, and by the tests to reach a step
@@ -319,3 +332,33 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
     },
   };
 }
+
+/**
+ * How a chapter label should sit relative to its mark on the track: centred
+ * normally, but anchored inward at the ends so it stays inside the track, and
+ * anchored the same way when its neighbour is close enough to collide.
+ *
+ * Deciding this from the chapter times is the point. The previous rule read
+ * DOM position, which is a fact about how the markup happens to be assembled
+ * rather than about where the labels actually are, and it was both wrong and
+ * hiding a second problem.
+ *
+ * @param {{at: number}[]} chapters in order
+ * @param {number} index
+ * @returns {'start' | 'end' | 'centre'}
+ */
+function chapterAnchor(chapters, index) {
+  if (index === 0) return 'start';
+  if (index === chapters.length - 1) return 'end';
+  // Close behind the opening chapter, which is pinned to the left edge and so
+  // cannot move out of the way: anchor this one to its mark too.
+  const span = chapters[chapters.length - 1].at - chapters[0].at;
+  const gap = (chapters[index].at - chapters[index - 1].at) / Math.max(0.001, span);
+  return gap < CHAPTER_CROWDING_GAP ? 'start' : 'centre';
+}
+
+/**
+ * Below this fraction of the timeline, two chapter marks are close enough that
+ * their labels would overlap if both were centred.
+ */
+const CHAPTER_CROWDING_GAP = 0.2;

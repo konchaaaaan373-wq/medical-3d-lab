@@ -256,11 +256,11 @@ export async function createApp({ stage, ui }) {
       : undefined,
   });
 
+  // One switch, one place. Every string in the interface exists in both
+  // languages in the DOM and is chosen by a single CSS rule on this attribute,
+  // so nothing can be left holding the previous language.
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
-    // A couple of one-word strings are picked rather than stacked, so they
-    // have to be told which language the rest of the UI is in.
-    storyMode?.setLanguage?.(mode);
   });
 
   // Optional: scenes that expose a model can show a live read-out beside the view.

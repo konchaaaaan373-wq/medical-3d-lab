@@ -1,5 +1,15 @@
 import * as THREE from 'three';
-import { ANATOMY, AORTA, PULMONARY_VEINS, PULMONARY_VEIN_OSTIA, buildVascularFans } from './anatomy.js';
+import {
+  ANATOMICAL_AXES,
+  ANATOMY,
+  AORTA,
+  AORTA_LANDMARKS,
+  AORTA_MODEL,
+  AORTA_SEGMENTS,
+  PULMONARY_VEINS,
+  PULMONARY_VEIN_OSTIA,
+  buildVascularFans,
+} from './anatomy.js';
 import { vesselDetailTexture } from './materials/heartMaterials.js';
 import { lerp, smoothstep } from '../../utils/math.js';
 
@@ -19,26 +29,102 @@ import { lerp, smoothstep } from '../../utils/math.js';
  * dusky tint. The pressure itself is drawn by CongestionOverlay.
  */
 /**
- * Resting opacity of the great vessels and of the valve rings. Presentation
- * emphasis raises them from here; it must never redefine them.
+ * Opacity of everything this component owns, as a composition rather than as a
+ * sequence of assignments.
+ *
+ * Ownership matrix for the scene's materials — who decides the final value:
+ *
+ *   material            owner                       inputs
+ *   ------------------  --------------------------  -------------------------
+ *   aorta (arterial)    Vessels._resolveMaterials   congestion, emphasis
+ *   pulmonary veins     Vessels._resolveMaterials   congestion, emphasis
+ *   left atrium         Vessels._resolveMaterials   congestion, emphasis
+ *   valve rings         Vessels._resolveMaterials   congestion, emphasis
+ *   lung context        Vessels._resolveMaterials   congestion, emphasis
+ *   myocardium/         Chamber.setOpacity          comparison fade
+ *     endocardium/cut
+ *   congestion sheath   CongestionOverlay           pressure front, emphasis
+ *   interstitial fluid  CongestionOverlay           fluid level
+ *   blood particles     HeartFailureScene           set once at construction
+ *   end-diastolic mark  CavityOutline               reveal
+ *
+ * Nothing outside a material's owner writes its opacity.
  */
-const ARTERIAL_OPACITY = 0.82;
-const VALVE_OPACITY = 0.38;
+const VESSEL_OPACITY = {
+  arterial: { base: 0.82, congested: 0.82, emphasised: 0.9 },
+  venous: { base: 0.33, congested: 0.42, emphasised: 0.55 },
+  atrium: { base: 0.88, congested: 0.92, emphasised: 0.94 },
+  valve: { base: 0.38, congested: 0.38, emphasised: 0.62 },
+  lung: { base: 0.11, congested: 0.19, emphasised: 0.19 },
+};
+
+/**
+ * The one composition rule: congestion moves a material from its resting value
+ * toward its congested one, and presentation emphasis lifts the result toward
+ * its emphasised one. Explicit, and in one direction — never "whichever
+ * assignment ran last wins".
+ */
+function resolveOpacity(spec, congested, emphasis) {
+  return lerp(lerp(spec.base, spec.congested, congested), spec.emphasised, emphasis);
+}
+
+/**
+ * How far the atrium distends at full congestion. Illustrative: the direction
+ * is what the model says, the amount is a drawing decision.
+ */
+const ATRIAL_DISTENSION_MAX = 1.22;
+
+/** Where the lung silhouettes sit relative to the heart, in scene units. */
+const LUNG_PLACEMENT = { lateral: 5.2, height: 0.6, depth: -5.2 };
+
+/**
+ * Relative size of each lung. The right lung is the larger one; the left is
+ * smaller, mostly in width, because the heart occupies that side of the chest.
+ * Illustrative proportions, not measurements.
+ */
+const LUNG_SIZE = {
+  right: { width: 1.0, height: 1.0, depth: 1.0 },
+  left: { width: 0.87, height: 0.94, depth: 0.92 },
+};
+
+
+/**
+ * Where the aorta dissolves toward the edge of the picture, given as a run
+ * along the descending aorta rather than as a fraction of the whole vessel:
+ * a quarter of the way down it starts to go, and it is gone before the end.
+ * An artery that stopped on a cut disc read as a pipe; this is what an atlas
+ * plate does instead.
+ */
+const DISTAL_FADE = {
+  from: AORTA_SEGMENTS.descending.localToPathT(0.15),
+  to: AORTA_SEGMENTS.descending.localToPathT(0.8),
+};
 
 export class Vessels extends THREE.Group {
   constructor() {
     super();
     this.name = 'vessels';
 
+    /**
+     * What the model says is happening. Only this may change anatomical size.
+     */
+    this.physiology = { congestionLevel: 0 };
+    /**
+     * How it is being shown. Only this may change opacity and visibility, and
+     * it may never reach anatomy: a story beat is a way of looking at a heart,
+     * not a change in the heart.
+     */
+    this.presentation = { emphasis: 0 };
+
     // --- materials ------------------------------------------------------
     // The aorta is a thick-walled artery, not a window: pale red-brown, less
     // saturated than myocardium, essentially opaque. A translucent pink pipe
     // was the single strongest "procedural tube" cue in the frame.
     this.arterialMaterial = new THREE.MeshPhysicalMaterial({
-      // Tuned against the material actually rendering at ARTERIAL_OPACITY.
-      // The earlier tint was picked while _applyOpacity was silently holding
-      // this at 0.3, so the black background was doing half the darkening;
-      // at its real opacity that tint was the brightest thing in the frame.
+      // Tuned against the opacity this material actually renders at. The
+      // earlier tint was picked while a stray update path was holding it at
+      // 0.3, so the black background was doing half the darkening; at its
+      // real opacity that tint was the brightest thing in the frame.
       color: new THREE.Color('#ab7f77'),
       roughness: 0.55,
       metalness: 0,
@@ -54,7 +140,7 @@ export class Vessels extends THREE.Group {
       transparent: true,
       // Not a window, but not a wall either: the ascending aorta crosses the
       // cutaway, and at full opacity it hid the cavity the scene is about.
-      opacity: ARTERIAL_OPACITY,
+      opacity: VESSEL_OPACITY.arterial.base,
       depthWrite: true,
       side: THREE.DoubleSide,
     });
@@ -62,7 +148,8 @@ export class Vessels extends THREE.Group {
     this.arterialMaterial.onBeforeCompile = (shader) => {
       shader.fragmentShader = shader.fragmentShader.replace(
         '#include <opaque_fragment>',
-        '\tdiffuseColor.a *= 1.0 - smoothstep(0.5, 0.88, vUv.x);\n#include <opaque_fragment>'
+        '\tdiffuseColor.a *= 1.0 - smoothstep(' + DISTAL_FADE.from.toFixed(4) + ', ' +
+            DISTAL_FADE.to.toFixed(4) + ', vUv.x);\n#include <opaque_fragment>'
       );
     };
 
@@ -109,7 +196,7 @@ export class Vessels extends THREE.Group {
       emissive: new THREE.Color('#6b5450'),
       emissiveIntensity: 0.04,
       transparent: true,
-      opacity: VALVE_OPACITY,
+      opacity: VESSEL_OPACITY.valve.base,
       depthWrite: false,
     });
 
@@ -121,7 +208,7 @@ export class Vessels extends THREE.Group {
     // vein tubes and writing depth so it sorts as a solid. It shares the
     // engorgement/dusk uniforms so congestion still reaches it.
     this.atriumMaterial = this.venousMaterial.clone();
-    this.atriumMaterial.opacity = 0.88;
+    this.atriumMaterial.opacity = VESSEL_OPACITY.atrium.base;
     this.atriumMaterial.depthWrite = true;
     this.atriumMaterial.color = new THREE.Color('#7d5566');
     this.atriumMaterial.roughness = 0.72;
@@ -210,16 +297,24 @@ export class Vessels extends THREE.Group {
     };
     this.lungs = new THREE.Group();
     this.lungs.name = 'lung-context';
-    for (const side of [-1, 1]) {
-      const lung = new THREE.Mesh(lungGeometry(side), this.lungMaterial);
-      lung.position.set(side * 5.2, 0.6, -5.2);
-      lung.rotation.z = side * -0.06;
-      // The right lung is the larger of the two, and the asymmetry matters
-      // here for a non-anatomical reason as well: two identical mirrored
-      // shapes either side of the heart read as an artefact of the render.
-      const bigger = side > 0;
-      lung.scale.set(bigger ? 1.0 : 0.87, bigger ? 1.0 : 0.94, bigger ? 1.0 : 0.92);
+    for (const side of ['left', 'right']) {
+      const towardSide = ANATOMICAL_AXES[side].x;
+      const lung = new THREE.Mesh(lungGeometry(towardSide), this.lungMaterial);
+      lung.position.set(
+        towardSide * LUNG_PLACEMENT.lateral,
+        LUNG_PLACEMENT.height,
+        LUNG_PLACEMENT.depth
+      );
+      lung.rotation.z = -towardSide * 0.06;
+      // The right lung is the larger of the two — three lobes against two —
+      // and asked for by name, because deciding it from the sign of x is how
+      // it ended up on the wrong side. The asymmetry also matters for a
+      // non-anatomical reason: two identical mirrored shapes either side of
+      // the heart read as an artefact of the render rather than as lungs.
+      const scale = LUNG_SIZE[side];
+      lung.scale.set(scale.width, scale.height, scale.depth);
       lung.frustumCulled = false;
+      lung.name = `lung-${side}`;
       this.lungs.add(lung);
     }
     this.add(this.lungs);
@@ -230,6 +325,13 @@ export class Vessels extends THREE.Group {
     this.annulus.add(valveRing(ANATOMY.aorticValve, 0.5, this.valveMaterial));
     this.annulus.add(valveRing(ANATOMY.mitralValve, 0.62, this.valveMaterial));
     this.add(this.annulus);
+
+    // Resolve once here so the resting frame is produced by the same code path
+    // as every frame after it. The opacities written when each material was
+    // constructed are starting values for the resolver to compose, not the
+    // values that ship.
+    this._resolveGeometry();
+    this._resolveMaterials();
   }
 
   /**
@@ -243,50 +345,66 @@ export class Vessels extends THREE.Group {
   }
 
   /**
-   * The venous side responds to filling pressure: the atrium distends, vein
-   * walls engorge outward, and the tree takes on a dusky congested tint.
-   * This is chamber and vessel distension under pressure, not blood arriving
-   * from the wrong direction — the pressure itself is drawn by
-   * CongestionOverlay.
+   * Physiological state: raised filling pressure, 0..1. This is the only input
+   * allowed to change the size of anything here — the atrium distends, the
+   * vein walls engorge, the tree takes on a dusky tint. Pressure itself is
+   * drawn by CongestionOverlay; this is the tissue's response to it.
    *
-   * @param {number} congestionLevel 0..1 index of raised filling pressure
+   * @param {number} congestionLevel
    */
   setCongestionLevel(congestionLevel) {
-    this.congestionLevel = congestionLevel;
-    const eased = smoothstep(0, 1, congestionLevel);
-    const distension = lerp(1, 1.22, eased);
-    this.atrium.scale.setScalar(distension);
-    this.venousUniforms.uEngorge.value = 0.12 * eased;
-    this.venousUniforms.uDusk.value = 0.45 * eased;
-    // The lungs come up slightly once the story is about them, so the haze
-    // has something to sit inside. Still far quieter than the heart.
-    this.lungMaterial.opacity = lerp(0.11, 0.19, eased);
-    this._applyOpacity();
+    this.physiology.congestionLevel = congestionLevel;
+    this._resolveGeometry();
+    this._resolveMaterials();
   }
 
   /**
    * Presentation emphasis, 0..1. Visualization only: the vessel walls become
    * more visible so the pressure field reads as being *in the atrium and
-   * pulmonary veins* rather than floating beside the heart. Nothing about the
-   * model changes.
+   * pulmonary veins* rather than floating beside the heart. It may reach
+   * opacity and nothing else — no size here, ever.
    *
    * @param {number} emphasis
    */
   setPresentationEmphasis(emphasis) {
-    this.presentationEmphasis = emphasis;
-    this._applyOpacity();
+    this.presentation.emphasis = emphasis;
+    this._resolveMaterials();
   }
 
-  _applyOpacity() {
-    const congested = smoothstep(0.4, 1, this.congestionLevel ?? 0);
-    const emphasis = this.presentationEmphasis ?? 0;
-    // The arterial and valve baselines belong to the materials, not here: this
-    // method used to reassign both from scratch every frame, which silently
-    // reverted the aorta to a translucent tube the moment the first frame ran.
-    this.arterialMaterial.opacity = lerp(ARTERIAL_OPACITY, 0.9, emphasis);
-    this.venousMaterial.opacity = lerp(lerp(0.33, 0.42, congested), 0.55, emphasis);
-    this.atriumMaterial.opacity = lerp(lerp(0.88, 0.92, congested), 0.94, emphasis);
-    this.valveMaterial.opacity = lerp(VALVE_OPACITY, 0.62, emphasis);
+  /**
+   * Size and shape, from physiology alone. Kept separate from
+   * _resolveMaterials so the rule "presentation cannot resize anatomy" is
+   * enforced by which function a value is computed in, not by remembering it.
+   */
+  _resolveGeometry() {
+    const eased = smoothstep(0, 1, this.physiology.congestionLevel);
+    this.atrium.scale.setScalar(lerp(1, ATRIAL_DISTENSION_MAX, eased));
+    this.venousUniforms.uEngorge.value = 0.12 * eased;
+    this.venousUniforms.uDusk.value = 0.45 * eased;
+  }
+
+  /**
+   * The single place any of these materials' opacity is decided.
+   *
+   * Every value comes from the same explicit formula rather than being
+   * assigned in whichever order the callers happen to run. The bug this
+   * replaces was exactly that: the constructor set the aorta opaque, an update
+   * path reassigned it from scratch on the first frame, and the vessel had
+   * been rendering at a third of its intended opacity ever since — no error,
+   * no failing test.
+   */
+  _resolveMaterials() {
+    const congested = smoothstep(0.4, 1, this.physiology.congestionLevel);
+    const revealed = smoothstep(0, 1, this.physiology.congestionLevel);
+    const emphasis = this.presentation.emphasis;
+    this.arterialMaterial.opacity = resolveOpacity(VESSEL_OPACITY.arterial, congested, emphasis);
+    this.venousMaterial.opacity = resolveOpacity(VESSEL_OPACITY.venous, congested, emphasis);
+    this.atriumMaterial.opacity = resolveOpacity(VESSEL_OPACITY.atrium, congested, emphasis);
+    this.valveMaterial.opacity = resolveOpacity(VESSEL_OPACITY.valve, congested, emphasis);
+    // The lungs come up slightly once the story is about them, so the haze has
+    // something to sit inside. Eased off the raw level rather than the 0.4
+    // threshold, so the change is gradual. Still far quieter than the heart.
+    this.lungMaterial.opacity = resolveOpacity(VESSEL_OPACITY.lung, revealed, emphasis);
   }
 
   /**
@@ -301,29 +419,65 @@ export class Vessels extends THREE.Group {
 }
 
 /**
- * The aorta as one continuous variable-radius tube: a flare where it leaves
- * the outflow tract, the three-lobed swell of the sinuses of Valsalva just
- * above the valve, then a gentle taper around the arch.
+ * Calibre of the aorta at each named landmark, in scene units (1 unit = 1 cm).
+ * Illustrative proportions, not measurements: what they encode is that the
+ * vessel narrows from root to arch to descending aorta.
+ */
+const AORTA_CALIBRE = {
+  annulus: 0.5,
+  sinotubularJunction: 0.47,
+  arch: 0.42,
+  descendingDistal: 0.33,
+};
+
+/** Flare where the root meets the valve annulus, as a fraction of calibre. */
+const ANNULAR_FLARE = 0.22;
+
+/**
+ * The sinuses of Valsalva, described in aortic-root-local coordinates: how
+ * wide the swell is as a fraction of the root's own length, and how far it
+ * bulges. Written this way, the sinuses stay on the root no matter what
+ * happens to the arch — which is exactly what went wrong when they were
+ * pinned to a fraction of the whole vessel.
+ */
+const SINUS_ROOT_WIDTH = 0.34;
+const SINUS_BULGE = 0.2;
+const SINUS_LOBE_DEPTH = 0.12;
+
+/**
+ * The aorta as one continuous variable-radius tube, shaped part by part: a
+ * flare at the annulus, the three-lobed swell of the sinuses of Valsalva
+ * across the root, then a taper through the ascending aorta and arch.
+ *
+ * Every position here is asked for by segment name, never as a fraction of the
+ * whole curve, so reshaping one part cannot silently move another.
  */
 function aortaGeometry() {
-  // Every constant here is a fraction of AORTA's *arc length*, and the curve
-  // now runs the descending aorta out of frame as well: the root and arch
-  // together are only the first ~45% of it. Landmarks placed for the old,
-  // arch-only curve land on the wrong vessel — the sinuses of Valsalva were
-  // swelling in the mid-ascending aorta. Anything added to AORTA moves these.
-  const sinus = (t) => Math.exp(-((t - AORTA_SINUS_T) ** 2) / (2 * 0.014 ** 2));
+  const seg = AORTA_SEGMENTS;
+  const sinusU = AORTA_LANDMARKS.sinusOfValsalva.localU;
   return variableTube(AORTA, 110, 18, (t, theta) => {
-    let r = lerp(0.5, 0.4, smoothstep(0.03, 0.3, t)) * lerp(1, 0.85, smoothstep(0.45, 0.9, t));
-    // A short flare at the annulus itself, where the root meets the valve.
-    r *= 1 + 0.22 * (1 - smoothstep(0, 0.018, t));
-    // Sinuses: a swell with three soft lobes around the circumference.
-    r *= 1 + sinus(t) * (0.2 + 0.12 * Math.max(0, Math.cos(3 * theta)));
-    return r;
+    const part = AORTA_MODEL.segmentAt(t);
+    if (part === 'root') {
+      const u = seg.root.pathTToLocal(t);
+      let r = lerp(AORTA_CALIBRE.annulus, AORTA_CALIBRE.sinotubularJunction, smoothstep(0, 1, u));
+      r *= 1 + ANNULAR_FLARE * (1 - smoothstep(0, 0.3, u));
+      // Three soft lobes around the circumference, centred on the sinuses.
+      const swell = Math.exp(-(((u - sinusU) / SINUS_ROOT_WIDTH) ** 2));
+      r *= 1 + swell * (SINUS_BULGE + SINUS_LOBE_DEPTH * Math.max(0, Math.cos(3 * theta)));
+      return r;
+    }
+    if (part === 'ascending') {
+      const u = seg.ascending.pathTToLocal(t);
+      return lerp(AORTA_CALIBRE.sinotubularJunction, AORTA_CALIBRE.arch, smoothstep(0, 1, u));
+    }
+    if (part === 'arch') {
+      const u = seg.arch.pathTToLocal(t);
+      return lerp(AORTA_CALIBRE.arch, AORTA_CALIBRE.arch * 0.95, u);
+    }
+    const u = seg.descending.pathTToLocal(t);
+    return lerp(AORTA_CALIBRE.arch * 0.95, AORTA_CALIBRE.descendingDistal, smoothstep(0, 0.6, u));
   });
 }
-
-/** Where along AORTA the sinuses of Valsalva sit: just above the valve. */
-const AORTA_SINUS_T = 0.028;
 
 /**
  * A tube along a curve whose radius may vary with position along the curve

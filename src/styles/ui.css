@@ -653,21 +653,18 @@
   pointer-events: none;
 }
 
-/* Anchored by type, not position: the track's first children are the fill bar
-   and the beat ticks, so :first-child never matched a chapter and the opening
-   label overhung the left edge while the closing one was correctly pulled in.
-   The chapter buttons are the only <button>s in the track.
-
-   The second chapter is anchored the same way. It begins early enough that,
-   centred on its own mark, its label runs back into the opening one — which
-   the overhanging first label had been hiding. */
-.story-chapter:first-of-type,
-.story-chapter:first-of-type + .story-chapter {
+/* Edge anchoring is decided in StoryMode from the chapter times and arrives as
+   data-anchor. It used to be a :first-child / :last-child pair, which is a
+   claim about DOM order rather than about where a label sits: :first-child
+   never matched (the track's first child is the fill bar), the opening label
+   overhung the track, and that overhang was quietly hiding it colliding with
+   the chapter after it. */
+.story-chapter[data-anchor='start'] {
   transform: none;
   align-items: flex-start;
 }
 
-.story-chapter:last-of-type {
+.story-chapter[data-anchor='end'] {
   transform: translateX(-100%);
   align-items: flex-end;
 }
@@ -1990,17 +1987,11 @@
   }
 }
 
+/* Responsive visibility policy — see the block at the end of this file. */
 @media (max-height: 560px) {
   .pv,
   .wave,
   .model-controls {
-    display: none;
-  }
-
-  .stage-summary,
-  .stage-summary-ja,
-  #ui[data-lang='ja'][data-view='learning'] .stage-summary-ja,
-  .disclaimer-en {
     display: none;
   }
 }
@@ -2045,4 +2036,33 @@
 #ui[data-lang='ja'] .step-name-ja,
 #ui[data-lang='ja'] .stage-progress-label .lang-ja {
   font-size: 11px;
+}
+
+
+/* ==========================================================================
+   Responsive visibility policy
+
+   What fits on a screen is not a matter of taste, and it must not lose an
+   argument with a rule about which language or which detail level is showing.
+   The Japanese-first block above needs high specificity to reveal a line the
+   English layout hides — and that specificity was quietly beating the rule
+   that hides the same line on a short viewport, so a 560px-tall window got a
+   stage summary it had no room for.
+
+   So every "there is no space for this" rule lives here, last in the file, and
+   marked !important. That is the one thing !important is genuinely for: a
+   policy that must not lose an argument, decided by what the screen can hold
+   rather than by which selector happens to be more specific. Matching the
+   specificity of today's rules instead would only move the race one round on —
+   the next three-attribute selector would win it again, silently, exactly as
+   this one did. Add responsive hides here, not next to the component.
+   ========================================================================== */
+
+@media (max-height: 560px) {
+  .stage-summary,
+  .stage-summary-ja,
+  .disclaimer-en,
+  .story-note {
+    display: none !important;
+  }
 }

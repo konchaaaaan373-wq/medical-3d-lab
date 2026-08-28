@@ -82,31 +82,37 @@ export class CongestionOverlay extends THREE.Group {
     this.fluid = createFluidPoints(fluid);
     this.add(this.fluid);
 
-    this.setCongestion(0, 0);
+    this.setCongestion({ pressureFront: 0, interstitialFluid: 0, atriumDistension: 1 });
   }
 
   /**
-   * Both inputs come from the solved mean pulmonary venous pressure rather than
-   * from the structural stage, so this overlay is a separate axis from the
-   * remodelling stages: it can be shown at any point on them, and it is not
-   * specific to HFrEF.
+   * The two kinds of state are passed separately and on purpose.
    *
-   * @param {number} front 0..1 spread of the pressure front, from pulmonary
-   *   venous pressure between the two landmarks in `CONGESTION_PRESSURE`
-   * @param {number} fluid 0..1 interstitial fluid, which only appears once the
-   *   pressure passes the range where transudation is expected. It is passed in
-   *   rather than derived here so nothing can create fluid the state does not
-   *   produce.
+   * `physiology` is what the model solved: how far raised filling pressure has
+   * been transmitted back along the pathway, how much fluid has moved into the
+   * interstitium, and how far the atrium has distended in response.
+   * `presentation` is how much of that the story is currently showing.
+   *
+   * The rule they enforce is that reveal never reaches anatomy. The sheath is
+   * *sized* from the atrium's real distension and only *faded* by the reveal —
+   * because reveal is driven by the story and distension is not, sizing the
+   * sheath from the reveal once left it lagging inside an opaque chamber and
+   * therefore invisible on exactly the beats it exists for.
+   *
+   * Both physiological levels are read off the solved mean pulmonary venous
+   * pressure rather than the structural stage, so this overlay is a separate
+   * axis from the remodelling stages: it can be shown at any point on them,
+   * and it is not specific to HFrEF.
+   *
+   * @param {{pressureFront: number, interstitialFluid: number,
+   *   atriumDistension: number}} physiology
+   * @param {{front: number, fluid: number}} presentation reveal fractions, 0..1
    */
-  setCongestion(front, fluid, atriumDistension = 1) {
+  setCongestion(physiology, presentation = { front: 1, fluid: 1 }) {
+    const front = physiology.pressureFront * presentation.front;
     this.pressureMaterial.uniforms.uPressure.value = front;
-    this.fluid.material.uniforms.uFill.value = fluid;
-    // The sheath has to track the atrium's *actual* scale, which is driven by
-    // congestionLevel while `front` is that level times the story's reveal
-    // fraction. Deriving it from `front` here left the sheath lagging behind
-    // the wall it labels, and the atrium is opaque and writes depth, so a
-    // lagging sheath is an invisible one.
-    this.atriumSheath.scale.setScalar(atriumDistension);
+    this.fluid.material.uniforms.uFill.value = physiology.interstitialFluid * presentation.fluid;
+    this.atriumSheath.scale.setScalar(physiology.atriumDistension);
     this.visible = front > 0.02;
   }
 
