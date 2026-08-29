@@ -187,6 +187,13 @@ function surfaceNoise(t, phi) {
   );
 }
 
+/**
+ * How far the wedge must be open before the cut face is drawn at full width.
+ * Below this the face is eased shut, so no near-coincident sliver is left
+ * standing edge-on at the apex.
+ */
+const CUT_FACE_OPEN = 0.45;
+
 /** How far the cut wedge is open at profile fraction t: 0 sealed, 1 fully. */
 function sealOpenFraction(t) {
   return smooth(0.08, VENTRICLE_SHAPING.apexSealEnd, t);
@@ -625,12 +632,20 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
       const outIdx = base + i * 3;
       const inIdx = base + (profileCount - 1 - i) * 3;
       writePair(i, phi0, c === 0 ? 1 : 0, c === 1 ? 1 : 0, outIdx, inIdx);
-      // Below the seal the two cap planes coincide; collapsing each sliver
-      // to its outer edge removes the z-fighting seam up the closed apex.
-      if (sealOpenFraction(tArr[i]) < 0.04) {
-        positions[inIdx] = positions[outIdx];
-        positions[inIdx + 1] = positions[outIdx + 1];
-        positions[inIdx + 2] = positions[outIdx + 2];
+      // The cut face shows the wall's cross-section, so it has to shrink to
+      // nothing as the wedge closes toward the apex — where there is no gap,
+      // there is nothing cut. This used to snap to zero below a threshold,
+      // which left a band above it where the two cap planes were nearly
+      // coincident and nearly edge-on: they rendered as a dark hairline
+      // running down the apex, with a step in the silhouette wherever the two
+      // sides' slivers ended at different heights. Easing the collapse over
+      // the same span the wedge opens across removes both, and takes away only
+      // cross-section that has no cavity behind it anyway.
+      const collapse = 1 - smooth(0, CUT_FACE_OPEN, sealOpenFraction(tArr[i]));
+      if (collapse > 0.001) {
+        positions[inIdx] = lerp(positions[inIdx], positions[outIdx], collapse);
+        positions[inIdx + 1] = lerp(positions[inIdx + 1], positions[outIdx + 1], collapse);
+        positions[inIdx + 2] = lerp(positions[inIdx + 2], positions[outIdx + 2], collapse);
       }
     }
   }
