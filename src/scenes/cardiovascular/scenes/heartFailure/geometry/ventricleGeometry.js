@@ -62,7 +62,27 @@ export const VENTRICLE_SHAPING = {
   lateralThicknessTrim: 0.05,
 
   /** Apex lateral drift as a fraction of the outer semi-length. */
-  apexDriftX: 0.13,
+  /**
+   * Lateral drift of the apex, as a fraction of the outer semi-length. The
+   * ventricle's long axis is oblique — the apex points to the anatomical left,
+   * anteriorly and inferiorly — and this is what carries that.
+   *
+   * Raised from 0.13 for a reason worth recording, because the obvious fix was
+   * the wrong one. Seen straight on, the ventricle read as a bucket: measured
+   * off a render, its silhouette moved 30 pixels over the top 125 of its
+   * height, which is two near-parallel sides under a flat basal rim. The
+   * apparent remedy is to taper the body — widest at the base, narrowing to
+   * the apex — and that was tried. It cannot be done here. The profile's
+   * radius is set by the volume the circulation model solved, so a taper large
+   * enough to change the silhouette walks the drawn cavity away from the
+   * solved surface (21% at the magnitude that mattered), and a taper small
+   * enough to be safe moved the edge by two pixels.
+   *
+   * Obliquity costs nothing, because a shear preserves volume exactly. It also
+   * happens to be what actually distinguishes a ventricle from a bucket: not
+   * how it tapers, but that its axis is not vertical.
+   */
+  apexDriftX: 0.22,
   apexDriftZ: 0.05,
 
   /** Amplitude of the smooth surface irregularity, as a radius fraction. */

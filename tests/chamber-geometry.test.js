@@ -49,14 +49,36 @@ function vertexAt(kit, k, i) {
 }
 
 /** Radius about the (drifted, bowed) long axis for a lathe vertex at profile t. */
+function axisOffset(shape, t) {
+  const w = (1 - t) * (1 - t);
+  return {
+    dx:
+      VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength * w +
+      Math.sin(Math.PI * t) * VENTRICLE_SHAPING.longAxisBow * shape.outerSemiLength,
+    dz: VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength * w,
+  };
+}
+
 function radiusAboutAxis(kit, shape, k, i, t) {
   const v = vertexAt(kit, k, i);
-  const w = (1 - t) * (1 - t);
-  const dx =
-    VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength * w +
-    Math.sin(Math.PI * t) * VENTRICLE_SHAPING.longAxisBow * shape.outerSemiLength;
-  const dz = VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength * w;
+  const { dx, dz } = axisOffset(shape, t);
   return Math.hypot(v.x - dx, v.z - dz);
+}
+
+/**
+ * Azimuth of a vertex about the ventricle's own long axis.
+ *
+ * The long axis is not the world axis: the apex drifts laterally and the body
+ * bows, and both are translations applied after the azimuth is chosen. Measure
+ * an angle about the world origin and it mixes that translation in with any
+ * rotation, so a vertex near the apex — where the drift is largest — reports
+ * less rotation than it actually has. Removing the offset first, the way
+ * radiusAboutAxis already does for radius, measures the rotation itself.
+ */
+function angleAboutAxis(kit, shape, k, i, t) {
+  const v = vertexAt(kit, k, i);
+  const { dx, dz } = axisOffset(shape, t);
+  return Math.atan2(v.x - dx, v.z - dz);
 }
 
 test('the drawn cavity tracks the solved cavity radius', () => {
@@ -222,16 +244,17 @@ test('systolic torsion rotates the apex and leaves the base alone', () => {
   const positions = kit.geometry.attributes.position;
   const lowI = 3; // near the apex
   const k = Math.round(kit.S / 2);
-  const before = vertexAt(kit, k, lowI);
-  const rimBefore = vertexAt(kit, k, kit.N - 1);
+  const lowT = lowI / (kit.N - 1);
+  const rimT = 1;
+  const before = angleAboutAxis(kit, shape, k, lowI, lowT);
+  const rimBefore = angleAboutAxis(kit, shape, k, kit.N - 1, rimT);
 
   updateVentricleGeometry(kit, shape, { torsion: 0.2 });
-  const after = vertexAt(kit, k, lowI);
-  const rimAfter = vertexAt(kit, k, kit.N - 1);
+  const after = angleAboutAxis(kit, shape, k, lowI, lowT);
+  const rimAfter = angleAboutAxis(kit, shape, k, kit.N - 1, rimT);
 
-  const angle = (v) => Math.atan2(v.x, v.z);
-  const apexDelta = Math.abs(angle(after) - angle(before));
-  const rimDelta = Math.abs(angle(rimAfter) - angle(rimBefore));
+  const apexDelta = Math.abs(after - before);
+  const rimDelta = Math.abs(rimAfter - rimBefore);
   assert.ok(apexDelta > 0.1, `apex must rotate under torsion (got ${apexDelta.toFixed(3)})`);
   assert.ok(rimDelta < 0.01, `base must not rotate under torsion (got ${rimDelta.toFixed(3)})`);
   assert.ok(positions.count > 0);
