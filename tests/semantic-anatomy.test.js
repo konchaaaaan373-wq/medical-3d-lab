@@ -16,7 +16,12 @@ import {
 } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 import { buildSegmentedPath } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/segmentedPath.js';
 import { Vessels } from '../src/scenes/cardiovascular/scenes/heartFailure/Vessels.js';
-import { VENTRICLE_SHAPING } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
+import {
+  VENTRICLE_SHAPING,
+  VENTRICLE_SITES,
+  wallSiteAzimuth,
+  wallSitePoint,
+} from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
 
 /**
  * How far past the end of the arch an ejection destination may land, as a
@@ -237,4 +242,45 @@ test('landmarks follow the anatomy when the shape changes', () => {
     after.landmarks.midRoot.pathT < before.landmarks.midRoot.pathT,
     'its arc-length coordinate does change — which is why nothing may quote it'
   );
+});
+
+test('the papillary muscles are placed by name, on the wall they belong to', () => {
+  // Placed by quoting a profile fraction and an azimuth, these would drift the
+  // moment the ventricle's parameterisation changed — exactly what happened to
+  // the sinuses of Valsalva when the aorta grew. Asked for by name, they can
+  // only be wrong if the wall itself is.
+  const shape = {
+    cavityRadius: 2.1,
+    cavitySemiLength: 3.6,
+    outerSemiLength: 4.3,
+    baseY: 1.6,
+  };
+  const point = new THREE.Vector3();
+  const sites = Object.keys(VENTRICLE_SITES);
+  assert.deepEqual(sites.sort(), ['anterolateralPapillary', 'posteromedialPapillary']);
+
+  const anterolateral = wallSitePoint(shape, 'anterolateralPapillary', point).clone();
+  const posteromedial = wallSitePoint(shape, 'posteromedialPapillary', point).clone();
+
+  // Both sit below the valve plane, in the ventricle rather than above it.
+  for (const [name, p] of [['anterolateral', anterolateral], ['posteromedial', posteromedial]]) {
+    assert.ok(p.y < shape.baseY, `${name} papillary must sit below the valve plane`);
+    assert.ok(p.y > -shape.cavitySemiLength, `${name} papillary must sit above the apex`);
+  }
+
+  // The anterolateral muscle is the one on the free wall; the posteromedial is
+  // the one toward the septum. The scene's septum faces the right ventricle.
+  const freeWall = Math.sin(VENTRICLE_SHAPING.lateralPhi);
+  const septum = Math.sin(VENTRICLE_SHAPING.septalPhi);
+  assert.ok(
+    Math.abs(Math.sin(wallSiteAzimuth('anterolateralPapillary')) - freeWall) <
+      Math.abs(Math.sin(wallSiteAzimuth('anterolateralPapillary')) - septum),
+    'the anterolateral papillary belongs to the free wall'
+  );
+  assert.ok(
+    Math.abs(Math.sin(wallSiteAzimuth('posteromedialPapillary')) - septum) <
+      Math.abs(Math.sin(wallSiteAzimuth('posteromedialPapillary')) - freeWall),
+    'the posteromedial papillary sits toward the septum'
+  );
+  assert.notEqual(anatomicalSide(anterolateral), anatomicalSide(posteromedial));
 });
