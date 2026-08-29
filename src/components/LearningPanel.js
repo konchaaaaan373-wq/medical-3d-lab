@@ -8,11 +8,18 @@ import { el } from '../utils/dom.js';
  * into the app. Every figure it shows comes from `readMetrics()`, the same call
  * the read-out panel uses, so a lesson and the rest of the UI cannot disagree.
  *
- * The five steps are the project's learning loop:
- * predict → manipulate → observe → explain → transfer.
+ * The steps are the project's learning loop:
+ * predict → manipulate → observe → explain, and then → transfer for a lesson
+ * that has somewhere to carry the result to. Transfer is the strongest of the
+ * five and also the most expensive to write honestly — it has to re-run the
+ * same manipulation somewhere else and *measure* both — so a lesson that has no
+ * second place to run it simply ends at explain rather than asserting one.
+ *
+ * A scene may ship several lessons. They are one relationship each, on purpose;
+ * the picker in the head is how a reader gets to the others.
  *
  * @param {{
- *   module: any,
+ *   modules: any[],
  *   setProgress: (value: number) => void,
  *   setControl: (id: string, value: number) => void,
  *   readMetrics: () => any[],
@@ -20,16 +27,40 @@ import { el } from '../utils/dom.js';
  *   onExit: () => void,
  * }} options
  */
-export function createLearningPanel({ module, setProgress, setControl, readMetrics, readControls, onExit }) {
+export function createLearningPanel({ modules, setProgress, setControl, readMetrics, readControls, onExit }) {
   const body = el('div', { class: 'learn-body' });
   const dots = el('div', { class: 'learn-dots' });
+  const title = el('span', { class: 'learn-title' }, [
+    el('span', { class: 'lang-en' }),
+    el('span', { class: 'lang-ja' }),
+  ]);
+
+  let module = modules[0];
+
+  // One chip per lesson, shown only when there is a choice to make. Each is one
+  // relationship, so the row doubles as a list of what this scene claims.
+  const picker =
+    modules.length > 1
+      ? el(
+          'div',
+          { class: 'learn-picker' },
+          modules.map((entry) =>
+            el('button', {
+              class: 'learn-pick',
+              type: 'button',
+              'data-module': entry.id,
+              on: { click: () => select(entry.id) },
+            }, [
+              el('span', { class: 'lang-en', text: entry.short ?? entry.title }),
+              el('span', { class: 'lang-ja', text: entry.shortJa ?? entry.titleJa }),
+            ])
+          )
+        )
+      : null;
 
   const element = el('div', { class: 'panel learn' }, [
     el('div', { class: 'learn-head' }, [
-      el('span', { class: 'learn-title' }, [
-        el('span', { class: 'lang-en', text: module.title }),
-        el('span', { class: 'lang-ja', text: module.titleJa }),
-      ]),
+      title,
       dots,
       el('button', {
         class: 'learn-close',
@@ -39,6 +70,7 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
         on: { click: () => onExit() },
       }),
     ]),
+    picker,
     body,
   ]);
 
@@ -61,9 +93,19 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
   let tween = null;
   let step = 0;
 
-  const STEPS = [predictStep, manipulateStep, observeStep, explainStep, transferStep];
+  /** Transfer is only offered by a lesson that ships one. */
+  const stepsFor = (entry) =>
+    entry.transfer
+      ? [predictStep, manipulateStep, observeStep, explainStep, transferStep]
+      : [predictStep, manipulateStep, observeStep, explainStep];
+  let STEPS = stepsFor(module);
 
   function render() {
+    title.children[0].textContent = module.title;
+    title.children[1].textContent = module.titleJa;
+    for (const chip of picker?.children ?? []) {
+      chip.classList.toggle('is-current', chip.dataset.module === module.id);
+    }
     dots.replaceChildren(
       ...STEPS.map((_, i) =>
         el('span', { class: `learn-dot${i === step ? ' is-current' : ''}${i < step ? ' is-done' : ''}` })
@@ -75,6 +117,16 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
   function go(next) {
     step = Math.max(0, Math.min(STEPS.length - 1, next));
     render();
+  }
+
+  /** Switches lesson. Starts the new one from the top rather than mid-step. */
+  function select(id) {
+    const found = modules.find((entry) => entry.id === id);
+    if (!found || found === module) return;
+    module = found;
+    STEPS = stepsFor(module);
+    tween = null;
+    start();
   }
 
   // --- steps ---------------------------------------------------------------
@@ -90,8 +142,12 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
           // The model is put back to the state the lesson starts from only now,
           // so the learner cannot peek at the answer before committing to one.
           setProgress(module.setup.progress);
-          setControl('preload', module.setup.preload);
-          setControl('afterload', module.setup.afterload);
+          // Whatever the lesson's starting state names, by id. Naming the two
+          // heart-failure controls here would have made every later scene's
+          // lesson start from a state nobody set.
+          for (const [id, value] of Object.entries(module.setup)) {
+            if (id !== 'progress') setControl(id, value);
+          }
           session.before = snapshot();
           go(1);
         }),
@@ -226,9 +282,9 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
     const measure = (progress) => {
       setProgress(progress);
       setControl(manipulation.control, setup[manipulation.control]);
-      const base = strokeVolume();
+      const base = readMetric(transfer.metric);
       setControl(manipulation.control, manipulation.to);
-      const loaded = strokeVolume();
+      const loaded = readMetric(transfer.metric);
       return { base, loaded, dropPercent: ((base - loaded) / base) * 100 };
     };
     const normal = measure(setup.progress);
@@ -237,13 +293,21 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
     // Leave the learner looking at the failing state with the load applied.
   }
 
-  function strokeVolume() {
-    return Number(readMetrics().find((row) => row.id === 'sv').value);
+  /** One row of the same read-out the panel beside the view is showing. */
+  function readMetric(id) {
+    return Number(readMetrics().find((row) => row.id === id).value);
+  }
+
+  function start() {
+    step = 0;
+    session.prediction = null;
+    session.transferPrediction = null;
+    render();
   }
 
   return {
     element,
-    /** Drives the afterload change so the 3D, the plots and the numbers move together. */
+    /** Drives the control change so the 3D, the plots and the numbers move together. */
     tick() {
       if (!tween) return;
       const t = Math.min(1, (now() - tween.startedAt) / (module.manipulation.seconds * 1000));
@@ -258,12 +322,12 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
     get watched() {
       return step >= 1 ? module.watch : [];
     },
-    start() {
-      step = 0;
-      session.prediction = null;
-      session.transferPrediction = null;
-      render();
+    start,
+    /** Which lesson is open, for a test or a screenshot that needs to say. */
+    get moduleId() {
+      return module.id;
     },
+    select,
   };
 }
 
