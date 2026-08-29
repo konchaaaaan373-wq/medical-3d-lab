@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { ANATOMY } from './anatomy.js';
-import { cavitySurfacePoint } from './geometry/ventricleGeometry.js';
+import { wallSitePoint } from './geometry/ventricleGeometry.js';
 import { createApparatusMaterials } from './materials/heartMaterials.js';
 import { createRandom, lerp, smoothstep } from '../../../../utils/math.js';
 
@@ -31,8 +31,8 @@ export class ValveApparatus extends THREE.Group {
     // Anchored on the posterior wall (visible through the front wedge), each
     // tilted toward its own commissure of the mitral valve.
     this.papillaries = [
-      { t: 0.4, phi: 2.5, side: 1, mesh: null, tip: new THREE.Vector3() },
-      { t: 0.45, phi: 3.95, side: -1, mesh: null, tip: new THREE.Vector3() },
+      { site: 'anterolateralPapillary', side: 1, mesh: null, tip: new THREE.Vector3() },
+      { site: 'posteromedialPapillary', side: -1, mesh: null, tip: new THREE.Vector3() },
     ];
     for (const pap of this.papillaries) {
       pap.mesh = new THREE.Mesh(papillaryGeometry(pap.side), this.materials.papillary);
@@ -157,7 +157,7 @@ export class ValveApparatus extends THREE.Group {
     // --- papillary muscles ------------------------------------------------
     for (let p = 0; p < 2; p++) {
       const pap = this.papillaries[p];
-      const base = cavitySurfacePoint(shape, pap.t, pap.phi, this._v.c);
+      const base = wallSitePoint(shape, pap.site, this._v.c);
       base.y += descent;
       // Seat the root *inside* the wall, not on it. The muscle leans away from
       // the surface it grows out of, so a root sitting exactly on the surface

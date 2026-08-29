@@ -435,6 +435,15 @@ export class Vessels extends THREE.Group {
   get atriumDistension() {
     return this.atrium.scale.x;
   }
+
+  /**
+   * How far the vein walls are currently inflated along their normals. Read by
+   * CongestionOverlay so its sheaths move outward with them and keep the thin
+   * clearance they were built with.
+   */
+  get venousEngorgement() {
+    return this.venousUniforms.uEngorge.value;
+  }
 }
 
 /**

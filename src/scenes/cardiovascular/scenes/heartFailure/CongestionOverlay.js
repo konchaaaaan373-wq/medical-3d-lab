@@ -7,7 +7,7 @@ import {
   buildInterstitialFluid,
 } from './anatomy.js';
 import { atriumGeometry, variableTube } from './Vessels.js';
-import { lerp } from '../../../../utils/math.js';
+import { lerp, smoothstep } from '../../../../utils/math.js';
 
 /**
  * Pulmonary congestion, drawn as pressure — not as blood.
@@ -33,6 +33,20 @@ import { lerp } from '../../../../utils/math.js';
  *
  * Built once; per-frame cost is two uniform writes.
  */
+/**
+ * How far outside a vessel wall its pressure sheath sits, in scene units. Small,
+ * because the sheath inflates with the wall rather than having to clear it.
+ */
+const SHEATH_CLEARANCE = 0.07;
+
+/**
+ * The pulmonary veins' own radius profile, mirrored from Vessels so the sheath
+ * follows the flare at the ostium instead of standing off it as a cylinder.
+ */
+function veinRadius(t) {
+  return 0.3 * (1 + 0.85 * smoothstep(0.78, 1, t)) * (1 - 0.12 * smoothstep(0.5, 0, t));
+}
+
 export class CongestionOverlay extends THREE.Group {
   /** @param {number} fluidCount number of interstitial fluid particles */
   constructor(fluidCount = 700) {
@@ -52,11 +66,14 @@ export class CongestionOverlay extends THREE.Group {
     this.atriumSheath.position.copy(ANATOMY.atriumCentre);
     this.add(this.atriumSheath);
 
-    // Vessel sheath radii allow for the walls' engorgement at full
-    // congestion (Vessels inflates them by up to 0.12 along the normal).
+    // The sheaths now inflate along with the walls they label (uEngorge, below),
+    // so they only need a thin static clearance rather than enough room for the
+    // walls' full engorgement. Sized for that instead, they stood two to three
+    // times the vessel's own radius and read as crumpled cellophane wrapped
+    // around the vasculature — a shell, not a tint on a wall.
     for (const vein of PULMONARY_VEINS) {
       // Curves run bed -> atrium, so uv.x = 0 at the far (bed) end.
-      const tube = variableTube(vein, 40, 10, () => 0.56);
+      const tube = variableTube(vein, 40, 16, (t) => veinRadius(t) + SHEATH_CLEARANCE);
       this.add(sheath(tube, (uvX) => 0.2 + (1 - uvX) * 0.5, this.pressureMaterial));
     }
 
@@ -68,8 +85,9 @@ export class CongestionOverlay extends THREE.Group {
         const tube = variableTube(
           fan.curves[i],
           primary ? 18 : 10,
-          8,
-          (t) => (primary ? lerp(0.52, 0.38, t) : lerp(0.37, 0.3, t))
+          12,
+          (t) =>
+            (primary ? lerp(0.3, 0.17, t) : lerp(0.16, 0.09, t)) + SHEATH_CLEARANCE
         );
         this.add(
           sheath(tube, (uvX) => (primary ? 0.72 + uvX * 0.2 : 0.85 + uvX * 0.15), this.pressureMaterial)
@@ -82,7 +100,7 @@ export class CongestionOverlay extends THREE.Group {
     this.fluid = createFluidPoints(fluid);
     this.add(this.fluid);
 
-    this.setCongestion({ pressureFront: 0, interstitialFluid: 0, atriumDistension: 1 });
+    this.setCongestion({ pressureFront: 0, interstitialFluid: 0, atriumDistension: 1, venousEngorgement: 0 });
   }
 
   /**
@@ -105,7 +123,7 @@ export class CongestionOverlay extends THREE.Group {
    * and it is not specific to HFrEF.
    *
    * @param {{pressureFront: number, interstitialFluid: number,
-   *   atriumDistension: number}} physiology
+   *   atriumDistension: number, venousEngorgement: number}} physiology
    * @param {{front: number, fluid: number}} presentation reveal fractions, 0..1
    */
   setCongestion(physiology, presentation = { front: 1, fluid: 1 }) {
@@ -113,6 +131,7 @@ export class CongestionOverlay extends THREE.Group {
     this.pressureMaterial.uniforms.uPressure.value = front;
     this.fluid.material.uniforms.uFill.value = physiology.interstitialFluid * presentation.fluid;
     this.atriumSheath.scale.setScalar(physiology.atriumDistension);
+    this.pressureMaterial.uniforms.uEngorge.value = physiology.venousEngorgement ?? 0;
     this.visible = front > 0.02;
   }
 
@@ -161,6 +180,7 @@ function createPressureMaterial(color) {
     side: THREE.BackSide,
     uniforms: {
       uPressure: { value: 0 },
+      uEngorge: { value: 0 },
       uTime: { value: 0 },
       uColor: { value: color },
       // Visualization-only: how bright the pressure tint gets at full
@@ -176,12 +196,15 @@ function createPressureMaterial(color) {
     },
     vertexShader: /* glsl */ `
       uniform float uPressure;
+      uniform float uEngorge;
       attribute float aPathDistance;
       varying float vFresnel;
       varying float vGate;
       varying float vPath;
       void main() {
-        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        // Follow the wall outward as it engorges, exactly as the vessel does,
+        // so the clearance between them stays what it was built to be.
+        vec4 mv = modelViewMatrix * vec4(position + normalize(normal) * uEngorge, 1.0);
         vec3 n = normalize(normalMatrix * normal);
         vec3 v = normalize(-mv.xyz);
         vFresnel = pow(clamp(1.0 - abs(dot(n, v)), 0.0, 1.0), 2.4);

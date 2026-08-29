@@ -236,6 +236,50 @@ export function trabecularField(t, phi) {
   return along * ridges * patchy * segmented * lvot;
 }
 
+
+/**
+ * Places on the ventricular wall, by anatomical name.
+ *
+ * The papillary muscles used to be placed by quoting a profile fraction and an
+ * azimuth straight out of the valve apparatus — the same shape of coupling
+ * that put the sinuses of Valsalva in the wrong vessel when the aorta grew.
+ * Nothing outside this module should have to know that the wall is
+ * parameterised as (t, phi) at all, or which way round phi runs.
+ *
+ * Both coordinates are local to the ventricle, which is the point: `height` is
+ * a fraction of the chamber's own long axis from apex to valve plane, and
+ * `fromFreeWall` runs from the left ventricular free wall (0) round to the
+ * septum (1), so the sites keep their meaning if the profile is reshaped or
+ * the azimuths are renumbered.
+ */
+export const VENTRICLE_SITES = {
+  /** Anterolateral papillary muscle: on the free wall, in the apical half. */
+  anterolateralPapillary: { height: 0.4, fromFreeWall: 0.25 },
+  /** Posteromedial papillary muscle: nearer the septum, and a little higher. */
+  posteromedialPapillary: { height: 0.45, fromFreeWall: 0.733 },
+};
+
+/** The azimuth of a named wall site, in the geometry's own phi. */
+export function wallSiteAzimuth(name) {
+  const site = VENTRICLE_SITES[name];
+  if (!site) throw new Error(`Unknown ventricular wall site "${name}"`);
+  return lerp(VENTRICLE_SHAPING.lateralPhi, VENTRICLE_SHAPING.septalPhi, site.fromFreeWall);
+}
+
+/**
+ * Where a named wall site sits on the endocardial surface.
+ *
+ * @param {{ cavityRadius: number, cavitySemiLength: number,
+ *   outerSemiLength: number, baseY: number }} shape
+ * @param {keyof typeof VENTRICLE_SITES} name
+ * @param {THREE.Vector3} out
+ */
+export function wallSitePoint(shape, name, out) {
+  const site = VENTRICLE_SITES[name];
+  if (!site) throw new Error(`Unknown ventricular wall site "${name}"`);
+  return cavitySurfacePoint(shape, site.height, wallSiteAzimuth(name), out);
+}
+
 /**
  * A point on the (analytic) endocardial surface, in chamber-local space —
  * shared with the valve apparatus so papillary muscles rise from the same

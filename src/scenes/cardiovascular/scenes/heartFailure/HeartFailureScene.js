@@ -303,6 +303,7 @@ export class HeartFailureScene {
         pressureFront: this.state.congestionLevel,
         interstitialFluid: this.state.interstitialFluidLevel,
         atriumDistension: this.vessels.atriumDistension,
+        venousEngorgement: this.vessels.venousEngorgement,
       },
       this.congestionReveal
     );
