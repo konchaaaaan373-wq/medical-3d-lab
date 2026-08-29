@@ -155,7 +155,14 @@ export class Vessels extends THREE.Group {
 
     // Shared by veins, atrium and fans, patched with two uniforms:
     // uEngorge inflates every wall along its normal (venous engorgement) and
-    // uDusk shifts the tint toward a deep, congested blue-violet.
+    // uDusk shifts the tint toward the dark red-purple of engorged venous
+    // tissue.
+    //
+    // That target used to be a blue-violet, and it was wrong in a way that only
+    // shows at the far end: mixing toward it turned the congested atrium
+    // *lavender and lighter* than it had been at rest — measured, (139,95,112)
+    // going to (142,111,142) — when an engorged chamber should go darker and
+    // duskier. Dark venous blood is red-purple, not blue.
     this.venousUniforms = { uEngorge: { value: 0 }, uDusk: { value: 0 } };
     this.venousMaterial = new THREE.MeshPhysicalMaterial({
       color: new THREE.Color('#8d6476'),
@@ -186,7 +193,7 @@ export class Vessels extends THREE.Group {
         'uniform float uDusk;\n' +
         shader.fragmentShader.replace(
           '#include <color_fragment>',
-          '#include <color_fragment>\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.12, 0.1, 0.21), uDusk);'
+          '#include <color_fragment>\n\tdiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.105, 0.052, 0.075), uDusk);'
         );
     };
 
@@ -386,7 +393,7 @@ export class Vessels extends THREE.Group {
     const eased = smoothstep(0, 1, this.physiology.congestionLevel);
     this.atrium.scale.setScalar(lerp(1, ATRIAL_DISTENSION_MAX, eased));
     this.venousUniforms.uEngorge.value = 0.12 * eased;
-    this.venousUniforms.uDusk.value = 0.45 * eased;
+    this.venousUniforms.uDusk.value = 0.62 * eased;
   }
 
   /**
@@ -406,7 +413,12 @@ export class Vessels extends THREE.Group {
     this.arterialMaterial.opacity = resolveOpacity(VESSEL_OPACITY.arterial, congested, emphasis);
     this.venousMaterial.opacity = resolveOpacity(VESSEL_OPACITY.venous, congested, emphasis);
     this.atriumMaterial.opacity = resolveOpacity(VESSEL_OPACITY.atrium, congested, emphasis);
-    this.avJunctionMaterial.opacity = this.atriumMaterial.opacity;
+    // The junction is drawn double-sided, so a ray crosses it twice and the
+    // two layers composite to 2a - a^2 rather than a. Left at the atrium's own
+    // opacity it came out about 20% brighter than the chamber it is meant to
+    // continue, which reads as a separate pale collar. Solving that back gives
+    // the single-layer appearance the atrium has.
+    this.avJunctionMaterial.opacity = 1 - Math.sqrt(1 - this.atriumMaterial.opacity);
     this.valveMaterial.opacity = resolveOpacity(VESSEL_OPACITY.valve, congested, emphasis);
     // The lungs come up slightly once the story is about them, so the haze has
     // something to sit inside. Eased off the raw level rather than the 0.4
