@@ -190,6 +190,18 @@ function fiberTexture() {
  * Endocardial map: smoother mottle with wavy trabecular ridges in the apical
  * half (v < 0.5), fading out toward the base where the lining is smooth.
  */
+/**
+ * How much of the endocardial map's apical end is faded to flat, as a fraction
+ * of the texture's height.
+ *
+ * A residual guard only. The streaking it was first written to fix came from
+ * the uv layout, not from this texture — the wrap count now falls off with the
+ * local circumference (see ventricleGeometry) so texel density stays even, and
+ * this only takes the last of the detail off the pole itself, where any
+ * layout degenerates.
+ */
+const APEX_TEXTURE_FADE = 0.07;
+
 function endocardiumTexture() {
   return canvasTexture('endocardium', { w: 512, h: 512 }, (ctx, w, h) => {
     const rnd = createRandom(4411);
@@ -228,6 +240,16 @@ function endocardiumTexture() {
       ctx.fillStyle = `rgba(${v},${v - 4},${v - 2},${0.07 + rnd() * 0.1})`;
       ctx.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
     }
+
+    // The apex is a pole: every azimuth converges on one point, so the last
+    // texels there are smeared around the whole tip however the uv layout is
+    // scaled. Fade the map out over the last of it and let the geometry's own
+    // trabecular field, which has no pole to converge on, shape what is left.
+    const apexFade = ctx.createLinearGradient(0, h * (1 - APEX_TEXTURE_FADE), 0, h);
+    apexFade.addColorStop(0, 'rgba(150,144,144,0)');
+    apexFade.addColorStop(1, 'rgba(150,144,144,1)');
+    ctx.fillStyle = apexFade;
+    ctx.fillRect(0, h * (1 - APEX_TEXTURE_FADE), w, h * APEX_TEXTURE_FADE);
   });
 }
 

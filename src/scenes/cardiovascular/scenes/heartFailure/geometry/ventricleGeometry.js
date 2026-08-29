@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { smoothstep as smooth } from '../../../../../utils/math.js';
+import { lerp, smoothstep as smooth } from '../../../../../utils/math.js';
 
 /**
  * Anatomically-shaped left-ventricle shell geometry.
@@ -28,6 +28,13 @@ import { smoothstep as smooth } from '../../../../../utils/math.js';
  */
 
 /** Shaping constants, in normalised units unless noted. */
+/**
+ * How many of the lathe's three texture wraps survive at the apex. Low enough
+ * that a texel there is roughly as wide as it is tall, which is what stops the
+ * map from streaking radially off the pole.
+ */
+const APEX_UV_WRAP = 0.22;
+
 export const VENTRICLE_SHAPING = {
   /** Exponent < 1 keeps the outer profile full near the base. */
   outerProfileExponent: 0.93,
@@ -183,16 +190,23 @@ function sealSpanScale(t, halfCut) {
  */
 export function trabecularField(t, phi) {
   const S = VENTRICLE_SHAPING;
-  const along = smooth(0.03, 0.15, t) * (1 - smooth(0.4, 0.68, t));
+  // Started further from the apex than it was. Every azimuth converges on the
+  // apex, so relief that is still at full strength close to it fans out into
+  // radial streaks — the cavity read as combed hair rather than as muscle.
+  const along = smooth(0.11, 0.27, t) * (1 - smooth(0.42, 0.7, t));
   if (along <= 0) return 0;
   const ridges = Math.pow(
-    0.5 + 0.5 * Math.sin(9 * phi + 3.1 * t + 1.4 * Math.sin(2.3 * phi + 6.2 * t)),
+    0.5 + 0.5 * Math.sin(9 * phi + 5.4 * t + 1.4 * Math.sin(2.3 * phi + 6.2 * t)),
     1.6
   );
   // Patchy coverage: bundles come and go around the circumference.
   const patchy = Math.max(0, 0.45 + 0.55 * Math.sin(3.7 * phi - 2.0 * t + 1.0));
+  // And along the axis, so a bundle starts and stops instead of running the
+  // whole apical half. Continuous bands are what made the fan read as combed;
+  // real trabeculae are short, overlapping and staggered.
+  const segmented = 0.34 + 0.66 * Math.max(0, Math.sin(13.5 * t + 2.6 * phi + 0.7 * Math.sin(5 * phi)));
   const lvot = 1 - angularBump(phi, S.lvotPhi, 1.0) * smooth(0.28, 0.5, t);
-  return along * ridges * patchy * lvot;
+  return along * ridges * patchy * segmented * lvot;
 }
 
 /**
@@ -349,12 +363,23 @@ export function buildVentricleGeometry({
   // reasonable), v runs apex (0) -> base (1) on both surfaces. u follows the
   // same apex-seal remap the positions use, so the texture stays uniform
   // where the wedge closes instead of compressing into stripes.
+  //
+  // The wrap count also falls off toward the apex, and that is not cosmetic.
+  // The apex is a pole: circumference goes to zero while u still spans three
+  // full repeats, so every texel there is squeezed azimuthally by a large
+  // factor and stretched radially by the same. Any detail in the map — mottle,
+  // grain, trabecular strokes alike — is drawn out into radial streaks, and
+  // the cavity reads as combed hair converging on a point. Scaling the wrap
+  // with the local circumference keeps texel density roughly even instead.
+  // The lathe is an open strip (the cut wedge breaks the loop), so a
+  // height-dependent wrap count introduces no seam.
   for (let k = 0; k <= S; k++) {
     for (let i = 0; i < profileCount; i++) {
       const v = i < N ? i / (N - 1) : 1 - (i - N) / (N - 1);
       const idx = (k * profileCount + i) * 2;
       const phiSealed = Math.PI + (basePhi[k] - Math.PI) * sealSpanScale(v, basePhi[0]);
-      uvs[idx] = (phiSealed / (Math.PI * 2)) * 3;
+      const wrap = 3 * lerp(APEX_UV_WRAP, 1, smooth(0, 0.42, v));
+      uvs[idx] = (phiSealed / (Math.PI * 2)) * wrap;
       uvs[idx + 1] = v;
     }
   }
