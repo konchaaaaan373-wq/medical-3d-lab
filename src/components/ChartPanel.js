@@ -22,7 +22,7 @@ import { inLanguage } from '../utils/language.js';
  *
  * ### Spec (static)
  * ```
- * { id, title, titleJa,
+ * { id, title, titleJa, unitLabel?,
  *   x: { label, labelJa, unit, min?, max?, ticks?, invert? },
  *   y: { label, labelJa, unit, min?, max?, ticks? },
  *   key?: [{ id, label, labelJa, color, dash?: boolean }],
@@ -150,9 +150,16 @@ export function createChartPanel(spec) {
   };
 }
 
+/**
+ * The panel heading.
+ *
+ * A chart declares `unitLabel` when joining its two axes' units with a slash
+ * would read as a single compound unit — "lung volume · L / s" says litres per
+ * second, which is not what is plotted on either axis.
+ */
 const headingOf = (spec, ja) => {
   const title = ja ? spec.titleJa : spec.title;
-  const units = [spec.y?.unit, spec.x?.unit].filter(Boolean).join(' / ');
+  const units = spec.unitLabel ?? [spec.y?.unit, spec.x?.unit].filter(Boolean).join(' / ');
   return units ? `${title} · ${units}` : title;
 };
 

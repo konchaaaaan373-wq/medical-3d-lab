@@ -34,10 +34,15 @@ import { el } from '../utils/dom.js';
  * @param {{ story: object,
  *           setProgress: (value: number) => void,
  *           setControl: (id: string, value: number) => void,
+ *           settleModel?: () => void,
  *           onStep: (step: object, index: number) => void,
  *           onExit: () => void }} options
+ *
+ * `settleModel` matters here for the same reason it does in a lesson: a step
+ * that states where a lung settles has to be shown the settled lung, not the
+ * three seconds after the reader pressed Next.
  */
-export function createCausalStoryPanel({ story, setProgress, setControl, onStep, onExit }) {
+export function createCausalStoryPanel({ story, setProgress, setControl, settleModel, onStep, onExit }) {
   const steps = story.steps ?? [];
   let index = 0;
 
@@ -98,6 +103,7 @@ export function createCausalStoryPanel({ story, setProgress, setControl, onStep,
 
     if (step.controls) for (const [id, value] of Object.entries(step.controls)) setControl(id, value);
     if (step.progress != null) setProgress(step.progress);
+    settleModel?.();
 
     counter.textContent = `${at + 1} / ${steps.length}`;
     write(heading, step.heading, step.headingJa);

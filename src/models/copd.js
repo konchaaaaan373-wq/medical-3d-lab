@@ -591,6 +591,17 @@ export function createRespiratoryModel({ controls = {}, hz = 400 } = {}) {
     get unitVolumesL() {
       return volumes.slice();
     },
+    /**
+     * Flow at the mouth right now, L/s, positive inwards.
+     *
+     * Read off the units rather than differenced from the volume by whoever is
+     * drawing: a frame-to-frame difference of a volume is a different quantity
+     * from the flow the solver computed, and the two disagree exactly where
+     * the flow is changing fastest.
+     */
+    get flowLPerS() {
+      return flows.reduce((sum, flow) => sum + flow, 0);
+    },
     get cycleTimeS() {
       return cycleTimeS;
     },

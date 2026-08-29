@@ -50,6 +50,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/cardiovascular/scenes/heartFailure/index.js'),
   },
   {
+    id: 'copd-hyperinflation',
+    slug: 'copd',
+    titleEn: 'COPD',
+    titleJa: 'COPD',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs', 'airway'],
+    disease: 'copd',
+    status: 'alpha',
+    description:
+      'Twelve lung units with their own time constants: why an obstructed lung ends up breathing at a higher volume, and why pushing harder does not help.',
+    descriptionJa:
+      '固有の時定数をもつ 12 単位の肺モデル。閉塞のある肺が高い肺気量で呼吸することになる理由と、強く吐いても改善しない理由を示します。',
+    tags: ['respiratory-mechanics', 'flow-limitation', 'learning-module'],
+    load: () => import('../scenes/respiratory/scenes/copd/index.js'),
+  },
+  {
     id: 'breathing-lungs',
     slug: 'breathing-lungs',
     titleEn: 'Breathing lungs',
@@ -274,7 +291,6 @@ export const SCENE_MANIFEST = [
  */
 export const PLANNED_SCENES = [
   { organ: 'lungs', disease: 'asthma', titleEn: 'Asthma', titleJa: '喘息' },
-  { organ: 'lungs', disease: 'copd', titleEn: 'COPD', titleJa: 'COPD' },
   { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
   { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
   { organ: 'kidney', disease: 'ckd', titleEn: 'Chronic kidney disease', titleJa: '慢性腎臓病' },

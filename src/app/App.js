@@ -343,6 +343,7 @@ export async function createApp({ stage, ui }) {
         },
         readMetrics: () => scene.getMetrics(),
         readControls: () => scene.getModelControls(),
+        settleModel: scene.settleModel ? () => scene.settleModel() : undefined,
         onExit: () => setLearning(false),
       })
     : null;
@@ -360,6 +361,7 @@ export async function createApp({ stage, ui }) {
           scene.setModelControl(id, value);
           modelControls?.sync(scene.getModelControls());
         },
+        settleModel: scene.settleModel ? () => scene.settleModel() : undefined,
         onStep: (step) => {
           // Presentation only: which numbers and which plot the step is about.
           metricsPanel?.highlight(step.watch ?? []);
