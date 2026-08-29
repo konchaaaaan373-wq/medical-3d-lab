@@ -159,6 +159,13 @@ export class ValveApparatus extends THREE.Group {
       const pap = this.papillaries[p];
       const base = cavitySurfacePoint(shape, pap.t, pap.phi, this._v.c);
       base.y += descent;
+      // Seat the root *inside* the wall, not on it. The muscle leans away from
+      // the surface it grows out of, so a root sitting exactly on the surface
+      // lifts off it on the far flank and shows the rim as a flat terminal
+      // edge. Pushing the whole muscle out along the wall normal buries that
+      // rim from every angle, at the cost of a fraction of its visible length.
+      PAP_OUT.set(base.x, 0, base.z);
+      if (PAP_OUT.lengthSq() > 1e-6) base.addScaledVector(PAP_OUT.normalize(), PAPILLARY_SEATING);
       // Aim at the annulus, leaning each muscle toward its own side of the
       // ring so the pair diverges instead of converging on the centre.
       const target = this._v.a
@@ -249,6 +256,10 @@ function bezier(a, b, c, t, out) {
     .addScaledVector(c, t * t);
 }
 const SEG_DIR = new THREE.Vector3();
+const PAP_OUT = new THREE.Vector3();
+
+/** How far into the wall a papillary muscle's root is seated, in scene units. */
+const PAPILLARY_SEATING = 0.16;
 
 /** Stretches a unit chord segment between two points. */
 function placeSegment(mesh, from, to) {
@@ -266,25 +277,55 @@ function placeSegment(mesh, from, to) {
  */
 function papillaryGeometry(side) {
   const rnd = createRandom(6060 + side * 7);
-  const radial = 14;
-  const rings = 12;
+  const radial = 22;
+  const rings = 18;
+  const footPhase = rnd() * Math.PI * 2;
   const positions = [];
   const indices = [];
+
   for (let r = 0; r <= rings; r++) {
     const t = r / rings;
-    // Flared base -> shaft -> rounded tip.
-    let radius = lerp(1.9, 1.0, smoothstep(0, 0.35, t)) * lerp(1, 0.32, smoothstep(0.45, 1, t));
+    // Flared base -> shaft -> blunt tip.
+    let radius = lerp(1.55, 1.0, smoothstep(0, 0.4, t)) * lerp(1, 0.32, smoothstep(0.5, 1, t));
     const bend = 0.18 * Math.sin(t * Math.PI * 0.7) * side;
+    // How much of the root splay and the shaft grooving apply at this height.
+    const inRoot = Math.pow(Math.max(0, 1 - t / ROOT_HEIGHT), 1.25);
+    const onShaft = smoothstep(0.12, 0.45, t) * (1 - smoothstep(0.72, 1, t));
+
     for (let s = 0; s <= radial; s++) {
       const angle = (s / radial) * Math.PI * 2;
+      // A few muscular bands rather than a smooth skirt. Between them the base
+      // dips below the mounting plane, so the muscle appears to grow out from
+      // between the trabeculae instead of resting on top of them: a cone with
+      // a clean elliptical foot is the single clearest "this was assembled
+      // from primitives" cue in the cavity.
+      const foot = Math.pow(Math.max(0, Math.cos(ROOT_FEET * angle + footPhase)), 2);
+      const splay = 1 + ROOT_SPLAY * foot * inRoot;
+      // Longitudinal grooves: the fibre bundles that run up a real papillary
+      // muscle, shallow enough to read as form rather than as corrugation.
+      const grooves = 1 - GROOVE_DEPTH * Math.pow(Math.max(0, Math.cos(6 * angle + t * 1.1 + footPhase)), 2) * onShaft;
       // Lobed, irregular cross-section — muscle, not a lathe.
-      const lobes = 1 + 0.09 * Math.sin(3 * angle + t * 2.4) + 0.05 * Math.sin(5 * angle - t * 3.1) + 0.03 * (rnd() - 0.5);
-      positions.push(Math.cos(angle) * radius * lobes, t, Math.sin(angle) * radius * lobes + bend);
+      const lobes =
+        1 + 0.08 * Math.sin(3 * angle + t * 2.4) + 0.05 * Math.sin(5 * angle - t * 3.1) + 0.03 * (rnd() - 0.5);
+      const rr = radius * splay * grooves * lobes;
+      // The feet reach further down than the hollows between them, burying the
+      // rim in the wall from every angle.
+      const y = t - ROOT_SINK * foot * inRoot;
+      positions.push(Math.cos(angle) * rr, y, Math.sin(angle) * rr + bend);
     }
   }
-  // Tip cap vertex.
-  positions.push(0, 1.04, 0.18 * Math.sin(Math.PI * 0.7) * side);
-  const tipIndex = positions.length / 3 - 1;
+
+  // Two heads rather than one dome: chordae leave a real papillary muscle from
+  // several summits, and a single smooth cap reads as the end of a cone.
+  const tipY = 1.045;
+  const tipBend = 0.18 * Math.sin(Math.PI * 0.7) * side;
+  const heads = [];
+  for (let h = 0; h < 2; h++) {
+    const a = footPhase + h * Math.PI;
+    heads.push(positions.length / 3);
+    positions.push(Math.cos(a) * HEAD_SPREAD, tipY, Math.sin(a) * HEAD_SPREAD + tipBend);
+  }
+
   for (let r = 0; r < rings; r++) {
     for (let s = 0; s < radial; s++) {
       const va = r * (radial + 1) + s;
@@ -292,7 +333,12 @@ function papillaryGeometry(side) {
       indices.push(va, vb, va + 1, va + 1, vb, vb + 1);
     }
   }
-  for (let s = 0; s < radial; s++) indices.push(rings * (radial + 1) + s, tipIndex, rings * (radial + 1) + s + 1);
+  // Cap to whichever head is nearer, which leaves a shallow cleft between them.
+  for (let s = 0; s < radial; s++) {
+    const angle = (s / radial) * Math.PI * 2;
+    const head = heads[Math.cos(angle - footPhase) >= 0 ? 0 : 1];
+    indices.push(rings * (radial + 1) + s, head, rings * (radial + 1) + s + 1);
+  }
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -300,6 +346,27 @@ function papillaryGeometry(side) {
   geometry.computeVertexNormals();
   return geometry;
 }
+
+/** How far up the muscle the splayed root reaches, as a fraction of its height. */
+const ROOT_HEIGHT = 0.44;
+/** How many muscular bands the root splays into. */
+const ROOT_FEET = 4;
+/**
+ * How far those bands reach out past the shaft, as a fraction of its radius.
+ * Restrained: pushed further they stop reading as roots and start reading as
+ * fins, which is a different wrong answer from the cone they replaced.
+ */
+const ROOT_SPLAY = 0.46;
+/**
+ * How far they dive below the mounting plane, in units of the muscle's height.
+ * Deep enough that the rim stays buried on the far side too — the muscle is
+ * tilted relative to the wall, so a shallow root lifts off it on one flank.
+ */
+const ROOT_SINK = 0.34;
+/** Depth of the longitudinal grooves on the shaft. */
+const GROOVE_DEPTH = 0.075;
+/** How far apart the two heads sit at the tip. */
+const HEAD_SPREAD = 0.16;
 
 /** A thin unit chord segment along +Y, tapering from bottom to top radius. */
 function chordGeometry(topRadius, bottomRadius) {
