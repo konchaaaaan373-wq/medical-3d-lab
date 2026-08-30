@@ -81,15 +81,32 @@ export async function stripeGet(path) {
   return data;
 }
 
+const PLAN_PRICE_ENV = Object.freeze({
+  patient: 'STRIPE_PRICE_PATIENT',
+  education: 'STRIPE_PRICE_EDUCATION',
+  complete: 'STRIPE_PRICE_COMPLETE',
+});
+
 export function priceForPlan(plan) {
-  const names = {
-    patient: 'STRIPE_PRICE_PATIENT',
-    education: 'STRIPE_PRICE_EDUCATION',
-    complete: 'STRIPE_PRICE_COMPLETE',
-  };
-  const name = names[plan];
+  const name = PLAN_PRICE_ENV[plan];
   if (!name) throw new Error('Unknown plan.');
   return env(name);
+}
+
+/**
+ * The Stripe price is authoritative for the plan after checkout.
+ *
+ * Checkout metadata is useful for joining the first event to a user, but a
+ * Customer Portal plan change changes the price without rewriting arbitrary
+ * subscription metadata. Reading the price therefore keeps entitlement state
+ * correct after an upgrade/downgrade too.
+ */
+export function planForPrice(priceId) {
+  if (!priceId) return null;
+  for (const [plan, name] of Object.entries(PLAN_PRICE_ENV)) {
+    if (process.env[name] && process.env[name] === priceId) return plan;
+  }
+  return null;
 }
 
 export function safeHash(value) {
@@ -123,10 +140,23 @@ export async function upsertCustomer({ userId, customerId, email = null }) {
 }
 
 export async function upsertSubscription(subscription) {
-  const userId = subscription.metadata?.supabase_user_id;
-  const entitlement = subscription.metadata?.entitlement;
-  if (!userId || !entitlement) return;
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+
+  // Metadata is written at checkout, but recover through the customer mapping
+  // as well so later Stripe events remain useful even if metadata is incomplete.
+  let userId = subscription.metadata?.supabase_user_id ?? null;
+  if (!userId && customerId) {
+    const rows = await supabaseAdmin(
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
+    );
+    userId = rows?.[0]?.user_id ?? null;
+  }
+
+  const entitlement = planForPrice(priceId) ?? subscription.metadata?.entitlement ?? null;
+  if (!userId || !['patient', 'education', 'complete'].includes(entitlement)) return;
+
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
     : null;
@@ -137,7 +167,7 @@ export async function upsertSubscription(subscription) {
       {
         stripe_subscription_id: subscription.id,
         user_id: userId,
-        stripe_customer_id: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id,
+        stripe_customer_id: customerId,
         entitlement,
         status: subscription.status,
         price_id: priceId,
