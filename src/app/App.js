@@ -513,6 +513,12 @@ export async function createApp({ stage, ui }) {
     if (chartPanels.length && scene.getCharts && !reelMode?.active) {
       const charts = scene.getCharts();
       for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+      // And so is the read-out. A scene whose model keeps working after the
+      // control that changed it — a lung climbing to a new resting volume, a
+      // network being re-solved to full accuracy once the slider is let go —
+      // leaves the panel quoting a number that has since moved on if the
+      // read-out is only refreshed when something is set.
+      metricsPanel?.update(scene.getMetrics());
     }
     if (storyMode?.active) {
       storyMode.tick();

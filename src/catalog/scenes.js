@@ -67,6 +67,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/copd/index.js'),
   },
   {
+    id: 'asthma-heterogeneity',
+    slug: 'asthma',
+    titleEn: 'Asthma',
+    titleJa: '喘息',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs', 'airway'],
+    disease: 'asthma',
+    status: 'alpha',
+    description:
+      'A branching airway tree solved as a network: why a stimulus reaching every airway equally leaves half the lung dark.',
+    descriptionJa:
+      '分岐気道をネットワークとして解きます。すべての気道に均等に届く刺激が、なぜ肺の半分を低換気にするのかを示します。',
+    tags: ['respiratory-mechanics', 'ventilation-heterogeneity', 'learning-module'],
+    load: () => import('../scenes/respiratory/scenes/asthma/index.js'),
+  },
+  {
     id: 'breathing-lungs',
     slug: 'breathing-lungs',
     titleEn: 'Breathing lungs',
@@ -290,7 +307,6 @@ export const SCENE_MANIFEST = [
  * `SCENE_MANIFEST` is the whole ceremony of adding a disease scene.
  */
 export const PLANNED_SCENES = [
-  { organ: 'lungs', disease: 'asthma', titleEn: 'Asthma', titleJa: '喘息' },
   { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
   { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
   { organ: 'kidney', disease: 'ckd', titleEn: 'Chronic kidney disease', titleJa: '慢性腎臓病' },
