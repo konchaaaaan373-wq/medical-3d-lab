@@ -52,6 +52,11 @@ export const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set([
   'paused',
 ]);
 
+// Kept as an alias because AccessManager already uses this name to decide
+// whether the user should be sent to Billing Portal instead of a second
+// Checkout. It means "subscription lifecycle already exists", not "grants access".
+export const ACTIVE_SUBSCRIPTION_STATUSES = NON_TERMINAL_SUBSCRIPTION_STATUSES;
+
 /** What a paid Stripe plan grants inside the product. */
 export const PLAN_GRANTS = Object.freeze({
   [PLAN.PATIENT]: Object.freeze([ENTITLEMENT.PATIENT]),
