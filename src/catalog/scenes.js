@@ -58,11 +58,11 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'copd',
-    status: 'alpha',
+    status: 'reviewed',
     description:
-      'Twelve lung units with their own time constants: why an obstructed lung ends up breathing at a higher volume, and why pushing harder does not help.',
+      'Twelve lung units with their own time constants: why incomplete expiration produces dynamic hyperinflation, and why extra expiratory effort stops increasing flow once expiratory flow limitation is reached.',
     descriptionJa:
-      '固有の時定数をもつ 12 単位の肺モデル。閉塞のある肺が高い肺気量で呼吸することになる理由と、強く吐いても改善しない理由を示します。',
+      '固有の時定数をもつ 12 単位の肺モデル。呼気が時間内に終わらず動的過膨張が生じる理由と、呼気流量制限に達すると呼気努力を強めても流量を増やせなくなる理由を示します。',
     tags: ['respiratory-mechanics', 'flow-limitation', 'learning-module'],
     load: () => import('../scenes/respiratory/scenes/copd/index.js'),
   },
@@ -75,11 +75,11 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'asthma',
-    status: 'alpha',
+    status: 'reviewed',
     description:
-      'A branching airway tree solved as a network: why a stimulus reaching every airway equally leaves half the lung dark.',
+      'A branching airway tree solved as a network: how a uniform bronchoconstrictor stimulus can produce clustered, heterogeneous regional ventilation.',
     descriptionJa:
-      '分岐気道をネットワークとして解きます。すべての気道に均等に届く刺激が、なぜ肺の半分を低換気にするのかを示します。',
+      '分岐気道をネットワークとして解き、均一な気管支収縮刺激から不均一で集簇した換気低下が生じる仕組みを示します。',
     tags: ['respiratory-mechanics', 'ventilation-heterogeneity', 'learning-module'],
     load: () => import('../scenes/respiratory/scenes/asthma/index.js'),
   },
@@ -137,11 +137,11 @@ export const SCENE_MANIFEST = [
     organ: 'liver',
     organs: ['liver', 'spleen'],
     disease: 'cirrhosis',
-    status: 'alpha',
+    status: 'reviewed',
     description:
-      'The portal circulation as a network with flow conserved: why collaterals divert half the blood and leave the pressure high, and why HVPG is not the portal pressure gradient.',
+      'The portal circulation as a flow-conserving network: why portal hypertension can persist despite redistribution through collaterals, and why HVPG is not the portal pressure gradient.',
     descriptionJa:
-      '流量保存が成り立つネットワークとしての門脈循環。側副血行路が血液の半分を迂回させても圧が下がらない理由と、HVPG が門脈圧較差ではない理由を示します。',
+      '流量保存が成り立つネットワークとして門脈循環を表現し、側副血行路へ血流が再分配されても門脈圧亢進が持続し得る理由と、HVPG が門脈圧較差そのものではない理由を示します。',
     tags: ['haemodynamics', 'portal-hypertension', 'learning-module'],
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
