@@ -94,17 +94,27 @@ export function priceForPlan(plan) {
 }
 
 /**
- * The Stripe price is authoritative for the plan after checkout.
+ * The Stripe Price ID is authoritative for the plan after checkout.
  *
- * Checkout metadata is useful for joining the first event to a user, but a
- * Customer Portal plan change changes the price without rewriting arbitrary
- * subscription metadata. Reading the price therefore keeps entitlement state
- * correct after an upgrade/downgrade too.
+ * Arbitrary subscription metadata is intentionally not used as an entitlement
+ * source. Customer Portal changes the Price when someone switches plans but it
+ * does not promise to rewrite our custom metadata. Deriving the plan from the
+ * configured Price IDs therefore makes upgrades/downgrades converge correctly.
+ *
+ * `prices` is injectable only so this pure mapping can be unit-tested without
+ * reading process.env. Production callers omit it.
  */
-export function planForPrice(priceId) {
+export function planForPrice(
+  priceId,
+  prices = {
+    patient: process.env.STRIPE_PRICE_PATIENT,
+    education: process.env.STRIPE_PRICE_EDUCATION,
+    complete: process.env.STRIPE_PRICE_COMPLETE,
+  }
+) {
   if (!priceId) return null;
-  for (const [plan, name] of Object.entries(PLAN_PRICE_ENV)) {
-    if (process.env[name] && process.env[name] === priceId) return plan;
+  for (const [plan, configuredPrice] of Object.entries(prices)) {
+    if (configuredPrice && configuredPrice === priceId) return plan;
   }
   return null;
 }
@@ -144,8 +154,8 @@ export async function upsertSubscription(subscription) {
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
-  // Metadata is written at checkout, but recover through the customer mapping
-  // as well so later Stripe events remain useful even if metadata is incomplete.
+  // Metadata is written at checkout to join the first event to a user. Later
+  // events can recover through the durable customer mapping as well.
   let userId = subscription.metadata?.supabase_user_id ?? null;
   if (!userId && customerId) {
     const rows = await supabaseAdmin(
@@ -154,8 +164,18 @@ export async function upsertSubscription(subscription) {
     userId = rows?.[0]?.user_id ?? null;
   }
 
-  const entitlement = planForPrice(priceId) ?? subscription.metadata?.entitlement ?? null;
-  if (!userId || !['patient', 'education', 'complete'].includes(entitlement)) return;
+  // Fail closed if Stripe sends a price this deployment does not know. Do not
+  // fall back to stale metadata: that is exactly how a Portal plan change could
+  // leave the old entitlement active after the price has changed.
+  const entitlement = planForPrice(priceId);
+  if (!userId || !entitlement) {
+    console.error('Ignoring subscription with unknown user/price', {
+      subscriptionId: subscription.id,
+      userId: userId ?? null,
+      priceId,
+    });
+    return;
+  }
 
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000).toISOString()
