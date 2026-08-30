@@ -30,7 +30,7 @@ export default async (request) => {
       if (object.subscription) {
         const subscriptionId = typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
         const subscription = await stripeGet(`subscriptions/${subscriptionId}`);
-        await upsertSubscription(subscription);
+        await syncSubscription(subscription);
       }
     }
 
@@ -39,32 +39,25 @@ export default async (request) => {
       event.type === 'customer.subscription.updated' ||
       event.type === 'customer.subscription.deleted'
     ) {
-      const priceId = object.items?.data?.[0]?.price?.id ?? null;
-
-      // Portal and Checkout are configured to expose only our known prices, but
-      // entitlement must still fail closed if someone changes the subscription
-      // manually in Stripe. Mark an existing row ineligible immediately rather
-      // than leaving its previous paid entitlement active.
-      if (!planForPrice(priceId)) {
-        await supabaseAdmin(
-          `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(object.id)}`,
-          {
-            method: 'PATCH',
-            prefer: 'return=minimal',
-            body: {
-              status: 'unsupported_price',
-              price_id: priceId,
-              updated_at: new Date().toISOString(),
-            },
-          }
-        );
-      } else {
-        await upsertSubscription(object);
+      // Stripe does not guarantee webhook delivery order. Re-read the current
+      // subscription before writing local entitlement state so an old `updated`
+      // event arriving late cannot overwrite a newer plan/status. Canceled
+      // subscriptions are normally still retrievable; if Stripe refuses the
+      // read after deletion, the signed event object is the safe fallback.
+      let subscription = object;
+      try {
+        subscription = await stripeGet(`subscriptions/${object.id}`);
+      } catch (error) {
+        if (event.type !== 'customer.subscription.deleted') throw error;
       }
 
+      await syncSubscription(subscription);
       await upsertCustomer({
-        userId: object.metadata?.supabase_user_id,
-        customerId: typeof object.customer === 'string' ? object.customer : object.customer?.id,
+        userId: subscription.metadata?.supabase_user_id,
+        customerId:
+          typeof subscription.customer === 'string'
+            ? subscription.customer
+            : subscription.customer?.id,
       });
     }
 
@@ -74,3 +67,29 @@ export default async (request) => {
     return json(500, { error: 'Webhook processing failed' });
   }
 };
+
+async function syncSubscription(subscription) {
+  const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+
+  // Portal and Checkout are configured to expose only our known prices, but
+  // entitlement must still fail closed if someone changes the subscription
+  // manually in Stripe. Mark an existing row ineligible immediately rather
+  // than leaving its previous paid entitlement active.
+  if (!planForPrice(priceId)) {
+    await supabaseAdmin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'unsupported_price',
+          price_id: priceId,
+          updated_at: new Date().toISOString(),
+        },
+      }
+    );
+    return;
+  }
+
+  await upsertSubscription(subscription);
+}
