@@ -190,6 +190,18 @@ function fiberTexture() {
  * Endocardial map: smoother mottle with wavy trabecular ridges in the apical
  * half (v < 0.5), fading out toward the base where the lining is smooth.
  */
+/**
+ * How much of the endocardial map's apical end is faded to flat, as a fraction
+ * of the texture's height.
+ *
+ * A residual guard only. The streaking it was first written to fix came from
+ * the uv layout, not from this texture — the wrap count now falls off with the
+ * local circumference (see ventricleGeometry) so texel density stays even, and
+ * this only takes the last of the detail off the pole itself, where any
+ * layout degenerates.
+ */
+const APEX_TEXTURE_FADE = 0.07;
+
 function endocardiumTexture() {
   return canvasTexture('endocardium', { w: 512, h: 512 }, (ctx, w, h) => {
     const rnd = createRandom(4411);
@@ -228,6 +240,16 @@ function endocardiumTexture() {
       ctx.fillStyle = `rgba(${v},${v - 4},${v - 2},${0.07 + rnd() * 0.1})`;
       ctx.fillRect(rnd() * w, rnd() * h, 1 + rnd() * 2, 1 + rnd() * 2);
     }
+
+    // The apex is a pole: every azimuth converges on one point, so the last
+    // texels there are smeared around the whole tip however the uv layout is
+    // scaled. Fade the map out over the last of it and let the geometry's own
+    // trabecular field, which has no pole to converge on, shape what is left.
+    const apexFade = ctx.createLinearGradient(0, h * (1 - APEX_TEXTURE_FADE), 0, h);
+    apexFade.addColorStop(0, 'rgba(150,144,144,0)');
+    apexFade.addColorStop(1, 'rgba(150,144,144,1)');
+    ctx.fillStyle = apexFade;
+    ctx.fillRect(0, h * (1 - APEX_TEXTURE_FADE), w, h * APEX_TEXTURE_FADE);
   });
 }
 
@@ -279,15 +301,20 @@ export function createHeartMaterials(variant = 'disease') {
     roughnessMap: hasDom ? mottleTexture() : null,
     roughness: 0.72,
     metalness: 0,
-    // A soft, rough clearcoat: serous moisture, not gloss.
-    clearcoat: 0.18,
-    clearcoatRoughness: 0.6,
+    // A soft, rough clearcoat: serous moisture, not gloss. Kept low because a
+    // clearcoat highlight is white whatever colour the tissue underneath is,
+    // and at a grazing silhouette edge Fresnel drives it toward full
+    // reflectance — which is how one corner of the basal shoulder was
+    // rendering as a pure white blob, the brightest thing in the close-up by
+    // some margin, on a piece of muscle.
+    clearcoat: 0.1,
+    clearcoatRoughness: 0.78,
     // Sheen gives the broad, soft backscatter of organic surfaces — the
     // closest cheap stand-in for subsurface scattering.
     sheen: 0.3,
     sheenRoughness: 0.65,
     sheenColor: new THREE.Color('#e2837c'),
-    envMapIntensity: 0.6,
+    envMapIntensity: 0.34,
     vertexColors: true,
     transparent: true,
     opacity: 1,

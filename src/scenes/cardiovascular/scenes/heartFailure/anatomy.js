@@ -308,6 +308,28 @@ function jitterVec(rnd, amount) {
   );
 }
 
+/**
+ * What a camera can be pointed at, by name.
+ *
+ * A storyboard beat says which structure it is looking at, not where that
+ * structure happens to be. The difference showed up the moment the vessels
+ * moved: two beats framed the atrium and the pulmonary bed by coordinate, and
+ * both had to be found and corrected by hand, while the beats that frame the
+ * ventricle needed nothing. A camera that names its subject follows it.
+ */
+export const VIEW_SUBJECTS = {
+  /** The body of the left ventricle, halfway down its long axis. */
+  leftVentricle: new THREE.Vector3(0, ANATOMY.baseY - 3.3, 0.3),
+  /** Where the ventricle tapers to its apex. */
+  ventricularApex: new THREE.Vector3(0, ANATOMY.baseY - 4.1, 0.3),
+  leftAtrium: ANATOMY.atriumCentre.clone(),
+  /** Where the four pulmonary veins meet the atrium. */
+  pulmonaryVenousJunction: PULMONARY_VEIN_OSTIA.reduce(
+    (sum, ostium) => sum.add(ostium),
+    new THREE.Vector3()
+  ).divideScalar(PULMONARY_VEIN_OSTIA.length),
+};
+
 /** Label anchors. */
 export const ANCHORS = {
   cavity: new THREE.Vector3(0.2, -1.2, 1.6),

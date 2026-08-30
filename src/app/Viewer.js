@@ -12,6 +12,12 @@ import { createControls } from '../controls/createControls.js';
  *
  * A scene module receives this object and only has to build its own content.
  */
+/**
+ * Luminance a pixel must exceed before it blooms. High enough that lit tissue
+ * never does, including a grazing highlight on a cut edge.
+ */
+const BLOOM_THRESHOLD = 0.72;
+
 export class Viewer {
   /** @param {HTMLElement} container */
   constructor(container, { bloom = true } = {}) {
@@ -62,11 +68,16 @@ export class Viewer {
     // entirely, so only genuinely emissive things (particles, the pressure
     // field) get a soft halo. Broad low-threshold bloom was a large part of
     // the old game-VFX look.
+    //
+    // Raised again at 0.5: one grazing specular highlight on the basal
+    // shoulder was crossing the threshold and blooming into a small white blob
+    // — the brightest thing in the close-up, and on a piece of muscle. Tissue
+    // reaches roughly 0.6 there, the emissive things sit well above it.
     this.useBloom = bloom;
     this.composer = new EffectComposer(this.renderer);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     if (this.useBloom) {
-      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, 0.5);
+      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, BLOOM_THRESHOLD);
       this.composer.addPass(this.bloomPass);
     }
     this.composer.addPass(new OutputPass());

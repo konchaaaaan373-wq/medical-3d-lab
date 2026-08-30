@@ -111,7 +111,11 @@ export function createSceneSwitcher({ groups, currentId }) {
       // for no reason.
       const current = row.querySelector('.is-current');
       if (current) {
-        const start = current.offsetLeft;
+        // Relative to the row, which is what scrollLeft is measured in. Taken
+        // raw, offsetLeft is relative to the nearest *positioned* ancestor —
+        // no row is positioned, so it was carrying the panel's own inset, and
+        // both the on-screen test and the centring were biased by it.
+        const start = current.offsetLeft - row.offsetLeft;
         const end = start + current.clientWidth;
         if (start < row.scrollLeft || end > row.scrollLeft + row.clientWidth) {
           row.scrollLeft = start - row.clientWidth / 2 + current.clientWidth / 2;

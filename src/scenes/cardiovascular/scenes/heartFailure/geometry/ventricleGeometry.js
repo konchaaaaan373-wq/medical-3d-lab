@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { smoothstep as smooth } from '../../../../../utils/math.js';
+import { lerp, smoothstep as smooth } from '../../../../../utils/math.js';
 
 /**
  * Anatomically-shaped left-ventricle shell geometry.
@@ -28,6 +28,13 @@ import { smoothstep as smooth } from '../../../../../utils/math.js';
  */
 
 /** Shaping constants, in normalised units unless noted. */
+/**
+ * How many of the lathe's three texture wraps survive at the apex. Low enough
+ * that a texel there is roughly as wide as it is tall, which is what stops the
+ * map from streaking radially off the pole.
+ */
+const APEX_UV_WRAP = 0.22;
+
 export const VENTRICLE_SHAPING = {
   /** Exponent < 1 keeps the outer profile full near the base. */
   outerProfileExponent: 0.93,
@@ -55,7 +62,27 @@ export const VENTRICLE_SHAPING = {
   lateralThicknessTrim: 0.05,
 
   /** Apex lateral drift as a fraction of the outer semi-length. */
-  apexDriftX: 0.13,
+  /**
+   * Lateral drift of the apex, as a fraction of the outer semi-length. The
+   * ventricle's long axis is oblique — the apex points to the anatomical left,
+   * anteriorly and inferiorly — and this is what carries that.
+   *
+   * Raised from 0.13 for a reason worth recording, because the obvious fix was
+   * the wrong one. Seen straight on, the ventricle read as a bucket: measured
+   * off a render, its silhouette moved 30 pixels over the top 125 of its
+   * height, which is two near-parallel sides under a flat basal rim. The
+   * apparent remedy is to taper the body — widest at the base, narrowing to
+   * the apex — and that was tried. It cannot be done here. The profile's
+   * radius is set by the volume the circulation model solved, so a taper large
+   * enough to change the silhouette walks the drawn cavity away from the
+   * solved surface (21% at the magnitude that mattered), and a taper small
+   * enough to be safe moved the edge by two pixels.
+   *
+   * Obliquity costs nothing, because a shear preserves volume exactly. It also
+   * happens to be what actually distinguishes a ventricle from a bucket: not
+   * how it tapers, but that its axis is not vertical.
+   */
+  apexDriftX: 0.22,
   apexDriftZ: 0.05,
 
   /** Amplitude of the smooth surface irregularity, as a radius fraction. */
@@ -160,6 +187,13 @@ function surfaceNoise(t, phi) {
   );
 }
 
+/**
+ * How far the wedge must be open before the cut face is drawn at full width.
+ * Below this the face is eased shut, so no near-coincident sliver is left
+ * standing edge-on at the apex.
+ */
+const CUT_FACE_OPEN = 0.45;
+
 /** How far the cut wedge is open at profile fraction t: 0 sealed, 1 fully. */
 function sealOpenFraction(t) {
   return smooth(0.08, VENTRICLE_SHAPING.apexSealEnd, t);
@@ -183,16 +217,67 @@ function sealSpanScale(t, halfCut) {
  */
 export function trabecularField(t, phi) {
   const S = VENTRICLE_SHAPING;
-  const along = smooth(0.03, 0.15, t) * (1 - smooth(0.4, 0.68, t));
+  // Started further from the apex than it was. Every azimuth converges on the
+  // apex, so relief that is still at full strength close to it fans out into
+  // radial streaks — the cavity read as combed hair rather than as muscle.
+  const along = smooth(0.11, 0.27, t) * (1 - smooth(0.42, 0.7, t));
   if (along <= 0) return 0;
   const ridges = Math.pow(
-    0.5 + 0.5 * Math.sin(9 * phi + 3.1 * t + 1.4 * Math.sin(2.3 * phi + 6.2 * t)),
+    0.5 + 0.5 * Math.sin(9 * phi + 5.4 * t + 1.4 * Math.sin(2.3 * phi + 6.2 * t)),
     1.6
   );
   // Patchy coverage: bundles come and go around the circumference.
   const patchy = Math.max(0, 0.45 + 0.55 * Math.sin(3.7 * phi - 2.0 * t + 1.0));
+  // And along the axis, so a bundle starts and stops instead of running the
+  // whole apical half. Continuous bands are what made the fan read as combed;
+  // real trabeculae are short, overlapping and staggered.
+  const segmented = 0.34 + 0.66 * Math.max(0, Math.sin(13.5 * t + 2.6 * phi + 0.7 * Math.sin(5 * phi)));
   const lvot = 1 - angularBump(phi, S.lvotPhi, 1.0) * smooth(0.28, 0.5, t);
-  return along * ridges * patchy * lvot;
+  return along * ridges * patchy * segmented * lvot;
+}
+
+
+/**
+ * Places on the ventricular wall, by anatomical name.
+ *
+ * The papillary muscles used to be placed by quoting a profile fraction and an
+ * azimuth straight out of the valve apparatus — the same shape of coupling
+ * that put the sinuses of Valsalva in the wrong vessel when the aorta grew.
+ * Nothing outside this module should have to know that the wall is
+ * parameterised as (t, phi) at all, or which way round phi runs.
+ *
+ * Both coordinates are local to the ventricle, which is the point: `height` is
+ * a fraction of the chamber's own long axis from apex to valve plane, and
+ * `fromFreeWall` runs from the left ventricular free wall (0) round to the
+ * septum (1), so the sites keep their meaning if the profile is reshaped or
+ * the azimuths are renumbered.
+ */
+export const VENTRICLE_SITES = {
+  /** Anterolateral papillary muscle: on the free wall, in the apical half. */
+  anterolateralPapillary: { height: 0.4, fromFreeWall: 0.25 },
+  /** Posteromedial papillary muscle: nearer the septum, and a little higher. */
+  posteromedialPapillary: { height: 0.45, fromFreeWall: 0.733 },
+};
+
+/** The azimuth of a named wall site, in the geometry's own phi. */
+export function wallSiteAzimuth(name) {
+  const site = VENTRICLE_SITES[name];
+  if (!site) throw new Error(`Unknown ventricular wall site "${name}"`);
+  return lerp(VENTRICLE_SHAPING.lateralPhi, VENTRICLE_SHAPING.septalPhi, site.fromFreeWall);
+}
+
+/**
+ * Where a named wall site sits on the endocardial surface.
+ *
+ * @param {{ cavityRadius: number, cavitySemiLength: number,
+ *   outerSemiLength: number, baseY: number }} shape
+ * @param {keyof typeof VENTRICLE_SITES} name
+ * @param {THREE.Vector3} out
+ */
+export function wallSitePoint(shape, name, out) {
+  const site = VENTRICLE_SITES[name];
+  if (!site) throw new Error(`Unknown ventricular wall site "${name}"`);
+  return cavitySurfacePoint(shape, site.height, wallSiteAzimuth(name), out);
 }
 
 /**
@@ -349,12 +434,23 @@ export function buildVentricleGeometry({
   // reasonable), v runs apex (0) -> base (1) on both surfaces. u follows the
   // same apex-seal remap the positions use, so the texture stays uniform
   // where the wedge closes instead of compressing into stripes.
+  //
+  // The wrap count also falls off toward the apex, and that is not cosmetic.
+  // The apex is a pole: circumference goes to zero while u still spans three
+  // full repeats, so every texel there is squeezed azimuthally by a large
+  // factor and stretched radially by the same. Any detail in the map — mottle,
+  // grain, trabecular strokes alike — is drawn out into radial streaks, and
+  // the cavity reads as combed hair converging on a point. Scaling the wrap
+  // with the local circumference keeps texel density roughly even instead.
+  // The lathe is an open strip (the cut wedge breaks the loop), so a
+  // height-dependent wrap count introduces no seam.
   for (let k = 0; k <= S; k++) {
     for (let i = 0; i < profileCount; i++) {
       const v = i < N ? i / (N - 1) : 1 - (i - N) / (N - 1);
       const idx = (k * profileCount + i) * 2;
       const phiSealed = Math.PI + (basePhi[k] - Math.PI) * sealSpanScale(v, basePhi[0]);
-      uvs[idx] = (phiSealed / (Math.PI * 2)) * 3;
+      const wrap = 3 * lerp(APEX_UV_WRAP, 1, smooth(0, 0.42, v));
+      uvs[idx] = (phiSealed / (Math.PI * 2)) * wrap;
       uvs[idx + 1] = v;
     }
   }
@@ -580,12 +676,20 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
       const outIdx = base + i * 3;
       const inIdx = base + (profileCount - 1 - i) * 3;
       writePair(i, phi0, c === 0 ? 1 : 0, c === 1 ? 1 : 0, outIdx, inIdx);
-      // Below the seal the two cap planes coincide; collapsing each sliver
-      // to its outer edge removes the z-fighting seam up the closed apex.
-      if (sealOpenFraction(tArr[i]) < 0.04) {
-        positions[inIdx] = positions[outIdx];
-        positions[inIdx + 1] = positions[outIdx + 1];
-        positions[inIdx + 2] = positions[outIdx + 2];
+      // The cut face shows the wall's cross-section, so it has to shrink to
+      // nothing as the wedge closes toward the apex — where there is no gap,
+      // there is nothing cut. This used to snap to zero below a threshold,
+      // which left a band above it where the two cap planes were nearly
+      // coincident and nearly edge-on: they rendered as a dark hairline
+      // running down the apex, with a step in the silhouette wherever the two
+      // sides' slivers ended at different heights. Easing the collapse over
+      // the same span the wedge opens across removes both, and takes away only
+      // cross-section that has no cavity behind it anyway.
+      const collapse = 1 - smooth(0, CUT_FACE_OPEN, sealOpenFraction(tArr[i]));
+      if (collapse > 0.001) {
+        positions[inIdx] = lerp(positions[inIdx], positions[outIdx], collapse);
+        positions[inIdx + 1] = lerp(positions[inIdx + 1], positions[outIdx + 1], collapse);
+        positions[inIdx + 2] = lerp(positions[inIdx + 2], positions[outIdx + 2], collapse);
       }
     }
   }
