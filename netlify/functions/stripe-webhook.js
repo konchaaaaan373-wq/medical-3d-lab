@@ -1,6 +1,8 @@
 import {
   json,
+  planForPrice,
   stripeGet,
+  supabaseAdmin,
   upsertCustomer,
   upsertSubscription,
   verifyStripeSignature,
@@ -37,7 +39,29 @@ export default async (request) => {
       event.type === 'customer.subscription.updated' ||
       event.type === 'customer.subscription.deleted'
     ) {
-      await upsertSubscription(object);
+      const priceId = object.items?.data?.[0]?.price?.id ?? null;
+
+      // Portal and Checkout are configured to expose only our known prices, but
+      // entitlement must still fail closed if someone changes the subscription
+      // manually in Stripe. Mark an existing row ineligible immediately rather
+      // than leaving its previous paid entitlement active.
+      if (!planForPrice(priceId)) {
+        await supabaseAdmin(
+          `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(object.id)}`,
+          {
+            method: 'PATCH',
+            prefer: 'return=minimal',
+            body: {
+              status: 'unsupported_price',
+              price_id: priceId,
+              updated_at: new Date().toISOString(),
+            },
+          }
+        );
+      } else {
+        await upsertSubscription(object);
+      }
+
       await upsertCustomer({
         userId: object.metadata?.supabase_user_id,
         customerId: typeof object.customer === 'string' ? object.customer : object.customer?.id,
