@@ -205,12 +205,21 @@ guideline figure, table or algorithm has been reproduced.
 
 ## 16. How to check it
 
-`node --test tests/portal-hypertension-model.test.js tests/portal-hypertension-scene.test.js`
-for what the scene says about itself, and
-`node --test tests/portal-haemodynamics.test.js` for what the literature
-requires of the model regardless of what the scene says. The tests that matter
-most are `flow is conserved at the portal vein, in every configuration` —
-without which every pressure is meaningless — `HVPG tracks the sinusoidal
-component and not the presinusoidal one`, which is the distinction the whole
-scene exists to make, and `hepatic portal perfusion falls as the liver scars`,
-which keeps a known-wrong direction out of the headline read-out.
+Three kinds of test, and they mean different things — see
+[`tests/README.md`](../../tests/README.md).
+
+- **External physiology**, `node --test tests/portal-haemodynamics.test.js`.
+  Resistance initiating and inflow perpetuating; collaterals diverting flow and
+  leaving the driving pathophysiology in place; HVPG tracking the sinusoidal
+  component; presinusoidal intrahepatic separated from prehepatic; the Baveno
+  VII thresholds and where 12 mmHg belongs; a shunt lowering the gradient and
+  diverting blood past the liver; hepatic perfusion falling as the liver scars.
+  Directions and orderings, with no magnitude anywhere. **A failure here means
+  the model has broken a constraint the physiology imposes.**
+- **Model integrity**, `node --test tests/portal-hypertension-model.test.js tests/portal-hypertension-scene.test.js`.
+  `flow is conserved at the portal vein, in every configuration` is the one
+  without which every pressure is meaningless.
+- **Calibration behaviour**, `node --test tests/calibration.test.js`. The
+  healthy liver's gradient and flow, the collateral sigmoid's width, the
+  residual gradient with collaterals established, whether a full shunt clears
+  12 mmHg, and the 30% dynamic share. A failure here means a choice changed.

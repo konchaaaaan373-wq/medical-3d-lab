@@ -175,9 +175,22 @@ does and does not license.
 
 ## 16. How to check it
 
-`node --test tests/asthma-model.test.js tests/asthma-scene.test.js` for what
-the scene says about itself, and
-`node --test tests/respiratory-physiology.test.js` for what the literature
-requires of it regardless of what the scene says. The strongest test is `the patchiness is the feedback, not the scatter`, which
-cuts the loop and asserts the patchiness disappears — the claim the whole
-scene rests on, written so that it can fail.
+Three kinds of test, and they mean different things — see
+[`tests/README.md`](../../tests/README.md).
+
+- **External physiology**, `node --test tests/respiratory-physiology.test.js`.
+  Poiseuille's law about an ideal tube; smooth muscle present at every
+  generation; cartilage declining distally and absent from the bronchioles;
+  distal calibre more strongly affected by the same contraction; a uniform
+  stimulus producing clustered defects; the clustering coming from the loop.
+  All orderings, no factors. **A failure here means the model has broken a
+  constraint the physiology imposes.**
+- **Model integrity**, `node --test tests/asthma-model.test.js tests/asthma-scene.test.js`.
+  The strongest is `the patchiness is the feedback, not the scatter`, which
+  cuts the loop and asserts the patchiness disappears — the claim the whole
+  scene rests on, written so that it can fail.
+- **Calibration behaviour**, `node --test tests/calibration.test.js`. The
+  constrictibility profile and the peripheral-to-central ratio, the coupling
+  exponent's regime, the knee's sharpness, the inherited share, the maximum
+  narrowing, and that applying `r⁴` to a whole tree still cancels because every
+  resistance is a ratio. A failure here means a choice changed.

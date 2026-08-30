@@ -127,16 +127,32 @@ appears nowhere, in the code or in the interface.
 | **Validation** | `haemodynamics: raising intrahepatic resistance raises the portal pressure gradient` (with the splanchnic bed normal and no collaterals, so the initiating mechanism acts alone); `haemodynamics: increased inflow at a fixed hepatic resistance raises the gradient too` (asserting the liver does not change); `haemodynamics: the two mechanisms act by different routes` — resistance *lowers* inflow while vasodilation raises it; and `the walk-through puts the initiating mechanism before the perpetuating one`. |
 | **Confidence** | `initiating-mechanism` and `perpetuating-mechanism` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
-### 4. Roughly a fifth to a third of the raised intrahepatic resistance is reversible
+### 4. The reversible component of the intrahepatic resistance
+
+**Two claims, separated at the final review's request.** The literature's
+description and this model's parameterisation of it are not the same thing.
+
+#### 4a. That it exists, and is the minority
 
 | | |
 | --- | --- |
-| **Claim** | The increased intrahepatic resistance in cirrhosis has a structural component (fibrosis, regenerative nodules, sinusoidal remodelling) and a *dynamic* component — activated hepatic stellate cell contraction, reduced intrahepatic nitric oxide, increased endothelin — classically quoted as 20–30% of the total. The dynamic part is why a drug can lower portal pressure at all. |
-| **Source** | The pathophysiology reviews above, in which the 20–30% figure is repeated. Marked `supported` rather than thin: the review confirmed the proposition and the range, and the model's way of *expressing* it — as a share of the structural resistance — remains a modelling choice of its own. |
-| **Implementation** | `DYNAMIC_SHARE_AT_FULL_TONE = 0.3`, applied as a multiplier on whatever the structure already costs. |
-| **Assumption** | Expressing it as a *share of the structural resistance* rather than as a fixed addition is a modelling choice, and it has a consequence worth stating: it makes the dynamic component worth more in a badly scarred liver than in a healthy one. That is the right direction, but the model does not have a source for the size. |
-| **Validation** | `the dynamic component is a share of what the structure already costs`, which asserts both the ratio and the consequence. |
-| **Confidence** | `dynamic-share` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+| **Claim** | Cirrhotic intrahepatic vascular resistance contains structural and reversible dynamic components. The dynamic component — activated hepatic stellate cell contraction, reduced intrahepatic nitric oxide, increased endothelin — is often described as contributing roughly 20–30% of the increased resistance. Its existence is why a drug can lower portal pressure at all; its being a minority is why a drug cannot normalise it. |
+| **Source** | The pathophysiology reviews (PMC2999290, PMC3971388, PMC3000670), in which the 20–30% range is repeated. |
+| **Implementation** | `dynamicTone` raises the intrahepatic resistance and touches nothing else. |
+| **Assumption** | The 20–30% figure is a description in the literature rather than a law, so what is asserted externally is only that the component exists, that relieving it lowers the gradient, and that relieving it does not take a cirrhotic liver back to a healthy gradient. |
+| **Validation** | `haemodynamics: a reversible component of the intrahepatic resistance can be relieved`. Directions only, with the "minority" expressed as *less than doubling the resistance* rather than as a percentage. |
+| **Confidence** | `dynamic-component-exists` (**supported**, external layer) — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+
+#### 4b. How this model applies it
+
+| | |
+| --- | --- |
+| **Claim** | `dynamicTone` at full adds 30% of `structuralResistance`, as a multiplicative share rather than a fixed addition. |
+| **Source** | The top of the reported range, chosen; and the multiplicative form, chosen. |
+| **Implementation** | `DYNAMIC_SHARE_AT_FULL_TONE = 0.3`, applied as `structuralResistance × (1 + 0.3 · dynamicTone)`. |
+| **Assumption** | The form has a consequence worth stating: expressing it as a share of what the structure already costs makes the dynamic component worth more in a badly scarred liver than in a healthy one. That direction is defensible and the 30% is not measured, so **this is checked in the calibration layer and never as a physiological invariant.** An earlier version asserted the exact share in the external layer, which presented a chosen number as a finding. |
+| **Validation** | `calibration: the dynamic component is a share of what the structure already costs`. |
+| **Confidence** | `dynamic-tone-parameterisation` (**calibration**) — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 5. Collaterals redistribute portal flow and do not remove what is driving the pressure
 
@@ -146,8 +162,8 @@ appears nowhere, in the code or in the interface.
 | **Source** | Portosystemic collateral literature (MDCT review of collateral pathways; StatPearls) and the pathophysiology reviews above, through the external review. |
 | **Implementation** | A parallel path whose conductance is mapped from the gradient by `establishedCollateralFraction`, a sigmoid centred on 10 mmHg. That makes the system circular (the pressure sets the conductance and the conductance sets the pressure) and is solved by damped iteration. The function's own documentation says at length what the sigmoid is and is not. |
 | **Assumption** | Two things are being assumed and they are different. The collateral resistance is a **calibration** constant, chosen so that an established-cirrhosis configuration lands in the reported HVPG range with a large share of the flow diverted; it is not evidence that collaterals are high-resistance in general. The sigmoid is an **illustrative equilibrium mapping**: it says how much collateral conductance a liver that has sat at a given gradient has typically ended up with. Its centre is a *clinical* threshold borrowed as a plausible midpoint, and its width has no source at all. **Nothing opens at a pressure**, and no part of the model or the scene may describe it as doing so. |
-| **Validation** | `haemodynamics: collaterals redistribute a great deal of flow and leave the gradient abnormal`; `haemodynamics: the reason the pressure stays up is that nothing generating it has moved`, which asserts that the intrahepatic resistance and the inflow are both untouched; `haemodynamics: ten mmHg is not coded as a law that opens collaterals`, which walks the mapping and rejects any step in it; and `nothing in the walk-through describes collaterals opening at a pressure`. |
-| **Confidence** | `collaterals-do-not-decompress`, `collateral-conductance-mapping` and `collateral-and-shunt-resistance` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+| **Validation** | External, all directions and no magnitudes: `haemodynamics: collaterals divert flow and leave the driving pathophysiology in place`, which asserts that they carry blood, that the gradient comes down, that it does not return to a healthy liver's, and that neither the intrahepatic resistance behind them nor the inflow in front of them is reduced; and `haemodynamics: ten mmHg is not coded as a law that opens collaterals`, which walks the mapping and asserts monotonicity with no step at the threshold. Integrity: `nothing in the walk-through describes collaterals opening at a pressure`. Calibration: `calibration: the collateral mapping is smooth, and is not a valve` and `calibration: the collateral and shunt resistances land the two configurations where they were aimed`, which hold the sigmoid's width, the residual gradient and the share of flow diverted. |
+| **Confidence** | `collaterals-do-not-decompress` (**supported**, external layer) against `collateral-conductance-mapping` (**illustrative**) and `collateral-and-shunt-resistance` (**calibration**), both in the calibration layer — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 6. HVPG approximates the sinusoidal component, and therefore under-reads what lies upstream of it
 
@@ -158,7 +174,7 @@ appears nowhere, in the code or in the interface.
 | **Implementation** | The intrahepatic resistance is split into a presinusoidal and a sinusoidal segment, in a proportion the named `haemodynamicPattern` declares. The model reports **both** gradients: `portalPressureGradientMmHg` across the whole pathway, and `hepaticVenousPressureGradientMmHg` across the sinusoidal segment alone. Changing the pattern does not change the total resistance, only where it sits. Only the presinusoidal intrahepatic pattern is represented; there is no extrahepatic portal obstruction in the model. |
 | **Assumption** | That wedged pressure equals sinusoidal pressure exactly. In reality the equilibration depends on sinusoidal communication, which is itself altered by disease, so WHVP approximates rather than equals it. The model's version is the idealised one, and the scene's prose says "approximates" everywhere the model says "equals". |
 | **Validation** | The suite's most important pair: `haemodynamics: HVPG tracks the sinusoidal component and not the presinusoidal one`, and `moving the resistance upstream does not change how much of it there is`. Plus `haemodynamics: the presinusoidal drop sits upstream of the sinusoid in the pressure profile`, which states it on the chart the reader actually looks at, and `haemodynamics: presinusoidal intrahepatic and prehepatic are named as different things`. |
-| **Confidence** | `hvpg-approximation` and `presinusoidal-vs-prehepatic` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+| **Confidence** | `hvpg-approximation` and `presinusoidal-vs-prehepatic` (**established**, external layer) against `wedged-equals-sinusoidal` (**approximation**, calibration layer) — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 7. The clinical thresholds, and where they apply
 
@@ -171,16 +187,27 @@ appears nowhere, in the code or in the interface.
 | **Validation** | `haemodynamics: the thresholds are Baveno VII's, read on HVPG, and 12 mmHg is not among them`; `haemodynamics: the thresholds are withheld outside sinusoidal portal hypertension`; `there is no band boundary at 12 mmHg, because there is no such general threshold`, which sweeps the whole progression and asserts that only three bands are ever produced; `the haemodynamic pattern is a named state, and each one says for itself whether the thresholds apply`. |
 | **Confidence** | `baveno-thresholds` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
-### 8. TIPS
+### 8. TIPS, and where 12 mmHg belongs
 
 | | |
 | --- | --- |
-| **Claim** | A TIPS reduces the portosystemic gradient. For a shunt placed to treat variceal bleeding, a post-TIPS gradient below 12 mmHg is the haemodynamic target, and the stent is dilated until the gradient falls below it. This — together with the classic HVPG ≥ 12 mmHg association with variceal bleeding — is the whole of where 12 mmHg belongs. |
-| **Source** | TIPS literature, through the external review. |
-| **Implementation** | A parallel path with a resistance far below the diseased liver's and below any collateral's — though not below a healthy liver's, because no shunt is. Calibrated so that a fully dilated shunt takes the established-cirrhosis gradient below 12. |
-| **Assumption** | The resistance is a calibration constant. The model has no stent diameter, no shunt dysfunction and no time. |
-| **Validation** | `haemodynamics: more shunt conductance lowers the gradient, monotonically`; `haemodynamics: a fully dilated shunt reaches the post-TIPS target, and costs hepatic perfusion`, which asserts the gradient falls below 12 **and** that hepatic portal perfusion at least halves. |
-| **Confidence** | `twelve-mmhg-context` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+| **Claim** | A TIPS provides a low-resistance pathway from the portal vein to a hepatic vein and lowers the portosystemic pressure gradient; the blood that takes it does not perfuse hepatocytes. In variceal bleeding, a post-TIPS gradient below 12 mmHg is a Baveno VII haemodynamic target, and an HVPG of 12 mmHg or more is the classic association with variceal bleeding. |
+| **Source** | TIPS literature and Baveno VII, through the external review; the second half of the first sentence is conservation of flow. |
+| **Implementation** | A parallel path with a resistance far below the diseased liver's. `VARICEAL_CONTEXT` carries 12 mmHg with a note confining it; no HVPG band boundary sits there. |
+| **Assumption** | **The external claim is a direction and a fact about where a number belongs, and stops there.** Whether *this* model's fully dilated shunt clears 12 mmHg, and by how much hepatic portal flow falls when it does, are consequences of a chosen shunt resistance. The final review asked for that separation and it has been made. |
+| **Validation** | External: `haemodynamics: more shunt conductance lowers the gradient and diverts blood past the liver`, monotonic in both, with no target; and `haemodynamics: twelve mmHg exists only in the variceal and post-TIPS context`, which asserts the number is not a band boundary and that no band this model can produce starts there. Calibration: `calibration: the collateral and shunt resistances land the two configurations where they were aimed`, which holds the post-TIPS gradient and the fall in hepatic perfusion. |
+| **Confidence** | `tips-low-resistance-path` and `twelve-mmhg-context` (**established** / **supported**, external layer) against `collateral-and-shunt-resistance` (**calibration**) — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+
+### 9. The calibration constants, kept on the other side of the line
+
+| | |
+| --- | --- |
+| **Claim** | This model's healthy liver produces an HVPG of 1–5 mmHg at about a litre a minute; its fully established collaterals leave a gradient well above the clinically significant threshold with more than half the flow diverted; its fully dilated shunt clears 12 mmHg and at least halves hepatic portal flow; its collateral sigmoid is half-established at 10 mmHg with a width of 2.2 mmHg. |
+| **Source** | None of them. Three reference resistances, a collateral resistance, a shunt resistance and a sigmoid width, all chosen. The literature's own figures — normal HVPG 1–5 mmHg, portal flow of the order of a litre a minute — are the *targets* these were tuned to hit, and are recorded as such rather than restated as though the model had found them. |
+| **Implementation** | `REFERENCE`, `COLLATERAL_RESISTANCE_OPEN`, `TIPS_RESISTANCE_OPEN`, `CSPH_GRADIENT_MMHG` and `COLLATERAL_SPREAD` in `src/models/portalHypertension.js`. |
+| **Assumption** | Worth defending — a calibration that drifts is how a scene stops matching the figures it was built against — but a failure to hold them means *a choice this repository made has changed*, which may be deliberate. It is never evidence that the medicine is wrong. |
+| **Validation** | `tests/calibration.test.js`: `calibration: a healthy liver lands where this model was tuned to put it`; `calibration: the collateral mapping is smooth, and is not a valve`; `calibration: the collateral and shunt resistances land the two configurations where they were aimed`; `calibration: hepatic portal perfusion falls by the margin this progression was tuned to give`; `calibration: the model's HVPG is the sinusoidal segment exactly, by construction`. |
+| **Confidence** | `reference-resistances`, `collateral-and-shunt-resistance` (**calibration**), `collateral-conductance-mapping` (**illustrative**) and `wedged-equals-sinusoidal` (**approximation**) — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ---
 
@@ -228,4 +255,7 @@ collaterals growing faster than the inflow.
 
 The distinction is recorded here, in the model card, in the scene's scope
 panel and in the confidence registry as `perfusion-under-isolated-vasodilation`,
-rather than left for a reader to trip over.
+rather than left for a reader to trip over. The *direction* along the axis is
+external and is checked in `portal-haemodynamics.test.js`; *how far* perfusion
+falls over the modelled range is a consequence of the reference resistances and
+is checked in `calibration.test.js`.

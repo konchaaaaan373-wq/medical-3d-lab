@@ -94,8 +94,8 @@ pass, and this scene is the proof.
 
 | | |
 | --- | --- |
-| **Claim** | Dynamic hyperinflation is a rise in end-expiratory lung volume above the relaxation volume, reached when the expiratory time available is less than the time the lung's time constant needs. It is worsened by the rise in respiratory rate during exercise, which shortens the time available for expiration. **Raised airway resistance alone is sufficient**, at a fixed breathing pattern and a fixed expiratory effort: expiratory flow limitation and loss of elastic recoil worsen it and are not preconditions of it. |
-| **Source** | The dynamic-hyperinflation literature: ERS *European Respiratory Review* on the physiology and consequences of lung hyperinflation in COPD; *COPD Research and Practice* on applying hyperinflation physiology to clinical practice; *Experimental Physiology* on exercise-induced dynamic hyperinflation; O'Donnell and colleagues; GOLD 2026. For the sufficiency of resistance alone, the external review's reading of **"Dynamic hyperinflation and flow limitation during methacholine-induced bronchoconstriction in asthma" (PMID 10515404)**, where dynamic hyperinflation and expiratory flow limitation appear in lungs whose elastic recoil is normal. |
+| **Claim** | Dynamic hyperinflation is a rise in end-expiratory lung volume above the relaxation volume, reached when the expiratory time available is less than the time the lung's time constant needs. **Raised airway resistance can be sufficient to produce incomplete emptying and increased EELV when the available expiratory time is inadequate; loss of elastic recoil is not a necessary precondition.** Expiratory flow limitation and loss of recoil worsen it; neither is required for it. |
+| **Source** | The dynamic-hyperinflation literature: ERS *European Respiratory Review* on the physiology and consequences of lung hyperinflation in COPD; *COPD Research and Practice*; *Experimental Physiology* on exercise-induced dynamic hyperinflation; O'Donnell and colleagues; GOLD 2026. For a recoil-preserved lung hyperinflating, the external review's reading of **"Dynamic hyperinflation and flow limitation during methacholine-induced bronchoconstriction in asthma" (PMID 10515404)**. **Read with the right weight:** a methacholine challenge is not a pure isolated-resistance experiment — it also alters airway wall mechanics and the response is heterogeneous — so it supports the proposition that dynamic hyperinflation occurs in lungs with normal elastic recoil, and it is not an experimental analogue of this model's manipulation. |
 | **Implementation** | Nothing sets EELV. The units are integrated breath after breath and EELV is read off; `settle()` runs until it stops moving. `breathingPattern` shortens expiratory time as demand rises (rate 14 → 34/min, duty cycle 0.33 → 0.40, so Te falls by more than half). |
 | **Assumption** | The breathing pattern is prescribed from demand rather than chosen by the model. Real patients adopt their own pattern, and the rapid shallow pattern many adopt makes hyperinflation worse than a model with a prescribed pattern shows. |
 | **Validation** | `physiology: raised airway resistance alone raises end-expiratory volume` and `physiology: it does so without any expiratory flow limitation`, both of which hold the breathing pattern, the expiratory effort and the elastic properties fixed and assert that they did not move. Then `an obstructed lung hyperinflates as demand rises, and loses inspiratory capacity doing it`; `a normal lung does not hyperinflate however hard it works`; `physiology: a healthy lung does the opposite, and lowers its operating volume with exercise`. |
@@ -177,6 +177,28 @@ pass, and this scene is the proof.
 | **Assumption** | The width of the spread is illustrative. The model claims that the spread exists and what it causes — that the slowest units carry the trapped gas — not how wide it is in a person. |
 | **Validation** | `units are heterogeneous, and the same heterogeneous lung every time`; `the units in parallel have the same time constant as the whole lung`. |
 | **Confidence** | `tethering-exponent` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+
+### 10b. What a bronchodilator does, and what it cannot
+
+| | |
+| --- | --- |
+| **Claim** | Bronchodilation relaxes airway smooth muscle and reduces airway resistance; a lower resistance is a shorter R·C. It can reduce operating lung volumes and improve inspiratory capacity in COPD. It does **not** restore destroyed elastic recoil or destroyed alveolar attachments. |
+| **Source** | Standard pharmacology and standard respiratory mechanics; reviews of hyperinflation as a treatable trait; the exercise-hyperinflation literature; GOLD 2026. |
+| **Implementation** | `bronchodilation` scales the reference resistances and leaves every elastic property untouched — compliance, residual volume and relaxation volume are all identical before and after. |
+| **Assumption** | **The external claim stops here, and it stops deliberately.** *How much more* the drug lowers total resistance than it lowers the ceiling-setting upstream segment is two invented percentages and the ratio between them, and it is registered separately as `bronchodilator-split`. An earlier version of the external layer asserted that ratio as though it were a finding; the final review removed it. |
+| **Validation** | `physiology: a bronchodilator lowers airway resistance and shortens the time constant`; `physiology: a bronchodilator can lower operating volumes and recover inspiratory capacity`; `physiology: a bronchodilator does not restore elastic recoil or the tethering that went with it`. All three are directions, with no magnitude in any of them. |
+| **Confidence** | `bronchodilation-lowers-resistance`, `bronchodilation-operating-volumes` and `bronchodilation-does-not-restore-recoil` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
+
+### 10c. The sizes, kept on the other side of the line
+
+| | |
+| --- | --- |
+| **Claim** | This model's bronchodilator lowers total resistance by 28% and the upstream segment by 10%; its upstream resistance rises as `recoil^-2.5`; its workload recruits up to 9 cmH₂O of expiratory pressure; its units are scattered by 45% and 27%; its reference lung has a time constant of about 0.55 s. |
+| **Source** | None of them. Every one is a value this repository chose, and the ratios between them are chosen too. |
+| **Implementation** | The constants in `src/models/copd.js`, each labelled where it is defined. |
+| **Assumption** | These are worth defending — a calibration that drifts is how a scene stops matching the figures it was built against — but a failure to hold them means *a choice this repository made has changed*, which may be deliberate. It is never evidence that the medicine is wrong. |
+| **Validation** | `tests/calibration.test.js`: `calibration: the reference lung lands on the textbook volumes and time constant`; `calibration: the tethering exponent puts the flow ceiling where it was tuned to sit`; `calibration: the bronchodilator split favours total resistance over the ceiling`; `calibration: the workload recruits expiratory pressure without reference to the lung`; `calibration: the unit spread has the width it was given, and does not move the mean lung`; `calibration: expiratory pressure buys the volume this parameterisation was tuned to give`. |
+| **Confidence** | `reference-lung`, `tethering-exponent`, `bronchodilator-split`, `workload-expiratory-recruitment` and `heterogeneity-width` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 11. A direction the model is known to get one-sided
 

@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   HAEMODYNAMIC_PATTERNS,
-  HEPATIC_VEIN_PRESSURE,
   HVPG_THRESHOLDS,
   VARICEAL_CONTEXT,
   clinicalThresholdReading,
@@ -13,45 +12,42 @@ import {
 } from '../src/models/portalHypertension.js';
 
 /**
- * **Layer 2: what the hepatology literature requires of this model.**
+ * **Layer 1 — external physiology. What the hepatology literature requires.**
  *
- * The companion file to `tests/respiratory-physiology.test.js`, and it exists
- * for the same reason: the rest of the suite checks that the scene agrees with
- * its own model, which is necessary and is not evidence that either is right.
- * Nothing here reads a caption, a stored answer or a chart. Each test states a
- * proposition that would still be true if this repository did not exist, and
- * asserts that the model obeys it.
+ * The companion to `respiratory-physiology.test.js`, held to the same rule and
+ * for the same reason. See `LAYER` in `src/models/evidence.js` and
+ * `tests/README.md` for the three layers and what a failure in each one means.
+ *
+ * **No assertion here may depend on a constant this repository invented or
+ * calibrated.** The three reference resistances, the collateral and shunt
+ * resistances, the width of the collateral sigmoid and the size of the dynamic
+ * share are all choices; every one of them is checked in
+ * `calibration.test.js`, and none of them may be smuggled in here as a
+ * threshold. So this file holds directions, orderings and independence
+ * conditions, and no magnitudes.
+ *
+ * The one number that appears here and is not this repository's is 12 mmHg —
+ * because it comes from Baveno VII and from the TIPS literature, and the test
+ * that mentions it asserts *where the number belongs* rather than that this
+ * model reaches it. Whether this model's fully dilated shunt gets below it is
+ * a calibration question and is asked in layer 3.
+ *
+ * A failure here, and only here, licenses the sentence "the model has broken a
+ * constraint the physiology imposes".
  *
  * Sources are named claim by claim in
- * `docs/model-evidence/cirrhosis-portal-hypertension.md`.
+ * `docs/model-evidence/cirrhosis-portal-hypertension.md`, and the confidence
+ * behind each is machine-readable in `src/models/evidence.js`.
  */
 
 const settled = (controls) => solvePortalCirculation(controls);
 
-// --- 1. Where the pressure comes from -------------------------------------
-
-test('haemodynamics: flow is conserved at the portal vein in every configuration', () => {
-  // Not a physiological claim so much as the precondition for making any: if
-  // what arrives does not equal what leaves, no pressure the model reports
-  // means anything.
-  const configurations = [
-    {},
-    { structuralResistance: 8 },
-    { structuralResistance: 8, splanchnicVasodilation: 1 },
-    { structuralResistance: 8, splanchnicVasodilation: 1, tips: 1 },
-    { structuralResistance: 8, haemodynamicPattern: 2 },
-    { structuralResistance: 12, collateralPropensity: 0, dynamicTone: 1 },
-  ];
-  for (const controls of configurations) {
-    const state = settled(controls);
-    const out =
-      state.portalLiverFlowMlPerMin + state.collateralFlowMlPerMin + state.tipsFlowMlPerMin;
-    assert.ok(
-      Math.abs(out - state.splanchnicInflowMlPerMin) < 1e-6,
-      `${JSON.stringify(controls)}: ${state.splanchnicInflowMlPerMin} in, ${out} out`
-    );
-  }
-});
+// --- 1. Where the pressure comes from ---------------------------------
+//
+// Flow conservation and the ΔP = Q·R identity are properties of the
+// implementation rather than findings about people, so they live in the
+// integrity layer — `tests/portal-hypertension-model.test.js`. What is here is
+// what the pathophysiology requires of a network that already conserves flow.
 
 test('haemodynamics: raising intrahepatic resistance raises the portal pressure gradient', () => {
   // The initiating mechanism, stated on its own — no splanchnic vasodilation,
@@ -120,9 +116,11 @@ test('haemodynamics: hepatic portal perfusion falls as the liver scars', () => {
     );
   }
   assert.ok(
-    curve[curve.length - 1].portalLiverFlowMlPerMin < curve[0].portalLiverFlowMlPerMin * 0.5,
-    'and it has to fall substantially over the progression'
+    curve[curve.length - 1].portalLiverFlowMlPerMin < curve[0].portalLiverFlowMlPerMin,
+    'and it has to end lower than it started'
   );
+  // How far it falls over this particular range is a consequence of the
+  // reference resistances, and is checked in `calibration.test.js`.
 });
 
 test('haemodynamics: isolated splanchnic vasodilation raises hepatic portal flow, and that is arithmetic', () => {
@@ -141,34 +139,46 @@ test('haemodynamics: isolated splanchnic vasodilation raises hepatic portal flow
 
 // --- 2. Collaterals -------------------------------------------------------
 
-test('haemodynamics: collaterals redistribute a great deal of flow and leave the gradient abnormal', () => {
-  const closed = settled({ structuralResistance: 10, splanchnicVasodilation: 1, collateralPropensity: 0 });
-  const open = settled({ structuralResistance: 10, splanchnicVasodilation: 1, collateralPropensity: 1 });
+test('haemodynamics: collaterals divert flow and leave the driving pathophysiology in place', () => {
+  // Collaterals can decompress the portal system and divert portal blood, and
+  // do not eliminate what is sustaining the pressure. The claim has four parts
+  // and each one is a direction:
+  //
+  //   - they carry flow away from the liver,
+  //   - the gradient does come down,
+  //   - it does not return to a healthy liver's,
+  //   - and neither the intrahepatic resistance behind them nor the splanchnic
+  //     inflow in front of them is reduced.
+  //
+  // No magnitude anywhere. How much this model's collaterals decompress and
+  // what share of the flow they take are consequences of a chosen resistance,
+  // and `calibration.test.js` is where those numbers are held. In particular
+  // this test must never be read as saying collaterals are high-resistance:
+  // some spontaneous portosystemic shunts are wide and carry very large flows,
+  // and those patients still have portal hypertension.
+  const cirrhotic = { structuralResistance: 10, splanchnicVasodilation: 1 };
+  const closed = settled({ ...cirrhotic, collateralPropensity: 0 });
+  const open = settled({ ...cirrhotic, collateralPropensity: 1 });
+  const healthy = settled({});
 
-  assert.ok(open.shuntFraction > 0.4, 'a large share of the portal flow has to be diverted');
+  assert.ok(open.collateralFlowMlPerMin > 0, 'the collaterals have to carry blood');
+  assert.ok(open.shuntFraction > closed.shuntFraction, 'and divert it past the liver');
   assert.ok(open.portalPressureGradientMmHg < closed.portalPressureGradientMmHg, 'the pressure does come down');
   assert.ok(
-    open.portalPressureGradientMmHg > HVPG_THRESHOLDS.clinicallySignificantMmHg,
-    'and it has to stay clearly abnormal'
+    open.portalPressureGradientMmHg > healthy.portalPressureGradientMmHg,
+    'and does not come back to a healthy liver’s gradient'
   );
-});
 
-test('haemodynamics: the reason the pressure stays up is that nothing generating it has moved', () => {
-  // The correct explanation, made checkable. It is not that collaterals are
-  // narrow — some spontaneous shunts are very wide. It is that a bypass leaves
-  // the intrahepatic resistance and the splanchnic inflow exactly as they were.
-  const closed = settled({ structuralResistance: 10, splanchnicVasodilation: 1, collateralPropensity: 0 });
-  const open = settled({ structuralResistance: 10, splanchnicVasodilation: 1, collateralPropensity: 1 });
-  assert.equal(open.resistances.intrahepatic, closed.resistances.intrahepatic);
-  assert.ok(open.splanchnicInflowMlPerMin > closed.splanchnicInflowMlPerMin, 'and the inflow is if anything higher');
-
-  // And the demonstration: give the collateral bed far more conductance than a
-  // real network has, and the gradient still does not come back to normal,
-  // because the two mechanisms behind it are untouched.
-  const healthy = settled({});
+  // The reason, and the part the review corrected: nothing generating the
+  // pressure has moved.
+  assert.equal(
+    open.resistances.intrahepatic,
+    closed.resistances.intrahepatic,
+    'the intrahepatic resistance behind the collaterals is untouched'
+  );
   assert.ok(
-    open.portalPressureGradientMmHg > healthy.portalPressureGradientMmHg * 3,
-    'even fully established collaterals leave the system far from normal'
+    open.splanchnicInflowMlPerMin >= closed.splanchnicInflowMlPerMin,
+    'and the inflow in front of them is not reduced either'
   );
 });
 
@@ -178,17 +188,23 @@ test('haemodynamics: ten mmHg is not coded as a law that opens collaterals', () 
   // result of dilatation, remodelling and angiogenesis over months to years,
   // and 10 mmHg is a clinical threshold for significance rather than a
   // pressure at which something opens.
+  // A threshold law is zero on one side of the line and one on the other. This
+  // must not be that, and the assertions are chosen so that they hold for any
+  // sigmoid width — the width itself is invented, and `calibration.test.js`
+  // holds it.
   let previous = 0;
   for (let gradient = 0; gradient <= 40; gradient += 0.25) {
     const value = establishedCollateralFraction(gradient, 1);
     assert.ok(value >= previous - 1e-12, 'the mapping has to be monotonic');
-    assert.ok(value - previous < 0.1, `a jump of ${value - previous} at ${gradient} mmHg is a switch, not a process`);
     previous = value;
   }
-  // Non-zero below the threshold and short of complete above it: a threshold
-  // law would be zero on one side and one on the other.
-  assert.ok(establishedCollateralFraction(9.5, 1) > 0.4, 'not zero just below ten');
-  assert.ok(establishedCollateralFraction(10.5, 1) < 0.7, 'and not complete just above it');
+  const threshold = HVPG_THRESHOLDS.clinicallySignificantMmHg;
+  assert.ok(establishedCollateralFraction(threshold - 0.5, 1) > 0, 'not zero just below the threshold');
+  assert.ok(establishedCollateralFraction(threshold + 0.5, 1) < 1, 'and not complete just above it');
+  assert.ok(
+    establishedCollateralFraction(threshold + 0.5, 1) > establishedCollateralFraction(threshold - 0.5, 1),
+    'it does rise across the threshold — it simply does not switch there'
+  );
 });
 
 // --- 3. What HVPG measures ------------------------------------------------
@@ -210,12 +226,16 @@ test('haemodynamics: HVPG tracks the sinusoidal component and not the presinusoi
     'so the portal pressure gradient must be the same'
   );
   assert.ok(
-    sinusoidal.gradientMissedByHvpgMmHg < 0.5,
-    'HVPG has to track the gradient closely when the resistance is sinusoidal'
+    sinusoidal.gradientMissedByHvpgMmHg < presinusoidal.gradientMissedByHvpgMmHg,
+    'HVPG has to track the gradient more closely when the resistance is sinusoidal'
   );
   assert.ok(
-    presinusoidal.hepaticVenousPressureGradientMmHg < sinusoidal.hepaticVenousPressureGradientMmHg * 0.2,
-    'and has to under-read badly when it is not'
+    presinusoidal.hepaticVenousPressureGradientMmHg < sinusoidal.hepaticVenousPressureGradientMmHg,
+    'and has to under-read when it is not'
+  );
+  assert.ok(
+    presinusoidal.gradientMissedByHvpgMmHg > 0,
+    'with a part of the gradient the measurement cannot see at all'
   );
 });
 
@@ -233,8 +253,11 @@ test('haemodynamics: the presinusoidal drop sits upstream of the sinusoid in the
   };
   const sinusoidal = dropAcross(settled({ structuralResistance: 10, haemodynamicPattern: 0 }));
   const presinusoidal = dropAcross(settled({ structuralResistance: 10, haemodynamicPattern: 2 }));
-  assert.ok(sinusoidal.sinusoidal > sinusoidal.presinusoidal * 10, 'sinusoidal disease loses it at the sinusoid');
-  assert.ok(presinusoidal.presinusoidal > presinusoidal.sinusoidal * 5, 'presinusoidal disease loses it before');
+  assert.ok(sinusoidal.sinusoidal > sinusoidal.presinusoidal, 'sinusoidal disease loses it at the sinusoid');
+  assert.ok(presinusoidal.presinusoidal > presinusoidal.sinusoidal, 'presinusoidal disease loses it before');
+  // And the same resistance, moved: the drop the catheter cannot see is larger
+  // in the presinusoidal configuration than in the sinusoidal one.
+  assert.ok(presinusoidal.presinusoidal > sinusoidal.presinusoidal);
 });
 
 test('haemodynamics: the thresholds are Baveno VII’s, read on HVPG, and 12 mmHg is not among them', () => {
@@ -285,63 +308,106 @@ test('haemodynamics: presinusoidal intrahepatic and prehepatic are named as diff
 
 // --- 4. TIPS --------------------------------------------------------------
 
-test('haemodynamics: more shunt conductance lowers the gradient, monotonically', () => {
-  let previous = Infinity;
+test('haemodynamics: more shunt conductance lowers the gradient and diverts blood past the liver', () => {
+  // A TIPS is a low-resistance path from the portal vein to a hepatic vein, so
+  // opening it further lowers the portosystemic gradient — and the blood that
+  // takes it does not perfuse hepatocytes, which is conservation of flow
+  // rather than a separate claim.
+  //
+  // Whether *this* model's fully dilated shunt reaches the 12 mmHg target, and
+  // by how much hepatic portal flow falls when it does, are consequences of a
+  // chosen shunt resistance. Both are asserted in `calibration.test.js`.
+  let previousGradient = Infinity;
+  let previousLiverFlow = Infinity;
   for (const tips of [0, 0.25, 0.5, 0.75, 1]) {
     const state = settled({ structuralResistance: 10, splanchnicVasodilation: 1, tips });
-    assert.ok(state.portalPressureGradientMmHg < previous, `the gradient rose at tips = ${tips}`);
-    previous = state.portalPressureGradientMmHg;
+    assert.ok(state.portalPressureGradientMmHg < previousGradient, `the gradient rose at tips = ${tips}`);
+    assert.ok(state.portalLiverFlowMlPerMin < previousLiverFlow, `hepatic portal flow rose at tips = ${tips}`);
+    previousGradient = state.portalPressureGradientMmHg;
+    previousLiverFlow = state.portalLiverFlowMlPerMin;
   }
 });
 
-test('haemodynamics: a fully dilated shunt reaches the post-TIPS target, and costs hepatic perfusion', () => {
-  // The target belongs to shunts placed for variceal bleeding, which is the
-  // context the scene puts it in. The price is the flow that no longer reaches
-  // hepatocytes, and it is reported as a flow rather than as a consequence.
-  const before = settled({ structuralResistance: 10, splanchnicVasodilation: 1, tips: 0 });
-  const after = settled({ structuralResistance: 10, splanchnicVasodilation: 1, tips: 1 });
-  assert.ok(
-    after.portalPressureGradientMmHg < VARICEAL_CONTEXT.gradientMmHg,
-    `the shunt reached ${after.portalPressureGradientMmHg} mmHg`
+test('haemodynamics: twelve mmHg exists only in the variceal and post-TIPS context', () => {
+  // Where the number belongs, asserted about the model's own vocabulary rather
+  // than about any pressure it produces. In variceal bleeding, a post-TIPS
+  // portosystemic gradient below 12 mmHg is a Baveno VII haemodynamic target,
+  // and an HVPG of 12 mmHg or more is the classic association with variceal
+  // bleeding. It is not a general decompensation threshold, so it may not
+  // appear as a band boundary — and no band this model can produce starts
+  // there.
+  assert.equal(VARICEAL_CONTEXT.gradientMmHg, 12);
+  assert.match(VARICEAL_CONTEXT.note, /variceal bleeding/i);
+  assert.match(VARICEAL_CONTEXT.note, /not a general/i);
+  assert.notEqual(HVPG_THRESHOLDS.portalHypertensionMmHg, VARICEAL_CONTEXT.gradientMmHg);
+  assert.notEqual(HVPG_THRESHOLDS.clinicallySignificantMmHg, VARICEAL_CONTEXT.gradientMmHg);
+
+  const bands = new Set();
+  for (let structuralResistance = 1; structuralResistance <= 12; structuralResistance += 0.25) {
+    for (const splanchnicVasodilation of [0, 0.5, 1]) {
+      const reading = clinicalThresholdReading(settled({ structuralResistance, splanchnicVasodilation }));
+      if (reading.band) bands.add(reading.band);
+    }
+  }
+  assert.deepEqual(
+    [...bands].sort(),
+    ['clinically-significant', 'normal', 'portal-hypertension'],
+    'three bands, and none of them starts at 12'
   );
-  assert.ok(after.portalLiverFlowMlPerMin < before.portalLiverFlowMlPerMin * 0.5, 'and halves hepatic portal flow');
-  assert.ok(after.shuntFraction > before.shuntFraction);
 });
 
-// --- 5. The healthy anchor ------------------------------------------------
+// --- 4b. The reversible component ----------------------------------------
 
-test('haemodynamics: a healthy liver sits where the literature puts it', () => {
-  // Normal HVPG is 1–5 mmHg and portal venous flow is of the order of a litre
-  // a minute. Both are calibration targets rather than model outputs, and the
-  // test exists so that a change made for another reason cannot move them
-  // quietly.
-  const healthy = settled({});
+test('haemodynamics: a reversible component of the intrahepatic resistance can be relieved', () => {
+  // Cirrhotic intrahepatic vascular resistance has a structural part and a
+  // reversible dynamic part — activated stellate cell contraction, reduced
+  // intrahepatic nitric oxide, increased endothelin. Its existence is why a
+  // drug can lower portal pressure at all, and its being a minority of the
+  // total is why a drug cannot normalise it.
+  //
+  // The literature describes the dynamic part as roughly 20–30% of the
+  // increase. That range is a description rather than a law, and how this model
+  // applies it — 30% of the structural resistance, multiplicatively — is a
+  // modelling choice asserted in `calibration.test.js`. Here: it exists, it is
+  // reversible, and it is the minority.
+  const structural = vascularResistances({ structuralResistance: 8, dynamicTone: 0 });
+  const withTone = vascularResistances({ structuralResistance: 8, dynamicTone: 1 });
+  assert.ok(withTone.intrahepatic > structural.intrahepatic, 'tone has to raise the resistance');
+  // "Minority" arithmetically: adding it must be less than doubling. The factor
+  // of two is what the word means, not a number borrowed from anywhere — the
+  // reported 20–30% range is a description, and this model's share of it is
+  // `dynamic-tone-parameterisation`, checked in the calibration layer.
   assert.ok(
-    healthy.hepaticVenousPressureGradientMmHg >= 1 && healthy.hepaticVenousPressureGradientMmHg <= 5,
-    `HVPG was ${healthy.hepaticVenousPressureGradientMmHg}`
+    withTone.intrahepatic < structural.intrahepatic * 2,
+    'and has to be the minority of it, or relieving it would normalise the liver'
+  );
+
+  const relieved = settled({ structuralResistance: 8, dynamicTone: 0 });
+  const constricted = settled({ structuralResistance: 8, dynamicTone: 1 });
+  assert.ok(
+    relieved.portalPressureGradientMmHg < constricted.portalPressureGradientMmHg,
+    'relieving it has to lower the gradient'
   );
   assert.ok(
-    healthy.portalLiverFlowMlPerMin > 800 && healthy.portalLiverFlowMlPerMin < 1300,
-    `portal flow was ${healthy.portalLiverFlowMlPerMin}`
+    relieved.portalPressureGradientMmHg > settled({}).portalPressureGradientMmHg,
+    'and must not take a cirrhotic liver back to a healthy gradient'
   );
-  assert.ok(healthy.shuntFraction < 0.03, 'and almost nothing bypasses the liver');
-  assert.equal(clinicalThresholdReading(healthy).band, 'normal');
-  assert.equal(healthy.hepaticVeinPressureMmHg, HEPATIC_VEIN_PRESSURE);
 });
 
-test('haemodynamics: every pressure drop in the model is a flow times a resistance', () => {
-  // The law the whole scene rests on, checked against the numbers it reports
-  // rather than against the code that produced them.
-  const state = settled({ structuralResistance: 8, splanchnicVasodilation: 0.6, haemodynamicPattern: 1 });
-  const perSecond = (mlPerMin) => mlPerMin / 60;
-  const resistances = vascularResistances(state.controls);
-  const liverFlow = perSecond(state.portalLiverFlowMlPerMin);
-
-  const [portal, sinusoid, hepatic] = state.pressureProfile;
-  assert.ok(
-    Math.abs(portal.pressureMmHg - sinusoid.pressureMmHg - liverFlow * resistances.presinusoidal) < 1e-9
-  );
-  assert.ok(
-    Math.abs(sinusoid.pressureMmHg - hepatic.pressureMmHg - liverFlow * resistances.sinusoidal) < 1e-9
-  );
-});
+// --- 5. Moved out of this layer ------------------------------------------
+//
+// Two things that used to be here are not physiology and have gone where they
+// belong.
+//
+// *That this model's healthy liver produces an HVPG of 1–5 mmHg at about a
+// litre a minute* is a calibration target, not a finding: the three reference
+// resistances were chosen to hit it. `calibration.test.js` asserts it.
+//
+// *That every pressure drop the model reports is a flow times a resistance*,
+// and that flow is conserved at the portal vein, are properties of the
+// implementation. `tests/portal-hypertension-model.test.js` asserts them.
+//
+// The literature's own figures — normal HVPG 1–5 mmHg, portal flow of the
+// order of a litre a minute — are recorded in
+// `docs/model-evidence/cirrhosis-portal-hypertension.md` as the targets they
+// are, and are not restated here as though the model had discovered them.

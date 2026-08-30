@@ -165,6 +165,19 @@ guideline figure, table or algorithm has been reproduced.
 
 ## 16. How to check it
 
-`node --test tests/copd-model.test.js`. Every test is a physiological
-statement the scene relies on, written to fail when the mechanism stops
-working rather than when a number moves.
+Three kinds of test, and they mean different things — see
+[`tests/README.md`](../../tests/README.md).
+
+- **External physiology**, `node --test tests/respiratory-physiology.test.js`.
+  What the literature requires, with no constant this repository chose in any
+  assertion. **A failure here, and only here, means the model has broken a
+  constraint the physiology imposes.**
+- **Model integrity**, `node --test tests/copd-model.test.js tests/copd-scene.test.js`.
+  That the solver converges, that no volume leaves the lung the model
+  described, and that the charts, the read-out, the 3D and every stored answer
+  in a lesson are all reading the same model.
+- **Calibration behaviour**, `node --test tests/calibration.test.js`. That the
+  reference lung still lands on the textbook figures, that the tethering
+  exponent still puts the flow ceiling where it was aimed, and that the
+  bronchodilator's 28%-against-10% split still holds. A failure here means a
+  choice changed. It is never evidence that the medicine is wrong.

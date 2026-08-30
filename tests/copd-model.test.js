@@ -21,6 +21,18 @@ import {
  * untrue, and that is the failure worth having a test for.
  */
 
+/**
+ * **Layer 2 — model integrity.** These check that the COPD model agrees with
+ * itself: that the solver converges, that nothing leaves the range it
+ * described, and that the chart, the read-out, the 3D and the teaching text
+ * are all reading the same model.
+ *
+ * A failure here means the implementation is broken or two parts of the
+ * repository have drifted apart. It says nothing about the physiology — that
+ * is layer 1 — and nothing about whether a chosen constant has moved, which
+ * is layer 3. See `tests/README.md`.
+ */
+
 const NORMAL = { airwayResistance: 1, elasticRecoil: 1, bronchodilation: 0, expiratoryPressureCmH2O: 0 };
 const OBSTRUCTED = { ...NORMAL, ...DEFAULT_CONTROLS };
 

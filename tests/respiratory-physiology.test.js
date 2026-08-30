@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createRespiratoryModel, breathingPattern, lungMechanics } from '../src/models/copd.js';
 import {
   GENERATIONS,
+  TERMINAL_COUNT,
   TREE,
   cartilageSupport,
   constrictibilityWeight,
@@ -11,29 +12,41 @@ import {
 } from '../src/models/asthma.js';
 
 /**
- * **Layer 2: what the literature requires, not what the model happens to do.**
+ * **Layer 1 — external physiology. What the literature requires of this model.**
  *
- * The rest of the suite checks that this repository agrees with itself — that
- * the graph is the model, the read-out is the model, the 3D is the model, and
- * the stored answer in a lesson is the model's own output. That is necessary
- * and it is not sufficient, and this scene is the proof: an earlier version
- * was internally consistent all the way through while teaching that narrowed
- * airways on their own do not trap gas, which is false.
+ * There are three kinds of test in this repository and the difference between
+ * them is not organisational; it decides what you may conclude when one goes
+ * red. See `LAYER` in `src/models/evidence.js`, and `tests/README.md`.
  *
- * So the order this file enforces is:
+ * 1. **External physiology** — this file, and `portal-haemodynamics.test.js`.
+ *    Propositions that would be true if this repository did not exist.
+ * 2. **Model integrity** — conservation, finiteness, determinism, solver
+ *    convergence, and the chain that keeps the chart, the read-out, the 3D and
+ *    the teaching text all reading the same model.
+ * 3. **Calibration behaviour** — `calibration.test.js`. That the
+ *    parameterisation this repository *chose* still behaves as it was chosen
+ *    to behave.
  *
- * 1. the physiology literature states a constraint,
- * 2. the model has to satisfy it,
- * 3. and only then may the 3D, the numbers, the charts and the teaching text
- *    be derived from the model.
+ * **A failure here, and only here, licenses the sentence "the model has broken
+ * a constraint the physiology imposes".** A failure in layer 3 means a choice
+ * this repository made has changed, which may well be deliberate, and it is
+ * never evidence that the medicine is wrong.
  *
- * Nothing here reads a stored answer, a caption or a chart. Each test names a
- * proposition that would still be true if this repository did not exist, and
- * asserts that the model obeys it. A failure here means the model has drifted
- * away from the physiology, whatever the rest of the suite says.
+ * The rule this file is held to, and the reason it was rewritten: **no
+ * assertion here may depend on a constant this repository invented or
+ * calibrated.** Every test must survive re-tuning. So there are directions,
+ * orderings, sufficiency conditions and independence conditions here, and no
+ * magnitudes, no ratios between two invented numbers, and no thresholds that
+ * came out of this repository rather than out of a paper.
  *
- * Sources for the propositions are in `docs/model-evidence/copd.md` and
- * `docs/model-evidence/asthma.md`, which name them claim by claim.
+ * Where an ordering is genuinely external — "the peripheral airway narrows
+ * more than the central one" — it is asserted as an ordering and never as a
+ * factor. The factor lives in layer 3, where it belongs.
+ *
+ * Nothing here reads a caption, a stored answer or a chart. Sources are named
+ * claim by claim in `docs/model-evidence/copd.md` and
+ * `docs/model-evidence/asthma.md`, and the confidence behind each is
+ * machine-readable in `src/models/evidence.js`.
  */
 
 const settled = (controls) => {
@@ -67,16 +80,20 @@ test('physiology: losing elastic recoil lengthens the time constant too', () => 
   const normal = lungMechanics({ airwayResistance: 1, elasticRecoil: 1 });
   const floppy = lungMechanics({ airwayResistance: 1, elasticRecoil: 0.6 });
   assert.ok(floppy.compliance > normal.compliance, 'less recoil is more compliance');
-  assert.ok(floppy.timeConstantS > normal.timeConstantS * 1.5, 'and a longer τ');
+  assert.ok(floppy.timeConstantS > normal.timeConstantS, 'and a longer τ');
 });
 
 test('physiology: a normal lung empties in the time a resting breath is given', () => {
-  // The anchor that makes the rest of these meaningful. Normal expiratory time
-  // constants are of the order of half a second, and quiet expiration lasts
-  // about three, so a healthy lung is given several τ and finishes.
+  // The anchor that makes the rest of these meaningful: a healthy lung given
+  // several time constants finishes emptying, so it rests at its relaxation
+  // volume and traps nothing.
+  //
+  // What τ actually *is* in this model — about half a second — is a calibration
+  // target, not a finding, and `calibration.test.js` is where that band is
+  // checked. Here it only has to be short enough relative to the expiratory
+  // time, which is the physiological content.
   const rest = settled({ airwayResistance: 1, elasticRecoil: 1, demand: 0 });
-  assert.ok(rest.timeConstantS > 0.35 && rest.timeConstantS < 0.9, `τ = ${rest.timeConstantS} s`);
-  assert.ok(rest.timeConstantsAvailable > 3, 'and expiration is given more than three of them');
+  assert.ok(rest.timeConstantsAvailable > 3, 'expiration has to be given more than three time constants');
   assert.ok(
     Math.abs(rest.endExpiratoryVolumeL - rest.relaxedVolumeL) < 0.05,
     'so it comes back to its relaxed volume'
@@ -136,7 +153,7 @@ test('physiology: breathing faster shortens expiratory time', () => {
   const rest = breathingPattern(0);
   const work = breathingPattern(1);
   assert.ok(work.ratePerMin > rest.ratePerMin, 'the rate rises');
-  assert.ok(work.expiratoryTimeS < rest.expiratoryTimeS * 0.6, 'and expiratory time falls a long way');
+  assert.ok(work.expiratoryTimeS < rest.expiratoryTimeS, 'and expiratory time falls');
   // Expiration must give up more of the cycle than inspiration does, because
   // the inspiratory duty cycle rises.
   const lostExpiratory = rest.expiratoryTimeS - work.expiratoryTimeS;
@@ -161,8 +178,8 @@ test('physiology: an obstructed lung hyperinflates when the expiratory time is t
     );
   }
   assert.ok(
-    readings[3].inspiratoryCapacityL < readings[0].inspiratoryCapacityL * 0.75,
-    'and inspiratory capacity — the clinical measure of it — has to fall substantially'
+    readings[3].inspiratoryCapacityL < readings[0].inspiratoryCapacityL,
+    'and inspiratory capacity — the clinical measure of it — has to fall'
   );
 });
 
@@ -178,7 +195,7 @@ test('physiology: a healthy lung does the opposite, and lowers its operating vol
     work.endExpiratoryVolumeL < rest.endExpiratoryVolumeL,
     `EELV ${rest.endExpiratoryVolumeL} → ${work.endExpiratoryVolumeL}`
   );
-  assert.ok(work.minuteVentilationLPerMin > rest.minuteVentilationLPerMin * 5, 'while ventilation rose several-fold');
+  assert.ok(work.minuteVentilationLPerMin > rest.minuteVentilationLPerMin, 'while ventilation rose');
 });
 
 // --- 3. Effort compensates, until flow limitation -------------------------
@@ -193,9 +210,10 @@ test('physiology: expiratory muscle pressure empties a lung that is not flow-lim
   const pushed = settled({ ...lung, expiratoryPressureCmH2O: 15 });
   assert.equal(passive.flowLimitedFraction, 0, 'the premise is a lung with ceiling to spare');
   assert.ok(
-    pushed.endExpiratoryVolumeL < passive.endExpiratoryVolumeL - 0.3,
+    pushed.endExpiratoryVolumeL < passive.endExpiratoryVolumeL,
     `pushing has to empty it further: ${passive.endExpiratoryVolumeL} → ${pushed.endExpiratoryVolumeL}`
   );
+  assert.ok(pushed.inspiratoryCapacityL > passive.inspiratoryCapacityL, 'and give the room back');
 });
 
 test('physiology: losing elastic recoil takes that compensation away', () => {
@@ -210,15 +228,23 @@ test('physiology: losing elastic recoil takes that compensation away', () => {
     return {
       gainedL: passive.endExpiratoryVolumeL - pushed.endExpiratoryVolumeL,
       limited: pushed.flowLimitedFraction,
+      limitedRose: pushed.flowLimitedFraction > passive.flowLimitedFraction,
     };
   };
   const preserved = gain(1);
   const lost = gain(0.6);
-  assert.ok(lost.limited > 0.8, 'the flow-limited lung expires against its ceiling for most of the breath');
+  // Two orderings, no factors. How much less the pressure buys is a product of
+  // this model's tethering exponent and bronchodilator split; `calibration.test.js`
+  // holds that number. The physiology is the direction and the reason.
   assert.ok(
-    lost.gainedL < preserved.gainedL * 0.3,
-    `and the same pressure gains it ${lost.gainedL} L against ${preserved.gainedL} L`
+    lost.limited > preserved.limited,
+    'the recoil-lost lung has to meet its ceiling for more of the breath'
   );
+  assert.ok(
+    lost.gainedL < preserved.gainedL,
+    `and the same pressure has to buy it less: ${lost.gainedL} L against ${preserved.gainedL} L`
+  );
+  assert.ok(lost.limitedRose, 'and the extra pressure has to go into meeting the ceiling, not into flow');
 });
 
 test('physiology: the flow ceiling contains no effort term at all', () => {
@@ -233,82 +259,170 @@ test('physiology: the flow ceiling contains no effort term at all', () => {
   assert.equal(shape(0).residualVolumeL, shape(20).residualVolumeL);
 });
 
-test('physiology: losing elastic recoil lowers the flow ceiling more than it lowers recoil', () => {
+test('physiology: losing elastic recoil raises the upstream resistance as well as lowering recoil', () => {
   // Emphysema limits flow by more than the loss of driving pressure alone
   // would explain, because the same alveolar attachments that store the recoil
   // also tether the collapsible airways open. Both terms of `recoil / R_us`
   // move the wrong way at once.
+  //
+  // Asserted as two directions and their consequence, with no reference to how
+  // steeply the upstream resistance rises — that exponent is invented, and
+  // `calibration.test.js` is where its size is checked. The inequality below
+  // holds for any positive coupling at all, which is exactly what makes it an
+  // external claim rather than a property of this parameterisation.
   const normal = lungMechanics({ airwayResistance: 1, elasticRecoil: 1 });
   const emphysema = lungMechanics({ airwayResistance: 1, elasticRecoil: 0.6 });
-  assert.ok(emphysema.upstreamResistance > normal.upstreamResistance, 'the upstream resistance rises');
+
+  assert.ok(emphysema.lungCompliance > normal.lungCompliance, 'less recoil is more compliance');
+  assert.ok(emphysema.upstreamResistance > normal.upstreamResistance, 'and the upstream resistance rises');
+
   const recoilRatio = normal.lungCompliance / emphysema.lungCompliance;
   const ceilingRatio =
     (normal.lungCompliance ** -1 / normal.upstreamResistance) /
     (emphysema.lungCompliance ** -1 / emphysema.upstreamResistance);
   assert.ok(
     ceilingRatio > recoilRatio,
-    `the ceiling falls by ${ceilingRatio}× against a recoil fall of ${recoilRatio}×`
+    `the ceiling has to fall by more than recoil does: ${ceilingRatio} against ${recoilRatio}`
   );
 });
 
-test('physiology: a bronchodilator shortens the time constant far more than it raises the ceiling', () => {
-  // Smooth-muscle relaxation acts on the resistance of the whole airway tree;
-  // what holds the collapsible segment open in expiration is parenchymal
-  // tethering, which no drug restores. So the benefit in an emphysematous lung
-  // shows up as operating volume rather than as flow.
+// --- 3b. What a bronchodilator does, and what it cannot -------------------
+
+test('physiology: a bronchodilator lowers airway resistance and shortens the time constant', () => {
+  // Two established statements and nothing more. Smooth-muscle relaxation
+  // lowers airway resistance; τ = R·C, so a lower R is a shorter τ at an
+  // unchanged compliance.
   const before = lungMechanics({ airwayResistance: 3, elasticRecoil: 0.6, bronchodilation: 0 });
   const after = lungMechanics({ airwayResistance: 3, elasticRecoil: 0.6, bronchodilation: 1 });
-  const resistanceRelief = 1 - after.resistance / before.resistance;
-  const ceilingRelief = 1 - after.upstreamResistance / before.upstreamResistance;
-  assert.ok(resistanceRelief > 0.2, `the drug has to lower total resistance; it lowered it ${resistanceRelief}`);
-  assert.ok(ceilingRelief < resistanceRelief * 0.6, 'and has to touch the flow ceiling much less');
+  assert.ok(after.resistance < before.resistance, 'the drug has to lower airway resistance');
+  assert.equal(after.compliance, before.compliance, 'without touching compliance');
+  assert.ok(after.timeConstantS < before.timeConstantS, 'so τ has to shorten');
 });
 
-// --- 4. Asthma: where the muscle is ---------------------------------------
+test('physiology: a bronchodilator can lower operating volumes and recover inspiratory capacity', () => {
+  // The clinically reported benefit, at a workload the lung can meet. A
+  // direction and nothing else: how much inspiratory capacity comes back is a
+  // consequence of two invented percentages, and is checked in layer 3.
+  const lung = { airwayResistance: 3, elasticRecoil: 0.6, demand: 0.3 };
+  const before = settled({ ...lung, bronchodilation: 0 });
+  const after = settled({ ...lung, bronchodilation: 1 });
+  assert.ok(
+    Math.abs(after.minuteVentilationLPerMin - before.minuteVentilationLPerMin) < 0.5,
+    'the comparison is only fair while both are meeting the same demand'
+  );
+  assert.ok(
+    after.endExpiratoryVolumeL < before.endExpiratoryVolumeL,
+    `operating volume ${before.endExpiratoryVolumeL} → ${after.endExpiratoryVolumeL}`
+  );
+  assert.ok(after.inspiratoryCapacityL > before.inspiratoryCapacityL, 'and inspiratory capacity comes back');
+});
 
-test('physiology: airway smooth muscle is present at every generation of the tree', () => {
-  // Airway smooth muscle runs continuously from the trachea — as trachealis in
-  // the posterior membranous wall between the ends of the cartilage rings — to
-  // the terminal bronchioles. Asthma involves the whole airway tree, large
-  // airways included, and a model that puts no muscle in the central airways
-  // is one short step from teaching that it is a small-airway disease.
+test('physiology: a bronchodilator does not restore elastic recoil or the tethering that went with it', () => {
+  // No drug reverses parenchymal destruction. So the elastic properties of the
+  // lung must be untouched by bronchodilation, and whatever loss of flow
+  // ceiling emphysema caused must survive it.
+  //
+  // Deliberately no comparison between how much the drug lowers total
+  // resistance and how much it lowers the upstream segment. That the first is
+  // larger is this model's parameterisation, not a finding, and it is asserted
+  // in `calibration.test.js`.
+  const emphysema = { airwayResistance: 3, elasticRecoil: 0.6 };
+  const before = lungMechanics({ ...emphysema, bronchodilation: 0 });
+  const after = lungMechanics({ ...emphysema, bronchodilation: 1 });
+
+  assert.equal(after.lungCompliance, before.lungCompliance, 'the lung’s own elastic properties must not move');
+  assert.equal(after.residualVolumeL, before.residualVolumeL, 'nor the volume it cannot empty below');
+  assert.equal(after.relaxedVolumeL, before.relaxedVolumeL, 'nor where the relaxed lung sits');
+
+  // And the loss of ceiling caused by the recoil is still there afterwards:
+  // the treated emphysematous lung still has a far higher upstream resistance
+  // than a lung that never lost its recoil.
+  const healthy = lungMechanics({ airwayResistance: 3, elasticRecoil: 1, bronchodilation: 0 });
+  assert.ok(
+    after.upstreamResistance > healthy.upstreamResistance,
+    'a treated emphysematous lung is still tethered worse than one that kept its recoil'
+  );
+});
+
+// --- 4. Asthma: the airway wall ------------------------------------------
+
+test('physiology: Poiseuille resistance in an ideal tube goes as length over radius to the fourth', () => {
+  // The established half, stated about the thing it is actually true of: an
+  // ideal cylindrical tube carrying steady laminar flow.
+  //
+  // What this model does with that exponent — apply it to every generation of a
+  // branching tree where the flow in the large airways is not laminar and the
+  // airways are not ideal tubes — is an approximation, not a law, and it is
+  // registered as `fourth-power-approximation` and checked in layer 3. It is
+  // load-bearing here only because every resistance this model reports is a
+  // ratio to the same tree unstimulated, so the part it gets wrong divides out.
+  const resistance = (length, radius) => length / radius ** 4;
+  assert.equal(resistance(2, 1) / resistance(1, 1), 2, 'linear in length');
+  assert.equal(resistance(1, 0.5) / resistance(1, 1), 16, 'halving the radius is sixteen times the resistance');
+  assert.ok(
+    Math.abs(resistance(1, 0.9) / resistance(1, 1) - 0.9 ** -4) < 1e-12,
+    'and a tenth off the radius is half again as much resistance'
+  );
+});
+
+test('physiology: airway smooth muscle is present at every generation, and prominent peripherally', () => {
+  // What the anatomy requires, and only that. Airway smooth muscle runs
+  // continuously from the trachea — as trachealis in the posterior membranous
+  // wall between the ends of the cartilage rings — to the terminal bronchioles.
+  // Asthma involves the whole airway tree, large airways included, and a model
+  // with no muscle in the central airways is one short step from teaching that
+  // it is a small-airway disease.
+  //
+  // Deliberately NOT asserted here: a strict generation-by-generation increase.
+  // There is no continuous quantitative law in the literature to hold the model
+  // to, and asserting the shape of this repository's own ramp as an external
+  // invariant would be exactly the confusion this layer exists to prevent. The
+  // ramp's profile is `constrictibility-weights`, checked in layer 3.
   for (let generation = 0; generation < GENERATIONS; generation++) {
     assert.ok(
       smoothMuscleFraction(generation) > 0,
       `generation ${generation} has no smooth muscle in this model, which is anatomically false`
     );
   }
-  // And in the tree the solver actually uses, not only in the function.
   for (const branch of TREE) {
     assert.ok(branch.smoothMuscleFraction > 0, `branch ${branch.index} has no smooth muscle`);
   }
+  // And the one comparison the anatomy does support: bronchiolar smooth muscle
+  // is relatively more prominent, against the size of the wall it sits in, than
+  // the trachealis is.
+  assert.ok(
+    smoothMuscleFraction(GENERATIONS - 1) > smoothMuscleFraction(0),
+    'bronchiolar smooth muscle has to be relatively more prominent than the trachealis'
+  );
 });
 
-test('physiology: what falls away distally is the cartilage, not the muscle', () => {
-  // Complete rings in the trachea, irregular plates in the bronchi, none at all
-  // in a bronchiole — that is the definition of a bronchiole. Meanwhile the
-  // muscle layer becomes complete rather than disappearing.
+test('physiology: cartilage support decreases distally and is absent from the bronchioles', () => {
+  // Complete rings in the trachea, irregular plates in the bronchi, and none at
+  // all in a bronchiole — the last being part of what defines one. This is a
+  // decline the anatomy does state, so a monotone decline is fair to assert;
+  // its steepness is not, and is not asserted.
   for (let generation = 1; generation < GENERATIONS; generation++) {
     assert.ok(
       cartilageSupport(generation) <= cartilageSupport(generation - 1),
       `cartilage support rose between generations ${generation - 1} and ${generation}`
     );
-    assert.ok(
-      smoothMuscleFraction(generation) >= smoothMuscleFraction(generation - 1),
-      `the muscle fraction fell between generations ${generation - 1} and ${generation}`
-    );
   }
-  assert.equal(cartilageSupport(GENERATIONS - 1), 0, 'a bronchiole has no cartilage');
+  assert.ok(cartilageSupport(0) > 0, 'the trachea is splinted by cartilage');
+  assert.equal(cartilageSupport(GENERATIONS - 1), 0, 'and a bronchiole has none');
 });
 
-test('physiology: the same activation narrows a small airway more than a central one', () => {
-  // The consequence of putting those two together, and the statement the scene
-  // is entitled to make. It is about *effect on calibre*, not about where the
-  // muscle is — and it must not be strong enough to make the central airways
-  // inert.
+test('physiology: the same activation can narrow a peripheral airway more than a central one', () => {
+  // The consequence of putting those two facts together: the muscle acts on a
+  // wall the cartilage no longer splints, so distal calibre can be more
+  // strongly affected by the same contraction.
+  //
+  // An ordering, and deliberately not a factor. How much more is a product of
+  // two invented profiles; `calibration.test.js` holds that number. What must
+  // never happen is the central airway becoming inert, because that would put
+  // the model back where the review found it.
   const central = constrictibilityWeight(0);
   const peripheral = constrictibilityWeight(GENERATIONS - 1);
-  assert.ok(peripheral > central * 3, 'a bronchiole has to narrow far more for the same activation');
+  assert.ok(peripheral > central, 'a bronchiole has to narrow more for the same activation');
   assert.ok(central > 0, 'and a central airway still has to narrow, because it still has muscle');
 });
 
@@ -337,14 +451,17 @@ test('physiology: a uniform stimulus on a nearly-uniform tree produces clustered
   const baseline = solveAsthma({ stimulus: 0 });
   const constricted = solveAsthma({ stimulus: 0.8, hyperresponsiveness: 1.2, wallThickening: 0.25 });
 
-  assert.ok(baseline.heterogeneity < 0.1, 'the tree starts almost uniform');
-  assert.ok(constricted.heterogeneity > baseline.heterogeneity * 5, 'and ends markedly non-uniform');
-  assert.ok(constricted.defectFraction > 0.2, 'with a substantial share of the lung barely ventilated');
-  // Clustered, not speckled: the poorly ventilated units have to form regions
-  // fed by a common airway rather than scattering one by one through the tree.
+  // Stated structurally rather than against chosen thresholds, so that
+  // re-tuning the model cannot make this test pass or fail for the wrong
+  // reason. "Nearly uniform" is "no region is below the defect threshold at
+  // all"; "clustered" is "the largest mostly-dark region contains more than one
+  // unit", which is the whole distinction between a cluster and speckle.
+  assert.equal(baseline.defectFraction, 0, 'an unstimulated tree has no defects at all');
+  assert.ok(constricted.heterogeneity > baseline.heterogeneity, 'and a stimulated one is less uniform');
+  assert.ok(constricted.defectFraction > 0, 'with regions barely ventilated');
   assert.ok(
-    constricted.largestDefectFraction > 0.05,
-    `the defects have to cluster; the largest was ${constricted.largestDefectFraction} of the lung`
+    constricted.largestDefectFraction > 1 / TERMINAL_COUNT,
+    `the defects have to form regions, not scatter unit by unit; the largest was ${constricted.largestDefectFraction} of the lung`
   );
 });
 
@@ -357,13 +474,18 @@ test('physiology: disabling the interdependence feedback markedly attenuates the
   const withoutLoop = solveAsthma(controls, { feedback: false });
 
   assert.ok(
-    withoutLoop.heterogeneity < withLoop.heterogeneity * 0.4,
+    withoutLoop.heterogeneity < withLoop.heterogeneity,
     `heterogeneity ${withLoop.heterogeneity} → ${withoutLoop.heterogeneity} without the loop`
   );
-  assert.ok(withoutLoop.largestDefectFraction < withLoop.largestDefectFraction, 'and the clusters go');
+  // "Markedly attenuates" asserted as a structural fact rather than a chosen
+  // factor: with the loop cut there is no clustered region left at all.
+  assert.equal(withoutLoop.largestDefectFraction, 0, 'and no clustered region survives the loop being cut');
+  assert.equal(withoutLoop.defectFraction, 0, 'nor any defect');
   // The airways are still narrowed — it is the *unevenness* that the loop
-  // supplied, not the constriction.
-  assert.ok(withoutLoop.medianCalibre < 0.9, 'the stimulus was still applied');
+  // supplied, not the constriction. Stated against the unstimulated tree rather
+  // than against a chosen calibre.
+  const quiet = solveAsthma({ stimulus: 0, hyperresponsiveness: 1.2, wallThickening: 0.25 });
+  assert.ok(withoutLoop.medianCalibre < quiet.medianCalibre, 'the stimulus was still applied');
 });
 
 test('physiology: greater lung inflation increases the tethering that opposes narrowing', () => {
@@ -389,16 +511,20 @@ test('physiology: greater lung inflation increases the tethering that opposes na
   assert.ok(normal.resistanceRatio < held.resistanceRatio);
 });
 
-test('physiology: relaxing the smooth muscle does more than stretching the lung around it', () => {
-  // Which is the ordering that matters clinically, and the reason a reliever
-  // is a drug rather than an instruction to breathe deeply.
+test('physiology: relaxing airway smooth muscle widens the airways and lowers resistance', () => {
+  // A direction, and the reason a reliever exists. Relaxing the muscle removes
+  // the activation that was narrowing the airway, so the calibre rises and the
+  // resistance falls.
+  //
+  // Deliberately no comparison with what the lung-inflation control does. Both
+  // controls have ranges this repository chose — how much drive a full
+  // bronchodilator removes, how far the inflation slider goes — so which of
+  // them wins at their respective maxima is a property of those ranges and not
+  // of asthma. That comparison lives in `calibration.test.js`.
   const controls = { stimulus: 0.8, hyperresponsiveness: 1.2, wallThickening: 0.25 };
-  const normal = solveAsthma(controls);
-  const stretched = solveAsthma({ ...controls, lungInflation: 1.3 });
+  const constricted = solveAsthma(controls);
   const relaxed = solveAsthma({ ...controls, bronchodilator: 1 });
-  assert.ok(
-    relaxed.resistanceRatio < stretched.resistanceRatio,
-    `relaxing the muscle ${relaxed.resistanceRatio} has to beat stretching the lung ${stretched.resistanceRatio}`
-  );
-  assert.ok(relaxed.heterogeneity < stretched.heterogeneity, 'and it has to undo more of the unevenness');
+  assert.ok(relaxed.medianCalibre > constricted.medianCalibre, 'the airways have to widen');
+  assert.ok(relaxed.resistanceRatio < constricted.resistanceRatio, 'and the resistance has to fall');
+  assert.ok(relaxed.totalVentilation > constricted.totalVentilation, 'and more air has to reach the lung');
 });

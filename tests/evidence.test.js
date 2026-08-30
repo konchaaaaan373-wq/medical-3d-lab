@@ -7,6 +7,7 @@ import {
   CONFIDENCE,
   COPD_EVIDENCE,
   EVIDENCE_REGISTRIES,
+  LAYER,
   PORTAL_EVIDENCE,
   defineEvidence,
 } from '../src/models/evidence.js';
@@ -14,11 +15,37 @@ import {
 /**
  * The confidence registry has to stay honest, and honest is checkable.
  *
- * Three things are being defended here. That every claim declares how much
- * weight it carries. That the dossiers and the code do not drift apart. And,
- * the one that matters most, that a number the model invented is never
- * described anywhere as something that was measured.
+ * Four things are being defended. That every claim declares how much weight it
+ * carries. That the dossiers and the code do not drift apart. That a number the
+ * model invented is never described anywhere as something that was measured.
+ *
+ * And, added after the final clinical review and the most important of the
+ * four: **that a claim about the world is checked in the external or integrity
+ * layer, and a claim about this model's own parameterisation is checked in the
+ * calibration layer — never the other way round.**
+ *
+ * That last one is enforced twice over. `defineEvidence` refuses a mismatched
+ * pairing at import. The tests below go further and check the *file* each named
+ * test actually lives in, because a registry entry can claim a layer and the
+ * test can sit somewhere else entirely, and then the separation is a comment
+ * rather than a fact.
  */
+
+/**
+ * Which layer each test file belongs to.
+ *
+ * The external files are the short list on purpose: they are the only tests
+ * whose failure licenses the sentence "the model has broken a constraint the
+ * physiology imposes". Everything else is either implementation integrity or a
+ * calibration this repository chose, and a file that is not named here is
+ * treated as integrity.
+ */
+const FILE_LAYERS = {
+  'respiratory-physiology.test.js': LAYER.EXTERNAL,
+  'portal-haemodynamics.test.js': LAYER.EXTERNAL,
+  'calibration.test.js': LAYER.CALIBRATION,
+};
+const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
 
 const DOSSIERS = {
   copd: 'docs/model-evidence/copd.md',
@@ -28,15 +55,16 @@ const DOSSIERS = {
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-const TEST_TITLES = (() => {
+/** Every test title in the suite, and the file it lives in. */
+const TEST_FILES = (() => {
   const dir = new URL('.', import.meta.url);
-  const titles = new Set();
+  const found = new Map();
   for (const file of readdirSync(dir)) {
     if (!file.endsWith('.test.js')) continue;
     const source = readFileSync(new URL(file, dir), 'utf8');
-    for (const match of source.matchAll(/^test\(\s*(['"`])([\s\S]*?)\1\s*,/gm)) titles.add(match[2]);
+    for (const match of source.matchAll(/^test\(\s*(['"`])([\s\S]*?)\1\s*,/gm)) found.set(match[2], file);
   }
-  return titles;
+  return found;
 })();
 
 test('every claim declares one of the five confidence levels', () => {
@@ -97,7 +125,7 @@ test('every claim the model asserts names a test that exists', () => {
       if (!ASSERTABLE.has(entry.confidence)) continue;
       assert.ok(entry.validation, `${entry.scene}/${entry.id} is ${entry.confidence} and names no test`);
       assert.ok(
-        TEST_TITLES.has(entry.validation),
+        TEST_FILES.has(entry.validation),
         `${entry.scene}/${entry.id} names a test that does not exist: "${entry.validation}"`
       );
     }
@@ -155,11 +183,51 @@ test('the registries cover the three scenes and nothing is duplicated across the
 });
 
 test('a malformed entry is refused at definition rather than at read time', () => {
-  assert.throws(() => defineEvidence('x', [{ id: 'a', claim: 'a claim long enough', confidence: 'quite-sure', source: 'somewhere' }]));
-  assert.throws(() => defineEvidence('x', [{ id: 'a', claim: 'a claim long enough', confidence: CONFIDENCE.ILLUSTRATIVE, source: 'none' }]),
-    /must say what it is not/);
-  assert.throws(() => defineEvidence('x', [
-    { id: 'a', claim: 'a claim long enough', confidence: CONFIDENCE.ESTABLISHED, source: 'somewhere' },
-    { id: 'a', claim: 'another claim, also long', confidence: CONFIDENCE.ESTABLISHED, source: 'somewhere' },
-  ]), /duplicate/);
+  const ok = { claim: 'a claim long enough to pass', source: 'somewhere in particular' };
+  const external = { validation: 'physiology: raising airway resistance lengthens the expiratory time constant', layer: LAYER.EXTERNAL };
+
+  assert.throws(
+    () => defineEvidence('x', [{ id: 'a', ...ok, ...external, confidence: 'quite-sure' }]),
+    /not one of the six/
+  );
+  assert.throws(
+    () => defineEvidence('x', [{ id: 'a', ...ok, confidence: CONFIDENCE.ILLUSTRATIVE }]),
+    /must say what it is not/
+  );
+  assert.throws(
+    () => defineEvidence('x', [
+      { id: 'a', ...ok, ...external, confidence: CONFIDENCE.ESTABLISHED },
+      { id: 'a', ...ok, ...external, confidence: CONFIDENCE.ESTABLISHED },
+    ]),
+    /duplicate/
+  );
+  assert.throws(
+    () => defineEvidence('x', [{ id: 'a', ...ok, confidence: CONFIDENCE.ESTABLISHED }]),
+    /names no test/
+  );
+  assert.throws(
+    () => defineEvidence('x', [{ id: 'a', ...ok, confidence: CONFIDENCE.ESTABLISHED, validation: 'something' }]),
+    /not which layer/
+  );
+
+  // The two the final review asked for, and the reason this file exists.
+  assert.throws(
+    () => defineEvidence('x', [
+      { id: 'a', ...ok, confidence: CONFIDENCE.ESTABLISHED, validation: 'something', layer: LAYER.CALIBRATION },
+    ]),
+    /cannot be established by a constant this repository chose/
+  );
+  assert.throws(
+    () => defineEvidence('x', [
+      {
+        id: 'a',
+        ...ok,
+        confidence: CONFIDENCE.ILLUSTRATIVE,
+        note: 'invented, and not a measurement',
+        validation: 'something',
+        layer: LAYER.EXTERNAL,
+      },
+    ]),
+    /cannot be asserted as a physiological invariant/
+  );
 });
