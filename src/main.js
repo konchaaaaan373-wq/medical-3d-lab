@@ -17,6 +17,15 @@ boot().catch((error) => {
 async function boot() {
   const route = resolveRoute(window.location.hash);
 
+  // Account/access is product chrome, not part of a medical scene. Start its
+  // network work in parallel on both the Explorer and 3D routes. A slow auth or
+  // billing provider may delay an unlock; it may never delay free content.
+  const { createAccessManager } = await import('./access/AccessManager.js');
+  const access = createAccessManager({ ui });
+  const accessReady = access.init().catch((error) => {
+    console.error('access init', error);
+  });
+
   if (route.kind === 'explorer') {
     // The explorer is plain DOM: no renderer, no scene module, no geometry. It
     // has to stay that way — it is the page that lists everything, so anything it
@@ -27,7 +36,8 @@ async function boot() {
     // scrolls has to undo both.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
-    createExplorer({ ui });
+    createExplorer({ ui, accountButton: access.accountButton });
+    void accessReady;
     // Only a link to a real scene is a navigation. The explorer's own jump
     // links must not reload the page out from under the reader.
     window.addEventListener('hashchange', () => {
@@ -35,19 +45,6 @@ async function boot() {
     });
     return;
   }
-
-  // Account/access is a shell around the medical model. Start its network work
-  // in parallel, never in front of the free model. A slow or unavailable auth
-  // provider may delay a lock becoming an unlock; it may not delay anatomy or
-  // physiology becoming visible.
-  const { createAccessManager } = await import('./access/AccessManager.js');
-  const access = createAccessManager({ ui });
-  const accessReady = access.init().catch((error) => {
-    // AccessManager itself already degrades to the free entitlement. This catch
-    // is the final circuit breaker: billing is never allowed to become the
-    // reason a free scene failed to start.
-    console.error('access init', error);
-  });
 
   // Simple loading veil: the first frame has to compile shaders and build geometry.
   const veil = document.createElement('div');
