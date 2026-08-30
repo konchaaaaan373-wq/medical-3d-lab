@@ -4,6 +4,7 @@ import './styles/navigation.css';
 import './styles/access.css';
 import './styles/reel.css';
 import './styles/explorer.css';
+import './styles/access-explorer.css';
 import { namesScene, resolveRoute } from './app/router.js';
 
 const stage = document.getElementById('stage');
