@@ -15,9 +15,9 @@ import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../ca
  * it is registered. Organs with no scene yet are still listed: the gap is
  * information, and hiding it would quietly turn the backlog invisible.
  *
- * @param {{ ui: HTMLElement }} mounts
+ * @param {{ ui: HTMLElement, accountButton?: HTMLElement }} mounts
  */
-export function createExplorer({ ui }) {
+export function createExplorer({ ui, accountButton = null }) {
   const systems = systemsWithOrgans();
 
   const badge = (statusId) => {
@@ -89,6 +89,11 @@ export function createExplorer({ ui }) {
     ui.dataset.lang = mode;
   });
 
+  const headerActions = el('div', { class: 'explorer-header-actions' }, [
+    accountButton,
+    languageToggle.element,
+  ]);
+
   const element = el('div', { class: 'explorer' }, [
     el('header', { class: 'panel explorer-header' }, [
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
@@ -127,7 +132,7 @@ export function createExplorer({ ui }) {
           ]
         )
       )),
-      languageToggle.element,
+      headerActions,
     ]),
     ...systems.map(systemSection),
     el('footer', { class: 'panel explorer-footer' }, [
