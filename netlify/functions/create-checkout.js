@@ -6,6 +6,7 @@ import {
   priceForPlan,
   safeHash,
   stripePost,
+  subscriptionsForCustomer,
   supabaseAdmin,
 } from '../lib/billing.js';
 
@@ -20,22 +21,26 @@ export default async (request) => {
     const price = priceForPlan(plan);
     const returnHash = safeHash(body.returnHash);
 
-    // One user, one subscription lifecycle. Once any non-terminal Stripe
-    // subscription exists, upgrades, downgrades and payment recovery belong in
-    // Customer Portal. This protects against duplicate recurring charges even
-    // when a previous payment is incomplete, past_due, unpaid or paused.
+    // Fast local guard first. It catches the normal case without an extra Stripe
+    // request and includes incomplete/payment-recovery states that should be
+    // managed rather than duplicated.
     const statuses = [...NON_TERMINAL_SUBSCRIPTION_STATUSES].join(',');
     const existing = await supabaseAdmin(
       `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
     );
-    if (existing?.length) {
-      return json(409, {
-        error: 'A subscription already exists for this account. Manage it in Billing Portal instead.',
-        usePortal: true,
-      });
-    }
+    if (existing?.length) return existingSubscription();
 
     const customer = await billingCustomerFor(user);
+
+    // The webhook may be seconds behind Stripe. Ask Stripe itself before
+    // creating Checkout so that "DB has not caught up yet" cannot become a
+    // duplicate recurring subscription. The Dashboard one-subscription setting
+    // is a third boundary, not a substitute for this server-side check.
+    const stripeSubscriptions = await subscriptionsForCustomer(customer);
+    if (stripeSubscriptions.some((subscription) => NON_TERMINAL_SUBSCRIPTION_STATUSES.has(subscription.status))) {
+      return existingSubscription();
+    }
+
     const origin = new URL(request.url).origin;
     const session = await stripePost('checkout/sessions', {
       mode: 'subscription',
@@ -64,3 +69,10 @@ export default async (request) => {
     return json(500, { error: message });
   }
 };
+
+function existingSubscription() {
+  return json(409, {
+    error: 'A subscription already exists for this account. Manage it in Billing Portal instead.',
+    usePortal: true,
+  });
+}
