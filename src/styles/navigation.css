@@ -1,0 +1,578 @@
+/* ========================================================================== 
+   Global scene navigation
+   --------------------------------------------------------------------------
+   Navigation belongs to the product shell, not inside a model's data stack.
+   The catalogue can now be reached from one persistent, explicit control.
+   Desktop: fixed header + system mega menu.
+   Mobile: the same information becomes a right-side drawer behind a hamburger.
+   ========================================================================== */
+
+#ui.has-global-scene-nav {
+  /* The fixed header must reserve real visual space for the scene UI below it.
+     This changes only the overlay layout; the WebGL canvas remains full-screen. */
+  padding-top: max(78px, calc(env(safe-area-inset-top) + 64px));
+}
+
+.global-scene-nav {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  height: 52px;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 9px;
+  pointer-events: auto;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: rgba(6, 11, 20, 0.86);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+}
+
+.global-nav-brand,
+.global-nav-trigger,
+.global-nav-current {
+  position: relative;
+  z-index: 2;
+}
+
+.global-nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink);
+  text-decoration: none;
+  flex: none;
+}
+
+.global-nav-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.global-nav-brand-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.global-nav-current {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.global-nav-current-system,
+.global-nav-current-scene {
+  display: inline-flex;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.global-nav-current-system {
+  flex: none;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+}
+
+.global-nav-current-scene {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink-dim);
+}
+
+.global-nav-current-scene > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-nav-separator {
+  flex: none;
+  color: var(--border);
+  font-size: 11px;
+}
+
+.global-nav-trigger {
+  flex: none;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 8%, rgba(255, 255, 255, 0.02));
+  color: var(--ink);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.global-nav-trigger:hover,
+.global-nav-trigger[aria-expanded='true'] {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.global-nav-trigger:focus-visible,
+.global-nav-close:focus-visible,
+.global-nav-brand:focus-visible,
+.global-nav-scene:focus-visible,
+.global-nav-explorer:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.global-nav-trigger-label {
+  display: inline-flex;
+  white-space: nowrap;
+}
+
+.global-nav-menu-icon {
+  width: 16px;
+  height: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  flex: none;
+}
+
+.global-nav-menu-icon > span {
+  display: block;
+  height: 1.5px;
+  width: 100%;
+  border-radius: 2px;
+  background: currentColor;
+  transform-origin: center;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.global-scene-nav.is-open .global-nav-menu-icon > span:nth-child(1) {
+  transform: translateY(6.2px) rotate(45deg);
+}
+
+.global-scene-nav.is-open .global-nav-menu-icon > span:nth-child(2) {
+  opacity: 0;
+}
+
+.global-scene-nav.is-open .global-nav-menu-icon > span:nth-child(3) {
+  transform: translateY(-6.2px) rotate(-45deg);
+}
+
+.global-scene-nav [hidden] {
+  display: none !important;
+}
+
+.global-nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgba(1, 4, 10, 0.42);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.global-nav-panel {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  max-height: min(72vh, 690px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  border: 1px solid rgba(140, 175, 225, 0.22);
+  border-radius: 15px;
+  background: rgba(6, 11, 20, 0.97);
+  box-shadow: 0 26px 70px rgba(0, 0, 0, 0.62);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.global-nav-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.global-nav-panel-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.global-nav-close {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.global-nav-close:hover {
+  color: var(--ink);
+  border-color: rgba(140, 175, 225, 0.36);
+}
+
+.global-nav-explorer {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 8px 11px;
+  margin-bottom: 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.global-nav-explorer:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 48%, transparent);
+}
+
+.global-nav-explorer-mark {
+  color: var(--accent);
+  font-size: 17px;
+  line-height: 1;
+}
+
+.global-nav-explorer-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.global-nav-explorer-copy .lang-ja {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+
+.global-nav-arrow {
+  margin-left: auto;
+  color: var(--ink-faint);
+}
+
+.global-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.global-nav-system {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.global-nav-system.is-current {
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, rgba(255, 255, 255, 0.018));
+}
+
+.global-nav-system-name {
+  margin: 0 0 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--ink-faint);
+}
+
+.global-nav-system-name .lang-ja {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--ink-faint) 78%, transparent);
+}
+
+.global-nav-system.is-current .global-nav-system-name {
+  color: var(--accent);
+}
+
+.global-nav-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.global-nav-scene {
+  min-width: 0;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  color: var(--ink-dim);
+  text-decoration: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.global-nav-scene:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.global-nav-scene.is-current {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.global-nav-scene-name {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.global-nav-scene-name .lang-ja {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+.global-nav-current-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* Bilingual mode keeps navigation chrome compact, matching the existing button
+   policy. The expanded catalogue itself shows both languages because scanning
+   names is the task there, not conserving a button row. */
+#ui[data-lang='both'] .global-nav-trigger-label .lang-ja,
+#ui[data-lang='both'] .global-nav-current .lang-ja {
+  display: none;
+}
+
+/* The old switcher lived in .top-left and Story intentionally hides all of that
+   chrome except the scene title. Keep the same immersive behaviour even though
+   the navigation is now visually fixed to the product shell. */
+#ui.is-story .top-left > .global-scene-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 980px) {
+  .global-nav-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .global-nav-brand-name {
+    display: none;
+  }
+
+  .global-nav-current {
+    padding-left: 9px;
+  }
+}
+
+@media (max-width: 720px) {
+  #ui.has-global-scene-nav {
+    padding-top: max(70px, calc(env(safe-area-inset-top) + 58px));
+  }
+
+  .global-scene-nav {
+    top: max(7px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    height: 48px;
+    gap: 8px;
+    padding: 0 5px 0 6px;
+    border-radius: 13px;
+  }
+
+  .global-nav-brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .global-nav-current {
+    gap: 4px;
+    padding-left: 7px;
+  }
+
+  .global-nav-current-system {
+    font-size: 9px;
+  }
+
+  .global-nav-current-scene {
+    font-size: 11px;
+  }
+
+  .global-nav-separator {
+    font-size: 9px;
+  }
+
+  .global-nav-trigger {
+    width: 40px;
+    min-height: 38px;
+    padding: 0;
+    border-radius: 10px;
+  }
+
+  .global-nav-trigger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .global-nav-menu-icon {
+    width: 17px;
+    height: 15px;
+  }
+
+  .global-nav-panel {
+    position: fixed;
+    top: max(62px, calc(env(safe-area-inset-top) + 55px));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: auto;
+    width: min(88vw, 380px);
+    max-height: none;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .global-nav-grid {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .global-nav-system {
+    padding: 8px;
+  }
+
+  .global-nav-system-name {
+    margin-bottom: 5px;
+  }
+
+  .global-nav-scenes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+  }
+
+  .global-nav-scene {
+    min-height: 40px;
+    padding: 7px 8px;
+  }
+
+  .global-nav-scene-name {
+    font-size: 10.5px;
+  }
+
+  .global-nav-scene-name .lang-ja {
+    font-size: 9px;
+  }
+
+  .global-nav-explorer {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 430px) {
+  .global-nav-current {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .global-nav-separator {
+    display: none;
+  }
+
+  .global-nav-current-system,
+  .global-nav-current-scene {
+    max-width: 100%;
+  }
+
+  .global-nav-current-system {
+    line-height: 1.05;
+  }
+
+  .global-nav-current-scene {
+    line-height: 1.2;
+  }
+}
+
+@media (max-height: 620px) and (max-width: 720px) {
+  .global-nav-system-name .lang-ja,
+  .global-nav-scene-name .lang-ja {
+    display: none;
+  }
+
+  .global-nav-system {
+    padding: 6px 8px;
+  }
+
+  .global-nav-scene {
+    min-height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-nav-menu-icon > span,
+  .global-nav-trigger,
+  .global-nav-scene {
+    transition: none;
+  }
+}

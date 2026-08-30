@@ -1,5 +1,6 @@
 import './styles/base.css';
 import './styles/ui.css';
+import './styles/navigation.css';
 import './styles/reel.css';
 import './styles/explorer.css';
 import { namesScene, resolveRoute } from './app/router.js';
