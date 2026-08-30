@@ -8,28 +8,74 @@ import { el } from '../utils/dom.js';
  * into the app. Every figure it shows comes from `readMetrics()`, the same call
  * the read-out panel uses, so a lesson and the rest of the UI cannot disagree.
  *
- * The five steps are the project's learning loop:
- * predict → manipulate → observe → explain → transfer.
+ * The steps are the project's learning loop:
+ * predict → manipulate → observe → explain, and then → transfer for a lesson
+ * that has somewhere to carry the result to. Transfer is the strongest of the
+ * five and also the most expensive to write honestly — it has to re-run the
+ * same manipulation somewhere else and *measure* both — so a lesson that has no
+ * second place to run it simply ends at explain rather than asserting one.
+ *
+ * A scene may ship several lessons. They are one relationship each, on purpose;
+ * the picker in the head is how a reader gets to the others.
  *
  * @param {{
- *   module: any,
+ *   modules: any[],
  *   setProgress: (value: number) => void,
  *   setControl: (id: string, value: number) => void,
  *   readMetrics: () => any[],
  *   readControls: () => any[],
+ *   settleModel?: () => void,
  *   onExit: () => void,
  * }} options
+ *
+ * `settleModel` is for a scene whose model takes many cycles to reach the state
+ * a lesson is asking about. Dynamic hyperinflation is an equilibrium found over
+ * a dozen breaths; measuring three seconds after a slider moved would report a
+ * transient and call it the answer. A scene without one is already settled and
+ * passes nothing.
  */
-export function createLearningPanel({ module, setProgress, setControl, readMetrics, readControls, onExit }) {
+export function createLearningPanel({
+  modules,
+  setProgress,
+  setControl,
+  readMetrics,
+  readControls,
+  settleModel,
+  onExit,
+}) {
   const body = el('div', { class: 'learn-body' });
   const dots = el('div', { class: 'learn-dots' });
+  const title = el('span', { class: 'learn-title' }, [
+    el('span', { class: 'lang-en' }),
+    el('span', { class: 'lang-ja' }),
+  ]);
+
+  let module = modules[0];
+
+  // One chip per lesson, shown only when there is a choice to make. Each is one
+  // relationship, so the row doubles as a list of what this scene claims.
+  const picker =
+    modules.length > 1
+      ? el(
+          'div',
+          { class: 'learn-picker' },
+          modules.map((entry) =>
+            el('button', {
+              class: 'learn-pick',
+              type: 'button',
+              'data-module': entry.id,
+              on: { click: () => select(entry.id) },
+            }, [
+              el('span', { class: 'lang-en', text: entry.short ?? entry.title }),
+              el('span', { class: 'lang-ja', text: entry.shortJa ?? entry.titleJa }),
+            ])
+          )
+        )
+      : null;
 
   const element = el('div', { class: 'panel learn' }, [
     el('div', { class: 'learn-head' }, [
-      el('span', { class: 'learn-title' }, [
-        el('span', { class: 'lang-en', text: module.title }),
-        el('span', { class: 'lang-ja', text: module.titleJa }),
-      ]),
+      title,
       dots,
       el('button', {
         class: 'learn-close',
@@ -39,6 +85,7 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
         on: { click: () => onExit() },
       }),
     ]),
+    picker,
     body,
   ]);
 
@@ -61,9 +108,19 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
   let tween = null;
   let step = 0;
 
-  const STEPS = [predictStep, manipulateStep, observeStep, explainStep, transferStep];
+  /** Transfer is only offered by a lesson that ships one. */
+  const stepsFor = (entry) =>
+    entry.transfer
+      ? [predictStep, manipulateStep, observeStep, explainStep, transferStep]
+      : [predictStep, manipulateStep, observeStep, explainStep];
+  let STEPS = stepsFor(module);
 
   function render() {
+    title.children[0].textContent = module.title;
+    title.children[1].textContent = module.titleJa;
+    for (const chip of picker?.children ?? []) {
+      chip.classList.toggle('is-current', chip.dataset.module === module.id);
+    }
     dots.replaceChildren(
       ...STEPS.map((_, i) =>
         el('span', { class: `learn-dot${i === step ? ' is-current' : ''}${i < step ? ' is-done' : ''}` })
@@ -75,6 +132,16 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
   function go(next) {
     step = Math.max(0, Math.min(STEPS.length - 1, next));
     render();
+  }
+
+  /** Switches lesson. Starts the new one from the top rather than mid-step. */
+  function select(id) {
+    const found = modules.find((entry) => entry.id === id);
+    if (!found || found === module) return;
+    module = found;
+    STEPS = stepsFor(module);
+    tween = null;
+    start();
   }
 
   // --- steps ---------------------------------------------------------------
@@ -90,8 +157,12 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
           // The model is put back to the state the lesson starts from only now,
           // so the learner cannot peek at the answer before committing to one.
           setProgress(module.setup.progress);
-          setControl('preload', module.setup.preload);
-          setControl('afterload', module.setup.afterload);
+          // Whatever the lesson's starting state names, by id. Naming the two
+          // heart-failure controls here would have made every later scene's
+          // lesson start from a state nobody set.
+          for (const [id, value] of Object.entries(module.setup)) {
+            if (id !== 'progress') setControl(id, value);
+          }
           session.before = snapshot();
           go(1);
         }),
@@ -188,9 +259,9 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
           el('span', { class: 'lang-en', text: `Your prediction: ${chosen.label} — ${right ? 'correct' : 'not what the model does'}` }),
           el('span', { class: 'lang-ja', text: `あなたの予測: ${chosen.labelJa} — ${right ? '正解' : 'モデルの挙動とは違いました'}` }),
         ]),
-        // The comparison is measured, not asserted: both drops are read off the
-        // model, in the state the learner is looking at.
-        comparisonTable(session.transferComparison),
+        // The comparison is measured, not asserted: both changes are read off
+        // the model, in the state the learner is looking at.
+        comparisonTable(session.transferComparison, transfer),
         paragraph(transfer.explanation.text, transfer.explanation.textJa),
         paragraph(module.outro.text, module.outro.textJa, 'learn-hint'),
       ],
@@ -223,27 +294,42 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
    */
   function runTransfer() {
     const { transfer, manipulation, setup } = module;
-    const measure = (progress) => {
+    const measure = (progress, overrides) => {
       setProgress(progress);
+      // Whatever else the transfer is holding different — a second workload, a
+      // lung with different properties. Applied before the manipulation, so the
+      // manipulation is the only thing that differs between the two readings
+      // in each row.
+      for (const [id, value] of Object.entries(overrides ?? {})) setControl(id, value);
       setControl(manipulation.control, setup[manipulation.control]);
-      const base = strokeVolume();
+      settleModel?.();
+      const base = readMetric(transfer.metric);
       setControl(manipulation.control, manipulation.to);
-      const loaded = strokeVolume();
+      settleModel?.();
+      const loaded = readMetric(transfer.metric);
       return { base, loaded, dropPercent: ((base - loaded) / base) * 100 };
     };
     const normal = measure(setup.progress);
-    const failing = measure(transfer.progress);
+    const failing = measure(transfer.progress ?? setup.progress, transfer.controls);
     session.transferComparison = { normal, failing };
     // Leave the learner looking at the failing state with the load applied.
   }
 
-  function strokeVolume() {
-    return Number(readMetrics().find((row) => row.id === 'sv').value);
+  /** One row of the same read-out the panel beside the view is showing. */
+  function readMetric(id) {
+    return Number(readMetrics().find((row) => row.id === id).value);
+  }
+
+  function start() {
+    step = 0;
+    session.prediction = null;
+    session.transferPrediction = null;
+    render();
   }
 
   return {
     element,
-    /** Drives the afterload change so the 3D, the plots and the numbers move together. */
+    /** Drives the control change so the 3D, the plots and the numbers move together. */
     tick() {
       if (!tween) return;
       const t = Math.min(1, (now() - tween.startedAt) / (module.manipulation.seconds * 1000));
@@ -251,6 +337,10 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
       setControl(module.manipulation.control, tween.from + (tween.to - tween.from) * eased);
       if (t >= 1) {
         tween = null;
+        // The change has been made; now let the model finish arriving at what
+        // it implies, so that what the learner is shown is the answer and not
+        // the first few seconds of it.
+        settleModel?.();
         go(2);
       }
     },
@@ -258,12 +348,12 @@ export function createLearningPanel({ module, setProgress, setControl, readMetri
     get watched() {
       return step >= 1 ? module.watch : [];
     },
-    start() {
-      step = 0;
-      session.prediction = null;
-      session.transferPrediction = null;
-      render();
+    start,
+    /** Which lesson is open, for a test or a screenshot that needs to say. */
+    get moduleId() {
+      return module.id;
     },
+    select,
   };
 }
 
@@ -342,22 +432,40 @@ function changeTable(before, after) {
 }
 
 /** How much stroke volume each state lost, measured on the model just now. */
-function comparisonTable(comparison) {
+/**
+ * Both measured results, side by side.
+ *
+ * The row names, the unit and the number of digits come from the lesson,
+ * because a lesson about litres of lung volume and a lesson about millilitres
+ * of stroke volume need different ones and neither should have to round the
+ * other's numbers away. Only the arithmetic is here.
+ */
+function comparisonTable(comparison, transfer) {
   if (!comparison) return null;
-  const row = (labels, result) =>
-    el('div', { class: 'learn-row' }, [
+  const unit = transfer.unit ?? 'mL';
+  const digits = transfer.digits ?? 0;
+  const [firstRow, secondRow] = transfer.rows ?? [
+    { label: 'Normal', labelJa: '正常' },
+    { label: 'HFrEF', labelJa: 'HFrEF' },
+  ];
+  const row = (labels, result) => {
+    // Reported in the direction it actually went, so a lesson whose answer is
+    // a rise does not have to be written as a negative fall.
+    const change = -result.dropPercent;
+    return el('div', { class: 'learn-row' }, [
       el('span', { class: 'learn-row-label' }, [
-        el('span', { class: 'lang-en', text: labels[0] }),
-        el('span', { class: 'lang-ja', text: labels[1] }),
+        el('span', { class: 'lang-en', text: labels.label }),
+        el('span', { class: 'lang-ja', text: labels.labelJa }),
       ]),
       el('span', { class: 'learn-row-figure' }, [
-        el('span', { class: 'learn-was', text: `${Math.round(result.base)} → ${Math.round(result.loaded)}` }),
-        el('span', { class: 'learn-unit', text: 'mL' }),
-        el('span', { class: 'learn-drop', text: `−${result.dropPercent.toFixed(0)} %` }),
+        el('span', {
+          class: 'learn-was',
+          text: `${result.base.toFixed(digits)} → ${result.loaded.toFixed(digits)}`,
+        }),
+        el('span', { class: 'learn-unit', text: unit }),
+        el('span', { class: 'learn-drop', text: `${change >= 0 ? '+' : '−'}${Math.abs(change).toFixed(0)} %` }),
       ]),
     ]);
-  return el('div', { class: 'learn-table' }, [
-    row(['Normal', '正常'], comparison.normal),
-    row(['HFrEF', 'HFrEF'], comparison.failing),
-  ]);
+  };
+  return el('div', { class: 'learn-table' }, [row(firstRow, comparison.normal), row(secondRow, comparison.failing)]);
 }

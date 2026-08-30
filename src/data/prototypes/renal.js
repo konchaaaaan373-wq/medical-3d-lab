@@ -29,9 +29,9 @@ export const URINARY_FILTRATION = {
       nameJa: '濾過',
       at: 0,
       summary:
-        'Filtrate forms continuously at the outside of the kidney and drains inwards towards the renal pelvis. The kidneys do not fill and empty — they work all the time.',
+        'Filtrate forms continuously in the cortex and leaves through the collecting system — papilla, calyx, pelvis. What happens in between, in the tubules, is not drawn: this is the route, not the processing.',
       summaryJa:
-        '濾液は腎の外側で絶えず作られ、内側の腎盂に向かって集まります。腎臓自体は「たまって出す」臓器ではなく、常時働いています。',
+        '濾液は皮質で絶えず作られ、集合系（腎乳頭・腎杯・腎盂）を通って出ていきます。その間に尿細管で起こる再吸収・分泌は描いていません。ここで示しているのは経路であって、処理の内容ではありません。',
     },
     {
       id: 'transport',
@@ -59,8 +59,8 @@ export const URINARY_FILTRATION = {
   progressLabel: { label: 'Bladder filling', labelJa: '膀胱の充満' },
 
   annotations: [
-    { id: 'cortex', text: 'Cortex', sub: '皮質', anchor: 'rightCortex', range: [0, 1] },
-    { id: 'hilum', text: 'Hilum', sub: '腎門', anchor: 'rightHilum', range: [0, 0.7], compact: false },
+    { id: 'cortex', text: 'Cortex (filtration)', sub: '皮質（濾過）', anchor: 'rightCortex', range: [0, 1] },
+    { id: 'hilum', text: 'Collecting system', sub: '集合系（腎盂）', anchor: 'rightHilum', range: [0, 0.7], compact: false },
     { id: 'left-kidney', text: 'Left kidney', sub: '左腎', anchor: 'leftCortex', range: [0, 1], compact: false },
     { id: 'ureter', text: 'Ureter', sub: '尿管', anchor: 'ureter', range: [0.25, 1] },
     { id: 'bladder', text: 'Bladder', sub: '膀胱', anchor: 'bladder', range: [0.4, 1] },

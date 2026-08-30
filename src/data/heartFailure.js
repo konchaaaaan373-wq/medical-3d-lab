@@ -284,6 +284,12 @@ export const LEARNING_MODULES = [
     transfer: {
       /** Same manipulation, run on the HFrEF state. */
       atStage: 'systolic-dysfunction',
+      /**
+       * The read-out row the comparison is measured on. Named rather than
+       * assumed, so the panel does not have to know that this particular
+       * lesson is about stroke volume.
+       */
+      metric: 'sv',
       text: 'In HFrEF, is the effect of the same rise in afterload larger or smaller?',
       textJa: 'HFrEF では、同じ afterload 上昇の影響は Normal より大きい？ 小さい？',
       options: [

@@ -58,7 +58,7 @@ export function createControlPanel({
 
   // Only scenes that ship a guided sequence get the button.
   const storyButton = onStoryToggle
-    ? button('story', ['Story', 'ストーリー'], () => {
+    ? button('story', [meta.story?.label ?? 'Story', meta.story?.labelJa ?? 'ストーリー'], () => {
         const enabled = storyButton.element.classList.toggle('is-on');
         storyButton.element.setAttribute('aria-pressed', String(enabled));
         onStoryToggle(enabled);
@@ -67,7 +67,7 @@ export function createControlPanel({
   if (storyButton) {
     storyButton.element.setAttribute('aria-pressed', 'false');
     storyButton.element.classList.add('primary');
-    storyButton.element.title = 'Guided sequence — remodelling, then inside one failing beat';
+    storyButton.element.title = meta.story?.hint ?? 'Guided sequence — remodelling, then inside one failing beat';
   }
 
   // Only scenes that implement a comparison get the button.

@@ -9,11 +9,21 @@ import { buildBladder } from '../../../renal/organs/kidney.js';
 /**
  * Scene: why a small narrowing matters so much.
  *
- * PROTOTYPE. The gland grows, the channel through it narrows, and the stream
- * falls away much faster than the calibre does — flow through a tube depends
- * steeply on its radius. The exponent used here (fourth power) is the classical
- * relationship for steady laminar flow, used as a *qualitative* shape: nothing
- * on screen is a flow rate, and a real stream is neither steady nor laminar.
+ * PROTOTYPE. The gland grows and the channel through it narrows: growth is
+ * inwards as well as outwards, which is the one spatial fact this scene is for.
+ *
+ * **No flow law is applied here.** An earlier version drove the stream from the
+ * fourth power of the urethral radius. That is the classical relationship for
+ * steady laminar flow in a rigid smooth tube, and micturition is none of those
+ * things — the urethra is compliant, the flow is unsteady and partly turbulent,
+ * and the stream also depends on detrusor contraction and on a smooth-muscle
+ * component of the outlet that no slider here represents. Predicting a flow
+ * rate from calibre alone would be a quantitative claim this prototype cannot
+ * support, so the stream is shown thinning as the channel narrows and nothing
+ * more is asserted.
+ *
+ * Not modelled: the bladder as a pump, the dynamic (smooth-muscle) component of
+ * outlet resistance, symptoms, and any relationship to flow rate in mL/s.
  *
  * The bladder above comes from the renal system unchanged.
  */
@@ -61,12 +71,12 @@ function createModel() {
       prostate.setEnlargement(enlargement);
     },
     update(dt) {
-      // Flow falls with the fourth power of the calibre: halving the radius
-      // costs far more than half the stream. Shown, not asserted.
+      // The stream thins as the channel does. Deliberately close to
+      // proportional: any steeper exponent would be reading a flow law into a
+      // prototype that has no pump, no compliance and no pressure in it.
       const calibre = prostate.calibre(enlargement);
-      const stream = Math.pow(calibre, 4);
-      flow.setRate(0.15 + 2.6 * stream);
-      flow.setOpacity(0.25 + 0.65 * stream);
+      flow.setRate(0.2 + 1.9 * calibre);
+      flow.setOpacity(0.25 + 0.6 * calibre);
       flow.update(dt);
     },
     dispose() {
