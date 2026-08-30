@@ -53,7 +53,7 @@ export async function supabaseAdmin(path, { method = 'GET', body, prefer } = {})
   return data;
 }
 
-export async function stripePost(path, params) {
+export async function stripePost(path, params, { idempotencyKey } = {}) {
   const form = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value == null) continue;
@@ -64,6 +64,7 @@ export async function stripePost(path, params) {
     headers: {
       Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
       'Content-Type': 'application/x-www-form-urlencoded',
+      ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     body: form,
   });
@@ -128,16 +129,33 @@ export async function billingCustomerFor(user) {
   const rows = await supabaseAdmin(`billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`);
   if (rows?.[0]?.stripe_customer_id) return rows[0].stripe_customer_id;
 
-  const customer = await stripePost('customers', {
-    email: user.email,
-    'metadata[supabase_user_id]': user.id,
-  });
+  // Two tabs hitting Checkout before the local mapping exists must not create
+  // two Stripe Customers: Stripe's one-subscription guard only works reliably
+  // when both sessions use the same Customer. The deterministic key makes the
+  // customer creation retry/concurrency safe.
+  const customer = await stripePost(
+    'customers',
+    {
+      email: user.email,
+      'metadata[supabase_user_id]': user.id,
+    },
+    { idempotencyKey: `medical3dlab:customer:${user.id}` }
+  );
   await supabaseAdmin('billing_customers?on_conflict=user_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: [{ user_id: user.id, stripe_customer_id: customer.id, email: user.email ?? null }],
   });
   return customer.id;
+}
+
+/** Stripe is authoritative when local webhook state may still be catching up. */
+export async function subscriptionsForCustomer(customerId) {
+  if (!customerId) return [];
+  const data = await stripeGet(
+    `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`
+  );
+  return Array.isArray(data?.data) ? data.data : [];
 }
 
 export async function upsertCustomer({ userId, customerId, email = null }) {
