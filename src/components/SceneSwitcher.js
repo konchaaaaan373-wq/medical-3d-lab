@@ -2,24 +2,26 @@ import { el } from '../utils/dom.js';
 import { EXPLORER_ROUTE } from '../catalog/index.js';
 
 /**
- * Scene selector, organised by body system.
+ * Global scene navigation.
  *
- * Two levels, because the subjects differ at two levels: which system, and then
- * which scene within it. The top level is the system rather than the organ:
- * with twenty-odd organs an organ row no longer fits on a phone, and "which
- * system" is the question a viewer can answer without thinking. The organ level
- * is not lost — it is how the organ explorer is arranged, and the link at the
- * end of the first row leads there.
+ * This used to be two horizontally scrolling rows inside the scene's left
+ * panel. That worked when the catalogue was tiny, but once the lab grew to
+ * eleven systems it stopped reading as navigation at all: the way to another
+ * organ looked like one more data panel and, on a phone, most of it lived off
+ * screen.
  *
- * The second row is only drawn when the current system actually has more than
- * one scene — a row with a single pill in it is a promise of choice that is not
- * there.
+ * The catalogue and routing are unchanged. This component only changes the
+ * information architecture:
  *
- * These are links, not tabs. Choosing one writes the URL hash and lets the app
- * reload, which guarantees a clean GPU state — cheap, and switching scenes is
- * rare. That also means the ARIA that belongs here is `aria-current="page"` on
- * whichever links point at the page you are already on, not the tab roles a
- * widget with panels and arrow-key navigation would need.
+ * - the current system / scene is always visible in a fixed header;
+ * - one explicit "Choose organ / disease" control opens the whole catalogue;
+ * - desktop gets a compact system-by-system mega menu;
+ * - narrow screens get the same content as a right-side drawer;
+ * - "All organs" remains the way to the full explorer.
+ *
+ * Links stay links rather than becoming tabs. Selecting a scene writes the hash
+ * and lets the app reload, which preserves the existing clean-GPU-state scene
+ * switch. `aria-current="page"` therefore remains the correct selection state.
  *
  * @param {{
  *   groups: {id: string, label: string, labelJa?: string, scenes: any[]}[],
@@ -27,107 +29,176 @@ import { EXPLORER_ROUTE } from '../catalog/index.js';
  * }} options
  */
 export function createSceneSwitcher({ groups, currentId }) {
-  const total = groups.reduce((count, group) => count + group.scenes.length, 0);
-  if (total < 2) return null; // nothing to switch between yet
+  const scenes = groups.flatMap((group) => group.scenes);
+  if (!scenes.length) return null;
 
-  const current = groups.find((group) => group.scenes.some((scene) => scene.id === currentId)) ?? groups[0];
-  // Routes are built from slugs everywhere else in this file; the link back to
-  // the current scene has to use one too, or it breaks the day a published
-  // scene's slug stops matching its id — which is the reason the field exists.
-  const currentSlug =
-    groups.flatMap((group) => group.scenes).find((scene) => scene.id === currentId)?.slug ?? currentId;
+  const currentScene = scenes.find((scene) => scene.id === currentId) ?? scenes[0];
+  const currentGroup =
+    groups.find((group) => group.scenes.some((scene) => scene.id === currentScene.id)) ?? groups[0];
 
-  /** @param {{label: string, labelJa?: string}} entry */
-  const pill = (entry, { href, isCurrent, className = '', title }) =>
-    el(
-      'a',
-      {
-        class: `scene-pill${className}${isCurrent ? ' is-current' : ''}`,
-        href,
-        // True of both rows when both are drawn: each is a link to the page
-        // being looked at, which is exactly what `page` means.
-        'aria-current': isCurrent ? 'page' : null,
-        title: title ?? null,
-      },
+  const ui = document.getElementById('ui');
+  ui?.classList.add('has-global-scene-nav');
+
+  const bilingual = (en, ja, className = '') =>
+    el('span', { class: className }, [
+      el('span', { class: 'lang-en', text: en }),
+      el('span', { class: 'lang-ja', text: ja ?? en }),
+    ]);
+
+  const menuId = 'scene-navigation-panel';
+  let open = false;
+
+  const trigger = el(
+    'button',
+    {
+      class: 'global-nav-trigger',
+      type: 'button',
+      'aria-expanded': 'false',
+      'aria-controls': menuId,
+      title: 'Choose organ / disease',
+    },
+    [
+      el('span', { class: 'global-nav-menu-icon', 'aria-hidden': 'true' }, [
+        el('span'),
+        el('span'),
+        el('span'),
+      ]),
+      bilingual('Choose organ / disease', '臓器・病態を選ぶ', 'global-nav-trigger-label'),
+    ]
+  );
+
+  const backdrop = el('div', {
+    class: 'global-nav-backdrop',
+    hidden: '',
+    'aria-hidden': 'true',
+  });
+
+  const closeButton = el('button', {
+    class: 'global-nav-close',
+    type: 'button',
+    'aria-label': 'Close navigation',
+    title: 'Close',
+    text: '×',
+  });
+
+  const allOrgans = el(
+    'a',
+    {
+      class: 'global-nav-explorer',
+      href: EXPLORER_ROUTE,
+    },
+    [
+      el('span', { class: 'global-nav-explorer-mark', 'aria-hidden': 'true', text: '＋' }),
+      bilingual('Browse all organs', '全臓器から探す', 'global-nav-explorer-copy'),
+      el('span', { class: 'global-nav-arrow', 'aria-hidden': 'true', text: '→' }),
+    ]
+  );
+
+  const groupSections = groups.map((group) => {
+    const isCurrentSystem = group.id === currentGroup.id;
+    const sceneLinks = group.scenes.map((scene) => {
+      const isCurrent = scene.id === currentScene.id;
+      return el(
+        'a',
+        {
+          class: `global-nav-scene${isCurrent ? ' is-current' : ''}`,
+          href: `#/${scene.slug ?? scene.id}`,
+          'aria-current': isCurrent ? 'page' : null,
+        },
+        [
+          bilingual(scene.label, scene.labelJa, 'global-nav-scene-name'),
+          isCurrent ? el('span', { class: 'global-nav-current-dot', 'aria-hidden': 'true' }) : null,
+        ]
+      );
+    });
+
+    return el(
+      'section',
+      { class: `global-nav-system${isCurrentSystem ? ' is-current' : ''}` },
       [
-        el('span', { class: 'lang-en', text: entry.label }),
-        el('span', { class: 'lang-ja', text: entry.labelJa ?? entry.label }),
+        el('h2', { class: 'global-nav-system-name' }, [
+          bilingual(group.label, group.labelJa),
+        ]),
+        el('div', { class: 'global-nav-scenes' }, sceneLinks),
       ]
     );
+  });
 
-  const systemRow = el('div', { class: 'scene-row scene-organs' }, [
-    ...groups.map((group) =>
-      pill(group, {
-        // A system tab leads to its first scene; once inside, the second row
-        // takes over. The names are in the tooltip so the tab still says what
-        // is behind it while it is the only row on screen.
-        href: `#/${group.id === current.id ? currentSlug : (group.scenes[0].slug ?? group.scenes[0].id)}`,
-        isCurrent: group.id === current.id,
-        title: group.scenes.map((scene) => scene.label).join(' · '),
-      })
-    ),
-    // The way out to the full catalogue, organ by organ.
-    pill(
-      { label: 'All organs', labelJa: '全臓器' },
-      { href: EXPLORER_ROUTE, isCurrent: false, className: ' scene-explore', title: 'Organ explorer' }
-    ),
+  const panel = el(
+    'div',
+    {
+      id: menuId,
+      class: 'global-nav-panel',
+      hidden: '',
+      'aria-label': 'Organ and disease navigation',
+    },
+    [
+      el('div', { class: 'global-nav-panel-head' }, [
+        el('div', { class: 'global-nav-panel-title' }, [
+          bilingual('Choose organ / disease', '臓器・病態を選ぶ'),
+        ]),
+        closeButton,
+      ]),
+      allOrgans,
+      el('div', { class: 'global-nav-grid' }, groupSections),
+    ]
+  );
+
+  const brand = el(
+    'a',
+    {
+      class: 'global-nav-brand',
+      href: EXPLORER_ROUTE,
+      title: 'Medical 3D Lab — Organ explorer',
+    },
+    [
+      el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
+      el('span', { class: 'global-nav-brand-name', text: 'Medical 3D Lab' }),
+    ]
+  );
+
+  const currentLocation = el('div', { class: 'global-nav-current', 'aria-label': 'Current scene' }, [
+    bilingual(currentGroup.label, currentGroup.labelJa, 'global-nav-current-system'),
+    el('span', { class: 'global-nav-separator', 'aria-hidden': 'true', text: '/' }),
+    bilingual(currentScene.label, currentScene.labelJa, 'global-nav-current-scene'),
   ]);
 
-  const children = [systemRow];
+  const element = el(
+    'nav',
+    { class: 'global-scene-nav', 'aria-label': 'Medical 3D Lab' },
+    [brand, currentLocation, trigger, backdrop, panel]
+  );
 
-  if (current.scenes.length > 1) {
-    children.push(
-      el(
-        'div',
-        { class: 'scene-row scene-topics' },
-        current.scenes.map((scene) =>
-          pill(scene, {
-            href: `#/${scene.slug ?? scene.id}`,
-            isCurrent: scene.id === currentId,
-            className: ' scene-topic',
-          })
-        )
-      )
-    );
+  function setOpen(next, { restoreFocus = false } = {}) {
+    if (open === next) return;
+    open = next;
+    element.classList.toggle('is-open', open);
+    panel.hidden = !open;
+    backdrop.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+    if (!open && restoreFocus) trigger.focus();
   }
 
-  const element = el('nav', { class: 'panel scene-switcher', 'aria-label': 'Scenes' }, children);
+  trigger.addEventListener('click', () => setOpen(!open));
+  closeButton.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
+  backdrop.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
 
-  // The row scrolls, so two things have to be true on arrival: the system you
-  // are in is visible in it, and the row says which way the rest of the list
-  // is. Both are re-checked on scroll and on resize.
-  const rows = [systemRow, ...children.slice(1)];
+  panel.addEventListener('click', (event) => {
+    if (event.target.closest('a')) setOpen(false);
+  });
 
-  const markEdges = (row) => {
-    const max = row.scrollWidth - row.clientWidth;
-    row.classList.toggle('has-more-start', row.scrollLeft > 2);
-    row.classList.toggle('has-more-end', row.scrollLeft < max - 2);
-  };
-
-  const settle = () => {
-    for (const row of rows) {
-      // Only scrolled when the current pill would not otherwise be on screen:
-      // centring it unconditionally pushed the first system half out of view
-      // for no reason.
-      const current = row.querySelector('.is-current');
-      if (current) {
-        // Relative to the row, which is what scrollLeft is measured in. Taken
-        // raw, offsetLeft is relative to the nearest *positioned* ancestor —
-        // no row is positioned, so it was carrying the panel's own inset, and
-        // both the on-screen test and the centring were biased by it.
-        const start = current.offsetLeft - row.offsetLeft;
-        const end = start + current.clientWidth;
-        if (start < row.scrollLeft || end > row.scrollLeft + row.clientWidth) {
-          row.scrollLeft = start - row.clientWidth / 2 + current.clientWidth / 2;
-        }
-      }
-      markEdges(row);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      setOpen(false, { restoreFocus: true });
     }
-  };
+  });
 
-  for (const row of rows) row.addEventListener('scroll', () => markEdges(row), { passive: true });
-  requestAnimationFrame(settle);
-  window.addEventListener('resize', settle);
+  // A click anywhere that is neither the header nor its drawer closes a desktop
+  // mega menu. On mobile the backdrop catches the same intent before this does.
+  document.addEventListener('pointerdown', (event) => {
+    if (open && !element.contains(event.target)) setOpen(false);
+  });
 
-  return { element };
+  return { element, close: () => setOpen(false) };
 }
