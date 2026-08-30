@@ -26,7 +26,31 @@ export const PLAN = Object.freeze({
   COMPLETE: 'complete',
 });
 
-export const ACTIVE_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing']);
+/**
+ * Statuses that retain paid access inside Medical 3D Lab.
+ *
+ * `past_due` gets a grace period while Stripe is retrying payment / waiting for
+ * customer action. Stripe ultimately moves a failed subscription to `canceled`
+ * or `unpaid` according to Billing settings; those states do not grant access.
+ */
+export const ACCESS_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
+/**
+ * A user with any of these already has a live subscription lifecycle and must
+ * manage it rather than create a second recurring subscription.
+ *
+ * Stripe documents `incomplete_expired` and `canceled` as terminal for this
+ * purpose. `incomplete` is included here as a local safety rule so a failed or
+ * still-finishing first Checkout cannot be followed by a second Checkout.
+ */
+export const NON_TERMINAL_SUBSCRIPTION_STATUSES = new Set([
+  'incomplete',
+  'trialing',
+  'active',
+  'past_due',
+  'unpaid',
+  'paused',
+]);
 
 /** What a paid Stripe plan grants inside the product. */
 export const PLAN_GRANTS = Object.freeze({
@@ -63,14 +87,14 @@ export function canAccess(grants, required = ENTITLEMENT.FREE) {
 }
 
 /**
- * Converts active subscriptions into product entitlements.
+ * Converts subscription state into product entitlements.
  *
  * @param {{ entitlement?: string, status?: string }[]} subscriptions
  */
 export function grantsFromSubscriptions(subscriptions = []) {
   const grants = new Set([ENTITLEMENT.FREE]);
   for (const subscription of subscriptions) {
-    if (!ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)) continue;
+    if (!ACCESS_SUBSCRIPTION_STATUSES.has(subscription.status)) continue;
     for (const entitlement of PLAN_GRANTS[subscription.entitlement] ?? []) grants.add(entitlement);
   }
   return [...grants];
