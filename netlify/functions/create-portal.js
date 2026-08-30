@@ -1,15 +1,17 @@
-import { authenticatedUser, billingCustomerFor, json, stripePost } from '../lib/billing.js';
+import { authenticatedUser, billingCustomerFor, json, safeHash, stripePost } from '../lib/billing.js';
 
 export default async (request) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
   try {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Please sign in first.' });
+    const body = await request.json().catch(() => ({}));
     const customer = await billingCustomerFor(user);
     const origin = new URL(request.url).origin;
+    const returnHash = safeHash(body.returnHash);
     const session = await stripePost('billing_portal/sessions', {
       customer,
-      return_url: origin,
+      return_url: `${origin}/${returnHash}`,
     });
     return json(200, { url: session.url });
   } catch (error) {
