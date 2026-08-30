@@ -129,6 +129,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/intestinalTransit/index.js'),
   },
   {
+    id: 'portal-hypertension',
+    slug: 'portal-hypertension',
+    titleEn: 'Cirrhosis and portal hypertension',
+    titleJa: '肝硬変と門脈圧亢進症',
+    system: 'hepatobiliary',
+    organ: 'liver',
+    organs: ['liver', 'spleen'],
+    disease: 'cirrhosis',
+    status: 'alpha',
+    description:
+      'The portal circulation as a network with flow conserved: why collaterals divert half the blood and leave the pressure high, and why HVPG is not the portal pressure gradient.',
+    descriptionJa:
+      '流量保存が成り立つネットワークとしての門脈循環。側副血行路が血液の半分を迂回させても圧が下がらない理由と、HVPG が門脈圧較差ではない理由を示します。',
+    tags: ['haemodynamics', 'portal-hypertension', 'learning-module'],
+    load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
+  },
+  {
     id: 'liver-portal-flow',
     slug: 'liver-portal-flow',
     titleEn: 'Portal flow & bile',
@@ -314,7 +331,6 @@ export const PLANNED_SCENES = [
   { organ: 'kidney', disease: 'nephrotic-syndrome', titleEn: 'Nephrotic syndrome', titleJa: 'ネフローゼ症候群' },
   { organ: 'liver', disease: 'steatosis', titleEn: 'Steatosis', titleJa: '脂肪肝' },
   { organ: 'liver', disease: 'hepatitis', titleEn: 'Hepatitis', titleJa: '肝炎' },
-  { organ: 'liver', disease: 'cirrhosis', titleEn: 'Cirrhosis', titleJa: '肝硬変' },
   { organ: 'brain', disease: 'stroke', titleEn: 'Stroke', titleJa: '脳梗塞' },
   { organ: 'brain', disease: 'parkinsons', titleEn: "Parkinson's disease", titleJa: 'パーキンソン病' },
   { organ: 'heart', disease: 'valve-disease', titleEn: 'Valve disease', titleJa: '弁膜症' },
