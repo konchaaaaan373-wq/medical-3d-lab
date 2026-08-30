@@ -334,10 +334,22 @@ function papillaryGeometry(side) {
     }
   }
   // Cap to whichever head is nearer, which leaves a shallow cleft between them.
+  //
+  // Each ring edge gets a triangle to one head, so the rim is covered — but the
+  // cap is then two fans, and where the nearer head changes they meet along an
+  // edge with nothing spanning it. That left a hole straight through each
+  // summit, which the single-vertex fan this replaced could not have. The
+  // bridge triangle at each of the two switch azimuths closes it.
+  const rimStart = rings * (radial + 1);
+  const headFor = (s) => (Math.cos((s / radial) * Math.PI * 2 - footPhase) >= 0 ? 0 : 1);
   for (let s = 0; s < radial; s++) {
-    const angle = (s / radial) * Math.PI * 2;
-    const head = heads[Math.cos(angle - footPhase) >= 0 ? 0 : 1];
-    indices.push(rings * (radial + 1) + s, head, rings * (radial + 1) + s + 1);
+    const head = headFor(s);
+    indices.push(rimStart + s, heads[head], rimStart + s + 1);
+    const next = headFor((s + 1) % radial);
+    if (next !== head) {
+      // Wind the bridge so it faces the same way as the fan it closes.
+      indices.push(rimStart + s + 1, heads[head], heads[next]);
+    }
   }
 
   const geometry = new THREE.BufferGeometry();

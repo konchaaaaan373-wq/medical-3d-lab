@@ -52,13 +52,18 @@ export function buildHeart({ color = '#b8444c', vesselColor = '#d8737b', atriumC
     atria.add(atrium);
   }
 
+  // The arch sweeps over the patient's left, which in this scene's axes — the
+  // ones bodyOverview places every organ by, liver right of midline and
+  // stomach left of it — is +x. It used to run the other way, over the right,
+  // disagreeing both with the apex displacement a few lines up and with the
+  // heart-failure scene's own aorta.
   const arch = new TubeSurface(
     smoothCurve([
-      [-0.05, 0.7, 0.05],
-      [-0.1, 1.25, 0],
-      [-0.34, 1.6, -0.12],
-      [-0.72, 1.42, -0.24],
-      [-0.82, 0.9, -0.3],
+      [0.05, 0.7, 0.05],
+      [0.1, 1.25, 0],
+      [0.34, 1.6, -0.12],
+      [0.72, 1.42, -0.24],
+      [0.82, 0.9, -0.3],
     ]),
     { radius: () => 0.17, steps: 44, radial: 16 }
   );

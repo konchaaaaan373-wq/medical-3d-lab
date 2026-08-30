@@ -64,9 +64,13 @@ const on = (subject, distance, nudge = {}) => ({
 /**
  * Where the sequence looks from for most of its length: the same three-quarter
  * view the scene opens on, so nothing about the ventricle steps has to be
- * re-learned.
+ * re-learned. It has to equal HeartFailureScene's VIEW_DIRECTION for that to
+ * be true, and briefly did not: un-mirroring the vessels flipped this one and
+ * left that one alone, which put a 47-degree swing to the far side of the
+ * ventricle on entering the story and another on leaving it. The ventricle was
+ * never mirrored — only the vessels were — so there was nothing to flip here.
  */
-const DEFAULT_VIEW = new THREE.Vector3(-0.4, 0.24, 0.88).normalize();
+const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
 
 /**
  * Where it looks from once the subject is the pulmonary side.
