@@ -31,6 +31,7 @@ import {
   STORY_LABEL,
 } from '../../../../data/portalHypertension.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../../../../data/portalHypertensionTeaching.js';
+import { REEL_CUES, REEL_DURATION, cameraAt, overlayAt, progressAt } from './reelStoryboard.js';
 
 /**
  * Scene: cirrhosis and portal hypertension.
@@ -381,6 +382,64 @@ export class PortalHypertensionScene {
 
   getCausalStory() {
     return CAUSAL_STORY;
+  }
+
+  /**
+   * The fifteen-second social sequence.
+   *
+   * Everything specific to it lives in `reelStoryboard.js`. This scene has one
+   * body rather than two, so the sequence turns the comparison off: the
+   * contrast it is about is between a healthy liver and this one *over time*,
+   * and it is carried by the cards rather than by a second organ on screen.
+   */
+  getReel() {
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      progress: 0,
+      comparison: false,
+      viewDirection: new THREE.Vector3(0.13, 0.05, 1).normalize(),
+      framing: {
+        // World half-extents the base framing must hold: the liver, the portal
+        // vein and the collateral routes that leave it, plus room for the
+        // dolly-in to have somewhere to go.
+        halfWidth: 5.0,
+        halfHeight: 3.4,
+        minimumDistance: 11,
+        target: new THREE.Vector3(0.05, -0.55, 0),
+      },
+      cameraAt,
+      overlayAt,
+
+      /**
+       * Where on the scene's axis the sequence sits at this instant.
+       *
+       * The model is a stateless equilibrium solve, so setting the resistance
+       * is the whole of driving it: the same second always gives the same
+       * liver, which is what makes the sequence reproducible.
+       */
+      driveAt(t, scene) {
+        scene.setProgress(progressAt(t));
+      },
+
+      /**
+       * The current liver's figures, and a healthy one's for the left card.
+       *
+       * Both read through `solvePortalCirculation`, the same solve the read-out
+       * panel reads, so a card cannot show a number the panel would not.
+       */
+      readMetrics(scene) {
+        const rows = (state) => ({
+          ppg: state.portalPressureGradientMmHg.toFixed(1),
+          liverFlow: Math.round(state.portalLiverFlowMlPerMin),
+          shunt: Math.round(state.shuntFraction * 100),
+        });
+        return {
+          cirrhotic: rows(scene.solved),
+          healthy: rows(solvePortalCirculation({ ...scene.controls, structuralResistance: 1 })),
+        };
+      },
+    };
   }
 
   getLearningModules() {

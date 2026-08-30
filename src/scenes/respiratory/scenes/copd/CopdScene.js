@@ -33,6 +33,7 @@ import {
   STORY_LABEL,
 } from '../../../../data/copd.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../../../../data/copdTeaching.js';
+import { REEL_CUES, REEL_DURATION, cameraAt, demandAt, overlayAt } from './reelStoryboard.js';
 
 /**
  * Scene: COPD — expiratory flow limitation and dynamic hyperinflation.
@@ -106,6 +107,8 @@ export class CopdScene {
      */
     this.history = [];
     this.elapsedS = 0;
+    /** Model time the social sequence has driven to. See `renderAtSeconds`. */
+    this.drivenSeconds = 0;
   }
 
   build() {
@@ -239,6 +242,58 @@ export class CopdScene {
     this.applyModelToScene();
     this.primary.air.update(dt);
     if (this.comparing) this.reference?.air.update(dt);
+  }
+
+  /**
+   * Renders the lung as it is `seconds` into a run, with the workload following
+   * `demandAt`.
+   *
+   * The social sequence has to be a pure function of elapsed time — the same
+   * fifteen seconds on any machine, at any frame rate — and this model is the
+   * one in the repository that is *not* an equilibrium solve. It integrates,
+   * breath by breath, and that is the subject: **dynamic hyperinflation is a
+   * many-breath phenomenon**, so a video of it has to show the climb rather
+   * than cut to the settled answer.
+   *
+   * The run starts from the lung settled at `demandAt(0)` — a real resting
+   * equilibrium, not a lung dropped in at zero volume — and the workload then
+   * follows the track. The climb on screen is the lung failing to give back
+   * what it took, breath after breath, which is the finding.
+   *
+   * Playing forward advances by the difference. Going backwards — a restart, a
+   * seek — resets and replays, which costs a few hundred fixed steps and only
+   * happens when someone rewinds. Because the step size is fixed and the demand
+   * at each step depends only on model time, the same second is always reached
+   * the same way.
+   *
+   * @param {number} seconds model time since the run began
+   * @param {(seconds: number) => number} demandAt the workload over that time
+   */
+  renderAtSeconds(seconds, demandAt) {
+    const target = Math.max(0, seconds);
+    if (target < this.drivenSeconds || this.drivenSeconds === 0) {
+      // Settle at the workload the run starts from, so the first frame is a
+      // lung at rest rather than one still finding its resting volume.
+      this.setProgress(demandAt(0));
+      this.model.reset();
+      this.referenceModel?.reset();
+      this.drivenSeconds = 0;
+      this.history = [];
+      this.elapsedS = 0;
+    }
+    const step = 1 / 120;
+    while (this.drivenSeconds < target - 1e-9) {
+      const dt = Math.min(step, target - this.drivenSeconds);
+      this.drivenSeconds += dt;
+      // The workload for this step, as a function of model time and nothing
+      // else. This is what makes the run reproducible.
+      this.setProgress(demandAt(this.drivenSeconds));
+      this.model.advance(dt);
+      this.referenceModel?.advance(dt);
+      this.elapsedS += dt;
+      this.recordHistory();
+    }
+    this.applyModelToScene();
   }
 
   // --- reading the model into the scene -------------------------------------
@@ -497,6 +552,64 @@ export class CopdScene {
 
   getCausalStory() {
     return CAUSAL_STORY;
+  }
+
+  /**
+   * The fifteen-second social sequence.
+   *
+   * Unlike the other two model-backed respiratory sequences, this one plays the
+   * model forward in model time rather than cutting between settled states,
+   * because dynamic hyperinflation is a many-breath phenomenon and the climb is
+   * the finding. `renderAtSeconds` keeps that reproducible.
+   */
+  getReel() {
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      progress: 0,
+      viewDirection: new THREE.Vector3(0.1, 0.06, 1).normalize(),
+      framing: {
+        // World half-extents the base framing must hold: two chests either side
+        // of the midline, plus room for the dolly-in to have somewhere to go.
+        halfWidth: 8.2,
+        halfHeight: 4.8,
+        minimumDistance: 14,
+        target: new THREE.Vector3(0, -0.35, 0),
+      },
+      cameraAt,
+      overlayAt,
+
+      /**
+       * Play the lung forward to this instant, with the workload following the
+       * storyboard's track. Both lungs advance together, so the comparison is
+       * always at the same moment in the same run.
+       */
+      driveAt(t, scene) {
+        scene.renderAtSeconds(t, demandAt);
+      },
+
+      /**
+       * Both lungs' figures, read from the models the scene is drawing.
+       *
+       * Read every frame rather than once, because this sequence's whole
+       * subject is a number that moves: the room left to breathe in closes as
+       * the video plays.
+       */
+      readMetrics(scene) {
+        const rows = (model) => {
+          const state = model.state;
+          return {
+            ic: state.inspiratoryCapacityL.toFixed(2),
+            eelv: state.endExpiratoryVolumeL.toFixed(2),
+            tauCount: state.timeConstantsAvailable.toFixed(1),
+          };
+        };
+        return {
+          copd: rows(scene.model),
+          normal: scene.referenceModel ? rows(scene.referenceModel) : rows(scene.model),
+        };
+      },
+    };
   }
 
   getLearningModules() {

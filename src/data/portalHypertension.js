@@ -338,6 +338,52 @@ export const MODEL_SCOPE = {
   evidence: 'docs/model-evidence/cirrhosis-portal-hypertension.md',
 };
 
+/**
+ * Every word the fifteen-second social sequence puts on screen.
+ *
+ * Here rather than in the storyboard because the sequence is drawing code, and
+ * drawing code should not contain sentences. No figure appears in this file:
+ * anything numeric is filled from the model, so a caption cannot drift away
+ * from the liver it is describing.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'The blood finds another way out',
+    titleJa: '血液は、別の出口を見つけます',
+    subtitle: 'and the pressure stays up anyway',
+    subtitleJa: 'それでも圧は下がりきりません',
+  },
+  cards: {
+    healthy: { label: 'Healthy liver', labelJa: '健常な肝臓' },
+    cirrhotic: { label: 'Cirrhosis', labelJa: '肝硬変' },
+  },
+  /** Named for the axis, so nobody reads the slider as a severity score. */
+  badge: {
+    label: 'Intrahepatic resistance rising',
+    labelJa: '肝内血管抵抗の上昇',
+  },
+  resistance: {
+    caption: 'Scar the liver and the same flow needs more pressure',
+    captionJa: '肝臓が線維化すると、同じ血流により高い圧が必要になります',
+  },
+  collaterals: {
+    caption: 'Collaterals carry the blood away — and the gradient stays high',
+    captionJa: '側副血行路が血液を運び去っても、圧較差は高いままです',
+  },
+  why: {
+    caption: 'Because neither the resistance behind them nor the inflow in front has moved',
+    captionJa: '背後の抵抗も、手前の流入も、どちらも動いていないからです',
+  },
+  takeHome: {
+    title: 'A bypass is not a cure',
+    titleJa: '迂回路は、治療ではありません',
+  },
+  note: {
+    text: 'Conceptual model · a portal pressure gradient, not an HVPG · not for diagnosis',
+    textJa: '概念モデル｜HVPG ではなく門脈圧較差｜診断には使用できません',
+  },
+};
+
 export const STORY_LABEL = {
   label: 'Walk through it',
   labelJa: '順に見る',
