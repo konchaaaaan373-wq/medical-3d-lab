@@ -1,3 +1,5 @@
+import { inLanguage } from '../utils/language.js';
+
 /**
  * Names the part of the beat a plot's cursor is currently on.
  *
@@ -15,8 +17,7 @@
  * @param {number} top top edge of the plot area, px
  */
 export function drawPhaseName(context, beat, right, top) {
-  const language = document.getElementById('ui')?.dataset.lang ?? 'both';
-  const text = language === 'ja' ? beat.shortJa : beat.short;
+  const text = inLanguage(beat.short, beat.shortJa);
   if (!text) return;
   context.save();
   context.font = '600 9px system-ui, sans-serif';

@@ -71,7 +71,10 @@ export function buildProstate({ color = '#c08a7a', urethraColor = '#8fd6c4', opa
         return base * (1 - 0.72 * v * inside);
       });
     },
-    /** How open the prostatic urethra is, 0..1 — for driving the flow stream. */
+    /**
+     * How open the prostatic urethra is, 0..1 — a *calibre*, not a flow.
+     * Nothing here converts it into a flow rate; see the scene for why.
+     */
     calibre(value) {
       return 1 - 0.72 * Math.max(0, Math.min(1, value));
     },

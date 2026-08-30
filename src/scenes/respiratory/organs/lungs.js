@@ -64,11 +64,36 @@ function lungWarp({ medial = 1, cardiacNotch = false, fissures = [] }) {
 }
 
 /**
+ * Where the sample regions sit inside one lung, in the lung mesh's own
+ * coordinates (the unit sphere the warp is applied to, so ±1 in each axis).
+ *
+ * Six per lung, spread through the height and the depth. A scene with a
+ * multi-compartment lung model needs somewhere to *put* those compartments,
+ * and where a point is inside a lung is the organ's business — a scene that
+ * typed these coordinates itself would be re-deriving the shape of the lung
+ * from the outside and would drift the moment the shape changed.
+ */
+const REGION_SITES = [
+  [0.0, 0.62, 0.1],
+  [0.34, 0.2, 0.3],
+  [-0.3, 0.16, -0.28],
+  [0.18, -0.26, -0.1],
+  [-0.24, -0.5, 0.24],
+  [0.1, -0.78, -0.06],
+];
+
+/**
  * Both lungs, side by side, with the inflation state exposed.
  *
- * @param {{ color?: string, detail?: number, opacity?: number }} [options]
+ * `excursion` scales how much the drawn shape changes between `setInflation(0)`
+ * and `setInflation(1)`. The default is sized for a tidal breath and is already
+ * larger than life; a scene whose axis runs from residual volume to total lung
+ * capacity needs much more of it, and says so rather than quietly redefining
+ * what the default means.
+ *
+ * @param {{ color?: string, detail?: number, opacity?: number, excursion?: number }} [options]
  */
-export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) {
+export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1, excursion = 1 } = {}) {
   const object = new THREE.Group();
   object.name = 'lungs';
 
@@ -109,10 +134,39 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
   object.add(right, left);
 
   const rest = { right: right.position.clone(), left: left.position.clone() };
+  // Measured once from the finished geometry rather than guessed: whatever the
+  // warp did to the base of the lung, this is where it actually ends, and
+  // anything that has to sit under the lungs needs the real number.
+  right.geometry.computeBoundingBox();
+  const baseOfGeometry = right.geometry.boundingBox.min.y;
+  let lowestPoint = rest.right.y + baseOfGeometry;
+
+  // Mounts for a scene that models the lung as several regions. Parented to
+  // the lung meshes, so they travel with the inflation instead of having to be
+  // moved in step with it by whoever hung something on them.
+  const regions = [];
+  for (const [side, mesh, scale] of [
+    ['right', right, [0.92, 1.85, 1.0]],
+    ['left', left, [0.86, 1.9, 0.98]],
+  ]) {
+    REGION_SITES.forEach(([x, y, z], index) => {
+      const mount = new THREE.Group();
+      mount.name = `region-${side}-${index}`;
+      // The warp is applied to the sphere before the scale, so a point at the
+      // same normalised coordinate lands inside the finished lung once the
+      // scale is applied. Kept well inside: these are regions of lung, not
+      // points on its surface.
+      mount.position.set(x * scale[0] * 0.72, y * scale[1] * 0.72, z * scale[2] * 0.72);
+      mesh.add(mount);
+      regions.push({ side, index, object: mount });
+    });
+  }
 
   return {
     object,
     material,
+    /** Twelve mounts inside the two lungs, right lung first. */
+    regions,
     anchors: {
       rightLung: new THREE.Vector3(-1.95, 0.9, 0.7),
       leftLung: new THREE.Vector3(1.95, 0.9, 0.7),
@@ -120,23 +174,29 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
       hilum: new THREE.Vector3(-0.62, 0.45, -0.2),
     },
     /**
-     * Inflation, 0 at end-expiration and 1 at the top of the modelled breath.
+     * Inflation, 0 at the shape the lung was modelled at and 1 at the top of
+     * the modelled breath. Values below 0 are allowed, down to −0.4, so that a
+     * scene whose axis includes volumes *below* an ordinary resting one can
+     * draw a lung that is smaller than the one built here rather than clamping
+     * every such volume to the same picture.
      *
      * The lungs expand outwards and, mostly, downwards — the base moves further
      * than the apex, which is the visible half of what the diaphragm does. The
      * diaphragm itself is not drawn, and this is a shape change, not a volume
      * measurement.
      */
+    /** How low the lung bases currently reach, for whatever sits under them. */
+    baseY: () => lowestPoint,
     setInflation(value) {
-      const v = Math.max(0, Math.min(1, value));
+      const v = Math.max(-0.4, Math.min(1, value));
       // Larger than life. At a true tidal excursion the lungs barely move on
       // screen and the scene reads as a still picture of two lungs; the shape
       // change is exaggerated so that inspiration and expiration are legible,
       // which is the whole subject. It is a presentation value, and no volume
       // is being claimed.
-      const sx = 1 + 0.07 * v;
-      const sy = 1 + 0.13 * v;
-      const sz = 1 + 0.09 * v;
+      const sx = 1 + 0.07 * excursion * v;
+      const sy = 1 + 0.13 * excursion * v;
+      const sz = 1 + 0.09 * excursion * v;
       for (const [mesh, home] of [
         [right, rest.right],
         [left, rest.left],
@@ -144,8 +204,15 @@ export function buildLungs({ color = '#d98d95', detail = 9, opacity = 1 } = {}) 
         mesh.scale.set(sx, sy, sz);
         // Anchored at the apex: the top of the lung is held by the airway and
         // barely moves, so the growth has to go downwards.
-        mesh.position.set(home.x, home.y - 0.24 * v, home.z);
+        mesh.position.set(home.x, home.y - 0.24 * excursion * v, home.z);
+        // The regions ride the lung, so undo the anisotropic squash for
+        // anything mounted on them — a marker should not become an ellipse
+        // because the lung it sits in got taller.
+        for (const region of regions) region.object.scale.set(1 / sx, 1 / sy, 1 / sz);
       }
+      // Where the bases have got to, in the group's coordinates. The diaphragm
+      // sits under them and has to arrive at the same place.
+      lowestPoint = rest.right.y - 0.24 * excursion * v + baseOfGeometry * sy;
     },
   };
 }

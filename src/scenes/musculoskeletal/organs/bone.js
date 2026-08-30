@@ -74,7 +74,12 @@ export function buildBone({ color = '#ece7d8', marrowColor = '#c26b6b', cut = 0.
     }),
     /**
      * 0 leaves the cavity as built; 1 widens it and thins the cortex.
-     * A shape change standing in for a balance, not a measurement of density.
+     *
+     * This is the **accumulated** result of many remodelling cycles run at a
+     * negative balance — years of them — not the amount of bone moved by the
+     * cycles currently on screen. A single remodelling site removes and
+     * replaces a quantity far too small to see. A shape change standing in for
+     * a balance, and not a measurement of density.
      */
     setCavity(value) {
       const v = Math.max(0, Math.min(1, value));

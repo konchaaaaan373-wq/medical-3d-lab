@@ -17,6 +17,9 @@ import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
 import { createPressureWavePanel } from '../components/PressureWavePanel.js';
+import { createChartPanel } from '../components/ChartPanel.js';
+import { createModelScopePanel } from '../components/ModelScopePanel.js';
+import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
 import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
@@ -252,13 +255,23 @@ export async function createApp({ stage, ui }) {
     onZoom: (direction) => zoomBy(direction),
     // Only scenes that ship a guided sequence get the button; without this it
     // latched on and did nothing on a scene with no storyboard.
-    onStoryToggle: scene.getStory
-      ? (enabled) => {
-          storyView.orbit.identity();
-          if (enabled) storyMode.enter();
-          else storyMode.exit();
-        }
-      : undefined,
+    //
+    // Two kinds of sequence share the button because they are the same offer to
+    // the reader — "walk me through it". A beat has a clock and plays itself;
+    // a chain of causes does not, and waits for Next. Which one a scene ships
+    // decides which one this opens.
+    onStoryToggle:
+      scene.getStory || scene.getCausalStory
+        ? (enabled) => {
+            if (scene.getCausalStory) {
+              setCausalStory(enabled);
+              return;
+            }
+            storyView.orbit.identity();
+            if (enabled) storyMode.enter();
+            else storyMode.exit();
+          }
+        : undefined,
   });
 
   // One switch, one place. Every string in the interface exists in both
@@ -284,6 +297,22 @@ export async function createApp({ stage, ui }) {
         titleJa: meta.pressureWave?.labelJa ?? '1 拍の圧波形',
       })
     : null;
+  /**
+   * Optional: plots a scene declares in its copy and fills from its model.
+   *
+   * The static half — title, axes, key — is `meta.charts`; the numbers arrive
+   * per frame from `scene.getCharts()`, keyed by the same ids. Splitting them
+   * is what keeps the wording of a plot beside the rest of the scene's wording
+   * and out of the render loop.
+   */
+  const chartPanels = (meta.charts ?? []).map((spec) => createChartPanel(spec));
+  const chartById = new Map(chartPanels.map((panel) => [panel.id, panel]));
+
+  // Optional: what the model answers, what it does not, and where it came from.
+  // A scene that has lost the Prototype badge needs this on the same screen as
+  // the numbers it is now asking to be believed about.
+  const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
     ? createModelControls({
@@ -305,7 +334,7 @@ export async function createApp({ stage, ui }) {
   // private path into the medical model, by design.
   const learningPanel = scene.getLearningModules
     ? createLearningPanel({
-        module: scene.getLearningModules()[0],
+        modules: scene.getLearningModules(),
         setProgress: (value) => seek(value),
         setControl: (id, value) => {
           scene.setModelControl(id, value);
@@ -314,13 +343,44 @@ export async function createApp({ stage, ui }) {
         },
         readMetrics: () => scene.getMetrics(),
         readControls: () => scene.getModelControls(),
+        settleModel: scene.settleModel ? () => scene.settleModel() : undefined,
         onExit: () => setLearning(false),
+      })
+    : null;
+
+  /**
+   * Optional: a scene whose subject is a chain of causes rather than a cycle
+   * gets a stepped walk-through instead of a timed one. Like the lesson, it
+   * drives the model through the public setters and has no private path in.
+   */
+  const causalStory = scene.getCausalStory
+    ? createCausalStoryPanel({
+        story: scene.getCausalStory(),
+        setProgress: (value) => seek(value),
+        setControl: (id, value) => {
+          scene.setModelControl(id, value);
+          modelControls?.sync(scene.getModelControls());
+        },
+        settleModel: scene.settleModel ? () => scene.settleModel() : undefined,
+        onStep: (step) => {
+          // Presentation only: which numbers and which plot the step is about.
+          metricsPanel?.highlight(step.watch ?? []);
+          for (const panel of chartPanels) panel.setFocused(step.chart === panel.id);
+          refreshModelReadouts();
+        },
+        onExit: () => setCausalStory(false),
       })
     : null;
 
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
     if (metricsPanel) metricsPanel.update(scene.getMetrics());
+    if (chartPanels.length && scene.getCharts) {
+      // One read of the model for every plot, so two charts cannot end up
+      // showing two different solutions of the same state.
+      const charts = scene.getCharts();
+      for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+    }
     if (!pvPanel) return;
     // One read of the model, shared by both plots, so they cannot disagree.
     const pressureVolume = scene.getPressureVolume();
@@ -352,7 +412,9 @@ export async function createApp({ stage, ui }) {
         sceneSwitcher?.element,
         pvPanel?.element,
         wavePanel?.element,
+        ...chartPanels.map((panel) => panel.element),
         modelControls?.element,
+        scopePanel?.element,
       ]),
       el('div', { class: 'rail' }, [
         legend.element,
@@ -362,6 +424,7 @@ export async function createApp({ stage, ui }) {
     ]),
     el('div', { class: 'panel console' }, [
       stageReadout.element,
+      causalStory?.element,
       learningPanel?.element,
       controlPanel.element,
     ]),
@@ -445,6 +508,18 @@ export async function createApp({ stage, ui }) {
       pvPanel.update(pressureVolume);
       wavePanel?.update(pressureVolume);
     }
+    // Charts whose model is still running — a lung filling and emptying, a
+    // cursor walking a loop — are redrawn with it, from one read per frame.
+    if (chartPanels.length && scene.getCharts && !reelMode?.active) {
+      const charts = scene.getCharts();
+      for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+      // And so is the read-out. A scene whose model keeps working after the
+      // control that changed it — a lung climbing to a new resting volume, a
+      // network being re-solved to full accuracy once the slider is let go —
+      // leaves the panel quoting a number that has since moved on if the
+      // read-out is only refreshed when something is set.
+      metricsPanel?.update(scene.getMetrics());
+    }
     if (storyMode?.active) {
       storyMode.tick();
       // The sequence names where the camera should be; the same damped tween
@@ -521,6 +596,7 @@ export async function createApp({ stage, ui }) {
     requestAnimationFrame(() => {
       pvPanel?.resize();
       wavePanel?.resize();
+      for (const panel of chartPanels) panel.resize();
       refreshModelReadouts();
     });
   }
@@ -584,6 +660,41 @@ export async function createApp({ stage, ui }) {
     setLearning(!learning);
   }
 
+  let storyStepping = false;
+  /** The interactive session as it was before the walk-through took over. */
+  let causalSnapshot = null;
+  let causalPreviousView = false;
+
+  /**
+   * The stepped walk-through. Like the lesson it parks the session and hands it
+   * back, and it moves to Data view for its duration — every step names a
+   * number or a plot to watch, and both live in the panels learning view puts
+   * away.
+   */
+  function setCausalStory(enabled) {
+    if (!causalStory || enabled === storyStepping) return;
+    storyStepping = enabled;
+    ui.classList.toggle('is-story-stepping', enabled);
+    controlPanel.setStory(enabled);
+    if (enabled) {
+      causalSnapshot = captureSessionState({ playback, viewer, scene, comparing });
+      causalPreviousView = dataView;
+      setDataView(true);
+      causalStory.start();
+    } else {
+      setDataView(causalPreviousView);
+      if (causalSnapshot) {
+        restoreSessionState(causalSnapshot, { playback, viewer, scene, setComparison });
+        modelControls?.sync(scene.getModelControls?.() ?? []);
+        refreshModelReadouts();
+        view.active = false;
+      }
+      causalSnapshot = null;
+      metricsPanel?.highlight([]);
+      for (const panel of chartPanels) panel.setFocused(false);
+    }
+  }
+
   // The guided sequence. Owns the camera, the caption and the label focus while
   // it runs, and hands the session back on the way out.
   const storyMode = scene.getStory
@@ -634,6 +745,7 @@ export async function createApp({ stage, ui }) {
     exitReel: () => {
       if (reelMode?.active) toggleReel();
       else if (storyMode?.active) storyMode.exit();
+      else if (storyStepping) setCausalStory(false);
       else if (learning) setLearning(false);
     },
   });
@@ -653,6 +765,8 @@ export async function createApp({ stage, ui }) {
   // The canvases have no size until they are in the document.
   pvPanel?.resize();
   wavePanel?.resize();
+  for (const panel of chartPanels) panel.resize();
+  refreshModelReadouts();
   viewer.start();
 
   // Switching scenes via the URL hash is rare enough that a reload is fine —
@@ -676,6 +790,10 @@ export async function createApp({ stage, ui }) {
     setDataView,
     isDataView: () => dataView,
     learning: learningPanel ? { panel: learningPanel, set: setLearning, isActive: () => learning } : null,
+    causalStory: causalStory
+      ? { panel: causalStory, set: setCausalStory, isActive: () => storyStepping }
+      : null,
+    charts: chartById,
   };
   return window.__app;
 }

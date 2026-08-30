@@ -392,6 +392,8 @@
 
 #ui[data-view='learning'] .pv,
 #ui[data-view='learning'] .wave,
+#ui[data-view='learning'] .chart,
+#ui[data-view='learning'] .model-scope,
 #ui[data-view='learning'] .model-controls,
 #ui[data-view='learning'] .metrics,
 #ui[data-view='learning'] .data-only {
@@ -1353,6 +1355,17 @@
   transition: opacity 260ms ease;
 }
 
+/* A 3D label floating over a lesson is a label written across the sentence the
+   reader is in the middle of. The labels are decoration on the anatomy; the
+   panel is the thing being read, so while a lesson or a walk-through is open
+   the panel takes the higher layer. Nothing moves and nothing is hidden —
+   only the stacking changes. */
+#ui.is-learning .console,
+#ui.is-story-stepping .console {
+  position: relative;
+  z-index: 6;
+}
+
 .label3d {
   position: absolute;
   left: 0;
@@ -2109,4 +2122,342 @@
   .story-note {
     display: none !important;
   }
+}
+
+/* ---------- model charts ----------
+   The general case of the pressure-volume panel: same box, same type scale,
+   whatever the scene's model happens to plot inside it. */
+.chart {
+  padding: 9px 11px 8px;
+  width: 236px;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.chart-head {
+  font-size: 10.5px;
+  color: var(--ink-dim);
+  letter-spacing: 0.03em;
+  margin-bottom: 5px;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 112px;
+}
+
+/* A story step or a lesson naming this plot as the one to watch. */
+.chart.is-focused {
+  border-color: rgba(150, 220, 255, 0.42);
+  box-shadow: 0 0 0 1px rgba(150, 220, 255, 0.18), 0 6px 22px rgba(0, 0, 0, 0.35);
+}
+
+.chart-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 9px;
+  margin-top: 4px;
+}
+
+.chart-key-item {
+  display: flex;
+  flex-direction: column;
+  font-size: 9px;
+  color: var(--ink-faint);
+  line-height: 1.25;
+  padding-left: 11px;
+  position: relative;
+}
+
+.chart-key-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 8px;
+  height: 0;
+  border-top: 2px solid var(--key);
+}
+
+.chart-key-item.is-dashed::before {
+  border-top-style: dashed;
+}
+
+/* ---------- model scope & sources ----------
+   Collapsed by default. A scene without the Prototype badge is asking to be
+   believed, and the boundary of that claim belongs on the same screen. */
+.model-scope {
+  width: 236px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.scope-toggle {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.03em;
+  text-align: left;
+  padding: 9px 11px;
+  cursor: pointer;
+}
+
+.scope-toggle::after {
+  content: '＋';
+  float: right;
+  color: var(--ink-faint);
+}
+
+.model-scope.is-open .scope-toggle::after {
+  content: '−';
+}
+
+.scope-toggle:hover {
+  color: var(--ink);
+}
+
+.scope-body {
+  padding: 0 11px 10px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.scope-section + .scope-section {
+  margin-top: 9px;
+}
+
+.scope-section-title {
+  margin: 0 0 3px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.scope-question {
+  margin: 0 0 4px;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+.scope-list {
+  margin: 0;
+  padding-left: 13px;
+  list-style: none;
+}
+
+.scope-item {
+  position: relative;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  padding-bottom: 3px;
+}
+
+.scope-item::before {
+  content: '·';
+  position: absolute;
+  left: -10px;
+  color: var(--ink-faint);
+}
+
+.scope-excludes .scope-item::before,
+.scope-cautions .scope-item::before {
+  content: '×';
+  font-size: 8px;
+  top: 2px;
+}
+
+.scope-cautions .scope-item {
+  color: rgba(255, 205, 160, 0.85);
+}
+
+.scope-evidence {
+  margin: 5px 0 0;
+  font-size: 9px;
+  color: var(--ink-faint);
+  word-break: break-all;
+}
+
+/* ---------- causal walk-through ----------
+   Sits where the stage read-out does, because it replaces it for its duration:
+   the reader is being walked along a chain, not along the slider. */
+.causal-story {
+  display: none;
+  padding: 11px 14px 10px;
+}
+
+#ui.is-story-stepping .causal-story {
+  display: block;
+}
+
+#ui.is-story-stepping .stage-readout {
+  display: none;
+}
+
+.story-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.story-title {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: flex;
+  flex-direction: column;
+}
+
+.story-counter {
+  font-size: 10px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.story-exit {
+  margin-left: auto;
+}
+
+.story-dots {
+  display: flex;
+  gap: 5px;
+  margin: 7px 0 9px;
+}
+
+.story-dot {
+  flex: 1;
+  height: 3px;
+  min-width: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+
+.story-dot.is-seen {
+  background: rgba(150, 220, 255, 0.4);
+}
+
+.story-dot.is-current {
+  background: rgba(150, 220, 255, 0.95);
+}
+
+.story-heading {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+}
+
+.story-because {
+  margin: 0 0 5px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(150, 220, 255, 0.85);
+  display: flex;
+  flex-direction: column;
+}
+
+.story-because::before {
+  content: '↳';
+  position: absolute;
+  margin-left: -14px;
+  color: rgba(150, 220, 255, 0.5);
+}
+
+.story-body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  display: flex;
+  flex-direction: column;
+  max-width: 68ch;
+}
+
+.story-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.story-button {
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 140ms ease, opacity 140ms ease;
+}
+
+.story-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.story-button:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.story-next {
+  border-color: rgba(150, 220, 255, 0.4);
+  background: rgba(150, 220, 255, 0.14);
+}
+
+.story-exit {
+  font-size: 10px;
+  padding: 3px 10px;
+  color: var(--ink-faint);
+}
+
+/* ---------- lesson picker ----------
+   Only appears when a scene ships more than one lesson. */
+.learn-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 0 0 8px;
+}
+
+.learn-pick {
+  font: inherit;
+  font-size: 10.5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+
+.learn-pick:hover {
+  color: var(--ink);
+}
+
+.learn-pick.is-current {
+  color: var(--ink);
+  border-color: rgba(150, 220, 255, 0.42);
+  background: rgba(150, 220, 255, 0.12);
 }

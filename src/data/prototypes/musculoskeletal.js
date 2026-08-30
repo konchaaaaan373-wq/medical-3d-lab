@@ -18,8 +18,8 @@ export const BONE_REMODELING = {
   legend: [
     { key: 'cortex', label: 'Cortical bone', labelJa: '皮質骨' },
     { key: 'marrow', label: 'Marrow cavity', labelJa: '骨髄腔' },
-    { key: 'resorption', label: 'Resorption', labelJa: '骨吸収' },
-    { key: 'formation', label: 'Formation', labelJa: '骨形成' },
+    { key: 'resorption', label: 'Resorption (first)', labelJa: '骨吸収（先行）' },
+    { key: 'formation', label: 'Formation (follows)', labelJa: '骨形成（後続）' },
   ],
 
   stages: [
@@ -29,9 +29,9 @@ export const BONE_REMODELING = {
       nameJa: '均衡した代謝回転',
       at: 0,
       summary:
-        'Bone is not inert. It is continuously removed and replaced, and while the two match, the shape stays the same.',
+        'At each site the sequence is fixed: resorption first, a reversal pause, then formation into the space that was made. Sites run out of step with one another, so the bone is always busy while its shape holds.',
       summaryJa:
-        '骨は不活性な構造ではなく、絶えず吸収と形成を繰り返しています。両者が釣り合っている限り、形は変わりません。',
+        '各部位で順序は決まっています。まず吸収、次に反転期、そして掘られた空間へ形成が続きます。部位ごとに位相がずれているため、形が保たれたまま常にどこかで代謝回転が起きています。',
     },
     {
       id: 'tilted',
@@ -39,9 +39,9 @@ export const BONE_REMODELING = {
       nameJa: '吸収優位',
       at: 0.45,
       summary:
-        'When removal runs ahead of replacement, the loss shows up first on the inner surface: the marrow cavity widens and the cortex thins.',
+        'When each cycle puts back less than it took, the deficit accumulates. What you see is the sum of years of cycles, not the bone moved by the ones on screen — the loss shows up first on the inner surface.',
       summaryJa:
-        '吸収が形成を上回ると、まず内側の面に変化が現れます。骨髄腔が広がり、皮質骨が薄くなります。',
+        '1 回の回転で戻す量が取った量を下回ると、不足が蓄積します。画面に見えているのは数年分の累積であって、いま動いている数回転の量ではありません。変化はまず内側の面に現れます。',
     },
     {
       id: 'thinned',
@@ -55,8 +55,8 @@ export const BONE_REMODELING = {
     },
   ],
 
-  range: { start: 'Balanced', startJa: '均衡', end: 'Resorption ahead', endJa: '吸収優位' },
-  progressLabel: { label: 'Remodelling balance', labelJa: 'リモデリングの均衡' },
+  range: { start: 'Balanced', startJa: '均衡', end: 'Negative balance', endJa: '負の均衡' },
+  progressLabel: { label: 'Remodelling balance (accumulated)', labelJa: 'リモデリング均衡（累積）' },
 
   annotations: [
     { id: 'cortex', text: 'Cortical bone', sub: '皮質骨', anchor: 'cortex', range: [0, 1] },
@@ -70,8 +70,8 @@ export const MUSCLE_CONTRACTION = {
   status: 'prototype',
   title: 'Muscle contraction',
   titleJa: '骨格筋の収縮',
-  subtitle: 'A belly shortening between tendons as recruitment rises · prototype',
-  subtitleJa: '動員の増加とともに腱の間で短縮する筋腹 ｜ プロトタイプ',
+  subtitle: 'Twitch to fused tetanus as stimulation frequency rises · prototype',
+  subtitleJa: '刺激頻度の上昇にともなう単収縮から強縮まで ｜ プロトタイプ',
 
   palette: {
     muscle: '#b3454a',
@@ -84,7 +84,7 @@ export const MUSCLE_CONTRACTION = {
     { key: 'muscle', label: 'Muscle belly', labelJa: '筋腹' },
     { key: 'fascicle', label: 'Fascicles', labelJa: '筋束' },
     { key: 'tendon', label: 'Tendon', labelJa: '腱' },
-    { key: 'twitch', label: 'Activation', labelJa: '活動' },
+    { key: 'twitch', label: 'Stimulus at the motor point', labelJa: '刺激（運動点）', activeFrom: 0.02 },
   ],
 
   stages: [
@@ -100,28 +100,48 @@ export const MUSCLE_CONTRACTION = {
     },
     {
       id: 'twitch',
-      name: 'Individual twitches',
+      name: 'Single twitches',
       nameJa: '単収縮',
-      at: 0.3,
+      at: 0.24,
       summary:
-        'Low activation produces separate twitches, with visible relaxation between them.',
+        'Widely spaced stimuli produce separate twitches. Each one relaxes completely before the next arrives.',
       summaryJa:
-        '活動が弱いうちは個々の単収縮が分離しており、その間に弛緩が見えます。',
+        '刺激の間隔が広いうちは、単収縮が個別に現れます。次の刺激が来る前に完全に弛緩します。',
     },
     {
-      id: 'tetanus',
-      name: 'Fused contraction',
-      nameJa: '強縮',
-      at: 0.68,
+      id: 'summation',
+      name: 'Summation',
+      nameJa: '加重',
+      at: 0.46,
       summary:
-        'As activation rises the twitches merge into a smooth, sustained shortening — the belly gets shorter and thicker, while its volume barely changes.',
+        'Stimuli arrive before relaxation is complete, so each contraction starts from a shortened state and adds to the last.',
       summaryJa:
-        '活動が強まると単収縮が融合し、滑らかで持続的な短縮になります。筋腹は短く太くなり、体積はほとんど変わりません。',
+        '弛緩が完了する前に次の刺激が届くため、短縮した状態から次の収縮が加わります（加重）。',
+    },
+    {
+      id: 'incomplete-tetanus',
+      name: 'Incomplete tetanus',
+      nameJa: '不完全強縮',
+      at: 0.66,
+      summary:
+        'The contractions merge but still ripple: the muscle no longer returns to rest between stimuli.',
+      summaryJa:
+        '収縮は融合しつつも波打ちが残ります。刺激の間に安静長へ戻らなくなります。',
+    },
+    {
+      id: 'fused-tetanus',
+      name: 'Fused tetanus',
+      nameJa: '完全強縮',
+      at: 0.84,
+      summary:
+        'At high frequency the ripple disappears and the shortening is smooth and sustained. This is a concentric shortening with nothing to pull against — no load, no joint, and no force is being represented.',
+      summaryJa:
+        '高頻度では波打ちが消え、滑らかで持続的な短縮になります。ここでは負荷も関節もない求心性短縮として描いており、張力そのものは表していません。',
     },
   ],
 
-  range: { start: 'Rest', startJa: '安静', end: 'Maximal', endJa: '最大' },
-  progressLabel: { label: 'Activation', labelJa: '活動の強さ' },
+  range: { start: 'Low', startJa: '低頻度', end: 'High', endJa: '高頻度' },
+  progressLabel: { label: 'Stimulation frequency', labelJa: '刺激頻度' },
 
   annotations: [
     { id: 'belly', text: 'Muscle belly', sub: '筋腹', anchor: 'belly', range: [0, 1] },

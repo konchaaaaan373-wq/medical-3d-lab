@@ -58,10 +58,18 @@ export function buildMuscle({ color = '#b3454a', tendonColor = '#e6e0d2', fascic
   bottomTendon.position.set(0, -span - 0.24, 0);
   bottomTendon.rotation.z = Math.PI;
 
-  object.add(bellyMesh, fascicleGroup, topTendon, bottomTendon);
+  // A mount that tracks the belly's lateral surface as it thickens, so a scene
+  // can put something *on* the muscle — a motor point, an electrode — without
+  // recomputing the surface itself. Where the belly is is the organ's business;
+  // what gets hung there is the scene's.
+  const motorPoint = new THREE.Group();
+  motorPoint.name = 'motorPoint';
+
+  object.add(bellyMesh, fascicleGroup, topTendon, bottomTendon, motorPoint);
 
   return {
     object,
+    motorPoint,
     anchors: {
       belly: new THREE.Vector3(0.95, 0.15, 0.4),
       tendon: new THREE.Vector3(0.55, 1.95, 0.3),
@@ -87,6 +95,10 @@ export function buildMuscle({ color = '#b3454a', tendonColor = '#e6e0d2', fascic
       // the belly changes around them.
       topTendon.scale.set(1 / thicken, 1 / shorten, 1 / thicken);
       bottomTendon.scale.set(1 / thicken, 1 / shorten, 1 / thicken);
+      // Stays on the surface as the belly swells, and undoes the group's
+      // squash so whatever is mounted on it keeps its own shape.
+      motorPoint.position.set(bellyRadius(0.5) * thicken, 0, 0);
+      motorPoint.scale.set(1, 1 / shorten, 1);
     },
     dispose() {
       belly.dispose();

@@ -50,6 +50,40 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/cardiovascular/scenes/heartFailure/index.js'),
   },
   {
+    id: 'copd-hyperinflation',
+    slug: 'copd',
+    titleEn: 'COPD',
+    titleJa: 'COPD',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs', 'airway'],
+    disease: 'copd',
+    status: 'alpha',
+    description:
+      'Twelve lung units with their own time constants: why an obstructed lung ends up breathing at a higher volume, and why pushing harder does not help.',
+    descriptionJa:
+      '固有の時定数をもつ 12 単位の肺モデル。閉塞のある肺が高い肺気量で呼吸することになる理由と、強く吐いても改善しない理由を示します。',
+    tags: ['respiratory-mechanics', 'flow-limitation', 'learning-module'],
+    load: () => import('../scenes/respiratory/scenes/copd/index.js'),
+  },
+  {
+    id: 'asthma-heterogeneity',
+    slug: 'asthma',
+    titleEn: 'Asthma',
+    titleJa: '喘息',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs', 'airway'],
+    disease: 'asthma',
+    status: 'alpha',
+    description:
+      'A branching airway tree solved as a network: why a stimulus reaching every airway equally leaves half the lung dark.',
+    descriptionJa:
+      '分岐気道をネットワークとして解きます。すべての気道に均等に届く刺激が、なぜ肺の半分を低換気にするのかを示します。',
+    tags: ['respiratory-mechanics', 'ventilation-heterogeneity', 'learning-module'],
+    load: () => import('../scenes/respiratory/scenes/asthma/index.js'),
+  },
+  {
     id: 'breathing-lungs',
     slug: 'breathing-lungs',
     titleEn: 'Breathing lungs',
@@ -93,6 +127,23 @@ export const SCENE_MANIFEST = [
     descriptionJa: '小腸の分節運動から、大腸へ向かう推進性蠕動へと移る動きを示します。',
     tags: ['peristalsis', 'transit'],
     load: () => import('../scenes/gastrointestinal/scenes/intestinalTransit/index.js'),
+  },
+  {
+    id: 'portal-hypertension',
+    slug: 'portal-hypertension',
+    titleEn: 'Cirrhosis and portal hypertension',
+    titleJa: '肝硬変と門脈圧亢進症',
+    system: 'hepatobiliary',
+    organ: 'liver',
+    organs: ['liver', 'spleen'],
+    disease: 'cirrhosis',
+    status: 'alpha',
+    description:
+      'The portal circulation as a network with flow conserved: why collaterals divert half the blood and leave the pressure high, and why HVPG is not the portal pressure gradient.',
+    descriptionJa:
+      '流量保存が成り立つネットワークとしての門脈循環。側副血行路が血液の半分を迂回させても圧が下がらない理由と、HVPG が門脈圧較差ではない理由を示します。',
+    tags: ['haemodynamics', 'portal-hypertension', 'learning-module'],
+    load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
     id: 'liver-portal-flow',
@@ -273,8 +324,6 @@ export const SCENE_MANIFEST = [
  * `SCENE_MANIFEST` is the whole ceremony of adding a disease scene.
  */
 export const PLANNED_SCENES = [
-  { organ: 'lungs', disease: 'asthma', titleEn: 'Asthma', titleJa: '喘息' },
-  { organ: 'lungs', disease: 'copd', titleEn: 'COPD', titleJa: 'COPD' },
   { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
   { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
   { organ: 'kidney', disease: 'ckd', titleEn: 'Chronic kidney disease', titleJa: '慢性腎臓病' },
@@ -282,7 +331,6 @@ export const PLANNED_SCENES = [
   { organ: 'kidney', disease: 'nephrotic-syndrome', titleEn: 'Nephrotic syndrome', titleJa: 'ネフローゼ症候群' },
   { organ: 'liver', disease: 'steatosis', titleEn: 'Steatosis', titleJa: '脂肪肝' },
   { organ: 'liver', disease: 'hepatitis', titleEn: 'Hepatitis', titleJa: '肝炎' },
-  { organ: 'liver', disease: 'cirrhosis', titleEn: 'Cirrhosis', titleJa: '肝硬変' },
   { organ: 'brain', disease: 'stroke', titleEn: 'Stroke', titleJa: '脳梗塞' },
   { organ: 'brain', disease: 'parkinsons', titleEn: "Parkinson's disease", titleJa: 'パーキンソン病' },
   { organ: 'heart', disease: 'valve-disease', titleEn: 'Valve disease', titleJa: '弁膜症' },

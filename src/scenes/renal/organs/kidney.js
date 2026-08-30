@@ -65,8 +65,14 @@ export function buildKidney({ side = 'left', color = '#a0555c', medullaColor = '
   /**
    * Paths from the cortex inwards to the pelvis.
    *
-   * A stand-in for "filtrate forms at the outside and drains towards the
-   * middle". It is not a nephron, and the number of paths means nothing.
+   * A stand-in for the *route*: filtration begins in the cortical glomeruli,
+   * and what leaves the kidney leaves through the collecting system — papilla,
+   * calyx, pelvis, ureter. Everything between those two ends is missing. The
+   * tubule is where almost all of the filtrate is reabsorbed and where the
+   * urine is actually made, and none of that is drawn here; a particle that
+   * enters at the cortex and arrives at the pelvis in this scene has skipped
+   * the entire process. Neither the number of paths nor the number of
+   * particles means anything.
    */
   const random = createRandom(side === 'left' ? 71 : 72);
   const filtrationPaths = [];
