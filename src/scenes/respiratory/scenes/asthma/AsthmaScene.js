@@ -7,6 +7,7 @@ import {
   DEFAULT_CONTROLS,
   DEFECT_THRESHOLD,
   GENERATIONS,
+  REFERENCE_CONTROLS,
   TERMINAL_COUNT,
   doseResponse,
   solveAsthma,
@@ -111,8 +112,28 @@ export class AsthmaScene {
 
   build() {
     const object = new THREE.Group();
+    this.primary = this.buildTree();
+    object.add(this.primary.object);
+    this.root.add(createStudioLights(), object);
+    this.body = object;
 
-    this.tree = buildAirwayTree({
+    this.applyModelToScene();
+    return this.root;
+  }
+
+  /**
+   * One drawable airway tree: the branches, and one instance per ventilation
+   * unit.
+   *
+   * Factored out so the comparison's healthy tree is built by the same code as
+   * the asthmatic one. Two trees drawn by two builders would eventually differ
+   * in something nobody chose, and the whole point of putting them side by side
+   * is that the *only* difference is the lung.
+   */
+  buildTree() {
+    const object = new THREE.Group();
+
+    const tree = buildAirwayTree({
       generations: GENERATIONS,
       drawnGenerations: 5,
       color: PALETTE.airway,
@@ -134,24 +155,79 @@ export class AsthmaScene {
       opacity: 0.95,
       vertexColors: false,
     });
-    this.units = new THREE.InstancedMesh(geometry, material, TERMINAL_COUNT);
-    this.units.name = 'ventilation-units';
-    this.units.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    this.units.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(TERMINAL_COUNT * 3), 3);
+    const units = new THREE.InstancedMesh(geometry, material, TERMINAL_COUNT);
+    units.name = 'ventilation-units';
+    units.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    units.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(TERMINAL_COUNT * 3), 3);
 
     const matrix = new THREE.Matrix4();
-    this.tree.leafPositions.forEach((position, unit) => {
+    tree.leafPositions.forEach((position, unit) => {
       matrix.makeTranslation(position.x, position.y, position.z);
-      this.units.setMatrixAt(unit, matrix);
+      units.setMatrixAt(unit, matrix);
     });
-    this.units.instanceMatrix.needsUpdate = true;
+    units.instanceMatrix.needsUpdate = true;
 
-    object.add(this.tree.object, this.units);
-    this.root.add(createStudioLights(), object);
-    this.body = object;
+    object.add(tree.object, units);
+    return { object, tree, units, geometry, material };
+  }
 
+  // --- normal beside disease -----------------------------------------------
+
+  /**
+   * Puts a healthy tree beside the asthmatic one, under the same stimulus.
+   *
+   * This is the comparison the scene is really about. The stimulus reaching
+   * both trees is identical, and so is every piece of geometry; what differs is
+   * `hyperresponsiveness` and `wallThickening` — the asthmatic trait and the
+   * remodelling. A reader watching one tree go patchy while the other stays
+   * even is watching the trait do the work, which no single-lung view can show.
+   *
+   * The reference is solved from the same `solveAsthma` as the primary, not
+   * drawn from a stored picture: if the model changed, both would change.
+   *
+   * @param {boolean} enabled
+   */
+  setComparison(enabled) {
+    this.comparing = enabled;
+
+    if (enabled && !this.reference) {
+      this.reference = this.buildTree();
+      this.body.add(this.reference.object);
+    }
+    if (this.reference) {
+      this.reference.object.visible = enabled;
+      this.reference.object.position.x = enabled ? -COMPARISON_OFFSET : 0;
+    }
+    this.primary.object.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.applyModelToScene();
-    return this.root;
+  }
+
+  /**
+   * Where the camera goes when both trees are on screen.
+   *
+   * Wider and a little further back, because the subject is now the pair. The
+   * target stays on the midline so neither tree is favoured.
+   */
+  getComparisonView() {
+    return {
+      position: new THREE.Vector3(1.4, 1.9, 25.5),
+      target: new THREE.Vector3(0, 0.2, 0),
+    };
+  }
+
+  /**
+   * The healthy lung the comparison draws: no hyperresponsiveness, no
+   * remodelling, and the same stimulus as the primary.
+   *
+   * Solved rather than cached, so it tracks the stimulus as the reader drags
+   * it. The solve is an equilibrium with no state in it, which is what makes
+   * this cheap enough to do on every change.
+   */
+  referenceSolve() {
+    return solveAsthma(
+      { ...this.controls, ...REFERENCE_CONTROLS, stimulus: this.controls.stimulus },
+      { maxIterations: 320, tolerance: 1e-3 }
+    );
   }
 
   // --- the one axis ---------------------------------------------------------
@@ -198,18 +274,32 @@ export class AsthmaScene {
    * colour, a radius or a scale.
    */
   applyModelToScene() {
+    this.drawTree(this.primary, this.solved);
+    if (this.comparing && this.reference) this.drawTree(this.reference, this.referenceSolve());
+  }
+
+  /**
+   * Every drawn property of one tree, in one place. Nothing else in this file
+   * writes a colour, a radius or a scale — and because the comparison calls
+   * this too, the healthy tree cannot drift away from the asthmatic one in any
+   * property nobody chose.
+   *
+   * @param {ReturnType<AsthmaScene['buildTree']>} parts
+   * @param {ReturnType<typeof solveAsthma>} solved
+   */
+  drawTree(parts, solved) {
     // Airway calibre, straight through: an airway drawn at half its radius is
     // one the model narrowed by half.
-    this.tree.setCalibres((index) => this.solved.calibres[index].openFraction);
+    parts.tree.setCalibres((index) => solved.calibres[index].openFraction);
 
     // How narrowed the tree is overall, tinted into the airway material so the
     // tree reads as constricted even where individual branches are too small
     // to see. Presentation.
     // Kept light: enough to read as constriction, not so much that the tree
     // stops looking like an airway.
-    this.tree.material.color
+    parts.tree.material.color
       .copy(OPEN_AIRWAY)
-      .lerp(NARROW_AIRWAY, clamp(1 - this.solved.medianCalibre) * 0.45);
+      .lerp(NARROW_AIRWAY, clamp(1 - solved.medianCalibre) * 0.45);
 
     // The units. Colour is ventilation — the one place in this scene where a
     // colour carries a number — and the ramp has two segments with the defect
@@ -220,16 +310,16 @@ export class AsthmaScene {
     // The low end is warm rather than dark. A dark sphere on this background
     // is not a dark region, it is an absent one, and "half the lung has
     // disappeared" is not the reading wanted.
-    for (const unit of this.solved.units) {
+    for (const unit of solved.units) {
       if (unit.share < DEFECT_THRESHOLD) {
         UNIT_COLOUR.copy(DEEP_DEFECT).lerp(THRESHOLD_UNIT, unit.share / DEFECT_THRESHOLD);
       } else {
         const lit = Math.min(1, (unit.share - DEFECT_THRESHOLD) / (1.6 - DEFECT_THRESHOLD)) ** 0.7;
         UNIT_COLOUR.copy(THRESHOLD_UNIT).lerp(LIT_UNIT, lit);
       }
-      this.units.setColorAt(unit.unit, UNIT_COLOUR);
+      parts.units.setColorAt(unit.unit, UNIT_COLOUR);
     }
-    this.units.instanceColor.needsUpdate = true;
+    parts.units.instanceColor.needsUpdate = true;
   }
 
   // --- what the interface reads --------------------------------------------
@@ -254,7 +344,10 @@ export class AsthmaScene {
    */
   darkestRegionAnchor() {
     const worst = this.solved.units.reduce((best, unit) => (unit.share < best.share ? unit : best));
-    return this.tree.leafPositions[worst.unit].clone().add(new THREE.Vector3(0.35, -0.2, 0.35));
+    return this.primary.tree.leafPositions[worst.unit]
+      .clone()
+      .add(this.primary.object.position)
+      .add(new THREE.Vector3(0.35, -0.2, 0.35));
   }
 
   getMetrics() {
@@ -386,12 +479,23 @@ export class AsthmaScene {
   }
 
   dispose() {
-    this.tree.dispose();
-    this.units.geometry.dispose();
-    this.units.material.dispose();
+    for (const parts of [this.primary, this.reference]) {
+      if (!parts) continue;
+      parts.tree.dispose();
+      parts.geometry.dispose();
+      parts.material.dispose();
+    }
     disposeObject(this.root);
   }
 }
+
+/**
+ * How far each tree slides from the midline when both are on screen.
+ *
+ * The crown of one tree is about three units across, so this clears them with
+ * a gap wide enough to read as two lungs rather than one wide one. Presentation.
+ */
+const COMPARISON_OFFSET = 4.4;
 
 /** Scratch, so the per-frame colour write allocates nothing. */
 const UNIT_COLOUR = new THREE.Color();
