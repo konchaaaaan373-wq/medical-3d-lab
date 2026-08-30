@@ -36,12 +36,18 @@ async function boot() {
     return;
   }
 
-  // Account/access is a product shell around the medical model. Auth failure
-  // must never prevent free models from starting, so AccessManager itself
-  // degrades to the implicit free entitlement.
+  // Account/access is a shell around the medical model. Start its network work
+  // in parallel, never in front of the free model. A slow or unavailable auth
+  // provider may delay a lock becoming an unlock; it may not delay anatomy or
+  // physiology becoming visible.
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
-  await access.init();
+  const accessReady = access.init().catch((error) => {
+    // AccessManager itself already degrades to the free entitlement. This catch
+    // is the final circuit breaker: billing is never allowed to become the
+    // reason a free scene failed to start.
+    console.error('access init', error);
+  });
 
   // Simple loading veil: the first frame has to compile shaders and build geometry.
   const veil = document.createElement('div');
@@ -57,6 +63,9 @@ async function boot() {
     ]);
     const app = await createApp({ stage, ui });
     installAccess({ app, access, ui, sceneId: resolveSceneId() });
+    // No await on purpose. Subscribers installed above will receive the paid
+    // grants when the parallel auth/entitlement check finishes.
+    void accessReady;
     requestAnimationFrame(() => {
       veil.classList.add('is-done');
       setTimeout(() => veil.remove(), 500);
