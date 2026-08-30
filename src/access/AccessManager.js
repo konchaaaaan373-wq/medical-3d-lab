@@ -24,6 +24,7 @@ export function createAccessManager({ ui }) {
     subscriptions: [],
     loading: false,
     error: '',
+    notice: '',
   };
   const listeners = new Set();
   let required = null;
@@ -85,6 +86,7 @@ export function createAccessManager({ ui }) {
       configured: authConfigured(),
       loading: state.loading,
       error: state.error,
+      notice: state.notice,
     });
   }
 
@@ -124,6 +126,7 @@ export function createAccessManager({ ui }) {
 
   function open(entitlement = null) {
     required = entitlement;
+    state.notice = '';
     modal.hidden = false;
     modal.classList.add('is-open');
     document.documentElement.classList.add('has-access-modal');
@@ -136,6 +139,7 @@ export function createAccessManager({ ui }) {
     modal.hidden = true;
     document.documentElement.classList.remove('has-access-modal');
     required = null;
+    state.notice = '';
     render();
   }
 
@@ -219,6 +223,8 @@ export function createAccessManager({ ui }) {
               state.user = null;
               state.grants = new Set(FREE);
               state.subscriptions = [];
+              state.error = '';
+              state.notice = '';
               notify();
             },
           },
@@ -234,6 +240,7 @@ export function createAccessManager({ ui }) {
             on: { click: openPortal },
           })
         : null,
+      state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
       state.error ? el('p', { class: 'access-error', text: state.error }) : null,
     ].filter(Boolean);
   }
@@ -241,11 +248,12 @@ export function createAccessManager({ ui }) {
   function authForm() {
     const email = el('input', { class: 'access-input', type: 'email', autocomplete: 'email', placeholder: 'email@example.com', required: '' });
     const password = el('input', { class: 'access-input', type: 'password', autocomplete: 'current-password', placeholder: 'Password (8+ characters)', minlength: '8', required: '' });
-    const message = el('p', { class: 'access-form-message' });
     const submit = async (mode) => {
-      message.textContent = '';
+      state.notice = '';
+      state.error = '';
       if (!email.value || password.value.length < 8) {
-        message.textContent = 'メールアドレスと8文字以上のパスワードを入力してください。';
+        state.notice = 'メールアドレスと8文字以上のパスワードを入力してください。';
+        notify();
         return;
       }
       try {
@@ -254,7 +262,7 @@ export function createAccessManager({ ui }) {
         if (mode === 'signup') {
           const result = await signUp(email.value.trim(), password.value);
           if (!result.session) {
-            message.textContent = '確認メールを送信しました。確認後にログインしてください。';
+            state.notice = '確認メールを送信しました。確認後にログインしてください。';
             return;
           }
         } else {
@@ -262,7 +270,7 @@ export function createAccessManager({ ui }) {
         }
         await refresh();
       } catch (error) {
-        message.textContent = error.message || 'ログインできませんでした。';
+        state.error = error.message || 'ログインできませんでした。';
       } finally {
         state.loading = false;
         notify();
@@ -275,11 +283,12 @@ export function createAccessManager({ ui }) {
       email,
       password,
       el('div', { class: 'access-auth-actions' }, [
-        el('button', { class: 'access-primary', type: 'button', text: 'Sign in / ログイン', on: { click: () => submit('signin') } }),
-        el('button', { class: 'access-secondary', type: 'button', text: 'Create account / 新規登録', on: { click: () => submit('signup') } }),
+        el('button', { class: 'access-primary', type: 'button', disabled: state.loading ? '' : null, text: 'Sign in / ログイン', on: { click: () => submit('signin') } }),
+        el('button', { class: 'access-secondary', type: 'button', disabled: state.loading ? '' : null, text: 'Create account / 新規登録', on: { click: () => submit('signup') } }),
       ]),
-      message,
-    ]);
+      state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', text: state.error }) : null,
+    ].filter(Boolean));
   }
 
   function currentAccess() {
@@ -306,6 +315,15 @@ export function createAccessManager({ ui }) {
   function planCard(plan, entitlement, title, titleJa, description, descriptionJa) {
     const unlocked = entitlement ? state.grants.has(entitlement) : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
+    const configured = authConfigured();
+    const disabled = unlocked || state.loading || !configured;
+    const cta = !configured
+      ? 'Setup required / 設定待ち'
+      : unlocked
+        ? 'Unlocked / 利用中'
+        : state.user
+          ? 'Continue to checkout / 購入へ'
+          : 'Sign in to purchase / ログインして購入';
     return el('article', { class: `access-plan${highlighted ? ' is-highlighted' : ''}` }, [
       el('div', { class: 'access-plan-title lang-en', text: title }),
       el('div', { class: 'access-plan-title lang-ja', text: titleJa }),
@@ -314,8 +332,8 @@ export function createAccessManager({ ui }) {
       el('button', {
         class: 'access-plan-cta',
         type: 'button',
-        disabled: unlocked || state.loading ? '' : null,
-        text: unlocked ? 'Unlocked / 利用中' : state.user ? 'Continue to checkout / 購入へ' : 'Sign in to purchase / ログインして購入',
+        disabled: disabled ? '' : null,
+        text: cta,
         on: { click: () => (state.user ? checkout(plan) : modal.querySelector('.access-input')?.focus()) },
       }),
     ]);
@@ -325,6 +343,7 @@ export function createAccessManager({ ui }) {
     try {
       state.loading = true;
       state.error = '';
+      state.notice = '';
       notify();
       const response = await authenticatedFetch('/.netlify/functions/create-checkout', {
         method: 'POST',
@@ -345,6 +364,7 @@ export function createAccessManager({ ui }) {
     try {
       state.loading = true;
       state.error = '';
+      state.notice = '';
       notify();
       const response = await authenticatedFetch('/.netlify/functions/create-portal', { method: 'POST' });
       const data = await response.json().catch(() => ({}));
