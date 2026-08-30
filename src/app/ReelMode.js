@@ -16,11 +16,21 @@ export const REEL_FORMATS = [
 /**
  * Runs a scene's 15-second social sequence.
  *
- * Deliberately scene-agnostic: everything specific to the content — the cues,
- * the copy, the camera tracks, the cardiac phase — comes from the object the
- * scene returns from `getReel()`. A second scene can supply its own and reuse
- * all of the machinery here (frame masking, clean mode, safe area, timeline,
- * aspect presets, overlay slots).
+ * Scene-agnostic, and enforced rather than intended: this file names no organ,
+ * no metric and no scene method. Everything specific to the content — the cues,
+ * the copy, the camera tracks, what the scene is driven to at each instant —
+ * comes from the object the scene returns from `getReel()`. Any scene can
+ * supply one and reuse all of the machinery here: frame masking, clean mode,
+ * safe area, timeline, aspect presets, overlay slots.
+ *
+ * The reel object may supply, all optional except the first four:
+ *
+ *   durationSeconds, cues, viewDirection, framing, cameraAt, overlayAt
+ *   progress          where on the scene's own axis the sequence sits
+ *   comparison        false to leave the comparison off; default is on
+ *   driveAt(t, scene) anything the scene has to be told at time `t`
+ *   readMetrics(scene) numbers the copy interpolates, read once on entry
+ *   onEnter(scene) / onExit(scene)  set-up and tear-down the sequence owns
  *
  * Two properties matter most, because the output is meant to be screen-recorded:
  *   - the whole sequence is a pure function of elapsed seconds, so the same
@@ -99,9 +109,16 @@ export function createReelMode({
   function renderAt(t) {
     if (!active) return;
 
-    scene.setCardiacPhase(reel.cardiacPhaseAt(t));
-    scene.setCongestionVisibleInComparison(reel.congestionVisibleAt(t));
-    scene.setCongestionEmphasis?.(reel.congestionEmphasisAt?.(t) ?? 0);
+    // Everything the scene has to be told at this instant. What that is — a
+    // cardiac phase, a settled lung, a solved liver — is the sequence's
+    // business, not this file's.
+    reel.driveAt?.(t, scene);
+
+    // Read after driving, and every frame rather than once on entry. A
+    // sequence whose state moves — a stimulus climbing, a lung filling — has
+    // to be able to quote the number that is on screen now, and reading it
+    // afterwards is what guarantees the caption and the picture agree.
+    metrics = readMetrics();
 
     const shot = reel.cameraAt(t, baseFraming());
     target.set(shot.targetX, shot.targetY, shot.targetZ);
@@ -119,10 +136,15 @@ export function createReelMode({
     return getLanguage() === 'en' ? 'en' : 'ja';
   }
 
+  /**
+   * The numbers the copy interpolates, read once on entry.
+   *
+   * Read from the scene rather than carried by the sequence, so a video can
+   * never quote a figure the interactive scene would not. Which figures those
+   * are is the sequence's business.
+   */
   function readMetrics() {
-    const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-    const pair = (id) => ({ normal: Number(rows[id].reference), hfref: Number(rows[id].value) });
-    return { ef: pair('ef'), edv: pair('edv'), esv: pair('esv') };
+    return reel.readMetrics?.(scene) ?? null;
   }
 
   function setFormat(id) {
@@ -163,20 +185,20 @@ export function createReelMode({
     stage.classList.add('is-reel');
     if (!overlay.element.isConnected) ui.append(overlay.element, chrome.element);
 
-    // Park the model on the state the video is about, then turn on the existing
-    // comparison so both hearts are present and already phase-locked.
+    // Park the model on the state the video is about.
     setProgress(reel.progress);
     // The video is about the modelled state, so any loading conditions the
     // viewer was exploring are set aside for its duration and restored on exit.
     scene.resetModelControls?.();
-    setComparison(true);
-    scene.setCardiacPhaseDriven(true);
+    // Most sequences want both bodies on screen; one that is about a single
+    // organ can say so.
+    if (reel.comparison !== false) setComparison(true);
+    reel.onEnter?.(scene);
 
     viewer.controls.enabled = false;
     viewer.controls.autoRotate = false;
 
     setFormat(formatId);
-    metrics = readMetrics();
     lastTimestamp = null;
     timeline.start();
   }
@@ -192,9 +214,7 @@ export function createReelMode({
 
     // Undo the sequence's own scene changes first, then hand the rest of the
     // session back to the app.
-    scene.setCongestionEmphasis?.(0);
-    scene.setCardiacPhaseDriven(false);
-    scene.setCongestionVisibleInComparison(true);
+    reel.onExit?.(scene);
     viewer.controls.enabled = true;
 
     if (sessionSnapshot) restoreState?.(sessionSnapshot);

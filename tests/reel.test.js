@@ -102,14 +102,16 @@ test('the slowed beat starts at end-diastole and reaches end-systole on screen',
   const normalStep = cardiacPhaseAt(3.5) - cardiacPhaseAt(3.0);
   assert.ok(slowStep < Math.abs(normalStep), 'the featured beat should run slower than the rest');
 
-  // The ED and ES markers light up around those moments and nowhere else.
+  // The volume marker lights up around those moments and nowhere else, and it
+  // names whichever of the two the beat is actually at. One slot rather than
+  // two: the storyboard picks, the overlay lays out.
   const atEd = overlayAt(beat.at, context());
-  assert.ok(atEd.endDiastole.opacity > 0.3, 'the ED marker should be up at end-diastole');
+  assert.ok(atEd.marker.opacity > 0.3, 'the marker should be up at end-diastole');
+  assert.equal(atEd.marker.text, REEL_COPY.beat.endDiastole.tag);
   const atEs = overlayAt(esTime, context());
-  assert.ok(atEs.endSystole.opacity > 0.5, 'the ES marker should be up at end-systole');
-  const outside = overlayAt(3.0, context());
-  assert.equal(outside.endDiastole.opacity, 0);
-  assert.equal(outside.endSystole.opacity, 0);
+  assert.ok(atEs.marker.opacity > 0.5, 'the marker should be up at end-systole');
+  assert.equal(atEs.marker.text, REEL_COPY.beat.endSystole.tag);
+  assert.equal(overlayAt(3.0, context()).marker.opacity, 0);
 });
 
 test('cardiac phase always stays in range', () => {
@@ -124,10 +126,11 @@ test('every number on screen comes from the scene state', () => {
   const frame = overlayAt(1.0, context());
   assert.ok(frame.title.text.includes('61') && frame.title.text.includes('24'));
   const compare = overlayAt(4.0, context());
-  assert.equal(compare.cards.normal.ef, METRICS.ef.normal);
-  assert.equal(compare.cards.hfref.ef, METRICS.ef.hfref);
-  assert.equal(compare.cards.normal.edv, METRICS.edv.normal);
-  assert.equal(compare.cards.hfref.esv, METRICS.esv.hfref);
+  const [normal, hfref] = compare.cards.items;
+  assert.equal(normal.headline, METRICS.ef.normal);
+  assert.equal(hfref.headline, METRICS.ef.hfref);
+  assert.ok(normal.rows.some((row) => row.includes(String(METRICS.edv.normal))));
+  assert.ok(hfref.rows.some((row) => row.includes(String(METRICS.esv.hfref))));
 
   // And the copy itself must not contain baked-in figures.
   const copy = JSON.stringify(REEL_COPY);

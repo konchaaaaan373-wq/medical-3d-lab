@@ -31,6 +31,7 @@ import {
   STORY_LABEL,
 } from '../../../../data/asthma.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../../../../data/asthmaTeaching.js';
+import { REEL_CUES, REEL_DURATION, cameraAt, overlayAt, stimulusAt } from './reelStoryboard.js';
 
 /**
  * Scene: asthma — where the patchiness comes from.
@@ -462,6 +463,60 @@ export class AsthmaScene {
 
   getCausalStory() {
     return CAUSAL_STORY;
+  }
+
+  /**
+   * The fifteen-second social sequence.
+   *
+   * Everything specific to it lives in `reelStoryboard.js`; this only hands
+   * over what `ReelMode` needs and the three hooks that let a sequence drive
+   * this particular scene.
+   *
+   * `progress: 0` because the sequence sets the dose itself, second by second,
+   * and starting anywhere else would make the first frame a jump.
+   */
+  getReel() {
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      progress: 0,
+      viewDirection: new THREE.Vector3(0.09, 0.1, 1).normalize(),
+      framing: {
+        // World half-extents the base framing must hold: two crowns about three
+        // units across sitting either side of the midline, plus room for the
+        // dolly-in to have somewhere to go.
+        halfWidth: 9.6,
+        halfHeight: 5.4,
+        minimumDistance: 17,
+        target: new THREE.Vector3(0, 0.2, 0),
+      },
+      cameraAt,
+      overlayAt,
+
+      /**
+       * The dose at this instant, and nothing else.
+       *
+       * The model behind this scene is a stateless equilibrium solve, so
+       * setting the stimulus is the whole of driving it: the same second always
+       * gives the same lung, which is what makes the sequence reproducible.
+       */
+      driveAt(t, scene) {
+        scene.setProgress(stimulusAt(t));
+      },
+
+      /**
+       * Both trees' numbers, read from the same places the interactive read-out
+       * reads them so a caption can never quote a figure the panel would not.
+       */
+      readMetrics(scene) {
+        const rows = (solved) => ({
+          defects: Math.round(solved.defectFraction * 100),
+          resistance: solved.resistanceRatio.toFixed(1),
+          ventilation: Math.round(solved.totalVentilation * 100),
+        });
+        return { asthma: rows(scene.solved), normal: rows(scene.referenceSolve()) };
+      },
+    };
   }
 
   getLearningModules() {

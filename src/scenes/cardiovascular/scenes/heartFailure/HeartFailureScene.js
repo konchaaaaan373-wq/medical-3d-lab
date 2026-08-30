@@ -740,11 +740,43 @@ export class HeartFailureScene {
         minimumDistance: 18,
         target: new THREE.Vector3(0, -2.2, 0.3),
       },
-      cardiacPhaseAt,
       cameraAt,
-      congestionVisibleAt,
-      congestionEmphasisAt,
       overlayAt,
+
+      /**
+       * What this scene has to be told at each instant of the sequence.
+       *
+       * `ReelMode` knows about cameras, formats and overlays and nothing about
+       * hearts, so the three scene calls this sequence needs live here. Both
+       * hearts are driven from one phase so they reach end-diastole together
+       * even though the model gives them different rates; the congestion
+       * overlay comes and goes with its beat.
+       */
+      driveAt(t, scene) {
+        scene.setCardiacPhase(cardiacPhaseAt(t));
+        scene.setCongestionVisibleInComparison(congestionVisibleAt(t));
+        scene.setCongestionEmphasis(congestionEmphasisAt(t));
+      },
+
+      /**
+       * The figures the copy interpolates, read from the scene's own read-out
+       * so a video can never quote a number the interactive scene would not.
+       */
+      readMetrics(scene) {
+        const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+        const pair = (id) => ({ normal: Number(rows[id].reference), hfref: Number(rows[id].value) });
+        return { ef: pair('ef'), edv: pair('edv'), esv: pair('esv') };
+      },
+
+      /** Hand the beat to the sequence, and hand it back on the way out. */
+      onEnter(scene) {
+        scene.setCardiacPhaseDriven(true);
+      },
+      onExit(scene) {
+        scene.setCongestionEmphasis(0);
+        scene.setCardiacPhaseDriven(false);
+        scene.setCongestionVisibleInComparison(true);
+      },
     };
   }
 

@@ -236,35 +236,35 @@ export function overlayAt(t, { language, metrics }) {
       text: pick(language, REEL_COPY.hook.subtitle, REEL_COPY.hook.subtitleJa),
       opacity: cueOpacity(t, 0.45, 1.95, 0.4),
     },
+    // Two cards, in the order they sit on screen: the normal heart on the left,
+    // the failing one on the right. EF is the headline and the two volumes are
+    // the rows — SV, CO and wall thickness stay in the interactive UI.
     cards: {
       opacity: cueOpacity(t, 1.95, HOLD_PAST_END, 0.4),
-      normal: {
-        label: pick(language, REEL_COPY.cards.normal.label, REEL_COPY.cards.normal.labelJa),
-        ef: metrics.ef.normal,
-        edv: metrics.edv.normal,
-        esv: metrics.esv.normal,
-      },
-      hfref: {
-        label: pick(language, REEL_COPY.cards.hfref.label, REEL_COPY.cards.hfref.labelJa),
-        ef: metrics.ef.hfref,
-        edv: metrics.edv.hfref,
-        esv: metrics.esv.hfref,
-      },
+      items: [
+        {
+          label: pick(language, REEL_COPY.cards.normal.label, REEL_COPY.cards.normal.labelJa),
+          headlineKey: 'EF',
+          headline: metrics.ef.normal,
+          headlineUnit: '%',
+          rows: [`EDV ${metrics.edv.normal} mL`, `ESV ${metrics.esv.normal} mL`],
+        },
+        {
+          label: pick(language, REEL_COPY.cards.hfref.label, REEL_COPY.cards.hfref.labelJa),
+          headlineKey: 'EF',
+          headline: metrics.ef.hfref,
+          headlineUnit: '%',
+          rows: [`EDV ${metrics.edv.hfref} mL`, `ESV ${metrics.esv.hfref} mL`],
+        },
+      ],
     },
-    residual: {
+    badge: {
       text: pick(language, REEL_COPY.residual.label, REEL_COPY.residual.labelJa),
       opacity: cueOpacity(t, 3.5, 6.0, 0.4),
     },
-    endDiastole: {
-      text: REEL_COPY.beat.endDiastole.tag,
-      sub: pick(language, REEL_COPY.beat.endDiastole.label, REEL_COPY.beat.endDiastole.labelJa),
-      opacity: beatWindow ? volumeMarker(phase, 'ed') * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
-    },
-    endSystole: {
-      text: REEL_COPY.beat.endSystole.tag,
-      sub: pick(language, REEL_COPY.beat.endSystole.label, REEL_COPY.beat.endSystole.labelJa),
-      opacity: beatWindow ? volumeMarker(phase, 'es') * cueOpacity(t, 5.75, 9.5, 0.25) : 0,
-    },
+    // One marker slot, so the storyboard rather than the overlay decides which
+    // of end-diastole and end-systole is the one to show at this instant.
+    marker: markerAt(t, phase, beatWindow, language),
     caption: captionAt(t, language),
     note: {
       text: congestionVisibleAt(t)
@@ -272,6 +272,26 @@ export function overlayAt(t, { language, metrics }) {
         : pick(language, REEL_COPY.note.text, REEL_COPY.note.textJa),
       opacity: cueOpacity(t, 0.4, HOLD_PAST_END, 0.5),
     },
+  };
+}
+
+/**
+ * Which volume marker is on screen, and how strongly.
+ *
+ * End-diastole and end-systole are never both wanted at once — the beat is at
+ * one or the other — so the choice is made here rather than being handed to the
+ * overlay as two competing slots.
+ */
+function markerAt(t, phase, beatWindow, language) {
+  const window = beatWindow ? cueOpacity(t, 5.75, 9.5, 0.25) : 0;
+  const endDiastole = window * volumeMarker(phase, 'ed');
+  const endSystole = window * volumeMarker(phase, 'es');
+  const showEd = endDiastole >= endSystole;
+  const copy = showEd ? REEL_COPY.beat.endDiastole : REEL_COPY.beat.endSystole;
+  return {
+    text: copy.tag,
+    sub: pick(language, copy.label, copy.labelJa),
+    opacity: Math.max(endDiastole, endSystole),
   };
 }
 
