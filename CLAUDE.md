@@ -9,6 +9,9 @@ npm run build      # vite build
 ```
 
 - `src/catalog/` — **どんな system / organ / scene が存在するか**。ここが唯一の登録先
+- `src/models/` — **医学モデル層**。純粋な JS で、`three` も DOM も import しません。
+  `node --test` だけで検証できることが条件です。詳細は
+  [`src/models/README.md`](src/models/README.md)
 - `src/app/` — シーンと UI の接続。`App.js` はシーンの中身を知らない
 - `src/scenes/<system>/organs/<organ>.js` — 臓器のジオメトリ。疾患シーン間で再利用する
 - `src/scenes/<system>/scenes/<scene>/` — 1 シーン = 1 モジュール
@@ -17,6 +20,10 @@ npm run build      # vite build
   描画コードに文章を書かない
 - `src/components/` — 素の DOM の UI パーツ
 - `tests/` — カタログ整合性と医学モデルの整合性テスト（`node --test`）
+- `docs/model-evidence/<scene>.md` — その主張がどこから来たか
+  （Claim → Source → Implementation → Assumption → Validation）
+- `docs/model-cards/<scene>.md` — そのモデルが答える問い、答えない問い、
+  誤解を生みうる場所
 
 ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
 （別名 `#/explore`）が全身の Organ Explorer。ルートは `src/catalog/scenes.js`
@@ -54,7 +61,9 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
   「この機能はどの層の、どのユーザー価値を改善するのか？」に答えられない機能は
   追加しない。Interactive Web が中核、SNS は入口、Educational は定着
 - **Heart Failure is the reference implementation.** 深く作り込むときは
-  `src/scenes/cardiovascular/scenes/heartFailure/` の構造を基準にする
+  `src/scenes/cardiovascular/scenes/heartFailure/` の構造を基準にする。
+  モデル層を分離した新しい書き方は `src/models/copd.js` +
+  `src/scenes/respiratory/scenes/copd/` を参照
 
 ### Organ と Disease を混ぜない
 
@@ -72,6 +81,11 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 
 **prototype は「形は概略、動きは仮」という約束です。** prototype のまま
 臨床的な数値を出したり、精度を主張したりしないでください。
+
+**`alpha` 以上のシーンは、モデル層・evidence dossier・model card・
+scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠けていれば、
+そのシーンは数値を出す資格がありません。バッジが外れる（`production`）
+条件には**臨床レビュー**が含まれます。レビューを受けずに上げないでください。
 
 ### 医学表現
 
