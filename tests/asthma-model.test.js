@@ -64,11 +64,28 @@ test('each generation is narrower than the last by the homothety ratio', () => {
   }
 });
 
-test('smooth muscle is a small-airway thing', () => {
-  const shareAt = (generation) => TREE.find((branch) => branch.generation === generation).muscleShare;
-  assert.equal(shareAt(0), 0, 'the trachea has cartilage, not muscle, in this model');
-  assert.ok(shareAt(2) > 0 && shareAt(2) < 1, 'and the transition is gradual');
-  assert.equal(shareAt(GENERATIONS - 1), 1);
+test('smooth muscle is present at every generation, and cartilage is what falls away', () => {
+  // Two facts, kept separate on purpose. Asthma is a disease of the whole
+  // airway tree; the muscle runs from the trachea to the terminal bronchioles.
+  // What changes distally is how much of its shortening reaches the lumen.
+  const at = (generation) => TREE.find((branch) => branch.generation === generation);
+  for (let generation = 0; generation < GENERATIONS; generation++) {
+    assert.ok(
+      at(generation).smoothMuscleFraction > 0,
+      `generation ${generation} must carry smooth muscle; asthma is not a small-airway disease`
+    );
+  }
+  assert.ok(at(0).cartilageSupport > 0.5, 'the trachea is held open by complete cartilage rings');
+  assert.equal(at(GENERATIONS - 1).cartilageSupport, 0, 'and a bronchiole has no cartilage at all');
+  // The product rises distally without ever being zero centrally.
+  for (let generation = 1; generation < GENERATIONS; generation++) {
+    assert.ok(
+      at(generation).constrictibility >= at(generation - 1).constrictibility,
+      `constrictibility fell between generations ${generation - 1} and ${generation}`
+    );
+  }
+  assert.ok(at(0).constrictibility > 0, 'the central airways still narrow, just much less');
+  assert.equal(at(GENERATIONS - 1).constrictibility, 1);
 });
 
 test('the lung is heterogeneous, and it is the same heterogeneous lung every time', () => {
@@ -181,9 +198,13 @@ test('the patchiness is the feedback, not the scatter', () => {
   assert.ok(withoutFeedback.medianCalibre < 0.9, 'the stimulus was still applied');
 });
 
-test('a deep breath does part of what cutting the feedback does, and by the same route', () => {
+test('stronger parenchymal tethering does part of what cutting the feedback does', () => {
+  // A statement about the mechanical term, and only about the mechanical term.
+  // It says nothing about what a deep inspiration would do to a person with
+  // asthma, where the bronchodilator response to a deep breath is impaired or
+  // absent — see the model card.
   const normal = solveAsthma(CHALLENGED);
-  const stretched = solveAsthma({ ...CHALLENGED, inflation: 1.3 });
+  const stretched = solveAsthma({ ...CHALLENGED, lungInflation: 1.3 });
   assert.ok(
     stretched.heterogeneity < normal.heterogeneity * 0.9,
     `holding the airways stretched should reduce heterogeneity: ${normal.heterogeneity} → ${stretched.heterogeneity}`
@@ -238,12 +259,12 @@ test('patchiness is a stage, not the end state', () => {
 
 // --- the controls ----------------------------------------------------------
 
-test('a deep breath opens the airways, and that is the tethering doing it', () => {
-  const shallow = solveAsthma({ ...CHALLENGED, inflation: 0.8 });
+test('more lung inflation means more tethering means wider airways', () => {
+  const shallow = solveAsthma({ ...CHALLENGED, lungInflation: 0.8 });
   const normal = solveAsthma(CHALLENGED);
-  const deep = solveAsthma({ ...CHALLENGED, inflation: 1.3 });
-  assert.ok(deep.resistanceRatio < normal.resistanceRatio, 'a deep breath lowers resistance');
-  assert.ok(normal.resistanceRatio < shallow.resistanceRatio, 'and a shallow one raises it');
+  const deep = solveAsthma({ ...CHALLENGED, lungInflation: 1.3 });
+  assert.ok(deep.resistanceRatio < normal.resistanceRatio, 'more stretch lowers resistance');
+  assert.ok(normal.resistanceRatio < shallow.resistanceRatio, 'and less stretch raises it');
   assert.ok(deep.defectFraction < normal.defectFraction, 'and it recruits some of the dark regions');
 });
 

@@ -7,12 +7,26 @@
  * read. If the physiology changed, the walk-through would say something
  * different, and the tests in `tests/copd-scene.test.js` re-derive every stored
  * answer here from the model so that it cannot quietly stop being true.
+ *
+ * That is internal consistency, and by itself it is not enough. An earlier
+ * version of this file was internally consistent and medically wrong: the
+ * model answered a question, the lesson was written around the answer, the
+ * tests confirmed the lesson matched the model, and the resulting general
+ * proposition — that narrowing airways does not trap gas — was false. The
+ * external constraints the model now has to satisfy are written down as tests
+ * of their own, in `tests/respiratory-physiology.test.js`.
  */
 
 /** Where the walk-through starts: an ordinary lung, at rest. */
-const HEALTHY = { airwayResistance: 1, elasticRecoil: 1, expiratoryEffort: 1, bronchodilation: 0 };
+const HEALTHY = { airwayResistance: 1, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
 /** And the lung it is about. */
-const OBSTRUCTED = { airwayResistance: 3, elasticRecoil: 0.6, expiratoryEffort: 1, bronchodilation: 0 };
+const OBSTRUCTED = { airwayResistance: 3, elasticRecoil: 0.6, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
+/**
+ * Narrowed airways in a lung whose elastic recoil is intact — the condition
+ * induced bronchoconstriction produces, and the one that shows that a longer
+ * time constant is on its own enough to raise end-expiratory volume.
+ */
+const NARROWED = { airwayResistance: 2, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
 
 /**
  * Eight steps, each one the cause of the next.
@@ -31,12 +45,12 @@ export const CAUSAL_STORY = {
       heading: 'Breathing out is passive',
       headingJa: '呼気は受動的です',
       body:
-        'Inspiration is muscular; expiration, at rest, is the lung giving back what inspiration stored in it. Nothing pushes. That is why how fast a lung empties is a property of the lung, and not of how much the person wants to.',
+        'Inspiration is muscular; expiration, at rest, is the lung giving back what inspiration stored in it. Nothing pushes. That is why how fast a lung empties is, at rest, a property of the lung rather than of how much the person wants it to.',
       bodyJa:
-        '吸気は筋の仕事ですが、安静時の呼気は、吸気で蓄えられた分を肺が返しているだけです。押し出しているわけではありません。だからこそ、肺が吐き切る速さは肺自身の性質であって、本人の意思の問題ではありません。',
+        '吸気は筋の仕事ですが、安静時の呼気は、吸気で蓄えられた分を肺が返しているだけです。押し出しているわけではありません。だからこそ、安静時に肺が吐き切る速さは、本人の意思ではなく肺自身の性質で決まります。',
       controls: { ...HEALTHY },
       progress: 0,
-      watch: ['tau', 'te', 'tauCount'],
+      watch: ['tau', 'te', 'tauCount', 'pexp'],
       chart: 'volume-time',
     },
     {
@@ -48,29 +62,12 @@ export const CAUSAL_STORY = {
         textJa: '呼気が受動的である以上、その速さは、気体が通る抵抗と、それを保持しているコンプライアンスで決まります。',
       },
       body:
-        'Narrow the airways and raise the compliance — obstruction and lost elastic recoil, the two halves of COPD — and the time constant goes from about half a second to nearly three. Nothing else about the lung has changed yet.',
+        'Narrow the airways alone — resistance doubled, elastic recoil untouched — and the time constant doubles with it. Either term will do this: raising R lengthens τ exactly as much as raising C does. In COPD both have moved, and later steps use a lung where they have; here it is only the airways.',
       bodyJa:
-        '気道を狭くし、コンプライアンスを上げる。閉塞と弾性収縮力の低下という COPD の 2 つの要素を与えると、時定数は約 0.5 秒から 3 秒近くまで延びます。この時点で、肺について変えたのはそれだけです。',
-      controls: { ...OBSTRUCTED },
+        '気道だけを狭くします。抵抗を 2 倍にし、弾性収縮力には手を触れません。それだけで時定数も 2 倍になります。τ = R·C ですから、R を上げても C を上げても同じだけ延びます。COPD では両方が動いていますし、後の段ではその肺を使いますが、ここで変えたのは気道だけです。',
+      controls: { ...NARROWED },
       progress: 0,
       watch: ['tau', 'te', 'tauCount'],
-      chart: 'volume-time',
-    },
-    {
-      id: 'enough-time',
-      heading: 'At rest, there is still just enough time',
-      headingJa: '安静時なら、時間はまだ足りています',
-      because: {
-        text: 'Because a resting breath is small and expiration has nearly three seconds to deal with it.',
-        textJa: '安静時の一回換気量は小さく、呼気には約 3 秒が与えられているためです。',
-      },
-      body:
-        'The lung is sitting higher than a normal one would — the lost recoil alone did that — but it is not still filling. Each breath is given back before the next one starts, and the volume it rests at is steady.',
-      bodyJa:
-        'この肺は正常肺より高い容量に位置していますが、これは弾性収縮力の低下そのものによるものです。まだ「溜まり続けて」はいません。各呼吸は次の吸気が始まる前に吐き切られ、安静位は一定に保たれています。',
-      controls: { ...OBSTRUCTED },
-      progress: 0,
-      watch: ['eelv', 'ic', 'tauCount'],
       chart: 'volume-time',
     },
     {
@@ -82,12 +79,12 @@ export const CAUSAL_STORY = {
         textJa: '呼吸が速くなると、他のどの相よりも先に呼気時間が削られるためです。',
       },
       body:
-        'Light exertion asks for eighteen litres a minute. The rate rises, the cycle shortens, and expiration — the long, passive part — gives up most of the time that was lost. The lung is now being asked to empty in fewer time constants than it needs.',
+        'The rate rises with the ventilation being asked for, the cycle shortens, and expiration — the long, passive part — gives up most of the time that was lost. Emptying needs about three time constants; watch how few are left.',
       bodyJa:
-        '軽い運動では分時換気量 18 L が要求されます。呼吸数が上がり周期が短くなると、長く受動的な呼気相が、失われた時間のほとんどを負担します。こうして肺は、必要な時定数の数を下回る時間で吐き切ることを求められます。',
-      controls: { ...OBSTRUCTED },
-      progress: 0.3,
-      watch: ['te', 'tauCount', 'eelv'],
+        '要求換気量が上がると呼吸数が上がり、周期が短くなります。そのとき削られる時間の大半を負担するのは、長く受動的な呼気相です。吐き切るにはおよそ 3 τ が必要ですが、残りがどれだけかを見てください。',
+      controls: { ...NARROWED },
+      progress: 0.6,
+      watch: ['te', 'tau', 'tauCount', 'eelv'],
       chart: 'volume-time',
     },
     {
@@ -99,20 +96,56 @@ export const CAUSAL_STORY = {
         textJa: '次の吸気は、前の呼気が到達したところから始まるためです。',
       },
       body:
-        'Breath after breath, the volume the lung rests at climbs — until the extra recoil at that higher volume is finally enough to push the tidal volume out in the time available. That balance point is dynamic hyperinflation, and it is where the lung has been left here. Nothing in the model sets it; drag the demand slider yourself and you can watch the climb take a dozen breaths to arrive.',
+        'Breath after breath, the volume the lung rests at climbs — until the extra recoil at that higher volume is finally enough to push the tidal volume out in the time available. That balance point is dynamic hyperinflation. Note what has *not* happened here: this lung has all of its elastic recoil, and nothing is leaving at the flow ceiling. Narrowed airways and a short expiration were sufficient on their own. This is why an asthma attack hyperinflates a lung whose recoil is normal.',
       bodyJa:
-        '呼吸を重ねるごとに安静位は上昇していき、やがて、その高い容量で得られる余分な弾性収縮力が、与えられた時間内に一回換気量を押し出せるところで釣り合います。この均衡点が動的過膨張であり、ここではその状態を表示しています。モデルの中でこの値を設定している箇所はありません。要求換気量のスライダーを自分で動かせば、この上昇が十数呼吸かけて起きる様子を見られます。',
-      controls: { ...OBSTRUCTED },
+        '呼吸を重ねるごとに安静位は上昇していき、やがて、その高い容量で得られる余分な弾性収縮力が、与えられた時間内に一回換気量を押し出せるところで釣り合います。この均衡点が動的過膨張です。ここで「起きていないこと」に注意してください。この肺の弾性収縮力は正常で、流量上限に達している呼気もありません。気道の狭窄と呼気時間の不足だけで十分だったのです。弾性収縮力が正常な肺でも喘息発作が過膨張を起こすのは、このためです。',
+      controls: { ...NARROWED },
       progress: 0.6,
-      watch: ['eelv', 'ic', 'vt'],
+      watch: ['eelv', 'ic', 'limited'],
       chart: 'volume-time',
+    },
+    {
+      id: 'effort',
+      heading: 'Pushing on the way out can undo some of it',
+      headingJa: '呼気を押し出せば、ある程度は取り戻せます',
+      because: {
+        text: 'Because expiratory muscle pressure adds to elastic recoil at the alveolus, and more driving pressure across the same resistance is more flow.',
+        textJa:
+          '呼気筋圧は肺胞で弾性収縮力に上乗せされ、同じ抵抗にかかる駆動圧が増えれば流量も増えるためです。',
+      },
+      body:
+        'Add fifteen centimetres of water of expiratory muscle pressure to the same lung at the same workload. The resting volume comes back down — a long way down. Effort is a real mechanism and it is a separate one: nothing about the resistance, the recoil or the expiratory time has changed. This is why a lung that has only narrowed airways can defend its operating volume, if the person pushes.',
+      bodyJa:
+        '同じ肺・同じ負荷に、15 cmH₂O の呼気筋圧を加えます。安静位は下がります。しかもかなり下がります。呼気努力は実在する機序であり、独立した機序です。抵抗も弾性収縮力も呼気時間も変えていません。気道が狭くなっただけの肺が、本人が押し出せば動作肺気量を守れるのは、このためです。',
+      controls: { ...NARROWED, expiratoryPressureCmH2O: 15 },
+      progress: 0.6,
+      watch: ['pexp', 'eelv', 'ic', 'limited'],
+      chart: 'flow-volume',
+    },
+    {
+      id: 'recoil',
+      heading: 'Losing elastic recoil closes that door',
+      headingJa: '弾性収縮力を失うと、その手段が使えなくなります',
+      because: {
+        text: 'Because the maximal expiratory flow is elastic recoil divided by the resistance of the airway upstream of the equal pressure point — and losing recoil lowers the numerator and raises the denominator at once.',
+        textJa:
+          '最大呼気流量は「弾性収縮力 ÷ equal pressure point より上流の気道抵抗」であり、弾性収縮力を失うと分子が下がると同時に分母が上がるためです。',
+      },
+      body:
+        'Take the recoil down to sixty per cent — emphysema, on top of the same narrowed airways. Three things happen together: the time constant lengthens again, the relaxed volume itself rises, and the flow ceiling drops into the range tidal breathing needs. Now most of the breath is leaving at the ceiling, and the fifteen centimetres of water that worked a moment ago moves almost nothing. Raising pleural pressure raises the pressure driving the gas out and the pressure squeezing the airway shut by the same amount, and past the equal pressure point the two cancel.',
+      bodyJa:
+        '弾性収縮力を 60% まで下げます。同じ狭い気道に肺気腫が加わった状態です。3 つのことが同時に起こります。時定数がさらに延び、弛緩位そのものが上がり、そして流量上限が安静換気の必要とする範囲まで下がります。いまや呼気の大半が上限に達しており、先ほど効いた 15 cmH₂O はほとんど何も動かしません。胸腔内圧を上げると、気体を押し出す圧と気道を押しつぶす圧が同じだけ上がり、equal pressure point より下流では互いに打ち消し合うからです。',
+      controls: { ...OBSTRUCTED, expiratoryPressureCmH2O: 15 },
+      progress: 0.6,
+      watch: ['limited', 'eelv', 'tau', 'ic'],
+      chart: 'flow-volume',
     },
     {
       id: 'no-room',
       heading: 'The room to breathe in closes from above',
       headingJa: '吸う余地が、上から狭まります',
       because: {
-        text: 'Because total lung capacity has not moved, and the floor the breath starts from has.',
+        text: 'Because total lung capacity has barely moved, and the floor the breath starts from has.',
         textJa: '全肺気量はほとんど変わらないのに、呼吸を始める床の高さが上がったためです。',
       },
       body:
@@ -123,24 +156,6 @@ export const CAUSAL_STORY = {
       progress: 0.6,
       watch: ['ic', 'eelv', 'tlc'],
       chart: 'volume-time',
-    },
-    {
-      id: 'effort',
-      heading: 'And pushing harder does nothing',
-      headingJa: 'そして、強く吐いても変わりません',
-      because: {
-        text: 'Because the maximal expiratory flow is set by elastic recoil and by the airway upstream of the equal pressure point — and neither of them is effort.',
-        textJa:
-          '最大呼気流量は、弾性収縮力と equal pressure point より上流の気道で決まり、そのどちらも「努力」ではないためです。',
-      },
-      body:
-        'Double the expiratory effort and watch the flow-volume loop: the breath is already running along the ceiling, and there is nothing above it to reach. In a lung with normal recoil the same doubling would move a great deal of gas. This is what "effort-independent" means, and it is why telling someone to breathe out harder is not a treatment.',
-      bodyJa:
-        '呼気努力を 2 倍にして流量-容量曲線を見てください。呼吸はすでに上限に沿って進んでおり、その上に到達できる余地はありません。弾性収縮力が正常な肺なら、同じ 2 倍化で大量の気体が動きます。これが「努力非依存」ということであり、「もっと強く吐いて」が治療にならない理由です。',
-      controls: { ...OBSTRUCTED, expiratoryEffort: 2 },
-      progress: 0.6,
-      watch: ['limited', 'ic', 'eelv'],
-      chart: 'flow-volume',
     },
     {
       id: 'ceiling',
@@ -155,7 +170,7 @@ export const CAUSAL_STORY = {
         'A bigger breath needs inspiratory capacity, which has gone. A faster one shortens expiration further, which makes it worse. A harder push meets the ceiling. The drive is at its maximum and the ventilation being demanded is not being produced — which is what stops the walk, and it is nothing to do with the legs.',
       bodyJa:
         '大きく吸うには最大吸気量が要りますが、それは失われています。速く吸えば呼気時間がさらに短くなり、事態は悪化します。強く吐けば上限に当たります。呼吸ドライブは最大に達したまま、要求された換気量は満たされません。歩行が止まるのはこのためであり、脚の問題ではありません。',
-      controls: { ...OBSTRUCTED, expiratoryEffort: 1 },
+      controls: { ...OBSTRUCTED },
       progress: 1,
       watch: ['ve', 'demand', 'pmus', 'ic'],
       chart: 'volume-time',
@@ -167,54 +182,57 @@ export const CAUSAL_STORY = {
  * Three challenges: predict, do it to the model, see what happened, find out why.
  *
  * Every stored answer is checked against the model by
- * `tests/copd-scene.test.js`. A lesson here can only be wrong by being badly
- * worded — it cannot be wrong about what the model does.
+ * `tests/copd-scene.test.js`, and the propositions the challenges teach are
+ * checked against the physiology literature by
+ * `tests/respiratory-physiology.test.js`. A lesson here has to survive both.
  */
 export const LEARNING_MODULES = [
   {
-    id: 'obstruction-alone',
-    title: 'Whether narrow airways are enough on their own',
-    titleJa: '気道が狭いだけで足りるのか',
-    short: 'Narrow airways',
-    shortJa: '気道狭窄',
+    id: 'resistance-alone',
+    title: 'What narrowing the airways does on its own',
+    titleJa: '気道を狭くするだけで何が起きるか',
+    short: 'Resistance',
+    shortJa: '気道抵抗',
     setup: { progress: 0.6, ...HEALTHY },
     question: {
-      text: 'Someone with ordinary lungs is working steadily, asking for about thirty litres a minute. Narrow their airways to three times the resistance — and change nothing else. What happens to the volume their lung rests at between breaths?',
+      text: 'Someone with ordinary lungs is working steadily, asking for about thirty litres a minute. Double their airway resistance — elastic recoil untouched, breathing pattern unchanged, expiratory effort unchanged. What happens to the volume their lung rests at between breaths?',
       textJa:
-        '正常な肺の人が、分時換気量 30 L 程度を要する運動を続けています。気道抵抗だけを 3 倍にし、他は何も変えません。呼吸と呼吸の間に肺が落ち着く容量はどうなりますか。',
+        '正常な肺の人が、分時換気量 30 L 程度を要する運動を続けています。気道抵抗だけを 2 倍にします。弾性収縮力はそのまま、呼吸パターンもそのまま、呼気努力もそのままです。呼吸と呼吸の間に肺が落ち着く容量はどうなりますか。',
       options: [
-        { id: 'rises', label: 'It rises — gas gets trapped', labelJa: '上がる（空気が閉じ込められる）' },
+        { id: 'rises', label: 'It rises — gas is not all given back', labelJa: '上がる（吐き切れない分が残る）' },
         { id: 'barely', label: 'It barely moves', labelJa: 'ほとんど変わらない' },
         { id: 'falls', label: 'It falls slightly', labelJa: 'わずかに下がる' },
       ],
-      answer: 'falls',
+      answer: 'rises',
     },
     manipulation: {
       control: 'airwayResistance',
-      to: 3,
+      to: 2,
       seconds: 3,
       action: 'Narrow the airways',
       actionJa: '気道を狭くする',
-      text: 'Raise airway resistance to three times normal. Elastic recoil stays where it is.',
-      textJa: '気道抵抗を正常の 3 倍まで上げます。弾性収縮力はそのままです。',
-      hint: 'Watch the time constant first — it trebles. Then watch the resting volume, which is the surprise.',
-      hintJa: 'まず時定数を見てください（3 倍になります）。次に安静位を見てください。そこが意外なところです。',
+      text: 'Raise airway resistance to twice normal. Nothing else moves.',
+      textJa: '気道抵抗を正常の 2 倍まで上げます。ほかは何も動かしません。',
+      hint: 'Watch the time constant, then how many of them expiration is being given, then the resting volume.',
+      hintJa: 'まず時定数、次に呼気時間がその何倍あるか、最後に安静位を見てください。',
     },
     watch: ['tau', 'tauCount', 'eelv', 'limited'],
     observation: {
-      text: 'The time constant trebled and expiration no longer has enough of them — and the lung did not trap a thing. If anything it is resting slightly lower than before.',
+      text: 'The time constant doubled, the time available did not, and the resting volume climbed. The fraction of the breath leaving at the flow ceiling stayed at zero throughout.',
       textJa:
-        '時定数は 3 倍になり、呼気時間はもはや必要な τ の数を満たしていません。それでも肺は何も閉じ込めませんでした。むしろ以前よりわずかに低い位置で落ち着いています。',
+        '時定数は 2 倍になり、使える時間は変わらず、安静位は上昇しました。流量上限に達して出ていく呼気の割合は、最初から最後までゼロのままです。',
     },
     explanation: {
-      text: 'A long time constant is only half of it. This lung still has its elastic recoil, so its flow ceiling is far above anything tidal breathing asks for — and that means the extra expiratory effort that comes with the raised drive still *works*. The person simply pushes the air out, and the arithmetic about time never gets to bite. Narrow airways alone do not trap gas in a lung that can still be emptied by effort.',
+      text: 'τ = R·C, and R is half of that product. A lung that needs about three time constants to empty, and is given fewer, does not finish; what it did not give back is there when the next breath starts, and the resting volume climbs until the extra recoil at the higher volume closes the gap. Elastic recoil never changed and flow limitation never appeared, so neither of them is part of this. Airway narrowing on its own, at a fixed breathing pattern and a fixed expiratory effort, is sufficient — which is why induced bronchoconstriction produces dynamic hyperinflation in asthma, in lungs whose recoil is normal.',
       textJa:
-        '時定数が長いことは、話の半分でしかありません。この肺には弾性収縮力が残っているため、流量上限は安静換気が要求する流量よりはるかに上にあります。つまり、上がったドライブに伴う余分な呼気努力が「効いてしまう」のです。本人は単に押し出せばよく、時間の算数は効いてきません。努力で吐き切れる肺では、気道が狭いだけでは空気は閉じ込められません。',
-      footnote: 'The fraction of the breath leaving at the ceiling stayed near zero. That is the number that matters.',
-      footnoteJa: '上限で出ていく呼気の割合はほぼゼロのままでした。効いているのはその数字です。',
+        'τ = R·C であり、R はその積の半分です。吐き切るのにおよそ 3 τ を要する肺に、それより短い時間しか与えなければ、吐き切れません。返せなかった分は次の呼吸が始まる時点で残っており、高くなった容量で得られる余分な弾性収縮力が不足を埋めるところまで、安静位は上がり続けます。弾性収縮力は一度も変えていませんし、流量制限も現れていません。したがってどちらもこの現象の条件ではありません。呼吸パターンと呼気努力を固定すれば、気道の狭窄だけで十分なのです。弾性収縮力が正常な喘息の肺で、誘発された気管支収縮が動的過膨張を起こすのは、このためです。',
+      footnote:
+        'What the model asserts is the direction, not the size. How much a particular lung traps depends on the pattern it adopts and on how hard the person breathes out — both of which are separate controls here, and both of which were held still.',
+      footnoteJa:
+        'モデルが主張しているのは方向であって、大きさではありません。ある肺がどれだけ溜め込むかは、採用する呼吸パターンと呼気努力の強さに依存します。どちらもこのモデルでは独立した操作項であり、ここでは固定してあります。',
     },
     transfer: {
-      /** Same manipulation, on a lung that has lost its recoil. */
+      /** Same manipulation, on a lung that has also lost its recoil. */
       metric: 'eelv',
       unit: 'L',
       digits: 2,
@@ -223,75 +241,100 @@ export const LEARNING_MODULES = [
         { label: 'Normal recoil', labelJa: '弾性収縮力 正常' },
         { label: 'Recoil at 60%', labelJa: '弾性収縮力 60%' },
       ],
-      text: 'Now take the elastic recoil down to sixty per cent and narrow the airways again, at the same workload. Does the resting volume rise more, the same, or less than it did with normal recoil?',
+      text: 'Now take the elastic recoil down to sixty per cent and narrow the airways again, at the same workload. Where does the lung end up resting?',
       textJa:
-        '次に弾性収縮力を 60% まで下げ、同じ負荷でもう一度気道を狭くします。安静位の上昇は、弾性収縮力が正常だったときより大きい・同じ・小さい、のどれですか。',
+        '次に弾性収縮力を 60% まで下げ、同じ負荷でもう一度気道を狭くします。肺の安静位はどこに落ち着きますか。',
       options: [
-        { id: 'more', label: 'Much more', labelJa: 'はるかに大きい' },
+        { id: 'higher', label: 'Higher still', labelJa: 'さらに高くなる' },
         { id: 'same', label: 'About the same', labelJa: '同じくらい' },
-        { id: 'less', label: 'Less', labelJa: '小さい' },
+        { id: 'lower', label: 'Lower', labelJa: '下がる' },
       ],
-      answer: 'more',
+      answer: 'higher',
       explanation: {
-        text: 'With the recoil gone, the flow ceiling comes down into the range tidal breathing needs, and effort stops being able to rescue the situation. Only then does the long time constant matter, and only then does the volume climb. This is why COPD is not simply "narrow airways": it is narrow airways in a lung that has also lost the recoil that would otherwise let it push the gas out anyway.',
+        text: 'Losing recoil adds to the same result by three separate routes. It raises compliance, so τ lengthens again. It raises the volume the relaxed lung sits at, so the whole breath moves upwards before any trapping is counted. And it lowers the flow ceiling into the range tidal breathing needs, which is what takes away the one compensation the previous lung still had. COPD is not "narrow airways instead of lost recoil" or "lost recoil instead of narrow airways" — it is both, and each of them would raise the operating volume on its own.',
         textJa:
-          '弾性収縮力が失われると、流量上限は安静換気が必要とする範囲まで下がり、努力ではもう挽回できなくなります。そこではじめて長い時定数が効いてきて、そこではじめて容量が上昇します。COPD が単なる「気道が狭い病気」ではない理由がこれです。狭い気道が、押し出す力そのものを失った肺の中にあるのです。',
+          '弾性収縮力の低下は、3 つの別々の経路から同じ結果に上乗せします。コンプライアンスが上がるので τ がさらに延びます。弛緩位そのものが上がるので、エアトラッピングを数える前から呼吸全体が上方にずれます。そして流量上限が安静換気の必要とする範囲まで下がり、前の肺に残されていた唯一の代償手段が失われます。COPD は「弾性収縮力の低下ではなく気道狭窄」でも「気道狭窄ではなく弾性収縮力の低下」でもありません。両方であり、そのどちらもが単独で動作肺気量を上げます。',
       },
     },
     outro: {
-      text: 'Two things had to be true at once. A model that had only one of them would have produced a lung that looked obstructed and behaved normally.',
+      text: 'Resistance and recoil are two separate ways into the same equilibrium. Knowing which one a given lung got there by is what tells you whether pushing harder, or a bronchodilator, will help.',
       textJa:
-        '2 つの条件が同時に必要でした。片方だけのモデルは、閉塞しているように見えて正常に振る舞う肺を作っていたはずです。',
+        '抵抗と弾性収縮力は、同じ均衡点に至る 2 つの別々の経路です。目の前の肺がどちらの経路で来たのかを知ることが、呼気努力や気管支拡張薬が効くかどうかを分けます。',
     },
   },
   {
-    id: 'effort-independence',
-    title: 'Whether breathing out harder helps',
-    titleJa: '強く吐けば楽になるのか',
+    id: 'effort-and-its-limit',
+    title: 'When breathing out harder helps, and when it stops',
+    titleJa: '強く吐くのが効くとき、効かなくなるとき',
     short: 'Effort',
-    shortJa: '努力',
-    setup: { progress: 0.6, ...OBSTRUCTED },
+    shortJa: '呼気努力',
+    setup: { progress: 0.6, ...NARROWED },
     question: {
-      text: 'This lung is obstructed and working. If the person doubles how hard they push the air out, how much of the expired gas will leave at the maximum flow the lung can produce?',
+      text: 'This lung has narrowed airways and normal elastic recoil, and it is hyperinflating at a moderate workload. The person now pushes on the way out — fifteen centimetres of water of expiratory muscle pressure. What happens to the volume the lung rests at?',
       textJa:
-        '閉塞のある肺が運動しています。呼気を押し出す力を 2 倍にしたとき、呼出される気体のうち、この肺が出せる最大流量で出ていく割合はどうなりますか。',
+        'この肺は気道が狭く、弾性収縮力は正常で、中等度の負荷で過膨張しています。ここで本人が呼気を押し出します（呼気筋圧 15 cmH₂O）。肺の安静位はどうなりますか。',
       options: [
-        { id: 'nearly-all', label: 'Nearly all of it — the ceiling is already being met', labelJa: 'ほぼ全部（すでに上限に達している）' },
-        { id: 'less', label: 'Less, because more effort means more room', labelJa: '減る（努力が増えれば余裕も増えるため）' },
-        { id: 'none', label: 'None — effort raises the ceiling', labelJa: 'ゼロ（努力が上限そのものを上げるため）' },
+        { id: 'falls', label: 'It falls substantially — the effort works', labelJa: 'はっきり下がる（努力が効く）' },
+        { id: 'barely', label: 'It barely moves — expiration is effort-independent', labelJa: 'ほとんど動かない（呼気は努力非依存）' },
+        { id: 'rises', label: 'It rises — pushing collapses the airways', labelJa: '上がる（押すと気道が潰れる）' },
       ],
-      answer: 'nearly-all',
+      answer: 'falls',
     },
     manipulation: {
-      control: 'expiratoryEffort',
-      to: 2,
+      control: 'expiratoryPressureCmH2O',
+      to: 15,
       seconds: 3,
-      action: 'Push twice as hard',
-      actionJa: '呼気努力を 2 倍にする',
-      text: 'Double the expiratory muscle pressure and watch the flow-volume loop.',
-      textJa: '呼気筋圧を 2 倍にして、流量-容量曲線を見てください。',
-      hint: 'The dashed line is the most flow this lung can produce at each volume. Effort cannot cross it.',
-      hintJa: '破線は、各容量でこの肺が出せる最大流量です。努力ではこれを超えられません。',
+      action: 'Push the air out',
+      actionJa: '呼気を押し出す',
+      text: 'Add fifteen centimetres of water of expiratory muscle pressure, and watch the flow-volume loop.',
+      textJa: '呼気筋圧を 15 cmH₂O 加え、流量-容量曲線を見てください。',
+      hint: 'The dashed line is the most flow this lung can produce at each volume. Notice how far below it the breath still is.',
+      hintJa: '破線は各容量でこの肺が出せる最大流量です。呼吸がまだどれだけ下にあるかに注目してください。',
     },
-    watch: ['limited', 'eelv', 'ic', 've'],
+    watch: ['eelv', 'ic', 'limited', 'pexp'],
     observation: {
-      text: 'Almost all of the breath is now leaving at the ceiling, and the volume the lung rests at barely moved. The extra pressure went into compressing airways rather than into flow.',
+      text: 'The resting volume fell a long way and inspiratory capacity came back with it. The loop moved up towards the dashed ceiling but for most of the breath it is still well below it.',
       textJa:
-        '呼気のほぼ全量が上限で出ていくようになりましたが、安静位はほとんど動いていません。追加した圧は流量ではなく、気道の圧迫に費やされました。',
+        '安静位は大きく下がり、それとともに最大吸気量が回復しました。曲線は破線の上限に向かって上がりましたが、呼気の大半ではまだ十分下にあります。',
     },
     explanation: {
-      text: 'The maximum flow out of each unit is its own elastic recoil divided by the resistance of the collapsible airway upstream of the equal pressure point. Read that expression again: there is no effort in it. Raising pleural pressure raises the pressure driving the gas out and the pressure squeezing the airway shut by exactly the same amount, and the two cancel.',
+      text: 'Expiratory muscle pressure adds to elastic recoil at the alveolus, so the pressure driving gas out is larger and, across an unchanged resistance, the flow is larger. That is straightforward, and it is why "effort-independent" is a statement about part of a forced expiration and not about expiration in general. It holds only where the flow being asked for has reached what the lung can produce. Here it has not, so effort buys volume.',
       textJa:
-        '各単位から出ていく最大流量は、その単位自身の弾性収縮力を、equal pressure point より上流の虚脱しうる気道の抵抗で割った値です。もう一度この式を見てください。努力の項がありません。胸腔内圧を上げると、気体を押し出す圧と気道を押しつぶす圧が同じだけ上がり、互いに打ち消し合います。',
+        '呼気筋圧は肺胞で弾性収縮力に上乗せされます。押し出す駆動圧が大きくなり、抵抗が変わらなければ流量も大きくなります。当たり前のことですが、だからこそ「努力非依存」は、努力呼気の一部についての記述であって、呼気一般についての記述ではありません。それが成り立つのは、要求される流量が肺の出せる最大流量に達している範囲だけです。ここではまだ達していないので、努力は肺気量を買えます。',
       footnote:
-        'Try the same manipulation with elastic recoil back at 100%: there, doubling the effort moves a great deal of gas.',
+        'The controls are deliberately separate: nothing about the resistance, the recoil or the expiratory time moved when the pressure did.',
       footnoteJa:
-        '弾性収縮力を 100% に戻して同じ操作をしてみてください。そちらでは、努力を 2 倍にすると大量の気体が動きます。',
+        '操作項は意図的に分離されています。圧を動かしたとき、抵抗も弾性収縮力も呼気時間も動いていません。',
+    },
+    transfer: {
+      /** The same push, on a lung that has lost its recoil. */
+      metric: 'eelv',
+      unit: 'L',
+      digits: 2,
+      controls: { elasticRecoil: 0.6, airwayResistance: 3 },
+      rows: [
+        { label: 'Normal recoil', labelJa: '弾性収縮力 正常' },
+        { label: 'Emphysema', labelJa: '肺気腫（弾性収縮力 60%）' },
+      ],
+      text: 'Now give the same fifteen centimetres of water to an emphysematous lung — recoil at sixty per cent, airways narrower still. How much does the resting volume come down?',
+      textJa:
+        '次に、肺気腫の肺（弾性収縮力 60%、気道はさらに狭い）に同じ 15 cmH₂O を与えます。安静位はどれだけ下がりますか。',
+      options: [
+        { id: 'far-less', label: 'Far less — almost nothing', labelJa: 'はるかに小さい（ほとんど動かない）' },
+        { id: 'same', label: 'About the same', labelJa: '同じくらい' },
+        { id: 'more', label: 'More', labelJa: 'より大きい' },
+      ],
+      answer: 'far-less',
+      explanation: {
+        text: 'The maximum flow out of each unit is its own elastic recoil divided by the resistance of the collapsible airway upstream of the equal pressure point. Read that expression again: there is no effort in it. When recoil is lost the ceiling comes down into the range tidal breathing already needs, the breath meets it, and from there raising pleural pressure raises the pressure driving the gas out and the pressure squeezing the airway shut by exactly the same amount. Watch the fraction leaving at the ceiling as the pressure goes on: it climbs towards everything, while the volume does not move.',
+        textJa:
+          '各単位から出ていく最大流量は、その単位自身の弾性収縮力を、equal pressure point より上流の虚脱しうる気道の抵抗で割った値です。もう一度この式を見てください。努力の項がありません。弾性収縮力が失われると上限は安静換気がすでに必要としている範囲まで下がり、呼気がそこに達します。そこから先は、胸腔内圧を上げても、気体を押し出す圧と気道を押しつぶす圧が同じだけ上がるだけです。圧をかけ続けながら、上限で出ていく割合を見てください。ほぼ全量に向かって上がっていくのに、肺気量は動きません。',
+      },
     },
     outro: {
-      text: '"Breathe out harder" is advice that works on a normal lung and does nothing on this one. Pursed-lip breathing helps for a different reason — it slows expiration and holds the airway open — not by raising the ceiling.',
+      text: '"Breathe out harder" is advice with a condition attached, and the condition is whether the lung is already flow-limited. Pursed-lip breathing helps for a different reason again — it slows expiration and holds the airway open — not by raising the ceiling.',
       textJa:
-        '「もっと強く吐いて」は正常肺には効き、この肺には効きません。口すぼめ呼吸が有効なのは別の理由（呼気を遅くし気道を開いたまま保つこと）であって、上限を上げているからではありません。',
+        '「もっと強く吐いて」という助言には条件があり、その条件は「その肺がすでに流量制限に達しているか」です。口すぼめ呼吸が有効なのはさらに別の理由（呼気を遅くし気道を開いたまま保つこと）であって、上限を上げているからではありません。',
     },
   },
   {
@@ -320,19 +363,19 @@ export const LEARNING_MODULES = [
       actionJa: '気管支拡張薬を投与する',
       text: 'Apply a full bronchodilator response and watch what recovers.',
       textJa: '気管支拡張薬の効果を最大まで与え、何が回復するかを見てください。',
-      hint: 'Watch the time constant, then the resting volume, then the fraction still leaving at the ceiling.',
+      hint: 'Watch the time constant, then the resting volume, then how much of the breath is still leaving at the ceiling.',
       hintJa: '時定数、次に安静位、最後に上限で出ていく割合の順に見てください。',
     },
     watch: ['tau', 'ic', 'eelv', 'limited'],
     observation: {
-      text: 'The time constant shortened, the lung emptied further in the same expiratory time, the resting volume fell and inspiratory capacity came back. The fraction of the breath still leaving at the ceiling barely changed.',
+      text: 'The time constant shortened, the lung emptied further in the same expiratory time, the resting volume fell and inspiratory capacity came back. Total lung capacity did not move at all.',
       textJa:
-        '時定数が短くなり、同じ呼気時間でより深く吐き切れるようになった結果、安静位が下がり最大吸気量が回復しました。一方、上限で出ていく割合はほとんど変わっていません。',
+        '時定数が短くなり、同じ呼気時間でより深く吐き切れるようになった結果、安静位が下がり最大吸気量が回復しました。全肺気量はまったく動いていません。',
     },
     explanation: {
-      text: 'The drug lowers the resistance the gas travels through, which shortens R·C and lets more of the breath be given back in the time available. It barely touches the ceiling, because what sets the ceiling is the elastic tethering holding the collapsible airways open — and no drug puts destroyed alveolar attachments back. That is why the benefit of bronchodilation in COPD shows up as operating volume and exercise tolerance more convincingly than as flow.',
+      text: 'The drug lowers the resistance the gas travels through, which shortens R·C and lets more of the breath be given back in the time available. It barely touches the flow ceiling, because what sets the ceiling is the elastic tethering holding the collapsible airways open — and no drug puts destroyed alveolar attachments back. That is why the benefit of bronchodilation in COPD shows up as operating volume and exercise tolerance more convincingly than as flow.',
       textJa:
-        '薬は気体が通る抵抗を下げ、R·C を短縮して、与えられた時間内により多くを返せるようにします。しかし上限にはほとんど触れません。上限を決めているのは虚脱しうる気道を開いて保つ弾性の牽引であり、破壊された肺胞の付着を戻せる薬はないからです。COPD における気管支拡張の効果が、流量よりも肺気量と運動耐容能として現れる理由です。',
+        '薬は気体が通る抵抗を下げ、R·C を短縮して、与えられた時間内により多くを返せるようにします。しかし流量上限にはほとんど触れません。上限を決めているのは虚脱しうる気道を開いて保つ弾性の牽引であり、破壊された肺胞の付着を戻せる薬はないからです。COPD における気管支拡張の効果が、流量よりも肺気量と運動耐容能として現れる理由です。',
       footnote: 'Total lung capacity did not move at all; the drug does not change how much the lung can hold.',
       footnoteJa: '全肺気量はまったく動いていません。薬は肺が保持できる量を変えません。',
     },

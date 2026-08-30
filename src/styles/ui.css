@@ -1355,6 +1355,17 @@
   transition: opacity 260ms ease;
 }
 
+/* A 3D label floating over a lesson is a label written across the sentence the
+   reader is in the middle of. The labels are decoration on the anatomy; the
+   panel is the thing being read, so while a lesson or a walk-through is open
+   the panel takes the higher layer. Nothing moves and nothing is hidden —
+   only the stacking changes. */
+#ui.is-learning .console,
+#ui.is-story-stepping .console {
+  position: relative;
+  z-index: 6;
+}
+
 .label3d {
   position: absolute;
   left: 0;

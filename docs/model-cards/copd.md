@@ -21,6 +21,14 @@ respiratory drive that is adjusted to meet a demanded minute ventilation, with
 expiratory flow out of each unit capped at what its own elastic recoil can
 drive through the collapsible airway upstream of the equal pressure point.
 
+**Four mechanisms are kept independent of one another** — airway resistance,
+elastic recoil, expiratory time and expiratory muscle pressure — because the
+propositions this scene teaches are all of the form "*this* one, on its own,
+does *that*", and a model in which two of them move together cannot support
+any of them. In particular the expiratory muscle pressure is open loop: it is
+a function of the workload and of the reader's own control, and it is not
+derived from the inspiratory drive.
+
 ## 3. What it is not
 
 Not a patient simulator. Not a research solver. Not a spirometer, and not a
@@ -34,7 +42,7 @@ source of any number that would be reported from one in a clinic.
 | `airwayResistance` | ×1–×4 | Resistance of the airways relative to a reference lung — the luminal/secretion component. |
 | `elasticRecoil` | 0.45–1.0 | Elastic recoil as a fraction of normal. Below 1 this raises compliance, residual volume, resting volume and (much less) total capacity, and it raises the resistance of the collapsible segment. |
 | `bronchodilation` | 0–1 | A bronchodilator response: −28% total resistance, −10% upstream resistance. |
-| `expiratoryEffort` | ×0–×2 | A multiplier on expiratory muscle pressure, so that "try harder" can be done rather than described. |
+| `expiratoryPressureCmH2O` | 0–20 cmH₂O | **Extra** expiratory muscle pressure, on top of whatever the workload itself recruits. An absolute pressure with a clinical unit, and independent of every other input: nothing in the lung moves it and it is not derived from the inspiratory drive. |
 
 ## 5. Outputs
 
@@ -96,8 +104,11 @@ camera are presentation and are named as such in the scene.
 - **Effort can never worsen trapping.** In a real flow-limited lung, forced
   expiration can raise end-expiratory volume through dynamic compression. Here
   effort can only help or do nothing.
-- **The breathing pattern is prescribed.** Real patients choose theirs, and a
-  rapid shallow pattern makes hyperinflation worse than this shows.
+- **The breathing pattern is prescribed** by the workload rather than chosen.
+  Real patients choose theirs, and a rapid shallow pattern makes
+  hyperinflation worse than this shows. So the model's claims are about
+  *direction* under a stated pattern, never about how much a given person
+  would trap.
 - **Compliance is linear.** The real pressure-volume curve flattens near TLC,
   so the model over-states how easily the last litre is taken.
 - **A demand the lung cannot meet is simply not met.** There is no rising
@@ -125,12 +136,32 @@ where no quantitative source was reachable as **thin**.
   or more reliable effect than a person gets.
 - The absence of anything about gas exchange could read as "hyperinflation is
   the whole of COPD". It is not; it is the part this scene is about.
+- **A previous version of this scene misled, and the correction is worth
+  recording.** Its expiratory muscle pressure was derived from the inspiratory
+  drive, so raising airway resistance silently raised expiratory effort too;
+  the added push cancelled the trapping that the longer time constant should
+  have produced, and the scene taught that narrowed airways alone do not trap
+  gas. That is false: raised airway resistance at a fixed breathing pattern and
+  a fixed expiratory effort raises end-expiratory volume, which is exactly what
+  induced bronchoconstriction does in asthma. The model, the walk-through and
+  the challenges were all internally consistent while saying it. Internal
+  consistency is the weaker of the two tests a scene has to pass; the external
+  one is in `tests/respiratory-physiology.test.js`.
 
 ## 15. Review status
 
-Not reviewed by a clinician. Written from standard physiology and from
-literature reached through search summaries rather than full text — see the
-opening section of the evidence dossier, which is a material limitation.
+**Corrected against an external clinical review** that read the sources in
+full, and **not yet re-reviewed after those corrections.** The scene stays at
+`alpha`. The review named GOLD 2026, O'Donnell and colleagues on dynamic
+hyperinflation, and the induced-bronchoconstriction literature (PMID 10515404),
+and it found a medically wrong proposition — see §14 — which has been fixed in
+the model, the walk-through and the challenges, and guarded by external tests
+in `tests/respiratory-physiology.test.js`.
+
+This repository's own network still cannot reach the medical publishers, so
+nothing here was extracted from a figure, a table or a methods section by its
+author; the dossier explains exactly what that does and does not license. No
+guideline figure, table or algorithm has been reproduced.
 
 ## 16. How to check it
 

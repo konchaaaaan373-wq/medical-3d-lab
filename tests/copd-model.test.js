@@ -21,7 +21,7 @@ import {
  * untrue, and that is the failure worth having a test for.
  */
 
-const NORMAL = { airwayResistance: 1, elasticRecoil: 1, bronchodilation: 0, expiratoryEffort: 1 };
+const NORMAL = { airwayResistance: 1, elasticRecoil: 1, bronchodilation: 0, expiratoryPressureCmH2O: 0 };
 const OBSTRUCTED = { ...NORMAL, ...DEFAULT_CONTROLS };
 
 /** A settled lung, because dynamic hyperinflation is an equilibrium. */
@@ -101,7 +101,7 @@ test('the maximal flow the lung can produce contains no term for effort', () => 
   // Not a property of the numbers but of the shape of the model: the envelope
   // is computed from mechanics alone, and mechanics has no drive in it.
   const envelope = maximalFlowVolume(lungMechanics(NORMAL));
-  const withDrive = maximalFlowVolume(lungMechanics({ ...NORMAL, expiratoryEffort: 5, demand: 1 }));
+  const withDrive = maximalFlowVolume(lungMechanics({ ...NORMAL, expiratoryPressureCmH2O: 20, demand: 1 }));
   assert.deepEqual(envelope, withDrive);
 });
 
@@ -181,7 +181,9 @@ test('hyperinflation follows from the time available, not from the disease label
   // constants fit into the expiratory time. Fewer τ needed, more of the breath
   // given back, lower resting volume — with nothing about the disease changed.
   const at = (bronchodilation) => {
-    const model = createRespiratoryModel({ controls: { ...OBSTRUCTED, demand: 0.4, bronchodilation } });
+    // Demand 0.3: low enough that both lungs meet the ventilation asked for,
+    // so the comparison is not confounded by one of them falling short.
+    const model = createRespiratoryModel({ controls: { ...OBSTRUCTED, demand: 0.3, bronchodilation } });
     model.settle({ maxBreaths: 400 });
     return model.state;
   };
@@ -225,23 +227,31 @@ test('at maximal work the same bronchodilator buys ventilation instead of volume
 
 test('expiratory effort moves a normal lung and does almost nothing to a limited one', () => {
   const gain = (controls) => {
-    const easy = settled({ ...controls, expiratoryEffort: 1 });
-    const hard = settled({ ...controls, expiratoryEffort: 2 });
+    const easy = settled({ ...controls, expiratoryPressureCmH2O: 0 });
+    const hard = settled({ ...controls, expiratoryPressureCmH2O: 15 });
     return hard.inspiratoryCapacityL - easy.inspiratoryCapacityL;
   };
   const normalGain = gain({ ...NORMAL, demand: 0.6 });
   const obstructedGain = gain({ ...OBSTRUCTED, demand: 0.6 });
-  assert.ok(normalGain > 0.08, `doubling effort should help a normal lung; it gained ${normalGain} L`);
+  assert.ok(normalGain > 0.3, `expiratory pressure should empty a normal lung further; it gained ${normalGain} L`);
   assert.ok(
     obstructedGain < normalGain * 0.4,
-    `doubling effort gained the obstructed lung ${obstructedGain} L against ${normalGain} L`
+    `the same pressure gained the obstructed lung ${obstructedGain} L against ${normalGain} L`
   );
 });
 
 test('the obstructed lung expires against the ceiling; the normal one never reaches it', () => {
   assert.equal(settled({ ...NORMAL, demand: 0.6 }).flowLimitedFraction, 0);
-  assert.equal(settled({ ...NORMAL, demand: 1 }).flowLimitedFraction, 0);
-  assert.ok(settled({ ...OBSTRUCTED, demand: 0.6 }).flowLimitedFraction > 0.5);
+  // At maximal work a normal lung does brush the ceiling — the abdominal
+  // recruitment that comes with the workload is enough to reach it for a
+  // couple of per cent of the breath. That is the right direction: healthy
+  // people approach flow limitation at peak exercise. It must stay negligible.
+  assert.ok(settled({ ...NORMAL, demand: 1 }).flowLimitedFraction < 0.05);
+  // The obstructed lung reaches the ceiling for about half of a moderate
+  // breath and for most of a maximal one — with no more expiratory pressure
+  // than the workload itself recruits.
+  assert.ok(settled({ ...OBSTRUCTED, demand: 0.6 }).flowLimitedFraction > 0.4);
+  assert.ok(settled({ ...OBSTRUCTED, demand: 1 }).flowLimitedFraction > 0.8);
 });
 
 test('ventilatory limitation is an outcome, not a setting', () => {
@@ -276,7 +286,7 @@ test('a bronchodilator buys back inspiratory capacity, and buys back less than n
   assert.ok(after.timeConstantS < before.timeConstantS * 0.85);
   // But it does not abolish flow limitation, because what sets the ceiling is
   // the tethering the drug cannot restore.
-  assert.ok(after.flowLimitedFraction > 0.4, 'the ceiling is still being met');
+  assert.ok(after.flowLimitedFraction > 0.3, 'the ceiling is still being met');
   const restored = settled({ ...OBSTRUCTED, demand: 0.4, elasticRecoil: 1 });
   assert.ok(
     restored.inspiratoryCapacityL > after.inspiratoryCapacityL,
@@ -301,7 +311,7 @@ test('the model is deterministic and independent of how the frames fall', () => 
 });
 
 test('the model never produces a volume outside the lung it described', () => {
-  const model = createRespiratoryModel({ controls: { ...OBSTRUCTED, demand: 1, expiratoryEffort: 3 } });
+  const model = createRespiratoryModel({ controls: { ...OBSTRUCTED, demand: 1, expiratoryPressureCmH2O: 30 } });
   const { residualVolumeL, totalLungCapacityL } = model.mechanics;
   for (let i = 0; i < 60 * 30; i++) {
     model.advance(1 / 60);

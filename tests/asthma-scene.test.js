@@ -371,22 +371,58 @@ test('every challenge points at controls and rows the scene has', () => {
   }
 });
 
-test('challenge 1: a deep breath opens a lung that has already tipped', () => {
-  const module = LEARNING_MODULES.find((entry) => entry.id === 'deep-breath');
+test('challenge 1: more parenchymal tethering opens a lung that has already tipped', () => {
+  const module = LEARNING_MODULES.find((entry) => entry.id === 'parenchymal-tethering');
   const { setup, manipulation } = module;
   const before = solved({ ...setup, stimulus: setup.progress });
   const after = solved({ ...setup, [manipulation.control]: manipulation.to, stimulus: setup.progress });
 
   assert.equal(module.question.answer, 'falls');
-  assert.ok(before.defectFraction > 0.5, 'the premise: over half the lung has tipped');
+  assert.ok(before.defectFraction > 0.35, 'the premise: a good share of the lung has tipped');
   assert.ok(after.heterogeneity < before.heterogeneity, 'the unevenness has to fall');
   assert.ok(after.defectFraction < before.defectFraction, 'and some regions have to come back');
-  // The observation says resistance more than halved and the air roughly doubled.
-  assert.ok(after.resistanceRatio < before.resistanceRatio * 0.5, 'resistance more than halved');
-  assert.ok(after.totalVentilation > before.totalVentilation * 1.7, 'the air roughly doubled');
-  // The footnote says going the other way doubles the resistance.
-  const shallow = solved({ ...setup, inflation: 0.8, stimulus: setup.progress });
-  assert.ok(shallow.resistanceRatio > before.resistanceRatio * 1.7, 'and a shallow breath does the reverse');
+  // The observation says only that resistance fell and more air arrived — no
+  // magnitude, deliberately. Asserting a size here would be asserting a size
+  // for a calibration constant.
+  assert.ok(after.resistanceRatio < before.resistanceRatio, 'resistance has to fall');
+  assert.ok(after.totalVentilation > before.totalVentilation, 'and more air has to reach the lung');
+  // The footnote says going the other way raises the resistance instead.
+  const held = solved({ ...setup, lungInflation: 0.8, stimulus: setup.progress });
+  assert.ok(held.resistanceRatio > before.resistanceRatio, 'and less stretch does the reverse');
+});
+
+test('challenge 1 never claims a bronchodilator response to a real deep inspiration', () => {
+  // The lesson this replaced quoted a size — "a third of the dark regions came
+  // back" — for what a deep breath does. The mechanism in the model is
+  // parenchymal tethering, which is only part of what a deep inspiration is,
+  // and the deep-inspiration response is impaired or lost in asthma. So the
+  // text is required to name the mechanism and to disclaim the manoeuvre.
+  const module = LEARNING_MODULES.find((entry) => entry.id === 'parenchymal-tethering');
+  const prose = [
+    module.title,
+    module.question.text,
+    module.manipulation.text,
+    module.manipulation.action,
+    module.observation.text,
+    module.explanation.text,
+    module.explanation.footnote,
+    module.outro.text,
+  ].join(' ');
+  assert.ok(/tethering/i.test(prose), 'the lesson has to name the mechanism it is actually showing');
+  assert.ok(
+    /does not predict the bronchodilator response to a real deep inspiration/i.test(module.outro.text),
+    'and it has to say plainly that it is not predicting a patient’s deep breath'
+  );
+  assert.ok(
+    /impaired or lost/i.test(module.outro.text),
+    'including that the real response is impaired or lost in asthma'
+  );
+  // No quantity anywhere in the prose: the numbers belong on the panel, where
+  // they come from the model and carry the model's caveats with them.
+  assert.ok(
+    !/\b(half|halved|doubled|a third|two thirds|a quarter)\b/i.test(prose),
+    'the lesson must not quote a size for an illustrative mechanism'
+  );
 });
 
 test('challenge 2: relaxing the muscle beats removing the wall thickening, and abolishes the unevenness', () => {

@@ -150,9 +150,15 @@ export const MODEL_CONTROLS = [
     format: (v) => `${Math.round(v * 100)}%`,
   },
   {
-    id: 'inflation',
-    label: 'Lung inflation (a deep breath)',
-    labelJa: '肺の伸展（深吸気）',
+    /**
+     * The mechanical tethering term, named for the mechanism rather than for
+     * the manoeuvre. Calling it "a deep breath" invited the reader to take the
+     * number it produces as a prediction of what a deep inspiration does to a
+     * person with asthma, which it is not — see the note in `cautions` below.
+     */
+    id: 'lungInflation',
+    label: 'Global lung inflation (parenchymal stretch)',
+    labelJa: '肺全体の伸展（実質の牽引）',
     min: 0.7,
     max: 1.3,
     step: 0.01,
@@ -188,8 +194,13 @@ export const MODEL_SCOPE = {
       textJa: '刺激量-反応関係が傾斜ではなく変曲点をもつ理由（ほとんど何も起きない状態から、一気に進む）。',
     },
     {
-      text: 'Why a deep breath opens the airways, and why a bronchodilator does more.',
-      textJa: '深吸気が気道を開く理由と、気管支拡張薬がそれ以上に効く理由。',
+      text: 'Why increasing lung volume increases the parenchymal tethering force that opposes airway narrowing — a purely mechanical statement about the load the smooth muscle is shortening against.',
+      textJa:
+        '肺気量が増えると、気道の狭窄に抗する実質の牽引力が増える理由。平滑筋が短縮する際の負荷についての、純粋に力学的な主張です。',
+    },
+    {
+      text: 'Why relaxing the smooth muscle itself does more than stretching the lung around it.',
+      textJa: '平滑筋そのものを弛緩させることが、周囲の肺を伸展させること以上に効く理由。',
     },
   ],
   excludes: [
@@ -226,6 +237,16 @@ export const MODEL_SCOPE = {
       textJa:
         '最大刺激では欠損領域の割合が下がります。均一に閉じた肺には「相対的な」欠損が存在しないためです。その領域では欠損割合ではなく、肺全体に届く空気の量を見てください。',
     },
+    {
+      text: 'The lung-inflation control isolates the mechanical tethering effect. It does not predict the bronchodilator response to a real deep inspiration in a person with asthma — that response is impaired or lost in asthma, most of all where hyperresponsiveness is strong, and the smooth-muscle dynamics that account for it are not in this model.',
+      textJa:
+        '肺の伸展の操作項は、力学的な牽引効果だけを取り出したものです。喘息患者が実際に深吸気をしたときの気管支拡張反応を予測するものではありません。その反応は喘息では減弱ないし消失しており（とくに気道過敏性が強い場合）、それを説明する平滑筋の動的性質はこのモデルに含まれていません。',
+    },
+    {
+      text: 'Airway smooth muscle is present from the trachea to the terminal bronchioles, and this model keeps it there. What falls away distally is the cartilage that resists it — which is why the same shortening changes a small airway’s calibre far more. Asthma is a disease of the whole airway tree, not of the small airways alone.',
+      textJa:
+        '気道平滑筋は気管から終末細気管支まで存在し、このモデルでもそう扱っています。末梢に向かって失われるのは、それに抗する軟骨のほうです。同じ短縮量でも末梢気道の内径がはるかに大きく変わるのはそのためです。喘息は末梢気道だけの疾患ではなく、気道樹全体の疾患です。',
+    },
   ],
   sources: [
     {
@@ -241,15 +262,32 @@ export const MODEL_SCOPE = {
       kind: 'textbook',
     },
     {
-      text: 'Standard respiratory physiology for the distribution of smooth muscle and cartilage through the tree, and for deep-inspiration bronchodilation.',
+      text: 'Winkler & Venegas, "Mathematical Modeling of Ventilation Defects in Asthma" (PMC4698910), and "The role of heterogeneity in asthma: a structure-to-function perspective" (PMC5543015), for how the feedback and the network interact.',
       textJa:
-        '平滑筋・軟骨の気道内分布と、深吸気による気管支拡張については標準的な呼吸生理学から。',
-      kind: 'textbook',
+        'Winkler & Venegas「Mathematical Modeling of Ventilation Defects in Asthma」(PMC4698910)、および「The role of heterogeneity in asthma: a structure-to-function perspective」(PMC5543015)。フィードバックとネットワークの相互作用について。',
+      kind: 'review',
     },
     {
-      text: 'Consulted through search-result summaries and abstracts, not full text — the medical publishers were unreachable from the network this was built on. Every constant is illustrative or a stated calibration; none is fitted to data.',
+      text: 'Reviews of airway smooth muscle distribution (PMC9581182) for muscle present from the trachea — as trachealis in the posterior membranous wall — to the terminal bronchioles, with cartilage support falling away distally.',
       textJa:
-        '出典はいずれも検索結果の要約・抄録を通じて確認したもので、本文は参照していません（構築環境から医学系出版社に到達できないため）。定数はすべて説明用または明示した較正値で、データへのフィッティングは行っていません。',
+        '気道平滑筋の分布に関する総説 (PMC9581182)。平滑筋は気管（後壁膜様部の trachealis）から終末細気管支まで存在し、軟骨による支持は末梢ほど失われます。',
+      kind: 'review',
+    },
+    {
+      text: 'Reviews of deep inspiration in asthma (PMC10585885) for the impairment or loss of deep-inspiration bronchodilation and bronchoprotection — which is why this scene’s lung-inflation control is described as a tethering term and not as a deep breath.',
+      textJa:
+        '喘息における深吸気の総説 (PMC10585885)。深吸気による気管支拡張・気管支保護作用の減弱ないし消失について。このシーンで肺伸展の操作項を「深呼吸」ではなく牽引の項として説明しているのは、このためです。',
+      kind: 'review',
+    },
+    {
+      text: 'GINA 2026 for the clinical framing of asthma as a heterogeneous disease of the whole airway tree.',
+      textJa: 'GINA 2026。気道樹全体にわたる不均一な疾患としての喘息の臨床的位置づけ。',
+      kind: 'guideline',
+    },
+    {
+      text: 'Every constant here is illustrative or a stated calibration; none is fitted to data, and none of the published models has been reproduced. Reading a source in full does not turn a calibration into a measurement.',
+      textJa:
+        'ここでの定数はすべて説明用か、明示した較正値です。データへのフィッティングは行っておらず、既発表のモデルを再現したものでもありません。原著を読めたからといって、較正値が実測値になるわけではありません。',
       kind: 'caveat',
     },
   ],

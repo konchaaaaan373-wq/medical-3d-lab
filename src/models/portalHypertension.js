@@ -20,6 +20,37 @@ import { perMinuteToPerSecond, perSecondToPerMinute } from './units.js';
  *
  * Nothing about portal pressure is written down anywhere below. It is solved.
  *
+ * ## Cause and perpetuation are not the same thing
+ *
+ * The order matters and the model is built to keep it straight.
+ *
+ * 1. **Increased intrahepatic vascular resistance is the initiating event.**
+ *    Fibrosis, regenerative nodules and sinusoidal remodelling raise the
+ *    resistance to portal outflow; a dynamic component — activated stellate
+ *    cell contraction, reduced intrahepatic nitric oxide, increased endothelin
+ *    — adds to it. Portal pressure rises because of this, and only because of
+ *    this.
+ * 2. **Chronic portal hypertension then induces extrahepatic vascular
+ *    adaptation.** Splanchnic arteriolar vasodilation and the hyperdynamic
+ *    circulation are *consequences* of the portal hypertension, mediated by
+ *    nitric oxide and other vasodilators in the splanchnic bed.
+ * 3. **That raised inflow feeds back and maintains the pressure.** More blood
+ *    arriving at a node whose outflow is already obstructed keeps the gradient
+ *    high, and worsens it.
+ *
+ * So the intrahepatic resistance is the **initiating** mechanism and the
+ * increased splanchnic inflow is the **perpetuating** one. They are not two
+ * parallel causes, and calling them that would invert the order in which they
+ * appear in a patient.
+ *
+ * The model is an **equilibrium** model: it has no time in it, so it cannot
+ * show step 1 preceding step 2. `splanchnicVasodilation` is therefore a
+ * control rather than a consequence, which is a modelling compromise and is
+ * labelled as one. What the model *can* do, and does, is answer the two
+ * questions separately — "what does more resistance do?" and "what does more
+ * inflow do at a fixed resistance?" — so that the causal order can be taught
+ * over the top of an equilibrium rather than being contradicted by it.
+ *
  * ## Why HVPG is not the portal pressure gradient
  *
  * This is the model's most useful single result and it falls straight out of
@@ -27,18 +58,33 @@ import { perMinuteToPerSecond, perSecondToPerMinute } from './units.js';
  *
  * - The **portal pressure gradient** is `P_portal − P_hepaticVein`. It is the
  *   pressure the whole intrahepatic pathway has to be pushed across.
- * - **HVPG** is `wedged − free hepatic venous pressure`. The wedged pressure
- *   reflects **sinusoidal** pressure, not portal pressure. So HVPG is only the
- *   part of the gradient that lies across the *sinusoids*.
+ * - **HVPG** is `WHVP − FHVP`: wedged minus free hepatic venous pressure. In
+ *   sinusoidal portal hypertension the wedged pressure **approximates**
+ *   sinusoidal pressure — the occluding balloon stops flow in a hepatic vein
+ *   branch and the static column equilibrates with the sinusoids feeding it —
+ *   so HVPG approximates the part of the gradient lying across the sinusoids.
+ *   It is not a direct measurement of sinusoidal pressure, and it is not a
+ *   measurement of portal pressure at all.
  *
- * When the resistance is sinusoidal — alcohol-related and viral cirrhosis, the
- * commonest causes — the two are nearly the same and HVPG is an excellent
- * measurement. When the resistance is **presinusoidal** — portal vein
- * thrombosis, schistosomiasis, porto-sinusoidal vascular disease — the
- * pressure is lost upstream of the sinusoids, the wedged pressure never sees
- * it, and HVPG under-reads the gradient badly. The model computes both and
- * reports the difference, because a scene that showed only one of them would
- * be teaching the confusion rather than the distinction.
+ * Where the raised resistance is **sinusoidal** — alcohol-related and viral
+ * cirrhosis, the commonest causes — HVPG tracks the portal gradient closely
+ * and is the reference measurement. Where a substantial part of it lies
+ * **upstream of the sinusoids**, the wedged pressure never sees that part and
+ * HVPG under-reads the portal gradient. Two different anatomical situations do
+ * that, and they are **not** the same thing:
+ *
+ * - **Presinusoidal intrahepatic**: the obstruction is inside the liver but
+ *   upstream of the sinusoids — schistosomiasis, porto-sinusoidal vascular
+ *   disease, and the presinusoidal component of some cholestatic disorders
+ *   including primary biliary cholangitis. This is what the model represents.
+ * - **Prehepatic**: the obstruction is outside the liver altogether — portal
+ *   vein thrombosis. The liver itself may be normal. The model does **not**
+ *   represent this; it has no extrahepatic portal obstruction in it.
+ *
+ * What the two share is the consequence for the measurement: HVPG can be
+ * normal or near-normal while the portal pressure is high. That shared
+ * consequence is what the scene shows. Their anatomy is different and the
+ * scene says so rather than listing them together.
  *
  * ## Units
  *
@@ -92,16 +138,40 @@ export const REFERENCE = {
 /**
  * Resistance of a fully developed collateral bed, mmHg·s/mL.
  *
- * Large — larger than the healthy liver's — which is the point. Collaterals
- * are long, tortuous and high-resistance; they carry a great deal of flow away
- * from the liver and they do not bring the pressure back to normal, because
- * they never become a low-resistance path.
+ * **A calibration constant, and not a general fact about collaterals.** It is
+ * chosen so that an established-cirrhosis configuration lands in the reported
+ * HVPG range with a large share of the portal flow diverted, and that is all
+ * it is chosen for.
+ *
+ * In particular this model must not be read as saying "a collateral is always
+ * a high-resistance channel". Some spontaneous portosystemic shunts — a large
+ * splenorenal shunt, a recanalised umbilical vein — are wide, carry very large
+ * flows, and can decompress the portal system substantially. Portal
+ * hypertension persists anyway, and the reasons are elsewhere: the
+ * intrahepatic resistance that started it is still high, the splanchnic inflow
+ * is still increased, and a collateral network removes neither. Collaterals
+ * redistribute portal flow; they do not remove the pathophysiology driving it.
  */
 const COLLATERAL_RESISTANCE_OPEN = 1.2;
 
-/** The gradient at which collaterals begin to open, mmHg. */
-const COLLATERAL_THRESHOLD = 10;
-/** How sharply they open around that threshold, mmHg. */
+/**
+ * The gradient at which the model's collateral conductance is half-established,
+ * mmHg.
+ *
+ * **10 mmHg is a clinical threshold, not a valve-opening pressure.** It is the
+ * HVPG at or above which portal hypertension is called clinically significant
+ * and at which varices and decompensation become likely. Nothing opens at
+ * 10 mmHg; the number marks where a population of patients starts to have
+ * collaterals worth finding.
+ *
+ * See `establishedCollateralFraction` for what the sigmoid around it means and,
+ * more importantly, for what it does not mean.
+ */
+const CSPH_GRADIENT_MMHG = 10;
+/**
+ * Width of the mapping around that gradient, mmHg. Purely illustrative — there
+ * is no measured sigmoid here, and the literature offers no width to borrow.
+ */
 const COLLATERAL_SPREAD = 2.2;
 
 /**
@@ -151,16 +221,87 @@ export const DEFAULT_CONTROLS = {
   /** A transjugular intrahepatic portosystemic shunt, 0 (none) to 1 (fully dilated). */
   tips: 0,
   /**
-   * Where the raised resistance sits: 0 = entirely sinusoidal, 1 = entirely
-   * presinusoidal.
+   * **Which haemodynamic pattern the model is being asked to represent**, as an
+   * index into `HAEMODYNAMIC_PATTERNS`.
    *
    * Not a severity control — it does not change how obstructed the liver is,
-   * only *where*. It is here because it is the one thing that makes HVPG stop
-   * meaning what it usually means, and because a scene that could not show
-   * that would be teaching HVPG as a synonym for portal pressure.
+   * only *where* the obstruction sits. It is here because it is the one thing
+   * that makes HVPG stop meaning what it usually means, and because a scene
+   * that could not show that would be teaching HVPG as a synonym for portal
+   * pressure.
+   *
+   * It is a named state rather than a continuous share on purpose. Whether the
+   * HVPG thresholds may be quoted is a question about **which disease is being
+   * modelled**, and answering it by comparing a continuous parameter against a
+   * cut-off dresses an implementation convenience up as a medical criterion.
+   * An earlier version withheld the thresholds when the presinusoidal share
+   * reached 0.15 — a number with no source, and one a reader could easily have
+   * taken for a real one. Each pattern below now declares for itself whether
+   * the thresholds apply.
    */
-  presinusoidalShare: 0,
+  haemodynamicPattern: 0,
 };
+
+/**
+ * The haemodynamic patterns this model is willing to represent, and what each
+ * one is entitled to say.
+ *
+ * `presinusoidalShare` is where the raised intrahepatic resistance sits:
+ * 0 = entirely across the sinusoids, 1 = entirely upstream of them. It is a
+ * consequence of the pattern rather than a control of its own, so that the
+ * pattern and the mechanics cannot disagree.
+ */
+export const HAEMODYNAMIC_PATTERNS = [
+  {
+    id: 'sinusoidal',
+    label: 'Sinusoidal',
+    labelJa: '類洞性',
+    /** Alcohol-related and viral cirrhosis: the commonest causes, and the ones the thresholds come from. */
+    description: 'Cirrhosis of sinusoidal aetiology — where HVPG is the reference measurement.',
+    descriptionJa: '類洞性の病態による肝硬変。HVPG が基準となる測定である領域です。',
+    presinusoidalShare: 0,
+    /**
+     * The HVPG thresholds were established in compensated advanced chronic
+     * liver disease of sinusoidal aetiology, so this is where they may be read.
+     */
+    thresholdsApply: true,
+  },
+  {
+    id: 'mixed',
+    label: 'Mixed',
+    labelJa: '混合性',
+    description:
+      'A presinusoidal component on top of sinusoidal disease. HVPG begins to under-read, and the thresholds are no longer safe to quote.',
+    descriptionJa:
+      '類洞性病変に前類洞性の要素が加わった状態。HVPG は過小評価を始め、閾値をそのまま当てはめることはできません。',
+    presinusoidalShare: 0.5,
+    thresholdsApply: false,
+  },
+  {
+    id: 'presinusoidal',
+    label: 'Presinusoidal (intrahepatic)',
+    labelJa: '前類洞性（肝内）',
+    /**
+     * Intrahepatic and upstream of the sinusoids: schistosomiasis,
+     * porto-sinusoidal vascular disease, the presinusoidal component of some
+     * cholestatic disorders. **Not** portal vein thrombosis, which is
+     * prehepatic — outside the liver entirely — and which this model does not
+     * represent at all.
+     */
+    description:
+      'Obstruction inside the liver but upstream of the sinusoids: schistosomiasis, porto-sinusoidal vascular disease, the presinusoidal component of some cholestatic disorders. Portal vein thrombosis is prehepatic, not this, and is not modelled.',
+    descriptionJa:
+      '肝内かつ類洞より上流の閉塞。住血吸虫症、門脈・類洞血管疾患 (PSVD)、一部の胆汁うっ滞性疾患の前類洞性要素など。門脈血栓症は肝前性であって、これとは別であり、モデル化していません。',
+    presinusoidalShare: 1,
+    thresholdsApply: false,
+  },
+];
+
+/** The named pattern a control value selects. Out-of-range values clamp. */
+export function patternFor(haemodynamicPattern) {
+  const index = Math.round(Number(haemodynamicPattern) || 0);
+  return HAEMODYNAMIC_PATTERNS[Math.min(HAEMODYNAMIC_PATTERNS.length - 1, Math.max(0, index))];
+}
 
 /**
  * The resistances a given set of controls implies.
@@ -176,8 +317,9 @@ export function vascularResistances(controls) {
     structuralResistance,
     dynamicTone,
     splanchnicVasodilation,
-    presinusoidalShare,
+    haemodynamicPattern,
   } = { ...DEFAULT_CONTROLS, ...controls };
+  const pattern = patternFor(haemodynamicPattern);
 
   // The intrahepatic resistance the disease has produced, as a multiple of the
   // healthy liver's. The dynamic component is expressed as a share of what the
@@ -191,11 +333,13 @@ export function vascularResistances(controls) {
   // Where it sits. The *total* is untouched by this: moving the share moves
   // resistance from one side of the sinusoid to the other, and a scene that
   // let it change the total could not use it to make the point it is there for.
-  const share = Math.min(1, Math.max(0, presinusoidalShare));
+  const share = pattern.presinusoidalShare;
   const presinusoidal = REFERENCE.presinusoidalResistance + (intrahepatic - healthyIntrahepatic) * share;
   const sinusoidal = intrahepatic - presinusoidal;
 
   return {
+    /** The named haemodynamic pattern these resistances represent. */
+    pattern,
     /** Aorta to portal vein. Falls as the splanchnic bed dilates. */
     splanchnic: REFERENCE.splanchnicResistance * (1 - 0.45 * splanchnicVasodilation),
     presinusoidal,
@@ -209,20 +353,37 @@ export function vascularResistances(controls) {
 }
 
 /**
- * How open the collateral bed is at a given gradient.
+ * How much collateral conductance is **established** at a given gradient.
  *
- * Collaterals are not a control the body has; they open because the pressure
- * opened them, above a threshold of the order of 10 mmHg. Modelled as a
- * sigmoid in the gradient, which makes the whole system circular — the
- * pressure decides the collaterals and the collaterals decide the pressure —
- * and that circularity is solved rather than sidestepped.
+ * ## Read this before reading the formula
+ *
+ * This is an **illustrative equilibrium mapping**, not a mechanism and not a
+ * law. It says: *by the time a liver has sat at this gradient, this much
+ * collateral conductance has typically become established.* It is a statement
+ * about where a chronic process has got to, expressed in the only currency an
+ * equilibrium model has.
+ *
+ * **Nothing here opens instantaneously, and nothing here is triggered by a
+ * pressure crossing a line.** What actually happens takes months to years and
+ * has at least three parts: pre-existing embryonic channels dilate, the
+ * vessels remodel, and new vessels are formed — a VEGF-dependent angiogenic
+ * process, not a valve. A real patient's collaterals do not appear when the
+ * gradient reaches ten and do not close when it falls below ten.
+ *
+ * The sigmoid's centre is the clinically significant portal hypertension
+ * threshold because that is the gradient at which patients are found to have
+ * collaterals, and its width is invented. Neither is a measurement.
+ *
+ * Making it depend on the gradient does make the system circular — the
+ * pressure sets the collateral conductance and the conductance sets the
+ * pressure — and that circularity is solved rather than sidestepped.
  *
  * @param {number} gradientMmHg
  * @param {number} propensity 0–1
  */
-export function collateralOpening(gradientMmHg, propensity) {
-  const opened = 1 / (1 + Math.exp(-(gradientMmHg - COLLATERAL_THRESHOLD) / COLLATERAL_SPREAD));
-  return Math.min(1, Math.max(0, propensity)) * opened;
+export function establishedCollateralFraction(gradientMmHg, propensity) {
+  const established = 1 / (1 + Math.exp(-(gradientMmHg - CSPH_GRADIENT_MMHG) / COLLATERAL_SPREAD));
+  return Math.min(1, Math.max(0, propensity)) * established;
 }
 
 /**
@@ -260,7 +421,10 @@ export function solvePortalCirculation(controls = {}) {
   const solved = fixedPoint({
     initial: portalPressureFor(resistances, 0, tipsConductance),
     next: (pressure) => {
-      const opening = collateralOpening(pressure - HEPATIC_VEIN_PRESSURE, settings.collateralPropensity);
+      const opening = establishedCollateralFraction(
+        pressure - HEPATIC_VEIN_PRESSURE,
+        settings.collateralPropensity
+      );
       const conductance = opening > 1e-4 ? opening / COLLATERAL_RESISTANCE_OPEN : 0;
       return portalPressureFor(resistances, conductance, tipsConductance);
     },
@@ -273,7 +437,7 @@ export function solvePortalCirculation(controls = {}) {
 
   const portalPressure = solved.value;
   const gradient = portalPressure - HEPATIC_VEIN_PRESSURE;
-  const opening = collateralOpening(gradient, settings.collateralPropensity);
+  const opening = establishedCollateralFraction(gradient, settings.collateralPropensity);
   const collateralConductance = opening > 1e-4 ? opening / COLLATERAL_RESISTANCE_OPEN : 0;
 
   // Flows, mL/s. Every one of them is ΔP/R across a path that exists.
@@ -284,9 +448,14 @@ export function solvePortalCirculation(controls = {}) {
 
   /**
    * Sinusoidal pressure: what is left of the portal pressure after the
-   * presinusoidal segment has taken its share. This is what a wedged hepatic
-   * venous catheter reads, and it is why HVPG is not the portal pressure
-   * gradient.
+   * presinusoidal segment has taken its share.
+   *
+   * A wedged hepatic venous catheter does not measure this directly. In
+   * sinusoidal portal hypertension the wedged pressure *approximates* it, and
+   * `hepaticVenousPressureGradientMmHg` below is that approximation minus the
+   * free hepatic venous pressure. That approximation is why HVPG is not the
+   * portal pressure gradient, and why it stops tracking it when a substantial
+   * part of the resistance moves upstream of the sinusoids.
    */
   const sinusoidalPressure = portalPressure - liverFlow * resistances.presinusoidal;
   const hepaticVenousGradient = sinusoidalPressure - HEPATIC_VEIN_PRESSURE;
@@ -327,7 +496,8 @@ export function solvePortalCirculation(controls = {}) {
      * without passing through liver tissue — through collaterals or a shunt.
      */
     shuntFraction: splanchnicInflow > 0 ? (collateralFlow + tipsFlow) / splanchnicInflow : 0,
-    collateralOpening: opening,
+    /** How much collateral conductance is established — see the function's note. */
+    establishedCollateralFraction: opening,
 
     /** Where the pressure is lost, as a profile a chart can draw directly. */
     pressureProfile: [
@@ -339,40 +509,90 @@ export function solvePortalCirculation(controls = {}) {
 }
 
 /**
+ * The thresholds this model may quote, and where each one applies.
+ *
+ * Following Baveno VII. All of them are defined on **HVPG**, not on this
+ * model's own portal pressure gradient, and all of them were established in
+ * compensated advanced chronic liver disease of **sinusoidal** aetiology —
+ * viral and alcohol-related cirrhosis above all, where HVPG is the gold
+ * standard.
+ *
+ * Note what is *not* here: a general "decompensation threshold" at 12 mmHg.
+ * There is no such general threshold. 12 mmHg appears in the literature in two
+ * specific places, and it is confined to them in `VARICEAL_CONTEXT` below.
+ */
+export const HVPG_THRESHOLDS = {
+  /** Above this, portal hypertension exists. Normal HVPG is 1–5 mmHg. */
+  portalHypertensionMmHg: 5,
+  /**
+   * At or above this, portal hypertension is **clinically significant**: the
+   * point from which varices, decompensation and hepatocellular carcinoma
+   * become substantially more likely. This is the threshold that matters, and
+   * the one the scene reads.
+   */
+  clinicallySignificantMmHg: 10,
+};
+
+/**
+ * The one context in which 12 mmHg belongs, kept separate so that it cannot be
+ * quoted as a general staging threshold.
+ *
+ * Two uses, and they are related but not the same:
+ *
+ * - The **classic association** between an HVPG at or above 12 mmHg and
+ *   variceal bleeding: below it, variceal bleeding is very unlikely.
+ * - The **post-TIPS haemodynamic target** of a portosystemic pressure gradient
+ *   below 12 mmHg, which is the target for a shunt placed for variceal
+ *   bleeding.
+ *
+ * Neither makes 12 mmHg a general threshold for decompensation, and neither is
+ * a band this model puts a liver into.
+ */
+export const VARICEAL_CONTEXT = {
+  gradientMmHg: 12,
+  note: 'The classic association with variceal bleeding, and the post-TIPS target gradient for a shunt placed to treat it. Not a general decompensation threshold.',
+  noteJa:
+    '静脈瘤出血との古典的な関連、および静脈瘤出血に対して留置した TIPS の術後目標圧較差。一般的な非代償化の閾値ではありません。',
+};
+
+/**
  * Whether a gradient of this size is in the range the literature calls
  * clinically significant — **and whether this model is entitled to say so.**
  *
- * The Baveno thresholds (≥10 mmHg for clinically significant portal
- * hypertension, ≥12 for variceal bleeding risk) are defined on **HVPG**, and
- * they were established in compensated advanced chronic liver disease of
- * sinusoidal aetiology. Applying them to a presinusoidal liver — where HVPG
- * systematically under-reads — is exactly the error the model exists to make
- * visible, so this function refuses to apply them there rather than returning
- * a number that would be quoted.
+ * Applicability is decided by the model's declared **haemodynamic pattern**,
+ * which is a named state saying which disease is being represented, not by a
+ * numerical comparison against a share. Where the pattern is not the one the
+ * thresholds were established in, this returns `band: null` rather than a
+ * category, because a category is a claim and that one would be a wrong claim.
  *
  * @param {ReturnType<typeof solvePortalCirculation>} state
  */
 export function clinicalThresholdReading(state) {
-  const applicable = state.controls.presinusoidalShare < 0.15;
+  const pattern = patternFor(state.controls.haemodynamicPattern);
   return {
     /** The measurement the thresholds are defined on. */
     hvpgMmHg: state.hepaticVenousPressureGradientMmHg,
-    applicable,
+    pattern,
+    applicable: pattern.thresholdsApply,
     /**
      * Null rather than a category when the configuration is outside what the
-     * thresholds were established in. A category is a claim; this one would be
-     * a wrong claim.
+     * thresholds were established in.
      */
-    band: applicable ? bandFor(state.hepaticVenousPressureGradientMmHg) : null,
+    band: pattern.thresholdsApply ? bandFor(state.hepaticVenousPressureGradientMmHg) : null,
   };
 }
 
-/** HVPG bands, as the literature defines them. Only ever used above. */
+/**
+ * HVPG bands, as Baveno VII defines them. Only ever used above.
+ *
+ * Three bands, not four. There is deliberately no band boundary at 12 mmHg:
+ * clinically significant portal hypertension is the categorical distinction,
+ * and 12 mmHg is a variceal-bleeding association rather than a further stage.
+ */
 function bandFor(hvpg) {
-  if (hvpg < 6) return 'normal';
-  if (hvpg < 10) return 'subclinical';
-  if (hvpg < 12) return 'clinically-significant';
-  return 'high-risk';
+  if (hvpg <= HVPG_THRESHOLDS.portalHypertensionMmHg) return 'normal';
+  if (hvpg < HVPG_THRESHOLDS.clinicallySignificantMmHg) return 'portal-hypertension';
+  return 'clinically-significant';
 }
 
 /**

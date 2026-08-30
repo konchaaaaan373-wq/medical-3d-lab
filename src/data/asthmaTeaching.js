@@ -8,7 +8,7 @@
  */
 
 /** The lung the scene is about: hyperresponsive, with some wall thickening. */
-const ASTHMATIC = { hyperresponsiveness: 1.2, wallThickening: 0.25, inflation: 1, bronchodilator: 0 };
+const ASTHMATIC = { hyperresponsiveness: 1.2, wallThickening: 0.25, lungInflation: 1, bronchodilator: 0 };
 
 /**
  * Seven steps. The middle three are the loop, taken one link at a time,
@@ -77,9 +77,9 @@ export const CAUSAL_STORY = {
         textJa: '実質は伸展の度合いに比例して引くためです。そして実質を伸展させるのは、届いてくる空気です。',
       },
       body:
-        'That closes the loop. Narrow slightly → ventilate slightly less → be tethered slightly less → narrow further. Try it directly: pull the *inflation* control up to a deep breath and watch the resistance fall, then take it down and watch it climb. Nothing about the muscle changed either time.',
+        'That closes the loop. Narrow slightly → ventilate slightly less → be tethered slightly less → narrow further. Try the tethering term directly: raise *global lung inflation* and watch the resistance fall, take it down and watch it climb. Nothing about the muscle changed either time — that control is the mechanical load, and nothing else.',
       bodyJa:
-        'ここでループが閉じます。少し狭くなる → 換気が少し減る → 支えが少し弱まる → さらに狭くなる。直接試せます。「肺の伸展」を深吸気まで上げると抵抗が下がり、下げると上がります。どちらのときも筋については何も変えていません。',
+        'ここでループが閉じます。少し狭くなる → 換気が少し減る → 支えが少し弱まる → さらに狭くなる。牽引の項は直接試せます。「肺全体の伸展」を上げると抵抗が下がり、下げると上がります。どちらのときも筋については何も変えていません。この操作項は力学的な負荷そのものであって、それ以外の何物でもありません。',
       controls: { ...ASTHMATIC },
       progress: 0.6,
       watch: ['resistance', 'ventilation', 'calibre'],
@@ -144,16 +144,16 @@ export const CAUSAL_STORY = {
 
 export const LEARNING_MODULES = [
   {
-    id: 'deep-breath',
-    title: 'What a deep breath does to a constricted lung',
-    titleJa: '深吸気が、収縮した肺に何をするか',
-    short: 'Deep breath',
-    shortJa: '深吸気',
+    id: 'parenchymal-tethering',
+    title: 'What does stronger parenchymal tethering do?',
+    titleJa: '実質の牽引が強まると、何が起きるのか',
+    short: 'Tethering',
+    shortJa: '実質の牽引',
     setup: { progress: 0.8, ...ASTHMATIC },
     question: {
-      text: 'This lung has tipped: over half its regions are receiving almost nothing. Now stretch it — a deep breath, with no drug and no change to the stimulus. What happens to the unevenness?',
+      text: 'This lung has tipped: a large share of its regions are receiving almost nothing. Now increase the stretch of the parenchyma around every airway — no drug, and no change to the stimulus reaching the muscle. What happens to the unevenness?',
       textJa:
-        'この肺は限界を越え、半分以上の領域がほとんど換気されていません。ここで肺を伸展させます。薬も使わず、刺激も変えません。不均一さはどうなりますか。',
+        'この肺は限界を越え、多くの領域がほとんど換気されていません。ここで、すべての気道を取り巻く実質の伸展を強めます。薬は使わず、筋に届く刺激も変えません。不均一さはどうなりますか。',
       options: [
         { id: 'falls', label: 'It falls — some regions come back', labelJa: '減る（いくつかの領域が戻る）' },
         { id: 'same', label: 'Nothing changes; the muscle is what matters', labelJa: '変わらない（効いているのは筋だから）' },
@@ -162,34 +162,36 @@ export const LEARNING_MODULES = [
       answer: 'falls',
     },
     manipulation: {
-      control: 'inflation',
+      control: 'lungInflation',
       to: 1.3,
       seconds: 3,
-      action: 'Take a deep breath',
-      actionJa: '深く息を吸う',
-      text: 'Raise the lung’s inflation to that of a deep breath and watch the distribution.',
-      textJa: '肺の伸展を深吸気の水準まで上げ、分布の変化を見てください。',
+      action: 'Stretch the parenchyma',
+      actionJa: '実質を伸展させる',
+      text: 'Raise global lung inflation and watch the distribution. This changes the load the smooth muscle is shortening against, and nothing else.',
+      textJa:
+        '肺全体の伸展を上げて、分布の変化を見てください。これが変えるのは、平滑筋が抗して短縮している負荷だけです。',
       hint: 'Watch the resistance and the air reaching the lung, then look at whether the two peaks have moved together.',
       hintJa: '抵抗と、肺に届く空気の量を見てください。そのあと、2 つのピークが近づいたかどうかを見てください。',
     },
     watch: ['resistance', 'heterogeneity', 'defects', 'ventilation'],
     observation: {
-      text: 'Resistance more than halved, the air reaching the lung roughly doubled, and a third of the dark regions came back — with no drug given and the stimulus untouched.',
+      text: 'Resistance fell, more air reached the lung, and some of the dark regions came back — with no drug given and the stimulus untouched. Read the figures off the panel rather than from this sentence: they are the model’s, and they are illustrative.',
       textJa:
-        '抵抗は半分以下になり、肺に届く空気はおよそ 2 倍になり、暗かった領域の約 3 分の 1 が戻りました。薬は使っておらず、刺激も変えていません。',
+        '抵抗が下がり、肺に届く空気が増え、暗かった領域の一部が戻りました。薬は使っておらず、刺激も変えていません。数値はこの文ではなく、パネルの表示を読んでください。それはモデルの出力であり、あくまで説明用の値です。',
     },
     explanation: {
-      text: 'Stretching the lung pulls harder on the outside of every airway, which is the load the smooth muscle is shortening against. For the regions sitting near the tipping point that extra load is enough to push them back to the open side, and once they are open the air they take stretches them further — the same loop, running the other way. This is deep-inspiration bronchodilation, and it is a mechanical effect, not a pharmacological one.',
+      text: 'Stretching the parenchyma pulls harder on the outside of every airway, and that pull is the load the smooth muscle is shortening against. For the regions sitting near the tipping point the extra load is enough to push them back to the open side, and once they are open the air they take stretches them further — the same loop, running the other way. **Increasing lung volume increases the parenchymal tethering forces that tend to oppose airway narrowing**, and that is the whole of what this control demonstrates.',
       textJa:
-        '肺を伸展させると、すべての気道の外側をより強く引くことになります。これこそが平滑筋が抗して短縮している負荷です。分岐点付近にいた領域では、この追加の負荷だけで開いた側へ押し戻すのに十分であり、いったん開けば受け取った空気がさらに伸展させます。同じループが逆向きに回るのです。これが深吸気による気管支拡張であり、薬理学的ではなく力学的な現象です。',
+        '実質を伸展させると、すべての気道の外側をより強く引くことになります。この牽引こそが、平滑筋が抗して短縮している負荷です。分岐点付近にいた領域では、この追加の負荷だけで開いた側へ押し戻すのに十分であり、いったん開けば受け取った空気がさらに伸展させます。同じループが逆向きに回るのです。**肺気量が増えると、気道の狭窄に抗する実質の牽引力が増える**。この操作項が示しているのは、それだけです。',
       footnote:
-        'Take the inflation the other way, to a shallow breath, and the same mechanism doubles the resistance instead.',
-      footnoteJa: '逆に浅い呼吸まで下げると、同じ機序によって今度は抵抗が倍増します。',
+        'Take the stretch the other way, towards a lung held at a lower volume, and the same mechanism raises the resistance instead.',
+      footnoteJa:
+        '逆に、より低い肺気量に保たれた肺のほうへ動かすと、同じ機序によって今度は抵抗が上がります。',
     },
     outro: {
-      text: 'The loss of this effect is one of the things that separates an asthmatic airway from a normal one — and it is a good reason to be careful about what a lung was doing when it was measured.',
+      text: '**This control isolates the mechanical tethering effect. It does not predict the bronchodilator response to a real deep inspiration in a person with asthma.** In health, a deep inspiration both reverses and prevents bronchoconstriction; in asthma that response is impaired or lost, and most impaired where hyperresponsiveness is strongest. Why it is lost is a question about smooth-muscle dynamics — strain rate, cross-bridge cycling, the plasticity of the contractile apparatus — and none of that is in this model. What is here is the load. What is missing is everything about the muscle that changes when you pull on it.',
       textJa:
-        'この効果が失われていることは、喘息の気道を正常な気道から分ける特徴の 1 つです。そして、測定時にその肺が何をしていたかに注意すべき十分な理由でもあります。',
+        '**この操作項は、力学的な牽引効果だけを取り出したものです。喘息の人が実際に深吸気をしたときの気管支拡張反応を予測するものではありません。** 健常者では深吸気は気管支収縮を解除し、また予防もします。喘息ではこの反応が減弱ないし消失しており、気道過敏性が強いほど強く障害されています。なぜ失われるのかは平滑筋の動的性質（伸展速度、クロスブリッジの回転、収縮装置の可塑性）についての問いであり、そのいずれもこのモデルには含まれていません。ここにあるのは負荷だけです。欠けているのは、引っ張られたときに筋の側で変わるすべてです。',
     },
   },
   {

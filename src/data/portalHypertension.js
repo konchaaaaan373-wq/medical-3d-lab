@@ -66,9 +66,9 @@ export const STAGES = [
     at: 0.6,
     focus: ['collateral', 'portal'],
     summary:
-      'Past a gradient of about ten, portosystemic collaterals open and carry a large share of the portal blood straight to the systemic veins. They take a real bite out of the pressure — and leave it far above normal.',
+      'By the time a liver has sat at a gradient of this size, a portosystemic collateral network has become established — pre-existing channels dilated, vessels remodelled, new ones grown, over months to years — and it carries a large share of the portal blood straight to the systemic veins. It takes a real bite out of the pressure and leaves it far above normal, because the hepatic resistance behind it and the inflow in front of it are both still there.',
     summaryJa:
-      '圧較差が約 10 を超えると門脈大循環短絡が開通し、門脈血のかなりの部分が直接体循環静脈へ流れます。圧はたしかに下がりますが、正常には到底戻りません。',
+      'この程度の圧較差が続いた肝臓では、門脈大循環短絡の血管網がすでに確立しています（既存の側副路の拡張、血管リモデリング、新生血管形成が数か月から数年かけて進んだ結果です）。この血管網は門脈血のかなりの部分を直接体循環静脈へ運びます。圧はたしかに下がりますが、正常には到底戻りません。背後の肝内抵抗も、手前の流入増加も、どちらも残ったままだからです。',
   },
   {
     id: 'advanced',
@@ -153,6 +153,12 @@ export const METRICS = [
   { id: 'resistance', label: 'Intrahepatic resistance', labelJa: '肝内血管抵抗', unit: '× healthy' },
 ];
 
+/**
+ * The names shown for the haemodynamic-pattern control. Kept in step with
+ * `HAEMODYNAMIC_PATTERNS` in the model by `tests/portal-hypertension-scene.test.js`.
+ */
+const PATTERN_NAMES = ['Sinusoidal', 'Mixed', 'Presinusoidal'];
+
 export const MODEL_CONTROLS = [
   {
     id: 'splanchnicVasodilation',
@@ -191,13 +197,20 @@ export const MODEL_CONTROLS = [
     format: (v) => (v === 0 ? 'none' : `${Math.round(v * 100)}%`),
   },
   {
-    id: 'presinusoidalShare',
-    label: 'Resistance sitting presinusoidally',
-    labelJa: '抵抗のうち類洞前にある割合',
+    /**
+     * A named state, not a share. Which pattern is being modelled is a
+     * question about which disease this is, and answering it with a number
+     * would put an implementation constant on screen dressed as a clinical
+     * criterion. The three positions are the three patterns; no percentage is
+     * ever shown.
+     */
+    id: 'haemodynamicPattern',
+    label: 'Which portal hypertension',
+    labelJa: 'どの門脈圧亢進症か',
     min: 0,
-    max: 1,
-    step: 0.02,
-    format: (v) => `${Math.round(v * 100)}%`,
+    max: 2,
+    step: 1,
+    format: (v) => PATTERN_NAMES[Math.round(v)] ?? PATTERN_NAMES[0],
   },
 ];
 
@@ -213,18 +226,19 @@ export const MODEL_SCOPE = {
         '門脈で流量保存が成り立つネットワークに ΔP = Q·R を適用します。内臓細動脈からの流入と、肝臓・側副血行路・短絡路への流出です。',
     },
     {
-      text: 'That portal hypertension has two causes at once — resistance to outflow and increased inflow — and that they add.',
-      textJa: '門脈圧亢進には「流出抵抗の上昇」と「流入の増加」という 2 つの原因が同時にあり、両者が加算されること。',
+      text: 'That increased intrahepatic resistance is the **initiating** mechanism and increased splanchnic inflow is the **perpetuating** one — a feed-forward loop, not two parallel causes. The scene answers "what does more resistance do?" and "what does more inflow do at a fixed resistance?" separately, so that the two roles can be told apart.',
+      textJa:
+        '肝内血管抵抗の上昇が**起点となる機序**であり、内臓循環からの流入増加が**維持・増悪させる機序**であること。2 つの並列した原因ではなく、フィードフォワードのループです。このシーンは「抵抗が増えると何が起きるか」と「抵抗を固定したまま流入が増えると何が起きるか」を別々に答えられるようにしてあります。',
     },
     {
-      text: 'Why collaterals divert a great deal of blood and still leave the pressure high: they are a high-resistance path, not a low-resistance one.',
+      text: 'Why collaterals redistribute a great deal of portal flow and still leave the pressure high: they remove neither the raised hepatic resistance behind them nor the raised inflow in front of them.',
       textJa:
-        '側副血行路が大量の血液を迂回させても圧が高いままである理由。それらは低抵抗路ではなく高抵抗路だからです。',
+        '側副血行路が門脈血の多くを再分配してもなお圧が高いままである理由。背後にある肝内抵抗の上昇も、手前にある流入の増加も、側副血行路は取り除かないためです。',
     },
     {
-      text: 'Why HVPG and the portal pressure gradient are the same number in sinusoidal disease and very different numbers in presinusoidal disease.',
+      text: 'Why HVPG tracks the portal pressure gradient in sinusoidal disease and under-reads it badly when a substantial part of the resistance lies upstream of the sinusoids.',
       textJa:
-        '類洞性の疾患では HVPG と門脈圧較差がほぼ一致し、類洞前性の疾患では大きく食い違う理由。',
+        '類洞性の疾患では HVPG が門脈圧較差をよく反映し、抵抗のかなりの部分が類洞より上流にある場合には大きく過小評価する理由。',
     },
     {
       text: 'What a shunt does that collaterals cannot, and what it costs in hepatic perfusion.',
@@ -252,9 +266,19 @@ export const MODEL_SCOPE = {
         'このモデルが計算しているのは門脈圧較差です。それを HVPG と呼ぶことこそ、このシーンが防ごうとしている誤りです。だから両方を表示しており、両者は同じ値ではありません。',
     },
     {
-      text: 'The Baveno thresholds (≥10 mmHg clinically significant, ≥12 mmHg higher risk) are defined on HVPG and were established in compensated advanced chronic liver disease of sinusoidal aetiology. Move the resistance presinusoidally and the scene stops applying them, because there they would be wrong.',
+      text: 'Following Baveno VII: an HVPG above 5 mmHg is portal hypertension, and ≥10 mmHg is clinically significant portal hypertension — HVPG being the gold standard above all in viral and alcohol-related cirrhosis. These are defined on HVPG and were established in compensated advanced chronic liver disease of sinusoidal aetiology, so the scene withholds them outside the sinusoidal pattern rather than extending them where they would be wrong.',
       textJa:
-        'Baveno の閾値（≥10 mmHg で臨床的に有意、≥12 mmHg でより高リスク）は HVPG に対して定義され、類洞性の代償性進行性慢性肝疾患で確立されたものです。抵抗を類洞前に移すとシーンは閾値の適用をやめます。そこでは誤りになるからです。',
+        'Baveno VII に従っています。HVPG が 5 mmHg を超えれば門脈圧亢進、10 mmHg 以上で臨床的に有意な門脈圧亢進 (CSPH) です。HVPG は、とくにウイルス性・アルコール性の肝硬変において gold standard とされます。これらは HVPG に対して定義され、類洞性の代償性進行性慢性肝疾患で確立された値であるため、類洞性以外のパターンでは、誤った外挿をせずに表示そのものを控えます。',
+    },
+    {
+      text: '12 mmHg is **not** used here as a general decompensation threshold, because it is not one. It belongs to two specific contexts: the classic association between an HVPG of 12 mmHg or more and variceal bleeding, and the post-TIPS target of a portosystemic gradient below 12 mmHg for a shunt placed to treat variceal bleeding. The scene’s HVPG bands therefore have no boundary there.',
+      textJa:
+        '12 mmHg は一般的な「非代償化の閾値」としては使っていません。そのようなものではないからです。この値が属するのは 2 つの限られた文脈です。HVPG 12 mmHg 以上と静脈瘤出血との古典的な関連、および静脈瘤出血に対して留置した TIPS の術後目標である圧較差 12 mmHg 未満です。したがって、このシーンの HVPG 区分にはそこに境界がありません。',
+    },
+    {
+      text: 'Presinusoidal intrahepatic and prehepatic portal hypertension are not the same thing, although HVPG under-reads in both. This model represents the presinusoidal intrahepatic pattern — schistosomiasis, porto-sinusoidal vascular disease, the presinusoidal component of some cholestatic disorders. Portal vein thrombosis is prehepatic, outside the liver, and is not modelled at all.',
+      textJa:
+        '前類洞性（肝内）門脈圧亢進と肝前性門脈圧亢進は、どちらも HVPG が過小評価するとはいえ、同じものではありません。このモデルが表現しているのは前類洞性（肝内）のパターン、すなわち住血吸虫症、門脈・類洞血管疾患 (PSVD)、一部の胆汁うっ滞性疾患の前類洞性要素です。門脈血栓症は肝前性であり肝外の病態で、モデル化していません。',
     },
     {
       text: 'The resistances are calibration constants, not measurements. No such measurement exists for a person; they are the numbers that put the healthy liver’s gradient and flow where the textbooks put them.',
@@ -262,39 +286,52 @@ export const MODEL_SCOPE = {
         '各抵抗値は較正定数であって実測値ではありません。個人についてそのような測定値は存在しません。健常肝の圧較差と血流を教科書的な値に合わせるための数値です。',
     },
     {
-      text: 'Hepatic portal perfusion here can rise with splanchnic vasodilation, because a higher gradient across a fixed resistance drives more flow. In a real cirrhotic liver it usually falls. The model does not carry what would make it fall.',
+      text: 'Two different questions about hepatic portal perfusion, and the model answers them differently on purpose. Along this scene’s axis — progressive intrahepatic scarring — the blood reaching the liver falls, which is the clinical direction. Turn splanchnic vasodilation up on its own, holding the hepatic resistance fixed, and it rises instead: a larger gradient across an unchanged resistance is more flow, and that is arithmetic rather than a bug. What the model does not carry is what makes perfusion fall in a real cirrhotic liver *despite* the hyperdynamic circulation — progressive obliteration of the intrahepatic vascular bed, and collaterals growing faster than the inflow.',
       textJa:
-        'このモデルでは内臓血管拡張により肝門脈血流が増えることがあります。固定された抵抗にかかる圧較差が上がるためです。実際の肝硬変肝では通常は低下します。低下させる要因をこのモデルは持っていません。',
+        '肝門脈血流については 2 つの異なる問いがあり、モデルは意図的に別々に答えます。このシーンの軸である肝内線維化の進行に沿っては、肝臓に届く血流は低下します。これは臨床的な方向と一致します。一方、肝内抵抗を固定したまま内臓血管拡張だけを上げると、血流は増加します。抵抗が変わらないまま圧較差が大きくなれば流量は増えるという算術であり、バグではありません。モデルに含まれていないのは、実際の肝硬変肝で hyperdynamic circulation があってもなお灌流が低下する要因、すなわち肝内血管床の進行性の閉塞と、流入の増加を上回る速度での側副血行路の発達です。',
     },
   ],
   sources: [
     {
-      text: 'Standard hepatology for the two-hit account of portal hypertension (raised intrahepatic resistance plus increased splanchnic inflow) and for the roughly 20–30% dynamic, reversible component of the intrahepatic resistance.',
+      text: 'Baveno VII (PMC11090185) for the thresholds — HVPG above 5 mmHg is portal hypertension, ≥10 mmHg is clinically significant portal hypertension, HVPG the gold standard above all in viral and alcohol-related cirrhosis — and for the caution against extrapolating them to predominantly presinusoidal disorders.',
       textJa:
-        '門脈圧亢進の two-hit 説（肝内抵抗の上昇＋内臓循環流入の増加）と、肝内抵抗のうち可逆的・動的な成分が約 20–30% であることは標準的な肝臓病学から。',
-      kind: 'textbook',
-    },
-    {
-      text: 'HVPG measurement literature: normal 1–5 mmHg, ≥10 mmHg clinically significant, ≥12 mmHg associated with decompensating events; WHVP reflects sinusoidal and not portal pressure, so HVPG systematically under-reads presinusoidal portal hypertension.',
-      textJa:
-        'HVPG 測定に関する文献：正常 1–5 mmHg、≥10 mmHg で臨床的に有意、≥12 mmHg で非代償性イベントと関連。WHVP は門脈圧ではなく類洞圧を反映するため、HVPG は類洞前性門脈圧亢進を系統的に過小評価します。',
-      kind: 'review',
-    },
-    {
-      text: 'Baveno VII, for the thresholds and for the statement that they should not be extrapolated to predominantly presinusoidal disorders.',
-      textJa:
-        '閾値、および主として類洞前性の病態へ外挿すべきでないという点は Baveno VII から。',
+        '閾値は Baveno VII (PMC11090185) から。HVPG 5 mmHg 超で門脈圧亢進、10 mmHg 以上で臨床的に有意な門脈圧亢進 (CSPH)。HVPG は、とくにウイルス性・アルコール性肝硬変において gold standard です。主として前類洞性の病態に外挿すべきでないという注意も同文献から。',
       kind: 'guideline',
     },
     {
-      text: 'TIPS literature for the target of a post-shunt gradient below 12 mmHg.',
-      textJa: '短絡路作成後の圧較差 12 mmHg 未満という目標値は TIPS に関する文献から。',
+      text: 'Reviews of the pathophysiology of portal hypertension (PMC2999290, PMC3971388, PMC3000670) for the causal order: increased intrahepatic vascular resistance is the initiating event, portal hypertension then induces splanchnic vasodilation and a hyperdynamic circulation, and the resulting increase in portal inflow maintains and worsens the pressure.',
+      textJa:
+        '門脈圧亢進の病態生理に関する総説 (PMC2999290, PMC3971388, PMC3000670) から因果の順序を採用しています。肝内血管抵抗の上昇が起点となり、門脈圧亢進が内臓血管の拡張と hyperdynamic circulation を誘導し、その結果の門脈流入増加が圧を維持・増悪させます。',
       kind: 'review',
     },
     {
-      text: 'Consulted through search-result summaries and abstracts, not full text — the medical publishers were unreachable from the network this was built on. No guideline figure or table has been reproduced; only numerical thresholds that are stated in ordinary prose in many places.',
+      text: 'The same reviews for the dynamic, reversible component of the intrahepatic resistance — activated stellate cell contraction, reduced intrahepatic nitric oxide, increased endothelin — classically quoted as roughly a fifth to a third of the total.',
       textJa:
-        '出典はいずれも検索結果の要約・抄録を通じて確認したもので、本文は参照していません（構築環境から医学系出版社に到達できないため）。ガイドラインの図表は一切複製しておらず、多くの文献で文章として述べられている数値の閾値のみを用いています。',
+        '肝内抵抗のうち可逆的・動的な成分（活性化星細胞の収縮、肝内一酸化窒素の低下、エンドセリンの増加）が全体の約 20–30% とされる点も同じ総説群から。',
+      kind: 'review',
+    },
+    {
+      text: 'HVPG measurement literature for HVPG = WHVP − FHVP, for WHVP approximating sinusoidal pressure in sinusoidal portal hypertension, and for the systematic under-reading when a substantial part of the resistance lies upstream of the sinusoids.',
+      textJa:
+        'HVPG = WHVP − FHVP であること、類洞性門脈圧亢進では WHVP が類洞圧を近似すること、抵抗のかなりの部分が類洞より上流にある場合に系統的な過小評価が生じることは、HVPG 測定に関する文献から。',
+      kind: 'review',
+    },
+    {
+      text: 'TIPS literature for the post-shunt haemodynamic target of a portosystemic gradient below 12 mmHg when a shunt is placed for variceal bleeding — the one context, alongside the classic HVPG ≥ 12 mmHg association with variceal bleeding, in which 12 mmHg belongs.',
+      textJa:
+        '静脈瘤出血に対する TIPS 留置後の血行動態的目標（門脈大循環圧較差 12 mmHg 未満）は TIPS の文献から。HVPG 12 mmHg 以上と静脈瘤出血との古典的な関連とあわせて、12 mmHg という値が属するのはこの文脈のみです。',
+      kind: 'review',
+    },
+    {
+      text: 'Every resistance in this model is a calibration constant chosen to put a healthy liver’s gradient and flow where the textbooks put them. Reading a source in full does not turn a calibration into a measurement, and none of these has become one.',
+      textJa:
+        'このモデルの各抵抗値は、健常肝の圧較差と血流を教科書的な値に合わせるために選んだ較正定数です。原著を読めたからといって較正値が実測値になるわけではなく、いずれもそうはなっていません。',
+      kind: 'caveat',
+    },
+    {
+      text: 'No guideline figure, table or algorithm has been reproduced. What is used is a small number of thresholds and the causal ordering, both of which are stated in prose in the sources above.',
+      textJa:
+        'ガイドラインの図・表・アルゴリズムは一切複製していません。用いているのは少数の閾値と因果の順序であり、いずれも上記の出典中で文章として述べられているものです。',
       kind: 'caveat',
     },
   ],

@@ -4,20 +4,80 @@ Implementation: [`src/models/asthma.js`](../../src/models/asthma.js)
 Boundary of the claim: [`docs/model-cards/asthma.md`](../model-cards/asthma.md)
 Tests: [`tests/asthma-model.test.js`](../../tests/asthma-model.test.js), [`tests/asthma-scene.test.js`](../../tests/asthma-scene.test.js)
 
-## How these sources were consulted
+## How these sources were consulted — read this first
 
-**Read this first.** The network this repository was built on blocks the
-medical publishers and index sites — PubMed, PMC, Nature, the ERS and ATS
-journals, Wiley and BMJ are all unreachable from here. Every source below was
-reached through **search-result summaries and abstracts, not full text.** In
-particular, the Venegas 2005 paper that this model's mechanism comes from was
-**not read**; what is reproduced here is the mechanism as it is described in
-secondary accounts, at a level of detail that does not include their model's
-equations or parameters.
+This section has been rewritten, and the change matters.
 
-That is a material limitation. It is why this model claims only the *shape* of
-the result, why every quantity it reports is relative, and why the model card
-forbids reading any figure here as a measurement.
+**The model and the teaching text in this scene were corrected against an
+external, full-text clinical review.** That review named its sources — GINA
+2026; Venegas et al., *Nature* 434:777–82 (2005),
+doi:10.1038/nature03490; Winkler & Venegas, "Mathematical Modeling of
+Ventilation Defects in Asthma" (PMC4698910); "The role of heterogeneity in
+asthma: a structure-to-function perspective" (PMC5543015); reviews of airway
+smooth muscle distribution (PMC9581182); and reviews of deep inspiration in
+asthma (PMC10585885) — and it found two real errors, recorded below.
+
+**What has not changed is this repository's own access.** The network this code
+is built and tested on still cannot reach PubMed, PMC, Nature, the ERS and ATS
+journals, Wiley or BMJ. Nothing here was extracted from a figure, a table or a
+methods section by the author of this file. Where a claim below cites full
+text, it is citing the external review's reading of it, and for a
+*proposition* — an anatomical fact, a mechanism, a correction — never for a
+number lifted out of a paper.
+
+**This is not the Venegas model and it reproduces none of their results.** It
+is a simplified conceptual implementation inspired by the published mechanism:
+eight generations where theirs has the whole tree, a lumped acinus, a crude
+scalar stand-in for parenchymal coupling, and no attempt to match any figure
+they report. Any quantitative agreement would be a coincidence, and none is
+claimed. **Reading a source in full does not turn a calibration into a
+measurement**, and every invented parameter here is still invented:
+`TETHERING_COUPLING`, `TETHERING_FLOOR`, `TETHERING_STRENGTH`,
+`RESPONSE_STEEPNESS`, the inherited share of sensitivity, and the maximum
+narrowing.
+
+The confidence behind each claim is machine-readable in
+[`src/models/evidence.js`](../../src/models/evidence.js), one of
+`established` / `supported` / `calibration` / `illustrative` / `uncertain`, and
+`tests/evidence.test.js` checks that every asserted claim names a test that
+exists. The `Confidence` row in each table below gives the registry id.
+
+## What the review corrected
+
+**1. "Asthma is a small-airway disease" was wrong, and the model's anatomy was
+encouraging it.** A single ramp called `smoothMuscleShare` went from zero at
+the trachea to one in the bronchioles. Read as what its name said, that asserts
+there is no airway smooth muscle in the central airways, which is false: smooth
+muscle runs continuously from the trachea — as trachealis, in the posterior
+membranous wall between the ends of the cartilage rings — to the terminal
+bronchioles, and asthma involves the whole airway tree.
+
+What actually changes along the tree is two separate things, and the model now
+carries them separately. `smoothMuscleFraction(g)` is how much muscle is there,
+non-zero everywhere and rising distally as the layer becomes complete and
+circumferential. `cartilageSupport(g)` is how much of its shortening the
+cartilage takes up, falling from complete rings to plates to nothing by the
+bronchioles. Their product, `constrictibilityWeight(g)`, is what the solver
+uses — how much a given activation moves *this* airway's calibre — and it is
+named for what it is rather than for one of its two causes. The consequence the
+scene may teach is about **effect**: the same shortening changes a small
+airway's calibre far more, and its resistance far more again.
+
+**2. The scene claimed a bronchodilator response to a deep breath that it
+cannot model, and quoted a size for it.** The control was labelled "Lung
+inflation (a deep breath)" and a challenge reported that "a third of the dark
+regions came back". Both have gone. The mechanism in the model is parenchymal
+tethering and nothing else, so the control is now "Global lung inflation
+(parenchymal stretch)", the lesson is "What does stronger parenchymal tethering
+do?", and its learning objective is the mechanical one: *increasing lung volume
+increases the parenchymal tethering forces that tend to oppose airway
+narrowing*. The lesson now says in as many words that **it does not predict the
+bronchodilator response to a real deep inspiration in a person with asthma** —
+that response is impaired or lost in asthma, most of all where
+hyperresponsiveness is strong, and the smooth-muscle dynamics that decide it
+are absent here. No test in this repository asserts any particular
+bronchodilation from a real deep inspiration, and
+`tests/asthma-scene.test.js` asserts that the lesson quotes no size at all.
 
 ---
 
@@ -32,6 +92,7 @@ forbids reading any figure here as a measurement.
 | **Implementation** | `branchResistance(branch, radius) = length / radius⁴`, in arbitrary units, used only to form ratios. |
 | **Assumption** | **Poiseuille is not applied unconditionally to the whole tree as a statement about absolute resistance.** Flow in the trachea and main bronchi is not laminar; the real airway tree's resistance is not this expression's. The model uses the *exponent* — a relative statement about what narrowing costs — and reports every resistance as a ratio to the same tree unstimulated, so that the part it is wrong about cancels. This is stated in the scene's scope panel and in its disclaimer. |
 | **Validation** | The whole test suite works in ratios; `mid-expiratory maximal flow` style absolute checks are deliberately absent because the model does not claim absolutes. |
+| **Confidence** | `fourth-power` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 2. A symmetric dichotomous tree with a diameter ratio of 2^(−1/3)
 
@@ -42,16 +103,18 @@ forbids reading any figure here as a measurement.
 | **Implementation** | `HOMOTHETY = 2 ** (-1/3)`; branch length and radius both scale by it per generation; eight generations, 128 terminal units. |
 | **Assumption** | Real branching is markedly **asymmetric** and a lung has twenty-three generations. Both simplifications matter: an asymmetric tree distributes flow differently, and the missing generations are exactly the ones where the total cross-section explodes, which is why this model's resistance is spread evenly across its generations where a real lung's is concentrated centrally. The model does not claim to say where in a lung the resistance sits. |
 | **Validation** | `the tree is a complete binary tree of the size it says`; `each generation is narrower than the last by the homothety ratio`. |
+| **Confidence** | `fourth-power` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
-### 3. Airway smooth muscle is a small-airway story
+### 3. Airway smooth muscle is present throughout; cartilage is what falls away
 
 | | |
 | --- | --- |
-| **Claim** | The trachea and main bronchi are held open by cartilage; smooth muscle comes to dominate in the small bronchi and bronchioles. |
-| **Source** | Standard respiratory anatomy. |
-| **Implementation** | `smoothMuscleShare(generation)` ramps from 0 at the trachea to 1 by generation 3. |
-| **Assumption** | The ramp's position is illustrative. What is claimed is that it exists and which end it is at. |
-| **Validation** | `smooth muscle is a small-airway thing`. |
+| **Claim** | Airway smooth muscle runs from the trachea to the terminal bronchioles. In the trachea and main bronchi it is the trachealis, spanning the posterior membranous portion between the open ends of the cartilage rings; distally the cartilage becomes plates and then disappears, and the muscle becomes a complete helical and then circumferential layer whose share of the airway wall rises. The consequence is that the same muscle shortening changes a small airway's calibre far more — and, through the fourth power, its resistance far more again. |
+| **Source** | Standard airway anatomy; reviews of airway smooth muscle distribution (PMC9581182) through the external review; GINA 2026 for asthma as a heterogeneous disease of the whole airway tree. |
+| **Implementation** | Two functions, deliberately not one. `smoothMuscleFraction(generation)` rises from 0.45 at the trachea to 1 by generation 4 and is **never zero**. `cartilageSupport(generation)` falls from 0.85 to 0 by generation 5. `constrictibilityWeight(generation)` is their product, and it is what the solver reads. |
+| **Assumption** | All three magnitudes are illustrative. What is claimed is that the muscle is present throughout, that cartilage support falls away distally, and that the product therefore rises distally without ever reaching zero centrally. |
+| **Validation** | `physiology: airway smooth muscle is present at every generation of the tree`; `physiology: what falls away distally is the cartilage, not the muscle`; `physiology: the same activation narrows a small airway more than a central one`; `smooth muscle is present at every generation, and cartilage is what falls away`. |
+| **Confidence** | `muscle-throughout` and `cartilage-falls-away` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 4. The smooth-muscle response is sigmoid
 
@@ -61,27 +124,30 @@ forbids reading any figure here as a measurement.
 | **Source** | Standard pharmacology of smooth muscle. |
 | **Implementation** | `narrowing = 1 / (1 + exp(−k(activation − opposition)))` with `k = 6`. |
 | **Assumption** | The steepness is illustrative and it matters: the clustering in this model needs both a steep local response *and* the feedback loop below, and the model card says so. |
-| **Validation** | Covered indirectly by the knee test; the steepness has no separate test because no source was reachable to check it against. **Thin.** |
+| **Validation** | Covered indirectly by the knee test. The steepness has no separate test because there is nothing external to test it against: it is `illustrative`, which is a different thing from `thin`. Nobody is going to find the number. |
+| **Confidence** | `response-steepness` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 5. Narrowing is opposed by the parenchyma tethering the airway open
 
 | | |
 | --- | --- |
-| **Claim** | Airway smooth muscle shortens against a load, and a large part of that load is the elastic recoil of the parenchyma attached to the outside of the airway. The more the lung is stretched, the greater the load, which is why a deep inspiration dilates a constricted airway. |
-| **Source** | Standard respiratory physiology; the deep-inspiration bronchodilation literature, through summaries. |
-| **Implementation** | `opposition = TETHERING_STRENGTH · stretch · inflation`, where `stretch` rises with the ventilation the region is receiving. |
-| **Assumption** | The strength, floor and coupling exponent are all illustrative. The **coupling exponent** (0.35, sub-linear) is doing a lot of work: it says a region that has stopped moving is still held open by its neighbours, and without it the model's feedback runs away and produces a uniformly shut lung instead of a patchy one. It is the single parameter this model's behaviour is most sensitive to, and it is not derived from anything. **Thin.** |
-| **Validation** | `a deep breath opens the airways, and that is the tethering doing it`; `a deep breath does part of what cutting the feedback does, and by the same route`. |
+| **Claim** | Airway smooth muscle shortens against a load, and a large part of that load is the elastic recoil of the parenchyma attached to the outside of the airway. **Increasing lung volume increases that tethering force**, which tends to oppose airway narrowing. That is a mechanical statement and the whole of what this model represents; it is **not** a claim about what a deep inspiration does to a person with asthma. |
+| **Source** | Standard respiratory physiology for airway–parenchymal interdependence. Reviews of deep inspiration in asthma (PMC10585885), through the external review, for the boundary: the bronchodilator and bronchoprotective effects of a deep inspiration are impaired or lost in asthma, most of all where hyperresponsiveness is strong. |
+| **Implementation** | `opposition = TETHERING_STRENGTH · stretch · lungInflation`, where `stretch` rises with the ventilation the region is receiving. The control is named `lungInflation` and labelled "Global lung inflation (parenchymal stretch)" so that it cannot be read as a manoeuvre. |
+| **Assumption** | The strength, floor and coupling exponent are all illustrative and stay so. The **coupling exponent** (0.35, sub-linear) is doing a lot of work: it says a region that has stopped moving is still held open by its neighbours, and without it the model's feedback runs away and produces a uniformly shut lung instead of a patchy one. It is the single parameter this model's behaviour is most sensitive to, and it is not derived from anything. Beyond the parameters, the model omits the smooth-muscle dynamics — strain rate, cross-bridge cycling, contractile plasticity — that decide the real deep-inspiration response, which is why it may not be asked about one. |
+| **Validation** | `physiology: greater lung inflation increases the tethering that opposes narrowing`; `more lung inflation means more tethering means wider airways`; `stronger parenchymal tethering does part of what cutting the feedback does`; and, for the boundary, `challenge 1 never claims a bronchodilator response to a real deep inspiration`. |
+| **Confidence** | `tethering-direction`, `tethering-coupling` and `deep-inspiration-not-modelled` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 6. The loop through the parenchyma produces clustered ventilation defects
 
 | | |
 | --- | --- |
 | **Claim** | Bronchoconstriction in asthma produces *clustered* ventilation defects on PET rather than a uniform reduction, and the clustering is self-organised: narrowing reduces local ventilation, which reduces the stretch tethering the airway open, which permits further narrowing. The system is bistable, and patchiness is a prelude to a catastrophic shift in which the whole lung goes. |
-| **Source** | Venegas JG et al., *Nature* 434:777–82 (2005), "Self-organized patchiness in asthma as a prelude to catastrophic shifts". **Not read in full** — see the note at the top. |
+| **Source** | Venegas JG et al., *Nature* 434:777–82 (2005), doi:10.1038/nature03490, "Self-organized patchiness in asthma as a prelude to catastrophic shifts"; Winkler & Venegas (PMC4698910); the structure-to-function review of heterogeneity in asthma (PMC5543015) — all through the external review, and all for the mechanism rather than for any figure. |
 | **Implementation** | The calibre of every airway depends on the ventilation of the region below it, and that ventilation depends on the calibres. The circularity is solved by damped fixed-point iteration. Responsiveness is *inherited* down the tree, because inflammation does not stop at a bifurcation and independent per-branch scatter produced speckle rather than regions. |
-| **Assumption** | This model is far smaller and cruder than theirs: 128 units against thousands, no airway wall mechanics, no explicit bistability analysis, contiguity defined on the tree rather than in space. What it claims to reproduce is the *shape* of the result, not their numbers. |
-| **Validation** | The strongest test in the suite: `the patchiness is the feedback, not the scatter` re-solves the identical tree with the loop cut (`{ feedback: false }`) and asserts that most of the heterogeneity and nearly all of the defects disappear while the narrowing remains. `patchiness is a stage, not the end state` asserts the prelude-to-a-shift arc. |
+| **Assumption** | **This is not their model and it does not reproduce their results.** It is far smaller and cruder: 128 units against thousands, eight generations against the whole tree, a lumped acinus, no airway wall mechanics, no explicit bistability analysis, and contiguity defined on the tree rather than in space. What it demonstrates is the *shape* of the argument — that a uniform stimulus applied to a network with minimal heterogeneity, a steep local response and airway–parenchymal interdependence can produce clustered defects. Any quantitative agreement would be a coincidence. |
+| **Validation** | The strongest test in the suite: `the patchiness is the feedback, not the scatter` re-solves the identical tree with the loop cut (`{ feedback: false }`) and asserts that most of the heterogeneity and nearly all of the defects disappear while the narrowing remains. `physiology: a uniform stimulus on a nearly-uniform tree produces clustered defects` and `physiology: disabling the interdependence feedback markedly attenuates the clustering` state the same pair against the literature rather than against the scene. `patchiness is a stage, not the end state` asserts the prelude-to-a-shift arc. |
+| **Confidence** | `self-organised-patchiness`, `feedback-is-the-cause` and `inherited-sensitivity` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 7. The dose-response has a knee
 
@@ -91,16 +157,18 @@ forbids reading any figure here as a measurement.
 | **Source** | The same paper's central result, through summaries; the clinical observation that a small change in a patient's state produces a large change in what happens to them. |
 | **Implementation** | Emergent. Nothing in the model has a threshold in it except the sigmoid of a single airway; the knee in the *lung's* response is the feedback amplifying that. |
 | **Validation** | `the dose-response has a knee`, which asserts that the rise over the second half of the dose is more than six times the rise over the first; `resistance rises monotonically with the stimulus`. |
+| **Confidence** | `maximum-narrowing` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ### 8. Airway wall thickening is a separate insult that amplifies the first
 
 | | |
 | --- | --- |
 | **Claim** | Airway remodelling thickens the wall, which takes lumen before any muscle contracts and — because resistance goes as the fourth power — amplifies whatever contraction follows. |
-| **Source** | Standard teaching on airway remodelling in asthma. **Thin** on magnitude. |
-| **Implementation** | `wallThickening` reduces baseline radius in proportion to each generation's muscle share. |
+| **Source** | Standard teaching on airway remodelling in asthma. The magnitude is `illustrative`; remodelling thickens the central airways too, which is why the model drives it from the muscle fraction rather than from the constrictibility. |
+| **Implementation** | `wallThickening` reduces baseline radius in proportion to each generation's `smoothMuscleFraction` — how much of the wall is muscle and submucosa — rather than its constrictibility. |
 | **Assumption** | The size of the effect is illustrative; the model claims the direction and the amplification, not the amount. |
 | **Validation** | `wall thickening costs calibre before any muscle contracts, and amplifies what follows`. |
+| **Confidence** | `relative-defect-measure` — see [`src/models/evidence.js`](../../src/models/evidence.js). |
 
 ---
 

@@ -19,11 +19,29 @@ import { scatter } from './random.js';
  *
  * That is the mechanism Venegas and colleagues put forward for the clustered
  * ventilation defects seen on PET in bronchoconstricted asthmatics
- * (*Nature* 434:777–82, 2005). The model here is a much smaller and cruder
- * relative of theirs; what it reproduces is the *shape* of the result —
- * uniform stimulus, non-uniform outcome, arriving suddenly rather than
- * gradually — and it does so because of the feedback, not because anything
- * tells it to.
+ * (*Nature* 434:777–82, 2005, doi:10.1038/nature03490), and developed further
+ * in their later modelling work.
+ *
+ * **This is not their model, and it does not reproduce their results.** It is
+ * a simplified conceptual implementation inspired by the published mechanism:
+ * eight generations where theirs has the whole tree, a lumped acinus, a
+ * crude scalar stand-in for parenchymal coupling, and no attempt to match any
+ * number they report. What it demonstrates is the *shape* of the argument —
+ * that a uniform stimulus applied to a network with minimal heterogeneity, a
+ * steep local response and interdependence between an airway and the lung
+ * around it can produce clustered ventilation defects — and it demonstrates it
+ * because of the feedback rather than because anything tells it to. Any
+ * quantitative agreement with the published work would be a coincidence, and
+ * none is claimed.
+ *
+ * ## Asthma is a disease of the whole airway tree
+ *
+ * Nothing here should be read as "asthma is a small-airway disease". Airway
+ * smooth muscle and airway inflammation are present from the trachea to the
+ * terminal bronchioles. What changes along the tree is how much a given amount
+ * of muscle shortening does to the lumen — see `constrictibilityWeight` below,
+ * which separates the muscle that is present from the cartilage that resists
+ * it.
  *
  * ## Deliberately not the COPD model
  *
@@ -75,14 +93,81 @@ export const isTerminal = (index) => index >= FIRST_TERMINAL;
 export const HOMOTHETY = 2 ** (-1 / 3);
 
 /**
- * How much of each generation is airway smooth muscle's to narrow.
+ * ## Where airway smooth muscle is, and what stops it from working
  *
- * The trachea and the main bronchi are held open by cartilage; smooth muscle
- * comes to dominate in the small bronchi and bronchioles, which is why asthma
- * is a small-airway disease even though it is the whole airway that is
- * inflamed. Ramped rather than switched, because the transition is gradual.
+ * These are **two different facts about two different tissues**, and an earlier
+ * version of this model collapsed them into one number called
+ * `smoothMuscleShare` that was zero at the trachea. That is anatomically wrong
+ * and it teaches something wrong: it says there is no smooth muscle in the
+ * central airways, and from there it is a short step to "asthma is a
+ * small-airway disease". Asthma involves the whole airway tree — large and
+ * small — and the airway smooth muscle is part of that whole tree.
+ *
+ * So the two are separate here:
+ *
+ * - `smoothMuscleFraction(g)` — **how much muscle is there.** Airway smooth
+ *   muscle runs continuously from the trachea to the terminal bronchioles.
+ *   In the trachea and main bronchi it is the trachealis, spanning the
+ *   posterior membranous portion between the open ends of the cartilage
+ *   rings — real, contractile muscle acting on part of the circumference. As
+ *   the cartilage becomes plates and then disappears, the muscle becomes a
+ *   complete helical and then circumferential layer, and its share of the
+ *   airway wall rises. Non-zero everywhere, and it must stay non-zero
+ *   everywhere.
+ * - `cartilageSupport(g)` — **what resists it.** Cartilage is a mechanical
+ *   load in parallel with the muscle: complete rings in the trachea, irregular
+ *   plates in the lobar and segmental bronchi, absent from the bronchioles by
+ *   definition. It does not remove the muscle; it stops the muscle's
+ *   shortening from turning into a change in lumen.
+ *
+ * Their product is what the rest of the model actually needs — how much a
+ * given amount of smooth-muscle activation changes *this* airway's calibre —
+ * and it is named for what it is rather than for one of its two causes.
+ *
+ * The consequence the scene teaches is the one that follows from putting these
+ * together with the fourth-power law: the same muscle shortening produces a
+ * far larger change in a small airway's calibre, and a far larger change in
+ * its resistance again. That is a statement about *effect*, not about where
+ * the muscle is.
+ *
+ * All three numbers are illustrative in size. The claims are that the muscle
+ * is present throughout, that cartilage support falls off distally, and that
+ * the product therefore rises distally without ever reaching zero centrally.
  */
-const smoothMuscleShare = (generation) => Math.min(1, Math.max(0, (generation - 1) / 2));
+
+/** Smooth muscle in the tracheal wall, relative to a bronchiole's complete layer. */
+const TRACHEAL_MUSCLE_FRACTION = 0.45;
+/** The generation by which the muscle layer is complete and circumferential. */
+const MUSCLE_PLATEAU_GENERATION = 4;
+/** How much of the trachea's shortening the cartilage rings take up. Not all of it. */
+const CARTILAGE_AT_TRACHEA = 0.85;
+/** The generation by which no cartilage is left — a bronchiole, by definition. */
+const CARTILAGE_LAST_GENERATION = 5;
+/** How the plates thin out between the two. Illustrative. */
+const CARTILAGE_FALLOFF = 1.4;
+
+/** How much airway smooth muscle is in this generation's wall, 0–1. Never zero. */
+export const smoothMuscleFraction = (generation) =>
+  Math.min(
+    1,
+    TRACHEAL_MUSCLE_FRACTION +
+      (1 - TRACHEAL_MUSCLE_FRACTION) * (Math.max(0, generation) / MUSCLE_PLATEAU_GENERATION)
+  );
+
+/** How much of that muscle's shortening the cartilage takes up, 0–1. */
+export const cartilageSupport = (generation) =>
+  CARTILAGE_AT_TRACHEA *
+  Math.max(0, 1 - Math.max(0, generation) / CARTILAGE_LAST_GENERATION) ** CARTILAGE_FALLOFF;
+
+/**
+ * How much a given smooth-muscle activation changes *this* airway's calibre.
+ *
+ * The muscle that is there, times the share of its shortening that is not
+ * taken up by cartilage. Small in the trachea because the rings hold it open,
+ * not because there is nothing there to contract.
+ */
+export const constrictibilityWeight = (generation) =>
+  smoothMuscleFraction(generation) * (1 - cartilageSupport(generation));
 
 /** The most a fully contracted airway narrows, as a fraction of its radius. */
 const MAX_NARROWING = 0.62;
@@ -151,11 +236,24 @@ export const DEFAULT_CONTROLS = {
    */
   wallThickening: 0.25,
   /**
-   * How stretched the lung is, 0.6 to 1.3 of a normal resting inflation. A
-   * deep breath stretches the parenchyma and pulls the airways open; this is
-   * the control that makes that mechanism something the reader can do.
+   * **Global lung inflation** — how stretched the parenchyma is, as a multiple
+   * of its stretch at a normal resting lung volume.
+   *
+   * This is the mechanical tethering term and nothing else. Raising it
+   * increases the outward pull the parenchyma exerts on every airway embedded
+   * in it, which opposes smooth-muscle shortening. That mechanism is real and
+   * it is what this control isolates.
+   *
+   * **It is not a model of taking a deep breath.** A real deep inspiration in
+   * a person with asthma involves the dynamics of the muscle itself — strain
+   * rate, cross-bridge cycling, the plasticity of the contractile apparatus —
+   * and the bronchodilator and bronchoprotective effects of deep inspiration
+   * are impaired or absent in asthma, most of all where hyperresponsiveness is
+   * strong. None of that is in this model. Moving this control tells you what
+   * parenchymal tethering does; it does not predict what a patient's deep
+   * breath would do.
    */
-  inflation: 1,
+  lungInflation: 1,
   /** A bronchodilator's relaxation of airway smooth muscle, 0–1. */
   bronchodilator: 0,
 };
@@ -202,7 +300,15 @@ export const TREE = (() => {
       length: scale,
       /** This airway's own responsiveness, around a mean of exactly 1. */
       sensitivity: sensitivity[index],
-      muscleShare: smoothMuscleShare(generation),
+      /** Smooth muscle present in the wall. Non-zero at every generation. */
+      smoothMuscleFraction: smoothMuscleFraction(generation),
+      /** What the cartilage takes up. Falls to nothing by the bronchioles. */
+      cartilageSupport: cartilageSupport(generation),
+      /**
+       * The product: how much a given activation moves this airway's calibre.
+       * This is what the solver uses; the two above are what it means.
+       */
+      constrictibility: constrictibilityWeight(generation),
     };
   });
 })();
@@ -228,23 +334,24 @@ const branchResistance = (branch, radius) => branch.length / Math.max(1e-6, radi
  *   share. This is the only place the feedback enters.
  */
 function calibresFor(controls, regionalVentilation) {
-  const { stimulus, hyperresponsiveness, wallThickening, inflation, bronchodilator } = controls;
+  const { stimulus, hyperresponsiveness, wallThickening, lungInflation, bronchodilator } = controls;
   const drive = stimulus * hyperresponsiveness * (1 - 0.55 * bronchodilator);
 
   return TREE.map((branch, index) => {
-    // Wall thickening takes lumen from every airway, most from the small ones
-    // where the wall is a larger share of the whole. Nothing to do with muscle:
-    // it is there before any stimulus arrives.
-    const thickened = branch.baseRadius * (1 - wallThickening * 0.32 * branch.muscleShare);
+    // Wall thickening takes lumen from every airway. It is driven by how much
+    // of the wall is muscle and submucosa rather than by how constrictible the
+    // airway is — remodelling thickens the central airways too — so it reads
+    // the muscle fraction, not the product.
+    const thickened = branch.baseRadius * (1 - wallThickening * 0.32 * branch.smoothMuscleFraction);
 
-    const activation = drive * branch.sensitivity * branch.muscleShare;
+    const activation = drive * branch.sensitivity * branch.constrictibility;
     // What the muscle is shortening against: the parenchyma's pull, which
     // scales with how stretched it is — and it is stretched by the air that
     // reaches it and by however inflated the lung is overall.
     const stretch =
       TETHERING_FLOOR +
       (1 - TETHERING_FLOOR) * Math.min(2.2, Math.max(0, regionalVentilation[index])) ** TETHERING_COUPLING;
-    const opposition = TETHERING_STRENGTH * stretch * inflation;
+    const opposition = TETHERING_STRENGTH * stretch * lungInflation;
 
     // The airway narrows to the extent the muscle wins. An airway with its
     // normal tethering needs an activation above `TETHERING_STRENGTH` before
@@ -321,7 +428,7 @@ function regionalSharesFrom(flow) {
  * The reference lung every ratio is quoted against: **healthy**, not merely
  * unstimulated.
  *
- * No stimulus, no wall thickening, ordinary responsiveness, ordinary
+ * No stimulus, no wall thickening, ordinary responsiveness, ordinary lung
  * inflation. Quoting against the reader's own lung with the stimulus removed
  * would normalise away the resistance that airway remodelling costs at rest,
  * which is a real cost and one of the things the scene is for.
@@ -330,7 +437,7 @@ export const REFERENCE_CONTROLS = {
   stimulus: 0,
   hyperresponsiveness: 1,
   wallThickening: 0,
-  inflation: 1,
+  lungInflation: 1,
   bronchodilator: 0,
 };
 
@@ -453,7 +560,9 @@ function report(settings, calibres, solved) {
     largestDefectFraction: largestDefectiveSubtree(ventilations),
     /** Median calibre across the airways smooth muscle can act on. */
     medianCalibre: median(
-      TREE.filter((branch) => branch.muscleShare > 0.5).map((branch) => calibres[branch.index].openFraction)
+      TREE.filter((branch) => branch.constrictibility > 0.5).map(
+        (branch) => calibres[branch.index].openFraction
+      )
     ),
   };
 }

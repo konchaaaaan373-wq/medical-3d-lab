@@ -78,9 +78,9 @@ export const STAGES = [
     at: 1,
     focus: ['trapped', 'airway'],
     summary:
-      'Forty-five litres a minute asked for, and it is not being produced. The drive is at its maximum, the breath is being taken near total lung capacity, and pushing harder on the way out moves nothing.',
+      'Forty-five litres a minute asked for, and it is not being produced. The drive is at its maximum, the breath is being taken near total lung capacity, and — in this lung, whose recoil has gone — pushing harder on the way out no longer moves anything.',
     summaryJa:
-      '要求換気量 45 L に対し、実際には届きません。呼吸ドライブは上限に達し、一回換気は全肺気量の近くで行われ、呼気をどれだけ強くしても流量は増えません。',
+      '要求換気量 45 L に対し、実際には届きません。呼吸ドライブは上限に達し、一回換気は全肺気量の近くで行われ、弾性収縮力を失ったこの肺では、呼気をどれだけ強くしても流量はもう増えません。',
   },
 ];
 
@@ -151,7 +151,8 @@ export const METRICS = [
   { id: 'tau', label: 'Time constant τ = R·C', labelJa: '時定数 τ = R·C', unit: 's' },
   { id: 'tauCount', label: 'Time constants available', labelJa: '呼気時間 ÷ τ', unit: '×' },
   { id: 'limited', label: 'Expired at the ceiling', labelJa: '流量上限での呼出割合', unit: '%' },
-  { id: 'pmus', label: 'Inspiratory pressure', labelJa: '吸気筋圧', unit: 'cmH₂O' },
+  { id: 'pmus', label: 'Inspiratory muscle pressure', labelJa: '吸気筋圧', unit: 'cmH₂O' },
+  { id: 'pexp', label: 'Expiratory muscle pressure', labelJa: '呼気筋圧', unit: 'cmH₂O' },
   { id: 'tlc', label: 'Total lung capacity', labelJa: '全肺気量', unit: 'L' },
   { id: 'rv', label: 'Residual volume', labelJa: '残気量', unit: 'L' },
 ];
@@ -176,13 +177,19 @@ export const MODEL_CONTROLS = [
     format: (v) => `${Math.round(v * 100)}%`,
   },
   {
-    id: 'expiratoryEffort',
-    label: 'Expiratory effort',
-    labelJa: '呼気努力',
+    /**
+     * An absolute pressure, not a multiplier, and independent of everything
+     * else on this panel. Airway resistance, elastic recoil, expiratory time
+     * and expiratory muscle effort are four separate mechanisms; the reader
+     * has to be able to move each one without moving the others.
+     */
+    id: 'expiratoryPressureCmH2O',
+    label: 'Added expiratory muscle pressure',
+    labelJa: '追加の呼気筋圧',
     min: 0,
-    max: 2,
-    step: 0.05,
-    format: (v) => `×${v.toFixed(2)}`,
+    max: 20,
+    step: 0.5,
+    format: (v) => (v === 0 ? 'none' : `+${v.toFixed(1)} cmH₂O`),
   },
   {
     id: 'bronchodilation',
@@ -210,9 +217,14 @@ export const MODEL_SCOPE = {
         '呼気時間が足りないときに呼気終末肺気量がどこで落ち着くかを、呼吸を実際に回して求めます（値を決め打ちしていません）。',
     },
     {
-      text: 'Why expiratory effort stops helping: the flow ceiling is set by elastic recoil and the collapsible airway, and contains no effort term.',
+      text: 'That raising airway resistance alone, at a fixed breathing pattern and a fixed expiratory effort, is enough to raise end-expiratory volume — recoil does not have to be lost as well.',
       textJa:
-        '呼気努力が効かなくなる理由。流量上限は弾性収縮力と虚脱しうる気道で決まり、式の中に努力の項がありません。',
+        '呼吸パターンと呼気努力を固定した条件では、気道抵抗の上昇だけで呼気終末肺気量が上がること（弾性収縮力の低下は必須条件ではありません）。',
+    },
+    {
+      text: 'Where expiratory effort helps and where it stops helping: it empties a lung with recoil to spare, and does nothing once the flow ceiling — elastic recoil over the collapsible airway, with no effort term in it — is being met.',
+      textJa:
+        '呼気努力が効く条件と効かなくなる条件。弾性収縮力に余裕のある肺では吐き切りを助けますが、流量上限（弾性収縮力 ÷ 虚脱しうる気道の抵抗。式に努力の項はありません）に達した後は何も変えません。',
     },
     {
       text: 'Why a bronchodilator helps hyperinflation more than it abolishes flow limitation.',
@@ -262,14 +274,21 @@ export const MODEL_SCOPE = {
       kind: 'review',
     },
     {
+      text: 'GOLD 2026 and reviews of dynamic hyperinflation (O’Donnell and colleagues) for the mechanism and its measurement, and — for the sufficiency of raised resistance alone at a fixed breathing pattern — "Dynamic hyperinflation and flow limitation during methacholine-induced bronchoconstriction in asthma" (PMID 10515404), where both appear in lungs whose elastic recoil is normal.',
+      textJa:
+        'GOLD 2026 および動的過膨張に関する総説（O’Donnell ら）から機序とその指標を。呼吸パターンを固定した条件で抵抗の上昇のみで十分であることは、「Dynamic hyperinflation and flow limitation during methacholine-induced bronchoconstriction in asthma」(PMID 10515404) から。弾性収縮力が正常な肺でも動的過膨張と呼気流量制限が生じることが示されています。',
+      kind: 'review',
+    },
+    {
       text: 'Expiratory time constant literature for 0.5–0.7 s normal and ~2.5 s in severe COPD.',
       textJa: '呼気時定数に関する文献から、正常 0.5–0.7 秒、重症 COPD で約 2.5 秒。',
       kind: 'review',
     },
     {
-      text: 'Consulted through search-result summaries, not full text — the medical publishers were unreachable from the network this was built on. Every constant is a textbook central value or a stated calibration; none is fitted.',
+      text:
+        'Corrected against an external, full-text clinical review; this repository’s own network still cannot reach the medical publishers, so nothing here was extracted from a figure or a table by its author. The review resolved causal and interpretive claims and promoted no calibration to a measurement. Every constant remains a textbook central value or a stated calibration; none is fitted. Per-claim confidence is machine-readable in src/models/evidence.js.',
       textJa:
-        '出典はいずれも検索結果の要約を通じて確認したもので、本文は参照していません（構築環境から医学系出版社に到達できないため）。定数はすべて教科書的な代表値か、明示した較正値であり、実測へのフィッティングは行っていません。',
+        '外部の全文にもとづく臨床レビューを受けて修正しています。ただしこのリポジトリの構築環境からは、いまも医学系出版社に到達できません。したがって、本ファイルの著者が図表から数値を取り出したものは 1 つもありません。レビューが解決したのは因果関係と解釈に関する主張であり、較正値が実測値へ昇格したものはありません。定数はすべて教科書的な代表値か、明示した較正値であり、フィッティングは行っていません。主張ごとの確信度は src/models/evidence.js に機械可読な形で記載しています。',
       kind: 'caveat',
     },
   ],

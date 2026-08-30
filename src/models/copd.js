@@ -8,13 +8,17 @@ import { scatter } from './random.js';
  * airways end up breathing at a higher lung volume, and why does it get worse
  * the harder they work?**
  *
- * The answer has three parts and the model is built so that all three are
- * consequences rather than assertions.
+ * The answer has four parts, kept deliberately separate from one another,
+ * and the model is built so that all four are consequences rather than
+ * assertions. **Resistance, elastic recoil, expiratory time and expiratory
+ * muscle pressure are four independent things here**, because conflating any
+ * two of them is how a respiratory model starts teaching something false.
  *
  * 1. **A lung empties with a time constant.** Each unit here empties
  *    passively against its own elastic recoil through its own resistance, so
  *    its volume decays with τ = R·C. Nothing writes τ down; it is what the
- *    equation does.
+ *    equation does. Raising resistance alone lengthens τ, and that is enough
+ *    on its own — it does not need recoil to be lost as well.
  * 2. **Expiration is given a limited amount of time.** Breathing faster
  *    shortens expiratory time before it shortens anything else. When the time
  *    available falls below roughly three time constants, the unit does not
@@ -23,13 +27,27 @@ import { scatter } from './random.js';
  *    climbs until the extra recoil at the higher volume is enough to empty the
  *    tidal volume in the time left. That equilibrium is dynamic
  *    hyperinflation, and here it is found by the model rather than set.
- * 3. **Pushing harder does not help.** Expiratory flow out of each unit is
- *    capped at the flow its own elastic recoil can drive through the
- *    collapsible segment upstream of the equal pressure point — a ceiling that
- *    contains no term for effort at all. That is what expiratory flow
- *    limitation *is*, and it is why the model's expiratory muscle pressure can
- *    be raised to no effect in an obstructed lung and to great effect in a
- *    normal one.
+ *
+ *    **This is the core statement, and it needs only τ and Tₑ.** An increase in
+ *    airway resistance, at a fixed breathing pattern and a fixed expiratory
+ *    muscle pressure, raises end-expiratory volume. That is not a peculiarity
+ *    of emphysema: induced bronchoconstriction in asthma produces dynamic
+ *    hyperinflation in lungs whose elastic recoil is normal.
+ * 3. **Expiratory muscle effort is a separate mechanism, and it has a limit.**
+ *    Pushing on the way out raises alveolar pressure and can genuinely empty a
+ *    lung further — *until* the flow it asks for meets the ceiling. Expiratory
+ *    flow out of each unit is capped at the flow its own elastic recoil can
+ *    drive through the collapsible segment upstream of the equal pressure
+ *    point, and that ceiling contains no term for effort at all. So effort
+ *    partly compensates in a lung with recoil to spare, and does nothing in a
+ *    lung that is already flow-limited. Both halves are in the model, and the
+ *    expiratory muscle pressure is a control of its own so that the two can be
+ *    told apart.
+ * 4. **Losing elastic recoil makes every one of the above worse**, and by more
+ *    than one route: it raises compliance and so lengthens τ, it raises the
+ *    volume the relaxed lung sits at, and it drops the flow ceiling into the
+ *    range tidal breathing needs, which is what takes effort's compensation
+ *    away.
  *
  * ## Units
  *
@@ -208,6 +226,27 @@ export function breathingPattern(demand) {
    * saying that it was failing to keep up.
    */
   const targetVentilation = 6.5 + 38.5 * d;
+  /**
+   * The expiratory muscle pressure that goes with *this workload*, cmH₂O.
+   *
+   * Quiet expiration is passive; abdominal recruitment appears with exercise
+   * and rises steeply. It is a property of the workload and **not** of the
+   * lung: it does not know what the resistance is, it does not rise because
+   * the inspiratory drive rose, and it is not adjusted to defend anything.
+   *
+   * That independence is the point. An earlier version of this model derived
+   * expiratory pressure from the inspiratory drive, so raising airway
+   * resistance silently raised expiratory effort too, and the extra push
+   * cancelled the trapping the longer time constant should have produced. The
+   * model then appeared to say that narrowing airways does not trap gas, which
+   * is false. Keeping the two apart is what makes "a fixed breathing pattern
+   * and a fixed expiratory effort" a condition the model can actually be held
+   * to.
+   *
+   * Illustrative in size — the model claims that recruitment happens and that
+   * it is a function of workload, not how many cmH₂O a particular person makes.
+   */
+  const expiratoryPressure = 9 * d * d;
 
   return {
     demand: d,
@@ -216,6 +255,7 @@ export function breathingPattern(demand) {
     inspiratoryTimeS: period * duty,
     expiratoryTimeS: period * (1 - duty),
     targetVentilationLPerMin: targetVentilation,
+    expiratoryPressureCmH2O: expiratoryPressure,
   };
 }
 
@@ -230,16 +270,6 @@ export function breathingPattern(demand) {
  * flattened diaphragm.
  */
 export const MAX_INSPIRATORY_PRESSURE_CMH2O = 32;
-
-/**
- * Expiratory muscle pressure that goes with a given inspiratory drive, cmH₂O.
- *
- * Quiet expiration is passive; the abdominal muscles are recruited only once
- * the drive is well up. Whether recruiting them achieves anything is the
- * question the flow ceiling answers, and the answer differs between the two
- * lungs — which is the point of having this at all.
- */
-const expiratoryDrive = (inspiratoryPressure) => Math.max(0, (inspiratoryPressure - 9) * 0.75);
 
 /**
  * The lung's mechanical properties under a given set of controls.
@@ -361,13 +391,20 @@ export const DEFAULT_CONTROLS = {
   elasticRecoil: 0.6,
   bronchodilation: 0,
   /**
-   * A multiplier on the expiratory muscle pressure the drive implies. It is
-   * here so that "try harder" can be *done* rather than described: in a lung
-   * that is not flow-limited, turning it up moves gas; in one that is, it
-   * moves nothing at all, and that difference is the single most useful thing
-   * this model has to say.
+   * **Extra** expiratory muscle pressure, cmH₂O, on top of whatever the
+   * workload already recruits. A clinical quantity with a clinical name and a
+   * unit, and an axis entirely of its own: nothing in the lung moves it, and
+   * it moves nothing in the lung except the pressure at the alveolus during
+   * expiration.
+   *
+   * It is here so that "try harder" can be *done* rather than described, and
+   * so that trying harder is separable from the three other things that change
+   * how much gas comes back out. In a lung that is not flow-limited, turning
+   * it up empties the lung further; in one that is, it moves nothing at all.
+   * Zero by default, so that the model's baseline answer to "what does raising
+   * resistance do?" is the answer at a fixed expiratory effort.
    */
-  expiratoryEffort: 1,
+  expiratoryPressureCmH2O: 0,
   demand: 0,
 };
 
@@ -434,14 +471,25 @@ export function createRespiratoryModel({ controls = {}, hz = 400 } = {}) {
    * the inspiratory muscles do. Expiration at rest is nothing at all — quiet
    * expiration is the lung giving back what it stored — and under load it is a
    * pressure that rises through expiration as the abdominal muscles come in.
+   *
+   * The expiratory half deliberately contains **no reference to
+   * `drivePressure`**. The inspiratory drive is a closed loop that chases a
+   * ventilation target; the expiratory pressure is open loop. Tying them
+   * together would mean that raising airway resistance also raised expiratory
+   * effort, and the model could no longer answer the question "what does
+   * resistance do on its own?" at all.
    */
+  function expiratoryPressureCmH2O() {
+    return Math.max(0, pattern.expiratoryPressureCmH2O + settings.expiratoryPressureCmH2O);
+  }
+
   function musclePressure(t) {
     const { inspiratoryTimeS, expiratoryTimeS } = pattern;
     if (t < inspiratoryTimeS) {
       return drivePressure * Math.sin((Math.PI * t) / inspiratoryTimeS);
     }
     const into = (t - inspiratoryTimeS) / expiratoryTimeS;
-    return -expiratoryDrive(drivePressure) * settings.expiratoryEffort * Math.sin(Math.PI * Math.min(1, into));
+    return -expiratoryPressureCmH2O() * Math.sin(Math.PI * Math.min(1, into));
   }
 
   function step(h) {
@@ -650,7 +698,8 @@ export function createRespiratoryModel({ controls = {}, hz = 400 } = {}) {
         /** Fraction of the last breath's expired volume that came out at the ceiling. */
         flowLimitedFraction: breath.expiredVolumeL ? breath.limitedVolumeL / breath.expiredVolumeL : 0,
         inspiratoryPressureCmH2O: drivePressure,
-        expiratoryPressureCmH2O: expiratoryDrive(drivePressure) * settings.expiratoryEffort,
+        /** Total expiratory muscle pressure: what the workload recruits plus what the reader added. */
+        expiratoryPressureCmH2O: expiratoryPressureCmH2O(),
         targetVentilationLPerMin: pattern.targetVentilationLPerMin,
         /**
          * True when the drive has reached its ceiling and the ventilation

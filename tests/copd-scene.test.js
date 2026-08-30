@@ -291,15 +291,57 @@ test('the walk-through actually walks somewhere: the numbers it names change alo
   );
 });
 
-test('the walk-through’s central claim — that effort stops helping — is what the model does', () => {
-  const effortStep = CAUSAL_STORY.steps.find((step) => step.id === 'effort');
-  const withEffort = settled({ ...effortStep.controls, demand: effortStep.progress });
-  const withoutEffort = settled({ ...effortStep.controls, expiratoryEffort: 1, demand: effortStep.progress });
+test('the walk-through’s central claim — where effort helps and where it stops — is what the model does', () => {
+  // Two steps make one claim between them, and the claim is a contrast. The
+  // same expiratory muscle pressure has to buy a great deal in the lung with
+  // recoil to spare and almost nothing in the lung that has lost it. Either
+  // half alone would be a different, and wronger, lesson.
+  const gainAt = (step) => {
+    const pushed = settled({ ...step.controls, demand: step.progress });
+    const passive = settled({ ...step.controls, expiratoryPressureCmH2O: 0, demand: step.progress });
+    return {
+      gainedL: passive.endExpiratoryVolumeL - pushed.endExpiratoryVolumeL,
+      limited: pushed.flowLimitedFraction,
+    };
+  };
+  const withRecoil = gainAt(CAUSAL_STORY.steps.find((step) => step.id === 'effort'));
+  const withoutRecoil = gainAt(CAUSAL_STORY.steps.find((step) => step.id === 'recoil'));
+
   assert.ok(
-    withEffort.inspiratoryCapacityL - withoutEffort.inspiratoryCapacityL < 0.1,
-    'doubling the effort at this step must gain almost nothing'
+    withRecoil.gainedL > 0.4,
+    `pushing on a lung with recoil has to empty it further; it gained ${withRecoil.gainedL} L`
   );
-  assert.ok(withEffort.flowLimitedFraction > 0.5, 'and the breath must be running at the ceiling');
+  assert.ok(
+    withoutRecoil.gainedL < withRecoil.gainedL * 0.3,
+    `and on the emphysematous lung it gained ${withoutRecoil.gainedL} L against ${withRecoil.gainedL} L`
+  );
+  assert.ok(
+    withoutRecoil.limited > 0.8,
+    'because there the breath is running at the ceiling for nearly all of expiration'
+  );
+});
+
+test('the walk-through never asserts that narrowed airways on their own leave the lung alone', () => {
+  // The proposition an earlier version of this scene taught, and the reason
+  // this test exists. The step that raises resistance without touching recoil
+  // has to end with a *higher* resting volume than the step before it.
+  const steps = CAUSAL_STORY.steps;
+  const at = (id) => {
+    const step = steps.find((entry) => entry.id === id);
+    return settled({ ...step.controls, demand: step.progress });
+  };
+  const narrowedAtRest = at('time-constant');
+  const narrowedAtWork = at('stacking');
+  assert.ok(
+    narrowedAtWork.endExpiratoryVolumeL > narrowedAtRest.endExpiratoryVolumeL + 0.1,
+    'the narrowed lung has to hyperinflate when the expiratory time is taken away'
+  );
+  assert.equal(narrowedAtWork.flowLimitedFraction, 0, 'and it does it without any flow limitation at all');
+  assert.equal(
+    narrowedAtWork.residualVolumeL,
+    narrowedAtRest.residualVolumeL,
+    'with the elastic properties of the lung untouched'
+  );
 });
 
 // --- the challenges --------------------------------------------------------
@@ -354,55 +396,86 @@ test('every challenge points at controls and rows the scene has', () => {
   }
 });
 
-test('challenge 1: narrow airways alone do not trap gas in a lung that still has its recoil', () => {
-  const module = LEARNING_MODULES.find((entry) => entry.id === 'obstruction-alone');
+test('challenge 1: narrowing the airways alone raises the resting volume', () => {
+  const module = LEARNING_MODULES.find((entry) => entry.id === 'resistance-alone');
   const { setup, manipulation, transfer } = module;
   const before = settled({ ...setup, demand: setup.progress });
   const after = settled({ ...setup, [manipulation.control]: manipulation.to, demand: setup.progress });
 
-  // The stored answer is the surprising one, so it is the one most worth
-  // checking: this is where a change to the model would quietly turn a lesson
-  // into a lie.
-  assert.equal(module.question.answer, 'falls');
+  assert.equal(module.question.answer, 'rises');
   assert.ok(
-    after.endExpiratoryVolumeL <= before.endExpiratoryVolumeL,
-    `EELV went ${before.endExpiratoryVolumeL} → ${after.endExpiratoryVolumeL}, which is not "falls slightly"`
+    after.endExpiratoryVolumeL > before.endExpiratoryVolumeL + 0.1,
+    `EELV went ${before.endExpiratoryVolumeL} \u2192 ${after.endExpiratoryVolumeL}, which is not "rises"`
   );
-  // The manipulation has to actually do something to the mechanics, or the
-  // lesson would be about nothing.
-  assert.ok(after.timeConstantS > before.timeConstantS * 2.5, 'the time constant trebled');
-  assert.ok(after.timeConstantsAvailable < 3, 'and expiration no longer has the τ it needs');
-  // And the footnote's claim: the breath is still not meeting the ceiling.
-  assert.ok(after.flowLimitedFraction < 0.1, `the ceiling was met for ${after.flowLimitedFraction} of the breath`);
+  // The manipulation has to actually do something to the mechanics.
+  assert.ok(after.timeConstantS > before.timeConstantS * 1.8, 'the time constant roughly doubled');
+  assert.ok(after.timeConstantsAvailable < 3, 'and expiration no longer has the \u03c4 it needs');
 
-  // The transfer: the same manipulation on a lung that has lost its recoil.
-  assert.equal(transfer.answer, 'more');
+  // The three things the explanation says did *not* change. Each of them is a
+  // mechanism the lesson explicitly rules out, so each has to be held still by
+  // the model or the lesson is claiming something it did not demonstrate.
+  assert.equal(after.residualVolumeL, before.residualVolumeL, 'elastic recoil was untouched');
+  assert.equal(after.relaxedVolumeL, before.relaxedVolumeL, 'so the relaxed volume did not move');
+  assert.equal(after.expiratoryTimeS, before.expiratoryTimeS, 'the breathing pattern was untouched');
+  assert.equal(
+    after.expiratoryPressureCmH2O,
+    before.expiratoryPressureCmH2O,
+    'and so was the expiratory muscle pressure'
+  );
+  assert.equal(after.flowLimitedFraction, 0, 'no part of the breath met the flow ceiling');
+  assert.ok(
+    Math.abs(after.minuteVentilationLPerMin - before.minuteVentilationLPerMin) < 0.5,
+    'and the ventilation produced is the same, so the comparison is fair'
+  );
+
+  // The transfer: the same manipulation on a lung that has also lost recoil.
+  assert.equal(transfer.answer, 'higher');
   const lowRecoil = { ...setup, ...transfer.controls, demand: setup.progress };
   const lowBefore = settled(lowRecoil);
   const lowAfter = settled({ ...lowRecoil, [manipulation.control]: manipulation.to });
   const rise = (a, b) => b.endExpiratoryVolumeL - a.endExpiratoryVolumeL;
   assert.ok(
-    rise(lowBefore, lowAfter) > rise(before, after) + 0.3,
+    rise(lowBefore, lowAfter) > rise(before, after),
     `with recoil lost the rise was ${rise(lowBefore, lowAfter)} against ${rise(before, after)}`
   );
-  assert.ok(lowAfter.flowLimitedFraction > 0.5, 'and only there is the breath running at the ceiling');
+  assert.ok(
+    lowAfter.endExpiratoryVolumeL > after.endExpiratoryVolumeL,
+    'and the lung ends up resting higher still, which is what the stored answer says'
+  );
 });
 
-test('challenge 2: doubling the effort leaves almost all of the breath at the ceiling', () => {
-  const module = LEARNING_MODULES.find((entry) => entry.id === 'effort-independence');
-  const { setup, manipulation } = module;
+test('challenge 2: expiratory pressure buys volume with recoil and nothing without it', () => {
+  const module = LEARNING_MODULES.find((entry) => entry.id === 'effort-and-its-limit');
+  const { setup, manipulation, transfer } = module;
+  const before = settled({ ...setup, demand: setup.progress });
   const after = settled({ ...setup, [manipulation.control]: manipulation.to, demand: setup.progress });
-  assert.equal(module.question.answer, 'nearly-all');
-  assert.ok(after.flowLimitedFraction > 0.8, `only ${after.flowLimitedFraction} of the breath met the ceiling`);
 
-  // And the footnote's promise: with normal recoil, the same doubling does a
-  // great deal. If that stopped being true the footnote would be a lie.
-  const healthy = { ...setup, elasticRecoil: 1, demand: setup.progress };
-  const easy = settled({ ...healthy, expiratoryEffort: 1 });
-  const hard = settled({ ...healthy, expiratoryEffort: manipulation.to });
+  assert.equal(module.question.answer, 'falls');
+  const fall = before.endExpiratoryVolumeL - after.endExpiratoryVolumeL;
+  assert.ok(fall > 0.4, `pushing had to empty this lung further; EELV fell ${fall} L`);
+  assert.ok(after.inspiratoryCapacityL > before.inspiratoryCapacityL, 'and inspiratory capacity came back with it');
+  // Nothing but the pressure moved.
+  assert.equal(after.timeConstantS, before.timeConstantS, 'the mechanics were untouched');
+  assert.equal(after.expiratoryTimeS, before.expiratoryTimeS, 'and so was the breathing pattern');
+
+  // The transfer: the same pressure on a lung that has lost its recoil.
+  assert.equal(transfer.answer, 'far-less');
+  const emphysema = { ...setup, ...transfer.controls, demand: setup.progress };
+  const emphysemaBefore = settled(emphysema);
+  const emphysemaAfter = settled({ ...emphysema, [manipulation.control]: manipulation.to });
+  const emphysemaFall = emphysemaBefore.endExpiratoryVolumeL - emphysemaAfter.endExpiratoryVolumeL;
   assert.ok(
-    hard.inspiratoryCapacityL - easy.inspiratoryCapacityL > 0.08,
-    'the same manipulation on a lung with normal recoil has to move a great deal of gas'
+    emphysemaFall < fall * 0.3,
+    `the same pressure moved the emphysematous lung ${emphysemaFall} L against ${fall} L`
+  );
+  // And the reason: the breath is running at the ceiling for nearly all of it.
+  assert.ok(
+    emphysemaAfter.flowLimitedFraction > 0.8,
+    `only ${emphysemaAfter.flowLimitedFraction} of that breath met the ceiling`
+  );
+  assert.ok(
+    emphysemaAfter.flowLimitedFraction > emphysemaBefore.flowLimitedFraction,
+    'and pushing harder put more of the breath against it, which is where the pressure went'
   );
 });
 

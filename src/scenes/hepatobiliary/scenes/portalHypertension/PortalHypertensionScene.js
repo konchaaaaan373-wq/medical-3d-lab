@@ -419,15 +419,20 @@ const SCARRED_LIVER = new THREE.Color(PALETTE.scarred);
 /**
  * The HVPG bands, in words.
  *
+ * Three, following Baveno VII: normal, portal hypertension, and clinically
+ * significant portal hypertension. There is deliberately no fourth band above
+ * 12 mmHg — 12 mmHg is a variceal-bleeding association and a post-TIPS target,
+ * not a further stage, and putting a boundary there would turn it into a
+ * general staging threshold it is not.
+ *
  * Only ever reached through `clinicalThresholdReading`, which refuses to
- * produce a band where the thresholds do not apply — so there is no way for
- * one of these labels to appear beside a presinusoidal liver.
+ * produce a band outside the sinusoidal haemodynamic pattern — so there is no
+ * way for one of these labels to appear beside a presinusoidal liver.
  */
 const BAND_LABELS = {
   normal: { en: 'normal', ja: '正常' },
-  subclinical: { en: 'raised, subclinical', ja: '上昇（臨床的意義未満）' },
-  'clinically-significant': { en: 'clinically significant', ja: '臨床的に有意' },
-  'high-risk': { en: 'higher risk', ja: 'より高リスク' },
+  'portal-hypertension': { en: 'portal hypertension', ja: '門脈圧亢進' },
+  'clinically-significant': { en: 'clinically significant', ja: '臨床的に有意 (CSPH)' },
 };
 
 /** A stage's position on the axis, by id. Throws rather than silently drifting. */

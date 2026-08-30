@@ -295,6 +295,7 @@ export class CopdScene {
       tauCount: state.timeConstantsAvailable.toFixed(1),
       limited: Math.round(state.flowLimitedFraction * 100),
       pmus: state.inspiratoryPressureCmH2O.toFixed(0),
+      pexp: state.expiratoryPressureCmH2O.toFixed(1),
       tlc: state.totalLungCapacityL.toFixed(2),
       rv: state.residualVolumeL.toFixed(2),
     };

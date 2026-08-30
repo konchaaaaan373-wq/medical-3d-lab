@@ -3,10 +3,13 @@ import assert from 'node:assert/strict';
 import {
   DEFAULT_CONTROLS,
   DYNAMIC_SHARE_AT_FULL_TONE,
+  HVPG_THRESHOLDS,
+  VARICEAL_CONTEXT,
   HEPATIC_VEIN_PRESSURE,
   MEAN_ARTERIAL_PRESSURE,
   clinicalThresholdReading,
-  collateralOpening,
+  HAEMODYNAMIC_PATTERNS,
+  establishedCollateralFraction,
   progressionCurve,
   solvePortalCirculation,
   vascularResistances,
@@ -34,8 +37,8 @@ test('flow is conserved at the portal vein, in every configuration', () => {
     ADVANCED,
     { ...ADVANCED, tips: 1 },
     { ...ADVANCED, collateralPropensity: 0 },
-    { ...ADVANCED, presinusoidalShare: 1 },
-    { ...ADVANCED, dynamicTone: 1, tips: 0.5, presinusoidalShare: 0.4 },
+    { ...ADVANCED, haemodynamicPattern: 2 },
+    { ...ADVANCED, dynamicTone: 1, tips: 0.5, haemodynamicPattern: 2 },
   ]) {
     const state = solvePortalCirculation(controls);
     const out =
@@ -49,7 +52,7 @@ test('flow is conserved at the portal vein, in every configuration', () => {
 });
 
 test('every pressure drop is a flow times a resistance', () => {
-  const state = solvePortalCirculation({ ...ADVANCED, presinusoidalShare: 0.4 });
+  const state = solvePortalCirculation({ ...ADVANCED, haemodynamicPattern: 2 });
   const flowPerSecond = state.portalLiverFlowMlPerMin / 60;
   const acrossPresinusoidal = state.portalPressureMmHg - state.sinusoidalPressureMmHg;
   const acrossSinusoids = state.sinusoidalPressureMmHg - HEPATIC_VEIN_PRESSURE;
@@ -64,7 +67,7 @@ test('every pressure drop is a flow times a resistance', () => {
 });
 
 test('pressure falls monotonically from the arteries to the hepatic vein', () => {
-  for (const controls of [HEALTHY, ADVANCED, { ...ADVANCED, presinusoidalShare: 1 }]) {
+  for (const controls of [HEALTHY, ADVANCED, { ...ADVANCED, haemodynamicPattern: 2 }]) {
     const state = solvePortalCirculation(controls);
     assert.ok(MEAN_ARTERIAL_PRESSURE > state.portalPressureMmHg);
     assert.ok(state.portalPressureMmHg >= state.sinusoidalPressureMmHg - 1e-9);
@@ -96,7 +99,7 @@ test('a healthy liver sits where the textbooks put it', () => {
 
 test('in a sinusoidal liver, HVPG is a good measure of the gradient', () => {
   const state = solvePortalCirculation(ADVANCED);
-  assert.equal(state.controls.presinusoidalShare, 0);
+  assert.equal(state.controls.haemodynamicPattern, 0);
   assert.ok(
     state.gradientMissedByHvpgMmHg < 0.5,
     `HVPG missed ${state.gradientMissedByHvpgMmHg} mmHg of a ${state.portalPressureGradientMmHg} mmHg gradient`
@@ -109,7 +112,7 @@ test('in a presinusoidal liver, HVPG under-reads the gradient badly — and the 
   // where; so the portal pressure gradient must be the same and the *measured*
   // one must collapse.
   const sinusoidal = solvePortalCirculation(ADVANCED);
-  const presinusoidal = solvePortalCirculation({ ...ADVANCED, presinusoidalShare: 1 });
+  const presinusoidal = solvePortalCirculation({ ...ADVANCED, haemodynamicPattern: 2 });
 
   assert.ok(
     Math.abs(presinusoidal.portalPressureGradientMmHg - sinusoidal.portalPressureGradientMmHg) < 0.01,
@@ -125,13 +128,60 @@ test('in a presinusoidal liver, HVPG under-reads the gradient badly — and the 
 test('the clinical thresholds are refused outside what they were established in', () => {
   const sinusoidal = clinicalThresholdReading(solvePortalCirculation(ADVANCED));
   assert.equal(sinusoidal.applicable, true);
-  assert.equal(sinusoidal.band, 'high-risk', 'an HVPG over 12 is in the high-risk band');
+  assert.equal(sinusoidal.band, 'clinically-significant', 'an HVPG at or above 10 is CSPH');
 
-  const presinusoidal = clinicalThresholdReading(
-    solvePortalCirculation({ ...ADVANCED, presinusoidalShare: 0.6 })
+  // Applicability is decided by the declared haemodynamic pattern — a named
+  // state — and not by comparing a continuous parameter against a cut-off.
+  assert.equal(sinusoidal.pattern.id, 'sinusoidal');
+
+  for (const index of [1, 2]) {
+    const outside = clinicalThresholdReading(
+      solvePortalCirculation({ ...ADVANCED, haemodynamicPattern: index })
+    );
+    assert.equal(outside.applicable, false, `${outside.pattern.id} must not read the thresholds`);
+    assert.equal(outside.band, null, 'and a band must not be produced where it would be wrong');
+  }
+});
+
+test('there is no band boundary at 12 mmHg, because there is no such general threshold', () => {
+  // 12 mmHg belongs to the classic HVPG association with variceal bleeding and
+  // to the post-TIPS haemodynamic target — not to a staging ladder. A fourth
+  // band there would turn it into one.
+  const bands = new Set();
+  for (let structuralResistance = 1; structuralResistance <= 12; structuralResistance += 0.25) {
+    for (const splanchnicVasodilation of [0, 0.5, 1]) {
+      const reading = clinicalThresholdReading(
+        solvePortalCirculation({ structuralResistance, splanchnicVasodilation })
+      );
+      if (reading.band) bands.add(reading.band);
+    }
+  }
+  assert.deepEqual(
+    [...bands].sort(),
+    ['clinically-significant', 'normal', 'portal-hypertension'],
+    'three bands, and none of them starts at 12'
   );
-  assert.equal(presinusoidal.applicable, false);
-  assert.equal(presinusoidal.band, null, 'and a band must not be produced where it would be wrong');
+  // And the two thresholds the bands are actually built on.
+  assert.equal(HVPG_THRESHOLDS.portalHypertensionMmHg, 5);
+  assert.equal(HVPG_THRESHOLDS.clinicallySignificantMmHg, 10);
+  // 12 exists in the model, and only in its own context.
+  assert.equal(VARICEAL_CONTEXT.gradientMmHg, 12);
+  assert.match(VARICEAL_CONTEXT.note, /variceal/i);
+});
+
+test('the haemodynamic pattern is a named state, and each one says for itself whether the thresholds apply', () => {
+  // The point of replacing the old numeric cut-off. Whether the thresholds may
+  // be quoted is a question about which disease is being modelled, and each
+  // pattern answers it rather than a comparison doing so.
+  const ids = HAEMODYNAMIC_PATTERNS.map((pattern) => pattern.id);
+  assert.deepEqual(ids, ['sinusoidal', 'mixed', 'presinusoidal']);
+  assert.equal(HAEMODYNAMIC_PATTERNS[0].thresholdsApply, true);
+  assert.equal(HAEMODYNAMIC_PATTERNS[1].thresholdsApply, false);
+  assert.equal(HAEMODYNAMIC_PATTERNS[2].thresholdsApply, false);
+  // Portal vein thrombosis is prehepatic, and the presinusoidal pattern has to
+  // say so rather than listing it as an example of itself.
+  assert.match(HAEMODYNAMIC_PATTERNS[2].description, /prehepatic/i);
+  assert.match(HAEMODYNAMIC_PATTERNS[2].description, /schistosomiasis/i);
 });
 
 test('the thresholds are read on HVPG, never on the model’s own gradient', () => {
@@ -147,7 +197,7 @@ test('a healthy liver reads as normal and a moderately scarred one as clinically
     solvePortalCirculation({ structuralResistance: 5, splanchnicVasodilation: 0.5 })
   );
   assert.ok(csph.hvpgMmHg >= 10, `HVPG was ${csph.hvpgMmHg}`);
-  assert.ok(['clinically-significant', 'high-risk'].includes(csph.band));
+  assert.equal(csph.band, 'clinically-significant');
 });
 
 // --- what raises the pressure ----------------------------------------------
@@ -180,8 +230,8 @@ test('the dynamic component is a share of what the structure already costs', () 
 });
 
 test('moving the resistance upstream does not change how much of it there is', () => {
-  const sinusoidal = vascularResistances({ structuralResistance: 8, presinusoidalShare: 0 });
-  const presinusoidal = vascularResistances({ structuralResistance: 8, presinusoidalShare: 1 });
+  const sinusoidal = vascularResistances({ structuralResistance: 8, haemodynamicPattern: 0 });
+  const presinusoidal = vascularResistances({ structuralResistance: 8, haemodynamicPattern: 2 });
   assert.ok(Math.abs(sinusoidal.intrahepatic - presinusoidal.intrahepatic) < 1e-12);
   assert.ok(presinusoidal.presinusoidal > sinusoidal.presinusoidal);
   assert.ok(presinusoidal.sinusoidal < sinusoidal.sinusoidal);
@@ -189,11 +239,23 @@ test('moving the resistance upstream does not change how much of it there is', (
 
 // --- collaterals -----------------------------------------------------------
 
-test('collaterals open above a gradient of about ten, not below', () => {
-  assert.ok(collateralOpening(3, 1) < 0.05, 'a healthy gradient opens nothing');
-  assert.ok(collateralOpening(10, 1) > 0.4 && collateralOpening(10, 1) < 0.6, 'half open at the threshold');
-  assert.ok(collateralOpening(18, 1) > 0.9, 'and wide open well above it');
-  assert.equal(collateralOpening(18, 0), 0, 'propensity zero means no collaterals at any pressure');
+test('collateral conductance is established around the clinically significant gradient, not below it', () => {
+  // An equilibrium mapping, not a valve: it says how much collateral
+  // conductance a liver that has sat at this gradient has typically ended up
+  // with. Nothing here opens instantaneously and nothing is triggered by a
+  // pressure crossing a line — see the function's own note.
+  assert.ok(establishedCollateralFraction(3, 1) < 0.05, 'a healthy gradient establishes nothing');
+  assert.ok(
+    establishedCollateralFraction(10, 1) > 0.4 && establishedCollateralFraction(10, 1) < 0.6,
+    'half established around the clinically significant gradient'
+  );
+  assert.ok(establishedCollateralFraction(18, 1) > 0.9, 'and fully established well above it');
+  assert.equal(establishedCollateralFraction(18, 0), 0, 'propensity zero means no collaterals at any pressure');
+  // Smooth rather than switched, at every scale. A step would be a valve.
+  for (let gradient = 0; gradient < 30; gradient += 0.5) {
+    const step = establishedCollateralFraction(gradient + 0.5, 1) - establishedCollateralFraction(gradient, 1);
+    assert.ok(step >= 0 && step < 0.25, `a jump of ${step} at ${gradient} mmHg would read as a valve opening`);
+  }
 });
 
 test('collaterals carry a great deal of flow and still do not decompress the portal vein', () => {
@@ -254,8 +316,8 @@ test('hepatic perfusion falls as the shunt fraction rises, all along the progres
 });
 
 test('the two gradients diverge along the progression only when the disease is presinusoidal', () => {
-  const sinusoidal = progressionCurve({ presinusoidalShare: 0 });
-  const presinusoidal = progressionCurve({ presinusoidalShare: 1 });
+  const sinusoidal = progressionCurve({ haemodynamicPattern: 0 });
+  const presinusoidal = progressionCurve({ haemodynamicPattern: 2 });
   const gap = (point) => point.portalPressureGradientMmHg - point.hepaticVenousPressureGradientMmHg;
   assert.ok(Math.max(...sinusoidal.map(gap)) < 0.5, 'they stay together in sinusoidal disease');
   assert.ok(Math.max(...presinusoidal.map(gap)) > 8, 'and separate in presinusoidal disease');
@@ -283,5 +345,5 @@ test('the model is deterministic', () => {
 test('the defaults are a healthy liver', () => {
   assert.equal(DEFAULT_CONTROLS.structuralResistance, 1);
   assert.equal(DEFAULT_CONTROLS.tips, 0);
-  assert.equal(DEFAULT_CONTROLS.presinusoidalShare, 0, 'and a sinusoidal one, where HVPG means what it usually means');
+  assert.equal(DEFAULT_CONTROLS.haemodynamicPattern, 0, 'and a sinusoidal one, where HVPG means what it usually means');
 });

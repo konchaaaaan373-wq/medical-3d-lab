@@ -98,7 +98,7 @@ test('the scene never calls its own gradient an HVPG', () => {
 
 test('moving the resistance upstream collapses the measurement and not the gradient', () => {
   const sinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC });
-  const presinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC, presinusoidalShare: 1 });
+  const presinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC, haemodynamicPattern: 2 });
   const value = (built, id) => Number(built.getMetrics().find((row) => row.id === id).value);
 
   assert.ok(
@@ -114,7 +114,7 @@ test('moving the resistance upstream collapses the measurement and not the gradi
 
 test('the clinical band is withheld rather than extended where it would be wrong', () => {
   const sinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC });
-  const presinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC, presinusoidalShare: 0.6 });
+  const presinusoidal = sceneAt({ progress: 1, ...CIRRHOTIC, haemodynamicPattern: 2 });
   const band = (built) => built.getMetrics().find((row) => row.id === 'band');
 
   assert.match(band(sinusoidal).value, /risk|significant/i, 'a badly obstructed sinusoidal liver gets a band');
@@ -162,7 +162,7 @@ test('every declared chart is filled, and with the model’s own numbers', () =>
 });
 
 test('the pressure profile is the model’s profile, and it falls', () => {
-  const built = sceneAt({ progress: 1, ...CIRRHOTIC, presinusoidalShare: 0.5 });
+  const built = sceneAt({ progress: 1, ...CIRRHOTIC, haemodynamicPattern: 2 });
   const profile = built.getCharts()['pressure-profile'].series.find((series) => series.id === 'profile');
   const fromModel = built.solved.pressureProfile.map((point) => point.pressureMmHg);
   assert.deepEqual(
@@ -173,7 +173,7 @@ test('the pressure profile is the model’s profile, and it falls', () => {
 });
 
 test('the span drawn as “what HVPG sees” is exactly the sinusoidal segment', () => {
-  const built = sceneAt({ progress: 1, ...CIRRHOTIC, presinusoidalShare: 0.7 });
+  const built = sceneAt({ progress: 1, ...CIRRHOTIC, haemodynamicPattern: 2 });
   const measured = built.getCharts()['pressure-profile'].series.find((series) => series.id === 'measured');
   const state = built.solved;
   assert.equal(measured.points[0].y, state.sinusoidalPressureMmHg);
@@ -204,7 +204,7 @@ test('collaterals are not drawn at all until the model has opened them', () => {
   assert.equal(healthy.vessels.vessels.collateralOesophageal.mesh.visible, false);
 
   const cirrhotic = sceneAt({ progress: 1, ...CIRRHOTIC });
-  assert.ok(cirrhotic.solved.collateralOpening > 0.5);
+  assert.ok(cirrhotic.solved.establishedCollateralFraction > 0.5);
   assert.equal(cirrhotic.vessels.vessels.collateralOesophageal.mesh.visible, true);
 });
 
@@ -296,30 +296,114 @@ test('every walk-through step points at controls, rows and charts the scene has'
 test('the walk-through narrates the chain the model actually produces', () => {
   const at = (id) => {
     const step = CAUSAL_STORY.steps.find((entry) => entry.id === id);
+    if (!step) throw new Error(`no walk-through step "${id}"`);
     return solvePortalCirculation({ ...step.controls, structuralResistance: structuralAt(step.progress) });
   };
 
-  // Step 2: scarring alone, collaterals held shut, takes it a very long way.
-  assert.ok(at('resistance').portalPressureGradientMmHg > at('healthy').portalPressureGradientMmHg * 5);
-  // Step 3: adding inflow takes it further still.
-  assert.ok(at('inflow').portalPressureGradientMmHg > at('resistance').portalPressureGradientMmHg);
-  assert.ok(at('inflow').splanchnicInflowMlPerMin > at('resistance').splanchnicInflowMlPerMin * 1.2);
-  // Step 4: collaterals take a real bite out of it.
+  // The causal spine, in order. Each assertion is the link the step's `because`
+  // line claims, checked against what the model does.
+
+  // 1 → 3: the initiating lesion is inside the liver, and on its own it takes
+  // the gradient a very long way — no vasodilation, no collaterals.
+  assert.ok(at('architecture').resistances.intrahepatic > at('healthy').resistances.intrahepatic);
+  assert.ok(at('gradient').portalPressureGradientMmHg > at('healthy').portalPressureGradientMmHg * 5);
+  assert.equal(at('gradient').controls.splanchnicVasodilation, 0, 'nothing outside the liver has moved yet');
+  assert.equal(at('gradient').collateralFlowMlPerMin, 0, 'and there is nowhere else for the blood to go');
+
+  // 4 → 6: the perpetuating mechanism. Splanchnic vasodilation raises the
+  // inflow, and the raised inflow raises the pressure again — with the liver
+  // itself untouched.
+  assert.ok(at('inflow').splanchnicInflowMlPerMin > at('gradient').splanchnicInflowMlPerMin * 1.2);
+  assert.ok(at('inflow').portalPressureGradientMmHg > at('gradient').portalPressureGradientMmHg);
+  assert.equal(
+    at('inflow').resistances.intrahepatic,
+    at('gradient').resistances.intrahepatic,
+    'the second mechanism must not be the first one again'
+  );
+  assert.deepEqual(at('feed-forward').controls, at('inflow').controls, 'the loop step names the same state');
+
+  // 7 → 8: the collateral network redistributes flow, takes a real bite out of
+  // the pressure, and leaves it clearly abnormal.
   assert.ok(at('collaterals').portalPressureGradientMmHg < at('inflow').portalPressureGradientMmHg * 0.7);
-  // Step 5: and leave it clearly abnormal, with most of the blood diverted.
-  assert.ok(at('not-enough').portalPressureGradientMmHg > 12);
-  assert.ok(at('not-enough').shuntFraction > 0.4);
-  // Step 6: the two gradients agree here.
+  assert.ok(at('not-enough').shuntFraction > 0.4, 'most of the blood is being redistributed');
+  assert.ok(
+    at('not-enough').portalPressureGradientMmHg > 10,
+    'and the gradient is still in the clinically significant range'
+  );
+  // And the reason the story gives: neither of the two mechanisms has moved.
+  assert.equal(
+    at('not-enough').resistances.intrahepatic,
+    at('gradient').resistances.intrahepatic,
+    'the hepatic resistance behind the collaterals is untouched'
+  );
+  assert.ok(
+    at('not-enough').splanchnicInflowMlPerMin > at('gradient').splanchnicInflowMlPerMin,
+    'and the inflow in front of them is still raised'
+  );
+
+  // 9 → 10: the measurement agrees here and does not there, on the same liver.
   assert.ok(at('measuring').gradientMissedByHvpgMmHg < 0.5);
-  // Step 7: and they do not, there.
   assert.ok(at('presinusoidal').gradientMissedByHvpgMmHg > 10);
   assert.ok(
     Math.abs(at('presinusoidal').portalPressureGradientMmHg - at('measuring').portalPressureGradientMmHg) < 0.01,
     'and the true gradient is the same in both'
   );
-  // Step 8: the shunt works, and costs.
+
+  // 11: the shunt reaches the post-TIPS target, and costs hepatic perfusion.
   assert.ok(at('shunt').portalPressureGradientMmHg < 12);
   assert.ok(at('shunt').portalLiverFlowMlPerMin < at('not-enough').portalLiverFlowMlPerMin * 0.6);
+});
+
+test('the walk-through puts the initiating mechanism before the perpetuating one', () => {
+  // The correction this story exists to carry. Splanchnic vasodilation is a
+  // consequence of portal hypertension, not a cause running in parallel with
+  // the hepatic resistance — so the steps that raise the resistance have to
+  // come first, and the story has to say which role each mechanism plays.
+  const order = CAUSAL_STORY.steps.map((step) => step.id);
+  const before = (a, b) => order.indexOf(a) < order.indexOf(b);
+  assert.ok(before('architecture', 'adaptation'), 'the liver lesion comes before the splanchnic response');
+  assert.ok(before('gradient', 'adaptation'), 'and so does the pressure it produces');
+  assert.ok(before('adaptation', 'inflow'), 'the dilation comes before the inflow it causes');
+  assert.ok(before('inflow', 'feed-forward'), 'and the inflow before the loop it closes');
+  assert.ok(before('feed-forward', 'collaterals'), 'and the collaterals come after both');
+
+  const loop = CAUSAL_STORY.steps.find((step) => step.id === 'feed-forward');
+  assert.match(loop.body, /initiating mechanism/i, 'the loop step has to name the initiating mechanism');
+  assert.match(loop.body, /perpetuating mechanism/i, 'and the perpetuating one');
+
+  // And the step that introduces the vasodilation has to say it is a response.
+  const adaptation = CAUSAL_STORY.steps.find((step) => step.id === 'adaptation');
+  assert.match(adaptation.because.text, /response/i);
+  assert.ok(
+    /not a second, parallel cause|consequence of it/i.test(adaptation.body),
+    'and has to rule out the reading it replaced'
+  );
+});
+
+test('nothing in the walk-through describes collaterals opening at a pressure', () => {
+  // The sigmoid in the model is an illustrative equilibrium mapping onto a
+  // chronic process — dilatation of pre-existing channels, remodelling,
+  // angiogenesis — and the prose must not turn it back into a valve.
+  const collaterals = CAUSAL_STORY.steps.find((step) => step.id === 'collaterals');
+  const prose = `${collaterals.heading} ${collaterals.body} ${collaterals.because.text}`;
+  assert.ok(
+    /months|years/i.test(prose),
+    'the step has to say the collateral network takes months to years to establish'
+  );
+  assert.match(prose, /clinical/i, 'and that ten mmHg is a clinical threshold');
+  assert.match(prose, /remodel/i, 'and name the remodelling');
+  assert.match(prose, /angiogenesis|new ones/i, 'and the new vessels');
+  // The step's heading is what a reader skimming sees, so the event framing
+  // must not survive there even as something to be denied.
+  assert.ok(
+    !/\b(opens?|opening|valve)\b/i.test(collaterals.heading),
+    `the heading still frames it as an opening: "${collaterals.heading}"`
+  );
+  // And the body has to rule the reading out explicitly rather than leaving it.
+  assert.ok(
+    /not a valve opening|Nothing here happens at a pressure/i.test(collaterals.body),
+    'the body has to say plainly that nothing opens at a pressure'
+  );
 });
 
 // --- the challenges --------------------------------------------------------
