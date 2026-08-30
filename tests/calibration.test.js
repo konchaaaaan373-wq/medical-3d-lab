@@ -26,6 +26,28 @@ import {
   solvePortalCirculation,
   vascularResistances,
 } from '../src/models/portalHypertension.js';
+import {
+  ACTIVATION_HALF_PRESSURE_DEFICIT,
+  AFFERENT_AUTOREGULATION,
+  AFFERENT_PROSTAGLANDIN_PROTECTION,
+  ALBUMIN_OUTPUT_GAIN,
+  CARDIAC_COMPENSATION_EXPONENT,
+  CENTRAL_VENOUS_PRESSURE,
+  EFFERENT_CONSTRICTOR_GAIN,
+  KF,
+  KF_CONSTRICTOR_REDUCTION,
+  PLASMA_ONCOTIC_PRESSURE,
+  REFERENCE_AFFERENT_RESISTANCE,
+  REFERENCE_EFFERENT_RESISTANCE,
+  REFERENCE_SVR,
+  RENAL_REFERENCE,
+  SYSTEMIC_REFERENCE,
+  SYSTEMIC_VASODILATION_GAIN,
+  TERLIPRESSIN_SPLANCHNIC_EFFECT,
+  solveHepatorenal,
+  solveKidney,
+  vasoconstrictorActivation,
+} from '../src/models/hepatorenal.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -440,4 +462,192 @@ test('calibration: hepatic portal perfusion falls by the margin this progression
   const curve = progressionCurve({ splanchnicVasodilation: 0 });
   const fall = curve[curve.length - 1].portalLiverFlowMlPerMin / curve[0].portalLiverFlowMlPerMin;
   assert.ok(fall < 0.5, `hepatic portal flow fell only to ${fall} of baseline over the progression`);
+});
+
+// ---------------------------------------------------------------------------
+// Hepatorenal syndrome
+// ---------------------------------------------------------------------------
+
+test('calibration: the healthy kidney reproduces its reference flows and a filtration fraction near a fifth', () => {
+  // The arteriolar resistances and the ultrafiltration coefficient were
+  // derived from these targets, so hitting them is a check that the derivation
+  // is still the one in the file — not evidence about anybody's kidney.
+  const healthy = solveKidney({ meanArterialPressureMmHg: 90, activation: 0 });
+  assert.ok(Math.abs(healthy.renalBloodFlowMlPerMin - RENAL_REFERENCE.renalBloodFlowMlPerMin) < 1);
+  assert.ok(
+    Math.abs(
+      healthy.glomerularFiltrationRateMlPerMin - RENAL_REFERENCE.glomerularFiltrationRateMlPerMin
+    ) < 1
+  );
+  assert.ok(Math.abs(healthy.glomerularPressureMmHg - RENAL_REFERENCE.glomerularPressureMmHg) < 0.5);
+  assert.ok(
+    Math.abs(healthy.filtrationFraction - 0.2) < 0.02,
+    `filtration fraction ${healthy.filtrationFraction}, and a fifth is what it was aimed at`
+  );
+  assert.ok(Math.abs(KF - 12) < 0.5, `Kf ${KF} mL/min/mmHg`);
+});
+
+test('calibration: a healthy liver solves to the reference circulation it was anchored at', () => {
+  // The non-splanchnic conductance is defined as whatever is left over once
+  // the healthy splanchnic circulation has taken its share of the reference
+  // output, so a healthy liver has to come back out at the anchor exactly.
+  const healthy = solveHepatorenal({ structuralResistance: 1, splanchnicVasodilation: 0 });
+  assert.ok(healthy.converged);
+  assert.ok(
+    Math.abs(
+      healthy.systemic.meanArterialPressureMmHg - SYSTEMIC_REFERENCE.meanArterialPressureMmHg
+    ) < 0.01
+  );
+  assert.ok(
+    Math.abs(healthy.systemic.cardiacOutputMlPerMin - SYSTEMIC_REFERENCE.cardiacOutputMlPerMin) < 1
+  );
+  assert.equal(healthy.neurohumoral.activation, 0);
+  assert.ok(
+    Math.abs(healthy.systemic.splanchnicShareOfOutput - 0.2) < 0.03,
+    `the splanchnic bed took ${healthy.systemic.splanchnicShareOfOutput} of the output`
+  );
+  assert.ok(Math.abs(REFERENCE_SVR - 1.032) < 0.01);
+});
+
+test('calibration: the cardiac compensation exponent sets how far pressure falls for a given dilation', () => {
+  // Arterial pressure goes as the resistance ratio to the power of one minus
+  // the exponent. That is the functional form the constant lives in, and this
+  // is the test that owns both.
+  assert.ok(CARDIAC_COMPENSATION_EXPONENT > 0 && CARDIAC_COMPENSATION_EXPONENT < 1);
+  const state = solveHepatorenal({ structuralResistance: 10, splanchnicVasodilation: 0.9 });
+  const ratio = state.systemic.systemicVascularResistance / REFERENCE_SVR;
+  const predicted =
+    (SYSTEMIC_REFERENCE.meanArterialPressureMmHg - CENTRAL_VENOUS_PRESSURE) *
+      ratio ** (1 - CARDIAC_COMPENSATION_EXPONENT) +
+    CENTRAL_VENOUS_PRESSURE;
+  assert.ok(
+    Math.abs(predicted - state.systemic.meanArterialPressureMmHg) < 0.01,
+    `${predicted} vs ${state.systemic.meanArterialPressureMmHg}`
+  );
+  // And the range it produces: advanced disease lands in the seventies and
+  // eighties with a raised output, which is what it was chosen for.
+  assert.ok(state.systemic.meanArterialPressureMmHg > 72 && state.systemic.meanArterialPressureMmHg < 86);
+  assert.ok(state.systemic.cardiacOutputMlPerMin > 5500);
+});
+
+test('calibration: the activation curve is a saturating function of the pressure deficit', () => {
+  // Half activation at the chosen deficit, saturating rather than linear, and
+  // never leaving nought to one. An index, with no units and no concentration
+  // behind it.
+  const reference = SYSTEMIC_REFERENCE.meanArterialPressureMmHg - CENTRAL_VENOUS_PRESSURE;
+  const half = vasoconstrictorActivation(
+    CENTRAL_VENOUS_PRESSURE + reference * (1 - ACTIVATION_HALF_PRESSURE_DEFICIT)
+  );
+  assert.ok(Math.abs(half.activation - 0.5) < 1e-9);
+  assert.equal(vasoconstrictorActivation(SYSTEMIC_REFERENCE.meanArterialPressureMmHg).activation, 0);
+  assert.ok(vasoconstrictorActivation(20).activation < 1);
+  assert.ok(vasoconstrictorActivation(20).activation > 0.8);
+  // Saturating: the second half of the deficit buys less than the first.
+  const a = vasoconstrictorActivation(CENTRAL_VENOUS_PRESSURE + reference * 0.9).activation;
+  const b = vasoconstrictorActivation(CENTRAL_VENOUS_PRESSURE + reference * 0.8).activation;
+  const c = vasoconstrictorActivation(CENTRAL_VENOUS_PRESSURE + reference * 0.7).activation;
+  assert.ok(b - a > c - b);
+});
+
+test('calibration: the systemic limb of the vasodilation sets how far resistance can fall', () => {
+  // The split between splanchnic and non-splanchnic vasodilation is invented.
+  // This is the assertion that it is the split the file says it is, and that
+  // the resistance fall it produces is the one it was chosen for.
+  assert.ok(SYSTEMIC_VASODILATION_GAIN > 0);
+  const worst = solveHepatorenal({ structuralResistance: 12, splanchnicVasodilation: 1 });
+  const fall = 1 - worst.systemic.systemicVascularResistance / REFERENCE_SVR;
+  assert.ok(fall > 0.25 && fall < 0.4, `systemic resistance fell by ${fall}`);
+});
+
+test('calibration: the four constrictor gains produce a defended phase and then a failing one', () => {
+  // The ordering the gains encode is external; their sizes are not, and what
+  // they buy is the shape of the trajectory: filtration held while blood flow
+  // falls, then filtration failing. The severity at which the knee falls is a
+  // consequence of these numbers and is not a prediction about anybody.
+  assert.ok(EFFERENT_CONSTRICTOR_GAIN > 0);
+  assert.ok(KF_CONSTRICTOR_REDUCTION > 0 && KF_CONSTRICTOR_REDUCTION < 1);
+  assert.ok(AFFERENT_PROSTAGLANDIN_PROTECTION > 0 && AFFERENT_PROSTAGLANDIN_PROTECTION < 1);
+
+  const steps = [0, 0.2, 0.4, 0.6, 0.8, 1].map((t) =>
+    solveHepatorenal({ structuralResistance: 1 + 11 * t, splanchnicVasodilation: t })
+  );
+  const knee = steps.findIndex((s) => !s.kidney.autoregulating);
+  assert.ok(knee > 1 && knee < steps.length - 1, `the knee fell at step ${knee}`);
+  assert.ok(steps.at(-1).kidney.glomerularFiltrationRateMlPerMin < 60);
+  assert.ok(steps.at(-1).kidney.glomerularFiltrationRateMlPerMin > 30);
+  assert.ok(steps.at(-1).kidney.renalBloodFlowMlPerMin < 800);
+  // The filtration fraction rises before it falls, and the peak is where the
+  // efferent arteriole is working and the afferent one still is not.
+  const fractions = steps.map((s) => s.kidney.filtrationFraction);
+  const peak = fractions.indexOf(Math.max(...fractions));
+  assert.ok(peak > 0 && peak < fractions.length - 1, `the filtration fraction peaked at ${peak}`);
+  assert.ok(fractions.at(-1) < fractions[0]);
+});
+
+test('calibration: autoregulation is a permitted resistance band with a chosen width', () => {
+  // Autoregulation here is a band, not a mechanism. Its width is invented and
+  // the lower limit of autoregulation is a consequence of the width rather
+  // than a value taken from anywhere.
+  assert.ok(AFFERENT_AUTOREGULATION.minimumFactor < 1);
+  assert.ok(AFFERENT_AUTOREGULATION.maximumFactor > 1);
+  let limit = 0;
+  for (let map = 140; map > 20; map -= 0.25) {
+    if (solveKidney({ meanArterialPressureMmHg: map, activation: 0 }).autoregulatoryReserve <= 0) {
+      limit = map;
+      break;
+    }
+  }
+  assert.ok(limit > 65 && limit < 78, `the lower limit of autoregulation came out at ${limit} mmHg`);
+});
+
+test('calibration: the oncotic pressure is a constant and filtration equilibrium is not modelled', () => {
+  // A single mean value stands in for a pressure that rises along the
+  // capillary. The consequence is that filtration here can never be stopped by
+  // oncotic pressure part-way along, and this is the test that says so.
+  assert.equal(typeof PLASMA_ONCOTIC_PRESSURE, 'number');
+  const a = solveKidney({ meanArterialPressureMmHg: 90, activation: 0 });
+  const b = solveKidney({ meanArterialPressureMmHg: 60, activation: 0.8 });
+  assert.equal(
+    a.glomerularPressureMmHg - a.netFiltrationPressureMmHg,
+    b.glomerularPressureMmHg - b.netFiltrationPressureMmHg,
+    'the opposing pressures have to be the same constant in both states'
+  );
+});
+
+test('calibration: the efferent resistance is the whole path from glomerulus to renal vein', () => {
+  // Efferent arteriole and peritubular bed as one number, derived from the
+  // reference so that the glomerular pressure lands where it was aimed.
+  const flow = RENAL_REFERENCE.renalBloodFlowMlPerMin / 60;
+  assert.ok(
+    Math.abs(
+      REFERENCE_EFFERENT_RESISTANCE * flow -
+        (RENAL_REFERENCE.glomerularPressureMmHg - CENTRAL_VENOUS_PRESSURE)
+    ) < 1e-9
+  );
+  assert.ok(
+    Math.abs(
+      REFERENCE_AFFERENT_RESISTANCE * flow -
+        (SYSTEMIC_REFERENCE.meanArterialPressureMmHg - RENAL_REFERENCE.glomerularPressureMmHg)
+    ) < 1e-9
+  );
+});
+
+test('calibration: the treatment effect sizes are the ones this model was given', () => {
+  // How much of the vasodilation a full dose reverses, and how much output a
+  // full course of albumin buys. Both invented; neither is a dose.
+  assert.ok(TERLIPRESSIN_SPLANCHNIC_EFFECT > 0 && TERLIPRESSIN_SPLANCHNIC_EFFECT <= 1);
+  assert.ok(ALBUMIN_OUTPUT_GAIN > 0 && ALBUMIN_OUTPUT_GAIN < 0.5);
+
+  const sick = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  const treated = solveHepatorenal({ ...sick, terlipressin: 1 });
+  assert.ok(
+    Math.abs(treated.effectiveSplanchnicVasodilation - (0.9 - TERLIPRESSIN_SPLANCHNIC_EFFECT)) < 1e-9
+  );
+  const withAlbumin = solveHepatorenal({ ...sick, albumin: 1 });
+  const without = solveHepatorenal(sick);
+  assert.ok(withAlbumin.systemic.cardiacOutputMlPerMin > without.systemic.cardiacOutputMlPerMin);
+  assert.ok(
+    withAlbumin.kidney.glomerularFiltrationRateMlPerMin >
+      without.kidney.glomerularFiltrationRateMlPerMin
+  );
 });

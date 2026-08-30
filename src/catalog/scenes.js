@@ -146,6 +146,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
+    id: 'hepatorenal-syndrome',
+    slug: 'hepatorenal-syndrome',
+    titleEn: 'Hepatorenal syndrome',
+    titleJa: '肝腎症候群',
+    system: 'renal',
+    organ: 'kidney',
+    organs: ['kidney', 'liver'],
+    disease: 'hepatorenal-syndrome',
+    status: 'alpha',
+    description:
+      'Two organs solved as one circulation: why a structurally normal kidney stops filtering, and why the compensation that defends the arterial pressure is what takes its reserve away.',
+    descriptionJa:
+      '2 つの臓器を 1 つの循環として解き、構造的に正常な腎臓がなぜ濾過を止めるのか、そして動脈圧を守る代償こそが腎の予備能を奪う理由を示します。',
+    tags: ['haemodynamics', 'cross-organ', 'treatment-mechanism'],
+    load: () => import('../scenes/renal/scenes/hepatorenalSyndrome/index.js'),
+  },
+  {
     id: 'liver-portal-flow',
     slug: 'liver-portal-flow',
     titleEn: 'Portal flow & bile',

@@ -21,7 +21,8 @@ the named test actually lives in.
 ## Layer 1 — external physiology
 
 **Files:** [`respiratory-physiology.test.js`](respiratory-physiology.test.js),
-[`portal-haemodynamics.test.js`](portal-haemodynamics.test.js)
+[`portal-haemodynamics.test.js`](portal-haemodynamics.test.js),
+[`hepatorenal-physiology.test.js`](hepatorenal-physiology.test.js)
 
 Propositions the literature requires, which would be true if this repository
 did not exist. Directions, orderings, sufficiency conditions, independence
@@ -47,8 +48,9 @@ than that this model reaches it.
 ## Layer 2 — model integrity
 
 **Files:** everything else. `copd-model.test.js`, `asthma-model.test.js`,
-`portal-hypertension-model.test.js`, the three `*-scene.test.js` files,
-`model-layer.test.js`, `catalog.test.js`, `evidence.test.js`, and the rest.
+`portal-hypertension-model.test.js`, `hepatorenal.test.js`, the `*-scene.test.js`
+and `*-reel.test.js` files, `model-layer.test.js`, `catalog.test.js`,
+`evidence.test.js`, and the rest.
 
 Conservation, finiteness, determinism, solver convergence, and the
 internal-consistency chain: the chart is the model, the read-out is the model,
@@ -120,8 +122,8 @@ to run.
 ## Running them
 
 ```bash
-npm test                                       # all four hundred and fifty-odd
-node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js   # layer 1
+npm test                                       # all five hundred and seventy-odd
+node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js tests/hepatorenal-physiology.test.js   # layer 1
 node --test tests/calibration.test.js          # layer 3
 node --test tests/evidence.test.js             # the separation itself
 ```

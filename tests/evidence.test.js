@@ -7,6 +7,7 @@ import {
   CONFIDENCE,
   COPD_EVIDENCE,
   EVIDENCE_REGISTRIES,
+  HEPATORENAL_EVIDENCE,
   LAYER,
   PORTAL_EVIDENCE,
   defineEvidence,
@@ -43,6 +44,7 @@ import {
 const FILE_LAYERS = {
   'respiratory-physiology.test.js': LAYER.EXTERNAL,
   'portal-haemodynamics.test.js': LAYER.EXTERNAL,
+  'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -51,6 +53,7 @@ const DOSSIERS = {
   copd: 'docs/model-evidence/copd.md',
   asthma: 'docs/model-evidence/asthma.md',
   'portal-hypertension': 'docs/model-evidence/cirrhosis-portal-hypertension.md',
+  'hepatorenal-syndrome': 'docs/model-evidence/hepatorenal-syndrome.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -172,14 +175,53 @@ test('each scene records the direction it is known to get wrong', () => {
   }
 });
 
-test('the registries cover the three scenes and nothing is duplicated across them', () => {
+test('the registries cover every model-backed scene and nothing is duplicated across them', () => {
   assert.deepEqual(
     EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
-    ['copd', 'asthma', 'portal-hypertension']
+    ['copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
   );
   assert.ok(COPD_EVIDENCE.length >= 8);
   assert.ok(ASTHMA_EVIDENCE.length >= 8);
   assert.ok(PORTAL_EVIDENCE.length >= 8);
+  assert.ok(HEPATORENAL_EVIDENCE.length >= 8);
+});
+
+test('every named test lives in a file whose layer matches the entry', () => {
+  // The separation enforced against the filesystem rather than against a
+  // declaration. `defineEvidence` refuses a mismatched pairing at import, but
+  // an entry can name the external layer and the test can sit in
+  // `calibration.test.js` all the same, and then the taxonomy is a comment.
+  //
+  // This is the test that makes "a Layer 1 failure means the physiology was
+  // violated" a fact about the repository rather than a convention.
+  for (const registry of EVIDENCE_REGISTRIES) {
+    for (const entry of registry) {
+      if (!entry.validation) continue;
+      const file = TEST_FILES.get(entry.validation);
+      assert.ok(file, `${entry.scene}/${entry.id}: no test called "${entry.validation}"`);
+      assert.equal(
+        layerOf(file),
+        entry.layer,
+        `${entry.scene}/${entry.id} declares the ${entry.layer} layer but its test lives in ${file}, which is the ${layerOf(file)} layer`
+      );
+    }
+  }
+});
+
+test('no claim about the world is defended by a test in the calibration layer', () => {
+  // The same rule from the other direction, and the one the final review asked
+  // for in so many words: a model's own parameterisation may not be the thing
+  // that establishes a physiological claim.
+  for (const registry of EVIDENCE_REGISTRIES) {
+    for (const entry of registry) {
+      if (!ASSERTABLE.has(entry.confidence) || !entry.validation) continue;
+      assert.notEqual(
+        layerOf(TEST_FILES.get(entry.validation)),
+        LAYER.CALIBRATION,
+        `${entry.scene}/${entry.id} is ${entry.confidence} and is checked in the calibration layer`
+      );
+    }
+  }
 });
 
 test('a malformed entry is refused at definition rather than at read time', () => {

@@ -28,8 +28,11 @@ export const REEL_FORMATS = [
  *   durationSeconds, cues, viewDirection, framing, cameraAt, overlayAt
  *   progress          where on the scene's own axis the sequence sits
  *   comparison        false to leave the comparison off; default is on
+ *   comparisonAt(t)   whether both bodies are on screen at time `t`, for a
+ *                     sequence that shows one thing and then compares two;
+ *                     overrides `comparison` while it is running
  *   driveAt(t, scene) anything the scene has to be told at time `t`
- *   readMetrics(scene) numbers the copy interpolates, read once on entry
+ *   readMetrics(scene) numbers the copy interpolates, read every frame
  *   onEnter(scene) / onExit(scene)  set-up and tear-down the sequence owns
  *
  * Two properties matter most, because the output is meant to be screen-recorded:
@@ -73,6 +76,8 @@ export function createReelMode({
   // has to be 15 seconds of real time, dropping frames if it must, so the
   // sequence advances on the clock and the renderer keeps up as best it can.
   let lastTimestamp = null;
+  /** Whether both bodies are currently on screen, so the toggle only fires on a change. */
+  let comparing = false;
 
   const timeline = new Timeline({
     duration: reel.durationSeconds,
@@ -108,6 +113,18 @@ export function createReelMode({
 
   function renderAt(t) {
     if (!active) return;
+
+    // A sequence may show one body and then two — the argument it is making
+    // can need both. Routed through the app's own toggle rather than the
+    // scene's, so the labels change with the picture, and only on a change,
+    // because the toggle is not free.
+    if (reel.comparisonAt) {
+      const wanted = Boolean(reel.comparisonAt(t));
+      if (wanted !== comparing) {
+        comparing = wanted;
+        setComparison(wanted);
+      }
+    }
 
     // Everything the scene has to be told at this instant. What that is — a
     // cardiac phase, a settled lung, a solved liver — is the sequence's
@@ -192,7 +209,8 @@ export function createReelMode({
     scene.resetModelControls?.();
     // Most sequences want both bodies on screen; one that is about a single
     // organ can say so.
-    if (reel.comparison !== false) setComparison(true);
+    comparing = reel.comparisonAt ? Boolean(reel.comparisonAt(0)) : reel.comparison !== false;
+    setComparison(comparing);
     reel.onEnter?.(scene);
 
     viewer.controls.enabled = false;
