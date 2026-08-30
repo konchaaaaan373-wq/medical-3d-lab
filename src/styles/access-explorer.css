@@ -1,0 +1,28 @@
+/* Account/billing belongs on the catalogue page too, but it must not turn the
+   Explorer into a billing dashboard. Keep it as secondary product chrome next
+   to the existing language control. */
+.explorer-header-actions {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  z-index: 2;
+}
+
+.explorer-header-actions .ui-toggle,
+.explorer-header-actions .account-trigger {
+  position: static;
+}
+
+@media (max-width: 720px) {
+  .explorer-header {
+    padding-top: 68px;
+  }
+
+  .explorer-header-actions {
+    top: 14px;
+    right: 14px;
+  }
+}
