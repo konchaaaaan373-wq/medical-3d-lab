@@ -187,9 +187,24 @@ export function createSceneSwitcher({ groups, currentId }) {
     if (event.target.closest('a')) setOpen(false);
   });
 
+  // The app has global Space / Escape / letter shortcuts. While focus is in
+  // navigation, native button/link keyboard behaviour must win rather than also
+  // playing the model or leaving a lesson. Escape closes this surface first.
+  element.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      setOpen(false, { restoreFocus: true });
+    }
+    event.stopPropagation();
+  });
+
+  // Escape also closes an open menu when focus happens to be elsewhere. Stop
+  // it here so the window-level Escape shortcut does not close two UI layers at
+  // once (for example the menu and a learning module).
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) {
       event.preventDefault();
+      event.stopPropagation();
       setOpen(false, { restoreFocus: true });
     }
   });
