@@ -7,9 +7,17 @@ import {
   signOut,
   signUp,
 } from './auth.js';
-import { canAccess, ENTITLEMENT, ENTITLEMENT_COPY, PLAN } from './policy.js';
+import {
+  ACTIVE_SUBSCRIPTION_STATUSES,
+  canAccess,
+  ENTITLEMENT,
+  ENTITLEMENT_COPY,
+  PLAN,
+  PLAN_GRANTS,
+} from './policy.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Account + entitlement state for the browser.
@@ -44,12 +52,27 @@ export function createAccessManager({ ui }) {
     accountButton,
     async init() {
       await refresh();
-      // Stripe comes back to the same scene. Refresh access immediately rather
-      // than making the purchaser reload a second time.
-      if (new URLSearchParams(window.location.search).get('billing') === 'success') {
-        await refresh();
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('billing') === 'success') {
+        const plan = params.get('billing_plan');
+        const expected = PLAN_GRANTS[plan] ?? [];
+
+        // Stripe redirects immediately; the signed subscription webhook can
+        // arrive a moment later. Re-read server truth for a few seconds instead
+        // of telling a paying user their new button is still locked. The URL's
+        // plan is only the thing to wait for — it never grants access itself.
+        for (let attempt = 0; attempt < 6 && !expected.every((grant) => state.grants.has(grant)); attempt++) {
+          if (attempt) await sleep(350 * attempt);
+          await refresh();
+        }
+        if (expected.length && !expected.every((grant) => state.grants.has(grant))) {
+          state.notice = '決済は完了しました。利用権の反映に少し時間がかかっています。アカウントから再確認できます。';
+          notify();
+        }
+
         const clean = new URL(window.location.href);
         clean.searchParams.delete('billing');
+        clean.searchParams.delete('billing_plan');
         clean.searchParams.delete('session_id');
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
@@ -107,12 +130,11 @@ export function createAccessManager({ ui }) {
       state.subscriptions = [];
       if (session) {
         const response = await authenticatedFetch('/.netlify/functions/entitlements');
-        if (response.ok) {
-          const data = await response.json();
-          state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
-          state.subscriptions = data.subscriptions ?? [];
-          state.user = data.user ?? state.user;
-        }
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'Could not load access.');
+        state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
+        state.subscriptions = data.subscriptions ?? [];
+        state.user = data.user ?? state.user;
       }
     } catch (error) {
       // Free access is deliberately resilient to billing/auth outages.
@@ -232,11 +254,11 @@ export function createAccessManager({ ui }) {
       ]),
       currentAccess(),
       planGrid(),
-      state.subscriptions.length
+      hasActiveSubscription()
         ? el('button', {
             class: 'access-manage',
             type: 'button',
-            text: 'Manage subscription / 契約を管理',
+            text: 'Change plan / manage billing　プラン変更・契約管理',
             on: { click: openPortal },
           })
         : null,
@@ -304,6 +326,10 @@ export function createAccessManager({ ui }) {
     return el('div', { class: 'access-current' }, rows);
   }
 
+  function hasActiveSubscription() {
+    return state.subscriptions.some((subscription) => ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status));
+  }
+
   function planGrid() {
     return el('div', { class: 'access-plans' }, [
       planCard(PLAN.PATIENT, ENTITLEMENT.PATIENT, 'Patient explanation', '患者説明用', 'For consultation-room explanation and patient-facing guided views.', '診察室などで患者さんへ病態を説明するためのガイド表示。'),
@@ -313,17 +339,23 @@ export function createAccessManager({ ui }) {
   }
 
   function planCard(plan, entitlement, title, titleJa, description, descriptionJa) {
-    const unlocked = entitlement ? state.grants.has(entitlement) : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
+    const unlocked = entitlement
+      ? state.grants.has(entitlement)
+      : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
     const configured = authConfigured();
+    const existing = hasActiveSubscription();
     const disabled = unlocked || state.loading || !configured;
     const cta = !configured
       ? 'Setup required / 設定待ち'
       : unlocked
         ? 'Unlocked / 利用中'
-        : state.user
-          ? 'Continue to checkout / 購入へ'
-          : 'Sign in to purchase / ログインして購入';
+        : existing
+          ? 'Change in Billing Portal / 契約プランを変更'
+          : state.user
+            ? 'Continue to checkout / 購入へ'
+            : 'Sign in to purchase / ログインして購入';
+
     return el('article', { class: `access-plan${highlighted ? ' is-highlighted' : ''}` }, [
       el('div', { class: 'access-plan-title lang-en', text: title }),
       el('div', { class: 'access-plan-title lang-ja', text: titleJa }),
@@ -334,7 +366,12 @@ export function createAccessManager({ ui }) {
         type: 'button',
         disabled: disabled ? '' : null,
         text: cta,
-        on: { click: () => (state.user ? checkout(plan) : modal.querySelector('.access-input')?.focus()) },
+        on: {
+          click: () => {
+            if (!state.user) return modal.querySelector('.access-input')?.focus();
+            return existing ? openPortal() : checkout(plan);
+          },
+        },
       }),
     ]);
   }
@@ -351,6 +388,11 @@ export function createAccessManager({ ui }) {
         body: JSON.stringify({ plan, returnHash: window.location.hash || '#/' }),
       });
       const data = await response.json().catch(() => ({}));
+      if (response.status === 409 && data.usePortal) {
+        state.loading = false;
+        notify();
+        return openPortal();
+      }
       if (!response.ok || !data.url) throw new Error(data.error || 'Checkout could not be started.');
       window.location.assign(data.url);
     } catch (error) {
@@ -366,7 +408,11 @@ export function createAccessManager({ ui }) {
       state.error = '';
       state.notice = '';
       notify();
-      const response = await authenticatedFetch('/.netlify/functions/create-portal', { method: 'POST' });
+      const response = await authenticatedFetch('/.netlify/functions/create-portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnHash: window.location.hash || '#/' }),
+      });
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.url) throw new Error(data.error || 'Billing portal could not be opened.');
       window.location.assign(data.url);
