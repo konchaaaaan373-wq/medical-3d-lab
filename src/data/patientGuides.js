@@ -4,6 +4,10 @@
  * These guides deliberately avoid diagnosis, prognosis, treatment selection and
  * patient-specific numbers. They explain only the mechanism already represented
  * by the reviewed / production scene underneath them.
+ *
+ * A guide's `progress` must mean exactly what that scene's progression means.
+ * Patient copy is not allowed to silently reinterpret a demand axis as disease
+ * severity just because the resulting animation looks convenient.
  */
 
 export const PATIENT_GUIDES = Object.freeze({
@@ -21,10 +25,10 @@ export const PATIENT_GUIDES = Object.freeze({
     title: 'Why air can remain in the lungs',
     titleJa: '肺に空気が残りやすくなる仕組み',
     steps: Object.freeze([
-      { progress: 0, title: 'Breathing out takes time', titleJa: '息を吐くには時間が必要', body: 'A normal lung has enough time to empty before the next breath begins.', bodyJa: '正常な肺では、次の吸気が始まる前に十分な時間をかけて息を吐ききれます。' },
-      { progress: 0.45, title: 'Emptying becomes slower', titleJa: '息が抜けるのが遅くなる', body: 'When airflow is obstructed, air leaves the lungs more slowly.', bodyJa: '気道が狭くなると、肺から空気が出ていく速度が遅くなります。' },
-      { progress: 0.75, title: 'The next breath arrives first', titleJa: '吐ききる前に次の呼吸が始まる', body: 'If the next breath starts before the previous one has fully emptied, some air remains behind.', bodyJa: '十分に吐ききる前に次の吸気が始まると、肺の中に空気が残ります。' },
-      { progress: 1, title: 'Breathing starts from a fuller lung', titleJa: '肺が膨らんだ位置から呼吸する', body: 'The next breath then starts from a higher lung volume, leaving less room to breathe in.', bodyJa: 'その結果、肺がより膨らんだ状態から次の呼吸を始めることになり、吸える余裕が小さくなります。' },
+      { progress: 0, title: 'At rest there is more time to breathe out', titleJa: '安静時は息を吐く時間が比較的長い', body: 'This model is already showing an obstructed lung. At rest, expiration is given relatively more time, so much of the air can still leave before the next breath.', bodyJa: 'この画面は最初から、空気が出にくくなった肺を示しています。安静時は呼気の時間が比較的長いため、次の吸気までに多くの空気を外へ出せます。' },
+      { progress: 0.38, title: 'Breathing speeds up with exertion', titleJa: '動くと呼吸が速くなる', body: 'As the body asks for more ventilation, breaths come closer together and the time available to breathe out becomes shorter.', bodyJa: '体がより多くの換気を必要とすると呼吸が速くなり、1回ごとに息を吐ける時間が短くなります。' },
+      { progress: 0.72, title: 'Some air is left behind', titleJa: '吐ききれない空気が残る', body: 'Because the obstructed lung empties slowly, the next breath can begin before the previous one has fully emptied.', bodyJa: '空気が出にくい肺では吐くのに時間がかかるため、吐ききる前に次の吸気が始まることがあります。' },
+      { progress: 1, title: 'Breathing starts from a fuller lung', titleJa: '肺が膨らんだ位置から次の呼吸が始まる', body: 'Air left behind raises the volume from which the next breath starts, leaving less room to breathe in.', bodyJa: '残った空気によって肺がより膨らんだ状態から次の呼吸を始めることになり、さらに吸える余裕が小さくなります。' },
     ]),
   }),
   'asthma-heterogeneity': Object.freeze({
