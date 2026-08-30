@@ -99,6 +99,9 @@ export function buildAirway({
     ringGroup.add(ring);
   }
 
+  /** The compression last drawn, so an unchanged value costs nothing. */
+  let compression = 0;
+
   // The endocrine scenes want the trachea alone, as the landmark the thyroid
   // wraps around; the respiratory ones want the whole tree.
   object.add(tracheaMesh, ringGroup);
@@ -120,6 +123,11 @@ export function buildAirway({
      */
     setCompression(value) {
       const v = Math.max(0, Math.min(1, value));
+      // Rewriting eight swept surfaces and their normals is not free, and a
+      // scene that calls this every frame usually calls it with the same
+      // number. A hundredth is well below anything visible.
+      if (Math.abs(v - compression) < 0.01) return;
+      compression = v;
       rightBronchus.refresh((u, base) => base * (1 - 0.3 * v * (0.4 + 0.6 * u)));
       leftBronchus.refresh((u, base) => base * (1 - 0.3 * v * (0.4 + 0.6 * u)));
       for (const surface of branchSurfaces) {
