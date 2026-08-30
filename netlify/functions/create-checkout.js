@@ -1,3 +1,4 @@
+import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
   billingCustomerFor,
@@ -19,16 +20,17 @@ export default async (request) => {
     const price = priceForPlan(plan);
     const returnHash = safeHash(body.returnHash);
 
-    // One user, one subscription. Once a subscription exists, upgrades and
-    // downgrades belong in Stripe's Customer Portal. This is enforced server-
-    // side as well as in the UI so a double-click or direct API request cannot
-    // accidentally create two recurring charges.
+    // One user, one subscription lifecycle. Once any non-terminal Stripe
+    // subscription exists, upgrades, downgrades and payment recovery belong in
+    // Customer Portal. This protects against duplicate recurring charges even
+    // when a previous payment is incomplete, past_due, unpaid or paused.
+    const statuses = [...NON_TERMINAL_SUBSCRIPTION_STATUSES].join(',');
     const existing = await supabaseAdmin(
-      `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(active,trialing)&select=stripe_subscription_id&limit=1`
+      `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
     );
     if (existing?.length) {
       return json(409, {
-        error: 'You already have an active subscription. Change plan in Billing Portal instead.',
+        error: 'A subscription already exists for this account. Manage it in Billing Portal instead.',
         usePortal: true,
       });
     }
