@@ -15,6 +15,7 @@ import {
   PLAN,
   PLAN_GRANTS,
 } from './policy.js';
+import { pricePresentation } from './pricing.js';
 import { subscriptionPresentation } from './subscriptionView.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
@@ -32,6 +33,7 @@ export function createAccessManager({ ui }) {
     grants: new Set(FREE),
     subscriptions: [],
     billingConfigured: false,
+    planCatalog: {},
     loading: false,
     error: '',
     notice: '',
@@ -54,7 +56,7 @@ export function createAccessManager({ ui }) {
   const api = {
     accountButton,
     async init() {
-      await Promise.all([refresh(), refreshBillingStatus()]);
+      await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -111,6 +113,7 @@ export function createAccessManager({ ui }) {
       subscriptions: Object.freeze([...state.subscriptions]),
       configured: authConfigured(),
       billingConfigured: state.billingConfigured,
+      planCatalog: Object.freeze({ ...state.planCatalog }),
       loading: state.loading,
       error: state.error,
       notice: state.notice,
@@ -132,6 +135,19 @@ export function createAccessManager({ ui }) {
       state.billingConfigured = Boolean(response.ok && data.billingConfigured);
     } catch {
       state.billingConfigured = false;
+    }
+    notify();
+  }
+
+  async function refreshPlanCatalog() {
+    try {
+      const response = await fetch('/.netlify/functions/plan-catalog', {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json().catch(() => ({}));
+      state.planCatalog = response.ok && data.billingConfigured && data.plans ? data.plans : {};
+    } catch {
+      state.planCatalog = {};
     }
     notify();
   }
@@ -441,22 +457,35 @@ export function createAccessManager({ ui }) {
       ? state.grants.has(entitlement)
       : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
-    const configured = authConfigured() && state.billingConfigured;
+    const price = pricePresentation(state.planCatalog[plan]);
+    const configured = authConfigured() && state.billingConfigured && Boolean(price);
     const existing = hasActiveSubscription();
     const disabled = unlocked || state.loading || !configured;
-    const cta = !configured
+    const cta = !authConfigured() || !state.billingConfigured
       ? 'Setup required / 設定待ち'
-      : unlocked
-        ? 'Unlocked / 利用中'
-        : existing
-          ? 'Change in Billing Portal / 契約プランを変更'
-          : state.user
-            ? 'Continue to checkout / 購入へ'
-            : 'Sign in to purchase / ログインして購入';
+      : !price
+        ? 'Price unavailable / 価格確認待ち'
+        : unlocked
+          ? 'Unlocked / 利用中'
+          : existing
+            ? 'Change in Billing Portal / 契約プランを変更'
+            : state.user
+              ? 'Continue to checkout / 購入へ'
+              : 'Sign in to purchase / ログインして購入';
 
     return el('article', { class: `access-plan${highlighted ? ' is-highlighted' : ''}` }, [
       el('div', { class: 'access-plan-title lang-en', text: title }),
       el('div', { class: 'access-plan-title lang-ja', text: titleJa }),
+      price
+        ? el('div', { class: 'access-plan-price' }, [
+            el('span', { class: 'access-plan-amount', text: price.amount }),
+            el('span', { class: 'access-plan-interval lang-en', text: price.interval.en }),
+            el('span', { class: 'access-plan-interval lang-ja', text: price.interval.ja }),
+          ])
+        : el('div', { class: 'access-plan-price is-unavailable' }, [
+            el('span', { class: 'lang-en', text: 'Price not available' }),
+            el('span', { class: 'lang-ja', text: '価格未設定' }),
+          ]),
       el('p', { class: 'access-plan-copy lang-en', text: description }),
       el('p', { class: 'access-plan-copy lang-ja', text: descriptionJa }),
       el('button', {
@@ -475,8 +504,8 @@ export function createAccessManager({ ui }) {
   }
 
   async function checkout(plan) {
-    if (!state.billingConfigured) {
-      state.error = 'Paid checkout is not enabled on this deployment yet.';
+    if (!state.billingConfigured || !pricePresentation(state.planCatalog[plan])) {
+      state.error = 'Paid checkout is not ready on this deployment yet.';
       notify();
       return;
     }
