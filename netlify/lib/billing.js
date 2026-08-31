@@ -133,6 +133,19 @@ export function safeHash(value) {
   return /^#[/][A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(value) ? value : '#/';
 }
 
+/**
+ * Stripe API versions that support flexible billing can expose the current
+ * period on the subscription item instead of the subscription root. This app
+ * deliberately creates one recurring item per subscription, so persist that
+ * item's period end while keeping the legacy root field as a compatibility
+ * fallback.
+ */
+export function subscriptionPeriodEnd(subscription) {
+  const seconds =
+    subscription?.current_period_end ?? subscription?.items?.data?.[0]?.current_period_end ?? null;
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null;
+}
+
 export async function billingCustomerFor(user) {
   const rows = await supabaseAdmin(`billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`);
   if (rows?.[0]?.stripe_customer_id) return rows[0].stripe_customer_id;
@@ -203,9 +216,7 @@ export async function upsertSubscription(subscription) {
     return;
   }
 
-  const periodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000).toISOString()
-    : null;
+  const periodEnd = subscriptionPeriodEnd(subscription);
   await supabaseAdmin('billing_subscriptions?on_conflict=stripe_subscription_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
