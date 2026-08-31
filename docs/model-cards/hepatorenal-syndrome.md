@@ -266,6 +266,8 @@ a large mixed one.
 
 ## 15. Review status
 
+**Catalog status:** `alpha`
+
 **`alpha`. Not clinically reviewed, and it must not be promoted past `alpha`
 without one.**
 

@@ -157,6 +157,8 @@ narrowing are all illustrative, and stay illustrative.
 
 ## 15. Review status
 
+**Catalog status:** `alpha`
+
 **Corrected against an external clinical review** that read the sources in
 full, and **not yet re-reviewed after those corrections.** The scene stays at
 `alpha`. The review named GINA 2026, Venegas et al. (doi:10.1038/nature03490),
