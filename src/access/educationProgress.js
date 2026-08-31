@@ -33,6 +33,9 @@ export function createEducationProgressStore() {
       if (loadedUserId === userId && !loading) return [...entries.values()];
       if (loading && loadedUserId === userId) return loading;
 
+      // Account boundaries are stronger than cache reuse. Do not show one
+      // learner's optimistic/local progress while another user's fetch is in flight.
+      if (loadedUserId !== userId) entries.clear();
       loadedUserId = userId;
       loading = (async () => {
         try {
