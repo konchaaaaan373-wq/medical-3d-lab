@@ -3,7 +3,6 @@ import { createPatientGuidePanel } from '../components/PatientGuidePanel.js';
 import { educationGuideFor } from '../data/educationGuides.js';
 import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
-import { createEducationProgressStore } from './educationProgress.js';
 import { featuresForScene } from './features.js';
 import { ENTITLEMENT } from './policy.js';
 
@@ -22,7 +21,6 @@ export function installAccess({ app, access, ui, sceneId }) {
   mountAccountButton(access, ui);
   const features = featuresForScene(sceneId);
   const coordinator = createModeCoordinator();
-  const educationProgress = createEducationProgressStore();
 
   if (features.patient) {
     const guide = patientGuideFor(sceneId);
@@ -51,7 +49,6 @@ export function installAccess({ app, access, ui, sceneId }) {
           ui,
           guide,
           sceneId,
-          progressStore: educationProgress,
           activate: () => coordinator.activate('education-guide'),
         })
       );
@@ -125,8 +122,6 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     open ? closeGuide() : openGuide();
   });
 
-  // Patient explanation is a primary use case, so keep it before utilities and
-  // close to Story rather than burying it beside PNG/export controls.
   row.prepend(button);
 
   access.subscribe(({ grants }) => {
@@ -161,13 +156,12 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   return closeGuide;
 }
 
-function installEducationGuide({ app, access, ui, guide, sceneId, progressStore, activate }) {
+function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
   const row = ui.querySelector('.button-row');
   const consolePanel = ui.querySelector('.console');
   if (!row || !consolePanel) return null;
 
   let open = false;
-  let progressUserId = null;
   const progressMark = el('span', {
     class: 'education-progress-mark',
     'aria-hidden': 'true',
@@ -176,7 +170,7 @@ function installEducationGuide({ app, access, ui, guide, sceneId, progressStore,
   });
 
   const saveProgress = (stepIndex, completed = false) =>
-    progressStore.save({
+    access.saveEducationProgress({
       sceneId,
       moduleId: EDUCATION_GUIDE_MODULE,
       stepIndex,
@@ -227,7 +221,7 @@ function installEducationGuide({ app, access, ui, guide, sceneId, progressStore,
   if (patientButton) patientButton.after(button);
   else row.prepend(button);
 
-  access.subscribe(({ user, grants }) => {
+  access.subscribe(({ user, grants, educationProgress }) => {
     const unlocked = grants.includes(ENTITLEMENT.EDUCATION);
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
@@ -236,22 +230,21 @@ function installEducationGuide({ app, access, ui, guide, sceneId, progressStore,
     if (!unlocked || !user?.id) {
       progressMark.hidden = true;
       button.classList.remove('is-completed');
-      progressUserId = null;
-      progressStore.clear();
       closeGuide();
       return;
     }
 
-    if (progressUserId !== user.id) {
-      progressUserId = user.id;
-      progressMark.hidden = true;
-      button.classList.remove('is-completed');
-      void progressStore.load(user.id).then(() => syncProgressMark());
-    }
+    syncProgressMark(educationProgress);
   });
 
-  function syncProgressMark() {
-    const saved = progressStore.get(sceneId, EDUCATION_GUIDE_MODULE);
+  function savedProgress(rows = access.snapshot().educationProgress) {
+    return (rows ?? []).find(
+      (entry) => entry.sceneId === sceneId && entry.moduleId === EDUCATION_GUIDE_MODULE
+    ) ?? null;
+  }
+
+  function syncProgressMark(rows) {
+    const saved = savedProgress(rows);
     const completed = Boolean(saved?.completed);
     progressMark.hidden = !completed;
     button.classList.toggle('is-completed', completed);
@@ -266,9 +259,8 @@ function installEducationGuide({ app, access, ui, guide, sceneId, progressStore,
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
 
-    const userId = access.snapshot().user?.id;
-    if (userId) await progressStore.load(userId);
-    const saved = progressStore.get(sceneId, EDUCATION_GUIDE_MODULE);
+    await access.refreshEducationProgress();
+    const saved = access.educationProgress(sceneId, EDUCATION_GUIDE_MODULE);
     guidePanel.resume(saved && !saved.completed ? saved.stepIndex : 0);
     syncProgressMark();
 
@@ -301,10 +293,6 @@ function installEducationGate({ app, access, ui, activateLesson }) {
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   learnButton.append(lock);
 
-  // Capture runs before ControlPanel's click handler. A locked click therefore
-  // opens the purchase surface instead of briefly opening the lesson behind it.
-  // An unlocked click also closes any paid guide panel before LearningPanel owns
-  // the console, so two teaching modes cannot remain logically active together.
   learnButton.addEventListener(
     'click',
     (event) => {
