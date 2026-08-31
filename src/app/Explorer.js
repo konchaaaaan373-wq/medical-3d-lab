@@ -2,6 +2,7 @@ import { el } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../catalog/index.js';
+import { productBadgesForScene } from '../access/features.js';
 
 /**
  * The organ explorer: the whole catalogue on one page.
@@ -29,6 +30,17 @@ export function createExplorer({ ui, accountButton = null }) {
     ]);
   };
 
+  const productBadges = (scene) =>
+    el('span', { class: 'explorer-access', 'aria-label': 'Available product modes' },
+      productBadgesForScene(scene).map((entry) =>
+        el('span', { class: `explorer-access-badge is-${entry.kind}` }, [
+          entry.kind === 'paid' ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' }) : null,
+          el('span', { class: 'lang-en', text: entry.label }),
+          el('span', { class: 'lang-ja', text: entry.labelJa }),
+        ])
+      )
+    );
+
   const sceneCard = (scene) =>
     el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
       el('span', { class: 'explorer-scene-title' }, [
@@ -36,6 +48,7 @@ export function createExplorer({ ui, accountButton = null }) {
         el('span', { class: 'lang-ja', text: scene.titleJa }),
         badge(scene.status),
       ]),
+      productBadges(scene),
       el('span', { class: 'explorer-scene-note' }, [
         el('span', { class: 'lang-en', text: scene.description }),
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
@@ -107,6 +120,16 @@ export function createExplorer({ ui, accountButton = null }) {
           text: 'Make invisible physiology visible, interactive and understandable — across the whole body.',
         }),
         el('span', { class: 'lang-ja', text: '見えない病態生理を、3D で動かして理解する — 全身を対象に。' }),
+      ]),
+      el('div', { class: 'explorer-product-key' }, [
+        el('span', { class: 'explorer-access-badge is-free' }, [
+          el('span', { class: 'lang-en', text: 'Core model stays free' }),
+          el('span', { class: 'lang-ja', text: '基本モデルは無料' }),
+        ]),
+        el('span', { class: 'explorer-product-note' }, [
+          el('span', { class: 'lang-en', text: 'Patient and Education badges mark optional paid professional-use modes.' }),
+          el('span', { class: 'lang-ja', text: '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。' }),
+        ]),
       ]),
       el('nav', { class: 'explorer-jump' }, systems.map((system) =>
         el(
