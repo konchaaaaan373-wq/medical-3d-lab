@@ -189,6 +189,8 @@ stay illustrative.
 
 ## 15. Review status
 
+**Catalog status:** `alpha`
+
 **Corrected against an external clinical review** that read the sources in
 full, and **not yet re-reviewed after those corrections.** The scene stays at
 `alpha`. The review named Baveno VII (PMC11090185) and the pathophysiology

@@ -16,6 +16,7 @@
  *  system/organ where it sits in `taxonomy.js`. `organs` lists every organ shown.
  *  disease      the disease it is about, or null for normal physiology.
  *  status       prototype | alpha | reviewed | production (see taxonomy.js)
+ *  modelCard    repository-relative model card path for alpha/reviewed scenes
  *  load         () => import('...') returning a module whose default export is the scene class
  */
 export const SCENE_MANIFEST = [
@@ -58,7 +59,8 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'copd',
-    status: 'reviewed',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/copd.md',
     description:
       'Twelve lung units with their own time constants: why incomplete expiration produces dynamic hyperinflation, and why extra expiratory effort stops increasing flow once expiratory flow limitation is reached.',
     descriptionJa:
@@ -75,7 +77,8 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'asthma',
-    status: 'reviewed',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/asthma.md',
     description:
       'A branching airway tree solved as a network: how a uniform bronchoconstrictor stimulus can produce clustered, heterogeneous regional ventilation.',
     descriptionJa:
@@ -137,7 +140,8 @@ export const SCENE_MANIFEST = [
     organ: 'liver',
     organs: ['liver', 'spleen'],
     disease: 'cirrhosis',
-    status: 'reviewed',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/cirrhosis-portal-hypertension.md',
     description:
       'The portal circulation as a flow-conserving network: why portal hypertension can persist despite redistribution through collaterals, and why HVPG is not the portal pressure gradient.',
     descriptionJa:
@@ -155,6 +159,7 @@ export const SCENE_MANIFEST = [
     organs: ['kidney', 'liver'],
     disease: 'hepatorenal-syndrome',
     status: 'alpha',
+    modelCard: 'docs/model-cards/hepatorenal-syndrome.md',
     description:
       'Two organs solved as one circulation. It isolates the haemodynamic and neurohumoral component of HRS-AKI — how far the circulation alone can take glomerular filtration — and models no kidney injury, which is a boundary of the model rather than a claim about the syndrome.',
     descriptionJa:
