@@ -26,6 +26,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `src/components/PatientGuidePanel.js` — patient explanation UI.
 - `netlify/functions/*` — authenticated entitlement lookup, Stripe Checkout, Stripe Customer Portal and webhook sync.
 - `supabase/migrations/001_billing.sql` — server-only billing state.
+- `supabase/migrations/002_single_subscription_lifecycle.sql` — DB-level one-non-terminal-subscription guard.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -36,7 +37,7 @@ Free models must remain available when auth or billing is unavailable. The brows
 
 The existing app is a static Vite/Three.js SPA with no server dependency. Netlify deploys JavaScript functions from `netlify/functions` by default, so Checkout and entitlement verification can be added without migrating the application to another framework.
 
-Supabase provides identity and a small server-side billing table. Stripe owns card data, Checkout and subscription lifecycle. The browser never receives a Stripe secret or the Supabase service-role key.
+Supabase provides identity and a small server-side billing table. Stripe owns card data, Checkout and subscription lifecycle. The browser never receives a Stripe secret or the Supabase server secret.
 
 ## Security boundary
 
@@ -56,17 +57,19 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
 
 ## Supabase setup
 
-1. Create a Supabase project.
+1. Create a dedicated Supabase project for Medical 3D Lab.
 2. Enable email/password authentication.
-3. Run `supabase/migrations/001_billing.sql` in the SQL editor or migration runner.
-4. Copy:
+3. Apply `supabase/migrations/001_billing.sql` and `002_single_subscription_lifecycle.sql`.
+4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
-   - anon/publishable key → `VITE_SUPABASE_ANON_KEY` and `SUPABASE_ANON_KEY`
-   - service-role key → `SUPABASE_SERVICE_ROLE_KEY` **server only**
+   - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
+   - server secret key → `SUPABASE_SECRET_KEY` **server only**
 5. Configure the production Site URL and allowed redirect URLs in Supabase Auth.
 6. Keep email confirmation enabled unless there is a specific reason not to.
 
-The two billing tables have RLS enabled and no browser policies. Netlify Functions authenticate the Supabase access token and then use the service role.
+Legacy `anon` / `service_role` key environment names remain supported as fallbacks during migration, but new deployments should use publishable/secret keys.
+
+The two billing tables have RLS enabled and no browser policies, and browser roles have their table privileges revoked. Netlify Functions authenticate the Supabase access token and then use the server secret.
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
 
@@ -109,12 +112,13 @@ Stripe supports subscription updates and cancellations in Customer Portal. Plan 
 
 ### Prevent duplicate subscriptions
 
-Use both protections:
+Use all three protections:
 
 1. **Application/server check:** `create-checkout` refuses a new Checkout while the user has any non-terminal subscription lifecycle (`incomplete`, `trialing`, `active`, `past_due`, `unpaid`, `paused`) and sends them to Billing Portal instead.
-2. **Stripe Checkout setting:** enable Stripe's **Limit customers to one subscription** / redirect existing subscribers to Customer Portal. Checkout is given the existing Stripe Customer ID, so Stripe can perform its own duplicate-subscription check as a second boundary.
+2. **Database guard:** a partial unique index permits at most one such lifecycle per Supabase user in local billing state.
+3. **Stripe Checkout setting:** enable Stripe's **Limit customers to one subscription** / redirect existing subscribers to Customer Portal. Checkout is given the existing Stripe Customer ID, so Stripe can perform its own duplicate-subscription check.
 
-Do not rely on the client button being disabled as the only duplicate-charge protection.
+Do not rely on the client button being disabled as duplicate-charge protection.
 
 ### Webhook
 
@@ -131,7 +135,7 @@ Listen for:
 
 Store the signing secret as `STRIPE_WEBHOOK_SECRET`.
 
-The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event.
+The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state.
 
 ## Subscription status policy
 
@@ -166,9 +170,9 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 2. They press a locked **Patient** or **Lesson** control.
 3. Account/paywall opens.
 4. User signs in or creates an account.
-5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists, and creates a Stripe Checkout Session.
+5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists locally or at Stripe, and creates a Stripe Checkout Session.
 6. Stripe completes payment and emits subscription events.
-7. `stripe-webhook` verifies the raw-body signature and stores subscription state in Supabase.
+7. `stripe-webhook` verifies the raw-body signature and stores current Stripe subscription state in Supabase.
 8. The webhook derives the plan from the subscription Price ID.
 9. `entitlements` converts eligible subscription statuses to `free`, `patient`, and/or `education` grants.
 10. Returning from Checkout polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
