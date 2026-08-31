@@ -178,3 +178,95 @@ test('the scene declares a reel the app can run', () => {
   assert.equal(typeof reel.cameraAt, 'function');
   assert.equal(typeof reel.overlayAt, 'function');
 });
+
+test('a held stimulus costs no solves, and a moving one costs one tree each', () => {
+  // The sequence holds at a constant stimulus for most of its fifteen seconds
+  // and drives the scene on every rendered frame. Each of those frames used to
+  // re-solve the asthmatic tree and the healthy one twice over — once for the
+  // drawing and once for the read-out — to arrive at the picture already on
+  // screen. Near the tipping point the iteration is heavily damped and a solve
+  // is not cheap, which is how a fifteen-second recording drops frames.
+  const built = scene();
+  built.setComparison(true);
+  const reel = built.getReel();
+
+  let solves = 0;
+  const countSolve = (fn) => {
+    const before = solves;
+    fn();
+    return solves - before;
+  };
+  // Counted by watching the objects the scene replaces: a solve produces a new
+  // one, so identity is the cheapest honest probe.
+  const seen = new Set();
+  const tally = () => {
+    for (const solved of [built.solved, built.referenceSolved]) {
+      if (solved && !seen.has(solved)) {
+        seen.add(solved);
+        solves += 1;
+      }
+    }
+  };
+
+  reel.driveAt(1.0, built);
+  reel.readMetrics(built);
+  tally();
+
+  // A frame at the same instant: nothing on screen changes, so nothing should
+  // be solved.
+  const held = countSolve(() => {
+    reel.driveAt(1.0, built);
+    reel.readMetrics(built);
+    tally();
+  });
+  assert.equal(held, 0, `a held frame solved ${held} tree(s)`);
+
+  // A frame that actually moves: one tree each, not two apiece.
+  const moved = countSolve(() => {
+    reel.driveAt(5.0, built);
+    reel.readMetrics(built);
+    tally();
+  });
+  assert.ok(moved <= 2, `a moving frame solved ${moved} trees`);
+
+  // And the read-out still agrees with what is drawn.
+  assert.equal(built.referenceSolve(), built.referenceSolved);
+});
+
+test('the healthy tree is re-solved whenever the lung changes', () => {
+  // The cache is only safe if every path that moves a control clears it.
+  const built = scene();
+  built.setProgress(0.5);
+  const first = built.referenceSolve();
+  built.setModelControl('hyperresponsiveness', 0.9);
+  assert.notEqual(built.referenceSolve(), first, 'the healthy tree was served from a stale cache');
+
+  const second = built.referenceSolve();
+  built.setProgress(0.9);
+  assert.notEqual(built.referenceSolve(), second);
+});
+
+test('the sequence asks the model a bounded number of times, however fast the display runs', () => {
+  // Solving one airway tree near the tipping point costs tens of milliseconds
+  // and the comparison solves two, so a sequence that drove a fresh value on
+  // every rendered frame could not be recorded without dropping frames. The
+  // ramps step instead of sliding, which caps the distinct values over the
+  // whole sequence regardless of frame rate.
+  const distinct = (frames) => {
+    const seen = new Set();
+    for (let f = 0; f < frames; f += 1) seen.add(stimulusAt((f / frames) * REEL_DURATION));
+    return seen.size;
+  };
+
+  const at60 = distinct(900);
+  const at120 = distinct(1800);
+  assert.ok(at60 <= 160, `${at60} distinct values at 60fps`);
+  assert.equal(at120, at60, 'a faster display asked the model more often');
+
+  // And the steps are fine enough that nothing on screen shows them: below one
+  // per cent of the axis, and below the precision the overlay prints.
+  const steps = [...new Set([...Array(900)].map((_, f) => stimulusAt((f / 900) * REEL_DURATION)))]
+    .sort((a, b) => a - b);
+  const widest = Math.max(...steps.slice(1).map((v, i) => v - steps[i]));
+  assert.ok(widest <= 0.01, `the axis steps by ${widest}`);
+});

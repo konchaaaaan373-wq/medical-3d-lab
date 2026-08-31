@@ -102,6 +102,11 @@ export class AsthmaScene {
      */
     this.solved = solveAsthma(this.controls);
     /**
+     * The healthy tree the comparison draws, memoised. Cleared wherever the
+     * controls move; see `referenceSolve`.
+     */
+    this.referenceSolved = null;
+    /**
      * The dose-response curve for the *current* lung, which is expensive
      * enough to be worth not recomputing on every frame. Invalidated by any
      * control except the stimulus, because the stimulus is the curve's x-axis.
@@ -220,22 +225,38 @@ export class AsthmaScene {
    * The healthy lung the comparison draws: no hyperresponsiveness, no
    * remodelling, and the same stimulus as the primary.
    *
-   * Solved rather than cached, so it tracks the stimulus as the reader drags
-   * it. The solve is an equilibrium with no state in it, which is what makes
-   * this cheap enough to do on every change.
+   * Memoised on the controls rather than re-solved per call. It used to be
+   * solved afresh every time, and there are two callers per frame — the
+   * drawing and the reel's read-out — so a reel frame paid for this solve
+   * twice on top of the primary's. Near the tipping point the iteration is
+   * heavily damped and a solve is not cheap; three of them per frame is what
+   * makes a fifteen-second recording drop frames.
+   *
+   * The cache is cleared wherever the controls change, which is the only thing
+   * this depends on: the solve is an equilibrium with no state in it.
    */
   referenceSolve() {
-    return solveAsthma(
-      { ...this.controls, ...REFERENCE_CONTROLS, stimulus: this.controls.stimulus },
-      { maxIterations: 320, tolerance: 1e-3 }
-    );
+    if (!this.referenceSolved) {
+      this.referenceSolved = solveAsthma(
+        { ...this.controls, ...REFERENCE_CONTROLS, stimulus: this.controls.stimulus },
+        { maxIterations: 320, tolerance: 1e-3 }
+      );
+    }
+    return this.referenceSolved;
   }
 
   // --- the one axis ---------------------------------------------------------
 
   /** @param {number} value 0 = no stimulus, 1 = a strong one */
   setProgress(value) {
-    this.progress = clamp(value);
+    const next = clamp(value);
+    // A repeated value is not a change, and re-solving for one is pure waste.
+    // The reel holds at a constant stimulus for most of its fifteen seconds
+    // and drives this every rendered frame; without this guard each of those
+    // frames re-solved two airway trees to arrive at the picture already on
+    // screen.
+    if (next === this.progress && this.solved) return;
+    this.progress = next;
     this.setControl('stimulus', this.progress, { curveStale: false });
   }
 
@@ -251,6 +272,7 @@ export class AsthmaScene {
    */
   setControl(id, value, { curveStale = true } = {}) {
     this.controls[id] = value;
+    this.referenceSolved = null;
     this.solved = solveAsthma(this.controls, { maxIterations: 320, tolerance: 1e-3 });
     if (curveStale) this.curve = null;
     this.refineIn = 0.35;
@@ -262,8 +284,11 @@ export class AsthmaScene {
     this.refineIn -= dt;
     if (this.refineIn > 0) return;
     // The hand has come off the slider. Take the exact answer, and rebuild the
-    // dose-response curve if the lung itself changed.
+    // dose-response curve if the lung itself changed. The healthy tree is
+    // refined with it, or the comparison would hold a cheap answer beside an
+    // exact one.
     this.solved = solveAsthma(this.controls);
+    this.referenceSolved = null;
     if (!this.curve) this.curve = doseResponse(this.controls);
     this.applyModelToScene();
   }

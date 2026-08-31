@@ -663,3 +663,31 @@ test('the comparison view frames the pair rather than one lung', () => {
   assert.ok(pair.position.z > single.position.z, 'the camera has to pull back for two lungs');
   assert.equal(pair.target.x, 0, 'and sit on the midline so neither is favoured');
 });
+
+test('the comparison starts the reference lung where the primary already is', () => {
+  // Both lungs breathe at the same period, and both advance by the same delta,
+  // so a phase offset at the moment the comparison is switched on never
+  // closes. Volume, airway compression and the flow animation all follow the
+  // phase, so the offset would read as a difference between the lungs — which
+  // is the one thing this comparison exists to rule out.
+  const built = scene();
+  built.setProgress(0.6);
+  // Run the primary a while, deliberately stopping mid-breath.
+  for (let i = 0; i < 90; i += 1) built.update(1 / 60);
+  assert.ok(built.model.cycleTimeS > 0, 'the primary is not mid-breath, so this proves nothing');
+
+  built.setComparison(true);
+  const step = 1 / 120;
+  assert.ok(
+    Math.abs(built.referenceModel.cycleTimeS - built.model.cycleTimeS) <= step * 1.5,
+    `the reference started at ${built.referenceModel.cycleTimeS} and the primary is at ${built.model.cycleTimeS}`
+  );
+  assert.equal(built.referenceModel.phase.inspiring, built.model.phase.inspiring);
+
+  // And the alignment survives: identical periods, identical deltas.
+  for (let i = 0; i < 240; i += 1) built.update(1 / 60);
+  assert.ok(
+    Math.abs(built.referenceModel.phase.fraction - built.model.phase.fraction) < 0.02,
+    'the two lungs drifted apart in the breath'
+  );
+});

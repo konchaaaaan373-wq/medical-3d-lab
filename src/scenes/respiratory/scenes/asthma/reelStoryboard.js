@@ -69,9 +69,30 @@ const STIMULUS_TRACK = [
   { t: 15.0, value: 1.0 },
 ];
 
+/**
+ * How finely the ramps are stepped, as a fraction of the axis.
+ *
+ * Solving one airway tree near the tipping point costs tens of milliseconds,
+ * and the comparison solves two. Driven at a fresh value on every rendered
+ * frame, the moving sections cost more than a frame's budget and the recording
+ * drops frames — which is the one thing a sequence built to be screen-recorded
+ * must not do.
+ *
+ * So the ramps advance in steps of this size instead of continuously. It caps
+ * the number of distinct solves over the whole sequence at a hundred and
+ * twenty-eight however fast the display runs, the step is well under one per
+ * cent of the axis and below the precision of anything the overlay prints, and
+ * `stimulusAt` stays a pure function of elapsed seconds — so the sequence is
+ * still identical on every machine, which is the property that matters more.
+ *
+ * This is a **presentation** decision about how often the model is asked, not a
+ * change to what it answers.
+ */
+const STIMULUS_STEPS = 128;
+
 /** @param {number} t seconds since the sequence started */
 export function stimulusAt(t) {
-  return sampleTrack(STIMULUS_TRACK, t);
+  return Math.round(sampleTrack(STIMULUS_TRACK, t) * STIMULUS_STEPS) / STIMULUS_STEPS;
 }
 
 /**

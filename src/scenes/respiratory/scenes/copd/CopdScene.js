@@ -202,6 +202,17 @@ export class CopdScene {
       this.referenceModel = createRespiratoryModel({
         controls: { ...DEFAULT_CONTROLS, ...HEALTHY_CONTROLS, demand: this.progress },
       });
+      // **Start it where the primary already is in its breath.** A fresh model
+      // begins near the start of an inspiration; the primary has been breathing
+      // for a while and is somewhere else entirely. Both then advance by the
+      // same delta with the same period — the period depends only on the
+      // demand, and both are at the same demand — so the offset would never
+      // close, and the comparison would be drawing an inhaling lung beside an
+      // exhaling one. Volume, airway compression and the flow animation all
+      // follow the phase, so that difference would read as a difference
+      // between the lungs, which is exactly what this comparison exists to
+      // rule out.
+      this.catchReferenceUpToPhase();
     }
     if (this.reference) {
       this.reference.object.visible = enabled;
@@ -210,6 +221,30 @@ export class CopdScene {
     }
     this.primary.object.position.x = enabled ? COMPARISON_OFFSET : 0;
     this.applyModelToScene();
+  }
+
+  /**
+   * Advances the reference lung to the primary's point in the breath.
+   *
+   * Two details make this less trivial than it looks. The gap is taken modulo
+   * the period, because the reference does not start at exactly zero — it has
+   * been settled over whole breaths and lands on a small residual. And the
+   * model's `advance` deliberately clamps each call to a fraction of a second,
+   * so that a tab returning from the background replays a moment rather than
+   * ten minutes of breathing; catching a lung up to a known phase inside one
+   * period is exactly the case that clamp is not for, so it is done in chunks
+   * below the clamp instead of in one call that would silently do a fraction
+   * of the work.
+   */
+  catchReferenceUpToPhase() {
+    const period = this.referenceModel.pattern.periodS;
+    const gap =
+      (((this.model.cycleTimeS - this.referenceModel.cycleTimeS) % period) + period) % period;
+    for (let remaining = gap; remaining > 1e-6; ) {
+      const chunk = Math.min(remaining, PHASE_CATCH_UP_STEP_S);
+      this.referenceModel.advance(chunk);
+      remaining -= chunk;
+    }
   }
 
   /**
@@ -654,6 +689,14 @@ export class CopdScene {
  * enough to read as two chests rather than one wide one. Presentation.
  */
 const COMPARISON_OFFSET = 3.6;
+
+/**
+ * How much breathing the reference lung is caught up by in one call, seconds.
+ *
+ * Below the integrator's own per-call clamp, so that every chunk is actually
+ * consumed rather than truncated.
+ */
+const PHASE_CATCH_UP_STEP_S = 0.2;
 
 /**
  * The lung the comparison draws beside the obstructed one: ordinary airway
