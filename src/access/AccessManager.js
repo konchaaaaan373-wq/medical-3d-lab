@@ -15,6 +15,7 @@ import {
   PLAN,
   PLAN_GRANTS,
 } from './policy.js';
+import { subscriptionPresentation } from './subscriptionView.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -309,6 +310,7 @@ export function createAccessManager({ ui }) {
         }),
       ]),
       currentAccess(),
+      subscriptionStatusCard(),
       !state.billingConfigured
         ? el('div', { class: 'access-billing-unavailable' }, [
             el('p', { class: 'access-copy lang-en', text: 'Paid checkout is not enabled on this deployment yet. Your account and all free models remain available.' }),
@@ -386,6 +388,40 @@ export function createAccessManager({ ui }) {
       ]);
     });
     return el('div', { class: 'access-current' }, rows);
+  }
+
+  function subscriptionStatusCard() {
+    const view = subscriptionPresentation(state.subscriptions);
+    if (!view) return null;
+
+    return el('section', {
+      class: `access-subscription is-${view.status.tone}`,
+      'aria-label': 'Current subscription status',
+    }, [
+      el('div', { class: 'access-subscription-main' }, [
+        el('div', { class: 'access-subscription-eyebrow' }, [
+          el('span', { class: 'lang-en', text: 'Current plan' }),
+          el('span', { class: 'lang-ja', text: '現在のプラン' }),
+        ]),
+        el('div', { class: 'access-subscription-plan' }, [
+          el('span', { class: 'lang-en', text: view.plan.en }),
+          el('span', { class: 'lang-ja', text: view.plan.ja }),
+        ]),
+      ]),
+      el('div', { class: 'access-subscription-state' }, [
+        el('div', { class: 'access-subscription-status' }, [
+          el('span', { class: 'access-subscription-dot', 'aria-hidden': 'true' }),
+          el('span', { class: 'lang-en', text: view.status.en }),
+          el('span', { class: 'lang-ja', text: view.status.ja }),
+        ]),
+        view.detail
+          ? el('div', { class: 'access-subscription-detail' }, [
+              el('span', { class: 'lang-en', text: view.detail.en }),
+              el('span', { class: 'lang-ja', text: view.detail.ja }),
+            ])
+          : null,
+      ]),
+    ].filter(Boolean));
   }
 
   function hasActiveSubscription() {
