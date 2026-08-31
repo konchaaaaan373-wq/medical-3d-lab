@@ -1,8 +1,11 @@
-import { el } from '../utils/dom.js';
-import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { prefersReducedMotion } from '../utils/motion.js';
-import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../catalog/index.js';
 import { productBadgesForScene } from '../access/features.js';
+import { ENTITLEMENT } from '../access/policy.js';
+import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../catalog/index.js';
+import { el } from '../utils/dom.js';
+import { prefersReducedMotion } from '../utils/motion.js';
+
+const EDUCATION_GUIDE_MODULE = 'guided-teaching';
 
 /**
  * The organ explorer: the whole catalogue on one page.
@@ -16,9 +19,9 @@ import { productBadgesForScene } from '../access/features.js';
  * it is registered. Organs with no scene yet are still listed: the gap is
  * information, and hiding it would quietly turn the backlog invisible.
  *
- * @param {{ ui: HTMLElement, accountButton?: HTMLElement }} mounts
+ * @param {{ ui: HTMLElement, accountButton?: HTMLElement, access?: any }} mounts
  */
-export function createExplorer({ ui, accountButton = null }) {
+export function createExplorer({ ui, accountButton = null, access = null }) {
   const systems = systemsWithOrgans();
 
   const badge = (statusId) => {
@@ -33,16 +36,33 @@ export function createExplorer({ ui, accountButton = null }) {
   const productBadges = (scene) =>
     el('span', { class: 'explorer-access', 'aria-label': 'Available product modes' },
       productBadgesForScene(scene).map((entry) =>
-        el('span', { class: `explorer-access-badge is-${entry.kind}` }, [
-          entry.kind === 'paid' ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' }) : null,
+        el('span', {
+          class: `explorer-access-badge is-${entry.kind}`,
+          'data-product-mode': entry.id,
+        }, [
+          entry.kind === 'paid'
+            ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' })
+            : null,
           el('span', { class: 'lang-en', text: entry.label }),
           el('span', { class: 'lang-ja', text: entry.labelJa }),
+          entry.id === 'education'
+            ? el('span', {
+                class: 'explorer-access-complete',
+                'aria-hidden': 'true',
+                text: '✓',
+                hidden: '',
+              })
+            : null,
         ])
       )
     );
 
   const sceneCard = (scene) =>
-    el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
+    el('a', {
+      class: 'explorer-scene',
+      href: sceneRoute(scene),
+      'data-scene-id': scene.id,
+    }, [
       el('span', { class: 'explorer-scene-title' }, [
         el('span', { class: 'lang-en', text: scene.titleEn }),
         el('span', { class: 'lang-ja', text: scene.titleJa }),
@@ -55,7 +75,6 @@ export function createExplorer({ ui, accountButton = null }) {
       ]),
     ]);
 
-  /** A disease scene that is declared but not built. Shown, not hidden. */
   const plannedCard = (planned) =>
     el('span', { class: 'explorer-scene is-planned' }, [
       el('span', { class: 'explorer-scene-title' }, [
@@ -107,6 +126,27 @@ export function createExplorer({ ui, accountButton = null }) {
     languageToggle.element,
   ]);
 
+  const learningSummaryValue = el('div', { class: 'explorer-learning-value' });
+  const learningMeterFill = el('span', { class: 'explorer-learning-meter-fill' });
+  const learningSummary = el('section', {
+    class: 'explorer-learning-summary',
+    hidden: '',
+    'aria-label': 'Medical education progress',
+  }, [
+    el('div', { class: 'explorer-learning-copy' }, [
+      el('span', { class: 'explorer-learning-label lang-en', text: 'Your medical education progress' }),
+      el('span', { class: 'explorer-learning-label lang-ja', text: '医学教育の進捗' }),
+      learningSummaryValue,
+    ]),
+    el('div', {
+      class: 'explorer-learning-meter',
+      role: 'progressbar',
+      'aria-valuemin': '0',
+      'aria-valuemax': '100',
+      'aria-valuenow': '0',
+    }, [learningMeterFill]),
+  ]);
+
   const element = el('div', { class: 'explorer' }, [
     el('header', { class: 'panel explorer-header' }, [
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
@@ -131,14 +171,13 @@ export function createExplorer({ ui, accountButton = null }) {
           el('span', { class: 'lang-ja', text: '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。' }),
         ]),
       ]),
+      learningSummary,
       el('nav', { class: 'explorer-jump' }, systems.map((system) =>
         el(
           'a',
           {
             class: 'scene-pill',
             href: `#system-${system.id}`,
-            // Scrolled rather than navigated: the hash is the app's router, and
-            // an in-page anchor writing to it would look like a route change.
             on: {
               click: (event) => {
                 event.preventDefault();
@@ -174,8 +213,50 @@ export function createExplorer({ ui, accountButton = null }) {
     ]),
   ]);
 
+  function syncAccess(snapshot) {
+    const educationUnlocked = snapshot?.grants?.includes(ENTITLEMENT.EDUCATION);
+    const completed = new Set(
+      (snapshot?.educationProgress ?? [])
+        .filter((row) => row.moduleId === EDUCATION_GUIDE_MODULE && row.completed)
+        .map((row) => row.sceneId)
+    );
+
+    for (const card of element.querySelectorAll('.explorer-scene[data-scene-id]')) {
+      const sceneId = card.dataset.sceneId;
+      const educationBadge = card.querySelector('[data-product-mode="education"]');
+      if (!educationBadge) continue;
+      const done = educationUnlocked && completed.has(sceneId);
+      educationBadge.classList.toggle('is-completed', done);
+      const mark = educationBadge.querySelector('.explorer-access-complete');
+      if (mark) mark.hidden = !done;
+    }
+
+    const summary = snapshot?.educationSummary;
+    learningSummary.hidden = !educationUnlocked || !summary?.total;
+    if (learningSummary.hidden) return;
+
+    const percent = summary.percent ?? 0;
+    learningSummaryValue.replaceChildren(
+      el('span', {
+        class: 'lang-en',
+        text: summary.isComplete
+          ? 'All teaching guides completed'
+          : `${summary.completed} / ${summary.total} completed`,
+      }),
+      el('span', {
+        class: 'lang-ja',
+        text: summary.isComplete
+          ? 'すべての教育ガイドを完了'
+          : `${summary.completed} / ${summary.total} 完了`,
+      })
+    );
+    learningMeterFill.style.width = `${percent}%`;
+    learningSummary.querySelector('.explorer-learning-meter')?.setAttribute('aria-valuenow', String(percent));
+  }
+
   ui.append(element);
   languageToggle.init();
+  access?.subscribe(syncAccess);
   document.title = 'Organ explorer — medical-3d-lab';
 
   return { element, route: EXPLORER_ROUTE };
