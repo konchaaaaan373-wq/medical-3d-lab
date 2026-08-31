@@ -202,5 +202,6 @@ test('education mode: asthma guide teaches heterogeneity without a calibration-s
   const guide = educationGuideFor('asthma-heterogeneity');
   const allCopy = guide.steps.map((step) => `${step.prompt} ${step.answer} ${step.promptJa} ${step.answerJa}`).join(' ');
   assert.match(allCopy, /clustered heterogeneity/i);
-  assert.doesNotMatch(allCopy, /half the lung goes dark/i);
+  assert.match(allCopy, /avoid claims such as .*half the lung goes dark/i);
+  assert.match(allCopy, /exact fraction of low-ventilation terminals depends/i);
 });
