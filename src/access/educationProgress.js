@@ -12,6 +12,38 @@ const normalise = (row) => ({
 });
 
 /**
+ * Pure summary used by the account surface and Explorer. Unknown scenes/modules
+ * do not inflate the denominator, so old progress rows cannot distort the current
+ * catalogue after content is retired or renamed.
+ */
+export function educationCompletionSummary(
+  progressRows = [],
+  sceneIds = [],
+  moduleId = 'guided-teaching'
+) {
+  const expected = new Set(sceneIds ?? []);
+  const completed = new Set();
+  const started = new Set();
+
+  for (const raw of progressRows ?? []) {
+    const row = normalise(raw);
+    if (!expected.has(row.sceneId) || row.moduleId !== moduleId) continue;
+    started.add(row.sceneId);
+    if (row.completed) completed.add(row.sceneId);
+  }
+
+  const total = expected.size;
+  const completedCount = completed.size;
+  return Object.freeze({
+    total,
+    completed: completedCount,
+    started: started.size,
+    percent: total ? Math.round((completedCount / total) * 100) : 0,
+    isComplete: Boolean(total && completedCount === total),
+  });
+}
+
+/**
  * Small optimistic client cache for paid education progress.
  *
  * Progress is convenience state, not entitlement state. A failed save must never
