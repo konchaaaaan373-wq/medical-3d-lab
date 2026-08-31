@@ -8,6 +8,11 @@ import {
   signUp,
 } from './auth.js';
 import {
+  createEducationProgressStore,
+  educationCompletionSummary,
+} from './educationProgress.js';
+import { SCENE_PRODUCT_FEATURES } from './features.js';
+import {
   ACTIVE_SUBSCRIPTION_STATUSES,
   canAccess,
   ENTITLEMENT,
@@ -19,6 +24,10 @@ import { pricePresentation } from './pricing.js';
 import { subscriptionPresentation } from './subscriptionView.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
+const EDUCATION_GUIDE_MODULE = 'guided-teaching';
+const EDUCATION_SCENE_IDS = Object.entries(SCENE_PRODUCT_FEATURES)
+  .filter(([, features]) => features.education)
+  .map(([sceneId]) => sceneId);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -28,10 +37,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * load. Every network call therefore degrades to the implicit `free` grant.
  */
 export function createAccessManager({ ui }) {
+  const progressStore = createEducationProgressStore();
   const state = {
     user: null,
     grants: new Set(FREE),
     subscriptions: [],
+    educationProgress: [],
     billingConfigured: false,
     planCatalog: {},
     loading: false,
@@ -93,6 +104,21 @@ export function createAccessManager({ ui }) {
         return undefined;
       };
     },
+    educationProgress(sceneId, moduleId = EDUCATION_GUIDE_MODULE) {
+      return progressStore.get(sceneId, moduleId);
+    },
+    async refreshEducationProgress() {
+      await refreshEducationProgress();
+      notify();
+      return state.educationProgress;
+    },
+    async saveEducationProgress({ sceneId, moduleId = EDUCATION_GUIDE_MODULE, stepIndex, completed = false }) {
+      if (!state.user?.id || !state.grants.has(ENTITLEMENT.EDUCATION)) return null;
+      const saved = await progressStore.save({ sceneId, moduleId, stepIndex, completed });
+      state.educationProgress = progressStore.all();
+      notify();
+      return saved;
+    },
     open,
     close,
     refresh,
@@ -106,11 +132,21 @@ export function createAccessManager({ ui }) {
 
   return api;
 
+  function educationSummary() {
+    return educationCompletionSummary(
+      state.educationProgress,
+      EDUCATION_SCENE_IDS,
+      EDUCATION_GUIDE_MODULE
+    );
+  }
+
   function snapshot() {
     return Object.freeze({
       user: state.user,
       grants: Object.freeze([...state.grants]),
       subscriptions: Object.freeze([...state.subscriptions]),
+      educationProgress: Object.freeze([...state.educationProgress]),
+      educationSummary: educationSummary(),
       configured: authConfigured(),
       billingConfigured: state.billingConfigured,
       planCatalog: Object.freeze({ ...state.planCatalog }),
@@ -152,6 +188,15 @@ export function createAccessManager({ ui }) {
     notify();
   }
 
+  async function refreshEducationProgress() {
+    if (!state.user?.id || !state.grants.has(ENTITLEMENT.EDUCATION)) {
+      progressStore.clear();
+      state.educationProgress = [];
+      return;
+    }
+    state.educationProgress = await progressStore.load(state.user.id);
+  }
+
   async function refresh() {
     state.loading = true;
     state.error = '';
@@ -161,6 +206,7 @@ export function createAccessManager({ ui }) {
       state.user = session?.user ?? null;
       state.grants = new Set(FREE);
       state.subscriptions = [];
+      state.educationProgress = [];
       if (session) {
         const response = await authenticatedFetch('/.netlify/functions/entitlements');
         const data = await response.json().catch(() => ({}));
@@ -168,11 +214,16 @@ export function createAccessManager({ ui }) {
         state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
         state.subscriptions = data.subscriptions ?? [];
         state.user = data.user ?? state.user;
+        await refreshEducationProgress();
+      } else {
+        progressStore.clear();
       }
     } catch (error) {
       // Free access is deliberately resilient to billing/auth outages.
       state.error = error.message || 'Could not check access.';
       state.grants = new Set(FREE);
+      state.educationProgress = [];
+      progressStore.clear();
     } finally {
       state.loading = false;
       notify();
@@ -318,6 +369,8 @@ export function createAccessManager({ ui }) {
               state.user = null;
               state.grants = new Set(FREE);
               state.subscriptions = [];
+              state.educationProgress = [];
+              progressStore.clear();
               state.error = '';
               state.notice = '';
               notify();
@@ -327,6 +380,7 @@ export function createAccessManager({ ui }) {
       ]),
       currentAccess(),
       subscriptionStatusCard(),
+      educationProgressCard(),
       !state.billingConfigured
         ? el('div', { class: 'access-billing-unavailable' }, [
             el('p', { class: 'access-copy lang-en', text: 'Paid checkout is not enabled on this deployment yet. Your account and all free models remain available.' }),
@@ -438,6 +492,40 @@ export function createAccessManager({ ui }) {
           : null,
       ]),
     ].filter(Boolean));
+  }
+
+  function educationProgressCard() {
+    if (!state.grants.has(ENTITLEMENT.EDUCATION)) return null;
+    const summary = educationSummary();
+    if (!summary.total) return null;
+    const headlineEn = summary.isComplete
+      ? 'All teaching guides completed'
+      : `${summary.completed} of ${summary.total} teaching guides completed`;
+    const headlineJa = summary.isComplete
+      ? 'すべての教育ガイドを完了'
+      : `教育ガイド ${summary.completed} / ${summary.total} 完了`;
+
+    return el('section', { class: 'access-learning-progress', 'aria-label': 'Medical education progress' }, [
+      el('div', { class: 'access-learning-progress-copy' }, [
+        el('div', { class: 'access-learning-progress-title' }, [
+          el('span', { class: 'lang-en', text: 'Medical education progress' }),
+          el('span', { class: 'lang-ja', text: '医学教育の進捗' }),
+        ]),
+        el('div', { class: 'access-learning-progress-value' }, [
+          el('span', { class: 'lang-en', text: headlineEn }),
+          el('span', { class: 'lang-ja', text: headlineJa }),
+        ]),
+      ]),
+      el('div', {
+        class: 'access-learning-meter',
+        role: 'progressbar',
+        'aria-valuemin': '0',
+        'aria-valuemax': '100',
+        'aria-valuenow': String(summary.percent),
+      }, [
+        el('span', { class: 'access-learning-meter-fill', style: `width:${summary.percent}%` }),
+      ]),
+    ]);
   }
 
   function hasActiveSubscription() {
