@@ -2,7 +2,7 @@
  * Tiny Supabase Auth client using the public REST API directly.
  *
  * The lab deliberately does not add an auth framework to a Three.js app. The
- * browser only ever sees the publishable Supabase URL/key; service-role and
+ * browser only ever sees the publishable Supabase URL/key; server secrets and
  * Stripe secrets live in Netlify Functions.
  */
 
@@ -10,15 +10,18 @@ const STORAGE_KEY = 'medical3dlab.auth.v1';
 
 export const AUTH_CONFIG = Object.freeze({
   url: (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? '',
+  publishableKey:
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    import.meta.env.VITE_SUPABASE_ANON_KEY ??
+    '',
 });
 
-export const authConfigured = () => Boolean(AUTH_CONFIG.url && AUTH_CONFIG.anonKey);
+export const authConfigured = () => Boolean(AUTH_CONFIG.url && AUTH_CONFIG.publishableKey);
 
 function headers(token) {
   return {
-    apikey: AUTH_CONFIG.anonKey,
-    Authorization: token ? `Bearer ${token}` : `Bearer ${AUTH_CONFIG.anonKey}`,
+    apikey: AUTH_CONFIG.publishableKey,
+    Authorization: token ? `Bearer ${token}` : `Bearer ${AUTH_CONFIG.publishableKey}`,
     'Content-Type': 'application/json',
   };
 }
