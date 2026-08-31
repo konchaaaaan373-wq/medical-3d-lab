@@ -7,6 +7,8 @@ import { featuresForScene } from './features.js';
 import { ENTITLEMENT } from './policy.js';
 
 const EDUCATION_GUIDE_MODULE = 'guided-teaching';
+const LESSON_MODULE_PREFIX = 'lesson.';
+const LESSON_ID = /^[A-Za-z0-9._~-]{1,70}$/;
 
 /**
  * Adds paid use-case modes around an already-created scene without changing the
@@ -57,6 +59,7 @@ export function installAccess({ app, access, ui, sceneId }) {
       app,
       access,
       ui,
+      sceneId,
       activateLesson: () => coordinator.activate('lesson'),
     });
   }
@@ -281,7 +284,23 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
   return closeGuide;
 }
 
-function installEducationGate({ app, access, ui, activateLesson }) {
+function lessonStorageId(moduleId) {
+  return LESSON_ID.test(moduleId ?? '') ? `${LESSON_MODULE_PREFIX}${moduleId}` : null;
+}
+
+function completedLessonIds(rows, sceneId) {
+  return (rows ?? [])
+    .filter(
+      (entry) =>
+        entry.sceneId === sceneId &&
+        entry.completed &&
+        typeof entry.moduleId === 'string' &&
+        entry.moduleId.startsWith(LESSON_MODULE_PREFIX)
+    )
+    .map((entry) => entry.moduleId.slice(LESSON_MODULE_PREFIX.length));
+}
+
+function installEducationGate({ app, access, ui, sceneId, activateLesson }) {
   if (!app.learning) return;
   const meta = app.scene?.constructor?.meta ?? {};
   const expectedLabel = meta.learning?.label ?? 'Lesson';
@@ -292,6 +311,17 @@ function installEducationGate({ app, access, ui, activateLesson }) {
 
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   learnButton.append(lock);
+
+  app.learning.panel.element.addEventListener('learning:complete', (event) => {
+    const moduleId = lessonStorageId(event.detail?.moduleId);
+    if (!moduleId || !access.has(ENTITLEMENT.EDUCATION)) return;
+    void access.saveEducationProgress({
+      sceneId,
+      moduleId,
+      stepIndex: 0,
+      completed: true,
+    });
+  });
 
   learnButton.addEventListener(
     'click',
@@ -307,10 +337,12 @@ function installEducationGate({ app, access, ui, activateLesson }) {
     true
   );
 
-  access.subscribe(({ grants }) => {
+  access.subscribe(({ grants, educationProgress }) => {
     const unlocked = grants.includes(ENTITLEMENT.EDUCATION);
     learnButton.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
     learnButton.setAttribute('aria-label', unlocked ? expectedLabel : `${expectedLabel} — locked`);
+    app.learning.panel.setCompletedModules?.(unlocked ? completedLessonIds(educationProgress, sceneId) : []);
+    if (!unlocked) app.learning.set(false);
   });
 }
