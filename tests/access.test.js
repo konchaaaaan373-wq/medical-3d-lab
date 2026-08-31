@@ -126,7 +126,7 @@ test('billing: Stripe period end supports legacy root and flexible-billing item 
     new Date(rootSeconds * 1000).toISOString()
   );
   assert.equal(
-    subscriptionPeriodEnd({ items: { data: [{ current_period_end: itemSeconds }] }),
+    subscriptionPeriodEnd({ items: { data: [{ current_period_end: itemSeconds }] } }),
     new Date(itemSeconds * 1000).toISOString()
   );
   assert.equal(subscriptionPeriodEnd({ items: { data: [] } }), null);
