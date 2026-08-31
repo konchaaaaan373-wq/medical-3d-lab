@@ -49,8 +49,14 @@ export function createLearningPanel({
     el('span', { class: 'lang-en' }),
     el('span', { class: 'lang-ja' }),
   ]);
+  const completion = el('span', { class: 'learn-completion', hidden: '' }, [
+    el('span', { class: 'learn-completion-mark', 'aria-hidden': 'true', text: '✓' }),
+    el('span', { class: 'lang-en', text: 'Completed' }),
+    el('span', { class: 'lang-ja', text: '完了' }),
+  ]);
 
   let module = modules[0];
+  let completedModules = new Set();
 
   // One chip per lesson, shown only when there is a choice to make. Each is one
   // relationship, so the row doubles as a list of what this scene claims.
@@ -68,6 +74,12 @@ export function createLearningPanel({
             }, [
               el('span', { class: 'lang-en', text: entry.short ?? entry.title }),
               el('span', { class: 'lang-ja', text: entry.shortJa ?? entry.titleJa }),
+              el('span', {
+                class: 'learn-pick-complete',
+                'aria-hidden': 'true',
+                text: '✓',
+                hidden: '',
+              }),
             ])
           )
         )
@@ -76,6 +88,7 @@ export function createLearningPanel({
   const element = el('div', { class: 'panel learn' }, [
     el('div', { class: 'learn-head' }, [
       title,
+      completion,
       dots,
       el('button', {
         class: 'learn-close',
@@ -118,8 +131,15 @@ export function createLearningPanel({
   function render() {
     title.children[0].textContent = module.title;
     title.children[1].textContent = module.titleJa;
+    const currentCompleted = completedModules.has(module.id);
+    completion.hidden = !currentCompleted;
     for (const chip of picker?.children ?? []) {
-      chip.classList.toggle('is-current', chip.dataset.module === module.id);
+      const isCurrent = chip.dataset.module === module.id;
+      const isCompleted = completedModules.has(chip.dataset.module);
+      chip.classList.toggle('is-current', isCurrent);
+      chip.classList.toggle('is-completed', isCompleted);
+      const mark = chip.querySelector('.learn-pick-complete');
+      if (mark) mark.hidden = !isCompleted;
     }
     dots.replaceChildren(
       ...STEPS.map((_, i) =>
@@ -142,6 +162,23 @@ export function createLearningPanel({
     STEPS = stepsFor(module);
     tween = null;
     start();
+  }
+
+  /**
+   * Completion is the only cross-session state this panel exposes. A lesson's
+   * prediction, before/after readings and transfer comparison remain one-session
+   * evidence; resuming halfway would reconstruct a conclusion without the model
+   * state and measurements that produced it.
+   */
+  function finishModule() {
+    completedModules.add(module.id);
+    render();
+    element.dispatchEvent(
+      new CustomEvent('learning:complete', {
+        detail: { moduleId: module.id },
+      })
+    );
+    onExit();
   }
 
   // --- steps ---------------------------------------------------------------
@@ -228,7 +265,8 @@ export function createLearningPanel({
           el('span', { class: 'lang-ja', text: explanation.footnoteJa }),
         ]),
       ],
-      next: () => go(4),
+      next: module.transfer ? () => go(4) : undefined,
+      done: module.transfer ? undefined : finishModule,
       back: () => go(2),
     });
   }
@@ -265,7 +303,7 @@ export function createLearningPanel({
         paragraph(transfer.explanation.text, transfer.explanation.textJa),
         paragraph(module.outro.text, module.outro.textJa, 'learn-hint'),
       ],
-      done: () => onExit(),
+      done: finishModule,
     });
   }
 
@@ -322,8 +360,12 @@ export function createLearningPanel({
 
   function start() {
     step = 0;
+    tween = null;
     session.prediction = null;
     session.transferPrediction = null;
+    session.before = null;
+    session.after = null;
+    session.transferComparison = null;
     render();
   }
 
@@ -354,6 +396,14 @@ export function createLearningPanel({
       return module.id;
     },
     select,
+    /** Cross-session completion display; never resumes a model-backed lesson mid-step. */
+    setCompletedModules(ids = []) {
+      completedModules = new Set(ids);
+      render();
+    },
+    get completedModuleIds() {
+      return [...completedModules];
+    },
   };
 }
 
@@ -431,7 +481,6 @@ function changeTable(before, after) {
   );
 }
 
-/** How much stroke volume each state lost, measured on the model just now. */
 /**
  * Both measured results, side by side.
  *
