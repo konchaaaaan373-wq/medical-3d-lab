@@ -9,6 +9,27 @@ permissions:
   contents: read
 
 jobs:
+  access-imports:
+    name: Import · ${{ matrix.module }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - src/access/policy.js
+          - src/access/features.js
+          - src/catalog/scenes.js
+          - src/data/patientGuides.js
+          - src/data/educationGuides.js
+          - netlify/lib/billing.js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node -e "import('./${{ matrix.module }}')"
+
   access-categories:
     name: Access · ${{ matrix.category }}
     runs-on: ubuntu-latest
