@@ -11,6 +11,40 @@
  */
 
 export const PATIENT_GUIDES = Object.freeze({
+  'amyloid-beta': Object.freeze({
+    title: 'How amyloid-β can gather into larger structures',
+    titleJa: 'アミロイドβが集まって大きな構造になる仕組み',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        title: 'Small molecules are separate',
+        titleJa: '小さな分子がばらばらに存在する',
+        body: 'Amyloid-β is a small protein fragment. This model begins with many individual molecules rather than a plaque.',
+        bodyJa: 'アミロイドβは小さなタンパク質断片です。このモデルは、プラークではなく多数の分子が別々に存在する状態から始まります。',
+      },
+      {
+        progress: 0.32,
+        title: 'Small clusters can form',
+        titleJa: '小さな集まりができる',
+        body: 'Some molecules can associate into small clusters called oligomers before larger fibres appear.',
+        bodyJa: '分子の一部は、より大きな線維ができる前に、オリゴマーと呼ばれる小さな集まりをつくることがあります。',
+      },
+      {
+        progress: 0.66,
+        title: 'Clusters can assemble into fibres',
+        titleJa: '集まりが線維状に並ぶ',
+        body: 'With further aggregation, amyloid-β can assemble into longer fibrillar structures.',
+        bodyJa: '凝集がさらに進むと、アミロイドβはより長い線維状の構造へ組み上がっていきます。',
+      },
+      {
+        progress: 1,
+        title: 'Larger deposits become visible',
+        titleJa: 'より大きな沈着として見える',
+        body: 'Fibrillar material can accumulate into larger deposits. The amount shown here does not tell us how much memory difficulty one individual will have.',
+        bodyJa: '線維状の物質が集まると、より大きな沈着として見えるようになります。ただし、この画面の沈着量から個人の記憶症状の程度を判断することはできません。',
+      },
+    ]),
+  }),
   'heart-failure': Object.freeze({
     title: 'Why the heart can become less efficient',
     titleJa: '心臓の働きが弱くなる仕組み',
