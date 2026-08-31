@@ -3,8 +3,11 @@ import { createPatientGuidePanel } from '../components/PatientGuidePanel.js';
 import { educationGuideFor } from '../data/educationGuides.js';
 import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
+import { createEducationProgressStore } from './educationProgress.js';
 import { featuresForScene } from './features.js';
 import { ENTITLEMENT } from './policy.js';
+
+const EDUCATION_GUIDE_MODULE = 'guided-teaching';
 
 /**
  * Adds paid use-case modes around an already-created scene without changing the
@@ -19,6 +22,7 @@ export function installAccess({ app, access, ui, sceneId }) {
   mountAccountButton(access, ui);
   const features = featuresForScene(sceneId);
   const coordinator = createModeCoordinator();
+  const educationProgress = createEducationProgressStore();
 
   if (features.patient) {
     const guide = patientGuideFor(sceneId);
@@ -46,6 +50,8 @@ export function installAccess({ app, access, ui, sceneId }) {
           access,
           ui,
           guide,
+          sceneId,
+          progressStore: educationProgress,
           activate: () => coordinator.activate('education-guide'),
         })
       );
@@ -128,6 +134,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
     button.setAttribute('aria-label', unlocked ? 'Patient explanation' : 'Patient explanation — locked');
+    if (!unlocked) closeGuide();
   });
 
   function openGuide() {
@@ -154,12 +161,28 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   return closeGuide;
 }
 
-function installEducationGuide({ app, access, ui, guide, activate }) {
+function installEducationGuide({ app, access, ui, guide, sceneId, progressStore, activate }) {
   const row = ui.querySelector('.button-row');
   const consolePanel = ui.querySelector('.console');
   if (!row || !consolePanel) return null;
 
   let open = false;
+  let progressUserId = null;
+  const progressMark = el('span', {
+    class: 'education-progress-mark',
+    'aria-hidden': 'true',
+    text: '✓',
+    hidden: '',
+  });
+
+  const saveProgress = (stepIndex, completed = false) =>
+    progressStore.save({
+      sceneId,
+      moduleId: EDUCATION_GUIDE_MODULE,
+      stepIndex,
+      completed,
+    });
+
   const guidePanel = createEducationGuidePanel({
     guide,
     setProgress: (value) => {
@@ -167,6 +190,14 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
       app.playback.set(value);
     },
     onExit: closeGuide,
+    onStepChange: (stepIndex) => {
+      void saveProgress(stepIndex, false);
+    },
+    onComplete: (stepIndex) => {
+      progressMark.hidden = false;
+      button.classList.add('is-completed');
+      void saveProgress(stepIndex, true);
+    },
   });
   consolePanel.append(guidePanel.element);
 
@@ -179,6 +210,7 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
     el('span', { class: 'btn-icon education-mode-icon', 'aria-hidden': 'true', text: '◇' }),
     el('span', { class: 'btn-label lang-en', text: 'Teach' }),
     el('span', { class: 'btn-label lang-ja', text: '教育ガイド' }),
+    progressMark,
     lock,
   ]);
   button.title = 'Medical education teaching guide';
@@ -187,26 +219,59 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
       access.open(ENTITLEMENT.EDUCATION);
       return;
     }
-    open ? closeGuide() : openGuide();
+    if (open) closeGuide();
+    else void openGuide();
   });
 
   const patientButton = row.querySelector('.patient-mode-button');
   if (patientButton) patientButton.after(button);
   else row.prepend(button);
 
-  access.subscribe(({ grants }) => {
+  access.subscribe(({ user, grants }) => {
     const unlocked = grants.includes(ENTITLEMENT.EDUCATION);
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
     button.setAttribute('aria-label', unlocked ? 'Medical education teaching guide' : 'Medical education teaching guide — locked');
+
+    if (!unlocked || !user?.id) {
+      progressMark.hidden = true;
+      button.classList.remove('is-completed');
+      progressUserId = null;
+      progressStore.clear();
+      closeGuide();
+      return;
+    }
+
+    if (progressUserId !== user.id) {
+      progressUserId = user.id;
+      progressMark.hidden = true;
+      button.classList.remove('is-completed');
+      void progressStore.load(user.id).then(() => syncProgressMark());
+    }
   });
 
-  function openGuide() {
+  function syncProgressMark() {
+    const saved = progressStore.get(sceneId, EDUCATION_GUIDE_MODULE);
+    const completed = Boolean(saved?.completed);
+    progressMark.hidden = !completed;
+    button.classList.toggle('is-completed', completed);
+    button.title = completed
+      ? 'Medical education teaching guide — completed'
+      : 'Medical education teaching guide';
+  }
+
+  async function openGuide() {
     activate?.();
     app.learning?.set(false);
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
-    guidePanel.reset();
+
+    const userId = access.snapshot().user?.id;
+    if (userId) await progressStore.load(userId);
+    const saved = progressStore.get(sceneId, EDUCATION_GUIDE_MODULE);
+    guidePanel.resume(saved && !saved.completed ? saved.stepIndex : 0);
+    syncProgressMark();
+
     open = true;
     ui.classList.add('is-education-guide');
     button.classList.add('is-on');
