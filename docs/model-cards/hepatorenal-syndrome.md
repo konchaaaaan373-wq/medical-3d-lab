@@ -70,9 +70,11 @@ resistances move, which was untrue of the code.
 
 `kidneyWithoutTheSignal` re-solves the same kidney at the same pressure with the
 activation set to zero. It restores **renal perfusion at every severity**, and
-**filtration once the model is past the failure of autoregulation** — early on
-it does not, because efferent constriction is supporting filtration while the
-afferent arteriole is still shielded. It measures how much of the fall *this
+**filtration only past a crossover that lies some way beyond the failure of
+autoregulation** — before that it does not, because efferent constriction is
+supporting filtration while the afferent arteriole is still shielded. The knee
+and the crossover are two different positions on the axis and an earlier
+version of this card treated them as one. It measures how much of the fall *this
 model's* circulation is responsible for, not how much of a patient's fall is
 reversible.
 
@@ -91,7 +93,7 @@ that matters most at the bedside — see §11 and §12.
 | `collateralPropensity` | 0–1 | How readily portosystemic collaterals form. |
 | `terlipressin` | 0–1 | A splanchnic vasoconstrictor. Subtracts from the vasodilation and does nothing else. |
 | `albumin` | 0–1 | Plasma volume expansion. Raises cardiac output at a given resistance. |
-| `prostaglandinInhibition` | 0–1 | A non-steroidal anti-inflammatory. Removes the afferent arteriole's local shield. |
+| `prostaglandinInhibition` | 0–1 | Renal prostaglandin inhibition — the afferent arteriole's local shield, removed. **Deliberately isolated:** the model gives it no systemic action so the local mechanism can be examined alone. That is not a claim that real NSAIDs have no systemic effects; they cause sodium and water retention, affect arterial pressure, and can cause haemodynamic AKI and acute interstitial nephritis. |
 | `cardiacReserve` | 0–1 | How much of the heart's response to a fallen resistance is intact. Cirrhotic cardiomyopathy lowers it. |
 
 ## 5. Outputs
@@ -165,7 +167,7 @@ described in compensated cirrhosis, but this was not calibrated to it and the
 size is not a prediction. It is left in rather than tuned away, because removing
 it would mean weakening one of the two mechanisms that make the later trajectory
 right. It is also why the external test asserts restored *perfusion* at every
-severity and restored *filtration* only past the failure of autoregulation.
+severity and restored *filtration* only past a crossover later than the knee.
 
 **Volume expansion has no ceiling.** Enough albumin drives cardiac output and
 arterial pressure above normal, and the model will show that improving renal
@@ -245,6 +247,22 @@ parameter space rather than a claim about the course. The slider says so.
 **It could be read as saying cardiac output always rises.** The default path
 raises it at every step; that is the parameterisation, and the reserve control
 produces the falling-output path the literature also describes.
+
+## 14a. Where each claim is defended
+
+The layer a claim is checked in is part of the claim. A second audit applied the
+rule strictly — *if this assertion failed, could I honestly say the medicine was
+wrong?* — and moved several tests out of the external layer.
+
+| Layer | What lives there |
+| --- | --- |
+| **External** (12 tests) | Physics and definitions; supported physiological directions; calibration-independent mechanistic constraints, perturbed one variable at a time |
+| **Integrity** | Model wiring; counterfactual semantics; that the treatment acts through the intended variable; that the prostaglandin control is isolated; that no structural injury term exists and the copy says so; scene ↔ model consistency |
+| **Calibration** | The chosen severity path; where the knee falls; the default cardiac-output trajectory; slider monotonicity; effect magnitudes; the worst state's GFR |
+
+Two tests left the external layer entirely and five were narrowed. The count
+fell from fourteen to twelve deliberately: a small pure layer is worth more than
+a large mixed one.
 
 ## 15. Review status
 

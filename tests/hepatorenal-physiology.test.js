@@ -4,50 +4,57 @@ import {
   BOWMAN_PRESSURE,
   CENTRAL_VENOUS_PRESSURE,
   PLASMA_ONCOTIC_PRESSURE,
-  kidneyWithoutTheSignal,
   solveHepatorenal,
   solveKidney,
+  vasoconstrictorActivation,
 } from '../src/models/hepatorenal.js';
-import { MODEL_SCOPE } from '../src/data/hepatorenal.js';
 
 /**
  * Layer 1 — external physiology invariants for the hepatorenal model.
  *
- * Every test here asserts something the literature requires **independently of
- * this repository**: a direction, an ordering, a mechanism, or a relation that
- * follows from physics. Not one of them may contain a constant this repository
- * chose. If a test in this file fails, the medical model has broken a
- * constraint the physiology imposes, and that is the only kind of failure that
- * licenses saying so.
+ * Every test here has to survive one question:
  *
- * The magnitudes — every gain, every reference, every effect size — are checked
- * in `calibration.test.js`, and a failure there means the parameterisation has
- * moved, not that the physiology is wrong.
+ * > **If this assertion failed, could I honestly say the medicine was wrong?**
+ *
+ * If the answer is no, it does not belong in this file. That is a stricter bar
+ * than "contains no repository constant as a literal", and an audit of this
+ * file found several tests that cleared the literal bar and failed the real
+ * one. What they were really asserting was one of three other things:
+ *
+ * - **a property of this repository's own construction** — that
+ *   `kidneyWithoutTheSignal` changes only the activation, that the
+ *   prostaglandin control has no systemic action, that the treatment reaches
+ *   the kidney only through the pressure and the signal, that the scope panel
+ *   states the model's boundary. Those are contracts, and they are in
+ *   `hepatorenal.test.js` and `hepatorenal-scene.test.js`;
+ * - **a property of a chosen path through parameter space** — "at every
+ *   severity", monotonicity along the progression axis, where the knee falls.
+ *   Those are in `calibration.test.js`;
+ * - **a statement about what this model *can* do** — "the model can reach
+ *   renal failure with a falling cardiac output". A capability of a
+ *   parameterisation is not a fact about people. Also calibration.
+ *
+ * So the assertions below are local, directional and scale-free: physics,
+ * definitions, and mechanisms whose *direction* named sources support. Where a
+ * mechanism is exercised through the model, it is perturbed one variable at a
+ * time rather than walked along the scene's own axis.
  */
-
-/** Cirrhosis along one axis: scarring and the vasodilation it induces, together. */
-const severity = (t) => ({ structuralResistance: 1 + 11 * t, splanchnicVasodilation: t });
-const STEPS = [0, 0.2, 0.4, 0.6, 0.8, 1];
 
 const strictlyRising = (values) => values.every((v, i) => i === 0 || v > values[i - 1]);
-
-/**
- * The model's own healthy state, used as the baseline every comparison here is
- * relative to.
- *
- * Taken from the model rather than from its reference constants on purpose:
- * this file may not import a calibration anchor, and a baseline that moves with
- * the anchor keeps every assertion below scale-free.
- */
-const HEALTHY = solveHepatorenal(severity(0));
 const strictlyFalling = (values) => values.every((v, i) => i === 0 || v < values[i - 1]);
+
+// --- physics and definitions ----------------------------------------------
 
 test('physiology: glomerular filtration follows the net filtration pressure', () => {
   // Ultrafiltration, not secretion: what is filtered is the net Starling
   // pressure times a coefficient, and when the net pressure reaches zero
   // filtration stops however much blood is arriving.
-  for (const t of STEPS) {
-    const { kidney } = solveHepatorenal(severity(t));
+  for (const [meanArterialPressureMmHg, activation] of [
+    [90, 0],
+    [80, 0.4],
+    [70, 0.8],
+  ]) {
+    const kidney = solveKidney({ meanArterialPressureMmHg, activation });
     assert.equal(
       kidney.netFiltrationPressureMmHg,
       kidney.glomerularPressureMmHg - BOWMAN_PRESSURE - PLASMA_ONCOTIC_PRESSURE,
@@ -90,120 +97,68 @@ test('physiology: with the other beds held fixed, opening one of them lowers tot
   );
 });
 
-test('physiology: a fall in systemic resistance the heart does not fully offset lowers arterial pressure', () => {
-  // Arithmetic: pressure is output times resistance. If resistance falls and
-  // the heart does not raise output by the reciprocal, pressure falls. The
-  // identity is asserted first, because a trajectory read off a model whose
-  // pressure and output do not multiply back would mean nothing.
-  const states = STEPS.map((t) => solveHepatorenal(severity(t)));
-  for (const state of states) {
-    const { systemic } = state;
+test('physiology: a fall in resistance the heart does not fully offset lowers pressure', () => {
+  // Pressure is output times resistance. If resistance falls by a factor and
+  // the heart does not raise output by its reciprocal, pressure falls. Pure
+  // arithmetic, asserted without the model: whether *this* model's axis
+  // exercises it at every step is a chosen path and is checked in the
+  // calibration layer.
+  const pressure = (output, resistance) => CENTRAL_VENOUS_PRESSURE + output * resistance;
+  const baseline = pressure(1, 1);
+
+  for (const [resistance, output] of [
+    [0.9, 1.05],
+    [0.8, 1.1],
+    [0.7, 1.2],
+  ]) {
+    assert.ok(output < 1 / resistance, 'this row is meant to be an incomplete offset');
     assert.ok(
-      Math.abs(
-        systemic.meanArterialPressureMmHg -
-          CENTRAL_VENOUS_PRESSURE -
-          (systemic.cardiacOutputMlPerMin / 60) * systemic.systemicVascularResistance
-      ) < 1e-6
+      pressure(output, resistance) < baseline,
+      `incomplete compensation did not lower the pressure at ${resistance}`
     );
   }
 
-  // Wherever the resistance is lower than the reference, so is the pressure:
-  // the compensation in this model is partial by construction. How partial is
-  // a chosen exponent and is checked in the calibration layer; that it is
-  // partial at all is the supported claim being asserted here.
-  for (const state of states) {
-    if (state.systemic.systemicVascularResistance >= HEALTHY.systemic.systemicVascularResistance) continue;
-    assert.ok(
-      state.systemic.meanArterialPressureMmHg < HEALTHY.systemic.meanArterialPressureMmHg,
-      'resistance fell and pressure did not'
-    );
-  }
+  // A complete offset holds it, and an over-compensation raises it — so the
+  // test is about incompleteness rather than about falling resistance.
+  assert.ok(Math.abs(pressure(1 / 0.8, 0.8) - baseline) < 1e-12);
+  assert.ok(pressure(1.4, 0.8) > baseline);
 });
 
-test('physiology: the model can reach renal failure with a falling cardiac output, not only a rising one', () => {
-  // At the onset of hepatorenal syndrome, cardiac output has been observed to
-  // *fall* rather than go on rising (Ruiz-del-Arbol, Hepatology 2005). A model
-  // whose only path to renal failure ran through a rising output would be
-  // asserting a natural history the literature does not support, so this
-  // checks that the other path exists and ends in the same place.
-  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
-  const preserved = solveHepatorenal({ ...advanced, cardiacReserve: 1 });
-  const impaired = solveHepatorenal({ ...advanced, cardiacReserve: 0 });
+// --- the vasoconstrictor response ------------------------------------------
 
-  assert.ok(
-    impaired.systemic.cardiacOutputMlPerMin < preserved.systemic.cardiacOutputMlPerMin,
-    'the model has no low-output path at all'
-  );
-  assert.ok(
-    impaired.kidney.glomerularFiltrationRateMlPerMin <
-      preserved.kidney.glomerularFiltrationRateMlPerMin
-  );
-  assert.equal(impaired.kidney.autoregulating, false);
-});
-
-test('physiology: arterial underfilling activates the vasoconstrictor systems', () => {
-  // Cause and response, in that order: the arterial bed dilates, and the
-  // vasoconstrictor systems answer it.
-  const states = STEPS.map((t) => solveHepatorenal(severity(t)));
-  assert.ok(strictlyRising(states.map((s) => s.neurohumoral.arterialUnderfilling)));
-  assert.ok(strictlyRising(states.map((s) => s.neurohumoral.activation)));
-  assert.equal(states[0].neurohumoral.activation, 0, 'a normal circulation activates nothing');
-});
-
-test('physiology: removing the vasoconstrictor signal restores renal perfusion at any severity', () => {
-  // The claim the whole scene exists for. The kidney is not damaged, so at any
-  // severity of liver disease, removing the signal and changing nothing else
-  // restores its perfusion — and the kidney the model solves is a function of
-  // the arterial pressure and the signal alone, with nothing about the liver
-  // in it.
+test('physiology: a greater arterial pressure deficit produces greater vasoconstrictor activation', () => {
+  // The direction the peripheral arterial vasodilation account requires:
+  // baroreceptor unloading activates the vasoconstrictor systems, and more
+  // unloading activates them more.
   //
-  // Perfusion, not filtration, is what is restored *always*. Early in the
-  // course the signal is holding filtration up rather than down, by
-  // constricting the efferent arteriole while the afferent one is still
-  // shielded — so the second assertion below is conditioned on filtration
-  // being depressed in the first place, which is the honest form of the claim.
-  const healthy = solveHepatorenal(severity(0)).kidney;
+  // Perturbed locally, on the activation function itself. An earlier version
+  // walked the scene's own severity axis and asserted strict monotonicity
+  // along it, which is a property of a path this repository chose rather than
+  // of cirrhosis.
+  const pressures = [90, 85, 80, 75, 70, 60];
+  const responses = pressures.map((p) => vasoconstrictorActivation(p));
 
-  for (const t of STEPS.slice(1)) {
-    const state = solveHepatorenal(severity(t));
-    const released = kidneyWithoutTheSignal(state);
+  assert.ok(strictlyRising(responses.map((r) => r.pressureDeficit)), 'the deficit has to rise');
+  assert.ok(strictlyRising(responses.map((r) => r.activation)), 'and the activation with it');
+  assert.equal(responses[0].activation, 0, 'no deficit, no activation');
+  assert.ok(responses.at(-1).activation < 1, 'the index is bounded');
+});
 
-    assert.ok(
-      released.renalBloodFlowMlPerMin > state.kidney.renalBloodFlowMlPerMin,
-      `severity ${t}: releasing the signal did not restore renal blood flow`
+test('physiology: raising vasoconstrictor tone lowers renal perfusion', () => {
+  // The mechanism the syndrome's reversible component rests on. Asserted
+  // directly on the kidney at a fixed arterial pressure, so it is the tone
+  // that is being varied and nothing else.
+  //
+  // An earlier version asserted this through `kidneyWithoutTheSignal` at every
+  // step of the scene's severity axis. That counterfactual is this
+  // repository's own construction and "at every severity" is a claim about a
+  // chosen path — both have moved, to the integrity and calibration layers.
+  for (const meanArterialPressureMmHg of [90, 82, 74]) {
+    const flows = [0, 0.25, 0.5, 0.75, 1].map(
+      (activation) => solveKidney({ meanArterialPressureMmHg, activation }).renalBloodFlowMlPerMin
     );
-    assert.deepEqual(
-      released,
-      solveKidney({
-        meanArterialPressureMmHg: state.systemic.meanArterialPressureMmHg,
-        activation: 0,
-      }),
-      'the kidney has to be a function of pressure and signal, and know nothing about the liver'
-    );
+    assert.ok(strictlyFalling(flows), `perfusion did not fall with tone at ${meanArterialPressureMmHg}: ${flows}`);
   }
-
-  // Once the afferent arteriole has run out of room, every further step makes
-  // filtration worse — that is the syndrome, and it is where releasing the
-  // signal is worth something.
-  const failing = STEPS.map((t) => solveHepatorenal(severity(t))).filter(
-    (state) => !state.kidney.autoregulating
-  );
-  assert.ok(failing.length >= 2, 'the severity range has to reach the failing phase at all');
-  assert.ok(
-    strictlyFalling(failing.map((s) => s.kidney.glomerularFiltrationRateMlPerMin)),
-    'past the failure of autoregulation, filtration has to fall with severity'
-  );
-
-  const worst = solveHepatorenal(severity(1));
-  assert.ok(
-    worst.kidney.glomerularFiltrationRateMlPerMin < healthy.glomerularFiltrationRateMlPerMin,
-    'the worst severity has to depress filtration, or there is no syndrome here'
-  );
-  assert.ok(
-    kidneyWithoutTheSignal(worst).glomerularFiltrationRateMlPerMin >
-      worst.kidney.glomerularFiltrationRateMlPerMin,
-    'and releasing the signal there has to improve it, or nothing was functional'
-  );
 });
 
 test('physiology: efferent-predominant constriction defends filtration and raises the filtration fraction', () => {
@@ -211,10 +166,15 @@ test('physiology: efferent-predominant constriction defends filtration and raise
   // one is already constricting. Renal blood flow falls; filtration does not
   // fall with it, and the fraction of plasma filtered rises. That dissociation
   // is what a single renal resistance cannot produce.
-  const early = [0, 0.1, 0.2, 0.3].map((activation) =>
-    solveKidney({ meanArterialPressureMmHg: 88, activation })
-  );
-  assert.ok(early.every((k) => k.autoregulating), 'this test is about the phase before the floor binds');
+  //
+  // The sample is chosen by the model's own report of whether the afferent
+  // arteriole still has room, rather than by a hard-coded activation range, so
+  // the test follows the phase rather than a number.
+  const early = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4]
+    .map((activation) => solveKidney({ meanArterialPressureMmHg: 88, activation }))
+    .filter((kidney) => kidney.autoregulating);
+
+  assert.ok(early.length >= 4, 'no defended phase to test');
   assert.ok(strictlyFalling(early.map((k) => k.renalBloodFlowMlPerMin)), 'blood flow has to fall');
   assert.ok(strictlyRising(early.map((k) => k.filtrationFraction)), 'the filtration fraction has to rise');
   assert.ok(
@@ -233,30 +193,41 @@ test('physiology: the vasoconstrictor signal lowers the ultrafiltration coeffici
   assert.ok(strictlyFalling(coefficients), `the coefficient did not fall: ${coefficients}`);
 });
 
+// --- renal autoregulation ---------------------------------------------------
+
 test('physiology: renal blood flow is held steady within the autoregulatory range and follows pressure below it', () => {
   // Inside the range the arteriole absorbs the change in driving pressure and
   // flow barely moves. Below it there is nothing left to absorb with, and flow
   // becomes a function of pressure.
+  //
+  // Which pressures are inside and which are below is taken from the model's
+  // own report rather than written down here, so the test states the behaviour
+  // of autoregulation and not the width of this model's band.
   const at = (map) => solveKidney({ meanArterialPressureMmHg: map, activation: 0 });
+  const sampled = [];
+  for (let map = 100; map >= 35; map -= 2.5) sampled.push([map, at(map)]);
 
-  const inside = [95, 90, 85, 80].map(at);
-  assert.ok(inside.every((k) => k.autoregulating));
-  const insideSpread =
-    Math.max(...inside.map((k) => k.renalBloodFlowMlPerMin)) /
-    Math.min(...inside.map((k) => k.renalBloodFlowMlPerMin));
-  const pressureSpread = (95 - 4) / (80 - 4);
+  const inside = sampled.filter(([, k]) => k.autoregulatoryReserve > 0.02);
+  const below = sampled.filter(([, k]) => k.autoregulatoryReserve < -0.05);
+  assert.ok(inside.length >= 3 && below.length >= 3, 'the sweep did not cross the lower limit');
+
+  const spread = (rows) =>
+    Math.max(...rows.map(([, k]) => k.renalBloodFlowMlPerMin)) /
+    Math.min(...rows.map(([, k]) => k.renalBloodFlowMlPerMin));
+  const drive = (rows) =>
+    (Math.max(...rows.map(([map]) => map)) - CENTRAL_VENOUS_PRESSURE) /
+    (Math.min(...rows.map(([map]) => map)) - CENTRAL_VENOUS_PRESSURE);
+
   assert.ok(
-    insideSpread < pressureSpread,
+    spread(inside) < drive(inside),
     'flow inside the range has to vary less than the driving pressure does'
   );
-
-  const below = [60, 50, 40].map(at);
-  assert.ok(below.every((k) => !k.autoregulating), 'below the range nothing is being regulated');
   // With the arteriole pinned, flow is the driving pressure over a fixed
-  // resistance: halve the one and the other halves with it.
-  const ratio =
-    below[0].renalBloodFlowMlPerMin / below[2].renalBloodFlowMlPerMin / ((60 - 4) / (40 - 4));
-  assert.ok(Math.abs(ratio - 1) < 0.02, `flow did not follow pressure below the range: ${ratio}`);
+  // resistance: the two spreads coincide.
+  assert.ok(
+    Math.abs(spread(below) / drive(below) - 1) < 0.02,
+    `flow did not follow pressure below the range: ${spread(below) / drive(below)}`
+  );
 });
 
 test('physiology: vasoconstrictor tone raises the pressure at which autoregulation fails', () => {
@@ -265,10 +236,9 @@ test('physiology: vasoconstrictor tone raises the pressure at which autoregulati
   // is working against left it less room to compensate with.
   const lowerLimit = (activation) => {
     for (let map = 220; map > 20; map -= 0.25) {
-      // The *lower* limit specifically: the pressure at which the arteriole
-      // runs out of dilating room. Above the range it is also not regulating,
-      // for the opposite reason, and that is not what this is measuring.
-      if (solveKidney({ meanArterialPressureMmHg: map, activation }).autoregulatoryReserve <= 0) return map;
+      if (solveKidney({ meanArterialPressureMmHg: map, activation }).autoregulatoryReserve <= 0) {
+        return map;
+      }
     }
     return 20;
   };
@@ -276,89 +246,71 @@ test('physiology: vasoconstrictor tone raises the pressure at which autoregulati
   assert.ok(strictlyRising(limits), `the lower limit did not rise with tone: ${limits}`);
 });
 
-test('physiology: blocking the afferent shield worsens filtration without touching the circulation', () => {
-  // The cleanest statement of the whole model: a drug that does nothing
-  // systemic at all makes the kidney worse, because what it removes is the
-  // kidney's local defence against a signal that was already there.
-  const base = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
-  const before = solveHepatorenal(base);
-  const after = solveHepatorenal({ ...base, prostaglandinInhibition: 1 });
+test('physiology: inhibiting the afferent prostaglandin shield lowers renal perfusion and filtration', () => {
+  // Renal prostaglandins help preserve afferent arteriolar vasodilation when
+  // effective arterial volume is reduced; inhibiting their synthesis can lower
+  // renal perfusion and filtration.
+  //
+  // Asserted on the kidney, which is where the claim is. That the *model's*
+  // control has no systemic action is a deliberate isolation and an integrity
+  // claim — not, as an earlier version of this test implied, a property of
+  // real non-steroidal anti-inflammatory drugs, which have several.
+  const activated = { meanArterialPressureMmHg: 80, activation: 0.7 };
+  const shielded = solveKidney(activated);
+  const unshielded = solveKidney({ ...activated, prostaglandinInhibition: 1 });
 
-  assert.equal(after.systemic.meanArterialPressureMmHg, before.systemic.meanArterialPressureMmHg);
-  assert.equal(after.systemic.cardiacOutputMlPerMin, before.systemic.cardiacOutputMlPerMin);
-  assert.equal(after.neurohumoral.activation, before.neurohumoral.activation);
+  assert.ok(unshielded.renalBloodFlowMlPerMin < shielded.renalBloodFlowMlPerMin);
   assert.ok(
-    after.kidney.glomerularFiltrationRateMlPerMin < before.kidney.glomerularFiltrationRateMlPerMin,
-    'and yet filtration has to be worse'
+    unshielded.glomerularFiltrationRateMlPerMin < shielded.glomerularFiltrationRateMlPerMin
   );
 
-  // On a circulation that is not activated there is nothing for it to remove.
-  const healthy = solveHepatorenal({ structuralResistance: 1 });
-  const healthyOnDrug = solveHepatorenal({ structuralResistance: 1, prostaglandinInhibition: 1 });
-  assert.equal(
-    healthyOnDrug.kidney.glomerularFiltrationRateMlPerMin,
-    healthy.kidney.glomerularFiltrationRateMlPerMin
-  );
+  // The shield is against vasoconstrictor tone: with none, there is nothing
+  // for its loss to expose.
+  const quiet = { meanArterialPressureMmHg: 90, activation: 0 };
+  assert.deepEqual(solveKidney({ ...quiet, prostaglandinInhibition: 1 }), solveKidney(quiet));
 });
 
-test('physiology: a splanchnic vasoconstrictor improves filtration by way of the circulation', () => {
-  // It treats the circulation. The kidney is the same function it always was —
-  // the arguments changed.
-  const base = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
-  const doses = [0, 0.25, 0.5, 0.75].map((terlipressin) =>
-    solveHepatorenal({ ...base, terlipressin })
-  );
-  assert.ok(strictlyRising(doses.map((s) => s.systemic.meanArterialPressureMmHg)));
-  assert.ok(strictlyFalling(doses.map((s) => s.neurohumoral.activation)));
-  assert.ok(strictlyRising(doses.map((s) => s.kidney.glomerularFiltrationRateMlPerMin)));
-  assert.ok(
-    strictlyFalling(doses.map((s) => s.systemic.cardiacOutputMlPerMin)),
-    'and the hyperdynamic circulation has to settle back, not be driven harder'
-  );
+// --- the circulation, and what treating it does ----------------------------
 
-  for (const state of doses) {
-    assert.deepEqual(
-      state.kidney,
-      solveKidney({
-        meanArterialPressureMmHg: state.systemic.meanArterialPressureMmHg,
-        activation: state.neurohumoral.activation,
-        prostaglandinInhibition: 0,
-      }),
-      'nothing may reach the kidney except the pressure and the signal'
-    );
-  }
+test('physiology: a splanchnic vasoconstrictor can raise arterial pressure and improve filtration', () => {
+  // Vasoconstrictor therapy raises arterial pressure, reduces the
+  // vasoconstrictor drive and can improve renal function in HRS-AKI.
+  //
+  // Asserted between an untreated state and a treated one — "can", which is
+  // what the literature supports. An earlier version required strict
+  // monotonicity across the whole slider, including a strictly falling cardiac
+  // output, which is not a clinical invariant; that is now a calibration test.
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  const untreated = solveHepatorenal(advanced);
+  const treated = solveHepatorenal({ ...advanced, terlipressin: 0.7 });
+
+  assert.ok(treated.systemic.meanArterialPressureMmHg > untreated.systemic.meanArterialPressureMmHg);
+  assert.ok(treated.neurohumoral.activation < untreated.neurohumoral.activation);
+  assert.ok(
+    treated.kidney.glomerularFiltrationRateMlPerMin >
+      untreated.kidney.glomerularFiltrationRateMlPerMin
+  );
+  assert.ok(treated.kidney.renalBloodFlowMlPerMin > untreated.kidney.renalBloodFlowMlPerMin);
 });
 
-test('physiology: a weaker cardiac response deepens the underfilling and lowers filtration', () => {
-  // Cirrhotic cardiomyopathy. The same liver, the same vasodilation, and a
-  // heart that cannot answer it.
-  const base = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
-  const reserves = [1, 0.75, 0.5, 0.25, 0].map((cardiacReserve) =>
-    solveHepatorenal({ ...base, cardiacReserve })
-  );
-  assert.ok(strictlyFalling(reserves.map((s) => s.systemic.meanArterialPressureMmHg)));
-  assert.ok(strictlyRising(reserves.map((s) => s.neurohumoral.activation)));
-  assert.ok(strictlyFalling(reserves.map((s) => s.kidney.glomerularFiltrationRateMlPerMin)));
-});
+test('physiology: an impaired cardiac response deepens the underfilling and lowers filtration', () => {
+  // Cirrhotic cardiomyopathy, and the reason cardiac output need not go on
+  // rising as HRS-AKI develops: at its onset, output has been observed to fall
+  // (Ruiz-del-Arbol, Hepatology 2005). Asserted between an intact response and
+  // an impaired one — the direction is the supported part, and how far this
+  // model's control carries it is calibration.
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  const intact = solveHepatorenal({ ...advanced, cardiacReserve: 1 });
+  const impaired = solveHepatorenal({ ...advanced, cardiacReserve: 0 });
 
-test('physiology: the model carries no structural injury term, and says so rather than implying there is none to carry', () => {
-  // The claim a reader is most likely to take away wrongly. HRS-AKI may occur
-  // with tubular injury, proteinuria or pre-existing CKD, and may coexist with
-  // other mechanisms of AKI (ADQI–ICA 2024). This model has no injury term —
-  // which is a boundary of the model, and the scene has to say so in both
-  // languages rather than let its silence read as a finding.
-  const state = solveHepatorenal(severity(1));
-  const solvedKeys = JSON.stringify(state).toLowerCase();
-  for (const absent of ['injury', 'necrosis', 'proteinuria', 'damage']) {
-    assert.ok(!solvedKeys.includes(absent), `the model reports "${absent}" and should not`);
-  }
-
-  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
-  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
-  assert.match(cautions, /not a claim that|does not mean|boundary of (this|the) model/i);
-  assert.match(cautions, /structural kidney injury is not represented/i);
+  assert.ok(impaired.systemic.cardiacOutputMlPerMin < intact.systemic.cardiacOutputMlPerMin);
   assert.ok(
-    /腎障害が存在しない|という意味ではありません/.test(cautionsJa),
-    'the Japanese scope panel does not say that the absence of injury is a modelling boundary'
+    impaired.systemic.meanArterialPressureMmHg < intact.systemic.meanArterialPressureMmHg
+  );
+  assert.ok(impaired.neurohumoral.activation > intact.neurohumoral.activation);
+  assert.ok(impaired.kidney.renalBloodFlowMlPerMin < intact.kidney.renalBloodFlowMlPerMin);
+  assert.ok(
+    impaired.kidney.glomerularFiltrationRateMlPerMin <
+      intact.kidney.glomerularFiltrationRateMlPerMin
   );
 });

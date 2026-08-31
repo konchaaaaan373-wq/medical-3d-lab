@@ -78,6 +78,35 @@ The confidence behind each claim is machine-readable in
 `uncertain`, together with the **layer** that checks it. The `Confidence` row in
 each table below gives the registry id.
 
+## What moved out of the external layer, and why
+
+A second audit applied this file's own definition strictly. The test that
+decides the layer is not "does this assertion contain a repository constant as a
+literal" — it is:
+
+> **If this assertion failed, could I honestly say the medicine was wrong?**
+
+Several tests cleared the first bar and failed the second. Two came out of the
+external layer entirely and five were narrowed. **The external layer went from
+fourteen tests to twelve, and that is the point: a small pure layer is worth
+more than a large mixed one.**
+
+| Was external | What it was really asserting | Now |
+| --- | --- | --- |
+| the model carries no structural injury term, and says so | a contract between the model, the scope panel and the scene | `integrity: the model has no structural injury term and the scene says so in both languages` |
+| removing the vasoconstrictor signal restores renal perfusion at any severity | a counterfactual **this repository invented**, walked along a path **this repository chose** | external keeps `physiology: raising vasoconstrictor tone lowers renal perfusion`; the semantics are `integrity: the counterfactual changes the activation and nothing else`; the path is `calibration: the counterfactual improves perfusion at every step, and filtration only past a later crossover` |
+| the model can reach renal failure with a falling cardiac output | a **capability of a parameterisation** — "the model can" is never a fact about people | external keeps `physiology: an impaired cardiac response deepens the underfilling and lowers filtration`; the capability is `calibration: the reserve control can drive a low-output path into the failing renal phase` |
+| blocking the afferent shield worsens filtration **without touching the circulation** | half medicine, half a model isolation — and the second half is false of real NSAIDs | external keeps `physiology: inhibiting the afferent prostaglandin shield lowers renal perfusion and filtration`; the isolation is `integrity: prostaglandin inhibition acts only on the kidney` |
+| a splanchnic vasoconstrictor improves filtration by way of the circulation | strict monotonicity across a whole slider, including a strictly falling cardiac output — not a clinical invariant | external keeps `physiology: a splanchnic vasoconstrictor can raise arterial pressure and improve filtration`; the wiring is `integrity: the treatment control acts through the circulation rather than editing the kidney`; the monotonicity is `calibration: the treatment slider improves pressure and filtration monotonically across its range` |
+| arterial underfilling activates the vasoconstrictor systems | strict monotonicity along the **chosen severity axis** | external perturbs the activation function directly; the axis is `calibration: underfilling and activation rise at every step of the chosen axis` |
+| a fall in systemic resistance the heart does not fully offset lowers arterial pressure | the arithmetic is external, but it was walked along the chosen axis | external asserts the arithmetic alone; the axis is `calibration: pressure falls at every step of the chosen progression axis` |
+
+The other calibration entries that came out of this pass are
+`low-output-capability`, `activation-along-the-axis`, `counterfactual-along-the-axis`,
+`treatment-monotonicity` and `pressure-along-the-axis`; the integrity ones are
+`counterfactual-semantics`, `prostaglandin-no-systemic-action` and
+`treatment-acts-through-the-circulation`.
+
 ## The three layers, and what a failure in each means
 
 This scene is built under the taxonomy in [`tests/README.md`](../../tests/README.md).
@@ -115,10 +144,12 @@ with the activation set to zero. In that counterfactual:
 
 - **renal perfusion improves at every severity**, because both resistances are
   monotonic in the activation;
-- **glomerular filtration improves once the model has entered the
-  autoregulatory-failure phase**;
-- **early in the trajectory it does not**, because efferent constriction is
-  supporting filtration while the afferent arteriole is still shielded.
+- **glomerular filtration improves only past a crossover that lies some way
+  *beyond* the failure of autoregulation** — the two positions are distinct,
+  and an earlier version of this dossier treated them as one;
+- **before that crossover it does not**, because efferent constriction is
+  supporting filtration while the afferent arteriole is still shielded, and
+  removing the signal takes that support away.
 
 An earlier version said "set that signal to zero at any disease severity and
 filtration returns". The tests contradicted it and it is gone.
@@ -226,7 +257,7 @@ failure with the output falling.
 | **Source** | Khemichian 2025 (DOI 10.1146/annurev-med-050223-112947); Nadim 2024 (PMID 38527522). |
 | **Implementation** | `solveKidney` is a pure function of an arterial pressure and the signal. Nothing about the liver reaches it. `kidneyWithoutTheSignal` re-solves it with the signal set to zero. |
 | **Assumption** | This model has **no** injury term, so it isolates the reversible component and can say nothing about the rest, nor weigh one against the other. |
-| **Validation** | `physiology: removing the vasoconstrictor signal restores renal perfusion at any severity` — perfusion at every severity, the pure-function property as a deep equality, and filtration at the severities past the failure of autoregulation. |
+| **Validation** | `physiology: raising vasoconstrictor tone lowers renal perfusion` — the direction, perturbed on the kidney at a fixed arterial pressure. The counterfactual's semantics are `integrity: the counterfactual changes the activation and nothing else`; what it produces along the chosen axis is `calibration: the counterfactual improves perfusion at every step, and filtration only past a later crossover`. |
 | **Confidence** | `reversible-vasoconstrictor-component` (supported, external). |
 
 **This claim used to be much stronger and it was wrong.** It read: *hepatorenal
@@ -276,7 +307,7 @@ mechanisms of AKI may coexist. What survives is the narrower claim above.
 | **Validation** | `physiology: renal blood flow is held steady within the autoregulatory range and follows pressure below it` and `physiology: vasoconstrictor tone raises the pressure at which autoregulation fails` — both direction and ordering only. The width is in `calibration: autoregulation is a permitted resistance band with a chosen width`. |
 | **Confidence** | `autoregulation-range` (established, external), `vasoconstrictors-exhaust-autoregulation` (supported, external), `autoregulation-as-a-band` (approximation, calibration). |
 
-### 9. The prostaglandin shield
+### 9. The prostaglandin shield — and what this model does *not* claim about NSAIDs
 
 | | |
 | --- | --- |
@@ -296,7 +327,15 @@ mechanisms of AKI may coexist. What survives is the narrower claim above.
 | **Implementation** | `terlipressin` subtracts from the splanchnic vasodilation — the same variable the disease works through — and nothing else. `albumin` raises cardiac output at a given resistance. |
 | **Assumption** | Effect sizes are invented, and **every dose works here, every time**. There are no non-responders. The scene's copy says the arm demonstrates the direction the model predicts and not a guaranteed clinical response. No dose, duration, response probability, mortality benefit or adverse effect may be read off this — terlipressin's ischaemic complications have no representation at all. Albumin is preload here and not oncotic pressure, so hypoalbuminaemia does not affect filtration in this model, which is a real omission. |
 | **Validation** | `physiology: a splanchnic vasoconstrictor improves filtration by way of the circulation` — pressure up, activation down, filtration up, the hyperdynamic circulation settling back rather than being driven harder, and the kidney reproduced exactly by `solveKidney` on the new pressure and signal. |
-| **Confidence** | `splanchnic-vasoconstrictor-treatment` (supported, external) and `treatment-effect-sizes` (illustrative, calibration). |
+| **Confidence** | `splanchnic-vasoconstrictor-treatment` (supported, external), `treatment-acts-through-the-circulation` (established, integrity), `treatment-monotonicity` (illustrative, calibration) and `treatment-effect-sizes` (illustrative, calibration). |
+
+The external assertion is that the treatment **can** raise arterial pressure and
+improve filtration, checked between an untreated state and a treated one. That
+it acts *through the circulation* — never writing a renal resistance, a
+filtration coefficient or a filtration rate — is integrity. That every step of
+the slider moves every read-out in one direction is calibration: strict
+monotonicity across a whole slider is not a clinical invariant, and an earlier
+version of this repository asserted it as one.
 
 ### 10a. The splanchnic bed does not stop responding — it stays disproportionately dilated
 
@@ -354,6 +393,21 @@ than emergent, and the model cannot show it being overcome by endogenous tone.
 | **Assumption** | Steady state. There is no time in this model at all. |
 | **Validation** | `integrity: every reported flow equals the drop across its own path`, over a grid of severities, treatments and cardiac reserves. |
 | **Confidence** | `pressure-flow-consistency` (established, integrity). |
+
+### 15. The chosen path, and what depends on it
+
+Five entries exist only to hold what this repository's own axis and sliders do,
+so that none of it can be mistaken for a finding: `pressure-along-the-axis`,
+`activation-along-the-axis`, `counterfactual-along-the-axis`,
+`low-output-capability` and `treatment-monotonicity`.
+
+The counterfactual entry carries a correction worth stating plainly. The
+**knee** — where the afferent arteriole runs out of dilating room — and the
+**crossover** — where removing the vasoconstrictor signal stops *lowering*
+filtration and starts raising it — are two different positions on the axis, and
+the crossover is the later of the two. Two earlier versions of this dossier
+conflated them, and the calibration test now asserts the ordering rather than an
+identity.
 
 ---
 

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CENTRAL_VENOUS_PRESSURE,
   DEFAULT_CONTROLS,
+  kidneyWithoutTheSignal,
   solveHepatorenal,
   solveKidney,
 } from '../src/models/hepatorenal.js';
@@ -140,4 +141,99 @@ test('the default controls are a healthy person', () => {
   const healthy = solveHepatorenal();
   assert.equal(healthy.neurohumoral.activation, 0);
   assert.ok(healthy.kidney.autoregulating);
+});
+
+// ---------------------------------------------------------------------------
+// Counterfactual and control semantics
+//
+// Everything below used to sit in the external layer, where a failure would
+// have licensed the sentence "the model has broken a constraint the physiology
+// imposes". None of it is physiology: it is what this repository's own
+// constructions are wired to do. A failure here means a control has started
+// reaching somewhere it should not.
+// ---------------------------------------------------------------------------
+
+test('integrity: the counterfactual changes the activation and nothing else', () => {
+  // `kidneyWithoutTheSignal` is this repository's construction, not an
+  // experiment anybody ran. What it is *for* is measuring the circulation's
+  // share, and that only means anything if it holds the arterial pressure
+  // fixed and varies the signal alone.
+  for (const controls of GRID) {
+    const state = solveHepatorenal(controls);
+    const released = kidneyWithoutTheSignal(state);
+    assert.deepEqual(
+      released,
+      solveKidney({
+        meanArterialPressureMmHg: state.systemic.meanArterialPressureMmHg,
+        activation: 0,
+        prostaglandinInhibition: state.controls.prostaglandinInhibition,
+      }),
+      `${JSON.stringify(controls)}: the counterfactual changed something other than the activation`
+    );
+  }
+
+  // And the kidney solver takes no argument that identifies the liver: two
+  // very different livers that happen to produce the same pressure and signal
+  // have to produce the same kidney.
+  const a = solveKidney({ meanArterialPressureMmHg: 80, activation: 0.6 });
+  const b = solveKidney({ meanArterialPressureMmHg: 80, activation: 0.6, prostaglandinInhibition: 0 });
+  assert.deepEqual(a, b);
+});
+
+test('integrity: prostaglandin inhibition acts only on the kidney', () => {
+  // A deliberate isolation, so that the kidney's local protective mechanism
+  // can be examined on its own — and **not** a claim that real non-steroidal
+  // anti-inflammatory drugs have no systemic effects. They do.
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  const before = solveHepatorenal(advanced);
+  const after = solveHepatorenal({ ...advanced, prostaglandinInhibition: 1 });
+
+  assert.deepEqual(after.systemic, before.systemic);
+  assert.deepEqual(after.neurohumoral, before.neurohumoral);
+  assert.deepEqual(after.portal, before.portal);
+  assert.notDeepEqual(after.kidney, before.kidney);
+});
+
+test('integrity: the treatment control acts through the circulation rather than editing the kidney', () => {
+  // Neither treatment writes a renal resistance, a filtration coefficient or a
+  // filtration rate. They reach the kidney only through the arterial pressure
+  // and the activation index, and the solved kidney has to be reproducible
+  // from those two alone.
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  for (const treatment of [
+    {},
+    { terlipressin: 0.4 },
+    { terlipressin: 0.8 },
+    { albumin: 0.6 },
+    { terlipressin: 0.5, albumin: 0.5 },
+  ]) {
+    const state = solveHepatorenal({ ...advanced, ...treatment });
+    assert.deepEqual(
+      state.kidney,
+      solveKidney({
+        meanArterialPressureMmHg: state.systemic.meanArterialPressureMmHg,
+        activation: state.neurohumoral.activation,
+        prostaglandinInhibition: 0,
+      }),
+      `${JSON.stringify(treatment)}: something reached the kidney other than the pressure and the signal`
+    );
+  }
+});
+
+test('integrity: no reported quantity names an injury, and none can be given one', () => {
+  // There is no structural injury variable, and there is no control that
+  // introduces one. The medical statement — that real HRS-AKI may coexist with
+  // tubular injury, proteinuria or pre-existing CKD — rests on the 2024
+  // consensus and needs no test; what needs one is that this model's silence
+  // is a boundary rather than something a reader could mistake for a finding.
+  const reported = JSON.stringify(solveHepatorenal({ structuralResistance: 12, splanchnicVasodilation: 1 }));
+  for (const absent of ['injury', 'necrosis', 'proteinuria', 'damage', 'creatinine']) {
+    assert.ok(!reported.toLowerCase().includes(absent), `the model reports "${absent}"`);
+  }
+  for (const control of Object.keys(DEFAULT_CONTROLS)) {
+    assert.ok(
+      !/injur|necros|damage|nephrotox/i.test(control),
+      `${control} sounds like a structural injury term`
+    );
+  }
 });

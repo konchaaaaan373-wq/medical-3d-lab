@@ -20,7 +20,12 @@ import { cueOpacity, sampleTrack } from '../../../../utils/Timeline.js';
  * The middle of the sequence is the part that makes it believable rather than
  * surprising: the arteries open, the pressure falls despite a rising cardiac
  * output, the body constricts everything that will respond — and the kidney
- * responds. The compensation and the injury are the same event.
+ * responds. The same response that defends arterial pressure progressively
+ * consumes the kidney's autoregulatory reserve.
+ *
+ * An earlier version of this paragraph called the compensation and the damage
+ * one and the same event. This model has no damage in it, and that phrasing
+ * invited exactly the reading the sequence spends its last caption disowning.
  *
  * That is a hard thing to believe from a number and an easy thing to see from
  * a picture, which is the test the product principles set for whether

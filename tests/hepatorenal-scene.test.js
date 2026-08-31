@@ -510,6 +510,59 @@ test('the scope panel says the absence of kidney injury is a boundary, not a fin
   );
 });
 
+test('integrity: the model has no structural injury term and the scene says so in both languages', () => {
+  // Moved here from the external layer. The *medicine* — that HRS-AKI may
+  // coexist with tubular injury, proteinuria or pre-existing CKD — rests on the
+  // 2024 consensus and needs no test. What needs one is that this repository's
+  // structure and copy say so, which is a contract between the model, the
+  // scope panel and the scene rather than a physiological invariant. A failure
+  // here is a copy regression, not a medical error.
+  const built = sceneAt({ progress: 1 });
+  const reported = JSON.stringify(built.solved).toLowerCase();
+  for (const absent of ['injury', 'necrosis', 'proteinuria', 'damage']) {
+    assert.ok(!reported.includes(absent), `the model reports "${absent}" and should not`);
+  }
+
+  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
+  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
+  assert.match(cautions, /structural kidney injury is not represented/i);
+  assert.match(cautions, /modelling boundary/i);
+  assert.match(cautions, /not a claim that real HRS-AKI never contains kidney injury/i);
+  assert.ok(/実際の HRS-AKI で腎障害が存在しないという意味ではありません/.test(cautionsJa));
+  assert.ok(/意図的に分離/.test(cautionsJa), 'the Japanese caution does not frame it as a deliberate isolation');
+
+  // And the same boundary reaches a reader who never opens the scope panel.
+  assert.match(HepatorenalScene.meta.disclaimer, /structural kidney injury is not represented/i);
+  assert.match(HepatorenalScene.meta.subtitle, /no kidney injury is modelled/i);
+  assert.ok(HepatorenalScene.meta.subtitleJa.includes('腎障害は実装していません'));
+});
+
+test('the NSAID copy does not claim that real NSAIDs have no systemic effects', () => {
+  // The isolation is the model's, not the drug's. Real non-steroidal
+  // anti-inflammatory drugs cause sodium and water retention, affect arterial
+  // pressure, and can cause haemodynamic AKI and acute interstitial nephritis;
+  // AKI risk is raised by volume depletion, CKD, heart failure and renal
+  // hypoperfusion as well as by cirrhosis.
+  const copy = JSON.stringify([MODEL_SCOPE, STAGES, METRICS, MODEL_CONTROLS, HepatorenalScene.meta]);
+  for (const forbidden of [
+    /no systemic effect at all/i,
+    /全身作用をまったく持たない/,
+    /harmless in the same person/i,
+    /無害でいられる/,
+  ]) {
+    assert.ok(!forbidden.test(copy), `the scene still says ${forbidden}`);
+  }
+
+  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
+  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
+  assert.match(cautions, /deliberately isolated to renal prostaglandin inhibition/i);
+  assert.match(cautions, /not a claim that real NSAIDs have no systemic effects/i);
+  assert.match(cautions, /acute interstitial nephritis/i);
+  assert.match(cautions, /volume depletion.*heart failure|heart failure.*volume depletion/i);
+  assert.ok(/実際の NSAIDs に全身作用がないという意味ではありません/.test(cautionsJa));
+  assert.ok(/急性間質性腎炎/.test(cautionsJa));
+});
+
 test('the scope panel says the treatment arm is a direction and not a response rate', () => {
   const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
   assert.match(cautions, /direction predicted by the model, not a guaranteed clinical response/i);

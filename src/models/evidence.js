@@ -676,8 +676,21 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
       'Mean arterial pressure is cardiac output times systemic vascular resistance. A fall in resistance that the heart does not fully offset therefore lowers arterial pressure, whatever the cause of the fall.',
     confidence: CONFIDENCE.ESTABLISHED,
     source: 'ΔP = Q·R. Arithmetic.',
-    validation: 'physiology: a fall in systemic resistance the heart does not fully offset lowers arterial pressure',
+    validation: 'physiology: a fall in resistance the heart does not fully offset lowers pressure',
     layer: LAYER.EXTERNAL,
+    note:
+      'Asserted on the arithmetic alone. That this model’s own progression axis produces the fall at every step is `pressure-along-the-axis`.',
+  },
+  {
+    id: 'pressure-along-the-axis',
+    claim:
+      'Along this model’s chosen progression axis, arterial pressure falls at every step.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. A consequence of the chosen compensation exponent applied along an axis this repository chose.',
+    validation: 'calibration: pressure falls at every step of the chosen progression axis',
+    layer: LAYER.CALIBRATION,
+    note:
+      'The arithmetic of incomplete compensation is external; that the chosen path exercises it monotonically is not a fact about anybody.',
   },
   {
     id: 'hyperdynamic-circulation',
@@ -686,10 +699,21 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
     confidence: CONFIDENCE.SUPPORTED,
     source:
       'Ruiz-del-Arbol L et al., Hepatology 2005 (PMID 15977202), in which cardiac output falls at the onset of hepatorenal syndrome; Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); earlier reviews of the circulatory abnormalities of cirrhosis (PMC5904971, PMC6182055, PMC3959227).',
-    validation: 'physiology: the model can reach renal failure with a falling cardiac output, not only a rising one',
+    validation: 'physiology: an impaired cardiac response deepens the underfilling and lowers filtration',
     layer: LAYER.EXTERNAL,
     note:
-      'An earlier version of this entry asserted that worsening cirrhosis raises cardiac output *and* lowers pressure, as a single external invariant along the whole trajectory. That overstated it. What is external is that the compensation is incomplete and that a falling output is a real path into the syndrome; that this model’s default path shows output rising is a consequence of a chosen exponent and is a separate entry.',
+      'Two earlier versions of this entry were too strong. The first asserted that worsening cirrhosis raises cardiac output *and* lowers pressure as a single invariant along the whole trajectory. The second was validated by a test asserting that *this model* can reach the failing renal phase with the reserve control at zero — a statement about the model’s capability under a chosen calibration, not about people. What is external is the direction shared with `cardiac-reserve`: an impaired cardiac response deepens the underfilling. That this model can represent such a path is `low-output-capability`; that its default path raises output is `rising-output-path`.',
+  },
+  {
+    id: 'low-output-capability',
+    claim:
+      'This model’s `cardiacReserve` control can represent a low-output path, and under the chosen calibration that path reaches the failing renal phase.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. A statement about what this parameterisation can produce.',
+    validation: 'calibration: the reserve control can drive a low-output path into the failing renal phase',
+    layer: LAYER.CALIBRATION,
+    note:
+      'That a falling cardiac output is a real route into HRS-AKI is supported and belongs to `hyperdynamic-circulation`. Where *this* model’s knee falls on that route is a consequence of gains this repository chose.',
   },
   {
     id: 'rising-output-path',
@@ -709,7 +733,7 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
       'The reduction in effective arterial blood volume that follows arterial vasodilation activates the renin-angiotensin-aldosterone system, the sympathetic nervous system and vasopressin. This is the peripheral arterial vasodilation account of sodium retention and renal failure in cirrhosis.',
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Schrier’s peripheral arterial vasodilation hypothesis and the reviews above.',
-    validation: 'physiology: arterial underfilling activates the vasoconstrictor systems',
+    validation: 'physiology: a greater arterial pressure deficit produces greater vasoconstrictor activation',
     layer: LAYER.EXTERNAL,
   },
   {
@@ -719,10 +743,41 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
     confidence: CONFIDENCE.SUPPORTED,
     source:
       'Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522).',
-    validation: 'physiology: removing the vasoconstrictor signal restores renal perfusion at any severity',
+    validation: 'physiology: raising vasoconstrictor tone lowers renal perfusion',
     layer: LAYER.EXTERNAL,
     note:
-      'Deliberately narrower than it used to be. An earlier version claimed HRS-AKI is renal vasoconstriction in a kidney that is *structurally near-normal* — an overstatement the 2024 consensus does not support, since tubular injury, proteinuria and pre-existing CKD may all be present and other AKI mechanisms may coexist. This model has no injury term, so it isolates the reversible component and can say nothing about the rest. What the counterfactual restores at every severity is renal *perfusion*; filtration is restored once the model is past the failure of autoregulation, and early in the trajectory it is not — see `early-hyperfiltration`.',
+      'Deliberately narrower than it used to be. An earlier version claimed HRS-AKI is renal vasoconstriction in a kidney that is *structurally near-normal* — an overstatement the 2024 consensus does not support, since tubular injury, proteinuria and pre-existing CKD may all be present and other AKI mechanisms may coexist. This model has no injury term, so it isolates the reversible component and can say nothing about the rest. What is asserted externally is the direction — more vasoconstrictor tone, less renal perfusion. `kidneyWithoutTheSignal` is a counterfactual this repository invented, so its semantics are `counterfactual-semantics` and what it produces along the chosen axis is `counterfactual-along-the-axis`. Note that it improves *filtration* only past a crossover later than the knee; earlier on it lowers it, because the efferent constriction was holding filtration up.',
+  },
+  {
+    id: 'counterfactual-semantics',
+    claim:
+      '`kidneyWithoutTheSignal` re-solves the same kidney at the same arterial pressure with the activation set to zero and nothing else changed, and the kidney solver takes no argument that identifies the liver.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'A property of the code. The counterfactual is this repository’s construction, not an experiment anybody ran.',
+    validation: 'integrity: the counterfactual changes the activation and nothing else',
+    layer: LAYER.INTEGRITY,
+  },
+  {
+    id: 'counterfactual-along-the-axis',
+    claim:
+      'Along this model’s chosen progression axis, the counterfactual improves renal perfusion at every step, and improves filtration only past a crossover that lies some way *beyond* the failure of autoregulation.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. A statement about what this parameterisation produces along an axis this repository chose.',
+    validation: 'calibration: the counterfactual improves perfusion at every step, and filtration only past a later crossover',
+    layer: LAYER.CALIBRATION,
+    note:
+      '"At every severity" is a claim about the chosen path, not about patients. The two positions are also distinct and were conflated: the knee is where the afferent arteriole runs out of room, and the crossover is where removing the signal stops lowering filtration and starts raising it. The second is later than the first, and both are consequences of the constrictor gains.',
+  },
+  {
+    id: 'activation-along-the-axis',
+    claim:
+      'Along this model’s chosen progression axis, arterial underfilling and the vasoconstrictor activation both rise at every step.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. The monotonicity is a property of the chosen path, not of cirrhosis.',
+    validation: 'calibration: underfilling and activation rise at every step of the chosen axis',
+    layer: LAYER.CALIBRATION,
+    note:
+      'The external claim is the local one — a larger pressure deficit gives a larger signal. That the chosen severity axis walks that relation monotonically is an invented path, not a natural history, and a patient’s course need not be monotonic in either quantity.',
   },
   {
     id: 'modelling-boundary-not-a-claim',
@@ -730,10 +785,10 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
       'The absence of structural kidney injury in this model is a boundary of the model. Real HRS-AKI may occur with tubular injury, proteinuria or pre-existing chronic kidney disease, and may coexist with other mechanisms of AKI.',
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522), the ADQI–ICA joint consensus.',
-    validation: 'physiology: the model carries no structural injury term, and says so rather than implying there is none to carry',
-    layer: LAYER.EXTERNAL,
+    validation: 'integrity: the model has no structural injury term and the scene says so in both languages',
+    layer: LAYER.INTEGRITY,
     note:
-      'Registered as a claim in its own right because it is the one a reader is most likely to take away wrongly, and because it has to be checked somewhere: the test asserts that the scene’s own copy says it.',
+      'The *medicine* — that HRS-AKI may coexist with tubular injury, proteinuria or pre-existing CKD — rests on the 2024 consensus and needs no test. What needs a test is that this repository’s own structure and copy say so, and that is a contract between the model, the scope panel and the scene: an integrity claim, not a physiological one. An earlier version had it in the external layer, where a failure would have licensed the sentence "the model has broken a constraint the physiology imposes" for what is really a copy regression.',
   },
   {
     id: 'efferent-predominance',
@@ -776,11 +831,25 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
   {
     id: 'prostaglandin-shield',
     claim:
-      'Locally produced renal prostaglandins oppose vasoconstrictor tone in the afferent arteriole. Inhibiting their synthesis can precipitate renal failure in a patient whose vasoconstrictor systems are already activated, without changing anything systemic.',
+      'Renal prostaglandins help preserve afferent arteriolar vasodilation when effective arterial volume is reduced, and inhibiting their synthesis can lower renal perfusion and glomerular filtration.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'Standard renal pharmacology of non-steroidal anti-inflammatory drugs; guidance on their avoidance in decompensated cirrhosis.',
-    validation: 'physiology: blocking the afferent shield worsens filtration without touching the circulation',
+    source:
+      'Standard renal pharmacology of non-steroidal anti-inflammatory drugs; guidance on their avoidance in decompensated cirrhosis; Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522) on nephrotoxin avoidance.',
+    validation: 'physiology: inhibiting the afferent prostaglandin shield lowers renal perfusion and filtration',
     layer: LAYER.EXTERNAL,
+    note:
+      'An earlier version of this claim ended "without changing anything systemic", which is false of real non-steroidal anti-inflammatory drugs — they affect sodium and water handling and arterial pressure, and cause haemodynamic acute kidney injury and acute interstitial nephritis. That the *model* gives the control no systemic action is a separate, integrity-layer claim.',
+  },
+  {
+    id: 'prostaglandin-no-systemic-action',
+    claim:
+      'In this model the prostaglandin-inhibition control acts only on the afferent arteriole’s shield: it leaves the arterial pressure, the cardiac output, the systemic resistance and the activation index exactly unchanged.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'A property of the code, chosen so that the kidney’s local protective mechanism can be examined on its own.',
+    validation: 'integrity: prostaglandin inhibition acts only on the kidney',
+    layer: LAYER.INTEGRITY,
+    note:
+      'A deliberate isolation, and **not** a claim that real non-steroidal anti-inflammatory drugs have no systemic effects. They do — sodium and water retention, effects on arterial pressure, haemodynamic AKI, acute interstitial nephritis — and the risk of AKI is raised by volume depletion, chronic kidney disease, heart failure and renal hypoperfusion as well as by cirrhosis. The scene’s copy says so.',
   },
   {
     id: 'splanchnic-vasoconstrictor-treatment',
@@ -789,10 +858,30 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
     confidence: CONFIDENCE.SUPPORTED,
     source:
       'Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522).',
-    validation: 'physiology: a splanchnic vasoconstrictor improves filtration by way of the circulation',
+    validation: 'physiology: a splanchnic vasoconstrictor can raise arterial pressure and improve filtration',
     layer: LAYER.EXTERNAL,
     note:
-      'The *direction* is what the model shows and what the test checks. The response rate is not in the model at all — every dose works here, every time — so the scene’s copy has to say that the arm demonstrates a predicted direction and not a guaranteed clinical response. There are no non-responders, no dose, no adverse effects and no mortality benefit to be read from it.',
+      'The external assertion is that the treatment *can* do this, checked between an untreated state and a treated one — not that every step of a slider moves every read-out in one direction, which is not a clinical invariant. That the control acts through the circulation rather than editing the kidney is `treatment-acts-through-the-circulation`; that this slider is monotonic across its displayed range is `treatment-monotonicity`. The 40–50% response rate is carried by the copy and this entry, and the model does not reproduce it: every dose works here, every time.',
+  },
+  {
+    id: 'treatment-acts-through-the-circulation',
+    claim:
+      'The treatment controls reach the kidney only through the arterial pressure and the activation index. Neither writes a renal resistance, a filtration coefficient or a filtration rate.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'A property of the code: the solved kidney is reproduced exactly by `solveKidney` on the pressure and the signal alone.',
+    validation: 'integrity: the treatment control acts through the circulation rather than editing the kidney',
+    layer: LAYER.INTEGRITY,
+  },
+  {
+    id: 'treatment-monotonicity',
+    claim:
+      'Across the range this scene displays, raising the splanchnic vasoconstrictor raises arterial pressure, lowers the activation index and raises filtration at every step, and the raised cardiac output settles back.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. A property of the chosen effect size applied to a chosen slider range.',
+    validation: 'calibration: the treatment slider improves pressure and filtration monotonically across its range',
+    layer: LAYER.CALIBRATION,
+    note:
+      'Strict monotonicity across a whole slider is not a clinical invariant and must not be read as one. Reported resolution with a vasoconstrictor and albumin is of the order of 40–50%, and this model has no non-responders, no dose and no adverse effects in it.',
   },
   {
     id: 'cardiac-reserve',
@@ -800,8 +889,10 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
       'An impaired cardiac response to arterial vasodilation deepens the arterial underfilling and worsens renal perfusion. Cirrhotic cardiomyopathy is the clinical form of this.',
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Reviews of cirrhotic cardiomyopathy and its association with hepatorenal syndrome.',
-    validation: 'physiology: a weaker cardiac response deepens the underfilling and lowers filtration',
+    validation: 'physiology: an impaired cardiac response deepens the underfilling and lowers filtration',
     layer: LAYER.EXTERNAL,
+    note:
+      'Asserted between an intact cardiac response and an impaired one, not as strict monotonicity along the control — the direction is the supported part. `hyperdynamic-circulation` rests on the same test, because this direction is what remains external of it.',
   },
 
   // --- integrity -----------------------------------------------------------

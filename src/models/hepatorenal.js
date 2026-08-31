@@ -102,10 +102,12 @@ import {
  *
  * - **renal perfusion improves at every severity** — both resistances are
  *   monotonic in the activation, so removing it can only raise flow;
- * - **glomerular filtration improves once the model has entered the
- *   autoregulatory-failure phase**;
- * - **early in the trajectory it does not**, because efferent constriction is
- *   supporting filtration while the afferent arteriole is still shielded.
+ * - **glomerular filtration improves only past a crossover further along the
+ *   axis**, which sits some way *beyond* the failure of autoregulation — the
+ *   two positions are distinct and easy to conflate;
+ * - **before that crossover it does not**, because efferent constriction is
+ *   supporting filtration while the afferent arteriole is still shielded, and
+ *   removing the signal takes that support away.
  *
  * The last of those is easy to state the wrong way round and an earlier
  * version of this file did. It is checked in

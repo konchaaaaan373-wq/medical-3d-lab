@@ -263,9 +263,9 @@ export const MODEL_SCOPE = {
         '腎血流が低下し始めてからも、なぜ濾過量が長く保たれるのか。そしてなぜ濾過率がいったん上昇してから破綻するのか。輸出細動脈が輸入細動脈より先に収縮するためです。',
     },
     {
-      text: 'Why a drug with no systemic effect at all — a non-steroidal anti-inflammatory — can precipitate renal failure here and be harmless in the same person without the liver disease.',
+      text: 'Why inhibiting renal prostaglandin synthesis matters so much more once the vasoconstrictor systems are already activated: it is the afferent arteriole’s local defence, and there is nothing for its loss to expose until something is pressing on that arteriole.',
       textJa:
-        '全身作用をまったく持たない薬剤 — NSAIDs — が、なぜここでは腎不全を誘発し、同じ人が肝疾患を持たなければ無害でいられるのか。',
+        '腎プロスタグランジン合成の阻害が、血管収縮系がすでに活性化している状況でなぜはるかに大きな意味を持つのか。それは輸入細動脈の局所的な防御であり、その細動脈に負荷がかかっていなければ、失われても現れるものがないからです。',
     },
     {
       text: 'Why the treatment is a vasoconstrictor rather than anything given to the kidney: it acts on the circulation, and in this model the renal component recovers because this model gave it nothing but the circulation to recover from.',
@@ -330,6 +330,11 @@ export const MODEL_SCOPE = {
       text: 'With cardiac reserve intact this model’s default path raises cardiac output at every step. That is the model’s parameterisation, **not a rule that cardiac output keeps rising into HRS-AKI** — at the onset of hepatorenal syndrome cardiac output has been observed to fall, and lowering the cardiac reserve here reproduces that path.',
       textJa:
         '心予備能が保たれている場合、このモデルの既定経路では心拍出量が各段階で上昇します。これはモデルのパラメータ設定であって、**HRS-AKI に至るまで心拍出量が上がり続けるという規則ではありません**。肝腎症候群の発症時には心拍出量の低下が観察されており、ここでも心予備能を下げれば同じ経路を再現できます。',
+    },
+    {
+      text: 'In this model, the NSAID control is deliberately isolated to renal prostaglandin inhibition. The model gives it no systemic action so that the kidney’s local protective mechanism can be examined separately; **this is not a claim that real NSAIDs have no systemic effects.** They inhibit renal prostaglandin synthesis and constrict the afferent arteriole, and they also cause sodium and water retention, affect arterial pressure, and can cause haemodynamic acute kidney injury and acute interstitial nephritis. The risk of AKI is raised by volume depletion, chronic kidney disease, heart failure and renal hypoperfusion as well as by cirrhosis.',
+      textJa:
+        'このモデルでは、NSAIDs の作用を腎プロスタグランジン抑制だけに意図的に限定しています。腎臓の局所的な防御機構を単独で見るため、モデル上は全身作用を与えていません。**実際の NSAIDs に全身作用がないという意味ではありません。** 腎プロスタグランジン合成の阻害と輸入細動脈の収縮に加えて、ナトリウム・水の貯留、血圧への影響、血行動態性の急性腎障害、急性間質性腎炎などを起こし得ます。AKI のリスクは肝硬変だけでなく、脱水・慢性腎臓病・心不全・腎灌流低下でも上昇します。',
     },
     {
       text: 'The treatment arms demonstrate **the direction predicted by the model, not a guaranteed clinical response.** Reported resolution with a vasoconstrictor and albumin is of the order of 40–50%. Here every dose works, every time: there are no non-responders, no dose, no duration, no response probability, no mortality benefit and no adverse effects — terlipressin’s real ischaemic complications have no representation at all.',

@@ -326,9 +326,11 @@ export class HepatorenalScene {
    *
    * Note also what the counterfactual does *not* do. It restores renal
    * perfusion at every severity, because both arteriolar resistances are
-   * monotonic in the activation. It restores filtration only once the model is
-   * past the failure of autoregulation — early on, removing the signal *lowers*
-   * filtration, because efferent constriction was supporting it.
+   * monotonic in the activation. It restores *filtration* only past a
+   * crossover that lies some way beyond the failure of autoregulation — before
+   * that, removing the signal *lowers* filtration, because efferent
+   * constriction was supporting it. The knee and the crossover are two
+   * different places on the axis.
    */
   setComparison(enabled) {
     this.comparing = enabled;

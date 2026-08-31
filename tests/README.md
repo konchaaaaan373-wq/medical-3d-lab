@@ -31,9 +31,30 @@ conditions.
 **No assertion in this layer may depend on a constant this repository invented
 or calibrated.** Every test here must survive re-tuning.
 
-**Containing no repository constant as a *literal* is not enough.** What decides
-the layer is whether the *result* depends on repository-selected gains. Two
-tests moved out of this layer for exactly that reason:
+**The test that decides the layer is one question:**
+
+> **If this assertion failed, could I honestly say the medicine was wrong?**
+
+Containing no repository constant as a literal is not enough. Phrases that
+almost always mean an assertion has failed that question:
+
+| Phrase | What it usually means |
+| --- | --- |
+| `the model can …` | a capability of a parameterisation, not a fact about people |
+| `at any severity`, `at every step` | a chosen path through parameter space |
+| `same kidney`, a counterfactual | a construction this repository invented |
+| `without touching …` | a deliberate isolation in the model |
+| `strictly` across a whole slider | a chosen effect size over a chosen range |
+| anything reading copy, a chart or `MODEL_SCOPE` | a contract, not a physiological invariant |
+| an exact equality between model outputs | wiring |
+
+Under that rule the hepatorenal external layer went from fourteen tests to
+twelve — two moved out entirely and five were narrowed. **Do not keep a test in
+this layer to preserve a count.** A small pure layer is worth more than a large
+mixed one.
+
+Two tests moved out for the narrower reason that their *result* depended on
+repository-selected gains:
 
 - *dilating one bed lowers the resistance of the whole circulation* — asserted
   through the full coupled model, where the other beds constrict and whether the

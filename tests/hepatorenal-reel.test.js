@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { HepatorenalScene } from '../src/scenes/renal/scenes/hepatorenalSyndrome/HepatorenalScene.js';
 import {
   COMPARISON_FROM,
@@ -238,6 +239,21 @@ test('the last frame holds the take-home rather than fading to nothing', () => {
   assert.equal(overlay.title.variant, 'take-home');
   assert.ok(overlay.title.opacity > 0.9);
   assert.ok(overlay.cards.opacity > 0.9, 'the two kidneys have to still be on screen at the end');
+});
+
+test('nothing in the sequence calls the compensation an injury', () => {
+  // This model has no injury in it. Calling the compensatory response an
+  // "injury" — even in a comment — invites the reading the last caption spends
+  // itself disowning.
+  const storyboard = readFileSync(new URL('../src/scenes/renal/scenes/hepatorenalSyndrome/reelStoryboard.js', import.meta.url), 'utf8');
+  const copy = JSON.stringify(REEL_COPY);
+  for (const forbidden of [/compensation and the injury/i, /injury are the same/i]) {
+    assert.ok(!forbidden.test(storyboard), `the storyboard says ${forbidden}`);
+    assert.ok(!forbidden.test(copy), `the copy says ${forbidden}`);
+  }
+  // What the copy may say about injury is that the model has none and a
+  // patient may.
+  assert.match(REEL_COPY.boundary.caption, /kidney injury as well/i);
 });
 
 test('the take-home claims the circulation’s share and not the whole syndrome', () => {
