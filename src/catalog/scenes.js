@@ -344,10 +344,16 @@ export const SCENE_MANIFEST = [
  * and so that the split between "the organ" and "what is wrong with it" is
  * visible before the second scene of an organ arrives. Moving one of these into
  * `SCENE_MANIFEST` is the whole ceremony of adding a disease scene.
+ *
+ * This is the promoted tip of a larger triaged pool: candidates start in
+ * `docs/disease-candidates.md` and are only listed here once they look like a
+ * real question worth a scene.
  */
 export const PLANNED_SCENES = [
   { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
   { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
+  { organ: 'lungs', disease: 'pneumothorax', titleEn: 'Pneumothorax', titleJa: '気胸' },
+  { organ: 'lungs', disease: 'pulmonary-embolism', titleEn: 'Pulmonary embolism', titleJa: '肺塞栓症' },
   { organ: 'kidney', disease: 'ckd', titleEn: 'Chronic kidney disease', titleJa: '慢性腎臓病' },
   { organ: 'kidney', disease: 'aki', titleEn: 'Acute kidney injury', titleJa: '急性腎障害' },
   { organ: 'kidney', disease: 'nephrotic-syndrome', titleEn: 'Nephrotic syndrome', titleJa: 'ネフローゼ症候群' },
@@ -355,6 +361,15 @@ export const PLANNED_SCENES = [
   { organ: 'liver', disease: 'hepatitis', titleEn: 'Hepatitis', titleJa: '肝炎' },
   { organ: 'brain', disease: 'stroke', titleEn: 'Stroke', titleJa: '脳梗塞' },
   { organ: 'brain', disease: 'parkinsons', titleEn: "Parkinson's disease", titleJa: 'パーキンソン病' },
+  { organ: 'brain', disease: 'raised-icp', titleEn: 'Raised intracranial pressure', titleJa: '頭蓋内圧亢進' },
   { organ: 'heart', disease: 'valve-disease', titleEn: 'Valve disease', titleJa: '弁膜症' },
   { organ: 'heart', disease: 'ischemia', titleEn: 'Myocardial ischaemia', titleJa: '心筋虚血' },
+  { organ: 'heart', disease: 'atrial-fibrillation', titleEn: 'Atrial fibrillation', titleJa: '心房細動' },
+  { organ: 'esophagus', disease: 'achalasia', titleEn: 'Achalasia', titleJa: 'アカラシア' },
+  { organ: 'small-intestine', disease: 'bowel-obstruction', titleEn: 'Bowel obstruction', titleJa: '腸閉塞' },
+  { organ: 'pancreas', disease: 'diabetes-mellitus', titleEn: 'Diabetes mellitus', titleJa: '糖尿病' },
+  { organ: 'ureter', disease: 'ureteric-stone', titleEn: 'Ureteric stone', titleJa: '尿管結石' },
+  { organ: 'thyroid', disease: 'hyperthyroidism', titleEn: 'Hyperthyroidism', titleJa: '甲状腺機能亢進症' },
+  { organ: 'bone', disease: 'osteoporosis', titleEn: 'Osteoporosis', titleJa: '骨粗鬆症' },
+  { organ: 'whole-body', disease: 'septic-shock', titleEn: 'Septic shock', titleJa: '敗血症性ショック' },
 ];

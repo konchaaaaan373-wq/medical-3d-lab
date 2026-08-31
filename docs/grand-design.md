@@ -31,6 +31,7 @@ Last updated: 2026-08-31（現在地の数値は §3 参照）
 | 各モデルの主張の根拠（Claim → Source → …） | [`model-evidence/`](model-evidence/) |
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
+| 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |
 | 完成形・現在地・優先順位・共同開発の作法 | **本書** |
@@ -173,9 +174,13 @@ Reel（SNS） / Learning（Educational）   presentation 層の調整のみ
 - **広がり**: どの病態カテゴリを扱えるか（§5.2 の pathology coverage）
 
 コンテンツの単位はどちらの軸でも疾患名ではなく**1 つの理解すべき問い**です
-（[`product-principles.md`](product-principles.md) §8）。候補の一覧は
-`src/catalog/scenes.js` の `PLANNED_SCENES` が登録簿で、本書は
-**考え方と着手順**だけを決めます。
+（[`product-principles.md`](product-principles.md) §8）。候補は 3 段階で
+管理します: 臓器別の検討プールが
+[`disease-candidates.md`](disease-candidates.md)、そこから昇格した
+近い将来の方向が `src/catalog/scenes.js` の `PLANNED_SCENES`（explorer に
+表示される）、実装の儀式は
+[`adding-a-scene.md`](adding-a-scene.md)。本書は**考え方と着手順**だけを
+決めます。
 
 **前提: 新規シーンより Gate 0（信頼と公開安全性）が先**です。以下は
 「次に作るならこの順」であり、roadmap を追い越す理由にはなりません。
