@@ -36,6 +36,7 @@ export function createAccessManager({ ui }) {
   };
   const listeners = new Set();
   let required = null;
+  let returnFocus = null;
 
   const accountButton = el('button', {
     class: 'account-trigger',
@@ -149,6 +150,7 @@ export function createAccessManager({ ui }) {
   function open(entitlement = null) {
     required = entitlement;
     state.notice = '';
+    returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : accountButton;
     modal.hidden = false;
     modal.classList.add('is-open');
     document.documentElement.classList.add('has-access-modal');
@@ -157,12 +159,17 @@ export function createAccessManager({ ui }) {
   }
 
   function close() {
+    const focusTarget = returnFocus;
+    returnFocus = null;
     modal.classList.remove('is-open');
     modal.hidden = true;
     document.documentElement.classList.remove('has-access-modal');
     required = null;
     state.notice = '';
     render();
+    requestAnimationFrame(() => {
+      if (focusTarget?.isConnected) focusTarget.focus();
+    });
   }
 
   function buildModal() {
@@ -176,10 +183,30 @@ export function createAccessManager({ ui }) {
     const root = el('div', { class: 'access-modal', hidden: '' }, [backdrop, dialog]);
     backdrop.addEventListener('click', close);
     root.addEventListener('keydown', (event) => {
+      // The app has global Space/R/H/C/arrow shortcuts. While account/billing is
+      // open, all keyboard intent belongs to the modal and must not leak through
+      // to the 3D scene behind it.
+      event.stopPropagation();
+
       if (event.key === 'Escape') {
         event.preventDefault();
-        event.stopPropagation();
         close();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusable = [...root.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )].filter((node) => node instanceof HTMLElement && !node.closest('[hidden]') && node.getClientRects().length);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     });
     return root;
@@ -192,14 +219,28 @@ export function createAccessManager({ ui }) {
     dialog.replaceChildren(...dialogContent());
   }
 
+  function paidAccessLabel() {
+    const patient = state.grants.has(ENTITLEMENT.PATIENT);
+    const education = state.grants.has(ENTITLEMENT.EDUCATION);
+    if (patient && education) return { en: 'Complete', ja: '両方' };
+    if (patient) return { en: 'Patient', ja: '患者説明' };
+    if (education) return { en: 'Education', ja: '医学教育' };
+    return null;
+  }
+
   function renderAccountButton() {
-    const paid = state.grants.has(ENTITLEMENT.PATIENT) || state.grants.has(ENTITLEMENT.EDUCATION);
+    const access = paidAccessLabel();
+    const paid = Boolean(access);
+    const en = state.user ? access?.en ?? 'Account' : 'Sign in';
+    const ja = state.user ? access?.ja ?? 'アカウント' : 'ログイン';
     accountButton.replaceChildren(
       el('span', { class: 'account-icon', 'aria-hidden': 'true', text: state.user ? '●' : '○' }),
-      el('span', { class: 'account-label lang-en', text: state.user ? (paid ? 'Pro' : 'Account') : 'Sign in' }),
-      el('span', { class: 'account-label lang-ja', text: state.user ? (paid ? 'Pro' : 'アカウント') : 'ログイン' })
+      el('span', { class: 'account-label lang-en', text: en }),
+      el('span', { class: 'account-label lang-ja', text: ja })
     );
     accountButton.classList.toggle('has-paid-access', paid);
+    accountButton.setAttribute('aria-label', state.user ? `Account and access — ${access?.en ?? 'free'}` : 'Sign in');
+    accountButton.title = state.user ? `Account and access — ${access?.en ?? 'Free'}` : 'Sign in';
   }
 
   function dialogContent() {
