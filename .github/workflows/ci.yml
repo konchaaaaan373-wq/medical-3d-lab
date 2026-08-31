@@ -9,52 +9,55 @@ permissions:
   contents: read
 
 jobs:
-  access-imports:
-    name: Import · ${{ matrix.module }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - src/access/policy.js
-          - src/access/features.js
-          - src/catalog/scenes.js
-          - src/data/patientGuides.js
-          - src/data/educationGuides.js
-          - netlify/lib/billing.js
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node -e "import('./${{ matrix.module }}')"
-
-  access-categories:
-    name: Access · ${{ matrix.category }}
+  access-assertions:
+    name: Access assert · ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         include:
-          - category: entitlement policy
-            pattern: '^access:'
-          - category: product capabilities
-            pattern: '^product:'
-          - category: billing integrity
-            pattern: '^billing:'
-          - category: patient mode
-            pattern: '^patient mode:'
-          - category: education mode
-            pattern: '^education mode:'
+          - name: core free
+            pattern: 'accurate core scenes are free'
+          - name: plan isolation
+            pattern: 'patient and education subscriptions grant only'
+          - name: complete grants both
+            pattern: 'complete grants both'
+          - name: status grace
+            pattern: 'past_due has a grace period'
+          - name: paid scene set
+            pattern: 'paid capabilities are explicit'
+          - name: capability content
+            pattern: 'every advertised paid capability'
+          - name: catalogue badges
+            pattern: 'catalogue badges always lead'
+          - name: duplicate lifecycle
+            pattern: 'every non-terminal subscription lifecycle'
+          - name: price authority
+            pattern: 'Stripe Price ID, not mutable metadata'
+          - name: period end shape
+            pattern: 'Stripe period end supports'
+          - name: safe return hash
+            pattern: 'return hashes cannot become'
+          - name: webhook signature
+            pattern: 'Stripe webhook signature verifies'
+          - name: stale webhook signature
+            pattern: 'stale Stripe signatures'
+          - name: patient progress axes
+            pattern: 'guides stay on each authored scene progression axis'
+          - name: COPD patient axis
+            pattern: 'COPD copy does not reinterpret'
+          - name: amyloid cognition boundary
+            pattern: 'amyloid guide separates aggregation'
+          - name: education scope
+            pattern: 'guides use ordered model states'
+          - name: asthma calibration boundary
+            pattern: 'asthma guide teaches heterogeneity'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
       - run: node --test --test-name-pattern="${{ matrix.pattern }}" tests/access.test.js
 
   product-unit-tests:
