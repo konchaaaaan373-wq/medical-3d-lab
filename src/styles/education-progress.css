@@ -1,0 +1,76 @@
+/* ========================================================================== 
+   Account-wide medical education progress
+   ========================================================================== */
+
+.access-learning-progress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 190px);
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent) 4%, rgba(255, 255, 255, 0.012));
+}
+
+.access-learning-progress-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.access-learning-progress-title {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-learning-progress-value {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.access-learning-progress-value .lang-ja {
+  color: var(--ink-dim);
+  font-size: 9.5px;
+}
+
+.access-learning-meter {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.access-learning-meter-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
+@media (max-width: 620px) {
+  .access-learning-progress {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .access-learning-meter-fill {
+    transition: none;
+  }
+}
