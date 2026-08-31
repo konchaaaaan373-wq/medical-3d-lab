@@ -9,6 +9,13 @@ import {
   grantsFromSubscriptions,
   NON_TERMINAL_SUBSCRIPTION_STATUSES,
 } from '../src/access/policy.js';
+import {
+  featuresForScene,
+  productBadgesForScene,
+  SCENE_PRODUCT_FEATURES,
+} from '../src/access/features.js';
+import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
+import { educationGuideFor } from '../src/data/educationGuides.js';
 import { patientGuideFor } from '../src/data/patientGuides.js';
 import {
   planForPrice,
@@ -53,6 +60,41 @@ test('access: past_due has a grace period, terminal/non-paying states do not', (
 
   for (const status of ['canceled', 'incomplete', 'incomplete_expired', 'unpaid', 'paused']) {
     assert.deepEqual(grantsFromSubscriptions([{ entitlement: 'complete', status }]), ['free'], status);
+  }
+});
+
+test('product: paid capabilities are explicit and prototypes stay free-only by default', () => {
+  const paidIds = Object.keys(SCENE_PRODUCT_FEATURES).sort();
+  assert.deepEqual(
+    paidIds,
+    ['amyloid-beta', 'asthma-heterogeneity', 'copd-hyperinflation', 'heart-failure', 'portal-hypertension'].sort()
+  );
+
+  for (const scene of SCENE_MANIFEST) {
+    const features = featuresForScene(scene);
+    assert.equal(features.core, 'free', scene.id);
+    if (scene.status === 'prototype') {
+      assert.equal(features.patient, false, `${scene.id}: patient`);
+      assert.equal(features.education, false, `${scene.id}: education`);
+    }
+  }
+});
+
+test('product: every advertised paid capability has authored content', () => {
+  for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
+    if (features.patient) assert.ok(patientGuideFor(sceneId), `${sceneId}: patient guide`);
+    if (features.education) assert.ok(educationGuideFor(sceneId), `${sceneId}: education guide`);
+  }
+});
+
+test('product: catalogue badges always lead with the free core model', () => {
+  for (const scene of SCENE_MANIFEST) {
+    const badges = productBadgesForScene(scene);
+    assert.equal(badges[0]?.id, 'core', scene.id);
+    assert.equal(badges[0]?.kind, 'free', scene.id);
+    const features = featuresForScene(scene);
+    assert.equal(badges.some((badge) => badge.id === 'patient'), features.patient, scene.id);
+    assert.equal(badges.some((badge) => badge.id === 'education'), features.education, scene.id);
   }
 });
 
@@ -117,8 +159,8 @@ test('billing: stale Stripe signatures are rejected', () => {
   assert.equal(verifyStripeSignature(body, `t=${timestamp},v1=${signature}`, secret), false);
 });
 
-test('patient mode: guides stay on each scene progression axis', () => {
-  for (const sceneId of ['heart-failure', 'copd-hyperinflation', 'asthma-heterogeneity', 'portal-hypertension']) {
+test('patient mode: guides stay on each authored scene progression axis', () => {
+  for (const sceneId of Object.keys(SCENE_PRODUCT_FEATURES)) {
     const guide = patientGuideFor(sceneId);
     assert.ok(guide, sceneId);
     const values = guide.steps.map((step) => step.progress);
@@ -133,4 +175,32 @@ test('patient mode: COPD copy does not reinterpret demand as disease progression
   assert.match(allCopy, /already showing an obstructed lung/);
   assert.match(allCopy, /安静時/);
   assert.doesNotMatch(allCopy, /A normal lung has enough time/);
+});
+
+test('patient mode: amyloid guide separates aggregation from individual cognition', () => {
+  const guide = patientGuideFor('amyloid-beta');
+  const allCopy = guide.steps.map((step) => `${step.title} ${step.body} ${step.titleJa} ${step.bodyJa}`).join(' ');
+  assert.match(allCopy, /does not tell us how much memory difficulty/i);
+  assert.match(allCopy, /判断することはできません/);
+});
+
+test('education mode: guides use ordered model states and end by teaching scope', () => {
+  for (const sceneId of Object.keys(SCENE_PRODUCT_FEATURES)) {
+    const guide = educationGuideFor(sceneId);
+    assert.ok(guide, sceneId);
+    const values = guide.steps.map((step) => step.progress);
+    assert.ok(values.every((value) => Number.isFinite(value) && value >= 0 && value <= 1), sceneId);
+    assert.deepEqual(values, [...values].sort((a, b) => a - b), sceneId);
+    assert.equal(guide.steps.at(-1)?.kind, 'scope', sceneId);
+    for (const step of guide.steps) {
+      assert.ok(step.prompt && step.promptJa && step.answer && step.answerJa, `${sceneId}:${step.kind}`);
+    }
+  }
+});
+
+test('education mode: asthma guide teaches heterogeneity without a calibration-specific half-lung claim', () => {
+  const guide = educationGuideFor('asthma-heterogeneity');
+  const allCopy = guide.steps.map((step) => `${step.prompt} ${step.answer} ${step.promptJa} ${step.answerJa}`).join(' ');
+  assert.match(allCopy, /clustered heterogeneity/i);
+  assert.doesNotMatch(allCopy, /half the lung goes dark/i);
 });
