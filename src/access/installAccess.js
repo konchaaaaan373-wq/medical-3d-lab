@@ -93,6 +93,9 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
       app.playback.set(value);
     },
     onExit: closeGuide,
+    onPresentationChange: (enabled) => {
+      ui.classList.toggle('is-patient-presentation', enabled && open);
+    },
   });
   consolePanel.append(guidePanel.element);
 
@@ -132,8 +135,8 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     app.learning?.set(false);
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
-    guidePanel.reset();
     open = true;
+    guidePanel.reset();
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
@@ -142,7 +145,8 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   function closeGuide() {
     if (!open) return;
     open = false;
-    ui.classList.remove('is-patient-guide');
+    guidePanel.setPresentation(false);
+    ui.classList.remove('is-patient-guide', 'is-patient-presentation');
     button.classList.remove('is-on');
     button.setAttribute('aria-pressed', 'false');
   }
