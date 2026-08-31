@@ -41,7 +41,7 @@ async function boot() {
     // scrolls has to undo both.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
-    createExplorer({ ui, accountButton: access.accountButton });
+    createExplorer({ ui, accountButton: access.accountButton, access });
     void accessReady;
     // Only a link to a real scene is a navigation. The explorer's own jump
     // links must not reload the page out from under the reader.
