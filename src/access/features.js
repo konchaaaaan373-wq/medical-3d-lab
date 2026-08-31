@@ -1,13 +1,15 @@
+import { SCENE_MANIFEST } from '../catalog/scenes.js';
+
 /**
- * Product capabilities by scene.
+ * Product capability helpers.
  *
- * This registry is deliberately explicit. A prototype becoming available in the
- * catalogue must never accidentally become a paid clinical/teaching product just
- * because it happens to expose a similarly named method. Only reviewed content
- * that has been intentionally authored for a use case is listed here.
+ * `src/catalog/scenes.js` is the declaration source of truth. This file only
+ * normalises that catalogue metadata for the access/UI layer; it must not keep
+ * a second list of paid scene ids.
  *
- * The core model remains free. `patient` and `education` describe whether this
- * scene has a paid use-case surface built around that same model.
+ * The core model and basic mechanism explanation remain free. Patient and
+ * Education are optional professional-use surfaces declared explicitly by the
+ * catalogue entry.
  */
 
 const FREE_ONLY = Object.freeze({
@@ -17,52 +19,44 @@ const FREE_ONLY = Object.freeze({
   education: false,
 });
 
-export const SCENE_PRODUCT_FEATURES = Object.freeze({
-  'amyloid-beta': Object.freeze({
+const SCENE_BY_ID = new Map(SCENE_MANIFEST.map((scene) => [scene.id, scene]));
+
+function normalise(scene) {
+  if (!scene) return FREE_ONLY;
+  return Object.freeze({
     core: 'free',
     basicExplanation: 'free',
-    patient: true,
-    education: true,
-  }),
-  'heart-failure': Object.freeze({
-    core: 'free',
-    basicExplanation: 'free',
-    patient: true,
-    education: true,
-  }),
-  'copd-hyperinflation': Object.freeze({
-    core: 'free',
-    basicExplanation: 'free',
-    patient: true,
-    education: true,
-  }),
-  'asthma-heterogeneity': Object.freeze({
-    core: 'free',
-    basicExplanation: 'free',
-    patient: true,
-    education: true,
-  }),
-  'portal-hypertension': Object.freeze({
-    core: 'free',
-    basicExplanation: 'free',
-    patient: true,
-    education: true,
-  }),
-});
+    patient: Boolean(scene.product?.patient),
+    education: Boolean(scene.product?.education),
+  });
+}
 
 /**
- * @param {string|{id?:string}} sceneOrId
+ * Backward-compatible derived map used by tests/content coverage checks. It is
+ * generated from the catalogue rather than authored separately.
+ */
+export const SCENE_PRODUCT_FEATURES = Object.freeze(
+  Object.fromEntries(
+    SCENE_MANIFEST.filter((scene) => scene.product?.patient || scene.product?.education).map((scene) => [
+      scene.id,
+      normalise(scene),
+    ])
+  )
+);
+
+/**
+ * @param {string|{id?:string,product?:any}} sceneOrId
  */
 export function featuresForScene(sceneOrId) {
-  const id = typeof sceneOrId === 'string' ? sceneOrId : sceneOrId?.id;
-  return SCENE_PRODUCT_FEATURES[id] ?? FREE_ONLY;
+  const scene = typeof sceneOrId === 'string' ? SCENE_BY_ID.get(sceneOrId) : sceneOrId;
+  return normalise(scene);
 }
 
 /**
  * Compact product labels used by catalogue surfaces. They describe availability,
  * not the current viewer's entitlement state.
  *
- * @param {string|{id?:string}} sceneOrId
+ * @param {string|{id?:string,product?:any}} sceneOrId
  */
 export function productBadgesForScene(sceneOrId) {
   const features = featuresForScene(sceneOrId);
