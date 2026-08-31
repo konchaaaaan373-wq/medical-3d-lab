@@ -30,6 +30,7 @@ export function createAccessManager({ ui }) {
     user: null,
     grants: new Set(FREE),
     subscriptions: [],
+    billingConfigured: false,
     loading: false,
     error: '',
     notice: '',
@@ -52,7 +53,7 @@ export function createAccessManager({ ui }) {
   const api = {
     accountButton,
     async init() {
-      await refresh();
+      await Promise.all([refresh(), refreshBillingStatus()]);
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -108,6 +109,7 @@ export function createAccessManager({ ui }) {
       grants: Object.freeze([...state.grants]),
       subscriptions: Object.freeze([...state.subscriptions]),
       configured: authConfigured(),
+      billingConfigured: state.billingConfigured,
       loading: state.loading,
       error: state.error,
       notice: state.notice,
@@ -118,6 +120,19 @@ export function createAccessManager({ ui }) {
     render();
     const value = snapshot();
     for (const listener of listeners) listener(value);
+  }
+
+  async function refreshBillingStatus() {
+    try {
+      const response = await fetch('/.netlify/functions/billing-status', {
+        headers: { Accept: 'application/json' },
+      });
+      const data = await response.json().catch(() => ({}));
+      state.billingConfigured = Boolean(response.ok && data.billingConfigured);
+    } catch {
+      state.billingConfigured = false;
+    }
+    notify();
   }
 
   async function refresh() {
@@ -264,8 +279,8 @@ export function createAccessManager({ ui }) {
     if (!authConfigured()) {
       return [
         head,
-        el('p', { class: 'access-copy lang-en', text: 'The paywall UI is installed, but account and payment keys have not been configured on this deployment yet. Free models remain available.' }),
-        el('p', { class: 'access-copy lang-ja', text: '課金UIは実装済みですが、このデプロイには認証・決済キーがまだ設定されていません。無料モデルはそのまま利用できます。' }),
+        el('p', { class: 'access-copy lang-en', text: 'The paywall UI is installed, but account access has not been configured on this deployment yet. Free models remain available.' }),
+        el('p', { class: 'access-copy lang-ja', text: '課金UIは実装済みですが、このデプロイにはアカウント認証がまだ設定されていません。無料モデルはそのまま利用できます。' }),
         planGrid(),
       ];
     }
@@ -294,8 +309,14 @@ export function createAccessManager({ ui }) {
         }),
       ]),
       currentAccess(),
+      !state.billingConfigured
+        ? el('div', { class: 'access-billing-unavailable' }, [
+            el('p', { class: 'access-copy lang-en', text: 'Paid checkout is not enabled on this deployment yet. Your account and all free models remain available.' }),
+            el('p', { class: 'access-copy lang-ja', text: 'このデプロイでは有料プランの購入はまだ有効化されていません。アカウントと無料モデルはそのまま利用できます。' }),
+          ])
+        : null,
       planGrid(),
-      hasActiveSubscription()
+      hasActiveSubscription() && state.billingConfigured
         ? el('button', {
             class: 'access-manage',
             type: 'button',
@@ -384,7 +405,7 @@ export function createAccessManager({ ui }) {
       ? state.grants.has(entitlement)
       : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
-    const configured = authConfigured();
+    const configured = authConfigured() && state.billingConfigured;
     const existing = hasActiveSubscription();
     const disabled = unlocked || state.loading || !configured;
     const cta = !configured
@@ -418,6 +439,11 @@ export function createAccessManager({ ui }) {
   }
 
   async function checkout(plan) {
+    if (!state.billingConfigured) {
+      state.error = 'Paid checkout is not enabled on this deployment yet.';
+      notify();
+      return;
+    }
     try {
       state.loading = true;
       state.error = '';
@@ -444,6 +470,11 @@ export function createAccessManager({ ui }) {
   }
 
   async function openPortal() {
+    if (!state.billingConfigured) {
+      state.error = 'Billing portal is not enabled on this deployment yet.';
+      notify();
+      return;
+    }
     try {
       state.loading = true;
       state.error = '';
