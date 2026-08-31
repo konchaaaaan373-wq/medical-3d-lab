@@ -11,10 +11,12 @@ import { el } from '../utils/dom.js';
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
  *   onExit:()=>void,
+ *   onPresentationChange?:(enabled:boolean)=>void,
  * }} options
  */
-export function createPatientGuidePanel({ guide, setProgress, onExit }) {
+export function createPatientGuidePanel({ guide, setProgress, onExit, onPresentationChange }) {
   let index = 0;
+  let presenting = false;
 
   const title = el('div', { class: 'patient-guide-title' }, [
     el('span', { class: 'lang-en', text: guide.title }),
@@ -24,6 +26,13 @@ export function createPatientGuidePanel({ guide, setProgress, onExit }) {
   const heading = el('h3', { class: 'patient-guide-heading' });
   const body = el('p', { class: 'patient-guide-copy' });
   const dots = el('div', { class: 'patient-guide-dots' });
+
+  const presentation = el('button', {
+    class: 'patient-guide-presentation',
+    type: 'button',
+    'aria-pressed': 'false',
+    on: { click: () => setPresentation(!presenting) },
+  });
 
   const previous = el('button', {
     class: 'patient-guide-nav',
@@ -46,7 +55,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit }) {
   });
 
   const element = el('section', { class: 'patient-guide', 'aria-label': 'Patient explanation' }, [
-    el('div', { class: 'patient-guide-head' }, [title, counter, close]),
+    el('div', { class: 'patient-guide-head' }, [title, presentation, counter, close]),
     dots,
     heading,
     body,
@@ -62,6 +71,21 @@ export function createPatientGuidePanel({ guide, setProgress, onExit }) {
     const step = guide.steps[index];
     setProgress(step.progress ?? 0);
     render();
+  }
+
+  function setPresentation(enabled) {
+    presenting = Boolean(enabled);
+    presentation.setAttribute('aria-pressed', String(presenting));
+    presentation.classList.toggle('is-on', presenting);
+    onPresentationChange?.(presenting);
+    renderPresentationButton();
+  }
+
+  function renderPresentationButton() {
+    presentation.replaceChildren(
+      el('span', { class: 'lang-en', text: presenting ? 'Standard view' : 'Present larger' }),
+      el('span', { class: 'lang-ja', text: presenting ? '通常表示' : '大きく表示' })
+    );
   }
 
   function render() {
@@ -85,6 +109,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit }) {
       el('span', { class: 'lang-en', text: index === guide.steps.length - 1 ? 'Finish' : 'Next' }),
       el('span', { class: 'lang-ja', text: index === guide.steps.length - 1 ? '終了' : '次へ' })
     );
+    renderPresentationButton();
   }
 
   setIndex(0);
@@ -92,7 +117,10 @@ export function createPatientGuidePanel({ guide, setProgress, onExit }) {
   return {
     element,
     reset() {
+      setPresentation(false);
       setIndex(0);
     },
+    setPresentation,
+    isPresenting: () => presenting,
   };
 }
