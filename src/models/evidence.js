@@ -650,21 +650,58 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
   {
     id: 'parallel-beds',
     claim:
-      'The vascular beds of the systemic circulation are in parallel, so dilating one of them lowers total systemic vascular resistance whatever the others do.',
+      'The vascular beds of the systemic circulation are in parallel. Holding the conductances of the other beds constant, raising the conductance of one of them lowers total systemic vascular resistance.',
     confidence: CONFIDENCE.ESTABLISHED,
     source: 'Conductances in parallel add. Arithmetic, applied to standard circulatory anatomy.',
-    validation: 'physiology: dilating one bed lowers the resistance of the whole circulation',
+    validation: 'physiology: with the other beds held fixed, opening one of them lowers total resistance',
+    layer: LAYER.EXTERNAL,
+    note:
+      'The qualifier is load-bearing and an earlier version of this entry omitted it. If the other beds constrict hard enough, total conductance falls and total resistance rises. Whether it does so in this model is a question about the constriction gain this repository chose, and is a separate entry.',
+  },
+  {
+    id: 'net-resistance-fall',
+    claim:
+      'In this model the compensatory constriction of the non-splanchnic beds is not strong enough to reverse the fall in systemic vascular resistance, so the total still falls as the splanchnic bed opens.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A consequence of `SYSTEMIC_CONSTRICTION_GAIN` and `SYSTEMIC_VASODILATION_GAIN`, both chosen so that the resistance fall lands in the range described for advanced cirrhosis.',
+    validation: 'calibration: the constriction gain leaves the resistance fall intact',
+    layer: LAYER.CALIBRATION,
+    note:
+      'That a hyperdynamic circulation runs at a reduced systemic resistance is supported. That *these* gains produce it is arithmetic about two numbers this repository chose, and the parallel law alone does not guarantee it.',
+  },
+  {
+    id: 'incomplete-compensation',
+    claim:
+      'Mean arterial pressure is cardiac output times systemic vascular resistance. A fall in resistance that the heart does not fully offset therefore lowers arterial pressure, whatever the cause of the fall.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'ΔP = Q·R. Arithmetic.',
+    validation: 'physiology: a fall in systemic resistance the heart does not fully offset lowers arterial pressure',
     layer: LAYER.EXTERNAL,
   },
   {
     id: 'hyperdynamic-circulation',
     claim:
-      'Advanced cirrhosis produces a hyperdynamic circulation: cardiac output rises, systemic vascular resistance falls, and arterial pressure falls despite the raised output — the compensation is real but incomplete.',
+      'Cirrhosis is characterised by a hyperdynamic circulation — reduced systemic vascular resistance with an increased cardiac output — and the increase does not restore arterial pressure to normal. It is *not* established that cardiac output goes on rising into HRS-AKI: at the onset of hepatorenal syndrome, cardiac output has been observed to fall.',
     confidence: CONFIDENCE.SUPPORTED,
     source:
-      'Reviews of the circulatory abnormalities of cirrhosis and of hepatorenal syndrome (PMC5904971, PMC6182055, PMC3959227); EASL and AASLD guidance on decompensated cirrhosis.',
-    validation: 'physiology: worsening cirrhosis raises cardiac output and still lowers arterial pressure',
+      'Ruiz-del-Arbol L et al., Hepatology 2005 (PMID 15977202), in which cardiac output falls at the onset of hepatorenal syndrome; Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); earlier reviews of the circulatory abnormalities of cirrhosis (PMC5904971, PMC6182055, PMC3959227).',
+    validation: 'physiology: the model can reach renal failure with a falling cardiac output, not only a rising one',
     layer: LAYER.EXTERNAL,
+    note:
+      'An earlier version of this entry asserted that worsening cirrhosis raises cardiac output *and* lowers pressure, as a single external invariant along the whole trajectory. That overstated it. What is external is that the compensation is incomplete and that a falling output is a real path into the syndrome; that this model’s default path shows output rising is a consequence of a chosen exponent and is a separate entry.',
+  },
+  {
+    id: 'rising-output-path',
+    claim:
+      'With cardiac reserve intact, this model’s progression axis raises cardiac output at every step.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'No source. A consequence of the invented cardiac compensation exponent, chosen so that the default path shows the hyperdynamic circulation rather than a low-output one.',
+    validation: 'calibration: the default path raises cardiac output and the reserve control can reverse it',
+    layer: LAYER.CALIBRATION,
+    note:
+      'It is the model’s default, not a natural history. Lowering `cardiacReserve` produces a falling-output path to the same renal failure, which is the pattern Ruiz-del-Arbol describes, and the scene’s copy must not read as “cardiac output always keeps rising”.',
   },
   {
     id: 'arterial-underfilling',
@@ -676,16 +713,27 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
     layer: LAYER.EXTERNAL,
   },
   {
-    id: 'functional-not-structural',
+    id: 'reversible-vasoconstrictor-component',
     claim:
-      'Hepatorenal syndrome is functional renal vasoconstriction in a kidney that is structurally near-normal. Renal function recovers after liver transplantation, and a kidney taken from a donor with the syndrome functions normally in a recipient without it.',
+      'A substantial part of the renal failure in HRS-AKI is reversible renal vasoconstriction rather than fixed injury: it improves when the circulation is treated, and it resolves after liver transplantation.',
     confidence: CONFIDENCE.SUPPORTED,
     source:
-      'The hepatorenal syndrome reviews above, and the transplantation observations they cite; International Club of Ascites criteria.',
+      'Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522).',
     validation: 'physiology: removing the vasoconstrictor signal restores renal perfusion at any severity',
     layer: LAYER.EXTERNAL,
     note:
-      'The model is built so that this cannot be false: nothing in the renal part of it is damaged by anything. That is a design decision, and the test states it as one. What is restored at every severity is renal *perfusion*; filtration is restored wherever it was depressed, which early in the course it is not — see `early-hyperfiltration`.',
+      'Deliberately narrower than it used to be. An earlier version claimed HRS-AKI is renal vasoconstriction in a kidney that is *structurally near-normal* — an overstatement the 2024 consensus does not support, since tubular injury, proteinuria and pre-existing CKD may all be present and other AKI mechanisms may coexist. This model has no injury term, so it isolates the reversible component and can say nothing about the rest. What the counterfactual restores at every severity is renal *perfusion*; filtration is restored once the model is past the failure of autoregulation, and early in the trajectory it is not — see `early-hyperfiltration`.',
+  },
+  {
+    id: 'modelling-boundary-not-a-claim',
+    claim:
+      'The absence of structural kidney injury in this model is a boundary of the model. Real HRS-AKI may occur with tubular injury, proteinuria or pre-existing chronic kidney disease, and may coexist with other mechanisms of AKI.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522), the ADQI–ICA joint consensus.',
+    validation: 'physiology: the model carries no structural injury term, and says so rather than implying there is none to carry',
+    layer: LAYER.EXTERNAL,
+    note:
+      'Registered as a claim in its own right because it is the one a reader is most likely to take away wrongly, and because it has to be checked somewhere: the test asserts that the scene’s own copy says it.',
   },
   {
     id: 'efferent-predominance',
@@ -737,11 +785,14 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
   {
     id: 'splanchnic-vasoconstrictor-treatment',
     claim:
-      'A splanchnic vasoconstrictor raises arterial pressure, reduces vasoconstrictor activation and improves renal function in hepatorenal syndrome. It treats the circulation, not the kidney.',
+      'A splanchnic vasoconstrictor with albumin raises arterial pressure, reduces vasoconstrictor activation and can improve renal function in HRS-AKI. It acts on the circulation rather than on the kidney. It does not work in everyone: reported resolution is of the order of 40–50%.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'Trials of terlipressin with albumin in HRS-AKI; EASL and AASLD guidance.',
+    source:
+      'Khemichian S, Nadim MK, Terrault NA, Annu Rev Med 2025;76:373–387 (DOI 10.1146/annurev-med-050223-112947); Nadim MK et al., J Hepatol 2024;81:163–183 (PMID 38527522).',
     validation: 'physiology: a splanchnic vasoconstrictor improves filtration by way of the circulation',
     layer: LAYER.EXTERNAL,
+    note:
+      'The *direction* is what the model shows and what the test checks. The response rate is not in the model at all — every dose works here, every time — so the scene’s copy has to say that the arm demonstrates a predicted direction and not a guaranteed clinical response. There are no non-responders, no dose, no adverse effects and no mortality benefit to be read from it.',
   },
   {
     id: 'cardiac-reserve',

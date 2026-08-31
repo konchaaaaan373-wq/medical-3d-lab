@@ -34,7 +34,7 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 | **COPD と動的過膨張** | 息を吐ききる前に次の吸気が来ると、肺の中で何が起きる？ | `#/copd` | reviewed |
 | **喘息の不均一性** | 同じ刺激で、なぜ気道樹の一部だけが閉じる？ | `#/asthma` | reviewed |
 | **肝硬変と門脈圧亢進症** | 側副血行路が開いても、なぜ圧は下がりきらない？ HVPG は何を測っている？ | `#/portal-hypertension` | reviewed |
-| **肝腎症候群** | 構造的に正常な腎臓が、なぜ濾過をやめる？ | `#/hepatorenal-syndrome` | alpha |
+| **肝腎症候群（HRS-AKI）** | 腎障害を与えていないモデルで、循環だけで濾過量はどこまで落ちる？ | `#/hepatorenal-syndrome` | alpha |
 
 `reviewed` と `alpha` の差は**臨床レビューを受けたかどうか**です。どちらも
 `production` ではなく、UI に **Prototype** バッジが出ます。

@@ -41,6 +41,7 @@ import {
   REFERENCE_EFFERENT_RESISTANCE,
   REFERENCE_SVR,
   RENAL_REFERENCE,
+  SYSTEMIC_CONSTRICTION_GAIN,
   SYSTEMIC_REFERENCE,
   SYSTEMIC_VASODILATION_GAIN,
   TERLIPRESSIN_SPLANCHNIC_EFFECT,
@@ -649,5 +650,56 @@ test('calibration: the treatment effect sizes are the ones this model was given'
   assert.ok(
     withAlbumin.kidney.glomerularFiltrationRateMlPerMin >
       without.kidney.glomerularFiltrationRateMlPerMin
+  );
+});
+
+test('calibration: the constriction gain leaves the resistance fall intact', () => {
+  // The parallel law says that opening one bed lowers total resistance **when
+  // the others hold still**. Here they do not — they constrict, driven by the
+  // same signal — so whether the total still falls is a question about two
+  // gains this repository chose, and it is answered here rather than in the
+  // external layer where it used to sit.
+  assert.ok(SYSTEMIC_CONSTRICTION_GAIN > 0, 'nothing is compensating at all');
+  const resistances = [0, 0.25, 0.5, 0.75, 1].map(
+    (splanchnicVasodilation) =>
+      solveHepatorenal({ structuralResistance: 6, splanchnicVasodilation }).systemic
+        .systemicVascularResistance
+  );
+  for (let i = 1; i < resistances.length; i += 1) {
+    assert.ok(
+      resistances[i] < resistances[i - 1],
+      `the compensation reversed the fall between steps ${i - 1} and ${i}: ${resistances}`
+    );
+  }
+  // And the compensation is doing something, or the test would be vacuous: the
+  // fall is smaller than it would be with the other beds held still.
+  const held = 1 / (1 / REFERENCE_SVR + (1 / resistances.at(-1) - 1 / resistances[0]));
+  assert.ok(resistances.at(-1) > held, 'the other beds are not constricting at all');
+});
+
+test('calibration: the default path raises cardiac output and the reserve control can reverse it', () => {
+  // With cardiac reserve intact this model's axis raises output at every step.
+  // That is the parameterisation, not a natural history — at the onset of
+  // hepatorenal syndrome cardiac output has been observed to fall — so the
+  // rising path is asserted here and the existence of the falling one is
+  // asserted in the external layer.
+  const rising = [0, 0.25, 0.5, 0.75, 1].map(
+    (t) =>
+      solveHepatorenal({
+        structuralResistance: 1 + 11 * t,
+        splanchnicVasodilation: t,
+        cardiacReserve: 1,
+      }).systemic.cardiacOutputMlPerMin
+  );
+  for (let i = 1; i < rising.length; i += 1) {
+    assert.ok(rising[i] > rising[i - 1], `output did not rise at step ${i}: ${rising}`);
+  }
+  assert.ok(rising.at(-1) / rising[0] > 1.15, `output rose only to ${rising.at(-1) / rising[0]}×`);
+
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  assert.ok(
+    solveHepatorenal({ ...advanced, cardiacReserve: 0 }).systemic.cardiacOutputMlPerMin <
+      solveHepatorenal({ ...advanced, cardiacReserve: 1 }).systemic.cardiacOutputMlPerMin,
+    'the reserve control cannot produce a lower-output path'
   );
 });

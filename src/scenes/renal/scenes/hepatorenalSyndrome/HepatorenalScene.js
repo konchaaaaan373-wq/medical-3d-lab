@@ -38,7 +38,14 @@ import {
 import { REEL_CUES, REEL_DURATION, cameraAt, comparisonAt, overlayAt, progressAt } from './reelStoryboard.js';
 
 /**
- * Scene: hepatorenal syndrome — a normal kidney that has stopped filtering.
+ * Scene: HRS-AKI, with the haemodynamic and neurohumoral mechanism isolated.
+ *
+ * **Structural kidney injury is not represented in this model. That is a
+ * boundary of the model, not a claim that real HRS-AKI never contains kidney
+ * injury** — the 2024 ADQI–ICA consensus allows tubular injury, proteinuria and
+ * pre-existing CKD to be present, and other mechanisms of AKI to coexist. The
+ * scene's title, subtitle, disclaimer and scope panel all say so, and a test
+ * asserts that they do.
  *
  * Every number, every vessel calibre and the rate of every particle stream is
  * a reading of [`src/models/hepatorenal.js`](../../../../models/hepatorenal.js),
@@ -51,10 +58,15 @@ import { REEL_CUES, REEL_DURATION, cameraAt, comparisonAt, overlayAt, progressAt
  * The read-out shows **two** filtration rates side by side and always has: this
  * kidney's, and the same kidney's at the same arterial pressure with the
  * vasoconstrictor signal removed. The second is the model's own control
- * experiment — `kidneyWithoutTheSignal` — and it is the scene's answer to why
- * a kidney taken from a donor with the syndrome works in somebody else. Showing
- * only the first would leave the reader to infer that something in the kidney
- * had been damaged, which is the misconception the scene is against.
+ * experiment — `kidneyWithoutTheSignal` — and it measures how much of the fall
+ * the circulation is responsible for *in this model*. It is not a claim about
+ * how much of a patient's fall is reversible, because this model was given no
+ * irreversible part to weigh it against.
+ *
+ * Note what the counterfactual does and does not restore: renal *perfusion* at
+ * every severity, and filtration only once the model is past the failure of
+ * autoregulation. Early on, efferent constriction is supporting filtration, so
+ * removing the signal lowers it.
  *
  * ### What is presentation
  *
@@ -72,10 +84,12 @@ import { REEL_CUES, REEL_DURATION, cameraAt, comparisonAt, overlayAt, progressAt
 export class HepatorenalScene {
   static meta = {
     id: 'hepatorenal-syndrome',
-    title: 'Hepatorenal syndrome: a normal kidney that has stopped filtering',
-    titleJa: '肝腎症候群：正常な腎臓が濾過をやめるとき',
-    subtitle: 'Two organs, one circulation · the compensation that defends the pressure is what strangles the kidney',
-    subtitleJa: '2 つの臓器と 1 つの循環 ｜ 血圧を守る代償そのものが、腎臓を締め上げます',
+    title: 'Hepatorenal syndrome — the haemodynamic mechanism',
+    titleJa: '肝腎症候群（HRS-AKI）― 循環からみる腎機能低下',
+    subtitle:
+      'Two organs, one circulation · the compensation that defends the pressure is what takes the kidney’s reserve away · no kidney injury is modelled here',
+    subtitleJa:
+      '2 つの臓器と 1 つの循環 ｜ 血圧を守る代償そのものが腎の予備能を奪います ｜ 腎障害は実装していません',
     stages: STAGES,
     legend: LEGEND,
     range: RANGE,
@@ -249,13 +263,15 @@ export class HepatorenalScene {
   // --- the one axis ---------------------------------------------------------
 
   /**
-   * @param {number} value 0 = compensated cirrhosis, 1 = decompensated
+   * @param {number} value 0 = a healthy liver, 1 = the far end of the axis
    *
-   * The axis moves the intrahepatic resistance and the arterial vasodilation
-   * together, because that is the course the scene is about. They are
-   * separable — `splanchnicVasodilation` is a control of its own — and the
-   * model card says that moving them together is a simplification of the
-   * course rather than a claim about it.
+   * **A chosen path through parameter space, not a time course and not a
+   * natural history.** It moves the intrahepatic resistance and the arterial
+   * vasodilation together because that is the story the scene tells; in a
+   * patient they do not move in step, and this model has no time in it to move
+   * them through. They are separable — `splanchnicVasodilation` is a control
+   * of its own — and the slider, the scope panel and the model card all say
+   * that moving them together is the scene's choice.
    */
   setProgress(value) {
     this.progress = clamp(value);
@@ -301,6 +317,18 @@ export class HepatorenalScene {
    * comparison the scene's claim rests on, and it is the one a second healthy
    * body could not make — a healthy body would differ in its pressure too, and
    * the reader could not tell which difference did the work.
+   *
+   * **What it measures is how much of the fall this model's circulation is
+   * responsible for.** It is not a measure of how much of a patient's renal
+   * failure is reversible: this model was given no irreversible part to weigh
+   * the reversible one against, and HRS-AKI may occur with tubular injury,
+   * proteinuria or pre-existing CKD present.
+   *
+   * Note also what the counterfactual does *not* do. It restores renal
+   * perfusion at every severity, because both arteriolar resistances are
+   * monotonic in the activation. It restores filtration only once the model is
+   * past the failure of autoregulation — early on, removing the signal *lowers*
+   * filtration, because efferent constriction was supporting it.
    */
   setComparison(enabled) {
     this.comparing = enabled;

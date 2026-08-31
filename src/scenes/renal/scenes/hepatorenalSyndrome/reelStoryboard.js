@@ -6,11 +6,16 @@ import { cueOpacity, sampleTrack } from '../../../../utils/Timeline.js';
  *
  * ## What it is about
  *
- * The one thing the interactive scene keeps having to say in prose: **nothing
- * damaged the kidney.** Filtration falls to a fraction of normal, and the same
- * kidney, at the same arterial pressure, with the vasoconstrictor signal
- * removed, filters again. The two cards at the end are that sentence as a
- * pair of numbers.
+ * The one thing the interactive scene keeps having to say in prose: **give the
+ * kidney no injury at all, and the circulation alone still takes filtration a
+ * long way down.** The two cards at the end are that sentence as a pair of
+ * numbers — the same kidney, at the same arterial pressure, with and without
+ * the vasoconstrictor signal.
+ *
+ * The last caption before the take-home is the boundary, and it is not
+ * optional: this sequence shows the circulation's share, and a viewer who
+ * stopped a beat earlier could take it for a claim that HRS-AKI never involves
+ * kidney injury. It does not, and the caption says so.
  *
  * The middle of the sequence is the part that makes it believable rather than
  * surprising: the arteries open, the pressure falls despite a rising cardiac
@@ -232,9 +237,19 @@ function captionAt(t, language) {
   if (defend > 0) {
     return { text: pick(language, REEL_COPY.defend.caption, REEL_COPY.defend.captionJa), opacity: defend };
   }
-  const fail = cueOpacity(t, 10.1, 12.7, 0.4);
+  const fail = cueOpacity(t, 10.1, 11.9, 0.4);
   if (fail > 0) {
     return { text: pick(language, REEL_COPY.fail.caption, REEL_COPY.fail.captionJa), opacity: fail };
+  }
+  // The last caption before the take-home, and the one the sequence must not
+  // be seen without: the ending says what the circulation alone did, and a
+  // viewer who stops there could take it for a claim about the syndrome.
+  const boundary = cueOpacity(t, 12.1, HOLD_PAST_END, 0.4);
+  if (boundary > 0) {
+    return {
+      text: pick(language, REEL_COPY.boundary.caption, REEL_COPY.boundary.captionJa),
+      opacity: boundary,
+    };
   }
   return { text: '', opacity: 0 };
 }

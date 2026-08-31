@@ -8,17 +8,33 @@ import {
 } from './portalHypertension.js';
 
 /**
- * Hepatorenal syndrome: why a structurally normal kidney stops working.
+ * HRS-AKI: the haemodynamic and neurohumoral mechanism, isolated.
  *
- * The question this model exists to answer: **if the kidney in hepatorenal
- * syndrome is histologically near-normal, and recovers when it is transplanted
- * into somebody else or when the liver is replaced, what is actually stopping
- * it from filtering?**
+ * ## What this model is, and what it is not
  *
- * The answer this model gives is that nothing is wrong with the kidney. The
- * kidney is being asked to filter at a perfusion pressure it can no longer
- * autoregulate around, by a circulation whose own attempt to stay alive is
- * what removed its ability to.
+ * **This model deliberately isolates the haemodynamic and neurohumoral
+ * component of HRS-AKI. Structural kidney injury is not represented here. That
+ * is a boundary of the model, not a claim that real HRS-AKI never contains
+ * kidney injury.**
+ *
+ * That distinction is load-bearing and it is why this paragraph is first. The
+ * 2024 ADQI–ICA joint consensus (Nadim MK et al., J Hepatol 2024;81:163–183,
+ * PMID 38527522) describes HRS-AKI as an AKI *phenotype* specific to advanced
+ * cirrhosis with ascites, and it can be diagnosed in the presence of tubular
+ * injury, proteinuria or pre-existing chronic kidney disease. HRS-AKI and other
+ * mechanisms of AKI can coexist in the same patient. A model with no injury
+ * term in it cannot represent any of that, and must not be read as evidence
+ * that the injury is absent.
+ *
+ * What the model *can* do is answer one mechanistic question:
+ *
+ * > **How far can circulatory and neurohumoral changes alone take glomerular
+ * > filtration, in a kidney this model gives no injury to?**
+ *
+ * The answer it gives is: a long way. The kidney here is being asked to filter
+ * at a perfusion pressure it can no longer autoregulate around, by a
+ * circulation whose own attempt to defend that pressure is what removed its
+ * ability to.
  *
  * ## The chain, and why it is a loop rather than a list
  *
@@ -27,23 +43,41 @@ import {
  *    it: `solvePortalCirculation` already turns raised intrahepatic resistance
  *    and splanchnic vasodilation into a splanchnic inflow.
  * 2. **A dilated splanchnic bed is a large low-resistance parallel path.**
- *    Systemic vascular resistance falls, because the splanchnic bed and
- *    everything else are in parallel and one of them has opened up.
- * 3. **The heart raises its output, but not by enough.** Cardiac output rises
- *    — the hyperdynamic circulation — and arterial pressure still falls,
- *    because the compensation is partial. How partial is `cardiacReserve`,
- *    and cirrhotic cardiomyopathy is what lowers it.
+ *    Holding the other beds' conductances fixed, opening one of them lowers
+ *    total systemic vascular resistance. That qualifier is not pedantry: the
+ *    other beds do *not* hold still here — they constrict — and whether the
+ *    total still falls depends on how hard they constrict, which is a gain
+ *    this repository chose. The parallel law is external; the outcome in this
+ *    model is calibration, and the two are tested in different layers.
+ * 3. **The heart raises its output, but not by enough.** With cardiac reserve
+ *    intact, output rises and arterial pressure falls anyway, because the
+ *    compensation is partial. That is the hyperdynamic circulation of
+ *    cirrhosis. It is *not* a law that output rises all the way into HRS:
+ *    Ruiz-del-Arbol et al. (Hepatology 2005, PMID 15977202) found cardiac
+ *    output *falling* at the onset of hepatorenal syndrome. `cardiacReserve`
+ *    is the control that produces that path, and the rising-output path is
+ *    the model's default rather than an invariant.
  * 4. **Arterial underfilling activates the vasoconstrictor systems.** The
  *    renin-angiotensin-aldosterone system, the sympathetic nervous system and
- *    vasopressin. This is the *peripheral arterial vasodilation* account of
- *    sodium retention and renal failure in cirrhosis, and this model is built
- *    on it: the driver of activation here is the fall in systemic vascular
- *    resistance, not the fall in pressure. Pressure is what activation is
- *    defending.
- * 5. **That activation constricts every bed that will listen — and the
- *    splanchnic bed will not.** The splanchnic arterioles are the ones held
- *    open by local vasodilators, so the constriction lands on the beds that
- *    are still responsive. The kidney is one of them.
+ *    vasopressin — the *peripheral arterial vasodilation* account of sodium
+ *    retention and renal failure in cirrhosis.
+ *
+ *    Effective arterial blood volume is not a single measurable variable, so
+ *    the model does not pretend to compute one. **In this model the arterial
+ *    pressure deficit is the observable proxy that drives the aggregate
+ *    neurohumoral activation signal; systemic vasodilation is the upstream
+ *    cause of that deficit.** Both are reported, so the cause stays visible
+ *    beside the thing it causes.
+ * 5. **That activation constricts the beds that remain responsive to it, and
+ *    the splanchnic circulation remains disproportionately vasodilated
+ *    despite it.** Not that the splanchnic bed cannot constrict — a splanchnic
+ *    vasoconstrictor is the treatment arm below, and it works. What the
+ *    literature describes is a bed held open by local vasodilators *relative
+ *    to* the endogenous vasoconstrictor tone acting on everything else.
+ *
+ *    **Model simplification:** the endogenous activation is not fed back into
+ *    the splanchnic resistance at all. The disproportion is therefore built in
+ *    rather than emergent, and the model cannot show it being overcome.
  * 6. **The kidney's own autoregulation is what fails last.** Given a falling
  *    perfusion pressure, the afferent arteriole dilates to hold renal blood
  *    flow steady, and that works — until the vasoconstrictor tone means it can
@@ -54,15 +88,28 @@ import {
  * splanchnic bed is perfused at, so the whole thing is solved for a consistent
  * arterial pressure rather than evaluated in order.
  *
- * ## Why the kidney is normal
+ * ## What moves in the kidney, and what does not
  *
- * Nothing in the renal part of this model damages anything. `KF`,
- * `BOWMAN_PRESSURE` and `PLASMA_ONCOTIC_PRESSURE` are constants; the only
- * things that move are two arteriolar resistances, and they move because of a
- * signal that arrives from outside the kidney. Set that signal to zero at any
- * disease severity and filtration returns. That is the model's central claim
- * and it is a structural property of how it is written, not a number that was
- * tuned to come out that way.
+ * **There is no structural injury variable.** Renal haemodynamics change
+ * through the afferent and efferent arteriolar resistances and through a
+ * reversible, activation-dependent reduction in the effective ultrafiltration
+ * coefficient (mesangial contraction). `BOWMAN_PRESSURE` and
+ * `PLASMA_ONCOTIC_PRESSURE` are constants, and `KF` is a constant that the
+ * activation scales; nothing is ever damaged.
+ *
+ * `kidneyWithoutTheSignal` re-solves the same kidney at the same arterial
+ * pressure with the activation set to zero. In that counterfactual:
+ *
+ * - **renal perfusion improves at every severity** — both resistances are
+ *   monotonic in the activation, so removing it can only raise flow;
+ * - **glomerular filtration improves once the model has entered the
+ *   autoregulatory-failure phase**;
+ * - **early in the trajectory it does not**, because efferent constriction is
+ *   supporting filtration while the afferent arteriole is still shielded.
+ *
+ * The last of those is easy to state the wrong way round and an earlier
+ * version of this file did. It is checked in
+ * `tests/hepatorenal-physiology.test.js` in exactly the form above.
  *
  * ## The two arterioles do different jobs
  *
@@ -80,24 +127,33 @@ import {
  *
  * ## What is not here
  *
+ * **No ascites.** HRS-AKI is defined in cirrhosis *with ascites*, and there is
+ * no ascites in this model — no hepatic lymph balance, no sinusoidal
+ * permeability, no albumin concentration, no renal sodium handling. The
+ * defining clinical context of the phenotype is therefore absent.
+ *
  * **No tubules.** No sodium handling, no urine output, no tubuloglomerular
  * feedback as a mechanism — the autoregulation here is a range the afferent
- * arteriole can work within, not a macula densa. So no ascites, no dilutional
- * hyponatraemia, no diuretic response, and no distinction between hepatorenal
- * syndrome and prerenal azotaemia from diuretic overuse, which is a bedside
- * distinction this model has no way to make.
+ * arteriole can work within, not a macula densa.
+ *
+ * **No structural injury of any kind.** No tubular injury, no proteinuria, no
+ * pre-existing chronic kidney disease. Since the 2024 consensus allows all
+ * three to be present in HRS-AKI, their absence here is a boundary of the
+ * model and not a feature of the syndrome.
  *
  * **No time.** Like the portal model this is an equilibrium. It cannot show
  * HRS-AKI developing over days, and it cannot show the difference between an
- * acute and a chronic course.
+ * acute and a chronic course. The scene's progression axis is a chosen path
+ * through parameter space, not a natural history.
  *
- * **No tubular injury.** Acute tubular necrosis is the main differential and
- * the model has nothing to represent it with.
- *
- * **Not a diagnosis.** Hepatorenal syndrome is diagnosed by criteria that
- * include the absence of shock, of nephrotoxins, and of structural kidney
- * disease, and by a failure to respond to volume expansion. None of that is
- * in here.
+ * **Not a diagnosis.** The 2024 ADQI–ICA criteria are cirrhosis with ascites,
+ * meeting AKI criteria, no improvement within 24 hours of adequate volume
+ * resuscitation *where resuscitation is clinically indicated*, and no strong
+ * alternative explanation as the primary cause. Pre-existing CKD, proteinuria
+ * and tubular injury do not by themselves exclude HRS-AKI, and 48 hours of
+ * systematic albumin is no longer required as a diagnostic step. None of that
+ * is in this model, and nothing here may be used to make or exclude a
+ * diagnosis.
  */
 
 // --------------------------------------------------------------------------
@@ -190,11 +246,14 @@ export const TERLIPRESSIN_SPLANCHNIC_EFFECT = 0.85;
  * sympathetic outflow and vasopressin at once, because the model's subject is
  * what they do together to a kidney rather than how they differ.
  *
- * It is driven by arterial pressure because that is what a baroreceptor
- * senses. That is not a retreat from the arterial underfilling account: in
- * this model the pressure falls *because* the arterial bed has dilated faster
- * than the heart can fill it, and `arterialUnderfilling` below reports that
- * dilation separately so the cause stays visible next to its consequence.
+ * **In this model the arterial pressure deficit is the observable proxy that
+ * drives the aggregate neurohumoral activation signal; systemic vasodilation is
+ * the upstream cause of that deficit.** Effective arterial blood volume is not
+ * a single measurable quantity and the model does not pretend to compute one.
+ * A baroreceptor senses pressure, the pressure here falls *because* the
+ * arterial bed has dilated faster than the heart can fill it, and
+ * `arterialUnderfilling` reports that dilation separately so the cause stays
+ * visible beside its consequence.
  */
 export const ACTIVATION_HALF_PRESSURE_DEFICIT = 0.05;
 

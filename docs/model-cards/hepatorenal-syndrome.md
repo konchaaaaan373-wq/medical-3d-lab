@@ -8,11 +8,23 @@
 | **Tests** | [`tests/hepatorenal-physiology.test.js`](../../tests/hepatorenal-physiology.test.js) (external), [`tests/hepatorenal.test.js`](../../tests/hepatorenal.test.js) (integrity), [`tests/calibration.test.js`](../../tests/calibration.test.js) (calibration) |
 | **Status** | see [`src/catalog/scenes.js`](../../src/catalog/scenes.js) |
 
+## 0. Read this first
+
+**This model deliberately isolates the haemodynamic and neurohumoral component
+of HRS-AKI. Structural kidney injury is not represented in this model; that is a
+modelling boundary, not a claim that real HRS-AKI never contains kidney injury.**
+
+The 2024 ADQI–ICA joint consensus (Nadim MK et al., *J Hepatol*
+2024;81:163–183, PMID 38527522) describes HRS-AKI as an AKI **phenotype** of
+advanced cirrhosis with ascites, which may be present alongside tubular injury,
+proteinuria or pre-existing chronic kidney disease, and alongside other
+mechanisms of AKI. There is no ascites in this model either, so the defining
+clinical context of the phenotype is absent as well.
+
 ## 1. What question this model answers
 
-**If the kidney in hepatorenal syndrome is structurally near-normal, and
-recovers when it is transplanted into somebody else, what is actually stopping
-it from filtering?**
+**How far can circulatory and neurohumoral changes alone take glomerular
+filtration, in a kidney this model gives no injury to?**
 
 ## 2. What it is
 
@@ -25,24 +37,44 @@ response that is deliberately incomplete. The renal half is a glomerulus with an
 arteriole either side of it and a Starling balance across it.
 
 The chain runs: portal hypertension dilates the splanchnic arterioles → a large
-low-resistance bed in parallel lowers systemic vascular resistance → the heart
+low-resistance bed opens in parallel and, because the other beds cannot close
+far enough to make up for it, systemic vascular resistance falls → the heart
 raises its output but not by enough, so arterial pressure falls → the fall
-activates the vasoconstrictor systems → they constrict every bed that will
-respond, and the splanchnic bed will not, so the kidney takes it → the afferent
-arteriole dilates to defend renal blood flow until it has no room left, and past
-that point the renal circulation is pressure-dependent.
+activates the vasoconstrictor systems → they constrict the beds that remain
+responsive, while the splanchnic circulation stays disproportionately
+vasodilated despite the same signal, so much of it lands on the kidney → the
+afferent arteriole dilates to defend renal blood flow until it has no room left,
+and past that point the renal circulation is pressure-dependent.
 
 The loop closes: the constriction raises the pressure the splanchnic bed is
 perfused at, so nothing is evaluated in order — it is solved.
 
-**The kidney is normal, and that is a structural property of the code, not a
-tuning.** Nothing in the renal part of the model damages anything. The
-ultrafiltration coefficient, Bowman's pressure and the oncotic pressure are
-constants; the only things that move are two arteriolar resistances, driven by a
-signal that arrives from outside. `kidneyWithoutTheSignal` re-solves the same
-kidney at the same pressure with the signal removed, and an external test
-asserts that it restores renal perfusion at every severity. It is the model's
-stand-in for what a transplanted kidney does in a normal recipient.
+**Model simplification:** the endogenous activation is not fed back into the
+splanchnic resistance at all, so the disproportion is built in rather than
+emergent. It is not that the splanchnic bed *cannot* constrict — the treatment
+arm constricts it deliberately.
+
+**With cardiac reserve intact this is a rising-output path.** That is the
+model's default, not a rule: at the onset of hepatorenal syndrome cardiac output
+has been observed to fall (Ruiz-del-Arbol, *Hepatology* 2005, PMID 15977202),
+and lowering `cardiacReserve` here reproduces that path to the same renal
+failure.
+
+**There is no structural injury variable, and that is a property of the code.**
+Renal haemodynamics change through the afferent and efferent arteriolar
+resistances **and** through a reversible, activation-dependent reduction in the
+effective ultrafiltration coefficient (mesangial contraction). Bowman's pressure
+and the oncotic pressure are constants, and `KF` is a constant the activation
+scales; nothing is damaged. An earlier version of this card said only two
+resistances move, which was untrue of the code.
+
+`kidneyWithoutTheSignal` re-solves the same kidney at the same pressure with the
+activation set to zero. It restores **renal perfusion at every severity**, and
+**filtration once the model is past the failure of autoregulation** — early on
+it does not, because efferent constriction is supporting filtration while the
+afferent arteriole is still shielded. It measures how much of the fall *this
+model's* circulation is responsible for, not how much of a patient's fall is
+reversible.
 
 ## 3. What it is not
 
@@ -144,7 +176,18 @@ compliance, no pulmonary circulation and no Starling curve for the heart.
 dilutional hyponatraemia, no diuretic response.
 
 **There is no time.** An equilibrium. It cannot show the syndrome developing
-over days, and it cannot distinguish an acute course from a chronic one.
+over days, and it cannot distinguish an acute course from a chronic one. **The
+progression axis is a chosen path through parameter space, not a time course and
+not a natural history** — it moves the intrahepatic resistance and the arterial
+vasodilation together because that is the story the scene tells, and in a
+patient they do not move in step.
+
+**There is no ascites**, and HRS-AKI is defined in cirrhosis *with* ascites.
+
+**There is no structural injury of any kind** — no tubular injury, no
+proteinuria, no pre-existing CKD. Since the 2024 consensus allows all three to
+be present in HRS-AKI, their absence here is a boundary of the model and not a
+feature of the syndrome.
 
 **There is no heart.** A single exponent stands in for systolic and diastolic
 function, rate and contractility at once.
@@ -155,10 +198,18 @@ is a single mean value rather than one that rises along the capillary.
 ## 12. What it must never be used for
 
 Diagnosis, staging, or any bedside decision. In particular it **cannot
-distinguish hepatorenal syndrome from prerenal azotaemia or from acute tubular
-necrosis**, which is the distinction the diagnosis actually turns on. The real
-criteria include the absence of shock, of nephrotoxins and of structural kidney
-disease, and a failure to respond to volume expansion; none of that is in here.
+distinguish HRS-AKI from prerenal azotaemia or from acute tubular necrosis**,
+and it cannot weigh a haemodynamic component against an injury component,
+because it has no injury component.
+
+The 2024 ADQI–ICA criteria are: cirrhosis with ascites; meeting AKI criteria; no
+improvement within 24 hours of adequate volume resuscitation **where
+resuscitation is clinically indicated**; and no strong alternative explanation as
+the primary cause. Pre-existing CKD, proteinuria and tubular injury do **not** by
+themselves exclude HRS-AKI, and 48 hours of systematic albumin is **not** a
+required diagnostic step. An earlier version of this card gave "absence of
+structural kidney disease" and "failure to respond to volume expansion" as
+absolute conditions; both are wrong and both are gone.
 
 The vasoconstrictor index must never be displayed as a concentration or an
 activity. It has no units. No dose, duration or response rate may be read off
@@ -172,25 +223,37 @@ efferent resistance, and autoregulation as a band rather than a mechanism.
 
 ## 14. Where the model could mislead
 
-**It makes the functional nature of the syndrome look like a finding.** It is a
-design decision — the model has no way to represent structural damage, so it
-could not have discovered this. The evidence dossier says so and the external
-test is written to state it as a property of the construction.
+**It could be read as saying HRS-AKI never involves kidney injury.** It does
+not say that, and the syndrome is not that. This model has no way to represent
+structural damage, so its silence on the subject is a boundary rather than a
+finding — the title, subtitle, disclaimer, scope panel and reel note each say so,
+in both languages, and a test asserts that they do.
 
 **It makes the treatment look more reliable than it is.** Both arms work every
-time here, with no non-responders, no ceiling and no adverse effects. Terlipressin
-in particular has real ischaemic complications that this model has no
-representation of at all.
+time here, with no non-responders, no ceiling and no adverse effects. Reported
+resolution with a vasoconstrictor and albumin is of the order of **40–50%**
+(Khemichian, *Annu Rev Med* 2025). The arms demonstrate **the direction the model
+predicts, not a guaranteed clinical response**, and the scene's copy says so.
+Terlipressin in particular has real ischaemic complications that this model has
+no representation of at all.
 
 **It shows a single severity axis** along which scarring and vasodilation move
-together. In a patient they do not, and the model lets them be separated —
-but the scene's own progression moves them together, which is a simplification
-of the course rather than a claim about it.
+together. In a patient they do not, and the model lets them be separated — but
+the scene's own progression moves them together, which is a chosen path through
+parameter space rather than a claim about the course. The slider says so.
+
+**It could be read as saying cardiac output always rises.** The default path
+raises it at every step; that is the parameterisation, and the reserve control
+produces the falling-output path the literature also describes.
 
 ## 15. Review status
 
-Not clinically reviewed. This scene is a candidate for `alpha` and must not be
-promoted past it without one.
+**`alpha`. Not clinically reviewed, and it must not be promoted past `alpha`
+without one.**
+
+It has the four things `alpha` requires — model layer, evidence dossier, model
+card, scope panel. It does not have a clinical review, and the medical claims
+here were revised once already after an audit found the central one overstated.
 
 ## 16. How to check it
 

@@ -148,17 +148,17 @@ export const SCENE_MANIFEST = [
   {
     id: 'hepatorenal-syndrome',
     slug: 'hepatorenal-syndrome',
-    titleEn: 'Hepatorenal syndrome',
-    titleJa: '肝腎症候群',
+    titleEn: 'Hepatorenal syndrome — the haemodynamic mechanism',
+    titleJa: '肝腎症候群（HRS-AKI）― 循環からみる腎機能低下',
     system: 'renal',
     organ: 'kidney',
     organs: ['kidney', 'liver'],
     disease: 'hepatorenal-syndrome',
     status: 'alpha',
     description:
-      'Two organs solved as one circulation: why a structurally normal kidney stops filtering, and why the compensation that defends the arterial pressure is what takes its reserve away.',
+      'Two organs solved as one circulation. It isolates the haemodynamic and neurohumoral component of HRS-AKI — how far the circulation alone can take glomerular filtration — and models no kidney injury, which is a boundary of the model rather than a claim about the syndrome.',
     descriptionJa:
-      '2 つの臓器を 1 つの循環として解き、構造的に正常な腎臓がなぜ濾過を止めるのか、そして動脈圧を守る代償こそが腎の予備能を奪う理由を示します。',
+      '2 つの臓器を 1 つの循環として解き、HRS-AKI のうち循環・神経体液性の機序を分離して、循環だけで糸球体濾過量がどこまで低下し得るかを示します。腎障害は実装していませんが、これはモデルの境界であって症候群についての主張ではありません。',
     tags: ['haemodynamics', 'cross-organ', 'treatment-mechanism'],
     load: () => import('../scenes/renal/scenes/hepatorenalSyndrome/index.js'),
   },

@@ -2,11 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BOWMAN_PRESSURE,
+  CENTRAL_VENOUS_PRESSURE,
   PLASMA_ONCOTIC_PRESSURE,
   kidneyWithoutTheSignal,
   solveHepatorenal,
   solveKidney,
 } from '../src/models/hepatorenal.js';
+import { MODEL_SCOPE } from '../src/data/hepatorenal.js';
 
 /**
  * Layer 1 — external physiology invariants for the hepatorenal model.
@@ -28,6 +30,16 @@ const severity = (t) => ({ structuralResistance: 1 + 11 * t, splanchnicVasodilat
 const STEPS = [0, 0.2, 0.4, 0.6, 0.8, 1];
 
 const strictlyRising = (values) => values.every((v, i) => i === 0 || v > values[i - 1]);
+
+/**
+ * The model's own healthy state, used as the baseline every comparison here is
+ * relative to.
+ *
+ * Taken from the model rather than from its reference constants on purpose:
+ * this file may not import a calibration anchor, and a baseline that moves with
+ * the anchor keeps every assertion below scale-free.
+ */
+const HEALTHY = solveHepatorenal(severity(0));
 const strictlyFalling = (values) => values.every((v, i) => i === 0 || v < values[i - 1]);
 
 test('physiology: glomerular filtration follows the net filtration pressure', () => {
@@ -58,30 +70,75 @@ test('physiology: glomerular filtration follows the net filtration pressure', ()
   assert.ok(stopped.renalBloodFlowMlPerMin > 0, 'flow without filtration is the point of the test');
 });
 
-test('physiology: dilating one bed lowers the resistance of the whole circulation', () => {
-  // The systemic beds are in parallel. Opening one of them lowers the total
-  // however the others respond, and here the others are responding by
-  // constricting — which limits the fall without reversing it.
-  const resistances = STEPS.map(
-    (t) => solveHepatorenal({ structuralResistance: 6, splanchnicVasodilation: t }).systemic.systemicVascularResistance
+test('physiology: with the other beds held fixed, opening one of them lowers total resistance', () => {
+  // Conductances in parallel add. **Holding the others constant** is the whole
+  // of the law, and an earlier version of this test dropped that qualifier and
+  // asserted the fall through the full coupled model instead — where the other
+  // beds are actively constricting and the outcome depends on a gain this
+  // repository chose. That belongs in the calibration layer and is there now.
+  const others = 0.775;
+  const totals = [0.19, 0.24, 0.3, 0.38].map((splanchnic) => 1 / (splanchnic + others));
+  assert.ok(strictlyFalling(totals), `resistance did not fall: ${totals}`);
+
+  // And the converse, which is why the qualifier matters: if the other beds
+  // constrict hard enough, total conductance falls and total resistance rises
+  // even though one bed has opened.
+  const opened = 1 / (0.38 + others / 2.2);
+  assert.ok(
+    opened > 1 / (0.19 + others),
+    'a bed opening cannot be assumed to lower total resistance when the others are free to close'
   );
-  assert.ok(strictlyFalling(resistances), `resistance did not fall monotonically: ${resistances}`);
 });
 
-test('physiology: worsening cirrhosis raises cardiac output and still lowers arterial pressure', () => {
-  // The hyperdynamic circulation. The heart does compensate — output rises at
-  // every step — and the compensation is incomplete, so pressure falls anyway.
-  // A model in which output rose and pressure held would be a model with no
-  // hepatorenal syndrome in it.
+test('physiology: a fall in systemic resistance the heart does not fully offset lowers arterial pressure', () => {
+  // Arithmetic: pressure is output times resistance. If resistance falls and
+  // the heart does not raise output by the reciprocal, pressure falls. The
+  // identity is asserted first, because a trajectory read off a model whose
+  // pressure and output do not multiply back would mean nothing.
   const states = STEPS.map((t) => solveHepatorenal(severity(t)));
+  for (const state of states) {
+    const { systemic } = state;
+    assert.ok(
+      Math.abs(
+        systemic.meanArterialPressureMmHg -
+          CENTRAL_VENOUS_PRESSURE -
+          (systemic.cardiacOutputMlPerMin / 60) * systemic.systemicVascularResistance
+      ) < 1e-6
+    );
+  }
+
+  // Wherever the resistance is lower than the reference, so is the pressure:
+  // the compensation in this model is partial by construction. How partial is
+  // a chosen exponent and is checked in the calibration layer; that it is
+  // partial at all is the supported claim being asserted here.
+  for (const state of states) {
+    if (state.systemic.systemicVascularResistance >= HEALTHY.systemic.systemicVascularResistance) continue;
+    assert.ok(
+      state.systemic.meanArterialPressureMmHg < HEALTHY.systemic.meanArterialPressureMmHg,
+      'resistance fell and pressure did not'
+    );
+  }
+});
+
+test('physiology: the model can reach renal failure with a falling cardiac output, not only a rising one', () => {
+  // At the onset of hepatorenal syndrome, cardiac output has been observed to
+  // *fall* rather than go on rising (Ruiz-del-Arbol, Hepatology 2005). A model
+  // whose only path to renal failure ran through a rising output would be
+  // asserting a natural history the literature does not support, so this
+  // checks that the other path exists and ends in the same place.
+  const advanced = { structuralResistance: 10, splanchnicVasodilation: 0.9 };
+  const preserved = solveHepatorenal({ ...advanced, cardiacReserve: 1 });
+  const impaired = solveHepatorenal({ ...advanced, cardiacReserve: 0 });
+
   assert.ok(
-    strictlyRising(states.map((s) => s.systemic.cardiacOutputMlPerMin)),
-    'cardiac output has to rise'
+    impaired.systemic.cardiacOutputMlPerMin < preserved.systemic.cardiacOutputMlPerMin,
+    'the model has no low-output path at all'
   );
   assert.ok(
-    strictlyFalling(states.map((s) => s.systemic.meanArterialPressureMmHg)),
-    'and arterial pressure has to fall anyway'
+    impaired.kidney.glomerularFiltrationRateMlPerMin <
+      preserved.kidney.glomerularFiltrationRateMlPerMin
   );
+  assert.equal(impaired.kidney.autoregulating, false);
 });
 
 test('physiology: arterial underfilling activates the vasoconstrictor systems', () => {
@@ -282,4 +339,26 @@ test('physiology: a weaker cardiac response deepens the underfilling and lowers 
   assert.ok(strictlyFalling(reserves.map((s) => s.systemic.meanArterialPressureMmHg)));
   assert.ok(strictlyRising(reserves.map((s) => s.neurohumoral.activation)));
   assert.ok(strictlyFalling(reserves.map((s) => s.kidney.glomerularFiltrationRateMlPerMin)));
+});
+
+test('physiology: the model carries no structural injury term, and says so rather than implying there is none to carry', () => {
+  // The claim a reader is most likely to take away wrongly. HRS-AKI may occur
+  // with tubular injury, proteinuria or pre-existing CKD, and may coexist with
+  // other mechanisms of AKI (ADQI–ICA 2024). This model has no injury term —
+  // which is a boundary of the model, and the scene has to say so in both
+  // languages rather than let its silence read as a finding.
+  const state = solveHepatorenal(severity(1));
+  const solvedKeys = JSON.stringify(state).toLowerCase();
+  for (const absent of ['injury', 'necrosis', 'proteinuria', 'damage']) {
+    assert.ok(!solvedKeys.includes(absent), `the model reports "${absent}" and should not`);
+  }
+
+  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
+  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
+  assert.match(cautions, /not a claim that|does not mean|boundary of (this|the) model/i);
+  assert.match(cautions, /structural kidney injury is not represented/i);
+  assert.ok(
+    /腎障害が存在しない|という意味ではありません/.test(cautionsJa),
+    'the Japanese scope panel does not say that the absence of injury is a modelling boundary'
+  );
 });

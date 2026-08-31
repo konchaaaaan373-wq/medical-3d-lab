@@ -29,7 +29,23 @@ did not exist. Directions, orderings, sufficiency conditions, independence
 conditions.
 
 **No assertion in this layer may depend on a constant this repository invented
-or calibrated.** Every test here must survive re-tuning. There are no
+or calibrated.** Every test here must survive re-tuning.
+
+**Containing no repository constant as a *literal* is not enough.** What decides
+the layer is whether the *result* depends on repository-selected gains. Two
+tests moved out of this layer for exactly that reason:
+
+- *dilating one bed lowers the resistance of the whole circulation* — asserted
+  through the full coupled model, where the other beds constrict and whether the
+  total still falls depends on `SYSTEMIC_CONSTRICTION_GAIN`. The external law is
+  the parallel one **with the other conductances held fixed**; the coupled
+  outcome is `calibration: the constriction gain leaves the resistance fall
+  intact`.
+- *worsening cirrhosis raises cardiac output and still lowers arterial
+  pressure* — the rising output is a consequence of the chosen compensation
+  exponent, and cardiac output has been observed to *fall* at the onset of
+  hepatorenal syndrome. What stayed external is the arithmetic of incomplete
+  compensation and the existence of the low-output path. There are no
 magnitudes, no ratios between two invented numbers, and no thresholds that came
 out of this repository rather than out of a paper. Where an ordering is
 genuinely external — "the peripheral airway narrows more than the central one" —
@@ -122,7 +138,7 @@ to run.
 ## Running them
 
 ```bash
-npm test                                       # all five hundred and seventy-odd
+npm test                                       # all five hundred and eighty-odd
 node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js tests/hepatorenal-physiology.test.js   # layer 1
 node --test tests/calibration.test.js          # layer 3
 node --test tests/evidence.test.js             # the separation itself

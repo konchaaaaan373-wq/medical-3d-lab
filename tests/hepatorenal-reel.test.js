@@ -166,12 +166,38 @@ test('every number on screen comes from the scene, not from the copy', () => {
   assert.ok(overlayAt(8.0, context()).marker.text.includes(METRICS.map));
 });
 
-test('the note says what the activation is, in both languages', () => {
+test('the note says what the sequence is showing, in both languages', () => {
+  // The note is on screen for the whole sequence, so it is the one place the
+  // boundary is guaranteed to be read: this is the haemodynamic mechanism, no
+  // kidney injury is modelled, and none of it is for diagnosis.
   for (const language of ['en', 'ja']) {
     const overlay = overlayAt(6.0, { language, metrics: METRICS });
     assert.ok(overlay.note.opacity > 0);
-    assert.match(overlay.note.text, language === 'en' ? /index, not a concentration/i : /指標/);
+    assert.match(
+      overlay.note.text,
+      language === 'en' ? /haemodynamic mechanism only/i : /循環の機序のみ/
+    );
+    assert.match(
+      overlay.note.text,
+      language === 'en' ? /no kidney injury modelled/i : /腎障害は未実装/
+    );
     assert.match(overlay.note.text, language === 'en' ? /not for diagnosis/i : /診断/);
+  }
+});
+
+test('the sequence names the boundary before it ends', () => {
+  // The take-home says what the circulation alone did. A viewer who stopped a
+  // beat earlier could take that for a claim that HRS-AKI never involves
+  // kidney injury, so the last caption before it says otherwise — in both
+  // languages, and while the take-home is on screen rather than before it.
+  for (const language of ['en', 'ja']) {
+    const overlay = overlayAt(REEL_DURATION, { language, metrics: METRICS });
+    assert.ok(overlay.caption.opacity > 0, `${language}: no caption on the last frame`);
+    assert.match(
+      overlay.caption.text,
+      language === 'en' ? /kidney injury as well|this model has none/i : /腎障害が併存|実装していません/
+    );
+    assert.equal(overlay.title.variant, 'take-home');
   }
 });
 
@@ -214,9 +240,17 @@ test('the last frame holds the take-home rather than fading to nothing', () => {
   assert.ok(overlay.cards.opacity > 0.9, 'the two kidneys have to still be on screen at the end');
 });
 
-test('the take-home is the claim the scene exists to make', () => {
-  assert.match(REEL_COPY.takeHome.title, /nothing damaged the kidney/i);
+test('the take-home claims the circulation’s share and not the whole syndrome', () => {
+  // The old take-home was "Nothing damaged the kidney", which generalises past
+  // what this model can support: HRS-AKI may occur with tubular injury,
+  // proteinuria or pre-existing CKD. What the model earns is narrower.
+  assert.match(REEL_COPY.takeHome.title, /circulation/i);
   assert.ok(REEL_COPY.takeHome.titleJa.length > 0);
+  const copy = JSON.stringify(REEL_COPY);
+  assert.ok(
+    !/nothing damaged|kidney is fine|腎臓を傷害したもの|異常はありません/i.test(copy),
+    'the reel still carries a claim the model cannot support'
+  );
 });
 
 test('the scene declares a reel the app can run', () => {

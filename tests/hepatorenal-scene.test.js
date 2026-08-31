@@ -113,6 +113,54 @@ test('the comparison labels say which kidney is which, and follow them', () => {
   }
 });
 
+test('every stage boundary sits where the model actually changes phase', () => {
+  // The stage a reader is shown has to describe the state they are looking at.
+  // These boundaries drifted once already: "filtration is defended first" sat
+  // at 0.75, which in this model is well past the failure of autoregulation
+  // and a long way down the filtration curve. Asserted against the solved
+  // state rather than against a remembered number.
+  const at = (progress) => sceneAt({ progress }).solved;
+  const stageAt = (id) => STAGES.find((stage) => stage.id === id).at;
+
+  // Nothing is being compensated yet at the start.
+  assert.equal(at(stageAt('healthy')).neurohumoral.activation, 0);
+
+  // By the time the reader is told the vasoconstrictor systems are on, they are.
+  assert.ok(at(stageAt('defended')).neurohumoral.activation > 0.3);
+
+  // "Filtration is defended" has to be a stage where renal blood flow has
+  // fallen, filtration has not, and the arteriole still has room.
+  const healthy = at(0).kidney;
+  const defended = at(stageAt('defended')).kidney;
+  assert.ok(defended.renalBloodFlowMlPerMin < healthy.renalBloodFlowMlPerMin * 0.95);
+  assert.ok(defended.glomerularFiltrationRateMlPerMin > healthy.glomerularFiltrationRateMlPerMin * 0.95);
+  assert.ok(defended.filtrationFraction > healthy.filtrationFraction);
+  assert.ok(defended.autoregulating, 'the defended stage is past the knee');
+
+  // And "the reserve runs out" has to be past it.
+  assert.ok(!at(stageAt('failure')).kidney.autoregulating);
+  assert.ok(at(stageAt('failure')).kidney.autoregulatoryReserve <= 0);
+
+  // The knee falls between the two, and nowhere else.
+  assert.ok(stageAt('defended') < stageAt('failure'));
+
+  // Five stages, not six: the timeline lays them out on one row and a sixth
+  // wraps under the track. Every other model-backed scene uses four.
+  assert.ok(STAGES.length <= 5, `${STAGES.length} stages will not fit on the timeline`);
+
+  // And each label has to stay true across its whole span, not just at its
+  // boundary — the reader sees it until the next one starts.
+  const spans = STAGES.map((stage, i) => [stage.id, stage.at, STAGES[i + 1]?.at ?? 1]);
+  for (const [id, from, to] of spans) {
+    if (id !== 'defended') continue;
+    const midpoint = at((from + to) / 2).kidney;
+    assert.ok(
+      midpoint.glomerularFiltrationRateMlPerMin > healthy.glomerularFiltrationRateMlPerMin * 0.9,
+      'filtration is not still being defended halfway through the stage that says it is'
+    );
+  }
+});
+
 // --- the read-out ----------------------------------------------------------
 
 test('every read-out row carries a value, and the values are the model’s', () => {
@@ -443,15 +491,105 @@ test('the scope panel names what the model has no tubule for', () => {
   }
 });
 
-test('the scope panel says the functional nature of the syndrome is a design decision', () => {
+test('the scope panel says the absence of kidney injury is a boundary, not a finding', () => {
   // The one thing a reader could take from this scene as a finding when it is
-  // not one: the model has no way to represent structural damage at all.
+  // not one. HRS-AKI may occur with tubular injury, proteinuria or
+  // pre-existing CKD, and may coexist with other mechanisms of AKI.
   const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
-  assert.match(cautions, /design decision/i);
+  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
+  assert.match(cautions, /structural kidney injury is not represented/i);
+  assert.match(cautions, /not a claim that real HRS-AKI never contains kidney injury/i);
+  assert.ok(/実際の HRS-AKI で腎障害が存在しないという意味ではありません/.test(cautionsJa));
+
+  // And the current criteria, rather than the ones this scene first shipped.
+  assert.match(cautions, /clinically indicated/i);
+  assert.match(cautions, /no longer required/i);
+  assert.ok(
+    !/absence of structural kidney disease/i.test(cautions),
+    'the scope panel still gives the old absolute diagnostic condition'
+  );
+});
+
+test('the scope panel says the treatment arm is a direction and not a response rate', () => {
+  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
+  assert.match(cautions, /direction predicted by the model, not a guaranteed clinical response/i);
+  assert.match(cautions, /40[–-]50/);
+  const cautionsJa = MODEL_SCOPE.cautions.map((entry) => entry.textJa).join(' ');
+  assert.ok(/確実な臨床反応ではありません/.test(cautionsJa));
+});
+
+test('the scope panel says the axis is a chosen path and not a time course', () => {
+  const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
+  assert.match(cautions, /chosen path through parameter space/i);
+  assert.match(cautions, /not a time course and not a natural history/i);
+  // And the slider itself says it, because the scope panel is a click away.
+  assert.match(HepatorenalScene.meta.progressLabel.label, /not a time course/i);
+  assert.ok(/時間経過ではなく/.test(HepatorenalScene.meta.progressLabel.labelJa));
+});
+
+test('the scope copy’s emphasis markers are balanced', () => {
+  // The panel renders `**like this**` as real emphasis. An odd number of
+  // markers in a string leaves one of them on screen as a typo, on the
+  // sentences that most need to be read cleanly.
+  const strings = [...MODEL_SCOPE.answers, ...MODEL_SCOPE.excludes, ...MODEL_SCOPE.cautions, ...MODEL_SCOPE.sources]
+    .flatMap((entry) => [entry.text, entry.textJa])
+    .concat([MODEL_SCOPE.question, MODEL_SCOPE.questionJa]);
+  for (const text of strings) {
+    const markers = (text.match(/\*\*/g) ?? []).length;
+    assert.equal(markers % 2, 0, `unbalanced emphasis in: ${text.slice(0, 60)}…`);
+  }
+
+  // And the boundary sentence is emphasised, because it is the one a reader
+  // most easily takes the wrong way.
+  const boundary = MODEL_SCOPE.cautions.find((entry) => /structural kidney injury/i.test(entry.text));
+  assert.ok(boundary);
+  assert.match(boundary.text, /\*\*[^*]*not a claim that real HRS-AKI never contains kidney injury[^*]*\*\*/);
+  assert.ok(/\*\*[^*]*実際の HRS-AKI で腎障害が存在しないという意味ではありません[^*]*\*\*/.test(boundary.textJa));
+});
+
+test('the scope panel names the 2024 consensus as the source of the definition', () => {
+  const sources = MODEL_SCOPE.sources.map((entry) => entry.text).join(' ');
+  assert.match(sources, /Nadim/);
+  assert.match(sources, /38527522/);
+  assert.match(sources, /Khemichian/);
+  assert.match(sources, /15977202/);
 });
 
 test('the disclaimer is present in both languages and says what it is not for', () => {
   assert.match(HepatorenalScene.meta.disclaimer, /not for diagnosis/i);
+  assert.match(HepatorenalScene.meta.disclaimer, /structural kidney injury is not represented/i);
+  assert.match(HepatorenalScene.meta.disclaimer, /boundary of the model/i);
   assert.ok(HepatorenalScene.meta.disclaimerJa.includes('診断'));
-  assert.ok(HepatorenalScene.meta.disclaimerShort.length < 90);
+  assert.ok(HepatorenalScene.meta.disclaimerJa.includes('モデルの境界'));
+  assert.ok(HepatorenalScene.meta.disclaimerShort.length < 110);
+  assert.match(HepatorenalScene.meta.disclaimerShort, /no kidney injury modelled/i);
+});
+
+test('the title does not present this as a complete model of the syndrome', () => {
+  assert.match(HepatorenalScene.meta.title, /haemodynamic mechanism/i);
+  assert.ok(HepatorenalScene.meta.titleJa.includes('循環'));
+  assert.match(HepatorenalScene.meta.subtitle, /no kidney injury is modelled/i);
+  assert.ok(HepatorenalScene.meta.subtitleJa.includes('腎障害は実装していません'));
+});
+
+test('no user-facing copy claims the kidney is undamaged in the real syndrome', () => {
+  // A full sweep of everything the scene puts on screen, in both languages,
+  // for the generalisation the audit removed.
+  const copy = JSON.stringify([
+    HepatorenalScene.meta,
+    STAGES,
+    METRICS,
+    MODEL_SCOPE,
+    MODEL_CONTROLS,
+  ]);
+  for (const forbidden of [
+    /nothing (has )?damaged the kidney/i,
+    /structurally near-normal/i,
+    /functional rather than structural/i,
+    /nothing is wrong with the kidney/i,
+    /構造的に(は)?(ほぼ)?正常な腎臓/,
+    /腎臓を傷害したものは(何も)?ありません/,
+  ]) {
+    assert.ok(!forbidden.test(copy), `the scene still says ${forbidden}`);
+  }
 });
