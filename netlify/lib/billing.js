@@ -12,6 +12,14 @@ export function env(name) {
   return value;
 }
 
+export function envAny(...names) {
+  for (const name of names) {
+    const value = process.env[name];
+    if (value) return value;
+  }
+  throw new Error(`Missing server configuration: ${names.join(' or ')}`);
+}
+
 export function bearer(request) {
   const header = request.headers.get('authorization') || '';
   const match = header.match(/^Bearer\s+(.+)$/i);
@@ -25,7 +33,7 @@ export async function authenticatedUser(request) {
   const url = env('SUPABASE_URL').replace(/\/$/, '');
   const response = await fetch(`${url}/auth/v1/user`, {
     headers: {
-      apikey: env('SUPABASE_ANON_KEY'),
+      apikey: envAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY'),
       Authorization: `Bearer ${token}`,
     },
   });
@@ -33,10 +41,10 @@ export async function authenticatedUser(request) {
   return response.json();
 }
 
-/** Supabase REST call using the service role. Never expose this key to Vite. */
+/** Supabase REST call using a server-only secret/service key. Never expose it to Vite. */
 export async function supabaseAdmin(path, { method = 'GET', body, prefer } = {}) {
   const url = env('SUPABASE_URL').replace(/\/$/, '');
-  const key = env('SUPABASE_SERVICE_ROLE_KEY');
+  const key = envAny('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
   const response = await fetch(`${url}/rest/v1/${path}`, {
     method,
     headers: {
