@@ -4,6 +4,7 @@ import './styles/navigation.css';
 import './styles/access.css';
 import './styles/subscription-access.css';
 import './styles/pricing-access.css';
+import './styles/education-progress.css';
 import './styles/patient-presentation.css';
 import './styles/education-access.css';
 import './styles/reel.css';
@@ -32,26 +33,16 @@ async function boot() {
   });
 
   if (route.kind === 'explorer') {
-    // The explorer is plain DOM: no renderer, no scene module, no geometry. It
-    // has to stay that way — it is the page that lists everything, so anything it
-    // pulls in is pulled in for every scene at once.
-    //
-    // The flag goes on the root element rather than the body: `html` carries
-    // `height: 100%` and `overflow: hidden` for the 3D view, and a page that
-    // scrolls has to undo both.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
     createExplorer({ ui, accountButton: access.accountButton, access });
     void accessReady;
-    // Only a link to a real scene is a navigation. The explorer's own jump
-    // links must not reload the page out from under the reader.
     window.addEventListener('hashchange', () => {
       if (namesScene(window.location.hash)) window.location.reload();
     });
     return;
   }
 
-  // Simple loading veil: the first frame has to compile shaders and build geometry.
   const veil = document.createElement('div');
   veil.className = 'loading';
   veil.innerHTML = '<span>building model</span><span class="loading-bar"></span>';
@@ -65,8 +56,6 @@ async function boot() {
     ]);
     const app = await createApp({ stage, ui });
     installAccess({ app, access, ui, sceneId: resolveSceneId() });
-    // No await on purpose. Subscribers installed above will receive the paid
-    // grants when the parallel auth/entitlement check finishes.
     void accessReady;
     requestAnimationFrame(() => {
       veil.classList.add('is-done');
