@@ -186,7 +186,7 @@ test('the dose-response curve is the model’s own, and the marker sits on it', 
 test('every airway is drawn at the calibre the model gave it', () => {
   const built = sceneAt({ progress: 0.8 });
   let checked = 0;
-  built.tree.setCalibres((index) => {
+  built.primary.tree.setCalibres((index) => {
     const expected = built.solved.calibres[index].openFraction;
     assert.ok(expected > 0 && expected <= 1, `branch ${index} has a calibre of ${expected}`);
     checked += 1;
@@ -198,7 +198,7 @@ test('every airway is drawn at the calibre the model gave it', () => {
 test('a lung with defects is drawn with two visibly different populations', () => {
   // Read off the instance colours, because that is what the reader sees.
   const built = sceneAt({ progress: 0.8 });
-  const colours = built.units.instanceColor.array;
+  const colours = built.primary.units.instanceColor.array;
   const lightness = [];
   for (let unit = 0; unit < TERMINAL_COUNT; unit++) {
     lightness.push(colours[unit * 3] + colours[unit * 3 + 1] + colours[unit * 3 + 2]);
@@ -208,7 +208,7 @@ test('a lung with defects is drawn with two visibly different populations', () =
 
   // And the quiet lung is drawn as one population.
   const quiet = sceneAt({ progress: 0 });
-  const quietColours = quiet.units.instanceColor.array;
+  const quietColours = quiet.primary.units.instanceColor.array;
   const quietLightness = [];
   for (let unit = 0; unit < TERMINAL_COUNT; unit++) {
     quietLightness.push(quietColours[unit * 3] + quietColours[unit * 3 + 1] + quietColours[unit * 3 + 2]);
@@ -224,7 +224,7 @@ test('the label that names a dark region points at one the model actually produc
   const worst = built.solved.units.reduce((best, unit) => (unit.share < best.share ? unit : best));
   assert.ok(worst.share < DEFECT_THRESHOLD, 'the premise: there is a dark region to point at');
   const anchor = built.getAnnotations().find((annotation) => annotation.id === 'defect');
-  const leaf = built.tree.leafPositions[worst.unit];
+  const leaf = built.primary.tree.leafPositions[worst.unit];
   assert.ok(anchor.position.distanceTo(leaf) < 1, 'the label is beside the worst unit, not at a fixed spot');
 });
 
@@ -496,4 +496,91 @@ test('the scope panel is complete, bilingual, and warns about the two things mos
   const cautions = MODEL_SCOPE.cautions.map((entry) => entry.text).join(' ');
   assert.match(cautions, /Poiseuille/i, 'and that Poiseuille is used relatively');
   assert.match(cautions, /defect count falls|uniformly shut/i, 'and that the defect count falls at full stimulus');
+});
+
+// --- normal beside disease -------------------------------------------------
+
+test('the comparison puts a healthy tree beside the asthmatic one', () => {
+  const built = scene();
+  assert.equal(built.reference, undefined, 'the second tree is not built until it is asked for');
+
+  built.setComparison(true);
+  assert.ok(built.reference, 'turning the comparison on builds it');
+  assert.ok(built.reference.object.visible);
+  assert.ok(built.primary.object.position.x > 0);
+  assert.equal(built.reference.object.position.x, -built.primary.object.position.x);
+
+  built.setComparison(false);
+  assert.equal(built.primary.object.position.x, 0);
+  assert.equal(built.reference.object.visible, false);
+});
+
+test('both trees are given the same stimulus, so the difference is the lung', () => {
+  // The whole image is "one stimulus, two lungs". If the healthy tree were
+  // quietly given a weaker stimulus, the picture would be an artefact of the
+  // setup rather than a property of the trait.
+  const built = scene();
+  built.setComparison(true);
+  for (const progress of [0, 0.4, 0.8, 1]) {
+    built.setProgress(progress);
+    const reference = built.referenceSolve();
+    assert.equal(reference.controls.stimulus, built.solved.controls.stimulus, `stimulus differed at ${progress}`);
+    // And what does differ is the trait and the remodelling, which is the point.
+    assert.equal(reference.controls.hyperresponsiveness, 1);
+    assert.equal(reference.controls.wallThickening, 0);
+    assert.ok(built.solved.controls.hyperresponsiveness > 1);
+  }
+});
+
+test('the comparison shows what hyperresponsiveness actually is: the knee moves left', () => {
+  // The reason this scene earns a second tree, stated correctly.
+  //
+  // It is *not* that a normal lung never goes patchy. It does: the feedback
+  // through parenchymal tethering is a property of a branching lung, not of
+  // asthma, and a strong enough stimulus tips any of them. What the asthmatic
+  // trait does is move the knee of the dose-response curve to a lower dose.
+  //
+  // So the comparison is worth watching at a dose near the asthmatic knee,
+  // where one tree has already tipped and the other has not — and it stays
+  // honest at full dose, where both do.
+  const built = scene();
+  built.setComparison(true);
+
+  built.setProgress(0.6);
+  const asthmaticAtKnee = built.solved;
+  const healthyAtKnee = built.referenceSolve();
+  assert.ok(asthmaticAtKnee.defectFraction > 0, 'the asthmatic tree has tipped at this dose');
+  assert.equal(healthyAtKnee.defectFraction, 0, 'and the healthy one has not');
+  assert.ok(healthyAtKnee.heterogeneity < asthmaticAtKnee.heterogeneity);
+  assert.ok(healthyAtKnee.totalVentilation > asthmaticAtKnee.totalVentilation);
+
+  // And at full dose the healthy tree tips too, which the scene must not hide.
+  built.setProgress(1);
+  assert.ok(
+    built.referenceSolve().defectFraction > 0,
+    'a normal lung has to be allowed to go patchy under a strong enough stimulus'
+  );
+});
+
+test('the two trees are drawn by the same code, and only their solves differ', () => {
+  // Both go through `drawTree`, so nothing can drift between them that nobody
+  // chose. Asserted by drawing both from the same solve.
+  const built = scene();
+  built.setComparison(true);
+  built.setProgress(0.8);
+  built.drawTree(built.primary, built.solved);
+  built.drawTree(built.reference, built.solved);
+
+  assert.deepEqual(
+    Array.from(built.primary.units.instanceColor.array),
+    Array.from(built.reference.units.instanceColor.array)
+  );
+  assert.equal(built.primary.tree.material.color.getHex(), built.reference.tree.material.color.getHex());
+});
+
+test('the comparison view frames the pair rather than one tree', () => {
+  const built = scene();
+  const pair = built.getComparisonView();
+  assert.ok(pair.position.z > AsthmaScene.cameraPose.position.z, 'the camera has to pull back for two trees');
+  assert.equal(pair.target.x, 0, 'and sit on the midline so neither is favoured');
 });

@@ -294,6 +294,49 @@ export const MODEL_SCOPE = {
   evidence: 'docs/model-evidence/asthma.md',
 };
 
+/**
+ * Every word the fifteen-second social sequence puts on screen.
+ *
+ * Here rather than in the storyboard for the same reason the stage summaries
+ * are here: the sequence is drawing code, and drawing code should not contain
+ * sentences. No figure appears in this file — anything numeric is a `{token}`
+ * the storyboard fills from the model, so a caption cannot drift away from the
+ * lung it is describing.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'One stimulus. Two lungs.',
+    titleJa: '同じ刺激。ちがう肺。',
+    subtitle: 'Both trees get exactly the same dose',
+    subtitleJa: '2 本の気道樹に、まったく同じ量の刺激',
+  },
+  cards: {
+    normal: { label: 'Normal', labelJa: '正常' },
+    asthma: { label: 'Asthma', labelJa: '喘息' },
+  },
+  /** The small tag beside the trees while the doses are equal. */
+  badge: {
+    label: 'Same dose, both trees',
+    labelJa: '刺激量は両者とも同じ',
+  },
+  knee: {
+    caption: 'One has tipped. The other has not.',
+    captionJa: '片方だけが限界を越えました',
+  },
+  full: {
+    caption: 'Push hard enough and a normal lung tips too',
+    captionJa: '十分に強くすれば、正常な肺も限界を越えます',
+  },
+  takeHome: {
+    title: 'Hyperresponsiveness moves the knee',
+    titleJa: '気道過敏性とは、変曲点が手前に来ること',
+  },
+  note: {
+    text: 'Conceptual model · relative values · not for diagnosis',
+    textJa: '概念モデル｜すべて相対値｜診断には使用できません',
+  },
+};
+
 export const STORY_LABEL = {
   label: 'Walk through it',
   labelJa: '順に見る',

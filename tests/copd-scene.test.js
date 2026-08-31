@@ -230,14 +230,14 @@ test('the drawn shape follows the model’s volume and nothing else', () => {
   const work = sceneAt({ progress: 1 });
   // A hyperinflated lung has to be drawn bigger. Read off the mesh, because
   // that is what the reader sees.
-  const height = (built) => built.lungs.object.getObjectByName('right-lung').scale.y;
+  const height = (built) => built.primary.lungs.object.getObjectByName('right-lung').scale.y;
   assert.ok(height(work) > height(rest), 'the lung at the ceiling is drawn larger than the lung at rest');
 
   // And the diaphragm has to be flatter, because that is what a chest that
   // never empties does to it.
   const curvature = (built) => {
-    built.diaphragm.object.updateWorldMatrix(true, true);
-    const sheet = built.diaphragm.object.getObjectByName('diaphragm-sheet');
+    built.primary.diaphragm.object.updateWorldMatrix(true, true);
+    const sheet = built.primary.diaphragm.object.getObjectByName('diaphragm-sheet');
     const y = sheet.geometry.attributes.position;
     let max = -Infinity;
     for (let i = 0; i < y.count; i++) max = Math.max(max, y.getY(i));
@@ -545,5 +545,149 @@ test('the reference lung the shapes are drawn against is the normal one', () => 
   assert.ok(
     built.model.state.endExpiratoryVolumeL > reference.relaxedVolumeL + 1,
     'the scene’s lung rests well above a normal one, which is what the drawing has to show'
+  );
+});
+
+// --- normal beside disease -------------------------------------------------
+
+test('the comparison puts a lung with ordinary mechanics beside the obstructed one', () => {
+  const built = scene();
+  assert.equal(built.reference, undefined, 'the second lung is not built until it is asked for');
+
+  built.setComparison(true);
+  assert.ok(built.reference, 'turning the comparison on builds it');
+  assert.ok(built.reference.object.visible);
+
+  // The reference is a real lung breathing, not a stored picture: it has its
+  // own model, and that model has ordinary airway resistance and ordinary
+  // elastic recoil.
+  const reference = built.referenceModel.controls;
+  assert.equal(reference.airwayResistance, 1);
+  assert.equal(reference.elasticRecoil, 1);
+  assert.equal(reference.bronchodilation, 0);
+  assert.equal(reference.expiratoryPressureCmH2O, 0);
+
+  // And the primary is still the scene's own lung, untouched by the comparison.
+  assert.equal(built.model.controls.airwayResistance, 3);
+  assert.equal(built.model.controls.elasticRecoil, 0.6);
+});
+
+test('both lungs are asked for the same ventilation, so the difference is the lung', () => {
+  // The comparison is only worth anything if the ask is identical. If the
+  // healthy lung were quietly given an easier workload, the whole image would
+  // be an artefact of the setup rather than a property of the lungs.
+  const built = scene();
+  built.setComparison(true);
+  for (const progress of [0, 0.3, 0.6, 1]) {
+    built.setProgress(progress);
+    assert.equal(
+      built.referenceModel.controls.demand,
+      built.model.controls.demand,
+      `the two lungs were asked for different ventilation at progress ${progress}`
+    );
+    assert.equal(
+      built.referenceModel.pattern.expiratoryTimeS,
+      built.model.pattern.expiratoryTimeS,
+      'and they must be given the same time to empty in'
+    );
+  }
+});
+
+test('the comparison shows the finding a single lung cannot: the two go opposite ways', () => {
+  // At a workload both lungs are given, the obstructed one's resting volume
+  // climbs and the healthy one's falls. That divergence is the reason this
+  // scene earns a second lung on screen at all, and it is asserted here against
+  // the two models the comparison actually draws.
+  const built = scene();
+  built.setComparison(true);
+  built.setProgress(0.6);
+  built.model.settle({ maxBreaths: 400 });
+  built.referenceModel.settle({ maxBreaths: 400 });
+
+  const obstructed = built.model.state;
+  const healthy = built.referenceModel.state;
+  assert.ok(
+    obstructed.endExpiratoryVolumeL > obstructed.relaxedVolumeL,
+    'the obstructed lung has to rest above its relaxed volume'
+  );
+  assert.ok(
+    healthy.endExpiratoryVolumeL <= healthy.relaxedVolumeL,
+    'and the healthy one at or below its own'
+  );
+  assert.ok(
+    healthy.inspiratoryCapacityL > obstructed.inspiratoryCapacityL,
+    'so the room left to breathe in differs, which is the number the scene is about'
+  );
+});
+
+test('the two lungs are drawn by the same code, and only their models differ', () => {
+  // Both bodies go through `drawBody`, so nothing can drift between them that
+  // nobody chose. Asserted by drawing both from the *same* model: if the two
+  // bodies then differ in anything, some property is being written outside the
+  // one function that is supposed to own it.
+  const built = scene();
+  built.setComparison(true);
+  built.model.settle({ maxBreaths: 400 });
+  built.drawBody(built.primary, built.model);
+  built.drawBody(built.reference, built.model);
+
+  const height = (parts) => parts.lungs.object.getObjectByName('right-lung').scale.y;
+  assert.equal(height(built.primary), height(built.reference));
+
+  const dome = (parts) => {
+    parts.diaphragm.object.updateWorldMatrix(true, true);
+    return parts.diaphragm.object.getObjectByName('diaphragm-sheet').position.y;
+  };
+  assert.equal(dome(built.primary), dome(built.reference));
+
+  const glow = (parts) => parts.unitMarkers.map((marker) => marker.material.emissiveIntensity);
+  assert.deepEqual(glow(built.primary), glow(built.reference));
+
+  // They are separated on screen, and symmetrically about the midline.
+  assert.ok(built.primary.object.position.x > 0);
+  assert.equal(built.reference.object.position.x, -built.primary.object.position.x);
+});
+
+test('turning the comparison off puts the lung back on the midline', () => {
+  const built = scene();
+  built.setComparison(true);
+  built.setComparison(false);
+  assert.equal(built.primary.object.position.x, 0);
+  assert.equal(built.reference.object.visible, false);
+});
+
+test('the comparison view frames the pair rather than one lung', () => {
+  const built = scene();
+  const single = CopdScene.cameraPose;
+  const pair = built.getComparisonView();
+  assert.ok(pair.position.z > single.position.z, 'the camera has to pull back for two lungs');
+  assert.equal(pair.target.x, 0, 'and sit on the midline so neither is favoured');
+});
+
+test('the comparison starts the reference lung where the primary already is', () => {
+  // Both lungs breathe at the same period, and both advance by the same delta,
+  // so a phase offset at the moment the comparison is switched on never
+  // closes. Volume, airway compression and the flow animation all follow the
+  // phase, so the offset would read as a difference between the lungs — which
+  // is the one thing this comparison exists to rule out.
+  const built = scene();
+  built.setProgress(0.6);
+  // Run the primary a while, deliberately stopping mid-breath.
+  for (let i = 0; i < 90; i += 1) built.update(1 / 60);
+  assert.ok(built.model.cycleTimeS > 0, 'the primary is not mid-breath, so this proves nothing');
+
+  built.setComparison(true);
+  const step = 1 / 120;
+  assert.ok(
+    Math.abs(built.referenceModel.cycleTimeS - built.model.cycleTimeS) <= step * 1.5,
+    `the reference started at ${built.referenceModel.cycleTimeS} and the primary is at ${built.model.cycleTimeS}`
+  );
+  assert.equal(built.referenceModel.phase.inspiring, built.model.phase.inspiring);
+
+  // And the alignment survives: identical periods, identical deltas.
+  for (let i = 0; i < 240; i += 1) built.update(1 / 60);
+  assert.ok(
+    Math.abs(built.referenceModel.phase.fraction - built.model.phase.fraction) < 0.02,
+    'the two lungs drifted apart in the breath'
   );
 });

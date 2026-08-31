@@ -295,6 +295,52 @@ export const MODEL_SCOPE = {
   evidence: 'docs/model-evidence/copd.md',
 };
 
+/**
+ * Every word the fifteen-second social sequence puts on screen.
+ *
+ * Here rather than in the storyboard because the sequence is drawing code, and
+ * drawing code should not contain sentences. No figure appears in this file:
+ * every number is filled from the model, so a caption cannot drift away from
+ * the lung it is describing.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'Same work. Different lungs.',
+    titleJa: '同じ運動。ちがう肺。',
+    subtitle: 'Both are asked for exactly the same ventilation',
+    subtitleJa: '2 つの肺に、まったく同じ換気量が求められます',
+  },
+  cards: {
+    normal: { label: 'Normal', labelJa: '正常' },
+    copd: { label: 'COPD', labelJa: 'COPD' },
+  },
+  /** The tag that keeps anyone from reading the axis as a severity score. */
+  badge: {
+    label: 'Same ventilation asked of both',
+    labelJa: '要求換気量は両者とも同じ',
+  },
+  demand: {
+    caption: 'Breathing faster takes the time to breathe out away',
+    captionJa: '呼吸が速くなると、吐くための時間が奪われます',
+  },
+  stacking: {
+    caption: 'What is not given back is there at the start of the next breath',
+    captionJa: '吐き切れなかった分は、次の呼吸の始まりに残っています',
+  },
+  opposite: {
+    caption: 'One lung climbs. The other settles lower.',
+    captionJa: '片方は上がり続け、もう片方はむしろ下がります',
+  },
+  takeHome: {
+    title: 'Breathless because it cannot empty',
+    titleJa: '息が切れるのは、吐き切れないから',
+  },
+  note: {
+    text: 'Conceptual model · no gas exchange · not for diagnosis',
+    textJa: '概念モデル｜ガス交換は扱いません｜診断には使用できません',
+  },
+};
+
 export const STORY_LABEL = {
   label: 'Walk through it',
   labelJa: '順に見る',

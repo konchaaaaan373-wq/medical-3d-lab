@@ -21,14 +21,52 @@ the named test actually lives in.
 ## Layer 1 — external physiology
 
 **Files:** [`respiratory-physiology.test.js`](respiratory-physiology.test.js),
-[`portal-haemodynamics.test.js`](portal-haemodynamics.test.js)
+[`portal-haemodynamics.test.js`](portal-haemodynamics.test.js),
+[`hepatorenal-physiology.test.js`](hepatorenal-physiology.test.js)
 
 Propositions the literature requires, which would be true if this repository
 did not exist. Directions, orderings, sufficiency conditions, independence
 conditions.
 
 **No assertion in this layer may depend on a constant this repository invented
-or calibrated.** Every test here must survive re-tuning. There are no
+or calibrated.** Every test here must survive re-tuning.
+
+**The test that decides the layer is one question:**
+
+> **If this assertion failed, could I honestly say the medicine was wrong?**
+
+Containing no repository constant as a literal is not enough. Phrases that
+almost always mean an assertion has failed that question:
+
+| Phrase | What it usually means |
+| --- | --- |
+| `the model can …` | a capability of a parameterisation, not a fact about people |
+| `at any severity`, `at every step` | a chosen path through parameter space |
+| `same kidney`, a counterfactual | a construction this repository invented |
+| `without touching …` | a deliberate isolation in the model |
+| `strictly` across a whole slider | a chosen effect size over a chosen range |
+| anything reading copy, a chart or `MODEL_SCOPE` | a contract, not a physiological invariant |
+| an exact equality between model outputs | wiring |
+
+Under that rule the hepatorenal external layer went from fourteen tests to
+twelve — two moved out entirely and five were narrowed. **Do not keep a test in
+this layer to preserve a count.** A small pure layer is worth more than a large
+mixed one.
+
+Two tests moved out for the narrower reason that their *result* depended on
+repository-selected gains:
+
+- *dilating one bed lowers the resistance of the whole circulation* — asserted
+  through the full coupled model, where the other beds constrict and whether the
+  total still falls depends on `SYSTEMIC_CONSTRICTION_GAIN`. The external law is
+  the parallel one **with the other conductances held fixed**; the coupled
+  outcome is `calibration: the constriction gain leaves the resistance fall
+  intact`.
+- *worsening cirrhosis raises cardiac output and still lowers arterial
+  pressure* — the rising output is a consequence of the chosen compensation
+  exponent, and cardiac output has been observed to *fall* at the onset of
+  hepatorenal syndrome. What stayed external is the arithmetic of incomplete
+  compensation and the existence of the low-output path. There are no
 magnitudes, no ratios between two invented numbers, and no thresholds that came
 out of this repository rather than out of a paper. Where an ordering is
 genuinely external — "the peripheral airway narrows more than the central one" —
@@ -47,8 +85,9 @@ than that this model reaches it.
 ## Layer 2 — model integrity
 
 **Files:** everything else. `copd-model.test.js`, `asthma-model.test.js`,
-`portal-hypertension-model.test.js`, the three `*-scene.test.js` files,
-`model-layer.test.js`, `catalog.test.js`, `evidence.test.js`, and the rest.
+`portal-hypertension-model.test.js`, `hepatorenal.test.js`, the `*-scene.test.js`
+and `*-reel.test.js` files, `model-layer.test.js`, `catalog.test.js`,
+`evidence.test.js`, and the rest.
 
 Conservation, finiteness, determinism, solver convergence, and the
 internal-consistency chain: the chart is the model, the read-out is the model,
@@ -120,8 +159,8 @@ to run.
 ## Running them
 
 ```bash
-npm test                                       # all four hundred and fifty-odd
-node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js   # layer 1
+npm test                                       # all five hundred and eighty-odd
+node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js tests/hepatorenal-physiology.test.js   # layer 1
 node --test tests/calibration.test.js          # layer 3
 node --test tests/evidence.test.js             # the separation itself
 ```

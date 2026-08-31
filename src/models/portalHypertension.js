@@ -104,7 +104,15 @@ import { perMinuteToPerSecond, perSecondToPerMinute } from './units.js';
 
 /** Pressure in the hepatic veins and inferior vena cava, mmHg. The reference. */
 export const HEPATIC_VEIN_PRESSURE = 4;
-/** Mean arterial pressure driving the splanchnic bed, mmHg. */
+/**
+ * Mean arterial pressure driving the splanchnic bed, mmHg — the default.
+ *
+ * A fixed inlet pressure is a simplification: in advanced cirrhosis the
+ * systemic circulation is not a constant, and the arterial pressure a
+ * decompensated patient runs at is lower than this. Callers that model the
+ * systemic side may pass `meanArterialPressureMmHg` as a control instead; this
+ * value is what the portal circulation is solved at when they do not.
+ */
 export const MEAN_ARTERIAL_PRESSURE = 90;
 
 /**
@@ -220,6 +228,15 @@ export const DEFAULT_CONTROLS = {
   collateralPropensity: 1,
   /** A transjugular intrahepatic portosystemic shunt, 0 (none) to 1 (fully dilated). */
   tips: 0,
+  /**
+   * The arterial pressure driving the splanchnic bed, mmHg.
+   *
+   * Here so that a model of the systemic circulation can hand this one the
+   * pressure it has solved for, rather than this model asserting a constant
+   * that the systemic model disagrees with. Left at `MEAN_ARTERIAL_PRESSURE`
+   * it changes nothing.
+   */
+  meanArterialPressureMmHg: MEAN_ARTERIAL_PRESSURE,
   /**
    * **Which haemodynamic pattern the model is being asked to represent**, as an
    * index into `HAEMODYNAMIC_PATTERNS`.
@@ -396,13 +413,14 @@ export function establishedCollateralFraction(gradientMmHg, propensity) {
  * @param {{ splanchnic: number, presinusoidal: number, sinusoidal: number }} resistances
  * @param {number} collateralConductance 1/R of the collateral bed, 0 when closed
  * @param {number} tipsConductance 1/R of a shunt, 0 when there is none
+ * @param {number} meanArterialPressure inlet pressure to the splanchnic bed, mmHg
  */
-function portalPressureFor(resistances, collateralConductance, tipsConductance) {
+function portalPressureFor(resistances, collateralConductance, tipsConductance, meanArterialPressure) {
   const liverConductance = 1 / (resistances.presinusoidal + resistances.sinusoidal);
   const outflow = liverConductance + collateralConductance + tipsConductance;
   const inflow = 1 / resistances.splanchnic;
   // (MAP − P)·inflow = (P − Phv)·outflow, solved for P.
-  return (MEAN_ARTERIAL_PRESSURE * inflow + HEPATIC_VEIN_PRESSURE * outflow) / (inflow + outflow);
+  return (meanArterialPressure * inflow + HEPATIC_VEIN_PRESSURE * outflow) / (inflow + outflow);
 }
 
 /**
@@ -412,6 +430,7 @@ function portalPressureFor(resistances, collateralConductance, tipsConductance) 
  */
 export function solvePortalCirculation(controls = {}) {
   const settings = { ...DEFAULT_CONTROLS, ...controls };
+  const meanArterialPressure = settings.meanArterialPressureMmHg;
   const resistances = vascularResistances(settings);
   const tipsConductance = settings.tips > 0 ? settings.tips / TIPS_RESISTANCE_OPEN : 0;
 
@@ -419,14 +438,14 @@ export function solvePortalCirculation(controls = {}) {
   // collaterals. Iterated to a fixed point, damped because a sigmoid inside a
   // feedback loop will otherwise overshoot and ring.
   const solved = fixedPoint({
-    initial: portalPressureFor(resistances, 0, tipsConductance),
+    initial: portalPressureFor(resistances, 0, tipsConductance, meanArterialPressure),
     next: (pressure) => {
       const opening = establishedCollateralFraction(
         pressure - HEPATIC_VEIN_PRESSURE,
         settings.collateralPropensity
       );
       const conductance = opening > 1e-4 ? opening / COLLATERAL_RESISTANCE_OPEN : 0;
-      return portalPressureFor(resistances, conductance, tipsConductance);
+      return portalPressureFor(resistances, conductance, tipsConductance, meanArterialPressure);
     },
     blend: (a, b, t) => a + (b - a) * t,
     distance: (a, b) => Math.abs(a - b),
@@ -444,7 +463,7 @@ export function solvePortalCirculation(controls = {}) {
   const liverFlow = gradient / (resistances.presinusoidal + resistances.sinusoidal);
   const collateralFlow = gradient * collateralConductance;
   const tipsFlow = gradient * tipsConductance;
-  const splanchnicInflow = (MEAN_ARTERIAL_PRESSURE - portalPressure) / resistances.splanchnic;
+  const splanchnicInflow = (meanArterialPressure - portalPressure) / resistances.splanchnic;
 
   /**
    * Sinusoidal pressure: what is left of the portal pressure after the

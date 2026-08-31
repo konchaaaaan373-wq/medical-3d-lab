@@ -2,12 +2,35 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as amyloid from '../src/data/amyloidBeta.js';
 import * as heartFailure from '../src/data/heartFailure.js';
+import * as copd from '../src/data/copd.js';
+import * as asthma from '../src/data/asthma.js';
+import * as portalHypertension from '../src/data/portalHypertension.js';
+import * as hepatorenal from '../src/data/hepatorenal.js';
 import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 
 const SCENES = [
   ['amyloid-beta', amyloid],
   ['heart-failure', heartFailure],
+];
+
+/**
+ * Every scene that puts labels on the 3D, including the model-backed ones.
+ *
+ * The legend and stage tables above still differ in shape between the two
+ * original scenes and the later ones, so those tests are not extended here.
+ * The **annotation** contract does not differ: `LabelLayer` reads `text`,
+ * `sub` and `range` from every one of them, and a scene that declares an
+ * annotation any other way throws on the first frame rather than degrading.
+ * That is worth checking everywhere.
+ */
+const ANNOTATED = [
+  ['amyloid-beta', amyloid],
+  ['heart-failure', heartFailure],
+  ['copd', copd],
+  ['asthma', asthma],
+  ['portal-hypertension', portalHypertension],
+  ['hepatorenal-syndrome', hepatorenal],
 ];
 
 test('stage tables are well formed', () => {
@@ -43,11 +66,19 @@ test('legend entries reference real palette colours and sane thresholds', () => 
 });
 
 test('annotations are bilingual and their visibility windows are valid', () => {
-  for (const [id, data] of SCENES) {
+  // Every scene that draws labels, because this is the shape `LabelLayer`
+  // destructures on the first frame: a scene that declares an annotation any
+  // other way fails at run time and passes every unit test that only looks at
+  // its own data module.
+  for (const [id, data] of ANNOTATED) {
+    assert.ok(data.ANNOTATIONS?.length, `${id} declares no annotations`);
     for (const annotation of data.ANNOTATIONS) {
+      assert.ok(annotation.id, `${id}: an annotation has no id`);
       assert.ok(annotation.text && annotation.sub, `${id}: annotation ${annotation.id} missing a language`);
+      assert.ok(Array.isArray(annotation.range), `${id}: annotation ${annotation.id} has no range`);
       const [from, to] = annotation.range;
       assert.ok(from >= 0 && to <= 1 && from < to, `${id}: bad range on ${annotation.id}`);
+      assert.ok(annotation.anchor, `${id}: annotation ${annotation.id} names no anchor`);
     }
   }
 });
