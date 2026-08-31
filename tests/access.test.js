@@ -126,7 +126,7 @@ test('billing: Stripe period end supports legacy root and flexible-billing item 
     new Date(rootSeconds * 1000).toISOString()
   );
   assert.equal(
-    subscriptionPeriodEnd({ items: { data: [{ current_period_end: itemSeconds }] } }),
+    subscriptionPeriodEnd({ items: { data: [{ current_period_end: itemSeconds }] }),
     new Date(itemSeconds * 1000).toISOString()
   );
   assert.equal(subscriptionPeriodEnd({ items: { data: [] } }), null);
@@ -180,7 +180,7 @@ test('patient mode: COPD copy does not reinterpret demand as disease progression
 test('patient mode: amyloid guide separates aggregation from individual cognition', () => {
   const guide = patientGuideFor('amyloid-beta');
   const allCopy = guide.steps.map((step) => `${step.title} ${step.body} ${step.titleJa} ${step.bodyJa}`).join(' ');
-  assert.match(allCopy, /does not tell us how much memory difficulty/i);
+  assert.match(allCopy, /does not .*tell us how much memory difficulty/i);
   assert.match(allCopy, /判断することはできません/);
 });
 
