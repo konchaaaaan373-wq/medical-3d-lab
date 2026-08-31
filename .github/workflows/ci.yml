@@ -9,15 +9,41 @@ permissions:
   contents: read
 
 jobs:
-  product-access-tests:
-    name: Product access · ${{ matrix.test }}
+  access-categories:
+    name: Access · ${{ matrix.category }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - category: entitlement policy
+            pattern: '^access:'
+          - category: product capabilities
+            pattern: '^product:'
+          - category: billing integrity
+            pattern: '^billing:'
+          - category: patient mode
+            pattern: '^patient mode:'
+          - category: education mode
+            pattern: '^education mode:'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test --test-name-pattern="${{ matrix.pattern }}" tests/access.test.js
+
+  product-unit-tests:
+    name: Product unit · ${{ matrix.test }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         test:
-          - tests/access.test.js
           - tests/pricing.test.js
           - tests/subscription-view.test.js
     steps:
