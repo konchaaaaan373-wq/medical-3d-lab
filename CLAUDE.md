@@ -43,6 +43,9 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 
 設計判断の source of truth は
 [`docs/product-principles.md`](docs/product-principles.md) です。
+アプリ全体の完成形・現在地・優先順位と、**どの文書が何を所有しているかの地図**は
+[`docs/grand-design.md`](docs/grand-design.md) にあります。触る領域の所有文書が
+分からないときは、まずそこの document map を引いてください。
 何かを追加・変更する前に、以下を前提にしてください。
 
 - **3D is a means, not the goal.** 2D の静止画より理解が明確に改善しないなら

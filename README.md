@@ -13,6 +13,8 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 
 設計思想の全体は **[`docs/product-principles.md`](docs/product-principles.md)**
 にまとめてあります。新しいテーマや機能を追加する前に、まずそちらを読んでください。
+アプリ全体の完成形・現在地・優先順位と文書の対応表（document map）は
+**[`docs/grand-design.md`](docs/grand-design.md)**、
 公開までの実装順と完了条件は
 **[`docs/public-release-roadmap.md`](docs/public-release-roadmap.md)** を進捗台帳にします。
 
