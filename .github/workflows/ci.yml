@@ -20,6 +20,7 @@ jobs:
           - tests/access.test.js
           - tests/pricing.test.js
           - tests/subscription-view.test.js
+          - tests/education-progress.test.js
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
