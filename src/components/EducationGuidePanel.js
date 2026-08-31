@@ -20,9 +20,11 @@ const KIND_COPY = Object.freeze({
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
  *   onExit:()=>void,
+ *   onStepChange?:(stepIndex:number)=>void,
+ *   onComplete?:(stepIndex:number)=>void,
  * }} options
  */
-export function createEducationGuidePanel({ guide, setProgress, onExit }) {
+export function createEducationGuidePanel({ guide, setProgress, onExit, onStepChange, onComplete }) {
   let index = 0;
   let revealed = false;
 
@@ -60,7 +62,16 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
   const next = el('button', {
     class: 'education-guide-nav primary',
     type: 'button',
-    on: { click: () => (index === guide.steps.length - 1 ? onExit() : setIndex(index + 1)) },
+    on: {
+      click: () => {
+        if (index === guide.steps.length - 1) {
+          onComplete?.(index);
+          onExit();
+          return;
+        }
+        setIndex(index + 1);
+      },
+    },
   });
 
   const close = el('button', {
@@ -86,12 +97,13 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     el('div', { class: 'education-guide-actions' }, [previous, next]),
   ]);
 
-  function setIndex(nextIndex) {
+  function setIndex(nextIndex, { notify = true } = {}) {
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
     revealed = false;
     const step = guide.steps[index];
     setProgress(step.progress ?? 0);
     render();
+    if (notify) onStepChange?.(index);
   }
 
   function render() {
@@ -135,12 +147,16 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     );
   }
 
-  setIndex(0);
+  setIndex(0, { notify: false });
 
   return {
     element,
     reset() {
-      setIndex(0);
+      setIndex(0, { notify: false });
     },
+    resume(stepIndex) {
+      setIndex(stepIndex, { notify: false });
+    },
+    currentIndex: () => index,
   };
 }

@@ -53,9 +53,31 @@
   background: color-mix(in srgb, var(--accent) 5%, transparent);
 }
 
+.explorer-access-badge.is-completed {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--accent) 48%, var(--border));
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+}
+
 .explorer-access-lock {
   color: var(--accent);
   font-size: 8px;
+}
+
+.explorer-access-complete {
+  display: inline-grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #04121a;
+  font-size: 7px;
+  font-weight: 900;
+}
+
+.explorer-access-complete[hidden] {
+  display: none !important;
 }
 
 .explorer-product-key {
@@ -72,6 +94,67 @@
   line-height: 1.4;
 }
 
+.explorer-learning-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 220px);
+  align-items: center;
+  gap: 16px;
+  margin-top: 13px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.explorer-learning-summary[hidden] {
+  display: none !important;
+}
+
+.explorer-learning-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.explorer-learning-label {
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.explorer-learning-value {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.explorer-learning-value .lang-ja {
+  color: var(--ink-dim);
+  font-size: 10px;
+}
+
+.explorer-learning-meter {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.explorer-learning-meter-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
 @media (max-width: 720px) {
   .explorer-header {
     padding-top: 68px;
@@ -85,5 +168,16 @@
   .explorer-product-key {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .explorer-learning-summary {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .explorer-learning-meter-fill {
+    transition: none;
   }
 }

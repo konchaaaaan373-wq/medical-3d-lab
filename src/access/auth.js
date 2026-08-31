@@ -7,12 +7,13 @@
  */
 
 const STORAGE_KEY = 'medical3dlab.auth.v1';
+const VITE_ENV = import.meta.env ?? {};
 
 export const AUTH_CONFIG = Object.freeze({
-  url: (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
+  url: (VITE_ENV.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
   publishableKey:
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    import.meta.env.VITE_SUPABASE_ANON_KEY ??
+    VITE_ENV.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    VITE_ENV.VITE_SUPABASE_ANON_KEY ??
     '',
 });
 
@@ -27,6 +28,7 @@ function headers(token) {
 }
 
 function readStored() {
+  if (typeof localStorage === 'undefined') return null;
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
   } catch {
@@ -35,6 +37,7 @@ function readStored() {
 }
 
 function store(session) {
+  if (typeof localStorage === 'undefined') return;
   if (!session) localStorage.removeItem(STORAGE_KEY);
   else localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
 }

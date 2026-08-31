@@ -9,7 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  product-access-tests:
+    name: Product access · ${{ matrix.test }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - tests/access.test.js
+          - tests/pricing.test.js
+          - tests/subscription-view.test.js
+          - tests/education-progress.test.js
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test ${{ matrix.test }}
+
   test-and-build:
+    name: Full test + build
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
