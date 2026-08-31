@@ -115,6 +115,12 @@ scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠�
 6. **Visual regression** — 3D シーンは unit test の合格だけでは完成としない。
    実レンダリングの確認まで含めて Definition of Done とする
 
+臓器を問わず繰り返し出てくる**レンダリング上の失敗モード**（収束する先端の UV 極、
+両面シェルの二重合成、飽和が自分の修正を隠すこと、シルエットのテーパー対傾斜、
+壁から生える構造の根）と、原因を推測せず切り分ける手順は
+[`docs/organ-3d-playbook.md`](docs/organ-3d-playbook.md)。
+**新しい臓器の形を作り終えたら、末尾のチェックリストを測ってください。**
+
 ### 新しいシーンを足すとき
 
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) の
