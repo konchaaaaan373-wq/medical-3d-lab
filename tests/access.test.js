@@ -10,7 +10,12 @@ import {
   NON_TERMINAL_SUBSCRIPTION_STATUSES,
 } from '../src/access/policy.js';
 import { patientGuideFor } from '../src/data/patientGuides.js';
-import { planForPrice, safeHash, verifyStripeSignature } from '../netlify/lib/billing.js';
+import {
+  planForPrice,
+  safeHash,
+  subscriptionPeriodEnd,
+  verifyStripeSignature,
+} from '../netlify/lib/billing.js';
 
 test('access: accurate core scenes are free by default', () => {
   const access = accessForScene({});
@@ -69,6 +74,20 @@ test('billing: Stripe Price ID, not mutable metadata, selects the entitlement pl
   assert.equal(planForPrice('price_education', prices), 'education');
   assert.equal(planForPrice('price_complete', prices), 'complete');
   assert.equal(planForPrice('price_unknown', prices), null);
+});
+
+test('billing: Stripe period end supports legacy root and flexible-billing item shapes', () => {
+  const rootSeconds = 1_800_000_000;
+  const itemSeconds = 1_810_000_000;
+  assert.equal(
+    subscriptionPeriodEnd({ current_period_end: rootSeconds, items: { data: [{ current_period_end: itemSeconds }] } }),
+    new Date(rootSeconds * 1000).toISOString()
+  );
+  assert.equal(
+    subscriptionPeriodEnd({ items: { data: [{ current_period_end: itemSeconds }] } }),
+    new Date(itemSeconds * 1000).toISOString()
+  );
+  assert.equal(subscriptionPeriodEnd({ items: { data: [] } }), null);
 });
 
 test('billing: return hashes cannot become arbitrary redirects', () => {
