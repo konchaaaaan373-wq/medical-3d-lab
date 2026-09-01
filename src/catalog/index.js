@@ -156,6 +156,29 @@ export function validateCatalog(scenes = SCENES) {
       problems.push(`${where}: organ "${scene.organ}" does not belong to system "${scene.system}"`);
     }
     if (!STATUS_IDS.includes(scene.status)) problems.push(`${where}: unknown status "${scene.status}"`);
+
+    if (scene.access != null) {
+      if (!scene.access || typeof scene.access !== 'object' || Array.isArray(scene.access)) {
+        problems.push(`${where}: access must be an object`);
+      } else {
+        const allowed = new Set(['patient', 'education']);
+        for (const key of Object.keys(scene.access)) {
+          if (!allowed.has(key)) problems.push(`${where}: unknown access capability "${key}"`);
+        }
+        for (const key of allowed) {
+          if (key in scene.access && typeof scene.access[key] !== 'boolean') {
+            problems.push(`${where}: access.${key} must be boolean`);
+          }
+        }
+        if (scene.access.patient !== true && scene.access.education !== true) {
+          problems.push(`${where}: access declaration enables no paid capability`);
+        }
+        if (!['reviewed', 'production'].includes(scene.status)) {
+          problems.push(`${where}: paid access requires reviewed or production status`);
+        }
+      }
+    }
+
     if (typeof scene.load !== 'function') problems.push(`${where}: load is not a function`);
     if (!scene.titleEn || !scene.titleJa) problems.push(`${where}: needs a title in both languages`);
     if (!scene.description || !scene.descriptionJa) problems.push(`${where}: needs a description in both languages`);
