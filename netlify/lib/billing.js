@@ -249,6 +249,47 @@ export async function subscriptionById(subscriptionId, { get = stripeGet } = {})
   }
 }
 
+export function subscriptionStateFingerprint(subscription) {
+  if (!subscription?.id) return null;
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+  const item = subscription.items?.data?.[0];
+  return JSON.stringify({
+    id: subscription.id,
+    customerId: customerId ?? null,
+    status: subscription.status ?? null,
+    priceId: item?.price?.id ?? null,
+    periodEnd: subscriptionPeriodEnd(subscription),
+    cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+  });
+}
+
+/**
+ * Persists a retrieved subscription, then verifies Stripe still reports the
+ * same entitlement-bearing state. If the state changed between read and write,
+ * the newer object is written and verified again before reconciliation can
+ * report success.
+ */
+export async function syncSubscriptionUntilCurrent(
+  initialSubscription,
+  { retrieveSubscription = subscriptionById, sync, maxPasses = 3 } = {}
+) {
+  if (!initialSubscription?.id) return { subscription: null, passes: 0 };
+  if (typeof sync !== 'function') throw new Error('Subscription convergence requires a sync function.');
+
+  let current = initialSubscription;
+  for (let pass = 1; pass <= maxPasses; pass += 1) {
+    await sync(current);
+    const verified = await retrieveSubscription(current.id);
+    if (!verified?.id) return { subscription: null, passes: pass };
+    if (subscriptionStateFingerprint(verified) === subscriptionStateFingerprint(current)) {
+      return { subscription: verified, passes: pass };
+    }
+    current = verified;
+  }
+  throw new Error('Stripe subscription state did not stabilise during reconciliation.');
+}
+
 export async function upsertCustomer({ userId, customerId, email = null }) {
   if (!userId || !customerId) return false;
 
@@ -538,8 +579,11 @@ export async function reconcileBillingForUser(
     // an older list page returned earlier in this reconciliation run.
     const currentSubscription = await retrieveSubscription(listedSubscription.id);
     if (!currentSubscription?.id) continue;
-    remoteSubscriptions.push(currentSubscription);
-    await sync(currentSubscription);
+    const converged = await syncSubscriptionUntilCurrent(currentSubscription, {
+      retrieveSubscription,
+      sync,
+    });
+    if (converged.subscription?.id) remoteSubscriptions.push(converged.subscription);
   }
 
   const localRows = await admin(
@@ -552,7 +596,10 @@ export async function reconcileBillingForUser(
     // every apparent gap by ID before fail-closing the local row.
     const currentSubscription = await retrieveSubscription(subscriptionId);
     if (currentSubscription?.id) {
-      await sync(currentSubscription);
+      await syncSubscriptionUntilCurrent(currentSubscription, {
+        retrieveSubscription,
+        sync,
+      });
       continue;
     }
     await admin(
