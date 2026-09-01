@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
-import { systemsWithOrgans } from '../src/catalog/index.js';
+import { organById, systemById } from '../src/catalog/taxonomy.js';
 import {
   emptyOrganMatchesExplorerFilters,
   plannedMatchesExplorerFilters,
@@ -10,13 +10,13 @@ import {
 } from '../src/app/explorerSearch.js';
 
 function recordFor(sceneId) {
-  for (const system of systemsWithOrgans()) {
-    for (const organ of system.organs) {
-      const scene = organ.scenes.find((entry) => entry.id === sceneId);
-      if (scene) return { scene, system, organ };
-    }
-  }
-  throw new Error(`Missing scene ${sceneId}`);
+  const scene = SCENE_MANIFEST.find((entry) => entry.id === sceneId);
+  assert.ok(scene, `Missing scene ${sceneId}`);
+  const system = systemById(scene.system);
+  const organ = organById(scene.organ);
+  assert.ok(system, `${sceneId}: missing system ${scene.system}`);
+  assert.ok(organ, `${sceneId}: missing organ ${scene.organ}`);
+  return { scene, system, organ };
 }
 
 test('explorer search: splits a query into case-folded AND tokens', () => {
