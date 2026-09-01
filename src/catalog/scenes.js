@@ -76,11 +76,12 @@ export const SCENE_MANIFEST = [
     system: 'cardiovascular',
     organ: 'heart',
     disease: null,
-    status: 'prototype',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/circulation.md',
     description:
-      'One low-output case with MAP 70: press fluid or dobutamine and watch cardiac output, pressure and oxygen delivery move from one shared state.',
+      'One constructed low-output case with MAP 70: choose baseline, a fluid-responsive state or a dobutamine state and compare pressure, flow and calculated global oxygen delivery.',
     descriptionJa:
-      'MAP 70の低拍出症例。輸液またはDOBを押し、心拍出量・血圧・酸素供給が同じstateからどう変わるかを観察します。',
+      'MAP 70の低拍出概念症例。基準・輸液反応・DOB反応から1つを選び、血圧・血流・計算上のglobal DO₂を比較します。',
     tags: ['haemodynamics', 'oxygen-delivery', 'tactile-interaction'],
     load: () => import('../scenes/cardiovascular/scenes/circulation/index.js'),
   },

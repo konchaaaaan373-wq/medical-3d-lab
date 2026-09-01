@@ -1,6 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BASELINE_CIRCULATION,
+  CIRCULATION_INTERVENTIONS,
+  ILLUSTRATIVE_RESPONSES,
+  solveCirculation,
+} from '../src/models/circulation.js';
+import {
   REFERENCE,
   UNIT_COUNT,
   breathingPattern,
@@ -93,6 +99,49 @@ const settledLung = (controls) => {
   model.settle({ maxBreaths: 400 });
   return model.state;
 };
+
+// ===========================================================================
+// Circulation
+// ===========================================================================
+
+test('calibration: the low-flow reference is anchored to MAP 70', () => {
+  // Defends `low-flow-map-anchor`. Both the low-flow comparison and the MAP
+  // target were chosen for this lesson; neither is a bedside threshold.
+  const baseline = solveCirculation();
+  assert.equal(baseline.intervention, CIRCULATION_INTERVENTIONS.BASELINE);
+  assert.equal(baseline.heartRatePerMin, 96);
+  assert.equal(baseline.strokeVolumeMl, 38);
+  assert.ok(Math.abs(baseline.cardiacOutputLMin - 3.648) < 1e-12);
+  assert.ok(
+    Math.abs(baseline.meanArterialPressureMmHg - BASELINE_CIRCULATION.targetMeanArterialPressureMmHg) < 1e-12
+  );
+});
+
+test('calibration: the two response states retain their chosen illustrative sizes', () => {
+  // Defends `illustrative-response-sizes`. These are visibility choices, not
+  // doses or expected effects, and the exact values intentionally live here.
+  assert.deepEqual(ILLUSTRATIVE_RESPONSES[CIRCULATION_INTERVENTIONS.FLUID], {
+    strokeVolumeMultiplier: 1.22,
+    systemicVascularResistanceMultiplier: 1,
+  });
+  assert.deepEqual(ILLUSTRATIVE_RESPONSES[CIRCULATION_INTERVENTIONS.DOBUTAMINE], {
+    strokeVolumeMultiplier: 1.4,
+    systemicVascularResistanceMultiplier: 0.72,
+  });
+});
+
+test('calibration: fixed oxygen content makes global DO2 proportional to cardiac output', () => {
+  // Defends `fixed-oxygen-content`. Fixing Hb/SaO2/PaO2 is an illustrative
+  // isolation, not a claim about what either intervention does in a patient.
+  const states = Object.values(CIRCULATION_INTERVENTIONS).map((intervention) =>
+    solveCirculation({ intervention })
+  );
+  const content = states[0].arterialOxygenContentMlDl;
+  for (const state of states) {
+    assert.equal(state.arterialOxygenContentMlDl, content);
+    assert.ok(Math.abs(state.oxygenDeliveryMlMin / state.cardiacOutputLMin - content * 10) < 1e-12);
+  }
+});
 
 // ===========================================================================
 // COPD

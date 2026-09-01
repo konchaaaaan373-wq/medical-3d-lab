@@ -10,23 +10,73 @@ import { el } from '../utils/dom.js';
  * something the viewer does to the model rather than something a caption says.
  *
  * A control is a range slider by default. A scene with a deliberately small
- * intervention surface may instead declare `kind: 'action'`: it becomes one
- * large press target that advances the input by one step. Both kinds still go
- * through the same `setModelControl` path; this changes only how the input is
- * touched, never how the model is solved.
+ * intervention surface may instead declare `kind: 'action'` for a stepped
+ * press target, or `kind: 'choice'` for mutually exclusive states. Every kind
+ * still goes through the same `setModelControl` path; this changes only how the
+ * input is touched, never how the model is solved.
  *
  * @param {{
- *   controls: {id:string,label:string,labelJa:string,min:number,max:number,step:number,value:number,format:(v:number)=>string,kind?:'range'|'action',actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string}[],
- *   onChange: (id: string, value: number) => void,
+ *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,effect?:string,effectJa?:string}[]}[],
+ *   onChange: (id: string, value: number|string) => void,
  *   onReset: () => void,
- *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean},
+ *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean},
  * }} options
  */
 export function createModelControls({ controls, onChange, onReset, copy = {} }) {
   const rows = new Map();
-  const tactile = controls.some((control) => control.kind === 'action');
+  const tactile = controls.some((control) => control.kind === 'action' || control.kind === 'choice');
 
   const inputs = controls.map((control) => {
+    if (control.kind === 'choice') {
+      const buttons = new Map();
+      let current = String(control.value);
+      const setValue = (value) => {
+        current = String(value);
+        for (const [optionValue, button] of buttons) {
+          const selected = optionValue === current;
+          button.classList.toggle('is-selected', selected);
+          button.setAttribute('aria-pressed', String(selected));
+        }
+      };
+      const group = el(
+        'div',
+        {
+          class: 'model-choice-group',
+          role: 'group',
+          'aria-label': `${control.label} / ${control.labelJa}`,
+        },
+        (control.options ?? []).map((option) => {
+          const button = el('button', {
+            class: 'model-choice-button',
+            type: 'button',
+            'aria-label': `${option.label} / ${option.labelJa}`,
+            'aria-pressed': 'false',
+            on: {
+              click: () => {
+                if (String(option.value) === current) return;
+                setValue(option.value);
+                onChange(control.id, option.value);
+              },
+            },
+          }, [
+            el('span', { class: 'model-choice-label lang-en', text: option.label }),
+            el('span', { class: 'model-choice-label lang-ja', text: option.labelJa }),
+            option.effect || option.effectJa
+              ? el('span', { class: 'model-choice-effect' }, [
+                  el('span', { class: 'lang-en', text: option.effect ?? '' }),
+                  el('span', { class: 'lang-ja', text: option.effectJa ?? '' }),
+                ])
+              : null,
+          ]);
+          buttons.set(String(option.value), button);
+          return button;
+        })
+      );
+      setValue(current);
+      rows.set(control.id, { setValue });
+      return el('div', { class: 'model-control is-choice' }, [group]);
+    }
+
     if (control.kind === 'action') {
       const readout = el('span', { class: 'model-action-value' });
       const segments = Array.from({ length: Math.max(1, Math.round((control.max - control.min) / control.step)) }, () =>
@@ -104,15 +154,17 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
     ]);
   });
 
-  const reset = el('button', {
-    class: 'model-control-reset',
-    type: 'button',
-    title: 'Return both loading conditions to the modelled state',
-    on: { click: () => onReset() },
-  }, [
-    el('span', { class: 'lang-en', text: 'Reset' }),
-    el('span', { class: 'lang-ja', text: '戻す' }),
-  ]);
+  const reset = copy.reset === false
+    ? null
+    : el('button', {
+        class: 'model-control-reset',
+        type: 'button',
+        title: 'Return the model controls to their opening state',
+        on: { click: () => onReset() },
+      }, [
+        el('span', { class: 'lang-en', text: 'Reset' }),
+        el('span', { class: 'lang-ja', text: '戻す' }),
+      ]);
 
   const title = copy.title ?? 'Loading conditions';
   const titleJa = copy.titleJa ?? '負荷条件';

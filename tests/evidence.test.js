@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import {
   ASSERTABLE,
   ASTHMA_EVIDENCE,
+  CIRCULATION_EVIDENCE,
   CONFIDENCE,
   COPD_EVIDENCE,
   EVIDENCE_REGISTRIES,
@@ -42,6 +43,7 @@ import {
  * treated as integrity.
  */
 const FILE_LAYERS = {
+  'circulation-physiology.test.js': LAYER.EXTERNAL,
   'respiratory-physiology.test.js': LAYER.EXTERNAL,
   'portal-haemodynamics.test.js': LAYER.EXTERNAL,
   'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
@@ -50,6 +52,7 @@ const FILE_LAYERS = {
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
 
 const DOSSIERS = {
+  circulation: 'docs/model-evidence/circulation.md',
   copd: 'docs/model-evidence/copd.md',
   asthma: 'docs/model-evidence/asthma.md',
   'portal-hypertension': 'docs/model-evidence/cirrhosis-portal-hypertension.md',
@@ -178,8 +181,9 @@ test('each scene records the direction it is known to get wrong', () => {
 test('the registries cover every model-backed scene and nothing is duplicated across them', () => {
   assert.deepEqual(
     EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
-    ['copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
+    ['circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
   );
+  assert.ok(CIRCULATION_EVIDENCE.length >= 8);
   assert.ok(COPD_EVIDENCE.length >= 8);
   assert.ok(ASTHMA_EVIDENCE.length >= 8);
   assert.ok(PORTAL_EVIDENCE.length >= 8);
