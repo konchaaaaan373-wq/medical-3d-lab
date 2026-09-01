@@ -262,8 +262,10 @@ export const SCENE_MANIFEST = [
     organ: 'bone',
     disease: null,
     status: 'prototype',
-    description: 'Resorption and formation as two opposing particle streams on one cortical surface.',
-    descriptionJa: '皮質骨の表面で、吸収と形成が拮抗する 2 つの流れとして示します。',
+    description:
+      'Sequential remodelling at staggered sites: resorption → reversal → formation, with long-term cortical thinning when replacement falls behind.',
+    descriptionJa:
+      '各部位で吸収 → 反転期 → 形成と順に進むリモデリング。形成が吸収に追いつかない状態が長期に続くと皮質骨が菲薄化する様子を示します。',
     tags: ['turnover', 'particles'],
     load: () => import('../scenes/musculoskeletal/scenes/boneRemodeling/index.js'),
   },
