@@ -271,7 +271,7 @@ export class HeartFailureScene {
 | `getComparisonView()` | 比較モードのカメラ（両方が画面に収まる構図） |
 | `getReel()` | 15 秒の SNS シーケンス。実装したシーンだけ `Reel` ボタンが出ます |
 | `getPressureVolume()` | 圧-容積ループのパネルが出ます（後述） |
-| `getModelControls()` / `setModelControl(id, value)` / `resetModelControls()` | モデルの入力を動かすスライダー群。3 つ揃って実装します |
+| `getModelControls()` / `setModelControl(id, value)` / `resetModelControls()` | モデルの入力を動かす操作群。3 つ揃って実装します |
 | `getLearningModules()` | ガイド付き教材。実装したシーンだけ `Learn` ボタンが出ます（後述） |
 | `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
 
@@ -289,9 +289,14 @@ export class HeartFailureScene {
 `heart-failure` では正常な左室を `sampleHemodynamics(0)` で評価して描いています。
 別途チューニングした「正常っぽい絵」を置くと、いつか本体のモデルと食い違います。
 
+進行軸ではなく、1 つの状態に対する操作そのものが主題なら、
+`meta.progression = { enabled: false }` として進行スライダーを出さず、stage を
+1 つだけにできます。パラメータを隠しているのではなく、そもそも軸がないシーンに
+限ります。`circulation` がこの型です。
+
 ### モデルの入力を触らせるとき
 
-`getModelControls()` はスライダーの定義を返し、`setModelControl(id, value)` が
+`getModelControls()` は入力UIの定義（既定はスライダー）を返し、`setModelControl(id, value)` が
 呼ばれたらモデルを**解き直します**。出力を後から補正するのではなく、
 入力を変えて全部を再計算するのが要点です。そうしないと、数値パネルと 3D と
 グラフが少しずつ違うことを言い始めます。
@@ -303,6 +308,12 @@ getModelControls() {
             format: (v) => `×${v.toFixed(2)}` }];
 }
 ```
+
+少数の離散介入を直接押させる場合は、同じ定義に `kind: 'action'` を付けます。
+UI は大きな1段階ボタンになりますが、呼ばれるのは同じ `setModelControl()` です。
+`meta.modelControls.primary = true` なら学習ビューでも数値と操作を表示し、
+`placement: 'console'` なら操作を画面下部へ置けます。連続量を離散ボタンに見せる
+ためではなく、効果量を定量予測しない概念介入に使ってください。
 
 設定した値は `sessionState.js` がスナップショットに含めるので、Reel モードに
 入って戻ってきても viewer の設定は失われません。Reel 中は
