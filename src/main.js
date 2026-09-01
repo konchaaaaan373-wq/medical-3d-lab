@@ -13,6 +13,7 @@ import './styles/explorer.css';
 import './styles/explorer-search.css';
 import './styles/access-explorer.css';
 import './styles/landing.css';
+import './styles/trust.css';
 import './styles/scene-fallback.css';
 import { resolveRoute } from './app/router.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
@@ -62,6 +63,19 @@ async function boot() {
     void accessReady;
     window.addEventListener('hashchange', () => {
       if (resolveRoute(window.location.hash).kind !== 'landing') window.location.reload();
+    });
+    return;
+  }
+
+  if (route.kind === 'trust') {
+    // Medical-review state is a product/trust concern and must remain readable
+    // even if the browser cannot construct a WebGL context or load a scene.
+    document.documentElement.dataset.route = 'trust';
+    const { createTrust } = await import('./app/Trust.js');
+    await createTrust({ ui, accountButton: access.accountButton });
+    void accessReady;
+    window.addEventListener('hashchange', () => {
+      if (resolveRoute(window.location.hash).kind !== 'trust') window.location.reload();
     });
     return;
   }
