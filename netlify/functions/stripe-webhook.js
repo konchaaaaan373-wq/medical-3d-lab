@@ -4,9 +4,11 @@ import {
   finishBillingEvent,
   isSubscriptionEvent,
   json,
+  subscriptionById,
   stripeGet,
   supabaseAdmin,
   syncSubscription,
+  syncSubscriptionUntilCurrent,
   upsertCustomer,
   verifyStripeSignature,
 } from '../lib/billing.js';
@@ -102,7 +104,7 @@ async function processStripeEvent(event) {
       const subscriptionId =
         typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
       const subscription = await stripeGet(`subscriptions/${subscriptionId}`);
-      await syncSubscription(subscription);
+      await syncSubscriptionUntilCurrent(subscription, { sync: syncSubscription });
     }
     return { status: 'processed', reason: 'checkout_synced' };
   }
@@ -115,10 +117,16 @@ async function processStripeEvent(event) {
     // subscriptions are normally still retrievable; if Stripe refuses the
     // read after deletion, the signed event object is the safe fallback.
     let subscription = object;
+    let retrievedCurrent = false;
     try {
-      subscription = await stripeGet(`subscriptions/${object.id}`);
+      subscription = await subscriptionById(object.id);
+      retrievedCurrent = Boolean(subscription);
+      if (!subscription && event.type !== 'customer.subscription.deleted') {
+        throw new Error('Current Stripe subscription could not be retrieved.');
+      }
     } catch (error) {
       if (event.type !== 'customer.subscription.deleted') throw error;
+      subscription = object;
     }
 
     const ownerId = await liveSubscriptionOwnerId(subscription);
@@ -130,13 +138,19 @@ async function processStripeEvent(event) {
       return { status: 'ignored', reason: 'deleted_user' };
     }
 
-    await syncSubscription(subscription);
+    let syncedSubscription = subscription;
+    if (retrievedCurrent) {
+      const converged = await syncSubscriptionUntilCurrent(subscription, { sync: syncSubscription });
+      syncedSubscription = converged.subscription ?? subscription;
+    } else {
+      await syncSubscription(subscription);
+    }
     await upsertCustomer({
       userId: ownerId,
       customerId:
-        typeof subscription.customer === 'string'
-          ? subscription.customer
-          : subscription.customer?.id,
+        typeof syncedSubscription.customer === 'string'
+          ? syncedSubscription.customer
+          : syncedSubscription.customer?.id,
     });
     return { status: 'processed', reason: 'subscription_synced' };
   }
