@@ -12,7 +12,9 @@ import './styles/reel.css';
 import './styles/explorer.css';
 import './styles/explorer-search.css';
 import './styles/access-explorer.css';
-import { namesScene, resolveRoute } from './app/router.js';
+import './styles/landing.css';
+import './styles/scene-fallback.css';
+import { resolveRoute } from './app/router.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 
 const stage = document.getElementById('stage');
@@ -24,7 +26,12 @@ boot().catch((error) => {
 });
 
 async function boot() {
-  const route = resolveRoute(window.location.hash);
+  // Recovery links are product-shell work, not medical scene routes. Supabase's
+  // implicit recovery token arrives in the hash, which would otherwise look like
+  // an unknown scene until AccessManager consumes it. Keep the return on the
+  // WebGL-independent landing shell while the modal finishes the recovery.
+  const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
+  const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
 
   // Recent history is navigation convenience only: one published scene id, no
   // model controls or personal/clinical state. Storage denial is swallowed by
@@ -32,15 +39,14 @@ async function boot() {
   if (route.kind === 'scene') recordSceneVisit(route.sceneId);
 
   // Account/access is product chrome, not part of a medical scene. Start its
-  // network work in parallel on both the Explorer and 3D routes. A slow auth or
-  // billing provider may delay an unlock; it may never delay free content.
+  // network work in parallel on every route. A slow auth or billing provider may
+  // delay an unlock; it may never delay free/public content.
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
 
   // Opening Account is also an explicit "re-check my access" action. This is
   // especially important after returning from Stripe Customer Portal, where a
-  // signed webhook can land a moment after the browser. The modal opens
-  // immediately; this refresh runs in parallel and updates it from server truth.
+  // signed webhook can land a moment after the browser.
   access.accountButton.addEventListener('click', () => {
     void access.refresh();
   });
@@ -49,22 +55,35 @@ async function boot() {
     console.error('access init', error);
   });
 
-  if (route.kind === 'explorer') {
-    // The explorer is plain DOM: no renderer, no scene module, no geometry. It
-    // has to stay that way — it is the page that lists everything, so anything it
-    // pulls in is pulled in for every scene at once.
-    //
-    // The flag goes on the root element rather than the body: `html` carries
-    // `height: 100%` and `overflow: hidden` for the 3D view, and a page that
-    // scrolls has to undo both.
+  if (route.kind === 'landing') {
+    document.documentElement.dataset.route = 'landing';
+    const { createLanding } = await import('./app/Landing.js');
+    createLanding({ ui, accountButton: access.accountButton });
+    void accessReady;
+    window.addEventListener('hashchange', () => {
+      if (resolveRoute(window.location.hash).kind !== 'landing') window.location.reload();
+    });
+    return;
+  }
+
+  if (route.kind === 'explorer' || route.kind === 'lab') {
+    // Both catalogue surfaces are plain DOM: no renderer, scene module or
+    // geometry. The Lab/public split is a catalogue projection, not a second app.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
-    createExplorer({ ui, accountButton: access.accountButton });
+    createExplorer({
+      ui,
+      accountButton: access.accountButton,
+      scope: route.kind === 'lab' ? 'lab' : 'public',
+    });
     void accessReady;
-    // Only a link to a real scene is a navigation. The explorer's own jump
-    // links must not reload the page out from under the reader.
+
+    // Explorer system jump links are in-page anchors. Every actual app route
+    // (scene, landing, public catalogue or Lab) reloads the shell cleanly.
     window.addEventListener('hashchange', () => {
-      if (namesScene(window.location.hash)) window.location.reload();
+      if (window.location.hash.startsWith('#system-')) return;
+      const next = resolveRoute(window.location.hash);
+      if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
     });
     return;
   }
@@ -92,7 +111,8 @@ async function boot() {
     });
   } catch (error) {
     console.error(error);
-    veil.innerHTML =
-      '<span>Failed to start the 3D view.</span><span style="text-transform:none;letter-spacing:0">Please try a WebGL-capable browser.</span>';
+    veil.remove();
+    const { createSceneFailureFallback } = await import('./app/SceneFailureFallback.js');
+    createSceneFailureFallback({ ui, sceneId: route.sceneId });
   }
 }
