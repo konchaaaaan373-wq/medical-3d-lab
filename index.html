@@ -2,10 +2,14 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no"
-    />
+    <!-- Pinch zoom stays available. `user-scalable=no` was here to stop the
+         browser zooming during an orbit gesture, but it took the ability away
+         from every reading surface too — the landing page, the catalogue, the
+         terms, the evidence records — which is a WCAG 1.4.4 failure for the
+         sake of one canvas. The canvas declares `touch-action: none` in
+         base.css, which suppresses browser gestures exactly where they conflict
+         and nowhere else. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <!-- Replaced at start-up with the scene or the explorer; this is what a
          crawler or a JS-less browser sees. -->
     <title>medical-3d-lab — interactive 3D physiology</title>

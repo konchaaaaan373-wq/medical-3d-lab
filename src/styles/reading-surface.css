@@ -1,0 +1,149 @@
+/* ==========================================================================
+   Reading surfaces — every route that is a document rather than a viewport
+   ==========================================================================
+
+   The 3D view pins `html`, `body` and `#ui` to the viewport and turns
+   scrolling off, because a canvas that scrolls is a canvas fighting the
+   orbit controls. Every route that is a *document* has to undo that, and
+   undoing it per route is how one gets forgotten: the Trust page shipped
+   without it, so everything below the fold — most of the review records —
+   was unreachable, and no test could see it because the rule was missing
+   rather than wrong.
+
+   So the release lives here once, for every reading route. A new document
+   route is added to this selector and inherits a page that scrolls, reflows
+   at 400% zoom and does not trap content off-screen. Each route's own
+   stylesheet keeps only what is particular to it: its colours and type.
+
+   WCAG 1.4.4 (resize text) and 1.4.10 (reflow) both depend on this. */
+
+html[data-route='landing'],
+html[data-route='landing'] body,
+html[data-route='explorer'],
+html[data-route='explorer'] body,
+html[data-route='trust'],
+html[data-route='trust'] body,
+html[data-route='legal'],
+html[data-route='legal'] body {
+  height: auto;
+  min-height: 100%;
+  overflow: visible;
+}
+
+/* No canvas is built on these routes; the element is only in the way. */
+html[data-route='landing'] #stage,
+html[data-route='explorer'] #stage,
+html[data-route='trust'] #stage,
+html[data-route='legal'] #stage {
+  display: none;
+}
+
+/* `#ui` is an overlay for a scene and a page for a document. */
+html[data-route='landing'] #ui,
+html[data-route='explorer'] #ui,
+html[data-route='trust'] #ui,
+html[data-route='legal'] #ui {
+  position: static;
+  inset: auto;
+  display: block;
+  pointer-events: auto;
+  min-height: 100%;
+}
+
+html[data-route='explorer'] #ui,
+html[data-route='trust'] #ui,
+html[data-route='legal'] #ui {
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Skip link
+
+   The shell surfaces put navigation, a language toggle and an account button
+   before the content on every page. Without a way past them, reaching the
+   first model on the landing page costs a keyboard user several tab stops on
+   every visit. Visible only when focused, which is the whole convention.
+   -------------------------------------------------------------------------- */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  border-radius: 0 0 10px 0;
+  background: var(--accent);
+  color: #04060c;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  left: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Focus
+
+   One visible focus style for the whole product. The browser default is
+   removed by several of the component stylesheets in the course of styling a
+   button, and a focus ring that exists on some controls and not others is
+   worse than none: it teaches a keyboard user to distrust what they see.
+   -------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+html[data-route='trust'] :focus-visible {
+  /* The Trust page is a light surface; the luminous accent disappears on it. */
+  outline-color: #1c2528;
+}
+
+/* --------------------------------------------------------------------------
+   Reduced motion
+
+   The scenes handle this themselves through `utils/motion.js`, because a
+   physiological animation is content and stopping it is a decision the scene
+   has to make. Everything here is chrome, and chrome simply stops.
+   -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  html[data-route='landing'] *,
+  html[data-route='explorer'] *,
+  html[data-route='trust'] *,
+  html[data-route='legal'] * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Touch targets
+
+   44 px on the reading surfaces, which is what `TOUCH_TARGET.primary` in
+   `src/styles/palette.js` declares and `tests/accessibility.test.js` checks.
+   The in-scene chrome is dense by necessity and is held to a lower bar there.
+   -------------------------------------------------------------------------- */
+html[data-route='landing'] button,
+html[data-route='landing'] a.landing-cta,
+html[data-route='legal'] button,
+html[data-route='trust'] button,
+.consent-button,
+.feedback-submit,
+.feedback-cancel,
+.feedback-trigger.is-floating {
+  min-height: 44px;
+}
+
+/* A skip target is given `tabindex="-1"` so following the link moves focus and
+   not only the scroll position. It must not then draw a focus ring: the person
+   who lands there did not focus a control, and a ring around half the page
+   reads as an error. */
+[id='content'][tabindex='-1']:focus,
+[id='content'][tabindex='-1']:focus-visible {
+  outline: none;
+}

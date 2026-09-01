@@ -1,7 +1,7 @@
 import { EXPLORER_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
 import { LEGAL_DOCUMENTS, LEGAL_UPDATED, legalDocument } from '../data/legal.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { el } from '../utils/dom.js';
+import { el, skipLink } from '../utils/dom.js';
 
 /**
  * Terms, privacy, commercial disclosure and support.
@@ -106,7 +106,7 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
       el('div', { class: 'legal-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
     tabs,
-    el('article', { class: 'legal-doc' }, [
+    el('article', { class: 'legal-doc', id: 'content', tabindex: '-1' }, [
       el('h1', { class: 'legal-title' }, [
         el('span', { class: 'lang-en', text: doc.titleEn }),
         el('span', { class: 'lang-ja', text: doc.titleJa }),
@@ -130,7 +130,7 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
     ]),
   ]);
 
-  ui.append(element);
+  ui.append(skipLink(), element);
   languageToggle.init();
   document.title = `${doc.titleEn} — Medical 3D Lab`;
   return { element, docId: doc.slug };

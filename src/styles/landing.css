@@ -2,24 +2,8 @@
    Product landing — deliberately WebGL independent
    ========================================================================== */
 
-html[data-route='landing'],
-html[data-route='landing'] body {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
-}
-
-html[data-route='landing'] #stage {
-  display: none;
-}
-
-html[data-route='landing'] #ui {
-  position: static;
-  inset: auto;
-  display: block;
-  pointer-events: auto;
-  min-height: 100%;
-}
+/* The viewport release, the skip link and the focus style are shared by every
+   reading route — see `reading-surface.css`. */
 
 .landing {
   width: min(1180px, calc(100% - 32px));

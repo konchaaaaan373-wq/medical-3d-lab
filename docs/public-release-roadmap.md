@@ -56,8 +56,13 @@ the model tests.
 
 - [ ] Test current Safari, Chrome and Firefox plus real iPhone and Android
   devices, including 320–430 px widths and landscape.
-- [ ] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
-  Explorer, Patient Presenter, Education Presenter and Account.
+- [~] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
+  Explorer, Patient Presenter, Education Presenter and Account. Contrast, focus,
+  landmarks, skip links, language marking, reduced motion, target sizes and the
+  viewport reflow release are declared and enforced in CI; two real defects were
+  fixed on the way (the Trust page could not scroll, and the shell disabled
+  pinch zoom). **Remaining:** screen-reader passes, 400 % reflow and in-scene
+  tab order on real devices. See [`accessibility.md`](accessibility.md).
 - [x] Establish performance budgets and remove `preserveDrawingBuffer` from the
   normal render path unless an export is actively being captured. Frame, start-up
   and ship-weight budgets are declared in `src/app/performanceBudget.js`,
@@ -136,7 +141,8 @@ the model tests.
 | 8 | Performance budgets, telemetry, error reporting and feedback | Done |
 | 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
 | 8c | Terms, privacy, commercial disclosure and support, with a checkout gate | Done except seller identity |
-| 8d | Browser/device/accessibility matrix | Next |
+| 8d | Accessibility foundations enforced in CI | Done except device passes |
+| 8e | Browser/device matrix on real hardware | Next |
 | 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 

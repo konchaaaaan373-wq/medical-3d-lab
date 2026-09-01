@@ -10,7 +10,10 @@ export function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
     if (value == null) continue;
-    if (key === 'class') node.className = value;
+    if (key === 'class') {
+      node.className = value;
+      applyLanguage(node, value);
+    }
     else if (key === 'text') node.textContent = value;
     else if (key === 'html') node.innerHTML = value;
     else if (key === 'on') for (const [type, fn] of Object.entries(value)) node.addEventListener(type, fn);
@@ -23,6 +26,38 @@ export function el(tag, props = {}, children = []) {
   }
   return node;
 }
+
+/**
+ * The product renders both languages and hides one with CSS, which is what
+ * makes switching free. A screen reader, though, reads what is in the DOM: an
+ * unmarked Japanese string inside an English document is announced with English
+ * phonemes, and vice versa — unintelligible in either direction.
+ *
+ * The class already says which language a span holds, so the attribute is
+ * derived from it here rather than repeated at several hundred call sites,
+ * where it would inevitably be forgotten on the next one.
+ *
+ * @param {HTMLElement} node
+ * @param {string} className
+ */
+function applyLanguage(node, className) {
+  const classes = String(className).split(/\s+/);
+  if (classes.includes('lang-ja')) node.setAttribute('lang', 'ja');
+  else if (classes.includes('lang-en')) node.setAttribute('lang', 'en');
+}
+
+/**
+ * A skip link, for surfaces that put navigation before their content.
+ *
+ * Visible only when focused. The target must be an id on the page's `main`.
+ *
+ * @param {string} targetId
+ */
+export const skipLink = (targetId = 'content') =>
+  el('a', { class: 'skip-link', href: `#${targetId}` }, [
+    el('span', { class: 'lang-en', text: 'Skip to content' }),
+    el('span', { class: 'lang-ja', text: '本文へ移動' }),
+  ]);
 
 export const icon = (paths, { size = 18 } = {}) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="currentColor">${paths}</svg>`;

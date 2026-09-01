@@ -7,7 +7,7 @@ import {
   statusById,
 } from '../catalog/index.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { el } from '../utils/dom.js';
+import { el, skipLink } from '../utils/dom.js';
 
 const TRUST_ROUTE = '#/trust';
 
@@ -100,7 +100,7 @@ export function createLanding({ ui, accountButton = null }) {
       el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
 
-    el('section', { class: 'landing-hero' }, [
+    el('section', { class: 'landing-hero', id: 'content', tabindex: '-1' }, [
       el('div', { class: 'landing-hero-copy' }, [
         el('div', { class: 'landing-eyebrow' }, [
           el('span', { class: 'lang-en', text: 'Interactive medical mechanisms' }),
@@ -261,7 +261,7 @@ export function createLanding({ ui, accountButton = null }) {
     ]),
   ]);
 
-  ui.append(element);
+  ui.append(skipLink(), element);
   languageToggle.init();
   document.title = 'Medical 3D Lab — interactive physiology';
   return { element };

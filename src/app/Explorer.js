@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, skipLink } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { prefersReducedMotion } from '../utils/motion.js';
@@ -175,6 +175,12 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   };
 
   const sections = systems.map(systemSection);
+  // `tabindex="-1"` so that following the skip link actually moves focus, not
+  // just the scroll position — without it the next Tab returns to the header.
+  if (sections[0]) {
+    sections[0].id = 'content';
+    sections[0].setAttribute('tabindex', '-1');
+  }
   const totalScenes = scopedScenes.length;
 
   let searchControls = null;
@@ -301,7 +307,11 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         ),
       ]);
 
-  const element = el('div', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
+  // A `main` landmark, not a `div`: the Explorer is the page on this route, and
+  // a screen reader's landmark list is how somebody reaches it without tabbing
+  // through the header. The skip link targets the first catalogue section
+  // rather than this element, so it lands past the search and the jump links.
+  const element = el('main', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
     el('header', { class: 'panel explorer-header' }, [
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
       el('h1', { class: 'title' }, [
@@ -338,7 +348,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     ]),
   ]);
 
-  ui.append(element);
+  ui.append(skipLink(), element);
   languageToggle.init();
   syncLibrary();
   applyFilters();

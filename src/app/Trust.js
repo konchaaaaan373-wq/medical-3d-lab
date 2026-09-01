@@ -1,7 +1,7 @@
 import clinicalReviews from '../../docs/clinical-reviews/registry.json';
 import { EXPLORER_ROUTE, LANDING_ROUTE, PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { el } from '../utils/dom.js';
+import { el, skipLink } from '../utils/dom.js';
 
 const REVIEW_LABELS = {
   reviewed: {
@@ -123,7 +123,7 @@ export function createTrust({ ui, accountButton = null }) {
       ]),
       el('div', { class: 'trust-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
-    el('section', { class: 'trust-hero' }, [
+    el('section', { class: 'trust-hero', id: 'content', tabindex: '-1' }, [
       el('p', { class: 'trust-kicker' }, [
         el('span', { class: 'lang-en', text: 'Medical model trust' }),
         el('span', { class: 'lang-ja', text: '医学モデルの信頼性' }),
@@ -172,7 +172,7 @@ export function createTrust({ ui, accountButton = null }) {
     ]),
   ]);
 
-  ui.append(element);
+  ui.append(skipLink(), element);
   languageToggle.init();
   document.title = 'Medical 3D Lab — model trust';
   return { element };
