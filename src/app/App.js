@@ -26,6 +26,7 @@ import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
+import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
 
 /**
  * Wires a scene module to the viewer and the overlay UI.
@@ -312,6 +313,7 @@ export async function createApp({ stage, ui }) {
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  const anatomyInfo = scene.getAnatomySelection ? createAnatomyInfoPanel(scene) : null;
 
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
@@ -417,6 +419,7 @@ export async function createApp({ stage, ui }) {
         scopePanel?.element,
       ]),
       el('div', { class: 'rail' }, [
+        anatomyInfo?.element,
         legend.element,
         metricsPanel?.element,
         el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
