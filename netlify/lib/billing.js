@@ -403,7 +403,7 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
       },
     ],
   });
-  if (created?.length) return { claimed: true, retry: false };
+  if (created?.length) return { claimed: true, retry: false, attemptCount: 1 };
 
   const rows = await admin(
     `billing_events?stripe_event_id=eq.${encodeURIComponent(event.id)}&select=status,attempt_count,last_attempt_at&limit=1`
@@ -425,34 +425,44 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
     filters.push('status=eq.processing', `last_attempt_at=lte.${encodeURIComponent(staleBefore)}`);
   }
 
+  const attemptCount = Number(existing.attempt_count || 0) + 1;
   const reclaimed = await admin(`billing_events?${filters.join('&')}`, {
     method: 'PATCH',
     prefer: 'return=representation',
     body: {
       status: 'processing',
-      attempt_count: Number(existing.attempt_count || 0) + 1,
+      attempt_count: attemptCount,
       last_attempt_at: timestamp,
       processed_at: null,
       result_code: null,
     },
   });
   return reclaimed?.length
-    ? { claimed: true, retry: true }
+    ? { claimed: true, retry: true, attemptCount }
     : { claimed: false, reason: 'claimed_elsewhere' };
 }
 
 export async function finishBillingEvent(
   eventId,
-  { status = 'processed', resultCode = null, admin = supabaseAdmin, now = new Date() } = {}
+  {
+    attemptCount,
+    status = 'processed',
+    resultCode = null,
+    admin = supabaseAdmin,
+    now = new Date(),
+  } = {}
 ) {
   if (!['processed', 'ignored', 'failed'].includes(status)) {
     throw new Error(`Invalid billing event status: ${status}`);
   }
-  await admin(
-    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&status=eq.processing`,
+  if (!Number.isInteger(attemptCount) || attemptCount < 1) {
+    throw new Error('Billing event completion requires a valid attempt count.');
+  }
+  const updated = await admin(
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&status=eq.processing&attempt_count=eq.${attemptCount}`,
     {
       method: 'PATCH',
-      prefer: 'return=minimal',
+      prefer: 'return=representation',
       body: {
         status,
         processed_at: status === 'failed' ? null : now.toISOString(),
@@ -460,6 +470,7 @@ export async function finishBillingEvent(
       },
     }
   );
+  return Boolean(updated?.length);
 }
 
 /**
