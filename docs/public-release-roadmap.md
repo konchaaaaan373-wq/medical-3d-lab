@@ -117,8 +117,12 @@ the model tests.
   verified in CI. **Remaining:** the 1200×630 raster link-preview images, which
   this repository has no rasteriser to produce — the build names the missing
   ones. See [`discoverability.md`](discoverability.md).
-- [ ] Publish a tagged release with a changelog, rollback procedure, incident
-  owner and support response path.
+- [~] Publish a tagged release with a changelog, rollback procedure, incident
+  owner and support response path. The procedure, the rollback (including what
+  a rollback does *not* undo), the incident-owner role and the support path are
+  written in [`release-runbook.md`](release-runbook.md), and `CHANGELOG.md`
+  exists with an Unreleased section. **Remaining:** actually cutting the first
+  tag, which waits on the Gate 0/1 items above.
 - [x] Version model cards and review attestations with every medical change.
   `docs/model-cards/revisions.json` records the digest of the sources each card
   describes, and a medical change that leaves the card untouched fails CI
