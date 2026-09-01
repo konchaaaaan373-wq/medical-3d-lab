@@ -32,8 +32,11 @@ export class Viewer {
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
-      // Required so "Save PNG" can read the canvas back after the frame is done.
-      preserveDrawingBuffer: true,
+      // Keep the browser/WebGL default (`preserveDrawingBuffer: false`). PNG
+      // capture explicitly re-renders and reads the canvas immediately, so
+      // retaining every completed frame would spend GPU memory/bandwidth on the
+      // normal path for a feature that is used only on demand.
+      preserveDrawingBuffer: false,
       powerPreference: 'high-performance',
     });
     // Cap the pixel ratio harder on phones: the particle field is fill-rate bound.
@@ -168,6 +171,11 @@ export class Viewer {
 
   /**
    * PNG data URL of the current frame.
+   *
+   * WebGL does not preserve completed frames globally. Every capture therefore
+   * renders immediately before `toDataURL`, while the freshly rendered drawing
+   * buffer is still available. This keeps the expensive preserve-buffer option
+   * off for every normal animation frame.
    *
    * With `size` the frame is re-rendered off-screen at an exact pixel size —
    * that is how the 4:5 and 1:1 social presets are produced without the user
