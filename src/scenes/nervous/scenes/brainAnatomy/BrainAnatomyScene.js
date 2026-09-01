@@ -6,6 +6,7 @@ import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp, damp, smoothstep } from '../../../../utils/math.js';
 import {
   BRAIN_ANATOMY_META,
+  BRAIN_COLOR_MODES,
   BRAIN_REGIONS,
   brainColor,
   brainStructureInfo,
@@ -49,8 +50,16 @@ const VIEW_SPECS = [
     position: new THREE.Vector3(-5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
   },
   {
+    id: 'left-medial', label: 'Left medial', labelJa: '左内側', medialSide: 'left',
+    position: new THREE.Vector3(5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
     id: 'right-lateral', label: 'Right lateral', labelJa: '右外側',
     position: new THREE.Vector3(5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
+    id: 'right-medial', label: 'Right medial', labelJa: '右内側', medialSide: 'right',
+    position: new THREE.Vector3(-5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
   },
   {
     id: 'anterior', label: 'Anterior', labelJa: '前面',
@@ -93,7 +102,11 @@ export class BrainAnatomyScene {
     this.hemispheres = { left: [], right: [] };
     this.meshByAtlasId = new Map();
     this.listeners = new Set();
+    this.hoverListeners = new Set();
     this.statusListeners = new Set();
+    this.colorMode = 'detail';
+    this.activeView = VIEW_SPECS[0].id;
+    this.medialSide = null;
     this.progress = 0;
     this.displayProgress = 0;
     this.selection = null;
@@ -203,12 +216,7 @@ export class BrainAnatomyScene {
 
   _registerAtlasMesh(mesh, metadata) {
     const id = Number(metadata.bx_id);
-    const color = new THREE.Color(brainColor(metadata));
-    // A very small deterministic lightness variation keeps adjacent named gyri
-    // legible without turning a lobe into a patchwork of unrelated colours.
-    const hsl = {};
-    color.getHSL(hsl);
-    color.setHSL(hsl.h, hsl.s, clamp(hsl.l + ((id % 7) - 3) * 0.008, 0.18, 0.82));
+    const color = new THREE.Color(brainColor(metadata, this.colorMode));
     const material = new THREE.MeshStandardMaterial({
       color,
       roughness: metadata.bx_cat === 'ventricles' ? 0.38 : 0.72,
@@ -251,6 +259,7 @@ export class BrainAnatomyScene {
 
     this._pointerDown = (event) => {
       down = [event.clientX, event.clientY];
+      this._setHovered(null);
     };
     this._pointerMove = (event) => {
       if (event.buttons) return;
@@ -302,13 +311,15 @@ export class BrainAnatomyScene {
       mesh.userData.hovered = true;
       this._refreshHighlight(mesh);
     }
+    const hovered = mesh ? this._structureInfo(mesh) : null;
+    for (const listener of this.hoverListeners) listener(hovered);
   }
 
   _refreshHighlight(mesh) {
     const selected = mesh.userData.selected;
     const hovered = mesh.userData.hovered;
-    mesh.material.emissive.copy(selected ? new THREE.Color('#ffffff') : mesh.userData.baseColor);
-    mesh.material.emissiveIntensity = selected ? 0.3 : hovered ? 0.13 : 0.025;
+    mesh.material.emissive.copy(selected || hovered ? new THREE.Color('#ffffff') : mesh.userData.baseColor);
+    mesh.material.emissiveIntensity = selected ? 0.32 : hovered ? 0.16 : 0.025;
   }
 
   selectStructure(id) {
@@ -321,9 +332,17 @@ export class BrainAnatomyScene {
     this.selectedMesh = mesh;
     mesh.userData.selected = true;
     this._refreshHighlight(mesh);
-    this.selection = brainStructureInfo(mesh.userData.atlasMetadata);
+    this.selection = this._structureInfo(mesh);
     for (const listener of this.listeners) listener(this.selection);
     return true;
+  }
+
+  _structureInfo(mesh) {
+    return {
+      ...brainStructureInfo(mesh.userData.atlasMetadata),
+      color: `#${mesh.material.color.getHexString()}`,
+      colorMode: this.colorMode,
+    };
   }
 
   /** Resolve old coarse ids to a real, named mesh rather than a proxy shape. */
@@ -352,9 +371,18 @@ export class BrainAnatomyScene {
 
   getAnatomySelection() { return this.selection; }
 
+  getAnatomyHover() {
+    return this.hoveredMesh ? this._structureInfo(this.hoveredMesh) : null;
+  }
+
   onAnatomySelection(listener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onAnatomyHover(listener) {
+    this.hoverListeners.add(listener);
+    return () => this.hoverListeners.delete(listener);
   }
 
   getAnatomyStatus() { return { ...this.status }; }
@@ -378,6 +406,41 @@ export class BrainAnatomyScene {
     return view ? clonePose(view) : null;
   }
 
+  setAnatomyView(id) {
+    const view = VIEW_SPECS.find((candidate) => candidate.id === id);
+    if (!view) return false;
+    this.activeView = id;
+    this.medialSide = view.medialSide ?? null;
+    this._applyProgress(1 / 60, true);
+    return true;
+  }
+
+  getAnatomyColorModes() {
+    return BRAIN_COLOR_MODES.map((mode) => ({ ...mode }));
+  }
+
+  getAnatomyColorMode() { return this.colorMode; }
+
+  setAnatomyColorMode(id) {
+    if (!BRAIN_COLOR_MODES.some((mode) => mode.id === id) || id === this.colorMode) return false;
+    this.colorMode = id;
+    for (const mesh of this.selectables) {
+      const color = new THREE.Color(brainColor(mesh.userData.atlasMetadata, id));
+      mesh.userData.baseColor.copy(color);
+      mesh.material.color.copy(color);
+      this._refreshHighlight(mesh);
+    }
+    if (this.selectedMesh) {
+      this.selection = this._structureInfo(this.selectedMesh);
+      for (const listener of this.listeners) listener(this.selection);
+    }
+    if (this.hoveredMesh) {
+      const hovered = this._structureInfo(this.hoveredMesh);
+      for (const listener of this.hoverListeners) listener(hovered);
+    }
+    return true;
+  }
+
   setProgress(value) { this.progress = clamp(value); }
 
   update(dt) {
@@ -390,7 +453,12 @@ export class BrainAnatomyScene {
     const oneHemisphere = smoothstep(0.18, 0.42, this.displayProgress);
     const deepReveal = smoothstep(0.55, 0.78, this.displayProgress);
     for (const mesh of this.selectables) {
-      const target = targetOpacity(mesh.userData.atlasMetadata, oneHemisphere, deepReveal);
+      const target = targetOpacity(
+        mesh.userData.atlasMetadata,
+        oneHemisphere,
+        deepReveal,
+        this.medialSide
+      );
       const opacity = snap ? target : damp(mesh.userData.currentOpacity, target, 10, dt);
       mesh.userData.currentOpacity = opacity;
       mesh.material.opacity = opacity;
@@ -427,22 +495,28 @@ export class BrainAnatomyScene {
     canvas?.removeEventListener('pointerup', this._pointerUp);
     canvas?.removeEventListener('pointerleave', this._pointerLeave);
     this.listeners.clear();
+    this.hoverListeners.clear();
     this.statusListeners.clear();
     disposeObject(this.root);
   }
 }
 
-function targetOpacity(metadata, oneHemisphere, deepReveal) {
+function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {
   const category = metadata.bx_cat;
   const label = metadata.bx_label;
+  if (
+    medialSide &&
+    (metadata.bx_side === 'left' || metadata.bx_side === 'right') &&
+    metadata.bx_side !== medialSide
+  ) return 0;
   if (category === 'cerebellum' || category === 'brainstem') return 1;
   if (category === 'cortex') {
     if (label === 'Hippocampus') return 0.03 + 0.97 * deepReveal;
     if (metadata.bx_region === 'Insula') return 0.04 + 0.96 * Math.max(oneHemisphere, deepReveal);
 
     let surfaceOpacity = 1;
-    if (metadata.bx_side === 'right') surfaceOpacity = 1 - 0.985 * oneHemisphere;
-    else if (metadata.bx_side === 'left' && LEFT_OPERCULUM.has(label)) {
+    if (!medialSide && metadata.bx_side === 'right') surfaceOpacity = 1 - 0.985 * oneHemisphere;
+    else if (!medialSide && metadata.bx_side === 'left' && LEFT_OPERCULUM.has(label)) {
       surfaceOpacity = 1 - 0.93 * oneHemisphere;
     }
     const deepGhost = metadata.bx_side === 'right' ? 0.015 : 0.075;

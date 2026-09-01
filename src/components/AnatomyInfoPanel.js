@@ -5,10 +5,11 @@ import { el } from '../utils/dom.js';
  * this component only renders it and offers authored camera viewpoints.
  */
 export function createAnatomyInfoPanel(scene, { onView } = {}) {
+  const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
-  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Click or tap the brain' });
-  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: '脳をクリック／タップ' });
+  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Point to preview · click or tap to select' });
+  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: '触れて確認・クリック／タップで選択' });
   const bodyEn = el('p', {
     class: 'anatomy-copy lang-en',
     text: 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.',
@@ -19,6 +20,33 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
   });
   const countEn = el('span', { class: 'anatomy-count lang-en', text: 'Loading atlas…' });
   const countJa = el('span', { class: 'anatomy-count lang-ja', text: 'アトラスを読み込み中…' });
+  const noteEn = el('p', { class: 'anatomy-note lang-en', text: '' });
+  const noteJa = el('p', { class: 'anatomy-note lang-ja', text: '' });
+  noteEn.hidden = true;
+  noteJa.hidden = true;
+
+  const modes = scene.getAnatomyColorModes?.() ?? [];
+  const setActiveMode = (id) => {
+    for (const [index, mode] of modes.entries()) {
+      modeButtons[index].classList.toggle('is-active', mode.id === id);
+      modeButtons[index].setAttribute('aria-pressed', String(mode.id === id));
+    }
+  };
+  const modeButtons = modes.map((mode) => el('button', {
+    class: `anatomy-mode${mode.id === scene.getAnatomyColorMode?.() ? ' is-active' : ''}`,
+    type: 'button',
+    'aria-pressed': String(mode.id === scene.getAnatomyColorMode?.()),
+    title: `${mode.label} — ${mode.labelJa}`,
+    on: {
+      click: () => {
+        scene.setAnatomyColorMode?.(mode.id);
+        setActiveMode(mode.id);
+      },
+    },
+  }, [
+    el('span', { class: 'lang-en', text: mode.label }),
+    el('span', { class: 'lang-ja', text: mode.labelJa }),
+  ]));
 
   const views = scene.getAnatomyViews?.() ?? [];
   const clearActiveView = () => {
@@ -43,6 +71,7 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
       on: {
         click: () => {
           setActiveView(view.id);
+          scene.setAnatomyView?.(view.id);
           onView?.(view.id);
         },
       },
@@ -54,9 +83,17 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
   });
 
   const element = el('section', { class: 'panel anatomy-info', role: 'status', 'aria-live': 'polite' }, [
-    el('div', { class: 'anatomy-heading' }, [titleEn, titleJa, locationEn, locationJa]),
+    el('div', { class: 'anatomy-heading-row' }, [
+      swatch,
+      el('div', { class: 'anatomy-heading' }, [titleEn, titleJa, locationEn, locationJa]),
+    ]),
     bodyEn,
     bodyJa,
+    noteEn,
+    noteJa,
+    modeButtons.length
+      ? el('div', { class: 'anatomy-modes', role: 'group', 'aria-label': 'Anatomical colour mode' }, modeButtons)
+      : null,
     viewButtons.length
       ? el('div', { class: 'anatomy-views', role: 'group', 'aria-label': 'Anatomical view' }, viewButtons)
       : null,
@@ -87,18 +124,26 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
     if (!selection) {
       titleEn.textContent = 'Select a structure';
       titleJa.textContent = '部位を選択してください';
-      locationEn.textContent = 'Click or tap the brain';
-      locationJa.textContent = '脳をクリック／タップ';
+      locationEn.textContent = 'Point to preview · click or tap to select';
+      locationJa.textContent = '触れて確認・クリック／タップで選択';
       bodyEn.textContent = 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.';
       bodyJa.textContent = '自由に回転・拡大できます。解剖レイヤーで本来の位置にある深部構造を表示します。';
+      noteEn.hidden = true;
+      noteJa.hidden = true;
+      swatch.style.removeProperty('--anatomy-color');
       return;
     }
     titleEn.textContent = selection.name;
     titleJa.textContent = selection.nameJa;
-    locationEn.textContent = `${selection.side} · ${selection.region} · ${selection.categoryName}`;
-    locationJa.textContent = `${selection.sideJa}・${selection.regionJa}・${selection.categoryNameJa}`;
+    locationEn.textContent = selection.breadcrumb ?? `${selection.side} · ${selection.region} · ${selection.categoryName}`;
+    locationJa.textContent = selection.breadcrumbJa ?? `${selection.sideJa}・${selection.regionJa}・${selection.categoryNameJa}`;
     bodyEn.textContent = selection.description;
     bodyJa.textContent = selection.descriptionJa;
+    noteEn.textContent = selection.note ?? '';
+    noteJa.textContent = selection.noteJa ?? '';
+    noteEn.hidden = !selection.note;
+    noteJa.hidden = !selection.noteJa;
+    if (selection.color) swatch.style.setProperty('--anatomy-color', selection.color);
   };
 
   const updateStatus = (status) => {
@@ -108,17 +153,32 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
       return;
     }
     if (status.state === 'ready') {
-      countEn.textContent = `${status.selectableCount} selectable structures`;
-      countJa.textContent = `${status.selectableCount}部位を個別に選択可能`;
+      countEn.textContent = `${status.selectableCount} selectable structures · hover previews, click pins`;
+      countJa.textContent = `${status.selectableCount}部位・触れて確認、クリックで固定`;
       return;
     }
     countEn.textContent = 'Loading atlas…';
     countJa.textContent = 'アトラスを読み込み中…';
   };
 
-  update(scene.getAnatomySelection());
+  let selected = scene.getAnatomySelection();
+  let hovered = scene.getAnatomyHover?.() ?? null;
+  const renderSelection = () => update(hovered ?? selected);
+  renderSelection();
   updateStatus(scene.getAnatomyStatus?.() ?? { state: 'ready', selectableCount: scene.selectables?.length ?? 0 });
-  const unsubscribeSelection = scene.onAnatomySelection(update);
+  const unsubscribeSelection = scene.onAnatomySelection((value) => {
+    selected = value;
+    renderSelection();
+    if (value?.preferredView) {
+      setActiveView(value.preferredView);
+      scene.setAnatomyView?.(value.preferredView);
+      onView?.(value.preferredView);
+    }
+  });
+  const unsubscribeHover = scene.onAnatomyHover?.((value) => {
+    hovered = value;
+    renderSelection();
+  });
   const unsubscribeStatus = scene.onAnatomyStatus?.(updateStatus);
   scene.viewer?.controls?.addEventListener('start', clearActiveView);
   return {
@@ -126,6 +186,7 @@ export function createAnatomyInfoPanel(scene, { onView } = {}) {
     setView: setActiveView,
     dispose() {
       unsubscribeSelection?.();
+      unsubscribeHover?.();
       unsubscribeStatus?.();
       scene.viewer?.controls?.removeEventListener('start', clearActiveView);
     },
