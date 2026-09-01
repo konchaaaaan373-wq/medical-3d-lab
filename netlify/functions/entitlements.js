@@ -12,9 +12,12 @@ export default async (request) => {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Unauthorized' });
 
-    if (new URL(request.url).searchParams.get('reconcile') === '1') {
+    const reconcileRequested = new URL(request.url).searchParams.get('reconcile') === '1';
+    let reconciliation = reconcileRequested ? 'failed' : 'not_requested';
+    if (reconcileRequested) {
       try {
-        await reconcileBillingForUser(user.id);
+        const result = await reconcileBillingForUser(user.id);
+        reconciliation = result.reconciled ? 'succeeded' : 'failed';
       } catch (error) {
         // Webhooks remain the normal source of updates. A transient Stripe
         // failure must not turn an otherwise valid local entitlement lookup
@@ -31,6 +34,7 @@ export default async (request) => {
       user: { id: user.id, email: user.email ?? null },
       entitlements: grantsFromSubscriptions(rows),
       subscriptions: rows,
+      reconciliation,
     });
   } catch (error) {
     console.error('entitlements', error);
