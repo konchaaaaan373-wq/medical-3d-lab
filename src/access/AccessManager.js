@@ -97,8 +97,10 @@ export function createAccessManager({ ui }) {
         // Portal can change plan, cancellation and payment method. Reconcile
         // directly from Stripe once on return instead of waiting for webhook
         // propagation before showing the current access state.
-        await refresh({ reconcile: true });
-        state.notice = '契約情報を最新の状態に更新しました。';
+        const result = await refresh({ reconcile: true });
+        state.notice = result.reconciliationSucceeded
+          ? '契約情報を最新の状態に更新しました。'
+          : '契約情報の最新状態を確認できませんでした。現在の表示は前回確認時の内容です。';
         notify();
         const clean = new URL(window.location.href);
         clean.searchParams.delete('billing');
@@ -181,6 +183,7 @@ export function createAccessManager({ ui }) {
     state.loading = true;
     state.error = '';
     notify();
+    let reconciliationSucceeded = reconcile ? false : null;
     try {
       const session = await getSession();
       state.user = session?.user ?? null;
@@ -196,6 +199,7 @@ export function createAccessManager({ ui }) {
         state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
         state.subscriptions = data.subscriptions ?? [];
         state.user = data.user ?? state.user;
+        if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
       }
     } catch (error) {
       // Free access is deliberately resilient to billing/auth outages.
@@ -205,6 +209,7 @@ export function createAccessManager({ ui }) {
       state.loading = false;
       notify();
     }
+    return { reconciliationSucceeded };
   }
 
   function open(entitlement = null) {
