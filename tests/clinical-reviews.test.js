@@ -26,9 +26,12 @@ test('clinical review registry has one well-formed row per recorded scene', () =
     if (record.reviewStatus === 'reviewed') {
       assert.match(record.reviewedAt, /^\d{4}-\d{2}-\d{2}$/, `${record.sceneId} has a versioned review date`);
       assert.match(record.reviewedCommit, /^[0-9a-f]{40}$/, `${record.sceneId} pins the exact reviewed commit`);
+      assert.match(record.reviewerRole, /clinical reviewer/i, `${record.sceneId} names an actual clinical review role`);
       assert.ok(
-        !/not recorded|no completed/i.test(record.reviewerRole),
-        `${record.sceneId} cannot call itself reviewed while saying no review role was recorded`
+        !/no completed clinical sign-off|historical review role not recorded under the current registry standard/i.test(
+          record.reviewerRole
+        ),
+        `${record.sceneId} cannot call itself reviewed without a completed clinical review`
       );
     } else {
       assert.equal(record.reviewedAt, null, `${record.sceneId} does not invent a review date`);
