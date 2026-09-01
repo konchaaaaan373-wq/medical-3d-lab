@@ -185,14 +185,14 @@ export function overlayAt(t, { language, metrics }) {
     // reads "this kidney 121, without the signal 103" and argues the opposite
     // of what the sequence is for. The comparison is only worth showing once
     // it means what the ending says it means.
+    //
+    // The counterfactual takes the first slot: the overlay colours slot 0 as
+    // the healthy body and slot 1 as the diseased one, in every sequence, and
+    // the take-home frame has to read the same way here. This kidney holds
+    // slot 1 from the start — a null first slot, not a shorter list — so its
+    // card neither changes colour nor swaps content when the pair arrives.
     cards: {
       opacity: cueOpacity(t, 2.5, HOLD_PAST_END, 0.4),
-      // Slot order is screen order: the overlay's first slot is the left card
-      // (styled as the reference) and the second the right (styled as the
-      // subject). In comparison the released kidney stands on the left and
-      // this kidney on the right, so the released card takes the first slot;
-      // before the comparison that slot is empty rather than borrowed, so
-      // this kidney's card keeps its side and its styling throughout.
       items: [
         comparisonAt(t)
           ? card(
@@ -200,7 +200,7 @@ export function overlayAt(t, { language, metrics }) {
               metrics.released,
               language
             )
-          : undefined,
+          : null,
         card(pick(language, REEL_COPY.cards.kidney.label, REEL_COPY.cards.kidney.labelJa), metrics.kidney, language),
       ],
     },
@@ -231,7 +231,7 @@ function card(label, rows, language) {
     headline: rows.gfr,
     headlineUnit: 'mL/min',
     rows: [
-      `${pick(language, 'renal blood flow', '腎血流量')} ${rows.flow}`,
+      `${pick(language, 'renal blood flow', '腎血流量')} ${rows.flow} mL/min`,
       `${pick(language, 'filtration fraction', '濾過率')} ${rows.fraction}%`,
     ],
   };

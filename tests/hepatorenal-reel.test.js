@@ -161,8 +161,8 @@ test('every number on screen comes from the scene, not from the copy', () => {
   assert.ok(!/\d+\s*(mL|mmHg|%)/.test(text), 'the reel copy carries a unit-bearing number');
   assert.ok(!/\d{2,}/.test(text), 'the reel copy carries a multi-digit number');
 
-  // Slot order is screen order: the released kidney stands on the left, this
-  // kidney on the right, so the released card fills the first (left) slot.
+  // Slot 0 is the healthy counterfactual — the overlay colours the first card
+  // as the healthy body in every sequence — and slot 1 is this kidney.
   const overlay = overlayAt(REEL_DURATION, context());
   assert.equal(overlay.cards.items[0].headline, METRICS.released.gfr);
   assert.equal(overlay.cards.items[1].headline, METRICS.kidney.gfr);
@@ -234,6 +234,10 @@ test('the second card arrives with the second kidney, and not before', () => {
       comparisonAt(t) ? 2 : 1,
       `the card count and the picture disagree at ${t}`
     );
+    // This kidney holds the diseased-styled slot 1 throughout; the healthy
+    // counterfactual only ever occupies slot 0, and only once the pair is on.
+    assert.ok(overlay.cards.items[1], `this kidney's card is missing at ${t}`);
+    assert.equal(Boolean(overlay.cards.items[0]), comparisonAt(t));
   }
   assert.equal(overlayAt(COMPARISON_FROM - 0.1, context()).cards.items.filter(Boolean).length, 1);
   assert.equal(overlayAt(COMPARISON_FROM, context()).cards.items.filter(Boolean).length, 2);

@@ -80,6 +80,22 @@
   gap: 9px;
 }
 
+.anatomy-info {
+  width: min(310px, 42vw);
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent);
+}
+
+.anatomy-heading { display: flex; flex-direction: column; gap: 2px; }
+.anatomy-name { font-size: 15px; line-height: 1.2; }
+.anatomy-side { color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.anatomy-copy { margin: 9px 0 0; color: var(--ink-dim); font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 720px) {
+  .anatomy-info { width: min(62vw, 270px); padding: 10px 12px; }
+  .anatomy-copy { display: none; }
+}
+
 .legend-item {
   display: flex;
   align-items: center;

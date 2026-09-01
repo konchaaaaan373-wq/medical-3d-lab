@@ -125,6 +125,8 @@ export class HepatorenalScene {
     this.comparing = false;
     this.controls = { ...DEFAULT_CONTROLS };
     this.solved = solveHepatorenal(this.controls);
+    /** The charts' 26-point axis curve; null = stale, re-solved by getCharts. */
+    this.curve = null;
   }
 
   build() {
@@ -291,7 +293,9 @@ export class HepatorenalScene {
     this.controls.structuralResistance =
       1 + (HepatorenalScene.MAX_STRUCTURAL_RESISTANCE - 1) * this.progress;
     this.controls.splanchnicVasodilation = this.progress;
-    this.solve();
+    // Moving along the axis does not move the curve: the curve overrides the
+    // two axis controls at every sample, so it depends only on the others.
+    this.solve({ curveStale: false });
   }
 
   setModelControl(id, value) {
@@ -305,14 +309,18 @@ export class HepatorenalScene {
 
   resetModelControls() {
     for (const control of MODEL_CONTROLS) this.controls[control.id] = DEFAULT_CONTROLS[control.id];
-    // Not setProgress: the progress has not changed, but the controls have,
-    // so the axis's own pair is rewritten and the model re-solved regardless.
+    // The reset changed the controls the curve does depend on, so the cache
+    // goes — and the progress has not changed, so this goes through
+    // applyProgress rather than setProgress: the axis's own pair is rewritten
+    // and the model re-solved regardless of the unchanged-value guard.
+    this.curve = null;
     this.applyProgress();
   }
 
-  solve() {
+  solve({ curveStale = true } = {}) {
     this.solved = solveHepatorenal(this.controls);
     this.released = kidneyWithoutTheSignal(this.solved);
+    if (curveStale) this.curve = null;
     this.applyModelToScene();
   }
 
@@ -405,8 +413,14 @@ export class HepatorenalScene {
       calibre(state.kidney.renalBloodFlowMlPerMin, RENAL_REFERENCE.renalBloodFlowMlPerMin)
     );
 
-    // The liver's colour follows how scarred it is. Presentation.
-    const scarring = clamp((this.controls.structuralResistance - 1) / 9);
+    // The liver's colour follows how scarred it is. Presentation. The multiple
+    // comes from the solved portal state, and the divisor is the span of this
+    // scene's own axis — the portal scene's 9 would saturate the colour at
+    // ~82% of an axis that runs to MAX_STRUCTURAL_RESISTANCE.
+    const scarring = clamp(
+      (state.portal.resistances.intrahepaticMultiple - 1) /
+        (HepatorenalScene.MAX_STRUCTURAL_RESISTANCE - 1)
+    );
     this.liver.object.material.color.copy(HEALTHY_LIVER).lerp(SCARRED_LIVER, scarring);
 
     // The signal, drawn as colour on the vessels that respond to it — and
@@ -536,8 +550,10 @@ export class HepatorenalScene {
   getCharts() {
     // Both plots are drawn along the scene's own axis, re-solved rather than
     // recorded, so that the curve and the read-out are the same model. The
-    // marker is where the reader currently is.
-    const curve = this.progressionCurve();
+    // marker is where the reader currently is. The curve is cached — this runs
+    // every rendered frame, and the 26-point solve only when a control the
+    // curve depends on has changed since the last read.
+    const curve = (this.curve ??= this.progressionCurve());
     const percent = (value, reference) => (value / reference) * 100;
 
     const series = (id, color, read) => ({
@@ -695,7 +711,9 @@ export class HepatorenalScene {
         });
         return {
           kidney: rows(scene.solved.kidney),
-          released: rows(kidneyWithoutTheSignal(scene.solved)),
+          // The counterfactual the frame's solve already produced — this runs
+          // every rendered frame, so it must not solve it again.
+          released: rows(scene.released ?? kidneyWithoutTheSignal(scene.solved)),
           map: scene.solved.systemic.meanArterialPressureMmHg.toFixed(0),
           activation: scene.solved.neurohumoral.activation.toFixed(2),
         };
