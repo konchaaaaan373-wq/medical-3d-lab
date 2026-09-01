@@ -19,11 +19,12 @@ function normaliseRecord(value, stepCount) {
 }
 
 function readStore(storage) {
+  if (!storage?.getItem) return volatileStore;
   try {
-    const raw = storage?.getItem?.(STORAGE_KEY);
-    if (!raw) return volatileStore;
+    const raw = storage.getItem(STORAGE_KEY);
+    if (!raw) return {};
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : volatileStore;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
   } catch {
     return volatileStore;
   }
