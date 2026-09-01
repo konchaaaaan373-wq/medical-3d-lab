@@ -8,6 +8,8 @@ import {
   missingRemoteSubscriptionIds,
   reconcileBillingForUser,
   stripeEventObjectId,
+  subscriptionById,
+  subscriptionsForCustomer,
 } from '../netlify/lib/billing.js';
 
 const EVENT = Object.freeze({
@@ -133,6 +135,8 @@ test('billing lifecycle: reconciliation fails closed when a live local row vanis
       assert.equal(customerId, 'cus_123');
       return [{ id: 'sub_remote', status: 'active' }];
     },
+    retrieveSubscription: async (subscriptionId) =>
+      subscriptionId === 'sub_remote' ? { id: 'sub_remote', status: 'active' } : null,
     sync: async (subscription) => synced.push(subscription.id),
     now: new Date('2026-09-01T12:00:00.000Z'),
   });
@@ -147,6 +151,94 @@ test('billing lifecycle: reconciliation fails closed when a live local row vanis
     calls.some(
       (call) => call.path.includes('billing_customers?user_id=eq.user_123') && call.options.method === 'PATCH'
     )
+  );
+});
+
+test('billing lifecycle: Stripe subscription listing follows every pagination cursor', async () => {
+  const paths = [];
+  const subscriptions = await subscriptionsForCustomer('cus_123', {
+    get: async (path) => {
+      paths.push(path);
+      if (paths.length === 1) {
+        return { data: [{ id: 'sub_100' }], has_more: true };
+      }
+      return { data: [{ id: 'sub_101' }], has_more: false };
+    },
+  });
+
+  assert.deepEqual(subscriptions.map(({ id }) => id), ['sub_100', 'sub_101']);
+  assert.doesNotMatch(paths[0], /starting_after=/);
+  assert.match(paths[1], /starting_after=sub_100/);
+});
+
+test('billing lifecycle: reconciliation re-fetches list snapshots before writing', async () => {
+  const synced = [];
+  const admin = async (path, options = {}) => {
+    if (path.includes('billing_customers?user_id=eq.') && !options.method) {
+      return [{ stripe_customer_id: 'cus_123' }];
+    }
+    if (path.includes('billing_subscriptions?user_id=eq.') && !options.method) return [];
+    return [];
+  };
+
+  const result = await reconcileBillingForUser('user_123', {
+    admin,
+    listSubscriptions: async () => [{ id: 'sub_123', status: 'active' }],
+    retrieveSubscription: async () => ({ id: 'sub_123', status: 'canceled' }),
+    sync: async (subscription) => synced.push(subscription.status),
+  });
+
+  assert.deepEqual(synced, ['canceled']);
+  assert.equal(result.remoteCount, 1);
+});
+
+test('billing lifecycle: apparent list gaps are verified by ID before fail-closing', async () => {
+  const calls = [];
+  const synced = [];
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (path.includes('billing_customers?user_id=eq.') && !options.method) {
+      return [{ stripe_customer_id: 'cus_123' }];
+    }
+    if (path.includes('billing_subscriptions?user_id=eq.') && !options.method) {
+      return [{ stripe_subscription_id: 'sub_created_during_reconcile' }];
+    }
+    return [];
+  };
+
+  const result = await reconcileBillingForUser('user_123', {
+    admin,
+    listSubscriptions: async () => [],
+    retrieveSubscription: async (subscriptionId) => ({ id: subscriptionId, status: 'active' }),
+    sync: async (subscription) => synced.push(subscription.id),
+  });
+
+  assert.deepEqual(synced, ['sub_created_during_reconcile']);
+  assert.equal(result.missingCount, 0);
+  assert.equal(
+    calls.some((call) => call.options.body?.status === 'missing_from_stripe'),
+    false
+  );
+});
+
+test('billing lifecycle: only confirmed Stripe resource absence becomes null', async () => {
+  assert.equal(
+    await subscriptionById('sub_missing', {
+      get: async () => {
+        const error = new Error('missing');
+        error.code = 'resource_missing';
+        throw error;
+      },
+    }),
+    null
+  );
+  await assert.rejects(
+    subscriptionById('sub_unknown', {
+      get: async () => {
+        throw new Error('network failure');
+      },
+    }),
+    /network failure/
   );
 });
 
