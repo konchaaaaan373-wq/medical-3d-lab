@@ -9,6 +9,8 @@ import {
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el } from '../utils/dom.js';
 
+const TRUST_ROUTE = '#/trust';
+
 /**
  * WebGL-independent product entry point.
  *
@@ -92,6 +94,7 @@ export function createLanding({ ui, accountButton = null }) {
       ]),
       el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation' }, [
         shellLink(EXPLORER_ROUTE, 'Models', 'モデル', 'landing-nav-link'),
+        shellLink(TRUST_ROUTE, 'Trust', '信頼性', 'landing-nav-link'),
         shellLink(LAB_ROUTE, 'Lab', '実験室', 'landing-nav-link'),
       ]),
       el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
@@ -218,12 +221,13 @@ export function createLanding({ ui, accountButton = null }) {
           el('span', { class: 'lang-ja', text: 'レビュー済みモデルと実験モデルを、同じ棚に置かない。' }),
         ]),
         el('p', { class: 'landing-trust-copy' }, [
-          el('span', { class: 'lang-en', text: 'Public models carry their maturity and scope. Stylised Prototype work lives separately in Lab, where its limitations are explicit.' }),
-          el('span', { class: 'lang-ja', text: '公開モデルでは成熟度と適用範囲を明示します。簡略化したPrototypeはLabへ分離し、限界を明確に表示します。' }),
+          el('span', { class: 'lang-en', text: 'Public models carry their maturity and medical-review state. Evidence packages, review scope and unresolved limitations are inspectable without opening WebGL.' }),
+          el('span', { class: 'lang-ja', text: '公開モデルでは実装成熟度と医学レビュー状態を分けて表示します。証拠パッケージ、レビュー範囲、未解決の限界はWebGLを開かず確認できます。' }),
         ]),
       ]),
       el('div', { class: 'landing-trust-actions' }, [
-        shellLink(EXPLORER_ROUTE, 'Public catalogue', '公開カタログ', 'landing-button secondary'),
+        shellLink(TRUST_ROUTE, 'Review & evidence', 'レビューと証拠', 'landing-button secondary'),
+        shellLink(EXPLORER_ROUTE, 'Public catalogue', '公開カタログ', 'landing-button ghost'),
         shellLink(LAB_ROUTE, 'Experimental Lab', '実験モデルを見る', 'landing-button ghost'),
       ]),
     ]),
