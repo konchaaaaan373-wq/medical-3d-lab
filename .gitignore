@@ -3,6 +3,9 @@ dist/
 .DS_Store
 *.local
 .vite/
+.env
+.env.*
+!.env.example
 
 # Throwaway scripts used to drive the browser during a visual pass.
 .*.mjs

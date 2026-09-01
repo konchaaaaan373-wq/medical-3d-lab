@@ -1,0 +1,43 @@
+/* ========================================================================== 
+   Stripe-backed plan pricing
+   ========================================================================== */
+
+.access-plan-price {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  min-height: 26px;
+  margin-top: 7px;
+  color: var(--ink);
+}
+
+.access-plan-amount {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.access-plan-interval {
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+.access-plan-price.is-unavailable {
+  align-items: center;
+  flex-direction: column;
+  gap: 0;
+  color: var(--ink-faint);
+  font-size: 9.5px;
+  line-height: 1.25;
+}
+
+.access-plan.is-highlighted .access-plan-amount {
+  color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .access-plan-amount {
+    font-size: 17px;
+  }
+}

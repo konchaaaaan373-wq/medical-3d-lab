@@ -1,0 +1,89 @@
+/* Account/billing belongs on the catalogue page too, but it must not turn the
+   Explorer into a billing dashboard. Keep it as secondary product chrome next
+   to the existing language control. */
+.explorer-header-actions {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  z-index: 2;
+}
+
+.explorer-header-actions .ui-toggle,
+.explorer-header-actions .account-trigger {
+  position: static;
+}
+
+/* Product capability is catalogue metadata, not current-account state. These
+   chips answer "what can I do with this scene?" without pretending the paid
+   mode is unlocked for the viewer. */
+.explorer-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.explorer-access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+  min-height: 21px;
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.explorer-access-badge.is-free {
+  color: var(--ink-dim);
+  border-color: color-mix(in srgb, var(--ink-dim) 28%, var(--border));
+}
+
+.explorer-access-badge.is-paid {
+  color: color-mix(in srgb, var(--accent) 82%, var(--ink));
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.explorer-access-lock {
+  color: var(--accent);
+  font-size: 8px;
+}
+
+.explorer-product-key {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 13px;
+  color: var(--ink-faint);
+}
+
+.explorer-product-note {
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+@media (max-width: 720px) {
+  .explorer-header {
+    padding-top: 68px;
+  }
+
+  .explorer-header-actions {
+    top: 14px;
+    right: 14px;
+  }
+
+  .explorer-product-key {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
