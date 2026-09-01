@@ -9,6 +9,10 @@
   padding: 2px 0;
 }
 
+.education-guide:focus-visible {
+  outline: none;
+}
+
 #ui.is-education-guide .education-guide {
   display: flex;
 }
@@ -68,14 +72,30 @@
 }
 
 .education-guide-dot {
+  position: relative;
   flex: 1;
+  min-width: 0;
   height: 3px;
+  padding: 0;
+  border: 0;
   border-radius: 2px;
+  appearance: none;
   background: var(--border);
+  cursor: pointer;
+}
+
+.education-guide-dot::after {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
 }
 
 .education-guide-dot.is-active {
   background: var(--accent);
+}
+
+.education-guide-dot.is-current {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
 .education-guide-kind {
