@@ -252,7 +252,10 @@ export async function upsertCustomer({ userId, customerId, email = null }) {
   return true;
 }
 
-export async function upsertSubscription(subscription) {
+export async function upsertSubscription(
+  subscription,
+  { admin = supabaseAdmin, now = new Date() } = {}
+) {
   const customerId =
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
@@ -264,7 +267,7 @@ export async function upsertSubscription(subscription) {
   // fail-safe principle as plan identity (which follows Price ID, not metadata).
   let mappedUserId = null;
   if (customerId) {
-    const rows = await supabaseAdmin(
+    const rows = await admin(
       `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
     );
     mappedUserId = rows?.[0]?.user_id ?? null;
@@ -289,11 +292,11 @@ export async function upsertSubscription(subscription) {
       userId: userId ?? null,
       priceId,
     });
-    return;
+    return { synced: false, reason: !userId ? 'unknown_user' : 'unsupported_price' };
   }
 
   const periodEnd = subscriptionPeriodEnd(subscription);
-  await supabaseAdmin('billing_subscriptions?on_conflict=stripe_subscription_id', {
+  await admin('billing_subscriptions?on_conflict=stripe_subscription_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: [
@@ -306,10 +309,211 @@ export async function upsertSubscription(subscription) {
         price_id: priceId,
         current_period_end: periodEnd,
         cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-        updated_at: new Date().toISOString(),
+        updated_at: now.toISOString(),
       },
     ],
   });
+  return { synced: true, reason: 'synced' };
+}
+
+const SUBSCRIPTION_EVENT_TYPES = new Set([
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+  'customer.subscription.paused',
+  'customer.subscription.resumed',
+]);
+
+const EVENT_RECLAIM_AFTER_MS = 5 * 60 * 1000;
+
+export function isSubscriptionEvent(type) {
+  return SUBSCRIPTION_EVENT_TYPES.has(type);
+}
+
+export function stripeEventObjectId(event) {
+  const object = event?.data?.object;
+  return typeof object?.id === 'string' ? object.id : null;
+}
+
+export function canReclaimBillingEvent(row, now = new Date()) {
+  if (row?.status === 'failed') return true;
+  if (row?.status !== 'processing') return false;
+  const attemptedAt = Date.parse(row.last_attempt_at);
+  return Number.isFinite(attemptedAt) && now.getTime() - attemptedAt >= EVENT_RECLAIM_AFTER_MS;
+}
+
+/**
+ * Claims a signed Stripe Event before applying its side effects.
+ *
+ * Stripe can deliver the same Event more than once. The primary-key insert is
+ * the normal claim path. Failed or abandoned claims can be retried, while a
+ * completed Event is acknowledged without repeating its work.
+ */
+export async function claimBillingEvent(event, { admin = supabaseAdmin, now = new Date() } = {}) {
+  if (!event?.id || !event?.type) return { claimed: false, reason: 'invalid_event' };
+
+  const timestamp = now.toISOString();
+  const created = await admin('billing_events?on_conflict=stripe_event_id', {
+    method: 'POST',
+    prefer: 'resolution=ignore-duplicates,return=representation',
+    body: [
+      {
+        stripe_event_id: event.id,
+        event_type: event.type,
+        stripe_object_id: stripeEventObjectId(event),
+        livemode: Boolean(event.livemode),
+        status: 'processing',
+        attempt_count: 1,
+        first_received_at: timestamp,
+        last_attempt_at: timestamp,
+      },
+    ],
+  });
+  if (created?.length) return { claimed: true, retry: false };
+
+  const rows = await admin(
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(event.id)}&select=status,attempt_count,last_attempt_at&limit=1`
+  );
+  const existing = rows?.[0];
+  if (!existing) throw new Error('Stripe Event claim disappeared before processing.');
+  if (!canReclaimBillingEvent(existing, now)) {
+    return {
+      claimed: false,
+      reason: existing.status === 'processing' ? 'already_processing' : 'already_processed',
+    };
+  }
+
+  const filters = [`stripe_event_id=eq.${encodeURIComponent(event.id)}`];
+  if (existing.status === 'failed') {
+    filters.push('status=eq.failed');
+  } else {
+    const staleBefore = new Date(now.getTime() - EVENT_RECLAIM_AFTER_MS).toISOString();
+    filters.push('status=eq.processing', `last_attempt_at=lte.${encodeURIComponent(staleBefore)}`);
+  }
+
+  const reclaimed = await admin(`billing_events?${filters.join('&')}`, {
+    method: 'PATCH',
+    prefer: 'return=representation',
+    body: {
+      status: 'processing',
+      attempt_count: Number(existing.attempt_count || 0) + 1,
+      last_attempt_at: timestamp,
+      processed_at: null,
+      result_code: null,
+    },
+  });
+  return reclaimed?.length
+    ? { claimed: true, retry: true }
+    : { claimed: false, reason: 'claimed_elsewhere' };
+}
+
+export async function finishBillingEvent(
+  eventId,
+  { status = 'processed', resultCode = null, admin = supabaseAdmin, now = new Date() } = {}
+) {
+  if (!['processed', 'ignored', 'failed'].includes(status)) {
+    throw new Error(`Invalid billing event status: ${status}`);
+  }
+  await admin(
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&status=eq.processing`,
+    {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: {
+        status,
+        processed_at: status === 'failed' ? null : now.toISOString(),
+        result_code: resultCode,
+      },
+    }
+  );
+}
+
+/**
+ * Synchronises one Stripe subscription into fail-closed local access state.
+ */
+export async function syncSubscription(subscription, { admin = supabaseAdmin } = {}) {
+  if (!subscription?.id) return { synced: false, reason: 'missing_subscription' };
+  const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+
+  if (!planForPrice(priceId)) {
+    await admin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'unsupported_price',
+          price_id: priceId,
+          updated_at: new Date().toISOString(),
+        },
+      }
+    );
+    return { synced: false, reason: 'unsupported_price' };
+  }
+
+  return upsertSubscription(subscription, { admin });
+}
+
+export function missingRemoteSubscriptionIds(localRows, remoteSubscriptions) {
+  const remoteIds = new Set(
+    (remoteSubscriptions ?? []).map((subscription) => subscription?.id).filter(Boolean)
+  );
+  return (localRows ?? [])
+    .map((row) => row?.stripe_subscription_id)
+    .filter((id) => id && !remoteIds.has(id));
+}
+
+/**
+ * Repairs local entitlement state from Stripe's current subscription objects.
+ * This is used after Checkout/Portal returns and before a stale local row can
+ * block a legitimate repurchase. Webhooks remain the normal update path.
+ */
+export async function reconcileBillingForUser(
+  userId,
+  {
+    admin = supabaseAdmin,
+    listSubscriptions = subscriptionsForCustomer,
+    sync = (subscription) => syncSubscription(subscription, { admin }),
+    now = new Date(),
+  } = {}
+) {
+  const customerRows = await admin(
+    `billing_customers?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`
+  );
+  const customerId = customerRows?.[0]?.stripe_customer_id ?? null;
+  if (!customerId) return { reconciled: false, reason: 'no_customer' };
+
+  const remoteSubscriptions = await listSubscriptions(customerId);
+  for (const subscription of remoteSubscriptions) await sync(subscription);
+
+  const localRows = await admin(
+    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
+  );
+  const missingIds = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
+  for (const subscriptionId of missingIds) {
+    await admin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'missing_from_stripe',
+          updated_at: now.toISOString(),
+        },
+      }
+    );
+  }
+
+  await admin(`billing_customers?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: { last_reconciled_at: now.toISOString(), updated_at: now.toISOString() },
+  });
+  return {
+    reconciled: true,
+    remoteCount: remoteSubscriptions.length,
+    missingCount: missingIds.length,
+  };
 }
 
 /** Verifies Stripe's signed raw request body with a five-minute tolerance. */
