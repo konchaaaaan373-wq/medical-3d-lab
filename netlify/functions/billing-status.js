@@ -1,3 +1,4 @@
+import { commerceReadiness } from '../../src/access/commerceReadiness.js';
 import { json } from '../lib/billing.js';
 
 const REQUIRED = [
@@ -11,17 +12,25 @@ const REQUIRED = [
 
 const hasAny = (...names) => names.some((name) => Boolean(process.env[name]));
 
+export function billingInfrastructureConfigured() {
+  return (
+    REQUIRED.every((name) => Boolean(process.env[name])) &&
+    hasAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY') &&
+    hasAny('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY')
+  );
+}
+
 export default async (request) => {
   if (request.method !== 'GET') return json(405, { error: 'Method not allowed' });
 
-  const configured =
-    REQUIRED.every((name) => Boolean(process.env[name])) &&
-    hasAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY') &&
-    hasAny('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY');
+  const infrastructureConfigured = billingInfrastructureConfigured();
+  const readiness = commerceReadiness();
 
-  // This endpoint deliberately returns only a boolean. It never exposes keys,
-  // Price IDs or deployment-specific secret material to the browser. Webhook
-  // readiness is part of the gate because a Checkout that can charge but cannot
-  // persist the resulting subscription must never be presented as purchase-ready.
-  return json(200, { billingConfigured: configured });
+  // Charging is enabled only when both infrastructure and reviewed professional
+  // content are ready. A deployment with valid Stripe secrets but only stale or
+  // unversioned clinical review must not look purchase-ready.
+  return json(200, {
+    billingConfigured: infrastructureConfigured && readiness.any,
+    commerceReady: readiness.any,
+  });
 };
