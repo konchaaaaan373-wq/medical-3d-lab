@@ -86,7 +86,12 @@ export async function stripeGet(path) {
     headers: { Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}` },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || `Stripe ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || `Stripe ${response.status}`);
+    error.status = response.status;
+    error.code = data?.error?.code ?? null;
+    throw error;
+  }
   return data;
 }
 
@@ -207,12 +212,41 @@ export async function billingCustomerFor(user) {
 }
 
 /** Stripe is authoritative when local webhook state may still be catching up. */
-export async function subscriptionsForCustomer(customerId) {
+export async function subscriptionsForCustomer(customerId, { get = stripeGet } = {}) {
   if (!customerId) return [];
-  const data = await stripeGet(
-    `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`
-  );
-  return Array.isArray(data?.data) ? data.data : [];
+  const subscriptions = [];
+  let startingAfter = null;
+
+  do {
+    const cursor = startingAfter
+      ? `&starting_after=${encodeURIComponent(startingAfter)}`
+      : '';
+    const page = await get(
+      `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100${cursor}`
+    );
+    const pageSubscriptions = Array.isArray(page?.data) ? page.data : [];
+    subscriptions.push(...pageSubscriptions);
+    if (!page?.has_more) break;
+
+    const nextCursor = pageSubscriptions.at(-1)?.id;
+    if (!nextCursor || nextCursor === startingAfter) {
+      throw new Error('Stripe subscription pagination did not provide a new cursor.');
+    }
+    startingAfter = nextCursor;
+  } while (true);
+
+  return subscriptions;
+}
+
+/** Retrieves one current subscription, returning null only when Stripe confirms it is absent. */
+export async function subscriptionById(subscriptionId, { get = stripeGet } = {}) {
+  if (!subscriptionId) return null;
+  try {
+    return await get(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+  } catch (error) {
+    if (error?.status === 404 || error?.code === 'resource_missing') return null;
+    throw error;
+  }
 }
 
 export async function upsertCustomer({ userId, customerId, email = null }) {
@@ -473,6 +507,7 @@ export async function reconcileBillingForUser(
   {
     admin = supabaseAdmin,
     listSubscriptions = subscriptionsForCustomer,
+    retrieveSubscription = subscriptionById,
     sync = (subscription) => syncSubscription(subscription, { admin }),
     now = new Date(),
   } = {}
@@ -483,14 +518,32 @@ export async function reconcileBillingForUser(
   const customerId = customerRows?.[0]?.stripe_customer_id ?? null;
   if (!customerId) return { reconciled: false, reason: 'no_customer' };
 
-  const remoteSubscriptions = await listSubscriptions(customerId);
-  for (const subscription of remoteSubscriptions) await sync(subscription);
+  const listedSubscriptions = await listSubscriptions(customerId);
+  const remoteSubscriptions = [];
+  for (const listedSubscription of listedSubscriptions) {
+    if (!listedSubscription?.id) continue;
+    // List responses are snapshots. Re-read immediately before writing so a
+    // webhook that already persisted a newer status cannot be overwritten by
+    // an older list page returned earlier in this reconciliation run.
+    const currentSubscription = await retrieveSubscription(listedSubscription.id);
+    if (!currentSubscription?.id) continue;
+    remoteSubscriptions.push(currentSubscription);
+    await sync(currentSubscription);
+  }
 
   const localRows = await admin(
     `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
   );
-  const missingIds = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
-  for (const subscriptionId of missingIds) {
+  const missingCandidates = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
+  let missingCount = 0;
+  for (const subscriptionId of missingCandidates) {
+    // A subscription can be created after the paginated list request. Verify
+    // every apparent gap by ID before fail-closing the local row.
+    const currentSubscription = await retrieveSubscription(subscriptionId);
+    if (currentSubscription?.id) {
+      await sync(currentSubscription);
+      continue;
+    }
     await admin(
       `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
       {
@@ -502,6 +555,7 @@ export async function reconcileBillingForUser(
         },
       }
     );
+    missingCount += 1;
   }
 
   await admin(`billing_customers?user_id=eq.${encodeURIComponent(userId)}`, {
@@ -512,7 +566,7 @@ export async function reconcileBillingForUser(
   return {
     reconciled: true,
     remoteCount: remoteSubscriptions.length,
-    missingCount: missingIds.length,
+    missingCount,
   };
 }
 
