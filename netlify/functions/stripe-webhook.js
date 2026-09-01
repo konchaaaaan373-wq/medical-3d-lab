@@ -44,17 +44,27 @@ export default async (request) => {
 
   try {
     const outcome = await processStripeEvent(event);
-    await finishBillingEvent(event.id, {
+    const finished = await finishBillingEvent(event.id, {
+      attemptCount: claim.attemptCount,
       status: outcome.status,
       resultCode: outcome.reason ?? null,
     });
+    if (!finished) {
+      // This worker outlived its claim and a retry now owns the Event. Keep the
+      // response retryable instead of acknowledging another attempt's work.
+      return json(500, { error: 'Webhook event claim expired' });
+    }
     return json(200, {
       received: true,
       ...(outcome.status === 'ignored' ? { ignored: outcome.reason } : {}),
     });
   } catch (error) {
     try {
-      await finishBillingEvent(event.id, { status: 'failed', resultCode: 'processing_error' });
+      await finishBillingEvent(event.id, {
+        attemptCount: claim.attemptCount,
+        status: 'failed',
+        resultCode: 'processing_error',
+      });
     } catch (ledgerError) {
       console.error('stripe-webhook ledger failure', ledgerError);
     }
