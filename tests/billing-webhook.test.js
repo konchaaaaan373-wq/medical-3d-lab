@@ -68,7 +68,7 @@ test('billing webhook: a claimed subscription event reaches processed state', as
       return response([{ stripe_event_id: 'evt_123' }]);
     }
     if (target.includes('/rest/v1/billing_events?') && options.method === 'PATCH') {
-      return response([]);
+      return response([{ stripe_event_id: 'evt_123', attempt_count: 1 }]);
     }
     if (target.endsWith('/v1/subscriptions/sub_123')) return response(subscription);
     if (target.includes('/auth/v1/admin/users/')) return response({ id: subscription.metadata.supabase_user_id });
@@ -99,6 +99,7 @@ test('billing webhook: a claimed subscription event reaches processed state', as
     (call) => call.target.includes('/rest/v1/billing_events?') && call.options.method === 'PATCH'
   );
   assert.equal(JSON.parse(ledgerFinish.options.body).status, 'processed');
+  assert.match(ledgerFinish.target, /attempt_count=eq\.1/);
   assert.ok(
     calls.some(
       (call) => call.target.includes('/rest/v1/billing_subscriptions?on_conflict=') && call.options.method === 'POST'
