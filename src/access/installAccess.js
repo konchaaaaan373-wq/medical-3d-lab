@@ -3,6 +3,12 @@ import { createPatientGuidePanel } from '../components/PatientGuidePanel.js';
 import { educationGuideFor } from '../data/educationGuides.js';
 import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
+import {
+  educationResumeIndex,
+  markEducationComplete,
+  readEducationProgress,
+  saveEducationStep,
+} from './educationProgress.js';
 import { featuresForScene } from './features.js';
 import { captureGuideSession, restoreGuideSession } from './guideSession.js';
 import { ENTITLEMENT } from './policy.js';
@@ -47,6 +53,7 @@ export function installAccess({ app, access, ui, sceneId }) {
           access,
           ui,
           guide,
+          sceneId,
           activate: () => coordinator.activate('education-guide'),
         })
       );
@@ -188,18 +195,36 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   return closeGuide;
 }
 
-function installEducationGuide({ app, access, ui, guide, activate }) {
+function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
   const row = ui.querySelector('.button-row');
   const consolePanel = ui.querySelector('.console');
   if (!row || !consolePanel) return null;
 
   let open = false;
   let sessionSnapshot = null;
+  let educationUnlocked = false;
+  let progress = readEducationProgress(sceneId, guide.steps.length);
+
+  const completeMark = el('span', {
+    class: 'education-mode-complete',
+    'aria-hidden': 'true',
+    text: '✓',
+    hidden: '',
+  });
+
   const guidePanel = createEducationGuidePanel({
     guide,
     setProgress: (value) => {
       app.playback.pause();
       app.playback.set(value);
+    },
+    onStepChange: (index) => {
+      progress = saveEducationStep(sceneId, index, guide.steps.length);
+      renderProgress();
+    },
+    onComplete: () => {
+      progress = markEducationComplete(sceneId, guide.steps.length);
+      renderProgress();
     },
     onExit: closeGuide,
   });
@@ -214,9 +239,9 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
     el('span', { class: 'btn-icon education-mode-icon', 'aria-hidden': 'true', text: '◇' }),
     el('span', { class: 'btn-label lang-en', text: 'Teach' }),
     el('span', { class: 'btn-label lang-ja', text: '教育ガイド' }),
+    completeMark,
     lock,
   ]);
-  button.title = 'Medical education teaching guide';
   button.addEventListener('click', () => {
     if (!access.has(ENTITLEMENT.EDUCATION)) {
       access.open(ENTITLEMENT.EDUCATION);
@@ -230,20 +255,45 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
   else row.prepend(button);
 
   access.subscribe(({ grants }) => {
-    const unlocked = grants.includes(ENTITLEMENT.EDUCATION);
-    button.classList.toggle('is-locked', !unlocked);
-    lock.hidden = unlocked;
-    button.setAttribute('aria-label', unlocked ? 'Medical education teaching guide' : 'Medical education teaching guide — locked');
-    if (!unlocked && open) closeGuide();
+    educationUnlocked = grants.includes(ENTITLEMENT.EDUCATION);
+    button.classList.toggle('is-locked', !educationUnlocked);
+    lock.hidden = educationUnlocked;
+    renderProgress();
+    if (!educationUnlocked && open) closeGuide();
   });
+
+  renderProgress();
+
+  function renderProgress() {
+    const completed = educationUnlocked && progress.completed;
+    completeMark.hidden = !completed;
+    button.classList.toggle('is-completed', completed);
+    button.dataset.educationProgress = `${progress.step + 1}/${guide.steps.length}`;
+
+    const stateCopy = !educationUnlocked
+      ? ' — locked'
+      : progress.completed
+        ? ' — completed'
+        : progress.step > 0
+          ? ` — resume step ${progress.step + 1} of ${guide.steps.length}`
+          : '';
+    button.setAttribute('aria-label', `Medical education teaching guide${stateCopy}`);
+    button.title = `Medical education teaching guide${stateCopy}`;
+  }
 
   function openGuide() {
     activate?.();
     exitSceneModes(app);
 
+    // Progress is navigation-only: scene ID + guide step. Re-read at open so a
+    // previous visit can resume without storing any patient, model or clinical
+    // state in the browser.
+    progress = readEducationProgress(sceneId, guide.steps.length);
+    renderProgress();
+
     sessionSnapshot = captureGuideSession(app.playback);
     open = true;
-    guidePanel.reset();
+    guidePanel.reset(educationResumeIndex(progress));
     ui.classList.add('is-education-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
