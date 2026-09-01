@@ -14,6 +14,12 @@ function statusExplanation(status) {
       ja: '特定のリポジトリcommitに対する医学レビューが記録されています。下記の範囲と限界は、そのレビュー版に対する記録です。',
     };
   }
+  if (status === 'stale') {
+    return {
+      en: 'A real historical clinical review exists, but files inside its recorded scope changed afterwards. The old review is preserved as history and is not presented as current sign-off.',
+      ja: '過去の医学レビューは実在しますが、そのレビュー範囲内のファイルが後から変更されています。過去のレビューは履歴として保持し、現在版のsign-offとしては扱いません。',
+    };
+  }
   if (status === 'legacy-unversioned') {
     return {
       en: 'This scene predates the current versioned review standard. Historical review context exists, but no current commit-level clinical attestation is recorded.',
@@ -47,18 +53,27 @@ export function createClinicalReviewDetails(scene) {
   const metadata = [];
   if (record?.reviewedAt) {
     metadata.push(
-      bilingual(`Reviewed ${record.reviewedAt}`, `レビュー日 ${record.reviewedAt}`, 'clinical-review-meta')
+      bilingual(
+        presentation.status === 'stale' ? `Historical review ${record.reviewedAt}` : `Reviewed ${record.reviewedAt}`,
+        presentation.status === 'stale' ? `過去のレビュー日 ${record.reviewedAt}` : `レビュー日 ${record.reviewedAt}`,
+        'clinical-review-meta'
+      )
     );
   }
   if (record?.reviewedCommit) {
     const short = record.reviewedCommit.slice(0, 10);
     metadata.push(
-      bilingual(`Reviewed commit ${short}`, `レビューcommit ${short}`, 'clinical-review-meta')
+      bilingual(
+        presentation.status === 'stale' ? `Historically reviewed commit ${short}` : `Reviewed commit ${short}`,
+        presentation.status === 'stale' ? `過去のレビューcommit ${short}` : `レビューcommit ${short}`,
+        'clinical-review-meta'
+      )
     );
   }
 
   const scope = (record?.scope ?? []).map((item) => el('li', { text: item }));
   const limitations = (record?.unresolvedLimitations ?? []).map((item) => el('li', { text: item }));
+  const stalePaths = (record?.stalePaths ?? []).map((item) => el('li', { class: 'clinical-review-path', text: item }));
 
   return el('details', { class: `clinical-review-details is-${presentation.status}` }, [
     el('summary', { class: 'clinical-review-summary' }, [
@@ -68,6 +83,18 @@ export function createClinicalReviewDetails(scene) {
     el('div', { class: 'clinical-review-body' }, [
       bilingual(explanation.en, explanation.ja, 'clinical-review-explanation'),
       ...metadata,
+      presentation.status === 'stale' && record?.staleReason
+        ? el('section', { class: 'clinical-review-section is-stale' }, [
+            bilingual('Why re-review is required', '再レビューが必要な理由', 'clinical-review-section-title'),
+            el('p', { class: 'clinical-review-stale-reason', text: record.staleReason }),
+            stalePaths.length
+              ? el('div', { class: 'clinical-review-stale-paths' }, [
+                  bilingual('Changed files in the recorded scope', 'レビュー範囲内で変更されたファイル', 'clinical-review-section-title'),
+                  el('ul', {}, stalePaths),
+                ])
+              : null,
+          ])
+        : null,
       scope.length
         ? el('section', { class: 'clinical-review-section' }, [
             bilingual('Recorded review scope', '記録されたレビュー範囲', 'clinical-review-section-title'),
