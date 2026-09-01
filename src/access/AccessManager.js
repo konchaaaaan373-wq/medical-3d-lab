@@ -2,10 +2,13 @@ import { el } from '../utils/dom.js';
 import {
   authConfigured,
   authenticatedFetch,
+  consumePasswordRecoveryRedirect,
   getSession,
+  requestPasswordReset,
   signIn,
   signOut,
   signUp,
+  updatePassword,
 } from './auth.js';
 import {
   ACTIVE_SUBSCRIPTION_STATUSES,
@@ -35,6 +38,7 @@ export function createAccessManager({ ui }) {
     billingConfigured: false,
     planCatalog: {},
     loading: false,
+    recoveryMode: false,
     error: '',
     notice: '',
   };
@@ -56,6 +60,15 @@ export function createAccessManager({ ui }) {
   const api = {
     accountButton,
     async init() {
+      // Supabase's client-side recovery flow returns credentials in the hash.
+      // Consume it before anything can interpret that fragment as a scene name,
+      // persist the temporary recovery session, and scrub the tokens from the
+      // visible URL immediately.
+      const recovering = consumePasswordRecoveryRedirect();
+      if (recovering || new URLSearchParams(window.location.search).get('account') === 'recovery') {
+        state.recoveryMode = recovering;
+      }
+
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
@@ -81,6 +94,8 @@ export function createAccessManager({ ui }) {
         clean.searchParams.delete('session_id');
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
+
+      if (state.recoveryMode) open();
       return api;
     },
     has(entitlement) {
@@ -276,6 +291,7 @@ export function createAccessManager({ ui }) {
   }
 
   function dialogContent() {
+    const recovery = state.recoveryMode;
     const closeButton = el('button', {
       class: 'access-close',
       type: 'button',
@@ -283,12 +299,16 @@ export function createAccessManager({ ui }) {
       text: '×',
       on: { click: close },
     });
+    const kickerEn = recovery ? 'Password recovery' : required ? 'Unlock this mode' : 'Medical 3D Lab account';
+    const kickerJa = recovery ? 'パスワード再設定' : required ? 'このモードを利用する' : 'Medical 3D Lab アカウント';
+    const titleEn = recovery ? 'Choose a new password' : required ? ENTITLEMENT_COPY[required]?.label ?? 'Access' : 'Access & billing';
+    const titleJa = recovery ? '新しいパスワードを設定' : required ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権' : '利用権・お支払い';
     const head = el('header', { class: 'access-head' }, [
       el('div', {}, [
-        el('div', { class: 'access-kicker lang-en', text: required ? 'Unlock this mode' : 'Medical 3D Lab account' }),
-        el('div', { class: 'access-kicker lang-ja', text: required ? 'このモードを利用する' : 'Medical 3D Lab アカウント' }),
-        el('h2', { id: 'access-title', class: 'access-title lang-en', text: required ? ENTITLEMENT_COPY[required]?.label ?? 'Access' : 'Access & billing' }),
-        el('h2', { class: 'access-title lang-ja', text: required ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権' : '利用権・お支払い' }),
+        el('div', { class: 'access-kicker lang-en', text: kickerEn }),
+        el('div', { class: 'access-kicker lang-ja', text: kickerJa }),
+        el('h2', { id: 'access-title', class: 'access-title lang-en', text: titleEn }),
+        el('h2', { class: 'access-title lang-ja', text: titleJa }),
       ]),
       closeButton,
     ]);
@@ -302,6 +322,7 @@ export function createAccessManager({ ui }) {
       ];
     }
 
+    if (recovery) return [head, passwordRecoveryForm()];
     if (!state.user) return [head, authForm()];
 
     return [
@@ -379,6 +400,33 @@ export function createAccessManager({ ui }) {
       }
     };
 
+    const forgot = async () => {
+      state.notice = '';
+      state.error = '';
+      const address = email.value.trim();
+      if (!address) {
+        state.notice = 'パスワード再設定メールを送るメールアドレスを入力してください。';
+        notify();
+        email.focus();
+        return;
+      }
+      try {
+        state.loading = true;
+        notify();
+        const redirect = new URL(`${window.location.origin}${window.location.pathname}`);
+        redirect.searchParams.set('account', 'recovery');
+        await requestPasswordReset(address, redirect.href);
+        // Deliberately neutral: Supabase does not disclose whether an account
+        // exists for the address, which prevents account enumeration.
+        state.notice = 'If an account exists, a password-reset email has been sent. / アカウントが存在する場合、再設定メールを送信しました。';
+      } catch (error) {
+        state.error = error.message || 'パスワード再設定メールを送信できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
     return el('div', { class: 'access-auth' }, [
       el('p', { class: 'access-copy lang-en', text: 'Create one account to keep purchases on every device. Free models do not require an account.' }),
       el('p', { class: 'access-copy lang-ja', text: '購入した利用権を端末間で共有するためのアカウントです。無料モデルはログイン不要です。' }),
@@ -388,9 +436,108 @@ export function createAccessManager({ ui }) {
         el('button', { class: 'access-primary', type: 'button', disabled: state.loading ? '' : null, text: 'Sign in / ログイン', on: { click: () => submit('signin') } }),
         el('button', { class: 'access-secondary', type: 'button', disabled: state.loading ? '' : null, text: 'Create account / 新規登録', on: { click: () => submit('signup') } }),
       ]),
+      el('button', {
+        class: 'access-text-button access-forgot',
+        type: 'button',
+        disabled: state.loading ? '' : null,
+        text: 'Forgot password? / パスワードを忘れた',
+        on: { click: forgot },
+      }),
       state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
       state.error ? el('p', { class: 'access-error', text: state.error }) : null,
     ].filter(Boolean));
+  }
+
+  function passwordRecoveryForm() {
+    const password = el('input', {
+      class: 'access-input',
+      type: 'password',
+      autocomplete: 'new-password',
+      placeholder: 'New password (8+ characters)',
+      minlength: '8',
+      required: '',
+    });
+    const confirm = el('input', {
+      class: 'access-input',
+      type: 'password',
+      autocomplete: 'new-password',
+      placeholder: 'Confirm new password',
+      minlength: '8',
+      required: '',
+    });
+
+    const finishRecovery = async () => {
+      state.notice = '';
+      state.error = '';
+      if (password.value.length < 8) {
+        state.notice = '8文字以上の新しいパスワードを入力してください。';
+        notify();
+        return;
+      }
+      if (password.value !== confirm.value) {
+        state.notice = '入力したパスワードが一致しません。';
+        notify();
+        return;
+      }
+
+      try {
+        state.loading = true;
+        notify();
+        await updatePassword(password.value);
+        state.recoveryMode = false;
+        cleanRecoveryQuery();
+        await refresh();
+        state.notice = 'Password updated. / パスワードを更新しました。';
+      } catch (error) {
+        state.error = error.message || 'パスワードを更新できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    const cancelRecovery = () => {
+      signOut();
+      state.recoveryMode = false;
+      state.user = null;
+      state.grants = new Set(FREE);
+      state.subscriptions = [];
+      state.error = '';
+      state.notice = '';
+      cleanRecoveryQuery();
+      notify();
+    };
+
+    return el('div', { class: 'access-auth access-recovery' }, [
+      el('p', { class: 'access-copy lang-en', text: 'The recovery link has signed you in temporarily. Choose a new password to finish recovering this account.' }),
+      el('p', { class: 'access-copy lang-ja', text: '再設定リンクによる一時的な認証が完了しています。新しいパスワードを設定してください。' }),
+      password,
+      confirm,
+      el('div', { class: 'access-auth-actions' }, [
+        el('button', {
+          class: 'access-primary',
+          type: 'button',
+          disabled: state.loading ? '' : null,
+          text: 'Update password / パスワードを更新',
+          on: { click: finishRecovery },
+        }),
+        el('button', {
+          class: 'access-secondary',
+          type: 'button',
+          disabled: state.loading ? '' : null,
+          text: 'Cancel / キャンセル',
+          on: { click: cancelRecovery },
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', text: state.error }) : null,
+    ].filter(Boolean));
+  }
+
+  function cleanRecoveryQuery() {
+    const clean = new URL(window.location.href);
+    clean.searchParams.delete('account');
+    history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }
 
   function currentAccess() {
