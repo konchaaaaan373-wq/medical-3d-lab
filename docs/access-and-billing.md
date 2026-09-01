@@ -262,3 +262,101 @@ policy and becomes a misstatement.
 
 **To go live:** fill in `src/data/operator.js`. `npm test` then passes with the
 disclosure complete, and checkout stops refusing.
+
+
+---
+
+## Billing operations — the ledger, reconciliation and alerts
+
+### Why state tables are not enough
+
+`billing_customers` and `billing_subscriptions` hold the present. Three
+questions they cannot answer:
+
+1. **"Have I already applied this event?"** Stripe retries a webhook until it
+   receives a 2xx, and a handler can succeed with the response lost on the way
+   back. Without a durable record, the answer is a guess.
+2. **"What happened to this subscription?"** A billing dispute is about the
+   past. The state tables have overwritten it.
+3. **"Did the event that should have fixed this ever arrive?"** Drift between
+   local state and Stripe is only actionable with that answer.
+
+### The ledger
+
+`billing_events` (migration `003`) is append-only, keyed on Stripe's own event
+id — the primary key *is* the idempotency mechanism. Each row records the type,
+the customer/subscription/user it concerns, a sha256 of the raw body, the
+outcome (`applied`, `ignored`, `duplicate`, `unsupported_price`, `failed`) and
+both timestamps.
+
+**There is deliberately no payload column.** A Stripe event carries the
+customer's email and address, and this product has no reason to hold a second
+copy. The digest proves the same body was seen twice; Stripe remains where the
+event itself lives.
+
+Three properties the webhook keeps:
+
+- **Every exit records an outcome.** A path that returns without recording is a
+  delivery nobody can account for afterwards.
+- **A failure is recorded as `failed`, not left unrecorded**, so a retry can
+  tell "never seen" from "tried and broke" — and so an operator can find the
+  ones that broke. It still returns 500, so Stripe retries.
+- **A ledger failure never blocks entitlement.** Processing an event twice is
+  recoverable; refusing a real one is not.
+
+A replay of an event id whose recorded digest differs is rejected with a 400 and
+a critical alert. It should be impossible, and the safe reading is that the
+delivery is not what it claims to be.
+
+### Reconciliation
+
+`netlify/functions/billing-reconcile.js`, on a schedule. Webhooks are the fast
+path and not a guarantee, and every kind of loss leaves entitlement wrong in a
+way no single request notices, because nothing re-asks.
+
+The direction is fixed: **Stripe is the truth about a subscription**, local
+state is a cache of it. Reconciliation only ever writes the cache.
+
+| Drift | Severity | Action |
+| --- | --- | --- |
+| `status`, `entitlement`, `period` | error / warning | Repaired from Stripe |
+| `missing_locally` — a live Stripe subscription with no row | error | Repaired. Somebody is paying with no access |
+| `missing_in_stripe` — a live row Stripe has never heard of | error | **Escalated.** One empty read is not enough evidence to destroy the record of a payment |
+| `unsupported_price` | error | **Escalated.** Somebody changed a subscription in the dashboard to something we do not sell |
+
+The comparison (`netlify/lib/reconcile.js`) is pure and tested without a
+network — it decides whether somebody keeps access they paid for, so it should
+not need a live Stripe account to verify.
+
+Authorisation is a shared secret, because there is no user: it is an operations
+endpoint. With `BILLING_RECONCILE_TOKEN` unset it refuses every request rather
+than defaulting to open, and the comparison is constant-time. `?dry=1` reports
+drift without repairing it.
+
+### Alerts
+
+`netlify/lib/alerts.js`. What is worth waking somebody for is written as data
+in `ALERT_RULES`, so the policy is reviewable and testable:
+
+| Kind | Level |
+| --- | --- |
+| `webhook_failed`, `webhook_digest_mismatch` | critical |
+| `reconcile_drift`, `unsupported_price` | error |
+| `deleted_user_event`, `reconcile_clean` | info |
+
+An alert leaves the deployment, so every string in one passes through the
+product's own redaction layer (`src/telemetry/redact.js`) — reused rather than
+reimplemented, because two redactors drift and the weaker one is the one that
+leaks. Delivery never throws: an alerting channel that is down must not turn a
+recoverable billing failure into an unhandled one.
+
+A clean reconciliation reports too, as a heartbeat. Silence should not be
+mistaken for health.
+
+### Configuration
+
+| Variable | Effect when unset |
+| --- | --- |
+| `BILLING_RECONCILE_TOKEN` | The reconciliation endpoint refuses every request |
+| `OPS_ALERT_WEBHOOK` | Alerts are logged and not delivered |
+| `DEPLOY_ENV` | Alerts are labelled `unknown` |

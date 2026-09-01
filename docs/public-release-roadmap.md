@@ -95,9 +95,12 @@ the model tests.
   deletion exist.
 - [x] Scene paid capabilities are semantic manifest data and CI-checked against
   authored Patient/Education content and scene maturity.
-- [~] CSP and the remaining security headers are in `public/_headers` and
-  guarded by `tests/security-headers.test.js`. **Remaining:** the billing event
-  ledger, reconciliation and operational alerts.
+- [x] CSP and the remaining security headers are in `public/_headers` and
+  guarded by `tests/security-headers.test.js`. The billing event ledger
+  (migration `003`), a reconciliation endpoint and an alert policy are in place;
+  see [`access-and-billing.md`](access-and-billing.md). Scheduling the
+  reconciliation run and pointing `OPS_ALERT_WEBHOOK` somewhere are deployment
+  configuration.
 - [ ] Choose real Patient / Education / Complete prices and configure live Stripe
   Products, Prices, Portal, webhook and Netlify Production secrets.
 
@@ -142,8 +145,9 @@ the model tests.
 | 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
 | 8c | Terms, privacy, commercial disclosure and support, with a checkout gate | Done except seller identity |
 | 8d | Accessibility foundations enforced in CI | Done except device passes |
-| 8e | Browser/device matrix on real hardware | Next |
-| 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
+| 8e | Billing ledger, reconciliation and operational alerts | Done |
+| 8f | Browser/device matrix on real hardware | Next |
+| 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 
 ## Definition of done for every batch

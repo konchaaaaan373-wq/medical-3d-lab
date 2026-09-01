@@ -1,4 +1,6 @@
 import { supabaseUserExists } from '../lib/account.js';
+import { notify } from '../lib/alerts.js';
+import { ledgerRow, record, replayDecision } from '../lib/ledger.js';
 import {
   json,
   planForPrice,
@@ -16,8 +18,38 @@ export default async (request) => {
     return json(400, { error: 'Invalid Stripe signature' });
   }
 
+  let event;
   try {
-    const event = JSON.parse(raw);
+    event = JSON.parse(raw);
+  } catch {
+    return json(400, { error: 'Malformed webhook body' });
+  }
+
+  // Stripe retries until it gets a 2xx, and a handler can succeed with the
+  // response lost on the way back. The ledger is what makes "already applied"
+  // answerable from storage rather than from hope.
+  const replay = await replayDecision(event.id, raw).catch((error) => {
+    // A ledger that cannot be read must not stop entitlement being written.
+    // Processing an event twice is recoverable; refusing a real one is not.
+    console.error('billing ledger unavailable', error?.message ?? error);
+    return { process: true, reason: null, digestChanged: false };
+  });
+
+  if (!replay.process) {
+    if (replay.digestChanged) {
+      // Same event id, different body. This should be impossible, and the safe
+      // reading is that the delivery is not what it claims to be.
+      await notify('webhook_digest_mismatch', { eventId: event.id, type: event.type });
+      return json(400, { error: 'Event body does not match the recorded delivery' });
+    }
+    return json(200, { received: true, ignored: 'duplicate' });
+  }
+
+  // Threaded through rather than held in module state, for the reason given on
+  // `syncSubscription`.
+  let priceSupported = true;
+
+  try {
     const object = event.data?.object;
 
     if (event.type === 'checkout.session.completed' && object?.mode === 'subscription') {
@@ -25,10 +57,8 @@ export default async (request) => {
       // Account deletion can race a delayed Checkout webhook. Never recreate a
       // billing mapping for an Auth identity that has already been removed.
       if (!userId || !(await supabaseUserExists(userId))) {
-        console.info('Ignoring checkout webhook for deleted/missing account', {
-          eventId: event.id,
-          userId: userId ?? null,
-        });
+        await notify('deleted_user_event', { eventId: event.id, type: event.type });
+        await recordOutcome(event, raw, 'ignored', { userId: null });
         return json(200, { received: true, ignored: 'deleted_user' });
       }
 
@@ -41,7 +71,7 @@ export default async (request) => {
       if (object.subscription) {
         const subscriptionId = typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
         const subscription = await stripeGet(`subscriptions/${subscriptionId}`);
-        await syncSubscription(subscription);
+        priceSupported = await syncSubscription(subscription);
       }
     }
 
@@ -64,14 +94,16 @@ export default async (request) => {
 
       const ownerId = await liveSubscriptionOwnerId(subscription);
       if (!ownerId) {
-        console.info('Ignoring subscription webhook for deleted/missing account', {
+        await notify('deleted_user_event', {
           eventId: event.id,
+          type: event.type,
           subscriptionId: subscription?.id ?? null,
         });
+        await recordOutcome(event, raw, 'ignored', { userId: null });
         return json(200, { received: true, ignored: 'deleted_user' });
       }
 
-      await syncSubscription(subscription);
+      priceSupported = await syncSubscription(subscription);
       await upsertCustomer({
         userId: ownerId,
         customerId:
@@ -81,12 +113,38 @@ export default async (request) => {
       });
     }
 
+    await recordOutcome(event, raw, priceSupported ? 'applied' : 'unsupported_price');
     return json(200, { received: true });
   } catch (error) {
     console.error('stripe-webhook', error);
+    // Recorded as failed rather than not recorded: a retry has to be able to
+    // tell "we have never seen this" from "we tried and it broke", and an
+    // operator has to be able to find the ones that broke.
+    await recordOutcome(event, raw, 'failed', { error });
+    await notify('webhook_failed', {
+      eventId: event.id,
+      type: event.type,
+      error: error?.message ?? String(error),
+    });
+    // 500 so Stripe retries. The ledger row is already durable.
     return json(500, { error: 'Webhook processing failed' });
   }
 };
+
+/**
+ * Append to the ledger without letting a ledger failure change the response.
+ *
+ * The state tables are what grant access; the ledger is the record of how they
+ * got that way. Losing the record is bad, and refusing a paid entitlement
+ * because the record could not be written is worse.
+ */
+async function recordOutcome(event, raw, outcome, { userId, error } = {}) {
+  try {
+    await record(ledgerRow(event, raw, { outcome, userId, error }));
+  } catch (ledgerError) {
+    console.error('billing ledger write failed', ledgerError?.message ?? ledgerError);
+  }
+}
 
 async function liveSubscriptionOwnerId(subscription) {
   if (!subscription) return null;
@@ -104,6 +162,14 @@ async function liveSubscriptionOwnerId(subscription) {
   return (await supabaseUserExists(candidate)) ? candidate : null;
 }
 
+/**
+ * Writes local state for one subscription.
+ *
+ * @returns {Promise<boolean>} whether the price is one this deployment sells.
+ *   Returned rather than stored in a module variable: a serverless container is
+ *   reused between invocations, so module state would leak one delivery's
+ *   outcome into the next one's ledger row.
+ */
 async function syncSubscription(subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
@@ -112,6 +178,7 @@ async function syncSubscription(subscription) {
   // manually in Stripe. Mark an existing row ineligible immediately rather
   // than leaving its previous paid entitlement active.
   if (!planForPrice(priceId)) {
+    await notify('unsupported_price', { subscriptionId: subscription.id, priceId });
     await supabaseAdmin(
       `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
       {
@@ -124,8 +191,9 @@ async function syncSubscription(subscription) {
         },
       }
     );
-    return;
+    return false;
   }
 
   await upsertSubscription(subscription);
+  return true;
 }
