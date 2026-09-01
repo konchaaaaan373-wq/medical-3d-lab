@@ -110,7 +110,7 @@ export function systemsWithOrgans(
  * questions remain separate records because they are not runnable scenes.
  */
 export function labCatalogueSections(scenes = LAB_SCENES) {
-  return systemsWithOrgans(scenes, {
+  const sections = systemsWithOrgans(scenes, {
     includePlanned: true,
     includeEmptyOrgans: false,
   }).map((system) => ({
@@ -123,6 +123,13 @@ export function labCatalogueSections(scenes = LAB_SCENES) {
       organ.planned.map((entry) => ({ entry, organ }))
     ),
   }));
+
+  // A backlog-only system must not push runnable experiments below the fold.
+  // Preserve anatomical order inside each bucket, but put working models first.
+  return [
+    ...sections.filter((system) => system.models.length > 0),
+    ...sections.filter((system) => system.models.length === 0),
+  ];
 }
 
 /**

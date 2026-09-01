@@ -87,4 +87,12 @@ test('product shell: Lab catalogue lists every model once and keeps covered orga
     ['esophagus', 'stomach'],
     'covered anatomy remains visible without repeating the card'
   );
+
+  const firstBacklogOnly = sections.findIndex((system) => system.models.length === 0);
+  assert.ok(firstBacklogOnly > 0, 'working models lead the Lab catalogue');
+  assert.equal(
+    sections.slice(firstBacklogOnly).every((system) => system.models.length === 0),
+    true,
+    'backlog-only systems stay after every runnable experiment'
+  );
 });
