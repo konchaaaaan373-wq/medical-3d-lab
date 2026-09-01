@@ -62,9 +62,14 @@ export const ORGANS = [
 ];
 
 /**
- * How far a scene has been taken. This is a claim about *trust*, not about how
- * much code is in it: a prototype says "the shape is a sketch and the numbers
- * are not validated", and the UI says so where the viewer can see it.
+ * How far a scene has been taken as a product/model implementation.
+ *
+ * IMPORTANT: this is no longer the source of truth for medical sign-off.
+ * Clinical-review state is recorded independently in
+ * `docs/clinical-reviews/registry.json` and may legitimately differ from this
+ * maturity tier. In particular, a legacy `production` scene is not silently
+ * promoted to a versioned clinical review merely because the software is
+ * mature. The UI shows the two axes separately.
  *
  * Ordered weakest first; `docs/adding-a-scene.md` holds the promotion criteria.
  */
@@ -74,32 +79,32 @@ export const STATUSES = [
     label: 'Prototype',
     labelJa: 'プロトタイプ',
     badge: true,
-    note: 'Stylised shape, not anatomically validated. Placeholder motion.',
-    noteJa: '形状は簡略化されたスタイライズドモデルで、解剖学的な検証は受けていません。',
+    note: 'Experimental implementation. Geometry, motion or model behaviour may still be schematic.',
+    noteJa: '実験段階の実装です。形状・動き・モデル挙動が模式的な場合があります。',
   },
   {
     id: 'alpha',
     label: 'Alpha',
     labelJa: 'アルファ',
     badge: true,
-    note: 'A real model drives the scene, but the medical review is not done.',
-    noteJa: '医学モデルは実装済みですが、医学的レビューは未了です。',
+    note: 'A substantive model exists, but the scene has not completed the full public promotion gate.',
+    noteJa: '実質的なモデルは実装済みですが、公開品質への昇格ゲートは未完了です。',
   },
   {
     id: 'reviewed',
-    label: 'Reviewed',
-    labelJa: 'レビュー済み',
+    label: 'Model reviewed',
+    labelJa: 'モデルレビュー済み',
     badge: true,
-    note: 'Medically reviewed; simplifications are documented.',
-    noteJa: '医学的レビュー済み。簡略化は docs/medical-notes.md に記載されています。',
+    note: 'The model has passed the reviewed maturity gate. Exact clinical attestation is reported separately.',
+    noteJa: 'モデルとしてレビュー済みの成熟度です。医学的な監修・版固定の状態は別に表示します。',
   },
   {
     id: 'production',
     label: 'Production',
     labelJa: '公開',
     badge: false,
-    note: 'Reviewed, tested, and used as a reference implementation.',
-    noteJa: 'レビュー・テスト済みで、他シーンの基準となる実装です。',
+    note: 'Mature public/reference implementation. Clinical-review status is a separate trust axis.',
+    noteJa: '公開・基準実装として成熟した状態です。医学レビューの状態は別のTrust指標として扱います。',
   },
 ];
 
