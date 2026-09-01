@@ -1,216 +1,488 @@
 import * as THREE from 'three';
-import { shapedSphere, ripple, smoothstep } from '../../../shared/geometry/shapes.js';
-import { tissueMaterial } from '../../../shared/materials.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
-import { clamp, damp } from '../../../../utils/math.js';
-import { BRAIN_ANATOMY_META, BRAIN_REGIONS } from '../../../../data/brainAnatomy.js';
-import { prototypeMeta } from '../../../shared/prototypeMeta.js';
+import { clamp, damp, smoothstep } from '../../../../utils/math.js';
+import {
+  BRAIN_ANATOMY_META,
+  BRAIN_REGIONS,
+  brainColor,
+  brainStructureInfo,
+} from '../../../../data/brainAnatomy.js';
 
-const LOBES = [
-  { key: 'frontal', color: '#d98c72', position: [0, 0.25, 0.55], scale: [0.8, 0.82, 0.82], crop: (v) => 1 - 0.12 * smoothstep(-0.2, 1, -v.z) },
-  { key: 'parietal', color: '#d9b66f', position: [0, 0.62, -0.28], scale: [0.82, 0.68, 0.72], crop: (v) => 1 - 0.08 * smoothstep(-0.1, 1, v.z) },
-  { key: 'temporal', color: '#a97fbd', position: [0, -0.34, 0.0], scale: [0.76, 0.48, 0.82], crop: () => 1 },
-  { key: 'occipital', color: '#6f9fc5', position: [0, 0.15, -0.88], scale: [0.72, 0.72, 0.55], crop: () => 1 },
+const BASE_URL = import.meta.env?.BASE_URL ?? './';
+const ATLAS_URL = `${BASE_URL}assets/brain/brain.glb`;
+const DRACO_URL = `${BASE_URL}assets/brain/draco/`;
+const TARGET_RADIUS = 2.08;
+
+const ANATOMY_CATEGORIES = new Set([
+  'cortex',
+  'deep_grey',
+  'diencephalon',
+  'white_matter',
+  'ventricles',
+  'cerebellum',
+  'brainstem',
+]);
+
+const DEEP_CATEGORIES = new Set(['deep_grey', 'diencephalon', 'white_matter', 'ventricles']);
+
+/** Cortex that covers the left insula in the default lateral view. */
+const LEFT_OPERCULUM = new Set([
+  'Opercular part of inferior frontal gyrus',
+  'Triangular part of inferior frontal gyrus',
+  'Precentral gyrus',
+  'Precentral sulcus (inferior part)',
+  'Postcentral gyrus',
+  'Postcentral sulcus',
+  'Supramarginal gyrus',
+  'Superior temporal gyrus (Lateral part)',
+  'Transverse temporal gyri',
+  'Temporal plane',
+  'Lat Fis-post',
+]);
+
+const VIEW_SPECS = [
+  {
+    id: 'left-lateral', label: 'Left lateral', labelJa: '左外側',
+    position: new THREE.Vector3(-5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
+    id: 'right-lateral', label: 'Right lateral', labelJa: '右外側',
+    position: new THREE.Vector3(5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
+    id: 'anterior', label: 'Anterior', labelJa: '前面',
+    position: new THREE.Vector3(0.25, 0.23, -5.35), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
+    id: 'superior', label: 'Superior', labelJa: '上面',
+    position: new THREE.Vector3(2.8, 5.45, 1.2), target: new THREE.Vector3(0, 0.08, 0),
+  },
 ];
 
-export class BrainAnatomyScene {
-  static meta = prototypeMeta({
-    ...BRAIN_ANATOMY_META,
-    disclaimer: undefined,
-    disclaimerJa: undefined,
-    disclaimerShort: undefined,
-    disclaimerShortJa: undefined,
-  });
-  static cameraPose = { position: new THREE.Vector3(4.9, 2.8, 8.2), target: new THREE.Vector3(0, 0.05, -0.05) };
+const ANCHOR_SPECS = {
+  temporal: { label: 'Middle temporal gyrus', side: 'left' },
+  centralSulcus: { label: 'Central sulcus', side: 'left' },
+  insula: { label: 'Insula (Subcentral gyrus and ant. and post. sulci)', side: 'left' },
+  putamen: { label: 'Putamen', side: 'left' },
+};
 
-  constructor({ viewer } = {}) {
+export class BrainAnatomyScene {
+  static meta = BRAIN_ANATOMY_META;
+
+  static cameraPose = clonePose(VIEW_SPECS[0]);
+  // Anatomical orientation is information. Keep the authored left-lateral view
+  // still until the learner deliberately rotates it.
+  static allowAutoRotate = false;
+
+  constructor({ viewer, atlas, atlasLoader } = {}) {
     this.viewer = viewer;
+    this.atlasSource = atlas;
+    this.atlasLoader = atlasLoader ?? loadAtlas;
     this.root = new THREE.Group();
     this.root.name = 'brain-anatomy';
+    this.atlasRoot = new THREE.Group();
+    this.atlasRoot.name = 'brain-atlas';
+    this.root.add(this.atlasRoot);
+
     this.selectables = [];
-    this.hemispheres = [];
     this.cortical = [];
     this.deep = [];
+    this.hemispheres = { left: [], right: [] };
+    this.meshByAtlasId = new Map();
     this.listeners = new Set();
+    this.statusListeners = new Set();
     this.progress = 0;
     this.displayProgress = 0;
     this.selection = null;
+    this.selectedMesh = null;
+    this.hoveredMesh = null;
+    this.built = false;
+    this.disposed = false;
+    this.ready = Promise.resolve();
+    this.status = { state: 'idle', selectableCount: 0, atlasCount: 0 };
     this.annotationAnchors = {
-      frontal: new THREE.Vector3(-1.15, 0.65, 0.75),
-      temporal: new THREE.Vector3(1.15, -0.3, 0.25),
-      insula: new THREE.Vector3(0.43, -0.05, 0.02),
-      thalamus: new THREE.Vector3(0.05, 0.05, -0.1),
+      temporal: new THREE.Vector3(1.1, -0.35, 0.35),
+      centralSulcus: new THREE.Vector3(1.25, 0.75, 0),
+      insula: new THREE.Vector3(1.1, -0.03, 0.08),
+      putamen: new THREE.Vector3(0.45, 0, 0),
     };
   }
 
   build() {
-    this.root.add(createStudioLights({ key: 31, fill: 0.8, rim: 15 }));
-    for (const side of [-1, 1]) this.root.add(this._buildHemisphere(side));
-    this.root.add(this._buildDeepStructures(), this._buildCerebellum(), this._buildBrainstem());
+    if (this.built) return this.root;
+    this.built = true;
+    this.root.add(createStudioLights({ key: 34, fill: 0.92, rim: 14 }));
     this._bindPicking();
-    this.setProgress(0);
+
+    if (this.atlasSource) {
+      this.attachAtlas(this.atlasSource);
+      this.ready = Promise.resolve(this.root);
+    } else if (this.viewer?.renderer?.domElement) {
+      this.ready = this._loadAtlas();
+    }
     return this.root;
   }
 
-  _buildHemisphere(side) {
-    const group = new THREE.Group();
-    group.name = side < 0 ? 'left-hemisphere' : 'right-hemisphere';
-    group.userData.side = side;
-    this.hemispheres.push(group);
-
-    for (const spec of LOBES) {
-      const mesh = new THREE.Mesh(
-        shapedSphere({ detail: 5, scale: spec.scale, warp: (v) => {
-          const fold = 1 + 0.038 * ripple(v.x, v.y, v.z, 10.5, spec.key.length * 0.31);
-          v.multiplyScalar(fold * spec.crop(v));
-          // A flatter medial face makes the longitudinal fissure legible.
-          if (v.x * side < -0.34) v.x = -0.34 * side + (v.x + 0.34 * side) * 0.28;
-        } }),
-        tissueMaterial({ color: spec.color, roughness: 0.68, emissiveIntensity: 0.035 })
-      );
-      mesh.position.set(side * 0.66, ...spec.position.slice(1));
-      mesh.position.z = spec.position[2];
-      mesh.name = `${side < 0 ? 'left' : 'right'}-${spec.key}`;
-      this._register(mesh, mesh.name, true);
-      group.add(mesh);
+  async _loadAtlas() {
+    this._setStatus({ state: 'loading', selectableCount: 0, atlasCount: 0 });
+    try {
+      const atlas = await this.atlasLoader();
+      if (this.disposed) {
+        disposeObject(atlas.scene ?? atlas);
+        return this.root;
+      }
+      this.attachAtlas(atlas);
+    } catch (error) {
+      console.error('[brain-anatomy] atlas load failed', error);
+      this._setStatus({ state: 'error', selectableCount: 0, atlasCount: 0, error });
     }
-
-    const insula = new THREE.Mesh(
-      shapedSphere({ detail: 4, scale: [0.19, 0.38, 0.48], warp: (v) => v.multiplyScalar(1 + 0.025 * ripple(v.x, v.y, v.z, 8, 1.4)) }),
-      tissueMaterial({ color: '#65b8a6', roughness: 0.6, opacity: 0.18 })
-    );
-    insula.position.set(side * 0.43, -0.05, 0.02);
-    insula.name = `${side < 0 ? 'left' : 'right'}-insula`;
-    this._register(insula, insula.name, false);
-    this.deep.push(insula);
-    group.add(insula);
-    return group;
+    return this.root;
   }
 
-  _buildDeepStructures() {
-    const group = new THREE.Group();
-    group.name = 'deep-structures';
-    for (const side of [-1, 1]) {
-      const hippocampus = capsule([0.16, 0.16, 0.48], '#6dc8b2', 0.18);
-      hippocampus.rotation.x = Math.PI / 2.8;
-      hippocampus.rotation.z = side * 0.35;
-      hippocampus.position.set(side * 0.27, -0.23, -0.1);
-      hippocampus.name = `${side < 0 ? 'left' : 'right'}-hippocampus`;
-      this._register(hippocampus, hippocampus.name, false);
+  /**
+   * Adopts a loaded GLTF scene. Public so headless tests can use a tiny fixture
+   * while production uses the same metadata and material path with the GLB.
+   */
+  attachAtlas(atlas) {
+    if (this.disposed) return;
+    const model = atlas.scene ?? atlas;
+    if (!model?.isObject3D) throw new TypeError('brain atlas must contain a THREE.Object3D scene');
 
-      const amygdala = capsule([0.18, 0.2, 0.18], '#d36d82', 0.18);
-      amygdala.position.set(side * 0.3, -0.28, 0.32);
-      amygdala.name = `${side < 0 ? 'left' : 'right'}-amygdala`;
-      this._register(amygdala, amygdala.name, false);
-      this.deep.push(hippocampus, amygdala);
-      group.add(hippocampus, amygdala);
-    }
-    const thalamus = capsule([0.36, 0.28, 0.42], '#78aeb8', 0.18);
-    thalamus.name = 'thalamus';
-    thalamus.position.set(0, 0.02, -0.12);
-    this._register(thalamus, 'thalamus', false);
-    this.deep.push(thalamus);
-    group.add(thalamus);
-    return group;
+    this.atlasRoot.clear();
+    this.selectables.length = 0;
+    this.cortical.length = 0;
+    this.deep.length = 0;
+    this.hemispheres.left.length = 0;
+    this.hemispheres.right.length = 0;
+    this.meshByAtlasId.clear();
+
+    model.updateMatrixWorld(true);
+    const coreBox = new THREE.Box3();
+    const wholeBox = new THREE.Box3();
+    let atlasCount = 0;
+    model.traverse((object) => {
+      if (!object.isMesh) return;
+      atlasCount += 1;
+      const metadata = atlasMetadata(object, model);
+      wholeBox.expandByObject(object);
+      if (metadata.bx_core === 1 || metadata.bx_core === true) coreBox.expandByObject(object);
+    });
+    const framingBox = coreBox.isEmpty() ? wholeBox : coreBox;
+    const center = framingBox.getCenter(new THREE.Vector3());
+    const radius = framingBox.getBoundingSphere(new THREE.Sphere()).radius || 1;
+
+    model.position.sub(center);
+    this.atlasRoot.add(model);
+    this.atlasRoot.rotation.set(0, Math.PI, 0);
+    this.atlasRoot.scale.setScalar(TARGET_RADIUS / radius);
+    this.atlasRoot.position.set(0, 0.08, 0);
+    this.root.updateMatrixWorld(true);
+
+    model.traverse((object) => {
+      if (!object.isMesh) return;
+      const metadata = atlasMetadata(object, model);
+      if (!ANATOMY_CATEGORIES.has(metadata.bx_cat)) {
+        object.visible = false;
+        return;
+      }
+      this._registerAtlasMesh(object, metadata);
+    });
+
+    this._updateAnnotationAnchors();
+    this.displayProgress = this.progress;
+    this._applyProgress(1 / 60, true);
+    this._setStatus({
+      state: 'ready',
+      selectableCount: this.selectables.length,
+      atlasCount,
+    });
   }
 
-  _buildCerebellum() {
-    const mesh = new THREE.Mesh(
-      shapedSphere({ detail: 5, scale: [0.72, 0.4, 0.5], warp: (v) => v.multiplyScalar(1 + 0.055 * Math.sin(v.y * 32 + v.z * 8)) }),
-      tissueMaterial({ color: '#bd7f91', roughness: 0.72 })
-    );
-    mesh.position.set(0, -0.63, -0.83);
-    mesh.name = 'cerebellum';
-    this._register(mesh, 'cerebellum', false);
-    return mesh;
-  }
+  _registerAtlasMesh(mesh, metadata) {
+    const id = Number(metadata.bx_id);
+    const color = new THREE.Color(brainColor(metadata));
+    // A very small deterministic lightness variation keeps adjacent named gyri
+    // legible without turning a lobe into a patchwork of unrelated colours.
+    const hsl = {};
+    color.getHSL(hsl);
+    color.setHSL(hsl.h, hsl.s, clamp(hsl.l + ((id % 7) - 3) * 0.008, 0.18, 0.82));
+    const material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: metadata.bx_cat === 'ventricles' ? 0.38 : 0.72,
+      metalness: 0,
+      emissive: color,
+      emissiveIntensity: 0.025,
+      transparent: true,
+      opacity: 1,
+      depthWrite: true,
+      side: THREE.FrontSide,
+    });
 
-  _buildBrainstem() {
-    const mesh = capsule([0.24, 0.58, 0.25], '#9a806d');
-    mesh.position.set(0, -0.75, -0.18);
-    mesh.rotation.x = -0.14;
-    mesh.name = 'brainstem';
-    this._register(mesh, 'brainstem', false);
-    return mesh;
-  }
-
-  _register(mesh, regionId, cortical) {
-    mesh.userData.regionId = regionId;
-    mesh.userData.baseColor = mesh.material.color.clone();
-    mesh.userData.baseScale = mesh.scale.clone();
+    mesh.material = material;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.userData = {
+      ...mesh.userData,
+      ...metadata,
+      atlasMetadata: { ...metadata },
+      atlasId: id,
+      baseColor: color.clone(),
+      currentOpacity: 1,
+      selected: false,
+      hovered: false,
+    };
     this.selectables.push(mesh);
-    if (cortical) this.cortical.push(mesh);
+    this.meshByAtlasId.set(id, mesh);
+    if (metadata.bx_cat === 'cortex') this.cortical.push(mesh);
+    if (DEEP_CATEGORIES.has(metadata.bx_cat)) this.deep.push(mesh);
+    if (metadata.bx_side === 'left') this.hemispheres.left.push(mesh);
+    if (metadata.bx_side === 'right') this.hemispheres.right.push(mesh);
   }
 
   _bindPicking() {
     const canvas = this.viewer?.renderer?.domElement;
     if (!canvas) return;
-    const raycaster = new THREE.Raycaster();
-    const pointer = new THREE.Vector2();
+    this.raycaster = new THREE.Raycaster();
+    this.pointer = new THREE.Vector2();
     let down = null;
-    this._pointerDown = (event) => { down = [event.clientX, event.clientY]; };
-    this._pointerUp = (event) => {
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) return;
-      const rect = canvas.getBoundingClientRect();
-      pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
-      raycaster.setFromCamera(pointer, this.viewer.camera);
-      const hit = raycaster.intersectObjects(this.selectables, false)[0];
-      if (hit) this.selectRegion(hit.object.userData.regionId);
+
+    this._pointerDown = (event) => {
+      down = [event.clientX, event.clientY];
     };
+    this._pointerMove = (event) => {
+      if (event.buttons) return;
+      const hit = this._pick(event);
+      this._setHovered(hit?.object ?? null);
+      canvas.style.cursor = hit ? 'pointer' : 'grab';
+    };
+    this._pointerUp = (event) => {
+      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
+        down = null;
+        return;
+      }
+      down = null;
+      const hit = this._pick(event);
+      if (hit) this.selectStructure(hit.object.userData.atlasId);
+      else this.clearSelection();
+    };
+    this._pointerLeave = () => this._setHovered(null);
     canvas.addEventListener('pointerdown', this._pointerDown);
+    canvas.addEventListener('pointermove', this._pointerMove);
     canvas.addEventListener('pointerup', this._pointerUp);
+    canvas.addEventListener('pointerleave', this._pointerLeave);
     canvas.style.cursor = 'grab';
   }
 
-  selectRegion(id) {
-    const info = BRAIN_REGIONS[id];
-    if (!info) return;
-    this.selection = { id, ...info };
-    for (const mesh of this.selectables) {
-      const selected = mesh.userData.regionId === id;
-      mesh.material.emissive.copy(selected ? new THREE.Color('#ffffff') : mesh.userData.baseColor);
-      mesh.material.emissiveIntensity = selected ? 0.22 : 0.035;
-      mesh.userData.selected = selected;
+  _pick(event) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas || !this.selectables.length) return null;
+    const rect = canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    this.raycaster.setFromCamera(this.pointer, this.viewer.camera);
+    const candidates = this.selectables.filter(
+      (mesh) => mesh.visible && mesh.userData.currentOpacity > 0.14
+    );
+    return this.raycaster.intersectObjects(candidates, false)[0] ?? null;
+  }
+
+  _setHovered(mesh) {
+    if (mesh === this.hoveredMesh) return;
+    if (this.hoveredMesh) {
+      this.hoveredMesh.userData.hovered = false;
+      this._refreshHighlight(this.hoveredMesh);
     }
+    this.hoveredMesh = mesh;
+    if (mesh) {
+      mesh.userData.hovered = true;
+      this._refreshHighlight(mesh);
+    }
+  }
+
+  _refreshHighlight(mesh) {
+    const selected = mesh.userData.selected;
+    const hovered = mesh.userData.hovered;
+    mesh.material.emissive.copy(selected ? new THREE.Color('#ffffff') : mesh.userData.baseColor);
+    mesh.material.emissiveIntensity = selected ? 0.3 : hovered ? 0.13 : 0.025;
+  }
+
+  selectStructure(id) {
+    const mesh = this.meshByAtlasId.get(Number(id));
+    if (!mesh) return false;
+    if (this.selectedMesh && this.selectedMesh !== mesh) {
+      this.selectedMesh.userData.selected = false;
+      this._refreshHighlight(this.selectedMesh);
+    }
+    this.selectedMesh = mesh;
+    mesh.userData.selected = true;
+    this._refreshHighlight(mesh);
+    this.selection = brainStructureInfo(mesh.userData.atlasMetadata);
     for (const listener of this.listeners) listener(this.selection);
+    return true;
+  }
+
+  /** Resolve old coarse ids to a real, named mesh rather than a proxy shape. */
+  selectRegion(id) {
+    const alias = BRAIN_REGIONS[id];
+    if (!alias) return this.selectStructure(id);
+    const mesh = this.selectables.find((candidate) => {
+      const metadata = candidate.userData.atlasMetadata;
+      return (!alias.label || metadata.bx_label === alias.label) &&
+        (!alias.side || metadata.bx_side === alias.side) &&
+        (!alias.category || metadata.bx_cat === alias.category);
+    });
+    return mesh ? this.selectStructure(mesh.userData.atlasId) : false;
+  }
+
+  clearSelection() {
+    if (!this.selectedMesh && !this.selection) return;
+    if (this.selectedMesh) {
+      this.selectedMesh.userData.selected = false;
+      this._refreshHighlight(this.selectedMesh);
+    }
+    this.selectedMesh = null;
+    this.selection = null;
+    for (const listener of this.listeners) listener(null);
   }
 
   getAnatomySelection() { return this.selection; }
-  onAnatomySelection(listener) { this.listeners.add(listener); return () => this.listeners.delete(listener); }
+
+  onAnatomySelection(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  getAnatomyStatus() { return { ...this.status }; }
+
+  onAnatomyStatus(listener) {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  _setStatus(status) {
+    this.status = status;
+    for (const listener of this.statusListeners) listener({ ...status });
+  }
+
+  getAnatomyViews() {
+    return VIEW_SPECS.map(({ id, label, labelJa }) => ({ id, label, labelJa }));
+  }
+
+  getAnatomyView(id) {
+    const view = VIEW_SPECS.find((candidate) => candidate.id === id);
+    return view ? clonePose(view) : null;
+  }
 
   setProgress(value) { this.progress = clamp(value); }
 
   update(dt) {
-    this.displayProgress = damp(this.displayProgress, this.progress, 7, dt);
-    const open = smoothstep(0.22, 0.7, this.displayProgress);
-    const deepReveal = smoothstep(0.55, 0.92, this.displayProgress);
-    for (const group of this.hemispheres) group.position.x = group.userData.side * 0.48 * open;
-    this.annotationAnchors.insula.x = 0.43 + 0.48 * open;
-    for (const mesh of this.cortical) {
-      mesh.material.opacity = 1 - 0.68 * deepReveal;
-      mesh.material.transparent = deepReveal > 0.001;
-      mesh.material.depthWrite = deepReveal < 0.22;
-      const target = mesh.userData.selected ? 1.055 : 1;
-      const scale = damp(mesh.scale.x, target, 9, dt);
-      mesh.scale.setScalar(scale);
+    if (!this.selectables.length) return;
+    this.displayProgress = damp(this.displayProgress, this.progress, 8, dt);
+    this._applyProgress(dt, false);
+  }
+
+  _applyProgress(dt, snap) {
+    const oneHemisphere = smoothstep(0.18, 0.42, this.displayProgress);
+    const deepReveal = smoothstep(0.55, 0.78, this.displayProgress);
+    for (const mesh of this.selectables) {
+      const target = targetOpacity(mesh.userData.atlasMetadata, oneHemisphere, deepReveal);
+      const opacity = snap ? target : damp(mesh.userData.currentOpacity, target, 10, dt);
+      mesh.userData.currentOpacity = opacity;
+      mesh.material.opacity = opacity;
+      mesh.material.depthWrite = opacity > 0.94;
+      mesh.visible = opacity > 0.012;
     }
-    for (const mesh of this.deep) mesh.material.opacity = 0.18 + 0.82 * smoothstep(0.3, 0.76, this.displayProgress);
+  }
+
+  _updateAnnotationAnchors() {
+    this.root.updateMatrixWorld(true);
+    for (const [anchor, spec] of Object.entries(ANCHOR_SPECS)) {
+      const mesh = this.selectables.find((candidate) => {
+        const metadata = candidate.userData.atlasMetadata;
+        return metadata.bx_label === spec.label && metadata.bx_side === spec.side;
+      });
+      if (!mesh) continue;
+      const box = new THREE.Box3().setFromObject(mesh);
+      if (!box.isEmpty()) box.getCenter(this.annotationAnchors[anchor]);
+    }
   }
 
   getAnnotations() {
-    return BRAIN_ANATOMY_META.annotations.map((item) => ({ ...item, position: this.annotationAnchors[item.anchor] }));
+    return BRAIN_ANATOMY_META.annotations.map((item) => ({
+      ...item,
+      position: this.annotationAnchors[item.anchor],
+    }));
   }
 
   dispose() {
+    this.disposed = true;
     const canvas = this.viewer?.renderer?.domElement;
     canvas?.removeEventListener('pointerdown', this._pointerDown);
+    canvas?.removeEventListener('pointermove', this._pointerMove);
     canvas?.removeEventListener('pointerup', this._pointerUp);
+    canvas?.removeEventListener('pointerleave', this._pointerLeave);
     this.listeners.clear();
+    this.statusListeners.clear();
     disposeObject(this.root);
   }
 }
 
-function capsule(scale, color, opacity = 1) {
-  return new THREE.Mesh(shapedSphere({ detail: 4, scale }), tissueMaterial({ color, roughness: 0.55, opacity }));
+function targetOpacity(metadata, oneHemisphere, deepReveal) {
+  const category = metadata.bx_cat;
+  const label = metadata.bx_label;
+  if (category === 'cerebellum' || category === 'brainstem') return 1;
+  if (category === 'cortex') {
+    if (label === 'Hippocampus') return 0.03 + 0.97 * deepReveal;
+    if (metadata.bx_region === 'Insula') return 0.04 + 0.96 * Math.max(oneHemisphere, deepReveal);
+
+    let surfaceOpacity = 1;
+    if (metadata.bx_side === 'right') surfaceOpacity = 1 - 0.985 * oneHemisphere;
+    else if (metadata.bx_side === 'left' && LEFT_OPERCULUM.has(label)) {
+      surfaceOpacity = 1 - 0.93 * oneHemisphere;
+    }
+    const deepGhost = metadata.bx_side === 'right' ? 0.015 : 0.075;
+    return surfaceOpacity + (deepGhost - surfaceOpacity) * deepReveal;
+  }
+  // The hemispheric white-matter meshes are enclosing masses. Leaving either
+  // opaque would simply replace the cortical shell with another shell and hide
+  // the basal ganglia again; named commissures and bundles can remain solid.
+  if (category === 'white_matter') {
+    return (label === 'White matter of telencephalon' ? 0.035 : 0.92) * deepReveal;
+  }
+  if (category === 'ventricles') return 0.78 * deepReveal;
+  if (category === 'deep_grey' || category === 'diencephalon') return deepReveal;
+  return 0;
+}
+
+function atlasMetadata(mesh, stopAt) {
+  let object = mesh;
+  while (object) {
+    if (object.userData?.bx_cat != null) return object.userData;
+    if (object === stopAt) break;
+    object = object.parent;
+  }
+  return mesh.userData ?? {};
+}
+
+function clonePose(view) {
+  return { position: view.position.clone(), target: view.target.clone() };
+}
+
+async function loadAtlas() {
+  const draco = new DRACOLoader();
+  draco.setDecoderPath(DRACO_URL);
+  draco.setDecoderConfig({ type: 'wasm' });
+  draco.preload();
+  const loader = new GLTFLoader();
+  loader.setDRACOLoader(draco);
+  try {
+    return await loader.loadAsync(ATLAS_URL);
+  } finally {
+    draco.dispose();
+  }
 }
