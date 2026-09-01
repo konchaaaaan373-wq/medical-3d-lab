@@ -15,6 +15,7 @@ export function stageIndexFor(progress, stages) {
  */
 export function createStageReadout({ meta, onSeek }) {
   const stages = meta.stages;
+  const progressionEnabled = meta.progression?.enabled !== false;
 
   const steps = stages.map((stage, index) =>
     el('button', {
@@ -58,11 +59,11 @@ export function createStageReadout({ meta, onSeek }) {
   const summaryEn = el('p', { class: 'stage-summary lang-en' });
   const summaryJa = el('p', { class: 'stage-summary-ja lang-ja' });
 
-  const element = el('div', { class: 'stage-readout' }, [
-    track,
+  const element = el('div', { class: `stage-readout${progressionEnabled ? '' : ' is-static'}` }, [
+    progressionEnabled ? track : null,
     el('div', { class: 'stage-heading' }, [
       el('div', {}, [nameEn, nameJa]),
-      el('span', { class: 'stage-progress data-only' }, [progressCaption, percent]),
+      progressionEnabled ? el('span', { class: 'stage-progress data-only' }, [progressCaption, percent]) : null,
     ]),
     summaryEn,
     summaryJa,
@@ -73,10 +74,12 @@ export function createStageReadout({ meta, onSeek }) {
   return {
     element,
     update(progress) {
-      fill.style.width = `${progress * 100}%`;
-      percent.textContent = `${Math.round(progress * 100)}%`;
+      if (progressionEnabled) {
+        fill.style.width = `${progress * 100}%`;
+        percent.textContent = `${Math.round(progress * 100)}%`;
+      }
 
-      const index = stageIndexFor(progress, stages);
+      const index = progressionEnabled ? stageIndexFor(progress, stages) : 0;
       steps.forEach((step, i) => {
         step.classList.toggle('is-current', i === index);
         step.classList.toggle('is-done', i < index);

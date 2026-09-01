@@ -259,7 +259,11 @@ export async function createApp({ stage, ui }) {
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
-    onDataToggle: scene.getMetrics ? (enabled) => setDataView(enabled) : undefined,
+    // A primary tactile interaction keeps its three read-outs on screen. It
+    // has no second layer of plots or parameters to reveal, so a Data button
+    // would be a switch between two views that contain the same information.
+    onDataToggle:
+      scene.getMetrics && !meta.modelControls?.primary ? (enabled) => setDataView(enabled) : undefined,
     onZoom: (direction) => zoomBy(direction),
     // Only scenes that ship a guided sequence get the button; without this it
     // latched on and did nothing on a scene with no storyboard.
@@ -291,6 +295,7 @@ export async function createApp({ stage, ui }) {
 
   // Optional: scenes that expose a model can show a live read-out beside the view.
   const metricsPanel = scene.getMetrics ? createMetricsPanel() : null;
+  if (meta.modelControls?.primary) metricsPanel?.element.classList.add('is-primary');
   // Optional: a scene whose model produces pressures can plot its own loop.
   const pvPanel = scene.getPressureVolume
     ? createPressureVolumePanel({
@@ -347,8 +352,10 @@ export async function createApp({ stage, ui }) {
           modelControls.sync(scene.getModelControls());
           refreshModelReadouts();
         },
+        copy: meta.modelControls,
       })
     : null;
+  const controlsInConsole = meta.modelControls?.placement === 'console';
 
   // Optional: a scene that ships guided lessons gets a Learn button. The lesson
   // drives the model through the same setters the sliders use — it has no
@@ -434,7 +441,7 @@ export async function createApp({ stage, ui }) {
         pvPanel?.element,
         wavePanel?.element,
         ...chartPanels.map((panel) => panel.element),
-        modelControls?.element,
+        controlsInConsole ? null : modelControls?.element,
         scopePanel?.element,
       ]),
       el('div', { class: 'rail' }, [
@@ -448,6 +455,7 @@ export async function createApp({ stage, ui }) {
       stageReadout.element,
       causalStory?.element,
       learningPanel?.element,
+      controlsInConsole ? modelControls?.element : null,
       controlPanel.element,
     ]),
     labels.element

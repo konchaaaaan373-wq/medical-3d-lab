@@ -66,6 +66,22 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/cardiovascular/scenes/heartFailure/index.js'),
   },
   {
+    id: 'circulation',
+    slug: 'circulation',
+    titleEn: 'Is circulation maintained?',
+    titleJa: '循環、保たれてる？',
+    system: 'cardiovascular',
+    organ: 'heart',
+    disease: null,
+    status: 'prototype',
+    description:
+      'One low-output case with MAP 70: press fluid or dobutamine and watch cardiac output, pressure and oxygen delivery move from one shared state.',
+    descriptionJa:
+      'MAP 70の低拍出症例。輸液またはDOBを押し、心拍出量・血圧・酸素供給が同じstateからどう変わるかを観察します。',
+    tags: ['haemodynamics', 'oxygen-delivery', 'tactile-interaction'],
+    load: () => import('../scenes/cardiovascular/scenes/circulation/index.js'),
+  },
+  {
     id: 'copd-hyperinflation',
     slug: 'copd',
     titleEn: 'COPD',
