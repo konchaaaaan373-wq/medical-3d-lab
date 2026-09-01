@@ -92,8 +92,13 @@ the model tests.
 
 ## Gate 3 — general public release
 
-- [ ] Use crawlable scene routes with canonical URLs, per-scene metadata,
-  social cards and a sitemap.
+- [~] Use crawlable scene routes with canonical URLs, per-scene metadata,
+  social cards and a sitemap. The build emits a static, JavaScript-free page per
+  public scene, canonical/Open Graph/Twitter metadata, `LearningResource`
+  JSON-LD, `robots.txt` and a sitemap, all generated from the catalogue and
+  verified in CI. **Remaining:** the 1200×630 raster link-preview images, which
+  this repository has no rasteriser to produce — the build names the missing
+  ones. See [`discoverability.md`](discoverability.md).
 - [ ] Publish a tagged release with a changelog, rollback procedure, incident
   owner and support response path.
 - [ ] Version model cards and review attestations with every medical change.
@@ -123,7 +128,8 @@ the model tests.
 | 6 | Heart-failure and amyloid evidence-package migration | Done; sign-off intentionally pending |
 | 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
 | 8 | Performance budgets, telemetry, error reporting and feedback | Done |
-| 8b | Browser/device/accessibility matrix | Next |
+| 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
+| 8c | Browser/device/accessibility matrix | Next |
 | 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 
