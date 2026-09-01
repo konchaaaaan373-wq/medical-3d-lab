@@ -36,6 +36,12 @@
   box-shadow: inset 0 0 0 1px rgba(76, 220, 150, 0.3);
 }
 
+.title-card .clinical-review-badge.is-stale {
+  color: #f1b7ad;
+  background: rgba(232, 120, 103, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(232, 120, 103, 0.3);
+}
+
 .title-card .clinical-review-badge.is-pending {
   color: #f1cea0;
   background: rgba(225, 177, 103, 0.09);
@@ -66,6 +72,12 @@
   color: #9fd4ba;
   background: rgba(100, 196, 148, 0.08);
   box-shadow: inset 0 0 0 1px rgba(100, 196, 148, 0.28);
+}
+
+.explorer .clinical-review-badge.is-stale {
+  color: #e1a69e;
+  background: rgba(218, 115, 99, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(218, 115, 99, 0.28);
 }
 
 .explorer .clinical-review-badge.is-pending {
@@ -129,6 +141,17 @@
   font-weight: 600;
 }
 
+.clinical-review-section.is-stale {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(218, 115, 99, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(218, 115, 99, 0.16);
+}
+
+.clinical-review-stale-reason {
+  margin: 4px 0 8px;
+}
+
 .clinical-review-section ul {
   margin: 4px 0 0;
   padding-left: 18px;
@@ -136,6 +159,11 @@
 
 .clinical-review-section li + li {
   margin-top: 4px;
+}
+
+.clinical-review-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow-wrap: anywhere;
 }
 
 .clinical-review-meta {
