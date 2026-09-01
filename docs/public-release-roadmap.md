@@ -81,8 +81,9 @@ the model tests.
   Account deletion is still missing.
 - [x] Scene paid capabilities are semantic manifest data and CI-checked against
   authored Patient/Education content and scene maturity.
-- [ ] Add CSP and the remaining security headers, a billing event ledger,
-  reconciliation and operational alerts.
+- [~] CSP/security headers, a server-only billing event ledger and explicit
+  Stripe reconciliation are implemented. Operational alerts and a production
+  reconciliation runbook remain.
 - [ ] Choose real Patient / Education / Complete prices and configure live Stripe
   Products, Prices, Portal, webhook and Netlify Production secrets.
 
@@ -116,7 +117,7 @@ the model tests.
 | 6 | Heart-failure and amyloid evidence-package migration | Done; sign-off intentionally pending |
 | 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
 | 8 | Browser/device/accessibility/performance matrix | Next |
-| 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
+| 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | In progress — ledger and reconciliation implemented; sandbox lifecycle matrix pending |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 
 ## Definition of done for every batch
