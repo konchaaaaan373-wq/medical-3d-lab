@@ -231,6 +231,21 @@ test('billing lifecycle: post-write verification repairs a retrieve-to-write rac
   assert.equal(result.passes, 2);
 });
 
+test('billing lifecycle: post-write resource absence creates a fail-closed tombstone', async () => {
+  const synced = [];
+  const result = await syncSubscriptionUntilCurrent(
+    { id: 'sub_123', status: 'active' },
+    {
+      sync: async (subscription) => synced.push(subscription.status),
+      retrieveSubscription: async () => null,
+    }
+  );
+
+  assert.deepEqual(synced, ['active', 'missing_from_stripe']);
+  assert.equal(result.subscription.status, 'missing_from_stripe');
+  assert.equal(result.passes, 1);
+});
+
 test('billing lifecycle: apparent list gaps are verified by ID before fail-closing', async () => {
   const calls = [];
   const synced = [];
