@@ -1,0 +1,169 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import {
+  canReclaimBillingEvent,
+  claimBillingEvent,
+  isSubscriptionEvent,
+  missingRemoteSubscriptionIds,
+  reconcileBillingForUser,
+  stripeEventObjectId,
+} from '../netlify/lib/billing.js';
+
+const EVENT = Object.freeze({
+  id: 'evt_test_123',
+  type: 'customer.subscription.updated',
+  livemode: false,
+  data: { object: { id: 'sub_123' } },
+});
+
+test('billing lifecycle: paused and resumed subscription events are synchronised', () => {
+  for (const type of [
+    'customer.subscription.created',
+    'customer.subscription.updated',
+    'customer.subscription.deleted',
+    'customer.subscription.paused',
+    'customer.subscription.resumed',
+  ]) {
+    assert.equal(isSubscriptionEvent(type), true, type);
+  }
+  assert.equal(isSubscriptionEvent('invoice.upcoming'), false);
+});
+
+test('billing lifecycle: the ledger records the Stripe object without retaining a payload', () => {
+  assert.equal(stripeEventObjectId(EVENT), 'sub_123');
+  assert.equal(stripeEventObjectId({ data: { object: {} } }), null);
+
+  const migration = readFileSync(
+    new URL('../supabase/migrations/20260901154950_billing_event_ledger.sql', import.meta.url),
+    'utf8'
+  );
+  assert.match(migration, /stripe_event_id text primary key/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /revoke all .* from public, anon, authenticated/i);
+  assert.match(migration, /grant select, insert, update, delete .* to service_role/i);
+  assert.doesNotMatch(migration, /\bpayload\b\s+(json|jsonb|text)/i);
+});
+
+test('billing lifecycle: a new event is claimed exactly once', async () => {
+  const calls = [];
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    return [{ stripe_event_id: EVENT.id }];
+  };
+  const result = await claimBillingEvent(EVENT, {
+    admin,
+    now: new Date('2026-09-01T12:00:00.000Z'),
+  });
+
+  assert.deepEqual(result, { claimed: true, retry: false });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].options.method, 'POST');
+  assert.equal(calls[0].options.body[0].stripe_event_id, EVENT.id);
+  assert.equal(calls[0].options.body[0].stripe_object_id, 'sub_123');
+});
+
+test('billing lifecycle: a processed duplicate is acknowledged without repeating work', async () => {
+  const admin = async (_path, options = {}) => {
+    if (options.method === 'POST') return [];
+    return [{ status: 'processed', attempt_count: 1, last_attempt_at: '2026-09-01T11:00:00.000Z' }];
+  };
+  const result = await claimBillingEvent(EVENT, {
+    admin,
+    now: new Date('2026-09-01T12:00:00.000Z'),
+  });
+  assert.deepEqual(result, { claimed: false, reason: 'already_processed' });
+});
+
+test('billing lifecycle: failed and abandoned claims can be retried safely', async () => {
+  assert.equal(
+    canReclaimBillingEvent(
+      { status: 'processing', last_attempt_at: '2026-09-01T11:56:00.000Z' },
+      new Date('2026-09-01T12:00:00.000Z')
+    ),
+    false
+  );
+  assert.equal(
+    canReclaimBillingEvent(
+      { status: 'processing', last_attempt_at: '2026-09-01T11:55:00.000Z' },
+      new Date('2026-09-01T12:00:00.000Z')
+    ),
+    true
+  );
+  assert.equal(canReclaimBillingEvent({ status: 'failed' }), true);
+
+  const calls = [];
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (options.method === 'POST') return [];
+    if (!options.method) {
+      return [{ status: 'failed', attempt_count: 1, last_attempt_at: '2026-09-01T11:59:00.000Z' }];
+    }
+    return [{ stripe_event_id: EVENT.id, status: 'processing' }];
+  };
+  const result = await claimBillingEvent(EVENT, {
+    admin,
+    now: new Date('2026-09-01T12:00:00.000Z'),
+  });
+
+  assert.deepEqual(result, { claimed: true, retry: true });
+  assert.equal(calls.at(-1).options.body.attempt_count, 2);
+  assert.match(calls.at(-1).path, /status=eq\.failed/);
+});
+
+test('billing lifecycle: reconciliation fails closed when a live local row vanished from Stripe', async () => {
+  const calls = [];
+  const synced = [];
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (path.includes('billing_customers?user_id=eq.') && !options.method) {
+      return [{ stripe_customer_id: 'cus_123' }];
+    }
+    if (path.includes('billing_subscriptions?user_id=eq.') && !options.method) {
+      return [
+        { stripe_subscription_id: 'sub_remote' },
+        { stripe_subscription_id: 'sub_missing' },
+      ];
+    }
+    return [];
+  };
+  const result = await reconcileBillingForUser('user_123', {
+    admin,
+    listSubscriptions: async (customerId) => {
+      assert.equal(customerId, 'cus_123');
+      return [{ id: 'sub_remote', status: 'active' }];
+    },
+    sync: async (subscription) => synced.push(subscription.id),
+    now: new Date('2026-09-01T12:00:00.000Z'),
+  });
+
+  assert.deepEqual(synced, ['sub_remote']);
+  assert.deepEqual(result, { reconciled: true, remoteCount: 1, missingCount: 1 });
+  const missingPatch = calls.find(
+    (call) => call.path.includes('stripe_subscription_id=eq.sub_missing') && call.options.method === 'PATCH'
+  );
+  assert.equal(missingPatch.options.body.status, 'missing_from_stripe');
+  assert.ok(
+    calls.some(
+      (call) => call.path.includes('billing_customers?user_id=eq.user_123') && call.options.method === 'PATCH'
+    )
+  );
+});
+
+test('billing lifecycle: missing remote IDs are derived without touching terminal history', () => {
+  assert.deepEqual(
+    missingRemoteSubscriptionIds(
+      [{ stripe_subscription_id: 'sub_a' }, { stripe_subscription_id: 'sub_b' }],
+      [{ id: 'sub_b' }, { id: 'sub_c' }]
+    ),
+    ['sub_a']
+  );
+});
+
+test('billing lifecycle: Checkout and Portal returns request authoritative reconciliation', () => {
+  const access = readFileSync(new URL('../src/access/AccessManager.js', import.meta.url), 'utf8');
+  const portal = readFileSync(new URL('../netlify/functions/create-portal.js', import.meta.url), 'utf8');
+  assert.match(access, /entitlements\?reconcile=1/);
+  assert.match(access, /params\.get\('billing'\) === 'portal'/);
+  assert.match(portal, /billing=portal/);
+});
