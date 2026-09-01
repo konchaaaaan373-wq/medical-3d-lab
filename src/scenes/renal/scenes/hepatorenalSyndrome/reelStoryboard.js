@@ -185,10 +185,13 @@ export function overlayAt(t, { language, metrics }) {
     // reads "this kidney 121, without the signal 103" and argues the opposite
     // of what the sequence is for. The comparison is only worth showing once
     // it means what the ending says it means.
+    //
+    // Once both are on, the counterfactual takes the first slot: the overlay
+    // colours slot 0 as the healthy body and slot 1 as the diseased one, in
+    // every sequence, and the take-home frame has to read the same way here.
     cards: {
       opacity: cueOpacity(t, 2.5, HOLD_PAST_END, 0.4),
       items: [
-        card(pick(language, REEL_COPY.cards.kidney.label, REEL_COPY.cards.kidney.labelJa), metrics.kidney, language),
         ...(comparisonAt(t)
           ? [
               card(
@@ -198,6 +201,7 @@ export function overlayAt(t, { language, metrics }) {
               ),
             ]
           : []),
+        card(pick(language, REEL_COPY.cards.kidney.label, REEL_COPY.cards.kidney.labelJa), metrics.kidney, language),
       ],
     },
     badge: {
@@ -227,7 +231,7 @@ function card(label, rows, language) {
     headline: rows.gfr,
     headlineUnit: 'mL/min',
     rows: [
-      `${pick(language, 'renal blood flow', '腎血流量')} ${rows.flow}`,
+      `${pick(language, 'renal blood flow', '腎血流量')} ${rows.flow} mL/min`,
       `${pick(language, 'filtration fraction', '濾過率')} ${rows.fraction}%`,
     ],
   };

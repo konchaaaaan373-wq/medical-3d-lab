@@ -124,6 +124,7 @@ export class HepatorenalScene {
     this.comparing = false;
     this.controls = { ...DEFAULT_CONTROLS };
     this.solved = solveHepatorenal(this.controls);
+    this.curve = this.progressionCurve();
   }
 
   build() {
@@ -278,7 +279,9 @@ export class HepatorenalScene {
     this.controls.structuralResistance =
       1 + (HepatorenalScene.MAX_STRUCTURAL_RESISTANCE - 1) * this.progress;
     this.controls.splanchnicVasodilation = this.progress;
-    this.solve();
+    // Moving along the axis does not move the curve: the curve overrides the
+    // two axis controls at every sample, so it depends only on the others.
+    this.solve({ curveStale: false });
   }
 
   setModelControl(id, value) {
@@ -293,11 +296,15 @@ export class HepatorenalScene {
   resetModelControls() {
     for (const control of MODEL_CONTROLS) this.controls[control.id] = DEFAULT_CONTROLS[control.id];
     this.setProgress(this.progress);
+    // setProgress keeps the cached curve, but the reset just changed the
+    // controls the curve does depend on.
+    this.curve = this.progressionCurve();
   }
 
-  solve() {
+  solve({ curveStale = true } = {}) {
     this.solved = solveHepatorenal(this.controls);
     this.released = kidneyWithoutTheSignal(this.solved);
+    if (curveStale) this.curve = this.progressionCurve();
     this.applyModelToScene();
   }
 
@@ -390,8 +397,10 @@ export class HepatorenalScene {
       calibre(state.kidney.renalBloodFlowMlPerMin, RENAL_REFERENCE.renalBloodFlowMlPerMin)
     );
 
-    // The liver's colour follows how scarred it is. Presentation.
-    const scarring = clamp((this.controls.structuralResistance - 1) / 9);
+    // The liver's colour follows how scarred it is. Presentation. Read from
+    // the solved portal state, as the portal scene does — the raw control runs
+    // to MAX_STRUCTURAL_RESISTANCE and would leave the divisor short.
+    const scarring = clamp((state.portal.resistances.intrahepaticMultiple - 1) / 9);
     this.liver.object.material.color.copy(HEALTHY_LIVER).lerp(SCARRED_LIVER, scarring);
 
     // The signal, drawn as colour on the vessels that respond to it — and
@@ -521,8 +530,9 @@ export class HepatorenalScene {
   getCharts() {
     // Both plots are drawn along the scene's own axis, re-solved rather than
     // recorded, so that the curve and the read-out are the same model. The
-    // marker is where the reader currently is.
-    const curve = this.progressionCurve();
+    // marker is where the reader currently is. The curve is the cached one —
+    // this runs every rendered frame, and a 26-point solve does not.
+    const curve = this.curve;
     const percent = (value, reference) => (value / reference) * 100;
 
     const series = (id, color, read) => ({

@@ -158,7 +158,7 @@ function card(label, rows, language) {
     headline: rows.ppg,
     headlineUnit: 'mmHg',
     rows: [
-      `${pick(language, 'through the liver', '肝臓を通る')} ${rows.liverFlow}`,
+      `${pick(language, 'through the liver', '肝臓を通る')} ${rows.liverFlow} mL/min`,
       `${pick(language, 'bypassing it', '迂回する')} ${rows.shunt}%`,
     ],
   };

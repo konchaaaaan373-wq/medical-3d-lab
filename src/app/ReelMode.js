@@ -154,7 +154,10 @@ export function createReelMode({
   }
 
   /**
-   * The numbers the copy interpolates, read once on entry.
+   * The numbers the copy interpolates, re-read every frame from `renderAt` —
+   * after the scene has been driven, so the caption quotes the state that is
+   * on screen. Whatever a sequence does here runs per rendered frame, so it
+   * has to stay cheap.
    *
    * Read from the scene rather than carried by the sequence, so a video can
    * never quote a figure the interactive scene would not. Which figures those

@@ -161,9 +161,11 @@ test('every number on screen comes from the scene, not from the copy', () => {
   assert.ok(!/\d+\s*(mL|mmHg|%)/.test(text), 'the reel copy carries a unit-bearing number');
   assert.ok(!/\d{2,}/.test(text), 'the reel copy carries a multi-digit number');
 
+  // Slot 0 is the healthy counterfactual — the overlay colours the first card
+  // as the healthy body in every sequence — and slot 1 is this kidney.
   const overlay = overlayAt(REEL_DURATION, context());
-  assert.equal(overlay.cards.items[0].headline, METRICS.kidney.gfr);
-  assert.equal(overlay.cards.items[1].headline, METRICS.released.gfr);
+  assert.equal(overlay.cards.items[0].headline, METRICS.released.gfr);
+  assert.equal(overlay.cards.items[1].headline, METRICS.kidney.gfr);
   assert.ok(overlayAt(8.0, context()).marker.text.includes(METRICS.map));
 });
 
