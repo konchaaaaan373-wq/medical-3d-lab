@@ -21,6 +21,20 @@
  */
 export const SCENE_MANIFEST = [
   {
+    id: 'brain-anatomy',
+    slug: 'brain-anatomy',
+    titleEn: 'Interactive brain anatomy',
+    titleJa: '触れて学ぶ脳の解剖',
+    system: 'nervous',
+    organ: 'brain',
+    disease: null,
+    status: 'prototype',
+    description: 'Select cortical lobes and open the hemispheres to inspect the insula and deep structures.',
+    descriptionJa: '大脳各葉を選択し、左右半球を展開して島皮質と深部構造を観察します。',
+    tags: ['anatomy', 'interactive', 'cortex'],
+    load: () => import('../scenes/nervous/scenes/brainAnatomy/index.js'),
+  },
+  {
     id: 'amyloid-beta',
     slug: 'amyloid-beta',
     titleEn: 'Amyloid-β',
