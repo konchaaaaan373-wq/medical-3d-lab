@@ -33,6 +33,7 @@ Last updated: 2026-09-01（現在地の数値は §3 参照）
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |
 | クロール可能なページ・OGP・sitemap | [`discoverability.md`](discoverability.md) |
+| 規約・プライバシー・特商法表記・販売可否の判定 | [`../src/data/legal.js`](../src/data/legal.js) と [`access-and-billing.md`](access-and-billing.md) |
 | 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |

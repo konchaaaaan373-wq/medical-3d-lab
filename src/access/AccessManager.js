@@ -19,6 +19,7 @@ import {
   PLAN_GRANTS,
 } from './policy.js';
 import { pricePresentation } from './pricing.js';
+import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
 import { emitAppEvent } from '../app/appEvents.js';
 
@@ -355,10 +356,17 @@ export function createAccessManager({ ui }) {
       ]),
       currentAccess(),
       subscriptionStatusCard(),
-      !state.billingConfigured
+      // One notice, two reasons: billing may not be configured, or the seller
+      // may not yet have published the disclosure it is required to publish.
+      // Saying which one it is beats a single vague sentence for both.
+      billingNotice()
         ? el('div', { class: 'access-billing-unavailable' }, [
-            el('p', { class: 'access-copy lang-en', text: 'Paid checkout is not enabled on this deployment yet. Your account and all free models remain available.' }),
-            el('p', { class: 'access-copy lang-ja', text: 'このデプロイでは有料プランの購入はまだ有効化されていません。アカウントと無料モデルはそのまま利用できます。' }),
+            el('p', { class: 'access-copy lang-en', text: billingNotice().en }),
+            el('p', { class: 'access-copy lang-ja', text: billingNotice().ja }),
+            el('a', { class: 'access-legal-link', href: '#/commerce' }, [
+              el('span', { class: 'lang-en', text: 'Commercial disclosure →' }),
+              el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記 →' }),
+            ]),
           ])
         : null,
       planGrid(),
@@ -612,7 +620,10 @@ export function createAccessManager({ ui }) {
       : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
     const price = pricePresentation(state.planCatalog[plan]);
-    const configured = authConfigured() && state.billingConfigured && Boolean(price);
+    // Billing being configured is not sufficient: a seller must have published
+    // its identity and terms before it may take money. See legalReadiness.js.
+    const configured =
+      authConfigured() && canSell({ billingConfigured: state.billingConfigured }) && Boolean(price);
     const existing = hasActiveSubscription();
     const disabled = unlocked || state.loading || !configured;
     const cta = !authConfigured() || !state.billingConfigured
@@ -657,9 +668,13 @@ export function createAccessManager({ ui }) {
     ]);
   }
 
+  /** Why paid plans cannot be bought here, or null when they can. */
+  const billingNotice = () => saleBlockedNotice({ billingConfigured: state.billingConfigured });
+
   async function checkout(plan) {
-    if (!state.billingConfigured || !pricePresentation(state.planCatalog[plan])) {
-      state.error = 'Paid checkout is not ready on this deployment yet.';
+    const blocked = saleBlockedNotice({ billingConfigured: state.billingConfigured });
+    if (blocked || !pricePresentation(state.planCatalog[plan])) {
+      state.error = blocked?.en ?? 'Paid checkout is not ready on this deployment yet.';
       notify();
       return;
     }

@@ -236,6 +236,28 @@ export function createLanding({ ui, accountButton = null }) {
       el('span', { text: 'Medical 3D Lab' }),
       el('span', { class: 'lang-en', text: 'Educational conceptual models — not patient-specific diagnosis or treatment.' }),
       el('span', { class: 'lang-ja', text: '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。' }),
+      el('nav', { class: 'landing-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
+        el('a', { href: '#/terms' }, [
+          el('span', { class: 'lang-en', text: 'Terms' }),
+          el('span', { class: 'lang-ja', text: '利用規約' }),
+        ]),
+        el('a', { href: '#/privacy' }, [
+          el('span', { class: 'lang-en', text: 'Privacy' }),
+          el('span', { class: 'lang-ja', text: 'プライバシー' }),
+        ]),
+        el('a', { href: '#/commerce' }, [
+          el('span', { class: 'lang-en', text: 'Commercial disclosure' }),
+          el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記' }),
+        ]),
+        el('a', { href: '#/support' }, [
+          el('span', { class: 'lang-en', text: 'Support' }),
+          el('span', { class: 'lang-ja', text: 'サポート' }),
+        ]),
+        el('a', { href: '#/trust' }, [
+          el('span', { class: 'lang-en', text: 'Model trust' }),
+          el('span', { class: 'lang-ja', text: '医学的信頼性' }),
+        ]),
+      ]),
     ]),
   ]);
 

@@ -79,14 +79,20 @@ the model tests.
   period-end/immediate cancellation are verified. Renewal, payment-failure and
   repurchase still need explicit E2E coverage.
 - [~] Show actual Stripe price/billing period and current subscription lifecycle
-  in product UI. Customer-facing renewal/cancellation terms plus Terms, Privacy,
-  commerce disclosure and support pages remain to be written.
-- [~] Password recovery, email confirmation and subscription-state UX exist.
-  Account deletion is still missing.
+  in product UI. Terms, Privacy, commercial disclosure (特定商取引法) and support
+  pages are written, routed and reachable without WebGL, and the renewal and
+  cancellation terms are stated in both languages. **Remaining:** the seller's
+  own identity — legal name, responsible person, address and contact — which is
+  a fact about a business and is deliberately `null` in `src/data/operator.js`
+  rather than invented. Until it is filled in, `src/access/legalReadiness.js`
+  refuses to start a checkout and the disclosure page shows the gap.
+- [x] Password recovery, email confirmation, subscription-state UX and account
+  deletion exist.
 - [x] Scene paid capabilities are semantic manifest data and CI-checked against
   authored Patient/Education content and scene maturity.
-- [ ] Add CSP and the remaining security headers, a billing event ledger,
-  reconciliation and operational alerts.
+- [~] CSP and the remaining security headers are in `public/_headers` and
+  guarded by `tests/security-headers.test.js`. **Remaining:** the billing event
+  ledger, reconciliation and operational alerts.
 - [ ] Choose real Patient / Education / Complete prices and configure live Stripe
   Products, Prices, Portal, webhook and Netlify Production secrets.
 
@@ -129,7 +135,8 @@ the model tests.
 | 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
 | 8 | Performance budgets, telemetry, error reporting and feedback | Done |
 | 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
-| 8c | Browser/device/accessibility matrix | Next |
+| 8c | Terms, privacy, commercial disclosure and support, with a checkout gate | Done except seller identity |
+| 8d | Browser/device/accessibility matrix | Next |
 | 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 

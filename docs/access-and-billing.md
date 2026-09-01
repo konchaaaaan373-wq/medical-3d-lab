@@ -222,3 +222,43 @@ The external-physiology / model-integrity / calibration test separation remains 
 The current implementation is a server-verified **application entitlement gate**. Paid UI cannot be used normally without a server-confirmed entitlement, but some teaching copy/code is still delivered in static JavaScript bundles and is therefore inspectable by a determined developer.
 
 If the commercial requirement later becomes "paid teaching content itself must not be present in public assets", move the paid lesson/guide payloads behind authenticated Netlify Functions and only fetch them after entitlement verification. Do not pretend CSS or minification is DRM.
+
+
+---
+
+## Legal readiness — why checkout can refuse
+
+A seller of a digital service in Japan must publish, before it takes money, its
+legal name, the person responsible, an address, contact details, the price,
+when payment is taken, when the service is provided and how to cancel
+(特定商取引法 §11).
+
+Those first four are facts about a business, not about this repository, and
+**none of them is invented here**. `src/data/operator.js` ships them as `null`,
+with a comment saying why: a disclosure carrying a plausible-looking
+placeholder is worse than an absent one, because it reads as a statement.
+
+The consequence is deliberate and enforced in code rather than on a checklist:
+
+| Module | Responsibility |
+| --- | --- |
+| `src/data/operator.js` | The seller's identity, and which required entries are still missing |
+| `src/data/legal.js` | The four documents as data, plus the disclosure rows |
+| `src/data/legalRoutes.js` | Just the slugs — the router and catalogue need them and must not pull the prose into the entry chunk |
+| `src/access/legalReadiness.js` | `canSell()` and the reason it says no |
+| `src/app/Legal.js` | The pages, plain DOM, readable with no renderer |
+
+`AccessManager` asks `canSell()` rather than checking `billingConfigured`
+alone. With the disclosure incomplete the product still works, the account
+still works and the plans are still described — the button simply does not take
+money, and the panel says which of the two reasons applies with a link to the
+disclosure page.
+
+Two claims in the privacy policy are checked against the implementation by
+`tests/legal.test.js` rather than trusted: that nothing is transmitted before
+consent, and that no identifier survives a page load. A privacy policy is a
+factual claim about software; when it drifts from the software it stops being a
+policy and becomes a misstatement.
+
+**To go live:** fill in `src/data/operator.js`. `npm test` then passes with the
+disclosure complete, and checkout stops refusing.

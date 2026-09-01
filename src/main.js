@@ -16,7 +16,8 @@ import './styles/landing.css';
 import './styles/trust.css';
 import './styles/scene-fallback.css';
 import './styles/telemetry.css';
-import { resolveRoute } from './app/router.js';
+import './styles/legal.css';
+import { resolveRoute, sameRoute } from './app/router.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 
 /**
@@ -97,6 +98,21 @@ async function boot() {
     void accessReady;
     window.addEventListener('hashchange', () => {
       if (resolveRoute(window.location.hash).kind !== 'trust') window.location.reload();
+    });
+    return;
+  }
+
+  if (route.kind === 'legal') {
+    // Cancellation terms, the privacy policy and the commercial disclosure are
+    // exactly the pages a person may need on the device that could not start
+    // WebGL. They are plain DOM for that reason.
+    document.documentElement.dataset.route = 'legal';
+    const { createLegal } = await import('./app/Legal.js');
+    createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
+    void observe({ ui, surface: 'landing' });
+    void accessReady;
+    window.addEventListener('hashchange', () => {
+      if (!sameRoute(window.location.hash, `#/${route.docId}`)) window.location.reload();
     });
     return;
   }
