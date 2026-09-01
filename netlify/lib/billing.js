@@ -281,7 +281,13 @@ export async function syncSubscriptionUntilCurrent(
   for (let pass = 1; pass <= maxPasses; pass += 1) {
     await sync(current);
     const verified = await retrieveSubscription(current.id);
-    if (!verified?.id) return { subscription: null, passes: pass };
+    if (!verified?.id) {
+      // The read before this write may have raced a deletion. Never leave that
+      // older snapshot active after Stripe confirms the object is now absent.
+      const tombstone = { ...current, status: 'missing_from_stripe' };
+      await sync(tombstone);
+      return { subscription: tombstone, passes: pass };
+    }
     if (subscriptionStateFingerprint(verified) === subscriptionStateFingerprint(current)) {
       return { subscription: verified, passes: pass };
     }
