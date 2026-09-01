@@ -1,5 +1,26 @@
 [
   {
+    "sceneId": "brain-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "atlas-backed gross anatomy, labels and terminology prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/brain-anatomy.md",
+      "tests/brain-anatomy.test.js",
+      "public/assets/brain/ATTRIBUTION.md"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the complete atlas label set and Japanese terminology is not yet recorded.",
+      "Imaging-atlas-derived deep structures are approximate and are not asserted at voxel-level or patient-specific resolution.",
+      "Functional summaries are orientation notes only and must not be read as one-to-one functional localisation.",
+      "The scene must not be used for diagnosis, lesion localisation, stereotactic coordinates, operative planning or navigation."
+    ]
+  },
+  {
     "sceneId": "amyloid-beta",
     "reviewStatus": "legacy-unversioned",
     "reviewerRole": "historical review role not recorded under the current registry standard",
