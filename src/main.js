@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/ui.css';
 import './styles/navigation.css';
+import './styles/scene-library.css';
 import './styles/access.css';
 import './styles/subscription-access.css';
 import './styles/pricing-access.css';
@@ -11,6 +12,7 @@ import './styles/explorer.css';
 import './styles/explorer-search.css';
 import './styles/access-explorer.css';
 import { namesScene, resolveRoute } from './app/router.js';
+import { recordSceneVisit } from './app/sceneLibrary.js';
 
 const stage = document.getElementById('stage');
 const ui = document.getElementById('ui');
@@ -22,6 +24,11 @@ boot().catch((error) => {
 
 async function boot() {
   const route = resolveRoute(window.location.hash);
+
+  // Recent history is navigation convenience only: one published scene id, no
+  // model controls or personal/clinical state. Storage denial is swallowed by
+  // the helper and can never block the free scene from opening.
+  if (route.kind === 'scene') recordSceneVisit(route.sceneId);
 
   // Account/access is product chrome, not part of a medical scene. Start its
   // network work in parallel on both the Explorer and 3D routes. A slow auth or
