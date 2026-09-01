@@ -2,8 +2,15 @@ import { el } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { prefersReducedMotion } from '../utils/motion.js';
-import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../catalog/index.js';
+import {
+  EXPLORER_ROUTE,
+  sceneById,
+  sceneRoute,
+  statusById,
+  systemsWithOrgans,
+} from '../catalog/index.js';
 import { productBadgesForScene } from '../access/features.js';
+import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
   emptyOrganMatchesExplorerFilters,
   plannedMatchesExplorerFilters,
@@ -26,6 +33,10 @@ import {
  * reads only manifest/taxonomy/product metadata, so a 100-scene catalogue does
  * not turn the Explorer into a 100-scene JavaScript bundle.
  *
+ * Favorites and recent scenes are navigation preferences stored as scene ids
+ * only. No model controls, progression, clinical information or account state
+ * is persisted here.
+ *
  * @param {{ ui: HTMLElement, accountButton?: HTMLElement }} mounts
  */
 export function createExplorer({ ui, accountButton = null }) {
@@ -33,6 +44,7 @@ export function createExplorer({ ui, accountButton = null }) {
   const organViews = [];
   const systemViews = new Map();
   const jumpLinks = new Map();
+  const favoriteButtons = new Map();
 
   const badge = (statusId) => {
     const status = statusById(statusId);
@@ -58,8 +70,26 @@ export function createExplorer({ ui, accountButton = null }) {
       )
     );
 
+  function favoriteButtonFor(scene) {
+    const button = el('button', {
+      class: 'explorer-favorite-toggle',
+      type: 'button',
+      'aria-pressed': 'false',
+      on: {
+        click: (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          syncLibrary(toggleSceneFavorite(scene.id));
+        },
+      },
+    });
+    if (!favoriteButtons.has(scene.id)) favoriteButtons.set(scene.id, new Set());
+    favoriteButtons.get(scene.id).add(button);
+    return button;
+  }
+
   const sceneCard = (scene, system, organ) => {
-    const element = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
+    const link = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
       el('span', { class: 'explorer-scene-title' }, [
         el('span', { class: 'lang-en', text: scene.titleEn }),
         el('span', { class: 'lang-ja', text: scene.titleJa }),
@@ -71,6 +101,7 @@ export function createExplorer({ ui, accountButton = null }) {
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
       ]),
     ]);
+    const element = el('div', { class: 'explorer-scene-shell' }, [link, favoriteButtonFor(scene)]);
     return { scene, system, organ, element };
   };
 
@@ -189,6 +220,28 @@ export function createExplorer({ ui, accountButton = null }) {
   ]);
 
   let activeFilters = { query: '', mode: 'all', status: 'all' };
+
+  const favoriteShelfItems = el('div', { class: 'explorer-library-items' });
+  const recentShelfItems = el('div', { class: 'explorer-library-items' });
+  const favoriteShelf = el('section', { class: 'explorer-library-group', hidden: '' }, [
+    el('h2', { class: 'explorer-library-title' }, [
+      el('span', { class: 'lang-en', text: 'Favorites' }),
+      el('span', { class: 'lang-ja', text: 'お気に入り' }),
+    ]),
+    favoriteShelfItems,
+  ]);
+  const recentShelf = el('section', { class: 'explorer-library-group', hidden: '' }, [
+    el('h2', { class: 'explorer-library-title' }, [
+      el('span', { class: 'lang-en', text: 'Recently viewed' }),
+      el('span', { class: 'lang-ja', text: '最近見たシーン' }),
+    ]),
+    recentShelfItems,
+  ]);
+  const libraryShelf = el('section', { class: 'panel explorer-library', hidden: '' }, [
+    favoriteShelf,
+    recentShelf,
+  ]);
+
   const search = createExplorerSearchControls({
     onChange: (filters) => {
       activeFilters = filters;
@@ -224,6 +277,7 @@ export function createExplorer({ ui, accountButton = null }) {
       jump,
       headerActions,
     ]),
+    libraryShelf,
     noResults,
     ...sections,
     el('footer', { class: 'panel explorer-footer' }, [
@@ -244,6 +298,7 @@ export function createExplorer({ ui, accountButton = null }) {
 
   ui.append(element);
   languageToggle.init();
+  syncLibrary();
   applyFilters();
 
   // Slash is a conventional catalogue-search shortcut and is otherwise unused
@@ -258,6 +313,52 @@ export function createExplorer({ ui, accountButton = null }) {
   document.title = 'Organ explorer — medical-3d-lab';
 
   return { element, route: EXPLORER_ROUTE, search };
+
+  function libraryShortcut(scene, recent = false) {
+    return el('a', { class: 'explorer-library-link', href: sceneRoute(scene) }, [
+      el('span', {
+        class: 'explorer-library-mark',
+        'aria-hidden': 'true',
+        text: recent ? '↺' : '★',
+      }),
+      el('span', { class: 'explorer-library-name' }, [
+        el('span', { class: 'lang-en', text: scene.titleEn }),
+        el('span', { class: 'lang-ja', text: scene.titleJa }),
+      ]),
+      badge(scene.status),
+    ]);
+  }
+
+  function syncLibrary(library = readSceneLibrary()) {
+    const saved = new Set(library.favorites);
+    for (const [sceneId, buttons] of favoriteButtons) {
+      const isSaved = saved.has(sceneId);
+      for (const button of buttons) {
+        button.textContent = isSaved ? '★' : '☆';
+        button.setAttribute('aria-pressed', String(isSaved));
+        button.setAttribute(
+          'aria-label',
+          isSaved ? 'Remove from favorites / お気に入りから外す' : 'Add to favorites / お気に入りに追加'
+        );
+        button.title = isSaved ? 'Remove from favorites / お気に入りから外す' : 'Add to favorites / お気に入りに追加';
+      }
+    }
+
+    const favorites = library.favorites.map(sceneById).filter(Boolean);
+    const recent = library.recent
+      .filter((id) => !saved.has(id))
+      .map(sceneById)
+      .filter(Boolean);
+
+    favoriteShelfItems.replaceChildren(...favorites.map((scene) => libraryShortcut(scene)));
+    recentShelfItems.replaceChildren(...recent.map((scene) => libraryShortcut(scene, true)));
+    favoriteShelf.hidden = favorites.length === 0;
+    recentShelf.hidden = recent.length === 0;
+
+    const filtering =
+      activeFilters.query.trim() !== '' || activeFilters.mode !== 'all' || activeFilters.status !== 'all';
+    libraryShelf.hidden = filtering || (favorites.length === 0 && recent.length === 0);
+  }
 
   function applyFilters() {
     const visibleSceneIds = new Set();
@@ -319,5 +420,6 @@ export function createExplorer({ ui, accountButton = null }) {
       total: totalScenes,
       planned: visiblePlannedIds.size,
     });
+    syncLibrary();
   }
 }
