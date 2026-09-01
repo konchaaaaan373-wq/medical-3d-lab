@@ -128,6 +128,18 @@ export function planForPrice(
   return null;
 }
 
+/**
+ * A durable Customer↔user mapping outranks subscription metadata once it exists.
+ *
+ * Metadata is useful for first-contact recovery, but it is mutable in Stripe and
+ * can become stale independently of the Customer. Returning the mapped user
+ * first prevents an old or manually edited metadata value from reassigning an
+ * existing subscription to another Supabase account.
+ */
+export function subscriptionUserId(mappedUserId, metadataUserId) {
+  return mappedUserId || metadataUserId || null;
+}
+
 export function safeHash(value) {
   if (typeof value !== 'string') return '#/';
   return /^#[/][A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(value) ? value : '#/';
@@ -192,15 +204,27 @@ export async function upsertSubscription(subscription) {
   const customerId =
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+  const metadataUserId = subscription.metadata?.supabase_user_id ?? null;
 
-  // Metadata is written at checkout to join the first event to a user. Later
-  // events can recover through the durable customer mapping as well.
-  let userId = subscription.metadata?.supabase_user_id ?? null;
-  if (!userId && customerId) {
+  // Customer identity is durable and is created before Checkout. Prefer it on
+  // every webhook; use metadata only to recover a legacy/first-contact event
+  // for which no mapping exists yet. This makes user identity follow the same
+  // fail-safe principle as plan identity (which follows Price ID, not metadata).
+  let mappedUserId = null;
+  if (customerId) {
     const rows = await supabaseAdmin(
       `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
     );
-    userId = rows?.[0]?.user_id ?? null;
+    mappedUserId = rows?.[0]?.user_id ?? null;
+  }
+  const userId = subscriptionUserId(mappedUserId, metadataUserId);
+  if (mappedUserId && metadataUserId && mappedUserId !== metadataUserId) {
+    console.warn('Subscription metadata user disagrees with durable customer mapping; using mapping', {
+      subscriptionId: subscription.id,
+      customerId,
+      mappedUserId,
+      metadataUserId,
+    });
   }
 
   // Fail closed if Stripe sends a price this deployment does not know. Do not
