@@ -84,6 +84,12 @@ export const CONTRAST_PAIRS = [
   { name: 'Trust faint text', fg: TRUST_INK.faint, bg: SURFACES.trust, size: 'body' },
   { name: 'Trust review-drift heading', fg: TRUST_INK.drift, bg: SURFACES.trust, size: 'body' },
   { name: 'Trust review-drift body', fg: TRUST_INK.driftBody, bg: SURFACES.trust, size: 'body' },
+  // Product chrome on a light surface: the consent banner and the feedback
+  // trigger are built for the dark overlay and get a light variant on the
+  // Trust and legal routes. Declared here so that variant is measured too.
+  { name: 'consent title on a light surface', fg: TRUST_INK.body, bg: '#ffffff', size: 'body' },
+  { name: 'consent detail on a light surface', fg: TRUST_INK.muted, bg: '#ffffff', size: 'body' },
+  { name: 'light-surface primary button', fg: SURFACES.trust, bg: TRUST_INK.body, size: 'body' },
 ];
 
 /** WCAG 2.1 AA minimum ratios. */

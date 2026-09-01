@@ -75,11 +75,15 @@ export class RenalFiltrationScene {
   };
 
   static cameraPose = {
-    // Slightly above and to the side: the corpuscle is at the top and the loop
-    // runs down, so a level camera flattens the one relationship — cortex above,
-    // medulla below — that the shape exists to carry.
-    position: new THREE.Vector3(4.4, 2.6, 9.4),
-    target: new THREE.Vector3(-0.15, 0.05, 0),
+    // Far enough back to hold the whole nephron, because both of the things
+    // the shape exists to carry are at its ends: the corpuscle at the top and
+    // the hairpin of the loop at the bottom. A closer, more flattering framing
+    // crops the loop, and then the scene is three vertical tubes.
+    //
+    // Slightly above and to the side rather than level: cortex above, medulla
+    // below is the relationship, and a level camera flattens it.
+    position: new THREE.Vector3(3.6, 1.4, 15.2),
+    target: new THREE.Vector3(-0.2, 0.15, 0),
   };
 
   /** Auto-rotation would spin the cortex under the medulla. */
@@ -126,7 +130,11 @@ export class RenalFiltrationScene {
       spread: 0.06,
       seed: 31,
     });
-    object.add(this.blood.object);
+    // Under the corpuscle, not under the scene: the arteriole curves are in the
+    // glomerulus's own frame and it is a scaled, offset child. Added to the
+    // scene root the stream drew a cloud of particles beside the vessels
+    // instead of inside them — visible in a render and in nothing else.
+    this.nephron.bloodParent.add(this.blood.object);
 
     this.root.add(createStudioLights(), object);
     this.setProgress(0);
@@ -239,15 +247,24 @@ export class RenalFiltrationScene {
 
   getAnnotations() {
     const anchors = this.nephron?.anchors ?? {};
-    const label = (key, text, textJa) =>
-      anchors[key] ? { id: key, position: anchors[key], text, textJa } : null;
+    // `range` is the progression window a label is visible in. All of these are
+    // anatomy rather than events, so they are visible throughout: the reader
+    // needs to know which segment they are looking at at every point, and a
+    // label that came and went would suggest the structure did.
+    const label = (key, text, sub, compact = true) =>
+      anchors[key]
+        ? { id: key, text, sub, range: [0, 1], compact, position: anchors[key].clone() }
+        : null;
 
     return [
       label('glomerulus', 'Glomerulus', '糸球体'),
-      label('proximalConvoluted', 'Proximal tubule', '近位尿細管'),
+      label('proximalConvoluted', 'Proximal tubule', '近位尿細管', false),
       label('loopTip', 'Loop of Henle', 'ヘンレのループ'),
-      label('maculaDensa', 'Macula densa', '緻密斑'),
-      label('collectingDuct', 'Collecting duct', '集合管'),
+      // The one label that is not just a name: this is where the tubule comes
+      // back and touches its own glomerulus, which is the anatomy the whole
+      // feedback story rests on.
+      label('maculaDensa', 'Macula densa', '緻密斑', false),
+      label('collectingDuct', 'Collecting duct', '集合管', false),
     ].filter(Boolean);
   }
 

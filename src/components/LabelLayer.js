@@ -118,7 +118,12 @@ export function createLabelLayer({ viewer, annotations }) {
           item.opacity = 0;
           continue;
         }
-        const [from, to] = item.annotation.range;
+        // An annotation with no window is visible throughout, which is what
+        // "no window" means. Reading it unguarded took a whole scene down at
+        // build time for a missing two-element array — see the same class of
+        // failure in `ModelControls`. A label is chrome; it must never be able
+        // to prevent the model being drawn.
+        const [from, to] = item.annotation.range ?? [0, 1];
         // A window that opens at 0 is visible immediately — no fade-in from nothing.
         const fadeIn = from <= 0 ? 1 : smoothstep(from, from + FADE, progress);
         const fadeOut = to >= 1 ? 1 : 1 - smoothstep(to - FADE, to, progress);

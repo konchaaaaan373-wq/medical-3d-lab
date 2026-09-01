@@ -22,6 +22,24 @@ import { el } from '../utils/dom.js';
  *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean},
  * }} options
  */
+/**
+ * `format` is documented as optional, and until a scene actually omitted it the
+ * component called it unconditionally — so a control without one took the whole
+ * scene down at build time with `e.format is not a function`. No unit test
+ * could see it, because none of them render. The default is a plain number
+ * with the control's own step deciding the precision, which is what a caller
+ * omitting `format` is asking for.
+ *
+ * @param {{ format?: (v: number) => string, step?: number }} control
+ */
+function formatterFor(control) {
+  if (typeof control.format === 'function') return control.format;
+  const step = Number(control.step);
+  const digits = Number.isFinite(step) && step > 0 && step < 1 ? String(step).split('.')[1].length : 0;
+  const unit = control.unit ? `${control.unit}` : '';
+  return (value) => `${Number(value).toFixed(digits)}${unit}`;
+}
+
 export function createModelControls({ controls, onChange, onReset, copy = {} }) {
   const rows = new Map();
   const tactile = controls.some((control) => control.kind === 'action' || control.kind === 'choice');
@@ -100,7 +118,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
       let current = control.value;
       const setValue = (value, definition = control) => {
         current = Number(value);
-        readout.textContent = definition.format(current);
+        readout.textContent = formatterFor(definition)(current);
         const completed = Math.round((current - definition.min) / definition.step);
         segments.forEach((segment, index) => segment.classList.toggle('is-on', index < completed));
         const atLimit = current >= definition.max;
@@ -122,7 +140,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
       ]);
     }
 
-    const readout = el('span', { class: 'model-control-value', text: control.format(control.value) });
+    const format = formatterFor(control);
+    const readout = el('span', { class: 'model-control-value', text: format(control.value) });
     const input = el('input', {
       class: 'slider slider-sm',
       type: 'range',
@@ -134,7 +153,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
       on: {
         input: (event) => {
           const value = Number(event.target.value);
-          readout.textContent = control.format(value);
+          readout.textContent = format(value);
           onChange(control.id, value);
         },
       },

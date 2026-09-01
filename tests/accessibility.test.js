@@ -83,12 +83,36 @@ test('contrast: the light Trust surface is declared, not only the dark shell', (
   for (const row of trust) assert.ok(row.ratio >= row.needs, `${row.name} is ${row.ratio}:1`);
 });
 
-test('contrast: the Trust ink declared here is the ink its stylesheet uses', () => {
-  const css = read('src/styles/trust.css');
+test('contrast: the Trust ink declared here is the ink its stylesheets use', () => {
+  // Two files paint on this surface: the page itself, and the product chrome
+  // that gets a light variant on it.
+  const css = read('src/styles/trust.css') + read('src/styles/telemetry.css');
   for (const value of Object.values(TRUST_INK)) {
-    assert.ok(css.toLowerCase().includes(value), `${value} is declared but not used in trust.css`);
+    assert.ok(css.toLowerCase().includes(value), `${value} is declared but not used on the light surface`);
   }
   assert.ok(css.includes(SURFACES.trust), 'the declared Trust background is not the one it paints');
+});
+
+test('contrast: dark overlay chrome gets a light variant on the light routes', () => {
+  // Dropped onto a near-white page unchanged, the consent banner and the
+  // feedback trigger read as something the page did not mean to contain.
+  const css = read('src/styles/telemetry.css');
+  for (const route of ['trust', 'legal']) {
+    assert.match(css, new RegExp(`html\\[data-route='${route}'\\] \\.consent-banner`), route);
+    assert.match(css, new RegExp(`html\\[data-route='${route}'\\] \\.feedback-trigger`), route);
+  }
+  // And that variant is measured, not eyeballed.
+  const declared = contrastReport().filter((row) => row.name.includes('light surface'));
+  assert.ok(declared.length >= 2);
+  for (const row of declared) assert.ok(row.ratio >= row.needs, `${row.name} is ${row.ratio}:1`);
+});
+
+test('overlay: a dialog hidden by attribute is actually hidden', () => {
+  // `display: grid` outranks the user-agent's `[hidden] { display: none }`, so
+  // without an explicit rule the feedback dialog is open on every page load.
+  // The oldest trap in `hidden`, and invisible to every test that does not render.
+  const css = read('src/styles/telemetry.css');
+  assert.match(css, /\.feedback-overlay\[hidden\]\s*\{[^}]*display:\s*none/);
 });
 
 test('contrast: base.css and the declared palette cannot drift apart', () => {

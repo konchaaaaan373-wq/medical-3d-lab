@@ -46,6 +46,7 @@ export function buildNephron(colors = {}) {
     tubule = '#d8b46a',
     filtrate = '#e8d75f',
     medulla = '#8a6f9c',
+    duct = '#6fa3a8',
     afferent = '#d2564f',
     efferent = '#b8735f',
   } = colors;
@@ -88,8 +89,10 @@ export function buildNephron(colors = {}) {
   // the most length on screen — the one place where drawn size is allowed to
   // track physiological importance, because here they genuinely agree.
   const proximalCoil = coilCurve({ loops: 5, inner: 0.28, outer: 0.62, depth: 0.5, height: 0.85, seed: 13 });
+  // Offset clear of the corpuscle: drawn concentric with it the coil sat on
+  // top of the tuft and hid the one structure the reader most needs to see.
   const proximalPoints = proximalCoil.getSpacedPoints(70).map((point) =>
-    new THREE.Vector3(point.x + origin.x + 0.55, point.y + origin.y - 0.35, point.z + origin.z)
+    new THREE.Vector3(point.x + origin.x + 1.15, point.y + origin.y - 0.5, point.z + origin.z)
   );
   segment('proximalConvoluted', smoothCurve(proximalPoints, { tension: 0.5 }), {
     radius: () => 0.11,
@@ -171,7 +174,11 @@ export function buildNephron(colors = {}) {
       ],
       { tension: 0.5 }
     ),
-    { radius: (u) => 0.13 + 0.03 * u, color: medulla, steps: 60 }
+    // Its own colour, not the medulla's. Drawn in the medullary purple it was
+    // indistinguishable from the descending limb running beside it, and "which
+    // of these two tubes am I looking at" is not a question the scene should
+    // make the reader answer.
+    { radius: (u) => 0.13 + 0.03 * u, color: duct, steps: 60 }
   );
 
   /** The order filtrate travels, so a scene can drive a stream along it. */
@@ -189,11 +196,20 @@ export function buildNephron(colors = {}) {
     segments,
     flowOrder,
 
-    /** The paths a particle stream can walk, in the order filtrate takes them. */
+    /**
+     * The paths a particle stream can walk, in the order filtrate takes them.
+     *
+     * **The blood paths are in the glomerulus's own frame**, not the nephron's:
+     * the corpuscle is a scaled, offset child, and a stream built from these
+     * curves has to be added under `glomerulus.object` or it draws a cloud of
+     * particles in empty space beside the vessels. `bloodParent` is that
+     * object, so a caller cannot get it wrong by reading the paths alone.
+     */
     paths: {
       blood: glomerulus.paths.afferent.concat(glomerulus.paths.efferent),
       filtrate: flowOrder.map((name) => segments[name].curve),
     },
+    bloodParent: glomerulus.object,
 
     /**
      * Where labels hang. Anatomical names, in nephron coordinates — a caller
@@ -202,11 +218,11 @@ export function buildNephron(colors = {}) {
      */
     anchors: {
       glomerulus: new THREE.Vector3(-1.9, 3.05, 0.2),
-      proximalConvoluted: new THREE.Vector3(0.35, 1.35, 0.35),
+      proximalConvoluted: new THREE.Vector3(1.0, 1.15, 0.4),
       loopTip: loopTip.clone().add(new THREE.Vector3(0, -0.35, 0)),
       ascendingLimb: new THREE.Vector3(1.35, -0.6, 0.15),
       maculaDensa: macula.clone().add(new THREE.Vector3(-0.05, 0.32, 0.25)),
-      collectingDuct: new THREE.Vector3(-1.62, -2.05, 0.2),
+      collectingDuct: new THREE.Vector3(-1.75, -2.15, 0.2),
     },
 
     /**
