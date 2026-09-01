@@ -27,16 +27,20 @@
     "reviewedAt": null,
     "reviewedCommit": null,
     "scope": [
-      "historical medical notes and educational boundary only"
+      "current model card, evidence dossier and external-biology test layer prepared; historical clinical sign-off remains unversioned"
     ],
     "sources": [
+      "docs/model-cards/amyloid-beta.md",
+      "docs/model-evidence/amyloid-beta.md",
+      "tests/amyloid-physiology.test.js",
       "docs/medical-notes.md"
     ],
     "unresolvedLimitations": [
       "No versioned clinical attestation exists under the current review standard.",
       "The progression axis is a conceptual aggregation state, not clinical stage, symptom severity, or elapsed disease time.",
       "Aβ40 and Aβ42, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
-      "Particle counts, molecular scale and aggregation thresholds are illustrative rather than measured quantities."
+      "Particle counts, molecular scale and aggregation thresholds are illustrative rather than measured quantities.",
+      "Individual rendered particles move only forward on the teaching slider even though real Aβ assemblies can interconvert and disassemble."
     ]
   },
   {
@@ -46,16 +50,20 @@
     "reviewedAt": null,
     "reviewedCommit": null,
     "scope": [
-      "historical medical notes, haemodynamic model audit and educational boundary only"
+      "current model card, evidence dossier and external-physiology test layer prepared; historical clinical sign-off remains unversioned"
     ],
     "sources": [
+      "docs/model-cards/heart-failure.md",
+      "docs/model-evidence/heart-failure.md",
+      "tests/heart-failure-physiology.test.js",
       "docs/medical-notes.md"
     ],
     "unresolvedLimitations": [
       "No versioned clinical attestation exists under the current review standard.",
       "The scene represents one illustrative HFrEF remodelling pattern and is not a universal natural history of heart failure.",
       "HFpEF, valvular disease, right-heart failure, pulmonary hypertension, neurohumoral regulation and distributed vascular wave mechanics are outside the model.",
-      "The valves are ideal one-way resistances and several pressure-volume parameters are calibrated educational values rather than patient measurements."
+      "The valves are ideal one-way resistances and several pressure-volume parameters are calibrated educational values rather than patient measurements.",
+      "The visible congestion map is a teaching transform of solved pressure rather than a lung-water model or individual oedema threshold."
     ]
   },
   {
