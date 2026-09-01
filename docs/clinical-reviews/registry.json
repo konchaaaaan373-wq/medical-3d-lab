@@ -68,10 +68,16 @@
   },
   {
     "sceneId": "copd-hyperinflation",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/copd.md",
+      "src/data/copd.js",
+      "src/scenes/respiratory/scenes/copd/CopdScene.js"
+    ],
     "scope": [
       "core respiratory-mechanics model",
       "causal and physiological claims",
@@ -92,10 +98,16 @@
   },
   {
     "sceneId": "asthma-heterogeneity",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/asthma.md",
+      "src/data/asthma.js",
+      "src/scenes/respiratory/scenes/asthma/AsthmaScene.js"
+    ],
     "scope": [
       "core branching-airway model",
       "airway anatomy and causal claims",
@@ -116,10 +128,17 @@
   },
   {
     "sceneId": "portal-hypertension",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/cirrhosis-portal-hypertension.md",
+      "src/models/portalHypertension.js",
+      "src/data/portalHypertension.js",
+      "src/scenes/hepatobiliary/scenes/portalHypertension/PortalHypertensionScene.js"
+    ],
     "scope": [
       "core portal-haemodynamic network",
       "causal ordering and HVPG interpretation",
