@@ -20,9 +20,11 @@ const KIND_COPY = Object.freeze({
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
  *   onExit:()=>void,
+ *   onStepChange?:(index:number)=>void,
+ *   onComplete?:()=>void,
  * }} options
  */
-export function createEducationGuidePanel({ guide, setProgress, onExit }) {
+export function createEducationGuidePanel({ guide, setProgress, onExit, onStepChange, onComplete }) {
   let index = 0;
   let revealed = false;
 
@@ -105,6 +107,7 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
         event.preventDefault();
         if (!revealed) revealReasoning();
         else if (index < guide.steps.length - 1) setIndex(index + 1);
+        else finish();
         break;
       case 'Home':
         event.preventDefault();
@@ -125,16 +128,22 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     render();
   }
 
+  function finish() {
+    onComplete?.();
+    onExit();
+  }
+
   function advance() {
-    if (index === guide.steps.length - 1) onExit();
+    if (index === guide.steps.length - 1) finish();
     else setIndex(index + 1);
   }
 
-  function setIndex(nextIndex) {
+  function setIndex(nextIndex, { notify = true } = {}) {
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
     revealed = false;
     const step = guide.steps[index];
     setProgress(step.progress ?? 0);
+    if (notify) onStepChange?.(index);
     render();
   }
 
@@ -185,12 +194,14 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     );
   }
 
-  setIndex(0);
+  // Build the initial view without recording progress merely because the paid
+  // component was mounted in the background.
+  setIndex(0, { notify: false });
 
   return {
     element,
-    reset() {
-      setIndex(0);
+    reset(startIndex = 0) {
+      setIndex(startIndex);
     },
     focus() {
       element.focus({ preventScroll: true });
