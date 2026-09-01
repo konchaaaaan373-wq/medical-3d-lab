@@ -41,6 +41,8 @@ const LABELS = Object.freeze({
   }),
 });
 
+const FILTERABLE_STATUSES = new Set(Object.keys(LABELS));
+
 export const CLINICAL_REVIEW_RECORDS = Object.freeze(
   registry.map((record) => Object.freeze({
     ...record,
@@ -76,6 +78,18 @@ export const evidenceDossierForScene = (scene) => sourceForScene(scene, 'docs/mo
 
 /** A current, versioned clinical sign-off. Historical/stale review does not qualify. */
 export const hasCurrentClinicalReview = (scene) => clinicalReviewForScene(scene)?.reviewStatus === 'reviewed';
+
+/**
+ * Exact review-state filter used by the Explorer and its tests. `all` is the
+ * only wildcard; an unknown value fails closed rather than silently becoming
+ * an unfiltered view.
+ */
+export function clinicalReviewMatchesFilter(scene, filter = 'all') {
+  const value = String(filter ?? 'all');
+  if (value === 'all') return true;
+  if (!FILTERABLE_STATUSES.has(value)) return false;
+  return clinicalReviewForScene(scene)?.reviewStatus === value;
+}
 
 /**
  * Presentation metadata for a review record. Unknown/missing review state fails
