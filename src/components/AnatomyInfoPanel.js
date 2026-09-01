@@ -54,6 +54,11 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
       el('span', { class: 'lang-en', text: mode.label }),
       el('span', { class: 'lang-ja', text: mode.labelJa }),
     ]),
+    el('span', {
+      class: 'anatomy-mode-check',
+      'aria-hidden': 'true',
+      text: '✓',
+    }),
   ]));
 
   const modeControl = modeButtons.length

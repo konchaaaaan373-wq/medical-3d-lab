@@ -5,7 +5,7 @@
 | **Scene** | `brain-anatomy` |
 | **Geometry** | [`public/assets/brain/brain.glb`](../../public/assets/brain/brain.glb) |
 | **Metadata adapter** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js) |
-| **Tests** | [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js) |
+| **Tests** | [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js), [`tests/anatomy-colour-ui.test.js`](../../tests/anatomy-colour-ui.test.js) |
 | **Evidence** | [`docs/model-evidence/brain-anatomy.md`](../model-evidence/brain-anatomy.md) |
 | **Asset notice** | [`public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md) |
 

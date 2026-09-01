@@ -247,13 +247,21 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
     }
   }
   assert.equal(structures.size, 147);
+  const detailColours = new Set();
+  const naturalColours = new Set();
   for (const metadata of structures.values()) {
     const info = brainStructureInfo(metadata);
     assert.notEqual(info.nameJa, `${info.regionJa}（${info.name}）`, `${info.name} is translated`);
     assert.ok(info.hierarchyJa.length >= 3, `${info.name} has an anatomical hierarchy`);
-    assert.ok(/^#[0-9a-f]{6}$/.test(brainColor(metadata)), `${info.name} has a fine colour`);
-    assert.ok(/^#[0-9a-f]{6}$/.test(brainColor(metadata, 'anatomical')), `${info.name} has a natural colour`);
+    const detailColour = brainColor(metadata);
+    const naturalColour = brainColor(metadata, 'anatomical');
+    assert.ok(/^#[0-9a-f]{6}$/.test(detailColour), `${info.name} has a fine colour`);
+    assert.ok(/^#[0-9a-f]{6}$/.test(naturalColour), `${info.name} has a natural colour`);
+    detailColours.add(detailColour);
+    naturalColours.add(naturalColour);
   }
+  assert.equal(detailColours.size, structures.size, 'all 147 named structures have distinct colour-map shades');
+  assert.equal(naturalColours.size, structures.size, 'all 147 named structures avoid exact natural-tone collisions');
 });
 
 test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', () => {

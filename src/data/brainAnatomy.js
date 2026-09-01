@@ -498,9 +498,17 @@ export function brainColor(metadata = {}, mode = 'detail') {
   const families = mode === 'anatomical' ? ANATOMICAL_COLOR_FAMILY : DETAIL_COLOR_FAMILY;
   const family = families[key] ?? families.deep;
   const label = metadata.bx_label ?? metadata.bx_cat ?? 'brain';
-  const hash = stableHash(mode === 'anatomical' ? `anatomical:${key}:${label}` : `${key}:${label}`);
-  const saturationHash = Math.imul(hash ^ 0x85ebca6b, 0xc2b2ae35) >>> 0;
-  const lightnessHash = Math.imul(hash ^ 0x27d4eb2f, 0x165667b1) >>> 0;
+  const natural = mode === 'anatomical';
+  // Natural tones occupy a deliberately narrow range, so use independent
+  // deterministic hash streams. This avoids two named structures collapsing
+  // to the same rounded RGB value without introducing conspicuous colour jumps.
+  const hash = stableHash(natural ? `anatomical:h:${key}:${label}` : `${key}:${label}`);
+  const saturationHash = natural
+    ? stableHash(`anatomical:s:${key}:${label}`)
+    : Math.imul(hash ^ 0x85ebca6b, 0xc2b2ae35) >>> 0;
+  const lightnessHash = natural
+    ? stableHash(`anatomical:l:${key}:${label}`)
+    : Math.imul(hash ^ 0x27d4eb2f, 0x165667b1) >>> 0;
   const hueUnit = (hash & 0xffff) / 0xffff - 0.5;
   const saturationUnit = (saturationHash & 0xffff) / 0xffff - 0.5;
   const lightnessUnit = (lightnessHash & 0xffff) / 0xffff - 0.5;

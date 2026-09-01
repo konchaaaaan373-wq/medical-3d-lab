@@ -5,7 +5,8 @@ Implementation: [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js),
 
 Boundary of the claim: [`docs/model-cards/brain-anatomy.md`](../model-cards/brain-anatomy.md)
 
-Tests: [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js)
+Tests: [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js),
+[`tests/anatomy-colour-ui.test.js`](../../tests/anatomy-colour-ui.test.js)
 
 ## Sources consulted
 
@@ -57,7 +58,7 @@ to the source meshes.
 | **Source** | Interface design requirement, not a biological source. |
 | **Implementation** | A stable hash of category/region and exact atlas label varies colour inside either a vivid or constrained natural family. Side is excluded, so homologous left/right labels match. Natural mode lowers idle emission and uses matte materials so light and shadow describe folds. |
 | **Assumption** | Colour-map colours encode identity for this interface only. Natural colours are illustrative conventions, not measured tissue colour. Neither mode encodes cytoarchitecture, function, vascular territory or quantitative data. |
-| **Validation** | `colour map and natural anatomy are one-step choices with different visual readings`. |
+| **Validation** | `colour map and natural anatomy are one-step choices with different visual readings` checks material behaviour; the all-label audit checks that all 147 unique names avoid exact colour collisions; `colour buttons switch the real scene, active state, and legend together` clicks the rendered control and verifies scene state, pressed state and legend synchronisation. |
 
 ### 4. Medial views reveal; they do not dissect
 
