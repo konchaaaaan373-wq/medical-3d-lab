@@ -104,6 +104,7 @@ function createHfpefVisualModel() {
   let state = solveHfpef({ stiffness, filling });
   let reference = solveHfpef({ stiffness: 0, filling });
   let elapsedSeconds = 0;
+  let beatPhase = 0;
 
   function solveAndApply() {
     state = solveHfpef({ stiffness, filling });
@@ -126,8 +127,8 @@ function createHfpefVisualModel() {
 
     update(dt) {
       elapsedSeconds += Math.max(0, Number(dt) || 0);
-      const phase = (elapsedSeconds * state.heartRatePerMin / 60) % 1;
-      const fillingFraction = beatFillingFraction(phase);
+      beatPhase = (elapsedSeconds * state.heartRatePerMin / 60) % 1;
+      const fillingFraction = beatFillingFraction(beatPhase);
       referenceVisual.setBeat(reference, fillingFraction);
       currentVisual.setBeat(state, fillingFraction);
     },
@@ -201,7 +202,12 @@ function createHfpefVisualModel() {
     },
 
     getPressureVolume() {
-      return hfpefPressureVolume(stiffness, filling);
+      return {
+        current: hfpefPressureVolume(stiffness, filling),
+        reference: hfpefPressureVolume(0, filling),
+        phase: beatPhase,
+        beat: null,
+      };
     },
 
     getModelControls() {
