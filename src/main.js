@@ -6,6 +6,7 @@ import './styles/access.css';
 import './styles/subscription-access.css';
 import './styles/pricing-access.css';
 import './styles/patient-presentation.css';
+import './styles/patient-fullscreen.css';
 import './styles/education-access.css';
 import './styles/reel.css';
 import './styles/explorer.css';
