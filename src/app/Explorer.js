@@ -1,8 +1,14 @@
 import { el } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { EXPLORER_ROUTE, sceneRoute, statusById, systemsWithOrgans } from '../catalog/index.js';
 import { productBadgesForScene } from '../access/features.js';
+import {
+  emptyOrganMatchesExplorerFilters,
+  plannedMatchesExplorerFilters,
+  sceneMatchesExplorerFilters,
+} from './explorerSearch.js';
 
 /**
  * The organ explorer: the whole catalogue on one page.
@@ -16,10 +22,17 @@ import { productBadgesForScene } from '../access/features.js';
  * it is registered. Organs with no scene yet are still listed: the gap is
  * information, and hiding it would quietly turn the backlog invisible.
  *
+ * Search is also catalogue-driven. Matching never imports a scene module; it
+ * reads only manifest/taxonomy/product metadata, so a 100-scene catalogue does
+ * not turn the Explorer into a 100-scene JavaScript bundle.
+ *
  * @param {{ ui: HTMLElement, accountButton?: HTMLElement }} mounts
  */
 export function createExplorer({ ui, accountButton = null }) {
   const systems = systemsWithOrgans();
+  const organViews = [];
+  const systemViews = new Map();
+  const jumpLinks = new Map();
 
   const badge = (statusId) => {
     const status = statusById(statusId);
@@ -31,18 +44,22 @@ export function createExplorer({ ui, accountButton = null }) {
   };
 
   const productBadges = (scene) =>
-    el('span', { class: 'explorer-access', 'aria-label': 'Available product modes' },
+    el(
+      'span',
+      { class: 'explorer-access', 'aria-label': 'Available product modes' },
       productBadgesForScene(scene).map((entry) =>
         el('span', { class: `explorer-access-badge is-${entry.kind}` }, [
-          entry.kind === 'paid' ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' }) : null,
+          entry.kind === 'paid'
+            ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' })
+            : null,
           el('span', { class: 'lang-en', text: entry.label }),
           el('span', { class: 'lang-ja', text: entry.labelJa }),
         ])
       )
     );
 
-  const sceneCard = (scene) =>
-    el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
+  const sceneCard = (scene, system, organ) => {
+    const element = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
       el('span', { class: 'explorer-scene-title' }, [
         el('span', { class: 'lang-en', text: scene.titleEn }),
         el('span', { class: 'lang-ja', text: scene.titleJa }),
@@ -54,10 +71,12 @@ export function createExplorer({ ui, accountButton = null }) {
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
       ]),
     ]);
+    return { scene, system, organ, element };
+  };
 
   /** A disease scene that is declared but not built. Shown, not hidden. */
-  const plannedCard = (planned) =>
-    el('span', { class: 'explorer-scene is-planned' }, [
+  const plannedCard = (planned, system, organ) => {
+    const element = el('span', { class: 'explorer-scene is-planned' }, [
       el('span', { class: 'explorer-scene-title' }, [
         el('span', { class: 'lang-en', text: planned.titleEn }),
         el('span', { class: 'lang-ja', text: planned.titleJa }),
@@ -67,36 +86,62 @@ export function createExplorer({ ui, accountButton = null }) {
         ]),
       ]),
     ]);
+    return { planned, system, organ, element };
+  };
 
-  const organRow = (organ) =>
-    el('div', { class: `explorer-organ${organ.scenes.length ? '' : ' is-empty'}` }, [
+  const organRow = (organ, system) => {
+    const scenes = organ.scenes.map((scene) => sceneCard(scene, system, organ));
+    const planned = organ.planned.map((entry) => plannedCard(entry, system, organ));
+    const empty =
+      scenes.length === 0 && planned.length === 0
+        ? {
+            system,
+            organ,
+            element: el('span', { class: 'explorer-scene is-planned' }, [
+              el('span', { class: 'explorer-scene-title' }, [
+                el('span', { class: 'lang-en', text: 'No scene yet' }),
+                el('span', { class: 'lang-ja', text: 'シーン未実装' }),
+              ]),
+            ]),
+          }
+        : null;
+
+    const element = el('div', { class: `explorer-organ${organ.scenes.length ? '' : ' is-empty'}` }, [
       el('h3', { class: 'explorer-organ-name' }, [
         el('span', { class: 'lang-en', text: organ.label }),
         el('span', { class: 'lang-ja', text: organ.labelJa }),
       ]),
       el('div', { class: 'explorer-scenes' }, [
-        ...organ.scenes.map(sceneCard),
-        ...organ.planned.map(plannedCard),
-        organ.scenes.length === 0 && organ.planned.length === 0
-          ? el('span', { class: 'explorer-scene is-planned' }, [
-              el('span', { class: 'explorer-scene-title' }, [
-                el('span', { class: 'lang-en', text: 'No scene yet' }),
-                el('span', { class: 'lang-ja', text: 'シーン未実装' }),
-              ]),
-            ])
-          : null,
+        ...scenes.map((record) => record.element),
+        ...planned.map((record) => record.element),
+        empty?.element,
       ]),
     ]);
 
-  const systemSection = (system) =>
-    el('section', { class: 'explorer-system', id: `system-${system.id}` }, [
+    const view = { system, organ, element, scenes, planned, empty };
+    organViews.push(view);
+    return view;
+  };
+
+  const systemSection = (system) => {
+    const organs = system.organs.map((organ) => organRow(organ, system));
+    const count = el('span', { class: 'explorer-count', text: String(system.scenes.length) });
+    const element = el('section', { class: 'explorer-system', id: `system-${system.id}` }, [
       el('h2', { class: 'explorer-system-name' }, [
         el('span', { class: 'lang-en', text: system.label }),
         el('span', { class: 'lang-ja', text: system.labelJa }),
-        el('span', { class: 'explorer-count', text: String(system.scenes.length) }),
+        count,
       ]),
-      ...system.organs.map(organRow),
+      ...organs.map((view) => view.element),
     ]);
+    systemViews.set(system.id, { system, organs, element, count });
+    return element;
+  };
+
+  // Build the catalogue records before the search control. Its first update can
+  // therefore filter the complete catalogue without waiting for anything else.
+  const sections = systems.map(systemSection);
+  const totalScenes = new Set(systems.flatMap((system) => system.scenes.map((scene) => scene.id))).size;
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
@@ -106,6 +151,50 @@ export function createExplorer({ ui, accountButton = null }) {
     accountButton,
     languageToggle.element,
   ]);
+
+  const jump = el(
+    'nav',
+    { class: 'explorer-jump', 'aria-label': 'Body systems' },
+    systems.map((system) => {
+      const link = el(
+        'a',
+        {
+          class: 'scene-pill',
+          href: `#system-${system.id}`,
+          on: {
+            click: (event) => {
+              event.preventDefault();
+              document.getElementById(`system-${system.id}`)?.scrollIntoView({
+                behavior: prefersReducedMotion() ? 'auto' : 'smooth',
+                block: 'start',
+              });
+            },
+          },
+        },
+        [
+          el('span', { class: 'lang-en', text: system.label }),
+          el('span', { class: 'lang-ja', text: system.labelJa }),
+        ]
+      );
+      jumpLinks.set(system.id, link);
+      return link;
+    })
+  );
+
+  const noResults = el('section', { class: 'panel explorer-no-results', hidden: '' }, [
+    el('strong', { class: 'lang-en', text: 'No matching scenes' }),
+    el('strong', { class: 'lang-ja', text: '該当するシーンがありません' }),
+    el('span', { class: 'lang-en', text: 'Try a broader term or clear one of the filters.' }),
+    el('span', { class: 'lang-ja', text: '検索語を短くするか、フィルタを解除してください。' }),
+  ]);
+
+  let activeFilters = { query: '', mode: 'all', status: 'all' };
+  const search = createExplorerSearchControls({
+    onChange: (filters) => {
+      activeFilters = filters;
+      applyFilters();
+    },
+  });
 
   const element = el('div', { class: 'explorer' }, [
     el('header', { class: 'panel explorer-header' }, [
@@ -131,33 +220,12 @@ export function createExplorer({ ui, accountButton = null }) {
           el('span', { class: 'lang-ja', text: '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。' }),
         ]),
       ]),
-      el('nav', { class: 'explorer-jump' }, systems.map((system) =>
-        el(
-          'a',
-          {
-            class: 'scene-pill',
-            href: `#system-${system.id}`,
-            // Scrolled rather than navigated: the hash is the app's router, and
-            // an in-page anchor writing to it would look like a route change.
-            on: {
-              click: (event) => {
-                event.preventDefault();
-                document.getElementById(`system-${system.id}`)?.scrollIntoView({
-                  behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-                  block: 'start',
-                });
-              },
-            },
-          },
-          [
-            el('span', { class: 'lang-en', text: system.label }),
-            el('span', { class: 'lang-ja', text: system.labelJa }),
-          ]
-        )
-      )),
+      search.element,
+      jump,
       headerActions,
     ]),
-    ...systems.map(systemSection),
+    noResults,
+    ...sections,
     el('footer', { class: 'panel explorer-footer' }, [
       el('p', {}, [
         el('span', {
@@ -176,7 +244,80 @@ export function createExplorer({ ui, accountButton = null }) {
 
   ui.append(element);
   languageToggle.init();
+  applyFilters();
+
+  // Slash is a conventional catalogue-search shortcut and is otherwise unused
+  // on this plain-DOM route. Do not steal it from a text field.
+  window.addEventListener('keydown', (event) => {
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+    event.preventDefault();
+    search.focus();
+  });
+
   document.title = 'Organ explorer — medical-3d-lab';
 
-  return { element, route: EXPLORER_ROUTE };
+  return { element, route: EXPLORER_ROUTE, search };
+
+  function applyFilters() {
+    const visibleSceneIds = new Set();
+    const visiblePlannedIds = new Set();
+    let visibleBacklog = 0;
+
+    for (const view of organViews) {
+      let organVisible = false;
+
+      for (const record of view.scenes) {
+        const matches = sceneMatchesExplorerFilters(record, activeFilters);
+        record.element.hidden = !matches;
+        if (matches) {
+          organVisible = true;
+          visibleSceneIds.add(record.scene.id);
+        }
+      }
+
+      for (const record of view.planned) {
+        const matches = plannedMatchesExplorerFilters(record, activeFilters);
+        record.element.hidden = !matches;
+        if (matches) {
+          organVisible = true;
+          visiblePlannedIds.add(record.planned.id ?? record.planned.slug ?? `${record.system.id}:${record.organ.id}:${record.planned.titleEn}`);
+        }
+      }
+
+      if (view.empty) {
+        const matches = emptyOrganMatchesExplorerFilters(view.empty, activeFilters);
+        view.empty.element.hidden = !matches;
+        if (matches) {
+          organVisible = true;
+          visibleBacklog += 1;
+        }
+      }
+
+      view.element.hidden = !organVisible;
+    }
+
+    for (const [systemId, view] of systemViews) {
+      const visibleIds = new Set();
+      let systemVisible = false;
+      for (const organ of view.organs) {
+        if (!organ.element.hidden) systemVisible = true;
+        for (const record of organ.scenes) {
+          if (!record.element.hidden) visibleIds.add(record.scene.id);
+        }
+      }
+      view.element.hidden = !systemVisible;
+      view.count.textContent = String(visibleIds.size);
+      const link = jumpLinks.get(systemId);
+      if (link) link.hidden = !systemVisible;
+    }
+
+    const anythingVisible = visibleSceneIds.size + visiblePlannedIds.size + visibleBacklog > 0;
+    noResults.hidden = anythingVisible;
+    search.setCount({
+      visible: visibleSceneIds.size,
+      total: totalScenes,
+      planned: visiblePlannedIds.size,
+    });
+  }
 }
