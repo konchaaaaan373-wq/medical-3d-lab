@@ -10,6 +10,7 @@ import {
   reconcileBillingForUser,
   stripeEventObjectId,
   subscriptionById,
+  subscriptionStateUpdatedAt,
   syncSubscriptionUntilCurrent,
   subscriptionsForCustomer,
 } from '../netlify/lib/billing.js';
@@ -244,6 +245,30 @@ test('billing lifecycle: post-write resource absence creates a fail-closed tombs
   assert.deepEqual(synced, ['active', 'missing_from_stripe']);
   assert.equal(result.subscription.status, 'missing_from_stripe');
   assert.equal(result.passes, 1);
+});
+
+test('billing lifecycle: terminal history keeps Stripe lifecycle chronology', () => {
+  const now = new Date('2026-09-01T12:00:00.000Z');
+  assert.equal(
+    subscriptionStateUpdatedAt(
+      {
+        status: 'canceled',
+        created: Date.parse('2026-01-01T00:00:00.000Z') / 1000,
+        canceled_at: Date.parse('2026-02-01T00:00:00.000Z') / 1000,
+        ended_at: Date.parse('2026-02-02T00:00:00.000Z') / 1000,
+      },
+      now
+    ),
+    '2026-02-02T00:00:00.000Z'
+  );
+  assert.equal(
+    subscriptionStateUpdatedAt(
+      { status: 'incomplete_expired', created: Date.parse('2025-12-01T00:00:00.000Z') / 1000 },
+      now
+    ),
+    '2025-12-01T00:00:00.000Z'
+  );
+  assert.equal(subscriptionStateUpdatedAt({ status: 'active', created: 1 }, now), now.toISOString());
 });
 
 test('billing lifecycle: apparent list gaps are verified by ID before fail-closing', async () => {
