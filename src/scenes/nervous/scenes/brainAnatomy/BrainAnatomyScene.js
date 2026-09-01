@@ -36,6 +36,12 @@ export class BrainAnatomyScene {
     this.progress = 0;
     this.displayProgress = 0;
     this.selection = null;
+    this.annotationAnchors = {
+      frontal: new THREE.Vector3(-1.15, 0.65, 0.75),
+      temporal: new THREE.Vector3(1.15, -0.3, 0.25),
+      insula: new THREE.Vector3(0.43, -0.05, 0.02),
+      thalamus: new THREE.Vector3(0.05, 0.05, -0.1),
+    };
   }
 
   build() {
@@ -72,7 +78,7 @@ export class BrainAnatomyScene {
 
     const insula = new THREE.Mesh(
       shapedSphere({ detail: 4, scale: [0.19, 0.38, 0.48], warp: (v) => v.multiplyScalar(1 + 0.025 * ripple(v.x, v.y, v.z, 8, 1.4)) }),
-      tissueMaterial({ color: '#65b8a6', roughness: 0.6 })
+      tissueMaterial({ color: '#65b8a6', roughness: 0.6, opacity: 0.18 })
     );
     insula.position.set(side * 0.43, -0.05, 0.02);
     insula.name = `${side < 0 ? 'left' : 'right'}-insula`;
@@ -180,6 +186,7 @@ export class BrainAnatomyScene {
     const open = smoothstep(0.22, 0.7, this.displayProgress);
     const deepReveal = smoothstep(0.55, 0.92, this.displayProgress);
     for (const group of this.hemispheres) group.position.x = group.userData.side * 0.48 * open;
+    this.annotationAnchors.insula.x = 0.43 + 0.48 * open;
     for (const mesh of this.cortical) {
       mesh.material.opacity = 1 - 0.68 * deepReveal;
       mesh.material.transparent = deepReveal > 0.001;
@@ -192,11 +199,7 @@ export class BrainAnatomyScene {
   }
 
   getAnnotations() {
-    const anchors = {
-      frontal: new THREE.Vector3(-1.15, 0.65, 0.75), temporal: new THREE.Vector3(1.15, -0.3, 0.25),
-      insula: new THREE.Vector3(0.63, -0.05, 0.05), thalamus: new THREE.Vector3(0.05, 0.05, -0.1),
-    };
-    return BRAIN_ANATOMY_META.annotations.map((item) => ({ ...item, position: anchors[item.anchor].clone() }));
+    return BRAIN_ANATOMY_META.annotations.map((item) => ({ ...item, position: this.annotationAnchors[item.anchor] }));
   }
 
   dispose() {
