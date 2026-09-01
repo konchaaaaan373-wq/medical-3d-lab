@@ -58,10 +58,14 @@ the model tests.
   devices, including 320–430 px widths and landscape.
 - [ ] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
   Explorer, Patient Presenter, Education Presenter and Account.
-- [ ] Establish performance budgets and remove `preserveDrawingBuffer` from the
-  normal render path unless an export is actively being captured.
-- [ ] Add privacy-conscious error reporting, core product analytics and an
-  in-product feedback route.
+- [x] Establish performance budgets and remove `preserveDrawingBuffer` from the
+  normal render path unless an export is actively being captured. Frame, start-up
+  and ship-weight budgets are declared in `src/app/performanceBudget.js`,
+  applied by the viewer, and the bundle budget is measured in CI
+  (`npm run budget`). See [`observability.md`](observability.md) §1.
+- [x] Add privacy-conscious error reporting, core product analytics and an
+  in-product feedback route. Consent-gated, redacted, with no identifier that
+  outlives the page load. See [`observability.md`](observability.md) §2–4.
 - [ ] Complete an anatomy/art review of the flagship scenes, beginning with the
   heart/great-vessel relationships and the new brain atlas interaction.
 
@@ -93,8 +97,11 @@ the model tests.
 - [ ] Publish a tagged release with a changelog, rollback procedure, incident
   owner and support response path.
 - [ ] Version model cards and review attestations with every medical change.
-- [ ] Define launch metrics: model start, story/compare completion, learning
+- [x] Define launch metrics: model start, story/compare completion, learning
   completion, patient-guide use, conversion, retention and renderer failures.
+  Declared in `src/telemetry/metrics.js`, emitted through the app-event bridge
+  and checked by CI. Reading them requires an endpoint, which is a deployment
+  decision rather than a code one.
 
 ## Gate 4 — institutional product, after individual validation
 
@@ -115,7 +122,8 @@ the model tests.
 | 5 | Clinical Review registry | Done |
 | 6 | Heart-failure and amyloid evidence-package migration | Done; sign-off intentionally pending |
 | 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
-| 8 | Browser/device/accessibility/performance matrix | Next |
+| 8 | Performance budgets, telemetry, error reporting and feedback | Done |
+| 8b | Browser/device/accessibility matrix | Next |
 | 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 

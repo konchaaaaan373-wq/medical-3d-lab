@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Timeline } from '../utils/Timeline.js';
 import { el } from '../utils/dom.js';
+import { emitAppEvent } from './appEvents.js';
 
 /**
  * Runs a scene's guided sequence.
@@ -181,6 +182,12 @@ export function createStoryMode({ viewer, scene, ui, story, setProgress, setLabe
       timeline.stop();
       element.classList.add('is-complete');
       completion.querySelector('.story-cta-primary')?.focus?.({ preventScroll: true });
+      // "Reached the end", not "opened Story" — the product question is
+      // whether a guided explanation is finished, not whether it is started.
+      emitAppEvent('story:complete', {
+        steps: story.cues?.length ?? 0,
+        elapsedMs: Math.round(timeline.elapsed * 1000),
+      });
     },
   });
 

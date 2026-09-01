@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { emitAppEvent } from '../app/appEvents.js';
 
 /**
  * A guided lesson: predict, then test the prediction against the model.
@@ -115,6 +116,13 @@ export function createLearningPanel({
       : [predictStep, manipulateStep, observeStep, explainStep];
   let STEPS = stepsFor(module);
 
+  // Counters behind `learning:complete`. Ids rather than a running tally, so
+  // revisiting a lesson cannot inflate either number.
+  const completed = new Set();
+  const scoredPredictions = new Set();
+  let correctPredictions = 0;
+  let startedAt = now();
+
   function render() {
     title.children[0].textContent = module.title;
     title.children[1].textContent = module.titleJa;
@@ -130,8 +138,21 @@ export function createLearningPanel({
   }
 
   function go(next) {
-    step = Math.max(0, Math.min(STEPS.length - 1, next));
+    const last = STEPS.length - 1;
+    const wasIncomplete = step < last;
+    step = Math.max(0, Math.min(last, next));
     render();
+    // Reaching the final step of a lesson is the completion. Announced once —
+    // paging back and forward over the last step is one lesson finished, not
+    // several.
+    if (wasIncomplete && step === last) {
+      completed.add(module.id);
+      emitAppEvent('learning:complete', {
+        modules: completed.size,
+        correct: correctPredictions,
+        elapsedMs: Math.round(now() - startedAt),
+      });
+    }
   }
 
   /** Switches lesson. Starts the new one from the top rather than mid-step. */
@@ -215,6 +236,10 @@ export function createLearningPanel({
     const { question, explanation } = module;
     const chosen = question.options.find((option) => option.id === session.prediction);
     const right = session.prediction === question.answer;
+    if (right && !scoredPredictions.has(module.id)) {
+      scoredPredictions.add(module.id);
+      correctPredictions += 1;
+    }
     return section({
       kicker: ['Explain', '説明'],
       children: [
@@ -322,6 +347,7 @@ export function createLearningPanel({
 
   function start() {
     step = 0;
+    startedAt = now();
     session.prediction = null;
     session.transferPrediction = null;
     render();

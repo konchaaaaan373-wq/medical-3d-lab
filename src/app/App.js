@@ -27,6 +27,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { emitAppEvent } from './appEvents.js';
 
 /**
  * Wires a scene module to the viewer and the overlay UI.
@@ -263,7 +264,11 @@ export async function createApp({ stage, ui }) {
       resetView();
     },
     onResetView: resetView,
-    onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
+    onCapture: (preset) => {
+      capture(viewer, meta, stageReadout.stage, playback.value, preset);
+      // The SNS layer's only measurable outcome: a file the user chose to keep.
+      emitAppEvent('reel:export', { format: 'png', preset: preset?.id ?? 'view' });
+    },
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
@@ -487,6 +492,8 @@ export async function createApp({ stage, ui }) {
   };
 
   let comparing = false;
+  /** When the current comparison was entered, so "how long was it read for" is answerable. */
+  let comparingSince = 0;
 
   /**
    * Side-by-side with a healthy reference. The camera widens to hold both, and
@@ -494,6 +501,12 @@ export async function createApp({ stage, ui }) {
    */
   function setComparison(enabled) {
     if (!scene.setComparison) return;
+    // Leaving a comparison that was actually looked at is the completion; the
+    // interesting question is whether side-by-side gets used, not offered.
+    if (comparing && !enabled) {
+      emitAppEvent('compare:complete', { elapsedMs: Math.round(performance.now() - comparingSince) });
+    }
+    if (!comparing && enabled) comparingSince = performance.now();
     comparing = enabled;
     scene.setComparison(enabled);
     labels.setComparison(enabled);

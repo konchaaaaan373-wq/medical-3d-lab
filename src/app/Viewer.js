@@ -5,6 +5,12 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { createControls } from '../controls/createControls.js';
+import {
+  createFrameBudgetMonitor,
+  deviceClassForViewport,
+  pixelRatioFor,
+  qualityTier,
+} from './performanceBudget.js';
 
 /**
  * Owns everything that is *not* specific to a disease theme:
@@ -26,9 +32,13 @@ export class Viewer {
     this.frameHandlers = new Set();
     this.resizeHandlers = new Set();
     this.running = false;
-    /** Lowered automatically if the frame budget is missed (see _watchPerformance). */
-    this.quality = 'high';
-    this._frameSamples = [];
+    this.qualityHandlers = new Set();
+
+    // The degradation policy is declared in `performanceBudget.js` and tested
+    // without a GPU. The viewer's job is to apply the decisions, not to hold
+    // opinions about frame times.
+    this.deviceClass = deviceClassForViewport(window.innerWidth);
+    this.frameBudget = createFrameBudgetMonitor({ deviceClass: this.deviceClass });
 
     this.renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -39,9 +49,10 @@ export class Viewer {
       preserveDrawingBuffer: false,
       powerPreference: 'high-performance',
     });
-    // Cap the pixel ratio harder on phones: the particle field is fill-rate bound.
-    const maxPixelRatio = window.innerWidth < 720 ? 1.5 : 2;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+    // Cap the pixel ratio harder on phones: the particle field is fill-rate
+    // bound. Both ceilings — device class and current quality tier — live in
+    // the budget module so the renderer cannot drift away from the promise.
+    this.renderer.setPixelRatio(this._budgetedPixelRatio());
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -110,6 +121,7 @@ export class Viewer {
   resize() {
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
+    this._syncDeviceClass();
     this.camera.aspect = width / height;
     this.camera.fov = fovForAspect(this.camera.aspect);
     this.camera.updateProjectionMatrix();
@@ -121,6 +133,23 @@ export class Viewer {
 
   _notifyResize() {
     for (const handler of this.resizeHandlers) handler(this.camera, this.renderer);
+  }
+
+  /**
+   * Rotating a tablet or dragging a window across the phone breakpoint changes
+   * which budget applies. The tier already earned is kept — the device did not
+   * get faster — but its ceiling and its floor are re-read.
+   *
+   * This sets the pixel ratio directly rather than going through
+   * `_applyQuality`, which would call `resize` and recurse.
+   */
+  _syncDeviceClass() {
+    const next = deviceClassForViewport(window.innerWidth);
+    if (next === this.deviceClass) return;
+    this.deviceClass = next;
+    this.frameBudget = createFrameBudgetMonitor({ deviceClass: next, tier: this.frameBudget.tier });
+    const ratio = this._budgetedPixelRatio();
+    if (this.renderer.getPixelRatio() !== ratio) this.renderer.setPixelRatio(ratio);
   }
 
   start() {
@@ -145,28 +174,60 @@ export class Viewer {
     this._watchPerformance(dt);
   }
 
+  /** The tier the frame budget currently allows. */
+  get quality() {
+    return this.frameBudget.tier;
+  }
+
   /**
-   * Two-step graceful degradation. Older phones cannot afford both bloom and a
-   * high pixel ratio; rather than stutter, drop bloom first, then resolution.
+   * Subscribe to quality-tier transitions.
+   *
+   * The app reports them as a performance metric; nothing in a medical scene
+   * is allowed to react to them, because a device that is slow today must not
+   * be shown different physiology from one that is fast.
+   */
+  onQuality(handler) {
+    this.qualityHandlers.add(handler);
+    return () => this.qualityHandlers.delete(handler);
+  }
+
+  _budgetedPixelRatio() {
+    return pixelRatioFor({
+      devicePixelRatio: window.devicePixelRatio,
+      deviceClass: this.deviceClass,
+      tier: this.frameBudget.tier,
+    });
+  }
+
+  /**
+   * Graceful degradation, and — new with the declared budget — graceful
+   * recovery. A phone that was thermally throttled while a heavy scene loaded
+   * used to keep the reduced quality for the rest of the session; it now earns
+   * the flourish back after sustained headroom.
    */
   _watchPerformance(dt) {
-    if (this.quality === 'low') return;
-    this._frameSamples.push(dt);
-    if (this._frameSamples.length < 90) return;
-    const average = this._frameSamples.reduce((a, b) => a + b, 0) / this._frameSamples.length;
-    this._frameSamples.length = 0;
-    if (average < 0.026) return; // ~38 fps or better: leave it alone
+    const transition = this.frameBudget.sample(dt * 1000);
+    if (!transition) return;
+    this._applyQuality(transition.to);
+    console.info(
+      `[viewer] frame budget ${transition.direction}: ${transition.from} -> ${transition.to} (${transition.reason})`
+    );
+    for (const handler of this.qualityHandlers) handler(transition, this.frameBudget.report());
+  }
 
-    if (this.quality === 'high' && this.bloomPass) {
-      this.quality = 'medium';
-      this.bloomPass.enabled = false;
-      console.info('[viewer] frame budget missed — bloom disabled');
-    } else {
-      this.quality = 'low';
-      this.renderer.setPixelRatio(1);
+  /** Apply a tier to the renderer. Idempotent, so a repeated decision is free. */
+  _applyQuality(tierId) {
+    const tier = qualityTier(tierId);
+    if (!tier) return;
+    if (this.bloomPass) this.bloomPass.enabled = tier.bloom && this.useBloom;
+    const ratio = this._budgetedPixelRatio();
+    if (this.renderer.getPixelRatio() !== ratio) {
+      this.renderer.setPixelRatio(ratio);
       this.resize();
-      console.info('[viewer] frame budget missed — pixel ratio reduced');
     }
+    // Evidence gathered at the previous cost per frame says nothing about the
+    // new one, and resizing itself produces one expensive frame.
+    this.frameBudget.reset();
   }
 
   /**

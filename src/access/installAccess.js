@@ -12,6 +12,7 @@ import {
 import { featuresForScene } from './features.js';
 import { captureGuideSession, restoreGuideSession } from './guideSession.js';
 import { ENTITLEMENT } from './policy.js';
+import { emitAppEvent } from '../app/appEvents.js';
 
 /**
  * Adds paid use-case modes around an already-created scene without changing the
@@ -117,6 +118,9 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     onExit: closeGuide,
     onPresentationChange: (enabled) => {
       ui.classList.toggle('is-patient-presentation', enabled && open);
+      // Presenting full-screen to a patient is a different use from reading
+      // the guide beside the model, so it is worth telling apart.
+      if (enabled && open) emitAppEvent('guide:open', { fullscreen: true });
     },
   });
   consolePanel.append(guidePanel.element);
@@ -169,6 +173,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     app.setDataView?.(false);
 
     open = true;
+    emitAppEvent('guide:open', { fullscreen: false });
     guidePanel.reset();
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');

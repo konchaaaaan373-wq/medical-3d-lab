@@ -1,6 +1,6 @@
 # Grand design — アプリ全体の設計図
 
-Last updated: 2026-08-31（現在地の数値は §3 参照）
+Last updated: 2026-09-01（現在地の数値は §3 参照）
 
 このプロジェクトの**完成形（1.0 の姿）**と**現在地**、その差分を埋める
 **優先順位**を 1 枚に固定した文書です。人間と複数の AI エージェント
@@ -31,6 +31,7 @@ Last updated: 2026-08-31（現在地の数値は §3 参照）
 | 各モデルの主張の根拠（Claim → Source → …） | [`model-evidence/`](model-evidence/) |
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
+| 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |
 | 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |
@@ -54,15 +55,16 @@ Last updated: 2026-08-31（現在地の数値は §3 参照）
 
 ---
 
-## 3. 現在地（2026-08 時点）
+## 3. 現在地（2026-09 時点）
 
 | 指標 | 値 |
 | --- | --- |
 | シーン数 | 20（production 2 / alpha 4 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
 | 医学モデル層（`src/models/`） | copd / asthma / portalHypertension / hepatorenal の 4 本 + 共通ユーティリティ |
-| コード規模 | src 配下およそ 150 ファイル・3.1 万行。依存は `three` のみ |
-| テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**（`node --test`） |
+| コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
+| テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・性能予算・計測の匿名性（`node --test`） |
+| 計測 | 性能予算と launch metrics を宣言済み。送信は consent ゲート付きで、endpoint 未設定なら何も送らない（[`observability.md`](observability.md)） |
 
 ### 強み（すでに資産になっているもの）
 
@@ -85,9 +87,10 @@ Last updated: 2026-08-31（現在地の数値は §3 参照）
 2. **信頼** — 臨床レビュー登録簿・PR CI・main 保護が未整備
    （[`public-release-roadmap.md`](public-release-roadmap.md) Gate 0）。
    Heart Failure と Amyloid-β 自身が新しい evidence 基準を満たしていない
-3. **器** — 製品としての外殻がない: landing page がなくシーン直接起動、
-   prototype が公開カタログに混在、WebGL 失敗時に何も残らない、
-   モバイル・アクセシビリティ・SEO 未検証
+3. **器** — landing・Lab 分割・WebGL 失敗時の fallback は実装済み。
+   性能予算と計測・エラー報告・フィードバック導線も入った
+   （[`observability.md`](observability.md)）。残るのは
+   モバイル実機・アクセシビリティ・SEO の検証
 
 **この 3 軸のうちどれを縮めるかの順序は roadmap（Gate 0 → 1 → …）が所有**
 しています。本書のコンテンツ計画（§5）はその順序を追い越しません。
