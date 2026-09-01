@@ -187,6 +187,19 @@ export function subscriptionPeriodEnd(subscription) {
   return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null;
 }
 
+const CHRONOLOGICAL_TERMINAL_STATUSES = new Set(['canceled', 'incomplete_expired']);
+
+/** Keeps historical rows ordered by Stripe lifecycle time, not reconciliation loop order. */
+export function subscriptionStateUpdatedAt(subscription, now = new Date()) {
+  if (!CHRONOLOGICAL_TERMINAL_STATUSES.has(subscription?.status)) return now.toISOString();
+  const lifecycleSeconds = [subscription?.ended_at, subscription?.canceled_at]
+    .filter(Number.isFinite);
+  const seconds = lifecycleSeconds.length
+    ? Math.max(...lifecycleSeconds)
+    : subscription?.created;
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : now.toISOString();
+}
+
 export async function billingCustomerFor(user) {
   const rows = await supabaseAdmin(`billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`);
   if (rows?.[0]?.stripe_customer_id) return rows[0].stripe_customer_id;
@@ -390,7 +403,7 @@ export async function upsertSubscription(
         price_id: priceId,
         current_period_end: periodEnd,
         cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-        updated_at: now.toISOString(),
+        updated_at: subscriptionStateUpdatedAt(subscription, now),
       },
     ],
   });
