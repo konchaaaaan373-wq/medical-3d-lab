@@ -74,7 +74,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
   const next = el('button', {
     class: 'patient-guide-nav primary',
     type: 'button',
-    on: { click: () => (index === guide.steps.length - 1 ? onExit() : setIndex(index + 1)) },
+    on: { click: () => (index === guide.steps.length - 1 ? closePanel() : setIndex(index + 1)) },
   });
 
   const close = el('button', {
@@ -82,7 +82,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     type: 'button',
     'aria-label': 'Close patient explanation',
     text: '×',
-    on: { click: onExit },
+    on: { click: closePanel },
   });
 
   const copy = el('div', { class: 'patient-guide-step', 'aria-live': 'polite', 'aria-atomic': 'true' }, [
@@ -125,7 +125,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     switch (event.key) {
       case 'Escape':
         event.preventDefault();
-        onExit();
+        closePanel();
         break;
       case 'ArrowLeft':
       case 'PageUp':
@@ -224,6 +224,11 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     renderFullscreenButton();
   }
 
+  function closePanel() {
+    void exitOwnedFullscreen();
+    onExit();
+  }
+
   function render() {
     const step = guide.steps[index];
     counter.textContent = `${index + 1} / ${guide.steps.length}`;
@@ -268,7 +273,6 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       element.focus({ preventScroll: true });
     },
     setPresentation,
-    exitFullscreen: exitOwnedFullscreen,
     isPresenting: () => presenting,
     currentIndex: () => index,
   };
