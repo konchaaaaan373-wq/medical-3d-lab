@@ -42,11 +42,24 @@ export const LAB_SCENES = SCENES.filter((scene) => scene.status === 'prototype')
 /**
  * Systems for the fixed scene navigator.
  *
- * A public scene never lists Prototype work beside reviewed/alpha content; a
- * Lab scene does the inverse. Both remain projections of the same manifest.
+ * `auto` reads only the current scene's catalogue status. A public scene never
+ * lists Prototype work beside reviewed/alpha content; a Lab scene does the
+ * inverse. Both remain projections of the same manifest.
  */
-export const systemsWithScenes = (scope = 'all') => {
-  const scenes = scope === 'public' ? PUBLIC_SCENES : scope === 'lab' ? LAB_SCENES : SCENES;
+export const systemsWithScenes = (scope = 'auto') => {
+  let resolvedScope = scope;
+  if (scope === 'auto') {
+    const hash = globalThis.window?.location?.hash ?? '';
+    const currentId = resolveSlug(hash);
+    resolvedScope = sceneById(currentId)?.status === 'prototype' ? 'lab' : 'public';
+  }
+
+  const scenes =
+    resolvedScope === 'public'
+      ? PUBLIC_SCENES
+      : resolvedScope === 'lab'
+        ? LAB_SCENES
+        : SCENES;
   return catalogSystemsWithScenes(scenes);
 };
 
