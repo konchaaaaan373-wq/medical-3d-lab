@@ -88,6 +88,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
 
   let open = false;
   let sessionSnapshot = null;
+  let previousDataView = false;
   const guidePanel = createPatientGuidePanel({
     guide,
     setProgress: (value) => {
@@ -139,10 +140,17 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
 
-    // Only this axis is temporarily owned by the patient guide. Preserve it so
-    // finishing the explanation returns the clinician to the model state they
-    // were using before the consultation-room presentation began.
+    // The paid patient layer temporarily owns only the public progression axis
+    // and presentation density. The clinician's exact model position/play state
+    // and whether they had asked for Data view are both restored on exit.
     sessionSnapshot = captureGuideSession(app.playback);
+    previousDataView = Boolean(app.isDataView?.());
+
+    // Patient mode is intentionally the same 3D/model in the app's simpler
+    // Learning view. That hides PV/waveform/chart/metric/model-control panels
+    // without inventing a second physiology or a second set of read-outs.
+    app.setDataView?.(false);
+
     open = true;
     guidePanel.reset();
     ui.classList.add('is-patient-guide');
@@ -162,6 +170,8 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     const snapshot = sessionSnapshot;
     sessionSnapshot = null;
     restoreGuideSession(snapshot, app.playback);
+    app.setDataView?.(previousDataView);
+    previousDataView = false;
     requestAnimationFrame(() => button.focus());
   }
 
