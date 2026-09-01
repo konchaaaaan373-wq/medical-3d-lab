@@ -10,6 +10,7 @@ import {
   LAB_SCENES,
   LANDING_ROUTE,
   PUBLIC_SCENES,
+  labCatalogueSections,
   sceneById,
   sceneRoute,
   statusById,
@@ -44,11 +45,14 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const isLab = scope === 'lab';
   const scopedScenes = isLab ? LAB_SCENES : PUBLIC_SCENES;
   const scopedIds = new Set(scopedScenes.map((scene) => scene.id));
-  const systems = systemsWithOrgans(scopedScenes, {
-    includePlanned: isLab,
-    includeEmptyOrgans: false,
-  });
+  const systems = isLab
+    ? labCatalogueSections(scopedScenes)
+    : systemsWithOrgans(scopedScenes, {
+        includePlanned: false,
+        includeEmptyOrgans: false,
+      });
   const organViews = [];
+  const labViews = [];
   const systemViews = new Map();
   const jumpLinks = new Map();
   const favoriteButtons = new Map();
@@ -116,23 +120,47 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     return button;
   }
 
-  const sceneCard = (scene, system, organ) => {
-    const link = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
-      el('span', { class: 'explorer-scene-title' }, [
-        el('span', { class: 'lang-en', text: scene.titleEn }),
-        el('span', { class: 'lang-ja', text: scene.titleJa }),
-        badge(scene.status),
-      ]),
-      productBadges(scene),
-      reviewBadge(scene),
-      el('span', { class: 'explorer-scene-note' }, [
-        el('span', { class: 'lang-en', text: scene.description }),
-        el('span', { class: 'lang-ja', text: scene.descriptionJa }),
-      ]),
+  const sceneCard = (scene, system, organ, coveredOrgans = []) => {
+    const title = el('span', { class: 'explorer-scene-title' }, [
+      el('span', { class: 'lang-en', text: scene.titleEn }),
+      el('span', { class: 'lang-ja', text: scene.titleJa }),
+      isLab ? null : badge(scene.status),
     ]);
+    const note = el('span', { class: 'explorer-scene-note' }, [
+      el('span', { class: 'lang-en', text: scene.description }),
+      el('span', { class: 'lang-ja', text: scene.descriptionJa }),
+    ]);
+    const content = isLab
+      ? [
+          el('span', { class: 'explorer-scene-context' }, [
+            el('span', {
+              class: 'lang-en',
+              text: `Anatomy: ${coveredOrgans.map((entry) => entry.label).join(' · ')}`,
+            }),
+            el('span', {
+              class: 'lang-ja',
+              text: `対象：${coveredOrgans.map((entry) => entry.labelJa).join('・')}`,
+            }),
+          ]),
+          title,
+          note,
+          el('span', { class: 'explorer-scene-meta' }, [
+            el('span', { class: 'explorer-maturity' }, [
+              bilingual('Maturity', '成熟度', 'explorer-meta-label'),
+              badge(scene.status),
+            ]),
+            productBadges(scene),
+          ]),
+        ]
+      : [title, productBadges(scene), reviewBadge(scene), note];
+    const link = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, content);
     const children = [link, favoriteButtonFor(scene)];
     if (!isLab) children.push(createClinicalReviewDetails(scene));
-    const element = el('div', { class: 'explorer-scene-shell' }, children);
+    const element = el(
+      'div',
+      { class: `explorer-scene-shell${isLab ? ' is-lab-card' : ''}` },
+      children
+    );
     return { scene, system, organ, element };
   };
 
@@ -200,7 +228,64 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     return element;
   };
 
-  const sections = systems.map(systemSection);
+  const countCopy = (modelCount, plannedCount) => [
+    el('span', {
+      class: 'lang-en',
+      text: `${modelCount} ${modelCount === 1 ? 'model' : 'models'}${
+        plannedCount ? ` · ${plannedCount} planned` : ''
+      }`,
+    }),
+    el('span', {
+      class: 'lang-ja',
+      text: `${modelCount}モデル${plannedCount ? `・開発候補${plannedCount}` : ''}`,
+    }),
+  ];
+
+  const labSystemSection = (system) => {
+    const scenes = system.models.map(({ scene, organs }) =>
+      sceneCard(scene, system, organs[0] ?? null, organs)
+    );
+    const planned = system.planned.map(({ entry, organ }) => {
+      const element = el('span', { class: 'explorer-planned-item' }, [
+        bilingual(entry.titleEn, entry.titleJa, 'explorer-planned-title'),
+        bilingual(organ.label, organ.labelJa, 'explorer-planned-organ'),
+      ]);
+      return { planned: entry, system, organ, element };
+    });
+    const count = el('span', { class: 'explorer-count' }, countCopy(scenes.length, planned.length));
+    const sceneGrid = el('div', { class: 'explorer-lab-scenes' }, scenes.map((record) => record.element));
+    const plannedList = el(
+      'div',
+      { class: 'explorer-planned-list' },
+      planned.map((record) => record.element)
+    );
+    const plannedGroup = el(
+      'div',
+      { class: 'explorer-planned-group', hidden: planned.length ? null : '' },
+      [
+        bilingual('Development queue', '開発候補', 'explorer-planned-heading'),
+        plannedList,
+      ]
+    );
+    const element = el('section', {
+      class: 'explorer-system is-lab-system',
+      id: `system-${system.id}`,
+    }, [
+      el('h2', { class: 'explorer-system-name' }, [
+        el('span', { class: 'lang-en', text: system.label }),
+        el('span', { class: 'lang-ja', text: system.labelJa }),
+        count,
+      ]),
+      sceneGrid,
+      plannedGroup,
+    ]);
+    const view = { system, scenes, planned, element, sceneGrid, plannedGroup, plannedList, count };
+    labViews.push(view);
+    systemViews.set(system.id, view);
+    return element;
+  };
+
+  const sections = systems.map(isLab ? labSystemSection : systemSection);
   const totalScenes = scopedScenes.length;
 
   let searchControls = null;
@@ -479,7 +564,41 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       view.element.hidden = !organVisible;
     }
 
+    for (const view of labViews) {
+      let visibleModels = 0;
+      let visiblePlanned = 0;
+
+      for (const record of view.scenes) {
+        const matches = sceneMatchesExplorerFilters(record, activeFilters);
+        record.element.hidden = !matches;
+        if (matches) {
+          visibleModels += 1;
+          visibleSceneIds.add(record.scene.id);
+        }
+      }
+      for (const record of view.planned) {
+        const matches = plannedMatchesExplorerFilters(record, activeFilters);
+        record.element.hidden = !matches;
+        if (matches) {
+          visiblePlanned += 1;
+          visiblePlannedIds.add(
+            record.planned.id ??
+              record.planned.slug ??
+              `${record.system.id}:${record.organ.id}:${record.planned.titleEn}`
+          );
+        }
+      }
+
+      view.sceneGrid.hidden = visibleModels === 0;
+      view.plannedGroup.hidden = visiblePlanned === 0;
+      view.element.hidden = visibleModels + visiblePlanned === 0;
+      view.count.replaceChildren(...countCopy(visibleModels, visiblePlanned));
+      const link = jumpLinks.get(view.system.id);
+      if (link) link.hidden = view.element.hidden;
+    }
+
     for (const [systemId, view] of systemViews) {
+      if (isLab) continue;
       const visibleIds = new Set();
       let systemVisible = false;
       for (const organ of view.organs) {

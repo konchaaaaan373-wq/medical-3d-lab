@@ -101,6 +101,31 @@ export function systemsWithOrgans(
 }
 
 /**
+ * The Lab is a catalogue of experiments, not an anatomical index.
+ *
+ * A prototype can span several organs. The public Explorer may legitimately
+ * surface that scene under more than one organ, but doing so in the Lab makes
+ * one experiment look like several different models. This projection keeps
+ * each model exactly once and attaches its covered organs as metadata. Planned
+ * questions remain separate records because they are not runnable scenes.
+ */
+export function labCatalogueSections(scenes = LAB_SCENES) {
+  return systemsWithOrgans(scenes, {
+    includePlanned: true,
+    includeEmptyOrgans: false,
+  }).map((system) => ({
+    ...system,
+    models: system.scenes.map((scene) => ({
+      scene,
+      organs: scene.organs.map(organById).filter(Boolean),
+    })),
+    planned: system.organs.flatMap((organ) =>
+      organ.planned.map((entry) => ({ entry, organ }))
+    ),
+  }));
+}
+
+/**
  * The switcher's systems that have scenes.
  *
  * The top level of the in-scene navigation is the system rather than the organ,
