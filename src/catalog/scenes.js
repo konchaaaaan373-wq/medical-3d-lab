@@ -206,6 +206,24 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/renal/scenes/hepatorenalSyndrome/index.js'),
   },
   {
+    id: 'renal-filtration',
+    slug: 'renal-filtration',
+    titleEn: 'Where filtration fails',
+    titleJa: '濾過は、どこで落ちるのか',
+    system: 'renal',
+    organ: 'kidney',
+    organs: ['kidney'],
+    disease: null,
+    status: 'alpha',
+    modelCard: 'docs/model-cards/renal-filtration.md',
+    description:
+      'The Starling balance across one glomerular capillary and the tubular mass balance below it, solved together. FENa, the urea-to-creatinine ratio, urine sodium and urine osmolality are not four facts to memorise here — they are four readings of the same solve, which is what lets a reader move a mechanism and watch which of them inverts.',
+    descriptionJa:
+      '1 本の糸球体毛細血管の Starling 平衡と、その下流の尿細管の物質収支を同時に解きます。FENa・BUN/Cr 比・尿中 Na・尿浸透圧は覚えるべき 4 つの事実ではなく、同じ解の 4 つの読み方です。機序を 1 つ動かして、どれが逆転するのかを確かめられます。',
+    tags: ['mass-balance', 'filtration', 'learning-module'],
+    load: () => import('../scenes/renal/scenes/renalFiltration/index.js'),
+  },
+  {
     id: 'liver-portal-flow',
     slug: 'liver-portal-flow',
     titleEn: 'Portal flow & bile',
@@ -394,9 +412,13 @@ export const PLANNED_SCENES = [
   { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
   { organ: 'lungs', disease: 'pneumothorax', titleEn: 'Pneumothorax', titleJa: '気胸' },
   { organ: 'lungs', disease: 'pulmonary-embolism', titleEn: 'Pulmonary embolism', titleJa: '肺塞栓症' },
-  { organ: 'kidney', disease: 'ckd', titleEn: 'Chronic kidney disease', titleJa: '慢性腎臓病' },
-  { organ: 'kidney', disease: 'aki', titleEn: 'Acute kidney injury', titleJa: '急性腎障害' },
-  { organ: 'kidney', disease: 'nephrotic-syndrome', titleEn: 'Nephrotic syndrome', titleJa: 'ネフローゼ症候群' },
+  // Chronic kidney disease, acute kidney injury and nephrotic syndrome are now
+  // *situations* inside `renal-filtration` rather than three separate scenes:
+  // they share one model, and splitting them would have meant three copies of
+  // the same Starling balance. What remains planned is the part that model
+  // does not reach — the consequences of failure rather than its mechanism.
+  { organ: 'kidney', disease: 'ckd-mineral-bone', titleEn: 'CKD and mineral–bone disease', titleJa: 'CKD と骨・ミネラル代謝異常' },
+  { organ: 'kidney', disease: 'hyperkalaemia', titleEn: 'Potassium handling and hyperkalaemia', titleJa: 'カリウム動態と高カリウム血症' },
   { organ: 'liver', disease: 'steatosis', titleEn: 'Steatosis', titleJa: '脂肪肝' },
   { organ: 'liver', disease: 'hepatitis', titleEn: 'Hepatitis', titleJa: '肝炎' },
   { organ: 'brain', disease: 'stroke', titleEn: 'Stroke', titleJa: '脳梗塞' },

@@ -64,9 +64,9 @@ Last updated: 2026-09-01（現在地の数値は §3 参照）
 
 | 指標 | 値 |
 | --- | --- |
-| シーン数 | 20（production 2 / alpha 4 / prototype 14） |
+| シーン数 | 21（production 2 / alpha 5 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
-| 医学モデル層（`src/models/`） | copd / asthma / portalHypertension / hepatorenal の 4 本 + 共通ユーティリティ |
+| 医学モデル層（`src/models/`） | copd / asthma / portalHypertension / hepatorenal / renalFiltration の 5 本 + 共通ユーティリティ |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
 | テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・性能予算・計測の匿名性（`node --test`） |
 | 計測 | 性能予算と launch metrics を宣言済み。送信は consent ゲート付きで、endpoint 未設定なら何も送らない（[`observability.md`](observability.md)） |
@@ -164,7 +164,7 @@ Reel（SNS） / Learning（Educational）   presentation 層の調整のみ
 | 流量保存の抵抗ネットワーク | `models/portalHypertension.js` | 側副路一般・シャント・血管病変 |
 | 2 臓器 1 循環（臓器横断） | `models/hepatorenal.js` | 心腎連関・肝肺症候群・敗血症性循環 |
 | 連続進行度 → 粒子状態遷移 | amyloidBeta `aggregationLayout.js`（要移設） | タウ伝播・α-シヌクレイン・血栓形成 |
-| （未実装）濾過・尿細管の物質収支 | — | CKD / AKI / ネフローゼ |
+| 濾過・尿細管の物質収支 | `models/renalFiltration.js`（Starling 平衡 + Na/尿素/水/アルブミンの収支） | CKD / AKI / ネフローゼは同一モデルの situation として実装済み。K・酸塩基への拡張 |
 
 共通基盤は `models/integrate.js`・`units.js`・`evidence.js`・`random.js`。
 パターンを跨いで使う数値手法はここに集約します。
@@ -226,7 +226,7 @@ Reel（SNS） / Learning（Educational）   presentation 層の調整のみ
 | brain | production（Aβ） | ✗ | ✗ | 経過（進行度）が主題そのもの |
 | lungs / airway | alpha ×2（COPD・喘息） | ✓ | ✓ | — |
 | liver / spleen | alpha（門脈圧亢進） | ✓ | ✓ | HRS に参加 |
-| kidney | alpha（HRS） | ✓ | ✗ | 2 臓器 1 循環 + 治療機序 |
+| kidney | alpha ×2（HRS・濾過） | ✓（HRS） | ✓（濾過） | 2 臓器 1 循環 + 治療機序 |
 | 残り 17 臓器 | prototype | — | — | — |
 
 この表から読める**深さの負債**: production の Amyloid-β が Reel と
@@ -244,7 +244,7 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 | 閉塞・メカニクス | COPD・喘息・(前立腺と尿流) | 時定数コンパートメント / 分岐ネットワーク | 実装済み |
 | 変性・蓄積（分子過程） | Aβ。次: タウ・α-シヌクレイン | 粒子状態遷移 | 1 系統のみ |
 | 虚血・梗塞 | 脳梗塞・心筋虚血 | 供給と需要 + 灌流ネットワーク（既存の組合せ） | 未実装（Tier B） |
-| 濾過・排泄の障害 | AKI / CKD / ネフローゼ | 濾過・尿細管の物質収支（新規） | 未実装（Tier A） |
+| 濾過・排泄の障害 | AKI / CKD / ネフローゼ | 濾過・尿細管の物質収支 | **実装済み**（`renal-filtration`、alpha） |
 | 炎症・感染 | 肺炎・肝炎 | 浸出とガス交換への波及（新規。V/Q 不均衡は時定数系で部分表現可） | 未実装 |
 | 電気生理 | 不整脈・伝導障害 | 興奮伝播（新規。ジオメトリ上を波が走る主題で、3D 適性は最上位） | パターンも `PLANNED_SCENES` 登録もなし。候補として起票する価値あり |
 | 内分泌・フィードバック | RAAS・甲状腺軸 | 負帰還ループ（新規） | prototype（甲状腺・副腎）のみ。モデルなし |
@@ -270,7 +270,7 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 | --- | --- | --- |
 | 左房圧が上がると、なぜ・どこから肺に水が出るのか（肺水腫） | 時変エラスタンス + コンパートメント | Heart Failure のうっ血表現の機序側・COPD の肺 |
 | 弁が狭い／漏れると PV ループはどう歪むか（弁膜症） | 時変エラスタンスに弁抵抗・逆流を追加 | Heart Failure |
-| 濾過はどの段階でどう落ちるか（AKI / CKD / ネフローゼ） | 濾過・尿細管の物質収支（新パターン） | Hepatorenal の腎側の発展 |
+| ~~濾過はどの段階でどう落ちるか（AKI / CKD / ネフローゼ）~~ | ~~濾過・尿細管の物質収支（新パターン）~~ | **実装済み** — `renal-filtration`。HRS の腎側と同じ臓器を共有します |
 
 #### Tier B — パターンの新展開
 

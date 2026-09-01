@@ -79,5 +79,15 @@
     "cardRevision": 1,
     "modelDigest": "2a16fb0c8e7bbb87",
     "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "renal-filtration",
+    "card": "docs/model-cards/renal-filtration.md",
+    "modelSources": [
+      "src/models/renalFiltration.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "f44ece5fcda21a9f",
+    "cardUpdatedAt": "2026-09-01"
   }
 ]

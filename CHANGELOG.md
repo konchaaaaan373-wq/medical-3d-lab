@@ -13,6 +13,23 @@ clinically reviewed. The procedure is in
 Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main` and device testing on real hardware.
 
+### A new model
+
+- **Where filtration fails** (`#/renal-filtration`). One nephron, with the
+  Starling balance across its glomerular capillary and the mass balance of the
+  tubule below it solved together. FENa, the urea-to-creatinine ratio, the urine
+  sodium and the urine osmolality are not four facts to memorise there — they
+  are four readings of the same solve, so a reader can move one mechanism and
+  watch which of them inverts. Pre-renal, tubular injury, obstruction, chronic
+  nephron loss and nephrotic disease are five *situations* of one model rather
+  than five scenes.
+- It reports plasma creatinine as **where creatinine is heading**, never as
+  where it is today: the model solves a steady state, and real creatinine takes
+  days to catch up. That is the caveat the scope panel leads with.
+- **Alpha, not reviewed.** It has the model layer, the evidence dossier, the
+  model card and the scope panel; no clinician has signed it, and the Trust page
+  says so.
+
 ### Trust and medical claims
 
 - The public **Trust** page (`#/trust`) shows catalogue maturity and clinical
