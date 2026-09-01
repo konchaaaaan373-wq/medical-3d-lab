@@ -36,7 +36,12 @@ export function createStageReadout({ meta, onSeek }) {
   const fill = el('span', { class: 'track-fill' });
   const track = el('div', { class: 'stage-track' }, [
     el('span', { class: 'track-line' }, [fill]),
-    el('div', { class: 'steps' }, steps),
+    el('div', {
+      class: 'steps',
+      // Stage counts vary by subject; fixed five-column tracks left a three-step
+      // anatomy sequence compressed into only the left half of its timeline.
+      style: `grid-template-columns: repeat(${stages.length}, minmax(0, 1fr))`,
+    }, steps),
   ]);
 
   const nameEn = el('h2', { class: 'stage-name lang-en' });

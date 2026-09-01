@@ -43,6 +43,12 @@ export async function createApp({ stage, ui }) {
   const SceneClass = await loadScene(resolveSceneId());
   const scene = new SceneClass({ viewer });
   viewer.scene.add(scene.build());
+  // Most scenes build synchronously. Asset-backed atlases expose `ready` so
+  // their first visible frame, labels and information panel all describe the
+  // loaded specimen rather than briefly pointing at an empty stage.
+  if (scene.ready) await scene.ready;
+  const allowAutoRotate = SceneClass.allowAutoRotate !== false;
+  if (!allowAutoRotate) viewer.controls.autoRotate = false;
 
   // Visual-QA hook: `?qa` exposes the viewer and scene so a screenshot
   // harness can set exact camera poses and cardiac phases. Dev-only surface —
@@ -57,6 +63,7 @@ export async function createApp({ stage, ui }) {
   const entry = sceneById(resolveSceneId());
   const meta = { ...SceneClass.meta, status: entry?.status ?? SceneClass.meta.status ?? 'production' };
   document.title = `${meta.title} — medical-3d-lab`;
+  ui.dataset.scene = meta.id;
 
   /**
    * Learning view is the default: the 3D subject, the stage it is in, and the
@@ -313,7 +320,19 @@ export async function createApp({ stage, ui }) {
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
-  const anatomyInfo = scene.getAnatomySelection ? createAnatomyInfoPanel(scene) : null;
+  const anatomyInfo = scene.getAnatomySelection
+    ? createAnatomyInfoPanel(scene, {
+        onView: (id) => {
+          const pose = scene.getAnatomyView?.(id);
+          if (!pose) return;
+          userZoom = 1;
+          setShot(pose);
+          view.active = true;
+          viewer.controls.autoRotate = false;
+          syncZoomLimits();
+        },
+      })
+    : null;
 
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
@@ -491,6 +510,7 @@ export async function createApp({ stage, ui }) {
     syncZoomLimits();
     setShot(comparisonOrStageShot());
     view.active = true;
+    anatomyInfo?.setView(scene.getAnatomyViews?.()[0]?.id);
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
     viewer.controls.autoRotate = false;
@@ -555,7 +575,7 @@ export async function createApp({ stage, ui }) {
     }
     if (view.active) {
       view.active = tweenPose(viewer, shot, dt);
-      if (!view.active) viewer.controls.autoRotate = !prefersReducedMotion();
+      if (!view.active) viewer.controls.autoRotate = allowAutoRotate && !prefersReducedMotion();
     }
     labels.render();
   });
