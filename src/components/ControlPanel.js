@@ -37,6 +37,7 @@ export function createControlPanel({
   onDataToggle,
   onZoom,
 }) {
+  const progressionEnabled = meta.progression?.enabled !== false;
   const slider = el('input', {
     class: 'slider',
     type: 'range',
@@ -53,8 +54,10 @@ export function createControlPanel({
   // Not "Play": the heart beats on its own the whole time, and calling this
   // Play made two different clocks look like one. This one steps the *other*
   // axis — the remodelling trajectory — from Normal to HFrEF.
-  const playButton = button('play', ['Progression', '進行'], onToggle, 'utility');
-  playButton.element.title = 'Step through the remodelling stages automatically. The heart beats regardless.';
+  const playButton = progressionEnabled ? button('play', ['Progression', '進行'], onToggle, 'utility') : null;
+  if (playButton) {
+    playButton.element.title = 'Step through the remodelling stages automatically. The heart beats regardless.';
+  }
 
   // Only scenes that ship a guided sequence get the button.
   const storyButton = onStoryToggle
@@ -144,17 +147,19 @@ export function createControlPanel({
     // The continuous slider interpolates between stages. It is a model
     // parameter, not a clinical index, so it belongs with the other model
     // inputs in Data view rather than under the stage headline.
-    el('div', { class: 'slider-row data-only' }, [
-      el('span', { class: 'slider-cap' }, [
-        el('span', { class: 'lang-en', text: meta.range?.start ?? '' }),
-        el('span', { class: 'lang-ja', text: meta.range?.startJa ?? '' }),
-      ]),
-      slider,
-      el('span', { class: 'slider-cap' }, [
-        el('span', { class: 'lang-en', text: meta.range?.end ?? '' }),
-        el('span', { class: 'lang-ja', text: meta.range?.endJa ?? '' }),
-      ]),
-    ]),
+    progressionEnabled
+      ? el('div', { class: 'slider-row data-only' }, [
+          el('span', { class: 'slider-cap' }, [
+            el('span', { class: 'lang-en', text: meta.range?.start ?? '' }),
+            el('span', { class: 'lang-ja', text: meta.range?.startJa ?? '' }),
+          ]),
+          slider,
+          el('span', { class: 'slider-cap' }, [
+            el('span', { class: 'lang-en', text: meta.range?.end ?? '' }),
+            el('span', { class: 'lang-ja', text: meta.range?.endJa ?? '' }),
+          ]),
+        ])
+      : null,
     // Ordered by weight: the guided sequence first, then the two ways of
     // looking wider, then the utilities.
     el('div', { class: 'button-row' }, [
@@ -162,8 +167,8 @@ export function createControlPanel({
       compareButton?.element,
       dataButton?.element,
       el('span', { class: 'button-gap' }),
-      playButton.element,
-      button('reset', ['Reset', 'リセット'], onReset, 'utility').element,
+      playButton?.element,
+      progressionEnabled ? button('reset', ['Reset', 'リセット'], onReset, 'utility').element : null,
       cameraGroup,
       learnButton?.element,
       reelButton?.element,
@@ -213,8 +218,8 @@ export function createControlPanel({
     update(progress, playing) {
       // Do not fight the user while they are dragging the handle.
       if (document.activeElement !== slider) slider.value = String(Math.round(progress * 1000));
-      playButton.setIcon(playing ? 'pause' : 'play');
-      playButton.setLabel(playing ? ['Pause', '一時停止'] : ['Progression', '進行']);
+      playButton?.setIcon(playing ? 'pause' : 'play');
+      playButton?.setLabel(playing ? ['Pause', '一時停止'] : ['Progression', '進行']);
     },
   };
 }

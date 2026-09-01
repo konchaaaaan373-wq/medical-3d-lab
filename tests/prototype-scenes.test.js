@@ -146,10 +146,14 @@ for (const entry of PROTOTYPES) {
 
     assert.ok(meta.title && meta.titleJa, 'titled in both languages');
     assert.ok(meta.subtitle && meta.subtitleJa, 'subtitled in both languages');
-    assert.ok(meta.progressLabel?.label && meta.progressLabel?.labelJa, 'the slider says what it moves along');
-    assert.ok(meta.range?.start && meta.range?.end, 'and what its ends mean');
-
-    assert.ok(meta.stages.length >= 2, 'a scene with one stage has nothing to step through');
+    const progressionEnabled = meta.progression?.enabled !== false;
+    if (progressionEnabled) {
+      assert.ok(meta.progressLabel?.label && meta.progressLabel?.labelJa, 'the slider says what it moves along');
+      assert.ok(meta.range?.start && meta.range?.end, 'and what its ends mean');
+      assert.ok(meta.stages.length >= 2, 'a scene with one stage has nothing to step through');
+    } else {
+      assert.equal(meta.stages.length, 1, 'an interaction-only scene declares one state, not a hidden trajectory');
+    }
     assert.equal(meta.stages[0].at, 0, 'the first stage starts at the beginning');
     for (let i = 1; i < meta.stages.length; i++) {
       assert.ok(meta.stages[i].at > meta.stages[i - 1].at, 'stages are in order');
