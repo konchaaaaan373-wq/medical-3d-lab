@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   canReclaimBillingEvent,
   claimBillingEvent,
+  finishBillingEvent,
   isSubscriptionEvent,
   missingRemoteSubscriptionIds,
   reconcileBillingForUser,
@@ -58,7 +59,7 @@ test('billing lifecycle: a new event is claimed exactly once', async () => {
     now: new Date('2026-09-01T12:00:00.000Z'),
   });
 
-  assert.deepEqual(result, { claimed: true, retry: false });
+  assert.deepEqual(result, { claimed: true, retry: false, attemptCount: 1 });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].options.method, 'POST');
   assert.equal(calls[0].options.body[0].stripe_event_id, EVENT.id);
@@ -108,9 +109,27 @@ test('billing lifecycle: failed and abandoned claims can be retried safely', asy
     now: new Date('2026-09-01T12:00:00.000Z'),
   });
 
-  assert.deepEqual(result, { claimed: true, retry: true });
+  assert.deepEqual(result, { claimed: true, retry: true, attemptCount: 2 });
   assert.equal(calls.at(-1).options.body.attempt_count, 2);
   assert.match(calls.at(-1).path, /status=eq\.failed/);
+});
+
+test('billing lifecycle: only the worker that owns an attempt can finish it', async () => {
+  const calls = [];
+  const admin = async (path, options) => {
+    calls.push({ path, options });
+    return [];
+  };
+  const finished = await finishBillingEvent(EVENT.id, {
+    attemptCount: 1,
+    admin,
+    now: new Date('2026-09-01T12:00:00.000Z'),
+  });
+
+  assert.equal(finished, false);
+  assert.match(calls[0].path, /status=eq\.processing/);
+  assert.match(calls[0].path, /attempt_count=eq\.1/);
+  assert.equal(calls[0].options.prefer, 'return=representation');
 });
 
 test('billing lifecycle: reconciliation fails closed when a live local row vanished from Stripe', async () => {
@@ -257,5 +276,7 @@ test('billing lifecycle: Checkout and Portal returns request authoritative recon
   const portal = readFileSync(new URL('../netlify/functions/create-portal.js', import.meta.url), 'utf8');
   assert.match(access, /entitlements\?reconcile=1/);
   assert.match(access, /params\.get\('billing'\) === 'portal'/);
+  assert.match(access, /result\.reconciliationSucceeded/);
+  assert.match(access, /最新状態を確認できませんでした/);
   assert.match(portal, /billing=portal/);
 });
