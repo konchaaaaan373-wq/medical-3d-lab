@@ -5,9 +5,9 @@ import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
 import {
   educationResumeIndex,
-  markEducationComplete,
-  readEducationProgress,
-  saveEducationStep,
+  markEducationGuideComplete,
+  readEducationGuideProgress,
+  saveEducationGuideStep,
 } from './educationProgress.js';
 import { featuresForScene } from './features.js';
 import { captureGuideSession, restoreGuideSession } from './guideSession.js';
@@ -203,7 +203,7 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
   let open = false;
   let sessionSnapshot = null;
   let educationUnlocked = false;
-  let progress = readEducationProgress(sceneId, guide.steps.length);
+  let progress = readEducationGuideProgress(sceneId, guide);
 
   const completeMark = el('span', {
     class: 'education-mode-complete',
@@ -219,11 +219,11 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
       app.playback.set(value);
     },
     onStepChange: (index) => {
-      progress = saveEducationStep(sceneId, index, guide.steps.length);
+      progress = saveEducationGuideStep(sceneId, guide, index);
       renderProgress();
     },
     onComplete: () => {
-      progress = markEducationComplete(sceneId, guide.steps.length);
+      progress = markEducationGuideComplete(sceneId, guide);
       renderProgress();
     },
     onExit: closeGuide,
@@ -285,10 +285,10 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
     activate?.();
     exitSceneModes(app);
 
-    // Progress is navigation-only: scene ID + guide step. Re-read at open so a
-    // previous visit can resume without storing any patient, model or clinical
-    // state in the browser.
-    progress = readEducationProgress(sceneId, guide.steps.length);
+    // Progress is navigation-only: scene ID + authored guide revision + step.
+    // Re-read at open so a previous visit can resume, but a content revision
+    // invalidates stale progress without storing patient/model/clinical state.
+    progress = readEducationGuideProgress(sceneId, guide);
     renderProgress();
 
     sessionSnapshot = captureGuideSession(app.playback);
