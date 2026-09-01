@@ -163,7 +163,12 @@ test('billing lifecycle: reconciliation fails closed when a live local row vanis
   });
 
   assert.deepEqual(synced, ['sub_remote']);
-  assert.deepEqual(result, { reconciled: true, remoteCount: 1, missingCount: 1 });
+  assert.deepEqual(result, {
+    reconciled: true,
+    remoteCount: 1,
+    reconciledCount: 1,
+    missingCount: 1,
+  });
   const missingPatch = calls.find(
     (call) => call.path.includes('stripe_subscription_id=eq.sub_missing') && call.options.method === 'PATCH'
   );
@@ -269,6 +274,34 @@ test('billing lifecycle: terminal history keeps Stripe lifecycle chronology', ()
     '2025-12-01T00:00:00.000Z'
   );
   assert.equal(subscriptionStateUpdatedAt({ status: 'active', created: 1 }, now), now.toISOString());
+});
+
+test('billing lifecycle: reconciliation skips per-item reads for terminal history', async () => {
+  let retrievals = 0;
+  const admin = async (path, options = {}) => {
+    if (path.includes('billing_customers?user_id=eq.') && !options.method) {
+      return [{ stripe_customer_id: 'cus_123' }];
+    }
+    if (path.includes('billing_subscriptions?user_id=eq.') && !options.method) return [];
+    return [];
+  };
+  const history = Array.from({ length: 100 }, (_, index) => ({
+    id: `sub_history_${index}`,
+    status: 'canceled',
+  }));
+  const result = await reconcileBillingForUser('user_123', {
+    admin,
+    listSubscriptions: async () => history,
+    retrieveSubscription: async () => {
+      retrievals += 1;
+      return null;
+    },
+    sync: async () => assert.fail('terminal history must not be re-synchronised'),
+  });
+
+  assert.equal(retrievals, 0);
+  assert.equal(result.remoteCount, 100);
+  assert.equal(result.reconciledCount, 0);
 });
 
 test('billing lifecycle: apparent list gaps are verified by ID before fail-closing', async () => {
