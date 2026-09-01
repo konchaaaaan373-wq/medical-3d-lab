@@ -30,22 +30,17 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     el('span', { class: 'lang-en', text: guide.title }),
     el('span', { class: 'lang-ja', text: guide.titleJa }),
   ]);
-  const counter = el('span', { class: 'education-guide-counter' });
+  const counter = el('span', { class: 'education-guide-counter', 'aria-live': 'polite' });
   const kind = el('div', { class: 'education-guide-kind' });
   const heading = el('h3', { class: 'education-guide-heading' });
   const prompt = el('p', { class: 'education-guide-prompt' });
-  const reasoning = el('div', { class: 'education-guide-reasoning', hidden: '' });
-  const dots = el('div', { class: 'education-guide-dots' });
+  const reasoning = el('div', { class: 'education-guide-reasoning', hidden: '', 'aria-live': 'polite' });
+  const dots = el('div', { class: 'education-guide-dots', 'aria-label': 'Teaching guide steps' });
 
   const reveal = el('button', {
     class: 'education-guide-reveal',
     type: 'button',
-    on: {
-      click: () => {
-        revealed = true;
-        render();
-      },
-    },
+    on: { click: revealReasoning },
   }, [
     el('span', { class: 'lang-en', text: 'Reveal reasoning' }),
     el('span', { class: 'lang-ja', text: '考え方を表示' }),
@@ -60,7 +55,7 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
   const next = el('button', {
     class: 'education-guide-nav primary',
     type: 'button',
-    on: { click: () => (index === guide.steps.length - 1 ? onExit() : setIndex(index + 1)) },
+    on: { click: advance },
   });
 
   const close = el('button', {
@@ -71,7 +66,11 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     on: { click: onExit },
   });
 
-  const element = el('section', { class: 'education-guide', 'aria-label': 'Medical education teaching guide' }, [
+  const element = el('section', {
+    class: 'education-guide',
+    'aria-label': 'Medical education teaching guide',
+    tabindex: '-1',
+  }, [
     el('div', { class: 'education-guide-head' }, [title, counter, close]),
     dots,
     kind,
@@ -85,6 +84,51 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     ]),
     el('div', { class: 'education-guide-actions' }, [previous, next]),
   ]);
+
+  element.addEventListener('keydown', (event) => {
+    // A focused teaching guide owns navigation. Do not let the global 3D
+    // shortcuts also seek or reset the underlying scene.
+    event.stopPropagation();
+
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        onExit();
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        event.preventDefault();
+        setIndex(index - 1);
+        break;
+      case 'ArrowRight':
+      case 'PageDown':
+        event.preventDefault();
+        if (!revealed) revealReasoning();
+        else if (index < guide.steps.length - 1) setIndex(index + 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        setIndex(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        setIndex(guide.steps.length - 1);
+        break;
+      default:
+        break;
+    }
+  });
+
+  function revealReasoning() {
+    if (revealed) return;
+    revealed = true;
+    render();
+  }
+
+  function advance() {
+    if (index === guide.steps.length - 1) onExit();
+    else setIndex(index + 1);
+  }
 
   function setIndex(nextIndex) {
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
@@ -130,7 +174,13 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     );
     dots.replaceChildren(
       ...guide.steps.map((_, dotIndex) =>
-        el('span', { class: `education-guide-dot${dotIndex <= index ? ' is-active' : ''}`, 'aria-hidden': 'true' })
+        el('button', {
+          class: `education-guide-dot${dotIndex <= index ? ' is-active' : ''}${dotIndex === index ? ' is-current' : ''}`,
+          type: 'button',
+          'aria-label': `Teaching step ${dotIndex + 1} of ${guide.steps.length}`,
+          'aria-current': dotIndex === index ? 'step' : null,
+          on: { click: () => setIndex(dotIndex) },
+        })
       )
     );
   }
@@ -142,5 +192,10 @@ export function createEducationGuidePanel({ guide, setProgress, onExit }) {
     reset() {
       setIndex(0);
     },
+    focus() {
+      element.focus({ preventScroll: true });
+    },
+    currentIndex: () => index,
+    isRevealed: () => revealed,
   };
 }
