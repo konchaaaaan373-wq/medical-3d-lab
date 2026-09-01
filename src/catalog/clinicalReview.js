@@ -8,6 +8,10 @@ import registry from '../../docs/clinical-reviews/registry.json' with { type: 'j
  * clinical sign-off. The registry in docs/clinical-reviews is the single source
  * of truth for that second question, and the UI reads it directly rather than
  * copying review flags into the scene manifest.
+ *
+ * `stale` is intentionally different from both `reviewed` and `pending`: a real
+ * historical attestation exists, but files inside its recorded scope changed
+ * afterwards, so the old sign-off must not be presented as current.
  */
 
 const LABELS = Object.freeze({
@@ -16,6 +20,12 @@ const LABELS = Object.freeze({
     ja: '医学レビュー：完了',
     shortEn: 'Reviewed',
     shortJa: 'レビュー済み',
+  }),
+  stale: Object.freeze({
+    en: 'Clinical review: Re-review required',
+    ja: '医学レビュー：再レビュー必要',
+    shortEn: 'Re-review required',
+    shortJa: '再レビュー必要',
   }),
   pending: Object.freeze({
     en: 'Clinical review: Pending',
@@ -37,6 +47,7 @@ export const CLINICAL_REVIEW_RECORDS = Object.freeze(
     scope: Object.freeze([...(record.scope ?? [])]),
     sources: Object.freeze([...(record.sources ?? [])]),
     unresolvedLimitations: Object.freeze([...(record.unresolvedLimitations ?? [])]),
+    stalePaths: record.stalePaths ? Object.freeze([...record.stalePaths]) : undefined,
   }))
 );
 
@@ -62,6 +73,9 @@ export const modelCardForScene = (scene) => sourceForScene(scene, 'docs/model-ca
 
 /** Claim-level evidence dossier when a scene has one. Anatomy-only scenes may not. */
 export const evidenceDossierForScene = (scene) => sourceForScene(scene, 'docs/model-evidence/');
+
+/** A current, versioned clinical sign-off. Historical/stale review does not qualify. */
+export const hasCurrentClinicalReview = (scene) => clinicalReviewForScene(scene)?.reviewStatus === 'reviewed';
 
 /**
  * Presentation metadata for a review record. Unknown/missing review state fails
