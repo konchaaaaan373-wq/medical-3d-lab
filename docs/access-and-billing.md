@@ -27,6 +27,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `netlify/functions/*` — authenticated entitlement lookup, Stripe Checkout, Stripe Customer Portal and webhook sync.
 - `supabase/migrations/001_billing.sql` — server-only billing state.
 - `supabase/migrations/002_single_subscription_lifecycle.sql` — DB-level one-non-terminal-subscription guard.
+- `supabase/migrations/20260901154950_billing_event_ledger.sql` — server-only Stripe Event ledger and reconciliation marker.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -132,10 +133,14 @@ Listen for:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `customer.subscription.paused`
+- `customer.subscription.resumed`
 
 Store the signing secret as `STRIPE_WEBHOOK_SECRET`.
 
-The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state.
+The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. It claims each Stripe Event ID in the server-only `billing_events` ledger, acknowledges completed duplicates without repeating their work, and permits failed or abandoned processing to be retried. The ledger stores identifiers and outcomes, not raw Stripe payloads.
+
+Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state. Checkout and Customer Portal returns also request one authoritative reconciliation from Stripe. Opening Account performs the same explicit re-check, and a stale local subscription is reconciled before it can block a legitimate repurchase.
 
 ## Subscription status policy
 
@@ -172,11 +177,12 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 4. User signs in or creates an account.
 5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists locally or at Stripe, and creates a Stripe Checkout Session.
 6. Stripe completes payment and emits subscription events.
-7. `stripe-webhook` verifies the raw-body signature and stores current Stripe subscription state in Supabase.
+7. `stripe-webhook` verifies the raw-body signature, claims the Event ID and stores current Stripe subscription state in Supabase.
 8. The webhook derives the plan from the subscription Price ID.
 9. `entitlements` converts eligible subscription statuses to `free`, `patient`, and/or `education` grants.
-10. Returning from Checkout polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
-11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation.
+10. Returning from Checkout performs one Stripe reconciliation and then polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
+11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation; returning from Portal reconciles the new state immediately.
+12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
 
 ## Content policy
 
