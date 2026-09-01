@@ -3,21 +3,17 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
 
-const readJson = (path) => JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
-const internal = readJson('docs/clinical-reviews/registry.json');
-const publicCopy = readJson('public/trust/clinical-reviews.json');
-
-test('public Trust data is an exact read-only projection of the clinical review registry', () => {
-  assert.deepEqual(publicCopy, internal);
-});
+const registry = JSON.parse(
+  readFileSync(new URL('../docs/clinical-reviews/registry.json', import.meta.url), 'utf8')
+);
 
 test('every public non-prototype scene is visible on the Trust surface', () => {
-  const ids = new Set(publicCopy.map((record) => record.sceneId));
-  for (const scene of PUBLIC_SCENES) assert.ok(ids.has(scene.id), `${scene.id} is missing from public Trust data`);
+  const ids = new Set(registry.map((record) => record.sceneId));
+  for (const scene of PUBLIC_SCENES) assert.ok(ids.has(scene.id), `${scene.id} is missing from Trust data`);
 });
 
 test('Trust data never turns missing sign-off into a reviewed claim', () => {
-  for (const record of publicCopy) {
+  for (const record of registry) {
     if (record.reviewStatus === 'reviewed') {
       assert.match(record.reviewedAt, /^\d{4}-\d{2}-\d{2}$/);
       assert.match(record.reviewedCommit, /^[0-9a-f]{40}$/);
@@ -26,4 +22,10 @@ test('Trust data never turns missing sign-off into a reviewed claim', () => {
       assert.equal(record.reviewedCommit, null);
     }
   }
+});
+
+test('Clinical Review registry is the only browser Trust source of truth', () => {
+  const trustSource = readFileSync(new URL('../src/app/Trust.js', import.meta.url), 'utf8');
+  assert.match(trustSource, /docs\/clinical-reviews\/registry\.json/);
+  assert.ok(!trustSource.includes('/trust/clinical-reviews.json'), 'Trust must not fetch a duplicated public registry');
 });
