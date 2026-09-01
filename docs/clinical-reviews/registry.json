@@ -21,6 +21,30 @@
     ]
   },
   {
+    "sceneId": "circulation",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "steady-state haemodynamic model, calculated global oxygen delivery and teaching presentation prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/circulation.md",
+      "docs/model-evidence/circulation.md",
+      "tests/circulation-physiology.test.js",
+      "tests/circulation-model.test.js",
+      "docs/medical-notes.md"
+    ],
+    "unresolvedLimitations": [
+      "The scene is one constructed low-flow teaching case and is not a patient simulator, resuscitation protocol, fluid challenge or dose-response model.",
+      "The model is steady-state and omits pulsatility, vascular compliance, wave reflection, filling pressures, congestion and treatment interactions.",
+      "Arterial oxygen content is fixed, so haemodilution, gas-exchange change, microcirculation, extraction, oxygen consumption and lactate are outside the model.",
+      "The fluid and dobutamine response magnitudes are illustrative and cannot predict whether or how strongly an individual patient will respond.",
+      "MAP and calculated global oxygen delivery do not establish adequate tissue or organ perfusion."
+    ]
+  },
+  {
     "sceneId": "amyloid-beta",
     "reviewStatus": "legacy-unversioned",
     "reviewerRole": "historical review role not recorded under the current registry standard",

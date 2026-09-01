@@ -1,7 +1,19 @@
 import * as THREE from 'three';
-import { CIRCULATION } from '../../../../data/prototypes/circulation.js';
-import { MAX_INTERVENTION_STEPS, solveCirculation } from '../../../../models/circulation.js';
-import { clamp, lerp } from '../../../../utils/math.js';
+import {
+  ANNOTATIONS,
+  DISCLAIMER,
+  DISCLAIMER_JA,
+  DISCLAIMER_SHORT,
+  DISCLAIMER_SHORT_JA,
+  INTERVENTION_OPTIONS,
+  LEGEND,
+  MODEL_CONTROLS,
+  MODEL_SCOPE,
+  PALETTE,
+  STAGES,
+} from '../../../../data/circulation.js';
+import { CIRCULATION_INTERVENTIONS, solveCirculation } from '../../../../models/circulation.js';
+import { clamp, lerp, smoothstep } from '../../../../utils/math.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { buildHeart } from '../../organs/heart.js';
 import { TubeSurface, smoothCurve } from '../../../shared/geometry/tube.js';
@@ -9,7 +21,6 @@ import { createFlowStream } from '../../../shared/motion/flow.js';
 import { oscillate } from '../../../shared/motion/rhythm.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { tissueMaterial } from '../../../shared/materials.js';
-import { prototypeMeta } from '../../../shared/prototypeMeta.js';
 
 const ARTERIAL_PATH = smoothCurve([
   [-2.25, 0.62, 0],
@@ -27,6 +38,8 @@ const VENOUS_PATH = smoothCurve([
   [-2.28, -0.38, -0.04],
 ]);
 
+const RESISTANCE_BAND_POSITIONS = [0.64, 0.74, 0.84];
+
 const TISSUE_CELLS = [
   [0, 0, 0, 0.48],
   [0.58, 0.42, -0.08, 0.36],
@@ -38,113 +51,156 @@ const TISSUE_CELLS = [
 ];
 
 /**
- * A single low-output case drawn as three readable zones: pump, pressure and
- * tissue delivery. Geometry is symbolic; all three animations read the same
- * solved state that supplies the three figures in the rail.
+ * One constructed low-flow case, shown as a causal loop:
+ *
+ *   pump/CO -> arterial pressure <- distributed resistance
+ *       |                                  |
+ *       +---------- calculated global DO2 +
+ *
+ * The tissue is deliberately neutral. Yellow particles show oxygen carried in
+ * arterial blood per minute; they do not colour the cells and therefore cannot
+ * be read as tissue PO2, extraction or oxygen use.
  */
 export class CirculationScene {
   static meta = {
-    ...prototypeMeta(CIRCULATION),
-    progression: CIRCULATION.progression,
-    modelControls: CIRCULATION.modelControls,
+    id: 'circulation',
+    status: 'alpha',
+    title: 'Is circulation maintained?',
+    titleJa: '循環、保たれてる？',
+    subtitle: 'MAP is pressure, not flow · one constructed low-output case',
+    subtitleJa: 'MAPは圧であって血流ではない ｜ 1つの低拍出概念症例',
+    progression: { enabled: false },
+    stages: STAGES,
+    legend: LEGEND,
+    palette: PALETTE,
+    modelControls: MODEL_CONTROLS,
+    modelScope: MODEL_SCOPE,
+    disclaimer: DISCLAIMER,
+    disclaimerJa: DISCLAIMER_JA,
+    disclaimerShort: DISCLAIMER_SHORT,
+    disclaimerShortJa: DISCLAIMER_SHORT_JA,
   };
 
   static cameraPose = {
-    position: new THREE.Vector3(0.4, 1.2, 13.8),
-    target: new THREE.Vector3(0.1, 0.05, 0),
+    position: new THREE.Vector3(0.25, 1.0, 11.4),
+    target: new THREE.Vector3(0.1, 0.1, 0),
   };
+
+  // The causal chain is roughly eight world units wide. Preserve that width
+  // on portrait screens instead of cropping the heart or the tissue endpoint;
+  // landscape and desktop framing stay at the closer authored distance.
+  static framing = { minHorizontalAspect: 1 };
+
+  static allowAutoRotate = false;
 
   constructor({ viewer } = {}) {
     this.viewer = viewer;
     this.root = new THREE.Group();
-    this.root.name = CIRCULATION.id;
+    this.root.name = CirculationScene.meta.id;
     this.progress = 0;
     this.phase = 0;
-    this.interventions = { fluidSteps: 0, dobutamineSteps: 0 };
-    this.state = solveCirculation(this.interventions);
+    this.intervention = CIRCULATION_INTERVENTIONS.BASELINE;
+    this.baseline = solveCirculation();
+    this.state = this.baseline;
+    this.presentationState = null;
   }
 
   build() {
     this.heart = buildHeart({ color: '#a94755', vesselColor: '#de7885', atriumColor: '#813642' });
     this.heart.object.position.set(-3.05, -0.05, 0);
-    this.heart.object.scale.setScalar(1.05);
+    this.heart.object.scale.setScalar(1.12);
 
-    this.arteryTube = new TubeSurface(ARTERIAL_PATH, { radius: () => 0.13, steps: 56, radial: 14 });
-    this.veinTube = new TubeSurface(VENOUS_PATH, { radius: () => 0.12, steps: 56, radial: 14 });
+    this.arteryTube = new TubeSurface(ARTERIAL_PATH, { radius: () => 0.15, steps: 64, radial: 16 });
+    this.veinTube = new TubeSurface(VENOUS_PATH, { radius: () => 0.13, steps: 60, radial: 14 });
     this.arteryMaterial = tissueMaterial({
       color: '#a95061',
-      roughness: 0.42,
-      emissive: CIRCULATION.palette.pressure,
+      roughness: 0.38,
+      emissive: PALETTE.pressure,
       emissiveIntensity: 0.08,
     });
     this.veinMaterial = tissueMaterial({ color: '#526a92', roughness: 0.5, emissiveIntensity: 0.04 });
-    const artery = new THREE.Mesh(this.arteryTube.geometry, this.arteryMaterial);
-    artery.name = 'arterial-path';
-    const vein = new THREE.Mesh(this.veinTube.geometry, this.veinMaterial);
-    vein.name = 'venous-return';
+    this.artery = new THREE.Mesh(this.arteryTube.geometry, this.arteryMaterial);
+    this.artery.name = 'arterial-path';
+    this.vein = new THREE.Mesh(this.veinTube.geometry, this.veinMaterial);
+    this.vein.name = 'venous-return';
 
+    // Pink particles answer "how much blood is moving?". Yellow particles are
+    // oxygen cargo on the same path. Since CaO2 is fixed in this scene, their
+    // rate follows CO; they end at the tissue boundary without changing it.
     this.arterialFlow = createFlowStream({
       curves: [ARTERIAL_PATH],
-      count: 120,
-      color: CIRCULATION.palette.output,
-      size: 6.2,
+      count: 132,
+      color: PALETTE.output,
+      size: 6.6,
       speed: 0.27,
-      spread: 0.065,
+      spread: 0.06,
       seed: 121,
-      opacity: 0.86,
+      opacity: 0.88,
+    });
+    this.oxygenCargo = createFlowStream({
+      curves: [ARTERIAL_PATH],
+      count: 72,
+      color: PALETTE.delivery,
+      size: 4.8,
+      speed: 0.27,
+      spread: 0.035,
+      seed: 128,
+      opacity: 0.92,
     });
     this.venousFlow = createFlowStream({
       curves: [VENOUS_PATH],
-      count: 78,
+      count: 82,
       color: '#7795c3',
-      size: 5.1,
+      size: 5.3,
       speed: 0.23,
       spread: 0.055,
       seed: 122,
-      opacity: 0.5,
+      opacity: 0.52,
     });
 
-    this.pressureRingMaterial = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(CIRCULATION.palette.pressure),
+    // Three bands mark a *distributed resistance zone*. The previous single
+    // ring looked like a stenosis or valve and incorrectly localised MAP.
+    this.resistanceBandMaterial = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(PALETTE.resistance),
       transparent: true,
-      opacity: 0.62,
+      opacity: 0.72,
       depthWrite: false,
     });
-    this.pressureRing = new THREE.Mesh(
-      new THREE.TorusGeometry(0.34, 0.035, 12, 48),
-      this.pressureRingMaterial
-    );
-    this.pressureRing.name = 'map-pulse';
-    this.pressureRing.position.copy(ARTERIAL_PATH.getPointAt(0.48));
-    this.pressureRing.rotation.y = Math.PI / 2;
+    this.resistanceBands = new THREE.Group();
+    this.resistanceBands.name = 'distributed-systemic-resistance';
+    const ringNormal = new THREE.Vector3(0, 0, 1);
+    for (const u of RESISTANCE_BAND_POSITIONS) {
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.022, 10, 40), this.resistanceBandMaterial);
+      band.position.copy(ARTERIAL_PATH.getPointAt(u));
+      band.quaternion.setFromUnitVectors(ringNormal, ARTERIAL_PATH.getTangentAt(u).normalize());
+      this.resistanceBands.add(band);
+    }
 
     this.tissue = new THREE.Group();
-    this.tissue.name = 'peripheral-tissue';
+    this.tissue.name = 'neutral-peripheral-tissue';
     this.tissue.position.set(3.05, 0, 0);
     this.tissueMaterial = tissueMaterial({
-      color: '#736d62',
-      roughness: 0.72,
-      emissive: CIRCULATION.palette.delivery,
-      emissiveIntensity: 0.08,
+      color: '#696b72',
+      roughness: 0.78,
+      emissive: '#24262d',
+      emissiveIntensity: 0.04,
     });
     for (const [x, y, z, radius] of TISSUE_CELLS) {
       const cell = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 2), this.tissueMaterial);
       cell.position.set(x, y, z);
       this.tissue.add(cell);
     }
-    this.deliveryLight = new THREE.PointLight(CIRCULATION.palette.delivery, 1.2, 5.5, 2);
-    this.deliveryLight.position.set(3.05, 0.15, 1.1);
 
     this.root.add(
-      createStudioLights({ key: 32, rim: 18, fill: 0.5 }),
+      createStudioLights({ key: 34, rim: 19, fill: 0.55 }),
       this.heart.object,
-      artery,
-      vein,
+      this.artery,
+      this.vein,
       this.arterialFlow.object,
+      this.oxygenCargo.object,
       this.venousFlow.object,
-      this.pressureRing,
-      this.tissue,
-      this.deliveryLight
+      this.resistanceBands,
+      this.tissue
     );
     this._applyState();
     return this.root;
@@ -161,101 +217,111 @@ export class CirculationScene {
     const strokeStrength = clamp((this.state.strokeVolumeMl - 24) / 42, 0.28, 1);
     this.heart?.setBeat(beat * strokeStrength);
     this.arterialFlow?.update(dt);
+    this.oxygenCargo?.update(dt);
     this.venousFlow?.update(dt);
-
-    if (!this.pressureRing) return;
-    const pressureScale = lerp(0.9, 1.12, clamp((this.state.meanArterialPressureMmHg - 55) / 40));
-    const pulse = 0.95 + beat * 0.09;
-    this.pressureRing.scale.setScalar(pressureScale * pulse);
-    this.pressureRingMaterial.opacity = 0.42 + beat * 0.28;
-
-    const delivery = clamp((this.state.oxygenDeliveryMlMin - 420) / 520);
-    this.tissue.scale.setScalar(0.98 + oscillate(this.phase * 0.45, 1) * 0.025 * delivery);
   }
 
   _applyState() {
     if (!this.arterialFlow) return;
-    const flow = clamp((this.state.cardiacOutputLMin - 3) / 4);
-    const pressure = clamp((this.state.meanArterialPressureMmHg - 55) / 40);
-    const delivery = clamp((this.state.oxygenDeliveryMlMin - 420) / 520);
-    this.arterialFlow.setRate(0.72 + flow * 1.08);
-    this.venousFlow.setRate(0.65 + flow * 0.92);
-    this.arteryMaterial.emissiveIntensity = 0.06 + pressure * 0.23;
-    this.tissueMaterial.emissiveIntensity = 0.05 + delivery * 0.48;
-    this.deliveryLight.intensity = 0.35 + delivery * 2.25;
+    const flow = clamp((this.state.cardiacOutputLMin - 3.4) / 2);
+    const pressure = clamp((this.state.meanArterialPressureMmHg - 60) / 30);
+    const resistance = clamp((this.state.systemicVascularResistanceDynSCm5 - 900) / 520);
+    const delivery = clamp((this.state.oxygenDeliveryMlMin - 470) / 280);
+
+    const arterialFlowRate = 0.82 + flow * 0.78;
+    const oxygenDeliveryRate = 0.78 + delivery * 0.9;
+    const resistanceCalibre = lerp(1.04, 0.72, resistance);
+
+    this.arterialFlow.setRate(arterialFlowRate);
+    this.venousFlow.setRate(0.75 + flow * 0.67);
+    this.oxygenCargo.setRate(oxygenDeliveryRate);
+    this.arteryMaterial.emissiveIntensity = 0.08 + pressure * 0.27;
+
+    // Narrow only the distal "resistance zone", not the large artery leaving
+    // the heart. This is a qualitative arteriolar-tone cue, never a calibre
+    // measurement or Poiseuille calculation.
+    this.arteryTube.refresh((u, base) => {
+      const distal = smoothstep(0.52, 0.68, u);
+      return base * lerp(1, resistanceCalibre, distal);
+    });
+    for (const band of this.resistanceBands.children) band.scale.setScalar(resistanceCalibre);
+    this.resistanceBandMaterial.opacity = 0.28 + resistance * 0.58;
+
+    // Stored so the presentation mapping can be verified without pretending
+    // these unitless display values are medical outputs.
+    this.presentationState = {
+      arterialFlowRate,
+      oxygenDeliveryRate,
+      resistanceCalibre,
+      tissueEmissiveIntensity: this.tissueMaterial.emissiveIntensity,
+    };
   }
 
   getModelControls() {
-    const level = (value) => `${Math.round(value)} / ${MAX_INTERVENTION_STEPS}`;
     return [
       {
-        id: 'fluid',
-        kind: 'action',
-        label: 'Fluid',
-        labelJa: '輸液',
-        actionLabel: 'Add fluid',
-        actionLabelJa: '輸液を追加',
-        effect: 'preload ↑ · responsive case',
-        effectJa: '前負荷 ↑ ・反応性ありの設定',
-        min: 0,
-        max: MAX_INTERVENTION_STEPS,
-        step: 1,
-        value: this.interventions.fluidSteps,
-        format: level,
-      },
-      {
-        id: 'dobutamine',
-        kind: 'action',
-        label: 'Dobutamine',
-        labelJa: 'DOB',
-        actionLabel: 'Increase DOB',
-        actionLabelJa: 'DOBを上げる',
-        effect: 'contractility ↑ · SVR ↓ in this case',
-        effectJa: '収縮力 ↑ ・この症例ではSVR ↓',
-        min: 0,
-        max: MAX_INTERVENTION_STEPS,
-        step: 1,
-        value: this.interventions.dobutamineSteps,
-        format: level,
+        id: 'intervention',
+        kind: 'choice',
+        label: 'Teaching state',
+        labelJa: '比較する状態',
+        value: this.intervention,
+        options: INTERVENTION_OPTIONS,
       },
     ];
   }
 
   setModelControl(id, value) {
-    if (id === 'fluid') this.interventions.fluidSteps = clamp(value, 0, MAX_INTERVENTION_STEPS);
-    else if (id === 'dobutamine') this.interventions.dobutamineSteps = clamp(value, 0, MAX_INTERVENTION_STEPS);
-    else return;
-    this.state = solveCirculation(this.interventions);
+    if (id !== 'intervention') return;
+    this.state = solveCirculation({ intervention: value });
+    this.intervention = this.state.intervention;
     this._applyState();
   }
 
   resetModelControls() {
-    this.interventions = { fluidSteps: 0, dobutamineSteps: 0 };
-    this.state = solveCirculation(this.interventions);
-    this._applyState();
+    this.setModelControl('intervention', CIRCULATION_INTERVENTIONS.BASELINE);
   }
 
   getMetrics() {
+    const comparing = this.intervention !== CIRCULATION_INTERVENTIONS.BASELINE;
+    const map = Math.round(this.state.meanArterialPressureMmHg);
+    const baselineMap = Math.round(this.baseline.meanArterialPressureMmHg);
+    const co = this.state.cardiacOutputLMin.toFixed(1);
+    const baselineCo = this.baseline.cardiacOutputLMin.toFixed(1);
+    const do2 = Math.round(this.state.oxygenDeliveryMlMin / 10) * 10;
+    const baselineDo2 = Math.round(this.baseline.oxygenDeliveryMlMin / 10) * 10;
+
     return [
       {
         id: 'map',
         label: 'Mean arterial pressure',
         labelJa: '平均血圧 MAP',
-        value: Math.round(this.state.meanArterialPressureMmHg),
+        value: map,
+        reference: comparing ? baselineMap : null,
+        change: comparing ? (Math.abs(map - baselineMap) < 3 ? 'flat' : map > baselineMap ? 'up' : 'down') : null,
+        changeLabel: 'little change',
+        changeLabelJa: 'ほぼ不変',
         unit: 'mmHg',
       },
       {
         id: 'co',
         label: 'Cardiac output',
         labelJa: '心拍出量 CO',
-        value: this.state.cardiacOutputLMin.toFixed(1),
+        value: co,
+        reference: comparing ? baselineCo : null,
+        change: comparing ? 'up' : null,
+        changeLabel: 'increased',
+        changeLabelJa: '上昇',
         unit: 'L/min',
       },
       {
         id: 'do2',
-        label: 'Oxygen delivery',
-        labelJa: '酸素供給 DO₂',
-        value: Math.round(this.state.oxygenDeliveryMlMin / 10) * 10,
+        label: 'Calculated global DO2',
+        labelJa: '計算上の全身DO₂',
+        value: do2,
+        reference: comparing ? baselineDo2 : null,
+        change: comparing ? 'up' : null,
+        changeLabel: 'increased',
+        changeLabelJa: '上昇',
         unit: 'mL O₂/min',
         emphasis: true,
       },
@@ -264,11 +330,12 @@ export class CirculationScene {
 
   getAnnotations() {
     const anchors = {
-      co: new THREE.Vector3(-2.95, 0.45, 0.45),
-      map: ARTERIAL_PATH.getPointAt(0.48),
-      do2: new THREE.Vector3(3.05, 0.5, 0.4),
+      co: new THREE.Vector3(-2.92, 0.48, 0.48),
+      map: ARTERIAL_PATH.getPointAt(0.38),
+      svr: ARTERIAL_PATH.getPointAt(0.74),
+      do2: ARTERIAL_PATH.getPointAt(0.94),
     };
-    return CIRCULATION.annotations.map((annotation) => ({
+    return ANNOTATIONS.map((annotation) => ({
       ...annotation,
       position: anchors[annotation.anchor].clone(),
     }));
@@ -277,8 +344,8 @@ export class CirculationScene {
   dispose() {
     this.heart?.dispose?.();
     this.arterialFlow?.dispose();
+    this.oxygenCargo?.dispose();
     this.venousFlow?.dispose();
     disposeObject(this.root);
   }
 }
-

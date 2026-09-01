@@ -481,6 +481,38 @@
   margin-right: 3px;
 }
 
+.metric-change {
+  display: none;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.metric-change:not(:empty) {
+  display: inline-flex;
+}
+
+.metric[data-change='up'] .metric-change {
+  color: #07151b;
+  background: var(--accent);
+}
+
+.metric[data-change='flat'] .metric-change {
+  color: var(--ink-dim);
+  background: rgba(167, 182, 206, 0.16);
+  border: 1px solid rgba(167, 182, 206, 0.25);
+}
+
+.metric[data-change='down'] .metric-change {
+  color: #241109;
+  background: #ffad7d;
+}
+
 .metric.is-key {
   padding-bottom: 5px;
   margin-bottom: 2px;
@@ -571,7 +603,7 @@
 #ui[data-view='learning'] .pv,
 #ui[data-view='learning'] .wave,
 #ui[data-view='learning'] .chart,
-#ui[data-view='learning'] .model-scope,
+#ui[data-view='learning'] .model-scope:not(.is-primary),
 #ui[data-view='learning'] .model-controls:not(.is-primary),
 #ui[data-view='learning'] .metrics:not(.is-primary),
 #ui[data-view='learning'] .data-only {
@@ -1438,7 +1470,7 @@
   gap: 7px;
 }
 
-/* A two-action teaching surface: large enough to press, shallow enough to sit
+/* A tactile teaching surface: large enough to press, shallow enough to sit
    beside the case summary, and visibly discrete rather than a disguised dose
    calculator. */
 .model-controls.is-tactile {
@@ -1573,6 +1605,80 @@
 .model-action-segment.is-on {
   background: var(--accent);
   box-shadow: 0 0 7px rgba(56, 225, 239, 0.4);
+}
+
+/* One mutually exclusive teaching state. It looks like a set of destinations,
+   not like three dose buttons: there is no plus sign, meter or cumulative
+   affordance, and the accepted state is read back from the model. */
+.model-control.is-choice {
+  grid-column: 1 / -1;
+}
+
+.model-choice-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.model-choice-button {
+  appearance: none;
+  min-width: 0;
+  min-height: 62px;
+  padding: 9px 11px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid rgba(140, 175, 225, 0.18);
+  border-radius: 11px;
+  background: rgba(17, 30, 50, 0.78);
+  color: var(--ink-dim);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: transform 90ms ease, color 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+
+.model-choice-button:hover {
+  color: var(--ink);
+  border-color: rgba(91, 221, 235, 0.48);
+  background: rgba(27, 47, 75, 0.9);
+}
+
+.model-choice-button:active {
+  transform: translateY(2px);
+}
+
+.model-choice-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.model-choice-button.is-selected {
+  color: var(--ink);
+  border-color: rgba(91, 221, 235, 0.82);
+  background: linear-gradient(145deg, rgba(40, 78, 105, 0.96), rgba(19, 43, 65, 0.96));
+  box-shadow: inset 0 0 0 1px rgba(91, 221, 235, 0.16), 0 0 18px rgba(56, 225, 239, 0.1);
+}
+
+.model-choice-label {
+  font-size: 12.5px;
+  font-weight: 720;
+  line-height: 1.2;
+}
+
+.model-choice-effect {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-faint);
+  font-size: 10px;
+  line-height: 1.28;
+}
+
+.model-choice-button.is-selected .model-choice-effect {
+  color: var(--ink-dim);
 }
 
 .model-controls-head {
@@ -2398,6 +2504,25 @@
 
   .model-action-value {
     grid-column: 2;
+  }
+
+  .model-choice-group {
+    gap: 5px;
+  }
+
+  .model-choice-button {
+    min-height: 52px;
+    padding: 7px 8px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .model-choice-effect {
+    display: none;
+  }
+
+  .model-choice-label {
+    font-size: 11.5px;
   }
 }
 
