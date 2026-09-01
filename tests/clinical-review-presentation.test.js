@@ -62,7 +62,7 @@ test('pending, stale and legacy states have visibly different trust labels', () 
   assert.equal(legacy.status, 'legacy-unversioned');
   assert.equal(new Set([pending.en, stale.en, legacy.en]).size, 3);
   assert.match(pending.ja, /未完了/);
-  assert.match(stale.ja, /再レビュー要/);
+  assert.match(stale.ja, /再レビュー必要/);
   assert.match(legacy.ja, /旧基準・版固定なし/);
 });
 
