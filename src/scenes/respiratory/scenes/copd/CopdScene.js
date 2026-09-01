@@ -109,6 +109,10 @@ export class CopdScene {
     this.elapsedS = 0;
     /** Model time the social sequence has driven to. See `renderAtSeconds`. */
     this.drivenSeconds = 0;
+    // When true, model time is supplied from outside (the reel drives it from
+    // elapsed time so a recording is reproducible) instead of being integrated
+    // from the render loop's delta.
+    this.modelTimeDriven = false;
   }
 
   build() {
@@ -270,13 +274,33 @@ export class CopdScene {
   }
 
   update(dt) {
-    this.model.advance(dt);
-    this.referenceModel?.advance(dt);
-    this.elapsedS += dt;
-    this.recordHistory();
-    this.applyModelToScene();
+    // The lungs keep breathing on the render clock — except while the reel
+    // owns model time. The app calls this before the reel's tick, and the
+    // reel advances the same models through `renderAtSeconds`; without the
+    // guard every reel frame would integrate the breath twice.
+    if (!this.modelTimeDriven) {
+      this.model.advance(dt);
+      this.referenceModel?.advance(dt);
+      this.elapsedS += dt;
+      this.recordHistory();
+      this.applyModelToScene();
+    }
     this.primary.air.update(dt);
     if (this.comparing) this.reference?.air.update(dt);
+  }
+
+  /**
+   * Hands ownership of model time to the caller, or back.
+   *
+   * While driven, `update` stops integrating the breath from the render
+   * loop's delta; the reel advances the same models through `renderAtSeconds`
+   * instead. The interactive scene is unchanged — normal playback still
+   * integrates on the render clock.
+   *
+   * @param {boolean} driven
+   */
+  setModelTimeDriven(driven) {
+    this.modelTimeDriven = driven;
   }
 
   /**
@@ -295,11 +319,14 @@ export class CopdScene {
    * follows the track. The climb on screen is the lung failing to give back
    * what it took, breath after breath, which is the finding.
    *
-   * Playing forward advances by the difference. Going backwards — a restart, a
-   * seek — resets and replays, which costs a few hundred fixed steps and only
-   * happens when someone rewinds. Because the step size is fixed and the demand
-   * at each step depends only on model time, the same second is always reached
-   * the same way.
+   * Playing forward advances by the difference, in whole fixed steps only: a
+   * frame's leftover fraction of a step is never integrated as a shortened
+   * dt, it is left for a later frame to complete, so `drivenSeconds` only
+   * ever visits multiples of the step. Going backwards — a restart, a seek —
+   * resets and replays, which costs a few hundred fixed steps and only
+   * happens when someone rewinds. Because every step is the same size and the
+   * demand at each step depends only on model time, the same second is always
+   * reached the same way, at any frame rate.
    *
    * @param {number} seconds model time since the run began
    * @param {(seconds: number) => number} demandAt the workload over that time
@@ -317,15 +344,14 @@ export class CopdScene {
       this.elapsedS = 0;
     }
     const step = 1 / 120;
-    while (this.drivenSeconds < target - 1e-9) {
-      const dt = Math.min(step, target - this.drivenSeconds);
-      this.drivenSeconds += dt;
+    while (target - this.drivenSeconds >= step - 1e-9) {
+      this.drivenSeconds += step;
       // The workload for this step, as a function of model time and nothing
       // else. This is what makes the run reproducible.
       this.setProgress(demandAt(this.drivenSeconds));
-      this.model.advance(dt);
-      this.referenceModel?.advance(dt);
-      this.elapsedS += dt;
+      this.model.advance(step);
+      this.referenceModel?.advance(step);
+      this.elapsedS += step;
       this.recordHistory();
     }
     this.applyModelToScene();
@@ -643,6 +669,14 @@ export class CopdScene {
           copd: rows(scene.model),
           normal: scene.referenceModel ? rows(scene.referenceModel) : rows(scene.model),
         };
+      },
+
+      /** Hand model time to the sequence, and hand it back on the way out. */
+      onEnter(scene) {
+        scene.setModelTimeDriven(true);
+      },
+      onExit(scene) {
+        scene.setModelTimeDriven(false);
       },
     };
   }
