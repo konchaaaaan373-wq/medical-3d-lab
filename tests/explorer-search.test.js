@@ -32,17 +32,16 @@ test('explorer search: finds a scene through disease, organ, tags and Japanese c
 });
 
 test('explorer search: clinical review metadata is searchable without copying it into the scene manifest', () => {
-  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { query: 'reviewed' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { query: 'stale' }), true);
   assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { query: 'legacy-unversioned' }), true);
 });
 
-test('explorer filters: Patient and Education expose only versioned clinically reviewed authored scenes', () => {
+test('explorer filters: paid professional modes fail closed when all authored guides require re-review', () => {
   const patient = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'patient' }));
   const education = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'education' }));
 
-  const expected = ['copd-hyperinflation', 'asthma-heterogeneity', 'portal-hypertension'].sort();
-  assert.deepEqual(patient.map((scene) => scene.id).sort(), expected);
-  assert.deepEqual(education.map((scene) => scene.id).sort(), expected);
+  assert.deepEqual(patient.map((scene) => scene.id).sort(), []);
+  assert.deepEqual(education.map((scene) => scene.id).sort(), []);
 });
 
 test('explorer filters: authored legacy guides are hidden from paid product filters until re-reviewed', () => {
@@ -66,7 +65,8 @@ test('explorer filters: exact maturity filters remain exact', () => {
 });
 
 test('explorer filters: clinical review is independent of maturity', () => {
-  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { review: 'reviewed' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { review: 'stale' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { review: 'reviewed' }), false);
   assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { review: 'reviewed' }), false);
   assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { review: 'legacy-unversioned' }), true);
   assert.equal(sceneMatchesExplorerFilters(recordFor('brain-anatomy'), { review: 'pending' }), true);
@@ -91,9 +91,16 @@ test('explorer filters: maturity and clinical review can be combined without con
   assert.equal(
     sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), {
       status: 'reviewed',
-      review: 'reviewed',
+      review: 'stale',
     }),
     true
+  );
+  assert.equal(
+    sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), {
+      status: 'reviewed',
+      review: 'reviewed',
+    }),
+    false
   );
 });
 
