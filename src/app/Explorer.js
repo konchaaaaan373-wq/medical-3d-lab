@@ -65,15 +65,14 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     el(
       'span',
       { class: 'explorer-access', 'aria-label': 'Available product modes' },
-      productBadgesForScene(scene).map((entry) =>
-        el('span', { class: `explorer-access-badge is-${entry.kind}` }, [
-          entry.kind === 'paid'
-            ? el('span', { class: 'explorer-access-lock', 'aria-hidden': 'true', text: '◇' })
-            : null,
-          el('span', { class: 'lang-en', text: entry.label }),
-          el('span', { class: 'lang-ja', text: entry.labelJa }),
-        ])
-      )
+      productBadgesForScene(scene).map((entry) => {
+        const labelEn = entry.kind === 'paid' ? `${entry.label} (paid)` : 'Core model (free)';
+        const labelJa = entry.kind === 'paid' ? `${entry.labelJa}（有料）` : '基本モデル（無料）';
+        return el('span', { class: `explorer-access-badge is-${entry.kind}` }, [
+          el('span', { class: 'lang-en', text: labelEn }),
+          el('span', { class: 'lang-ja', text: labelJa }),
+        ]);
+      })
     );
 
   function favoriteButtonFor(scene) {
@@ -178,8 +177,10 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const sections = systems.map(systemSection);
   const totalScenes = scopedScenes.length;
 
+  let searchControls = null;
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
+    searchControls?.setLanguage(mode);
   });
 
   const headerActions = el('div', { class: 'explorer-header-actions' }, [
@@ -261,6 +262,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       applyFilters();
     },
   });
+  searchControls = search;
 
   const headerTitle = isLab
     ? ['Experimental Lab', '実験モデル']
@@ -271,8 +273,8 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         'Prototypeシーンと開発予定の問いを、公開カタログから明確に分離して掲載します。',
       ]
     : [
-        'Reviewed, production and model-backed alpha work — without the stylised Prototype shelf.',
-        'Reviewed・Production・モデル駆動のAlphaを掲載し、簡略化したPrototypeは実験室へ分離しています。',
+        'Explore medically reviewed and model-backed views of anatomy and pathophysiology. Work in progress lives in the Lab.',
+        '医学レビュー済みの解剖・病態モデルを掲載しています。開発中のモデルは実験室で確認できます。',
       ];
 
   const productKey = isLab
@@ -289,12 +291,12 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       ])
     : el('div', { class: 'explorer-product-key' }, [
         el('span', { class: 'explorer-access-badge is-free' }, [
-          el('span', { class: 'lang-en', text: 'Core model stays free' }),
+          el('span', { class: 'lang-en', text: 'Core models are free' }),
           el('span', { class: 'lang-ja', text: '基本モデルは無料' }),
         ]),
         bilingual(
-          'Patient and Education badges mark optional paid professional-use modes.',
-          '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。',
+          'Some professional tools for patient explanation and medical education require a subscription.',
+          '患者説明・医学教育向けの一部機能は有料です。',
           'explorer-product-note'
         ),
       ]);

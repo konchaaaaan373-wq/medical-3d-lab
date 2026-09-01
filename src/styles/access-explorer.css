@@ -3,73 +3,111 @@
    to the existing language control. */
 .explorer-header-actions {
   position: absolute;
-  top: 18px;
-  right: 18px;
+  top: 22px;
+  right: 28px;
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 14px;
   z-index: 2;
 }
 
 .explorer-header-actions .ui-toggle,
 .explorer-header-actions .account-trigger {
   position: static;
+  min-height: 32px;
+  padding: 0 9px;
+  border-color: var(--explorer-rule);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--explorer-muted);
+  font-size: 11px;
+  font-weight: 550;
+  backdrop-filter: none;
 }
 
-/* Product capability is catalogue metadata, not current-account state. These
-   chips answer "what can I do with this scene?" without pretending the paid
-   mode is unlocked for the viewer. */
+.explorer-shell-link {
+  padding: 6px 0 5px;
+  border-bottom: 1px solid transparent;
+  color: var(--explorer-muted);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.explorer-shell-link:hover,
+.explorer-shell-link:focus-visible {
+  border-bottom-color: var(--explorer-accent);
+  color: var(--explorer-ink);
+}
+
+/* Product capability is catalogue metadata, not current-account state. Each
+   item says free or paid in words so colour is never carrying that meaning. */
 .explorer-access {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 7px;
+  gap: 0;
+  margin-top: 1px;
 }
 
 .explorer-access-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   width: fit-content;
-  min-height: 21px;
-  padding: 3px 7px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 8.5px;
-  font-weight: 650;
-  letter-spacing: 0.02em;
-  color: var(--ink-faint);
-  background: rgba(255, 255, 255, 0.02);
+  min-height: auto;
+  margin-right: 9px;
+  padding: 0 9px 0 0;
+  border: 0;
+  border-right: 1px solid var(--explorer-rule);
+  border-radius: 0;
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  color: var(--explorer-faint);
+  background: none;
+}
+
+.explorer-access-badge:last-child {
+  margin-right: 0;
+  padding-right: 0;
+  border-right: 0;
 }
 
 .explorer-access-badge.is-free {
-  color: var(--ink-dim);
-  border-color: color-mix(in srgb, var(--ink-dim) 28%, var(--border));
+  color: var(--explorer-muted);
+  border-color: var(--explorer-rule);
 }
 
 .explorer-access-badge.is-paid {
-  color: color-mix(in srgb, var(--accent) 82%, var(--ink));
-  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
-  background: color-mix(in srgb, var(--accent) 5%, transparent);
-}
-
-.explorer-access-lock {
-  color: var(--accent);
-  font-size: 8px;
+  color: var(--explorer-muted);
+  border-color: var(--explorer-rule);
+  background: none;
 }
 
 .explorer-product-key {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 13px;
-  color: var(--ink-faint);
+  gap: 10px;
+  margin-top: 15px;
+  padding-left: 10px;
+  border-left: 2px solid var(--explorer-rule-strong);
+  color: var(--explorer-faint);
+}
+
+.explorer-product-key > .explorer-access-badge {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--explorer-muted);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .explorer-product-note {
-  font-size: 9.5px;
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.55;
 }
 
 @media (max-width: 720px) {
@@ -79,11 +117,14 @@
 
   .explorer-header-actions {
     top: 14px;
-    right: 14px;
+    right: 18px;
+    left: 18px;
+    justify-content: flex-end;
+    gap: 11px;
   }
 
   .explorer-product-key {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: center;
+    flex-direction: row;
   }
 }

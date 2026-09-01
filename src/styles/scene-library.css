@@ -98,9 +98,9 @@
 
 .explorer-scene-shell {
   position: relative;
-  min-width: 230px;
-  max-width: 340px;
-  flex: 1 1 230px;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
 }
 
 .explorer-scene-shell > .explorer-scene {
@@ -122,10 +122,10 @@
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: rgba(6, 11, 20, 0.82);
-  color: var(--ink-faint);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--explorer-faint, var(--ink-faint));
   font: inherit;
   font-size: 15px;
   line-height: 1;
@@ -136,15 +136,14 @@
 .explorer-favorite-toggle:hover,
 .explorer-favorite-toggle[aria-pressed='true'] {
   color: #ffd37a;
-  border-color: rgba(255, 211, 122, 0.42);
-  background: rgba(25, 22, 13, 0.92);
+  background: transparent;
 }
 
 .explorer-library {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
-  padding: 16px 18px;
+  padding: 18px 20px;
 }
 
 .explorer-library[hidden],
@@ -179,19 +178,20 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 9px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.02);
-  color: var(--ink-dim);
+  padding: 7px 0;
+  border: 0;
+  border-bottom: 1px solid var(--explorer-rule, var(--border));
+  border-radius: 0;
+  background: none;
+  color: var(--explorer-muted, var(--ink-dim));
   text-decoration: none;
   transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
 }
 
 .explorer-library-link:hover {
-  color: var(--ink);
-  border-color: rgba(56, 225, 239, 0.36);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--explorer-ink, var(--ink));
+  border-color: var(--explorer-accent, var(--accent));
+  background: none;
 }
 
 .explorer-library-mark {

@@ -1,16 +1,16 @@
 import { el } from '../utils/dom.js';
 
 const PUBLIC_STATUS_OPTIONS = Object.freeze([
-  ['all', 'All maturity / すべて'],
-  ['reviewed-plus', 'Reviewed + Production / Reviewed以上'],
-  ['production', 'Production / Production'],
-  ['reviewed', 'Reviewed / Reviewed'],
-  ['alpha', 'Alpha / Alpha'],
+  ['all', 'All stages', 'すべて'],
+  ['reviewed-plus', 'Reviewed + Production', 'Reviewed以上'],
+  ['production', 'Production', 'Production'],
+  ['reviewed', 'Reviewed', 'Reviewed'],
+  ['alpha', 'Alpha', 'Alpha'],
 ]);
 
 const LAB_STATUS_OPTIONS = Object.freeze([
-  ['all', 'All experimental / すべて'],
-  ['prototype', 'Prototype / Prototype'],
+  ['all', 'All experiments', 'すべて'],
+  ['prototype', 'Prototype', 'Prototype'],
 ]);
 
 /**
@@ -32,8 +32,8 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     type: 'search',
     autocomplete: 'off',
     spellcheck: 'false',
-    placeholder: 'Search disease, organ or mechanism / 病態・臓器・機序を検索',
-    'aria-label': 'Search scenes by disease, organ or mechanism',
+    placeholder: '病態・臓器・機序から検索',
+    'aria-label': '病態・臓器・機序からシーンを検索',
     on: {
       input: (event) => {
         filters.query = event.currentTarget.value;
@@ -54,7 +54,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     ? null
     : el(
         'div',
-        { class: 'explorer-filter-group', 'aria-label': 'Product mode filter' },
+        { class: 'explorer-filter-group', 'aria-label': '用途で絞り込む' },
         [
           ['all', 'All', 'すべて'],
           ['patient', 'Patient', '患者説明'],
@@ -97,7 +97,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
         },
       },
     },
-    statusOptions.map(([value, label]) => el('option', { value, text: label }))
+    statusOptions.map(([value, , labelJa]) => el('option', { value, text: labelJa }))
   );
 
   const countEn = el('span', { class: 'lang-en' });
@@ -127,7 +127,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     el('div', { class: 'explorer-search-summary' }, [count, clear]),
   ].filter(Boolean);
 
-  const element = el('section', { class: 'explorer-search', 'aria-label': 'Search and filter scenes' }, [
+  const element = el('section', { class: 'explorer-search', 'aria-label': 'シーンを検索・絞り込み' }, [
     input,
     el('div', { class: 'explorer-search-row' }, row),
   ]);
@@ -155,6 +155,28 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     input.focus();
   }
 
+  function setLanguage(language) {
+    const japanese = language !== 'en';
+    input.placeholder = japanese
+      ? '病態・臓器・機序から検索'
+      : 'Search by disease, organ or mechanism';
+    input.setAttribute(
+      'aria-label',
+      japanese ? '病態・臓器・機序からシーンを検索' : 'Search scenes by disease, organ or mechanism'
+    );
+    element.setAttribute('aria-label', japanese ? 'シーンを検索・絞り込み' : 'Search and filter scenes');
+    mode?.setAttribute('aria-label', japanese ? '用途で絞り込む' : 'Filter by use');
+    status.setAttribute('aria-label', japanese ? '完成度で絞り込む' : 'Filter by maturity');
+    clear.setAttribute('aria-label', japanese ? '検索条件を解除' : 'Clear filters');
+
+    [...status.options].forEach((option, index) => {
+      const [, labelEn, labelJa] = statusOptions[index];
+      option.textContent = japanese ? labelJa : labelEn;
+    });
+  }
+
+  setLanguage('ja');
+
   return {
     element,
     setCount({ visible, total, planned = 0 }) {
@@ -165,5 +187,6 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     },
     clear: clearFilters,
     focus: () => input.focus(),
+    setLanguage,
   };
 }
