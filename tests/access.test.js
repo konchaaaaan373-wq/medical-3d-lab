@@ -80,6 +80,23 @@ test('product: paid capabilities are explicit and prototypes stay free-only by d
   }
 });
 
+test('product: paid patient/education modes require a reviewed or production scene', () => {
+  for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
+    if (!features.patient && !features.education) continue;
+    const scene = SCENE_MANIFEST.find((entry) => entry.id === sceneId);
+    assert.ok(scene, `${sceneId}: registered scene`);
+    assert.ok(
+      scene.status === 'reviewed' || scene.status === 'production',
+      `${sceneId}: ${scene.status} must not advertise paid clinical/teaching modes`
+    );
+  }
+
+  const hrs = SCENE_MANIFEST.find((scene) => scene.id === 'hepatorenal-syndrome');
+  assert.equal(hrs?.status, 'alpha');
+  assert.equal(featuresForScene(hrs).patient, false);
+  assert.equal(featuresForScene(hrs).education, false);
+});
+
 test('product: every advertised paid capability has authored content', () => {
   for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
     if (features.patient) assert.ok(patientGuideFor(sceneId), `${sceneId}: patient guide`);
