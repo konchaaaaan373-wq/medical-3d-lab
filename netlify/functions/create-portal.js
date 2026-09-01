@@ -11,7 +11,7 @@ export default async (request) => {
     const returnHash = safeHash(body.returnHash);
     const session = await stripePost('billing_portal/sessions', {
       customer,
-      return_url: `${origin}/${returnHash}`,
+      return_url: `${origin}/?billing=portal${returnHash}`,
     });
     return json(200, { url: session.url });
   } catch (error) {
