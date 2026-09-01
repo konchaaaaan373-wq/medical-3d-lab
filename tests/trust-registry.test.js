@@ -12,15 +12,26 @@ test('every public non-prototype scene is visible on the Trust surface', () => {
   for (const scene of PUBLIC_SCENES) assert.ok(ids.has(scene.id), `${scene.id} is missing from Trust data`);
 });
 
-test('Trust data never turns missing sign-off into a reviewed claim', () => {
+test('Trust data never turns missing or stale sign-off into a current reviewed claim', () => {
   for (const record of registry) {
     if (record.reviewStatus === 'reviewed') {
       assert.match(record.reviewedAt, /^\d{4}-\d{2}-\d{2}$/);
       assert.match(record.reviewedCommit, /^[0-9a-f]{40}$/);
-    } else {
-      assert.equal(record.reviewedAt, null);
-      assert.equal(record.reviewedCommit, null);
+      continue;
     }
+
+    if (record.reviewStatus === 'stale') {
+      // A stale record preserves the historical attestation for auditability,
+      // while its reviewStatus prevents the current code from inheriting it.
+      assert.match(record.reviewedAt, /^\d{4}-\d{2}-\d{2}$/);
+      assert.match(record.reviewedCommit, /^[0-9a-f]{40}$/);
+      assert.ok(record.staleReason, `${record.sceneId}: stale review must explain why it is stale`);
+      assert.ok(record.stalePaths?.length, `${record.sceneId}: stale review must identify changed paths`);
+      continue;
+    }
+
+    assert.equal(record.reviewedAt, null);
+    assert.equal(record.reviewedCommit, null);
   }
 });
 
