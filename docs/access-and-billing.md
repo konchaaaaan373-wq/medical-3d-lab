@@ -60,7 +60,10 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
 
 1. Create a dedicated Supabase project for Medical 3D Lab.
 2. Enable email/password authentication.
-3. Apply `supabase/migrations/001_billing.sql` and `002_single_subscription_lifecycle.sql`.
+3. Apply the billing migrations in order:
+   - `supabase/migrations/001_billing.sql`
+   - `supabase/migrations/002_single_subscription_lifecycle.sql`
+   - `supabase/migrations/20260901154950_billing_event_ledger.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
