@@ -1,0 +1,311 @@
+/* ========================================================================== 
+   Consultation-room patient presentation
+   ========================================================================== */
+
+.patient-guide:focus-visible {
+  outline: none;
+}
+
+.patient-guide-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Dots are real navigation buttons now. Strip browser button chrome while
+   keeping a generous invisible hit target for a tablet or presentation screen. */
+.patient-guide-dot {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
+}
+
+.patient-guide-dot::after {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
+.patient-guide-dot.is-current {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.patient-guide-presentation,
+.patient-guide-handout-button {
+  flex: none;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 9.5px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.patient-guide-presentation:hover,
+.patient-guide-presentation.is-on,
+.patient-guide-handout-button:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.patient-guide-presentation:focus-visible,
+.patient-guide-handout-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.patient-handout {
+  display: none;
+}
+
+/* Presentation mode does not change the medical state. It only changes visual
+   competition around the existing model and patient guide. */
+#ui.is-patient-presentation .top-bar,
+#ui.is-patient-presentation .global-scene-nav {
+  opacity: 0.22;
+  transition: opacity 180ms ease;
+}
+
+#ui.is-patient-presentation .top-bar {
+  pointer-events: none;
+}
+
+#ui.is-patient-presentation .patient-guide {
+  gap: 14px;
+}
+
+#ui.is-patient-presentation .patient-guide-step {
+  gap: 12px;
+}
+
+#ui.is-patient-presentation .patient-guide-title {
+  font-size: clamp(14px, 1.5vw, 18px);
+}
+
+#ui.is-patient-presentation .patient-guide-title .lang-ja {
+  font-size: clamp(12px, 1.25vw, 15px);
+}
+
+#ui.is-patient-presentation .patient-guide-heading {
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.22;
+}
+
+#ui.is-patient-presentation .patient-guide-heading .lang-ja {
+  font-size: clamp(20px, 2.4vw, 30px);
+  color: var(--ink);
+}
+
+#ui.is-patient-presentation .patient-guide-copy {
+  max-width: 72ch;
+  font-size: clamp(16px, 1.75vw, 22px);
+  line-height: 1.58;
+}
+
+#ui.is-patient-presentation .patient-guide-copy .lang-ja {
+  font-size: clamp(16px, 1.7vw, 21px);
+  line-height: 1.65;
+}
+
+#ui.is-patient-presentation .patient-guide-boundary {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+#ui.is-patient-presentation .patient-guide-actions {
+  gap: 12px;
+}
+
+#ui.is-patient-presentation .patient-guide-nav {
+  min-width: 124px;
+  min-height: 48px;
+  font-size: 13px;
+}
+
+#ui.is-patient-presentation .patient-guide-dots {
+  gap: 6px;
+}
+
+#ui.is-patient-presentation .patient-guide-dot {
+  height: 4px;
+}
+
+@media (max-width: 720px) {
+  .patient-guide-presentation,
+  .patient-guide-handout-button {
+    min-height: 32px;
+    max-width: 88px;
+    padding-inline: 8px;
+  }
+
+  #ui.is-patient-presentation .global-scene-nav {
+    opacity: 0.14;
+  }
+
+  #ui.is-patient-presentation .patient-guide-heading,
+  #ui.is-patient-presentation .patient-guide-heading .lang-ja {
+    font-size: 21px;
+  }
+
+  #ui.is-patient-presentation .patient-guide-copy,
+  #ui.is-patient-presentation .patient-guide-copy .lang-ja {
+    font-size: 15px;
+  }
+
+  #ui.is-patient-presentation .patient-guide-nav {
+    min-width: 108px;
+    min-height: 44px;
+    font-size: 12px;
+  }
+}
+
+@media print {
+  @page {
+    margin: 15mm 17mm;
+  }
+
+  html,
+  body {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  #ui {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .patient-handout,
+  .patient-handout * {
+    visibility: visible !important;
+  }
+
+  .patient-handout {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0;
+    background: #fff;
+    color: #111;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  .patient-handout-head {
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+    border-bottom: 1.5px solid #222;
+  }
+
+  .patient-handout-brand {
+    margin-bottom: 6px;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #555;
+  }
+
+  .patient-handout-title {
+    margin: 0;
+    font-size: 21pt;
+    line-height: 1.25;
+  }
+
+  .patient-handout-title > span,
+  .patient-handout-lead > span,
+  .patient-handout-step h2 > span,
+  .patient-handout-step p > span,
+  .patient-handout-boundary > span,
+  .patient-handout-boundary > strong {
+    display: block;
+  }
+
+  .patient-handout-title .lang-ja {
+    margin-top: 3px;
+    font-size: 16pt;
+  }
+
+  .patient-handout-lead {
+    margin: 9px 0 0;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    color: #444;
+  }
+
+  .patient-handout-steps {
+    margin: 0;
+    padding-left: 24px;
+  }
+
+  .patient-handout-step {
+    padding: 0 0 14px 4px;
+    break-inside: avoid;
+  }
+
+  .patient-handout-step h2 {
+    margin: 0 0 5px;
+    font-size: 13pt;
+    line-height: 1.35;
+  }
+
+  .patient-handout-step h2 .lang-ja {
+    margin-top: 2px;
+    font-size: 11.5pt;
+  }
+
+  .patient-handout-step p {
+    margin: 0;
+    font-size: 10.5pt;
+    line-height: 1.58;
+    color: #222;
+  }
+
+  .patient-handout-step p .lang-ja {
+    margin-top: 3px;
+  }
+
+  .patient-handout-boundary {
+    margin-top: 8px;
+    padding: 11px 12px;
+    border: 1px solid #999;
+    border-radius: 6px;
+    font-size: 9.5pt;
+    line-height: 1.5;
+    color: #333;
+    break-inside: avoid;
+  }
+
+  .patient-handout-boundary strong {
+    margin-bottom: 3px;
+    color: #111;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ui.is-patient-presentation .top-bar,
+  #ui.is-patient-presentation .global-scene-nav {
+    transition: none;
+  }
+}
