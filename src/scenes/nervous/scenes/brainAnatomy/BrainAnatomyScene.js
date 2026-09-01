@@ -5,8 +5,10 @@ import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp, damp, smoothstep } from '../../../../utils/math.js';
 import {
+  BRAIN_ANATOMICAL_PALETTE,
   BRAIN_ANATOMY_META,
   BRAIN_COLOR_MODES,
+  BRAIN_PALETTE,
   BRAIN_REGIONS,
   brainColor,
   brainStructureInfo,
@@ -16,6 +18,22 @@ const BASE_URL = import.meta.env?.BASE_URL ?? './';
 const ATLAS_URL = `${BASE_URL}assets/brain/brain.glb`;
 const DRACO_URL = `${BASE_URL}assets/brain/draco/`;
 const TARGET_RADIUS = 2.08;
+const HIGHLIGHT_COLOR = new THREE.Color('#ffffff');
+
+const COLOUR_MATERIAL = {
+  default: { roughness: 0.72, emissiveIntensity: 0.025 },
+  ventricles: { roughness: 0.38, emissiveIntensity: 0.025 },
+};
+
+const ANATOMICAL_MATERIAL = {
+  cortex: { roughness: 0.82, emissiveIntensity: 0.004 },
+  deep_grey: { roughness: 0.78, emissiveIntensity: 0.004 },
+  diencephalon: { roughness: 0.78, emissiveIntensity: 0.004 },
+  white_matter: { roughness: 0.86, emissiveIntensity: 0.003 },
+  ventricles: { roughness: 0.42, emissiveIntensity: 0.01 },
+  cerebellum: { roughness: 0.8, emissiveIntensity: 0.004 },
+  brainstem: { roughness: 0.76, emissiveIntensity: 0.004 },
+};
 
 const ANATOMY_CATEGORIES = new Set([
   'cortex',
@@ -217,12 +235,13 @@ export class BrainAnatomyScene {
   _registerAtlasMesh(mesh, metadata) {
     const id = Number(metadata.bx_id);
     const color = new THREE.Color(brainColor(metadata, this.colorMode));
+    const materialStyle = anatomyMaterialStyle(metadata, this.colorMode);
     const material = new THREE.MeshStandardMaterial({
       color,
-      roughness: metadata.bx_cat === 'ventricles' ? 0.38 : 0.72,
+      roughness: materialStyle.roughness,
       metalness: 0,
       emissive: color,
-      emissiveIntensity: 0.025,
+      emissiveIntensity: materialStyle.emissiveIntensity,
       transparent: true,
       opacity: 1,
       depthWrite: true,
@@ -238,6 +257,7 @@ export class BrainAnatomyScene {
       atlasMetadata: { ...metadata },
       atlasId: id,
       baseColor: color.clone(),
+      idleEmissiveIntensity: materialStyle.emissiveIntensity,
       currentOpacity: 1,
       selected: false,
       hovered: false,
@@ -318,8 +338,12 @@ export class BrainAnatomyScene {
   _refreshHighlight(mesh) {
     const selected = mesh.userData.selected;
     const hovered = mesh.userData.hovered;
-    mesh.material.emissive.copy(selected || hovered ? new THREE.Color('#ffffff') : mesh.userData.baseColor);
-    mesh.material.emissiveIntensity = selected ? 0.32 : hovered ? 0.16 : 0.025;
+    mesh.material.emissive.copy(selected || hovered ? HIGHLIGHT_COLOR : mesh.userData.baseColor);
+    mesh.material.emissiveIntensity = selected
+      ? 0.32
+      : hovered
+        ? 0.16
+        : mesh.userData.idleEmissiveIntensity;
   }
 
   selectStructure(id) {
@@ -421,13 +445,20 @@ export class BrainAnatomyScene {
 
   getAnatomyColorMode() { return this.colorMode; }
 
+  getAnatomyLegendPalette(id = this.colorMode) {
+    return { ...(id === 'anatomical' ? BRAIN_ANATOMICAL_PALETTE : BRAIN_PALETTE) };
+  }
+
   setAnatomyColorMode(id) {
     if (!BRAIN_COLOR_MODES.some((mode) => mode.id === id) || id === this.colorMode) return false;
     this.colorMode = id;
     for (const mesh of this.selectables) {
       const color = new THREE.Color(brainColor(mesh.userData.atlasMetadata, id));
+      const materialStyle = anatomyMaterialStyle(mesh.userData.atlasMetadata, id);
       mesh.userData.baseColor.copy(color);
+      mesh.userData.idleEmissiveIntensity = materialStyle.emissiveIntensity;
       mesh.material.color.copy(color);
+      mesh.material.roughness = materialStyle.roughness;
       this._refreshHighlight(mesh);
     }
     if (this.selectedMesh) {
@@ -499,6 +530,13 @@ export class BrainAnatomyScene {
     this.statusListeners.clear();
     disposeObject(this.root);
   }
+}
+
+function anatomyMaterialStyle(metadata, mode) {
+  if (mode === 'anatomical') {
+    return ANATOMICAL_MATERIAL[metadata.bx_cat] ?? ANATOMICAL_MATERIAL.deep_grey;
+  }
+  return metadata.bx_cat === 'ventricles' ? COLOUR_MATERIAL.ventricles : COLOUR_MATERIAL.default;
 }
 
 function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {

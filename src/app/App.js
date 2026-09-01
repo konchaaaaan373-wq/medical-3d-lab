@@ -325,8 +325,14 @@ export async function createApp({ stage, ui }) {
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  const syncAnatomyColorMode = (id) => {
+    if (!id) return;
+    ui.dataset.anatomyColorMode = id;
+    legend.setPalette(scene.getAnatomyLegendPalette?.(id));
+  };
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
+        onColorMode: syncAnatomyColorMode,
         onView: (id) => {
           const pose = scene.getAnatomyView?.(id);
           if (!pose) return;

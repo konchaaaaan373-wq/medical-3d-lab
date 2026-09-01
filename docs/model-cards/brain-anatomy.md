@@ -22,12 +22,14 @@ deep grey matter, diencephalon, white matter, ventricular system, cerebellum
 and brainstem. Every selectable mesh carries its own stable id, category, side,
 region, source and anatomical label in glTF metadata.
 
-The default surface view gives every named structure a distinct teaching colour
-inside a recognisable lobe colour family. A second colour mode restores one
-colour per lobe for orientation. Pointing at a mesh previews its exact name;
-clicking or tapping pins it. The information card reports side, anatomical
-hierarchy, the exact English atlas label, and a deliberate Japanese name for all
-147 unique selectable labels (271 left/right/midline meshes).
+The default **Colour map** gives every named structure a distinct teaching
+colour inside a recognisable lobe colour family. A one-click **Natural anatomy**
+mode uses low-saturation grey-pink cortex, ivory white matter and muted tissue
+colours, with lower idle emission so lighting describes gyri and sulci more
+clearly. Pointing at a mesh previews its exact name; clicking or tapping pins
+it. The information card reports side, anatomical hierarchy, the exact English
+atlas label, and a deliberate Japanese name for all 147 unique selectable
+labels (271 left/right/midline meshes).
 
 Left and right medial views hide the contralateral hemisphere at the midline so
 medial structures can be inspected without moving anatomy. The layer sequence
@@ -86,9 +88,12 @@ they do not convert the distributed geometry into a Destrieux atlas.
 
 Geometry is never enlarged, separated or moved by hover, selection, camera
 view, or the layer slider. Hover and selection change emissive emphasis only.
-Fine colours are deterministic from anatomical metadata, use the same colour
-for left/right homologues, and vary hue, saturation and lightness inside the
-parent lobe family. Overview mode uses the broad lobe palette.
+Colour-map shades are deterministic from anatomical metadata, use the same
+colour for left/right homologues, and vary hue, saturation and lightness inside
+the parent lobe family. Natural-anatomy shades use a constrained low-saturation
+range with small deterministic lightness differences between named meshes. The
+same selector also updates the legend swatches; neither mode changes anatomical
+identity or geometry.
 
 The full hemispheric white-matter masses remain almost transparent in the deep
 view; otherwise they would form a second enclosing shell and conceal the nuclei

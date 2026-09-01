@@ -49,15 +49,15 @@ to the source meshes.
 | **Assumption** | Translation improves learning but does not prove the upstream mesh boundary. Independent review of the complete Japanese term set is still outstanding. |
 | **Validation** | `every selectable atlas label has a deliberate Japanese name and hierarchy` parses the shipped GLB and tests all 147 unique selectable labels. |
 
-### 3. Fine colour is a navigation aid, not anatomical evidence
+### 3. Both colour modes are viewing aids, not anatomical evidence
 
 | | |
 | --- | --- |
-| **Claim** | Fine mode makes named structures visually separable while preserving a recognisable lobe family; overview mode collapses them to broad lobe colours. |
+| **Claim** | Colour-map mode makes named structures visually separable while preserving a recognisable lobe family. Natural-anatomy mode keeps conventional low-saturation tissue contrast and stronger directional shading for surface relief. |
 | **Source** | Interface design requirement, not a biological source. |
-| **Implementation** | A stable hash of category/region and exact atlas label varies hue, saturation and lightness inside an authored family. Side is excluded, so homologous left/right labels match. |
-| **Assumption** | Colours encode identity for this interface only. They do not encode cytoarchitecture, function, tissue, vascular territory or quantitative data. |
-| **Validation** | `fine colours separate named structures but remain stable across hemispheres`. |
+| **Implementation** | A stable hash of category/region and exact atlas label varies colour inside either a vivid or constrained natural family. Side is excluded, so homologous left/right labels match. Natural mode lowers idle emission and uses matte materials so light and shadow describe folds. |
+| **Assumption** | Colour-map colours encode identity for this interface only. Natural colours are illustrative conventions, not measured tissue colour. Neither mode encodes cytoarchitecture, function, vascular territory or quantitative data. |
+| **Validation** | `colour map and natural anatomy are one-step choices with different visual readings`. |
 
 ### 4. Medial views reveal; they do not dissect
 

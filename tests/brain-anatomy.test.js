@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { brainColor, brainStructureInfo } from '../src/data/brainAnatomy.js';
+import { BRAIN_COLOR_MODES, brainColor, brainStructureInfo } from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -82,7 +82,7 @@ test('hover previews exact anatomy without replacing the pinned selection', () =
   scene.dispose();
 });
 
-test('fine colours separate named structures but remain stable across hemispheres', () => {
+test('colour map and natural anatomy are one-step choices with different visual readings', () => {
   const scene = buildScene();
   const leftTemporal = colorOf(scene, 'Middle temporal gyrus', 'left');
   const rightTemporal = colorOf(scene, 'Middle temporal gyrus', 'right');
@@ -93,12 +93,34 @@ test('fine colours separate named structures but remain stable across hemisphere
     'named structures within one lobe use distinct shades in fine mode'
   );
 
+  assert.deepEqual(
+    BRAIN_COLOR_MODES.map(({ id, labelJa }) => [id, labelJa]),
+    [['detail', 'カラー'], ['anatomical', '通常解剖色']]
+  );
   assert.equal(scene.getAnatomyColorMode(), 'detail');
-  assert.equal(scene.setAnatomyColorMode('overview'), true);
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  const colourRoughness = frontal.material.roughness;
+  const colourIdleEmissive = frontal.material.emissiveIntensity;
+
+  assert.equal(scene.setAnatomyColorMode('anatomical'), true);
+  assert.equal(scene.getAnatomyColorMode(), 'anatomical');
   assert.equal(
+    colorOf(scene, 'Middle temporal gyrus', 'left'),
+    colorOf(scene, 'Middle temporal gyrus', 'right'),
+    'natural anatomy also keeps homologues visually paired'
+  );
+  assert.notEqual(
     colorOf(scene, 'Middle frontal gyrus', 'left'),
     colorOf(scene, 'Opercular part of inferior frontal gyrus', 'left'),
-    'overview mode restores one broad lobe colour'
+    'small natural-tone variation keeps neighbouring named meshes legible'
+  );
+  assert.ok(hslOf(frontal).s < 0.3, 'cortical natural anatomy stays low-saturation');
+  assert.ok(frontal.material.roughness > colourRoughness, 'matte tissue shading preserves fold relief');
+  assert.ok(frontal.material.emissiveIntensity < colourIdleEmissive, 'low idle emission preserves sulcal shadows');
+  assert.notEqual(
+    colorOf(scene, 'Middle frontal gyrus', 'left'),
+    colorOf(scene, 'Corpus callosum', 'median'),
+    'grey matter and white matter retain conventional tissue contrast'
   );
   assert.equal(scene.setAnatomyColorMode('not-a-mode'), false);
   scene.dispose();
@@ -230,6 +252,7 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
     assert.notEqual(info.nameJa, `${info.regionJa}（${info.name}）`, `${info.name} is translated`);
     assert.ok(info.hierarchyJa.length >= 3, `${info.name} has an anatomical hierarchy`);
     assert.ok(/^#[0-9a-f]{6}$/.test(brainColor(metadata)), `${info.name} has a fine colour`);
+    assert.ok(/^#[0-9a-f]{6}$/.test(brainColor(metadata, 'anatomical')), `${info.name} has a natural colour`);
   }
 });
 
@@ -336,6 +359,10 @@ function find(scene, label, side) {
 
 function colorOf(scene, label, side) {
   return find(scene, label, side).material.color.getHexString();
+}
+
+function hslOf(mesh) {
+  return mesh.material.color.getHSL({ h: 0, s: 0, l: 0 });
 }
 
 function settle(scene) {

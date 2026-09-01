@@ -21,13 +21,10 @@ export const BRAIN_PALETTE = {
   brainstem: '#9c7b65',
 };
 
-/**
- * The default view separates named structures while keeping each lobe in a
- * recognisable colour family. The overview mode restores one colour per lobe.
- */
+/** Two deliberately different readings of the same, unmoved geometry. */
 export const BRAIN_COLOR_MODES = [
-  { id: 'detail', label: 'Fine anatomy', labelJa: '詳細解剖' },
-  { id: 'overview', label: 'Lobe overview', labelJa: '大脳葉' },
+  { id: 'detail', label: 'Colour map', labelJa: 'カラー' },
+  { id: 'anatomical', label: 'Natural anatomy', labelJa: '通常解剖色' },
 ];
 
 const DETAIL_COLOR_FAMILY = {
@@ -44,6 +41,34 @@ const DETAIL_COLOR_FAMILY = {
   cerebellum: { hue: 329, hueSpan: 130, saturation: 56, saturationSpan: 40, lightness: 57, lightnessSpan: 36 },
   brainstem: { hue: 26, hueSpan: 110, saturation: 50, saturationSpan: 36, lightness: 53, lightnessSpan: 34 },
 };
+
+/**
+ * A low-saturation gross-anatomy palette. Small, deterministic lightness
+ * changes keep adjacent atlas meshes legible without turning this mode into a
+ * second categorical colour map.
+ */
+const ANATOMICAL_COLOR_FAMILY = {
+  frontal: { hue: 12, hueSpan: 8, saturation: 23, saturationSpan: 8, lightness: 68, lightnessSpan: 12 },
+  parietal: { hue: 19, hueSpan: 8, saturation: 21, saturationSpan: 8, lightness: 70, lightnessSpan: 12 },
+  temporal: { hue: 8, hueSpan: 8, saturation: 22, saturationSpan: 8, lightness: 65, lightnessSpan: 12 },
+  occipital: { hue: 15, hueSpan: 8, saturation: 17, saturationSpan: 8, lightness: 67, lightnessSpan: 12 },
+  limbic: { hue: 352, hueSpan: 10, saturation: 20, saturationSpan: 8, lightness: 59, lightnessSpan: 12 },
+  insula: { hue: 18, hueSpan: 8, saturation: 16, saturationSpan: 8, lightness: 61, lightnessSpan: 12 },
+  telencephalon: { hue: 12, hueSpan: 8, saturation: 21, saturationSpan: 8, lightness: 67, lightnessSpan: 12 },
+  deep: { hue: 350, hueSpan: 12, saturation: 17, saturationSpan: 8, lightness: 48, lightnessSpan: 12 },
+  whiteMatter: { hue: 43, hueSpan: 8, saturation: 31, saturationSpan: 10, lightness: 79, lightnessSpan: 10 },
+  ventricles: { hue: 191, hueSpan: 10, saturation: 34, saturationSpan: 10, lightness: 66, lightnessSpan: 10 },
+  cerebellum: { hue: 7, hueSpan: 10, saturation: 29, saturationSpan: 10, lightness: 61, lightnessSpan: 12 },
+  brainstem: { hue: 24, hueSpan: 10, saturation: 25, saturationSpan: 10, lightness: 56, lightnessSpan: 12 },
+};
+
+/** Representative swatches used by the legend in natural-anatomy mode. */
+export const BRAIN_ANATOMICAL_PALETTE = Object.fromEntries(
+  Object.entries(ANATOMICAL_COLOR_FAMILY).map(([key, family]) => [
+    key,
+    hslToHex(family.hue, family.saturation, family.lightness),
+  ])
+);
 
 const REGION_KEY = {
   'Frontal lobe': 'frontal',
@@ -467,9 +492,13 @@ export function brainColorKey(metadata = {}) {
 
 export function brainColor(metadata = {}, mode = 'detail') {
   const key = brainColorKey(metadata);
+  // Retain the old direct-call behaviour for consumers outside the UI. The
+  // exposed selector itself contains only Colour map and Natural anatomy.
   if (mode === 'overview') return BRAIN_PALETTE[key];
-  const family = DETAIL_COLOR_FAMILY[key] ?? DETAIL_COLOR_FAMILY.deep;
-  const hash = stableHash(`${key}:${metadata.bx_label ?? metadata.bx_cat ?? 'brain'}`);
+  const families = mode === 'anatomical' ? ANATOMICAL_COLOR_FAMILY : DETAIL_COLOR_FAMILY;
+  const family = families[key] ?? families.deep;
+  const label = metadata.bx_label ?? metadata.bx_cat ?? 'brain';
+  const hash = stableHash(mode === 'anatomical' ? `anatomical:${key}:${label}` : `${key}:${label}`);
   const saturationHash = Math.imul(hash ^ 0x85ebca6b, 0xc2b2ae35) >>> 0;
   const lightnessHash = Math.imul(hash ^ 0x27d4eb2f, 0x165667b1) >>> 0;
   const hueUnit = (hash & 0xffff) / 0xffff - 0.5;
@@ -670,8 +699,8 @@ export const BRAIN_ANATOMY_META = {
     {
       id: 'surface', name: 'Folded cortical surface', nameJa: '脳回・脳溝と大脳葉', at: 0,
       focus: ['temporal', 'central-sulcus'],
-      summary: 'Each named mesh is selectable; fine shades separate structures while colour families preserve lobe orientation.',
-      summaryJa: '各部位を個別に選択できます。細かな色差で構造を分け、大脳葉の色系統で位置関係も保ちます。',
+      summary: 'Each named mesh is selectable. Switch between a labelled colour map and low-saturation natural anatomy.',
+      summaryJa: '各部位を個別に選択できます。部位別カラーと、形態を見やすくした通常解剖色を切り替えられます。',
     },
     {
       id: 'hemisphere', name: 'Left hemisphere and insula', nameJa: '左半球・島皮質', at: 0.36,
