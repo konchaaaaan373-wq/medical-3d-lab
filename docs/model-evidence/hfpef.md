@@ -4,6 +4,8 @@ This dossier separates established HFpEF pressure-volume physiology from values 
 
 ## External claim 1 — increased passive stiffness raises pressure at the same volume
 
+### `stiff-edpvr`
+
 **Claim.** A stiffer left ventricle has an upward/leftward-shifted end-diastolic pressure-volume relationship, so a given chamber volume is reached at a higher diastolic pressure.
 
 **Source.** Zile MR, Baicu CF, Gaasch WH. *Diastolic heart failure — abnormalities in active relaxation and passive stiffness of the left ventricle.* N Engl J Med. 2004;350:1953–1959. PMID **15128895**, DOI 10.1056/NEJMoa032566. Patients with heart failure and normal EF had impaired relaxation, increased chamber stiffness, and an upward/leftward-shifted diastolic pressure-volume relation.
@@ -13,6 +15,8 @@ This dossier separates established HFpEF pressure-volume physiology from values 
 The test compares pressure at identical volumes. It does not compare two authored stage captions or two calibration targets.
 
 ## External claim 2 — preserved EF does not imply normal filling pressure
+
+### `preserved-ef-high-filling-pressure`
 
 **Claim.** HFpEF is compatible with pathological elevation of filling pressure despite preserved LV ejection fraction.
 
@@ -26,6 +30,8 @@ The test compares pressure at identical volumes. It does not compare two authore
 The model makes the isolation deliberately strong: systolic Ees, end-systolic pressure and EDV are held the same while only passive EDPVR stiffness changes. The purpose is mechanistic contrast, not patient phenotyping.
 
 ## External claim 3 — stress/filling reserve can reveal a disproportionate pressure rise
+
+### `stress-pressure-reserve`
 
 **Claim.** Increasing venous return/filling or exercise stress can reveal a larger rise in cardiac filling pressure in HFpEF than in controls.
 
@@ -53,6 +59,12 @@ The exponential form is a conventional educational description of passive chambe
 
 ## Calibration choices
 
+### `single-passive-mechanism`
+
+The model deliberately changes only passive LV stiffness on the progression axis. Active relaxation, atrial, pulmonary, pericardial and vascular mechanisms are outside this isolation experiment.
+
+### `reference-pv-calibration`
+
 | Item | Model choice | Confidence / boundary |
 | --- | --- | --- |
 | Reference EDV | 120 mL | calibration; not a patient measurement |
@@ -61,15 +73,30 @@ The exponential form is a conventional educational description of passive chambe
 | Ees | 2.6 mmHg/mL | calibration, held constant across stiffness |
 | V0 | 10 mL | calibration |
 | EDPVR A | 0.4 mmHg | calibration |
-| EDPVR B | 0.0277 → 0.0355 /mL | illustrative stiffness range chosen to make the pressure contrast visible |
-| Wall thickness | 9 → 13 mm | illustrative structural cue; does not enter the pressure equation |
-| Filling control | 0.90 → 1.10 × reference EDV | illustrative chamber-volume condition, not fluid dose |
 
-No number in this table is to be interpreted as a diagnostic threshold or as the expected value for a person with HFpEF.
+### `stiffness-range`
+
+EDPVR B moves from 0.0277 to 0.0355 /mL. This is an illustrative teaching range chosen to make the pressure contrast visible, not a clinical severity scale or a measured stiffness index.
+
+### `filling-control`
+
+The filling control moves EDV from 0.90 to 1.10 times the reference EDV. It is a chamber-volume perturbation, not a saline dose, intravascular volume, preload pressure or treatment prescription.
+
+### `wall-thickness-cue`
+
+Displayed wall thickness moves from 9 to 13 mm as a structural cue. It does not enter the EDPVR equation and the model does not assert a fixed clinical mapping from hypertrophy to passive stiffness.
+
+No number in this section is to be interpreted as a diagnostic threshold or as the expected value for a person with HFpEF.
 
 ## Rendering boundary
 
-The two 3D ventricles are not patient anatomy or an echocardiographic reconstruction. Their beat uses the same EDV/ESV state so the fractional emptying remains visually comparable. The pulmonary-blue opacity is driven by LVEDP only as a **filling-pressure cue**; it is not lung water, PCWP, extravascular lung-water index or pulmonary edema severity.
+The two 3D ventricles are not patient anatomy or an echocardiographic reconstruction. Their beat uses the same EDV/ESV state so the fractional emptying remains visually comparable.
+
+### `pressure-cue-not-congestion-model`
+
+The pulmonary-blue opacity is driven by LVEDP only as a **filling-pressure cue**; it is not lung water, PCWP, extravascular lung-water index or pulmonary edema severity.
+
+### `pv-loop-interpolation`
 
 The pressure-volume panel has a mixed epistemic boundary:
 
@@ -77,15 +104,20 @@ The pressure-volume panel has a mixed epistemic boundary:
 - **model outputs:** EDV, ESV, EF, LVEDP and corner points;
 - **illustrative presentation:** the path connecting the four corners into a familiar loop shape.
 
+There are no valves or time-varying elastance in this model, so the connecting path must not be read for valve timing, phase duration, waveform morphology or stroke work.
+
 ## Known limitations
 
-1. Passive stiffness is only one component of HFpEF.
-2. Active relaxation is not modelled separately.
-3. There is no atrium or pulmonary circulation, so LVEDP is not converted into PCWP by a haemodynamic model.
-4. Pericardial restraint and ventricular interaction are absent.
-5. Exercise physiology is not simulated; the filling control is only a chamber-volume perturbation.
-6. Arterial stiffness, endothelial dysfunction, obesity/inflammation, kidney and skeletal-muscle mechanisms are absent.
-7. The model contains no diagnostic score, symptoms, prognosis or treatment response.
+### `hfpef-heterogeneity`
+
+HFpEF is a heterogeneous clinical syndrome and cannot be reduced to passive LV stiffness alone. In particular:
+
+1. Active relaxation is not modelled separately.
+2. There is no atrium or pulmonary circulation, so LVEDP is not converted into PCWP by a haemodynamic model.
+3. Pericardial restraint and ventricular interaction are absent.
+4. Exercise physiology is not simulated; the filling control is only a chamber-volume perturbation.
+5. Arterial stiffness, endothelial dysfunction, obesity/inflammation, kidney and skeletal-muscle mechanisms are absent.
+6. The model contains no diagnostic score, symptoms, prognosis or treatment response.
 
 ## Review implication
 
