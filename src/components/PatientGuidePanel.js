@@ -7,6 +7,11 @@ import { el } from '../utils/dom.js';
  * no patient-specific claims, no treatment advice. Each step only moves the
  * public scene progression so the 3D remains the same source of truth.
  *
+ * The section itself is keyboard-focusable because consultation-room use often
+ * means standing beside a monitor rather than using a mouse precisely. While
+ * focus is inside the guide, navigation keys belong to the guide and are not
+ * allowed to leak through to the app's global 3D shortcuts.
+ *
  * @param {{
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
@@ -22,10 +27,10 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     el('span', { class: 'lang-en', text: guide.title }),
     el('span', { class: 'lang-ja', text: guide.titleJa }),
   ]);
-  const counter = el('span', { class: 'patient-guide-counter' });
+  const counter = el('span', { class: 'patient-guide-counter', 'aria-live': 'polite' });
   const heading = el('h3', { class: 'patient-guide-heading' });
   const body = el('p', { class: 'patient-guide-copy' });
-  const dots = el('div', { class: 'patient-guide-dots' });
+  const dots = el('div', { class: 'patient-guide-dots', 'aria-label': 'Explanation steps' });
 
   const presentation = el('button', {
     class: 'patient-guide-presentation',
@@ -54,17 +59,58 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     on: { click: onExit },
   });
 
-  const element = el('section', { class: 'patient-guide', 'aria-label': 'Patient explanation' }, [
-    el('div', { class: 'patient-guide-head' }, [title, presentation, counter, close]),
-    dots,
+  const copy = el('div', { class: 'patient-guide-step', 'aria-live': 'polite', 'aria-atomic': 'true' }, [
     heading,
     body,
+  ]);
+
+  const element = el('section', {
+    class: 'patient-guide',
+    'aria-label': 'Patient explanation',
+    tabindex: '-1',
+  }, [
+    el('div', { class: 'patient-guide-head' }, [title, presentation, counter, close]),
+    dots,
+    copy,
     el('p', { class: 'patient-guide-boundary' }, [
       el('span', { class: 'lang-en', text: 'General explanation only — not a diagnosis or a prediction for an individual.' }),
       el('span', { class: 'lang-ja', text: '一般的な病態説明です。個別の診断・予後予測を行うものではありません。' }),
     ]),
     el('div', { class: 'patient-guide-actions' }, [previous, next]),
   ]);
+
+  element.addEventListener('keydown', (event) => {
+    // Keep the application's Space/R/H/C/arrow shortcuts from acting behind a
+    // patient explanation while the presenter is using its controls.
+    event.stopPropagation();
+
+    switch (event.key) {
+      case 'Escape':
+        event.preventDefault();
+        onExit();
+        break;
+      case 'ArrowLeft':
+      case 'PageUp':
+        event.preventDefault();
+        setIndex(index - 1);
+        break;
+      case 'ArrowRight':
+      case 'PageDown':
+        event.preventDefault();
+        if (index < guide.steps.length - 1) setIndex(index + 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        setIndex(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        setIndex(guide.steps.length - 1);
+        break;
+      default:
+        break;
+    }
+  });
 
   function setIndex(nextIndex) {
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
@@ -101,7 +147,13 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     );
     dots.replaceChildren(
       ...guide.steps.map((_, dotIndex) =>
-        el('span', { class: `patient-guide-dot${dotIndex <= index ? ' is-active' : ''}`, 'aria-hidden': 'true' })
+        el('button', {
+          class: `patient-guide-dot${dotIndex <= index ? ' is-active' : ''}${dotIndex === index ? ' is-current' : ''}`,
+          type: 'button',
+          'aria-label': `Step ${dotIndex + 1} of ${guide.steps.length}`,
+          'aria-current': dotIndex === index ? 'step' : null,
+          on: { click: () => setIndex(dotIndex) },
+        })
       )
     );
     previous.disabled = index === 0;
@@ -120,7 +172,11 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       setPresentation(false);
       setIndex(0);
     },
+    focus() {
+      element.focus({ preventScroll: true });
+    },
     setPresentation,
     isPresenting: () => presenting,
+    currentIndex: () => index,
   };
 }
