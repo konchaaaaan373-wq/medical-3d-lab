@@ -281,6 +281,164 @@ a.explorer-scene:hover {
   display: block;
 }
 
+/* ---------- Experimental Lab ----------
+   The Lab is a shelf of runnable experiments. A model that covers several
+   organs appears once; the anatomy is metadata, and unbuilt questions are a
+   separate reading list rather than disabled look-alike cards. */
+.explorer.is-lab {
+  gap: 28px;
+}
+
+.explorer.is-lab .is-lab-system {
+  padding-bottom: 18px;
+}
+
+.explorer.is-lab .explorer-system-name {
+  margin-top: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  font-size: 17px;
+}
+
+.explorer.is-lab .explorer-count {
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.explorer-lab-scenes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.explorer-lab-scenes[hidden],
+.explorer-planned-group[hidden] {
+  display: none !important;
+}
+
+.explorer.is-lab .explorer-scene {
+  min-height: 190px;
+  padding: 19px 21px 18px;
+  gap: 12px;
+  border-color: var(--explorer-rule-strong);
+  background: #0d141d;
+}
+
+.explorer.is-lab a.explorer-scene:hover {
+  border-color: rgba(120, 169, 173, 0.58);
+  background: #111a25;
+}
+
+.explorer-scene-context {
+  display: block;
+  padding-right: 30px;
+  color: var(--explorer-faint);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.explorer.is-lab .explorer-scene-title {
+  gap: 10px;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.explorer.is-lab .explorer-scene-title .lang-ja {
+  font-size: 15px;
+  color: var(--explorer-ink);
+  font-weight: 590;
+}
+
+.explorer.is-lab .explorer-scene-note {
+  max-width: 64ch;
+  color: var(--explorer-muted);
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.explorer-scene-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin-top: auto;
+  padding-top: 11px;
+  border-top: 1px solid var(--explorer-rule);
+}
+
+.explorer-maturity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.explorer-meta-label {
+  color: var(--explorer-faint);
+  font-size: 11.5px;
+}
+
+.explorer.is-lab .status-badge {
+  padding: 0;
+  box-shadow: none;
+  color: #d2bd99;
+  font-size: 11.5px;
+  font-weight: 570;
+}
+
+.explorer.is-lab .explorer-access {
+  margin: 0;
+}
+
+.explorer.is-lab .explorer-access-badge {
+  font-size: 11.5px;
+}
+
+.explorer-planned-group {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 22px;
+  margin-top: 18px;
+  padding-top: 15px;
+  border-top: 1px solid var(--explorer-rule);
+}
+
+.explorer-planned-heading {
+  color: var(--explorer-faint);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.explorer-planned-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.explorer-planned-item {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0 9px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--explorer-rule);
+}
+
+.explorer-planned-title {
+  min-width: 0;
+  color: var(--explorer-muted);
+  font-size: 12.5px;
+  font-weight: 540;
+}
+
+.explorer-planned-organ {
+  flex: none;
+  color: var(--explorer-faint);
+  font-size: 10.5px;
+}
+
 .explorer-footer {
   padding: 18px 20px;
   font-size: 11px;
@@ -382,6 +540,24 @@ a.explorer-scene:hover {
   .explorer-scene {
     min-width: 0;
     padding: 15px;
+  }
+
+  .explorer-lab-scenes {
+    grid-template-columns: 1fr;
+  }
+
+  .explorer.is-lab .explorer-scene {
+    min-height: 0;
+    padding: 17px;
+  }
+
+  .explorer-planned-group {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .explorer-planned-list {
+    grid-template-columns: 1fr;
   }
 
 }

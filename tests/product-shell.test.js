@@ -7,6 +7,7 @@ import {
   LANDING_ROUTE,
   PUBLIC_SCENES,
   SCENES,
+  labCatalogueSections,
   systemsWithOrgans,
 } from '../src/catalog/index.js';
 import { resolveRoute, sameRoute } from '../src/app/router.js';
@@ -70,4 +71,28 @@ test('product shell: Lab projection can include planned questions without preten
       );
     }
   }
+});
+
+test('product shell: Lab catalogue lists every model once and keeps covered organs as metadata', () => {
+  const sections = labCatalogueSections();
+  const models = sections.flatMap((system) => system.models);
+  const ids = models.map(({ scene }) => scene.id);
+
+  assert.equal(new Set(ids).size, ids.length, 'a multi-organ model is not duplicated');
+  assert.deepEqual(ids.sort(), LAB_SCENES.map((scene) => scene.id).sort());
+
+  const upperGi = models.find(({ scene }) => scene.id === 'upper-gi-peristalsis');
+  assert.deepEqual(
+    upperGi.organs.map((organ) => organ.id),
+    ['esophagus', 'stomach'],
+    'covered anatomy remains visible without repeating the card'
+  );
+
+  const firstBacklogOnly = sections.findIndex((system) => system.models.length === 0);
+  assert.ok(firstBacklogOnly > 0, 'working models lead the Lab catalogue');
+  assert.equal(
+    sections.slice(firstBacklogOnly).every((system) => system.models.length === 0),
+    true,
+    'backlog-only systems stay after every runnable experiment'
+  );
 });
