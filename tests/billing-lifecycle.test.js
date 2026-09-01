@@ -10,6 +10,7 @@ import {
   reconcileBillingForUser,
   stripeEventObjectId,
   subscriptionById,
+  syncSubscriptionUntilCurrent,
   subscriptionsForCustomer,
 } from '../netlify/lib/billing.js';
 
@@ -209,6 +210,25 @@ test('billing lifecycle: reconciliation re-fetches list snapshots before writing
 
   assert.deepEqual(synced, ['canceled']);
   assert.equal(result.remoteCount, 1);
+});
+
+test('billing lifecycle: post-write verification repairs a retrieve-to-write race', async () => {
+  const synced = [];
+  const retrieved = [
+    { id: 'sub_123', status: 'canceled' },
+    { id: 'sub_123', status: 'canceled' },
+  ];
+  const result = await syncSubscriptionUntilCurrent(
+    { id: 'sub_123', status: 'active' },
+    {
+      sync: async (subscription) => synced.push(subscription.status),
+      retrieveSubscription: async () => retrieved.shift(),
+    }
+  );
+
+  assert.deepEqual(synced, ['active', 'canceled']);
+  assert.equal(result.subscription.status, 'canceled');
+  assert.equal(result.passes, 2);
 });
 
 test('billing lifecycle: apparent list gaps are verified by ID before fail-closing', async () => {
