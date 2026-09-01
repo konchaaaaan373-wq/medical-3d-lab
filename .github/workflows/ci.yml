@@ -9,6 +9,29 @@ permissions:
   contents: read
 
 jobs:
+  trust-contracts:
+    name: trust / ${{ matrix.test }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - clinical-review-presentation
+          - clinical-reviews
+          - professional-access-review
+          - commerce-readiness
+          - explorer-search
+          - access
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test "tests/${{ matrix.test }}.test.js"
+
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
