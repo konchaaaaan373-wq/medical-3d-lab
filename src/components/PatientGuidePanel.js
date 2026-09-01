@@ -39,6 +39,16 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     on: { click: () => setPresentation(!presenting) },
   });
 
+  const handoutButton = el('button', {
+    class: 'patient-guide-handout-button',
+    type: 'button',
+    'aria-label': 'Print patient handout',
+    on: { click: () => window.print() },
+  }, [
+    el('span', { class: 'lang-en', text: 'Handout' }),
+    el('span', { class: 'lang-ja', text: '印刷' }),
+  ]);
+
   const previous = el('button', {
     class: 'patient-guide-nav',
     type: 'button',
@@ -64,12 +74,17 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     body,
   ]);
 
+  // Screen-hidden, print-only companion to the interactive guide. It contains
+  // the same authored copy and no user/patient data, so printing cannot turn a
+  // general educational model into a personalised medical record by accident.
+  const handout = buildPatientHandout(guide);
+
   const element = el('section', {
     class: 'patient-guide',
     'aria-label': 'Patient explanation',
     tabindex: '-1',
   }, [
-    el('div', { class: 'patient-guide-head' }, [title, presentation, counter, close]),
+    el('div', { class: 'patient-guide-head' }, [title, presentation, handoutButton, counter, close]),
     dots,
     copy,
     el('p', { class: 'patient-guide-boundary' }, [
@@ -77,6 +92,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       el('span', { class: 'lang-ja', text: '一般的な病態説明です。個別の診断・予後予測を行うものではありません。' }),
     ]),
     el('div', { class: 'patient-guide-actions' }, [previous, next]),
+    handout,
   ]);
 
   element.addEventListener('keydown', (event) => {
@@ -168,6 +184,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
 
   return {
     element,
+    handout,
     reset() {
       setPresentation(false);
       setIndex(0);
@@ -179,4 +196,42 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     isPresenting: () => presenting,
     currentIndex: () => index,
   };
+}
+
+function buildPatientHandout(guide) {
+  return el('article', { class: 'patient-handout', 'aria-hidden': 'true' }, [
+    el('header', { class: 'patient-handout-head' }, [
+      el('div', { class: 'patient-handout-brand', text: 'Medical 3D Lab' }),
+      el('h1', { class: 'patient-handout-title' }, [
+        el('span', { class: 'lang-en', text: guide.title }),
+        el('span', { class: 'lang-ja', text: guide.titleJa }),
+      ]),
+      el('p', { class: 'patient-handout-lead' }, [
+        el('span', { class: 'lang-en', text: 'A general visual explanation of the mechanism shown in the 3D model.' }),
+        el('span', { class: 'lang-ja', text: '3Dモデルで示した仕組みを、一般的な内容としてまとめた説明資料です。' }),
+      ]),
+    ]),
+    el(
+      'ol',
+      { class: 'patient-handout-steps' },
+      guide.steps.map((step) =>
+        el('li', { class: 'patient-handout-step' }, [
+          el('h2', {}, [
+            el('span', { class: 'lang-en', text: step.title }),
+            el('span', { class: 'lang-ja', text: step.titleJa }),
+          ]),
+          el('p', {}, [
+            el('span', { class: 'lang-en', text: step.body }),
+            el('span', { class: 'lang-ja', text: step.bodyJa }),
+          ]),
+        ])
+      )
+    ),
+    el('footer', { class: 'patient-handout-boundary' }, [
+      el('strong', { class: 'lang-en', text: 'Important' }),
+      el('strong', { class: 'lang-ja', text: '重要' }),
+      el('span', { class: 'lang-en', text: 'This handout is general education only. It does not diagnose, predict prognosis, or select treatment for an individual.' }),
+      el('span', { class: 'lang-ja', text: 'この資料は一般的な教育目的の説明です。個別の診断・予後予測・治療選択を行うものではありません。' }),
+    ]),
+  ]);
 }
