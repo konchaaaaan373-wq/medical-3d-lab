@@ -4,8 +4,15 @@ const PUBLIC_STATUS_OPTIONS = Object.freeze([
   ['all', 'All stages', 'すべて'],
   ['reviewed-plus', 'Reviewed + Production', 'Reviewed以上'],
   ['production', 'Production', 'Production'],
-  ['reviewed', 'Reviewed', 'Reviewed'],
+  ['reviewed', 'Model reviewed', 'モデルレビュー済み'],
   ['alpha', 'Alpha', 'Alpha'],
+]);
+
+const PUBLIC_REVIEW_OPTIONS = Object.freeze([
+  ['all', 'All review states', 'すべて'],
+  ['reviewed', 'Clinical review complete', '医学レビュー完了'],
+  ['pending', 'Clinical review pending', '医学レビュー未完了'],
+  ['legacy-unversioned', 'Legacy / unversioned', '旧基準・版固定なし'],
 ]);
 
 const LAB_STATUS_OPTIONS = Object.freeze([
@@ -17,15 +24,15 @@ const LAB_STATUS_OPTIONS = Object.freeze([
  * Search/filter chrome for a catalogue scope. Matching stays pure in
  * `explorerSearch.js`; this component owns only form state.
  *
- * Lab intentionally omits paid-mode filters because Prototype scenes cannot
- * advertise Patient/Education products. Showing those chips there would imply
- * a product capability the trust model explicitly forbids.
+ * Lab intentionally omits paid-mode and clinical-review filters because
+ * Prototype scenes cannot advertise professional products and are not part of
+ * the public clinical-review shelf.
  *
- * @param {{scope?:'public'|'lab',onChange:(filters:{query:string,mode:string,status:string})=>void}} options
+ * @param {{scope?:'public'|'lab',onChange:(filters:{query:string,mode:string,status:string,review:string})=>void}} options
  */
 export function createExplorerSearchControls({ scope = 'public', onChange }) {
   const isLab = scope === 'lab';
-  const filters = { query: '', mode: 'all', status: 'all' };
+  const filters = { query: '', mode: 'all', status: 'all', review: 'all' };
 
   const input = el('input', {
     class: 'explorer-search-input',
@@ -89,7 +96,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     'select',
     {
       class: 'explorer-filter-select',
-      'aria-label': 'Filter by scene maturity',
+      'aria-label': 'Filter by model maturity',
       on: {
         change: (event) => {
           filters.status = event.currentTarget.value;
@@ -99,6 +106,23 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     },
     statusOptions.map(([value, , labelJa]) => el('option', { value, text: labelJa }))
   );
+
+  const review = isLab
+    ? null
+    : el(
+        'select',
+        {
+          class: 'explorer-filter-select',
+          'aria-label': 'Filter by clinical review',
+          on: {
+            change: (event) => {
+              filters.review = event.currentTarget.value;
+              emit();
+            },
+          },
+        },
+        PUBLIC_REVIEW_OPTIONS.map(([value, , labelJa]) => el('option', { value, text: labelJa }))
+      );
 
   const countEn = el('span', { class: 'lang-en' });
   const countJa = el('span', { class: 'lang-ja' });
@@ -121,9 +145,16 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     mode,
     el('label', { class: 'explorer-filter-status' }, [
       el('span', { class: 'explorer-filter-label lang-en', text: 'Maturity' }),
-      el('span', { class: 'explorer-filter-label lang-ja', text: '完成度' }),
+      el('span', { class: 'explorer-filter-label lang-ja', text: 'モデル成熟度' }),
       status,
     ]),
+    review
+      ? el('label', { class: 'explorer-filter-status' }, [
+          el('span', { class: 'explorer-filter-label lang-en', text: 'Clinical review' }),
+          el('span', { class: 'explorer-filter-label lang-ja', text: '医学レビュー' }),
+          review,
+        ])
+      : null,
     el('div', { class: 'explorer-search-summary' }, [count, clear]),
   ].filter(Boolean);
 
@@ -148,8 +179,10 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     filters.query = '';
     filters.mode = 'all';
     filters.status = 'all';
+    filters.review = 'all';
     input.value = '';
     status.value = 'all';
+    if (review) review.value = 'all';
     syncModeButtons();
     emit();
     input.focus();
@@ -166,13 +199,20 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
     );
     element.setAttribute('aria-label', japanese ? 'シーンを検索・絞り込み' : 'Search and filter scenes');
     mode?.setAttribute('aria-label', japanese ? '用途で絞り込む' : 'Filter by use');
-    status.setAttribute('aria-label', japanese ? '完成度で絞り込む' : 'Filter by maturity');
+    status.setAttribute('aria-label', japanese ? 'モデル成熟度で絞り込む' : 'Filter by model maturity');
+    review?.setAttribute('aria-label', japanese ? '医学レビュー状態で絞り込む' : 'Filter by clinical review');
     clear.setAttribute('aria-label', japanese ? '検索条件を解除' : 'Clear filters');
 
     [...status.options].forEach((option, index) => {
       const [, labelEn, labelJa] = statusOptions[index];
       option.textContent = japanese ? labelJa : labelEn;
     });
+    if (review) {
+      [...review.options].forEach((option, index) => {
+        const [, labelEn, labelJa] = PUBLIC_REVIEW_OPTIONS[index];
+        option.textContent = japanese ? labelJa : labelEn;
+      });
+    }
   }
 
   setLanguage('ja');

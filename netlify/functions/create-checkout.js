@@ -1,3 +1,4 @@
+import { planIsSellable } from '../../src/access/commerceReadiness.js';
 import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
@@ -18,6 +19,18 @@ export default async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const plan = body.plan;
+
+    // This gate is repeated server-side intentionally. Hiding a purchase button
+    // is not a security or commerce boundary: a stale client or a hand-written
+    // request must not be able to create a paid subscription for professional
+    // content whose current Clinical Review is stale, pending or unversioned.
+    if (!planIsSellable(plan)) {
+      return json(409, {
+        error: 'This professional plan is temporarily unavailable pending current clinical review.',
+        reviewHold: true,
+      });
+    }
+
     const price = priceForPlan(plan);
     const returnHash = safeHash(body.returnHash);
 

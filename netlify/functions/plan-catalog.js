@@ -1,3 +1,4 @@
+import { commerceReadiness, planIsSellable } from '../../src/access/commerceReadiness.js';
 import { json, stripeGet } from '../lib/billing.js';
 
 const PLAN_PRICE_ENV = Object.freeze({
@@ -8,7 +9,7 @@ const PLAN_PRICE_ENV = Object.freeze({
 
 const hasAny = (...names) => names.some((name) => Boolean(process.env[name]));
 
-function billingConfigured() {
+function billingInfrastructureConfigured() {
   return (
     Boolean(process.env.SUPABASE_URL) &&
     hasAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY') &&
@@ -31,42 +32,54 @@ const safePrice = (price) => ({
     : null,
 });
 
+const priceIsUsable = (price) =>
+  Boolean(price?.active && price?.recurring && Number.isFinite(price?.unitAmount) && price?.currency);
+
 /**
  * Public price catalogue for rendering the purchase surface.
  *
- * No secret, Customer, Subscription or Price ID is returned. Checkout still
- * selects its Price exclusively on the server from the plan name; browser price
- * data is display-only and cannot change what Stripe charges.
+ * Price IDs and secrets never leave the server. Clinical-review readiness is
+ * checked before Stripe is queried, so a stale/legacy professional surface does
+ * not even get advertised as a priced plan. Checkout repeats the same gate and
+ * therefore cannot be bypassed by calling the function directly.
  */
 export default async (request) => {
   if (request.method !== 'GET') return json(405, { error: 'Method not allowed' });
 
-  if (!billingConfigured()) {
-    return json(200, { billingConfigured: false, plans: {} });
+  if (!billingInfrastructureConfigured()) {
+    return json(200, { billingConfigured: false, commerceReady: false, plans: {} });
   }
+
+  const readiness = commerceReadiness();
 
   try {
     const entries = await Promise.all(
       Object.entries(PLAN_PRICE_ENV).map(async ([plan, envName]) => {
+        if (!planIsSellable(plan, readiness)) {
+          return [plan, { available: false, reason: 'clinical_review' }];
+        }
+
         const priceId = process.env[envName];
-        const price = await stripeGet(`prices/${encodeURIComponent(priceId)}`);
-        return [plan, safePrice(price)];
+        const price = safePrice(await stripeGet(`prices/${encodeURIComponent(priceId)}`));
+        return [
+          plan,
+          priceIsUsable(price)
+            ? { ...price, available: true }
+            : { available: false, reason: 'price_unavailable' },
+        ];
       })
     );
 
     const plans = Object.fromEntries(entries);
-    const usable = Object.values(plans).every(
-      (price) => price.active && price.recurring && Number.isFinite(price.unitAmount) && Boolean(price.currency)
-    );
+    const commerceReady = Object.values(plans).some((plan) => plan.available === true);
 
     return json(200, {
-      billingConfigured: usable,
-      plans: usable ? plans : {},
+      billingConfigured: true,
+      commerceReady,
+      plans,
     });
   } catch (error) {
     console.error('plan-catalog', error);
-    // Price display and Checkout readiness fail closed together. Free models are
-    // unaffected; users are never shown a purchase CTA with an unknown price.
-    return json(200, { billingConfigured: false, plans: {} });
+    return json(200, { billingConfigured: false, commerceReady: false, plans: {} });
   }
 };

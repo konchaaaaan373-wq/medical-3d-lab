@@ -11,7 +11,7 @@ Aβ is continuously produced as a normal soluble cellular product. Selkoe's revi
 Soluble oligomeric and fibrillar/plaque-associated Aβ populations are heterogeneous and can coexist. A high-aggregation state therefore must not become "everything is plaque". Source boundary: Aβ oligomer/assembly reviews including PMID 20148964. Verification: `physiology: multiple amyloid beta assembly states coexist rather than replacing one another`.
 
 ### `extracellular-plaque`
-Senile plaques are extracellular deposits containing fibrillar Aβ. Source boundary: Alzheimer neuropathology and Aβ assembly reviews (PMID 27258414; PMID 20148964). Verification: `physiology: plaque deposits are represented outside the neuronal soma`.
+Senile plaques are extracellular deposits containing fibrillar Aβ. The direct neuropathology source used here is Serrano-Pozo et al., *Neuropathological alterations in Alzheimer disease* (PMID 22229116; PMCID PMC3234452), which describes the abnormal **extracellular** accumulation/deposition of Aβ40/Aβ42 in senile plaques. Verification: `physiology: plaque deposits are represented outside the neuronal soma`.
 
 ## Approximation
 

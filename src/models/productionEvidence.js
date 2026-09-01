@@ -121,7 +121,7 @@ export const AMYLOID_BETA_EVIDENCE = defineEvidence('amyloid-beta', [
     id: 'extracellular-plaque',
     claim: 'Senile amyloid plaques are extracellular deposits containing fibrillar amyloid-β.',
     confidence: CONFIDENCE.ESTABLISHED,
-    source: 'Neuropathology of Alzheimer disease; PMID 27258414 and PMID 20148964.',
+    source: 'Serrano-Pozo et al., Neuropathological alterations in Alzheimer disease; PMID 22229116 / PMCID PMC3234452.',
     validation: 'physiology: plaque deposits are represented outside the neuronal soma',
     layer: LAYER.EXTERNAL,
   },
