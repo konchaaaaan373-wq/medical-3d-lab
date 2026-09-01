@@ -186,21 +186,21 @@ export function overlayAt(t, { language, metrics }) {
     // of what the sequence is for. The comparison is only worth showing once
     // it means what the ending says it means.
     //
-    // Once both are on, the counterfactual takes the first slot: the overlay
-    // colours slot 0 as the healthy body and slot 1 as the diseased one, in
-    // every sequence, and the take-home frame has to read the same way here.
+    // The counterfactual takes the first slot: the overlay colours slot 0 as
+    // the healthy body and slot 1 as the diseased one, in every sequence, and
+    // the take-home frame has to read the same way here. This kidney holds
+    // slot 1 from the start — a null first slot, not a shorter list — so its
+    // card neither changes colour nor swaps content when the pair arrives.
     cards: {
       opacity: cueOpacity(t, 2.5, HOLD_PAST_END, 0.4),
       items: [
-        ...(comparisonAt(t)
-          ? [
-              card(
-                pick(language, REEL_COPY.cards.released.label, REEL_COPY.cards.released.labelJa),
-                metrics.released,
-                language
-              ),
-            ]
-          : []),
+        comparisonAt(t)
+          ? card(
+              pick(language, REEL_COPY.cards.released.label, REEL_COPY.cards.released.labelJa),
+              metrics.released,
+              language
+            )
+          : null,
         card(pick(language, REEL_COPY.cards.kidney.label, REEL_COPY.cards.kidney.labelJa), metrics.kidney, language),
       ],
     },
