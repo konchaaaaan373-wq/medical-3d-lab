@@ -188,6 +188,14 @@ export function subscriptionPeriodEnd(subscription) {
 }
 
 const CHRONOLOGICAL_TERMINAL_STATUSES = new Set(['canceled', 'incomplete_expired']);
+const RECONCILIATION_RELEVANT_STATUSES = new Set([
+  'incomplete',
+  'trialing',
+  'active',
+  'past_due',
+  'unpaid',
+  'paused',
+]);
 
 /** Keeps historical rows ordered by Stripe lifecycle time, not reconciliation loop order. */
 export function subscriptionStateUpdatedAt(subscription, now = new Date()) {
@@ -590,9 +598,20 @@ export async function reconcileBillingForUser(
   if (!customerId) return { reconciled: false, reason: 'no_customer' };
 
   const listedSubscriptions = await listSubscriptions(customerId);
+  const localRows = await admin(
+    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
+  );
+  const localNonterminalIds = new Set(
+    (localRows ?? []).map((row) => row?.stripe_subscription_id).filter(Boolean)
+  );
+  const relevantSubscriptions = listedSubscriptions.filter(
+    (subscription) =>
+      subscription?.id &&
+      (RECONCILIATION_RELEVANT_STATUSES.has(subscription.status) ||
+        localNonterminalIds.has(subscription.id))
+  );
   const remoteSubscriptions = [];
-  for (const listedSubscription of listedSubscriptions) {
-    if (!listedSubscription?.id) continue;
+  for (const listedSubscription of relevantSubscriptions) {
     // List responses are snapshots. Re-read immediately before writing so a
     // webhook that already persisted a newer status cannot be overwritten by
     // an older list page returned earlier in this reconciliation run.
@@ -605,9 +624,6 @@ export async function reconcileBillingForUser(
     if (converged.subscription?.id) remoteSubscriptions.push(converged.subscription);
   }
 
-  const localRows = await admin(
-    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
-  );
   const missingCandidates = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
   let missingCount = 0;
   for (const subscriptionId of missingCandidates) {
@@ -642,7 +658,8 @@ export async function reconcileBillingForUser(
   });
   return {
     reconciled: true,
-    remoteCount: remoteSubscriptions.length,
+    remoteCount: listedSubscriptions.length,
+    reconciledCount: relevantSubscriptions.length,
     missingCount,
   };
 }
