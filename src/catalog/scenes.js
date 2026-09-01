@@ -59,7 +59,7 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'copd',
-    status: 'alpha',
+    status: 'reviewed',
     modelCard: 'docs/model-cards/copd.md',
     description:
       'Twelve lung units with their own time constants: why incomplete expiration produces dynamic hyperinflation, and why extra expiratory effort stops increasing flow once expiratory flow limitation is reached.',
@@ -77,7 +77,7 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'asthma',
-    status: 'alpha',
+    status: 'reviewed',
     modelCard: 'docs/model-cards/asthma.md',
     description:
       'A branching airway tree solved as a network: how a uniform bronchoconstrictor stimulus can produce clustered, heterogeneous regional ventilation.',
@@ -140,7 +140,7 @@ export const SCENE_MANIFEST = [
     organ: 'liver',
     organs: ['liver', 'spleen'],
     disease: 'cirrhosis',
-    status: 'alpha',
+    status: 'reviewed',
     modelCard: 'docs/model-cards/cirrhosis-portal-hypertension.md',
     description:
       'The portal circulation as a flow-conserving network: why portal hypertension can persist despite redistribution through collaterals, and why HVPG is not the portal pressure gradient.',
