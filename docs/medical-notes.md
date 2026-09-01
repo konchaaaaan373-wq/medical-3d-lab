@@ -53,7 +53,9 @@ SVR にも依存するため、CO や DO₂ の変化を過小に見せること
   読みやすく変換した演出値で、流体計算や組織酸素分圧ではありません。
 
 数式と較正は `src/models/circulation.js`、画面文言は
-`src/data/prototypes/circulation.js` にあります。
+`src/data/prototypes/circulation.js` にあります。どの定義・介入方向をどの文献から
+採用し、どこからが例示的な仮定かは
+[`docs/model-evidence/circulation.md`](model-evidence/circulation.md) に記録しています。
 
 ---
 
