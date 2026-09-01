@@ -74,6 +74,18 @@ function createModeCoordinator() {
   };
 }
 
+/**
+ * Progress-driving modes are mutually exclusive even when their buttons happen
+ * to be hidden from one another. A paid guide must never start while Reel,
+ * Story, a stepped walk-through or a Lesson still owns the same scene axis.
+ */
+function exitSceneModes(app) {
+  if (app.reel?.active && typeof app.reel.exit === 'function') app.reel.exit();
+  app.learning?.set(false);
+  app.causalStory?.set(false);
+  if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
+}
+
 function mountAccountButton(access, ui) {
   const nav = ui.querySelector('.global-scene-nav');
   const trigger = nav?.querySelector('.global-nav-trigger');
@@ -136,9 +148,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
 
   function openGuide() {
     activate?.();
-    app.learning?.set(false);
-    app.causalStory?.set(false);
-    if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
+    exitSceneModes(app);
 
     // The paid patient layer temporarily owns only the public progression axis
     // and presentation density. The clinician's exact model position/play state
@@ -229,9 +239,7 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
 
   function openGuide() {
     activate?.();
-    app.learning?.set(false);
-    app.causalStory?.set(false);
-    if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
+    exitSceneModes(app);
 
     sessionSnapshot = captureGuideSession(app.playback);
     open = true;
