@@ -30,10 +30,10 @@ const TEST_FILES = (() => {
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('migrated production evidence and the existing model registries share one complete registry', () => {
+test('migrated production evidence and the complete model registry stay in one discoverable list', () => {
   assert.deepEqual(
     ALL_EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
-    ['heart-failure', 'amyloid-beta', 'circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
+    ['heart-failure', 'amyloid-beta', 'hfpef', 'circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
   );
 });
 
