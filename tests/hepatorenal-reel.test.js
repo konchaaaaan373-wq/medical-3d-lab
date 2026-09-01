@@ -161,9 +161,11 @@ test('every number on screen comes from the scene, not from the copy', () => {
   assert.ok(!/\d+\s*(mL|mmHg|%)/.test(text), 'the reel copy carries a unit-bearing number');
   assert.ok(!/\d{2,}/.test(text), 'the reel copy carries a multi-digit number');
 
+  // Slot order is screen order: the released kidney stands on the left, this
+  // kidney on the right, so the released card fills the first (left) slot.
   const overlay = overlayAt(REEL_DURATION, context());
-  assert.equal(overlay.cards.items[0].headline, METRICS.kidney.gfr);
-  assert.equal(overlay.cards.items[1].headline, METRICS.released.gfr);
+  assert.equal(overlay.cards.items[0].headline, METRICS.released.gfr);
+  assert.equal(overlay.cards.items[1].headline, METRICS.kidney.gfr);
   assert.ok(overlayAt(8.0, context()).marker.text.includes(METRICS.map));
 });
 
@@ -222,16 +224,19 @@ test('the second card arrives with the second kidney, and not before', () => {
   // sequence is for. The comparison is only shown once it means what the
   // ending says it means — and it is shown exactly when the picture shows two
   // kidneys, so the cards and the 3D never disagree about how many there are.
+  // The first slot is a placeholder before the comparison — this kidney's
+  // card keeps the second (right) slot and its styling throughout — so the
+  // count that has to agree with the picture is the count of filled slots.
   for (const t of at(REEL_DURATION, 0.1)) {
     const overlay = overlayAt(t, context());
     assert.equal(
-      overlay.cards.items.length,
+      overlay.cards.items.filter(Boolean).length,
       comparisonAt(t) ? 2 : 1,
       `the card count and the picture disagree at ${t}`
     );
   }
-  assert.equal(overlayAt(COMPARISON_FROM - 0.1, context()).cards.items.length, 1);
-  assert.equal(overlayAt(COMPARISON_FROM, context()).cards.items.length, 2);
+  assert.equal(overlayAt(COMPARISON_FROM - 0.1, context()).cards.items.filter(Boolean).length, 1);
+  assert.equal(overlayAt(COMPARISON_FROM, context()).cards.items.filter(Boolean).length, 2);
 });
 
 test('the last frame holds the take-home rather than fading to nothing', () => {

@@ -154,7 +154,8 @@ export function createReelMode({
   }
 
   /**
-   * The numbers the copy interpolates, read once on entry.
+   * The numbers the copy interpolates, re-read after every drive so a figure
+   * that moves is quoted as it stands on screen now.
    *
    * Read from the scene rather than carried by the sequence, so a video can
    * never quote a figure the interactive scene would not. Which figures those

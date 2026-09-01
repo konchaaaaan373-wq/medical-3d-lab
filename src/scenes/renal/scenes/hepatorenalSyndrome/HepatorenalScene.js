@@ -9,6 +9,7 @@ import { buildLiver } from '../../../hepatobiliary/organs/liver.js';
 import { buildSystemicCirculation } from './circulation.js';
 import {
   DEFAULT_CONTROLS,
+  PLASMA_FRACTION,
   REFERENCE_AFFERENT_RESISTANCE,
   REFERENCE_EFFERENT_RESISTANCE,
   REFERENCE_SVR,
@@ -274,7 +275,19 @@ export class HepatorenalScene {
    * that moving them together is the scene's choice.
    */
   setProgress(value) {
-    this.progress = clamp(value);
+    const next = clamp(value);
+    // A repeated value is not a change, and re-solving for one is pure waste.
+    // The reel holds its progress for seconds at a time and drives this every
+    // rendered frame; without this guard each of those frames re-solved the
+    // coupled circulation and rebuilt every tube surface to redraw the
+    // picture already on screen.
+    if (next === this.progress && this.solved) return;
+    this.progress = next;
+    this.applyProgress();
+  }
+
+  /** The two coupled controls the axis owns, written from `progress`, then solved. */
+  applyProgress() {
     this.controls.structuralResistance =
       1 + (HepatorenalScene.MAX_STRUCTURAL_RESISTANCE - 1) * this.progress;
     this.controls.splanchnicVasodilation = this.progress;
@@ -292,7 +305,9 @@ export class HepatorenalScene {
 
   resetModelControls() {
     for (const control of MODEL_CONTROLS) this.controls[control.id] = DEFAULT_CONTROLS[control.id];
-    this.setProgress(this.progress);
+    // Not setProgress: the progress has not changed, but the controls have,
+    // so the axis's own pair is rewritten and the model re-solved regardless.
+    this.applyProgress();
   }
 
   solve() {
@@ -547,7 +562,16 @@ export class HepatorenalScene {
               RENAL_REFERENCE.glomerularFiltrationRateMlPerMin
             )
           ),
-          series('fraction', '#8fd8ff', (s) => percent(s.kidney.filtrationFraction, 0.2)),
+          series('fraction', '#8fd8ff', (s) =>
+            // The healthy filtration fraction, derived from the same reference
+            // the other two series are quoted against rather than restated as
+            // a literal the model cannot move.
+            percent(
+              s.kidney.filtrationFraction,
+              RENAL_REFERENCE.glomerularFiltrationRateMlPerMin /
+                (RENAL_REFERENCE.renalBloodFlowMlPerMin * PLASMA_FRACTION)
+            )
+          ),
         ],
         markers: [
           {

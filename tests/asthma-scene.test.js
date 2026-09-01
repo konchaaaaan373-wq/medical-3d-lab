@@ -530,6 +530,15 @@ test('both trees are given the same stimulus, so the difference is the lung', ()
     assert.equal(reference.controls.wallThickening, 0);
     assert.ok(built.solved.controls.hyperresponsiveness > 1);
   }
+
+  // The manoeuvre and the drug reach both trees too: a comparison where only
+  // one lung was inflated or given the bronchodilator would show a difference
+  // the trait did not cause.
+  built.setModelControl('lungInflation', 1.2);
+  built.setModelControl('bronchodilator', 0.5);
+  const shared = built.referenceSolve();
+  assert.equal(shared.controls.lungInflation, 1.2);
+  assert.equal(shared.controls.bronchodilator, 0.5);
 });
 
 test('the comparison shows what hyperresponsiveness actually is: the knee moves left', () => {

@@ -84,13 +84,10 @@ export function buildGlomerulus(colors = {}) {
   vessel('efferent', efferentCurve, { radius: () => ARTERIOLE_RADIUS, color: efferent, radial: 16 });
 
   // --- the tuft -------------------------------------------------------------
-  // Four coiled loops rather than one, so that it reads as a bed of capillaries
-  // in parallel — which is what makes its resistance small compared with the
-  // arterioles either side and its surface large enough to filter across.
-  // Three coils, each a flat rosette, turned onto three different planes so
-  // that together they read as a ball of capillaries in parallel — which is
-  // what makes the tuft's resistance small compared with the arterioles either
-  // side of it, and its surface large enough to filter across. Turning them all
+  // Four coils, each a flat rosette, turned onto four different planes so that
+  // together they read as a ball of capillaries in parallel — which is what
+  // makes the tuft's resistance small compared with the arterioles either side
+  // of it, and its surface large enough to filter across. Turning them all
   // about the same axis leaves them coplanar and draws a smear.
   const TUFT_PLANES = [
     [0, 0, 0],

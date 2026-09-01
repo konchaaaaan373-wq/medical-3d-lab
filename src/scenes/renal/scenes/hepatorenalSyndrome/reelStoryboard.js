@@ -187,17 +187,21 @@ export function overlayAt(t, { language, metrics }) {
     // it means what the ending says it means.
     cards: {
       opacity: cueOpacity(t, 2.5, HOLD_PAST_END, 0.4),
+      // Slot order is screen order: the overlay's first slot is the left card
+      // (styled as the reference) and the second the right (styled as the
+      // subject). In comparison the released kidney stands on the left and
+      // this kidney on the right, so the released card takes the first slot;
+      // before the comparison that slot is empty rather than borrowed, so
+      // this kidney's card keeps its side and its styling throughout.
       items: [
+        comparisonAt(t)
+          ? card(
+              pick(language, REEL_COPY.cards.released.label, REEL_COPY.cards.released.labelJa),
+              metrics.released,
+              language
+            )
+          : undefined,
         card(pick(language, REEL_COPY.cards.kidney.label, REEL_COPY.cards.kidney.labelJa), metrics.kidney, language),
-        ...(comparisonAt(t)
-          ? [
-              card(
-                pick(language, REEL_COPY.cards.released.label, REEL_COPY.cards.released.labelJa),
-                metrics.released,
-                language
-              ),
-            ]
-          : []),
       ],
     },
     badge: {

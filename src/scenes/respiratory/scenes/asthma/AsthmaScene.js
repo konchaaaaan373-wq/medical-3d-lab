@@ -7,7 +7,6 @@ import {
   DEFAULT_CONTROLS,
   DEFECT_THRESHOLD,
   GENERATIONS,
-  REFERENCE_CONTROLS,
   TERMINAL_COUNT,
   doseResponse,
   solveAsthma,
@@ -224,7 +223,8 @@ export class AsthmaScene {
 
   /**
    * The healthy lung the comparison draws: no hyperresponsiveness, no
-   * remodelling, and the same stimulus as the primary.
+   * remodelling, and everything else — the stimulus, the lung inflation, the
+   * drug — the same as the primary.
    *
    * Memoised on the controls rather than re-solved per call. It used to be
    * solved afresh every time, and there are two callers per frame — the
@@ -239,7 +239,11 @@ export class AsthmaScene {
   referenceSolve() {
     if (!this.referenceSolved) {
       this.referenceSolved = solveAsthma(
-        { ...this.controls, ...REFERENCE_CONTROLS, stimulus: this.controls.stimulus },
+        // Only the trait and the remodelling are removed. The stimulus, the
+        // lung inflation and the drug stay the primary's, so the only
+        // difference between the two trees is the lung — which is what the
+        // comparison claims.
+        { ...this.controls, hyperresponsiveness: 1, wallThickening: 0 },
         { maxIterations: 320, tolerance: 1e-3 }
       );
     }
