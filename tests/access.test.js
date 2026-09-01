@@ -63,17 +63,20 @@ test('access: past_due has a grace period, terminal/non-paying states do not', (
   }
 });
 
-test('product: paid capabilities are explicit and prototypes stay free-only by default', () => {
-  const paidIds = Object.keys(SCENE_PRODUCT_FEATURES).sort();
+test('product: paid capabilities are declared by the scene manifest and prototypes stay free-only', () => {
+  const declared = SCENE_MANIFEST.filter(
+    (scene) => scene.access?.patient === true || scene.access?.education === true
+  );
   assert.deepEqual(
-    paidIds,
-    ['amyloid-beta', 'asthma-heterogeneity', 'copd-hyperinflation', 'heart-failure', 'portal-hypertension'].sort()
+    Object.keys(SCENE_PRODUCT_FEATURES).sort(),
+    declared.map((scene) => scene.id).sort()
   );
 
   for (const scene of SCENE_MANIFEST) {
     const features = featuresForScene(scene);
     assert.equal(features.core, 'free', scene.id);
     if (scene.status === 'prototype') {
+      assert.equal(scene.access, undefined, `${scene.id}: prototype must not declare paid access`);
       assert.equal(features.patient, false, `${scene.id}: patient`);
       assert.equal(features.education, false, `${scene.id}: education`);
     }
@@ -81,18 +84,19 @@ test('product: paid capabilities are explicit and prototypes stay free-only by d
 });
 
 test('product: paid patient/education modes require a reviewed or production scene', () => {
-  for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
-    if (!features.patient && !features.education) continue;
-    const scene = SCENE_MANIFEST.find((entry) => entry.id === sceneId);
-    assert.ok(scene, `${sceneId}: registered scene`);
+  for (const scene of SCENE_MANIFEST) {
+    if (!scene.access?.patient && !scene.access?.education) continue;
     assert.ok(
       scene.status === 'reviewed' || scene.status === 'production',
-      `${sceneId}: ${scene.status} must not advertise paid clinical/teaching modes`
+      `${scene.id}: ${scene.status} must not advertise paid clinical/teaching modes`
     );
+    assert.equal(typeof scene.access.patient, 'boolean', `${scene.id}: patient declaration`);
+    assert.equal(typeof scene.access.education, 'boolean', `${scene.id}: education declaration`);
   }
 
   const hrs = SCENE_MANIFEST.find((scene) => scene.id === 'hepatorenal-syndrome');
   assert.equal(hrs?.status, 'alpha');
+  assert.equal(hrs?.access, undefined);
   assert.equal(featuresForScene(hrs).patient, false);
   assert.equal(featuresForScene(hrs).education, false);
 });
@@ -177,7 +181,8 @@ test('billing: stale Stripe signatures are rejected', () => {
 });
 
 test('patient mode: guides stay on each authored scene progression axis', () => {
-  for (const sceneId of Object.keys(SCENE_PRODUCT_FEATURES)) {
+  for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
+    if (!features.patient) continue;
     const guide = patientGuideFor(sceneId);
     assert.ok(guide, sceneId);
     const values = guide.steps.map((step) => step.progress);
@@ -202,7 +207,8 @@ test('patient mode: amyloid guide separates aggregation from individual cognitio
 });
 
 test('education mode: guides use ordered model states and end by teaching scope', () => {
-  for (const sceneId of Object.keys(SCENE_PRODUCT_FEATURES)) {
+  for (const [sceneId, features] of Object.entries(SCENE_PRODUCT_FEATURES)) {
+    if (!features.education) continue;
     const guide = educationGuideFor(sceneId);
     assert.ok(guide, sceneId);
     const values = guide.steps.map((step) => step.progress);
