@@ -13,6 +13,7 @@ import {
   statusById,
   systemsWithOrgans,
 } from '../catalog/index.js';
+import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { productBadgesForScene } from '../access/features.js';
 import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
@@ -30,6 +31,10 @@ import {
  *
  * Favorites and recents store scene IDs only — never model controls, patient
  * information, account state or clinical data.
+ *
+ * Model/product maturity and clinical-review attestation are intentionally two
+ * separate trust axes. The former comes from the scene manifest; the latter is
+ * read from docs/clinical-reviews/registry.json through clinicalReview.js.
  *
  * @param {{ui:HTMLElement, accountButton?:HTMLElement, scope?:'public'|'lab'}} mounts
  */
@@ -59,6 +64,22 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       el('span', { class: 'lang-en', text: status.label }),
       el('span', { class: 'lang-ja', text: status.labelJa }),
     ]);
+  };
+
+  const reviewBadge = (scene) => {
+    if (isLab) return null;
+    const review = clinicalReviewPresentation(scene);
+    return el(
+      'span',
+      {
+        class: `status-badge clinical-review-badge is-${review.status}`,
+        title: 'Clinical-review attestation is tracked separately from model maturity.',
+      },
+      [
+        el('span', { class: 'lang-en', text: review.en }),
+        el('span', { class: 'lang-ja', text: review.ja }),
+      ]
+    );
   };
 
   const productBadges = (scene) =>
@@ -101,6 +122,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         badge(scene.status),
       ]),
       productBadges(scene),
+      reviewBadge(scene),
       el('span', { class: 'explorer-scene-note' }, [
         el('span', { class: 'lang-en', text: scene.description }),
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
@@ -273,8 +295,8 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         'Prototypeシーンと開発予定の問いを、公開カタログから明確に分離して掲載します。',
       ]
     : [
-        'Explore medically reviewed and model-backed views of anatomy and pathophysiology. Work in progress lives in the Lab.',
-        '医学レビュー済みの解剖・病態モデルを掲載しています。開発中のモデルは実験室で確認できます。',
+        'Explore anatomy and pathophysiology with model maturity and clinical-review status shown separately. Work in progress lives in the Lab.',
+        '解剖・病態モデルを、モデル成熟度と医学レビュー状態を分けて確認できます。開発中のモデルは実験室に掲載します。',
       ];
 
   const productKey = isLab
@@ -297,6 +319,11 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         bilingual(
           'Some professional tools for patient explanation and medical education require a subscription.',
           '患者説明・医学教育向けの一部機能は有料です。',
+          'explorer-product-note'
+        ),
+        bilingual(
+          'Model maturity and versioned clinical review are different trust signals and are shown separately on each card.',
+          'モデルの成熟度と、版を固定した医学レビューは別のTrust指標として各カードに表示します。',
           'explorer-product-note'
         ),
       ]);
@@ -326,13 +353,13 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           class: 'lang-en',
           text: isLab
             ? 'Lab is intentionally experimental. Prototype scenes may use stylised anatomy or placeholder motion and must not be read as reviewed medical models.'
-            : 'Educational conceptual models. Prototype work is intentionally separated into the Experimental Lab.',
+            : 'Educational conceptual models. Clinical-review attestation is shown separately from product/model maturity; Prototype work is kept in the Experimental Lab.',
         }),
         el('span', {
           class: 'lang-ja',
           text: isLab
             ? 'Labは意図的に実験段階です。Prototypeには簡略化された解剖や仮の動きが含まれ、レビュー済み医学モデルとして解釈しないでください。'
-            : '教育目的の概念モデルです。Prototypeは公開カタログから分離し、Experimental Labに掲載しています。',
+            : '教育目的の概念モデルです。医学レビューの状態はモデル成熟度とは別に表示し、PrototypeはExperimental Labに分離しています。',
         }),
       ]),
     ]),
