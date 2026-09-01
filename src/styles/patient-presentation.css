@@ -2,6 +2,37 @@
    Consultation-room patient presentation
    ========================================================================== */
 
+.patient-guide:focus-visible {
+  outline: none;
+}
+
+.patient-guide-step {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Dots are real navigation buttons now. Strip browser button chrome while
+   keeping a generous invisible hit target for a tablet or presentation screen. */
+.patient-guide-dot {
+  position: relative;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  cursor: pointer;
+}
+
+.patient-guide-dot::after {
+  content: '';
+  position: absolute;
+  inset: -7px 0;
+}
+
+.patient-guide-dot.is-current {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
 .patient-guide-presentation {
   flex: none;
   min-height: 30px;
@@ -45,6 +76,10 @@
 
 #ui.is-patient-presentation .patient-guide {
   gap: 14px;
+}
+
+#ui.is-patient-presentation .patient-guide-step {
+  gap: 12px;
 }
 
 #ui.is-patient-presentation .patient-guide-title {
