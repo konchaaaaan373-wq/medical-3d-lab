@@ -11,10 +11,10 @@ let volatileSession = null;
 let refreshInFlight = null;
 
 export const AUTH_CONFIG = Object.freeze({
-  url: (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
+  url: (import.meta.env?.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
   publishableKey:
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-    import.meta.env.VITE_SUPABASE_ANON_KEY ??
+    import.meta.env?.VITE_SUPABASE_PUBLISHABLE_KEY ??
+    import.meta.env?.VITE_SUPABASE_ANON_KEY ??
     '',
 });
 
@@ -66,7 +66,7 @@ function normaliseSession(data) {
   if (!data?.access_token) return null;
   return {
     access_token: data.access_token,
-    refresh_token: data.refresh_token,
+    refresh_token: data.refresh_token ?? null,
     expires_at: Math.floor(Date.now() / 1000) + Number(data.expires_in || 3600),
     user: data.user ?? null,
   };
@@ -95,6 +95,83 @@ export async function signUp(email, password) {
   const session = normaliseSession(data);
   if (session) store(session);
   return { session, user: data.user ?? null };
+}
+
+/**
+ * Ask Supabase to send its standard recovery email.
+ *
+ * Supabase intentionally does not reveal whether the address exists, so the UI
+ * must always show the same neutral confirmation after a successful request.
+ */
+export async function requestPasswordReset(email, redirectTo) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  const url = new URL(`${AUTH_CONFIG.url}/auth/v1/recover`);
+  if (redirectTo) url.searchParams.set('redirect_to', redirectTo);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ email }),
+  });
+  await json(response);
+}
+
+/**
+ * Parse the implicit-flow recovery fragment Supabase redirects back to a
+ * client-only app. Kept pure so the routing/security edge case is unit-testable.
+ */
+export function recoverySessionFromHash(hash, nowSeconds = Math.floor(Date.now() / 1000)) {
+  const raw = String(hash ?? '').replace(/^#/, '');
+  if (!raw || raw.startsWith('/')) return null;
+  const params = new URLSearchParams(raw);
+  if (params.get('type') !== 'recovery') return null;
+
+  const accessToken = params.get('access_token');
+  if (!accessToken) return null;
+  const expiresIn = Number(params.get('expires_in') || 3600);
+  return {
+    access_token: accessToken,
+    refresh_token: params.get('refresh_token') || null,
+    expires_at: Number(nowSeconds) + (Number.isFinite(expiresIn) ? expiresIn : 3600),
+    user: null,
+  };
+}
+
+/**
+ * Consume a Supabase PASSWORD_RECOVERY redirect before the app treats the URL
+ * fragment as a Medical 3D Lab scene route. Tokens are persisted and removed
+ * from the address bar immediately so they cannot linger in screenshots/copies.
+ */
+export function consumePasswordRecoveryRedirect({ location, history } = {}) {
+  const currentLocation = location ?? globalThis.location;
+  const currentHistory = history ?? globalThis.history;
+  if (!currentLocation) return false;
+
+  const session = recoverySessionFromHash(currentLocation.hash);
+  if (!session) return false;
+  store(session);
+
+  if (currentHistory?.replaceState) {
+    const clean = new URL(currentLocation.href);
+    clean.hash = '#/';
+    currentHistory.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
+  }
+  return true;
+}
+
+/** Update the password for a signed-in/recovery session. */
+export async function updatePassword(password) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  const session = await getSession();
+  if (!session?.access_token) throw new Error('Password recovery session has expired. Please request a new email.');
+
+  const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/user`, {
+    method: 'PUT',
+    headers: headers(session.access_token),
+    body: JSON.stringify({ password }),
+  });
+  const data = await json(response);
+  if (data?.user) store({ ...session, user: data.user });
+  return data?.user ?? null;
 }
 
 export function signOut() {
