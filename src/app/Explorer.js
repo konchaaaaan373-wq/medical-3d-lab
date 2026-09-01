@@ -4,6 +4,10 @@ import { createExplorerSearchControls } from '../components/ExplorerSearchContro
 import { prefersReducedMotion } from '../utils/motion.js';
 import {
   EXPLORER_ROUTE,
+  LAB_ROUTE,
+  LAB_SCENES,
+  LANDING_ROUTE,
+  PUBLIC_SCENES,
   sceneById,
   sceneRoute,
   statusById,
@@ -18,33 +22,35 @@ import {
 } from './explorerSearch.js';
 
 /**
- * The organ explorer: the whole catalogue on one page.
+ * Catalogue surface shared by the public Organ Explorer and Experimental Lab.
  *
- * Deliberately plain DOM and no Three.js. Opening this page must not build a
- * single piece of geometry — the scene modules stay unloaded until one is
- * chosen, which is the difference between a catalogue that can grow to a
- * hundred entries and one that cannot.
+ * Both are projections of the same scene manifest. Public excludes Prototype;
+ * Lab includes Prototype (and the declared backlog) explicitly. Neither route
+ * imports Three.js or a scene module.
  *
- * It draws itself from `src/catalog/`, so a new scene appears here the moment
- * it is registered. Organs with no scene yet are still listed: the gap is
- * information, and hiding it would quietly turn the backlog invisible.
+ * Favorites and recents store scene IDs only — never model controls, patient
+ * information, account state or clinical data.
  *
- * Search is also catalogue-driven. Matching never imports a scene module; it
- * reads only manifest/taxonomy/product metadata, so a 100-scene catalogue does
- * not turn the Explorer into a 100-scene JavaScript bundle.
- *
- * Favorites and recent scenes are navigation preferences stored as scene ids
- * only. No model controls, progression, clinical information or account state
- * is persisted here.
- *
- * @param {{ ui: HTMLElement, accountButton?: HTMLElement }} mounts
+ * @param {{ui:HTMLElement, accountButton?:HTMLElement, scope?:'public'|'lab'}} mounts
  */
-export function createExplorer({ ui, accountButton = null }) {
-  const systems = systemsWithOrgans();
+export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
+  const isLab = scope === 'lab';
+  const scopedScenes = isLab ? LAB_SCENES : PUBLIC_SCENES;
+  const scopedIds = new Set(scopedScenes.map((scene) => scene.id));
+  const systems = systemsWithOrgans(scopedScenes, {
+    includePlanned: isLab,
+    includeEmptyOrgans: false,
+  });
   const organViews = [];
   const systemViews = new Map();
   const jumpLinks = new Map();
   const favoriteButtons = new Map();
+
+  const bilingual = (en, ja, className = '') =>
+    el('span', { class: className }, [
+      el('span', { class: 'lang-en', text: en }),
+      el('span', { class: 'lang-ja', text: ja }),
+    ]);
 
   const badge = (statusId) => {
     const status = statusById(statusId);
@@ -105,7 +111,7 @@ export function createExplorer({ ui, accountButton = null }) {
     return { scene, system, organ, element };
   };
 
-  /** A disease scene that is declared but not built. Shown, not hidden. */
+  /** Declared but not built: visible only in Lab, never as a public model. */
   const plannedCard = (planned, system, organ) => {
     const element = el('span', { class: 'explorer-scene is-planned' }, [
       el('span', { class: 'explorer-scene-title' }, [
@@ -169,16 +175,22 @@ export function createExplorer({ ui, accountButton = null }) {
     return element;
   };
 
-  // Build the catalogue records before the search control. Its first update can
-  // therefore filter the complete catalogue without waiting for anything else.
   const sections = systems.map(systemSection);
-  const totalScenes = new Set(systems.flatMap((system) => system.scenes.map((scene) => scene.id))).size;
+  const totalScenes = scopedScenes.length;
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
 
   const headerActions = el('div', { class: 'explorer-header-actions' }, [
+    el('a', { class: 'explorer-shell-link', href: LANDING_ROUTE }, [
+      el('span', { class: 'lang-en', text: 'Home' }),
+      el('span', { class: 'lang-ja', text: 'ホーム' }),
+    ]),
+    el('a', { class: 'explorer-shell-link', href: isLab ? EXPLORER_ROUTE : LAB_ROUTE }, [
+      el('span', { class: 'lang-en', text: isLab ? 'Public models' : 'Lab' }),
+      el('span', { class: 'lang-ja', text: isLab ? '公開モデル' : '実験室' }),
+    ]),
     accountButton,
     languageToggle.element,
   ]);
@@ -243,36 +255,62 @@ export function createExplorer({ ui, accountButton = null }) {
   ]);
 
   const search = createExplorerSearchControls({
+    scope,
     onChange: (filters) => {
       activeFilters = filters;
       applyFilters();
     },
   });
 
-  const element = el('div', { class: 'explorer' }, [
-    el('header', { class: 'panel explorer-header' }, [
-      el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
-      el('h1', { class: 'title' }, [
-        el('span', { class: 'lang-en', text: 'Organ explorer' }),
-        el('span', { class: 'lang-ja', text: '臓器エクスプローラ' }),
-      ]),
-      el('p', { class: 'subtitle' }, [
-        el('span', {
-          class: 'lang-en',
-          text: 'Make invisible physiology visible, interactive and understandable — across the whole body.',
-        }),
-        el('span', { class: 'lang-ja', text: '見えない病態生理を、3D で動かして理解する — 全身を対象に。' }),
-      ]),
-      el('div', { class: 'explorer-product-key' }, [
+  const headerTitle = isLab
+    ? ['Experimental Lab', '実験モデル']
+    : ['Organ explorer', '臓器エクスプローラ'];
+  const subtitle = isLab
+    ? [
+        'Prototype scenes and planned questions live here, explicitly separated from the public catalogue.',
+        'Prototypeシーンと開発予定の問いを、公開カタログから明確に分離して掲載します。',
+      ]
+    : [
+        'Reviewed, production and model-backed alpha work — without the stylised Prototype shelf.',
+        'Reviewed・Production・モデル駆動のAlphaを掲載し、簡略化したPrototypeは実験室へ分離しています。',
+      ];
+
+  const productKey = isLab
+    ? el('div', { class: 'explorer-product-key is-lab' }, [
+        el('span', { class: 'explorer-access-badge is-lab' }, [
+          el('span', { class: 'lang-en', text: 'Experimental' }),
+          el('span', { class: 'lang-ja', text: '実験段階' }),
+        ]),
+        bilingual(
+          'Prototype motion/geometry may be schematic and is not presented as medically reviewed content.',
+          'Prototypeの形状・動きは模式的で、医学的レビュー済みコンテンツとしては提示しません。',
+          'explorer-product-note'
+        ),
+      ])
+    : el('div', { class: 'explorer-product-key' }, [
         el('span', { class: 'explorer-access-badge is-free' }, [
           el('span', { class: 'lang-en', text: 'Core model stays free' }),
           el('span', { class: 'lang-ja', text: '基本モデルは無料' }),
         ]),
-        el('span', { class: 'explorer-product-note' }, [
-          el('span', { class: 'lang-en', text: 'Patient and Education badges mark optional paid professional-use modes.' }),
-          el('span', { class: 'lang-ja', text: '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。' }),
-        ]),
+        bilingual(
+          'Patient and Education badges mark optional paid professional-use modes.',
+          '患者説明・医学教育の表示は、追加の有料プロフェッショナル機能があるシーンです。',
+          'explorer-product-note'
+        ),
+      ]);
+
+  const element = el('div', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
+    el('header', { class: 'panel explorer-header' }, [
+      el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
+      el('h1', { class: 'title' }, [
+        el('span', { class: 'lang-en', text: headerTitle[0] }),
+        el('span', { class: 'lang-ja', text: headerTitle[1] }),
       ]),
+      el('p', { class: 'subtitle' }, [
+        el('span', { class: 'lang-en', text: subtitle[0] }),
+        el('span', { class: 'lang-ja', text: subtitle[1] }),
+      ]),
+      productKey,
       search.element,
       jump,
       headerActions,
@@ -284,13 +322,15 @@ export function createExplorer({ ui, accountButton = null }) {
       el('p', {}, [
         el('span', {
           class: 'lang-en',
-          text:
-            'Educational conceptual models. Scenes marked Prototype are stylised shapes with placeholder motion and have not been anatomically validated.',
+          text: isLab
+            ? 'Lab is intentionally experimental. Prototype scenes may use stylised anatomy or placeholder motion and must not be read as reviewed medical models.'
+            : 'Educational conceptual models. Prototype work is intentionally separated into the Experimental Lab.',
         }),
         el('span', {
           class: 'lang-ja',
-          text:
-            '教育目的の概念モデルです。Prototype 表示のシーンは簡略化された形状と仮の動きで構成され、解剖学的な検証は受けていません。',
+          text: isLab
+            ? 'Labは意図的に実験段階です。Prototypeには簡略化された解剖や仮の動きが含まれ、レビュー済み医学モデルとして解釈しないでください。'
+            : '教育目的の概念モデルです。Prototypeは公開カタログから分離し、Experimental Labに掲載しています。',
         }),
       ]),
     ]),
@@ -310,9 +350,11 @@ export function createExplorer({ ui, accountButton = null }) {
     search.focus();
   });
 
-  document.title = 'Organ explorer — medical-3d-lab';
+  document.title = isLab
+    ? 'Experimental Lab — Medical 3D Lab'
+    : 'Organ explorer — Medical 3D Lab';
 
-  return { element, route: EXPLORER_ROUTE, search };
+  return { element, route: isLab ? LAB_ROUTE : EXPLORER_ROUTE, search };
 
   function libraryShortcut(scene, recent = false) {
     return el('a', { class: 'explorer-library-link', href: sceneRoute(scene) }, [
@@ -330,7 +372,7 @@ export function createExplorer({ ui, accountButton = null }) {
   }
 
   function syncLibrary(library = readSceneLibrary()) {
-    const saved = new Set(library.favorites);
+    const saved = new Set(library.favorites.filter((id) => scopedIds.has(id)));
     for (const [sceneId, buttons] of favoriteButtons) {
       const isSaved = saved.has(sceneId);
       for (const button of buttons) {
@@ -344,9 +386,12 @@ export function createExplorer({ ui, accountButton = null }) {
       }
     }
 
-    const favorites = library.favorites.map(sceneById).filter(Boolean);
+    const favorites = library.favorites
+      .filter((id) => scopedIds.has(id))
+      .map(sceneById)
+      .filter(Boolean);
     const recent = library.recent
-      .filter((id) => !saved.has(id))
+      .filter((id) => scopedIds.has(id) && !saved.has(id))
       .map(sceneById)
       .filter(Boolean);
 
