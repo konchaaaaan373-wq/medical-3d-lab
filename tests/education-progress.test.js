@@ -2,9 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   EDUCATION_PROGRESS_STORAGE_KEY,
+  educationGuideRevision,
   educationResumeIndex,
   markEducationComplete,
+  markEducationGuideComplete,
+  readEducationGuideProgress,
   readEducationProgress,
+  saveEducationGuideStep,
   saveEducationStep,
 } from '../src/access/educationProgress.js';
 
@@ -22,6 +26,35 @@ function memoryStorage(initial = null) {
     value() {
       return raw ? JSON.parse(raw) : null;
     },
+  };
+}
+
+function guide(answer = 'Reason A') {
+  return {
+    title: 'Guide',
+    titleJa: 'ガイド',
+    steps: [
+      {
+        kind: 'predict',
+        progress: 0.2,
+        title: 'One',
+        titleJa: '1',
+        prompt: 'Question one?',
+        promptJa: '質問1',
+        answer,
+        answerJa: '回答1',
+      },
+      {
+        kind: 'scope',
+        progress: 1,
+        title: 'Two',
+        titleJa: '2',
+        prompt: 'Question two?',
+        promptJa: '質問2',
+        answer: 'Boundary',
+        answerJa: '境界',
+      },
+    ],
   };
 }
 
@@ -62,6 +95,42 @@ test('education progress: changing the authored guide shape invalidates stale co
     step: 3,
     completed: false,
   });
+});
+
+test('education progress: same step count but revised teaching copy restarts safely', () => {
+  const storage = memoryStorage();
+  const original = guide('Original reasoning');
+  const revised = guide('Corrected reasoning');
+
+  assert.notEqual(educationGuideRevision(original), educationGuideRevision(revised));
+  saveEducationGuideStep('heart-failure', original, 1, storage);
+  markEducationGuideComplete('heart-failure', original, storage);
+  assert.deepEqual(readEducationGuideProgress('heart-failure', original, storage), {
+    step: 1,
+    completed: true,
+  });
+
+  assert.deepEqual(readEducationGuideProgress('heart-failure', revised, storage), {
+    step: 0,
+    completed: false,
+  });
+});
+
+test('education progress: guide-aware storage keeps only navigation state plus a content revision', () => {
+  const storage = memoryStorage();
+  const authored = guide();
+  saveEducationGuideStep('portal-hypertension', authored, 1, storage);
+  const stored = storage.value();
+  const record = stored['portal-hypertension'];
+
+  assert.deepEqual(Object.keys(stored), ['portal-hypertension']);
+  assert.deepEqual(Object.keys(record).sort(), ['completed', 'revision', 'step', 'stepCount']);
+  assert.match(record.revision, /^guide-2-/);
+  const raw = JSON.stringify(stored);
+  assert.equal(raw.includes('Question one'), false);
+  assert.equal(raw.includes('Reason A'), false);
+  assert.equal(raw.includes('patient'), false);
+  assert.equal(raw.includes('metric'), false);
 });
 
 test('education progress: storage contains navigation state only', () => {
