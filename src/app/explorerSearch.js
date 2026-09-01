@@ -1,5 +1,5 @@
 import { featuresForScene } from '../access/features.js';
-import { clinicalReviewForScene } from '../catalog/clinicalReview.js';
+import { clinicalReviewForScene, clinicalReviewMatchesFilter } from '../catalog/clinicalReview.js';
 import { organById } from '../catalog/taxonomy.js';
 
 export const EXPLORER_MODE_FILTERS = Object.freeze(['all', 'patient', 'education']);
@@ -14,6 +14,7 @@ export const EXPLORER_STATUS_FILTERS = Object.freeze([
 export const EXPLORER_REVIEW_FILTERS = Object.freeze([
   'all',
   'reviewed',
+  'stale',
   'pending',
   'legacy-unversioned',
 ]);
@@ -66,6 +67,9 @@ export function sceneSearchDocument({ scene, system, organ }) {
     scene?.disease,
     ...(scene?.tags ?? []),
     review?.reviewStatus,
+    review?.reviewerRole,
+    review?.reviewedAt,
+    review?.staleReason,
     ...(review?.scope ?? []),
   ]
     .filter(Boolean)
@@ -87,7 +91,7 @@ export function sceneMatchesExplorerFilters(record, filters = {}) {
   if (status === 'reviewed-plus' && !['reviewed', 'production'].includes(scene.status)) return false;
   if (!['all', 'reviewed-plus'].includes(status) && scene.status !== status) return false;
 
-  if (review !== 'all' && clinicalReviewForScene(scene)?.reviewStatus !== review) return false;
+  if (!clinicalReviewMatchesFilter(scene, review)) return false;
 
   return containsAll(sceneSearchDocument(record), queryTokens(filters.query));
 }
