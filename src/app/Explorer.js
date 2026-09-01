@@ -1,7 +1,9 @@
 import { el } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
+import { createClinicalReviewDetails } from '../components/ClinicalReviewDetails.js';
 import { prefersReducedMotion } from '../utils/motion.js';
+import '../styles/clinical-review.css';
 import {
   EXPLORER_ROUTE,
   LAB_ROUTE,
@@ -128,7 +130,9 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
       ]),
     ]);
-    const element = el('div', { class: 'explorer-scene-shell' }, [link, favoriteButtonFor(scene)]);
+    const children = [link, favoriteButtonFor(scene)];
+    if (!isLab) children.push(createClinicalReviewDetails(scene));
+    const element = el('div', { class: 'explorer-scene-shell' }, children);
     return { scene, system, organ, element };
   };
 
@@ -254,7 +258,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     el('span', { class: 'lang-ja', text: '検索語を短くするか、フィルタを解除してください。' }),
   ]);
 
-  let activeFilters = { query: '', mode: 'all', status: 'all' };
+  let activeFilters = { query: '', mode: 'all', status: 'all', review: 'all' };
 
   const favoriteShelfItems = el('div', { class: 'explorer-library-items' });
   const recentShelfItems = el('div', { class: 'explorer-library-items' });
@@ -430,7 +434,10 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     recentShelf.hidden = recent.length === 0;
 
     const filtering =
-      activeFilters.query.trim() !== '' || activeFilters.mode !== 'all' || activeFilters.status !== 'all';
+      activeFilters.query.trim() !== '' ||
+      activeFilters.mode !== 'all' ||
+      activeFilters.status !== 'all' ||
+      activeFilters.review !== 'all';
     libraryShelf.hidden = filtering || (favorites.length === 0 && recent.length === 0);
   }
 
