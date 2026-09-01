@@ -35,6 +35,15 @@ async function boot() {
   // billing provider may delay an unlock; it may never delay free content.
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
+
+  // Opening Account is also an explicit "re-check my access" action. This is
+  // especially important after returning from Stripe Customer Portal, where a
+  // signed webhook can land a moment after the browser. The modal opens
+  // immediately; this refresh runs in parallel and updates it from server truth.
+  access.accountButton.addEventListener('click', () => {
+    void access.refresh();
+  });
+
   const accessReady = access.init().catch((error) => {
     console.error('access init', error);
   });
