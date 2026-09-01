@@ -49,7 +49,7 @@ async function boot() {
   // especially important after returning from Stripe Customer Portal, where a
   // signed webhook can land a moment after the browser.
   access.accountButton.addEventListener('click', () => {
-    void access.refresh();
+    void access.refresh({ reconcile: true });
   });
 
   const accessReady = access.init().catch((error) => {

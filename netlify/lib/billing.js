@@ -86,7 +86,12 @@ export async function stripeGet(path) {
     headers: { Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}` },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || `Stripe ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || `Stripe ${response.status}`);
+    error.status = response.status;
+    error.code = data?.error?.code ?? null;
+    throw error;
+  }
   return data;
 }
 
@@ -182,6 +187,27 @@ export function subscriptionPeriodEnd(subscription) {
   return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : null;
 }
 
+const CHRONOLOGICAL_TERMINAL_STATUSES = new Set(['canceled', 'incomplete_expired']);
+const RECONCILIATION_RELEVANT_STATUSES = new Set([
+  'incomplete',
+  'trialing',
+  'active',
+  'past_due',
+  'unpaid',
+  'paused',
+]);
+
+/** Keeps historical rows ordered by Stripe lifecycle time, not reconciliation loop order. */
+export function subscriptionStateUpdatedAt(subscription, now = new Date()) {
+  if (!CHRONOLOGICAL_TERMINAL_STATUSES.has(subscription?.status)) return now.toISOString();
+  const lifecycleSeconds = [subscription?.ended_at, subscription?.canceled_at]
+    .filter(Number.isFinite);
+  const seconds = lifecycleSeconds.length
+    ? Math.max(...lifecycleSeconds)
+    : subscription?.created;
+  return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : now.toISOString();
+}
+
 export async function billingCustomerFor(user) {
   const rows = await supabaseAdmin(`billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`);
   if (rows?.[0]?.stripe_customer_id) return rows[0].stripe_customer_id;
@@ -207,12 +233,88 @@ export async function billingCustomerFor(user) {
 }
 
 /** Stripe is authoritative when local webhook state may still be catching up. */
-export async function subscriptionsForCustomer(customerId) {
+export async function subscriptionsForCustomer(customerId, { get = stripeGet } = {}) {
   if (!customerId) return [];
-  const data = await stripeGet(
-    `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100`
-  );
-  return Array.isArray(data?.data) ? data.data : [];
+  const subscriptions = [];
+  let startingAfter = null;
+
+  do {
+    const cursor = startingAfter
+      ? `&starting_after=${encodeURIComponent(startingAfter)}`
+      : '';
+    const page = await get(
+      `subscriptions?customer=${encodeURIComponent(customerId)}&status=all&limit=100${cursor}`
+    );
+    const pageSubscriptions = Array.isArray(page?.data) ? page.data : [];
+    subscriptions.push(...pageSubscriptions);
+    if (!page?.has_more) break;
+
+    const nextCursor = pageSubscriptions.at(-1)?.id;
+    if (!nextCursor || nextCursor === startingAfter) {
+      throw new Error('Stripe subscription pagination did not provide a new cursor.');
+    }
+    startingAfter = nextCursor;
+  } while (true);
+
+  return subscriptions;
+}
+
+/** Retrieves one current subscription, returning null only when Stripe confirms it is absent. */
+export async function subscriptionById(subscriptionId, { get = stripeGet } = {}) {
+  if (!subscriptionId) return null;
+  try {
+    return await get(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+  } catch (error) {
+    if (error?.status === 404 || error?.code === 'resource_missing') return null;
+    throw error;
+  }
+}
+
+export function subscriptionStateFingerprint(subscription) {
+  if (!subscription?.id) return null;
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+  const item = subscription.items?.data?.[0];
+  return JSON.stringify({
+    id: subscription.id,
+    customerId: customerId ?? null,
+    status: subscription.status ?? null,
+    priceId: item?.price?.id ?? null,
+    periodEnd: subscriptionPeriodEnd(subscription),
+    cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+  });
+}
+
+/**
+ * Persists a retrieved subscription, then verifies Stripe still reports the
+ * same entitlement-bearing state. If the state changed between read and write,
+ * the newer object is written and verified again before reconciliation can
+ * report success.
+ */
+export async function syncSubscriptionUntilCurrent(
+  initialSubscription,
+  { retrieveSubscription = subscriptionById, sync, maxPasses = 3 } = {}
+) {
+  if (!initialSubscription?.id) return { subscription: null, passes: 0 };
+  if (typeof sync !== 'function') throw new Error('Subscription convergence requires a sync function.');
+
+  let current = initialSubscription;
+  for (let pass = 1; pass <= maxPasses; pass += 1) {
+    await sync(current);
+    const verified = await retrieveSubscription(current.id);
+    if (!verified?.id) {
+      // The read before this write may have raced a deletion. Never leave that
+      // older snapshot active after Stripe confirms the object is now absent.
+      const tombstone = { ...current, status: 'missing_from_stripe' };
+      await sync(tombstone);
+      return { subscription: tombstone, passes: pass };
+    }
+    if (subscriptionStateFingerprint(verified) === subscriptionStateFingerprint(current)) {
+      return { subscription: verified, passes: pass };
+    }
+    current = verified;
+  }
+  throw new Error('Stripe subscription state did not stabilise during reconciliation.');
 }
 
 export async function upsertCustomer({ userId, customerId, email = null }) {
@@ -252,7 +354,10 @@ export async function upsertCustomer({ userId, customerId, email = null }) {
   return true;
 }
 
-export async function upsertSubscription(subscription) {
+export async function upsertSubscription(
+  subscription,
+  { admin = supabaseAdmin, now = new Date() } = {}
+) {
   const customerId =
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
@@ -264,7 +369,7 @@ export async function upsertSubscription(subscription) {
   // fail-safe principle as plan identity (which follows Price ID, not metadata).
   let mappedUserId = null;
   if (customerId) {
-    const rows = await supabaseAdmin(
+    const rows = await admin(
       `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
     );
     mappedUserId = rows?.[0]?.user_id ?? null;
@@ -289,11 +394,11 @@ export async function upsertSubscription(subscription) {
       userId: userId ?? null,
       priceId,
     });
-    return;
+    return { synced: false, reason: !userId ? 'unknown_user' : 'unsupported_price' };
   }
 
   const periodEnd = subscriptionPeriodEnd(subscription);
-  await supabaseAdmin('billing_subscriptions?on_conflict=stripe_subscription_id', {
+  await admin('billing_subscriptions?on_conflict=stripe_subscription_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: [
@@ -306,10 +411,257 @@ export async function upsertSubscription(subscription) {
         price_id: priceId,
         current_period_end: periodEnd,
         cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-        updated_at: new Date().toISOString(),
+        updated_at: subscriptionStateUpdatedAt(subscription, now),
       },
     ],
   });
+  return { synced: true, reason: 'synced' };
+}
+
+const SUBSCRIPTION_EVENT_TYPES = new Set([
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+  'customer.subscription.paused',
+  'customer.subscription.resumed',
+]);
+
+const EVENT_RECLAIM_AFTER_MS = 5 * 60 * 1000;
+
+export function isSubscriptionEvent(type) {
+  return SUBSCRIPTION_EVENT_TYPES.has(type);
+}
+
+export function stripeEventObjectId(event) {
+  const object = event?.data?.object;
+  return typeof object?.id === 'string' ? object.id : null;
+}
+
+export function canReclaimBillingEvent(row, now = new Date()) {
+  if (row?.status === 'failed') return true;
+  if (row?.status !== 'processing') return false;
+  const attemptedAt = Date.parse(row.last_attempt_at);
+  return Number.isFinite(attemptedAt) && now.getTime() - attemptedAt >= EVENT_RECLAIM_AFTER_MS;
+}
+
+/**
+ * Claims a signed Stripe Event before applying its side effects.
+ *
+ * Stripe can deliver the same Event more than once. The primary-key insert is
+ * the normal claim path. Failed or abandoned claims can be retried, while a
+ * completed Event is acknowledged without repeating its work.
+ */
+export async function claimBillingEvent(event, { admin = supabaseAdmin, now = new Date() } = {}) {
+  if (!event?.id || !event?.type) return { claimed: false, reason: 'invalid_event' };
+
+  const timestamp = now.toISOString();
+  const created = await admin('billing_events?on_conflict=stripe_event_id', {
+    method: 'POST',
+    prefer: 'resolution=ignore-duplicates,return=representation',
+    body: [
+      {
+        stripe_event_id: event.id,
+        event_type: event.type,
+        stripe_object_id: stripeEventObjectId(event),
+        livemode: Boolean(event.livemode),
+        status: 'processing',
+        attempt_count: 1,
+        first_received_at: timestamp,
+        last_attempt_at: timestamp,
+      },
+    ],
+  });
+  if (created?.length) return { claimed: true, retry: false, attemptCount: 1 };
+
+  const rows = await admin(
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(event.id)}&select=status,attempt_count,last_attempt_at&limit=1`
+  );
+  const existing = rows?.[0];
+  if (!existing) throw new Error('Stripe Event claim disappeared before processing.');
+  if (!canReclaimBillingEvent(existing, now)) {
+    return {
+      claimed: false,
+      reason: existing.status === 'processing' ? 'already_processing' : 'already_processed',
+    };
+  }
+
+  const filters = [`stripe_event_id=eq.${encodeURIComponent(event.id)}`];
+  if (existing.status === 'failed') {
+    filters.push('status=eq.failed');
+  } else {
+    const staleBefore = new Date(now.getTime() - EVENT_RECLAIM_AFTER_MS).toISOString();
+    filters.push('status=eq.processing', `last_attempt_at=lte.${encodeURIComponent(staleBefore)}`);
+  }
+
+  const attemptCount = Number(existing.attempt_count || 0) + 1;
+  const reclaimed = await admin(`billing_events?${filters.join('&')}`, {
+    method: 'PATCH',
+    prefer: 'return=representation',
+    body: {
+      status: 'processing',
+      attempt_count: attemptCount,
+      last_attempt_at: timestamp,
+      processed_at: null,
+      result_code: null,
+    },
+  });
+  return reclaimed?.length
+    ? { claimed: true, retry: true, attemptCount }
+    : { claimed: false, reason: 'claimed_elsewhere' };
+}
+
+export async function finishBillingEvent(
+  eventId,
+  {
+    attemptCount,
+    status = 'processed',
+    resultCode = null,
+    admin = supabaseAdmin,
+    now = new Date(),
+  } = {}
+) {
+  if (!['processed', 'ignored', 'failed'].includes(status)) {
+    throw new Error(`Invalid billing event status: ${status}`);
+  }
+  if (!Number.isInteger(attemptCount) || attemptCount < 1) {
+    throw new Error('Billing event completion requires a valid attempt count.');
+  }
+  const updated = await admin(
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&status=eq.processing&attempt_count=eq.${attemptCount}`,
+    {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: {
+        status,
+        processed_at: status === 'failed' ? null : now.toISOString(),
+        result_code: resultCode,
+      },
+    }
+  );
+  return Boolean(updated?.length);
+}
+
+/**
+ * Synchronises one Stripe subscription into fail-closed local access state.
+ */
+export async function syncSubscription(subscription, { admin = supabaseAdmin } = {}) {
+  if (!subscription?.id) return { synced: false, reason: 'missing_subscription' };
+  const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+
+  if (!planForPrice(priceId)) {
+    await admin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'unsupported_price',
+          price_id: priceId,
+          updated_at: new Date().toISOString(),
+        },
+      }
+    );
+    return { synced: false, reason: 'unsupported_price' };
+  }
+
+  return upsertSubscription(subscription, { admin });
+}
+
+export function missingRemoteSubscriptionIds(localRows, remoteSubscriptions) {
+  const remoteIds = new Set(
+    (remoteSubscriptions ?? []).map((subscription) => subscription?.id).filter(Boolean)
+  );
+  return (localRows ?? [])
+    .map((row) => row?.stripe_subscription_id)
+    .filter((id) => id && !remoteIds.has(id));
+}
+
+/**
+ * Repairs local entitlement state from Stripe's current subscription objects.
+ * This is used after Checkout/Portal returns and before a stale local row can
+ * block a legitimate repurchase. Webhooks remain the normal update path.
+ */
+export async function reconcileBillingForUser(
+  userId,
+  {
+    admin = supabaseAdmin,
+    listSubscriptions = subscriptionsForCustomer,
+    retrieveSubscription = subscriptionById,
+    sync = (subscription) => syncSubscription(subscription, { admin }),
+    now = new Date(),
+  } = {}
+) {
+  const customerRows = await admin(
+    `billing_customers?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`
+  );
+  const customerId = customerRows?.[0]?.stripe_customer_id ?? null;
+  if (!customerId) return { reconciled: false, reason: 'no_customer' };
+
+  const listedSubscriptions = await listSubscriptions(customerId);
+  const localRows = await admin(
+    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
+  );
+  const localNonterminalIds = new Set(
+    (localRows ?? []).map((row) => row?.stripe_subscription_id).filter(Boolean)
+  );
+  const relevantSubscriptions = listedSubscriptions.filter(
+    (subscription) =>
+      subscription?.id &&
+      (RECONCILIATION_RELEVANT_STATUSES.has(subscription.status) ||
+        localNonterminalIds.has(subscription.id))
+  );
+  const remoteSubscriptions = [];
+  for (const listedSubscription of relevantSubscriptions) {
+    // List responses are snapshots. Re-read immediately before writing so a
+    // webhook that already persisted a newer status cannot be overwritten by
+    // an older list page returned earlier in this reconciliation run.
+    const currentSubscription = await retrieveSubscription(listedSubscription.id);
+    if (!currentSubscription?.id) continue;
+    const converged = await syncSubscriptionUntilCurrent(currentSubscription, {
+      retrieveSubscription,
+      sync,
+    });
+    if (converged.subscription?.id) remoteSubscriptions.push(converged.subscription);
+  }
+
+  const missingCandidates = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
+  let missingCount = 0;
+  for (const subscriptionId of missingCandidates) {
+    // A subscription can be created after the paginated list request. Verify
+    // every apparent gap by ID before fail-closing the local row.
+    const currentSubscription = await retrieveSubscription(subscriptionId);
+    if (currentSubscription?.id) {
+      await syncSubscriptionUntilCurrent(currentSubscription, {
+        retrieveSubscription,
+        sync,
+      });
+      continue;
+    }
+    await admin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'missing_from_stripe',
+          updated_at: now.toISOString(),
+        },
+      }
+    );
+    missingCount += 1;
+  }
+
+  await admin(`billing_customers?user_id=eq.${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: { last_reconciled_at: now.toISOString(), updated_at: now.toISOString() },
+  });
+  return {
+    reconciled: true,
+    remoteCount: listedSubscriptions.length,
+    reconciledCount: relevantSubscriptions.length,
+    missingCount,
+  };
 }
 
 /** Verifies Stripe's signed raw request body with a five-minute tolerance. */

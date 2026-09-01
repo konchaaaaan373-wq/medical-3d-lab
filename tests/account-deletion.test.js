@@ -70,6 +70,6 @@ test('account deletion endpoint closes Stripe before deleting Auth', () => {
 test('webhook refuses to recreate billing state for deleted Auth users', () => {
   const source = readFileSync(new URL('../netlify/functions/stripe-webhook.js', import.meta.url), 'utf8');
   assert.match(source, /supabaseUserExists/);
-  assert.match(source, /ignored: 'deleted_user'/);
+  assert.match(source, /status: 'ignored', reason: 'deleted_user'/);
   assert.match(source, /liveSubscriptionOwnerId/);
 });

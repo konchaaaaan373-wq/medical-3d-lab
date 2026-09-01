@@ -5,6 +5,7 @@ import {
   billingCustomerFor,
   json,
   priceForPlan,
+  reconcileBillingForUser,
   safeHash,
   stripePost,
   subscriptionsForCustomer,
@@ -38,10 +39,25 @@ export default async (request) => {
     // request and includes incomplete/payment-recovery states that should be
     // managed rather than duplicated.
     const statuses = [...NON_TERMINAL_SUBSCRIPTION_STATUSES].join(',');
-    const existing = await supabaseAdmin(
+    let existing = await supabaseAdmin(
       `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
     );
-    if (existing?.length) return existingSubscription();
+    if (existing?.length) {
+      // A missed cancellation webhook must not trap a former subscriber in a
+      // stale local "active" row forever. Re-read Stripe before deciding that
+      // this account can only use Portal.
+      try {
+        await reconcileBillingForUser(user.id);
+      } catch (error) {
+        // The safe fallback is Portal, not a second recurring subscription.
+        console.warn('create-checkout reconciliation', error);
+        return existingSubscription();
+      }
+      existing = await supabaseAdmin(
+        `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
+      );
+      if (existing?.length) return existingSubscription();
+    }
 
     const customer = await billingCustomerFor(user);
 
