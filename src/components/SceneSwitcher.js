@@ -1,5 +1,6 @@
 import { el } from '../utils/dom.js';
 import { EXPLORER_ROUTE } from '../catalog/index.js';
+import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 
 /**
  * Global scene navigation.
@@ -22,6 +23,9 @@ import { EXPLORER_ROUTE } from '../catalog/index.js';
  * Links stay links rather than becoming tabs. Selecting a scene writes the hash
  * and lets the app reload, which preserves the existing clean-GPU-state scene
  * switch. `aria-current="page"` therefore remains the correct selection state.
+ *
+ * Favorites are local navigation preferences only. They store scene ids and do
+ * not carry any model, patient, account or billing state.
  *
  * @param {{
  *   groups: {id: string, label: string, labelJa?: string, scenes: any[]}[],
@@ -67,6 +71,12 @@ export function createSceneSwitcher({ groups, currentId }) {
     ]
   );
 
+  const favoriteButton = el('button', {
+    class: 'global-nav-favorite',
+    type: 'button',
+    'aria-pressed': 'false',
+  });
+
   const backdrop = el('div', {
     class: 'global-nav-backdrop',
     hidden: '',
@@ -93,6 +103,14 @@ export function createSceneSwitcher({ groups, currentId }) {
       el('span', { class: 'global-nav-arrow', 'aria-hidden': 'true', text: '→' }),
     ]
   );
+
+  const favoriteList = el('div', { class: 'global-nav-favorite-list' });
+  const favoriteSection = el('section', { class: 'global-nav-favorites', hidden: '' }, [
+    el('h2', { class: 'global-nav-favorites-title' }, [
+      bilingual('Favorites', 'お気に入り'),
+    ]),
+    favoriteList,
+  ]);
 
   const groupSections = groups.map((group) => {
     const isCurrentSystem = group.id === currentGroup.id;
@@ -140,6 +158,7 @@ export function createSceneSwitcher({ groups, currentId }) {
         closeButton,
       ]),
       allOrgans,
+      favoriteSection,
       el('div', { class: 'global-nav-grid' }, groupSections),
     ]
   );
@@ -166,8 +185,33 @@ export function createSceneSwitcher({ groups, currentId }) {
   const element = el(
     'nav',
     { class: 'global-scene-nav', 'aria-label': 'Medical 3D Lab' },
-    [brand, currentLocation, trigger, backdrop, panel]
+    [brand, currentLocation, favoriteButton, trigger, backdrop, panel]
   );
+
+  function renderLibrary(library = readSceneLibrary()) {
+    const saved = library.favorites
+      .map((id) => scenes.find((scene) => scene.id === id))
+      .filter(Boolean);
+    const currentSaved = library.favorites.includes(currentScene.id);
+
+    favoriteButton.textContent = currentSaved ? '★' : '☆';
+    favoriteButton.setAttribute('aria-pressed', String(currentSaved));
+    favoriteButton.setAttribute(
+      'aria-label',
+      currentSaved ? 'Remove current scene from favorites / お気に入りから外す' : 'Add current scene to favorites / お気に入りに追加'
+    );
+    favoriteButton.title = currentSaved ? 'Remove from favorites / お気に入りから外す' : 'Add to favorites / お気に入りに追加';
+
+    favoriteList.replaceChildren(
+      ...saved.map((scene) =>
+        el('a', { class: 'global-nav-favorite-link', href: `#/${scene.slug ?? scene.id}` }, [
+          el('span', { class: 'global-nav-favorite-star', 'aria-hidden': 'true', text: '★' }),
+          bilingual(scene.label, scene.labelJa, 'global-nav-favorite-name'),
+        ])
+      )
+    );
+    favoriteSection.hidden = saved.length === 0;
+  }
 
   function setOpen(next, { restoreFocus = false } = {}) {
     if (open === next) return;
@@ -179,6 +223,9 @@ export function createSceneSwitcher({ groups, currentId }) {
     if (!open && restoreFocus) trigger.focus();
   }
 
+  favoriteButton.addEventListener('click', () => {
+    renderLibrary(toggleSceneFavorite(currentScene.id));
+  });
   trigger.addEventListener('click', () => setOpen(!open));
   closeButton.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
   backdrop.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
@@ -214,6 +261,8 @@ export function createSceneSwitcher({ groups, currentId }) {
   document.addEventListener('pointerdown', (event) => {
     if (open && !element.contains(event.target)) setOpen(false);
   });
+
+  renderLibrary();
 
   return { element, close: () => setOpen(false) };
 }
