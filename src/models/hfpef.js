@@ -49,16 +49,17 @@ export const HFPEF_LIMITS = Object.freeze({
 /**
  * Mechanical parameters at one point on the teaching stiffness axis.
  *
- * Ees rises modestly rather than falling: the scene is not HFrEF. The passive
- * EDPVR curvature rises much more strongly and is the mechanism under study.
- * Wall thickness is carried for the 3D drawing only as a structural model
- * output; it is not used to create the pressure rise.
+ * Contractility and end-systolic pressure are deliberately held fixed. That is
+ * the clean experiment: if EDV, ESV, SV and EF are unchanged while LVEDP rises,
+ * the pressure rise cannot be smuggled in through systolic failure. Only the
+ * passive EDPVR curvature changes. Wall thickness is carried for the 3D drawing
+ * as a structural cue and does not enter the pressure equation.
  */
 export function hfpefParameters(stiffness = 0) {
   const s = clamp(stiffness);
   return Object.freeze({
     stiffness: s,
-    endSystolicElastanceMmHgMl: lerp(HFPEF_REFERENCE.endSystolicElastanceMmHgMl, 3.0, s),
+    endSystolicElastanceMmHgMl: HFPEF_REFERENCE.endSystolicElastanceMmHgMl,
     unstressedVolumeMl: HFPEF_REFERENCE.unstressedVolumeMl,
     edpvrAmmHg: HFPEF_REFERENCE.edpvrAmmHg,
     edpvrBPerMl: lerp(HFPEF_REFERENCE.edpvrBPerMl, 0.0355, s),
