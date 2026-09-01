@@ -73,6 +73,43 @@ test('replaying the sequence gives the same lung, second for second', () => {
   assert.deepEqual(replayed, forward, 'a rewind and replay must reproduce the run exactly');
 });
 
+test('the run reaches the same lung whatever the frame rate', () => {
+  // The replay test above seeks in whole seconds, which any chunking passes.
+  // This one plays the sequence at two different frame rates whose boundaries
+  // never line up, and demands the identical lung: the run must advance in
+  // whole fixed steps, with a frame's leftover carried, or the demand schedule
+  // is sampled at wall-clock-dependent points and the states diverge.
+  const play = (frameSeconds) => {
+    const built = scene();
+    for (let t = 0; t < REEL_DURATION; t += frameSeconds) built.renderAtSeconds(t, demandAt);
+    built.renderAtSeconds(REEL_DURATION, demandAt);
+    return {
+      copd: built.model.state.endExpiratoryVolumeL,
+      normal: built.referenceModel.state.endExpiratoryVolumeL,
+    };
+  };
+  assert.deepEqual(play(1 / 144), play(1 / 60), 'the frame rate must not reach a different lung');
+});
+
+test('while the reel owns model time, the render loop must not breathe the lung', () => {
+  // The app integrates the scene every frame and only then hands the frame to
+  // the reel, which integrates the same models again from elapsed time. The
+  // reel therefore takes ownership on entry; without that, fifteen seconds of
+  // sequence put roughly thirty seconds of breathing on the cards.
+  const built = scene();
+  const reel = built.getReel();
+  reel.onEnter(built);
+  reel.driveAt(5, built);
+  const cycleTime = built.model.cycleTimeS;
+  const eelv = built.model.state.endExpiratoryVolumeL;
+  built.update(1 / 60);
+  assert.equal(built.model.cycleTimeS, cycleTime, 'the render loop advanced a driven lung');
+  assert.equal(built.model.state.endExpiratoryVolumeL, eelv);
+  reel.onExit(built);
+  built.update(1 / 60);
+  assert.notEqual(built.model.cycleTimeS, cycleTime, 'the lung must breathe again after the reel');
+});
+
 test('the workload stops before the sequence does, so the climb is the lung and not the ask', () => {
   // The point of the long hold: the demand is flat for the last third, and the
   // resting volume is still rising. What is on screen there is gas that was
