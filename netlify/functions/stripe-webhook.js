@@ -1,3 +1,4 @@
+import { supabaseUserExists } from '../lib/account.js';
 import {
   json,
   planForPrice,
@@ -21,6 +22,16 @@ export default async (request) => {
 
     if (event.type === 'checkout.session.completed' && object?.mode === 'subscription') {
       const userId = object.metadata?.supabase_user_id || object.client_reference_id;
+      // Account deletion can race a delayed Checkout webhook. Never recreate a
+      // billing mapping for an Auth identity that has already been removed.
+      if (!userId || !(await supabaseUserExists(userId))) {
+        console.info('Ignoring checkout webhook for deleted/missing account', {
+          eventId: event.id,
+          userId: userId ?? null,
+        });
+        return json(200, { received: true, ignored: 'deleted_user' });
+      }
+
       const customerId = typeof object.customer === 'string' ? object.customer : object.customer?.id;
       await upsertCustomer({
         userId,
@@ -51,9 +62,18 @@ export default async (request) => {
         if (event.type !== 'customer.subscription.deleted') throw error;
       }
 
+      const ownerId = await liveSubscriptionOwnerId(subscription);
+      if (!ownerId) {
+        console.info('Ignoring subscription webhook for deleted/missing account', {
+          eventId: event.id,
+          subscriptionId: subscription?.id ?? null,
+        });
+        return json(200, { received: true, ignored: 'deleted_user' });
+      }
+
       await syncSubscription(subscription);
       await upsertCustomer({
-        userId: subscription.metadata?.supabase_user_id,
+        userId: ownerId,
         customerId:
           typeof subscription.customer === 'string'
             ? subscription.customer
@@ -67,6 +87,22 @@ export default async (request) => {
     return json(500, { error: 'Webhook processing failed' });
   }
 };
+
+async function liveSubscriptionOwnerId(subscription) {
+  if (!subscription) return null;
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+  let mappedUserId = null;
+  if (customerId) {
+    const rows = await supabaseAdmin(
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
+    );
+    mappedUserId = rows?.[0]?.user_id ?? null;
+  }
+  const candidate = mappedUserId ?? subscription.metadata?.supabase_user_id ?? null;
+  if (!candidate) return null;
+  return (await supabaseUserExists(candidate)) ? candidate : null;
+}
 
 async function syncSubscription(subscription) {
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
