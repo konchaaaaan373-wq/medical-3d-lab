@@ -17,6 +17,7 @@ import {
 import {
   ANNOTATIONS,
   CHARTS,
+  COMPARISON_ANNOTATIONS,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -469,8 +470,14 @@ export class CopdScene {
       airway: new THREE.Vector3(0.6, 2.55, 0.5),
       diaphragm: new THREE.Vector3(-2.3, -1.85, 1.5),
       trapped: new THREE.Vector3(2.9, 0.35, 0.9),
+      // Comparison mode slides each lung aside by COMPARISON_OFFSET; these sit
+      // outside the pair at apex height, one beside each chest, and are the
+      // only labels shown. Beside rather than above, because directly above
+      // the left chest is where the scene-title card lives.
+      comparisonReference: new THREE.Vector3(-COMPARISON_OFFSET - 2.3, 1.7, 0.5),
+      comparisonDisease: new THREE.Vector3(COMPARISON_OFFSET + 2.3, 1.7, 0.5),
     };
-    return ANNOTATIONS.flatMap((annotation) => {
+    return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].flatMap((annotation) => {
       const anchor = anchors[annotation.anchor];
       if (!anchor) return [];
       return [{ ...annotation, position: anchor.clone() }];
@@ -485,8 +492,7 @@ export class CopdScene {
    * places anywhere, and printing them would be a claim it cannot support.
    */
   getMetrics() {
-    const state = this.model.state;
-    const value = {
+    const rows = (state) => ({
       ic: state.inspiratoryCapacityL.toFixed(2),
       eelv: state.endExpiratoryVolumeL.toFixed(2),
       vt: state.tidalVolumeL.toFixed(2),
@@ -500,8 +506,17 @@ export class CopdScene {
       pexp: state.expiratoryPressureCmH2O.toFixed(1),
       tlc: state.totalLungCapacityL.toFixed(2),
       rv: state.residualVolumeL.toFixed(2),
-    };
-    return METRICS.map((metric) => ({ ...metric, value: value[metric.id] }));
+    });
+    const value = rows(this.model.state);
+    // While comparing, each row also carries the healthy lung's figure — read
+    // from the same model the reference lung is drawn from, at the same demand.
+    const reference =
+      this.comparing && this.referenceModel ? rows(this.referenceModel.state) : null;
+    return METRICS.map((metric) => ({
+      ...metric,
+      value: value[metric.id],
+      ...(reference ? { reference: reference[metric.id] } : {}),
+    }));
   }
 
   /**

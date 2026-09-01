@@ -530,6 +530,15 @@ test('both trees are given the same stimulus, so the difference is the lung', ()
     assert.equal(reference.controls.wallThickening, 0);
     assert.ok(built.solved.controls.hyperresponsiveness > 1);
   }
+
+  // The manoeuvre and the drug reach both trees too: a comparison where only
+  // one lung was inflated or given the bronchodilator would show a difference
+  // the trait did not cause.
+  built.setModelControl('lungInflation', 1.2);
+  built.setModelControl('bronchodilator', 0.5);
+  const shared = built.referenceSolve();
+  assert.equal(shared.controls.lungInflation, 1.2);
+  assert.equal(shared.controls.bronchodilator, 0.5);
 });
 
 test('the comparison shows what hyperresponsiveness actually is: the knee moves left', () => {
@@ -583,4 +592,35 @@ test('the comparison view frames the pair rather than one tree', () => {
   const pair = built.getComparisonView();
   assert.ok(pair.position.z > AsthmaScene.cameraPose.position.z, 'the camera has to pull back for two trees');
   assert.equal(pair.target.x, 0, 'and sit on the midline so neither is favoured');
+});
+
+test('the comparison says which tree is which, and the read-out carries both', () => {
+  // Two near-identical trees side by side with no labels is a picture, not a
+  // statement. Read without switching the comparison on first: the app reads
+  // this list once, at load, so a label that only appeared afterwards would
+  // never appear at all.
+  const built = scene();
+  const labels = Object.fromEntries(built.getAnnotations().map((a) => [a.id, a]));
+  assert.ok(labels['reference-tree'] && labels['asthmatic-tree'], 'both trees are named');
+  assert.equal(labels['reference-tree'].comparisonOnly, true);
+  assert.equal(labels['asthmatic-tree'].comparisonOnly, true);
+
+  // Each label sits on the same side as the tree it names.
+  built.setComparison(true);
+  assert.equal(Math.sign(labels['reference-tree'].position.x), Math.sign(built.reference.object.position.x));
+  assert.equal(Math.sign(labels['asthmatic-tree'].position.x), Math.sign(built.primary.object.position.x));
+
+  // While comparing, each read-out row also carries the healthy tree's figure,
+  // from the same solve the reference tree is drawn from.
+  built.setProgress(0.6);
+  const rows = new Map(built.getMetrics().map((row) => [row.id, row]));
+  const healthy = built.referenceSolve();
+  assert.equal(rows.get('resistance').reference, healthy.resistanceRatio.toFixed(2));
+  assert.equal(rows.get('defects').reference, Math.round(healthy.defectFraction * 100));
+  assert.equal(rows.get('stimulus').reference, rows.get('stimulus').value, 'the dose column says the ask is identical');
+  assert.equal(rows.get('settled').reference, undefined, 'convergence is a solver fact, not a difference between lungs');
+
+  // And off again: no reference column outside the comparison.
+  built.setComparison(false);
+  assert.equal(built.getMetrics().find((row) => row.id === 'resistance').reference, undefined);
 });

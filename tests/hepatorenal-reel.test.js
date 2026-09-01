@@ -224,6 +224,9 @@ test('the second card arrives with the second kidney, and not before', () => {
   // sequence is for. The comparison is only shown once it means what the
   // ending says it means — and it is shown exactly when the picture shows two
   // kidneys, so the cards and the 3D never disagree about how many there are.
+  // The first slot is a placeholder before the comparison — this kidney's
+  // card keeps the second (right) slot and its styling throughout — so the
+  // count that has to agree with the picture is the count of filled slots.
   for (const t of at(REEL_DURATION, 0.1)) {
     const overlay = overlayAt(t, context());
     assert.equal(

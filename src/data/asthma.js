@@ -90,6 +90,31 @@ export const ANNOTATIONS = [
   { id: 'defect', text: 'A region that has tipped', sub: '限界を越えた領域', anchor: 'defect', range: [0.55, 1], compact: false },
 ];
 
+/**
+ * Shown only in comparison mode, where the two trees are moved apart and the
+ * ordinary annotations would point at empty space between them. The wording is
+ * the reel's cards, so the interactive comparison and the social sequence name
+ * the two lungs the same way.
+ */
+export const COMPARISON_ANNOTATIONS = [
+  {
+    id: 'reference-tree',
+    text: 'Normal',
+    sub: '正常（比較用）',
+    anchor: 'comparisonReference',
+    range: [0, 1],
+    comparisonOnly: true,
+  },
+  {
+    id: 'asthmatic-tree',
+    text: 'Asthma',
+    sub: '喘息',
+    anchor: 'comparisonDisease',
+    range: [0, 1],
+    comparisonOnly: true,
+  },
+];
+
 export const CHARTS = [
   {
     id: 'ventilation-distribution',
