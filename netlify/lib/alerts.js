@@ -32,6 +32,14 @@ export const ALERT_RULES = Object.freeze({
   reconcile_drift: 'error',
   /** A subscription carries a price this deployment does not sell. */
   unsupported_price: 'error',
+  /** A payment failed and Stripe will retry. Cards decline for ordinary reasons. */
+  payment_failed: 'warning',
+  /** The last retry failed. A paying customer is about to lose access. */
+  payment_final_failure: 'error',
+  /** The invoice was written off. Access has gone or is going. */
+  payment_uncollectible: 'error',
+  /** The card needs the customer to authenticate before it will clear. */
+  payment_action_required: 'warning',
   /** A webhook for an account that no longer exists. Expected during deletion. */
   deleted_user_event: 'info',
   /** Reconciliation ran and found nothing. Useful as a heartbeat. */

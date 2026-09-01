@@ -36,6 +36,23 @@ export const SURFACES = {
   panel: composite('#0a101c', 0.62, '#04060c'),
   /** `--panel-strong`: rgba(8, 13, 24, 0.86) over the page. */
   panelStrong: composite('#080d18', 0.86, '#04060c'),
+  /**
+   * The Trust page is a light editorial surface rather than an overlay on a
+   * dark canvas, so it has its own palette and its own obligations. It is
+   * declared here for the same reason the dark one is: a colour nobody
+   * measured is a colour that can quietly stop being readable.
+   */
+  trust: '#f5f3ee',
+};
+
+/** Ink used only on the light Trust surface. */
+export const TRUST_INK = {
+  body: '#1c2528',
+  muted: '#425054',
+  faint: '#657176',
+  /** A review whose model has since changed. */
+  drift: '#7a4a12',
+  driftBody: '#45524f',
 };
 
 /**
@@ -62,6 +79,11 @@ export const CONTRAST_PAIRS = [
   { name: 'accent focus ring on the page', fg: TOKENS.accent, bg: SURFACES.page, size: 'ui' },
   { name: 'accent focus ring on a panel', fg: TOKENS.accent, bg: SURFACES.panel, size: 'ui' },
   { name: 'error text on a panel', fg: '#ffb4b4', bg: SURFACES.panel, size: 'body' },
+  { name: 'Trust body text', fg: TRUST_INK.body, bg: SURFACES.trust, size: 'body' },
+  { name: 'Trust secondary text', fg: TRUST_INK.muted, bg: SURFACES.trust, size: 'body' },
+  { name: 'Trust faint text', fg: TRUST_INK.faint, bg: SURFACES.trust, size: 'body' },
+  { name: 'Trust review-drift heading', fg: TRUST_INK.drift, bg: SURFACES.trust, size: 'body' },
+  { name: 'Trust review-drift body', fg: TRUST_INK.driftBody, bg: SURFACES.trust, size: 'body' },
 ];
 
 /** WCAG 2.1 AA minimum ratios. */

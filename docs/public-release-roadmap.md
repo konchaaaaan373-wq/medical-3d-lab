@@ -36,8 +36,12 @@ the model tests.
   honestly `legacy-unversioned` until a current reviewer signs a specific commit.
 - [x] Separate engineering/catalogue maturity from medical-review state in the
   data model and CI contracts.
-- [ ] Expose that medical-review state in a first-class public Trust surface so a
-  user does not have to inspect the repository to understand it.
+- [x] Expose that medical-review state in a first-class public Trust surface so a
+  user does not have to inspect the repository to understand it. `#/trust` shows
+  catalogue maturity and clinical-review state as separate claims, the scope and
+  unresolved limitations of each review, links to the evidence package, and —
+  since the attestation work below — whether a model has changed since it was
+  reviewed. It needs no WebGL, and it now scrolls, which it did not.
 
 ### 0B. Release safety
 
@@ -115,7 +119,13 @@ the model tests.
   ones. See [`discoverability.md`](discoverability.md).
 - [ ] Publish a tagged release with a changelog, rollback procedure, incident
   owner and support response path.
-- [ ] Version model cards and review attestations with every medical change.
+- [x] Version model cards and review attestations with every medical change.
+  `docs/model-cards/revisions.json` records the digest of the sources each card
+  describes, and a medical change that leaves the card untouched fails CI
+  (`npm run revisions:check`). A clinical review records the digest of what it
+  signed, so a review whose model has since changed must declare that — and the
+  public Trust page shows it. Finding one immediately: the portal-hypertension
+  review signed a model that the hepatorenal work later extended.
 - [x] Define launch metrics: model start, story/compare completion, learning
   completion, patient-guide use, conversion, retention and renderer failures.
   Declared in `src/telemetry/metrics.js`, emitted through the app-event bridge
@@ -140,13 +150,14 @@ the model tests.
 | 4 | Landing page and public/Lab catalogue split | Done |
 | 5 | Clinical Review registry | Done |
 | 6 | Heart-failure and amyloid evidence-package migration | Done; sign-off intentionally pending |
-| 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
+| 7 | Public Trust surface showing maturity, review state and evidence boundary | Done |
 | 8 | Performance budgets, telemetry, error reporting and feedback | Done |
 | 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
 | 8c | Terms, privacy, commercial disclosure and support, with a checkout gate | Done except seller identity |
 | 8d | Accessibility foundations enforced in CI | Done except device passes |
 | 8e | Billing ledger, reconciliation and operational alerts | Done |
-| 8f | Browser/device matrix on real hardware | Next |
+| 8f | Model-card revisions and review attestation drift | Done |
+| 8g | Browser/device matrix on real hardware | Next |
 | 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 

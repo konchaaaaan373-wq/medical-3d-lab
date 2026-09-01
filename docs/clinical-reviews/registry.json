@@ -112,7 +112,8 @@
       "The model does not represent gas exchange, PaO2, PaCO2 or oxygen saturation.",
       "Breathing pattern is prescribed rather than selected by the patient/model, and compliance is simplified.",
       "The model cannot reproduce worsening gas trapping caused by dynamic airway compression during forceful expiration."
-    ]
+    ],
+    "reviewedModelDigest": "dba620896116f885"
   },
   {
     "sceneId": "asthma-heterogeneity",
@@ -136,7 +137,8 @@
       "The tree is symmetric and truncated to eight generations; spatial adjacency is tree adjacency rather than real three-dimensional lung anatomy.",
       "The equilibrium model contains no bronchoconstriction time course or gas exchange.",
       "The lung-inflation control represents parenchymal tethering only and must not be interpreted as the clinical bronchodilator response to a deep inspiration."
-    ]
+    ],
+    "reviewedModelDigest": "89f769461dfcb12c"
   },
   {
     "sceneId": "portal-hypertension",
@@ -159,8 +161,16 @@
       "The model is an equilibrium network and does not represent the time course of collateral formation or disease progression.",
       "Collateral recruitment is an illustrative smooth mapping rather than a physiological valve or clinical threshold law.",
       "WHVP is treated as equal to sinusoidal pressure by construction although clinically it is an approximation.",
-      "Prehepatic portal vein thrombosis, ascites, bleeding, encephalopathy and liver function are outside the model."
-    ]
+      "Prehepatic portal vein thrombosis, ascites, bleeding, encephalopathy and liver function are outside the model.",
+      "The model has been extended since the recorded review: an arterial inlet pressure control was added for the hepatorenal scene. It defaults to the reviewed value, so reviewed behaviour is unchanged, but the model at other inlet pressures has not been clinically reviewed."
+    ],
+    "reviewedModelDigest": "9179bd6e7b893336",
+    "modelChangedSinceReview": {
+      "currentModelDigest": "245e7f99e62403ba",
+      "changedAt": "2026-08-31",
+      "summary": "Hepatorenal syndrome added meanArterialPressureMmHg as a control so a systemic model can supply the inlet pressure this model previously asserted as a constant.",
+      "effectOnReviewedBehaviour": "None at the reviewed settings: the control defaults to MEAN_ARTERIAL_PRESSURE (90 mmHg), the value the reviewed version used. What the review did not see is the behaviour at any other inlet pressure."
+    }
   },
   {
     "sceneId": "hepatorenal-syndrome",

@@ -29,3 +29,20 @@ test('Clinical Review registry is the only browser Trust source of truth', () =>
   assert.match(trustSource, /docs\/clinical-reviews\/registry\.json/);
   assert.ok(!trustSource.includes('/trust/clinical-reviews.json'), 'Trust must not fetch a duplicated public registry');
 });
+
+
+test('trust surface: a review whose model has changed says so on the public page', () => {
+  const source = readFileSync(new URL('../src/app/Trust.js', import.meta.url), 'utf8');
+  assert.match(source, /modelChangedSinceReview/);
+  assert.match(source, /Model changed after this review/);
+  assert.match(source, /changedSinceReview\(record\)/);
+
+  // And there is at least one to show, or the code path is untested by use.
+  const registry = JSON.parse(
+    readFileSync(new URL('../docs/clinical-reviews/registry.json', import.meta.url), 'utf8')
+  );
+  const drifted = registry.filter((record) => record.modelChangedSinceReview);
+  for (const record of drifted) {
+    assert.equal(record.reviewStatus, 'reviewed', `${record.sceneId}: only a completed review can drift`);
+  }
+});

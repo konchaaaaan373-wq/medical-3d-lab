@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "test": "node --test \"tests/*.test.js\"",
     "budget": "node scripts/check-bundle-budget.js",
-    "verify:site": "node scripts/check-site-output.js"
+    "verify:site": "node scripts/check-site-output.js",
+    "revisions:check": "node scripts/adopt-revisions.js",
+    "revisions:adopt": "node scripts/adopt-revisions.js --adopt"
   },
   "dependencies": {
     "three": "^0.169.0"

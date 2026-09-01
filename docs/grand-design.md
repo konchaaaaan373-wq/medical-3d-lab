@@ -30,6 +30,7 @@ Last updated: 2026-09-01（現在地の数値は §3 参照）
 | 医学的単純化の記録（シーンごと） | [`medical-notes.md`](medical-notes.md) |
 | 各モデルの主張の根拠（Claim → Source → …） | [`model-evidence/`](model-evidence/) |
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
+| モデルカードの改訂とレビューの陳腐化検知 | [`model-cards/README.md`](model-cards/README.md) |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |
 | クロール可能なページ・OGP・sitemap | [`discoverability.md`](discoverability.md) |
@@ -87,9 +88,11 @@ Last updated: 2026-09-01（現在地の数値は §3 参照）
    3 層が信頼つきで成立しているのは Heart Failure の 1 テーマだけ**で、
    production の Amyloid-β には Reel も Learning もなく、HRS には Learning が
    ない。教材はどのテーマも 1 本止まり（現状の深さ台帳は §5.1）
-2. **信頼** — 臨床レビュー登録簿・PR CI・main 保護が未整備
-   （[`public-release-roadmap.md`](public-release-roadmap.md) Gate 0）。
-   Heart Failure と Amyloid-β 自身が新しい evidence 基準を満たしていない
+2. **信頼** — 臨床レビュー登録簿・PR CI・公開 Trust 面は整備済み。
+   モデルカードの改訂とレビュー陳腐化の検知も CI に入った
+   （[`model-cards/README.md`](model-cards/README.md)）。残るのは main 保護
+   （[`public-release-roadmap.md`](public-release-roadmap.md) Gate 0B）と、
+   Heart Failure・Amyloid-β の臨床レビュー署名
 3. **器** — landing・Lab 分割・WebGL 失敗時の fallback は実装済み。
    性能予算と計測・エラー報告・フィードバック導線も入った
    （[`observability.md`](observability.md)）。残るのは

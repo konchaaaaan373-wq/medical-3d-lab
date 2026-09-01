@@ -43,6 +43,27 @@ function reviewBadge(record) {
   ]);
 }
 
+/**
+ * "This review signed a model that has since changed."
+ *
+ * A stale review is not automatically invalid — it is a review of something
+ * else, and the honest thing is to say so rather than to quietly keep showing
+ * a badge. `tests/model-revisions.test.js` fails when a review has drifted and
+ * the registry does not carry this block, so the card cannot go silent.
+ */
+function changedSinceReview(record) {
+  const change = record?.modelChangedSinceReview;
+  if (!change) return null;
+  return el('div', { class: 'trust-drift' }, [
+    el('p', { class: 'trust-drift-head' }, [
+      el('span', { class: 'lang-en', text: `Model changed after this review (${change.changedAt})` }),
+      el('span', { class: 'lang-ja', text: `レビュー後にモデルが変更されています（${change.changedAt}）` }),
+    ]),
+    el('p', { class: 'trust-drift-body', text: change.summary }),
+    el('p', { class: 'trust-drift-body', text: change.effectOnReviewedBehaviour }),
+  ]);
+}
+
 function sourceLinks(record) {
   return el(
     'div',
@@ -88,6 +109,7 @@ function trustCard(scene, record) {
       el('span', { class: 'lang-ja', text: review.noteJa }),
     ]),
     reviewMeta ? el('div', { class: 'trust-review-meta', text: reviewMeta }) : null,
+    changedSinceReview(record),
     el('div', { class: 'trust-block' }, [
       bilingual('Reviewed / prepared scope', 'レビュー・準備範囲', 'trust-label'),
       el('ul', { class: 'trust-list' }, (record?.scope ?? []).map((item) => el('li', { text: item }))),

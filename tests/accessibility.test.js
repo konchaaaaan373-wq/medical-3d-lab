@@ -10,6 +10,7 @@ import {
   SURFACES,
   TOKENS,
   TOUCH_TARGET,
+  TRUST_INK,
   composite,
   contrastFailures,
   contrastRatio,
@@ -72,6 +73,22 @@ test('contrast: the faintest ink is the one closest to the line, and still over 
     assert.ok(row.ratio >= 4.5, `${row.name} is ${row.ratio}:1`);
     assert.ok(row.ratio < 6, 'if this rises, the palette changed and the declaration did not');
   }
+});
+
+test('contrast: the light Trust surface is declared, not only the dark shell', () => {
+  // It is a different palette with the same obligation, and it had none of
+  // these pairings declared until the review-drift notice was added to it.
+  const trust = contrastReport().filter((row) => row.name.startsWith('Trust'));
+  assert.ok(trust.length >= 5, 'the Trust surface should be covered, not sampled');
+  for (const row of trust) assert.ok(row.ratio >= row.needs, `${row.name} is ${row.ratio}:1`);
+});
+
+test('contrast: the Trust ink declared here is the ink its stylesheet uses', () => {
+  const css = read('src/styles/trust.css');
+  for (const value of Object.values(TRUST_INK)) {
+    assert.ok(css.toLowerCase().includes(value), `${value} is declared but not used in trust.css`);
+  }
+  assert.ok(css.includes(SURFACES.trust), 'the declared Trust background is not the one it paints');
 });
 
 test('contrast: base.css and the declared palette cannot drift apart', () => {

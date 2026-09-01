@@ -1,5 +1,6 @@
 import { supabaseUserExists } from '../lib/account.js';
 import { notify } from '../lib/alerts.js';
+import { classifyInvoice, invoiceOutcome, isInvoiceEvent } from '../lib/invoices.js';
 import { ledgerRow, record, replayDecision } from '../lib/ledger.js';
 import {
   json,
@@ -111,6 +112,25 @@ export default async (request) => {
             ? subscription.customer
             : subscription.customer?.id,
       });
+    }
+
+    // Renewal and payment failure. Entitlement already follows the subscription
+    // events; these carry the two facts those cannot — that a renewal happened
+    // at all, and that a payment is failing with a known number of attempts
+    // left. Neither writes state.
+    if (isInvoiceEvent(event.type)) {
+      const invoice = classifyInvoice(event);
+      if (invoice.alert) {
+        await notify(invoice.alert, {
+          subscriptionId: invoice.subscriptionId,
+          customerId: invoice.customerId,
+          attempt: invoice.attempt,
+          finalAttempt: invoice.finalAttempt,
+          currency: invoice.currency,
+        });
+      }
+      await recordOutcome(event, raw, invoiceOutcome(invoice));
+      return json(200, { received: true, invoice: invoice.kind });
     }
 
     await recordOutcome(event, raw, priceSupported ? 'applied' : 'unsupported_price');
