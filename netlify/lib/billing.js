@@ -140,6 +140,30 @@ export function subscriptionUserId(mappedUserId, metadataUserId) {
   return mappedUserId || metadataUserId || null;
 }
 
+/**
+ * Customer ownership is one-to-one and becomes immutable once established.
+ *
+ * The database already enforces both directions (`user_id` primary key and a
+ * unique `stripe_customer_id`). This pure check mirrors that invariant before a
+ * webhook write so conflicting metadata is ignored deliberately instead of
+ * depending on a constraint error/retry to protect ownership.
+ */
+export function customerMappingConflict({
+  userId,
+  customerId,
+  existingUserCustomerId = null,
+  existingCustomerUserId = null,
+}) {
+  if (!userId || !customerId) return 'missing_identity';
+  if (existingUserCustomerId && existingUserCustomerId !== customerId) {
+    return 'user_already_mapped_to_other_customer';
+  }
+  if (existingCustomerUserId && existingCustomerUserId !== userId) {
+    return 'customer_already_mapped_to_other_user';
+  }
+  return null;
+}
+
 export function safeHash(value) {
   if (typeof value !== 'string') return '#/';
   return /^#[/][A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(value) ? value : '#/';
@@ -192,12 +216,40 @@ export async function subscriptionsForCustomer(customerId) {
 }
 
 export async function upsertCustomer({ userId, customerId, email = null }) {
-  if (!userId || !customerId) return;
+  if (!userId || !customerId) return false;
+
+  const [byUser, byCustomer] = await Promise.all([
+    supabaseAdmin(
+      `billing_customers?user_id=eq.${encodeURIComponent(userId)}&select=user_id,stripe_customer_id&limit=1`
+    ),
+    supabaseAdmin(
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id,stripe_customer_id&limit=1`
+    ),
+  ]);
+  const conflict = customerMappingConflict({
+    userId,
+    customerId,
+    existingUserCustomerId: byUser?.[0]?.stripe_customer_id ?? null,
+    existingCustomerUserId: byCustomer?.[0]?.user_id ?? null,
+  });
+
+  if (conflict) {
+    console.error('Refusing conflicting Stripe Customer ownership mapping', {
+      conflict,
+      userId,
+      customerId,
+      existingUserCustomerId: byUser?.[0]?.stripe_customer_id ?? null,
+      existingCustomerUserId: byCustomer?.[0]?.user_id ?? null,
+    });
+    return false;
+  }
+
   await supabaseAdmin('billing_customers?on_conflict=user_id', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: [{ user_id: userId, stripe_customer_id: customerId, email }],
   });
+  return true;
 }
 
 export async function upsertSubscription(subscription) {
