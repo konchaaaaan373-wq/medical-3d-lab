@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   SCENES,
+  PUBLIC_SCENES,
+  LAB_SCENES,
   DEFAULT_SCENE_ID,
   loadScene,
   resolveSceneId,
@@ -26,20 +28,37 @@ test('scene entries carry the labels the UI components read', () => {
   }
 });
 
-test('every system tab leads somewhere', () => {
-  for (const system of systemsWithScenes()) {
-    assert.ok(system.scenes.length > 0, `${system.id} has at least one scene`);
-    assert.ok(system.label?.length && system.labelJa?.length, `${system.id} is named in both languages`);
+test('every system tab leads somewhere on both public and Lab shelves', () => {
+  for (const scope of ['public', 'lab']) {
+    for (const system of systemsWithScenes(scope)) {
+      assert.ok(system.scenes.length > 0, `${scope}/${system.id} has at least one scene`);
+      assert.ok(system.label?.length && system.labelJa?.length, `${scope}/${system.id} is named in both languages`);
+    }
   }
 });
 
-test('the grouping covers every scene exactly once, in registration order', () => {
-  const grouped = systemsWithScenes().flatMap((system) => system.scenes.map((scene) => scene.id));
-  assert.deepEqual([...grouped].sort(), SCENES.map((scene) => scene.id).sort(), 'nothing dropped or duplicated');
-  for (const system of systemsWithScenes()) {
+function assertGrouping(scope, expectedScenes) {
+  const groups = systemsWithScenes(scope);
+  const grouped = groups.flatMap((system) => system.scenes.map((scene) => scene.id));
+  assert.deepEqual(
+    [...grouped].sort(),
+    expectedScenes.map((scene) => scene.id).sort(),
+    `${scope}: nothing dropped or duplicated`,
+  );
+
+  for (const system of groups) {
     const order = system.scenes.map((scene) => SCENES.findIndex((entry) => entry.id === scene.id));
-    assert.deepEqual(order, [...order].sort((a, b) => a - b), `${system.id} keeps registration order`);
+    assert.deepEqual(order, [...order].sort((a, b) => a - b), `${scope}/${system.id} keeps registration order`);
   }
+}
+
+test('public and Lab groupings each cover exactly their own shelf, in registration order', () => {
+  assertGrouping('public', PUBLIC_SCENES);
+  assertGrouping('lab', LAB_SCENES);
+});
+
+test('the complete grouping still covers every registered scene when explicitly requested', () => {
+  assertGrouping('all', SCENES);
 });
 
 test('the default scene is a real scene, named rather than positional', () => {
