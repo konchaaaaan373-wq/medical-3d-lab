@@ -102,6 +102,31 @@ export const ANNOTATIONS = [
 ];
 
 /**
+ * Shown only in comparison mode, where the two lungs are moved apart and the
+ * ordinary annotations would point at empty space between them. The wording is
+ * the reel's cards, so the interactive comparison and the social sequence name
+ * the two lungs the same way.
+ */
+export const COMPARISON_ANNOTATIONS = [
+  {
+    id: 'reference-lung',
+    text: 'Normal',
+    sub: '正常（比較用）',
+    anchor: 'comparisonReference',
+    range: [0, 1],
+    comparisonOnly: true,
+  },
+  {
+    id: 'copd-lung',
+    text: 'COPD',
+    sub: 'COPD',
+    anchor: 'comparisonDisease',
+    range: [0, 1],
+    comparisonOnly: true,
+  },
+];
+
+/**
  * The plots.
  *
  * Two, because the mechanism has two halves and neither shows both. The

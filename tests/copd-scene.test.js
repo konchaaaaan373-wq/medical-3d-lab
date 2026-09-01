@@ -664,6 +664,38 @@ test('the comparison view frames the pair rather than one lung', () => {
   assert.equal(pair.target.x, 0, 'and sit on the midline so neither is favoured');
 });
 
+test('the comparison says which lung is which, and the read-out carries both', () => {
+  // Two near-identical chests side by side with no labels is a picture, not a
+  // statement. Read without switching the comparison on first: the app reads
+  // this list once, at load, so a label that only appeared afterwards would
+  // never appear at all.
+  const built = scene();
+  const labels = Object.fromEntries(built.getAnnotations().map((a) => [a.id, a]));
+  assert.ok(labels['reference-lung'] && labels['copd-lung'], 'both lungs are named');
+  assert.equal(labels['reference-lung'].comparisonOnly, true);
+  assert.equal(labels['copd-lung'].comparisonOnly, true);
+
+  // Each label sits on the same side as the lung it names.
+  built.setComparison(true);
+  assert.equal(Math.sign(labels['reference-lung'].position.x), Math.sign(built.reference.object.position.x));
+  assert.equal(Math.sign(labels['copd-lung'].position.x), Math.sign(built.primary.object.position.x));
+
+  // While comparing, each read-out row also carries the healthy lung's figure,
+  // read from the same model the reference lung is drawn from.
+  built.setProgress(0.6);
+  built.model.settle({ maxBreaths: 400 });
+  built.referenceModel.settle({ maxBreaths: 400 });
+  const rows = new Map(built.getMetrics().map((row) => [row.id, row]));
+  const healthy = built.referenceModel.state;
+  assert.equal(rows.get('ic').reference, healthy.inspiratoryCapacityL.toFixed(2));
+  assert.equal(rows.get('eelv').reference, healthy.endExpiratoryVolumeL.toFixed(2));
+  assert.equal(rows.get('demand').reference, rows.get('demand').value, 'the demand column says the ask is identical');
+
+  // And off again: no reference column outside the comparison.
+  built.setComparison(false);
+  assert.equal(built.getMetrics().find((row) => row.id === 'ic').reference, undefined);
+});
+
 test('the comparison starts the reference lung where the primary already is', () => {
   // Both lungs breathe at the same period, and both advance by the same delta,
   // so a phase offset at the moment the comparison is switched on never

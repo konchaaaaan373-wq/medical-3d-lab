@@ -15,6 +15,7 @@ import {
 import {
   ANNOTATIONS,
   CHARTS,
+  COMPARISON_ANNOTATIONS,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -356,8 +357,12 @@ export class AsthmaScene {
       tree: new THREE.Vector3(-2.6, 1.2, 0.6),
       units: new THREE.Vector3(3.4, -1.6, 0.6),
       defect: this.darkestRegionAnchor(),
+      // Comparison mode slides each tree aside by COMPARISON_OFFSET; these sit
+      // above the two crowns, one over each, and are the only labels shown.
+      comparisonReference: new THREE.Vector3(-COMPARISON_OFFSET, 3.1, 0.6),
+      comparisonDisease: new THREE.Vector3(COMPARISON_OFFSET, 3.1, 0.6),
     };
-    return ANNOTATIONS.flatMap((annotation) => {
+    return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].flatMap((annotation) => {
       const anchor = anchors[annotation.anchor];
       return anchor ? [{ ...annotation, position: anchor.clone() }] : [];
     });
@@ -377,21 +382,28 @@ export class AsthmaScene {
   }
 
   getMetrics() {
-    const solved = this.solved;
-    const value = {
+    const rows = (solved) => ({
       resistance: solved.resistanceRatio.toFixed(2),
       heterogeneity: solved.heterogeneity.toFixed(2),
       defects: Math.round(solved.defectFraction * 100),
       cluster: Math.round(solved.largestDefectFraction * 100),
       ventilation: Math.round(solved.totalVentilation * 100),
       calibre: Math.round(solved.medianCalibre * 100),
+      // The same value for both trees, on purpose: showing the dose in both
+      // columns is what says the comparison is fair.
       stimulus: Math.round(this.controls.stimulus * 100),
       settled: solved.converged ? 'yes' : 'not yet',
-    };
-    const valueJa = { settled: solved.converged ? '収束' : '未収束' };
+    });
+    const value = rows(this.solved);
+    // While comparing, each row also carries the healthy tree's figure — the
+    // same solve the reference tree is drawn from. Convergence stays a fact
+    // about this solver run, not a difference between the lungs.
+    const reference = this.comparing ? rows(this.referenceSolve()) : null;
+    const valueJa = { settled: this.solved.converged ? '収束' : '未収束' };
     return METRICS.map((metric) => ({
       ...metric,
       value: value[metric.id],
+      ...(reference && metric.id !== 'settled' ? { reference: reference[metric.id] } : {}),
       ...(valueJa[metric.id] != null ? { valueJa: valueJa[metric.id] } : {}),
     }));
   }
