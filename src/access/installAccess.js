@@ -4,6 +4,7 @@ import { educationGuideFor } from '../data/educationGuides.js';
 import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
 import { featuresForScene } from './features.js';
+import { captureGuideSession, restoreGuideSession } from './guideSession.js';
 import { ENTITLEMENT } from './policy.js';
 
 /**
@@ -86,6 +87,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   if (!row || !consolePanel) return null;
 
   let open = false;
+  let sessionSnapshot = null;
   const guidePanel = createPatientGuidePanel({
     guide,
     setProgress: (value) => {
@@ -128,6 +130,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
     button.setAttribute('aria-label', unlocked ? 'Patient explanation' : 'Patient explanation — locked');
+    if (!unlocked && open) closeGuide();
   });
 
   function openGuide() {
@@ -135,11 +138,17 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     app.learning?.set(false);
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
+
+    // Only this axis is temporarily owned by the patient guide. Preserve it so
+    // finishing the explanation returns the clinician to the model state they
+    // were using before the consultation-room presentation began.
+    sessionSnapshot = captureGuideSession(app.playback);
     open = true;
     guidePanel.reset();
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
+    requestAnimationFrame(() => guidePanel.focus());
   }
 
   function closeGuide() {
@@ -149,6 +158,11 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     ui.classList.remove('is-patient-guide', 'is-patient-presentation');
     button.classList.remove('is-on');
     button.setAttribute('aria-pressed', 'false');
+
+    const snapshot = sessionSnapshot;
+    sessionSnapshot = null;
+    restoreGuideSession(snapshot, app.playback);
+    requestAnimationFrame(() => button.focus());
   }
 
   return closeGuide;
@@ -160,6 +174,7 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
   if (!row || !consolePanel) return null;
 
   let open = false;
+  let sessionSnapshot = null;
   const guidePanel = createEducationGuidePanel({
     guide,
     setProgress: (value) => {
@@ -199,6 +214,7 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
     button.setAttribute('aria-label', unlocked ? 'Medical education teaching guide' : 'Medical education teaching guide — locked');
+    if (!unlocked && open) closeGuide();
   });
 
   function openGuide() {
@@ -206,11 +222,14 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
     app.learning?.set(false);
     app.causalStory?.set(false);
     if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
-    guidePanel.reset();
+
+    sessionSnapshot = captureGuideSession(app.playback);
     open = true;
+    guidePanel.reset();
     ui.classList.add('is-education-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
+    requestAnimationFrame(() => guidePanel.focus?.());
   }
 
   function closeGuide() {
@@ -219,6 +238,11 @@ function installEducationGuide({ app, access, ui, guide, activate }) {
     ui.classList.remove('is-education-guide');
     button.classList.remove('is-on');
     button.setAttribute('aria-pressed', 'false');
+
+    const snapshot = sessionSnapshot;
+    sessionSnapshot = null;
+    restoreGuideSession(snapshot, app.playback);
+    requestAnimationFrame(() => button.focus());
   }
 
   return closeGuide;
