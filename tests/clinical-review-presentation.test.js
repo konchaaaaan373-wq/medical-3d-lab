@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
 import {
   CLINICAL_REVIEW_RECORDS,
   clinicalReviewForScene,
   clinicalReviewPresentation,
+  modelCardForScene,
 } from '../src/catalog/clinicalReview.js';
 
 test('every public scene has an explicit clinical-review record', () => {
@@ -12,6 +14,15 @@ test('every public scene has an explicit clinical-review record', () => {
   for (const scene of PUBLIC_SCENES) {
     assert.ok(ids.has(scene.id), `${scene.id} is public but has no clinical-review record`);
     assert.ok(clinicalReviewForScene(scene), `${scene.id} cannot be resolved through the runtime review registry`);
+  }
+});
+
+test('every public scene has a model card in the same trust registry', () => {
+  for (const scene of PUBLIC_SCENES) {
+    const path = modelCardForScene(scene);
+    assert.ok(path, `${scene.id} is public but its Clinical Review record names no model card`);
+    const card = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+    assert.match(card, new RegExp(`\\b${scene.id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`), `${path} does not identify ${scene.id}`);
   }
 });
 
