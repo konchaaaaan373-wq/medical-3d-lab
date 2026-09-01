@@ -22,6 +22,7 @@ import { el } from '../utils/dom.js';
 export function createPatientGuidePanel({ guide, setProgress, onExit, onPresentationChange }) {
   let index = 0;
   let presenting = false;
+  let ownsFullscreen = false;
 
   const title = el('div', { class: 'patient-guide-title' }, [
     el('span', { class: 'lang-en', text: guide.title }),
@@ -37,6 +38,21 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     type: 'button',
     'aria-pressed': 'false',
     on: { click: () => setPresentation(!presenting) },
+  });
+
+  const fullscreenAvailable = Boolean(
+    typeof document !== 'undefined' &&
+      document.fullscreenEnabled !== false &&
+      document.documentElement?.requestFullscreen &&
+      document.exitFullscreen
+  );
+  const fullscreen = el('button', {
+    class: 'patient-guide-fullscreen',
+    type: 'button',
+    hidden: fullscreenAvailable ? null : '',
+    'aria-pressed': 'false',
+    'aria-label': 'Full-screen patient presentation',
+    on: { click: toggleFullscreen },
   });
 
   const handoutButton = el('button', {
@@ -84,7 +100,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     'aria-label': 'Patient explanation',
     tabindex: '-1',
   }, [
-    el('div', { class: 'patient-guide-head' }, [title, presentation, handoutButton, counter, close]),
+    el('div', { class: 'patient-guide-head' }, [title, presentation, fullscreen, handoutButton, counter, close]),
     dots,
     copy,
     el('p', { class: 'patient-guide-boundary' }, [
@@ -94,6 +110,12 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     el('div', { class: 'patient-guide-actions' }, [previous, next]),
     handout,
   ]);
+
+  const onFullscreenChange = () => {
+    if (!document.fullscreenElement) ownsFullscreen = false;
+    renderFullscreenButton();
+  };
+  if (fullscreenAvailable) document.addEventListener('fullscreenchange', onFullscreenChange);
 
   element.addEventListener('keydown', (event) => {
     // Keep the application's Space/R/H/C/arrow shortcuts from acting behind a
@@ -123,6 +145,13 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
         event.preventDefault();
         setIndex(guide.steps.length - 1);
         break;
+      case 'f':
+      case 'F':
+        if (!event.metaKey && !event.ctrlKey && !event.altKey && fullscreenAvailable) {
+          event.preventDefault();
+          void toggleFullscreen();
+        }
+        break;
       default:
         break;
     }
@@ -148,6 +177,51 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       el('span', { class: 'lang-en', text: presenting ? 'Standard view' : 'Present larger' }),
       el('span', { class: 'lang-ja', text: presenting ? '通常表示' : '大きく表示' })
     );
+  }
+
+  function renderFullscreenButton() {
+    if (!fullscreenAvailable) return;
+    const active = ownsFullscreen && Boolean(document.fullscreenElement);
+    fullscreen.setAttribute('aria-pressed', String(active));
+    fullscreen.classList.toggle('is-on', active);
+    fullscreen.replaceChildren(
+      el('span', { class: 'lang-en', text: active ? 'Exit full screen' : 'Full screen' }),
+      el('span', { class: 'lang-ja', text: active ? '全画面を終了' : '全画面' })
+    );
+  }
+
+  async function toggleFullscreen() {
+    if (!fullscreenAvailable) return;
+    try {
+      if (ownsFullscreen && document.fullscreenElement) {
+        ownsFullscreen = false;
+        await document.exitFullscreen();
+      } else if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        ownsFullscreen = document.fullscreenElement === document.documentElement;
+      }
+    } catch {
+      // Fullscreen can be denied by iframe/browser policy. The large-text
+      // presentation mode remains available and the medical model is unchanged.
+      ownsFullscreen = false;
+    }
+    renderFullscreenButton();
+  }
+
+  async function exitOwnedFullscreen() {
+    if (!fullscreenAvailable || !ownsFullscreen || !document.fullscreenElement) {
+      ownsFullscreen = false;
+      renderFullscreenButton();
+      return;
+    }
+    ownsFullscreen = false;
+    try {
+      await document.exitFullscreen();
+    } catch {
+      // Browser chrome state is non-medical presentation state. Never let a
+      // failed exit prevent the guide itself from closing/restoring its model.
+    }
+    renderFullscreenButton();
   }
 
   function render() {
@@ -178,6 +252,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       el('span', { class: 'lang-ja', text: index === guide.steps.length - 1 ? '終了' : '次へ' })
     );
     renderPresentationButton();
+    renderFullscreenButton();
   }
 
   setIndex(0);
@@ -193,6 +268,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       element.focus({ preventScroll: true });
     },
     setPresentation,
+    exitFullscreen: exitOwnedFullscreen,
     isPresenting: () => presenting,
     currentIndex: () => index,
   };
