@@ -48,6 +48,21 @@ export function clinicalReviewForScene(scene) {
   return BY_SCENE.get(id) ?? null;
 }
 
+/** First registered source under a repository-relative trust-document prefix. */
+function sourceForScene(scene, prefix) {
+  return clinicalReviewForScene(scene)?.sources.find((source) => source.startsWith(prefix)) ?? null;
+}
+
+/**
+ * The model card is part of the public trust path, so derive it from the same
+ * registry that owns the review state rather than copying a second path into
+ * production scene metadata.
+ */
+export const modelCardForScene = (scene) => sourceForScene(scene, 'docs/model-cards/');
+
+/** Claim-level evidence dossier when a scene has one. Anatomy-only scenes may not. */
+export const evidenceDossierForScene = (scene) => sourceForScene(scene, 'docs/model-evidence/');
+
 /**
  * Presentation metadata for a review record. Unknown/missing review state fails
  * visibly rather than being treated as reviewed.
