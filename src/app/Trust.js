@@ -1,3 +1,4 @@
+import clinicalReviews from '../../docs/clinical-reviews/registry.json';
 import { EXPLORER_ROUTE, LANDING_ROUTE, PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el } from '../utils/dom.js';
@@ -23,15 +24,9 @@ const REVIEW_LABELS = {
   },
 };
 
+const registry = new Map(clinicalReviews.map((record) => [record.sceneId, record]));
 const githubSource = (path) =>
   `https://github.com/konchaaaaan373-wq/medical-3d-lab/blob/main/${path}`;
-
-async function readRegistry() {
-  const response = await fetch('/trust/clinical-reviews.json', { cache: 'no-cache' });
-  if (!response.ok) throw new Error(`clinical review registry: HTTP ${response.status}`);
-  const records = await response.json();
-  return new Map(records.map((record) => [record.sceneId, record]));
-}
 
 function bilingual(en, ja, className = '') {
   return el('span', { class: className }, [
@@ -108,19 +103,10 @@ function trustCard(scene, record) {
   ]);
 }
 
-export async function createTrust({ ui, accountButton = null }) {
+export function createTrust({ ui, accountButton = null }) {
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
-
-  let registry = new Map();
-  let loadError = null;
-  try {
-    registry = await readRegistry();
-  } catch (error) {
-    console.error(error);
-    loadError = error;
-  }
 
   const element = el('main', { class: 'trust-page' }, [
     el('header', { class: 'trust-nav' }, [
@@ -162,11 +148,6 @@ export async function createTrust({ ui, accountButton = null }) {
         bilingual('Evidence package = claims + tests + limitations', '証拠パッケージ = 主張 + テスト + 限界'),
       ]),
     ]),
-    loadError
-      ? el('section', { class: 'trust-error' }, [
-          bilingual('Review registry could not be loaded. Model access remains available.', 'レビュー台帳を読み込めませんでした。モデル自体は利用できます。'),
-        ])
-      : null,
     el('section', { class: 'trust-grid' }, PUBLIC_SCENES.map((scene) => trustCard(scene, registry.get(scene.id)))),
     el('footer', { class: 'trust-footer' }, [
       bilingual('Educational conceptual models — not patient-specific diagnosis or treatment.', '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。'),
