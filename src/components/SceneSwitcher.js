@@ -1,36 +1,17 @@
 import { el } from '../utils/dom.js';
-import { EXPLORER_ROUTE } from '../catalog/index.js';
+import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 
 /**
- * Global scene navigation.
+ * Fixed product-shell navigation for a 3D scene.
  *
- * This used to be two horizontally scrolling rows inside the scene's left
- * panel. That worked when the catalogue was tiny, but once the lab grew to
- * eleven systems it stopped reading as navigation at all: the way to another
- * organ looked like one more data panel and, on a phone, most of it lived off
- * screen.
+ * `groups` is already projected to either the public catalogue or Experimental
+ * Lab by `sceneRegistry`. This component never recombines those shelves: a
+ * public scene menu cannot silently list Prototype work beside reviewed models,
+ * and a Prototype scene keeps its peers inside Lab.
  *
- * The catalogue and routing are unchanged. This component only changes the
- * information architecture:
- *
- * - the current system / scene is always visible in a fixed header;
- * - one explicit "Choose organ / disease" control opens the whole catalogue;
- * - desktop gets a compact system-by-system mega menu;
- * - narrow screens get the same content as a right-side drawer;
- * - "All organs" remains the way to the full explorer.
- *
- * Links stay links rather than becoming tabs. Selecting a scene writes the hash
- * and lets the app reload, which preserves the existing clean-GPU-state scene
- * switch. `aria-current="page"` therefore remains the correct selection state.
- *
- * Favorites are local navigation preferences only. They store scene ids and do
- * not carry any model, patient, account or billing state.
- *
- * @param {{
- *   groups: {id: string, label: string, labelJa?: string, scenes: any[]}[],
- *   currentId: string,
- * }} options
+ * Favorites are local navigation preferences only. They store scene IDs and do
+ * not carry model, patient, account or billing state.
  */
 export function createSceneSwitcher({ groups, currentId }) {
   const scenes = groups.flatMap((group) => group.scenes);
@@ -39,6 +20,7 @@ export function createSceneSwitcher({ groups, currentId }) {
   const currentScene = scenes.find((scene) => scene.id === currentId) ?? scenes[0];
   const currentGroup =
     groups.find((group) => group.scenes.some((scene) => scene.id === currentScene.id)) ?? groups[0];
+  const isLab = currentScene.status === 'prototype';
 
   const ui = document.getElementById('ui');
   ui?.classList.add('has-global-scene-nav');
@@ -91,24 +73,43 @@ export function createSceneSwitcher({ groups, currentId }) {
     text: '×',
   });
 
-  const allOrgans = el(
+  const browseCurrentShelf = el(
     'a',
     {
       class: 'global-nav-explorer',
-      href: EXPLORER_ROUTE,
+      href: isLab ? LAB_ROUTE : EXPLORER_ROUTE,
     },
     [
       el('span', { class: 'global-nav-explorer-mark', 'aria-hidden': 'true', text: '＋' }),
-      bilingual('Browse all organs', '全臓器から探す', 'global-nav-explorer-copy'),
+      bilingual(
+        isLab ? 'Browse Experimental Lab' : 'Browse all public models',
+        isLab ? '実験モデル一覧' : '公開モデル一覧',
+        'global-nav-explorer-copy'
+      ),
+      el('span', { class: 'global-nav-arrow', 'aria-hidden': 'true', text: '→' }),
+    ]
+  );
+
+  const switchShelf = el(
+    'a',
+    {
+      class: 'global-nav-explorer is-secondary',
+      href: isLab ? EXPLORER_ROUTE : LAB_ROUTE,
+    },
+    [
+      el('span', { class: 'global-nav-explorer-mark', 'aria-hidden': 'true', text: isLab ? '✓' : '◇' }),
+      bilingual(
+        isLab ? 'Switch to public models' : 'Open Experimental Lab',
+        isLab ? '公開モデルへ戻る' : '実験モデルを見る',
+        'global-nav-explorer-copy'
+      ),
       el('span', { class: 'global-nav-arrow', 'aria-hidden': 'true', text: '→' }),
     ]
   );
 
   const favoriteList = el('div', { class: 'global-nav-favorite-list' });
   const favoriteSection = el('section', { class: 'global-nav-favorites', hidden: '' }, [
-    el('h2', { class: 'global-nav-favorites-title' }, [
-      bilingual('Favorites', 'お気に入り'),
-    ]),
+    el('h2', { class: 'global-nav-favorites-title' }, [bilingual('Favorites', 'お気に入り')]),
     favoriteList,
   ]);
 
@@ -134,9 +135,7 @@ export function createSceneSwitcher({ groups, currentId }) {
       'section',
       { class: `global-nav-system${isCurrentSystem ? ' is-current' : ''}` },
       [
-        el('h2', { class: 'global-nav-system-name' }, [
-          bilingual(group.label, group.labelJa),
-        ]),
+        el('h2', { class: 'global-nav-system-name' }, [bilingual(group.label, group.labelJa)]),
         el('div', { class: 'global-nav-scenes' }, sceneLinks),
       ]
     );
@@ -153,11 +152,15 @@ export function createSceneSwitcher({ groups, currentId }) {
     [
       el('div', { class: 'global-nav-panel-head' }, [
         el('div', { class: 'global-nav-panel-title' }, [
-          bilingual('Choose organ / disease', '臓器・病態を選ぶ'),
+          bilingual(
+            isLab ? 'Experimental Lab' : 'Choose organ / disease',
+            isLab ? '実験モデル' : '臓器・病態を選ぶ'
+          ),
         ]),
         closeButton,
       ]),
-      allOrgans,
+      browseCurrentShelf,
+      switchShelf,
       favoriteSection,
       el('div', { class: 'global-nav-grid' }, groupSections),
     ]
@@ -167,8 +170,8 @@ export function createSceneSwitcher({ groups, currentId }) {
     'a',
     {
       class: 'global-nav-brand',
-      href: EXPLORER_ROUTE,
-      title: 'Medical 3D Lab — Organ explorer',
+      href: LANDING_ROUTE,
+      title: 'Medical 3D Lab — Home',
     },
     [
       el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
@@ -184,11 +187,13 @@ export function createSceneSwitcher({ groups, currentId }) {
 
   const element = el(
     'nav',
-    { class: 'global-scene-nav', 'aria-label': 'Medical 3D Lab' },
+    { class: `global-scene-nav${isLab ? ' is-lab' : ' is-public'}`, 'aria-label': 'Medical 3D Lab' },
     [brand, currentLocation, favoriteButton, trigger, backdrop, panel]
   );
 
   function renderLibrary(library = readSceneLibrary()) {
+    // Favorites shown in this menu are constrained to this shelf. Cross-shelf
+    // favorites remain saved and appear when the viewer enters that shelf.
     const saved = library.favorites
       .map((id) => scenes.find((scene) => scene.id === id))
       .filter(Boolean);
@@ -198,9 +203,13 @@ export function createSceneSwitcher({ groups, currentId }) {
     favoriteButton.setAttribute('aria-pressed', String(currentSaved));
     favoriteButton.setAttribute(
       'aria-label',
-      currentSaved ? 'Remove current scene from favorites / お気に入りから外す' : 'Add current scene to favorites / お気に入りに追加'
+      currentSaved
+        ? 'Remove current scene from favorites / お気に入りから外す'
+        : 'Add current scene to favorites / お気に入りに追加'
     );
-    favoriteButton.title = currentSaved ? 'Remove from favorites / お気に入りから外す' : 'Add to favorites / お気に入りに追加';
+    favoriteButton.title = currentSaved
+      ? 'Remove from favorites / お気に入りから外す'
+      : 'Add to favorites / お気に入りに追加';
 
     favoriteList.replaceChildren(
       ...saved.map((scene) =>
@@ -234,9 +243,8 @@ export function createSceneSwitcher({ groups, currentId }) {
     if (event.target.closest('a')) setOpen(false);
   });
 
-  // The app has global Space / Escape / letter shortcuts. While focus is in
-  // navigation, native button/link keyboard behaviour must win rather than also
-  // playing the model or leaving a lesson. Escape closes this surface first.
+  // Native navigation controls own their keyboard events rather than leaking to
+  // the model's global Space/Escape/letter shortcuts.
   element.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) {
       event.preventDefault();
@@ -245,9 +253,6 @@ export function createSceneSwitcher({ groups, currentId }) {
     event.stopPropagation();
   });
 
-  // Escape also closes an open menu when focus happens to be elsewhere. Stop
-  // it here so the window-level Escape shortcut does not close two UI layers at
-  // once (for example the menu and a learning module).
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) {
       event.preventDefault();
@@ -256,8 +261,6 @@ export function createSceneSwitcher({ groups, currentId }) {
     }
   });
 
-  // A click anywhere that is neither the header nor its drawer closes a desktop
-  // mega menu. On mobile the backdrop catches the same intent before this does.
   document.addEventListener('pointerdown', (event) => {
     if (open && !element.contains(event.target)) setOpen(false);
   });
