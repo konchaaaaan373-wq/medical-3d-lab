@@ -8,6 +8,7 @@ import './styles/patient-presentation.css';
 import './styles/education-access.css';
 import './styles/reel.css';
 import './styles/explorer.css';
+import './styles/explorer-search.css';
 import './styles/access-explorer.css';
 import { namesScene, resolveRoute } from './app/router.js';
 
