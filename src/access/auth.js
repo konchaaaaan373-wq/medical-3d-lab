@@ -7,6 +7,8 @@
  */
 
 const STORAGE_KEY = 'medical3dlab.auth.v1';
+let volatileSession = null;
+let refreshInFlight = null;
 
 export const AUTH_CONFIG = Object.freeze({
   url: (import.meta.env.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
@@ -28,15 +30,26 @@ function headers(token) {
 
 function readStored() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    return stored ?? volatileSession;
   } catch {
-    return null;
+    // Storage can be denied in private/embedded contexts. Keep the signed-in
+    // session usable for this page lifetime rather than turning a valid login
+    // response into an application error.
+    return volatileSession;
   }
 }
 
 function store(session) {
-  if (!session) localStorage.removeItem(STORAGE_KEY);
-  else localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  volatileSession = session ?? null;
+  try {
+    if (!session) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  } catch {
+    // The in-memory fallback above is enough for the current page. A browser
+    // that refuses persistent storage may require sign-in again after reload;
+    // it must never prevent free models from running.
+  }
 }
 
 async function json(response) {
@@ -97,18 +110,31 @@ export function signOut() {
 
 async function refresh(session) {
   if (!session?.refresh_token || !authConfigured()) return null;
-  const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/token?grant_type=refresh_token`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify({ refresh_token: session.refresh_token }),
-  });
-  if (!response.ok) {
-    store(null);
-    return null;
+
+  // Supabase can rotate refresh tokens. If two product calls notice an expired
+  // access token together, serialise them through one refresh rather than
+  // racing the same refresh token and making one of the two calls log out.
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/token?grant_type=refresh_token`, {
+      method: 'POST',
+      headers: headers(),
+      body: JSON.stringify({ refresh_token: session.refresh_token }),
+    });
+    if (!response.ok) {
+      store(null);
+      return null;
+    }
+    const next = normaliseSession(await response.json());
+    store(next);
+    return next;
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
   }
-  const next = normaliseSession(await response.json());
-  store(next);
-  return next;
 }
 
 export async function getSession() {
@@ -120,13 +146,26 @@ export async function getSession() {
 }
 
 export async function authenticatedFetch(url, options = {}) {
-  const session = await getSession();
+  let session = await getSession();
   if (!session) throw new Error('Please sign in first.');
-  return fetch(url, {
-    ...options,
-    headers: {
-      ...(options.headers ?? {}),
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+
+  const send = (current) =>
+    fetch(url, {
+      ...options,
+      headers: {
+        ...(options.headers ?? {}),
+        Authorization: `Bearer ${current.access_token}`,
+      },
+    });
+
+  let response = await send(session);
+  if (response.status !== 401) return response;
+
+  // A token can be invalidated server-side before its local expiry timestamp.
+  // Force one refresh and retry once. A genuine authorization failure remains
+  // a 401 after the retry; there is deliberately no retry loop.
+  session = await refresh(readStored() ?? session);
+  if (!session) return response;
+  response = await send(session);
+  return response;
 }
