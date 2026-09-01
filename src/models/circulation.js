@@ -19,11 +19,10 @@
  *   DO2  = CO × 10 × CaO2
  *
  * The factor 80 converts Wood units to dyn·s·cm⁻⁵, and the factor 10 converts
- * litres of blood to decilitres. The oxygen-content and delivery definitions
- * are conventional; see Collins et al., Breathe 2015, PMID 26632351. The
- * dobutamine direction is supported by the dose-response haemodynamic study by
- * Leier et al., Circulation 1978, PMID 679437. The fluid response is an explicit
- * case assumption, not a general claim: real bolus responses are inconstant.
+ * litres of blood to decilitres. Claim-by-claim sources, access limits and the
+ * boundary between published directions and illustrative calibration are kept
+ * in docs/model-evidence/circulation.md. In particular, the DOB step is not a
+ * dose and the fluid arm is an explicit responsive-case assumption.
  */
 
 export const MAX_INTERVENTION_STEPS = 3;
@@ -111,4 +110,3 @@ export function solveCirculation({ fluidSteps = 0, dobutamineSteps = 0 } = {}) {
     oxygenDeliveryMlMin,
   };
 }
-
