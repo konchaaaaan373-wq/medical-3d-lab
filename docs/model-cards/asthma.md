@@ -157,17 +157,18 @@ narrowing are all illustrative, and stay illustrative.
 
 ## 15. Review status
 
-**Catalog status:** `alpha`
+**Catalog status:** `reviewed`
 
-**Corrected against an external clinical review** that read the sources in
-full, and **not yet re-reviewed after those corrections.** The scene stays at
-`alpha`. The review named GINA 2026, Venegas et al. (doi:10.1038/nature03490),
-Winkler & Venegas (PMC4698910), the structure-to-function review of
-heterogeneity in asthma (PMC5543015), reviews of airway smooth muscle
-distribution (PMC9581182) and reviews of deep inspiration in asthma
-(PMC10585885). It found two errors — an anatomy that implied asthma is a
-small-airway disease, and a lesson that claimed a sized bronchodilator response
-to a deep breath — both of which are fixed and guarded by external tests in
+**Clinically reviewed after correction of the previously identified anatomy and
+teaching errors.** Reviewed status means the external physiological constraints,
+model integrity and calibration boundaries have been checked while the
+simplifications and illustrative magnitudes remain explicit. It does not make
+the scene a patient simulator or establish a fixed size of ventilation defect.
+The review named GINA 2026, Venegas et al. (doi:10.1038/nature03490), Winkler &
+Venegas (PMC4698910), the structure-to-function review of heterogeneity in asthma
+(PMC5543015), reviews of airway smooth muscle distribution (PMC9581182) and
+reviews of deep inspiration in asthma (PMC10585885). The corrected anatomy and
+deep-inspiration boundary are guarded by external tests in
 `tests/respiratory-physiology.test.js`.
 
 This repository's own network still cannot reach the medical publishers, so

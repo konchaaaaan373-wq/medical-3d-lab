@@ -1,4 +1,19 @@
-/* The organ explorer, and the status badge it shares with the scene view. */
+/* The organ explorer, and the status badge it shares with the scene view.
+   The 3D scenes use luminous overlay chrome because it sits on top of anatomy.
+   The Explorer is a reading surface, so it deliberately uses a flatter,
+   editorial visual language: solid fields, rules and text instead of glow. */
+
+html[data-route='explorer'] {
+  --explorer-bg: #070b11;
+  --explorer-surface: #0c121b;
+  --explorer-surface-raised: #101823;
+  --explorer-rule: rgba(190, 205, 224, 0.17);
+  --explorer-rule-strong: rgba(190, 205, 224, 0.32);
+  --explorer-ink: #edf2f6;
+  --explorer-muted: #a6b0bd;
+  --explorer-faint: #778392;
+  --explorer-accent: #78a9ad;
+}
 
 /* The explorer is a document, not an overlay: it scrolls, and there is no
    canvas behind it to keep clear of. Both `html` and `body` are pinned to the
@@ -8,6 +23,10 @@ html[data-route='explorer'] body {
   height: auto;
   min-height: 100%;
   overflow: visible;
+  background: var(--explorer-bg);
+  color: var(--explorer-ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Sans',
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Noto Sans JP', sans-serif;
 }
 
 html[data-route='explorer'] #stage {
@@ -20,33 +39,57 @@ html[data-route='explorer'] #ui {
   display: block;
   pointer-events: auto;
   min-height: 100%;
+  padding: 0;
+}
+
+html[data-route='explorer'] .explorer > .panel {
+  background: var(--explorer-surface);
+  border-color: var(--explorer-rule);
+  border-radius: 4px;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .explorer {
-  max-width: 1080px;
+  width: min(1180px, 100%);
   margin: 0 auto;
-  padding: 8px 0 64px;
+  padding: 30px 24px 72px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .explorer-header {
-  padding: 22px 24px;
+  padding: 29px 30px 27px;
   position: relative;
+  border-top: 3px solid var(--explorer-accent);
 }
 
 .explorer-header .title {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 12px;
+  max-width: 720px;
+  font-size: clamp(24px, 3vw, 36px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
 
 .explorer-header .title .lang-ja {
-  font-size: 0.6em;
-  color: var(--ink-dim);
-  font-weight: 600;
+  font-size: 0.62em;
+  color: var(--explorer-muted);
+  font-weight: 500;
+}
+
+.explorer-header .eyebrow {
+  margin-bottom: 8px;
+  color: var(--explorer-accent);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.18em;
+  opacity: 1;
 }
 
 /* The scene view hides the subtitle on a short or narrow window to protect the
@@ -54,9 +97,12 @@ html[data-route='explorer'] #ui {
    what the project is — so it is restored at every size. */
 .explorer-header .subtitle {
   display: block;
-  max-width: 62ch;
-  line-height: 1.6;
-  font-size: 12px;
+  max-width: 66ch;
+  margin-top: 10px;
+  color: var(--explorer-muted);
+  line-height: 1.75;
+  letter-spacing: 0;
+  font-size: 13px;
 }
 
 .explorer-header .subtitle .lang-ja {
@@ -72,21 +118,51 @@ html[data-route='explorer'] #ui {
 .explorer-jump {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 14px;
+  gap: 0 22px;
+  margin-top: 19px;
+  padding-top: 13px;
+  border-top: 1px solid var(--explorer-rule);
 }
 
 .explorer-jump .scene-pill {
-  border: 1px solid var(--border);
+  position: relative;
+  padding: 7px 0 6px;
+  border: 0;
+  border-radius: 0;
+  color: var(--explorer-muted);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+}
+
+.explorer-jump .scene-pill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 1px;
+  background: var(--explorer-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 140ms ease;
+}
+
+.explorer-jump .scene-pill:hover {
+  color: var(--explorer-ink);
+}
+
+.explorer-jump .scene-pill:hover::after {
+  transform: scaleX(1);
 }
 
 .explorer-jump .scene-pill .lang-ja {
-  margin-left: 5px;
-  opacity: 0.7;
+  margin-left: 0;
+  opacity: 1;
 }
 
 .explorer-system {
-  padding: 4px 4px 10px;
+  padding: 2px 5px 12px;
   scroll-margin-top: 16px;
 }
 
@@ -94,32 +170,35 @@ html[data-route='explorer'] #ui {
   display: flex;
   align-items: baseline;
   gap: 10px;
-  margin: 18px 0 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
-  letter-spacing: 0.02em;
+  margin: 16px 0 5px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--explorer-rule-strong);
+  color: var(--explorer-ink);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
 .explorer-system-name .lang-ja {
-  font-size: 12px;
-  color: var(--ink-dim);
+  font-size: 13px;
+  color: var(--explorer-muted);
   font-weight: 500;
 }
 
 .explorer-count {
   margin-left: auto;
-  font-size: 11px;
-  color: var(--ink-faint);
+  font-size: 12px;
+  color: var(--explorer-faint);
   font-variant-numeric: tabular-nums;
 }
 
 .explorer-organ {
   display: grid;
-  grid-template-columns: 190px 1fr;
-  gap: 14px;
-  padding: 10px 0;
+  grid-template-columns: 180px minmax(0, 1fr);
+  gap: 22px;
+  padding: 17px 0;
   align-items: start;
+  border-bottom: 1px solid var(--explorer-rule);
 }
 
 .explorer-organ.is-empty {
@@ -127,78 +206,75 @@ html[data-route='explorer'] #ui {
 }
 
 .explorer-organ-name {
-  margin: 4px 0 0;
-  font-size: 12.5px;
+  margin: 3px 0 0;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--ink-dim);
+  color: var(--explorer-muted);
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
 .explorer-organ-name .lang-ja {
-  font-size: 11px;
-  color: var(--ink-faint);
+  font-size: 12px;
+  color: var(--explorer-faint);
   font-weight: 500;
 }
 
 .explorer-scenes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  /* Planned scenes are one-line chips; stretched to the height of a real card
-     they read as scenes with the description missing. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  gap: 12px;
   align-items: flex-start;
 }
 
 .explorer-scene {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  min-width: 230px;
-  max-width: 340px;
-  flex: 1 1 230px;
-  padding: 11px 13px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--panel);
-  color: var(--ink);
+  gap: 10px;
+  min-width: 0;
+  max-width: none;
+  padding: 16px 17px 17px;
+  border: 1px solid var(--explorer-rule);
+  border-radius: 3px;
+  background: var(--explorer-surface);
+  color: var(--explorer-ink);
   text-decoration: none;
-  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
+  transition: border-color 140ms ease, background 140ms ease;
 }
 
 a.explorer-scene:hover {
-  border-color: rgba(56, 225, 239, 0.5);
-  background: var(--panel-strong);
-  transform: translateY(-1px);
+  border-color: var(--explorer-rule-strong);
+  background: var(--explorer-surface-raised);
 }
 
 .explorer-scene.is-planned {
   opacity: 0.5;
   border-style: dashed;
-  min-width: 150px;
-  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .explorer-scene-title {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 7px;
-  font-size: 13px;
-  font-weight: 650;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 620;
+  line-height: 1.35;
 }
 
 .explorer-scene-title .lang-ja {
-  font-size: 11.5px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--ink-dim);
+  color: var(--explorer-muted);
 }
 
 .explorer-scene-note {
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--ink-faint);
+  max-width: 72ch;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--explorer-muted);
 }
 
 .explorer-scene-note .lang-ja {
@@ -206,10 +282,10 @@ a.explorer-scene:hover {
 }
 
 .explorer-footer {
-  padding: 14px 18px;
+  padding: 18px 20px;
   font-size: 11px;
-  line-height: 1.6;
-  color: var(--ink-faint);
+  line-height: 1.7;
+  color: var(--explorer-faint);
 }
 
 .explorer-footer .lang-ja {
@@ -257,28 +333,59 @@ a.explorer-scene:hover {
   margin-top: 7px;
 }
 
+/* On the catalogue, maturity is metadata rather than a promotional badge. */
+.explorer .status-badge {
+  gap: 3px;
+  padding: 0 0 0 7px;
+  border-radius: 0;
+  color: #d9bd8e;
+  background: none;
+  box-shadow: inset 2px 0 0 rgba(217, 189, 142, 0.72);
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+.explorer .status-badge.is-reviewed {
+  color: #91c2ab;
+  background: none;
+  box-shadow: inset 2px 0 0 rgba(145, 194, 171, 0.7);
+}
+
+.explorer .status-badge.is-planned {
+  color: var(--explorer-faint);
+  background: none;
+  box-shadow: inset 2px 0 0 var(--explorer-rule-strong);
+}
+
 @media (max-width: 720px) {
   .explorer {
-    padding: 4px 0 48px;
+    padding: 14px 12px 48px;
+    gap: 18px;
+  }
+
+  .explorer-header {
+    padding: 72px 18px 21px;
+  }
+
+  .explorer-header .title {
+    font-size: 25px;
   }
 
   .explorer-organ {
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 10px;
+    padding: 15px 0;
   }
 
   .explorer-scene {
     min-width: 0;
-    flex-basis: 100%;
+    padding: 15px;
   }
 
-  .explorer-header .ui-toggle {
-    position: static;
-    margin-top: 12px;
-  }
 }
 
 /* The scene view drops the subtitle on a small screen to protect the 3D frame.
    The explorer has no 3D frame to protect and the line is what says what this
    project is, so it stays. */
-

@@ -16,6 +16,7 @@
  *  system/organ where it sits in `taxonomy.js`. `organs` lists every organ shown.
  *  disease      the disease it is about, or null for normal physiology.
  *  status       prototype | alpha | reviewed | production (see taxonomy.js)
+ *  access       optional paid professional-use surfaces; omitted means free-only
  *  modelCard    repository-relative model card path for alpha/reviewed scenes
  *  load         () => import('...') returning a module whose default export is the scene class
  */
@@ -44,6 +45,7 @@ export const SCENE_MANIFEST = [
     organ: 'brain',
     disease: 'alzheimers',
     status: 'production',
+    access: { patient: true, education: true },
     description: 'Aβ monomer → oligomer → fibril → plaque, as one continuous aggregation state.',
     descriptionJa: 'Aβ のモノマー → オリゴマー → 線維 → プラークを、連続した凝集状態として示します。',
     tags: ['molecular', 'aggregation', 'neurodegeneration'],
@@ -58,6 +60,7 @@ export const SCENE_MANIFEST = [
     organ: 'heart',
     disease: 'heart-failure',
     status: 'production',
+    access: { patient: true, education: true },
     description:
       'Closed-loop time-varying elastance: remodelling, the PV loop and the pressure waveform from one model.',
     descriptionJa:
@@ -90,7 +93,8 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'copd',
-    status: 'alpha',
+    status: 'reviewed',
+    access: { patient: true, education: true },
     modelCard: 'docs/model-cards/copd.md',
     description:
       'Twelve lung units with their own time constants: why incomplete expiration produces dynamic hyperinflation, and why extra expiratory effort stops increasing flow once expiratory flow limitation is reached.',
@@ -108,7 +112,8 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'asthma',
-    status: 'alpha',
+    status: 'reviewed',
+    access: { patient: true, education: true },
     modelCard: 'docs/model-cards/asthma.md',
     description:
       'A branching airway tree solved as a network: how a uniform bronchoconstrictor stimulus can produce clustered, heterogeneous regional ventilation.',
@@ -171,7 +176,8 @@ export const SCENE_MANIFEST = [
     organ: 'liver',
     organs: ['liver', 'spleen'],
     disease: 'cirrhosis',
-    status: 'alpha',
+    status: 'reviewed',
+    access: { patient: true, education: true },
     modelCard: 'docs/model-cards/cirrhosis-portal-hypertension.md',
     description:
       'The portal circulation as a flow-conserving network: why portal hypertension can persist despite redistribution through collaterals, and why HVPG is not the portal pressure gradient.',
@@ -293,8 +299,10 @@ export const SCENE_MANIFEST = [
     organ: 'bone',
     disease: null,
     status: 'prototype',
-    description: 'Resorption and formation as two opposing particle streams on one cortical surface.',
-    descriptionJa: '皮質骨の表面で、吸収と形成が拮抗する 2 つの流れとして示します。',
+    description:
+      'Sequential remodelling at staggered sites: resorption → reversal → formation, with long-term cortical thinning when replacement falls behind.',
+    descriptionJa:
+      '各部位で吸収 → 反転期 → 形成と順に進むリモデリング。形成が吸収に追いつかない状態が長期に続くと皮質骨が菲薄化する様子を示します。',
     tags: ['turnover', 'particles'],
     load: () => import('../scenes/musculoskeletal/scenes/boneRemodeling/index.js'),
   },

@@ -20,16 +20,23 @@ export const SCENES = SCENE_MANIFEST.map((entry) => ({
   tags: entry.tags ?? [],
 }));
 
+/** Public product and experimental work are two views over one registry. */
+export const PUBLIC_SCENES = SCENES.filter((scene) => scene.status !== 'prototype');
+export const LAB_SCENES = SCENES.filter((scene) => scene.status === 'prototype');
+
 export { PLANNED_SCENES, SYSTEMS, ORGANS, STATUS_IDS, statusById, systemById, organById };
 
 /** The route for a scene, as written in an href. */
 export const sceneRoute = (scene) => `#/${scene.slug}`;
 
-/** The explorer's own route — the one page that is not a scene. */
+/** Product-shell routes. Published scene URLs remain unchanged. */
+export const LANDING_ROUTE = '#/';
 export const EXPLORER_SLUG = 'organs';
 export const EXPLORER_ROUTE = `#/${EXPLORER_SLUG}`;
+export const LAB_SLUG = 'lab';
+export const LAB_ROUTE = `#/${LAB_SLUG}`;
 
-/** Named rather than positional: reordering the catalogue must not change what opens. */
+/** Named rather than positional: reordering the catalogue must not change legacy fallback behaviour. */
 export const DEFAULT_SCENE_ID = 'amyloid-beta';
 
 /** @param {string} id */
@@ -38,10 +45,11 @@ export const sceneById = (id) => SCENES.find((scene) => scene.id === id) ?? null
 export const sceneBySlug = (slug) => SCENES.find((scene) => scene.slug === slug) ?? null;
 
 /** Every scene that shows this organ, whether it is filed under it or not. */
-export const scenesForOrgan = (organId) => SCENES.filter((scene) => scene.organs.includes(organId));
+export const scenesForOrgan = (organId, scenes = SCENES) =>
+  scenes.filter((scene) => scene.organs.includes(organId));
 
 /**
- * The scenes worth listing under an organ on the explorer.
+ * The scenes worth listing under an organ on an explorer surface.
  *
  * A scene that draws an organ from another system — the whole-body view draws
  * nine of them — is not listed under each one. It is a real answer to "what
@@ -49,36 +57,51 @@ export const scenesForOrgan = (organId) => SCENES.filter((scene) => scene.organs
  * scenes that are actually about them, and the whole-body view is one click
  * away in its own section.
  */
-export const scenesListedForOrgan = (organId) =>
-  scenesForOrgan(organId).filter(
+export const scenesListedForOrgan = (organId, scenes = SCENES) =>
+  scenesForOrgan(organId, scenes).filter(
     (scene) => scene.organ === organId || scene.system === organById(organId)?.system
   );
 
 /** Scenes filed under a system, in registration order. */
-export const scenesForSystem = (systemId) => SCENES.filter((scene) => scene.system === systemId);
+export const scenesForSystem = (systemId, scenes = SCENES) =>
+  scenes.filter((scene) => scene.system === systemId);
 
 /** Disease scenes that are declared but not built, for one organ. */
 export const plannedForOrgan = (organId) => PLANNED_SCENES.filter((entry) => entry.organ === organId);
 
 /**
- * The catalogue as the explorer draws it: systems, each with its organs, each
- * organ with the scenes that show it. Systems with no scenes at all are left
- * out — a heading that leads nowhere is worse than no heading.
+ * The catalogue as an explorer draws it: systems, each with its organs, each
+ * organ with scenes and optionally planned work.
+ *
+ * Passing a scene subset is how the public catalogue and Lab remain views over
+ * the same registry rather than two registries that can drift.
  */
-export function systemsWithOrgans() {
-  return SYSTEMS.map((system) => ({
-    ...system,
-    scenes: scenesForSystem(system.id),
-    organs: organsOfSystem(system.id).map((organ) => ({
-      ...organ,
-      scenes: scenesListedForOrgan(organ.id),
-      planned: plannedForOrgan(organ.id),
-    })),
-  })).filter((system) => system.scenes.length > 0);
+export function systemsWithOrgans(
+  scenes = SCENES,
+  { includePlanned = true, includeEmptyOrgans = true } = {}
+) {
+  return SYSTEMS.map((system) => {
+    const systemScenes = scenesForSystem(system.id, scenes);
+    const organs = organsOfSystem(system.id)
+      .map((organ) => ({
+        ...organ,
+        scenes: scenesListedForOrgan(organ.id, scenes),
+        planned: includePlanned ? plannedForOrgan(organ.id) : [],
+      }))
+      .filter(
+        (organ) =>
+          includeEmptyOrgans || organ.scenes.length > 0 || organ.planned.length > 0
+      );
+
+    return { ...system, scenes: systemScenes, organs };
+  }).filter(
+    (system) =>
+      system.scenes.length > 0 || system.organs.some((organ) => organ.planned.length > 0)
+  );
 }
 
 /**
- * The switcher's two rows: systems that have scenes, each with its scenes.
+ * The switcher's systems that have scenes.
  *
  * The top level of the in-scene navigation is the system rather than the organ,
  * because at twenty-odd organs an organ row no longer fits on a phone — and
@@ -104,7 +127,7 @@ export function systemsWithScenes(scenes = SCENES, systems = SYSTEMS) {
   return grouped;
 }
 
-/** Resolves `#/<slug>` to a scene id, falling back to the default scene. */
+/** Resolves `#/<slug>` to a scene id, falling back to the historic default scene. */
 export function resolveSceneId(hash = '') {
   const slug = String(hash).replace(/^#\/?/, '').trim();
   return sceneBySlug(slug)?.id ?? DEFAULT_SCENE_ID;
@@ -145,7 +168,9 @@ export function validateCatalog(scenes = SCENES) {
     else if (seenSlugs.has(scene.slug)) problems.push(`${where}: duplicate slug "${scene.slug}"`);
     else seenSlugs.add(scene.slug);
 
-    if (scene.slug === EXPLORER_SLUG) problems.push(`${where}: slug collides with the explorer route`);
+    if ([EXPLORER_SLUG, LAB_SLUG].includes(scene.slug)) {
+      problems.push(`${where}: slug collides with a product-shell route`);
+    }
     if (!systemById(scene.system)) problems.push(`${where}: unknown system "${scene.system}"`);
     if (!organById(scene.organ)) problems.push(`${where}: unknown organ "${scene.organ}"`);
     for (const organ of scene.organs) {
@@ -156,6 +181,29 @@ export function validateCatalog(scenes = SCENES) {
       problems.push(`${where}: organ "${scene.organ}" does not belong to system "${scene.system}"`);
     }
     if (!STATUS_IDS.includes(scene.status)) problems.push(`${where}: unknown status "${scene.status}"`);
+
+    if (scene.access != null) {
+      if (!scene.access || typeof scene.access !== 'object' || Array.isArray(scene.access)) {
+        problems.push(`${where}: access must be an object`);
+      } else {
+        const allowed = new Set(['patient', 'education']);
+        for (const key of Object.keys(scene.access)) {
+          if (!allowed.has(key)) problems.push(`${where}: unknown access capability "${key}"`);
+        }
+        for (const key of allowed) {
+          if (key in scene.access && typeof scene.access[key] !== 'boolean') {
+            problems.push(`${where}: access.${key} must be boolean`);
+          }
+        }
+        if (scene.access.patient !== true && scene.access.education !== true) {
+          problems.push(`${where}: access declaration enables no paid capability`);
+        }
+        if (!['reviewed', 'production'].includes(scene.status)) {
+          problems.push(`${where}: paid access requires reviewed or production status`);
+        }
+      }
+    }
+
     if (typeof scene.load !== 'function') problems.push(`${where}: load is not a function`);
     if (!scene.titleEn || !scene.titleJa) problems.push(`${where}: needs a title in both languages`);
     if (!scene.description || !scene.descriptionJa) problems.push(`${where}: needs a description in both languages`);

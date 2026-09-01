@@ -1,6 +1,6 @@
 # Public release roadmap
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
 
 This is the ordered source of truth for taking Medical 3D Lab from a working
 model catalogue to a trustworthy public product. It records release gates, not
@@ -9,68 +9,82 @@ reason is written here or in an architecture decision record.
 
 ## Current release decision
 
-- **Free, limited beta:** possible after Gate 0 is complete.
-- **Paid public release:** not yet ready.
-- **New disease scenes:** lower priority than closing the current trust and
-  release-safety gaps.
+- **Free, limited beta:** technically close; Gate 0 is now reduced to deployment
+  protection plus making medical-review state visible in the product shell.
+- **Paid public release:** not yet ready for live charging; sandbox billing and
+  entitlement E2E are working, but live prices, legal/commercial pages and final
+  device QA are still deliberately absent.
+- **New disease scenes:** continue only in small batches. Trust, review and
+  product-shell infrastructure must keep pace with scene count.
 
-The model architecture is already a strength. The immediate work is to make
-the medical claims, public experience and deployment process as reliable as
+The model architecture is already a strength. The release work now focuses on
+making evidence state, public experience and operational safety as reliable as
 the model tests.
 
 ## Gate 0 — blockers before any public beta
 
 ### 0A. Medical trust
 
-- [x] Make the public catalogue match the model cards: COPD, asthma and portal
-  hypertension remain `alpha` until the corrected versions are re-reviewed.
+- [x] Make catalogue/model-card status agree and restore the clinically reviewed
+  COPD, asthma and portal-hypertension versions to `reviewed`.
 - [x] Add a test that fails when an alpha/reviewed model card and catalogue
   status disagree.
-- [ ] Add a versioned clinical-review registry: reviewer role, date, reviewed
+- [x] Add a versioned Clinical Review registry: reviewer role, date, reviewed
   commit, scope, sources and unresolved limitations.
-- [ ] Give heart failure and amyloid-beta the same model-card and evidence
-  standard used by newer model-backed scenes.
-- [ ] Separate engineering maturity from the public medical-review claim.
+- [x] Give heart failure and amyloid-beta the current model-card, evidence-dossier
+  and dedicated external-physiology test standard. Their review state remains
+  honestly `legacy-unversioned` until a current reviewer signs a specific commit.
+- [x] Separate engineering/catalogue maturity from medical-review state in the
+  data model and CI contracts.
+- [ ] Expose that medical-review state in a first-class public Trust surface so a
+  user does not have to inspect the repository to understand it.
 
 ### 0B. Release safety
 
-- [ ] Add GitHub Actions for tests and production build on every pull request.
+- [x] Add GitHub Actions for tests and production build on every pull request.
 - [ ] Protect `main`: required checks, pull-request-only changes and no force
   pushes. Keep production deployment tied to a passing protected commit.
-- [ ] Add a product shell that remains usable without WebGL. A renderer failure
-  must not remove navigation, model scope, citations or support information.
-- [ ] Replace the default direct scene launch with a real landing page.
-- [ ] Move prototype scenes out of the default public catalogue into an
-  explicit **Lab / Experimental** area.
+- [x] Add a product shell that remains useful without WebGL and a renderer-failure
+  fallback that preserves navigation and scope information.
+- [x] Replace the default direct scene launch with a real landing page.
+- [x] Move Prototype scenes out of the default public catalogue into explicit
+  **Lab / Experimental** shelves, including in-scene navigation.
+- [x] Keep the access/billing branch synchronized with current `main` so PR tests
+  and the branch itself see the same scene registry.
 
 ## Gate 1 — limited free beta
 
 - [ ] Test current Safari, Chrome and Firefox plus real iPhone and Android
   devices, including 320–430 px widths and landscape.
-- [ ] Run keyboard, focus, contrast, zoom and screen-reader checks.
+- [ ] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
+  Explorer, Patient Presenter, Education Presenter and Account.
 - [ ] Establish performance budgets and remove `preserveDrawingBuffer` from the
   normal render path unless an export is actively being captured.
 - [ ] Add privacy-conscious error reporting, core product analytics and an
   in-product feedback route.
 - [ ] Complete an anatomy/art review of the flagship scenes, beginning with the
-  heart and great-vessel relationships.
+  heart/great-vessel relationships and the new brain atlas interaction.
 
 ## Gate 2 — paid beta
 
 - [ ] Record the monetisation decision in an ADR and reconcile it with
-  `product-principles.md` before merging the access/billing work.
-- [ ] Integrate the access/billing branch with current `main`, then rerun the
-  full merged test, build and browser matrix.
-- [ ] Complete Stripe test-mode purchase, renewal, payment-failure,
-  cancellation and repurchase journeys.
-- [ ] Show price, billing period, renewal and cancellation terms before
-  checkout; add terms, privacy, commerce disclosure and support pages.
-- [ ] Add password recovery, email verification handling, account deletion and
-  subscription-state UX.
-- [ ] Replace text/DOM-based feature interception with semantic capability
-  checks at component construction.
+  `product-principles.md` before final billing merge.
+- [x] Integrate the access/billing branch with current `main` and rerun the full
+  merged test/build suite.
+- [~] Stripe sandbox journeys: purchase, Patient→Complete plan change and both
+  period-end/immediate cancellation are verified. Renewal, payment-failure and
+  repurchase still need explicit E2E coverage.
+- [~] Show actual Stripe price/billing period and current subscription lifecycle
+  in product UI. Customer-facing renewal/cancellation terms plus Terms, Privacy,
+  commerce disclosure and support pages remain to be written.
+- [~] Password recovery, email confirmation and subscription-state UX exist.
+  Account deletion is still missing.
+- [x] Scene paid capabilities are semantic manifest data and CI-checked against
+  authored Patient/Education content and scene maturity.
 - [ ] Add CSP and the remaining security headers, a billing event ledger,
   reconciliation and operational alerts.
+- [ ] Choose real Patient / Education / Complete prices and configure live Stripe
+  Products, Prices, Portal, webhook and Netlify Production secrets.
 
 ## Gate 3 — general public release
 
@@ -94,12 +108,16 @@ the model tests.
 
 | Batch | Deliverable | Status |
 | --- | --- | --- |
-| 1 | Roadmap, honest review statuses and drift test | In review |
-| 2 | Pull-request CI and documented `main` protection settings | Next |
-| 3 | WebGL-independent shell and useful failure fallback | Queued |
-| 4 | Landing page and public/Lab catalogue split | Queued |
-| 5 | Review registry plus heart-failure and amyloid evidence packages | Queued |
-| 6 | Rebase, harden and finish the access/billing pull request | Queued |
+| 1 | Roadmap, honest catalogue statuses and drift tests | Done |
+| 2 | Pull-request CI | Done |
+| 3 | WebGL-independent shell and useful failure fallback | Done |
+| 4 | Landing page and public/Lab catalogue split | Done |
+| 5 | Clinical Review registry | Done |
+| 6 | Heart-failure and amyloid evidence-package migration | Done; sign-off intentionally pending |
+| 7 | Public Trust surface showing maturity, review state and evidence boundary | In progress |
+| 8 | Browser/device/accessibility/performance matrix | Next |
+| 9 | Billing operations: renewal/failure/repurchase, legal pages, security headers | Queued |
+| 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 
 ## Definition of done for every batch
 
