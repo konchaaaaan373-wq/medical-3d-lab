@@ -168,6 +168,7 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /viewer\.stop\(\)/);
   assert.match(viewport, /viewer\.composer\.render\(\)/);
   assert.match(viewport, /document\.visibilityState/);
+  assert.match(viewport, /SceneClass\.allowAutoRotate !== false/);
   assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
   assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);

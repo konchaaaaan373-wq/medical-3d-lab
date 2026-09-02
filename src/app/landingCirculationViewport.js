@@ -46,6 +46,7 @@ export function mountLandingCirculationViewport(container, {
     let inView = typeof window.IntersectionObserver !== 'function';
     let renderingOnce = false;
     const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const allowAutoRotate = SceneClass.allowAutoRotate !== false;
 
     const renderOnce = () => {
       if (disposed || renderingOnce) return;
@@ -64,7 +65,7 @@ export function mountLandingCirculationViewport(container, {
     const syncActivity = () => {
       if (disposed) return;
       const animate = shouldAnimate();
-      viewer.controls.autoRotate = animate && !userMovedCamera;
+      viewer.controls.autoRotate = animate && allowAutoRotate && !userMovedCamera;
       if (animate) viewer.start();
       else {
         viewer.stop();

@@ -34,71 +34,86 @@ export class Viewer {
     this.running = false;
     this.qualityHandlers = new Set();
 
-    // The degradation policy is declared in `performanceBudget.js` and tested
-    // without a GPU. The viewer's job is to apply the decisions, not to hold
-    // opinions about frame times.
-    this.deviceClass = deviceClassForViewport(window.innerWidth);
-    this.frameBudget = createFrameBudgetMonitor({ deviceClass: this.deviceClass });
+    try {
+      // The degradation policy is declared in `performanceBudget.js` and tested
+      // without a GPU. The viewer's job is to apply the decisions, not to hold
+      // opinions about frame times.
+      this.deviceClass = deviceClassForViewport(window.innerWidth);
+      this.frameBudget = createFrameBudgetMonitor({ deviceClass: this.deviceClass });
 
-    this.renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      // Keep the browser/WebGL default (`preserveDrawingBuffer: false`). PNG
-      // capture explicitly re-renders and reads the canvas immediately, so
-      // retaining every completed frame would spend GPU memory/bandwidth on the
-      // normal path for a feature that is used only on demand.
-      preserveDrawingBuffer: false,
-      powerPreference: 'high-performance',
-    });
-    // Cap the pixel ratio harder on phones: the particle field is fill-rate
-    // bound. Both ceilings — device class and current quality tier — live in
-    // the budget module so the renderer cannot drift away from the promise.
-    this.renderer.setPixelRatio(this._budgetedPixelRatio());
-    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    container.appendChild(this.renderer.domElement);
+      this.renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        // Keep the browser/WebGL default (`preserveDrawingBuffer: false`). PNG
+        // capture explicitly re-renders and reads the canvas immediately, so
+        // retaining every completed frame would spend GPU memory/bandwidth on the
+        // normal path for a feature that is used only on demand.
+        preserveDrawingBuffer: false,
+        powerPreference: 'high-performance',
+      });
+      // Cap the pixel ratio harder on phones: the particle field is fill-rate
+      // bound. Both ceilings — device class and current quality tier — live in
+      // the budget module so the renderer cannot drift away from the promise.
+      this.renderer.setPixelRatio(this._budgetedPixelRatio());
+      this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      this.renderer.toneMappingExposure = 1.05;
+      this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+      container.appendChild(this.renderer.domElement);
 
-    this.scene = new THREE.Scene();
-    this.scene.fog = new THREE.FogExp2(0x05070d, 0.017);
-    this.scene.add(createBackdrop());
+      this.scene = new THREE.Scene();
+      this.scene.fog = new THREE.FogExp2(0x05070d, 0.017);
+      this.scene.add(createBackdrop());
 
-    // Image-based ambient: a neutral studio environment at low intensity.
-    // This is what gives tissue and vessel surfaces their soft, believable
-    // reflections — point lights alone are what made them look like plastic.
-    const pmrem = new THREE.PMREMGenerator(this.renderer);
-    this.environmentTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
-    this.scene.environment = this.environmentTexture;
-    this.scene.environmentIntensity = 0.45;
+      // Image-based ambient: a neutral studio environment at low intensity.
+      // This is what gives tissue and vessel surfaces their soft, believable
+      // reflections — point lights alone are what made them look like plastic.
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      try {
+        this.environmentTexture = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+      } finally {
+        pmrem.dispose();
+      }
+      this.scene.environment = this.environmentTexture;
+      this.scene.environmentIntensity = 0.45;
 
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
-    this.camera.position.set(-9.5, 4.2, 13.5);
+      this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+      this.camera.position.set(-9.5, 4.2, 13.5);
 
-    this.controls = createControls(this.camera, this.renderer.domElement, {
-      target: new THREE.Vector3(0, 0.2, 0),
-    });
+      this.controls = createControls(this.camera, this.renderer.domElement, {
+        target: new THREE.Vector3(0, 0.2, 0),
+      });
 
-    // Bloom is kept, but restrained: a raised threshold keeps tissue out of it
-    // entirely, so only genuinely emissive things (particles, the pressure
-    // field) get a soft halo. Broad low-threshold bloom was a large part of
-    // the old game-VFX look.
-    //
-    // Raised again at 0.5: one grazing specular highlight on the basal
-    // shoulder was crossing the threshold and blooming into a small white blob
-    // — the brightest thing in the close-up, and on a piece of muscle. Tissue
-    // reaches roughly 0.6 there, the emissive things sit well above it.
-    this.useBloom = bloom;
-    this.composer = new EffectComposer(this.renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    if (this.useBloom) {
-      this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, BLOOM_THRESHOLD);
-      this.composer.addPass(this.bloomPass);
+      // Bloom is kept, but restrained: a raised threshold keeps tissue out of it
+      // entirely, so only genuinely emissive things (particles, the pressure
+      // field) get a soft halo. Broad low-threshold bloom was a large part of
+      // the old game-VFX look.
+      //
+      // Raised again at 0.5: one grazing specular highlight on the basal
+      // shoulder was crossing the threshold and blooming into a small white blob
+      // — the brightest thing in the close-up, and on a piece of muscle. Tissue
+      // reaches roughly 0.6 there, the emissive things sit well above it.
+      this.useBloom = bloom;
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      if (this.useBloom) {
+        this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.55, BLOOM_THRESHOLD);
+        this.composer.addPass(this.bloomPass);
+      }
+      this.composer.addPass(new OutputPass());
+
+      this._onResize = () => this.resize();
+      window.addEventListener('resize', this._onResize);
+      this.resize();
+    } catch (error) {
+      // Construction can fail after a canvas or resize listener exists. Make
+      // the constructor transactional so callers never have to dispose an
+      // object they never received.
+      try {
+        this.dispose();
+      } catch (cleanupError) {
+        console.error('viewer cleanup after setup failure', cleanupError);
+      }
+      throw error;
     }
-    this.composer.addPass(new OutputPass());
-
-    this._onResize = () => this.resize();
-    window.addEventListener('resize', this._onResize);
-    this.resize();
   }
 
   /** Register a per-frame callback. Returns an unsubscribe function. */
@@ -161,7 +176,7 @@ export class Viewer {
 
   stop() {
     this.running = false;
-    this.renderer.setAnimationLoop(null);
+    this.renderer?.setAnimationLoop(null);
   }
 
   _tick() {
@@ -283,12 +298,13 @@ export class Viewer {
 
   dispose() {
     this.stop();
-    window.removeEventListener('resize', this._onResize);
-    this.controls.dispose();
-    this.composer.dispose();
+    if (this._onResize) window.removeEventListener('resize', this._onResize);
+    this.controls?.dispose();
+    this.composer?.dispose();
     this.environmentTexture?.dispose();
-    this.renderer.dispose();
-    this.renderer.domElement.remove();
+    this.renderer?.dispose();
+    this.renderer?.forceContextLoss?.();
+    this.renderer?.domElement?.remove();
   }
 }
 
