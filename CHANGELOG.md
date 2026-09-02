@@ -14,6 +14,36 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The organ layer, checked the way the heart was
+
+Every organ builder in `src/scenes/*/organs/` was measured against the
+anatomical relationships it claims, rather than looked at. Three defects came
+out of it, all of them the kind that stays invisible while an organ is alone in
+the frame:
+
+- **The spleen presented its hilum to the ribs.** It is a left-sided organ, so
+  its concave visceral surface faces the midline; built facing the other way, it
+  only went wrong once something placed it in a body — and in the
+  cirrhosis/portal-pressure model the splenic vein was drawn starting half a
+  unit away from the notch it is supposed to leave by. The spleen now carries a
+  declared medial axis, and the scene places it by its hilum instead of by a
+  position typed beside the vessel's.
+- **The heart's aorta label pointed at the right atrium.** When the aortic arch
+  was corrected to sweep over the patient's left, the label naming it stayed on
+  the far side of the midline. It is now derived from the arch itself.
+- **Hollow organs were far more opaque than they asked to be.** A closed
+  double-sided wall is crossed twice, so a stomach asking for 0.84 rendered at
+  0.97 and passed 2.6% of its contents instead of 16%. Gastric and intestinal
+  contents — the subject of both scenes that draw them — are now visible through
+  the wall: measured on a real render, the bowel's visible contents went from
+  137 pixels to 1938, and the brightest contents in the stomach doubled.
+
+None of this changes a medical claim or a number; all of it changes whether the
+picture says what the code says it says. `tests/organ-anatomy.test.js` now holds
+the relationships in place — sides, medial and lateral, labels pointing at the
+structures they name, nested organs staying nested, and every shape setter
+returning to where it started.
+
 ### A landing page you can actually touch
 
 - The first screen now contains a working circulation comparison, not an

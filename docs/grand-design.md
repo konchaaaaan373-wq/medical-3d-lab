@@ -68,7 +68,7 @@ Last updated: 2026-09-01（現在地の数値は §3 参照）
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
 | 医学モデル層（`src/models/`） | copd / asthma / portalHypertension / hepatorenal / renalFiltration の 5 本 + 共通ユーティリティ |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
-| テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・性能予算・計測の匿名性（`node --test`） |
+| テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・**臓器レイヤーの解剖学的整合性**（左右・内外側・ラベルの指す先・入れ子・状態の往復）・性能予算・計測の匿名性（`node --test`） |
 | 計測 | 性能予算と launch metrics を宣言済み。送信は consent ゲート付きで、endpoint 未設定なら何も送らない（[`observability.md`](observability.md)） |
 
 ### 強み（すでに資産になっているもの）

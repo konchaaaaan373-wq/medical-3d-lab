@@ -1,16 +1,6 @@
 import * as THREE from 'three';
 import { TubeSurface, coilCurve, smoothCurve } from '../../shared/geometry/tube.js';
-import { ghostMaterial, tissueMaterial } from '../../shared/materials.js';
-
-/**
- * The opacity a double-sided shell needs in order to *look* like `singleLayer`.
- *
- * Two faces of opacity `a` composite to `2a − a²`; this is that solved for `a`.
- * See failure mode B in `docs/organ-3d-playbook.md`.
- *
- * @param {number} singleLayer the appearance wanted, 0–1
- */
-const doubleSided = (singleLayer) => 1 - Math.sqrt(1 - singleLayer);
+import { doubleSidedOpacity as doubleSided, ghostMaterial, tissueMaterial } from '../../shared/materials.js';
 
 /**
  * A glomerulus: two arterioles and the capillary tuft between them.

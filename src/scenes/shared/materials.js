@@ -37,9 +37,39 @@ export function tissueMaterial({
   });
 }
 
-/** A hollow organ seen from inside as well as out — stomach, bowel, bladder. */
+/**
+ * The opacity a double-sided surface needs in order to *look* like
+ * `singleLayer`.
+ *
+ * A ray crossing a closed double-sided shell passes through two faces, so two
+ * layers of opacity `a` composite to `2a − a²` and let only `(1 − a)²` of
+ * whatever is behind them through. This is that solved for `a`. Failure mode B
+ * in [`docs/organ-3d-playbook.md`](../../../docs/organ-3d-playbook.md).
+ *
+ * @param {number} singleLayer the appearance wanted, 0–1
+ */
+export function doubleSidedOpacity(singleLayer) {
+  return 1 - Math.sqrt(1 - Math.min(1, Math.max(0, singleLayer)));
+}
+
+/**
+ * A hollow organ seen from inside as well as out — stomach, bowel, bladder.
+ *
+ * `opacity` is the **single-layer appearance wanted**, and it is put through
+ * the inverse above before it reaches the material. Written straight through,
+ * a wall asking for 0.84 rendered at 0.97 and passed 2.6% of what was inside
+ * it instead of 16% — so the stomach's contents, which are the whole subject
+ * of the scene that draws them, were all but invisible. Every organ here is a
+ * closed tube, so every one of them was paying that twice.
+ */
 export function wallMaterial({ color, opacity = 0.92, roughness = 0.5 } = {}) {
-  return tissueMaterial({ color, roughness, opacity, side: THREE.DoubleSide, emissiveIntensity: 0.07 });
+  return tissueMaterial({
+    color,
+    roughness,
+    opacity: doubleSidedOpacity(opacity),
+    side: THREE.DoubleSide,
+    emissiveIntensity: 0.07,
+  });
 }
 
 /** Wet, brighter surfaces: mucosa, serosa highlights, capsule sheen. */

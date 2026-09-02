@@ -159,6 +159,18 @@ export function buildPortalVasculature(colors = {}) {
   return {
     object,
     vessels,
+    /**
+     * Where each inflow vessel begins — the organ end, not the confluence.
+     *
+     * A scene that draws the spleen beside the splenic vein reads this and
+     * places the organ by its hilum, rather than typing a position next to the
+     * one in this file and trusting the two to stay together (architecture
+     * rule 1). They did not: the vein started half a unit off the notch.
+     */
+    origins: {
+      splenic: vessels.splenic.curve.getPointAt(0).clone(),
+      superiorMesenteric: vessels.superiorMesenteric.curve.getPointAt(0).clone(),
+    },
     /** The paths blood travels, for particle streams. */
     paths: {
       inflow: [vessels.superiorMesenteric.curve, vessels.splenic.curve],

@@ -1,10 +1,11 @@
-# Anatomy and art review — flagship scenes
+# Anatomy and art review — flagship scenes, and the organ layer
 
 Gate 1 in [`public-release-roadmap.md`](public-release-roadmap.md) asks for an
 anatomy/art review of the flagship scenes, beginning with the heart and great
 vessels and the brain atlas interaction. This is the record of it: what was
 looked at, what was measured, what was changed, and what is being left for a
-clinician rather than decided here.
+clinician rather than decided here. §5 extends the same method to the organ
+layer every scene is built from.
 
 **Reviewer:** engineering, not clinical. Nothing below is a clinical sign-off,
 and the two scenes' review state in `#/trust` is unchanged by it. What an
@@ -158,7 +159,108 @@ Items 1 and 3 are recorded in the heart-failure model card under *what could be
 misread*. When a clinical reviewer signs this scene, these are the three
 questions to put to them.
 
-## 5. Not covered by this review
+## 5. The organ layer
+
+§1–4 review two scenes. This section reviews the layer underneath them:
+`src/scenes/<system>/organs/`, where twenty-odd organ builders live and from
+which every scene borrows its geometry. It was added because the flagship
+review kept finding the same shape of defect — a coordinate that stayed valid
+while its meaning moved — and nothing had ever asked the organ builders the
+same questions.
+
+**Method.** As above: measured, not looked at. Every builder was constructed
+head-less, its label anchors resolved against the actual mesh vertices, its
+sides checked against `ANATOMICAL_AXES`, its setters walked through their range
+and back, and its nested structures tested for containment at every step. The
+three defects in §5.1 were then confirmed in a browser render before and after
+the fix.
+
+**Maturity.** The builders fall into two grades, and the difference is real
+rather than cosmetic:
+
+| Grade | Builders | What they do that the others do not |
+| --- | --- | --- |
+| Named structure | `nephron`, `glomerulus`, `airwayTree`, `portalVasculature`, `diaphragm`, `lungs` | Expose landmarks by anatomical name, keep physiology and presentation in separately named values, and are consumed by `alpha`+ scenes that read those landmarks rather than retyping them |
+| Sketch | the remaining sixteen | A recognisable silhouette and a shape setter. Correct as far as they go, and explicitly not more |
+
+That split is the intended one — `grand-design.md` §5.4 says not to promote
+every prototype — so the finding is not "sixteen organs are behind". It is that
+**the sketch grade had no check on its anatomy at all**, and three of them were
+wrong.
+
+### 5.1 Three defects, all fixed
+
+**The spleen presented its hilum laterally.** The spleen is a left-sided organ,
+so the concave visceral surface — the one the builder's own comment says faces
+the stomach and the kidney — has to look medially, at −x. It faced +x. Alone in
+the `spleen-filtration` frame that is invisible; in `portal-hypertension`,
+which places the liver right of the midline and the spleen left of it, the organ
+turned its notch towards the ribs and the splenic vein began 0.53 units away on
+the opposite surface. The vein's origin was a literal typed in one file beside
+a spleen position typed in another, with nothing holding them together —
+architecture rule 1. The builder now derives every face from a declared
+`MEDIAL` axis, `portalVasculature` exposes its inflow origins by name, and the
+scene places the spleen *by its hilum*: the gap is now 0.000.
+
+**The heart's aorta label sat on the right atrium.** `heart.js` documents at
+length that its arch once ran over the patient's right and was corrected to
+sweep left. The label anchor was not corrected with it and stayed at x −1.15 —
+on the far side of the midline from the vessel it names, nearest surface an
+atrium, 0.95 away. Failure mode K. The anchor is now derived from the arch
+curve, so the two cannot separate again. The atria were also unnamed, which is
+why nothing downstream could have noticed what the label was actually on; they
+are now named from the axes.
+
+**Hollow organs rendered at nearly double their declared opacity.** Failure
+mode B, in the one place it had not been fixed. `wallMaterial` is double-sided
+by definition — that is what it is for — so a ray crosses a closed tube twice
+and two layers of `a` transmit `(1 − a)²`. Every GI organ used it, and every
+scene that draws one puts a flow stream *inside* it:
+
+| Organ | Asked for | Rendered at | Contents visible |
+| --- | --- | --- | --- |
+| Stomach | 0.84 | 0.97 | 2.6% where 16% was intended |
+| Small bowel, colon | 0.96 | 0.998 | 0.16% where 4% was intended |
+| Duodenum, oesophagus | 0.90 | 0.99 | 1% where 10% was intended |
+
+`wallMaterial` now inverts the composite, so its argument means the appearance
+wanted. Measured on a real render at 1440×900: `intestinal-transit` went from
+137 to 1938 pixels of visible contents, and the brightest contents pixel in
+`upper-gi-peristalsis` went from 41 to 84 on a yellowness scale. The mean over
+the whole organ barely moves in the stomach, which is worth recording — the
+first metric tried said "no change" because it had been tuned on the bowel's
+tan wall and did not fire over the stomach's pink one. A proxy again.
+
+### 5.2 Checked and correct
+
+Measured, and right: the right lung is the larger and each lung is on its own
+side; the right main bronchus leaves the carina at 54° against the left's 66°;
+the thyroid lobes, the liver's lobar wedge, the stomach's fundus-to-pylorus
+run, and the colon's ascending/descending sides all sit where they are named;
+both kidneys turn their hila medially and every filtration path arrives at the
+collecting system; the adrenal and renal medullae stay inside their cortices,
+and the bladder's contents and the endometrium stay inside their walls across
+the whole range of their setters; all nine shape setters return the organ to
+where it started.
+
+`tests/organ-anatomy.test.js` holds all of it. It is deliberately written the
+way `semantic-anatomy.test.js` is — assertions about bodies, not about this
+repository's numbers, with sides taken from `ANATOMICAL_AXES` rather than from
+the sign of x written out by hand.
+
+### 5.3 Recorded, not changed
+
+- **The whole-body view's kidney label points into a region where nothing is
+  visible.** The kidneys are drawn behind the bowel, which is the retroperitoneal
+  point, and the file already says an organ nobody can see teaches nothing. It
+  is a composition decision for that scene, not an anatomy defect.
+- **`brain.js` is a landmark blob and the brain atlas is a specimen mesh.**
+  That is the same intentional split the heart has, but the builder's comment
+  sent readers to the amyloid-β scene as the place the nervous system is looked
+  at properly. The specimen-derived atlas arrived afterwards and the pointer was
+  not moved; it now names the atlas. No geometry changed.
+
+## 6. Not covered by this review
 
 - The remaining scenes. The gate names the flagships; the rest are reviewed
   when they are promoted past `prototype`.
