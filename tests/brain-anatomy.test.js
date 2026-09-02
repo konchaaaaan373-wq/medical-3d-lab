@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { brainStructureInfo } from '../src/data/brainAnatomy.js';
+import { BRAIN_COLOR_MODES, brainColor, brainStructureInfo } from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -62,6 +62,90 @@ test('selection publishes exact bilingual anatomy and highlights without resizin
   assert.deepEqual(selected.scale.toArray(), [1, 1, 1], 'selection does not distort anatomy');
   scene.clearSelection();
   assert.equal(scene.getAnatomySelection(), null);
+  scene.dispose();
+});
+
+test('hover previews exact anatomy without replacing the pinned selection', () => {
+  const scene = buildScene();
+  const temporal = find(scene, 'Middle temporal gyrus', 'left');
+  const putamen = find(scene, 'Putamen', 'left');
+  const previews = [];
+  scene.onAnatomyHover((value) => previews.push(value));
+
+  scene.selectStructure(putamen.userData.atlasId);
+  scene._setHovered(temporal);
+  assert.equal(previews.at(-1).nameJa, '中側頭回');
+  assert.deepEqual(previews.at(-1).hierarchyJa, ['左大脳半球', '側頭葉', '大脳回']);
+  assert.equal(scene.getAnatomySelection().nameJa, '被殻', 'hover does not replace the pinned structure');
+  scene._setHovered(null);
+  assert.equal(previews.at(-1), null, 'the panel can restore the pinned selection on pointer leave');
+  scene.dispose();
+});
+
+test('colour map and natural anatomy are one-step choices with different visual readings', () => {
+  const scene = buildScene();
+  const leftTemporal = colorOf(scene, 'Middle temporal gyrus', 'left');
+  const rightTemporal = colorOf(scene, 'Middle temporal gyrus', 'right');
+  assert.equal(leftTemporal, rightTemporal, 'left and right homologues share a colour');
+  assert.notEqual(
+    colorOf(scene, 'Middle frontal gyrus', 'left'),
+    colorOf(scene, 'Opercular part of inferior frontal gyrus', 'left'),
+    'named structures within one lobe use distinct shades in fine mode'
+  );
+
+  assert.deepEqual(
+    BRAIN_COLOR_MODES.map(({ id, labelJa }) => [id, labelJa]),
+    [['detail', 'カラー'], ['anatomical', '通常解剖色']]
+  );
+  assert.equal(scene.getAnatomyColorMode(), 'detail');
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  const colourRoughness = frontal.material.roughness;
+  const colourIdleEmissive = frontal.material.emissiveIntensity;
+
+  assert.equal(scene.setAnatomyColorMode('anatomical'), true);
+  assert.equal(scene.getAnatomyColorMode(), 'anatomical');
+  assert.equal(
+    colorOf(scene, 'Middle temporal gyrus', 'left'),
+    colorOf(scene, 'Middle temporal gyrus', 'right'),
+    'natural anatomy also keeps homologues visually paired'
+  );
+  assert.notEqual(
+    colorOf(scene, 'Middle frontal gyrus', 'left'),
+    colorOf(scene, 'Opercular part of inferior frontal gyrus', 'left'),
+    'small natural-tone variation keeps neighbouring named meshes legible'
+  );
+  assert.ok(hslOf(frontal).s < 0.3, 'cortical natural anatomy stays low-saturation');
+  assert.ok(frontal.material.roughness > colourRoughness, 'matte tissue shading preserves fold relief');
+  assert.ok(frontal.material.emissiveIntensity < colourIdleEmissive, 'low idle emission preserves sulcal shadows');
+  assert.notEqual(
+    colorOf(scene, 'Middle frontal gyrus', 'left'),
+    colorOf(scene, 'Corpus callosum', 'median'),
+    'grey matter and white matter retain conventional tissue contrast'
+  );
+  assert.equal(scene.setAnatomyColorMode('not-a-mode'), false);
+  scene.dispose();
+});
+
+test('medial views expose the selected hemisphere without moving anatomy', () => {
+  const scene = buildScene();
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+  const positions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
+  assert.deepEqual(
+    scene.getAnatomyViews().map((view) => view.id),
+    ['left-lateral', 'left-medial', 'right-lateral', 'right-medial', 'anterior', 'superior']
+  );
+
+  scene.setAnatomyView('left-medial');
+  assert.equal(left.material.opacity, 1);
+  assert.equal(right.material.opacity, 0, 'the contralateral shell is hidden at the midline');
+  scene.setAnatomyView('right-medial');
+  assert.equal(left.material.opacity, 0);
+  assert.equal(right.material.opacity, 1);
+  scene.setAnatomyView('left-lateral');
+  assert.equal(left.material.opacity, 1);
+  assert.equal(right.material.opacity, 1, 'leaving a medial view restores the contralateral hemisphere');
+  for (const [mesh, position] of positions) assert.ok(mesh.position.equals(position));
   scene.dispose();
 });
 
@@ -150,6 +234,112 @@ test('abbreviated lateral-sulcus labels are expanded without losing atlas identi
   assert.equal(info.atlasName, 'Lat Fis-post');
 });
 
+test('every selectable atlas label has a deliberate Japanese name and hierarchy', () => {
+  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
+  const jsonLength = bytes.readUInt32LE(12);
+  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
+  const selectableCategories = new Set([
+    'cortex', 'deep_grey', 'diencephalon', 'white_matter',
+    'ventricles', 'cerebellum', 'brainstem',
+  ]);
+  const structures = new Map();
+  for (const node of gltf.nodes) {
+    const metadata = node.extras;
+    if (metadata && selectableCategories.has(metadata.bx_cat)) {
+      structures.set(`${metadata.bx_cat}:${metadata.bx_label}`, metadata);
+    }
+  }
+  assert.equal(structures.size, 147);
+  const detailColours = new Set();
+  const naturalColours = new Set();
+  const detailSamples = [];
+  for (const metadata of structures.values()) {
+    const info = brainStructureInfo(metadata);
+    assert.notEqual(info.nameJa, `${info.regionJa}（${info.name}）`, `${info.name} is translated`);
+    assert.ok(info.hierarchyJa.length >= 3, `${info.name} has an anatomical hierarchy`);
+    const detailColour = brainColor(metadata);
+    const naturalColour = brainColor(metadata, 'anatomical');
+    assert.ok(/^#[0-9a-f]{6}$/.test(detailColour), `${info.name} has a fine colour`);
+    assert.ok(/^#[0-9a-f]{6}$/.test(naturalColour), `${info.name} has a natural colour`);
+    detailColours.add(detailColour);
+    naturalColours.add(naturalColour);
+    detailSamples.push({ label: info.name, lab: hexToLab(detailColour) });
+  }
+  assert.equal(detailColours.size, structures.size, 'all 147 named structures have distinct colour-map shades');
+  assert.equal(naturalColours.size, structures.size, 'all 147 named structures avoid exact natural-tone collisions');
+  let closest = { distance: Infinity, labels: [] };
+  for (let left = 0; left < detailSamples.length; left += 1) {
+    for (let right = left + 1; right < detailSamples.length; right += 1) {
+      const distance = cie76(detailSamples[left].lab, detailSamples[right].lab);
+      if (distance < closest.distance) {
+        closest = { distance, labels: [detailSamples[left].label, detailSamples[right].label] };
+      }
+    }
+  }
+  assert.ok(
+    closest.distance >= 3.8,
+    `closest detail colours are too similar: ${closest.labels.join(' / ')} (ΔE ${closest.distance.toFixed(2)})`
+  );
+});
+
+test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', () => {
+  const info = brainStructureInfo({
+    bx_id: 62,
+    bx_cat: 'cortex',
+    bx_label: 'Cingulate gyrus and sulcus (Middle anterior part)',
+    bx_side: 'left',
+    bx_region: 'Limbic lobe',
+  });
+  assert.equal(info.nameJa, '帯状回・帯状溝（前中部／aMCC）');
+  assert.deepEqual(info.hierarchyJa, ['左大脳半球', '辺縁葉', '帯状皮質']);
+  assert.equal(info.preferredView, 'left-medial');
+  assert.match(info.noteJa, /前部帯状皮質（ACC）ではありません/);
+
+  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
+  const jsonLength = bytes.readUInt32LE(12);
+  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
+  const labels = gltf.nodes.map((node) => node.extras?.bx_label).filter(Boolean);
+  assert.ok(labels.includes('Cingulate gyrus and sulcus (Middle anterior part)'));
+  assert.ok(!labels.includes('Anterior cingulate cortex'), 'the UI must not invent absent geometry');
+});
+
+test('hierarchy does not place diencephalic or midbrain structures in a cerebral hemisphere', () => {
+  const subthalamic = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Subthalamic nucleus', bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  const nigra = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Substantia nigra', bx_side: 'left', bx_region: 'Mesencephalon',
+  });
+  assert.deepEqual(subthalamic.hierarchyJa, ['左間脳', '間脳', '大脳基底核']);
+  assert.deepEqual(nigra.hierarchyJa, ['左中脳', '中脳', '大脳基底核']);
+});
+
+test('fine hierarchy keeps epithalamus and cerebellar vermis distinct', () => {
+  const habenula = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Habenula', bx_side: 'median', bx_region: 'Diencephalon',
+  });
+  const culmen = brainStructureInfo({
+    bx_cat: 'cerebellum', bx_label: 'Culmen', bx_side: 'median', bx_region: 'Cerebellum',
+  });
+  assert.deepEqual(habenula.hierarchyJa, ['正中', '間脳', '視床上部']);
+  assert.deepEqual(culmen.hierarchyJa, ['正中', '小脳', '小脳虫部']);
+});
+
+test('capitalized brainstem nuclei and cerebellar peduncles keep their fine families', () => {
+  for (const label of ['Nucleus of oculomotor nerve', 'Nucleus of abducens nerve']) {
+    const info = brainStructureInfo({
+      bx_cat: 'brainstem', bx_label: label, bx_side: 'median', bx_region: 'Brainstem',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Brainstem nuclei');
+    assert.equal(info.hierarchyJa.at(-1), '脳幹神経核');
+  }
+  const floccularPeduncle = brainStructureInfo({
+    bx_cat: 'cerebellum', bx_label: 'Peduncle of flocculus', bx_side: 'left', bx_region: 'Cerebellum',
+  });
+  assert.equal(floccularPeduncle.hierarchy.at(-1), 'Cerebellar peduncles');
+  assert.equal(floccularPeduncle.hierarchyJa.at(-1), '小脳脚');
+});
+
 const FIXTURE_STRUCTURES = [
   structure(212, 'Middle temporal gyrus', 'left', 'cortex', 'Temporal lobe', [1.1, -0.3, 0.25]),
   structure(213, 'Middle temporal gyrus', 'right', 'cortex', 'Temporal lobe', [-1.1, -0.3, 0.25]),
@@ -212,6 +402,31 @@ function colorOf(scene, label, side) {
   return find(scene, label, side).material.color.getHexString();
 }
 
+function hslOf(mesh) {
+  return mesh.material.color.getHSL({ h: 0, s: 0, l: 0 });
+}
+
 function settle(scene) {
   for (let i = 0; i < 240; i += 1) scene.update(1 / 60);
+}
+
+function hexToLab(hex) {
+  const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255);
+  const [red, green, blue] = channels.map((value) => (
+    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  ));
+  const xyz = [
+    red * 0.4124564 + green * 0.3575761 + blue * 0.1804375,
+    red * 0.2126729 + green * 0.7151522 + blue * 0.072175,
+    red * 0.0193339 + green * 0.119192 + blue * 0.9503041,
+  ];
+  const transform = (value) => (
+    value > 216 / 24389 ? Math.cbrt(value) : (24389 / 27 * value + 16) / 116
+  );
+  const [x, y, z] = xyz.map((value, index) => transform(value / [0.95047, 1, 1.08883][index]));
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+
+function cie76(left, right) {
+  return Math.hypot(...left.map((value, index) => value - right[index]));
 }
