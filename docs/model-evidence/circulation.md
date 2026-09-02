@@ -3,6 +3,7 @@
 | | |
 | --- | --- |
 | **Implementation** | [`src/models/circulation.js`](../../src/models/circulation.js) |
+| **Landing 3D view** | [`src/app/landingCirculationViewport.js`](../../src/app/landingCirculationViewport.js) |
 | **Registry** | [`src/models/evidence.js`](../../src/models/evidence.js) (`CIRCULATION_EVIDENCE`) |
 | **Model card** | [`docs/model-cards/circulation.md`](../model-cards/circulation.md) |
 | **External tests** | [`tests/circulation-physiology.test.js`](../../tests/circulation-physiology.test.js) |
@@ -125,6 +126,12 @@ Inceのhaemodynamic coherenceの整理どおり、macrohemodynamicsの改善と�
 | cyan distributed bands / distal calibre | SVRが分布した変数であること、その相対変化 | 1か所の狭窄、実測血管径、Poiseuille計算 |
 | yellow cargo particles | 固定CaO₂下の計算上のglobal DO₂の相対変化 | 組織PO₂、酸素抽出、VO₂、臓器別灌流 |
 | neutral tissue | このモデルは組織酸素化を計算しないこと | 組織が正常であるという所見 |
+
+トップページの循環表示は、別の模式図や別の数値写像ではありません。
+`landingCirculationViewport.js` が本編と同じ `CirculationScene` を直接マウントし、
+基準・輸液反応・DOBの選択も同じ `setModelControl('intervention', ...)` に渡します。
+画面全体の背景を流れる粒子は装飾であり、赤血球数、流量、酸素運搬などの医学値を
+表しません。
 
 ## 参考文献
 

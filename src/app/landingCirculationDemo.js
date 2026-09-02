@@ -99,37 +99,18 @@ export function createLandingCirculationDemo() {
   const metricNodes = new Map();
   const explanationEn = el('span', { class: 'lang-en' });
   const explanationJa = el('span', { class: 'lang-ja' });
-
-  const particles = Array.from({ length: 24 }, (_, index) => {
-    const particle = el('span', {
-      class: `landing-demo-particle${index % 7 === 0 ? ' is-oxygen' : ''}`,
-      'aria-hidden': 'true',
-    });
-    particle.style.setProperty('--particle-index', String(index));
-    // Reduced-motion mode keeps eight particles still. Give those eight an
-    // even distribution across the rendered vessel rather than leaving them
-    // bunched beside the pump.
-    particle.style.setProperty('--particle-still-left', `${6 + (index % 8) * 12.5}%`);
-    return particle;
+  const viewport = el('div', {
+    class: 'landing-demo-viewport',
+    role: 'img',
+    'aria-label': 'Interactive 3D circulation model / 操作できる循環3Dモデル',
   });
-
-  const diagram = el('div', { class: 'landing-demo-diagram', 'aria-hidden': 'true' }, [
-    el('div', { class: 'landing-demo-pump' }, [
-      el('span', { class: 'landing-demo-pump-ring' }),
-      el('strong', { text: 'CO' }),
-      el('small', { text: 'FLOW' }),
-    ]),
-    el('div', { class: 'landing-demo-vessel' }, [
-      ...particles,
-      el('div', { class: 'landing-demo-resistance' }, [
-        el('span'), el('span'), el('span'),
-      ]),
-    ]),
-    el('div', { class: 'landing-demo-endpoint' }, [
-      el('strong', { text: 'DO₂' }),
-      el('small', { text: 'GLOBAL' }),
-    ]),
+  const viewportLoading = el('div', { class: 'landing-demo-loading', 'aria-hidden': 'true' }, [
+    el('span'),
+    ...dual('Loading 3D model', '3Dモデルを読み込み中'),
   ]);
+  let mountedViewport = null;
+  let selectedIntervention = CIRCULATION_INTERVENTIONS.BASELINE;
+  let mountPromise = null;
 
   const metricElements = ['map', 'co', 'do2'].map((id) => {
     const label = el('span', { class: 'landing-demo-metric-label' });
@@ -147,52 +128,65 @@ export function createLandingCirculationDemo() {
       dataset: { intervention: state.value },
       'aria-pressed': 'false',
       on: { click: () => update(state.value) },
-    }, dual(state.label, state.labelJa));
+    }, [
+      el('span', { class: 'landing-demo-state-index', text: String(buttons.size + 1).padStart(2, '0') }),
+      el('span', { class: 'landing-demo-state-label' }, dual(state.label, state.labelJa)),
+    ]);
     buttons.set(state.value, button);
     return button;
   });
 
   const element = el('article', { class: 'landing-demo', 'aria-labelledby': 'landing-demo-title' }, [
-    el('header', { class: 'landing-demo-header' }, [
-      el('div', {}, [
-        el('p', { class: 'landing-demo-kicker' }, dual('LIVE MODEL 01  /  CIRCULATION', 'LIVE MODEL 01  /  循環')),
-        el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' }, dual(
-          'MAP is 70. Is circulation maintained?',
-          'MAP 70。循環は保たれている？'
+    el('div', { class: 'landing-demo-stage' }, [
+      viewport,
+      viewportLoading,
+      el('header', { class: 'landing-demo-header' }, [
+        el('div', {}, [
+          el('p', { class: 'landing-demo-kicker' }, dual('LIVE 3D  /  CIRCULATION', 'LIVE 3D  /  循環')),
+          el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' }, dual(
+            'MAP 70. Is flow maintained?',
+            'MAP 70。血流は保たれている？'
+          )),
+        ]),
+        el('span', { class: 'landing-demo-case' }, dual('CONCEPT MODEL', '概念モデル')),
+      ]),
+      el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
+        el('span', { text: '↔' }),
+        ...dual('Drag to rotate · Scroll to zoom', 'ドラッグで回転・スクロールで拡大'),
+      ]),
+    ]),
+    el('div', { class: 'landing-demo-workbench' }, [
+      el('fieldset', { class: 'landing-demo-controls' }, [
+        el('legend', {}, dual('Change the model', 'モデルを切り替える')),
+        el('div', { class: 'landing-demo-state-grid' }, stateButtons),
+      ]),
+      el('div', {
+        class: 'landing-demo-readout',
+        role: 'status',
+        'aria-live': 'polite',
+        'aria-atomic': 'true',
+      }, [
+        el('div', { class: 'landing-demo-metrics' }, metricElements),
+        el('p', { class: 'landing-demo-explanation' }, [explanationEn, explanationJa]),
+      ]),
+      el('footer', { class: 'landing-demo-footer' }, [
+        el('span', { class: 'landing-demo-boundary' }, dual(
+          'Illustrative response. Not a dose or patient prediction.',
+          '反応量は例示です。投与量や患者反応の予測ではありません。'
+        )),
+        el('a', { class: 'landing-demo-link landing-cta', href: '#/circulation' }, dual(
+          'Open full-screen model ↗',
+          '全画面の循環モデルを開く ↗'
         )),
       ]),
-      el('span', { class: 'landing-demo-case' }, dual('CONSTRUCTED CASE', '概念症例')),
-    ]),
-    diagram,
-    el('fieldset', { class: 'landing-demo-controls' }, [
-      el('legend', {}, dual('Compare one state', '状態を1つ選ぶ')),
-      el('div', { class: 'landing-demo-state-grid' }, stateButtons),
-    ]),
-    el('div', {
-      class: 'landing-demo-metrics',
-      role: 'status',
-      'aria-live': 'polite',
-      'aria-atomic': 'true',
-    }, metricElements),
-    el('p', { class: 'landing-demo-explanation' }, [explanationEn, explanationJa]),
-    el('footer', { class: 'landing-demo-footer' }, [
-      el('span', { class: 'landing-demo-boundary' }, dual(
-        'Illustrative response, not a dose or patient prediction.',
-        '反応量は例示です。投与量・患者反応の予測ではありません。'
-      )),
-      el('a', { class: 'landing-demo-link landing-cta', href: '#/circulation' }, dual(
-        'Open the full model ↗',
-        '根拠と限界を含めて開く ↗'
-      )),
     ]),
   ]);
 
   function update(intervention) {
     const snapshot = circulationDemoSnapshot(intervention);
+    selectedIntervention = snapshot.intervention;
     element.dataset.intervention = snapshot.intervention;
-    element.style.setProperty('--demo-flow-duration', `${snapshot.flowDurationSeconds.toFixed(2)}s`);
-    element.style.setProperty('--demo-vessel-calibre', `${snapshot.vesselCalibrePx.toFixed(1)}px`);
-    element.style.setProperty('--demo-resistance-opacity', snapshot.resistanceOpacity.toFixed(2));
+    mountedViewport?.setIntervention(snapshot.intervention);
 
     for (const [value, button] of buttons) {
       const selected = value === snapshot.intervention;
@@ -217,5 +211,40 @@ export function createLandingCirculationDemo() {
   }
 
   update(CIRCULATION_INTERVENTIONS.BASELINE);
-  return { element, setIntervention: update };
+
+  async function mount() {
+    if (mountedViewport || mountPromise) return mountPromise;
+    if (typeof window?.requestAnimationFrame !== 'function') return null;
+
+    viewport.dataset.loading = 'true';
+    mountPromise = import('./landingCirculationViewport.js')
+      .then(({ mountLandingCirculationViewport }) => {
+        mountedViewport = mountLandingCirculationViewport(viewport);
+        mountedViewport.setIntervention(selectedIntervention);
+        viewport.dataset.loading = 'false';
+        element.dataset.viewport = 'ready';
+        return mountedViewport;
+      })
+      .catch((error) => {
+        console.error('landing 3D preview', error);
+        viewport.dataset.loading = 'false';
+        element.dataset.viewport = 'unavailable';
+        viewportLoading.replaceChildren(...dual(
+          '3D preview unavailable — open the model instead.',
+          '3Dプレビューを表示できません。モデル本体を開いてください。'
+        ));
+        return null;
+      });
+    return mountPromise;
+  }
+
+  return {
+    element,
+    setIntervention: update,
+    mount,
+    destroy() {
+      mountedViewport?.destroy();
+      mountedViewport = null;
+    },
+  };
 }

@@ -28,56 +28,56 @@ const presentation = (question, questionJa, signals, signalsJa) =>
 
 export const LANDING_MODEL_PRESENTATION = Object.freeze({
   circulation: presentation(
-    'MAP is 70. What happened to flow and calculated oxygen delivery?',
-    'MAP 70。血流と計算上の酸素運搬は、どうなっているか。',
+    'Compare MAP, cardiac output and global DO₂ across baseline, fluid response and dobutamine.',
+    '基準・輸液反応・DOBで、MAP・心拍出量・全身DO₂を比較。',
     ['MAP', 'CO', 'DO₂'],
     ['血圧', '血流', '酸素運搬']
   ),
   'heart-failure': presentation(
-    'How do loading, the PV loop and congestion move together?',
-    '負荷、PVループ、うっ血は、どう連動するか。',
+    'Change preload, afterload and contractility; watch the PV loop and congestion move with them.',
+    '前負荷・後負荷・収縮性を変え、PVループと肺うっ血を確認。',
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
   ),
   'brain-anatomy': presentation(
-    'Where are the insula and deep nuclei beneath the cortical surface?',
-    '皮質の奥にある島皮質と深部核は、どこにあるか。',
+    'Select gyri and sulci, then reveal the insula and deep nuclei in place.',
+    '脳回・脳溝を選び、島皮質と深部核を位置関係のまま表示。',
     ['CORTEX', 'INSULA', 'DEEP NUCLEI'],
     ['皮質', '島皮質', '深部核']
   ),
   'amyloid-beta': presentation(
-    'How can soluble and aggregated Aβ species coexist?',
-    '可溶性Aβと凝集したAβは、どう共存するか。',
+    'Move through one aggregation state from Aβ monomer to plaque.',
+    'Aβがモノマーからプラークへ凝集する過程を操作。',
     ['SOLUBLE', 'ASSEMBLIES', 'DEPOSITS'],
     ['可溶性種', '凝集体', '沈着']
   ),
   'renal-filtration': presentation(
-    'Which mechanism makes the bedside urine indices invert?',
-    'どの機序で、尿指標の向きが入れ替わるか。',
+    'Change glomerular Starling forces and tubular handling in the same solve.',
+    '糸球体のStarling平衡と尿細管輸送を、同じ計算で操作。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
   ),
   'copd-hyperinflation': presentation(
-    'Why can harder expiration stop producing more flow?',
-    'なぜ呼気努力を強めても、流量が増えなくなるのか。',
+    'Compare time constants, air trapping and expiratory flow limitation across 12 lung units.',
+    '12の肺単位で、時定数・air trapping・呼気流量制限を比較。',
     ['TIME CONSTANT', 'TRAPPING', 'FLOW LIMIT'],
     ['時定数', 'air trapping', '流量制限']
   ),
   'asthma-heterogeneity': presentation(
-    'Why can one uniform stimulus create patchy ventilation?',
-    'なぜ均一な刺激から、まだらな換気低下が生じるのか。',
+    'Apply one bronchoconstrictor stimulus and inspect the resulting patchy ventilation.',
+    '分岐気道の抵抗を変え、換気の偏りが生じる過程を表示。',
     ['AIRWAY R', 'NETWORK', 'VENTILATION'],
     ['気道抵抗', 'ネットワーク', '換気']
   ),
   'portal-hypertension': presentation(
-    'Why can portal pressure persist after collaterals open?',
-    '側副血行路が開いても、なぜ門脈圧は残るのか。',
+    'Change hepatic resistance and collateral flow; follow portal pressure.',
+    '肝抵抗と側副血行路を変え、門脈圧の変化を確認。',
     ['HEPATIC R', 'COLLATERAL', 'PORTAL P'],
     ['肝抵抗', '側副路', '門脈圧']
   ),
   'hepatorenal-syndrome': presentation(
-    'How far can circulatory change alone reduce filtration?',
-    '循環の変化だけで、濾過はどこまで落ちるのか。',
+    'Follow circulatory change through renal vascular tone to GFR.',
+    '肝循環の変化から、腎血管緊張とGFR低下までを表示。',
     ['EFFECTIVE VOLUME', 'RENAL TONE', 'GFR'],
     ['有効循環血液量', '腎血管緊張', 'GFR']
   ),

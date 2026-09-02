@@ -145,9 +145,10 @@ test('landing: switching to reduced motion cancels the already queued frame', ()
   field.destroy();
 });
 
-test('landing: page chrome stays WebGL-independent and keeps trust axes separate', () => {
+test('landing: the shell stays readable while the hero dynamically mounts the real 3D scene', () => {
   const landing = read('src/app/Landing.js');
   const demo = read('src/app/landingCirculationDemo.js');
+  const viewport = read('src/app/landingCirculationViewport.js');
   const flow = read('src/app/landingFlowField.js');
   const css = read('src/styles/landing.css');
 
@@ -155,18 +156,19 @@ test('landing: page chrome stays WebGL-independent and keeps trust axes separate
     assert.doesNotMatch(source, /from ['"]three['"]|\/scenes\//);
   }
   assert.match(demo, /solveCirculation/);
+  assert.match(demo, /import\('\.\/landingCirculationViewport\.js'\)/);
+  assert.match(viewport, /CirculationScene/);
+  assert.match(viewport, /Viewer/);
+  assert.match(viewport, /setModelControl\('intervention'/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
-  assert.doesNotMatch(landing, /正確な基本モデル|レビュー済みモデルから/);
+  assert.match(landing, /病態生理を、3Dで動かす。/);
+  assert.doesNotMatch(landing, /病態生理は、|モデルも、根拠も、開いておく。|正確な基本モデル|レビュー済みモデルから/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
-  assert.match(css, /to\s*{\s*left:\s*calc\(100% - 8px\)/);
-  assert.doesNotMatch(css, /@keyframes landing-flow[\s\S]{0,180}\d+vw/);
-  assert.match(css, /min-height:\s*44px/);
+  assert.match(css, /min-height:\s*46px/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
-  assert.match(
-    css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.landing-demo-vessel,[\s\S]*?\.landing-demo-resistance,[\s\S]*?transition:\s*none/
-  );
+  assert.match(css, /\.landing-demo-viewport canvas/);
+  assert.match(css, /\.landing-demo-state\.is-selected/);
 });
 
 test('landing: the plain-DOM route mounts every model and its working hero controls', () => {
@@ -180,8 +182,10 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
     const cards = findByClass(mounted.element, 'landing-scene-card');
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const values = findByClass(mounted.element, 'landing-demo-metric-value');
+    const viewports = findByClass(mounted.element, 'landing-demo-viewport');
 
     assert.equal(cards.length, PUBLIC_SCENES.length);
+    assert.equal(viewports.length, 1);
     assert.equal(controls.length, 3);
     assert.equal(controls[0].getAttribute('aria-pressed'), 'true');
     assert.deepEqual(values.map((node) => node.textContent), ['70', '3.6', '510']);

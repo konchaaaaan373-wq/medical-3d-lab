@@ -77,6 +77,11 @@ particles cue oxygen carried per minute. The model outputs themselves are not
 altered for visual effect. Tissue remains neutral because tissue oxygenation is
 not calculated.
 
+The landing page mounts this same `CirculationScene` in its 3D workbench. It
+does not maintain a second anatomical scene or a second medical presentation
+mapping. The ambient particles behind the page are decorative and are not a
+circulation output.
+
 ## 11. Known failure modes
 
 - A lumped steady-state relation omits pulsatility, compliance and wave reflection.
