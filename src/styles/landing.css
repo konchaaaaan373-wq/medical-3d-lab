@@ -426,6 +426,10 @@ html[data-route='landing'] {
   text-align: right;
 }
 
+.landing-demo-drag-hint[hidden] {
+  display: none;
+}
+
 .landing-demo-drag-hint > span:first-child {
   color: var(--landing-cyan);
   font-size: 15px;
