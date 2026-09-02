@@ -321,6 +321,19 @@ state is a cache of it. Reconciliation only ever writes the cache.
 | --- | --- | --- |
 | `status`, `entitlement`, `period` | error / warning | Repaired from Stripe |
 | `missing_locally` — a live Stripe subscription with no row | error | Repaired. Somebody is paying with no access |
+
+To find that last one the pass has to ask Stripe what *Stripe* has, not only
+about the subscriptions it already knows of. It lists up to
+`MAX_LISTED_PAGES` × 100 subscriptions per run and says so if it hits the
+ceiling. Fetching only the local ids left that branch — the worst state this
+endpoint exists to catch — unreachable in production while it had a test.
+
+Both sides read the period through `subscriptionPeriodEnd`, the same helper
+that writes the local row. Reading `current_period_end` off the subscription
+directly looked equivalent and is not: newer Stripe API versions carry it on
+the subscription *item*. The comparison has to read Stripe the way the writer
+does, or it is comparing two different questions and inventing drift.
+
 | `missing_in_stripe` — a live row Stripe has never heard of | error | **Escalated.** One empty read is not enough evidence to destroy the record of a payment |
 | `unsupported_price` | error | **Escalated.** Somebody changed a subscription in the dashboard to something we do not sell |
 

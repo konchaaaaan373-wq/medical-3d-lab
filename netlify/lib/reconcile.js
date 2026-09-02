@@ -13,7 +13,7 @@
  * subscription.** Local state is a cache of it. Reconciliation therefore only
  * ever proposes changes to local rows, never to Stripe.
  */
-import { planForPrice } from './billing.js';
+import { planForPrice, subscriptionPeriodEnd } from './billing.js';
 
 /** Statuses in which a subscription is still live for entitlement purposes. */
 export const NON_TERMINAL = Object.freeze([
@@ -61,7 +61,17 @@ export function normaliseStripe(subscription) {
     status: subscription?.status ?? null,
     priceId,
     entitlement: planForPrice(priceId),
-    currentPeriodEnd: periodIso(subscription?.current_period_end),
+    // Through `subscriptionPeriodEnd`, which is also what writes the local
+    // row. Reading `current_period_end` directly here looked equivalent and
+    // was not: newer Stripe API versions carry it on the subscription *item*,
+    // and that helper falls back to it. On such a version every live
+    // subscription would have shown a permanent period disagreement, been
+    // "repaired" by writing the same value back, and raised a drift alert on
+    // every scheduled run — reconciliation reporting a fault it had invented.
+    //
+    // The rule this is an instance of: the comparison must read Stripe the
+    // same way the writer does, or it is comparing two different questions.
+    currentPeriodEnd: subscriptionPeriodEnd(subscription),
     cancelAtPeriodEnd: Boolean(subscription?.cancel_at_period_end),
   };
 }

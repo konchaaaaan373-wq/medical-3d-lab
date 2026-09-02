@@ -100,7 +100,7 @@ export function createLanding({ ui, accountButton = null }) {
       el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
 
-    el('section', { class: 'landing-hero', id: 'content', tabindex: '-1' }, [
+    el('section', { class: 'landing-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('div', { class: 'landing-hero-copy' }, [
         el('div', { class: 'landing-eyebrow' }, [
           el('span', { class: 'lang-en', text: 'Interactive medical mechanisms' }),

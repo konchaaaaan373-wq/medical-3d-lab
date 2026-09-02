@@ -3,7 +3,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { LEARNING, METRICS, SCOPE, SITUATIONS, situation } from '../src/data/renalFiltration.js';
-import { PRESET_CONTROLS, PRESET_IDS, getState, presetState } from '../src/models/renalFiltration.js';
+import {
+  DEFAULT_CONTROLS,
+  PRESET_CONTROLS,
+  PRESET_IDS,
+  getState,
+  presetState,
+} from '../src/models/renalFiltration.js';
+import { CONTROLS } from '../src/data/renalFiltration.js';
 
 const card = readFileSync(new URL('../docs/model-cards/renal-filtration.md', import.meta.url), 'utf8');
 const dossier = readFileSync(new URL('../docs/model-evidence/renal-filtration.md', import.meta.url), 'utf8');
@@ -158,4 +165,38 @@ test('situations: each one is reachable and produces a distinct state', () => {
   const gfrs = SITUATIONS.map((entry) => presetState(entry.id).gfrMlPerMin);
   assert.equal(new Set(gfrs.map((value) => value.toFixed(1))).size, SITUATIONS.length, 'two situations coincide');
   assert.equal(situation('nonsense').id, SITUATIONS[0].id, 'an unknown id falls back rather than throwing');
+});
+
+
+test('controls: a slider without a format cannot crash on the first drag', () => {
+  // `ModelControls` documents `format` as optional. It called it
+  // unconditionally, so the first scene to omit one took the whole view down —
+  // and the first fix missed the `sync()` path, which App.js calls after every
+  // single change, so the crash simply moved from build time to first drag.
+  const source = readFileSync(new URL('../src/components/ModelControls.js', import.meta.url), 'utf8');
+  assert.equal(
+    (source.match(/\.format\(/g) ?? []).length,
+    0,
+    'a read-out still calls control.format directly'
+  );
+  // Every place that writes a read-out goes through the helper — once
+  // immediately, or once into a local that is then called.
+  const uses = (source.match(/formatterFor\(/g) ?? []).length;
+  assert.ok(uses >= 4, `expected the definition plus a use per call site, found ${uses}`);
+});
+
+test('controls: every control this scene declares is one the model accepts', () => {
+  for (const control of CONTROLS) {
+    if (control.kind === 'choice') continue;
+    assert.ok(control.id in DEFAULT_CONTROLS, `${control.id} is not a model control`);
+    assert.ok(Number.isFinite(control.min) && Number.isFinite(control.max), `${control.id} has no range`);
+    assert.ok(control.min < control.max, `${control.id}: empty range`);
+    // The reference value has to sit inside the range the slider offers, or
+    // the control opens somewhere it cannot return to.
+    const reference = DEFAULT_CONTROLS[control.id];
+    assert.ok(
+      reference >= control.min && reference <= control.max,
+      `${control.id}: the default ${reference} is outside [${control.min}, ${control.max}]`
+    );
+  }
 });

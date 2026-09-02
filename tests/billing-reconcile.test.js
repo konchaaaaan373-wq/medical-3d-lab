@@ -208,3 +208,36 @@ test('endpoint: only compares subscriptions that are still live', () => {
 test('endpoint: a clean run still reports, so silence is not mistaken for health', () => {
   assert.match(endpoint, /reconcile_clean/);
 });
+
+test('endpoint: it asks Stripe what Stripe has, not only about what we know of', () => {
+  // Fetching only the subscriptions already present locally made
+  // `missing_locally` — somebody paying and getting no access — unreachable in
+  // production while having a branch and a test. A reconciliation that
+  // reported `clean` precisely when it mattered most.
+  assert.match(endpoint, /subscriptions\?\$\{query\}/);
+  assert.match(endpoint, /starting_after/, 'a single page is not the account');
+  assert.match(endpoint, /MAX_LISTED_PAGES/, 'and an unbounded scan is not a serverless function');
+  assert.match(endpoint, /has_more/);
+});
+
+test('endpoint: hitting the listing ceiling is reported, not swallowed', () => {
+  assert.match(endpoint, /truncated/);
+  assert.match(endpoint, /outgrown this pass/);
+});
+
+test('reconcile: the period is read from Stripe the same way the writer reads it', () => {
+  // Reading `current_period_end` directly looked equivalent to
+  // `subscriptionPeriodEnd` and was not: newer API versions carry it on the
+  // subscription item, and only the helper falls back to it. Every live
+  // subscription would have shown a permanent phantom drift, been "repaired"
+  // by writing the same value back, and raised an alert every scheduled run.
+  const onSubscription = stripeSub({ current_period_end: PERIOD_END });
+  const onItem = {
+    ...stripeSub(),
+    current_period_end: undefined,
+    items: { data: [{ price: { id: 'price_patient' }, current_period_end: PERIOD_END }] },
+  };
+  assert.equal(normaliseStripe(onSubscription).currentPeriodEnd, PERIOD_END_ISO);
+  assert.equal(normaliseStripe(onItem).currentPeriodEnd, PERIOD_END_ISO);
+  assert.deepEqual(findDrift([localRow()], [onItem]), [], 'a period on the item is not drift');
+});

@@ -161,7 +161,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
     rows.set(control.id, {
       setValue(value, definition = control) {
         input.value = String(value);
-        readout.textContent = definition.format(value);
+        readout.textContent = formatterFor(definition)(value);
       },
     });
     return el('label', { class: 'model-control' }, [

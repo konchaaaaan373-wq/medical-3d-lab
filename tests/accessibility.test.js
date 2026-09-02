@@ -141,9 +141,27 @@ test('focus: every reading surface offers a way past its navigation', () => {
   assert.match(domSource, /export const skipLink/);
   for (const path of ['src/app/Landing.js', 'src/app/Trust.js', 'src/app/Legal.js', 'src/app/Explorer.js']) {
     const source = read(path);
-    assert.match(source, /skipLink\(\)/, `${path} has no skip link`);
-    assert.match(source, /id: 'content', tabindex: '-1'|sections\[0\]\.id = 'content'/, `${path} has no skip target`);
+    assert.match(source, /skipLink\(/, `${path} has no skip link`);
+    assert.match(source, /data-skip-target/, `${path} marks no skip target`);
   }
+});
+
+test('focus: the skip link moves focus itself and never changes the hash', () => {
+  // `#content` is not `#/content`. This product routes on the hash, so an
+  // unhandled skip link resolved to a *scene* and reloaded the page into the
+  // default 3D model — an accessibility affordance throwing the reader out of
+  // the page they were reading.
+  assert.match(domSource, /event\.preventDefault\(\)/);
+  assert.match(domSource, /target\.focus\(\{ preventScroll: true \}\)/);
+});
+
+test('focus: a skip target never steals an anchor another link depends on', () => {
+  // The Explorer's sections already carry `system-<id>`, which their own jump
+  // pills scroll to. Overwriting the first one made the first system in the
+  // catalogue the one system you could not jump to.
+  const explorer = read('src/app/Explorer.js');
+  assert.ok(!/sections\[0\]\.id = /.test(explorer), 'the skip target must not rename a section');
+  assert.match(explorer, /skipTargetId = sections\[0\]\?\.id/);
 });
 
 test('focus: the skip target does not land on the navigation it was meant to skip', () => {
@@ -159,7 +177,9 @@ test('focus: the skip target does not land on the navigation it was meant to ski
 });
 
 test('focus: a skip target does not draw a focus ring around half the page', () => {
-  assert.match(readingCss, /\[id='content'\]\[tabindex='-1'\]:focus[\s\S]*?outline: none/);
+  // Keyed on the marker rather than on the id, so a surface whose skip target
+  // has to keep its own id still gets the rule.
+  assert.match(readingCss, /\[data-skip-target\]:focus[\s\S]*?outline: none/);
 });
 
 // --- structure -------------------------------------------------------------

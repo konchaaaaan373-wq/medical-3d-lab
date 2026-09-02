@@ -1,4 +1,3 @@
-import { PUBLIC_SCENES } from '../catalog/index.js';
 import { el } from '../utils/dom.js';
 import { redactText } from '../telemetry/redact.js';
 

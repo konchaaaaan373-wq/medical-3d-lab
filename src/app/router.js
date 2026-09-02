@@ -28,6 +28,28 @@ const LEGAL_ALIASES = new Set(LEGAL_SLUGS);
 export const slugOf = (hash = '') => String(hash).replace(/^#\/?/, '').trim();
 
 /**
+ * Is this hash an in-page anchor rather than a route?
+ *
+ * Every route in this product is written `#/something`. A hash without that
+ * slash — `#content` for a skip link, `#system-renal` for an explorer jump —
+ * addresses an element on the page that is already open, and changing it must
+ * not be read as navigation.
+ *
+ * This existed as one hard-coded `startsWith('#system-')` check in the
+ * explorer's own handler, which is why the skip link broke when it was added:
+ * `#content` fell through to `resolveRoute`, resolved to a *scene*, and every
+ * surface's hashchange handler reloaded into the default 3D model. An
+ * accessibility affordance that throws the reader out of the page is worse
+ * than not having one.
+ *
+ * @param {string} hash
+ */
+export function isInPageAnchor(hash = '') {
+  const value = String(hash);
+  return value.startsWith('#') && !value.startsWith('#/');
+}
+
+/**
  * @param {string} hash
  * @returns {{kind:'landing'}|{kind:'explorer'}|{kind:'lab'}|{kind:'trust'}
  *   |{kind:'legal',docId:string}|{kind:'scene',sceneId:string}}

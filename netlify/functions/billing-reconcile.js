@@ -21,6 +21,14 @@ import { notify } from '../lib/alerts.js';
 import { json, stripeGet, supabaseAdmin, upsertSubscription } from '../lib/billing.js';
 import { NON_TERMINAL, findDrift, reconciliationPlan } from '../lib/reconcile.js';
 
+/**
+ * How many pages of 100 subscriptions one run will list from Stripe.
+ *
+ * A ceiling rather than an unbounded scan, because this runs on a schedule in
+ * a serverless function. Hitting it is reported, not swallowed.
+ */
+const MAX_LISTED_PAGES = 5;
+
 /** Constant-time compare, so the token cannot be guessed a character at a time. */
 function tokenMatches(provided, expected) {
   if (!expected || !provided) return false;
@@ -52,14 +60,50 @@ export default async (request) => {
 
     // Read each one back from Stripe. A subscription Stripe no longer has
     // returns nothing and shows up as `missing_in_stripe`.
-    const stripeSubscriptions = [];
+    const byId = new Map();
     for (const row of localRows) {
       try {
-        stripeSubscriptions.push(await stripeGet(`subscriptions/${row.stripe_subscription_id}`));
+        const subscription = await stripeGet(`subscriptions/${row.stripe_subscription_id}`);
+        if (subscription?.id) byId.set(subscription.id, subscription);
       } catch {
         // Left out deliberately: absence is the signal `findDrift` reads.
       }
     }
+
+    // And then list Stripe's own live subscriptions.
+    //
+    // Without this the comparison only ever asked Stripe about subscriptions
+    // it already knew of, so `missing_locally` — a Stripe subscription with no
+    // local row, which is somebody paying and getting no access — could never
+    // be found. That is the single worst state this endpoint exists to catch,
+    // it had a branch and a test, and in production it was unreachable: a
+    // reconciliation that reported `clean` precisely when it mattered most.
+    //
+    // Bounded rather than exhaustive. `MAX_LISTED_PAGES` pages of 100 covers a
+    // beta comfortably; if a run ever hits the ceiling it says so rather than
+    // quietly checking a prefix of the account.
+    let cursor = null;
+    let pages = 0;
+    let truncated = false;
+    for (; pages < MAX_LISTED_PAGES; pages += 1) {
+      const query = new URLSearchParams({ status: 'all', limit: '100' });
+      if (cursor) query.set('starting_after', cursor);
+      const page = await stripeGet(`subscriptions?${query}`);
+      const data = page?.data ?? [];
+      for (const subscription of data) {
+        if (subscription?.id && !byId.has(subscription.id)) byId.set(subscription.id, subscription);
+      }
+      cursor = data.length ? data[data.length - 1].id : null;
+      if (!page?.has_more || !cursor) break;
+      if (pages + 1 === MAX_LISTED_PAGES) truncated = true;
+    }
+    if (truncated) {
+      await notify('reconcile_drift', {
+        detail: `subscription listing stopped at ${MAX_LISTED_PAGES} pages; the account has outgrown this pass`,
+      });
+    }
+
+    const stripeSubscriptions = [...byId.values()];
 
     const drift = findDrift(localRows, stripeSubscriptions);
     const plan = reconciliationPlan(drift);
@@ -79,7 +123,6 @@ export default async (request) => {
 
     let repaired = 0;
     if (!dryRun) {
-      const byId = new Map(stripeSubscriptions.map((subscription) => [subscription.id, subscription]));
       for (const id of plan.subscriptionIds) {
         const subscription = byId.get(id);
         if (!subscription) continue;

@@ -145,7 +145,7 @@ export function createTrust({ ui, accountButton = null }) {
       ]),
       el('div', { class: 'trust-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
-    el('section', { class: 'trust-hero', id: 'content', tabindex: '-1' }, [
+    el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('p', { class: 'trust-kicker' }, [
         el('span', { class: 'lang-en', text: 'Medical model trust' }),
         el('span', { class: 'lang-ja', text: '医学モデルの信頼性' }),

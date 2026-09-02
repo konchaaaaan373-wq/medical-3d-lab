@@ -49,15 +49,42 @@ function applyLanguage(node, className) {
 /**
  * A skip link, for surfaces that put navigation before their content.
  *
- * Visible only when focused. The target must be an id on the page's `main`.
+ * Visible only when focused. It keeps `href` so it is a real link to assistive
+ * technology and to a reader with JavaScript off, but **it moves focus itself
+ * and prevents the default**, so the hash never changes.
  *
- * @param {string} targetId
+ * That is not tidiness. This product routes on the hash, and `#content` is not
+ * `#/content`: it resolved to a scene, so following the skip link reloaded the
+ * page into the default 3D model. An accessibility affordance that throws the
+ * reader out of the page they were reading is worse than not having one.
+ * `router.isInPageAnchor` is the other half of that fix.
+ *
+ * Moving focus is what a skip link is *for* in any case — scrolling alone
+ * leaves the next Tab back at the top of the navigation it just skipped.
+ *
+ * @param {string} targetId an id on the page, on the first element of content
  */
 export const skipLink = (targetId = 'content') =>
-  el('a', { class: 'skip-link', href: `#${targetId}` }, [
-    el('span', { class: 'lang-en', text: 'Skip to content' }),
-    el('span', { class: 'lang-ja', text: '本文へ移動' }),
-  ]);
+  el(
+    'a',
+    {
+      class: 'skip-link',
+      href: `#${targetId}`,
+      on: {
+        click: (event) => {
+          const target = document.getElementById(targetId);
+          if (!target) return;
+          event.preventDefault();
+          target.focus({ preventScroll: true });
+          target.scrollIntoView({ block: 'start' });
+        },
+      },
+    },
+    [
+      el('span', { class: 'lang-en', text: 'Skip to content' }),
+      el('span', { class: 'lang-ja', text: '本文へ移動' }),
+    ]
+  );
 
 export const icon = (paths, { size = 18 } = {}) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="currentColor">${paths}</svg>`;

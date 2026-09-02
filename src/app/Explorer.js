@@ -175,11 +175,18 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   };
 
   const sections = systems.map(systemSection);
-  // `tabindex="-1"` so that following the skip link actually moves focus, not
-  // just the scroll position — without it the next Tab returns to the header.
+  // The skip link targets the first catalogue section, so it lands past the
+  // search and the jump links rather than on the header.
+  //
+  // It must **not** take that section's id: every section already carries
+  // `system-<id>`, which its own jump pill scrolls to. Overwriting the first
+  // one with `content` left that pill pointing at an element that no longer
+  // existed, so the first system in the catalogue was the one system you could
+  // not jump to. The skip link is given the id the section already has.
+  const skipTargetId = sections[0]?.id ?? null;
   if (sections[0]) {
-    sections[0].id = 'content';
     sections[0].setAttribute('tabindex', '-1');
+    sections[0].setAttribute('data-skip-target', '');
   }
   const totalScenes = scopedScenes.length;
 
@@ -348,7 +355,10 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     ]),
   ]);
 
-  ui.append(skipLink(), element);
+  // No sections means an empty shelf, and nothing to skip to. A skip link
+  // pointing at an element that does not exist falls through to the browser's
+  // default, which is the hash navigation this whole fix exists to prevent.
+  ui.append(...(skipTargetId ? [skipLink(skipTargetId)] : []), element);
   languageToggle.init();
   syncLibrary();
   applyFilters();

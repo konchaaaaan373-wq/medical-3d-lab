@@ -143,7 +143,7 @@ html[data-route='trust'] button,
    not only the scroll position. It must not then draw a focus ring: the person
    who lands there did not focus a control, and a ring around half the page
    reads as an error. */
-[id='content'][tabindex='-1']:focus,
-[id='content'][tabindex='-1']:focus-visible {
+[data-skip-target]:focus,
+[data-skip-target]:focus-visible {
   outline: none;
 }

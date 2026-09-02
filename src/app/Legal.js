@@ -106,7 +106,7 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
       el('div', { class: 'legal-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
     tabs,
-    el('article', { class: 'legal-doc', id: 'content', tabindex: '-1' }, [
+    el('article', { class: 'legal-doc', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('h1', { class: 'legal-title' }, [
         el('span', { class: 'lang-en', text: doc.titleEn }),
         el('span', { class: 'lang-ja', text: doc.titleJa }),

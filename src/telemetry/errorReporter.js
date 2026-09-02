@@ -14,8 +14,6 @@
  * The listener target is injected, so the whole install/uninstall lifecycle is
  * testable without a browser.
  */
-import { fingerprint, redactStack, redactText } from './redact.js';
-
 /** Reports allowed per rolling second, across all fingerprints. */
 export const RATE_LIMIT_PER_SECOND = 5;
 
@@ -108,20 +106,21 @@ export function createErrorReporter({
      */
     captureRendererFailure(error, { scene, device = 'desktop', reason = 'unknown', fallbackShown = true } = {}) {
       const described = describe(error);
-      const id =
-        fingerprint({
-          name: described.name,
-          message: redactText(described.message),
-          frames: redactStack(described.stack),
-        });
+      let id = null;
       try {
-        telemetry.reportError({ ...described, surface: 'fallback', handled: true });
+        // The id comes back from `reportError` rather than being recomputed
+        // here. Computing it twice meant computing it from two different
+        // strings — the diagnostic channel redacts *and truncates* the message
+        // to 300 characters before fingerprinting, and this did not — so a long
+        // failure message produced a metric and a diagnostic that could not be
+        // joined to one another, which is the one thing a fingerprint is for.
+        id = telemetry.reportError({ ...described, surface: 'fallback', handled: true });
         telemetry.record('renderer.failure', {
           scene,
           device,
           reason,
-          fingerprint: id,
           fallbackShown,
+          ...(id ? { fingerprint: id } : {}),
         });
       } catch {
         /* see the module comment: reporting must not be able to fail loudly */

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
-import { sameRoute } from './router.js';
+import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -832,6 +832,10 @@ export async function createApp({ stage, ui }) {
   // resolving it to a scene id would have made that link do nothing.
   let currentHash = window.location.hash;
   window.addEventListener('hashchange', () => {
+    // An in-page anchor is not navigation. Reloading a 3D scene because
+    // somebody used a skip link would throw away the camera, the progression
+    // and any model controls they had set.
+    if (isInPageAnchor(window.location.hash)) return;
     if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
   });
 
