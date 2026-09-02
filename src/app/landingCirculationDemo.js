@@ -10,15 +10,15 @@ const DEMO_STATES = Object.freeze([
 const EXPLANATIONS = Object.freeze({
   [CIRCULATION_INTERVENTIONS.BASELINE]: ({ map, co }) => Object.freeze({
     en: `MAP is ${map} mmHg, but unindexed CO is ${co.toFixed(1)} L/min in this constructed case. Pressure alone does not reveal flow.`,
-    ja: `MAPは${map} mmHg。それでも、この概念症例の非係数化COは${co.toFixed(1)} L/minです。血圧だけでは血流量は分かりません。`,
+    ja: `MAPは${map} mmHgですが、体格補正していないCOは${co.toFixed(1)} L/minです。血圧だけでは血流量を判断できません。`,
   }),
   [CIRCULATION_INTERVENTIONS.FLUID]: () => Object.freeze({
     en: 'In this fluid-responsive state, SV and CO rise. SVR is unchanged, so MAP rises as well.',
-    ja: '輸液反応性がある概念状態ではSVとCOが増加します。SVRは固定しているため、MAPも上昇します。',
+    ja: '輸液反応性を仮定した状態です。SVとCOが増え、SVRは固定しているためMAPも上がります。',
   }),
   [CIRCULATION_INTERVENTIONS.DOBUTAMINE]: () => Object.freeze({
     en: 'CO and calculated global DO₂ rise while MAP stays near baseline because SVR falls.',
-    ja: 'SVRが低下するためMAPは基準付近のままでも、COと計算上の全身DO₂は増加します。',
+    ja: 'SVRが下がるため、MAPは基準付近のままです。一方でCOと計算上の全身DO₂は増えます。',
   }),
 });
 
@@ -144,11 +144,11 @@ export function createLandingCirculationDemo() {
         el('div', {}, [
           el('p', { class: 'landing-demo-kicker' }, dual('LIVE 3D  /  CIRCULATION', 'LIVE 3D  /  循環')),
           el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' }, dual(
-            'MAP 70. Is flow maintained?',
-            'MAP 70。血流は保たれている？'
+            'Circulation & oxygen delivery',
+            '循環・酸素運搬'
           )),
         ]),
-        el('span', { class: 'landing-demo-case' }, dual('CONCEPT MODEL', '概念モデル')),
+        el('span', { class: 'landing-demo-case' }, dual('LOW OUTPUT  /  MAP 70', '低心拍出  /  MAP 70')),
       ]),
       el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
         el('span', { text: '↔' }),
@@ -157,7 +157,7 @@ export function createLandingCirculationDemo() {
     ]),
     el('div', { class: 'landing-demo-workbench' }, [
       el('fieldset', { class: 'landing-demo-controls' }, [
-        el('legend', {}, dual('Change the model', 'モデルを切り替える')),
+        el('legend', {}, dual('Select a state', '状態を切り替える')),
         el('div', { class: 'landing-demo-state-grid' }, stateButtons),
       ]),
       el('div', {

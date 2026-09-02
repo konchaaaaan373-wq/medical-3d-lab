@@ -162,7 +162,7 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /setModelControl\('intervention'/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
-  assert.match(landing, /病態生理を、3Dで動かす。/);
+  assert.match(landing, /解剖・病態生理の3Dモデル/);
   assert.doesNotMatch(landing, /病態生理は、|モデルも、根拠も、開いておく。|正確な基本モデル|レビュー済みモデルから/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
   assert.match(css, /min-height:\s*46px/);

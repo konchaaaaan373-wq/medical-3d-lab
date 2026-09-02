@@ -68,10 +68,10 @@ export function createLanding({ ui, accountButton = null }) {
         stateBadge(
           'maturity',
           scene.status,
-          `Build ${maturity?.label ?? scene.status}`,
-          `実装 ${maturity?.labelJa ?? scene.status}`
+          `Build: ${maturity?.label ?? scene.status}`,
+          `実装：${maturity?.labelJa ?? scene.status}`
         ),
-        stateBadge('review', review.status, `Clinical ${review.shortEn}`, `医学 ${review.shortJa}`),
+        stateBadge('review', review.status, `Clinical: ${review.shortEn}`, `医学：${review.shortJa}`),
       ]),
     ]);
   };
@@ -97,16 +97,16 @@ export function createLanding({ ui, accountButton = null }) {
     el('section', { class: 'landing-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('header', { class: 'landing-hero-heading' }, [
         el('div', {}, [
-          el('p', { class: 'landing-eyebrow' }, dual('INTERACTIVE MEDICAL 3D MODELS', '操作できる3Dモデル')),
+          el('p', { class: 'landing-eyebrow' }, dual('INTERACTIVE MEDICAL MODELS', '操作できる医学モデル')),
           el('h1', { class: 'landing-title' }, dual(
-            'Move physiology in 3D.',
-            '病態生理を、3Dで動かす。'
+            '3D models of anatomy and pathophysiology',
+            '解剖・病態生理の3Dモデル'
           )),
         ]),
         el('dl', { class: 'landing-hero-facts' }, [
           el('div', {}, [el('dt', { text: String(scenes.length) }), el('dd', {}, dual('models', '公開モデル'))]),
-          el('div', {}, [el('dt', { text: 'FREE' }), el('dd', {}, dual('core access', '基本モデル'))]),
-          el('div', {}, [el('dt', { text: '0' }), el('dd', {}, dual('sign-up steps', '登録不要'))]),
+          el('div', {}, [el('dt', {}, dual('FREE', '無料')), el('dd', {}, dual('core models', '基本モデル'))]),
+          el('div', {}, [el('dt', {}, dual('NONE', '不要')), el('dd', {}, dual('account', 'アカウント'))]),
         ]),
       ]),
       el('div', { class: 'landing-hero-instrument' }, [circulationDemo.element]),
@@ -121,8 +121,8 @@ export function createLanding({ ui, accountButton = null }) {
         el('div', {}, [
           el('p', { class: 'landing-section-kicker' }, dual('3D MODEL INDEX', '3Dモデル')),
           el('h2', { class: 'landing-section-title', id: 'landing-models-title' }, dual(
-            'Choose a model.',
-            'モデルを選ぶ。'
+            '3D model library',
+            '3Dモデル一覧'
           )),
         ]),
         shellLink(EXPLORER_ROUTE, 'Filter by organ →', '臓器・領域から探す →', 'landing-inline-link'),
@@ -133,7 +133,7 @@ export function createLanding({ ui, accountButton = null }) {
     el('section', { class: 'landing-method', 'aria-labelledby': 'landing-method-title' }, [
       el('div', { class: 'landing-method-heading' }, [
         el('p', { class: 'landing-section-kicker' }, dual('MODEL INFORMATION', 'モデル情報')),
-        el('h2', { id: 'landing-method-title' }, dual('Sources, assumptions, limits.', '根拠・前提・限界。')),
+        el('h2', { id: 'landing-method-title' }, dual('Sources, assumptions, limits', '根拠・前提・限界')),
       ]),
       el('ul', { class: 'landing-method-list' }, [
         el('li', {}, dual('Sources', '参照文献')),
@@ -171,7 +171,7 @@ export function createLanding({ ui, accountButton = null }) {
   ui.append(skipLink(), flowField.element, element);
   languageToggle.init();
   void circulationDemo.mount();
-  document.title = 'Medical 3D Lab — 病態生理を3Dで動かす';
+  document.title = 'Medical 3D Lab — 解剖・病態生理の3Dモデル';
 
   return {
     element,

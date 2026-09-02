@@ -41,7 +41,7 @@ export const LANDING_MODEL_TITLES = Object.freeze({
 export const LANDING_MODEL_PRESENTATION = Object.freeze({
   circulation: presentation(
     'Compare MAP, cardiac output and global DO₂ across baseline, fluid response and dobutamine.',
-    '基準・輸液反応・DOBで、MAP・心拍出量・全身DO₂を比較。',
+    'MAP・心拍出量・全身DO₂を、基準／輸液反応／DOBで比較。',
     ['MAP', 'CO', 'DO₂'],
     ['血圧', '血流', '酸素運搬']
   ),
@@ -53,25 +53,25 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
   ),
   'brain-anatomy': presentation(
     'Select gyri and sulci, then reveal the insula and deep nuclei in place.',
-    '脳回・脳溝を選び、島皮質と深部核を位置関係のまま表示。',
+    '脳回・脳溝、島皮質、深部核の位置関係を3Dで確認。',
     ['CORTEX', 'INSULA', 'DEEP NUCLEI'],
     ['皮質', '島皮質', '深部核']
   ),
   'amyloid-beta': presentation(
     'Move through one aggregation state from Aβ monomer to plaque.',
-    'Aβがモノマーからプラークへ凝集する過程を操作。',
+    'Aβモノマーからプラーク形成までを段階表示。',
     ['SOLUBLE', 'ASSEMBLIES', 'DEPOSITS'],
     ['可溶性種', '凝集体', '沈着']
   ),
   'renal-filtration': presentation(
     'Change glomerular Starling forces and tubular handling in the same solve.',
-    '糸球体のStarling平衡と尿細管輸送を、同じ計算で操作。',
+    '糸球体濾過圧と尿細管輸送を同じモデルで操作。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
   ),
   'copd-hyperinflation': presentation(
     'Compare time constants, air trapping and expiratory flow limitation across 12 lung units.',
-    '12の肺単位で、時定数・air trapping・呼気流量制限を比較。',
+    '12の肺単位で、時定数・エアトラッピング・呼気流量制限を比較。',
     ['TIME CONSTANT', 'TRAPPING', 'FLOW LIMIT'],
     ['時定数', 'air trapping', '流量制限']
   ),
