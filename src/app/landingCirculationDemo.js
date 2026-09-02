@@ -94,7 +94,9 @@ const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-ja`.trim(), text: ja }),
 ];
 
-export function createLandingCirculationDemo() {
+export function createLandingCirculationDemo({
+  loadViewport = () => import('./landingCirculationViewport.js'),
+} = {}) {
   const buttons = new Map();
   const metricNodes = new Map();
   const explanationEn = el('span', { class: 'lang-en' });
@@ -111,6 +113,7 @@ export function createLandingCirculationDemo() {
   let mountedViewport = null;
   let selectedIntervention = CIRCULATION_INTERVENTIONS.BASELINE;
   let mountPromise = null;
+  let destroyed = false;
 
   const metricElements = ['map', 'co', 'do2'].map((id) => {
     const label = el('span', { class: 'landing-demo-metric-label' });
@@ -213,19 +216,27 @@ export function createLandingCirculationDemo() {
   update(CIRCULATION_INTERVENTIONS.BASELINE);
 
   async function mount() {
+    if (destroyed) return null;
     if (mountedViewport || mountPromise) return mountPromise;
     if (typeof window?.requestAnimationFrame !== 'function') return null;
 
     viewport.dataset.loading = 'true';
-    mountPromise = import('./landingCirculationViewport.js')
+    mountPromise = loadViewport()
       .then(({ mountLandingCirculationViewport }) => {
+        if (destroyed) return null;
         mountedViewport = mountLandingCirculationViewport(viewport);
+        if (destroyed) {
+          mountedViewport.destroy();
+          mountedViewport = null;
+          return null;
+        }
         mountedViewport.setIntervention(selectedIntervention);
         viewport.dataset.loading = 'false';
         element.dataset.viewport = 'ready';
         return mountedViewport;
       })
       .catch((error) => {
+        if (destroyed) return null;
         console.error('landing 3D preview', error);
         viewport.dataset.loading = 'false';
         element.dataset.viewport = 'unavailable';
@@ -243,6 +254,7 @@ export function createLandingCirculationDemo() {
     setIntervention: update,
     mount,
     destroy() {
+      destroyed = true;
       mountedViewport?.destroy();
       mountedViewport = null;
     },

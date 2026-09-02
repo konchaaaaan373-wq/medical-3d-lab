@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createLanding } from '../src/app/Landing.js';
-import { circulationDemoSnapshot } from '../src/app/landingCirculationDemo.js';
+import {
+  circulationDemoSnapshot,
+  createLandingCirculationDemo,
+} from '../src/app/landingCirculationDemo.js';
 import {
   LANDING_FLOW_BUDGETS,
   createLandingFlowField,
@@ -194,6 +197,37 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
     assert.equal(controls[0].getAttribute('aria-pressed'), 'false');
     assert.equal(controls[2].getAttribute('aria-pressed'), 'true');
     assert.deepEqual(values.map((node) => node.textContent), ['71', '5.1', '710']);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: leaving the route cancels a 3D viewport that is still loading', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  let finishLoading;
+  let mountCount = 0;
+  const loadViewport = () => new Promise((resolve) => {
+    finishLoading = resolve;
+  });
+
+  try {
+    const demo = createLandingCirculationDemo({ loadViewport });
+    const pending = demo.mount();
+    demo.destroy();
+    finishLoading({
+      mountLandingCirculationViewport() {
+        mountCount += 1;
+        return { setIntervention() {}, destroy() {} };
+      },
+    });
+
+    assert.equal(await pending, null);
+    assert.equal(mountCount, 0, 'a detached route must not start a WebGL viewer');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
