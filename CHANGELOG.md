@@ -14,6 +14,22 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### A landing page you can actually touch
+
+- The first screen now contains a working circulation comparison, not an
+  abstract product illustration. Baseline, fluid-responsive and dobutamine
+  states read MAP, cardiac output and calculated global DO₂ from the same solver
+  as the full circulation model.
+- All nine public models are visible from the landing page. Each starts with a
+  concrete question and a three-part mechanism trace, and reports implementation
+  maturity separately from clinical-review state.
+- A restrained Canvas 2D flow field gives the page a living blood-flow texture.
+  It is explicitly decorative, capped by device class, reduced for Save-Data,
+  paused in hidden tabs and static under reduced-motion preferences.
+- The page no longer claims that every core model is “accurate” or that mature
+  software is clinically reviewed. Trust, scope and evidence now appear before
+  the catalogue rather than near the bottom of the page.
+
 ### A new model
 
 - **Where filtration fails** (`#/renal-filtration`). One nephron, with the

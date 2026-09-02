@@ -18,6 +18,33 @@
 
 # 循環、保たれてる？（最小循環モデル）
 
+## トップページの循環プレビュー
+
+トップページの「基準／輸液反応／DOB反応」は、見栄えのために作った別モデルでは
+ありません。`src/app/landingCirculationDemo.js` が本編と同じ
+`src/models/circulation.js` の `solveCirculation()` を呼び、MAP・CO・計算上の
+全身DO₂を表示用に丸めています。介入の定義、固定した酸素含量、数値の出どころ、
+適用範囲は本編と同一です。トップ専用の臨床値は置いていません。この接続は
+`tests/landing.test.js` で全3状態について照合します。
+
+プレビュー内の粒子速度、血管線の太さ、抵抗bandの濃さは、変化の向きを読みやすく
+するための **presentation mapping** です。実測流速、血管径、CFD、組織灌流を
+表しません。DOBと輸液は、用量を選ぶボタンでも、期待反応を予測するボタンでもなく、
+排他的な概念状態です。
+
+ページ全体の奥で動く赤〜琥珀色の微粒子 (`src/app/landingFlowField.js`) はさらに
+明確に医学モデルの外です。粒子数、速度、色、密度のどれも、赤血球数、血流速度、
+Hb、SaO₂、DO₂、臓器別灌流を符号化しません。これは血流を連想させる背景演出だけで、
+医学的に読める値は前景の循環プレビューに限定します。
+
+トップページが参照する文献は、本節のために追加した別資料ではなく、
+[`docs/model-evidence/circulation.md`](model-evidence/circulation.md) に記録した
+循環モデル本体の文献です。特に、圧・血流・抵抗の関係は Simmons & Ventetuolo、
+酸素含量とglobal DO₂の定義は Collins et al.、macrohemodynamicsと組織灌流を
+同一視しない境界は Ince、DOBと輸液反応の変化方向はそれぞれ Leier et al. と
+Baker et al. を参照しています。後2件は小規模研究かつ抄録確認までのため、
+本モデルでも **thin evidence** のままです。
+
 ## このモデルが答える問い
 
 **MAP が 70 mmHg なら、末梢への酸素供給も保たれていると言えるか。**
