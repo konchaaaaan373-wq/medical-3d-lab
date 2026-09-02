@@ -7,6 +7,7 @@ import {
   circulationDemoSnapshot,
   createLandingCirculationDemo,
 } from '../src/app/landingCirculationDemo.js';
+import { mountLandingCirculationViewport } from '../src/app/landingCirculationViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
   createLandingFlowField,
@@ -167,11 +168,15 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /viewer\.stop\(\)/);
   assert.match(viewport, /viewer\.composer\.render\(\)/);
   assert.match(viewport, /document\.visibilityState/);
+  assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
+  assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
   assert.match(landing, /解剖・病態生理の3Dモデル/);
   assert.doesNotMatch(landing, /病態生理は、|モデルも、根拠も、開いておく。|正確な基本モデル|レビュー済みモデルから/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
+  assert.doesNotMatch(css, /touch-action:\s*none/);
+  assert.match(css, /touch-action:\s*pan-y pinch-zoom/);
   assert.match(css, /min-height:\s*46px/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.landing-demo-viewport canvas/);
@@ -263,6 +268,46 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('landing: a scene that fails during setup releases the partial viewer', () => {
+  let viewerDisposed = 0;
+  let sceneDisposed = 0;
+  const container = { dataset: {} };
+
+  class FailingViewer {
+    constructor() {
+      this.renderer = { domElement: { style: {} } };
+      this.scene = { add() {} };
+    }
+
+    dispose() {
+      viewerDisposed += 1;
+    }
+  }
+
+  class FailingScene {
+    constructor() {}
+
+    build() {
+      throw new Error('failed midway through scene build');
+    }
+
+    dispose() {
+      sceneDisposed += 1;
+    }
+  }
+
+  assert.throws(
+    () => mountLandingCirculationViewport(container, {
+      ViewerClass: FailingViewer,
+      SceneClass: FailingScene,
+    }),
+    /failed midway/
+  );
+  assert.equal(sceneDisposed, 1);
+  assert.equal(viewerDisposed, 1);
+  assert.equal(container.dataset.ready, undefined);
 });
 
 test('language control: the document language follows the visible language', () => {

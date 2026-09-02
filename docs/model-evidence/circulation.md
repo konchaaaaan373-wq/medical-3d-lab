@@ -127,11 +127,14 @@ Inceのhaemodynamic coherenceの整理どおり、macrohemodynamicsの改善と�
 | yellow cargo particles | 固定CaO₂下の計算上のglobal DO₂の相対変化 | 組織PO₂、酸素抽出、VO₂、臓器別灌流 |
 | neutral tissue | このモデルは組織酸素化を計算しないこと | 組織が正常であるという所見 |
 
-トップページの循環表示は、別の模式図や別の数値写像ではありません。
+トップページの3D解剖と介入の視覚写像は別実装ではありません。
 `landingCirculationViewport.js` が本編と同じ `CirculationScene` を直接マウントし、
 基準・輸液反応・DOBの選択も同じ `setModelControl('intervention', ...)` に渡します。
-画面全体の背景を流れる粒子は装飾であり、赤血球数、流量、酸素運搬などの医学値を
-表しません。
+一方、トップ用の短い説明文、ラベル、丸め、増減表示は
+`landingCirculationDemo.js` に独立した表示アダプターとして存在します。表示値が
+`solveCirculation` と一致することはテストしますが、`CirculationScene.getMetrics()`
+との表示上のずれは起こり得るため、両方をレビュー対象とします。画面全体の背景を
+流れる粒子は装飾であり、赤血球数、流量、酸素運搬などの医学値を表しません。
 
 ## 参考文献
 

@@ -321,7 +321,7 @@ html[data-route='landing'] {
   z-index: 1;
   inset: 0;
   cursor: grab;
-  touch-action: none;
+  touch-action: pan-y pinch-zoom;
 }
 
 .landing-demo-viewport:active { cursor: grabbing; }
@@ -330,6 +330,7 @@ html[data-route='landing'] {
   width: 100% !important;
   height: 100% !important;
   display: block;
+  touch-action: pan-y pinch-zoom;
 }
 
 .landing-demo-loading {
