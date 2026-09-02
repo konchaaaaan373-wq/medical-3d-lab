@@ -26,6 +26,18 @@ const presentation = (question, questionJa, signals, signalsJa) =>
     signalsJa: Object.freeze([...signalsJa]),
   });
 
+export const LANDING_MODEL_TITLES = Object.freeze({
+  circulation: Object.freeze({ en: 'Circulation & oxygen delivery', ja: '循環・酸素運搬' }),
+  'heart-failure': Object.freeze({ en: 'Heart failure', ja: '心不全' }),
+  'brain-anatomy': Object.freeze({ en: '3D brain anatomy', ja: '脳の3D解剖' }),
+  'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
+  'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
+  'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
+  'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
+  'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
+  'hepatorenal-syndrome': Object.freeze({ en: 'Hepatorenal syndrome', ja: '肝腎症候群' }),
+});
+
 export const LANDING_MODEL_PRESENTATION = Object.freeze({
   circulation: presentation(
     'Compare MAP, cardiac output and global DO₂ across baseline, fluid response and dobutamine.',
@@ -85,12 +97,14 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
 
 /** @param {{id:string,description?:string,descriptionJa?:string,tags?:string[]}} scene */
 export function landingPresentationFor(scene) {
-  return LANDING_MODEL_PRESENTATION[scene.id] ?? presentation(
+  const entry = LANDING_MODEL_PRESENTATION[scene.id] ?? presentation(
     scene.description ?? '',
     scene.descriptionJa ?? '',
     (scene.tags ?? []).slice(0, 3),
     (scene.tags ?? []).slice(0, 3)
   );
+  const title = LANDING_MODEL_TITLES[scene.id] ?? { en: scene.titleEn, ja: scene.titleJa };
+  return Object.freeze({ ...entry, title: title.en, titleJa: title.ja });
 }
 
 /** Curated order, with any future public scene still included at the end. */
@@ -111,6 +125,7 @@ export function validateLandingPresentation(scenes) {
 
   for (const scene of scenes) {
     const entry = LANDING_MODEL_PRESENTATION[scene.id];
+    const title = LANDING_MODEL_TITLES[scene.id];
     if (!entry) problems.push(`${scene.id}: no landing presentation`);
     else {
       if (!entry.question || !entry.questionJa) problems.push(`${scene.id}: the landing question is not bilingual`);
@@ -118,6 +133,7 @@ export function validateLandingPresentation(scenes) {
         problems.push(`${scene.id}: the landing mechanism needs three bilingual signals`);
       }
     }
+    if (!title?.en || !title?.ja) problems.push(`${scene.id}: the landing title is not bilingual`);
     if (!orderedIds.has(scene.id)) problems.push(`${scene.id}: missing from LANDING_MODEL_ORDER`);
   }
 

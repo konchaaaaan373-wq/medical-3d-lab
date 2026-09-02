@@ -56,7 +56,7 @@ export function createLanding({ ui, accountButton = null }) {
         el('span', { class: 'landing-scene-open', 'aria-hidden': 'true', text: '↗' }),
       ]),
       el('div', { class: 'landing-scene-heading' }, [
-        el('h3', { class: 'landing-scene-name' }, dual(scene.titleEn, scene.titleJa)),
+        el('h3', { class: 'landing-scene-name' }, dual(presentation.title, presentation.titleJa)),
         el('p', { class: 'landing-scene-summary' }, dual(presentation.question, presentation.questionJa)),
       ]),
       el('ol', { class: 'landing-signal-chain', 'aria-label': 'Model variables / モデルの変数' },
