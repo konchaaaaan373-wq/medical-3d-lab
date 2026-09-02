@@ -150,7 +150,7 @@ html[data-route='landing'] {
 /* Product-first hero ----------------------------------------------------- */
 
 .landing-hero {
-  padding: clamp(68px, 8vh, 96px) 8px clamp(86px, 10vh, 126px);
+  padding: clamp(50px, 6vh, 74px) 8px clamp(82px, 9vh, 116px);
 }
 
 .landing-hero-heading {
@@ -286,8 +286,8 @@ html[data-route='landing'] {
 
 .landing-demo-stage {
   position: relative;
-  height: clamp(470px, 60vh, 650px);
-  min-height: 470px;
+  height: clamp(400px, 48vh, 520px);
+  min-height: 400px;
   overflow: clip;
   border-radius: 9px 9px 0 0;
   background:
@@ -516,7 +516,7 @@ html[data-route='landing'] {
 }
 
 .landing-demo-state-label {
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.25;
   font-weight: 680;
 }
@@ -935,8 +935,8 @@ html[data-route='landing'] {
   .landing-hero-facts { width: min(100%, 410px); }
 
   .landing-demo-stage {
-    height: clamp(430px, 57vh, 560px);
-    min-height: 430px;
+    height: clamp(390px, 45vh, 500px);
+    min-height: 390px;
   }
 
   .landing-demo-workbench { grid-template-columns: 1fr; }
@@ -993,7 +993,7 @@ html[data-route='landing'] {
     font-size: 10px;
   }
 
-  .landing-hero { padding: 54px 0 76px; }
+  .landing-hero { padding: 46px 0 72px; }
   .landing-eyebrow { font-size: 10px; }
 
   .landing-title {
@@ -1005,8 +1005,8 @@ html[data-route='landing'] {
   .landing-hero-facts > div { padding-inline: 10px; }
 
   .landing-demo-stage {
-    height: 430px;
-    min-height: 430px;
+    height: 370px;
+    min-height: 370px;
   }
 
   .landing-demo-header { padding: 20px 18px; gap: 10px; }
@@ -1029,7 +1029,7 @@ html[data-route='landing'] {
     padding-inline: 9px;
   }
 
-  .landing-demo-state-label { font-size: 11px; }
+  .landing-demo-state-label { font-size: 12px; }
 
   .landing-demo-metric { padding-inline: 9px; }
   .landing-demo-metric:first-child { padding-left: 0; }
@@ -1114,18 +1114,8 @@ html[data-route='landing'] {
   }
 
   .landing-demo-stage {
-    height: 390px;
-    min-height: 390px;
-  }
-
-  .landing-demo-state-grid { grid-template-columns: 1fr; }
-
-  .landing-demo-state {
-    min-height: 50px;
-    grid-template-columns: auto 1fr;
-    align-items: center;
-    align-content: center;
-    justify-items: start;
+    height: 345px;
+    min-height: 345px;
   }
 }
 
