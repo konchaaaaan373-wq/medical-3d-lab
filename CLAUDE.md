@@ -76,6 +76,22 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 であって、肺を 2 回モデリングしたものではありません。
 臓器ビルダーに疾患名を持ち込まないでください。
 
+**このルールが禁じているのは「同じ縮尺・同じ目的で 2 回作ること」です。**
+縮尺か目的が違うビルダーが 1 臓器に 2 本あるのは正常で、実際そうなっています——
+`organs/heart.js`（全身ビュー用のランドマーク）と heartFailure の
+`ventricleGeometry.js`（モデルが解いた壁厚と内腔から生成）、`organs/kidney.js`
+（臓器レベル、4 シーンが使用）と `organs/nephron.js`（ネフロン 1 本）、
+`organs/brain.js`（形だけ）と `scenes/brainAnatomy/`（標本由来アトラス）。
+**片方を「重複」と見て消さないでください。** 各ファイルの冒頭が、自分が何であって
+何ではないかを述べています。
+
+系として、**臓器を α に進めてもスケッチは消えません。** これまで起きたのは
+「スケッチがそのまま育って named-structure 級になる」（`lungs.js`）か、
+「目的の違う 2 本目が増えてスケッチは全身ビュー担当として残る」（heart・腎・脳）の
+どちらかで、置き換えは一度も起きていません。仮に本当に用済みになった版があっても、
+`src/` に死んだコードとして残さないでください——git が版を持っており、
+`git log --follow <path>` で読めます。
+
 ### Scene status
 
 カタログの各シーンは `prototype → alpha → reviewed → production` のどれかです。
