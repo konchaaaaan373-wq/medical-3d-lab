@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { SCENES } from '../src/catalog/index.js';
-import { adoptRevisions, digestSources, revisionProblems, staleReviews } from '../scripts/model-revisions.js';
+import { adoptRevisions, digestSources, revisionProblems } from '../scripts/model-revisions.js';
 
 const root = new URL('../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
@@ -111,30 +111,6 @@ test('adopt: a revision is bumped only where the digest actually moved', () => {
   assert.equal(next[1].cardUpdatedAt, undefined);
 });
 
-test('stale: a review whose model has changed is reported', () => {
-  const read = fakeRead({ 'model.js': 'rewritten' });
-  const entries = [{ sceneId: 's', card: 'c.md', modelSources: ['model.js'], cardRevision: 1, modelDigest: 'x' }];
-  const stale = staleReviews([{ sceneId: 's', reviewStatus: 'reviewed', reviewedModelDigest: 'old' }], entries, read);
-  assert.equal(stale.length, 1);
-  assert.match(stale[0].reason, /changed since it was reviewed/);
-  assert.equal(stale[0].current, digestSources(['model.js'], read));
-});
-
-test('stale: a review that does not record what it reviewed is itself the problem', () => {
-  const read = fakeRead({ 'model.js': 'code' });
-  const entries = [{ sceneId: 's', card: 'c.md', modelSources: ['model.js'], cardRevision: 1, modelDigest: 'x' }];
-  const stale = staleReviews([{ sceneId: 's', reviewStatus: 'reviewed' }], entries, read);
-  assert.match(stale[0].reason, /does not record what it reviewed/);
-});
-
-test('stale: only completed reviews are checked', () => {
-  const read = fakeRead({ 'model.js': 'code' });
-  const entries = [{ sceneId: 's', card: 'c.md', modelSources: ['model.js'], cardRevision: 1, modelDigest: 'x' }];
-  for (const status of ['pending', 'legacy-unversioned']) {
-    assert.deepEqual(staleReviews([{ sceneId: 's', reviewStatus: status }], entries, read), []);
-  }
-});
-
 // --- this repository -------------------------------------------------------
 
 test('repository: every model card describes the model it is filed against', () => {
@@ -160,47 +136,25 @@ test('repository: every revision entry names a card that the catalogue or a prod
   }
 });
 
-test('repository: a clinical review either still describes its model, or says it does not', () => {
-  // A stale review is not automatically invalid — it is a review of something
-  // else. What is not acceptable is a stale review that keeps quiet about it.
-  const stale = staleReviews(reviews, revisions, read);
-  const byScene = new Map(reviews.map((record) => [record.sceneId, record]));
+test('repository: model-card revision is a different obligation from review staleness', () => {
+  // Two questions that look alike and are not. `stalePaths` in the clinical
+  // review registry answers "does this attestation still describe the code,
+  // and may it be shown as current?" — owned by src/catalog/clinicalReview.js.
+  // This registry answers "does the model *card* still describe the model?"
+  // A review can be correctly stale while its card is fine, and a card can be
+  // out of date under a review that was never current.
+  const source = read('scripts/model-revisions.js');
+  assert.ok(!/staleReviews/.test(source), 'review staleness is not this module\'s job');
+  assert.match(source, /stalePaths/, 'and the split should be explained where it could be confused');
 
-  for (const item of stale) {
-    const record = byScene.get(item.sceneId);
-    const declared = record?.modelChangedSinceReview;
-    assert.ok(
-      declared,
-      `${item.sceneId}: ${item.reason}, and the registry does not say so. ` +
-        'Record it under "modelChangedSinceReview" or have the review re-signed.'
-    );
-    assert.equal(declared.currentModelDigest, item.current, `${item.sceneId}: the recorded change is itself out of date`);
-    assert.match(declared.changedAt, /^\d{4}-\d{2}-\d{2}$/);
-    assert.ok(declared.summary?.length > 20, `${item.sceneId}: says nothing about what changed`);
-    assert.ok(
-      declared.effectOnReviewedBehaviour?.length > 20,
-      `${item.sceneId}: does not say whether the reviewed behaviour still holds`
-    );
-  }
+  // Nothing in the review registry carries a second digest of its own.
+  const stray = reviews.filter((record) => record.reviewedModelDigest || record.modelChangedSinceReview);
+  assert.deepEqual(stray, [], 'a second staleness mechanism has grown back');
 });
 
-test('repository: a completed review records the digest of what it signed', () => {
-  for (const record of reviews.filter((entry) => entry.reviewStatus === 'reviewed')) {
-    assert.match(
-      record.reviewedModelDigest ?? '',
-      /^[0-9a-f]{16}$/,
-      `${record.sceneId} claims a completed review without recording what was reviewed`
-    );
-  }
-});
-
-test('repository: a review that changed keeps the change in its unresolved limitations', () => {
-  for (const record of reviews.filter((entry) => entry.modelChangedSinceReview)) {
-    const limitations = record.unresolvedLimitations.join('\n');
-    assert.match(
-      limitations,
-      /since the recorded review|not been clinically reviewed/i,
-      `${record.sceneId}: the drift is recorded but a reader of the limitations would not learn about it`
-    );
+test('repository: every scene with a stale review is presented as stale, not reviewed', () => {
+  for (const record of reviews.filter((entry) => entry.reviewStatus === 'stale')) {
+    assert.ok(Array.isArray(record.stalePaths) && record.stalePaths.length > 0,
+      `${record.sceneId}: stale without saying what changed`);
   }
 });

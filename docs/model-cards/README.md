@@ -28,31 +28,21 @@ The digest is over file **content only** — not paths, not timestamps — so
 moving a model without changing it does not read as a medical change, and
 changing it without moving it does.
 
-## Reviews that have gone stale
+## This is not review staleness
 
-`docs/clinical-reviews/registry.json` records `reviewedModelDigest`: what the
-model looked like at the commit the reviewer signed. When the current sources
-no longer match it, the review is stale.
+A neighbouring question, deliberately answered somewhere else.
+`docs/clinical-reviews/registry.json` records `stalePaths` for each review, and
+`src/catalog/clinicalReview.js` turns that into a `stale` status the Explorer,
+the scene title cards and the Trust page all read. That asks: **does this
+attestation still describe the code, and may it still be shown as current?**
 
-**A stale review is not automatically invalid.** It is a review of something
-else, and saying so is the entire point of a versioned attestation. What is not
-acceptable is a stale review that keeps quiet, so the registry must then carry:
+This registry asks: **does the model card still describe the model?**
 
-```json
-"modelChangedSinceReview": {
-  "currentModelDigest": "…",
-  "changedAt": "YYYY-MM-DD",
-  "summary": "what changed",
-  "effectOnReviewedBehaviour": "whether the reviewed behaviour still holds"
-}
-```
-
-`tests/model-revisions.test.js` fails without it, the change is added to the
-review's unresolved limitations, and the public Trust page shows it.
-
-The digests are compared as two recorded facts rather than by asking git,
-because CI checks out shallow and the reviewed commit may not be there to ask
-about.
+They come apart in both directions. A review can be correctly marked stale
+while its card is perfectly accurate, and a card can be out of date under a
+scene whose review was never current in the first place. Two obligations, two
+mechanisms, and neither is a copy of the other — which is worth stating,
+because they were briefly implemented twice.
 
 ## The one on the record today
 
@@ -60,8 +50,10 @@ about.
 added `meanArterialPressureMmHg` as a control, so a model of the systemic
 circulation could supply the inlet pressure this model previously asserted as a
 constant. It defaults to the reviewed value, so reviewed behaviour is unchanged
-— but the model at any *other* inlet pressure has not been clinically reviewed,
-and both the registry and the Trust page now say so.
+— but the model at any *other* inlet pressure has not been clinically reviewed.
 
-That is what this mechanism is for. Nobody was hiding it; there was simply
-nothing that would have noticed.
+Its review is `stale` in the registry, with the changed paths recorded, and the
+Trust page shows them. `copd-hyperinflation` and `asthma-heterogeneity` are in
+the same state for the same reason.
+
+Nobody was hiding any of it; there was simply nothing that would have noticed.

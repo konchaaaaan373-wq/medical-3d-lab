@@ -10,7 +10,6 @@ import {
   isInvoiceEvent,
 } from '../netlify/lib/invoices.js';
 import { ALERT_RULES, levelFor } from '../netlify/lib/alerts.js';
-import { eventSubjects } from '../netlify/lib/ledger.js';
 
 const webhook = readFileSync(new URL('../netlify/functions/stripe-webhook.js', import.meta.url), 'utf8');
 
@@ -124,19 +123,23 @@ test('invoices: what we saw and acted on is applied; what we saw and skipped is 
   assert.equal(invoiceOutcome(classifyInvoice({ type: 'invoice.created' })), 'ignored');
 });
 
-test('ledger: an invoice event names the subscription it belongs to', () => {
-  // Without this a renewal would be recorded against no subscription and could
-  // not be found when somebody asks what happened to theirs.
-  assert.equal(eventSubjects(invoiceEvent('invoice.paid')).subscriptionId, 'sub_1');
-  assert.equal(eventSubjects(invoiceEvent('invoice.paid')).customerId, 'cus_1');
+test('ledger: an invoice event names the object it belongs to', () => {
+  // The ledger records `stripeEventObjectId`, so a renewal can be found when
+  // somebody asks what happened to their subscription. That helper lives in
+  // netlify/lib/billing.js with the rest of the claim/finish ledger.
+  const classified = classifyInvoice(invoiceEvent('invoice.paid'));
+  assert.equal(classified.subscriptionId, 'sub_1');
+  assert.equal(classified.customerId, 'cus_1');
 });
 
-test('webhook: invoice events are recorded and answered without touching state', () => {
+test('webhook: invoice events are answered without touching entitlement state', () => {
   assert.match(webhook, /isInvoiceEvent\(event\.type\)/);
-  assert.match(webhook, /recordOutcome\(event, raw, invoiceOutcome\(invoice\)\)/);
   const block = webhook.slice(webhook.indexOf('isInvoiceEvent(event.type)'));
-  const body = block.slice(0, block.indexOf('return json(200, { received: true, invoice'));
-  assert.ok(!/upsertSubscription|supabaseAdmin/.test(body), 'entitlement already follows the subscription events');
+  const body = block.slice(0, block.indexOf("unsupported_event"));
+  assert.ok(
+    !/syncSubscription|upsertSubscription|supabaseAdmin/.test(body),
+    'entitlement already follows the subscription events'
+  );
 });
 
 test('webhook: a payment failure raises the alert its classification asked for', () => {

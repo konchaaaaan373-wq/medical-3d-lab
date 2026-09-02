@@ -31,16 +31,27 @@ test('explorer search: finds a scene through disease, organ, tags and Japanese c
   assert.equal(sceneMatchesExplorerFilters(copd, { query: 'portal' }), false);
 });
 
-test('explorer filters: Patient and Education expose only authored paid-capability scenes', () => {
+test('explorer search: clinical review metadata is searchable without copying it into the scene manifest', () => {
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { query: 'stale' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { query: 'legacy-unversioned' }), true);
+});
+
+test('explorer filters: paid professional modes fail closed when all authored guides require re-review', () => {
   const patient = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'patient' }));
   const education = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'education' }));
 
-  const expected = ['amyloid-beta', 'heart-failure', 'copd-hyperinflation', 'asthma-heterogeneity', 'portal-hypertension'].sort();
-  assert.deepEqual(patient.map((scene) => scene.id).sort(), expected);
-  assert.deepEqual(education.map((scene) => scene.id).sort(), expected);
+  assert.deepEqual(patient.map((scene) => scene.id).sort(), []);
+  assert.deepEqual(education.map((scene) => scene.id).sort(), []);
 });
 
-test('explorer filters: reviewed-plus means reviewed or production, not prototype', () => {
+test('explorer filters: authored legacy guides are hidden from paid product filters until re-reviewed', () => {
+  for (const sceneId of ['heart-failure', 'amyloid-beta']) {
+    assert.equal(sceneMatchesExplorerFilters(recordFor(sceneId), { mode: 'patient' }), false, sceneId);
+    assert.equal(sceneMatchesExplorerFilters(recordFor(sceneId), { mode: 'education' }), false, sceneId);
+  }
+});
+
+test('explorer filters: reviewed-plus means model maturity reviewed or production, not prototype', () => {
   assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { status: 'reviewed-plus' }), true);
   assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { status: 'reviewed-plus' }), true);
   assert.equal(sceneMatchesExplorerFilters(recordFor('breathing-lungs'), { status: 'reviewed-plus' }), false);
@@ -53,7 +64,47 @@ test('explorer filters: exact maturity filters remain exact', () => {
   assert.equal(sceneMatchesExplorerFilters(recordFor('breathing-lungs'), { status: 'prototype' }), true);
 });
 
-test('explorer filters: planned and empty backlog rows never satisfy paid/status filters', () => {
+test('explorer filters: clinical review is independent of maturity', () => {
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { review: 'stale' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), { review: 'reviewed' }), false);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { review: 'reviewed' }), false);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { review: 'legacy-unversioned' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('brain-anatomy'), { review: 'pending' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('hepatorenal-syndrome'), { review: 'pending' }), true);
+});
+
+test('explorer filters: maturity and clinical review can be combined without conflating them', () => {
+  assert.equal(
+    sceneMatchesExplorerFilters(recordFor('heart-failure'), {
+      status: 'production',
+      review: 'legacy-unversioned',
+    }),
+    true
+  );
+  assert.equal(
+    sceneMatchesExplorerFilters(recordFor('heart-failure'), {
+      status: 'production',
+      review: 'reviewed',
+    }),
+    false
+  );
+  assert.equal(
+    sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), {
+      status: 'reviewed',
+      review: 'stale',
+    }),
+    true
+  );
+  assert.equal(
+    sceneMatchesExplorerFilters(recordFor('copd-hyperinflation'), {
+      status: 'reviewed',
+      review: 'reviewed',
+    }),
+    false
+  );
+});
+
+test('explorer filters: planned and empty backlog rows never satisfy paid/status/review filters', () => {
   const system = { id: 'renal', label: 'Renal', labelJa: '腎・泌尿器' };
   const organ = { id: 'kidney', label: 'Kidney', labelJa: '腎臓' };
   const planned = { titleEn: 'CKD', titleJa: '慢性腎臓病', disease: 'ckd' };
@@ -61,6 +112,8 @@ test('explorer filters: planned and empty backlog rows never satisfy paid/status
   assert.equal(plannedMatchesExplorerFilters({ planned, system, organ }, { query: 'CKD' }), true);
   assert.equal(plannedMatchesExplorerFilters({ planned, system, organ }, { mode: 'patient' }), false);
   assert.equal(plannedMatchesExplorerFilters({ planned, system, organ }, { status: 'reviewed' }), false);
+  assert.equal(plannedMatchesExplorerFilters({ planned, system, organ }, { review: 'reviewed' }), false);
   assert.equal(emptyOrganMatchesExplorerFilters({ system, organ }, { query: '腎臓' }), true);
   assert.equal(emptyOrganMatchesExplorerFilters({ system, organ }, { status: 'production' }), false);
+  assert.equal(emptyOrganMatchesExplorerFilters({ system, organ }, { review: 'pending' }), false);
 });

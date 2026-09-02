@@ -100,11 +100,13 @@ the model tests.
 - [x] Scene paid capabilities are semantic manifest data and CI-checked against
   authored Patient/Education content and scene maturity.
 - [x] CSP and the remaining security headers are in `public/_headers` and
-  guarded by `tests/security-headers.test.js`. The billing event ledger
-  (migration `003`), a reconciliation endpoint and an alert policy are in place;
-  see [`access-and-billing.md`](access-and-billing.md). Scheduling the
-  reconciliation run and pointing `OPS_ALERT_WEBHOOK` somewhere are deployment
-  configuration.
+  guarded by `tests/security-headers.test.js`. The server-only billing event
+  ledger (claim/finish, with an attempt count and a reclaim window), per-user
+  reconciliation on the request path, a scheduled account-wide reconciliation
+  sweep and an alert policy are all in place; see
+  [`access-and-billing.md`](access-and-billing.md). Scheduling that sweep and
+  pointing `OPS_ALERT_WEBHOOK` somewhere are deployment configuration, and the
+  production runbook for it is in [`release-runbook.md`](release-runbook.md).
 - [ ] Choose real Patient / Education / Complete prices and configure live Stripe
   Products, Prices, Portal, webhook and Netlify Production secrets.
 
@@ -159,8 +161,8 @@ the model tests.
 | 8b | Crawlable scene pages, metadata and sitemap | Done except preview rasters |
 | 8c | Terms, privacy, commercial disclosure and support, with a checkout gate | Done except seller identity |
 | 8d | Accessibility foundations enforced in CI | Done except device passes |
-| 8e | Billing ledger, reconciliation and operational alerts | Done |
-| 8f | Model-card revisions and review attestation drift | Done |
+| 8e | Billing ledger, reconciliation sweep and operational alerts | Done |
+| 8f | Model-card revisions (distinct from review staleness, which Batch 5 owns) | Done |
 | 8g | Browser/device matrix on real hardware | Next |
 | 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |

@@ -191,7 +191,9 @@ test('endpoint: compares the token in constant time', () => {
 });
 
 test('endpoint: only ever writes the local cache, never Stripe', () => {
-  assert.match(endpoint, /upsertSubscription\(subscription\)/);
+  // Through `syncSubscription` — the same writer the webhook uses, so a repair
+  // and a delivery cannot leave the row in two different shapes.
+  assert.match(endpoint, /syncSubscription\(subscription\)/);
   assert.ok(!/stripePost|stripe\.subscriptions\.update|method: 'POST'.*stripe/i.test(endpoint));
 });
 

@@ -86,7 +86,7 @@ export function createAccessManager({ ui }) {
         // plan is only the thing to wait for — it never grants access itself.
         for (let attempt = 0; attempt < 6 && !expected.every((grant) => state.grants.has(grant)); attempt++) {
           if (attempt) await sleep(350 * attempt);
-          await refresh();
+          await refresh({ reconcile: attempt === 0 });
         }
         if (expected.length && !expected.every((grant) => state.grants.has(grant))) {
           state.notice = '決済は完了しました。利用権の反映に少し時間がかかっています。アカウントから再確認できます。';
@@ -97,6 +97,18 @@ export function createAccessManager({ ui }) {
         clean.searchParams.delete('billing');
         clean.searchParams.delete('billing_plan');
         clean.searchParams.delete('session_id');
+        history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
+      } else if (params.get('billing') === 'portal') {
+        // Portal can change plan, cancellation and payment method. Reconcile
+        // directly from Stripe once on return instead of waiting for webhook
+        // propagation before showing the current access state.
+        const result = await refresh({ reconcile: true });
+        state.notice = result.reconciliationSucceeded
+          ? '契約情報を最新の状態に更新しました。'
+          : '契約情報の最新状態を確認できませんでした。現在の表示は前回確認時の内容です。';
+        notify();
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete('billing');
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
 
@@ -172,22 +184,27 @@ export function createAccessManager({ ui }) {
     notify();
   }
 
-  async function refresh() {
+  async function refresh({ reconcile = false } = {}) {
     state.loading = true;
     state.error = '';
     notify();
+    let reconciliationSucceeded = reconcile ? false : null;
     try {
       const session = await getSession();
       state.user = session?.user ?? null;
       state.grants = new Set(FREE);
       state.subscriptions = [];
       if (session) {
-        const response = await authenticatedFetch('/.netlify/functions/entitlements');
+        const endpoint = reconcile
+          ? '/.netlify/functions/entitlements?reconcile=1'
+          : '/.netlify/functions/entitlements';
+        const response = await authenticatedFetch(endpoint);
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'Could not load access.');
         state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
         state.subscriptions = data.subscriptions ?? [];
         state.user = data.user ?? state.user;
+        if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
       }
     } catch (error) {
       // Free access is deliberately resilient to billing/auth outages.
@@ -197,6 +214,7 @@ export function createAccessManager({ ui }) {
       state.loading = false;
       notify();
     }
+    return { reconciliationSucceeded };
   }
 
   function open(entitlement = null) {

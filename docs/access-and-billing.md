@@ -27,6 +27,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `netlify/functions/*` — authenticated entitlement lookup, Stripe Checkout, Stripe Customer Portal and webhook sync.
 - `supabase/migrations/001_billing.sql` — server-only billing state.
 - `supabase/migrations/002_single_subscription_lifecycle.sql` — DB-level one-non-terminal-subscription guard.
+- `supabase/migrations/20260901154950_billing_event_ledger.sql` — server-only Stripe Event ledger and reconciliation marker.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -59,7 +60,10 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
 
 1. Create a dedicated Supabase project for Medical 3D Lab.
 2. Enable email/password authentication.
-3. Apply `supabase/migrations/001_billing.sql` and `002_single_subscription_lifecycle.sql`.
+3. Apply the billing migrations in order:
+   - `supabase/migrations/001_billing.sql`
+   - `supabase/migrations/002_single_subscription_lifecycle.sql`
+   - `supabase/migrations/20260901154950_billing_event_ledger.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -132,10 +136,14 @@ Listen for:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- `customer.subscription.paused`
+- `customer.subscription.resumed`
 
 Store the signing secret as `STRIPE_WEBHOOK_SECRET`.
 
-The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state.
+The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. It claims each Stripe Event ID in the server-only `billing_events` ledger, acknowledges completed duplicates without repeating their work, and permits failed or abandoned processing to be retried. The ledger stores identifiers and outcomes, not raw Stripe payloads.
+
+Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state. Checkout and Customer Portal returns also request one authoritative reconciliation from Stripe. Opening Account performs the same explicit re-check, and a stale local subscription is reconciled before it can block a legitimate repurchase.
 
 ## Subscription status policy
 
@@ -172,11 +180,12 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 4. User signs in or creates an account.
 5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists locally or at Stripe, and creates a Stripe Checkout Session.
 6. Stripe completes payment and emits subscription events.
-7. `stripe-webhook` verifies the raw-body signature and stores current Stripe subscription state in Supabase.
+7. `stripe-webhook` verifies the raw-body signature, claims the Event ID and stores current Stripe subscription state in Supabase.
 8. The webhook derives the plan from the subscription Price ID.
 9. `entitlements` converts eligible subscription statuses to `free`, `patient`, and/or `education` grants.
-10. Returning from Checkout polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
-11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation.
+10. Returning from Checkout performs one Stripe reconciliation and then polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
+11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation; returning from Portal reconciles the new state immediately.
+12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
 
 ## Content policy
 
@@ -245,8 +254,13 @@ The consequence is deliberate and enforced in code rather than on a checklist:
 | `src/data/operator.js` | The seller's identity, and which required entries are still missing |
 | `src/data/legal.js` | The four documents as data, plus the disclosure rows |
 | `src/data/legalRoutes.js` | Just the slugs — the router and catalogue need them and must not pull the prose into the entry chunk |
-| `src/access/legalReadiness.js` | `canSell()` and the reason it says no |
+| `src/access/legalReadiness.js` | `canSell()` and the reason it says no — about the **seller** |
+| `src/access/commerceReadiness.js` | Whether a plan is backed by a clinically current scene — about the **content** |
 | `src/app/Legal.js` | The pages, plain DOM, readable with no renderer |
+
+Two independent gates, and both are repeated server-side in
+`create-checkout.js`: hiding a purchase button is not a boundary, so a stale
+client or a hand-written request meets the same refusal.
 
 `AccessManager` asks `canSell()` rather than checking `billingConfigured`
 alone. With the disclosure incomplete the product still works, the account
@@ -283,68 +297,69 @@ questions they cannot answer:
 
 ### The ledger
 
-`billing_events` (migration `003`) is append-only, keyed on Stripe's own event
-id — the primary key *is* the idempotency mechanism. Each row records the type,
-the customer/subscription/user it concerns, a sha256 of the raw body, the
-outcome (`applied`, `ignored`, `duplicate`, `unsupported_price`, `failed`) and
-both timestamps.
+`billing_events` is append-only and keyed on Stripe's own event id.
+`claimBillingEvent` / `finishBillingEvent` in `netlify/lib/billing.js` implement
+a claim-then-finish protocol with an attempt count and a reclaim window, so two
+workers cannot process one delivery and a worker that dies mid-flight does not
+strand the event.
 
 **There is deliberately no payload column.** A Stripe event carries the
 customer's email and address, and this product has no reason to hold a second
-copy. The digest proves the same body was seen twice; Stripe remains where the
-event itself lives.
+copy of them.
 
 Three properties the webhook keeps:
 
-- **Every exit records an outcome.** A path that returns without recording is a
-  delivery nobody can account for afterwards.
+- **Every exit records an outcome.** A path that returns without finishing its
+  claim leaves the event `processing` until the reclaim window opens, which
+  turns a success into a retry.
 - **A failure is recorded as `failed`, not left unrecorded**, so a retry can
-  tell "never seen" from "tried and broke" — and so an operator can find the
-  ones that broke. It still returns 500, so Stripe retries.
-- **A ledger failure never blocks entitlement.** Processing an event twice is
-  recoverable; refusing a real one is not.
+  tell "never seen" from "tried and broke". It still returns 500, so Stripe
+  retries, and it raises a `webhook_failed` alert.
+- **Renewal and payment failure are handled rather than dropped.** Entitlement
+  already follows the subscription events; the invoice events
+  (`netlify/lib/invoices.js`) carry the two facts those cannot — that a renewal
+  happened at all, and that a payment is failing with a known number of attempts
+  left. Neither writes state.
 
-A replay of an event id whose recorded digest differs is rejected with a 400 and
-a critical alert. It should be impossible, and the safe reading is that the
-delivery is not what it claims to be.
+### Reconciliation, at two scopes
 
-### Reconciliation
+Webhooks are the fast path and not a guarantee, and every kind of loss leaves
+entitlement wrong in a way no single request notices, because nothing re-asks.
+Two things re-ask, and they answer different questions:
 
-`netlify/functions/billing-reconcile.js`, on a schedule. Webhooks are the fast
-path and not a guarantee, and every kind of loss leaves entitlement wrong in a
-way no single request notices, because nothing re-asks.
+| | Scope | Runs | Answers |
+| --- | --- | --- | --- |
+| `reconcileBillingForUser` | One user | On their own request path — after Checkout returns, when entitlements are read | "Is *this* user's state right, now that they are here?" |
+| `billing-reconcile.js` | The account | On a schedule | "Is anyone in a bad state that nobody has looked at?" |
 
-The direction is fixed: **Stripe is the truth about a subscription**, local
-state is a cache of it. Reconciliation only ever writes the cache.
+The first cannot see a user who never comes back, and has nobody to tell. The
+second is the sweep, and it classifies what it finds
+(`netlify/lib/reconcile.js`) rather than only repairing:
 
 | Drift | Severity | Action |
 | --- | --- | --- |
 | `status`, `entitlement`, `period` | error / warning | Repaired from Stripe |
 | `missing_locally` — a live Stripe subscription with no row | error | Repaired. Somebody is paying with no access |
-
-To find that last one the pass has to ask Stripe what *Stripe* has, not only
-about the subscriptions it already knows of. It lists up to
-`MAX_LISTED_PAGES` × 100 subscriptions per run and says so if it hits the
-ceiling. Fetching only the local ids left that branch — the worst state this
-endpoint exists to catch — unreachable in production while it had a test.
-
-Both sides read the period through `subscriptionPeriodEnd`, the same helper
-that writes the local row. Reading `current_period_end` off the subscription
-directly looked equivalent and is not: newer Stripe API versions carry it on
-the subscription *item*. The comparison has to read Stripe the way the writer
-does, or it is comparing two different questions and inventing drift.
-
 | `missing_in_stripe` — a live row Stripe has never heard of | error | **Escalated.** One empty read is not enough evidence to destroy the record of a payment |
 | `unsupported_price` | error | **Escalated.** Somebody changed a subscription in the dashboard to something we do not sell |
 
-The comparison (`netlify/lib/reconcile.js`) is pure and tested without a
-network — it decides whether somebody keeps access they paid for, so it should
-not need a live Stripe account to verify.
+To find `missing_locally` the sweep has to ask Stripe what *Stripe* has, not
+only about the subscriptions it already knows of. It lists up to
+`MAX_LISTED_PAGES` × 100 subscriptions per run and says so if it hits the
+ceiling.
 
-Authorisation is a shared secret, because there is no user: it is an operations
-endpoint. With `BILLING_RECONCILE_TOKEN` unset it refuses every request rather
-than defaulting to open, and the comparison is constant-time. `?dry=1` reports
-drift without repairing it.
+Both sides read the period through `subscriptionPeriodEnd` and write through
+`syncSubscription` — the same helpers the webhook uses. A comparison that reads
+Stripe differently from the writer invents drift; a repair that writes
+differently leaves the row in two shapes.
+
+The direction is fixed: **Stripe is the truth about a subscription**, local
+state is a cache of it. Reconciliation only ever writes the cache.
+
+Authorisation is a shared secret compared in constant time, because there is no
+user: it is an operations endpoint. With `BILLING_RECONCILE_TOKEN` unset it
+refuses every request rather than defaulting to open. `?dry=1` reports drift
+without repairing it.
 
 ### Alerts
 

@@ -1,0 +1,191 @@
+.clinical-review-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.title-trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+}
+
+.title-trust-badges .status-badge,
+.title-card .clinical-review-badge {
+  margin-top: 0;
+}
+
+.title-card .clinical-review-badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0.015em;
+  color: rgba(221, 229, 240, 0.82);
+  background: rgba(137, 153, 180, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(157, 175, 203, 0.24);
+}
+
+.title-card .clinical-review-badge.is-reviewed {
+  color: #a8e6c4;
+  background: rgba(76, 220, 150, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(76, 220, 150, 0.3);
+}
+
+.title-card .clinical-review-badge.is-stale {
+  color: #f1b7ad;
+  background: rgba(232, 120, 103, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(232, 120, 103, 0.3);
+}
+
+.title-card .clinical-review-badge.is-pending {
+  color: #f1cea0;
+  background: rgba(225, 177, 103, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(225, 177, 103, 0.28);
+}
+
+.title-card .clinical-review-badge.is-legacy-unversioned {
+  color: #c7d3ec;
+  background: rgba(132, 153, 205, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(132, 153, 205, 0.28);
+}
+
+.explorer .clinical-review-badge {
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  background: rgba(166, 176, 189, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(166, 176, 189, 0.22);
+  color: var(--explorer-muted);
+}
+
+.explorer .clinical-review-badge.is-reviewed {
+  color: #9fd4ba;
+  background: rgba(100, 196, 148, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(100, 196, 148, 0.28);
+}
+
+.explorer .clinical-review-badge.is-stale {
+  color: #e1a69e;
+  background: rgba(218, 115, 99, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(218, 115, 99, 0.28);
+}
+
+.explorer .clinical-review-badge.is-pending {
+  color: #dec493;
+  background: rgba(222, 196, 147, 0.07);
+  box-shadow: inset 0 0 0 1px rgba(222, 196, 147, 0.25);
+}
+
+.explorer .clinical-review-badge.is-legacy-unversioned {
+  color: #aeb9d4;
+  background: rgba(132, 153, 205, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(132, 153, 205, 0.25);
+}
+
+.clinical-review-details {
+  grid-column: 1 / -1;
+  margin: -3px 17px 14px;
+  border-top: 1px solid var(--explorer-rule);
+  color: var(--explorer-muted);
+  font-size: 11px;
+}
+
+.clinical-review-summary {
+  cursor: pointer;
+  padding: 9px 0 1px;
+  list-style-position: outside;
+  user-select: none;
+}
+
+.clinical-review-summary:hover,
+.clinical-review-summary:focus-visible {
+  color: var(--explorer-ink);
+}
+
+.clinical-review-summary-label,
+.clinical-review-summary-hint {
+  margin-right: 9px;
+}
+
+.clinical-review-summary-hint {
+  color: var(--explorer-faint);
+}
+
+.clinical-review-body {
+  display: grid;
+  gap: 8px;
+  padding: 9px 0 4px 15px;
+  line-height: 1.65;
+}
+
+.clinical-review-explanation .lang-ja,
+.clinical-review-section-title .lang-ja,
+.clinical-review-meta .lang-ja {
+  display: block;
+}
+
+.clinical-review-section-title {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--explorer-ink);
+  font-weight: 600;
+}
+
+.clinical-review-section.is-stale {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(218, 115, 99, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(218, 115, 99, 0.16);
+}
+
+.clinical-review-stale-reason {
+  margin: 4px 0 8px;
+}
+
+.clinical-review-section ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.clinical-review-section li + li {
+  margin-top: 4px;
+}
+
+.clinical-review-path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.clinical-review-meta {
+  color: var(--explorer-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 720px) {
+  .title-trust-badges {
+    gap: 5px;
+  }
+
+  .title-card .clinical-review-badge {
+    font-size: 9px;
+  }
+
+  .clinical-review-details {
+    margin-right: 15px;
+    margin-left: 15px;
+  }
+
+  .clinical-review-body {
+    padding-left: 12px;
+  }
+}

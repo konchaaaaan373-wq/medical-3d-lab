@@ -14,9 +14,15 @@
  * So each card declares which sources it describes and a digest of them.
  * `tests/model-revisions.test.js` recomputes the digest, and a medical change
  * that leaves the card untouched fails CI with an instruction rather than a
- * puzzle. A clinical review carries the digest of what was actually reviewed,
- * so a review whose model has since changed reports itself as stale instead of
- * quietly continuing to look like a sign-off.
+ * puzzle.
+ *
+ * **This is not the same obligation as review staleness**, which
+ * `src/catalog/clinicalReview.js` owns through the registry's `stalePaths`.
+ * That one asks "does this attestation still describe the code, and may it
+ * still be shown as current?" This one asks "does the *card* still describe
+ * the model?" A review can be correctly marked stale while its card is fine,
+ * and a card can be out of date under a review that was never current. Two
+ * questions, two mechanisms, and neither is a copy of the other.
  *
  * Pure apart from an injected reader, so the whole rule set is testable.
  */
@@ -102,50 +108,6 @@ export function revisionProblems(entries, read, { sceneIds } = {}) {
   }
 
   return problems;
-}
-
-/**
- * Which clinical reviews no longer describe the model they signed.
- *
- * A review pins a commit; the code moves on. `reviewedModelDigest` records what
- * the model looked like at the reviewed commit, so this compares two recorded
- * facts rather than shelling out to git — which matters, because CI checks out
- * shallow and the reviewed commit may not be there to ask about.
- *
- * A stale review is not automatically invalid. It is a review of something
- * else, and saying so is the whole point of a versioned attestation.
- *
- * @param {object[]} reviews the clinical-review registry
- * @param {object[]} revisions the revision registry
- * @param {(path: string) => string} read
- */
-export function staleReviews(reviews, revisions, read) {
-  const byScene = new Map(revisions.map((entry) => [entry.sceneId, entry]));
-  const stale = [];
-
-  for (const review of reviews) {
-    if (review.reviewStatus !== 'reviewed') continue;
-    const revision = byScene.get(review.sceneId);
-    if (!revision) {
-      stale.push({ sceneId: review.sceneId, reason: 'no revision entry for a reviewed scene' });
-      continue;
-    }
-    if (!review.reviewedModelDigest) {
-      stale.push({ sceneId: review.sceneId, reason: 'the review does not record what it reviewed' });
-      continue;
-    }
-    const current = digestSources(revision.modelSources, read);
-    if (current !== review.reviewedModelDigest) {
-      stale.push({
-        sceneId: review.sceneId,
-        reason: 'the model has changed since it was reviewed',
-        reviewed: review.reviewedModelDigest,
-        current,
-      });
-    }
-  }
-
-  return stale;
 }
 
 /**

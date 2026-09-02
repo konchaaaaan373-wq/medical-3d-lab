@@ -62,9 +62,9 @@
     "unresolvedLimitations": [
       "No versioned clinical attestation exists under the current review standard.",
       "The progression axis is a conceptual aggregation state, not clinical stage, symptom severity, or elapsed disease time.",
-      "Aβ40 and Aβ42, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
+      "A\u03b240 and A\u03b242, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
       "Particle counts, molecular scale and aggregation thresholds are illustrative rather than measured quantities.",
-      "Individual rendered particles move only forward on the teaching slider even though real Aβ assemblies can interconvert and disassemble."
+      "Individual rendered particles move only forward on the teaching slider even though real A\u03b2 assemblies can interconvert and disassemble."
     ]
   },
   {
@@ -92,10 +92,16 @@
   },
   {
     "sceneId": "copd-hyperinflation",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/copd.md",
+      "src/data/copd.js",
+      "src/scenes/respiratory/scenes/copd/CopdScene.js"
+    ],
     "scope": [
       "core respiratory-mechanics model",
       "causal and physiological claims",
@@ -112,15 +118,20 @@
       "The model does not represent gas exchange, PaO2, PaCO2 or oxygen saturation.",
       "Breathing pattern is prescribed rather than selected by the patient/model, and compliance is simplified.",
       "The model cannot reproduce worsening gas trapping caused by dynamic airway compression during forceful expiration."
-    ],
-    "reviewedModelDigest": "dba620896116f885"
+    ]
   },
   {
     "sceneId": "asthma-heterogeneity",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/asthma.md",
+      "src/data/asthma.js",
+      "src/scenes/respiratory/scenes/asthma/AsthmaScene.js"
+    ],
     "scope": [
       "core branching-airway model",
       "airway anatomy and causal claims",
@@ -137,15 +148,21 @@
       "The tree is symmetric and truncated to eight generations; spatial adjacency is tree adjacency rather than real three-dimensional lung anatomy.",
       "The equilibrium model contains no bronchoconstriction time course or gas exchange.",
       "The lung-inflation control represents parenchymal tethering only and must not be interpreted as the clinical bronchodilator response to a deep inspiration."
-    ],
-    "reviewedModelDigest": "89f769461dfcb12c"
+    ]
   },
   {
     "sceneId": "portal-hypertension",
-    "reviewStatus": "reviewed",
+    "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",
     "reviewedAt": "2026-08-30",
     "reviewedCommit": "b77cb83a7f41056a1eda9ad0d4c7492e85bd2376",
+    "staleReason": "Files inside the recorded review scope changed after the reviewed commit. The historical review is retained, but the current version requires re-review before it can be presented as versioned Clinical Review complete.",
+    "stalePaths": [
+      "docs/model-cards/cirrhosis-portal-hypertension.md",
+      "src/models/portalHypertension.js",
+      "src/data/portalHypertension.js",
+      "src/scenes/hepatobiliary/scenes/portalHypertension/PortalHypertensionScene.js"
+    ],
     "scope": [
       "core portal-haemodynamic network",
       "causal ordering and HVPG interpretation",
@@ -161,16 +178,8 @@
       "The model is an equilibrium network and does not represent the time course of collateral formation or disease progression.",
       "Collateral recruitment is an illustrative smooth mapping rather than a physiological valve or clinical threshold law.",
       "WHVP is treated as equal to sinusoidal pressure by construction although clinically it is an approximation.",
-      "Prehepatic portal vein thrombosis, ascites, bleeding, encephalopathy and liver function are outside the model.",
-      "The model has been extended since the recorded review: an arterial inlet pressure control was added for the hepatorenal scene. It defaults to the reviewed value, so reviewed behaviour is unchanged, but the model at other inlet pressures has not been clinically reviewed."
-    ],
-    "reviewedModelDigest": "9179bd6e7b893336",
-    "modelChangedSinceReview": {
-      "currentModelDigest": "245e7f99e62403ba",
-      "changedAt": "2026-08-31",
-      "summary": "Hepatorenal syndrome added meanArterialPressureMmHg as a control so a systemic model can supply the inlet pressure this model previously asserted as a constant.",
-      "effectOnReviewedBehaviour": "None at the reviewed settings: the control defaults to MEAN_ARTERIAL_PRESSURE (90 mmHg), the value the reviewed version used. What the review did not see is the behaviour at any other inlet pressure."
-    }
+      "Prehepatic portal vein thrombosis, ascites, bleeding, encephalopathy and liver function are outside the model."
+    ]
   },
   {
     "sceneId": "hepatorenal-syndrome",

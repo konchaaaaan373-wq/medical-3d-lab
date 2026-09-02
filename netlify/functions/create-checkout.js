@@ -1,9 +1,12 @@
+import { planIsSellable } from '../../src/access/commerceReadiness.js';
+import { legalReadiness } from '../../src/access/legalReadiness.js';
 import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
   billingCustomerFor,
   json,
   priceForPlan,
+  reconcileBillingForUser,
   safeHash,
   stripePost,
   subscriptionsForCustomer,
@@ -18,6 +21,33 @@ export default async (request) => {
 
     const body = await request.json().catch(() => ({}));
     const plan = body.plan;
+
+    // Two gates, and both are repeated server-side intentionally. Hiding a
+    // purchase button is not a boundary: a stale client or a hand-written
+    // request must not be able to start a paid subscription either way.
+    //
+    // The first is a legal one and it is about the seller, not the buyer or the
+    // content. Japan's 特定商取引法 requires a seller of a digital service to
+    // publish its identity, its terms and its cancellation policy before taking
+    // money, and `src/data/operator.js` ships those fields null so nothing is
+    // invented. Until they are filled in, this deployment may not sell at all.
+    const legal = legalReadiness();
+    if (!legal.ready) {
+      return json(409, {
+        error: 'Checkout is unavailable until the required commercial disclosure is published.',
+        disclosureHold: true,
+      });
+    }
+
+    // The second is about the content: professional plans must be backed by a
+    // scene whose Clinical Review is current, not stale, pending or unversioned.
+    if (!planIsSellable(plan)) {
+      return json(409, {
+        error: 'This professional plan is temporarily unavailable pending current clinical review.',
+        reviewHold: true,
+      });
+    }
+
     const price = priceForPlan(plan);
     const returnHash = safeHash(body.returnHash);
 
@@ -25,10 +55,25 @@ export default async (request) => {
     // request and includes incomplete/payment-recovery states that should be
     // managed rather than duplicated.
     const statuses = [...NON_TERMINAL_SUBSCRIPTION_STATUSES].join(',');
-    const existing = await supabaseAdmin(
+    let existing = await supabaseAdmin(
       `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
     );
-    if (existing?.length) return existingSubscription();
+    if (existing?.length) {
+      // A missed cancellation webhook must not trap a former subscriber in a
+      // stale local "active" row forever. Re-read Stripe before deciding that
+      // this account can only use Portal.
+      try {
+        await reconcileBillingForUser(user.id);
+      } catch (error) {
+        // The safe fallback is Portal, not a second recurring subscription.
+        console.warn('create-checkout reconciliation', error);
+        return existingSubscription();
+      }
+      existing = await supabaseAdmin(
+        `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
+      );
+      if (existing?.length) return existingSubscription();
+    }
 
     const customer = await billingCustomerFor(user);
 

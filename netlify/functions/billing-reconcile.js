@@ -6,6 +6,12 @@
  * those leaves local entitlement wrong in a way no single request will notice,
  * because nothing re-asks. This re-asks.
  *
+ * It is deliberately not the same thing as `reconcileBillingForUser`, which
+ * repairs one user's state on their own request path — after Checkout returns,
+ * or when they read their entitlements. That one cannot see a user who never
+ * comes back, and it has nobody to tell. This one answers the other question:
+ * **is anyone in a bad state right now that nobody has looked at?**
+ *
  * Run it on a schedule (Netlify Scheduled Functions, or any cron that can make
  * an authenticated request). It is safe to run at any time: the comparison is
  * read-only until it decides there is something to repair, and it only ever
@@ -18,7 +24,7 @@
 import crypto from 'node:crypto';
 
 import { notify } from '../lib/alerts.js';
-import { json, stripeGet, supabaseAdmin, upsertSubscription } from '../lib/billing.js';
+import { json, stripeGet, subscriptionById, supabaseAdmin, syncSubscription } from '../lib/billing.js';
 import { NON_TERMINAL, findDrift, reconciliationPlan } from '../lib/reconcile.js';
 
 /**
@@ -63,7 +69,10 @@ export default async (request) => {
     const byId = new Map();
     for (const row of localRows) {
       try {
-        const subscription = await stripeGet(`subscriptions/${row.stripe_subscription_id}`);
+        // `subscriptionById` rather than a raw fetch: it is what the webhook
+        // and the per-user repair both read Stripe through, and a comparison
+        // that reads Stripe differently from the writer invents drift.
+        const subscription = await subscriptionById(row.stripe_subscription_id);
         if (subscription?.id) byId.set(subscription.id, subscription);
       } catch {
         // Left out deliberately: absence is the signal `findDrift` reads.
@@ -126,7 +135,9 @@ export default async (request) => {
       for (const id of plan.subscriptionIds) {
         const subscription = byId.get(id);
         if (!subscription) continue;
-        await upsertSubscription(subscription);
+        // The same writer the webhook uses, so a repair and a delivery cannot
+        // leave the row in two different shapes.
+        await syncSubscription(subscription);
         repaired += 1;
       }
     }

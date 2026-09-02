@@ -14,20 +14,16 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 
-import { adoptRevisions, revisionProblems, staleReviews } from './model-revisions.js';
+import { adoptRevisions, revisionProblems } from './model-revisions.js';
 
 const REVISIONS = 'docs/model-cards/revisions.json';
-const REVIEWS = 'docs/clinical-reviews/registry.json';
 
 const read = (path) => readFileSync(path, 'utf8');
 const readJson = (path) => JSON.parse(read(path));
 
 const adopt = process.argv.includes('--adopt');
 const entries = readJson(REVISIONS);
-const reviews = readJson(REVIEWS);
-
 const problems = revisionProblems(entries, read);
-const stale = staleReviews(reviews, entries, read);
 
 if (!adopt) {
   console.log(`Model card revisions — ${entries.length} entries`);
@@ -36,15 +32,6 @@ if (!adopt) {
     for (const problem of problems) console.error(`  - ${problem}`);
   } else {
     console.log('  ok    every model card describes the model it is filed against');
-  }
-
-  if (stale.length) {
-    console.warn(`\n${stale.length} clinical review(s) no longer describe the model they signed:`);
-    for (const item of stale) console.warn(`  - ${item.sceneId}: ${item.reason}`);
-    console.warn(
-      '  A stale review is not automatically invalid. Record what changed under\n' +
-        '  "modelChangedSinceReview" in the review registry, or have it re-signed.'
-    );
   }
 
   process.exit(problems.length ? 1 : 0);

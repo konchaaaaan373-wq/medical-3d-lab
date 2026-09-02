@@ -1,4 +1,5 @@
 import { featuresForScene } from '../access/features.js';
+import { clinicalReviewForScene, clinicalReviewMatchesFilter } from '../catalog/clinicalReview.js';
 import { organById } from '../catalog/taxonomy.js';
 
 export const EXPLORER_MODE_FILTERS = Object.freeze(['all', 'patient', 'education']);
@@ -9,6 +10,13 @@ export const EXPLORER_STATUS_FILTERS = Object.freeze([
   'reviewed',
   'alpha',
   'prototype',
+]);
+export const EXPLORER_REVIEW_FILTERS = Object.freeze([
+  'all',
+  'reviewed',
+  'stale',
+  'pending',
+  'legacy-unversioned',
 ]);
 
 const fold = (value) => String(value ?? '').trim().toLocaleLowerCase();
@@ -42,6 +50,7 @@ function sceneOrganDocument(scene) {
 }
 
 export function sceneSearchDocument({ scene, system, organ }) {
+  const review = clinicalReviewForScene(scene);
   return [
     ...contextDocument({ system, organ }),
     // A multi-organ scene can be rendered under more than one organ row. Search
@@ -57,6 +66,11 @@ export function sceneSearchDocument({ scene, system, organ }) {
     scene?.descriptionJa,
     scene?.disease,
     ...(scene?.tags ?? []),
+    review?.reviewStatus,
+    review?.reviewerRole,
+    review?.reviewedAt,
+    review?.staleReason,
+    ...(review?.scope ?? []),
   ]
     .filter(Boolean)
     .join(' ');
@@ -68,6 +82,7 @@ export function sceneMatchesExplorerFilters(record, filters = {}) {
 
   const mode = EXPLORER_MODE_FILTERS.includes(filters.mode) ? filters.mode : 'all';
   const status = EXPLORER_STATUS_FILTERS.includes(filters.status) ? filters.status : 'all';
+  const review = EXPLORER_REVIEW_FILTERS.includes(filters.review) ? filters.review : 'all';
   const features = featuresForScene(scene);
 
   if (mode === 'patient' && !features.patient) return false;
@@ -76,15 +91,18 @@ export function sceneMatchesExplorerFilters(record, filters = {}) {
   if (status === 'reviewed-plus' && !['reviewed', 'production'].includes(scene.status)) return false;
   if (!['all', 'reviewed-plus'].includes(status) && scene.status !== status) return false;
 
+  if (!clinicalReviewMatchesFilter(scene, review)) return false;
+
   return containsAll(sceneSearchDocument(record), queryTokens(filters.query));
 }
 
 export function plannedMatchesExplorerFilters({ planned, system, organ }, filters = {}) {
-  // Planned entries have no paid capability and no reviewed status yet. When a
-  // visitor asks for an actual product mode or a maturity level, planned work
-  // must not appear as if it satisfied that filter.
+  // Planned entries have no paid capability, maturity or clinical-review state
+  // yet. A filter asking for any of those must not make backlog work look as if
+  // it already satisfied a product or trust gate.
   if ((filters.mode ?? 'all') !== 'all') return false;
   if ((filters.status ?? 'all') !== 'all') return false;
+  if ((filters.review ?? 'all') !== 'all') return false;
 
   const document = [
     ...contextDocument({ system, organ }),
@@ -105,5 +123,6 @@ export function plannedMatchesExplorerFilters({ planned, system, organ }, filter
 export function emptyOrganMatchesExplorerFilters({ system, organ }, filters = {}) {
   if ((filters.mode ?? 'all') !== 'all') return false;
   if ((filters.status ?? 'all') !== 'all') return false;
+  if ((filters.review ?? 'all') !== 'all') return false;
   return containsAll(contextDocument({ system, organ }).join(' '), queryTokens(filters.query));
 }
