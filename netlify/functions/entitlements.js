@@ -5,8 +5,9 @@ import {
   reconcileBillingForUser,
   supabaseAdmin,
 } from '../lib/billing.js';
+import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
 
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'GET') return json(405, { error: 'Method not allowed' });
   try {
     const user = await authenticatedUser(request);
@@ -14,7 +15,10 @@ export default async (request) => {
 
     const reconcileRequested = new URL(request.url).searchParams.get('reconcile') === '1';
     let reconciliation = reconcileRequested ? 'failed' : 'not_requested';
-    if (reconcileRequested) {
+    if (
+      reconcileRequested &&
+      stripeDeploymentSafety(process.env, context?.deploy?.context).safe
+    ) {
       try {
         const result = await reconcileBillingForUser(user.id);
         reconciliation = result.reconciled ? 'succeeded' : 'failed';

@@ -1,5 +1,6 @@
 import { deleteStripeCustomer, deleteSupabaseUser } from '../lib/account.js';
 import { authenticatedUser, json, supabaseAdmin } from '../lib/billing.js';
+import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
 
 /**
  * Permanently removes one Medical 3D Lab account.
@@ -12,7 +13,7 @@ import { authenticatedUser, json, supabaseAdmin } from '../lib/billing.js';
  * If Stripe cannot be closed, Auth is left intact so the user retains a way to
  * manage billing instead of becoming an identity-less paying customer.
  */
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'DELETE') return json(405, { error: 'Method not allowed' });
 
   try {
@@ -27,7 +28,12 @@ export default async (request) => {
     // This is intentionally before Auth deletion. A Stripe failure leaves the
     // account usable and recoverable rather than leaving recurring billing with
     // no Medical 3D Lab identity attached to it.
-    if (customerId) await deleteStripeCustomer(customerId);
+    if (customerId) {
+      if (!stripeDeploymentSafety(process.env, context?.deploy?.context).safe) {
+        return json(503, { error: 'Billing is not configured safely on this deployment.' });
+      }
+      await deleteStripeCustomer(customerId);
+    }
 
     await deleteSupabaseUser(user.id);
     return json(200, { deleted: true });

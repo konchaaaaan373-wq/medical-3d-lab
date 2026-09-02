@@ -18,8 +18,10 @@ import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { educationGuideFor } from '../src/data/educationGuides.js';
 import { patientGuideFor } from '../src/data/patientGuides.js';
 import {
+  checkoutIntegrationIdentifier,
   planForPrice,
   safeHash,
+  STRIPE_API_VERSION,
   subscriptionPeriodEnd,
   verifyStripeSignature,
 } from '../netlify/lib/billing.js';
@@ -158,6 +160,13 @@ test('billing: return hashes cannot become arbitrary redirects', () => {
   assert.equal(safeHash('#/portal-hypertension'), '#/portal-hypertension');
   assert.equal(safeHash('https://evil.example/'), '#/');
   assert.equal(safeHash('//evil.example'), '#/');
+});
+
+test('billing: Stripe requests are version-pinned and Checkout identifiers contain no identity', () => {
+  assert.equal(STRIPE_API_VERSION, '2026-08-26.dahlia');
+  const identifier = checkoutIntegrationIdentifier(() => Buffer.from([0, 1, 2, 3, 4, 5, 6, 7]));
+  assert.equal(identifier, 'abcdefgh');
+  assert.match(identifier, /^[a-z]{8}$/);
 });
 
 test('billing: Stripe webhook signature verifies the raw body and timestamp', () => {
