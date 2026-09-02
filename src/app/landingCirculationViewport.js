@@ -15,6 +15,34 @@ export function mountLandingCirculationViewport(container) {
   viewer.scene.add(scene.build());
 
   let userMovedCamera = false;
+  let inView = typeof window.IntersectionObserver !== 'function';
+  let renderingOnce = false;
+  const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+
+  const renderOnce = () => {
+    if (renderingOnce) return;
+    renderingOnce = true;
+    try {
+      viewer.controls.update();
+      viewer.composer.render();
+    } finally {
+      renderingOnce = false;
+    }
+  };
+
+  const shouldAnimate = () =>
+    inView && document.visibilityState !== 'hidden' && !motion?.matches;
+
+  const syncActivity = () => {
+    const animate = shouldAnimate();
+    viewer.controls.autoRotate = animate && !userMovedCamera;
+    if (animate) viewer.start();
+    else {
+      viewer.stop();
+      if (inView && document.visibilityState !== 'hidden') renderOnce();
+    }
+  };
+
   const applyOpeningPose = () => {
     if (userMovedCamera) return;
     const pose = framePose(
@@ -33,34 +61,55 @@ export function mountLandingCirculationViewport(container) {
   viewer.controls.minDistance = 7;
   viewer.controls.maxDistance = 24;
   viewer.controls.autoRotateSpeed = 0.22;
-  viewer.controls.addEventListener('start', () => {
+  const userStarted = () => {
     userMovedCamera = true;
-  });
+    viewer.controls.autoRotate = false;
+  };
+  const controlsChanged = () => {
+    if (!viewer.running && inView && document.visibilityState !== 'hidden') renderOnce();
+  };
+  viewer.controls.addEventListener('start', userStarted);
+  viewer.controls.addEventListener('change', controlsChanged);
   applyOpeningPose();
 
-  const stopResize = viewer.onResize(() => applyOpeningPose());
-  const motion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const stopResize = viewer.onResize(() => {
+    applyOpeningPose();
+    if (!viewer.running) renderOnce();
+  });
   const stopFrame = viewer.onFrame((dt) => {
-    if (!motion?.matches) scene.update(dt);
+    scene.update(dt);
   });
 
-  const syncMotion = () => {
-    viewer.controls.autoRotate = !motion?.matches && !userMovedCamera;
-  };
-  motion?.addEventListener?.('change', syncMotion);
-  syncMotion();
+  const visibilityChanged = () => syncActivity();
+  document.addEventListener('visibilitychange', visibilityChanged);
+  motion?.addEventListener?.('change', syncActivity);
 
-  viewer.start();
+  const Observer = window.IntersectionObserver;
+  const visibilityObserver = Observer
+    ? new Observer(([entry]) => {
+        inView = Boolean(entry?.isIntersecting);
+        syncActivity();
+      }, { threshold: 0.01 })
+    : null;
+  visibilityObserver?.observe(container);
+
+  renderOnce();
+  syncActivity();
   container.dataset.ready = 'true';
 
   return {
     setIntervention(value) {
       scene.setModelControl('intervention', value);
+      if (!viewer.running) renderOnce();
     },
     destroy() {
       stopFrame();
       stopResize();
-      motion?.removeEventListener?.('change', syncMotion);
+      visibilityObserver?.disconnect();
+      document.removeEventListener('visibilitychange', visibilityChanged);
+      motion?.removeEventListener?.('change', syncActivity);
+      viewer.controls.removeEventListener('start', userStarted);
+      viewer.controls.removeEventListener('change', controlsChanged);
       scene.dispose();
       viewer.dispose();
       delete container.dataset.ready;

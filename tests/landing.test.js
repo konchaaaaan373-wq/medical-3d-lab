@@ -163,6 +163,10 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /CirculationScene/);
   assert.match(viewport, /Viewer/);
   assert.match(viewport, /setModelControl\('intervention'/);
+  assert.match(viewport, /IntersectionObserver/);
+  assert.match(viewport, /viewer\.stop\(\)/);
+  assert.match(viewport, /viewer\.composer\.render\(\)/);
+  assert.match(viewport, /document\.visibilityState/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
   assert.match(landing, /解剖・病態生理の3Dモデル/);
@@ -229,6 +233,32 @@ test('landing: leaving the route cancels a 3D viewport that is still loading', a
     assert.equal(await pending, null);
     assert.equal(mountCount, 0, 'a detached route must not start a WebGL viewer');
   } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: a failed 3D preview exposes its fallback message', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  const previousError = console.error;
+  globalThis.window = { requestAnimationFrame() {} };
+  console.error = () => {};
+
+  try {
+    const demo = createLandingCirculationDemo({
+      loadViewport: () => Promise.reject(new Error('no WebGL')),
+    });
+    await demo.mount();
+    const loading = findByClass(demo.element, 'landing-demo-loading')[0];
+
+    assert.equal(loading.getAttribute('aria-hidden'), 'false');
+    assert.equal(loading.getAttribute('role'), 'status');
+    assert.equal(loading.getAttribute('aria-live'), 'polite');
+    assert.match(loading.children.map((node) => node.textContent).join(' '), /3Dプレビュー/);
+  } finally {
+    console.error = previousError;
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;

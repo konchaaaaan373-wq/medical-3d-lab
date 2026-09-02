@@ -240,6 +240,9 @@ export function createLandingCirculationDemo({
         console.error('landing 3D preview', error);
         viewport.dataset.loading = 'false';
         element.dataset.viewport = 'unavailable';
+        viewportLoading.setAttribute('aria-hidden', 'false');
+        viewportLoading.setAttribute('role', 'status');
+        viewportLoading.setAttribute('aria-live', 'polite');
         viewportLoading.replaceChildren(...dual(
           '3D preview unavailable — open the model instead.',
           '3Dプレビューを表示できません。モデル本体を開いてください。'
