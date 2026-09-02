@@ -136,13 +136,16 @@ the model tests.
 
 ## Gate 3 — general public release
 
-- [~] Use crawlable scene routes with canonical URLs, per-scene metadata,
+- [x] Use crawlable scene routes with canonical URLs, per-scene metadata,
   social cards and a sitemap. The build emits a static, JavaScript-free page per
   public scene, canonical/Open Graph/Twitter metadata, `LearningResource`
   JSON-LD, `robots.txt` and a sitemap, all generated from the catalogue and
-  verified in CI. **Remaining:** the 1200×630 raster link-preview images, which
-  this repository has no rasteriser to produce — the build names the missing
-  ones. See [`discoverability.md`](discoverability.md).
+  verified in CI. The 1200×630 link-preview cards are drawn from the catalogue
+  by `npm run cards` and committed; `npm run cards:check` fails when they no
+  longer match it. Each shows catalogue maturity and clinical-review state as
+  two separate claims, so the Trust surface's distinction survives the moment a
+  reader is deciding whether to click. See
+  [`discoverability.md`](discoverability.md).
 - [~] Publish a tagged release with a changelog, rollback procedure, incident
   owner and support response path. The procedure, the rollback (including what
   a rollback does *not* undo), the incident-owner role and the support path are
@@ -191,6 +194,7 @@ the model tests.
 | 8g | Viewport matrix measured in a browser, and the defects it found | Done except Safari/Firefox and touch |
 | 9 | Billing journeys declared once and replayed in CI | Done except the credentialed sandbox run |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
+| 11 | Link-preview cards drawn from the catalogue, and the review states three published pages were getting wrong | Done |
 
 ## Definition of done for every batch
 

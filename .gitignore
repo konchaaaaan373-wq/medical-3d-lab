@@ -12,3 +12,6 @@ dist/
 
 # The viewport matrix report, written by `npm run verify:ui --json`.
 viewport-report.json
+
+# Written by `npm run cards:check` while it compares against what is committed.
+.social-check/

@@ -67,20 +67,69 @@ served from a subpath (`https://example.org/lab`). Links from a scene page into
 the app are relative (`../../#/<slug>`), so a subpath deployment works either
 way.
 
-## 5. Social cards — the part that is not done
+## 5. Social cards
 
-Link previews want a 1200 × 630 raster. This repository cannot produce one: it
-has no rasteriser, and adding one would break the single-dependency rule that
-keeps the build honest (`three` and nothing else).
+Link previews want a 1200 × 630 raster, and `npm run cards` draws one per
+public scene plus one for the site.
 
-So the contract is explicit rather than silent. Drop `public/social/<slug>.png`
-into the repository and the build advertises it — `og:image`, `twitter:image`
-and `summary_large_image` all switch on for that scene. Until then the build
-prints exactly which scenes are missing one, and the pages advertise no image at
-all.
+### They are committed, not built
 
-Producing those cards is a design task, and the obvious source is the product
-itself: the reel export already renders a scene at an exact pixel size.
+A link preview is a static asset a crawler fetches once and caches for weeks,
+and there are ten of them that change perhaps twice a year. Making every build
+download a browser to redraw them is the wrong trade, and adding a rasteriser
+to `dependencies` would break the rule that keeps the build honest (`three` and
+nothing else). So Playwright is installed on demand, exactly as it is for the
+viewport matrix, and the PNGs live in `public/social/`.
+
+The cost of not building them is that they can go stale, so `npm run cards:check`
+redraws into a temporary directory and compares — a card that no longer matches
+the catalogue fails CI without CI having to draw it. `tests/social-cards.test.js`
+separately checks the committed set covers the public catalogue exactly, that
+each file really is a 1200 × 630 PNG, and that no Lab scene has one.
+
+### Why they are typography and not a picture of the model
+
+A screenshot of the 3D scene was the obvious thing and was tried first. Two
+problems:
+
+- **It cannot be reproduced.** There is no GPU in CI, and a software-rendered
+  frame is not what a reader with a GPU sees. The committed card would be a
+  picture of something nobody has.
+- **A scene frame carries no maturity and no review state**, which is exactly
+  what this product has decided a reader is owed *before* they click. A card
+  that says `Reviewed · レビュー済` next to `Re-review required · 再レビュー必要`
+  — which is what COPD's card says, because that is true of COPD — is doing the
+  Trust surface's job at the moment the decision is being made.
+
+Every card also carries the educational-model boundary in both languages,
+because a card travels without the page it came from.
+
+### The description length is measured, not tabulated
+
+The card is a fixed 630 px and the boundary line at its foot may never be
+pushed off it, so the description is what yields. How much it has to yield
+depends on how many lines the English title takes, how many the Japanese
+subtitle takes, and where the text happens to break — three things a character
+count models badly. The first attempt keyed the budget on the English title
+length and clipped COPD and portal hypertension, whose titles are short and
+whose Japanese runs long.
+
+So the rasteriser starts at `BODY_BUDGET.start` and shortens until the browser
+says the card fits. The result is deterministic, and the run prints what each
+card settled on.
+
+The check that guards this was itself wrong once, and it is worth recording
+why: it asked whether anything ran past the bottom edge — which the card's own
+`overflow: hidden` had already made impossible. It could never fire, and was
+caught by deliberately making a card far too tall and watching it pass. It now
+asks whether the clip *did anything*.
+
+### Fonts
+
+No webfont: a generator that reaches the network draws a different image on a
+different day. The consequence is honest and worth writing down — regenerating
+the cards on a machine with different fonts produces slightly different images,
+which is the other reason they are committed rather than built.
 
 ## 6. Checked in CI
 
@@ -90,3 +139,7 @@ itself: the reel export already renders a scene at an exact pixel size.
 - `npm run verify:site` — that the build actually emitted it. A plugin that
   silently stops running is the failure nobody notices until a preview is blank
   weeks later.
+- `tests/social-cards.test.js` — what a card says, and that the committed set
+  matches the public catalogue.
+- `npm run cards:check` — that the committed rasters still match the catalogue
+  they were drawn from.

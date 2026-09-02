@@ -168,8 +168,19 @@ const STATUS_COPY = {
   production: { en: 'Production — the reference standard for this catalogue', ja: 'プロダクション — このカタログの基準実装' },
 };
 
+/**
+ * One entry per state in `CLINICAL_REVIEW_STATUSES`, and a test that says so.
+ *
+ * `stale` was missing, and the fallback to `pending` made three published
+ * pages contradict themselves: COPD, asthma and portal hypertension each
+ * carried "Reviewed — a clinical reviewer has signed a specific commit"
+ * alongside "Clinical review pending". A stale review is neither of those. It
+ * is a real historical sign-off whose scope has since changed, and saying so
+ * is the entire reason the registry distinguishes the two.
+ */
 const REVIEW_COPY = {
   reviewed: { en: 'Versioned clinical review', ja: '臨床レビュー記録済み' },
+  stale: { en: 'Re-review required — the model changed after its review', ja: '再レビュー必要 — レビュー後にモデルが変更されています' },
   pending: { en: 'Clinical review pending', ja: '臨床レビュー待ち' },
   'legacy-unversioned': { en: 'Legacy production — sign-off unversioned', ja: '旧Production — 現行形式の署名なし' },
 };

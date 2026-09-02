@@ -41,7 +41,19 @@ const LABELS = Object.freeze({
   }),
 });
 
-const FILTERABLE_STATUSES = new Set(Object.keys(LABELS));
+/**
+ * Every review state the registry can present, as data.
+ *
+ * Exported because more than one surface has to cover them all, and a surface
+ * that silently falls back for one of them says the wrong thing rather than
+ * nothing: the crawlable scene page had no `stale` case, so COPD, asthma and
+ * portal hypertension were each published saying "Reviewed — a clinical
+ * reviewer has signed a specific commit" and "Clinical review pending" on the
+ * same page. A list a test can iterate is what stops that recurring.
+ */
+export const CLINICAL_REVIEW_STATUSES = Object.freeze(Object.keys(LABELS));
+
+const FILTERABLE_STATUSES = new Set(CLINICAL_REVIEW_STATUSES);
 
 export const CLINICAL_REVIEW_RECORDS = Object.freeze(
   registry.map((record) => Object.freeze({

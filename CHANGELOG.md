@@ -133,6 +133,18 @@ person: Safari, Firefox, touch and a screen reader.
 - Every public model has its own page, its own link preview and an entry in the
   sitemap. The pages need no JavaScript, so a model's description, maturity and
   limits are readable even where the 3D is not.
+- **Sharing a model now shows a real card.** Each carries the model's name in
+  both languages, its system, and — separately — how finished the engineering
+  is and whether a clinician has signed it, so the distinction the Trust page
+  makes survives the moment somebody is deciding whether to click. Every card
+  also carries the line saying this is an educational model and not for patient
+  care, because a card travels without the page it came from.
+- **Three published pages were contradicting themselves.** COPD, asthma and
+  cirrhosis/portal hypertension each said "Reviewed — a clinical reviewer has
+  signed a specific commit" and "Clinical review pending" on the same page. All
+  three have a real review that went stale when the model changed underneath
+  it, and the static pages had no wording for that state, so they fell back to
+  "pending". They now say re-review required, which is what is true.
 
 ### Billing operations
 
