@@ -38,13 +38,15 @@ are branch protection on `main` and device testing on real hardware.
   now scrolls, which it did not: everything below the fold, which was most of
   the review records, had been unreachable.
 - **Model cards carry a revision.** A medical change that leaves its card
-  untouched now fails CI. Reviews record the digest of the model they signed,
-  so a review whose model has since changed has to say so.
-- **One review was already stale.** The portal-hypertension review signed a
-  model that the hepatorenal work later extended with an arterial inlet
-  pressure control. It defaults to the reviewed value, so reviewed behaviour is
-  unchanged, but the model at other inlet pressures has not been reviewed. This
-  is now on the Trust page and in the review's limitations.
+  untouched now fails CI. That is a different obligation from whether a review
+  is still current, which the clinical review registry answers.
+- **Three reviews turn out to be stale**, and the Trust page now shows each one
+  with the paths that changed since it was signed. The portal-hypertension
+  review, for instance, signed a model the hepatorenal work later extended with
+  an arterial inlet pressure control: it defaults to the reviewed value, so
+  reviewed behaviour is unchanged, but the model at other inlet pressures has
+  not been reviewed. A stale review is history, not a current sign-off, and it
+  is labelled that way everywhere it appears.
 
 ### Terms, privacy and support
 
@@ -87,9 +89,14 @@ are branch protection on `main` and device testing on real hardware.
 
 ### Billing operations
 
-- An append-only ledger of every billing event, so a retry is recognised rather
-  than re-applied and a dispute has something behind it.
-- A reconciliation pass against Stripe, because a lost webhook leaves
-  entitlement wrong in a way no single request notices.
-- Renewal and payment-failure handling, with an alert on the last failed
-  attempt — the point at which a paying customer is about to lose access.
+- Renewal and payment-failure handling. Entitlement already followed the
+  subscription events; these carry the two facts those cannot — that a renewal
+  happened at all, and that a payment is failing with a known number of
+  attempts left. An alert goes out on the last failed attempt, which is the
+  point at which a paying customer is about to lose access.
+- A scheduled reconciliation sweep across the whole account, alongside the
+  existing per-user repair. The per-user one cannot see somebody who never
+  comes back; the sweep answers whether anyone is in a bad state that nobody
+  has looked at.
+- An alert policy, so the failures worth waking somebody for are written down
+  rather than decided in the moment.
