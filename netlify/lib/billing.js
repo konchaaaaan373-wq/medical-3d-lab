@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+export const STRIPE_API_VERSION = '2026-08-26.dahlia';
+
 export const json = (status, body) =>
   new Response(JSON.stringify(body), {
     status,
@@ -71,6 +73,7 @@ export async function stripePost(path, params, { idempotencyKey } = {}) {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
+      'Stripe-Version': STRIPE_API_VERSION,
       'Content-Type': 'application/x-www-form-urlencoded',
       ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
@@ -83,7 +86,10 @@ export async function stripePost(path, params, { idempotencyKey } = {}) {
 
 export async function stripeGet(path) {
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
-    headers: { Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}` },
+    headers: {
+      Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
+      'Stripe-Version': STRIPE_API_VERSION,
+    },
   });
   const data = await response.json();
   if (!response.ok) {
@@ -172,6 +178,13 @@ export function customerMappingConflict({
 export function safeHash(value) {
   if (typeof value !== 'string') return '#/';
   return /^#[/][A-Za-z0-9._~!$&'()*+,;=:@%/-]*$/.test(value) ? value : '#/';
+}
+
+/** Eight opaque letters identify the Checkout integration without user data. */
+export function checkoutIntegrationIdentifier(randomBytes = crypto.randomBytes) {
+  return [...randomBytes(8)]
+    .map((byte) => String.fromCharCode(97 + (byte % 26)))
+    .join('');
 }
 
 /**

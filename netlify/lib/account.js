@@ -1,4 +1,4 @@
-import { env, envAny } from './billing.js';
+import { env, envAny, STRIPE_API_VERSION } from './billing.js';
 
 function supabaseAuthBase() {
   return env('SUPABASE_URL').replace(/\/$/, '');
@@ -52,7 +52,10 @@ export async function deleteStripeCustomer(customerId) {
   if (!customerId) return { deleted: false, skipped: true };
   const response = await fetch(`https://api.stripe.com/v1/customers/${encodeURIComponent(customerId)}`, {
     method: 'DELETE',
-    headers: { Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}` },
+    headers: {
+      Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
+      'Stripe-Version': STRIPE_API_VERSION,
+    },
   });
   const body = await response.json().catch(() => ({}));
   if (response.status === 404 || body?.error?.code === 'resource_missing') {

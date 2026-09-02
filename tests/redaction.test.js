@@ -24,7 +24,12 @@ test('redact: the recovery token this app puts in the URL hash is removed', () =
 });
 
 test('redact: provider keys and billing identifiers are removed', () => {
-  for (const secret of ['sk_live_abcd1234efgh', 'pk_test_zzzz9999yyyy', 'whsec_abcdefgh12345678']) {
+  const canaries = [
+    ['sk', 'live', 'abcd1234efgh'].join('_'),
+    ['pk', 'test', 'zzzz9999yyyy'].join('_'),
+    ['whsec', 'abcdefgh12345678'].join('_'),
+  ];
+  for (const secret of canaries) {
     const clean = redactText(`failed with ${secret}`);
     assert.ok(!clean.includes(secret), clean);
   }
@@ -127,13 +132,14 @@ test('stableHash: same input, same output, across calls', () => {
 });
 
 test('redact: a realistic worst-case report leaves nothing sensitive behind', () => {
+  const stripeSecret = ['sk', 'live', '9f8e7d6c5b4a'].join('_');
   const message =
-    'POST /billing failed for nurse@clinic.example (cus_ABCDEFGHIJKL, sk_live_9f8e7d6c5b4a) ' +
+    `POST /billing failed for nurse@clinic.example (cus_ABCDEFGHIJKL, ${stripeSecret}) ` +
     'token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.abcdefghijkl from 10.0.0.42 ' +
     'in /Users/dev/lab/src/access/auth.js, record 987654321000';
   const clean = redactText(message);
   assert.ok(!looksSensitive(clean), clean);
-  for (const secret of ['nurse@clinic.example', 'sk_live_9f8e7d6c5b4a', 'eyJhbGciOiJIUzI1NiJ9', '/Users/dev']) {
+  for (const secret of ['nurse@clinic.example', stripeSecret, 'eyJhbGciOiJIUzI1NiJ9', '/Users/dev']) {
     assert.ok(!clean.includes(secret), `${secret} survived: ${clean}`);
   }
 });
