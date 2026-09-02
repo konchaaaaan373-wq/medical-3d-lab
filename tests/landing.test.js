@@ -48,6 +48,8 @@ test('landing: circulation read-outs are rounded views of the one model solve', 
     assert.equal(metrics.map.value, Math.round(solved.meanArterialPressureMmHg));
     assert.equal(Number(metrics.co.value), Number(solved.cardiacOutputLMin.toFixed(1)));
     assert.equal(metrics.do2.value, Math.round(solved.oxygenDeliveryMlMin / 10) * 10);
+    assert.match(preview.badge.en, new RegExp(`MAP ${metrics.map.value}$`));
+    assert.match(preview.badge.ja, new RegExp(`MAP ${metrics.map.value}$`));
     assert.match(preview.explanation.en, /MAP|CO|SVR/);
     assert.match(preview.explanation.ja, /MAP|CO|SVR/);
   }
@@ -269,11 +271,19 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
     });
     await demo.mount();
     const loading = findByClass(demo.element, 'landing-demo-loading')[0];
+    const viewport = findByClass(demo.element, 'landing-demo-viewport')[0];
+    const dragHint = findByClass(demo.element, 'landing-demo-drag-hint')[0];
 
     assert.equal(loading.getAttribute('aria-hidden'), 'false');
     assert.equal(loading.getAttribute('role'), 'status');
     assert.equal(loading.getAttribute('aria-live'), 'polite');
     assert.match(loading.children.map((node) => node.textContent).join(' '), /3Dプレビュー/);
+    assert.equal(viewport.getAttribute('tabindex'), '-1');
+    assert.equal(viewport.getAttribute('role'), 'presentation');
+    assert.equal(viewport.getAttribute('aria-hidden'), 'true');
+    assert.equal(viewport.getAttribute('aria-label'), '');
+    assert.equal(viewport.getAttribute('aria-describedby'), '');
+    assert.equal(dragHint.getAttribute('hidden'), '');
   } finally {
     console.error = previousError;
     restoreDocument();

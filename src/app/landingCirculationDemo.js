@@ -7,6 +7,10 @@ const DEMO_STATES = Object.freeze([
   Object.freeze({ value: CIRCULATION_INTERVENTIONS.DOBUTAMINE, label: 'Dobutamine', labelJa: 'DOB反応' }),
 ]);
 
+const STATE_LABELS = Object.freeze(Object.fromEntries(
+  DEMO_STATES.map(({ value, label, labelJa }) => [value, Object.freeze({ en: label, ja: labelJa })])
+));
+
 const EXPLANATIONS = Object.freeze({
   [CIRCULATION_INTERVENTIONS.BASELINE]: ({ map, co }) => Object.freeze({
     en: `MAP is ${map} mmHg, but unindexed CO is ${co.toFixed(1)} L/min in this constructed case. Pressure alone does not reveal flow.`,
@@ -54,6 +58,10 @@ export function circulationDemoSnapshot(intervention = CIRCULATION_INTERVENTIONS
 
   return Object.freeze({
     intervention: state.intervention,
+    badge: Object.freeze({
+      en: `${STATE_LABELS[state.intervention].en.toUpperCase()}  /  MAP ${map}`,
+      ja: `${STATE_LABELS[state.intervention].ja}  /  MAP ${map}`,
+    }),
     explanation: EXPLANATIONS[state.intervention]({ map, co }),
     metrics: Object.freeze([
       Object.freeze({
@@ -101,6 +109,11 @@ export function createLandingCirculationDemo({
   const metricNodes = new Map();
   const explanationEn = el('span', { class: 'lang-en' });
   const explanationJa = el('span', { class: 'lang-ja' });
+  const caseBadge = el('span', { class: 'landing-demo-case' });
+  const dragHint = el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
+    el('span', { text: '↔' }),
+    ...dual('Drag / arrow keys to rotate · Scroll / +− to zoom', 'ドラッグ／矢印キーで回転・スクロール／+−で拡大'),
+  ]);
   const viewport = el('div', {
     class: 'landing-demo-viewport',
     role: 'region',
@@ -158,12 +171,9 @@ export function createLandingCirculationDemo({
             '循環・酸素運搬'
           )),
         ]),
-        el('span', { class: 'landing-demo-case' }, dual('LOW OUTPUT  /  MAP 70', '低心拍出  /  MAP 70')),
+        caseBadge,
       ]),
-      el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
-        el('span', { text: '↔' }),
-        ...dual('Drag / arrow keys to rotate · Scroll / +− to zoom', 'ドラッグ／矢印キーで回転・スクロール／+−で拡大'),
-      ]),
+      dragHint,
     ]),
     el('div', { class: 'landing-demo-workbench' }, [
       el('fieldset', { class: 'landing-demo-controls' }, [
@@ -197,6 +207,7 @@ export function createLandingCirculationDemo({
     selectedIntervention = snapshot.intervention;
     element.dataset.intervention = snapshot.intervention;
     mountedViewport?.setIntervention(snapshot.intervention);
+    caseBadge.replaceChildren(...dual(snapshot.badge.en, snapshot.badge.ja));
 
     for (const [value, button] of buttons) {
       const selected = value === snapshot.intervention;
@@ -247,6 +258,12 @@ export function createLandingCirculationDemo({
         console.error('landing 3D preview', error);
         viewport.dataset.loading = 'false';
         element.dataset.viewport = 'unavailable';
+        viewport.setAttribute('tabindex', '-1');
+        viewport.setAttribute('role', 'presentation');
+        viewport.setAttribute('aria-hidden', 'true');
+        viewport.setAttribute('aria-label', '');
+        viewport.setAttribute('aria-describedby', '');
+        dragHint.setAttribute('hidden', '');
         viewportLoading.setAttribute('aria-hidden', 'false');
         viewportLoading.setAttribute('role', 'status');
         viewportLoading.setAttribute('aria-live', 'polite');
