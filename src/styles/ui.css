@@ -2037,6 +2037,11 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
+  /* The dot is 9px and the name is hidden on narrow viewports, which left the
+     whole stage button 9px tall — a target measured at 88×9 by
+     `npm run verify:ui`. WCAG 2.5.8 asks for 24, and the row has the space. */
+  min-height: 24px;
   gap: 6px;
   transition: color 200ms ease;
 }

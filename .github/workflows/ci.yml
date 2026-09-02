@@ -47,3 +47,36 @@ jobs:
       - run: npm run build
       - run: npm run budget
       - run: npm run verify:site
+      # No browser: it compares what each committed card was asked to say,
+      # not the pixels, which depend on the fonts of whichever machine drew it.
+      - run: npm run cards:check
+
+  # Chromium only, headless, on a runner — deliberately a separate job.
+  #
+  # It downloads a browser, so it must not sit in front of `npm test`: the
+  # normal feedback loop stays a plain `node --test` run. And it is honest
+  # about its own reach — the manual half of the device pass is listed in
+  # `docs/accessibility.md` and reprinted by the script itself.
+  viewport-matrix:
+    name: viewport matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      # Not a devDependency on purpose: a browser automation stack is a large
+      # thing to make every contributor download to run the unit tests.
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:ui -- --json viewport-report.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: viewport-report
+          path: viewport-report.json
+          if-no-files-found: ignore

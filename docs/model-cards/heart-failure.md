@@ -49,11 +49,31 @@ This is an **illustrative trajectory**, not a universal sequence. A patient does
 
 HFpEF, primary right-heart failure, valvular disease, pulmonary hypertension as an independent disease process, coronary perfusion/ischaemia, autonomic and renin-angiotensin-aldosterone dynamics, renal sodium handling, pericardial constraint, interventricular interaction, arrhythmia, distributed arterial wave mechanics and patient-specific treatment response.
 
-## 7. Intended use
+## 7. What could be misread
+
+Raised by the Gate 1 anatomy/art review ([`anatomy-review.md`](../anatomy-review.md)),
+which measured the geometry as correct but flagged two pictures a reader may
+take further than they are meant to. Neither is a claim the scene makes in
+words; both are open questions for the clinical reviewer.
+
+- **Vessel colour is not an oxygenation code, and looks like one.** The
+  pulmonary veins and the left atrium are drawn in the scene's dusky venous
+  tint, the aorta in an arterial red-brown. The tint is named for the tissue —
+  it darkens as the vein walls engorge, which is what the congestion stage is
+  about — but the pulmonary veins are the veins that carry oxygenated blood,
+  and the left atrium holds the most oxygenated blood in the body. A reader who
+  reads red-against-purple the way an atlas uses it will read this scene's
+  pulmonary side backwards. The legend claims no oxygenation code, so nothing
+  false is stated; the picture may still mislead.
+- **The descending aorta drifts laterally** rather than staying about
+  2–2.5 cm left of the midline and moving medially as it descends. It is out of
+  frame at the default framing and carries nothing the scene teaches.
+
+## 8. Intended use
 
 Mechanism teaching, model exploration and general explanation. It must not be used to estimate a patient's haemodynamics, infer treatment response, classify heart-failure severity, select therapy or substitute for echocardiography/invasive haemodynamics.
 
-## 8. Review state
+## 9. Review state
 
 **Catalog status:** `production`  
 **Clinical Review registry:** `legacy-unversioned`

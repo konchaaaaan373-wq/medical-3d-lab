@@ -145,6 +145,16 @@ async function boot() {
     return;
   }
 
+  // Everything past this point is a scene: a WebGL viewport with its own
+  // chrome pinned to the edges of the frame.
+  //
+  // Named, rather than left as the absence of the other four. A stylesheet
+  // that has to ask "is this *not* landing, explorer, trust or legal" gets the
+  // answer wrong the day a sixth surface is added, and the consent banner
+  // needs to know: on a reading surface the bottom of the viewport is empty,
+  // and on a scene it belongs to the console.
+  document.documentElement.dataset.route = 'scene';
+
   // Simple loading veil: the first frame has to compile shaders and build geometry.
   const veil = document.createElement('div');
   veil.className = 'loading';

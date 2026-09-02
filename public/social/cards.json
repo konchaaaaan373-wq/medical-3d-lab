@@ -1,0 +1,45 @@
+{
+  "note": "Written by `npm run cards`. Checked by `npm run cards:check`, which needs no browser.",
+  "cards": {
+    "amyloid-beta": {
+      "bodyChars": 82,
+      "html": "fdc29ddc3b882939"
+    },
+    "asthma": {
+      "bodyChars": 82,
+      "html": "99466e7ae8d02af2"
+    },
+    "brain-anatomy": {
+      "bodyChars": 82,
+      "html": "dc6473d8a13bada7"
+    },
+    "circulation": {
+      "bodyChars": 82,
+      "html": "06364ee4b76b8ce6"
+    },
+    "copd": {
+      "bodyChars": 64,
+      "html": "a31b258cf4627d9f"
+    },
+    "heart-failure": {
+      "bodyChars": 82,
+      "html": "878478a7da7063fc"
+    },
+    "hepatorenal-syndrome": {
+      "bodyChars": 40,
+      "html": "8c2622b5f421ef25"
+    },
+    "portal-hypertension": {
+      "bodyChars": 40,
+      "html": "634797a5ab99c8d3"
+    },
+    "renal-filtration": {
+      "bodyChars": 76,
+      "html": "61e61ec85b74ca5e"
+    },
+    "site": {
+      "bodyChars": 82,
+      "html": "39b862b38a67dfa2"
+    }
+  }
+}

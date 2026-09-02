@@ -29,6 +29,24 @@
 .trust-principles > span::before { content: '— '; color: #8d6d4b; }
 
 .trust-grid { max-width: 1040px; margin: 0 auto; padding: 0 28px; display: grid; gap: 16px; }
+
+/* Two halves of one bug, and neither alone is enough.
+ *
+ * A grid item's automatic minimum size is its min-content width, so a card
+ * containing one unbreakable string — `docs/model-evidence/cirrhosis-portal-
+ * hypertension.md`, or a hyphenated model title — widens the whole track and
+ * takes the page sideways with it. `min-width: 0` lets the card be as narrow
+ * as its column; `overflow-wrap: anywhere` gives the string somewhere to
+ * break once it is. Measured at 320px the page scrolled 426px sideways, which
+ * is a WCAG 1.4.10 failure on the one surface whose whole job is to be read.
+ */
+.trust-grid > * { min-width: 0; }
+.trust-card-title,
+.trust-source,
+.trust-review-meta,
+.trust-list,
+.trust-drift-body,
+.trust-review-note { overflow-wrap: anywhere; }
 .trust-card { background: #fff; border: 1px solid rgba(28, 37, 40, 0.14); padding: 26px; border-radius: 8px; box-shadow: 0 1px 0 rgba(28, 37, 40, 0.04); }
 .trust-card-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
 .trust-card-title { margin: 0 0 12px; font-size: 1.45rem; letter-spacing: -0.025em; }

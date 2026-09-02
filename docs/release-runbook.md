@@ -37,11 +37,18 @@ npm run revisions:check  # model cards describe the models they are filed agains
 npm run build
 npm run budget           # ship weight against the declared budget
 npm run verify:site      # every public scene has a crawlable page
+
+npm i --no-save playwright && npx playwright install --with-deps chromium
+npm run verify:ui        # the viewport matrix, measured in a real browser
 ```
 
-CI runs all of these on every pull request. Running them again before a tag is
-not redundant: it is the difference between "a commit passed" and "this commit
-passed".
+CI runs all of these on every pull request — `verify:ui` in its own job,
+because it downloads a browser and must not sit in front of the unit tests.
+Running them again before a tag is not redundant: it is the difference between
+"a commit passed" and "this commit passed".
+
+`verify:ui` is Chromium only, and prints what it cannot cover at the end of
+every run. Those lines are the manual pass in §3, not a disclaimer.
 
 ## 3. What a person still has to decide
 
@@ -54,8 +61,11 @@ passed".
 - **Does anything on screen claim more than it can?** Check a Prototype badge
   has not been dropped, and that a scene showing numbers has all four of the
   model layer, evidence dossier, model card and scope panel.
-- **Does it work on a phone?** The performance budget covers frame time and
-  ship weight, not layout. Look at 320 px and at 400 % zoom.
+- **Does it work on a phone that is not this one?** `verify:ui` has already
+  measured layout, target sizes and the focus ring at 320–1280 px, so this is
+  no longer a matter of remembering to look. What is left is the part it
+  cannot reach: Safari and Firefox, a real finger orbiting a scene, a software
+  keyboard over the viewport, and a screen reader. The script lists them.
 
 ## 4. Tagging and deploying
 

@@ -11,6 +11,8 @@ import {
   AORTA_SEGMENTS,
   ANCHORS,
   EJECTION_REACH,
+  MITRAL_INFLOW,
+  PULMONARY_VEIN_OSTIA,
   anatomicalSide,
   buildCavityBlood,
 } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
@@ -171,6 +173,109 @@ test('anatomical axes agree with every structure that names a side', () => {
   assert.ok(
     ANATOMY.atriumCentre.z < ANATOMY.mitralValve.z,
     'the atrium sits posterior to the valve plane'
+  );
+});
+
+/* --------------------------------------------------------------------------
+   The relationships an anatomy review checks
+
+   The tests above are about the aorta's own course. These are about how the
+   structures sit relative to one another, which is what a reviewer holding an
+   atlas plate beside the screen actually compares — and what nothing checked
+   until the Gate 1 review went looking. Every assertion here is a fact about
+   hearts, not about this repository's numbers: it would still be true if the
+   whole scene were rebuilt at a different scale.
+   -------------------------------------------------------------------------- */
+
+test('review: the aortic valve sits right of, and anterior to, the mitral valve', () => {
+  // The two valves share the fibrous skeleton of the heart, side by side in
+  // the same plane, with the aortic anterior and to the right. Getting this
+  // pair the wrong way round mirrors the whole base of the heart.
+  assert.equal(anatomicalSide(ANATOMY.aorticValve), 'right');
+  assert.equal(anatomicalSide(ANATOMY.mitralValve), 'left');
+  assert.ok(
+    ANATOMY.aorticValve.z > ANATOMY.mitralValve.z,
+    'the aortic valve is the anterior of the two'
+  );
+  assert.equal(
+    ANATOMY.aorticValve.y,
+    ANATOMY.mitralValve.y,
+    'both valves sit in the one annular plane the ventricle hangs from'
+  );
+});
+
+test('review: the left atrium sits above and behind the valve plane it drains through', () => {
+  assert.ok(ANATOMY.atriumCentre.y > ANATOMY.baseY, 'the atrium is above the valve plane');
+  assert.ok(
+    ANATOMY.atriumCentre.z < ANATOMY.mitralValve.z,
+    'and posterior to it — the left atrium is the most posterior chamber'
+  );
+  // Inflow runs downward and forward, from the atrium through the valve. A
+  // curve that rose would be drawing blood back into the atrium in diastole.
+  const start = MITRAL_INFLOW.getPointAt(0);
+  const end = MITRAL_INFLOW.getPointAt(1);
+  assert.ok(end.y < start.y, 'mitral inflow descends into the ventricle');
+  assert.ok(end.z > start.z, 'and moves forward as it does');
+});
+
+test('review: the four pulmonary veins enter the atrium from behind, two a side', () => {
+  const centre = ANATOMY.atriumCentre;
+  for (const [index, ostium] of PULMONARY_VEIN_OSTIA.entries()) {
+    assert.ok(
+      ostium.z < centre.z,
+      `ostium ${index} is not on the posterior aspect of the atrium`
+    );
+    assert.ok(
+      ostium.distanceTo(centre) < ANATOMY.atriumRadius * 2,
+      `ostium ${index} is not on the atrium at all`
+    );
+  }
+  const [leftSuperior, leftInferior, rightSuperior, rightInferior] = PULMONARY_VEIN_OSTIA;
+  assert.ok(leftSuperior.y > leftInferior.y, 'the left superior vein is the upper of its pair');
+  assert.ok(rightSuperior.y > rightInferior.y, 'and so is the right');
+  // The pair draining the right lung arrives on the atrium's right-hand
+  // aspect, having crossed the midline behind the heart. Their ostia are
+  // medial to the left pair, not on the right side of the body — which is
+  // what the "right" in their name means, and is worth stating so that a
+  // later reader does not "correct" it.
+  const rightward = ANATOMICAL_AXES.right.x;
+  assert.ok(
+    rightSuperior.x * rightward > leftSuperior.x * rightward,
+    'the right-lung veins enter medial to the left-lung veins'
+  );
+  assert.ok(
+    rightInferior.x * rightward > leftInferior.x * rightward,
+    'both of them, not just the superior one'
+  );
+});
+
+test('review: the great vessels cross the midline in the direction they should', () => {
+  // Ascending aorta on the right, arch passing back and to the left,
+  // descending aorta on the left. The single most recognisable relationship in
+  // the mediastinum, and the one a mirrored scene gets wrong.
+  assert.equal(anatomicalSide(AORTA_LANDMARKS.ascendingAortaMid.position), 'right');
+  assert.equal(anatomicalSide(AORTA_LANDMARKS.archEnd.position), 'left');
+
+  // Posterior, monotonically, from the valve to the end of the arch. The arch
+  // does not wander forward again on its way over.
+  const course = [
+    ANATOMY.aorticValve,
+    AORTA_LANDMARKS.sinotubularJunction.position,
+    AORTA_LANDMARKS.archStart.position,
+    AORTA_LANDMARKS.archApex.position,
+    AORTA_LANDMARKS.archEnd.position,
+  ];
+  for (let i = 1; i < course.length; i += 1) {
+    assert.ok(
+      course[i].z < course[i - 1].z,
+      `the aorta moves forward again between landmark ${i - 1} and ${i}`
+    );
+  }
+
+  // And it passes over the atrium rather than through it.
+  assert.ok(
+    AORTA_LANDMARKS.archApex.position.y > ANATOMY.atriumCentre.y + ANATOMY.atriumRadius,
+    'the arch must clear the top of the left atrium'
   );
 });
 

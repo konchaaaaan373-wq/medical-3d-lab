@@ -1,6 +1,6 @@
 # Public release roadmap
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This is the ordered source of truth for taking Medical 3D Lab from a working
 model catalogue to a trustworthy public product. It records release gates, not
@@ -58,15 +58,24 @@ the model tests.
 
 ## Gate 1 — limited free beta
 
-- [ ] Test current Safari, Chrome and Firefox plus real iPhone and Android
-  devices, including 320–430 px widths and landscape.
+- [~] Test current Safari, Chrome and Firefox plus real iPhone and Android
+  devices, including 320–430 px widths and landscape. The matrix is declared in
+  `src/app/viewports.js` and measured in a real browser by `npm run verify:ui`:
+  six viewports (320/375/430 portrait, a 932 × 430 landscape phone, tablet and
+  desktop) across nine routes, checking horizontal overflow, reflow at 320 px,
+  measured target sizes, the skip link, the whole focus ring and console
+  errors. It found two real defects — the Trust page scrolled 426 px sideways
+  at 320 px, and ten controls sat below the WCAG 2.5.8 floor — and both are
+  fixed. **Remaining:** Safari and Firefox, and touch on real hardware. The
+  check drives Chromium only and says so at the end of every run.
 - [~] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
   Explorer, Patient Presenter, Education Presenter and Account. Contrast, focus,
   landmarks, skip links, language marking, reduced motion, target sizes and the
   viewport reflow release are declared and enforced in CI; two real defects were
   fixed on the way (the Trust page could not scroll, and the shell disabled
-  pinch zoom). **Remaining:** screen-reader passes, 400 % reflow and in-scene
-  tab order on real devices. See [`accessibility.md`](accessibility.md).
+  pinch zoom). Reflow at 320 px and the in-scene tab order are now measured in
+  a browser as part of the viewport matrix above. **Remaining:** screen-reader
+  passes on real devices. See [`accessibility.md`](accessibility.md).
 - [x] Establish performance budgets and remove `preserveDrawingBuffer` from the
   normal render path unless an export is actively being captured. Frame, start-up
   and ship-weight budgets are declared in `src/app/performanceBudget.js`,
@@ -75,8 +84,17 @@ the model tests.
 - [x] Add privacy-conscious error reporting, core product analytics and an
   in-product feedback route. Consent-gated, redacted, with no identifier that
   outlives the page load. See [`observability.md`](observability.md) §2–4.
-- [ ] Complete an anatomy/art review of the flagship scenes, beginning with the
-  heart/great-vessel relationships and the new brain atlas interaction.
+- [~] Complete an anatomy/art review of the flagship scenes, beginning with the
+  heart/great-vessel relationships and the new brain atlas interaction. Done as
+  an **engineering** review and recorded in [`anatomy-review.md`](anatomy-review.md):
+  eleven great-vessel and chamber relationships measured and correct, each now
+  held by a test; the brain atlas correct in its declared view. It found two
+  defects only the render showed — the consent question was sitting on the
+  scene console, covering every control on a phone, and the harness had been
+  measuring the loading veil — and both are fixed, with occlusion now measured
+  in CI. **Remaining:** the three judgement calls in §4, which are a
+  clinician's to settle rather than an engineer's; two of them are recorded in
+  the heart-failure model card under *what could be misread*.
 
 ## Gate 2 — paid beta
 
@@ -84,9 +102,15 @@ the model tests.
   `product-principles.md` before final billing merge.
 - [x] Integrate the access/billing branch with current `main` and rerun the full
   merged test/build suite.
-- [~] Stripe sandbox journeys: purchase, Patient→Complete plan change and both
-  period-end/immediate cancellation are verified. Renewal, payment-failure and
-  repurchase still need explicit E2E coverage.
+- [~] Stripe sandbox journeys. Eight journeys — first purchase, renewal, a
+  recovered payment failure, a final one, repurchase after cancellation, a plan
+  change, a period-end cancellation and a write-off — are declared as data in
+  `netlify/lib/journeys.js` and replayed against the deployed webhook handler
+  on every pull request, asserting access through the product's own
+  `grantsFromSubscriptions` rather than a status string. **Remaining:** running
+  the same list against the real Stripe sandbox with test clocks, which needs
+  credentials and a person; the procedure is in
+  [`access-and-billing.md`](access-and-billing.md).
 - [~] Show actual Stripe price/billing period and current subscription lifecycle
   in product UI. Terms, Privacy, commercial disclosure (特定商取引法) and support
   pages are written, routed and reachable without WebGL, and the renewal and
@@ -112,13 +136,16 @@ the model tests.
 
 ## Gate 3 — general public release
 
-- [~] Use crawlable scene routes with canonical URLs, per-scene metadata,
+- [x] Use crawlable scene routes with canonical URLs, per-scene metadata,
   social cards and a sitemap. The build emits a static, JavaScript-free page per
   public scene, canonical/Open Graph/Twitter metadata, `LearningResource`
   JSON-LD, `robots.txt` and a sitemap, all generated from the catalogue and
-  verified in CI. **Remaining:** the 1200×630 raster link-preview images, which
-  this repository has no rasteriser to produce — the build names the missing
-  ones. See [`discoverability.md`](discoverability.md).
+  verified in CI. The 1200×630 link-preview cards are drawn from the catalogue
+  by `npm run cards` and committed; `npm run cards:check` fails when they no
+  longer match it. Each shows catalogue maturity and clinical-review state as
+  two separate claims, so the Trust surface's distinction survives the moment a
+  reader is deciding whether to click. See
+  [`discoverability.md`](discoverability.md).
 - [~] Publish a tagged release with a changelog, rollback procedure, incident
   owner and support response path. The procedure, the rollback (including what
   a rollback does *not* undo), the incident-owner role and the support path are
@@ -128,10 +155,11 @@ the model tests.
 - [x] Version model cards and review attestations with every medical change.
   `docs/model-cards/revisions.json` records the digest of the sources each card
   describes, and a medical change that leaves the card untouched fails CI
-  (`npm run revisions:check`). A clinical review records the digest of what it
-  signed, so a review whose model has since changed must declare that — and the
-  public Trust page shows it. Finding one immediately: the portal-hypertension
-  review signed a model that the hepatorenal work later extended.
+  (`npm run revisions:check`). Review staleness is a separate mechanism owned by
+  Batch 5: a clinical review lists the paths it signed, and a review whose model
+  has since changed is marked stale — which the public Trust page shows. It
+  found one immediately: the portal-hypertension review signed a model that the
+  hepatorenal work later extended.
 - [x] Define launch metrics: model start, story/compare completion, learning
   completion, patient-guide use, conversion, retention and renderer failures.
   Declared in `src/telemetry/metrics.js`, emitted through the app-event bridge
@@ -163,9 +191,10 @@ the model tests.
 | 8d | Accessibility foundations enforced in CI | Done except device passes |
 | 8e | Billing ledger, reconciliation sweep and operational alerts | Done |
 | 8f | Model-card revisions (distinct from review staleness, which Batch 5 owns) | Done |
-| 8g | Browser/device matrix on real hardware | Next |
-| 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
+| 8g | Viewport matrix measured in a browser, and the defects it found | Done except Safari/Firefox and touch |
+| 9 | Billing journeys declared once and replayed in CI | Done except the credentialed sandbox run |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
+| 11 | Link-preview cards drawn from the catalogue, and the review states three published pages were getting wrong | Done |
 
 ## Definition of done for every batch
 

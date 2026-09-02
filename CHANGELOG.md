@@ -11,7 +11,8 @@ clinically reviewed. The procedure is in
 ## Unreleased
 
 Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
-are branch protection on `main` and device testing on real hardware.
+are branch protection on `main`, and the parts of device testing that need a
+person: Safari, Firefox, touch and a screen reader.
 
 ### A new model
 
@@ -80,12 +81,70 @@ are branch protection on `main` and device testing on real hardware.
   that gesture where it actually conflicts.
 - Contrast, focus, landmarks, skip links, language marking for screen readers,
   reduced motion and target sizes are declared and checked in CI.
+- **The Trust page no longer scrolls sideways on a phone.** One evidence path
+  with no place to break — `docs/model-evidence/cirrhosis-portal-hypertension.md`
+  — was widening the whole card grid, so at 320 px the page ran 426 px off the
+  right edge and had to be read in two directions.
+- **Ten controls got big enough to hit.** The story-stage buttons under a scene
+  were 9 px tall, the filter and system pills 22 px wide, and every footer,
+  navigation and evidence-source link on the reading surfaces was bare 14–19 px
+  text. All now clear the 24 px WCAG minimum.
+- These were found rather than guessed: the product is now measured in a real
+  browser at six viewport sizes — 320, 375 and 430 px wide, a phone on its
+  side, a tablet and a desktop — across every page that does not need WebGL,
+  plus one that does. Safari, Firefox and real touch hardware are still a
+  person's job, and the check says so every time it runs.
+
+### The scenes themselves
+
+- **The consent question no longer covers the controls.** On a first visit it
+  was pinned to the bottom of the window — which is where every scene keeps its
+  stage steps, its Story and Compare buttons and its camera controls. On a
+  phone it covered all of them, so the first thing a new visitor saw was a
+  model they could not operate. It now sits between the title and the console
+  and covers neither.
+- **The heart and great vessels were reviewed against an atlas** and come out
+  right: the aortic valve sits to the right of and in front of the mitral, the
+  left atrium above and behind the valve plane, the arch crosses the midline
+  backwards and to the left and clears the top of the atrium, and the four
+  pulmonary veins enter the atrium from behind, two a side. Eleven such
+  relationships are now held by tests rather than by whoever last looked.
+- The brain atlas was checked the same way and nothing was found.
+- Two things the review raised are questions for a clinician, not for us, and
+  are written into the heart-failure model card so a reader meets them: the
+  pulmonary veins are drawn in the colour this scene uses for venous tissue,
+  and they are the veins that carry oxygenated blood.
+
+### Billing journeys
+
+- **A renewal, a failing card and a repurchase are now checked as sequences.**
+  They were the three billing paths nobody could see from a single assertion: a
+  successful renewal changes no subscription status, a card that declines once
+  must not cost anybody their access, and a customer who cancelled and came
+  back must not be sent to manage a subscription that no longer exists. All
+  eight journeys are written down once and replayed against the real webhook
+  handler on every change.
+- What each step asserts is not an internal status but the product's own
+  answer to "can this person open the paid mode?" — so a change that keeps the
+  status right and the access wrong still fails.
 
 ### Discoverability
 
 - Every public model has its own page, its own link preview and an entry in the
   sitemap. The pages need no JavaScript, so a model's description, maturity and
   limits are readable even where the 3D is not.
+- **Sharing a model now shows a real card.** Each carries the model's name in
+  both languages, its system, and — separately — how finished the engineering
+  is and whether a clinician has signed it, so the distinction the Trust page
+  makes survives the moment somebody is deciding whether to click. Every card
+  also carries the line saying this is an educational model and not for patient
+  care, because a card travels without the page it came from.
+- **Three published pages were contradicting themselves.** COPD, asthma and
+  cirrhosis/portal hypertension each said "Reviewed — a clinical reviewer has
+  signed a specific commit" and "Clinical review pending" on the same page. All
+  three have a real review that went stale when the model changed underneath
+  it, and the static pages had no wording for that state, so they fell back to
+  "pending". They now say re-review required, which is what is true.
 
 ### Billing operations
 

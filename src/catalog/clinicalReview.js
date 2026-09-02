@@ -41,7 +41,35 @@ const LABELS = Object.freeze({
   }),
 });
 
-const FILTERABLE_STATUSES = new Set(Object.keys(LABELS));
+/**
+ * Every review state the registry can present, as data.
+ *
+ * Exported because more than one surface has to cover them all, and a surface
+ * that silently falls back for one of them says the wrong thing rather than
+ * nothing: the crawlable scene page had no `stale` case, so COPD, asthma and
+ * portal hypertension were each published saying "Reviewed — a clinical
+ * reviewer has signed a specific commit" and "Clinical review pending" on the
+ * same page. A list a test can iterate is what stops that recurring.
+ */
+export const CLINICAL_REVIEW_STATUSES = Object.freeze(Object.keys(LABELS));
+
+/**
+ * The states a *surface* has to be able to render, which is one more.
+ *
+ * `unrecorded` is not a registry state — it is what a scene with no registry
+ * entry at all resolves to, and `clinicalReviewPresentation` returns it. It is
+ * deliberately not filterable, because filtering by "we have no record" is not
+ * a question the Explorer asks. But it is very much presentable: a new scene
+ * added without a registry entry publishes *something*, and a surface whose
+ * copy table falls back to "pending" for it would say a review is on its way
+ * when nobody has ever looked. That is exactly the bug `stale` had.
+ */
+export const CLINICAL_REVIEW_PRESENTABLE_STATUSES = Object.freeze([
+  ...CLINICAL_REVIEW_STATUSES,
+  'unrecorded',
+]);
+
+const FILTERABLE_STATUSES = new Set(CLINICAL_REVIEW_STATUSES);
 
 export const CLINICAL_REVIEW_RECORDS = Object.freeze(
   registry.map((record) => Object.freeze({

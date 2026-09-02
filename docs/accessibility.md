@@ -90,23 +90,109 @@ make, not one a global rule can take.
 
 ### Targets
 
-44 px minimum on the reading surfaces (`TOUCH_TARGET.primary`). In-scene chrome
-is dense by necessity and is held to 32 px with spacing, which is the
-compromise the layout can actually keep; the absolute floor is the WCAG 2.5.8
-figure of 24 px.
+Two numbers, and the difference between them is the difference between an
+obligation and a preference.
+
+**24 × 24 CSS pixels is the obligation** — WCAG 2.5.8 at level AA. It is
+enforced on every surface, including the in-scene chrome, and it is measured in
+a real browser by `npm run verify:ui` rather than inferred from the stylesheet.
+The standard offers a spacing exception, which this product deliberately does
+not take: meeting the size unconditionally is stricter, and it is something a
+reviewer can check by looking at one number. The one exception taken is the
+standard's own, for a link inside a sentence, whose height the line box already
+fixes.
+
+**44 px on reading surfaces and 32 px in-scene is the preference**
+(`TOUCH_TARGET.primary` / `.dense`). Buttons meet it. Links largely do not — a
+header wordmark is a link that will never be 44 px tall — so the shortfall is
+counted and published in the run's report instead of failing the build. A rule
+that fails on a wordmark is a rule somebody switches off within a week.
+
+The measurement found the product below the **obligation** in ten places when
+it was first run: a 9 px-tall story-stage button, 22 px-wide filter and system
+pills, and every footer, navigation and evidence-source link on the reading
+surfaces, which were bare 14–19 px text. `min-height` alone would not have
+fixed them, because `min-height` does nothing to an inline box; the fix is in
+`src/styles/reading-surface.css` and it is one enumerated list of controls, not
+a blanket rule on `a`.
 
 ---
 
-## 2. What CI cannot check
+## 2. The viewport matrix
 
-These need a browser and a person, and Gate 1 keeps them open until they are
-done on real devices:
+`src/app/viewports.js` declares the sizes the product promises to work at and
+the rules it must keep at each one; `npm run verify:ui` drives a headless
+Chromium against them and `tests/viewports.test.js` keeps the declaration
+honest. Six viewports — 320, 375 and 430 px portrait, a 932 × 430 landscape
+phone, a tablet and a desktop — across nine routes, which is 54 combinations
+and about a minute.
+
+320 px is not optional. It is the narrowest viewport still in use, and it is
+where WCAG 1.4.10 judges reflow: a 1280 px layout at 400 % zoom *is* a 320 px
+viewport. Landscape is listed separately rather than derived, because a short
+viewport fails differently from a narrow one — a fixed header and a fixed
+console can leave no room for the content between them.
+
+Each combination is checked for:
+
+- **Horizontal overflow**, at the document level, with a one-pixel tolerance
+  for sub-pixel rounding. At the 320 px viewport this is the reflow check.
+- **Target sizes**, measured in the real layout rather than read from the CSS,
+  because a flex container can still crush a button the stylesheet said was
+  44 px tall.
+- **The skip link**: that it is the first Tab stop, that activating it moves
+  focus to the content, and that it does not navigate. That last one is not
+  hypothetical — `#content` was once resolved as a scene route, so the skip
+  link threw the reader into a 3D model.
+- **The whole focus ring**, walked with the Tab key at the narrowest and widest
+  viewports, checking that every visible control is reachable and that the ring
+  closes rather than trapping.
+- **Occlusion**: that nothing is painted over a control. This is a different
+  failure from every other one here — a control can be the right size, in the
+  right place, inside the viewport, and still have something sitting on it —
+  and the one that found it was a person looking at a screenshot. The two
+  elements allowed to cover the page are declared in `TRANSIENT_OVERLAYS`, each
+  with the reason it may and the thing it still may not cover.
+- **Console errors**, with the webfont excluded: the browser is denied the
+  network, so the fallback stack is what gets measured, which is what a reader
+  with a blocked font sees anyway.
+
+The first run found two real defects: the Trust page scrolled 426 px sideways
+at 320 px — one unbreakable evidence path widened a grid track and took the
+page with it — and the ten target-size failures above. The occlusion check,
+added after the anatomy review found the case by eye, caught a third: the
+consent question was pinned to the bottom of the viewport, which is where every
+scene pins its console, and on a phone it covered the console entirely. See
+[`anatomy-review.md`](anatomy-review.md) §2.
+
+**What it is not.** It drives one engine, headless, on a desktop machine. It
+cannot see a Safari-only flexbox bug, an Android font-inflation surprise, a
+notch, or a software keyboard eating the viewport. It is the half of a device
+pass that is found by looking rather than by feeling, automated so that the
+person doing the other half spends their time on the part only a person can do.
+The script prints that list at the end of every run, so the two cannot drift
+apart quietly.
+
+Playwright is deliberately not a dependency. `npm test` stays a plain
+`node --test` run with no browser download; the UI check installs the browser
+on demand in its own CI job, and says so plainly when it is missing rather than
+passing because it did not run.
+
+---
+
+## 3. What CI cannot check
+
+These need a person, and Gate 1 keeps them open until they are done on real
+devices:
 
 - Screen-reader passes with VoiceOver, NVDA and TalkBack — particularly the
   bilingual announcements, the scene switcher and the account modal.
-- Keyboard traversal of the scene view's overlay chrome, where the tab order is
-  produced by several independent panels.
-- 400 % zoom reflow on a 320 px viewport for every surface.
+- Safari and Firefox. The viewport matrix drives Chromium only, and the
+  failures it cannot see are exactly the engine-specific ones.
+- Touch: orbiting a scene with a finger, and whether that gesture fights the
+  page scroll or the browser's own pinch zoom.
+- A software keyboard covering the viewport, and a notch or rounded corner
+  cutting into it.
 - Colour perception: the scenes use hue to distinguish oxygenated from
   deoxygenated blood and healthy from remodelled tissue. Contrast maths says
   nothing about that, and the answer is not a palette change but making sure
