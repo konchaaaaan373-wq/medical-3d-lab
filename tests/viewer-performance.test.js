@@ -20,6 +20,14 @@ test('viewer: normal animation never preserves every WebGL drawing buffer', () =
   assert.ok(!/preserveDrawingBuffer:\s*true/.test(source));
 });
 
+test('viewer: partial construction is cleaned before the error escapes', () => {
+  const constructor = source.slice(source.indexOf('constructor('), source.indexOf('onFrame(handler)'));
+  assert.match(constructor, /try \{[\s\S]*new THREE\.WebGLRenderer/);
+  assert.match(constructor, /catch \(error\) \{[\s\S]*this\.dispose\(\);[\s\S]*throw error;/);
+  assert.match(source, /this\.renderer\?\.forceContextLoss\?\.\(\)/);
+  assert.match(source, /this\.renderer\?\.domElement\?\.remove\(\)/);
+});
+
 test('viewer: PNG capture explicitly renders immediately before readback', () => {
   const snapshot = source.slice(source.indexOf('snapshot(size)'));
   assert.match(snapshot, /this\.composer\.render\(\);\s*return this\.renderer\.domElement\.toDataURL\('image\/png'\)/);
