@@ -41,21 +41,33 @@ export function createMetricsPanel() {
           // for a value that is usually absent.
           const reference = el('span', { class: 'metric-reference' });
           const unit = el('span', { class: 'metric-unit', text: metric.unit });
+          const change = el('span', { class: 'metric-change', 'aria-hidden': 'true' });
           const node = el('div', { class: `metric${metric.emphasis ? ' is-key' : ''}` }, [
             el('span', { class: 'metric-label' }, [
               el('span', { class: 'lang-en', text: metric.label }),
               el('span', { class: 'lang-ja', text: metric.labelJa }),
             ]),
-            el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit]),
+            el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change]),
           ]);
           element.append(node);
-          row = { value, valueJa, reference, unit, node };
+          row = { value, valueJa, reference, unit, change, node };
           rows.set(metric.id, row);
         }
         row.value.textContent = String(metric.value);
         if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
         row.unit.textContent = metric.unit;
         row.reference.textContent = metric.reference == null ? '' : `${metric.reference} →`;
+        row.change.textContent = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';
+        if (metric.change) {
+          row.node.dataset.change = metric.change;
+          const changeLabel = [metric.changeLabel, metric.changeLabelJa].filter(Boolean).join(' / ');
+          row.change.title = changeLabel;
+          row.node.setAttribute('aria-label', `${metric.labelJa}: ${metric.reference == null ? '' : `${metric.reference} to `}${metric.value} ${metric.unit}${changeLabel ? `, ${changeLabel}` : ''}`);
+        } else {
+          delete row.node.dataset.change;
+          row.change.removeAttribute('title');
+          row.node.removeAttribute('aria-label');
+        }
       }
     },
   };

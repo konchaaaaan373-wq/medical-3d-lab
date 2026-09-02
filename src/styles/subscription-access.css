@@ -1,0 +1,128 @@
+/* ========================================================================== 
+   Current subscription summary
+   ========================================================================== */
+
+.access-subscription {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  margin: 4px 0 14px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.access-subscription-main,
+.access-subscription-state,
+.access-subscription-plan,
+.access-subscription-status,
+.access-subscription-detail {
+  min-width: 0;
+}
+
+.access-subscription-eyebrow {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 3px;
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.access-subscription-plan {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+.access-subscription-plan .lang-ja {
+  margin-top: 1px;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.access-subscription-state {
+  max-width: 300px;
+  text-align: right;
+}
+
+.access-subscription-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-dim);
+}
+
+.access-subscription-status .lang-ja {
+  color: var(--ink-faint);
+  font-size: 9.5px;
+}
+
+.access-subscription-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.access-subscription.is-good .access-subscription-dot {
+  background: var(--accent);
+}
+
+.access-subscription.is-warn {
+  border-color: color-mix(in srgb, #ffc48c 38%, var(--border));
+}
+
+.access-subscription.is-warn .access-subscription-dot {
+  background: #ffc48c;
+}
+
+.access-subscription.is-bad {
+  border-color: color-mix(in srgb, #ff8f8f 38%, var(--border));
+}
+
+.access-subscription.is-bad .access-subscription-dot {
+  background: #ff8f8f;
+}
+
+.access-subscription-detail {
+  display: flex;
+  flex-direction: column;
+  margin-top: 3px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.access-subscription-detail .lang-ja {
+  color: var(--ink-faint);
+}
+
+@media (max-width: 620px) {
+  .access-subscription {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .access-subscription-state {
+    max-width: none;
+    text-align: left;
+  }
+
+  .access-subscription-status {
+    justify-content: flex-start;
+  }
+}

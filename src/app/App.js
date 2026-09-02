@@ -103,7 +103,8 @@ export async function createApp({ stage, ui }) {
     viewer.camera.aspect,
     dataView ? 'data' : 'learning',
     viewer.camera.fov,
-    0.26
+    0.26,
+    SceneClass.framing
   );
   let shotSource = SceneClass.cameraPose;
   viewer.camera.position.copy(shot.position);
@@ -130,7 +131,14 @@ export async function createApp({ stage, ui }) {
 
   /** The scene's authored framing for the current view and window, before zoom. */
   const framedPose = (pose) =>
-    framePose(pose, viewer.camera.aspect, dataView ? 'data' : 'learning', viewer.camera.fov, bottomInset());
+    framePose(
+      pose,
+      viewer.camera.aspect,
+      dataView ? 'data' : 'learning',
+      viewer.camera.fov,
+      bottomInset(),
+      SceneClass.framing
+    );
 
   const setShot = (pose) => {
     shotSource = pose;
@@ -330,6 +338,7 @@ export async function createApp({ stage, ui }) {
     ui.dataset.anatomyColorMode = id;
     legend.setPalette(scene.getAnatomyLegendPalette?.(id));
   };
+  if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onColorMode: syncAnatomyColorMode,
@@ -351,6 +360,10 @@ export async function createApp({ stage, ui }) {
         controls: scene.getModelControls(),
         onChange: (id, value) => {
           scene.setModelControl(id, value);
+          // A model may canonicalise an input or make options mutually
+          // exclusive. Read the accepted state back immediately so the
+          // controls can never display a combination the model does not have.
+          modelControls.sync(scene.getModelControls());
           refreshModelReadouts();
         },
         onReset: () => {

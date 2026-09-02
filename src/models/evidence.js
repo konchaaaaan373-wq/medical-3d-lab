@@ -187,6 +187,102 @@ export function defineEvidence(scene, entries) {
 
 // ---------------------------------------------------------------------------
 
+/** @see src/models/circulation.js, docs/model-evidence/circulation.md */
+export const CIRCULATION_EVIDENCE = defineEvidence('circulation', [
+  {
+    id: 'cardiac-output-definition',
+    claim: 'Cardiac output is heart rate multiplied by stroke volume, with unit conversion from mL to L.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard haemodynamic definition; Simmons and Ventetuolo (2017).',
+    validation: 'circulation definitions preserve their clinical units',
+    layer: LAYER.INTEGRITY,
+  },
+  {
+    id: 'pressure-flow-resistance',
+    claim: 'Mean arterial pressure depends on flow and systemic vascular resistance, with central venous pressure retained in the relation.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard steady-flow haemodynamic relation; Simmons and Ventetuolo (2017).',
+    validation: 'MAP depends on both flow and resistance in the constructed case',
+    layer: LAYER.INTEGRITY,
+  },
+  {
+    id: 'global-do2-definition',
+    claim: 'Calculated global oxygen delivery is cardiac output multiplied by arterial oxygen content, with litres converted to decilitres.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard oxygen-delivery and arterial oxygen-content definitions; Collins et al. (2015).',
+    validation: 'circulation definitions preserve their clinical units',
+    layer: LAYER.INTEGRITY,
+  },
+  {
+    id: 'fluid-responsive-direction',
+    claim: 'In a patient who is fluid responsive, a fluid challenge can increase stroke volume and therefore cardiac output.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Fluid-responsiveness definition and pilot cohort reported by Baker et al. (2013); current ESICM guidance requires reassessment and individualisation.',
+    validation: 'physiology: a preload-responsive fluid state raises stroke volume and cardiac output',
+    layer: LAYER.EXTERNAL,
+    note: 'This supports the direction only in the explicitly responsive state; it does not support giving fluid, a response size or a safety claim.',
+  },
+  {
+    id: 'dobutamine-direction',
+    claim: 'In the cited low-output heart-failure cohort, dobutamine increased stroke volume and cardiac output while systemic vascular resistance fell.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Leier et al. (1978), a thirteen-patient crossover study available here only as a PubMed abstract.',
+    validation: 'physiology: dobutamine can raise stroke volume and cardiac output while systemic resistance falls',
+    layer: LAYER.EXTERNAL,
+    note: 'This is a phenotype-specific direction, not a general treatment effect and not a magnitude claim.',
+  },
+  {
+    id: 'low-flow-map-anchor',
+    claim: 'The reference state is set to an unindexed cardiac output of 3.648 L/min and a mean arterial pressure of 70 mmHg.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source: 'Repository calibration chosen so high resistance holds MAP at the teaching target despite low flow.',
+    validation: 'calibration: the low-flow reference is anchored to MAP 70',
+    layer: LAYER.CALIBRATION,
+    note: 'A constructed comparison point, not a measured patient and not a universal low-output threshold.',
+  },
+  {
+    id: 'illustrative-response-sizes',
+    claim: 'The fluid-responsive state multiplies stroke volume by 1.22, while the dobutamine state multiplies stroke volume by 1.40 and resistance by 0.72.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source for these magnitudes; illustrative values chosen to make the two teaching contrasts legible.',
+    validation: 'calibration: the two response states retain their chosen illustrative sizes',
+    layer: LAYER.CALIBRATION,
+    note: 'The multipliers are invented, are not doses, cannot be combined and must never be read as expected treatment responses.',
+  },
+  {
+    id: 'fixed-oxygen-content',
+    claim: 'Haemoglobin, arterial oxygen saturation and arterial oxygen tension stay fixed across all three teaching states.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'A deliberate illustrative isolation chosen so calculated global oxygen delivery follows cardiac output alone.',
+    validation: 'calibration: fixed oxygen content makes global DO2 proportional to cardiac output',
+    layer: LAYER.CALIBRATION,
+    note: 'This is not a claim that oxygen content stays fixed after fluid or dobutamine in a patient; haemodilution and gas-exchange changes are absent.',
+  },
+  {
+    id: 'global-not-tissue',
+    claim: 'The model has no microcirculation, oxygen extraction or oxygen consumption, so its global delivery output cannot determine tissue oxygenation.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'Known boundary of the implementation; ESICM shock guidance and the haemodynamic-coherence literature separate macrocirculation from tissue perfusion.',
+    note: 'The missing coupling is clinically consequential. An improved calculated global DO2 can coexist with impaired regional or microcirculatory perfusion.',
+  },
+  {
+    id: 'unindexed-output',
+    claim: 'Cardiac output and calculated global oxygen delivery are unindexed, so the displayed absolute values cannot define adequate flow for a person.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'Known boundary of the implementation: body surface area, metabolic demand and patient size are absent.',
+    note: 'The word low applies only to the constructed baseline comparison and must not be turned into a bedside threshold.',
+  },
+  {
+    id: 'no-treatment-harms',
+    claim: 'The intervention states have no congestion, arrhythmia, myocardial oxygen demand, haemodilution, adverse effects or interaction term.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'Known boundary of the implementation rather than evidence of safety.',
+    note: 'Because only a selected benefit direction is represented, the controls cannot be used to choose, combine or dose treatment.',
+  },
+]);
+
+// ---------------------------------------------------------------------------
+
 /** @see src/models/copd.js, docs/model-evidence/copd.md */
 export const COPD_EVIDENCE = defineEvidence('copd', [
   {
@@ -1052,4 +1148,10 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
 ]);
 
 /** Every registry, for the tests and for anything that wants the whole picture. */
-export const EVIDENCE_REGISTRIES = [COPD_EVIDENCE, ASTHMA_EVIDENCE, PORTAL_EVIDENCE, HEPATORENAL_EVIDENCE];
+export const EVIDENCE_REGISTRIES = [
+  CIRCULATION_EVIDENCE,
+  COPD_EVIDENCE,
+  ASTHMA_EVIDENCE,
+  PORTAL_EVIDENCE,
+  HEPATORENAL_EVIDENCE,
+];

@@ -1,31 +1,33 @@
 /**
  * A deliberately small circulation-and-oxygen-delivery model.
  *
- * The one question it answers is: **can MAP look acceptable while systemic
- * oxygen delivery is still low?** The reference case is constructed to do
- * exactly that: low cardiac output is partly masked by high systemic vascular
- * resistance, so MAP rounds to 70 mmHg.
+ * The one question it answers is: **can MAP look almost unchanged while
+ * cardiac output and calculated global oxygen delivery rise?** The reference
+ * case is constructed so a high systemic vascular resistance supports MAP 70
+ * mmHg despite a low unindexed cardiac output.
  *
- * This is not a treatment-response predictor. The fluid arm explicitly assumes
- * preload responsiveness, and the sizes of both intervention effects are
- * illustrative saturating functions. They exist so the learner can feel the
- * direction of the chain without being offered a fake dosing calculator.
+ * This is not a dose-response model. It exposes exactly three mutually
+ * exclusive states: the baseline, one illustrative fluid-responsive state and
+ * one illustrative dobutamine-responsive state. There is no combined arm.
  *
  * Definitions used by the model:
  *
- *   CO   = HR × SV / 1000
- *   MAP  = CVP + CO × SVR / 80
- *   CaO2 = 1.34 × Hb × SaO2 + 0.003 × PaO2
- *   DO2  = CO × 10 × CaO2
+ *   CO   = HR x SV / 1000
+ *   MAP  = CVP + CO x SVR / 80
+ *   CaO2 = 1.34 x Hb x SaO2 + 0.003 x PaO2
+ *   DO2  = CO x 10 x CaO2
  *
- * The factor 80 converts Wood units to dyn·s·cm⁻⁵, and the factor 10 converts
+ * The factor 80 converts Wood units to dyn*s*cm^-5, and the factor 10 converts
  * litres of blood to decilitres. Claim-by-claim sources, access limits and the
  * boundary between published directions and illustrative calibration are kept
- * in docs/model-evidence/circulation.md. In particular, the DOB step is not a
- * dose and the fluid arm is an explicit responsive-case assumption.
+ * in docs/model-evidence/circulation.md.
  */
 
-export const MAX_INTERVENTION_STEPS = 3;
+export const CIRCULATION_INTERVENTIONS = Object.freeze({
+  BASELINE: 'baseline',
+  FLUID: 'fluid',
+  DOBUTAMINE: 'dobutamine',
+});
 
 export const BASELINE_CIRCULATION = Object.freeze({
   heartRatePerMin: 96,
@@ -37,10 +39,30 @@ export const BASELINE_CIRCULATION = Object.freeze({
   targetMeanArterialPressureMmHg: 70,
 });
 
-const clamp = (value, min, max) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : min));
-
-/** @param {number} steps */
-const saturatingResponse = (steps, rate) => 1 - Math.exp(-rate * clamp(steps, 0, MAX_INTERVENTION_STEPS));
+/**
+ * The two response sizes are calibrations for a teaching contrast, not doses.
+ *
+ * Fluid changes preload/SV only. The earlier prototype also lowered SVR in the
+ * fluid arm without saying so in the interface; that hidden change created the
+ * MAP/CO dissociation it was trying to teach. The fixed fluid state now leaves
+ * SVR alone. Dobutamine raises SV while lowering SVR, matching the direction
+ * described for the cited low-output heart-failure cohort. HR is left fixed:
+ * the cited study reported no HR change over its studied dose range.
+ */
+export const ILLUSTRATIVE_RESPONSES = Object.freeze({
+  [CIRCULATION_INTERVENTIONS.BASELINE]: Object.freeze({
+    strokeVolumeMultiplier: 1,
+    systemicVascularResistanceMultiplier: 1,
+  }),
+  [CIRCULATION_INTERVENTIONS.FLUID]: Object.freeze({
+    strokeVolumeMultiplier: 1.22,
+    systemicVascularResistanceMultiplier: 1,
+  }),
+  [CIRCULATION_INTERVENTIONS.DOBUTAMINE]: Object.freeze({
+    strokeVolumeMultiplier: 1.4,
+    systemicVascularResistanceMultiplier: 0.72,
+  }),
+});
 
 /** Cardiac output in L/min. */
 export function cardiacOutput({ heartRatePerMin, strokeVolumeMl }) {
@@ -52,7 +74,7 @@ export function arterialOxygenContent({ hemoglobinGdl, arterialOxygenSaturation,
   return 1.34 * hemoglobinGdl * arterialOxygenSaturation + 0.003 * arterialOxygenPressureMmHg;
 }
 
-/** Whole-body oxygen delivery in mL O2/min. */
+/** Calculated whole-body oxygen delivery in mL O2/min. */
 export function oxygenDelivery({ cardiacOutputLMin, arterialOxygenContentMlDl }) {
   return cardiacOutputLMin * 10 * arterialOxygenContentMlDl;
 }
@@ -62,32 +84,25 @@ const BASELINE_SYSTEMIC_RESISTANCE =
   ((BASELINE_CIRCULATION.targetMeanArterialPressureMmHg - BASELINE_CIRCULATION.centralVenousPressureMmHg) * 80) /
   BASELINE_CARDIAC_OUTPUT;
 
+/** @param {unknown} intervention */
+function validIntervention(intervention) {
+  return Object.values(CIRCULATION_INTERVENTIONS).includes(intervention)
+    ? intervention
+    : CIRCULATION_INTERVENTIONS.BASELINE;
+}
+
 /**
- * Solves the single teaching case after zero to three steps of either action.
- * Continuous values are accepted so session restoration and future UI variants
- * remain well behaved, although the tactile UI advances in whole steps.
+ * Solves one of three mutually exclusive teaching states.
  *
- * @param {{ fluidSteps?: number, dobutamineSteps?: number }} [interventions]
+ * @param {{ intervention?: 'baseline'|'fluid'|'dobutamine' }} [options]
  */
-export function solveCirculation({ fluidSteps = 0, dobutamineSteps = 0 } = {}) {
-  const fluid = clamp(fluidSteps, 0, MAX_INTERVENTION_STEPS);
-  const dobutamine = clamp(dobutamineSteps, 0, MAX_INTERVENTION_STEPS);
-  const fluidResponse = saturatingResponse(fluid, 0.65);
-  const dobutamineResponse = saturatingResponse(dobutamine, 0.55);
-
-  // The case is preload responsive. Fluid raises SV with diminishing returns.
-  // Dobutamine raises contractile output and heart rate modestly. The sizes are
-  // illustrative calibration values; the model claims directions, not doses.
-  const strokeVolumeMl =
-    BASELINE_CIRCULATION.strokeVolumeMl * (1 + 0.33 * fluidResponse + 0.46 * dobutamineResponse);
-  const heartRatePerMin = BASELINE_CIRCULATION.heartRatePerMin * (1 + 0.05 * dobutamineResponse);
-
-  // Flow-mediated/autonomic compensation is collapsed into a resistance term.
-  // In particular dobutamine lowers SVR in this case, so CO and DO2 can improve
-  // much more than MAP — the teaching point the interaction is built around.
+export function solveCirculation({ intervention = CIRCULATION_INTERVENTIONS.BASELINE } = {}) {
+  const selectedIntervention = validIntervention(intervention);
+  const response = ILLUSTRATIVE_RESPONSES[selectedIntervention];
+  const heartRatePerMin = BASELINE_CIRCULATION.heartRatePerMin;
+  const strokeVolumeMl = BASELINE_CIRCULATION.strokeVolumeMl * response.strokeVolumeMultiplier;
   const systemicVascularResistanceDynSCm5 =
-    BASELINE_SYSTEMIC_RESISTANCE * (1 - 0.18 * fluidResponse) * (1 - 0.35 * dobutamineResponse);
-
+    BASELINE_SYSTEMIC_RESISTANCE * response.systemicVascularResistanceMultiplier;
   const cardiacOutputLMin = cardiacOutput({ heartRatePerMin, strokeVolumeMl });
   const meanArterialPressureMmHg =
     BASELINE_CIRCULATION.centralVenousPressureMmHg +
@@ -96,8 +111,7 @@ export function solveCirculation({ fluidSteps = 0, dobutamineSteps = 0 } = {}) {
   const oxygenDeliveryMlMin = oxygenDelivery({ cardiacOutputLMin, arterialOxygenContentMlDl });
 
   return {
-    fluidSteps: fluid,
-    dobutamineSteps: dobutamine,
+    intervention: selectedIntervention,
     heartRatePerMin,
     strokeVolumeMl,
     cardiacOutputLMin,

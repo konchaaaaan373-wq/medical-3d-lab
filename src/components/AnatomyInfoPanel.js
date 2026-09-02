@@ -89,6 +89,12 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
     viewButtons[index].classList.add('is-active');
     viewButtons[index].setAttribute('aria-pressed', 'true');
   };
+  const applyView = (id) => {
+    if (!views.some((view) => view.id === id)) return false;
+    scene.setAnatomyView?.(id);
+    setActiveView(id);
+    return true;
+  };
   const viewButtons = views.map((view, index) => {
     const button = el('button', {
       class: `anatomy-view${index === 0 ? ' is-active' : ''}`,
@@ -97,8 +103,7 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
       title: `${view.label} — ${view.labelJa}`,
       on: {
         click: () => {
-          setActiveView(view.id);
-          scene.setAnatomyView?.(view.id);
+          applyView(view.id);
           onView?.(view.id);
         },
       },
@@ -195,8 +200,7 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
     selected = value;
     renderSelection();
     if (value?.preferredView) {
-      setActiveView(value.preferredView);
-      scene.setAnatomyView?.(value.preferredView);
+      applyView(value.preferredView);
       onView?.(value.preferredView);
     }
   });
@@ -209,7 +213,7 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
   onColorMode?.(scene.getAnatomyColorMode?.());
   return {
     element,
-    setView: setActiveView,
+    setView: applyView,
     dispose() {
       unsubscribeSelection?.();
       unsubscribeHover?.();

@@ -1,0 +1,130 @@
+/* Account/billing belongs on the catalogue page too, but it must not turn the
+   Explorer into a billing dashboard. Keep it as secondary product chrome next
+   to the existing language control. */
+.explorer-header-actions {
+  position: absolute;
+  top: 22px;
+  right: 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 2;
+}
+
+.explorer-header-actions .ui-toggle,
+.explorer-header-actions .account-trigger {
+  position: static;
+  min-height: 32px;
+  padding: 0 9px;
+  border-color: var(--explorer-rule);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--explorer-muted);
+  font-size: 11px;
+  font-weight: 550;
+  backdrop-filter: none;
+}
+
+.explorer-shell-link {
+  padding: 6px 0 5px;
+  border-bottom: 1px solid transparent;
+  color: var(--explorer-muted);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.explorer-shell-link:hover,
+.explorer-shell-link:focus-visible {
+  border-bottom-color: var(--explorer-accent);
+  color: var(--explorer-ink);
+}
+
+/* Product capability is catalogue metadata, not current-account state. Each
+   item says free or paid in words so colour is never carrying that meaning. */
+.explorer-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin-top: 1px;
+}
+
+.explorer-access-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  width: fit-content;
+  min-height: auto;
+  margin-right: 9px;
+  padding: 0 9px 0 0;
+  border: 0;
+  border-right: 1px solid var(--explorer-rule);
+  border-radius: 0;
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  color: var(--explorer-faint);
+  background: none;
+}
+
+.explorer-access-badge:last-child {
+  margin-right: 0;
+  padding-right: 0;
+  border-right: 0;
+}
+
+.explorer-access-badge.is-free {
+  color: var(--explorer-muted);
+  border-color: var(--explorer-rule);
+}
+
+.explorer-access-badge.is-paid {
+  color: var(--explorer-muted);
+  border-color: var(--explorer-rule);
+  background: none;
+}
+
+.explorer-product-key {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 15px;
+  padding-left: 10px;
+  border-left: 2px solid var(--explorer-rule-strong);
+  color: var(--explorer-faint);
+}
+
+.explorer-product-key > .explorer-access-badge {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--explorer-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.explorer-product-note {
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+@media (max-width: 720px) {
+  .explorer-header {
+    padding-top: 68px;
+  }
+
+  .explorer-header-actions {
+    top: 14px;
+    right: 18px;
+    left: 18px;
+    justify-content: flex-end;
+    gap: 11px;
+  }
+
+  .explorer-product-key {
+    align-items: center;
+    flex-direction: row;
+  }
+}

@@ -189,16 +189,17 @@ stay illustrative.
 
 ## 15. Review status
 
-**Catalog status:** `alpha`
+**Catalog status:** `reviewed`
 
-**Corrected against an external clinical review** that read the sources in
-full, and **not yet re-reviewed after those corrections.** The scene stays at
-`alpha`. The review named Baveno VII (PMC11090185) and the pathophysiology
-reviews PMC2999290, PMC3971388 and PMC3000670, and it found five errors — an
-inverted causal order, an over-simplified collateral explanation, a collateral
-sigmoid that read as an instantaneous opening, an over-claiming HVPG wording,
-and portal vein thrombosis listed as a presinusoidal cause. All five are fixed
-and guarded by external tests in `tests/portal-haemodynamics.test.js`.
+**Clinically reviewed after correction of the previously identified causal,
+collateral and HVPG errors.** Reviewed status means the external haemodynamic
+constraints, model integrity and calibration boundaries have been checked while
+the equilibrium assumptions and illustrative magnitudes remain explicit. It
+does not make the scene an HVPG calculator or a clinical decision tool. The
+review named Baveno VII (PMC11090185) and the pathophysiology reviews
+PMC2999290, PMC3971388 and PMC3000670. The corrected causal ordering,
+collateral interpretation and HVPG boundary are guarded by external tests in
+`tests/portal-haemodynamics.test.js`.
 
 This repository's own network still cannot reach the medical publishers, so
 nothing here was extracted from a figure, a table or an algorithm by its

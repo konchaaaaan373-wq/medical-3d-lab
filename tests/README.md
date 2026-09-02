@@ -20,7 +20,8 @@ the named test actually lives in.
 
 ## Layer 1 — external physiology
 
-**Files:** [`respiratory-physiology.test.js`](respiratory-physiology.test.js),
+**Files:** [`circulation-physiology.test.js`](circulation-physiology.test.js),
+[`respiratory-physiology.test.js`](respiratory-physiology.test.js),
 [`portal-haemodynamics.test.js`](portal-haemodynamics.test.js),
 [`hepatorenal-physiology.test.js`](hepatorenal-physiology.test.js)
 
@@ -159,8 +160,8 @@ to run.
 ## Running them
 
 ```bash
-npm test                                       # all five hundred and eighty-odd
-node --test tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js tests/hepatorenal-physiology.test.js   # layer 1
+npm test                                       # the full six-hundred-plus suite
+node --test tests/circulation-physiology.test.js tests/respiratory-physiology.test.js tests/portal-haemodynamics.test.js tests/hepatorenal-physiology.test.js   # layer 1
 node --test tests/calibration.test.js          # layer 3
 node --test tests/evidence.test.js             # the separation itself
 ```

@@ -142,6 +142,9 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   scene.setAnatomyView('right-medial');
   assert.equal(left.material.opacity, 0);
   assert.equal(right.material.opacity, 1);
+  scene.setAnatomyView('left-lateral');
+  assert.equal(left.material.opacity, 1);
+  assert.equal(right.material.opacity, 1, 'leaving a medial view restores the contralateral hemisphere');
   for (const [mesh, position] of positions) assert.ok(mesh.position.equals(position));
   scene.dispose();
 });
@@ -249,6 +252,7 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
   assert.equal(structures.size, 147);
   const detailColours = new Set();
   const naturalColours = new Set();
+  const detailSamples = [];
   for (const metadata of structures.values()) {
     const info = brainStructureInfo(metadata);
     assert.notEqual(info.nameJa, `${info.regionJa}（${info.name}）`, `${info.name} is translated`);
@@ -259,9 +263,23 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
     assert.ok(/^#[0-9a-f]{6}$/.test(naturalColour), `${info.name} has a natural colour`);
     detailColours.add(detailColour);
     naturalColours.add(naturalColour);
+    detailSamples.push({ label: info.name, lab: hexToLab(detailColour) });
   }
   assert.equal(detailColours.size, structures.size, 'all 147 named structures have distinct colour-map shades');
   assert.equal(naturalColours.size, structures.size, 'all 147 named structures avoid exact natural-tone collisions');
+  let closest = { distance: Infinity, labels: [] };
+  for (let left = 0; left < detailSamples.length; left += 1) {
+    for (let right = left + 1; right < detailSamples.length; right += 1) {
+      const distance = cie76(detailSamples[left].lab, detailSamples[right].lab);
+      if (distance < closest.distance) {
+        closest = { distance, labels: [detailSamples[left].label, detailSamples[right].label] };
+      }
+    }
+  }
+  assert.ok(
+    closest.distance >= 3.8,
+    `closest detail colours are too similar: ${closest.labels.join(' / ')} (ΔE ${closest.distance.toFixed(2)})`
+  );
 });
 
 test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', () => {
@@ -305,6 +323,21 @@ test('fine hierarchy keeps epithalamus and cerebellar vermis distinct', () => {
   });
   assert.deepEqual(habenula.hierarchyJa, ['正中', '間脳', '視床上部']);
   assert.deepEqual(culmen.hierarchyJa, ['正中', '小脳', '小脳虫部']);
+});
+
+test('capitalized brainstem nuclei and cerebellar peduncles keep their fine families', () => {
+  for (const label of ['Nucleus of oculomotor nerve', 'Nucleus of abducens nerve']) {
+    const info = brainStructureInfo({
+      bx_cat: 'brainstem', bx_label: label, bx_side: 'median', bx_region: 'Brainstem',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Brainstem nuclei');
+    assert.equal(info.hierarchyJa.at(-1), '脳幹神経核');
+  }
+  const floccularPeduncle = brainStructureInfo({
+    bx_cat: 'cerebellum', bx_label: 'Peduncle of flocculus', bx_side: 'left', bx_region: 'Cerebellum',
+  });
+  assert.equal(floccularPeduncle.hierarchy.at(-1), 'Cerebellar peduncles');
+  assert.equal(floccularPeduncle.hierarchyJa.at(-1), '小脳脚');
 });
 
 const FIXTURE_STRUCTURES = [
@@ -375,4 +408,25 @@ function hslOf(mesh) {
 
 function settle(scene) {
   for (let i = 0; i < 240; i += 1) scene.update(1 / 60);
+}
+
+function hexToLab(hex) {
+  const channels = [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255);
+  const [red, green, blue] = channels.map((value) => (
+    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  ));
+  const xyz = [
+    red * 0.4124564 + green * 0.3575761 + blue * 0.1804375,
+    red * 0.2126729 + green * 0.7151522 + blue * 0.072175,
+    red * 0.0193339 + green * 0.119192 + blue * 0.9503041,
+  ];
+  const transform = (value) => (
+    value > 216 / 24389 ? Math.cbrt(value) : (24389 / 27 * value + 16) / 116
+  );
+  const [x, y, z] = xyz.map((value, index) => transform(value / [0.95047, 1, 1.08883][index]));
+  return [116 * y - 16, 500 * (x - y), 200 * (y - z)];
+}
+
+function cie76(left, right) {
+  return Math.hypot(...left.map((value, index) => value - right[index]));
 }

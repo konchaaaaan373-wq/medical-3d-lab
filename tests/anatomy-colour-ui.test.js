@@ -50,3 +50,29 @@ test('colour buttons switch the real scene, active state, and legend together', 
     restoreDocument();
   }
 });
+
+test('the public view setter resets both the button state and medial visibility state', () => {
+  const restoreDocument = installFakeDocument();
+  const scene = new BrainAnatomyScene();
+  let panel;
+
+  try {
+    panel = createAnatomyInfoPanel(scene);
+    const buttons = findByClass(panel.element, 'anatomy-view');
+
+    buttons[3].click();
+    assert.equal(scene.activeView, 'right-medial');
+    assert.equal(scene.medialSide, 'right');
+    assert.equal(buttons[3].getAttribute('aria-pressed'), 'true');
+
+    assert.equal(panel.setView('left-lateral'), true);
+    assert.equal(scene.activeView, 'left-lateral');
+    assert.equal(scene.medialSide, null, 'resetting the view restores both hemispheres');
+    assert.equal(buttons[0].getAttribute('aria-pressed'), 'true');
+    assert.equal(buttons[3].getAttribute('aria-pressed'), 'false');
+  } finally {
+    panel?.dispose();
+    scene.dispose();
+    restoreDocument();
+  }
+});

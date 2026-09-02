@@ -1,0 +1,131 @@
+import { supabaseUserExists } from '../lib/account.js';
+import {
+  json,
+  planForPrice,
+  stripeGet,
+  supabaseAdmin,
+  upsertCustomer,
+  upsertSubscription,
+  verifyStripeSignature,
+} from '../lib/billing.js';
+
+export default async (request) => {
+  if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
+  const raw = await request.text();
+  if (!verifyStripeSignature(raw, request.headers.get('stripe-signature'))) {
+    return json(400, { error: 'Invalid Stripe signature' });
+  }
+
+  try {
+    const event = JSON.parse(raw);
+    const object = event.data?.object;
+
+    if (event.type === 'checkout.session.completed' && object?.mode === 'subscription') {
+      const userId = object.metadata?.supabase_user_id || object.client_reference_id;
+      // Account deletion can race a delayed Checkout webhook. Never recreate a
+      // billing mapping for an Auth identity that has already been removed.
+      if (!userId || !(await supabaseUserExists(userId))) {
+        console.info('Ignoring checkout webhook for deleted/missing account', {
+          eventId: event.id,
+          userId: userId ?? null,
+        });
+        return json(200, { received: true, ignored: 'deleted_user' });
+      }
+
+      const customerId = typeof object.customer === 'string' ? object.customer : object.customer?.id;
+      await upsertCustomer({
+        userId,
+        customerId,
+        email: object.customer_details?.email ?? null,
+      });
+      if (object.subscription) {
+        const subscriptionId = typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
+        const subscription = await stripeGet(`subscriptions/${subscriptionId}`);
+        await syncSubscription(subscription);
+      }
+    }
+
+    if (
+      event.type === 'customer.subscription.created' ||
+      event.type === 'customer.subscription.updated' ||
+      event.type === 'customer.subscription.deleted'
+    ) {
+      // Stripe does not guarantee webhook delivery order. Re-read the current
+      // subscription before writing local entitlement state so an old `updated`
+      // event arriving late cannot overwrite a newer plan/status. Canceled
+      // subscriptions are normally still retrievable; if Stripe refuses the
+      // read after deletion, the signed event object is the safe fallback.
+      let subscription = object;
+      try {
+        subscription = await stripeGet(`subscriptions/${object.id}`);
+      } catch (error) {
+        if (event.type !== 'customer.subscription.deleted') throw error;
+      }
+
+      const ownerId = await liveSubscriptionOwnerId(subscription);
+      if (!ownerId) {
+        console.info('Ignoring subscription webhook for deleted/missing account', {
+          eventId: event.id,
+          subscriptionId: subscription?.id ?? null,
+        });
+        return json(200, { received: true, ignored: 'deleted_user' });
+      }
+
+      await syncSubscription(subscription);
+      await upsertCustomer({
+        userId: ownerId,
+        customerId:
+          typeof subscription.customer === 'string'
+            ? subscription.customer
+            : subscription.customer?.id,
+      });
+    }
+
+    return json(200, { received: true });
+  } catch (error) {
+    console.error('stripe-webhook', error);
+    return json(500, { error: 'Webhook processing failed' });
+  }
+};
+
+async function liveSubscriptionOwnerId(subscription) {
+  if (!subscription) return null;
+  const customerId =
+    typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
+  let mappedUserId = null;
+  if (customerId) {
+    const rows = await supabaseAdmin(
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
+    );
+    mappedUserId = rows?.[0]?.user_id ?? null;
+  }
+  const candidate = mappedUserId ?? subscription.metadata?.supabase_user_id ?? null;
+  if (!candidate) return null;
+  return (await supabaseUserExists(candidate)) ? candidate : null;
+}
+
+async function syncSubscription(subscription) {
+  const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
+
+  // Portal and Checkout are configured to expose only our known prices, but
+  // entitlement must still fail closed if someone changes the subscription
+  // manually in Stripe. Mark an existing row ineligible immediately rather
+  // than leaving its previous paid entitlement active.
+  if (!planForPrice(priceId)) {
+    await supabaseAdmin(
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
+      {
+        method: 'PATCH',
+        prefer: 'return=minimal',
+        body: {
+          status: 'unsupported_price',
+          price_id: priceId,
+          updated_at: new Date().toISOString(),
+        },
+      }
+    );
+    return;
+  }
+
+  await upsertSubscription(subscription);
+}

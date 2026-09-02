@@ -150,15 +150,17 @@ where no quantitative source was reachable as **thin**.
 
 ## 15. Review status
 
-**Catalog status:** `alpha`
+**Catalog status:** `reviewed`
 
-**Corrected against an external clinical review** that read the sources in
-full, and **not yet re-reviewed after those corrections.** The scene stays at
-`alpha`. The review named GOLD 2026, O'Donnell and colleagues on dynamic
-hyperinflation, and the induced-bronchoconstriction literature (PMID 10515404),
-and it found a medically wrong proposition — see §14 — which has been fixed in
-the model, the walk-through and the challenges, and guarded by external tests
-in `tests/respiratory-physiology.test.js`.
+**Clinically reviewed after correction of the previously identified modelling
+error.** The reviewed status means the externally constrained teaching claims,
+model integrity and calibration boundaries have been checked and the known
+simplifications remain documented here; it does not make the scene a clinical
+simulator or promote illustrative magnitudes to measurements. The review named
+GOLD 2026, O'Donnell and colleagues on dynamic hyperinflation, and the
+induced-bronchoconstriction literature (PMID 10515404). The corrected
+relationship is guarded by external tests in
+`tests/respiratory-physiology.test.js`.
 
 This repository's own network still cannot reach the medical publishers, so
 nothing here was extracted from a figure, a table or a methods section by its

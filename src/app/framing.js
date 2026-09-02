@@ -88,9 +88,14 @@ export function verticalOffsetForView(view, bottomInset = 0) {
  * @param {'learning'|'data'} [view]
  * @param {number} [fovDegrees]
  * @param {number} [bottomInset] fraction of the frame the console covers
+ * @param {{ minHorizontalAspect?: number }} [framing] optional scene-specific
+ *        width reserve for subjects whose causal layout is intrinsically wide
  */
-export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomInset = 0) {
-  const scale = distanceScaleForAspect(aspect) * distanceScaleForView(view, aspect);
+export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomInset = 0, framing = {}) {
+  const widthReserve = framing.minHorizontalAspect
+    ? Math.max(1, framing.minHorizontalAspect / Math.max(0.01, aspect))
+    : 1;
+  const scale = distanceScaleForAspect(aspect) * distanceScaleForView(view, aspect) * widthReserve;
   const position = pose.target.clone().add(pose.position.clone().sub(pose.target).multiplyScalar(scale));
   const target = pose.target.clone();
 

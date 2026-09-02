@@ -502,7 +502,11 @@ export function brainColor(metadata = {}, mode = 'detail') {
   // Natural tones occupy a deliberately narrow range, so use independent
   // deterministic hash streams. This avoids two named structures collapsing
   // to the same rounded RGB value without introducing conspicuous colour jumps.
-  const hash = stableHash(natural ? `anatomical:h:${key}:${label}` : `${key}:${label}`);
+  // Keep the detail palette versioned: its seed is locked by the all-label
+  // perceptual-distance audit so nearby atlas structures remain distinguishable.
+  const hash = stableHash(
+    natural ? `anatomical:h:${key}:${label}` : `${key}:palette-v2930:${label}`
+  );
   const saturationHash = natural
     ? stableHash(`anatomical:s:${key}:${label}`)
     : Math.imul(hash ^ 0x85ebca6b, 0xc2b2ae35) >>> 0;
@@ -602,9 +606,9 @@ function structureFamily(label, category) {
   if (category === 'cerebellum' && CEREBELLAR_VERMIS_LABELS.has(label)) {
     return ['Cerebellar vermis', '小脳虫部'];
   }
-  if (category === 'cerebellum' && /peduncle/.test(label)) return ['Cerebellar peduncles', '小脳脚'];
+  if (category === 'cerebellum' && /peduncle/i.test(label)) return ['Cerebellar peduncles', '小脳脚'];
   if (category === 'cerebellum') return ['Cerebellar hemisphere', '小脳半球'];
-  if (category === 'brainstem' && /nucleus|nuclei/.test(label)) return ['Brainstem nuclei', '脳幹神経核'];
+  if (category === 'brainstem' && /nucleus|nuclei/i.test(label)) return ['Brainstem nuclei', '脳幹神経核'];
   if (category === 'brainstem') return ['Brainstem surface anatomy', '脳幹表面解剖'];
   return BRAIN_CATEGORY_NAMES[category] ?? ['Brain structure', '脳構造'];
 }
