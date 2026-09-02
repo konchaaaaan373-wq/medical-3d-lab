@@ -381,6 +381,56 @@ recoverable billing failure into an unhandled one.
 A clean reconciliation reports too, as a heartbeat. Silence should not be
 mistaken for health.
 
+### The journeys, and how they are checked
+
+A billing bug is rarely a wrong return value. It is a wrong *sequence*: a
+renewal that changed no status and so was never written, a card that failed
+once and cost somebody their access, a returning customer sent to manage a
+subscription that no longer exists. None of those is visible in a single
+assertion about a single handler.
+
+So the sequences are declared as data in
+[`netlify/lib/journeys.js`](../netlify/lib/journeys.js) — what Stripe says, in
+order, and what must be true after each step — and they are checked twice.
+
+| Journey | The failure it exists to catch |
+| --- | --- |
+| `first-purchase` | The baseline. Already verified against the Stripe sandbox |
+| `renewal` | A successful renewal changes no status, so a handler that only follows status leaves a year of history with no trace and never moves the period end |
+| `payment-failure-recovered` | Cutting a paying customer off at the first decline. `past_due` holds access while Stripe retries |
+| `payment-failure-final` | The opposite: `unpaid` is not a grace state, and the last failed retry is the moment somebody must be told |
+| `repurchase` | A stale local row still saying `active`, so a returning customer is sent to Portal for a subscription that is gone — and a new plan silently restoring the old plan's grants |
+| `plan-change` | Entitlement following Checkout metadata instead of the current price, so a downgrade leaves the old access in place |
+| `cancel-at-period-end` | Taking away access the customer has already paid for |
+| `uncollectible` | A write-off passing silently |
+
+**Every pull request** replays them against the deployed webhook handler
+(`tests/billing-journeys.test.js`). Nothing is injected: the handler is reached
+over HTTP, and `tests/support/billingSandbox.js` serves the Supabase and Stripe
+surfaces it calls. The assertion at each step is not a status string but the
+product's own answer — `grantsFromSubscriptions`, the function the application
+uses — to "can this person open the paid mode?"
+
+That proves that *given* Stripe behaving as the journeys say, this product's
+access, ledger and alerts come out right. It cannot prove Stripe behaves that
+way.
+
+**Before a paid release**, the same list is run against the real Stripe
+sandbox, which needs credentials and a person:
+
+1. Create a test-mode Customer with a [test clock](https://stripe.com/docs/billing/testing/test-clocks)
+   and subscribe it to each Price.
+2. Advance the clock past the period end for `renewal`.
+3. Use `4000 0000 0000 0341` (attaches, then fails on charge) for the two
+   payment-failure journeys; advance the clock through the retry schedule
+   configured in Billing → Subscriptions → *Manage failed payments*.
+4. Cancel, then buy again, for `repurchase`.
+5. Change the plan in Portal for `plan-change`.
+
+Compare what arrives against the same journey list. Two checks reading one
+declaration is the point: if the manual run and the automated one disagree, the
+declaration is what gets corrected, and both move together.
+
 ### Configuration
 
 | Variable | Effect when unset |

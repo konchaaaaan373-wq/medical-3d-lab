@@ -95,6 +95,19 @@ person: Safari, Firefox, touch and a screen reader.
   plus one that does. Safari, Firefox and real touch hardware are still a
   person's job, and the check says so every time it runs.
 
+### Billing journeys
+
+- **A renewal, a failing card and a repurchase are now checked as sequences.**
+  They were the three billing paths nobody could see from a single assertion: a
+  successful renewal changes no subscription status, a card that declines once
+  must not cost anybody their access, and a customer who cancelled and came
+  back must not be sent to manage a subscription that no longer exists. All
+  eight journeys are written down once and replayed against the real webhook
+  handler on every change.
+- What each step asserts is not an internal status but the product's own
+  answer to "can this person open the paid mode?" — so a change that keeps the
+  status right and the access wrong still fails.
+
 ### Discoverability
 
 - Every public model has its own page, its own link preview and an entry in the
