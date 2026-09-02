@@ -8,7 +8,7 @@
 | **External tests** | [`tests/circulation-physiology.test.js`](../../tests/circulation-physiology.test.js) |
 | **Integrity tests** | [`tests/circulation-model.test.js`](../../tests/circulation-model.test.js) |
 | **Calibration tests** | [`tests/calibration.test.js`](../../tests/calibration.test.js) |
-| **Last checked** | **2026-09-01** |
+| **Last checked** | **2026-09-02** |
 
 > **Status: alpha conceptual model.** 文献が支持するのは定義と一部の変化方向です。
 > 画面上の絶対値・変化量は患者データへのfitではなく、教育上の比較を作るための

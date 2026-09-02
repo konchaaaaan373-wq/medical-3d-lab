@@ -303,10 +303,10 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 
 | ルート | 役割 | 状態 |
 | --- | --- | --- |
-| `#/`（新設） | landing。**問いから入る**入口。カタログの reviewed 以上を前面に | Gate 0B |
+| `#/` | landing。**問いから入り、まず触る**入口。循環の実モデルをheroで操作でき、全公開モデルでは実装成熟度と医学レビュー状態を分けて表示 | 実装済み |
 | `#/organs`（= `#/explore`） | Organ Explorer。全身の地図と backlog の可視化 | 実装済み |
 | `#/<slug>` | 1 シーン。View / Story / Learn / Reel / Scope | 実装済み |
-| Lab 領域（形式未定） | prototype の隔離。明示的に入る場所 | Gate 0B |
+| `#/lab`（= `#/experimental`） | prototype の隔離。明示的に入る場所 | 実装済み |
 
 シーン内の体験は [`learning-first-view.md`](architecture/learning-first-view.md)
 の決定（3D-first、データは 1 クリック先）を全シーンの基準にします。

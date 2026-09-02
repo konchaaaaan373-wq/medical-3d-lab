@@ -36,13 +36,18 @@ export function createLanguageToggle(onChange) {
   });
 
   function apply() {
-    element.textContent = MODES[index].label;
+    const mode = MODES[index];
+    element.textContent = mode.label;
+    // The visible copy and the document language must change together. Keeping
+    // <html lang> on English while the Japanese layer is shown makes assistive
+    // technology pronounce the whole interface with the wrong language rules.
+    document.documentElement?.setAttribute('lang', mode.id);
     try {
-      localStorage.setItem(STORAGE_KEY, MODES[index].id);
+      localStorage.setItem(STORAGE_KEY, mode.id);
     } catch {
       // Private browsing modes can refuse storage; the toggle still works.
     }
-    onChange(MODES[index].id);
+    onChange(mode.id);
   }
 
   return {

@@ -50,7 +50,11 @@ the model tests.
   pushes. Keep production deployment tied to a passing protected commit.
 - [x] Add a product shell that remains useful without WebGL and a renderer-failure
   fallback that preserves navigation and scope information.
-- [x] Replace the default direct scene launch with a real landing page.
+- [x] Replace the default direct scene launch with a real landing page. Its hero
+  is now a working three-state circulation preview backed by the scene's actual
+  solver; all public models are listed by question, and maturity and medical
+  review are never collapsed into one label. The ambient Canvas layer has its
+  own motion, data-saver and device budgets.
 - [x] Move Prototype scenes out of the default public catalogue into explicit
   **Lab / Experimental** shelves, including in-scene navigation.
 - [x] Keep the access/billing branch synchronized with current `main` so PR tests

@@ -95,6 +95,11 @@ export class FakeElement {
     this.children.push(...children);
   }
 
+  replaceChildren(...children) {
+    this.children = [...children];
+    this.textContent = '';
+  }
+
   addEventListener(type, listener) {
     const listeners = this.listeners.get(type) ?? new Set();
     listeners.add(listener);

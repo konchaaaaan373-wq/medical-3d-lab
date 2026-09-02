@@ -58,6 +58,27 @@ visible stutter that the user cannot attribute to our optimism.
 Raising a line is allowed; doing it silently is not. Change the constant and
 say in the pull request why the product is now permitted to cost more.
 
+### Landing flow-field budget
+
+The landing route has one Canvas 2D ambient layer. It is decorative chrome,
+not a renderer and not a physiological simulation. Its separate budget lives
+in `src/app/landingFlowField.js` and is checked by `tests/landing.test.js`:
+
+| Device | Particle ceiling | Frame ceiling | Pixel-ratio ceiling |
+| --- | ---: | ---: | ---: |
+| phone | 58 | 24 fps | 1.25× |
+| tablet | 92 | 30 fps | 1.5× |
+| desktop | 132 | 30 fps | 1.5× |
+
+The foreground circulation preview adds 24 small CSS particles. Those particles
+are part of the explanatory instrument; the ambient ceiling above does not hide
+them in its count. `prefers-reduced-motion` makes the ambient canvas static and
+stops most foreground particles. A hidden document stops requesting frames.
+When the browser reports `Save-Data`, a 55% count scale is applied before the
+28-particle readability floor and the device ceiling; frame rate is capped at
+20 fps and pixel ratio at 1×. None of these choices changes a model parameter
+or displayed value.
+
 ---
 
 ## 2. What may be collected — and what may not
