@@ -24,10 +24,10 @@ const dual = (en, ja, className = '') => [
  * Product-first landing page. The first viewport is the actual circulation
  * scene, not a mock-up or a description of one.
  */
-export function createLanding({ ui, accountButton = null }) {
+export function createLanding({ ui, accountButton = null, onRendererFailure = () => {} }) {
   const scenes = orderLandingScenes(PUBLIC_SCENES);
   const flowField = createLandingFlowField();
-  const circulationDemo = createLandingCirculationDemo();
+  const circulationDemo = createLandingCirculationDemo({ onRendererFailure });
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;

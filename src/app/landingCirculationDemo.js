@@ -104,6 +104,7 @@ const dual = (en, ja, className = '') => [
 
 export function createLandingCirculationDemo({
   loadViewport = () => import('./landingCirculationViewport.js'),
+  onRendererFailure = () => {},
 } = {}) {
   const buttons = new Map();
   const metricNodes = new Map();
@@ -256,6 +257,11 @@ export function createLandingCirculationDemo({
       .catch((error) => {
         if (destroyed) return null;
         console.error('landing 3D preview', error);
+        try {
+          void Promise.resolve(onRendererFailure(error)).catch(() => {});
+        } catch {
+          /* diagnostics must never prevent the fallback from rendering */
+        }
         viewport.dataset.loading = 'false';
         element.dataset.viewport = 'unavailable';
         viewport.setAttribute('tabindex', '-1');

@@ -80,8 +80,21 @@ async function boot() {
   if (route.kind === 'landing') {
     document.documentElement.dataset.route = 'landing';
     const { createLanding } = await import('./app/Landing.js');
-    createLanding({ ui, accountButton: access.accountButton });
-    void observe({ ui, surface: 'landing' });
+    const observabilityReady = observe({ ui, surface: 'landing' });
+    createLanding({
+      ui,
+      accountButton: access.accountButton,
+      onRendererFailure: async (error) => {
+        const observability = await observabilityReady;
+        observability?.reporter.captureRendererFailure(error, {
+          scene: 'circulation',
+          device: observability.deviceClass,
+          reason: rendererFailureReason(error),
+          fallbackShown: true,
+        });
+      },
+    });
+    void observabilityReady;
     void accessReady;
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;

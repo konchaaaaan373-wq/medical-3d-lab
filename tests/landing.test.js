@@ -155,6 +155,7 @@ test('landing: switching to reduced motion cancels the already queued frame', ()
 test('landing: the shell stays readable while the hero dynamically mounts the real 3D scene', () => {
   const landing = read('src/app/Landing.js');
   const demo = read('src/app/landingCirculationDemo.js');
+  const main = read('src/main.js');
   const viewport = read('src/app/landingCirculationViewport.js');
   const flow = read('src/app/landingFlowField.js');
   const css = read('src/styles/landing.css');
@@ -175,6 +176,7 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /container\.addEventListener\('keydown', keyboardMoved\)/);
   assert.match(viewport, /'ArrowLeft'[\s\S]*'ArrowRight'[\s\S]*'Home'/);
   assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
+  assert.match(main, /onRendererFailure:[\s\S]*captureRendererFailure\(error/);
   assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
@@ -265,10 +267,13 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
   const previousError = console.error;
   globalThis.window = { requestAnimationFrame() {} };
   console.error = () => {};
+  const rendererError = new Error('no WebGL');
+  let reportedError = null;
 
   try {
     const demo = createLandingCirculationDemo({
-      loadViewport: () => Promise.reject(new Error('no WebGL')),
+      loadViewport: () => Promise.reject(rendererError),
+      onRendererFailure: (error) => { reportedError = error; },
     });
     await demo.mount();
     const loading = findByClass(demo.element, 'landing-demo-loading')[0];
@@ -285,6 +290,7 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
     assert.equal(viewport.getAttribute('aria-label'), '');
     assert.equal(viewport.getAttribute('aria-describedby'), '');
     assert.equal(dragHint.getAttribute('hidden'), '');
+    assert.equal(reportedError, rendererError);
   } finally {
     console.error = previousError;
     restoreDocument();
