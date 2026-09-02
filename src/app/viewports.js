@@ -124,6 +124,40 @@ export const TARGET_EXEMPTIONS = [
 ];
 
 /**
+ * Overlays that are allowed to be on top of things, and what they still may
+ * not cover.
+ *
+ * Two elements in this product legitimately paint over the page: the consent
+ * question and the loading veil. Neither is persistent — one is removed when
+ * it is answered, the other when the first frame is drawn — so a blanket "no
+ * control may be covered" rule would fail on both and be switched off within a
+ * week.
+ *
+ * `mustNotCover` is where the judgement lives. A one-time notice sitting over
+ * part of the model is ordinary. The same notice sitting over the scene's
+ * console is not: the console *is* the product, and a first-time visitor
+ * meeting a scene whose every control is hidden has been shown a broken page.
+ * That is precisely what was happening — measured at 1440x900 it covered eight
+ * controls, and at 390x844 the console entirely, all four stage buttons
+ * included.
+ *
+ * Anything covering a control that is *not* declared here is a failure with no
+ * exemption, because it is by definition persistent.
+ */
+export const TRANSIENT_OVERLAYS = [
+  {
+    selector: '.consent-banner',
+    why: 'Answered once and then removed, and its own buttons are on top of it, so it never traps the viewer.',
+    mustNotCover: ['.console', '.scene-console', '.step'],
+  },
+  {
+    selector: '.loading',
+    why: 'The veil between navigation and the first drawn frame. Covering everything is its job.',
+    mustNotCover: [],
+  },
+];
+
+/**
  * Inline links are not target-size failures, and treating them as ones is how
  * the rule gets switched off.
  *
@@ -148,7 +182,11 @@ export const deviceClassOf = (viewport) => deviceClassForViewport(viewport.width
  * The same shape as `validateCatalog` and `validateLegal`: returned rather
  * than thrown, so the test suite and a script share one function.
  */
-export function validateViewportMatrix(viewports = VIEWPORTS, surfaces = SURFACES) {
+export function validateViewportMatrix(
+  viewports = VIEWPORTS,
+  surfaces = SURFACES,
+  overlays = TRANSIENT_OVERLAYS
+) {
   const problems = [];
   const seen = new Set();
 
@@ -173,6 +211,16 @@ export function validateViewportMatrix(viewports = VIEWPORTS, surfaces = SURFACE
     if (!viewports.some((viewport) => deviceClassOf(viewport) === id)) {
       problems.push(`no viewport exercises the "${id}" device class the renderer budgets for`);
     }
+  }
+
+  for (const overlay of overlays) {
+    const where = `overlay "${overlay.selector}"`;
+    if (!overlay.selector.startsWith('.')) problems.push(`${where}: not a class selector`);
+    if (!overlay.why || overlay.why.length < 30) problems.push(`${where}: does not say why it may cover`);
+    if (!Array.isArray(overlay.mustNotCover)) problems.push(`${where}: declares no limit at all`);
+  }
+  if (!overlays.some((overlay) => overlay.mustNotCover?.length > 0)) {
+    problems.push('every overlay is allowed to cover everything, which is the same as no rule');
   }
 
   const routes = new Set();

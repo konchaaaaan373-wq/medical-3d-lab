@@ -147,13 +147,23 @@ Each combination is checked for:
 - **The whole focus ring**, walked with the Tab key at the narrowest and widest
   viewports, checking that every visible control is reachable and that the ring
   closes rather than trapping.
+- **Occlusion**: that nothing is painted over a control. This is a different
+  failure from every other one here — a control can be the right size, in the
+  right place, inside the viewport, and still have something sitting on it —
+  and the one that found it was a person looking at a screenshot. The two
+  elements allowed to cover the page are declared in `TRANSIENT_OVERLAYS`, each
+  with the reason it may and the thing it still may not cover.
 - **Console errors**, with the webfont excluded: the browser is denied the
   network, so the fallback stack is what gets measured, which is what a reader
   with a blocked font sees anyway.
 
 The first run found two real defects: the Trust page scrolled 426 px sideways
 at 320 px — one unbreakable evidence path widened a grid track and took the
-page with it — and the ten target-size failures above.
+page with it — and the ten target-size failures above. The occlusion check,
+added after the anatomy review found the case by eye, caught a third: the
+consent question was pinned to the bottom of the viewport, which is where every
+scene pins its console, and on a phone it covered the console entirely. See
+[`anatomy-review.md`](anatomy-review.md) §2.
 
 **What it is not.** It drives one engine, headless, on a desktop machine. It
 cannot see a Safari-only flexbox bug, an Android font-inflation surprise, a

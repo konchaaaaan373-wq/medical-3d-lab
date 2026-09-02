@@ -40,6 +40,7 @@ import {
   OVERFLOW_TOLERANCE_PX,
   SURFACES,
   TARGET_EXEMPTIONS,
+  TRANSIENT_OVERLAYS,
   VIEWPORTS,
   deviceClassOf,
   validateViewportMatrix,
@@ -198,7 +199,7 @@ const MAX_TAB_STEPS = 240;
  * browser, so it may only use what the browser has, and every threshold is
  * handed in rather than duplicated here.
  */
-function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, interactiveSelector }) {
+function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, interactiveSelector, overlays }) {
   const doc = document.documentElement;
   const describe = (element) => {
     const id = element.id ? `#${element.id}` : '';
@@ -247,17 +248,57 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     const around = (parent.textContent ?? '').trim();
     return around.length > own.length + 4;
   };
+  /**
+   * Is the point a finger would land on actually this control?
+   *
+   * `elementFromPoint` answers the question the layout cannot: a control can
+   * be the right size, in the right place, inside the viewport, and still have
+   * something sitting on top of it. That is a different failure from every
+   * other one measured here, and the one that found it was a person looking at
+   * a screenshot — the consent banner was landing on the scene console and
+   * covering every control on it, including all four stage buttons on a phone.
+   *
+   * A hit on a descendant is a hit: a button's own label is what the pointer
+   * usually lands on. A hit on an ancestor is not — that means something was
+   * painted over the control.
+   */
+  const blockedBy = (element, rect) => {
+    const x = Math.round(rect.left + rect.width / 2);
+    const y = Math.round(rect.top + rect.height / 2);
+    if (x < 0 || y < 0 || x >= doc.clientWidth || y >= doc.clientHeight) return null;
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || hit === element || element.contains(hit)) return null;
+    // Something a pointer passes straight through is not covering anything.
+    if (getComputedStyle(hit).pointerEvents === 'none') return null;
+
+    // A declared transient may cover, up to the limit it declares.
+    for (const overlay of overlays) {
+      if (!hit.closest(overlay.selector)) continue;
+      const forbidden = overlay.mustNotCover.some(
+        (selector) => element.matches(selector) || element.closest(selector),
+      );
+      return forbidden
+        ? { fatal: true, text: `${describe(element)} ← ${overlay.selector} is covering the console` }
+        : { fatal: false, text: `${describe(element)} ← ${overlay.selector}` };
+    }
+    return { fatal: true, text: `${describe(element)} ← covered by ${describe(hit)}` };
+  };
+
   const belowFloor = [];
   const belowIntent = [];
   const unreachable = [];
+  const covered = [];
+  const coveredByTransient = [];
   for (const element of document.querySelectorAll(INTERACTIVE)) {
     if (!visible(element)) continue;
     if (exemptions.some((selector) => element.closest(selector))) continue;
     if (element.getAttribute('tabindex') !== '-1' && !element.hasAttribute('data-vp-focus')) {
       unreachable.push(describe(element));
     }
-    if (inlineLinks && isInlineLink(element)) continue;
     const rect = element.getBoundingClientRect();
+    const blocker = blockedBy(element, rect);
+    if (blocker) (blocker.fatal ? covered : coveredByTransient).push(blocker.text);
+    if (inlineLinks && isInlineLink(element)) continue;
     const smallest = Math.min(rect.width, rect.height);
     const size = `${describe(element)} → ${Math.round(rect.width)}×${Math.round(rect.height)}px`;
     if (smallest + 0.5 < floor) belowFloor.push(size);
@@ -270,6 +311,8 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     belowFloor,
     belowIntent,
     unreachable,
+    covered,
+    coveredByTransient,
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
@@ -419,7 +462,14 @@ try {
         // the skip link, which is deliberately invisible until it is focused.
         // Waiting for it to be seen waits forever.
         await page.waitForSelector('#ui > *', { state: 'attached', timeout: 20_000 });
-        await page.waitForTimeout(surface.needsRenderer ? 1200 : 300);
+        // The loading veil covers the whole frame between navigation and the
+        // first drawn frame. Measuring through it reports the veil, not the
+        // scene, so wait for it to go rather than guessing at a duration.
+        if (surface.needsRenderer) {
+          await page.waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 30_000 })
+            .catch(() => notes.push(`${where}: the loading veil never cleared`));
+        }
+        await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
 
         const measuredSkip = await page.evaluate(() => {
           const target = document.querySelector('[data-skip-target]');
@@ -498,6 +548,7 @@ try {
           exemptions: exemptionSelectors,
           inlineLinks: Boolean(INLINE_LINK_EXEMPTION),
           interactiveSelector: INTERACTIVE_SELECTOR,
+          overlays: TRANSIENT_OVERLAYS,
         });
 
         if (measured.overflowPx > OVERFLOW_TOLERANCE_PX) {
@@ -512,6 +563,21 @@ try {
           problems.push(
             `${where}: ${measured.belowFloor.length} target(s) below the ${MEASURED_TARGET.floor}px ` +
               `WCAG 2.5.8 floor\n    ${measured.belowFloor.slice(0, 8).join('\n    ')}`,
+          );
+        }
+        if (measured.covered.length) {
+          problems.push(
+            `${where}: ${measured.covered.length} control(s) with something painted over them` +
+              `\n    ${measured.covered.slice(0, 6).join('\n    ')}`,
+          );
+        }
+        if (measured.coveredByTransient.length) {
+          // Not a failure, and not silent either: a one-time notice over part
+          // of a page is ordinary, but how much of it it covers is worth being
+          // able to see in the report.
+          notes.push(
+            `${where}: ${measured.coveredByTransient.length} control(s) under a one-time overlay` +
+              ` (${measured.coveredByTransient.slice(0, 3).join('; ')})`,
           );
         }
         if (fullTabWalk && measured.unreachable.length) {
@@ -549,6 +615,7 @@ try {
           overflowPx: Math.round(measured.overflowPx * 10) / 10,
           belowFloor: measured.belowFloor.length,
           belowIntent: measured.belowIntent.length,
+          covered: measured.covered.length,
           controls: measured.interactiveCount,
           unreachable: fullTabWalk ? measured.unreachable.length : null,
           tabStops: tab?.stops ?? null,

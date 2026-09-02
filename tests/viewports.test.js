@@ -8,6 +8,7 @@ import {
   PROMISED_PHONE_WIDTHS,
   SURFACES,
   TARGET_EXEMPTIONS,
+  TRANSIENT_OVERLAYS,
   VIEWPORTS,
   deviceClassOf,
   isPhoneWidth,
@@ -155,6 +156,23 @@ test('thresholds: every target-size exemption is justified in writing', () => {
   assert.match(INLINE_LINK_EXEMPTION.why, /2\.5\.8/);
 });
 
+test('overlays: the two things allowed to cover the page say why, and where they stop', () => {
+  assert.equal(TRANSIENT_OVERLAYS.length, 2, 'a third overlay needs a reason of its own');
+  for (const overlay of TRANSIENT_OVERLAYS) {
+    assert.ok(overlay.selector.startsWith('.'), `"${overlay.selector}" is not a class`);
+    assert.ok(
+      typeof overlay.why === 'string' && overlay.why.length > 30,
+      `"${overlay.selector}" may cover controls without saying why`,
+    );
+    assert.ok(Array.isArray(overlay.mustNotCover));
+  }
+  // The rule that matters: whatever else a one-time notice covers, it may not
+  // cover the console. That is the defect this list was written for.
+  const consent = TRANSIENT_OVERLAYS.find((overlay) => overlay.selector === '.consent-banner');
+  assert.ok(consent, 'the consent banner is no longer declared as a transient');
+  assert.ok(consent.mustNotCover.includes('.console'));
+});
+
 // --- the validator ---------------------------------------------------------
 
 const only = (viewport) => [viewport];
@@ -197,4 +215,18 @@ test('validator: it catches a surface list that has stopped checking a surface',
   // dropping it is how in-scene layout regressions get through.
   const documentsOnly = SURFACES.filter((surface) => !surface.needsRenderer);
   assert.match(complain(documentsOnly), /no surface exercises a scene/);
+});
+
+test('validator: an overlay list that forbids nothing is caught', () => {
+  const complain = (overlays) => validateViewportMatrix(VIEWPORTS, SURFACES, overlays).join('\n');
+
+  // The failure mode here is not a missing rule but a rule emptied out: an
+  // exemption list that grew until nothing is forbidden still reads as a check
+  // and measures nothing.
+  const permissive = TRANSIENT_OVERLAYS.map((overlay) => ({ ...overlay, mustNotCover: [] }));
+  assert.match(complain(permissive), /allowed to cover everything/);
+
+  assert.match(complain([{ selector: 'div', why: 'x'.repeat(40), mustNotCover: ['.console'] }]), /not a class/);
+  assert.match(complain([{ selector: '.x', why: 'too short', mustNotCover: ['.console'] }]), /does not say why/);
+  assert.match(complain([{ selector: '.x', why: 'y'.repeat(40) }]), /declares no limit/);
 });

@@ -84,8 +84,17 @@ the model tests.
 - [x] Add privacy-conscious error reporting, core product analytics and an
   in-product feedback route. Consent-gated, redacted, with no identifier that
   outlives the page load. See [`observability.md`](observability.md) §2–4.
-- [ ] Complete an anatomy/art review of the flagship scenes, beginning with the
-  heart/great-vessel relationships and the new brain atlas interaction.
+- [~] Complete an anatomy/art review of the flagship scenes, beginning with the
+  heart/great-vessel relationships and the new brain atlas interaction. Done as
+  an **engineering** review and recorded in [`anatomy-review.md`](anatomy-review.md):
+  eleven great-vessel and chamber relationships measured and correct, each now
+  held by a test; the brain atlas correct in its declared view. It found two
+  defects only the render showed — the consent question was sitting on the
+  scene console, covering every control on a phone, and the harness had been
+  measuring the loading veil — and both are fixed, with occlusion now measured
+  in CI. **Remaining:** the three judgement calls in §4, which are a
+  clinician's to settle rather than an engineer's; two of them are recorded in
+  the heart-failure model card under *what could be misread*.
 
 ## Gate 2 — paid beta
 

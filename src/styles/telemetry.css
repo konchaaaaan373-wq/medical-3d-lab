@@ -22,6 +22,56 @@
   pointer-events: auto;
 }
 
+/**
+ * On a scene the bottom of the frame is not free.
+ *
+ * Every scene pins its console — the stage steps, the story and compare
+ * buttons, the zoom and view controls — to the bottom edge, and the banner was
+ * landing on top of it. Measured: at 1440x900 it covered eight controls, and
+ * at 390x844 it covered the console entirely, every stage button included. A
+ * first-time visitor could not touch the product until they had answered a
+ * question about analytics, which is the worst possible trade — and it was
+ * invisible to the viewport check, which measured overflow and target sizes
+ * and had no notion of one thing sitting on another.
+ *
+ * The fix is layout rather than arithmetic. `#ui` is already a flex column
+ * with `justify-content: space-between`; putting the banner *in* that column
+ * makes the top bar, the banner and the console three items that share the
+ * height, so the console cannot be covered at any viewport size. The first
+ * attempt here was a `top` and a `max-height` tuned against a 844px-tall
+ * phone, and it still covered the stage buttons at 320x568 — which is the
+ * whole argument against tuned constants: they are correct at the size they
+ * were measured at.
+ *
+ * Reading surfaces keep the fixed bottom bar. There `#ui` is a document, the
+ * page scrolls, and anything the banner covers can be scrolled clear of it.
+ */
+html[data-route='scene'] .consent-banner {
+  position: static;
+  transform: none;
+  align-self: center;
+  width: min(760px, 100%);
+  /* Between the title bar and the console, in that order, whatever order the
+     elements happen to have been appended in. */
+  order: 0;
+  /* And the one that yields. A 408px notice in a 568px frame pushed the
+     console off the bottom of the screen — swapping a covered console for an
+     unreachable one. `min-height: 0` is what lets a flex item shrink below its
+     content; without it the default `min-height: auto` makes the banner
+     immovable and something else has to go. */
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+html[data-route='scene'] .top-bar {
+  order: -1;
+}
+
+html[data-route='scene'] .console {
+  order: 1;
+}
+
 .consent-copy {
   flex: 1 1 320px;
   min-width: 0;

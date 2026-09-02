@@ -95,6 +95,26 @@ person: Safari, Firefox, touch and a screen reader.
   plus one that does. Safari, Firefox and real touch hardware are still a
   person's job, and the check says so every time it runs.
 
+### The scenes themselves
+
+- **The consent question no longer covers the controls.** On a first visit it
+  was pinned to the bottom of the window — which is where every scene keeps its
+  stage steps, its Story and Compare buttons and its camera controls. On a
+  phone it covered all of them, so the first thing a new visitor saw was a
+  model they could not operate. It now sits between the title and the console
+  and covers neither.
+- **The heart and great vessels were reviewed against an atlas** and come out
+  right: the aortic valve sits to the right of and in front of the mitral, the
+  left atrium above and behind the valve plane, the arch crosses the midline
+  backwards and to the left and clears the top of the atrium, and the four
+  pulmonary veins enter the atrium from behind, two a side. Eleven such
+  relationships are now held by tests rather than by whoever last looked.
+- The brain atlas was checked the same way and nothing was found.
+- Two things the review raised are questions for a clinician, not for us, and
+  are written into the heart-failure model card so a reader meets them: the
+  pulmonary veins are drawn in the colour this scene uses for venous tissue,
+  and they are the veins that carry oxygenated blood.
+
 ### Billing journeys
 
 - **A renewal, a failing card and a repurchase are now checked as sequences.**
