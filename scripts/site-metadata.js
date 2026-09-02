@@ -183,6 +183,7 @@ const REVIEW_COPY = {
   stale: { en: 'Re-review required — the model changed after its review', ja: '再レビュー必要 — レビュー後にモデルが変更されています' },
   pending: { en: 'Clinical review pending', ja: '臨床レビュー待ち' },
   'legacy-unversioned': { en: 'Legacy production — sign-off unversioned', ja: '旧Production — 現行形式の署名なし' },
+  unrecorded: { en: 'No clinical review recorded', ja: '臨床レビューの記録がありません' },
 };
 
 /**

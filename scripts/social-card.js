@@ -21,7 +21,20 @@
  *
  * Pure: no DOM, no `three`, no filesystem. Catalogue in, HTML out.
  */
+import { createHash } from 'node:crypto';
+
 import { SITE_NAME, escapeHtml } from './site-metadata.js';
+
+/**
+ * A short digest of the markup a card was drawn from.
+ *
+ * This is what makes a committed PNG checkable without redrawing it. Comparing
+ * the images themselves cannot work — they are drawn with the fonts of
+ * whichever machine drew them — but what the card was asked to say is the same
+ * everywhere.
+ */
+export const cardDigest = (html) =>
+  createHash('sha256').update(String(html)).digest('hex').slice(0, 16);
 
 export const CARD_WIDTH = 1200;
 export const CARD_HEIGHT = 630;
@@ -47,12 +60,20 @@ const MATURITY = {
   production: { en: 'Production', ja: 'プロダクション' },
 };
 
-/** Review state, short enough for a badge. Keys match `CLINICAL_REVIEW_STATUSES`. */
+/**
+ * Review state, short enough for a badge.
+ *
+ * One entry per `CLINICAL_REVIEW_PRESENTABLE_STATUSES`, `unrecorded` included:
+ * that is what a scene with no registry entry resolves to, and falling back to
+ * "pending" for it would tell a reader a review is on its way when nobody has
+ * ever looked.
+ */
 const REVIEW = {
   reviewed: { en: 'Clinical review complete', ja: '医学レビュー完了', tone: 'good' },
   stale: { en: 'Re-review required', ja: '再レビュー必要', tone: 'warn' },
   pending: { en: 'Clinical review pending', ja: '医学レビュー未完了', tone: 'plain' },
   'legacy-unversioned': { en: 'Legacy review', ja: '旧基準レビュー', tone: 'plain' },
+  unrecorded: { en: 'No review recorded', ja: 'レビュー記録なし', tone: 'warn' },
 };
 
 /**

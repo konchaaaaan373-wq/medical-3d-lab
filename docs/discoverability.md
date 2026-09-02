@@ -81,11 +81,18 @@ to `dependencies` would break the rule that keeps the build honest (`three` and
 nothing else). So Playwright is installed on demand, exactly as it is for the
 viewport matrix, and the PNGs live in `public/social/`.
 
-The cost of not building them is that they can go stale, so `npm run cards:check`
-redraws into a temporary directory and compares — a card that no longer matches
-the catalogue fails CI without CI having to draw it. `tests/social-cards.test.js`
-separately checks the committed set covers the public catalogue exactly, that
-each file really is a 1200 × 630 PNG, and that no Lab scene has one.
+The cost of not building them is that they can go stale, so `npm run cards`
+also writes `public/social/cards.json`, recording the digest of the markup each
+PNG was drawn from. `npm run cards:check` recomputes that from the catalogue —
+**with no browser at all** — and fails when a title, a maturity, a review state
+or a description has moved on without the card.
+
+Comparing the *images* was the first design and it cannot work: they are drawn
+with the fonts of whichever machine drew them, so a CI runner with a different
+font set would fail every pull request, including the ones that changed
+nothing. A check that fails for a reason unrelated to the change is a check
+people learn to ignore. What is comparable on any machine is what the card was
+asked to say.
 
 ### Why they are typography and not a picture of the model
 
@@ -128,8 +135,9 @@ asks whether the clip *did anything*.
 
 No webfont: a generator that reaches the network draws a different image on a
 different day. The consequence is honest and worth writing down — regenerating
-the cards on a machine with different fonts produces slightly different images,
-which is the other reason they are committed rather than built.
+the cards on a machine with different fonts produces slightly different images.
+That is the other reason they are committed rather than built, and the reason
+`cards:check` compares content rather than pixels.
 
 ## 6. Checked in CI
 

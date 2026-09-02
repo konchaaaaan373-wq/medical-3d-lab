@@ -268,6 +268,12 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     if (x < 0 || y < 0 || x >= doc.clientWidth || y >= doc.clientHeight) return null;
     const hit = document.elementFromPoint(x, y);
     if (!hit || hit === element || element.contains(hit)) return null;
+    // An ancestor is not something painted *over* a control. It is what
+    // `elementFromPoint` returns when the control has been clipped out of view
+    // by that ancestor's own `overflow` — which several panels in this product
+    // have — and reporting it as occlusion would be a false failure on a
+    // scrolling region behaving exactly as designed.
+    if (hit.contains(element)) return null;
     // Something a pointer passes straight through is not covering anything.
     if (getComputedStyle(hit).pointerEvents === 'none') return null;
 

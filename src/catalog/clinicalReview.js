@@ -53,6 +53,22 @@ const LABELS = Object.freeze({
  */
 export const CLINICAL_REVIEW_STATUSES = Object.freeze(Object.keys(LABELS));
 
+/**
+ * The states a *surface* has to be able to render, which is one more.
+ *
+ * `unrecorded` is not a registry state — it is what a scene with no registry
+ * entry at all resolves to, and `clinicalReviewPresentation` returns it. It is
+ * deliberately not filterable, because filtering by "we have no record" is not
+ * a question the Explorer asks. But it is very much presentable: a new scene
+ * added without a registry entry publishes *something*, and a surface whose
+ * copy table falls back to "pending" for it would say a review is on its way
+ * when nobody has ever looked. That is exactly the bug `stale` had.
+ */
+export const CLINICAL_REVIEW_PRESENTABLE_STATUSES = Object.freeze([
+  ...CLINICAL_REVIEW_STATUSES,
+  'unrecorded',
+]);
+
 const FILTERABLE_STATUSES = new Set(CLINICAL_REVIEW_STATUSES);
 
 export const CLINICAL_REVIEW_RECORDS = Object.freeze(

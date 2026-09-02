@@ -102,10 +102,20 @@ now waits for the veil to go.
 
 Rendered at 1440 × 900 in the default *left lateral* view. Frontal pole at the
 viewer's left, occipital at the right, cerebellum below and behind, brainstem
-descending: correct for the view the control claims to be showing. Lobe colours
-match the legend, the greyed legend entries are the ones that belong to deeper
-layers, and the two visible annotations (central sulcus, middle temporal gyrus)
-sit on the structures they name.
+descending: correct for the view the control claims to be showing. The greyed
+legend entries are the ones that belong to deeper layers, and the two visible
+annotations (central sulcus, middle temporal gyrus) sit on the structures they
+name.
+
+**The scene has changed since, and this section has not been redone.** The
+fine-anatomy work merged after this review replaced the six flat lobe colours
+with a per-gyrus palette across 397 structures, added a natural-anatomy colour
+mode and six named viewpoints. Re-rendered after that merge, the left lateral
+view is still correct in every relationship checked above, and the consent-banner
+fix in §2 holds on it. What has *not* been reviewed is the new colour scheme
+itself — each lobe now carries a family of hues around its legend swatch rather
+than the swatch's own colour, and whether that reads as one code or two is a
+question for whoever reviews that work, not something to settle here.
 
 The framing is markedly better than the heart's — the subject is centred and
 fills the frame — which is not an accident: this scene's camera has one subject

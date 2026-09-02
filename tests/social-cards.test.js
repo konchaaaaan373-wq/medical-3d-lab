@@ -14,7 +14,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { PUBLIC_SCENES, LAB_SCENES } from '../src/catalog/index.js';
 import { SYSTEMS } from '../src/catalog/taxonomy.js';
 import {
-  CLINICAL_REVIEW_STATUSES,
+  CLINICAL_REVIEW_PRESENTABLE_STATUSES,
   clinicalReviewPresentation,
 } from '../src/catalog/clinicalReview.js';
 import {
@@ -28,6 +28,7 @@ import {
   titleSize,
 } from '../scripts/social-card.js';
 import { renderScenePage } from '../scripts/site-metadata.js';
+import { pngSize, socialCardProblems } from '../scripts/check-social-cards.js';
 
 const systemById = new Map(SYSTEMS.map((system) => [system.id, system]));
 const cardFor = (scene) =>
@@ -72,18 +73,27 @@ test('cards: maturity and clinical review are shown as two separate claims', () 
   assert.match(html, /Re-review required/, 'the review being stale is missing');
 });
 
-test('cards: every review state the registry can produce has card copy', () => {
+test('cards: every review state a surface can meet has copy of its own', () => {
   const scene = PUBLIC_SCENES[0];
-  for (const status of CLINICAL_REVIEW_STATUSES) {
+  for (const status of CLINICAL_REVIEW_PRESENTABLE_STATUSES) {
+    if (status === 'pending') continue;
     const html = socialCardHtml(scene, { reviewStatus: status });
     // The fallback is `pending`, so a state with no copy of its own is caught
-    // by finding pending's wording where it does not belong.
-    if (status === 'pending') continue;
+    // by finding pending's wording where it does not belong. `unrecorded` is
+    // in this list for the same reason `stale` had to be: it is not a registry
+    // state, it is what a scene with no registry entry resolves to, and saying
+    // "pending" for it claims a review nobody has started.
     assert.doesNotMatch(
       html,
       /Clinical review pending/,
       `"${status}" falls back to the pending wording instead of having its own`
     );
+  }
+  // And the same on the page the card links to.
+  for (const status of CLINICAL_REVIEW_PRESENTABLE_STATUSES) {
+    if (status === 'pending') continue;
+    const page = renderScenePage(scene, { review: { reviewStatus: status } });
+    assert.doesNotMatch(page, /Clinical review pending/, `the page falls back for "${status}"`);
   }
 });
 
@@ -96,28 +106,23 @@ test('cards: a card is never drawn for a scene the catalogue does not publish', 
 
 // --- the committed rasters -------------------------------------------------
 
-test('cards: the committed set matches the public catalogue exactly', () => {
-  const dir = new URL('../public/social/', import.meta.url);
-  const present = new Set(
-    readdirSync(dir)
-      .filter((name) => name.endsWith('.png'))
-      .map((name) => name.replace(/\.png$/, ''))
-  );
-  for (const scene of PUBLIC_SCENES) {
-    assert.ok(present.has(scene.slug), `${scene.slug} has no committed card — run \`npm run cards\``);
-  }
-  assert.ok(present.has('site'), 'the site-level card is missing');
-  assert.equal(present.size, PUBLIC_SCENES.length + 1, 'there is a card for something not in the catalogue');
+test('cards: the committed set still says what the catalogue says', () => {
+  // The same function `npm run cards:check` runs, rather than a second
+  // implementation of it. It compares the markup each card was drawn from, not
+  // the pixels: the cards are drawn with the fonts of whichever machine drew
+  // them, so comparing images would fail on any other machine — including
+  // every CI runner — for a reason unrelated to the change.
+  const problems = socialCardProblems();
+  assert.deepEqual(problems, [], problems.join('\n'));
 });
 
 test('cards: every committed card is a 1200x630 PNG within its size cap', () => {
   let total = 0;
   for (const scene of [...PUBLIC_SCENES.map((s) => s.slug), 'site']) {
     const png = readFileSync(social(`${scene}.png`));
-    // PNG signature, then IHDR: width and height as big-endian 32-bit ints.
-    assert.deepEqual([...png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], `${scene} is not a PNG`);
-    assert.equal(png.readUInt32BE(16), CARD_WIDTH, `${scene} is not ${CARD_WIDTH} wide`);
-    assert.equal(png.readUInt32BE(20), CARD_HEIGHT, `${scene} is not ${CARD_HEIGHT} tall`);
+    const size = pngSize(png);
+    assert.ok(size, `${scene} is not a PNG`);
+    assert.deepEqual(size, { width: CARD_WIDTH, height: CARD_HEIGHT }, `${scene} is the wrong size`);
     // A card is fetched by crawlers rather than by readers, so it is not part
     // of the app's ship weight and `npm run budget` does not see it. That is
     // the reason to bound it here instead: an unbounded set of committed

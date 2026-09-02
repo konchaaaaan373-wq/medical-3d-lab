@@ -4,7 +4,7 @@
  * `netlify/lib/journeys.js` says what must happen; this makes it happen. The
  * handler under test is the one Netlify deploys — nothing is injected, nothing
  * is mocked at the module boundary — and it reaches a real HTTP surface that
- * `tests/support/billingSandbox.js` happens to be serving.
+ * `tests/helpers/billingSandbox.js` happens to be serving.
  *
  * What this cannot do is prove Stripe behaves the way the journeys say it
  * does. That is what the credential-bearing sandbox run is for. What it does
@@ -26,7 +26,7 @@ import {
 } from '../netlify/lib/journeys.js';
 import { ALERT_RULES } from '../netlify/lib/alerts.js';
 import { grantsFromSubscriptions } from '../src/access/policy.js';
-import { createBillingSandbox } from './support/billingSandbox.js';
+import { createBillingSandbox } from './helpers/billingSandbox.js';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -110,8 +110,13 @@ async function run(journey) {
   const log = [];
   let currentId = null;
 
+  // Guarded as well as validated: `validateJourneys` rejects a cycle, and this
+  // refuses to loop on one anyway, because the failure mode is a suite that
+  // hangs rather than one that fails.
   const chain = [];
-  for (let node = journey; node; node = node.inherits ? journeyById(node.inherits) : null) {
+  const seen = new Set();
+  for (let node = journey; node && !seen.has(node.id); node = journeyById(node.inherits)) {
+    seen.add(node.id);
     chain.unshift(node);
   }
 
@@ -158,6 +163,23 @@ async function run(journey) {
 test('journeys: the declaration is internally consistent', () => {
   const problems = validateJourneys();
   assert.deepEqual(problems, [], problems.join('\n'));
+});
+
+test('journeys: an inheritance cycle is rejected rather than hung on', () => {
+  // The runner walks the inheritance chain to build a journey's setup, so a
+  // cycle would spin forever — a suite that hangs, which tells nobody
+  // anything, rather than one that fails.
+  const stub = (id, inherits) => ({
+    id,
+    title: id,
+    why: 'a declaration long enough to satisfy the validator, and no shorter.',
+    inherits,
+    steps: [{ label: 's', event: { type: 'customer.subscription.updated' }, expect: {} }],
+  });
+  const pair = [stub('a', 'b'), stub('b', 'a'), ...BILLING_JOURNEYS];
+  assert.ok(validateJourneys(pair).some((problem) => /loops back/.test(problem)));
+  const itself = [stub('c', 'c'), ...BILLING_JOURNEYS];
+  assert.ok(validateJourneys(itself).some((problem) => /loops back/.test(problem)));
 });
 
 test('journeys: every alert a journey expects is one the alert policy knows', () => {

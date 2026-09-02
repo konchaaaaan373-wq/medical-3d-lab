@@ -10,7 +10,7 @@
  *
  * So each journey is an ordered list of what Stripe says and what must be true
  * afterwards. `tests/billing-journeys.test.js` replays them against the
- * deployed webhook handler on a bench (`tests/support/billingSandbox.js`); a
+ * deployed webhook handler on a bench (`tests/helpers/billingSandbox.js`); a
  * run against the real Stripe sandbox, with its test clocks, is the
  * credential-bearing check in `docs/access-and-billing.md`. Both read this
  * file, so what is claimed and what is checked cannot drift apart.
@@ -403,6 +403,19 @@ export function validateJourneys(journeys = BILLING_JOURNEYS) {
     }
     if (journey.inherits && !journeys.some((other) => other.id === journey.inherits)) {
       problems.push(`${where}: inherits "${journey.inherits}", which is not a journey`);
+    }
+    // A cycle is not a broken reference — every id in it exists — and the
+    // runner walks the chain to build a journey's setup, so a cycle would hang
+    // the test suite rather than fail it. A hung suite tells nobody anything.
+    const seen = new Set([journey.id]);
+    let node = journey;
+    while (node?.inherits) {
+      if (seen.has(node.inherits)) {
+        problems.push(`${where}: its inheritance chain loops back to "${node.inherits}"`);
+        break;
+      }
+      seen.add(node.inherits);
+      node = journeys.find((other) => other.id === node.inherits);
     }
 
     for (const [index, step] of journey.steps.entries()) {

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   INLINE_LINK_EXEMPTION,
@@ -154,6 +155,17 @@ test('thresholds: every target-size exemption is justified in writing', () => {
   // The one exemption the standard itself grants must cite it, because it is
   // the one a reader is most entitled to challenge.
   assert.match(INLINE_LINK_EXEMPTION.why, /2\.5\.8/);
+});
+
+test('overlays: an ancestor is not something painted over a control', () => {
+  // Not a data assertion — a note about the rule the browser-side check
+  // applies, kept here because it is the one part of it a reader is most
+  // likely to get wrong. `elementFromPoint` returns an *ancestor* when a
+  // control has been clipped out of view by that ancestor's own `overflow`,
+  // which several panels in this product have. Treating that as occlusion
+  // fails a scrolling region behaving exactly as designed.
+  const source = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+  assert.match(source, /hit\.contains\(element\)/, 'the ancestor case is no longer excluded');
 });
 
 test('overlays: the two things allowed to cover the page say why, and where they stop', () => {

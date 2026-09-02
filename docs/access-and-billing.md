@@ -406,7 +406,7 @@ order, and what must be true after each step — and they are checked twice.
 
 **Every pull request** replays them against the deployed webhook handler
 (`tests/billing-journeys.test.js`). Nothing is injected: the handler is reached
-over HTTP, and `tests/support/billingSandbox.js` serves the Supabase and Stripe
+over HTTP, and `tests/helpers/billingSandbox.js` serves the Supabase and Stripe
 surfaces it calls. The assertion at each step is not a status string but the
 product's own answer — `grantsFromSubscriptions`, the function the application
 uses — to "can this person open the paid mode?"

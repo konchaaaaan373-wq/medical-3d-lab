@@ -11,24 +11,33 @@
  * the wrong trade. `npm run verify:site` checks the committed set is complete;
  * this is what refreshes it when a title, a maturity or a review state changes.
  *
- * The consequence of not building them is that they can go stale, so
- * `--check` re-renders into a temporary directory and compares, which is what
- * CI runs: a card that no longer matches the catalogue fails the build without
- * needing the build to draw it.
+ * The consequence of not building them is that they can go stale, so this also
+ * writes `cards.json`, recording the digest of the markup each PNG was drawn
+ * from. `npm run cards:check` recomputes that from the catalogue and needs no
+ * browser at all — which is the point: the cards are drawn with whatever fonts
+ * the drawing machine has, so comparing the *pixels* on a CI runner would fail
+ * on every pull request that changed nothing. What can be compared anywhere is
+ * what the card was asked to say.
  *
  * Options:
- *   --check         render and compare against what is committed; write nothing
  *   --out <dir>     where to write (default: public/social)
  *   --only <slug>   one card (repeatable)
  */
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
 import { SYSTEMS } from '../src/catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../src/catalog/clinicalReview.js';
-import { BODY_BUDGET, CARD_HEIGHT, CARD_WIDTH, siteCardHtml, socialCardHtml } from './social-card.js';
+import {
+  BODY_BUDGET,
+  CARD_HEIGHT,
+  CARD_WIDTH,
+  cardDigest,
+  siteCardHtml,
+  socialCardHtml,
+} from './social-card.js';
+import { MANIFEST_FILE } from './check-social-cards.js';
 
 const argv = process.argv.slice(2);
 const has = (name) => argv.includes(name);
@@ -41,8 +50,7 @@ const only = argv.reduce(
   []
 );
 
-const check = has('--check');
-const outDir = value('--out', check ? '.social-check' : join('public', 'social'));
+const outDir = value('--out', join('public', 'social'));
 
 async function loadChromium() {
   for (const pkg of ['playwright', 'playwright-core']) {
@@ -100,7 +108,6 @@ const browser = await chromium.launch({
 });
 
 const overflowed = [];
-const digest = (buffer) => createHash('sha256').update(buffer).digest('hex').slice(0, 12);
 const drawn = [];
 
 try {
@@ -140,14 +147,16 @@ try {
   for (const card of cards) {
     let bodyChars = BODY_BUDGET.start;
     let fit = await attempt(card.html(bodyChars));
-    while (fit.clipped > 1 && bodyChars > BODY_BUDGET.floor) {
+    // `- step >= floor`, not `> floor`: the obvious form overshoots by a step
+    // and renders a card below the floor its own error message then quotes.
+    while (fit.clipped > 1 && bodyChars - BODY_BUDGET.step >= BODY_BUDGET.floor) {
       bodyChars -= BODY_BUDGET.step;
       fit = await attempt(card.html(bodyChars));
     }
     if (fit.clipped > 1) {
       overflowed.push(
-        `${card.slug}: ${fit.clipped}px still cut off with the description at its ` +
-          `${BODY_BUDGET.floor}-character floor — the title itself does not fit`
+        `${card.slug}: ${fit.clipped}px still cut off with the description at ` +
+          `${bodyChars} characters — the title itself does not fit`
       );
     }
     if (!fit.footInside) {
@@ -156,7 +165,7 @@ try {
       );
     }
     const png = await page.screenshot({ type: 'png' });
-    drawn.push({ slug: card.slug, png, bodyChars });
+    drawn.push({ slug: card.slug, png, bodyChars, html: cardDigest(card.html(bodyChars)) });
   }
   await context.close();
 } finally {
@@ -169,46 +178,30 @@ if (overflowed.length) {
   process.exit(1);
 }
 
-if (!check) {
-  for (const { slug, png } of drawn) writeFileSync(join(outDir, `${slug}.png`), png);
-  console.log(`Drew ${drawn.length} card(s) at ${CARD_WIDTH}x${CARD_HEIGHT} into ${outDir}/`);
-  for (const { slug, png, bodyChars } of drawn) {
-    console.log(`  ${slug.padEnd(24)}${String(bodyChars).padStart(3)} chars  ${String(Math.round(png.length / 1024)).padStart(4)} kB  ${digest(png)}`);
-  }
-  process.exit(0);
+for (const { slug, png } of drawn) writeFileSync(join(outDir, `${slug}.png`), png);
+
+// The manifest is what makes the committed cards checkable without a browser:
+// it records what each card was asked to say, not what it happened to look
+// like on the machine that drew it.
+const manifest = {
+  note: 'Written by `npm run cards`. Checked by `npm run cards:check`, which needs no browser.',
+  cards: Object.fromEntries(
+    drawn
+      .slice()
+      .sort((a, b) => a.slug.localeCompare(b.slug))
+      .map(({ slug, bodyChars, html }) => [slug, { bodyChars, html }])
+  ),
+};
+if (only.length === 0) {
+  writeFileSync(join(outDir, MANIFEST_FILE), `${JSON.stringify(manifest, null, 2)}\n`);
+} else {
+  console.warn('--only was used, so cards.json was left alone. Redraw everything before committing.');
 }
 
-// --- --check ---------------------------------------------------------------
-
-const committedDir = join('public', 'social');
-const problems = [];
-for (const { slug, png } of drawn) {
-  const path = join(committedDir, `${slug}.png`);
-  if (!existsSync(path)) {
-    problems.push(`${slug}: no committed card at ${path}`);
-    continue;
-  }
-  const committed = readFileSync(path);
-  if (digest(committed) !== digest(png)) {
-    problems.push(
-      `${slug}: the committed card no longer matches the catalogue ` +
-        `(${digest(committed)} vs ${digest(png)}) — run \`npm run cards\``
-    );
-  }
+console.log(`Drew ${drawn.length} card(s) at ${CARD_WIDTH}x${CARD_HEIGHT} into ${outDir}/`);
+for (const { slug, png, bodyChars, html } of drawn) {
+  console.log(
+    `  ${slug.padEnd(24)}${String(bodyChars).padStart(3)} chars  ` +
+      `${String(Math.round(png.length / 1024)).padStart(4)} kB  ${html}`
+  );
 }
-const expected = new Set(drawn.map((card) => card.slug));
-if (existsSync(committedDir) && only.length === 0) {
-  for (const name of readdirSync(committedDir).filter((file) => file.endsWith('.png'))) {
-    const slug = name.replace(/\.png$/, '');
-    if (!expected.has(slug)) problems.push(`${slug}: a card for a scene that is no longer public`);
-  }
-}
-rmSync(outDir, { recursive: true, force: true });
-
-console.log(`Link-preview cards — ${drawn.length} checked`);
-if (problems.length) {
-  console.error(`\n${problems.length} problem(s):`);
-  for (const problem of problems) console.error(`  - ${problem}`);
-  process.exit(1);
-}
-console.log('  ok    every card matches the catalogue it was drawn from');

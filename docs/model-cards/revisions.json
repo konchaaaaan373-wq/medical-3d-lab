@@ -5,9 +5,9 @@
     "modelSources": [
       "src/data/brainAnatomy.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "0309fb94e901b865",
-    "cardUpdatedAt": "2026-09-01"
+    "cardRevision": 2,
+    "modelDigest": "228aaa74bb855596",
+    "cardUpdatedAt": "2026-09-02"
   },
   {
     "sceneId": "circulation",

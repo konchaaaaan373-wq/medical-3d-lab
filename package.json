@@ -15,7 +15,7 @@
     "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
     "verify:ui": "node scripts/check-viewports.mjs",
     "cards": "node scripts/render-social-cards.mjs",
-    "cards:check": "node scripts/render-social-cards.mjs --check"
+    "cards:check": "node scripts/check-social-cards.js"
   },
   "dependencies": {
     "three": "^0.169.0"
