@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, skipLink } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { createClinicalReviewDetails } from '../components/ClinicalReviewDetails.js';
@@ -201,6 +201,19 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   };
 
   const sections = systems.map(systemSection);
+  // The skip link targets the first catalogue section, so it lands past the
+  // search and the jump links rather than on the header.
+  //
+  // It must **not** take that section's id: every section already carries
+  // `system-<id>`, which its own jump pill scrolls to. Overwriting the first
+  // one with `content` left that pill pointing at an element that no longer
+  // existed, so the first system in the catalogue was the one system you could
+  // not jump to. The skip link is given the id the section already has.
+  const skipTargetId = sections[0]?.id ?? null;
+  if (sections[0]) {
+    sections[0].setAttribute('tabindex', '-1');
+    sections[0].setAttribute('data-skip-target', '');
+  }
   const totalScenes = scopedScenes.length;
 
   let searchControls = null;
@@ -332,7 +345,11 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         ),
       ]);
 
-  const element = el('div', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
+  // A `main` landmark, not a `div`: the Explorer is the page on this route, and
+  // a screen reader's landmark list is how somebody reaches it without tabbing
+  // through the header. The skip link targets the first catalogue section
+  // rather than this element, so it lands past the search and the jump links.
+  const element = el('main', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
     el('header', { class: 'panel explorer-header' }, [
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
       el('h1', { class: 'title' }, [
@@ -369,7 +386,10 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     ]),
   ]);
 
-  ui.append(element);
+  // No sections means an empty shelf, and nothing to skip to. A skip link
+  // pointing at an element that does not exist falls through to the browser's
+  // default, which is the hash navigation this whole fix exists to prevent.
+  ui.append(...(skipTargetId ? [skipLink(skipTargetId)] : []), element);
   languageToggle.init();
   syncLibrary();
   applyFilters();

@@ -15,31 +15,15 @@ html[data-route='explorer'] {
   --explorer-accent: #78a9ad;
 }
 
-/* The explorer is a document, not an overlay: it scrolls, and there is no
-   canvas behind it to keep clear of. Both `html` and `body` are pinned to the
-   viewport for the 3D view, so both have to be released here. */
+/* The explorer is a document, not an overlay. The viewport release it needs is
+   shared with every other reading route in `reading-surface.css`; what stays
+   here is only what is particular to this surface. */
 html[data-route='explorer'],
 html[data-route='explorer'] body {
-  height: auto;
-  min-height: 100%;
-  overflow: visible;
   background: var(--explorer-bg);
   color: var(--explorer-ink);
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Sans',
     'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Noto Sans JP', sans-serif;
-}
-
-html[data-route='explorer'] #stage {
-  display: none;
-}
-
-html[data-route='explorer'] #ui {
-  position: static;
-  inset: auto;
-  display: block;
-  pointer-events: auto;
-  min-height: 100%;
-  padding: 0;
 }
 
 html[data-route='explorer'] .explorer > .panel {

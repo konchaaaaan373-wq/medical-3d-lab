@@ -534,3 +534,18 @@
     scroll-behavior: auto;
   }
 }
+
+/* Where the purchase path explains itself: the reason paid plans are
+   unavailable, and a way to read the disclosure that is still missing. */
+.access-legal-link {
+  display: inline-flex;
+  flex-direction: column;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.access-legal-link:hover {
+  text-decoration: underline;
+}

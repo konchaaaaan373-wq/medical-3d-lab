@@ -62,9 +62,9 @@
     "unresolvedLimitations": [
       "No versioned clinical attestation exists under the current review standard.",
       "The progression axis is a conceptual aggregation state, not clinical stage, symptom severity, or elapsed disease time.",
-      "Aβ40 and Aβ42, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
+      "A\u03b240 and A\u03b242, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
       "Particle counts, molecular scale and aggregation thresholds are illustrative rather than measured quantities.",
-      "Individual rendered particles move only forward on the teaching slider even though real Aβ assemblies can interconvert and disassemble."
+      "Individual rendered particles move only forward on the teaching slider even though real A\u03b2 assemblies can interconvert and disassemble."
     ]
   },
   {
@@ -200,6 +200,31 @@
       "There is no tubule, sodium handling, urine output, ascites, hyponatraemia or differential diagnosis of AKI.",
       "Treatment controls show mechanistic direction only and do not represent dose, response rate, adverse effects or a complete terlipressin treatment model.",
       "Cardiac compensation, vasoconstrictor activation and several treatment gains are illustrative parameterisations."
+    ]
+  },
+  {
+    "sceneId": "renal-filtration",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "glomerular Starling balance, tubular sodium/urea/water/albumin mass balance and the derived bedside indices, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/renal-filtration.md",
+      "docs/model-evidence/renal-filtration.md",
+      "tests/renal-filtration-model.test.js",
+      "tests/renal-filtration-teaching.test.js",
+      "src/models/renalFiltration.js"
+    ],
+    "unresolvedLimitations": [
+      "The model solves a steady state. Plasma creatinine is reported as where creatinine is heading at the current filtration rate, never as a value measurable today, and whether that caveat is stated strongly enough for the audience the scene reaches has not been reviewed.",
+      "FENa, the fractional excretion of urea and the urea-to-creatinine ratio are reproduced in direction but must not be read as predicting that a patient crosses the 1% or 20:1 line. Whether presenting them at all risks being read as a diagnostic algorithm has not been reviewed.",
+      "The chronic sodium adaptation term lumps increased solute load per nephron and natriuretic factors into one bounded expression and is the least directly sourced part of the model.",
+      "Backleak of filtrate across damaged tubular epithelium is an accepted third mechanism of the low GFR in acute tubular injury and is not modelled.",
+      "Acid-base, potassium, phosphate, calcium, vitamin D and erythropoietin are absent, as is anything outside the kidney; aldosterone and antidiuretic hormone are inputs standing in for a body that is not modelled.",
+      "Several exponents (glomerulotubular balance, urea handling, remnant hyperfiltration, tubular injury feedback) are calibration constants chosen so the reference kidney lands on textbook values; only the sign and the reason for each effect is asserted."
     ]
   }
 ]

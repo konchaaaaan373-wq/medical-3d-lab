@@ -231,3 +231,160 @@ The external-physiology / model-integrity / calibration test separation remains 
 The current implementation is a server-verified **application entitlement gate**. Paid UI cannot be used normally without a server-confirmed entitlement, but some teaching copy/code is still delivered in static JavaScript bundles and is therefore inspectable by a determined developer.
 
 If the commercial requirement later becomes "paid teaching content itself must not be present in public assets", move the paid lesson/guide payloads behind authenticated Netlify Functions and only fetch them after entitlement verification. Do not pretend CSS or minification is DRM.
+
+
+---
+
+## Legal readiness — why checkout can refuse
+
+A seller of a digital service in Japan must publish, before it takes money, its
+legal name, the person responsible, an address, contact details, the price,
+when payment is taken, when the service is provided and how to cancel
+(特定商取引法 §11).
+
+Those first four are facts about a business, not about this repository, and
+**none of them is invented here**. `src/data/operator.js` ships them as `null`,
+with a comment saying why: a disclosure carrying a plausible-looking
+placeholder is worse than an absent one, because it reads as a statement.
+
+The consequence is deliberate and enforced in code rather than on a checklist:
+
+| Module | Responsibility |
+| --- | --- |
+| `src/data/operator.js` | The seller's identity, and which required entries are still missing |
+| `src/data/legal.js` | The four documents as data, plus the disclosure rows |
+| `src/data/legalRoutes.js` | Just the slugs — the router and catalogue need them and must not pull the prose into the entry chunk |
+| `src/access/legalReadiness.js` | `canSell()` and the reason it says no — about the **seller** |
+| `src/access/commerceReadiness.js` | Whether a plan is backed by a clinically current scene — about the **content** |
+| `src/app/Legal.js` | The pages, plain DOM, readable with no renderer |
+
+Two independent gates, and both are repeated server-side in
+`create-checkout.js`: hiding a purchase button is not a boundary, so a stale
+client or a hand-written request meets the same refusal.
+
+`AccessManager` asks `canSell()` rather than checking `billingConfigured`
+alone. With the disclosure incomplete the product still works, the account
+still works and the plans are still described — the button simply does not take
+money, and the panel says which of the two reasons applies with a link to the
+disclosure page.
+
+Two claims in the privacy policy are checked against the implementation by
+`tests/legal.test.js` rather than trusted: that nothing is transmitted before
+consent, and that no identifier survives a page load. A privacy policy is a
+factual claim about software; when it drifts from the software it stops being a
+policy and becomes a misstatement.
+
+**To go live:** fill in `src/data/operator.js`. `npm test` then passes with the
+disclosure complete, and checkout stops refusing.
+
+
+---
+
+## Billing operations — the ledger, reconciliation and alerts
+
+### Why state tables are not enough
+
+`billing_customers` and `billing_subscriptions` hold the present. Three
+questions they cannot answer:
+
+1. **"Have I already applied this event?"** Stripe retries a webhook until it
+   receives a 2xx, and a handler can succeed with the response lost on the way
+   back. Without a durable record, the answer is a guess.
+2. **"What happened to this subscription?"** A billing dispute is about the
+   past. The state tables have overwritten it.
+3. **"Did the event that should have fixed this ever arrive?"** Drift between
+   local state and Stripe is only actionable with that answer.
+
+### The ledger
+
+`billing_events` is append-only and keyed on Stripe's own event id.
+`claimBillingEvent` / `finishBillingEvent` in `netlify/lib/billing.js` implement
+a claim-then-finish protocol with an attempt count and a reclaim window, so two
+workers cannot process one delivery and a worker that dies mid-flight does not
+strand the event.
+
+**There is deliberately no payload column.** A Stripe event carries the
+customer's email and address, and this product has no reason to hold a second
+copy of them.
+
+Three properties the webhook keeps:
+
+- **Every exit records an outcome.** A path that returns without finishing its
+  claim leaves the event `processing` until the reclaim window opens, which
+  turns a success into a retry.
+- **A failure is recorded as `failed`, not left unrecorded**, so a retry can
+  tell "never seen" from "tried and broke". It still returns 500, so Stripe
+  retries, and it raises a `webhook_failed` alert.
+- **Renewal and payment failure are handled rather than dropped.** Entitlement
+  already follows the subscription events; the invoice events
+  (`netlify/lib/invoices.js`) carry the two facts those cannot — that a renewal
+  happened at all, and that a payment is failing with a known number of attempts
+  left. Neither writes state.
+
+### Reconciliation, at two scopes
+
+Webhooks are the fast path and not a guarantee, and every kind of loss leaves
+entitlement wrong in a way no single request notices, because nothing re-asks.
+Two things re-ask, and they answer different questions:
+
+| | Scope | Runs | Answers |
+| --- | --- | --- | --- |
+| `reconcileBillingForUser` | One user | On their own request path — after Checkout returns, when entitlements are read | "Is *this* user's state right, now that they are here?" |
+| `billing-reconcile.js` | The account | On a schedule | "Is anyone in a bad state that nobody has looked at?" |
+
+The first cannot see a user who never comes back, and has nobody to tell. The
+second is the sweep, and it classifies what it finds
+(`netlify/lib/reconcile.js`) rather than only repairing:
+
+| Drift | Severity | Action |
+| --- | --- | --- |
+| `status`, `entitlement`, `period` | error / warning | Repaired from Stripe |
+| `missing_locally` — a live Stripe subscription with no row | error | Repaired. Somebody is paying with no access |
+| `missing_in_stripe` — a live row Stripe has never heard of | error | **Escalated.** One empty read is not enough evidence to destroy the record of a payment |
+| `unsupported_price` | error | **Escalated.** Somebody changed a subscription in the dashboard to something we do not sell |
+
+To find `missing_locally` the sweep has to ask Stripe what *Stripe* has, not
+only about the subscriptions it already knows of. It lists up to
+`MAX_LISTED_PAGES` × 100 subscriptions per run and says so if it hits the
+ceiling.
+
+Both sides read the period through `subscriptionPeriodEnd` and write through
+`syncSubscription` — the same helpers the webhook uses. A comparison that reads
+Stripe differently from the writer invents drift; a repair that writes
+differently leaves the row in two shapes.
+
+The direction is fixed: **Stripe is the truth about a subscription**, local
+state is a cache of it. Reconciliation only ever writes the cache.
+
+Authorisation is a shared secret compared in constant time, because there is no
+user: it is an operations endpoint. With `BILLING_RECONCILE_TOKEN` unset it
+refuses every request rather than defaulting to open. `?dry=1` reports drift
+without repairing it.
+
+### Alerts
+
+`netlify/lib/alerts.js`. What is worth waking somebody for is written as data
+in `ALERT_RULES`, so the policy is reviewable and testable:
+
+| Kind | Level |
+| --- | --- |
+| `webhook_failed`, `webhook_digest_mismatch` | critical |
+| `reconcile_drift`, `unsupported_price` | error |
+| `deleted_user_event`, `reconcile_clean` | info |
+
+An alert leaves the deployment, so every string in one passes through the
+product's own redaction layer (`src/telemetry/redact.js`) — reused rather than
+reimplemented, because two redactors drift and the weaker one is the one that
+leaks. Delivery never throws: an alerting channel that is down must not turn a
+recoverable billing failure into an unhandled one.
+
+A clean reconciliation reports too, as a heartbeat. Silence should not be
+mistaken for health.
+
+### Configuration
+
+| Variable | Effect when unset |
+| --- | --- |
+| `BILLING_RECONCILE_TOKEN` | The reconciliation endpoint refuses every request |
+| `OPS_ALERT_WEBHOOK` | Alerts are logged and not delivered |
+| `DEPLOY_ENV` | Alerts are labelled `unknown` |

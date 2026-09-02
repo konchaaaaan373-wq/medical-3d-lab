@@ -1,0 +1,93 @@
+[
+  {
+    "sceneId": "brain-anatomy",
+    "card": "docs/model-cards/brain-anatomy.md",
+    "modelSources": [
+      "src/data/brainAnatomy.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "0309fb94e901b865",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "circulation",
+    "card": "docs/model-cards/circulation.md",
+    "modelSources": [
+      "src/models/circulation.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "0a67bd0905f7da24",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "amyloid-beta",
+    "card": "docs/model-cards/amyloid-beta.md",
+    "modelSources": [
+      "src/scenes/nervous/scenes/amyloidBeta/aggregationLayout.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "ea8cb8877ba161ba",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "heart-failure",
+    "card": "docs/model-cards/heart-failure.md",
+    "modelSources": [
+      "src/scenes/cardiovascular/scenes/heartFailure/circulation.js",
+      "src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "73bcc25269f28a25",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "copd-hyperinflation",
+    "card": "docs/model-cards/copd.md",
+    "modelSources": [
+      "src/models/copd.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "dba620896116f885",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "asthma-heterogeneity",
+    "card": "docs/model-cards/asthma.md",
+    "modelSources": [
+      "src/models/asthma.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "89f769461dfcb12c",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "portal-hypertension",
+    "card": "docs/model-cards/cirrhosis-portal-hypertension.md",
+    "modelSources": [
+      "src/models/portalHypertension.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "245e7f99e62403ba",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "hepatorenal-syndrome",
+    "card": "docs/model-cards/hepatorenal-syndrome.md",
+    "modelSources": [
+      "src/models/hepatorenal.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "2a16fb0c8e7bbb87",
+    "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "renal-filtration",
+    "card": "docs/model-cards/renal-filtration.md",
+    "modelSources": [
+      "src/models/renalFiltration.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "f44ece5fcda21a9f",
+    "cardUpdatedAt": "2026-09-01"
+  }
+]

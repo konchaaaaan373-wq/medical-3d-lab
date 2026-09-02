@@ -10,7 +10,10 @@ export function el(tag, props = {}, children = []) {
   const node = document.createElement(tag);
   for (const [key, value] of Object.entries(props)) {
     if (value == null) continue;
-    if (key === 'class') node.className = value;
+    if (key === 'class') {
+      node.className = value;
+      applyLanguage(node, value);
+    }
     else if (key === 'text') node.textContent = value;
     else if (key === 'html') node.innerHTML = value;
     else if (key === 'on') for (const [type, fn] of Object.entries(value)) node.addEventListener(type, fn);
@@ -23,6 +26,65 @@ export function el(tag, props = {}, children = []) {
   }
   return node;
 }
+
+/**
+ * The product renders both languages and hides one with CSS, which is what
+ * makes switching free. A screen reader, though, reads what is in the DOM: an
+ * unmarked Japanese string inside an English document is announced with English
+ * phonemes, and vice versa — unintelligible in either direction.
+ *
+ * The class already says which language a span holds, so the attribute is
+ * derived from it here rather than repeated at several hundred call sites,
+ * where it would inevitably be forgotten on the next one.
+ *
+ * @param {HTMLElement} node
+ * @param {string} className
+ */
+function applyLanguage(node, className) {
+  const classes = String(className).split(/\s+/);
+  if (classes.includes('lang-ja')) node.setAttribute('lang', 'ja');
+  else if (classes.includes('lang-en')) node.setAttribute('lang', 'en');
+}
+
+/**
+ * A skip link, for surfaces that put navigation before their content.
+ *
+ * Visible only when focused. It keeps `href` so it is a real link to assistive
+ * technology and to a reader with JavaScript off, but **it moves focus itself
+ * and prevents the default**, so the hash never changes.
+ *
+ * That is not tidiness. This product routes on the hash, and `#content` is not
+ * `#/content`: it resolved to a scene, so following the skip link reloaded the
+ * page into the default 3D model. An accessibility affordance that throws the
+ * reader out of the page they were reading is worse than not having one.
+ * `router.isInPageAnchor` is the other half of that fix.
+ *
+ * Moving focus is what a skip link is *for* in any case — scrolling alone
+ * leaves the next Tab back at the top of the navigation it just skipped.
+ *
+ * @param {string} targetId an id on the page, on the first element of content
+ */
+export const skipLink = (targetId = 'content') =>
+  el(
+    'a',
+    {
+      class: 'skip-link',
+      href: `#${targetId}`,
+      on: {
+        click: (event) => {
+          const target = document.getElementById(targetId);
+          if (!target) return;
+          event.preventDefault();
+          target.focus({ preventScroll: true });
+          target.scrollIntoView({ block: 'start' });
+        },
+      },
+    },
+    [
+      el('span', { class: 'lang-en', text: 'Skip to content' }),
+      el('span', { class: 'lang-ja', text: '本文へ移動' }),
+    ]
+  );
 
 export const icon = (paths, { size = 18 } = {}) =>
   `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" fill="currentColor">${paths}</svg>`;

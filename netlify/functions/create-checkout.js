@@ -1,4 +1,5 @@
 import { planIsSellable } from '../../src/access/commerceReadiness.js';
+import { legalReadiness } from '../../src/access/legalReadiness.js';
 import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
@@ -21,10 +22,25 @@ export default async (request) => {
     const body = await request.json().catch(() => ({}));
     const plan = body.plan;
 
-    // This gate is repeated server-side intentionally. Hiding a purchase button
-    // is not a security or commerce boundary: a stale client or a hand-written
-    // request must not be able to create a paid subscription for professional
-    // content whose current Clinical Review is stale, pending or unversioned.
+    // Two gates, and both are repeated server-side intentionally. Hiding a
+    // purchase button is not a boundary: a stale client or a hand-written
+    // request must not be able to start a paid subscription either way.
+    //
+    // The first is a legal one and it is about the seller, not the buyer or the
+    // content. Japan's 特定商取引法 requires a seller of a digital service to
+    // publish its identity, its terms and its cancellation policy before taking
+    // money, and `src/data/operator.js` ships those fields null so nothing is
+    // invented. Until they are filled in, this deployment may not sell at all.
+    const legal = legalReadiness();
+    if (!legal.ready) {
+      return json(409, {
+        error: 'Checkout is unavailable until the required commercial disclosure is published.',
+        disclosureHold: true,
+      });
+    }
+
+    // The second is about the content: professional plans must be backed by a
+    // scene whose Clinical Review is current, not stale, pending or unversioned.
     if (!planIsSellable(plan)) {
       return json(409, {
         error: 'This professional plan is temporarily unavailable pending current clinical review.',

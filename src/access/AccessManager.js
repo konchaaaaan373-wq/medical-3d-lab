@@ -19,7 +19,9 @@ import {
   PLAN_GRANTS,
 } from './policy.js';
 import { pricePresentation } from './pricing.js';
+import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
+import { emitAppEvent } from '../app/appEvents.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -74,6 +76,9 @@ export function createAccessManager({ ui }) {
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
         const expected = PLAN_GRANTS[plan] ?? [];
+        // The other end of the funnel: Stripe has sent the browser back. The
+        // entitlement itself is still only granted by the signed webhook below.
+        emitAppEvent('conversion:step', { step: 'checkout_complete', plan: planForEntitlement(plan) });
 
         // Stripe redirects immediately; the signed subscription webhook can
         // arrive a moment later. Re-read server truth for a few seconds instead
@@ -215,6 +220,9 @@ export function createAccessManager({ ui }) {
   function open(entitlement = null) {
     required = entitlement;
     state.notice = '';
+    // Where the purchase conversation starts. Which capability was being
+    // reached for is the interesting part; who reached for it is not recorded.
+    emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : accountButton;
     modal.hidden = false;
     modal.classList.add('is-open');
@@ -366,10 +374,17 @@ export function createAccessManager({ ui }) {
       ]),
       currentAccess(),
       subscriptionStatusCard(),
-      !state.billingConfigured
+      // One notice, two reasons: billing may not be configured, or the seller
+      // may not yet have published the disclosure it is required to publish.
+      // Saying which one it is beats a single vague sentence for both.
+      billingNotice()
         ? el('div', { class: 'access-billing-unavailable' }, [
-            el('p', { class: 'access-copy lang-en', text: 'Paid checkout is not enabled on this deployment yet. Your account and all free models remain available.' }),
-            el('p', { class: 'access-copy lang-ja', text: 'このデプロイでは有料プランの購入はまだ有効化されていません。アカウントと無料モデルはそのまま利用できます。' }),
+            el('p', { class: 'access-copy lang-en', text: billingNotice().en }),
+            el('p', { class: 'access-copy lang-ja', text: billingNotice().ja }),
+            el('a', { class: 'access-legal-link', href: '#/commerce' }, [
+              el('span', { class: 'lang-en', text: 'Commercial disclosure →' }),
+              el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記 →' }),
+            ]),
           ])
         : null,
       planGrid(),
@@ -623,7 +638,10 @@ export function createAccessManager({ ui }) {
       : state.grants.has(ENTITLEMENT.PATIENT) && state.grants.has(ENTITLEMENT.EDUCATION);
     const highlighted = required && (entitlement === required || plan === PLAN.COMPLETE);
     const price = pricePresentation(state.planCatalog[plan]);
-    const configured = authConfigured() && state.billingConfigured && Boolean(price);
+    // Billing being configured is not sufficient: a seller must have published
+    // its identity and terms before it may take money. See legalReadiness.js.
+    const configured =
+      authConfigured() && canSell({ billingConfigured: state.billingConfigured }) && Boolean(price);
     const existing = hasActiveSubscription();
     const disabled = unlocked || state.loading || !configured;
     const cta = !authConfigured() || !state.billingConfigured
@@ -668,9 +686,13 @@ export function createAccessManager({ ui }) {
     ]);
   }
 
+  /** Why paid plans cannot be bought here, or null when they can. */
+  const billingNotice = () => saleBlockedNotice({ billingConfigured: state.billingConfigured });
+
   async function checkout(plan) {
-    if (!state.billingConfigured || !pricePresentation(state.planCatalog[plan])) {
-      state.error = 'Paid checkout is not ready on this deployment yet.';
+    const blocked = saleBlockedNotice({ billingConfigured: state.billingConfigured });
+    if (blocked || !pricePresentation(state.planCatalog[plan])) {
+      state.error = blocked?.en ?? 'Paid checkout is not ready on this deployment yet.';
       notify();
       return;
     }
@@ -691,8 +713,10 @@ export function createAccessManager({ ui }) {
         return openPortal();
       }
       if (!response.ok || !data.url) throw new Error(data.error || 'Checkout could not be started.');
+      emitAppEvent('conversion:step', { step: 'checkout_start', plan: planForEntitlement(plan) });
       window.location.assign(data.url);
     } catch (error) {
+      emitAppEvent('conversion:step', { step: 'cancelled', plan: planForEntitlement(plan) });
       state.error = error.message || 'Checkout could not be started.';
       state.loading = false;
       notify();
@@ -724,4 +748,17 @@ export function createAccessManager({ ui }) {
       notify();
     }
   }
+}
+
+/**
+ * The plan name a conversion metric may carry.
+ *
+ * Entitlements and plans are close but not identical, and the metric
+ * vocabulary only accepts the three plan names. Anything it cannot map is
+ * reported as no plan at all rather than guessed at.
+ *
+ * @param {string|null} value an entitlement id or a plan id
+ */
+function planForEntitlement(value) {
+  return ['patient', 'education', 'complete'].includes(value) ? value : null;
 }

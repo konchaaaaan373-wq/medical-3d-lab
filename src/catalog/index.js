@@ -8,6 +8,7 @@
  */
 import { ORGANS, SYSTEMS, STATUS_IDS, organById, organsOfSystem, statusById, systemById } from './taxonomy.js';
 import { SCENE_MANIFEST, PLANNED_SCENES } from './scenes.js';
+import { LEGAL_SLUGS } from '../data/legalRoutes.js';
 
 /** Manifest entries with the optional fields filled in. */
 export const SCENES = SCENE_MANIFEST.map((entry) => ({
@@ -35,6 +36,25 @@ export const EXPLORER_SLUG = 'organs';
 export const EXPLORER_ROUTE = `#/${EXPLORER_SLUG}`;
 export const LAB_SLUG = 'lab';
 export const LAB_ROUTE = `#/${LAB_SLUG}`;
+
+/**
+ * Slugs the product shell has already claimed.
+ *
+ * A scene whose slug collided with one of these would stay reachable by URL
+ * while the shell answered instead — the kind of failure only noticed by
+ * whoever goes looking. Legal document slugs come from their own module, so
+ * adding a document cannot silently shadow a scene.
+ */
+export const RESERVED_ROUTE_SLUGS = Object.freeze([
+  EXPLORER_SLUG,
+  'explore',
+  LAB_SLUG,
+  'experimental',
+  'trust',
+  'evidence',
+  'home',
+  ...LEGAL_SLUGS,
+]);
 
 /** Named rather than positional: reordering the catalogue must not change legacy fallback behaviour. */
 export const DEFAULT_SCENE_ID = 'amyloid-beta';
@@ -168,8 +188,8 @@ export function validateCatalog(scenes = SCENES) {
     else if (seenSlugs.has(scene.slug)) problems.push(`${where}: duplicate slug "${scene.slug}"`);
     else seenSlugs.add(scene.slug);
 
-    if ([EXPLORER_SLUG, LAB_SLUG].includes(scene.slug)) {
-      problems.push(`${where}: slug collides with a product-shell route`);
+    if (RESERVED_ROUTE_SLUGS.includes(scene.slug)) {
+      problems.push(`${where}: slug "${scene.slug}" collides with a product-shell route`);
     }
     if (!systemById(scene.system)) problems.push(`${where}: unknown system "${scene.system}"`);
     if (!organById(scene.organ)) problems.push(`${where}: unknown organ "${scene.organ}"`);

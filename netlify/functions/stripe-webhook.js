@@ -1,4 +1,6 @@
 import { supabaseUserExists } from '../lib/account.js';
+import { notify } from '../lib/alerts.js';
+import { classifyInvoice, isInvoiceEvent } from '../lib/invoices.js';
 import {
   claimBillingEvent,
   finishBillingEvent,
@@ -71,6 +73,11 @@ export default async (request) => {
       console.error('stripe-webhook ledger failure', ledgerError);
     }
     console.error('stripe-webhook', error);
+    await notify('webhook_failed', {
+      eventId: event.id,
+      type: event.type,
+      error: error?.message ?? String(error),
+    });
     return json(500, { error: 'Webhook processing failed' });
   }
 };
@@ -86,10 +93,7 @@ async function processStripeEvent(event) {
     // Account deletion can race a delayed Checkout webhook. Never recreate a
     // billing mapping for an Auth identity that has already been removed.
     if (!userId || !(await supabaseUserExists(userId))) {
-      console.info('Ignoring checkout webhook for deleted/missing account', {
-        eventId: event.id,
-        userId: userId ?? null,
-      });
+      await notify('deleted_user_event', { eventId: event.id, type: event.type });
       return { status: 'ignored', reason: 'deleted_user' };
     }
 
@@ -131,8 +135,9 @@ async function processStripeEvent(event) {
 
     const ownerId = await liveSubscriptionOwnerId(subscription);
     if (!ownerId) {
-      console.info('Ignoring subscription webhook for deleted/missing account', {
+      await notify('deleted_user_event', {
         eventId: event.id,
+        type: event.type,
         subscriptionId: subscription?.id ?? null,
       });
       return { status: 'ignored', reason: 'deleted_user' };
@@ -153,6 +158,33 @@ async function processStripeEvent(event) {
           : syncedSubscription.customer?.id,
     });
     return { status: 'processed', reason: 'subscription_synced' };
+  }
+
+  // Renewal and payment failure.
+  //
+  // Entitlement already follows the subscription events above: when a payment
+  // fails Stripe moves the subscription to `past_due` and then to `unpaid` or
+  // `canceled`, and that is written there. These carry the two facts the
+  // subscription events cannot — that a renewal happened at all, which changes
+  // no status and would otherwise leave a year of a customer's history with no
+  // record, and that a payment is failing *right now* with a known number of
+  // attempts left, which is the moment somebody should be told.
+  //
+  // Nothing here writes state. It classifies and, where it matters, alerts.
+  if (isInvoiceEvent(event.type)) {
+    const invoice = classifyInvoice(event);
+    if (invoice.alert) {
+      await notify(invoice.alert, {
+        subscriptionId: invoice.subscriptionId,
+        customerId: invoice.customerId,
+        attempt: invoice.attempt,
+        finalAttempt: invoice.finalAttempt,
+        currency: invoice.currency,
+      });
+    }
+    return invoice.kind === 'other'
+      ? { status: 'ignored', reason: 'unsupported_invoice' }
+      : { status: 'processed', reason: `invoice_${invoice.kind}` };
   }
 
   return { status: 'ignored', reason: 'unsupported_event' };

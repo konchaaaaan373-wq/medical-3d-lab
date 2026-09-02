@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
-import { sameRoute } from './router.js';
+import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -27,6 +27,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { emitAppEvent } from './appEvents.js';
 
 /**
  * Wires a scene module to the viewer and the overlay UI.
@@ -263,7 +264,11 @@ export async function createApp({ stage, ui }) {
       resetView();
     },
     onResetView: resetView,
-    onCapture: (preset) => capture(viewer, meta, stageReadout.stage, playback.value, preset),
+    onCapture: (preset) => {
+      capture(viewer, meta, stageReadout.stage, playback.value, preset);
+      // The SNS layer's only measurable outcome: a file the user chose to keep.
+      emitAppEvent('reel:export', { format: 'png', preset: preset?.id ?? 'view' });
+    },
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
@@ -487,6 +492,8 @@ export async function createApp({ stage, ui }) {
   };
 
   let comparing = false;
+  /** When the current comparison was entered, so "how long was it read for" is answerable. */
+  let comparingSince = 0;
 
   /**
    * Side-by-side with a healthy reference. The camera widens to hold both, and
@@ -494,6 +501,12 @@ export async function createApp({ stage, ui }) {
    */
   function setComparison(enabled) {
     if (!scene.setComparison) return;
+    // Leaving a comparison that was actually looked at is the completion; the
+    // interesting question is whether side-by-side gets used, not offered.
+    if (comparing && !enabled) {
+      emitAppEvent('compare:complete', { elapsedMs: Math.round(performance.now() - comparingSince) });
+    }
+    if (!comparing && enabled) comparingSince = performance.now();
     comparing = enabled;
     scene.setComparison(enabled);
     labels.setComparison(enabled);
@@ -819,6 +832,10 @@ export async function createApp({ stage, ui }) {
   // resolving it to a scene id would have made that link do nothing.
   let currentHash = window.location.hash;
   window.addEventListener('hashchange', () => {
+    // An in-page anchor is not navigation. Reloading a 3D scene because
+    // somebody used a skip link would throw away the camera, the progression
+    // and any model controls they had set.
+    if (isInPageAnchor(window.location.hash)) return;
     if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
   });
 
