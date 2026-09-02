@@ -1,6 +1,6 @@
 # Public release roadmap
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
 
 This is the ordered source of truth for taking Medical 3D Lab from a working
 model catalogue to a trustworthy public product. It records release gates, not
@@ -58,15 +58,24 @@ the model tests.
 
 ## Gate 1 — limited free beta
 
-- [ ] Test current Safari, Chrome and Firefox plus real iPhone and Android
-  devices, including 320–430 px widths and landscape.
+- [~] Test current Safari, Chrome and Firefox plus real iPhone and Android
+  devices, including 320–430 px widths and landscape. The matrix is declared in
+  `src/app/viewports.js` and measured in a real browser by `npm run verify:ui`:
+  six viewports (320/375/430 portrait, a 932 × 430 landscape phone, tablet and
+  desktop) across nine routes, checking horizontal overflow, reflow at 320 px,
+  measured target sizes, the skip link, the whole focus ring and console
+  errors. It found two real defects — the Trust page scrolled 426 px sideways
+  at 320 px, and ten controls sat below the WCAG 2.5.8 floor — and both are
+  fixed. **Remaining:** Safari and Firefox, and touch on real hardware. The
+  check drives Chromium only and says so at the end of every run.
 - [~] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
   Explorer, Patient Presenter, Education Presenter and Account. Contrast, focus,
   landmarks, skip links, language marking, reduced motion, target sizes and the
   viewport reflow release are declared and enforced in CI; two real defects were
   fixed on the way (the Trust page could not scroll, and the shell disabled
-  pinch zoom). **Remaining:** screen-reader passes, 400 % reflow and in-scene
-  tab order on real devices. See [`accessibility.md`](accessibility.md).
+  pinch zoom). Reflow at 320 px and the in-scene tab order are now measured in
+  a browser as part of the viewport matrix above. **Remaining:** screen-reader
+  passes on real devices. See [`accessibility.md`](accessibility.md).
 - [x] Establish performance budgets and remove `preserveDrawingBuffer` from the
   normal render path unless an export is actively being captured. Frame, start-up
   and ship-weight budgets are declared in `src/app/performanceBudget.js`,
@@ -128,10 +137,11 @@ the model tests.
 - [x] Version model cards and review attestations with every medical change.
   `docs/model-cards/revisions.json` records the digest of the sources each card
   describes, and a medical change that leaves the card untouched fails CI
-  (`npm run revisions:check`). A clinical review records the digest of what it
-  signed, so a review whose model has since changed must declare that — and the
-  public Trust page shows it. Finding one immediately: the portal-hypertension
-  review signed a model that the hepatorenal work later extended.
+  (`npm run revisions:check`). Review staleness is a separate mechanism owned by
+  Batch 5: a clinical review lists the paths it signed, and a review whose model
+  has since changed is marked stale — which the public Trust page shows. It
+  found one immediately: the portal-hypertension review signed a model that the
+  hepatorenal work later extended.
 - [x] Define launch metrics: model start, story/compare completion, learning
   completion, patient-guide use, conversion, retention and renderer failures.
   Declared in `src/telemetry/metrics.js`, emitted through the app-event bridge
@@ -163,7 +173,7 @@ the model tests.
 | 8d | Accessibility foundations enforced in CI | Done except device passes |
 | 8e | Billing ledger, reconciliation sweep and operational alerts | Done |
 | 8f | Model-card revisions (distinct from review staleness, which Batch 5 owns) | Done |
-| 8g | Browser/device matrix on real hardware | Next |
+| 8g | Viewport matrix measured in a browser, and the defects it found | Done except Safari/Firefox and touch |
 | 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 

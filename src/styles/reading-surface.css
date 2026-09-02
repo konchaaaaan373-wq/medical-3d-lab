@@ -139,6 +139,47 @@ html[data-route='trust'] button,
   min-height: 44px;
 }
 
+/* --------------------------------------------------------------------------
+   The 24 px floor
+
+   WCAG 2.5.8 at level AA: 24 by 24 CSS pixels for anything a pointer has to
+   hit. The block above is the product's stronger preference; this is the
+   obligation, and `npm run verify:ui` measures it in a real browser rather
+   than trusting the declaration.
+
+   Enumerated rather than written as `a { min-height: 24px }` for two reasons.
+   A link inside a sentence is exempt by the standard and must keep the line
+   box it inherited — a blanket rule would push prose apart for nothing. And a
+   list of the controls the product actually has is something a reviewer can
+   read; `a` is not.
+
+   `inline-flex` is what makes the height real: `min-height` does nothing to an
+   inline box, so a 14 px source link would go on measuring 14 px however
+   loudly the stylesheet asked otherwise.
+   -------------------------------------------------------------------------- */
+.landing-inline-link,
+.landing-footer-links a,
+.trust-footer-links a,
+.trust-brand,
+.trust-nav-links a,
+.trust-open-model,
+.trust-source,
+.legal-brand,
+.legal-nav-links a,
+.legal-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+/* Horizontal targets: a control can clear 24 px in height and still be a 22 px
+   sliver to aim at. Both dimensions count. */
+.explorer-search-clear,
+.scene-pill {
+  min-width: 24px;
+  min-height: 24px;
+}
+
 /* A skip target is given `tabindex="-1"` so following the link moves focus and
    not only the scroll position. It must not then draw a focus ring: the person
    who lands there did not focus a control, and a ring around half the page

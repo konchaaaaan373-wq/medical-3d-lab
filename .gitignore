@@ -9,3 +9,6 @@ dist/
 
 # Throwaway scripts used to drive the browser during a visual pass.
 .*.mjs
+
+# The viewport matrix report, written by `npm run verify:ui --json`.
+viewport-report.json

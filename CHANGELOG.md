@@ -11,7 +11,8 @@ clinically reviewed. The procedure is in
 ## Unreleased
 
 Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
-are branch protection on `main` and device testing on real hardware.
+are branch protection on `main`, and the parts of device testing that need a
+person: Safari, Firefox, touch and a screen reader.
 
 ### A new model
 
@@ -80,6 +81,19 @@ are branch protection on `main` and device testing on real hardware.
   that gesture where it actually conflicts.
 - Contrast, focus, landmarks, skip links, language marking for screen readers,
   reduced motion and target sizes are declared and checked in CI.
+- **The Trust page no longer scrolls sideways on a phone.** One evidence path
+  with no place to break — `docs/model-evidence/cirrhosis-portal-hypertension.md`
+  — was widening the whole card grid, so at 320 px the page ran 426 px off the
+  right edge and had to be read in two directions.
+- **Ten controls got big enough to hit.** The story-stage buttons under a scene
+  were 9 px tall, the filter and system pills 22 px wide, and every footer,
+  navigation and evidence-source link on the reading surfaces was bare 14–19 px
+  text. All now clear the 24 px WCAG minimum.
+- These were found rather than guessed: the product is now measured in a real
+  browser at six viewport sizes — 320, 375 and 430 px wide, a phone on its
+  side, a tablet and a desktop — across every page that does not need WebGL,
+  plus one that does. Safari, Firefox and real touch hardware are still a
+  person's job, and the check says so every time it runs.
 
 ### Discoverability
 

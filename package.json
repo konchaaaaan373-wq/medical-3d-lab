@@ -12,7 +12,8 @@
     "budget": "node scripts/check-bundle-budget.js",
     "verify:site": "node scripts/check-site-output.js",
     "revisions:check": "node scripts/adopt-revisions.js",
-    "revisions:adopt": "node scripts/adopt-revisions.js --adopt"
+    "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
+    "verify:ui": "node scripts/check-viewports.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"
