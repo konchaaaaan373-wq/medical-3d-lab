@@ -416,16 +416,28 @@ html[data-route='landing'] {
   bottom: 20px;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  max-width: calc(100% - 48px);
   color: rgba(221, 229, 242, 0.7);
   font-size: 11px;
   line-height: 1.35;
   pointer-events: none;
+  text-align: right;
 }
 
 .landing-demo-drag-hint > span:first-child {
   color: var(--landing-cyan);
   font-size: 15px;
+}
+
+.landing-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .landing-demo-workbench {

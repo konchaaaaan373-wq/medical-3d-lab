@@ -103,9 +103,16 @@ export function createLandingCirculationDemo({
   const explanationJa = el('span', { class: 'lang-ja' });
   const viewport = el('div', {
     class: 'landing-demo-viewport',
-    role: 'img',
+    role: 'region',
+    tabindex: '0',
     'aria-label': 'Interactive 3D circulation model / 操作できる循環3Dモデル',
-  });
+    'aria-describedby': 'landing-demo-viewport-instructions',
+  }, [
+    el('p', { class: 'landing-sr-only', id: 'landing-demo-viewport-instructions' }, dual(
+      'Use arrow keys to rotate, plus and minus to zoom, and Home to reset the view.',
+      '矢印キーで回転、+／−で拡大縮小、Homeで初期視点に戻します。'
+    )),
+  ]);
   const viewportLoading = el('div', { class: 'landing-demo-loading', 'aria-hidden': 'true' }, [
     el('span'),
     ...dual('Loading 3D model', '3Dモデルを読み込み中'),
@@ -155,7 +162,7 @@ export function createLandingCirculationDemo({
       ]),
       el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
         el('span', { text: '↔' }),
-        ...dual('Drag to rotate · Scroll to zoom', 'ドラッグで回転・スクロールで拡大'),
+        ...dual('Drag / arrow keys to rotate · Scroll / +− to zoom', 'ドラッグ／矢印キーで回転・スクロール／+−で拡大'),
       ]),
     ]),
     el('div', { class: 'landing-demo-workbench' }, [

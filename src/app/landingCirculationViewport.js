@@ -98,10 +98,59 @@ export function mountLandingCirculationViewport(container, {
     const controlsChanged = () => {
       if (!disposed && !viewer.running && inView && document.visibilityState !== 'hidden') renderOnce();
     };
+    const keyboardMoved = (event) => {
+      const key = event.key;
+      const supported = [
+        'ArrowLeft',
+        'ArrowRight',
+        'ArrowUp',
+        'ArrowDown',
+        '+',
+        '=',
+        '-',
+        '_',
+        'Home',
+      ];
+      if (!supported.includes(key)) return;
+      event.preventDefault();
+      viewer.controls.autoRotate = false;
+
+      if (key === 'Home') {
+        userMovedCamera = false;
+        applyOpeningPose();
+        renderOnce();
+        return;
+      }
+
+      userMovedCamera = true;
+      const target = viewer.controls.target;
+      const offset = viewer.camera.position.clone().sub(target);
+      const rotationStep = Math.PI / 18;
+
+      if (key === 'ArrowLeft' || key === 'ArrowRight') {
+        offset.applyAxisAngle(viewer.camera.up, key === 'ArrowLeft' ? rotationStep : -rotationStep);
+      } else if (key === 'ArrowUp' || key === 'ArrowDown') {
+        const right = offset.clone().cross(viewer.camera.up).normalize();
+        offset.applyAxisAngle(right, key === 'ArrowUp' ? -rotationStep : rotationStep);
+      } else {
+        const zoomIn = key === '+' || key === '=';
+        const nextDistance = Math.min(
+          viewer.controls.maxDistance,
+          Math.max(viewer.controls.minDistance, offset.length() * (zoomIn ? 0.88 : 1.14))
+        );
+        offset.setLength(nextDistance);
+      }
+
+      viewer.camera.position.copy(target).add(offset);
+      viewer.controls.update();
+      renderOnce();
+    };
     viewer.controls.addEventListener('start', userStarted);
     cleanups.push(() => viewer.controls.removeEventListener('start', userStarted));
     viewer.controls.addEventListener('change', controlsChanged);
     cleanups.push(() => viewer.controls.removeEventListener('change', controlsChanged));
+    container.addEventListener('keydown', keyboardMoved);
+    cleanups.push(() => container.removeEventListener('keydown', keyboardMoved));
     applyOpeningPose();
 
     const stopResize = viewer.onResize(() => {

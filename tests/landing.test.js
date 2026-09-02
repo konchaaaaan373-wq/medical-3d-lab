@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Vector3 } from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
 import {
@@ -169,6 +170,8 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(viewport, /viewer\.composer\.render\(\)/);
   assert.match(viewport, /document\.visibilityState/);
   assert.match(viewport, /SceneClass\.allowAutoRotate !== false/);
+  assert.match(viewport, /container\.addEventListener\('keydown', keyboardMoved\)/);
+  assert.match(viewport, /'ArrowLeft'[\s\S]*'ArrowRight'[\s\S]*'Home'/);
   assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
   assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);
@@ -199,6 +202,9 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
 
     assert.equal(cards.length, PUBLIC_SCENES.length);
     assert.equal(viewports.length, 1);
+    assert.equal(viewports[0].getAttribute('role'), 'region');
+    assert.equal(viewports[0].getAttribute('tabindex'), '0');
+    assert.equal(viewports[0].getAttribute('aria-describedby'), 'landing-demo-viewport-instructions');
     assert.equal(controls.length, 3);
     assert.equal(controls[0].getAttribute('aria-pressed'), 'true');
     assert.deepEqual(values.map((node) => node.textContent), ['70', '3.6', '510']);
@@ -309,6 +315,103 @@ test('landing: a scene that fails during setup releases the partial viewer', () 
   assert.equal(sceneDisposed, 1);
   assert.equal(viewerDisposed, 1);
   assert.equal(container.dataset.ready, undefined);
+});
+
+test('landing: the focused 3D viewport rotates, zooms and resets from the keyboard', () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
+
+  class KeyboardViewer {
+    static instance = null;
+
+    constructor() {
+      KeyboardViewer.instance = this;
+      this.running = false;
+      this.renderer = { domElement: { style: {} } };
+      this.scene = { add() {} };
+      this.camera = {
+        aspect: 1.5,
+        fov: 42,
+        position: new Vector3(),
+        up: new Vector3(0, 1, 0),
+      };
+      this.controls = {
+        target: new Vector3(),
+        minDistance: 0,
+        maxDistance: 100,
+        autoRotate: true,
+        addEventListener() {},
+        removeEventListener() {},
+        update() {},
+      };
+      this.composer = { render() {} };
+    }
+
+    onResize(handler) {
+      handler();
+      return () => {};
+    }
+
+    onFrame() { return () => {}; }
+    start() { this.running = true; }
+    stop() { this.running = false; }
+    dispose() {}
+  }
+
+  class KeyboardScene {
+    static cameraPose = {
+      position: new Vector3(0, 1, 10),
+      target: new Vector3(0, 0, 0),
+    };
+
+    static framing = { minHorizontalAspect: 1 };
+    static allowAutoRotate = false;
+
+    build() { return {}; }
+    update() {}
+    setModelControl() {}
+    dispose() {}
+  }
+
+  try {
+    const container = new FakeElement('div');
+    const mounted = mountLandingCirculationViewport(container, {
+      ViewerClass: KeyboardViewer,
+      SceneClass: KeyboardScene,
+    });
+    const viewer = KeyboardViewer.instance;
+    const initial = viewer.camera.position.clone();
+    const press = (key) => {
+      let prevented = false;
+      for (const listener of container.listeners.get('keydown') ?? []) {
+        listener({ key, preventDefault: () => { prevented = true; } });
+      }
+      assert.equal(prevented, true, `${key} should not scroll the page while the viewport has focus`);
+    };
+
+    press('ArrowRight');
+    assert.ok(viewer.camera.position.distanceTo(initial) > 0.1);
+    const rotatedDistance = viewer.camera.position.distanceTo(viewer.controls.target);
+
+    press('+');
+    assert.ok(viewer.camera.position.distanceTo(viewer.controls.target) < rotatedDistance);
+
+    press('Home');
+    assert.ok(viewer.camera.position.distanceTo(initial) < 1e-9);
+    assert.equal(viewer.controls.autoRotate, false, 'the scene opts out of automatic rotation');
+    mounted.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });
 
 test('language control: the document language follows the visible language', () => {
