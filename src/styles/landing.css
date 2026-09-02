@@ -932,10 +932,14 @@ html[data-route='landing'] {
 }
 
 .landing a:focus-visible,
-.landing button:focus-visible,
-.landing-demo-viewport:focus-visible {
+.landing button:focus-visible {
   outline: 2px solid var(--landing-cyan);
   outline-offset: 3px;
+}
+
+.landing-demo-viewport:focus-visible {
+  outline: 2px solid var(--landing-cyan);
+  outline-offset: -4px;
 }
 
 /* Responsive ------------------------------------------------------------- */

@@ -184,6 +184,11 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
   assert.match(css, /min-height:\s*46px/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /\.landing-demo-viewport canvas/);
+  assert.match(
+    css,
+    /\.landing-demo-viewport:focus-visible\s*\{[^}]*outline-offset:\s*-[\d.]+px/s,
+    'the focus indicator must be drawn inside the clipped 3D stage',
+  );
   assert.match(css, /\.landing-demo-state\.is-selected/);
 });
 
