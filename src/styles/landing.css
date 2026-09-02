@@ -631,7 +631,7 @@ html[data-route='landing'] {
 /* Model index ------------------------------------------------------------ */
 
 .landing-section {
-  padding: clamp(78px, 9vw, 126px) 8px;
+  padding: clamp(64px, 7vw, 96px) 8px;
   border-top: 1px solid var(--landing-line);
 }
 
@@ -875,8 +875,8 @@ html[data-route='landing'] {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 40px;
-  margin-top: clamp(76px, 9vw, 126px);
-  padding: clamp(52px, 7vw, 82px) 8px;
+  margin-top: clamp(52px, 6vw, 84px);
+  padding: clamp(44px, 5.5vw, 68px) 8px;
   border-top: 1px solid var(--landing-line);
   border-bottom: 1px solid var(--landing-line);
 }
