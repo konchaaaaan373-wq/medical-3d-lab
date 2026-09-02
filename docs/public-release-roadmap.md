@@ -102,15 +102,9 @@ the model tests.
   `product-principles.md` before final billing merge.
 - [x] Integrate the access/billing branch with current `main` and rerun the full
   merged test/build suite.
-- [~] Stripe sandbox journeys. Eight journeys — first purchase, renewal, a
-  recovered payment failure, a final one, repurchase after cancellation, a plan
-  change, a period-end cancellation and a write-off — are declared as data in
-  `netlify/lib/journeys.js` and replayed against the deployed webhook handler
-  on every pull request, asserting access through the product's own
-  `grantsFromSubscriptions` rather than a status string. **Remaining:** running
-  the same list against the real Stripe sandbox with test clocks, which needs
-  credentials and a person; the procedure is in
-  [`access-and-billing.md`](access-and-billing.md).
+- [~] Stripe sandbox journeys: purchase, Patient→Complete plan change and both
+  period-end/immediate cancellation are verified. Renewal, payment-failure and
+  repurchase still need explicit E2E coverage.
 - [~] Show actual Stripe price/billing period and current subscription lifecycle
   in product UI. Terms, Privacy, commercial disclosure (特定商取引法) and support
   pages are written, routed and reachable without WebGL, and the renewal and
@@ -192,7 +186,7 @@ the model tests.
 | 8e | Billing ledger, reconciliation sweep and operational alerts | Done |
 | 8f | Model-card revisions (distinct from review staleness, which Batch 5 owns) | Done |
 | 8g | Viewport matrix measured in a browser, and the defects it found | Done except Safari/Firefox and touch |
-| 9 | Billing journeys declared once and replayed in CI | Done except the credentialed sandbox run |
+| 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 | 11 | Link-preview cards drawn from the catalogue, and the review states three published pages were getting wrong | Done |
 
