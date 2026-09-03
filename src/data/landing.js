@@ -33,6 +33,7 @@ export const LANDING_MODEL_TITLES = Object.freeze({
   'brain-anatomy': Object.freeze({ en: '3D brain anatomy', ja: '脳の3D解剖' }),
   'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
   'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
+  'pulmonary-edema': Object.freeze({ en: 'Pulmonary oedema', ja: '肺水腫' }),
   'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
   'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
   'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
