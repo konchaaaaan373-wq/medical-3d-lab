@@ -91,6 +91,36 @@
   width: min(326px, 43vw);
   padding: 12px 13px 13px;
   border-top: 3px solid var(--accent);
+  /* The rail is one shared scroll box. Left uncapped, this panel is tall
+     enough to push the legend, the selection card and the metrics out of it
+     on a 720-768px window — including the legend its own colour modes
+     rewrite. The display surface is the item that yields: it scrolls inside
+     itself so the read-outs it changes stay on screen next to it. The floor
+     keeps the viewpoint grid whole; past that the rail scrolls, which is the
+     fallback it already had. */
+  flex: 0 1 auto;
+  min-height: 208px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Same thin track as the rail: a capped panel that scrolls silently reads as
+     a clipped one, so the affordance has to be visible. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* Everything else in the rail states a model read-out, so it keeps its size
+   and the panel above shrinks first. */
+.rail > *:not(.inspection-panel) {
+  flex: 0 0 auto;
+}
+
+.inspection-panel::-webkit-scrollbar {
+  width: 5px;
+}
+
+.inspection-panel::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
 }
 
 .inspection-panel[hidden] {
@@ -297,6 +327,11 @@
 
 @media (max-width: 720px) {
   .inspection-panel {
+    /* The rail is narrower than this on a phone and clips its overflow, so a
+       panel sized to the viewport hangs off the rail's left edge: the clipped
+       half still paints but stops hit-testing, which left most of the controls
+       untappable. It may never be wider than the rail that holds it. */
+    max-width: 100%;
     width: min(74vw, 292px);
     padding: 10px 11px 11px;
   }
@@ -1144,7 +1179,12 @@
 #ui.is-story .top-left > *:not(.title-card) {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 220ms ease;
+  /* pointer-events alone still leaves these in the tab order. With a whole
+     inspection panel in the rail, a keyboard viewer could reach an invisible
+     viewpoint button and set a pose the sequence overrides on the next frame.
+     Visibility is flipped after the fade so the transition still reads. */
+  visibility: hidden;
+  transition: opacity 220ms ease, visibility 0s linear 220ms;
 }
 
 #ui.is-story .title-card {

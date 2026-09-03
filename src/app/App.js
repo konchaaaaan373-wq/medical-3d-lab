@@ -297,6 +297,10 @@ export async function createApp({ stage, ui }) {
 
   function applyInspectionView(id) {
     if (!inspectionViews.some((candidate) => candidate.id === id)) return false;
+    // A guided sequence and a recording own the camera outright and rewrite the
+    // shot every frame. Accepting a viewpoint here would leave the panel
+    // claiming a pose the next frame discards, so it is refused instead.
+    if (storyMode?.active || reelMode?.active) return false;
     const accepted = scene.setInspectionView?.(id) ?? scene.setAnatomyView?.(id);
     if (accepted === false) return false;
     const pose = inspectionPoseFor(id);
