@@ -180,7 +180,8 @@ rather than cosmetic:
 
 | Grade | Builders | What they do that the others do not |
 | --- | --- | --- |
-| Named structure | `nephron`, `glomerulus`, `airwayTree`, `portalVasculature`, `diaphragm`, `lungs` | Expose landmarks by anatomical name, keep physiology and presentation in separately named values, and are consumed by `alpha`+ scenes that read those landmarks rather than retyping them |
+| Named structure | `nephron`, `glomerulus`, `airwayTree`, `portalVasculature`, `diaphragm` | Expose landmarks by anatomical name, keep physiology and presentation in separately named values, and are consumed by `alpha`+ scenes that read those landmarks rather than retyping them |
+| Named parts | `lungs` | The grade above: the organ is **divided into the parts anatomy names**, as separate closed meshes whose union is the organ, each addressable, hideable and measurable on its own — five lobes, eighteen segments, a bronchial tree and the vessels that run with it (§5.4) |
 | Sketch | the remaining sixteen | A recognisable silhouette and a shape setter. Correct as far as they go, and explicitly not more |
 
 That split is the intended one — `grand-design.md` §5.4 says not to promote
@@ -247,6 +248,50 @@ where it started.
 way `semantic-anatomy.test.js` is — assertions about bodies, not about this
 repository's numbers, with sides taken from `ANATOMICAL_AXES` rather than from
 the sign of x written out by hand.
+
+### 5.4 The lung, rebuilt from a silhouette into an organ
+
+The audit above put `lungs.js` in the *named structure* grade. That was
+generous. Its fissures were `v.multiplyScalar(1 - 0.1 * exp(...))` — shallow
+grooves scratched into one surface — so the lung **looked** lobed and had no
+lobes in it: nothing to hide, nothing to colour, nothing whose volume could be
+asked for. It has been rebuilt.
+
+**What it has now**, each fixed by a test in `tests/lung-anatomy.test.js`:
+
+| | |
+| --- | --- |
+| Lobes | Five closed meshes whose union is the parenchyma — three right, two left, cut by an oblique fissure on both sides and a horizontal fissure on the right only |
+| Volumes | RUL 36% / RML 12% / RLL 52% of the right lung; 50/50 on the left. The fissure positions were **calibrated** to the shares volumetry reports and nothing else |
+| Partition | Every point in the lung falls in exactly one lobe — sampled, not asserted |
+| Segments | Eighteen, named in both languages: ten right, eight left (no left S7, apicoposterior fused, lingula in the left upper lobe). Each placed where its own name says it is, and the placement is what the test checks |
+| Airways | trachea → main → lobar → segmental, with the right main bronchus wider, shorter and steeper than the left |
+| Vessels | An artery with every bronchus — the bronchoarterial pair — and veins running **between** segments, which is the fact a segmentectomy plane is found by |
+| Hilum | RALS: the artery anterior to the bronchus on the right, superior on the left, with both veins below |
+
+**Method.** The lobes are carved rather than modelled: a lung built by warping
+a sphere is star-shaped about an interior point — measured, not assumed — so a
+lobe is the lung intersected with half-spaces, and that intersection can be
+built by asking each direction which comes first, the surface or the cut. The
+machinery is `src/scenes/shared/geometry/carve.js` and it is organ-agnostic;
+the liver and the kidney satisfy the same precondition.
+
+**Four defects were found by measuring, and each is in the playbook now** (§2.5):
+a plane normal carried into an anisotropic frame like a point, which made the
+five lobes sum to 214% of the lung; a hand-written lobe centre that sat outside
+its own lobe, which made the right middle lobe four times its size; a
+fixed-point iteration that converged only when the part's centre was near the
+organ's and silently did not otherwise; and a radial field sampled on a grid
+32× finer than the surface feeding it, which rounded the cardiac notch away.
+None of them was visible in the code and none would have failed a unit test
+that only asked whether the geometry was finite.
+
+**Still schematic.** The outer shape is unchanged and is still not from a scan.
+The fissures are flat where real ones are curved and frequently incomplete. The
+segment boundaries are a distance rule — the lung nearer this segmental bronchus
+than any other — which is a model of the *definition* of a segment rather than a
+tracing of a specimen. The lobar volume fractions are a target this repository
+hit, not a measurement it made.
 
 ### 5.3 Recorded, not changed
 

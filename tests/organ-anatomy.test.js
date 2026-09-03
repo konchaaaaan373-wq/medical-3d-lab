@@ -289,7 +289,10 @@ test('the spleen turns its hilum towards the midline, not towards the ribs', () 
 
 const LABELLED = [
   ['heart', () => buildHeart(), { heart: 'ventricles', aorta: 'aortic-arch' }],
-  ['lungs', () => buildLungs(), { rightLung: 'right-lung', leftLung: 'left-lung' }],
+  // The lungs' labels point at lobes now: a lung is five closed lobe meshes
+  // whose union is the parenchyma, so the nearest structure to a label on the
+  // right lung is whichever lobe it hangs off.
+  ['lungs', () => buildLungs(), { rightLung: 'right-upper', leftLung: 'left-upper' }],
   ['spleen', () => buildSpleen(), { spleen: 'spleen', hilum: 'spleen', pulp: 'spleen' }],
   ['liver', () => buildLiver(), { rightLobe: 'liver', leftLobe: 'liver', porta: 'liver' }],
   ['gallbladder', () => buildGallbladder(), { gallbladder: 'gallbladder' }],

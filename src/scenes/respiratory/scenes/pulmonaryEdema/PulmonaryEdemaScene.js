@@ -112,13 +112,17 @@ export class PulmonaryEdemaScene {
     // A child of the lung mesh rather than a sibling, so it inherits whatever
     // the lung does — playbook failure mode G, where an overlay that does not
     // follow its subject reads as cellophane wrapped round it.
+    // One per lobe, now that a lung is five closed lobes rather than one
+    // surface. Reading `.geometry` off what is now a Group gave `undefined`,
+    // and three.js answers that with an empty default geometry rather than an
+    // error — so the sheath went on being added, drew nothing, and no test
+    // noticed. Built from each lobe's own geometry it wraps what is there.
     this.sheaths = [];
-    for (const name of ['right-lung', 'left-lung']) {
-      const lung = this.lungs.object.getObjectByName(name);
+    for (const lobe of this.lungs.lobes) {
       const material = ghostMaterial({ color: PALETTE.interstitial, opacity: 0 });
-      const sheath = new THREE.Mesh(lung.geometry, material);
-      sheath.name = `${name}-interstitium`;
-      lung.add(sheath);
+      const sheath = new THREE.Mesh(lobe.geometry, material);
+      sheath.name = `${lobe.id}-interstitium`;
+      lobe.mesh.add(sheath);
       this.sheaths.push({ mesh: sheath, material });
     }
 

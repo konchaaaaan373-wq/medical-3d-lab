@@ -14,6 +14,36 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The lung, rebuilt as an organ
+
+- **The lung has lobes now.** It used to have grooves: shallow dents scratched
+  into one surface, so it looked lobed and had nothing in it that could be
+  hidden, coloured or measured. It is five closed meshes whose union is the
+  parenchyma — three on the right, two on the left, cut apart by an oblique
+  fissure on both sides and a horizontal fissure on the right only. Every point
+  in the lung falls in exactly one lobe, and that is sampled rather than
+  asserted.
+- **The lobes take the share of each lung that volumetry reports** — about
+  36 / 12 / 52 on the right and half and half on the left, with the middle lobe
+  the smallest of the five. The fissure positions were chosen to land those and
+  nothing else, which makes them a calibration rather than a measurement.
+- **Eighteen named bronchopulmonary segments**, ten on the right and eight on
+  the left, in both languages: no left S7 because the heart is there, an
+  apicoposterior segment where the left lung fuses two, and the lingula inside
+  the left upper lobe rather than as a lobe of its own. Each sits where its own
+  name says it does, and that is what the tests check.
+- **A bronchial tree and the vessels that run with it.** Trachea, main, lobar
+  and segmental bronchi, with the right main bronchus wider, shorter and steeper
+  than the left; an artery beside every bronchus; and veins running *between*
+  the segments rather than with them, which is the fact a surgeon finds a
+  segmentectomy plane by. At the hilum, RALS: the artery anterior to the
+  bronchus on the right and superior to it on the left.
+- **Still schematic in shape.** The outer silhouette is unchanged and is not
+  from a scan; real fissures are curved and frequently incomplete, and the
+  segment boundaries here are a distance rule — the lung nearer one segmental
+  bronchus than any other — which models the definition of a segment rather
+  than tracing a specimen.
+
 ### A new model — where the water goes
 
 - **Pulmonary oedema** (`#/pulmonary-edema`, `alpha`). One Starling equation
