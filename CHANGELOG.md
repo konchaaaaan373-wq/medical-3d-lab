@@ -14,6 +14,26 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Fixes
+
+- **A cancelled subscription now actually revokes access.** Two paths through
+  the Stripe webhook acknowledged a cancellation to Stripe — telling it never to
+  send the event again — and wrote nothing to the local row, which went on
+  saying `active`. A customer who cancelled kept paid access indefinitely, and
+  nothing anywhere recorded that it had happened. Revoking no longer requires
+  resolving who owns the subscription; granting still does.
+- **A password reset survives a page refresh.** The recovery dialog was reached
+  by two signals — the tokens in the URL hash, consumed and scrubbed once, and
+  the `?account=recovery` that is left afterwards — and the second was checked
+  for and then discarded. Anybody who reloaded mid-reset got the ordinary
+  sign-in dialog while holding a valid recovery session.
+- **Lesson progress is kept in browsers that refuse to store it.** Private and
+  embedded browsers let a page read storage and refuse to let it write; the
+  in-memory copy built for exactly that case was saved on every step and read
+  back on none, so a learner three steps in returned to step one.
+- **A failed telemetry send no longer eats what was recorded while it was
+  failing** — which is disproportionately the events about the failure.
+
 ### The liver, divided the way surgery divides it
 
 - **Eight Couinaud segments**, as nine closed meshes whose union is the

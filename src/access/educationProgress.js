@@ -1,5 +1,23 @@
 const STORAGE_KEY = 'medical3dlab.education-progress.v1';
-let volatileStore = {};
+
+/**
+ * What this page has saved, per storage, for when the storage will not keep it.
+ *
+ * Held against the storage object rather than in one module-level variable,
+ * because the storage is a parameter and a shared shadow is not a shadow of
+ * anything: with one variable, saving into one storage showed up in reads of
+ * another, which is how two of this file's own tests found it. `defaultStorage`
+ * returns the one `localStorage` every time, so the app still gets exactly one.
+ */
+const shadows = new WeakMap();
+/** For calls made with no storage at all. */
+let detachedShadow = {};
+
+const shadowOf = (storage) => (storage ? shadows.get(storage) ?? {} : detachedShadow);
+const rememberShadow = (storage, next) => {
+  if (storage) shadows.set(storage, next);
+  else detachedShadow = next;
+};
 
 const emptyProgress = () => ({ step: 0, completed: false });
 
@@ -55,20 +73,37 @@ function normaliseRecord(value, stepCount, revision = null) {
   };
 }
 
+/**
+ * What this page knows about progress: what is on disk, over what is only here.
+ *
+ * The in-memory copy is not a fallback for when reading fails — it is the whole
+ * record in a context that lets a page *read* storage and refuses to let it
+ * *write*, which is what a private or embedded browser does. There `getItem`
+ * returns null perfectly happily and `setItem` throws, so returning `{}` for an
+ * empty read threw away every step the learner had taken this session: the
+ * fallback `writeStore` keeps was written on every save and read back on none
+ * of them, and the promise in its comment — that progress "remains useful for
+ * this page lifetime" — was not true.
+ *
+ * Disk wins where the two disagree, because disk is the durable record.
+ */
 function readStore(storage) {
-  if (!storage?.getItem) return volatileStore;
+  const shadow = shadowOf(storage);
+  if (!storage?.getItem) return shadow;
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return {};
+    if (!raw) return { ...shadow };
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    const persisted =
+      parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    return { ...shadow, ...persisted };
   } catch {
-    return volatileStore;
+    return shadow;
   }
 }
 
 function writeStore(next, storage) {
-  volatileStore = next;
+  rememberShadow(storage, next);
   try {
     storage?.setItem?.(STORAGE_KEY, JSON.stringify(next));
   } catch {

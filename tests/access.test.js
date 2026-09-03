@@ -14,6 +14,7 @@ import {
   productBadgesForScene,
   SCENE_PRODUCT_FEATURES,
 } from '../src/access/features.js';
+import { isPasswordRecovery } from '../src/access/auth.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { educationGuideFor } from '../src/data/educationGuides.js';
 import { patientGuideFor } from '../src/data/patientGuides.js';
@@ -226,4 +227,32 @@ test('education mode: asthma guide teaches heterogeneity without a calibration-s
   const allCopy = guide.steps.map((step) => `${step.prompt} ${step.answer} ${step.promptJa} ${step.answerJa}`).join(' ');
   assert.match(allCopy, /clustered heterogeneity/i);
   assert.doesNotMatch(allCopy, /half the lung goes dark/i);
+});
+
+test('password recovery: a reload mid-recovery still gets the password dialog', () => {
+  // The hash carries the tokens and is consumed once — scrubbed from the
+  // address bar immediately so it cannot survive in a screenshot. After that
+  // `?account=recovery` is the only signal a reload has, and it was being
+  // tested for and then thrown away: `if (consumed || requested) mode =
+  // consumed` set the flag to false on exactly the path where the query
+  // parameter was the whole point. Somebody who refreshed the page holding a
+  // valid recovery session got the ordinary sign-in dialog.
+  assert.equal(isPasswordRecovery({ consumedRecoveryHash: true, search: '' }), true);
+  assert.equal(
+    isPasswordRecovery({ consumedRecoveryHash: false, search: '?account=recovery' }),
+    true,
+    'the reload path was ignored'
+  );
+  assert.equal(
+    isPasswordRecovery({ consumedRecoveryHash: true, search: '?account=recovery' }),
+    true
+  );
+
+  // And nothing else is recovery.
+  assert.equal(isPasswordRecovery({ consumedRecoveryHash: false, search: '' }), false);
+  assert.equal(isPasswordRecovery({ consumedRecoveryHash: false, search: '?account=billing' }), false);
+  assert.equal(
+    isPasswordRecovery({ consumedRecoveryHash: false, search: '?billing=success' }),
+    false
+  );
 });

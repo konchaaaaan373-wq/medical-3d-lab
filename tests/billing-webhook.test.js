@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import stripeWebhook from '../netlify/functions/stripe-webhook.js';
+import { ACCESS_SUBSCRIPTION_STATUSES } from '../src/access/policy.js';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -134,6 +135,117 @@ test('billing webhook: a completed duplicate performs no Stripe or entitlement w
   assert.deepEqual(await result.json(), { received: true, duplicate: true });
   assert.equal(calls.length, 2);
   assert.equal(calls.some((call) => call.target.includes('api.stripe.com')), false);
+});
+
+test('billing webhook: a cancellation revokes access even when no owner can be resolved', async () => {
+  // The failure this holds: a `customer.subscription.deleted` whose owner
+  // cannot be looked up returned 200 with `ignored: deleted_user`, so Stripe
+  // never retried, and nothing wrote the cancellation onto the local row. The
+  // row stayed `active`, and `active` is what grants access — so a customer who
+  // cancelled kept paid access indefinitely, silently, forever.
+  //
+  // Revoking never needs to know who owns a subscription. Only granting does.
+  configure();
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.includes('/rest/v1/billing_events?on_conflict=') && options.method === 'POST') {
+      return response([{ stripe_event_id: 'evt_cancel' }]);
+    }
+    if (target.includes('/rest/v1/billing_events?') && options.method === 'PATCH') {
+      return response([{ stripe_event_id: 'evt_cancel', attempt_count: 1 }]);
+    }
+    // Stripe no longer has the subscription: the signed event object is all
+    // there is.
+    if (target.endsWith('/v1/subscriptions/sub_gone')) return response({ error: {} }, 404);
+    // And nothing maps this customer to a user — a mapping row that was never
+    // written, or one lost to a restore. This is the case that used to be
+    // reported as "deleted_user" when no user had been deleted at all.
+    if (target.includes('/rest/v1/billing_customers?')) return response([]);
+    if (target.includes('/rest/v1/billing_subscriptions?') && options.method === 'PATCH') {
+      return response([]);
+    }
+    if (target.includes('/rest/v1/alerts') || target.includes('/functions/v1/')) return response({});
+    throw new Error(`Unexpected request: ${options.method ?? 'GET'} ${target}`);
+  };
+
+  const cancelled = {
+    ...subscription,
+    id: 'sub_gone',
+    status: 'canceled',
+    metadata: {},
+  };
+  const result = await stripeWebhook(
+    signedRequest({
+      id: 'evt_cancel',
+      type: 'customer.subscription.deleted',
+      livemode: false,
+      data: { object: cancelled },
+    })
+  );
+  assert.equal(result.status, 200);
+
+  const revocation = calls.find(
+    (call) =>
+      call.target.includes('/rest/v1/billing_subscriptions?stripe_subscription_id=eq.sub_gone') &&
+      call.options.method === 'PATCH'
+  );
+  assert.ok(revocation, 'the cancellation was never written to the local subscription row');
+  const written = JSON.parse(revocation.options.body);
+  assert.equal(written.status, 'canceled');
+  assert.ok(
+    !ACCESS_SUBSCRIPTION_STATUSES.has(written.status),
+    `wrote ${written.status}, which still grants access`
+  );
+
+  // And it must not invent an owner on the way: the row is addressed by
+  // subscription ID, and nothing is written to billing_customers.
+  assert.equal(
+    calls.some((call) => call.target.includes('/rest/v1/billing_customers?') && call.options.method === 'POST'),
+    false,
+    'an unresolvable event created a customer mapping'
+  );
+});
+
+test('billing webhook: an unresolvable owner on a live subscription still grants nothing', async () => {
+  // The other half of the same rule. Revoking without an owner is safe;
+  // granting without one is the thing the guard exists to prevent, and it has
+  // to keep preventing it.
+  configure();
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.includes('/rest/v1/billing_events?on_conflict=') && options.method === 'POST') {
+      return response([{ stripe_event_id: 'evt_orphan' }]);
+    }
+    if (target.includes('/rest/v1/billing_events?') && options.method === 'PATCH') {
+      return response([{ stripe_event_id: 'evt_orphan', attempt_count: 1 }]);
+    }
+    if (target.endsWith('/v1/subscriptions/sub_123')) return response({ ...subscription, metadata: {} });
+    if (target.includes('/rest/v1/billing_customers?')) return response([]);
+    if (target.includes('/rest/v1/alerts') || target.includes('/functions/v1/')) return response({});
+    throw new Error(`Unexpected request: ${options.method ?? 'GET'} ${target}`);
+  };
+
+  const result = await stripeWebhook(
+    signedRequest({
+      id: 'evt_orphan',
+      type: 'customer.subscription.updated',
+      livemode: false,
+      data: { object: { ...subscription, metadata: {} } },
+    })
+  );
+  assert.equal(result.status, 200);
+  assert.deepEqual(await result.json(), { received: true, ignored: 'unknown_owner' });
+  assert.equal(
+    calls.some(
+      (call) => call.target.includes('/rest/v1/billing_subscriptions?') && call.options.method === 'POST'
+    ),
+    false,
+    'an active subscription with no resolvable owner was written to the entitlement table'
+  );
 });
 
 function response(body, status = 200) {

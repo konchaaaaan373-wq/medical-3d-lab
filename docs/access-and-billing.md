@@ -187,6 +187,36 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation; returning from Portal reconciles the new state immediately.
 12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
 
+### Granting needs an owner; revoking does not
+
+Every write that grants access resolves the Supabase user first, and refuses if
+it cannot: writing `active` for a subscription whose owner cannot be established
+is how one customer's payment becomes another's access.
+
+**Revocation is the opposite, and must not inherit that rule.** A subscription
+that has stopped entitling has to stop entitling whether or not the local
+mapping can say whose it was — the row is addressed by
+`stripe_subscription_id`, and refusing to touch it does not fail safe, it leaves
+whatever the row already said, which was `active`.
+
+Two failures made that concrete, and both returned **200** to Stripe, which is
+an instruction never to send the event again:
+
+- `subscriptionById` returns `null` on a 404 and throws on everything else, so
+  the `try/catch` written to fall back to the signed event object caught every
+  case except the ordinary one — Stripe no longer serving a deleted
+  subscription. That left a null subscription, which resolved no owner, synced
+  nothing and revoked nothing.
+- With no `billing_customers` row and no `metadata.supabase_user_id`, the
+  handler returned `ignored: deleted_user` — when no user had been deleted —
+  and wrote nothing.
+
+Either way a customer who cancelled kept paid access indefinitely, and nothing
+recorded that it had happened. `revokeSubscriptionLocally` now writes the
+non-entitling status by subscription ID alone, and refuses any status that
+grants access so it cannot be reused as a general writer.
+`tests/billing-webhook.test.js` holds both directions.
+
 ## Content policy
 
 ### Free

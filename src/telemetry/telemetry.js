@@ -150,8 +150,16 @@ export function createTelemetry({
     } catch {
       // One retry's worth of memory, no more: a telemetry backlog must never
       // grow into a reason the product itself misbehaves.
-      queue = payload.events.slice(-maxQueue);
-      errors = payload.errors.slice(-maxErrors);
+      //
+      // Put back **in front of** whatever arrived while the send was in flight,
+      // rather than over it. `queue` is emptied before the await, so anything
+      // recorded during the request lands in a fresh array; assigning the
+      // failed batch to `queue` discarded those events silently, and the events
+      // most likely to be recorded during a failing send are the ones about the
+      // failure. Oldest first, so the cap drops the oldest, which is the policy
+      // everywhere else here.
+      queue = [...payload.events, ...queue].slice(-maxQueue);
+      errors = [...payload.errors, ...errors].slice(-maxErrors);
       return false;
     }
   }

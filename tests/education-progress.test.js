@@ -151,3 +151,63 @@ test('education progress: malformed persistent storage fails back to a safe defa
     completed: false,
   });
 });
+
+test('education progress: a browser that reads but refuses to write still remembers this session', () => {
+  // Private and embedded browsers let a page read storage and refuse to let it
+  // write: `getItem` returns null quite happily, and `setItem` throws. The
+  // in-memory copy exists exactly for that case — and was written on every save
+  // and read back on none of them, because an empty read returned `{}` and
+  // threw it away. A learner three steps into a guide went back to step one on
+  // the next read, in the one context the fallback was built for.
+  const readOnly = {
+    getItem: () => null,
+    setItem: () => {
+      throw new Error('storage denied');
+    },
+  };
+
+  assert.deepEqual(readEducationProgress('write-denied', 4, readOnly), { step: 0, completed: false });
+  saveEducationStep('write-denied', 2, 4, readOnly);
+  assert.deepEqual(
+    readEducationProgress('write-denied', 4, readOnly),
+    { step: 2, completed: false },
+    'the step taken this session was forgotten immediately'
+  );
+
+  markEducationComplete('write-denied', 4, readOnly);
+  assert.equal(readEducationProgress('write-denied', 4, readOnly).completed, true);
+});
+
+test('education progress: what is on disk wins over what is only in memory', () => {
+  // The merge has a direction. Persisted state is the durable record, so a page
+  // that has an in-memory copy of a scene must not shadow a newer one read back
+  // from storage — otherwise the fallback would quietly outrank the thing it is
+  // standing in for.
+  const storage = memoryStorage();
+  saveEducationStep('disk-wins', 1, 4, storage);
+  assert.deepEqual(readEducationProgress('disk-wins', 4, storage), { step: 1, completed: false });
+
+  // Another tab moved on, and this page's in-memory copy still says step 1.
+  storage.setItem(EDUCATION_PROGRESS_STORAGE_KEY, JSON.stringify({
+    'disk-wins': { step: 3, stepCount: 4, completed: false },
+  }));
+  assert.deepEqual(
+    readEducationProgress('disk-wins', 4, storage),
+    { step: 3, completed: false },
+    'the stale in-memory copy shadowed the durable record'
+  );
+});
+
+test('education progress: one storage does not see what was saved into another', () => {
+  // The in-memory copy is a shadow of a particular storage. Held as one
+  // module-level variable it was a shadow of nothing: a save into one storage
+  // appeared in reads of every other, and in what the next save wrote to disk.
+  const first = memoryStorage();
+  const second = memoryStorage();
+  saveEducationStep('only-in-first', 2, 4, first);
+
+  assert.deepEqual(readEducationProgress('only-in-first', 4, second), { step: 0, completed: false });
+  saveEducationStep('only-in-second', 1, 4, second);
+  assert.deepEqual(Object.keys(second.value()), ['only-in-second']);
+  assert.deepEqual(Object.keys(first.value()), ['only-in-first']);
+});
