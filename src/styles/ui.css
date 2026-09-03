@@ -86,6 +86,243 @@
   border-left: 3px solid var(--accent);
 }
 
+/* ---------- spatial inspection ---------- */
+.inspection-panel {
+  width: min(326px, 43vw);
+  padding: 12px 13px 13px;
+  border-top: 3px solid var(--accent);
+}
+
+.inspection-panel[hidden] {
+  display: none;
+}
+
+.inspection-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inspection-title {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.inspection-title .lang-ja {
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.inspection-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  place-items: center;
+  margin: -7px -7px -3px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-faint);
+  font: 400 20px/1 var(--font);
+  cursor: pointer;
+}
+
+.inspection-close:hover {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.inspection-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 5px 0 10px;
+  color: var(--ink-faint);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+.inspection-section + .inspection-section {
+  margin-top: 10px;
+}
+
+.inspection-section-label {
+  display: flex;
+  gap: 5px;
+  margin: 0 1px 5px;
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.inspection-section-label .lang-ja {
+  letter-spacing: .03em;
+}
+
+.inspection-grid {
+  display: grid;
+  gap: 4px;
+}
+
+.inspection-views,
+.inspection-backgrounds {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.inspection-modes {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inspection-annotations {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.inspection-choice {
+  appearance: none;
+  display: flex;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 6px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--control-bg);
+  color: var(--ink-faint);
+  font: 600 9.5px/1.15 var(--font);
+  text-align: left;
+  cursor: pointer;
+}
+
+.inspection-choice:hover {
+  border-color: var(--accent-border);
+  background: var(--control-hover);
+  color: var(--ink);
+}
+
+.inspection-choice.is-active {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.inspection-choice-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.inspection-choice-copy > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspection-choice-copy .lang-ja {
+  color: var(--ink-dim);
+  font-size: 9px;
+}
+
+.inspection-background-swatch,
+.inspection-mode-preview {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--inspection-swatch, var(--inspection-preview));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+.inspection-mode-preview {
+  width: 23px;
+  height: 23px;
+  flex-basis: 23px;
+  background: var(--inspection-preview);
+}
+
+.inspection-eye {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.inspection-eye svg {
+  width: 16px;
+  height: 16px;
+}
+
+.inspection-footer {
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--border);
+}
+
+.inspection-reset {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: 650 10.5px/1.2 var(--font);
+  cursor: pointer;
+}
+
+.inspection-reset:hover {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.inspection-choice:focus-visible,
+.inspection-close:focus-visible,
+.inspection-reset:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .inspection-panel {
+    width: min(74vw, 292px);
+    padding: 10px 11px 11px;
+  }
+
+  .inspection-intro {
+    display: none;
+  }
+
+  .inspection-choice,
+  .inspection-reset,
+  .inspection-close {
+    min-height: 44px;
+  }
+
+  .inspection-close {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+    margin: -8px -7px -4px 0;
+  }
+
+  .inspection-views {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .anatomy-heading-row { display: flex; align-items: flex-start; gap: 9px; }
 .anatomy-heading { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .anatomy-selection-swatch {
@@ -369,11 +606,11 @@
 }
 
 #ui[data-scene='brain-anatomy'] .slider::-webkit-slider-runnable-track {
-  background: linear-gradient(90deg, #d9826b, #9b78c8 42%, #54b6a4 68%, #4ab8d2);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
 }
 
 #ui[data-scene='brain-anatomy'] .slider::-moz-range-track {
-  background: linear-gradient(90deg, #d9826b, #9b78c8 42%, #54b6a4 68%, #4ab8d2);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
 }
 
 @media (max-width: 720px) {
@@ -529,13 +766,13 @@
    flat list of equals. */
 .scene-pill.scene-topic.is-current {
   color: var(--accent);
-  background: rgba(56, 225, 239, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(56, 225, 239, 0.4);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
 }
 
 .scene-pill {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: 5px;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--ink-faint);
@@ -549,7 +786,7 @@
 }
 
 .scene-pill.is-current {
-  color: #04121a;
+  color: var(--accent-ink);
   background: var(--accent);
 }
 
@@ -624,7 +861,7 @@
 }
 
 .metric[data-change='up'] .metric-change {
-  color: #07151b;
+  color: var(--accent-ink);
   background: var(--accent);
 }
 
@@ -1224,11 +1461,11 @@
 .story-cta-primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #04121a;
+  color: var(--accent-ink);
 }
 
 .story-cta-primary:hover {
-  color: #04121a;
+  color: var(--accent-ink);
   filter: brightness(1.08);
 }
 
@@ -1430,7 +1667,7 @@
 
 .learn-choice:hover {
   border-color: var(--accent);
-  background: rgba(56, 225, 239, 0.09);
+  background: var(--accent-soft);
 }
 
 .learn-actions {
@@ -1441,10 +1678,10 @@
 
 .learn-action {
   padding: 10px 18px;
-  border-radius: 999px;
+  border-radius: 6px;
   border: 0;
   background: var(--accent);
-  color: #04121a;
+  color: var(--accent-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -1556,7 +1793,7 @@
 
 .learn-nav-btn {
   padding: 8px 16px;
-  border-radius: 999px;
+  border-radius: 6px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.03);
   color: var(--ink-dim);
@@ -1578,7 +1815,7 @@
   margin-left: auto;
   border-color: transparent;
   background: var(--accent);
-  color: #04121a;
+  color: var(--accent-ink);
 }
 
 /* ---------- loading-condition sliders ---------- */
@@ -1600,6 +1837,16 @@
    beside the case summary, and visibly discrete rather than a disguised dose
    calculator. */
 .model-controls.is-tactile {
+  /* This deliberately dark tactile instrument sits inside either renderer
+     theme. Own its text tokens so a pale canvas theme cannot turn its labels
+     dark-on-dark. */
+  --ink: #eaf2ff;
+  --ink-dim: #a7b6ce;
+  --ink-faint: #7f90aa;
+  --border: rgba(140, 175, 225, 0.2);
+  --accent: #38e1ef;
+  --accent-soft: rgba(56, 225, 239, 0.12);
+  --accent-ink: #04121a;
   width: 100%;
   padding: 10px 12px 11px;
   gap: 5px;
@@ -1678,7 +1925,7 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  color: #04121a;
+  color: var(--accent-ink);
   background: var(--accent);
   font-size: 20px;
   font-weight: 500;
@@ -1889,7 +2136,7 @@
   color: var(--ink-dim);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   backdrop-filter: blur(10px);
   transition: color 160ms ease, border-color 160ms ease;
@@ -2162,14 +2409,14 @@
 .slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #38e1ef, #ffd166 45%, #ff8a3d 72%, #ff4d6d);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
   opacity: 0.9;
 }
 
 .slider::-moz-range-track {
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #38e1ef, #ffd166 45%, #ff8a3d 72%, #ff4d6d);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
   opacity: 0.9;
 }
 
@@ -2181,7 +2428,7 @@
   border-radius: 50%;
   background: #f4f9ff;
   border: 2px solid rgba(6, 11, 20, 0.8);
-  box-shadow: 0 0 12px rgba(56, 225, 239, 0.6);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .slider::-moz-range-thumb {
@@ -2190,7 +2437,7 @@
   border-radius: 50%;
   background: #f4f9ff;
   border: 2px solid rgba(6, 11, 20, 0.8);
-  box-shadow: 0 0 12px rgba(56, 225, 239, 0.6);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .slider:focus-visible {
@@ -2214,20 +2461,20 @@
   font-size: 12px;
   font-weight: 600;
   color: var(--ink-dim);
-  background: rgba(30, 44, 70, 0.5);
+  background: var(--control-bg);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 6px;
   cursor: pointer;
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
 .btn:hover {
   color: var(--ink);
-  background: rgba(46, 66, 100, 0.6);
+  background: var(--control-hover);
 }
 
 .btn.primary {
-  color: #04121a;
+  color: var(--accent-ink);
   background: var(--accent);
   border-color: transparent;
   min-width: 96px;
@@ -2235,7 +2482,7 @@
 }
 
 .btn.primary:hover {
-  background: #6bf0fa;
+  background: var(--accent-hover);
 }
 
 /* Weight tiers. Story is the way in; Compare and Data are the two ways of
@@ -2306,13 +2553,13 @@
 
 .btn.is-limit:hover {
   color: var(--ink-dim);
-  background: rgba(30, 44, 70, 0.5);
+  background: var(--control-bg);
 }
 
 .btn.is-on {
   color: var(--accent);
-  border-color: rgba(56, 225, 239, 0.55);
-  background: rgba(56, 225, 239, 0.12);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 
 /* ---------- capture menu ---------- */
@@ -2359,7 +2606,7 @@
 }
 
 .capture-option:hover {
-  background: rgba(56, 225, 239, 0.12);
+  background: var(--accent-soft);
   color: var(--ink);
 }
 
@@ -2412,6 +2659,9 @@
 #ui[data-lang='both'] .model-controls-title .lang-ja,
 #ui[data-lang='both'] .capture-option .lang-en,
 #ui[data-lang='both'] .slider-cap .lang-ja,
+#ui[data-lang='both'] .inspection-choice .lang-ja,
+#ui[data-lang='both'] .inspection-reset .lang-ja,
+#ui[data-lang='both'] .inspection-section-label .lang-ja,
 #ui[data-lang='both'] .subtitle .lang-en {
   display: none;
 }

@@ -8,7 +8,13 @@
   --panel-strong: rgba(8, 13, 24, 0.86);
   --border: rgba(140, 175, 225, 0.16);
   --accent: #38e1ef;
-  --radius: 14px;
+  --accent-hover: #6bf0fa;
+  --accent-soft: rgba(56, 225, 239, 0.12);
+  --accent-border: rgba(56, 225, 239, 0.55);
+  --accent-ink: #04121a;
+  --control-bg: rgba(30, 44, 70, 0.5);
+  --control-hover: rgba(46, 66, 100, 0.6);
+  --radius: 10px;
   --shadow: 0 18px 46px rgba(0, 0, 0, 0.5);
   --font: 'Inter', system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
 }
@@ -57,6 +63,26 @@ body {
   padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
     max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   transition: opacity 260ms ease;
+}
+
+/* Pale renderer presets need matching chrome. The variables live on the UI,
+   not :root, because the landing and reading surfaces keep their own themes. */
+#ui[data-background='studio'],
+#ui[data-background='paper'] {
+  --ink: #12191e;
+  --ink-dim: #34434c;
+  --ink-faint: #586770;
+  --panel: rgba(250, 251, 249, 0.78);
+  --panel-strong: rgba(252, 252, 250, 0.94);
+  --border: rgba(28, 48, 58, 0.2);
+  --accent: #006b74;
+  --accent-hover: #005861;
+  --accent-soft: rgba(0, 107, 116, 0.1);
+  --accent-border: rgba(0, 107, 116, 0.48);
+  --accent-ink: #f7ffff;
+  --control-bg: rgba(255, 255, 253, 0.72);
+  --control-hover: rgba(238, 243, 241, 0.94);
+  --shadow: 0 15px 36px rgba(31, 43, 49, 0.18);
 }
 
 /* "Hide UI" for clean screen captures. */

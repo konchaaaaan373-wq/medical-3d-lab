@@ -6,6 +6,12 @@ import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
 import { framePose, distanceScaleForAspect } from './framing.js';
+import {
+  BACKGROUND_PRESETS,
+  DEFAULT_BACKGROUND_ID,
+  backgroundPresetById,
+  standardInspectionViews,
+} from './inspection.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
 import { prefersReducedMotion } from '../utils/motion.js';
@@ -27,6 +33,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { createInspectionPanel } from '../components/InspectionPanel.js';
 import { emitAppEvent } from './appEvents.js';
 
 /**
@@ -65,6 +72,9 @@ export async function createApp({ stage, ui }) {
   const meta = { ...SceneClass.meta, status: entry?.status ?? SceneClass.meta.status ?? 'production' };
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
+  const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
+  const initialBackground = viewer.setBackgroundPreset(defaultBackground.id);
+  ui.dataset.background = initialBackground.id;
 
   /**
    * Learning view is the default: the 3D subject, the stage it is in, and the
@@ -198,7 +208,9 @@ export async function createApp({ stage, ui }) {
   });
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
-  const view = { active: false };
+  const view = { active: false, resumeAutoRotate: true };
+  let inspectionPanel = null;
+  let inspectionOpen = false;
 
   /**
    * The viewer's own vantage during the guided sequence.
@@ -218,6 +230,9 @@ export async function createApp({ stage, ui }) {
   viewer.controls.addEventListener('start', () => {
     view.active = false;
     storyView.dragging = true;
+    // A named viewpoint describes an exact reproducible pose. Once the learner
+    // takes the camera, the UI must stop claiming that exact view is active.
+    inspectionPanel?.clearView();
   });
 
   // A wheel or a pinch is the same intent as the buttons, so it is read back
@@ -255,14 +270,92 @@ export async function createApp({ stage, ui }) {
   const legend = createLegend(meta);
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
   const labels = createLabelLayer({ viewer, annotations: scene.getAnnotations() });
+  const sceneInspectionViews = scene.getInspectionViews?.() ?? scene.getAnatomyViews?.();
+  const hasAuthoredInspectionViews = Boolean(sceneInspectionViews?.length);
+  const generatedInspectionViews = standardInspectionViews(SceneClass.cameraPose);
+  const inspectionViews = hasAuthoredInspectionViews ? sceneInspectionViews : generatedInspectionViews;
+  const initialInspectionView = inspectionViews[0]?.id;
+  const inspectionModes = scene.getInspectionModes?.() ?? [];
+  const initialInspectionMode = scene.getInspectionMode?.() ?? inspectionModes[0]?.id;
+  let inspectionLabelsVisible = true;
+
+  function setInspectionOpen(enabled) {
+    inspectionOpen = Boolean(enabled);
+    inspectionPanel?.setOpen(inspectionOpen);
+    controlPanel?.setInspection(inspectionOpen);
+  }
+
+  function inspectionPoseFor(id) {
+    if (hasAuthoredInspectionViews) {
+      return scene.getInspectionView?.(id) ?? scene.getAnatomyView?.(id) ?? null;
+    }
+    // A comparison can widen the target after this list was first built. Build
+    // its generated poses from the live establishing shot so every angle keeps
+    // both subjects in frame.
+    return standardInspectionViews(comparisonOrStageShot()).find((candidate) => candidate.id === id) ?? null;
+  }
+
+  function applyInspectionView(id) {
+    if (!inspectionViews.some((candidate) => candidate.id === id)) return false;
+    const accepted = scene.setInspectionView?.(id) ?? scene.setAnatomyView?.(id);
+    if (accepted === false) return false;
+    const pose = inspectionPoseFor(id);
+    if (!pose) return false;
+    userZoom = 1;
+    storyView.orbit.identity();
+    setShot(pose);
+    view.active = true;
+    view.resumeAutoRotate = false;
+    viewer.controls.autoRotate = false;
+    syncZoomLimits();
+    inspectionPanel?.setView(id);
+    return true;
+  }
+
+  function applyInspectionMode(id) {
+    if (!inspectionModes.some((candidate) => candidate.id === id)) return false;
+    scene.setInspectionMode?.(id);
+    const active = scene.getInspectionMode?.() ?? id;
+    if (active !== id) return false;
+    ui.dataset.inspectionMode = active;
+    legend.setPalette(scene.getInspectionLegendPalette?.(active));
+    inspectionPanel?.setMode(active);
+    return true;
+  }
+
+  function applyInspectionBackground(id) {
+    const accepted = viewer.setBackgroundPreset(id);
+    ui.dataset.background = accepted.id;
+    inspectionPanel?.setBackground(accepted.id);
+    return accepted.id === id;
+  }
+
+  function setInspectionLabels(enabled) {
+    inspectionLabelsVisible = Boolean(enabled);
+    labels.element.hidden = !inspectionLabelsVisible;
+    inspectionPanel?.setLabels(inspectionLabelsVisible);
+  }
+
+  function resetInspectionDisplay() {
+    applyInspectionBackground(defaultBackground.id);
+    setInspectionLabels(true);
+    if (initialInspectionMode) applyInspectionMode(initialInspectionMode);
+    resetView();
+  }
+
+  function resetMedicalState() {
+    playback.reset();
+    if (!scene.resetModelControls) return;
+    scene.resetModelControls();
+    modelControls?.sync(scene.getModelControls?.() ?? []);
+    refreshModelReadouts();
+  }
+
   const controlPanel = createControlPanel({
     meta,
     onSeek: (value) => seek(value),
     onToggle: () => playback.toggle(),
-    onReset: () => {
-      playback.reset();
-      resetView();
-    },
+    onReset: resetMedicalState,
     onResetView: resetView,
     onCapture: (preset) => {
       capture(viewer, meta, stageReadout.stage, playback.value, preset);
@@ -278,6 +371,7 @@ export async function createApp({ stage, ui }) {
     onDataToggle:
       scene.getMetrics && !meta.modelControls?.primary ? (enabled) => setDataView(enabled) : undefined,
     onZoom: (direction) => zoomBy(direction),
+    onInspectionToggle: (enabled) => setInspectionOpen(enabled),
     // Only scenes that ship a guided sequence get the button; without this it
     // latched on and did nothing on a scene with no storyboard.
     //
@@ -338,24 +432,32 @@ export async function createApp({ stage, ui }) {
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
-  const syncAnatomyColorMode = (id) => {
-    if (!id) return;
-    ui.dataset.anatomyColorMode = id;
-    legend.setPalette(scene.getAnatomyLegendPalette?.(id));
-  };
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
+
+  inspectionPanel = createInspectionPanel({
+    views: inspectionViews,
+    activeView: initialInspectionView,
+    authoredViews: hasAuthoredInspectionViews,
+    backgrounds: BACKGROUND_PRESETS,
+    activeBackground: initialBackground.id,
+    modes: inspectionModes,
+    activeMode: initialInspectionMode,
+    labelsVisible: inspectionLabelsVisible,
+    onView: applyInspectionView,
+    onBackground: applyInspectionBackground,
+    onMode: applyInspectionMode,
+    onLabels: setInspectionLabels,
+    onReset: resetInspectionDisplay,
+    onClose: () => {
+      setInspectionOpen(false);
+      controlPanel.focusInspection();
+    },
+  });
+  if (initialInspectionMode) applyInspectionMode(initialInspectionMode);
+
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
-        onColorMode: syncAnatomyColorMode,
-        onView: (id) => {
-          const pose = scene.getAnatomyView?.(id);
-          if (!pose) return;
-          userZoom = 1;
-          setShot(pose);
-          view.active = true;
-          viewer.controls.autoRotate = false;
-          syncZoomLimits();
-        },
+        onPreferredView: applyInspectionView,
       })
     : null;
 
@@ -469,6 +571,7 @@ export async function createApp({ stage, ui }) {
         scopePanel?.element,
       ]),
       el('div', { class: 'rail' }, [
+        inspectionPanel.element,
         anatomyInfo?.element,
         legend.element,
         metricsPanel?.element,
@@ -521,6 +624,7 @@ export async function createApp({ stage, ui }) {
     refreshModelReadouts();
     setShot(comparisonOrStageShot());
     view.active = true;
+    view.resumeAutoRotate = true;
     viewer.controls.autoRotate = false;
   }
 
@@ -548,9 +652,13 @@ export async function createApp({ stage, ui }) {
     userZoom = 1;
     storyView.orbit.identity();
     syncZoomLimits();
+    if (hasAuthoredInspectionViews && initialInspectionView) {
+      scene.setInspectionView?.(initialInspectionView) ?? scene.setAnatomyView?.(initialInspectionView);
+    }
     setShot(comparisonOrStageShot());
     view.active = true;
-    anatomyInfo?.setView(scene.getAnatomyViews?.()[0]?.id);
+    view.resumeAutoRotate = true;
+    if (initialInspectionView) inspectionPanel?.setView(initialInspectionView);
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
     viewer.controls.autoRotate = false;
@@ -615,7 +723,9 @@ export async function createApp({ stage, ui }) {
     }
     if (view.active) {
       view.active = tweenPose(viewer, shot, dt);
-      if (!view.active) viewer.controls.autoRotate = allowAutoRotate && !prefersReducedMotion();
+      if (!view.active) {
+        viewer.controls.autoRotate = view.resumeAutoRotate && allowAutoRotate && !prefersReducedMotion();
+      }
     }
     labels.render();
   });
@@ -654,6 +764,7 @@ export async function createApp({ stage, ui }) {
     // The camera can sit closer when the panels are not crowding the frame.
     setShot(comparisonOrStageShot());
     view.active = true;
+    view.resumeAutoRotate = true;
     viewer.controls.autoRotate = false;
     // The canvases are laid out only when they become visible.
     requestAnimationFrame(() => {
@@ -782,6 +893,7 @@ export async function createApp({ stage, ui }) {
           controlPanel.setStory(false);
           setShot(comparisonOrStageShot());
           view.active = true;
+          view.resumeAutoRotate = true;
         },
       })
     : null;
@@ -800,7 +912,7 @@ export async function createApp({ stage, ui }) {
   bindKeyboard({
     playback,
     seek,
-    resetView,
+    resetModel: resetMedicalState,
     ui,
     uiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
@@ -860,6 +972,13 @@ export async function createApp({ stage, ui }) {
     causalStory: causalStory
       ? { panel: causalStory, set: setCausalStory, isActive: () => storyStepping }
       : null,
+    inspection: {
+      panel: inspectionPanel,
+      setOpen: setInspectionOpen,
+      applyView: applyInspectionView,
+      applyBackground: applyInspectionBackground,
+      reset: resetInspectionDisplay,
+    },
     charts: chartById,
   };
   return window.__app;
@@ -896,10 +1015,10 @@ function tweenPose(viewer, pose, dt) {
 }
 
 /**
- * Keyboard shortcuts: space = play/pause, R = reset, H = hide UI, C = compare,
+ * Keyboard shortcuts: space = play/pause, R = reset model, H = hide UI, C = compare,
  * arrows = step, +/- = zoom, Escape = leave the social sequence.
  */
-function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleComparison, exitReel, zoomBy }) {
+function bindKeyboard({ playback, seek, resetModel, ui, uiToggle, toggleComparison, exitReel, zoomBy }) {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       exitReel?.();
@@ -923,8 +1042,7 @@ function bindKeyboard({ playback, seek, resetView, ui, uiToggle, toggleCompariso
         break;
       case 'r':
       case 'R':
-        playback.reset();
-        resetView();
+        resetModel();
         break;
       case 'h':
       case 'H': {

@@ -21,6 +21,7 @@ export const CAPTURE_PRESETS = [
  *   onCapture: (preset: typeof CAPTURE_PRESETS[number]) => void,
  *   onStoryToggle: (enabled: boolean) => void,
  *   onLearn?: () => void,
+ *   onInspectionToggle?: (enabled: boolean) => void,
  * }} options
  */
 export function createControlPanel({
@@ -36,6 +37,7 @@ export function createControlPanel({
   onLearn,
   onDataToggle,
   onZoom,
+  onInspectionToggle,
 }) {
   const progressionEnabled = meta.progression?.enabled !== false;
   const slider = el('input', {
@@ -141,6 +143,23 @@ export function createControlPanel({
     zoomInButton.element.title = 'Zoom in — fill the frame with the chamber (+)';
   }
 
+  // One quiet entry to the advanced display surface. Keeping the panel closed
+  // preserves the 3D-first default while making repeatable views discoverable.
+  const inspectionButton = onInspectionToggle
+    ? button('eye', ['Inspect', '観察'], () => {
+        const enabled = inspectionButton.element.classList.toggle('is-on');
+        inspectionButton.element.setAttribute('aria-pressed', String(enabled));
+        inspectionButton.element.setAttribute('aria-expanded', String(enabled));
+        onInspectionToggle(enabled);
+      }, 'utility')
+    : null;
+  if (inspectionButton) {
+    inspectionButton.element.setAttribute('aria-pressed', 'false');
+    inspectionButton.element.setAttribute('aria-expanded', 'false');
+    inspectionButton.element.setAttribute('aria-controls', 'spatial-inspection-panel');
+    inspectionButton.element.title = 'Repeatable views, background and labels';
+  }
+
   const capture = createCaptureButton(onCapture);
 
   const element = el('div', { class: 'controls' }, [
@@ -168,8 +187,9 @@ export function createControlPanel({
       dataButton?.element,
       el('span', { class: 'button-gap' }),
       playButton?.element,
-      progressionEnabled ? button('reset', ['Reset', 'リセット'], onReset, 'utility').element : null,
+      progressionEnabled ? button('reset', ['Reset model', 'モデル初期化'], onReset, 'utility').element : null,
       cameraGroup,
+      inspectionButton?.element,
       learnButton?.element,
       reelButton?.element,
       capture.element,
@@ -195,6 +215,15 @@ export function createControlPanel({
       if (!dataButton) return;
       dataButton.element.classList.toggle('is-on', enabled);
       dataButton.element.setAttribute('aria-pressed', String(enabled));
+    },
+    setInspection(enabled) {
+      if (!inspectionButton) return;
+      inspectionButton.element.classList.toggle('is-on', enabled);
+      inspectionButton.element.setAttribute('aria-pressed', String(enabled));
+      inspectionButton.element.setAttribute('aria-expanded', String(enabled));
+    },
+    focusInspection() {
+      inspectionButton?.element.focus();
     },
     /**
      * Grey out whichever end of the zoom range has been reached, so pressing a

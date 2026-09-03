@@ -11,6 +11,7 @@ import {
   pixelRatioFor,
   qualityTier,
 } from './performanceBudget.js';
+import { backgroundPresetById, DEFAULT_BACKGROUND_ID } from './inspection.js';
 
 /**
  * Owns everything that is *not* specific to a disease theme:
@@ -61,7 +62,8 @@ export class Viewer {
 
       this.scene = new THREE.Scene();
       this.scene.fog = new THREE.FogExp2(0x05070d, 0.017);
-      this.scene.add(createBackdrop());
+      this.backdrop = createBackdrop();
+      this.scene.add(this.backdrop);
 
       // Image-based ambient: a neutral studio environment at low intensity.
       // This is what gives tissue and vessel surfaces their soft, believable
@@ -99,6 +101,7 @@ export class Viewer {
         this.composer.addPass(this.bloomPass);
       }
       this.composer.addPass(new OutputPass());
+      this.setBackgroundPreset(DEFAULT_BACKGROUND_ID);
 
       this._onResize = () => this.resize();
       window.addEventListener('resize', this._onResize);
@@ -246,6 +249,31 @@ export class Viewer {
   }
 
   /**
+   * Applies one calibrated inspection background.
+   *
+   * The backdrop, fog, ambient reflection, exposure and bloom move together;
+   * changing only the clear colour makes pale modes wash tissue out and leaves
+   * dark-mode fog hanging over a white field. This is display state only.
+   *
+   * @returns {ReturnType<backgroundPresetById>} the accepted preset
+   */
+  setBackgroundPreset(id) {
+    const preset = backgroundPresetById(id);
+    this.backgroundPreset = preset.id;
+    const uniforms = this.backdrop?.material?.uniforms;
+    uniforms?.uTop?.value.set(preset.backdrop.top);
+    uniforms?.uBottom?.value.set(preset.backdrop.bottom);
+    uniforms?.uAccent?.value.set(preset.backdrop.accent);
+    if (uniforms?.uHalo) uniforms.uHalo.value = preset.backdrop.halo;
+    this.scene?.fog?.color.set(preset.fog);
+    if (this.scene?.fog) this.scene.fog.density = preset.fogDensity;
+    if (this.scene) this.scene.environmentIntensity = preset.environmentIntensity;
+    if (this.renderer) this.renderer.toneMappingExposure = preset.exposure;
+    if (this.bloomPass) this.bloomPass.strength = preset.bloomStrength;
+    return preset;
+  }
+
+  /**
    * PNG data URL of the current frame.
    *
    * WebGL does not preserve completed frames globally. Every capture therefore
@@ -328,6 +356,7 @@ function createBackdrop() {
       uTop: { value: new THREE.Color('#0b1020') },
       uBottom: { value: new THREE.Color('#04060c') },
       uAccent: { value: new THREE.Color('#12324a') },
+      uHalo: { value: 0.35 },
     },
     vertexShader: /* glsl */ `
       varying vec3 vWorld;
@@ -340,6 +369,7 @@ function createBackdrop() {
       uniform vec3 uTop;
       uniform vec3 uBottom;
       uniform vec3 uAccent;
+      uniform float uHalo;
       varying vec3 vWorld;
       void main() {
         vec3 dir = normalize(vWorld);
@@ -347,7 +377,7 @@ function createBackdrop() {
         vec3 color = mix(uBottom, uTop, smoothstep(0.15, 0.95, h));
         // Soft cool glow behind the subject, so the silhouette separates from the void.
         float halo = pow(max(0.0, 1.0 - length(dir.xy - vec2(-0.15, 0.05))), 3.0);
-        color += uAccent * halo * 0.35;
+        color += uAccent * halo * uHalo;
         gl_FragColor = vec4(color, 1.0);
       }
     `,

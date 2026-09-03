@@ -24,6 +24,7 @@ Last updated: 2026-09-03（現在地の数値は §3 参照）
 | なぜ作るか・何を作らないか・3 層モデル | [`product-principles.md`](product-principles.md) |
 | 層の依存規則（model → state → 表現、一方向） | [`architecture/product-architecture.md`](architecture/product-architecture.md) |
 | 3D-first view と data の配置の決定 | [`architecture/learning-first-view.md`](architecture/learning-first-view.md) |
+| 全モデル共通の表示・定型視点・背景・リセット境界 | [`architecture/spatial-inspection.md`](architecture/spatial-inspection.md) |
 | シーンの追加手順・suitability check・昇格条件 | [`adding-a-scene.md`](adding-a-scene.md) |
 | アーキテクチャ規則 6 か条（semantic geometry など） | [`architecture-rules.md`](architecture-rules.md) |
 | 3D 実装の失敗モードと切り分け手順・完成チェックリスト | [`organ-3d-playbook.md`](organ-3d-playbook.md) |
@@ -142,7 +143,9 @@ Reel（SNS） / Learning（Educational）   presentation 層の調整のみ
 - 登録先は `src/catalog/` の 1 か所。シーンを 100 本に増やしても
   routing・explorer・テストは手を入れない（現行設計のまま）
 - Scene interface は `getState / getMetrics / getStageView / getReel /
-  getLearningModules`（+ scope panel）。新しい横断機能（例: compare）は
+  getLearningModules`（+ scope panel）。表示面は全シーン共通で、解剖学的な
+  固有視点だけ `getInspectionViews / getInspectionView / setInspectionView` を
+  任意実装する。新しい横断機能（例: compare）は
   シーン専用分岐ではなく**汎用フックの追加**として設計する
   （[`product-architecture.md`](architecture/product-architecture.md)）
 

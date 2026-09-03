@@ -2,9 +2,10 @@ import { el } from '../utils/dom.js';
 
 /**
  * Selection card for atlas-style scenes. The scene owns anatomical identity;
- * this component only renders it and offers authored camera viewpoints.
+ * this component only renders what is pointed at or pinned. Camera and display
+ * choices live in the shared inspection surface used by every model.
  */
-export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
+export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
@@ -25,95 +26,6 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
   noteEn.hidden = true;
   noteJa.hidden = true;
 
-  const modes = scene.getAnatomyColorModes?.() ?? [];
-  const setActiveMode = (id) => {
-    for (const [index, mode] of modes.entries()) {
-      modeButtons[index].classList.toggle('is-active', mode.id === id);
-      modeButtons[index].setAttribute('aria-pressed', String(mode.id === id));
-    }
-  };
-  const modeButtons = modes.map((mode) => el('button', {
-    class: `anatomy-mode${mode.id === scene.getAnatomyColorMode?.() ? ' is-active' : ''}`,
-    type: 'button',
-    'aria-pressed': String(mode.id === scene.getAnatomyColorMode?.()),
-    title: `${mode.label} — ${mode.labelJa}`,
-    on: {
-      click: () => {
-        scene.setAnatomyColorMode?.(mode.id);
-        const activeMode = scene.getAnatomyColorMode?.() ?? mode.id;
-        setActiveMode(activeMode);
-        onColorMode?.(activeMode);
-      },
-    },
-  }, [
-    el('span', {
-      class: `anatomy-mode-preview is-${mode.id}`,
-      'aria-hidden': 'true',
-    }),
-    el('span', { class: 'anatomy-mode-name' }, [
-      el('span', { class: 'lang-en', text: mode.label }),
-      el('span', { class: 'lang-ja', text: mode.labelJa }),
-    ]),
-    el('span', {
-      class: 'anatomy-mode-check',
-      'aria-hidden': 'true',
-      text: '✓',
-    }),
-  ]));
-
-  const modeControl = modeButtons.length
-    ? el('div', { class: 'anatomy-mode-control' }, [
-        el('div', { class: 'anatomy-control-label' }, [
-          el('span', { class: 'lang-en', text: 'Colour display' }),
-          el('span', { class: 'lang-ja', text: '配色' }),
-        ]),
-        el('div', {
-          class: 'anatomy-modes',
-          role: 'group',
-          'aria-label': 'Colour display / 配色',
-        }, modeButtons),
-      ])
-    : null;
-
-  const views = scene.getAnatomyViews?.() ?? [];
-  const clearActiveView = () => {
-    for (const peer of viewButtons) {
-      peer.classList.remove('is-active');
-      peer.setAttribute('aria-pressed', 'false');
-    }
-  };
-  const setActiveView = (id) => {
-    clearActiveView();
-    const index = views.findIndex((view) => view.id === id);
-    if (index < 0) return;
-    viewButtons[index].classList.add('is-active');
-    viewButtons[index].setAttribute('aria-pressed', 'true');
-  };
-  const applyView = (id) => {
-    if (!views.some((view) => view.id === id)) return false;
-    scene.setAnatomyView?.(id);
-    setActiveView(id);
-    return true;
-  };
-  const viewButtons = views.map((view, index) => {
-    const button = el('button', {
-      class: `anatomy-view${index === 0 ? ' is-active' : ''}`,
-      type: 'button',
-      'aria-pressed': String(index === 0),
-      title: `${view.label} — ${view.labelJa}`,
-      on: {
-        click: () => {
-          applyView(view.id);
-          onView?.(view.id);
-        },
-      },
-    }, [
-      el('span', { class: 'lang-en', text: view.label }),
-      el('span', { class: 'lang-ja', text: view.labelJa }),
-    ]);
-    return button;
-  });
-
   const element = el('section', { class: 'panel anatomy-info', role: 'status', 'aria-live': 'polite' }, [
     el('div', { class: 'anatomy-heading-row' }, [
       swatch,
@@ -123,10 +35,6 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
     bodyJa,
     noteEn,
     noteJa,
-    modeControl,
-    viewButtons.length
-      ? el('div', { class: 'anatomy-views', role: 'group', 'aria-label': 'Anatomical view' }, viewButtons)
-      : null,
     el('div', { class: 'anatomy-footer' }, [
       countEn,
       countJa,
@@ -199,26 +107,19 @@ export function createAnatomyInfoPanel(scene, { onView, onColorMode } = {}) {
   const unsubscribeSelection = scene.onAnatomySelection((value) => {
     selected = value;
     renderSelection();
-    if (value?.preferredView) {
-      applyView(value.preferredView);
-      onView?.(value.preferredView);
-    }
+    if (value?.preferredView) onPreferredView?.(value.preferredView);
   });
   const unsubscribeHover = scene.onAnatomyHover?.((value) => {
     hovered = value;
     renderSelection();
   });
   const unsubscribeStatus = scene.onAnatomyStatus?.(updateStatus);
-  scene.viewer?.controls?.addEventListener('start', clearActiveView);
-  onColorMode?.(scene.getAnatomyColorMode?.());
   return {
     element,
-    setView: applyView,
     dispose() {
       unsubscribeSelection?.();
       unsubscribeHover?.();
       unsubscribeStatus?.();
-      scene.viewer?.controls?.removeEventListener('start', clearActiveView);
     },
   };
 }
