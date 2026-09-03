@@ -469,7 +469,13 @@ export async function revokeSubscriptionLocally(
     prefer: 'return=minimal',
     body: {
       status,
-      cancel_at_period_end: subscription.cancel_at_period_end ?? null,
+      // `boolean not null` in the schema, and the object this reaches for is
+      // often the thin signed event rather than a full subscription — so a
+      // `?? null` here 400s the PATCH and the revocation this function exists
+      // to guarantee never lands, in exactly the deleted-subscription case it
+      // was written for. False is also the true answer: a subscription that has
+      // ended is not going to cancel at the end of a period.
+      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
       updated_at: subscriptionStateUpdatedAt(subscription, now),
     },
   });

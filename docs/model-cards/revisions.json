@@ -97,8 +97,8 @@
       "src/models/pulmonaryEdema.js",
       "src/data/pulmonaryEdema.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "218ad912de829c97",
+    "cardRevision": 4,
+    "modelDigest": "8815703fb151d470",
     "cardUpdatedAt": "2026-09-03"
   }
 ]

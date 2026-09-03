@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import crypto from 'node:crypto';
 import stripeWebhook from '../netlify/functions/stripe-webhook.js';
 import { ACCESS_SUBSCRIPTION_STATUSES } from '../src/access/policy.js';
+import { ALERT_RULES } from '../netlify/lib/alerts.js';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
@@ -194,6 +196,18 @@ test('billing webhook: a cancellation revokes access even when no owner can be r
   assert.ok(revocation, 'the cancellation was never written to the local subscription row');
   const written = JSON.parse(revocation.options.body);
   assert.equal(written.status, 'canceled');
+  // Every column this writes has to be one the schema accepts. The object it
+  // reaches for here is the thin signed event, not a full subscription, so a
+  // field it happens not to carry must not go out as null against a
+  // `not null` column — that 400s the PATCH and loses the revocation silently.
+  assert.equal(
+    written.cancel_at_period_end,
+    false,
+    'cancel_at_period_end is `boolean not null`; a null would be rejected'
+  );
+  for (const [column, value] of Object.entries(written)) {
+    assert.notEqual(value, null, `${column} was written as null`);
+  }
   assert.ok(
     !ACCESS_SUBSCRIPTION_STATUSES.has(written.status),
     `wrote ${written.status}, which still grants access`
@@ -254,3 +268,17 @@ function response(body, status = 200) {
     headers: { 'Content-Type': 'application/json' },
   });
 }
+
+test('billing webhook: every alert the webhook raises has a reviewed severity', () => {
+  // `levelFor` falls back to "warning" for an unknown kind, so a new alert
+  // raised without a rule is not an error anybody sees — it is quietly filed at
+  // whatever the fallback happens to be. The kinds this handler can raise are
+  // read out of its own source so a new one cannot be added without a decision
+  // about how loud it is.
+  const source = readFileSync(new URL('../netlify/functions/stripe-webhook.js', import.meta.url), 'utf8');
+  const raised = [...source.matchAll(/notify\('([a-z_]+)'/g)].map((match) => match[1]);
+  assert.ok(raised.length >= 3, `expected the webhook to raise alerts, found ${raised.length}`);
+  for (const kind of new Set(raised)) {
+    assert.ok(ALERT_RULES[kind], `alert "${kind}" has no rule, so it takes the generic fallback`);
+  }
+});

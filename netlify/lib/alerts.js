@@ -42,6 +42,18 @@ export const ALERT_RULES = Object.freeze({
   payment_action_required: 'warning',
   /** A webhook for an account that no longer exists. Expected during deletion. */
   deleted_user_event: 'info',
+  /**
+   * A subscription event whose owner could not be resolved at all.
+   *
+   * Not the same thing as `deleted_user_event`, and deliberately louder: that
+   * one means the account is gone and the billing rows went with it, which is
+   * expected. This one means the customer has no mapping and the event carries
+   * no metadata either — so somebody may be paying with nothing local to attach
+   * it to. Any revocation still lands (that needs no owner); nothing is
+   * granted, which is why this is not critical.
+   */
+  unresolvable_subscription_event: 'error',
+
   /** Reconciliation ran and found nothing. Useful as a heartbeat. */
   reconcile_clean: 'info',
 });

@@ -57,7 +57,10 @@ function volumeOf(geometry) {
   return Math.abs(volume);
 }
 
-const lungs = buildLungs();
+// The tree is opt-in on the builder, because three scenes draw this lung and
+// none of them wants one. Everything about the tree is asked of a lung that
+// asked for it.
+const lungs = buildLungs({ bronchi: true, vessels: true });
 const lobeVolume = new Map(lungs.lobes.map((lobe) => [lobe.id, volumeOf(lobe.geometry)]));
 const sideVolume = (side) =>
   lungs.lobes.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + lobeVolume.get(lobe.id), 0);
@@ -513,7 +516,7 @@ test('the airways and vessels breathe with the lung they are inside', () => {
   // every airway and vessel exactly where it was — in three scenes that animate
   // this every frame. Nothing in the suite noticed, because everything was
   // finite and every anatomical relation still held at rest.
-  const built = buildLungs();
+  const built = buildLungs({ bronchi: true, vessels: true });
   const meshNamed = (name) => {
     let found = null;
     built.object.traverse((object) => {
@@ -663,5 +666,59 @@ test('the hilum is on the mediastinal surface, not beyond it', () => {
         `the ${side} ${key} is still 0.12 inside the lung, so it is not at the surface`
       );
     }
+  }
+});
+
+test('a lung that was not asked for a tree does not have one anywhere', () => {
+  // Not "does not mount one". The intrapulmonary branches are parented to the
+  // lungs so they breathe with them, so they are on screen the moment the lung
+  // is — gating only the two top-level groups left every lobar and segmental
+  // branch drawn. Three scenes build this lung and none of them wants a tree:
+  // two of them build their own `buildAirway`, so a default-on tree gave them a
+  // second trachea at a different position and colour, plus a pulmonary
+  // vascular tree nothing in them models.
+  const bare = buildLungs();
+  assert.equal(bare.bronchi, null, 'a bare lung reports a bronchial tree');
+  assert.equal(bare.arteries, null);
+  assert.equal(bare.veins, null);
+
+  const found = [];
+  bare.object.traverse((object) => {
+    if (object.isMesh && /trachea|bronchus|arter|vein/i.test(object.name)) found.push(object.name);
+  });
+  assert.deepEqual(found, [], `a bare lung drew ${found.length} airway or vessel meshes`);
+  bare.dispose();
+
+  // And one that asks for only the airways gets no vessels.
+  const airwaysOnly = buildLungs({ bronchi: true });
+  assert.ok(airwaysOnly.bronchi.branches.length > 20, 'the airways were asked for');
+  const vessels = [];
+  airwaysOnly.object.traverse((object) => {
+    if (object.isMesh && /arter|vein/i.test(object.name)) vessels.push(object.name);
+  });
+  assert.deepEqual(vessels, [], `an airways-only lung drew ${vessels.length} vessels`);
+  airwaysOnly.dispose();
+});
+
+test('no two venous tributaries are drawn in the same place', () => {
+  // `(i + 1) % n` around a cycle gives one pair per segment for three or more,
+  // and the *same* pair twice for two: the right middle lobe drew its single
+  // tributary on top of itself. Two translucent tubes in one place composite to
+  // something darker than either, which is how a duplicate reads on screen —
+  // as a vessel of a different colour, not as a duplicate.
+  const tributaries = lungs.veins.branches.filter((branch) => branch.name.includes('intersegmental'));
+  for (let i = 0; i < tributaries.length; i++) {
+    for (let j = i + 1; j < tributaries.length; j++) {
+      const gap = worldPointAt(tributaries[i], 0).distanceTo(worldPointAt(tributaries[j], 0));
+      assert.ok(gap > 1e-4, `${tributaries[i].name} and ${tributaries[j].name} start in the same place`);
+    }
+  }
+
+  // And a lobe of n segments gets the n intersegmental planes it has — one when
+  // there are only two segments, not two.
+  for (const lobe of lungs.lobes) {
+    const count = tributaries.filter((branch) => branch.name.startsWith(`${lobe.id}-`)).length;
+    const segments = lungs.segments.filter((segment) => segment.lobe === lobe.id).length;
+    assert.equal(count, segments === 2 ? 1 : segments, `${lobe.id} has ${segments} segments and ${count} tributaries`);
   }
 });

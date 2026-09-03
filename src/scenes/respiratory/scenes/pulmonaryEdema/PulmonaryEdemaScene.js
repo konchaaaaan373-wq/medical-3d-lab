@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import {
+  CHARTS,
   CONTROLS,
   DISCLAIMER,
   DISCLAIMER_JA,
@@ -28,6 +29,7 @@ import {
   solveSteadyState,
 } from '../../../../models/pulmonaryEdema.js';
 import { createStudioLights } from '../../../shared/lighting.js';
+import { disposeObject } from '../../../../utils/dispose.js';
 import { doubleSidedOpacity, ghostMaterial, tissueMaterial } from '../../../shared/materials.js';
 import { TubeSurface, smoothCurve } from '../../../shared/geometry/tube.js';
 import { createFlowStream } from '../../../shared/motion/flow.js';
@@ -68,6 +70,7 @@ export class PulmonaryEdemaScene {
       '1 つの Starling 式と 3 つの緩衝機構 ｜ 肺が浸水する圧は、どこにも書かれておらず、解いて探しています',
     stages: STAGES,
     legend: LEGEND,
+    charts: CHARTS,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
     palette: PALETTE,
@@ -104,7 +107,7 @@ export class PulmonaryEdemaScene {
   build() {
     const object = new THREE.Group();
 
-    this.lungs = buildLungs({ color: PALETTE.lung, opacity: 0.42, detail: 14 });
+    this.lungs = buildLungs({ color: PALETTE.lung, opacity: 0.42, detail: 14, bronchi: true, vessels: true });
     object.add(this.lungs.object);
 
     // The interstitium, as a sheath on each lung.
@@ -386,27 +389,43 @@ export class PulmonaryEdemaScene {
     const controls = this.controlsNow();
     const filtration = [];
     const clearance = [];
+    let top = 0;
     for (let pressure = 4; pressure <= 40; pressure += 1) {
       const solved = solveSteadyState({ ...controls, leftAtrialPressureMmHg: pressure });
       filtration.push({ x: pressure, y: solved.filtrationMlPerHour });
       clearance.push({ x: pressure, y: solved.lymphaticClearanceMlPerHour });
+      top = Math.max(top, solved.filtrationMlPerHour, solved.lymphaticClearanceMlPerHour);
     }
-    return [
-      {
-        id: 'balance',
-        title: 'Filtration against clearance',
-        titleJa: '濾過とリンパ排出',
-        xLabel: 'Left atrial pressure (mmHg)',
-        xLabelJa: '左房圧（mmHg）',
-        yLabel: 'mL/h',
-        yLabelJa: 'mL/h',
+    // Keyed by the ids `meta.charts` declares. The App reads one object per
+    // refresh and hands each entry to the panel of the same id; returning an
+    // array meant nothing was ever found, and declaring no charts meant nothing
+    // ever asked — so this whole method used to run for no one.
+    return {
+      'filtration-balance': {
+        x: { min: 4, max: 40 },
+        y: { min: 0, max: top * 1.08 },
         series: [
-          { id: 'filtration', label: 'Filtration', labelJa: '濾過', color: PALETTE.capillary, points: filtration },
-          { id: 'lymph', label: 'Lymphatic clearance', labelJa: 'リンパ排出', color: PALETTE.lymph, points: clearance },
+          { id: 'filtration', color: PALETTE.capillary, width: 1.8, points: filtration },
+          { id: 'lymph', color: PALETTE.lymph, width: 1.8, points: clearance },
         ],
-        marker: { x: controls.leftAtrialPressureMmHg },
+        markers: [
+          {
+            x: controls.leftAtrialPressureMmHg,
+            y: this.state.filtrationMlPerHour,
+            color: PALETTE.alveolar,
+          },
+        ],
+        rules: [
+          {
+            axis: 'x',
+            at: controls.leftAtrialPressureMmHg,
+            color: 'rgba(255, 255, 255, 0.28)',
+            label: 'now',
+            labelJa: '現在',
+          },
+        ],
       },
-    ];
+    };
   }
 
   getModelControls() {
@@ -441,9 +460,18 @@ export class PulmonaryEdemaScene {
     this.solve();
   }
 
+  /**
+   * The chain, in the shape `CausalStoryPanel` reads: `heading`/`body`, and a
+   * `because` that is an object because it is bilingual like everything else.
+   *
+   * Written with `text`/`textJa` and a bare string `because`, all five steps
+   * rendered blank — the panel wrote `undefined` into every element and hid
+   * nothing, because `step.because` was truthy either way.
+   */
   getCausalStory() {
     const entry = situation(this.situationId);
     const threshold = floodingThresholdMmHg(this.controlsNow());
+    const state = this.state;
     return {
       id: entry.id,
       title: entry.labelEn,
@@ -453,92 +481,184 @@ export class PulmonaryEdemaScene {
       steps: [
         {
           id: 'capillary',
-          text: `The capillary sits at ${this.state.capillaryPressureMmHg.toFixed(1)} mmHg — above the atrium, because a resistance lies between them.`,
-          textJa: `毛細血管圧は ${this.state.capillaryPressureMmHg.toFixed(1)} mmHg。左房との間に抵抗があるため、常に左房圧より高くなります。`,
+          heading: 'The capillary is above the atrium',
+          headingJa: '毛細血管圧は左房圧より高い',
+          body: `It sits at ${state.capillaryPressureMmHg.toFixed(1)} mmHg against an atrium at ${this.controlsNow().leftAtrialPressureMmHg.toFixed(0)} mmHg, because a venous resistance lies between them. The pressure that filters is the capillary's, not the one a catheter reads.`,
+          bodyJa: `毛細血管圧は ${state.capillaryPressureMmHg.toFixed(1)} mmHg、左房圧は ${this.controlsNow().leftAtrialPressureMmHg.toFixed(0)} mmHg。間に静脈側の抵抗があるためです。濾過を決めるのは毛細血管の圧であって、カテーテルが読む値ではありません。`,
         },
         {
           id: 'starling',
-          because: 'the hydrostatic push now exceeds the oncotic pull by more than it did',
-          becauseJa: '静水圧の押しが、膠質浸透圧の引きを以前より大きく上回るため',
-          text: `Filtration is ${this.state.filtrationMlPerHour.toFixed(0)} mL/h against a clearance of ${this.state.lymphaticClearanceMlPerHour.toFixed(0)} mL/h.`,
-          textJa: `濾過は ${this.state.filtrationMlPerHour.toFixed(0)} mL/h、リンパ排出は ${this.state.lymphaticClearanceMlPerHour.toFixed(0)} mL/h です。`,
+          heading: 'Filtration outruns clearance',
+          headingJa: '濾過がリンパ排出を上回る',
+          because: {
+            text: 'the hydrostatic push now exceeds the oncotic pull by more than it did',
+            textJa: '静水圧の押しが、膠質浸透圧の引きを以前より大きく上回るため',
+          },
+          body: `Filtration is ${state.filtrationMlPerHour.toFixed(0)} mL/h against a clearance of ${state.lymphaticClearanceMlPerHour.toFixed(0)} mL/h.`,
+          bodyJa: `濾過は ${state.filtrationMlPerHour.toFixed(0)} mL/h、リンパ排出は ${state.lymphaticClearanceMlPerHour.toFixed(0)} mL/h です。`,
         },
         {
           id: 'accumulation',
-          because: 'what is filtered and not cleared has to go somewhere',
-          becauseJa: '濾過されて運び去られなかった分は、どこかに溜まるほかないため',
-          text: `The lung holds ${this.state.lungWaterMl.toFixed(0)} mL, of which ${this.state.alveolarWaterMl.toFixed(0)} mL has reached alveoli.`,
-          textJa: `肺は ${this.state.lungWaterMl.toFixed(0)} mL を保持し、うち ${this.state.alveolarWaterMl.toFixed(0)} mL が肺胞に達しています。`,
+          heading: 'The difference has to go somewhere',
+          headingJa: '差分はどこかに溜まる',
+          because: {
+            text: 'what is filtered and not cleared stays in the lung',
+            textJa: '濾過されて運び去られなかった分は、肺に残るほかないため',
+          },
+          body: `The lung holds ${state.lungWaterMl.toFixed(0)} mL, of which ${state.alveolarWaterMl.toFixed(0)} mL has reached alveoli. The interstitium takes it first, and takes it cheaply until its pressure comes up off the floor.`,
+          bodyJa: `肺は ${state.lungWaterMl.toFixed(0)} mL を保持し、うち ${state.alveolarWaterMl.toFixed(0)} mL が肺胞に達しています。まず間質が受け取り、間質圧が下限から上がってくるまでは安いコストで受け取り続けます。`,
         },
         {
           id: 'gas',
-          because: 'a flooded alveolus is perfused and not ventilated, which is a shunt',
-          becauseJa: '満ちた肺胞は灌流されていて換気されていない、すなわちシャントであるため',
-          text: `Shunt ${(this.state.shuntFraction * 100).toFixed(0)} %, PaO₂ ${this.state.arterialOxygenMmHg.toFixed(0)} mmHg, A–a ${this.state.alveolarArterialDifferenceMmHg.toFixed(0)} mmHg.`,
-          textJa: `シャント ${(this.state.shuntFraction * 100).toFixed(0)} %、PaO₂ ${this.state.arterialOxygenMmHg.toFixed(0)} mmHg、A-a 較差 ${this.state.alveolarArterialDifferenceMmHg.toFixed(0)} mmHg。`,
+          heading: 'A flooded alveolus is a shunt',
+          headingJa: '水没した肺胞はシャントである',
+          because: {
+            text: 'it is perfused and not ventilated, so its blood arrives as it left',
+            textJa: '灌流されていて換気されていない、すなわち血液がそのまま戻るため',
+          },
+          body: `Shunt ${(state.shuntFraction * 100).toFixed(0)} %, PaO₂ ${state.arterialOxygenMmHg.toFixed(0)} mmHg, A–a ${state.alveolarArterialDifferenceMmHg.toFixed(0)} mmHg. This is the point at which oxygen stops being an answer.`,
+          bodyJa: `シャント ${(state.shuntFraction * 100).toFixed(0)} %、PaO₂ ${state.arterialOxygenMmHg.toFixed(0)} mmHg、A-a 較差 ${state.alveolarArterialDifferenceMmHg.toFixed(0)} mmHg。ここから先、酸素は答えでなくなります。`,
         },
         {
           id: 'threshold',
-          because: 'the pressure at which the buffers run out is a property of this lung, not a constant',
-          becauseJa: '緩衝が尽きる圧は定数ではなく、この肺の性質だから',
-          text:
+          heading: 'The pressure that does this belongs to the lung',
+          headingJa: 'その圧はこの肺のものである',
+          because: {
+            text: 'the buffers that decide it are properties of this lung, not constants',
+            textJa: 'それを決める緩衝機構は定数ではなく、この肺の性質だから',
+          },
+          body:
             threshold === null
-              ? 'This lung has no flooding threshold in range: it is either already wet at every pressure or dry at all of them.'
-              : `This lung floods above ${threshold.toFixed(1)} mmHg. Change the albumin, the barrier or the lymphatics and the number moves.`,
-          textJa:
+              ? 'This lung has no flooding threshold in range: it is either already wet at every pressure in the model, or dry at all of them.'
+              : `This lung floods above ${threshold.toFixed(1)} mmHg. Change the albumin, the barrier or the lymphatics and the number moves — which is why it is searched for here and stored nowhere.`,
+          bodyJa:
             threshold === null
-              ? 'この肺には範囲内に閾値がありません。あらゆる圧で既に湿っているか、あるいはどの圧でも乾いています。'
-              : `この肺は ${threshold.toFixed(1)} mmHg を超えると浸水します。アルブミン・血管壁・リンパを変えれば、この数値は動きます。`,
+              ? 'この肺には範囲内に閾値がありません。モデルの全ての圧で既に湿っているか、あるいはどの圧でも乾いています。'
+              : `この肺は ${threshold.toFixed(1)} mmHg を超えると浸水します。アルブミン・血管壁・リンパを変えればこの数値は動きます。だからこそ、この値はどこにも保存されず毎回探されています。`,
         },
       ],
     };
   }
 
+  /**
+   * Two lessons, in the shape `LearningPanel` drives: predict → manipulate →
+   * observe → explain.
+   *
+   * These were written to a shape of my own invention — a string `question`,
+   * options at the top level, controls nested under `setup.controls` — which
+   * the panel reads as `question.options` and answers with a `TypeError` on the
+   * first click. Nothing caught it: this scene had no scene test, and the panel
+   * is only built when somebody opens "Predict it".
+   */
   getLearningModules() {
     return [
       {
         id: 'oxygen-and-shunt',
         title: 'Will oxygen fix it?',
         titleJa: '酸素で戻せるのか',
-        question:
-          'A lung with a third of its alveoli flooded is breathing air. You turn the inspired oxygen up to 100 %. What happens to the alveolar-to-arterial difference?',
-        questionJa:
-          '肺胞の 1/3 が水没した肺が空気を吸っています。吸入酸素濃度を 100 % に上げました。A-a 較差はどうなるか。',
-        options: [
-          { id: 'closes', label: 'It closes — the blood is oxygenated', labelJa: '縮まる（血液に酸素が入るため）' },
-          { id: 'unchanged', label: 'It does not move', labelJa: '変わらない' },
-          { id: 'widens', label: 'It widens, a great deal', labelJa: '大きく広がる' },
-        ],
-        answer: 'widens',
-        explanation:
-          'Blood that never met an alveolus cannot be improved by what is in the alveolus. The alveolar tension rises by hundreds of mmHg; the arterial tension rises by a fraction of that, because the shunted third still arrives mixed venous. The difference between them is what widens — which is why a shunt is recognised by giving oxygen and watching the gap, not the saturation.',
-        explanationJa:
-          '肺胞に一度も触れていない血液は、肺胞の中身では改善しません。肺胞側の酸素分圧は数百 mmHg 上がりますが、動脈側はそのごく一部しか上がりません。シャントした 1/3 は混合静脈血のまま到達するからです。広がるのはその差であり、シャントを見分けるときに飽和度ではなく較差を見るのはこのためです。',
-        setup: { situation: 'risingPressure', progress: 1, controls: { inspiredOxygenFraction: 0.21 } },
-        manipulation: { controls: { inspiredOxygenFraction: 1 } },
-        watch: ['aa', 'pao2'],
+        short: 'Shunt',
+        shortJa: 'シャント',
+        // Flat, and in the units the controls are in: `setup` is read as
+        // `{progress, ...controlValues}` and applied one control at a time.
+        // The pressure is named here rather than inherited from wherever the
+        // slider was left: a lesson that begins 'this lung has water in its
+        // alveoli' has to be given a lung that does.
+        setup: {
+          progress: 1,
+          leftAtrialPressureMmHg: 28,
+          inspiredOxygenFraction: 0.21,
+          permeability: 1,
+          chronicity: 0,
+        },
+        question: {
+          text: 'This lung has water in its alveoli and is breathing air. You turn the inspired oxygen up to 100 %. What happens to the difference between the alveolar and the arterial oxygen tension?',
+          textJa:
+            '肺胞に水が入った肺が、空気を吸っています。吸入酸素濃度を 100 % に上げます。肺胞と動脈の酸素分圧の差はどうなりますか。',
+          options: [
+            { id: 'closes', label: 'It closes — the blood is oxygenated', labelJa: '縮まる（血液に酸素が入るため）' },
+            { id: 'unchanged', label: 'It does not move', labelJa: '変わらない' },
+            { id: 'widens', label: 'It widens, a great deal', labelJa: '大きく広がる' },
+          ],
+          answer: 'widens',
+        },
+        manipulation: {
+          control: 'inspiredOxygenFraction',
+          to: 1,
+          seconds: 3,
+          action: 'Give 100 % oxygen',
+          actionJa: '酸素 100 % にする',
+          text: 'Raise the inspired oxygen from air to 100 %. Nothing else moves — the same water is in the same alveoli.',
+          textJa:
+            '吸入酸素を空気から 100 % まで上げます。ほかは何も動かしません。同じ水が同じ肺胞に入ったままです。',
+          hint: 'Watch the A–a difference, not the arterial tension on its own.',
+          hintJa: '動脈血の酸素分圧そのものではなく、A-a 較差を見てください。',
+        },
+        watch: ['shunt', 'pao2', 'aa'],
+        observation: {
+          text: 'The arterial tension rose a little. The difference between alveolar and arterial rose enormously. The shunt fraction did not move at all.',
+          textJa:
+            '動脈血の酸素分圧は少し上がりました。肺胞と動脈の較差は大きく広がりました。シャント率はまったく動いていません。',
+        },
+        explanation: {
+          text: 'Blood that never met an alveolus cannot be improved by what is in the alveolus. The alveolar tension rises by hundreds of mmHg; the arterial tension rises by a fraction of that, because the shunted blood still arrives mixed venous and is added back in. What widens is the difference between them — which is why a shunt is recognised by giving oxygen and watching the gap rather than the saturation, and why oxygen is a holding measure in pulmonary oedema and not a treatment for it.',
+          textJa:
+            '肺胞に一度も触れていない血液は、肺胞の中身では改善しません。肺胞側の酸素分圧は数百 mmHg 上がりますが、動脈側はそのごく一部しか上がりません。シャントした血液は混合静脈血のまま合流するからです。広がるのは両者の差であり、シャントを見分けるときに飽和度ではなく較差を見るのは、そして肺水腫で酸素が治療ではなく時間稼ぎであるのは、このためです。',
+          footnote:
+            'The model has no ventilation in it, so it cannot show the work of breathing that decides when this stops being survivable. The gas exchange is the part it can answer.',
+          footnoteJa:
+            'このモデルには換気がないため、いつ耐えられなくなるかを決める呼吸仕事量は示せません。答えられるのはガス交換の側だけです。',
+        },
       },
       {
-        id: 'same-pressure-two-lungs',
+        id: 'two-lungs-one-pressure',
         title: 'Two lungs, one pressure',
         titleJa: '同じ圧、2 つの肺',
-        question:
-          'Two patients have a left atrial pressure of 30 mmHg. One has had it for years; the other since this morning. Which lung has water in its alveoli?',
-        questionJa:
-          '2 人の左房圧はどちらも 30 mmHg。一方は何年もこの圧で、他方は今朝からです。肺胞に水があるのはどちらか。',
-        options: [
-          { id: 'both', label: 'Both — the pressure is the same', labelJa: '両方（圧が同じだから）' },
-          { id: 'acute', label: 'Only the one that rose this morning', labelJa: '今朝上がったほうだけ' },
-          { id: 'chronic', label: 'Only the long-standing one', labelJa: '長く続いているほうだけ' },
-        ],
-        answer: 'acute',
-        explanation:
-          'The threshold is not a property of the pressure. Lymphatic drainage adapts over months, so the chronically loaded lung clears far more water per hour and stays on the dry side of a pressure that floods an unadapted one. It is the reason a wedge pressure has to be read against how long it has been there.',
-        explanationJa:
-          '閾値は圧の性質ではありません。リンパ排出は数か月かけて適応するため、慢性的に負荷のかかった肺は毎時はるかに多くの水を運び去り、適応していない肺なら浸水する圧でも乾いた側に留まります。楔入圧を「いつからその値なのか」と併せて読む必要があるのはこのためです。',
-        setup: { situation: 'risingPressure', progress: 1 },
-        manipulation: { situation: 'chronicAdaptation', progress: 1 },
-        watch: ['alveolar', 'water'],
+        short: 'Adaptation',
+        shortJa: '適応',
+        setup: {
+          progress: 1,
+          leftAtrialPressureMmHg: 28,
+          chronicity: 0,
+          permeability: 1,
+          inspiredOxygenFraction: 0.21,
+        },
+        question: {
+          text: 'Two people have the same left atrial pressure. One has had it for years; the other since this morning. Give the lymphatics of this lung the months the first one has had. What happens to the water in its alveoli?',
+          textJa:
+            '2 人の左房圧は同じです。一方は何年もこの圧で、他方は今朝からです。この肺のリンパに、前者と同じだけの月日を与えます。肺胞内の水はどうなりますか。',
+          options: [
+            { id: 'same', label: 'Nothing — the pressure is what floods a lung', labelJa: '変わらない（浸水させるのは圧だから）' },
+            { id: 'clears', label: 'It clears', labelJa: 'なくなる' },
+            { id: 'worse', label: 'It gets worse', labelJa: '悪化する' },
+          ],
+          answer: 'clears',
+        },
+        manipulation: {
+          control: 'chronicity',
+          to: 1,
+          seconds: 3,
+          action: 'Give the lymphatics months',
+          actionJa: 'リンパに月日を与える',
+          text: 'Adapt the lymphatics fully, at the same left atrial pressure, the same barrier and the same albumin.',
+          textJa: '左房圧・血管壁・アルブミンをすべて同じにしたまま、リンパだけを完全に適応させます。',
+          hint: 'Watch the clearance first, then the water, then the alveoli.',
+          hintJa: 'まずリンパ排出、次に肺水分量、最後に肺胞内の水を見てください。',
+        },
+        watch: ['lymph', 'water', 'alveolar', 'shunt'],
+        observation: {
+          text: 'Clearance rose several-fold and the lung water fell behind it. The alveoli emptied, at a pressure that had flooded them a moment earlier.',
+          textJa:
+            'リンパ排出は数倍になり、肺水分量はそれに従って下がりました。少し前まで水没していたのと同じ圧で、肺胞から水が引きました。',
+        },
+        explanation: {
+          text: 'The pressure at which a lung floods is not a property of the pressure. Lymphatic drainage adapts over months to something like an order of magnitude above its resting flow, so a chronically loaded lung stays on the dry side of a pressure that drowns an unadapted one. It is why a wedge pressure has to be read against how long it has been there, why mitral stenosis of long standing is tolerated at numbers that would be an emergency after a myocardial infarction, and why "the pressure at which a lung floods" is searched for here rather than stored.',
+          textJa:
+            '肺が浸水する圧は、圧の性質ではありません。リンパ排出は数か月かけて安静時の 1 桁上まで適応するため、慢性的に負荷のかかった肺は、適応していない肺なら溺れる圧でも乾いた側に留まります。楔入圧を「いつからその値なのか」と併せて読む理由であり、長く経過した僧帽弁狭窄が心筋梗塞直後なら緊急事態の数値でも耐えられる理由であり、このモデルが「肺が浸水する圧」をどこにも保存せず毎回探している理由です。',
+          footnote:
+            'The adaptation factor here is invented, not measured: the direction and the rough scale are what the model asserts. Evidence dossier §2.',
+          footnoteJa:
+            'ここでの適応の倍率は測定値ではなく、こちらで決めた値です。モデルが主張しているのは方向とおおよその大きさです。evidence dossier §2。',
+        },
       },
     ];
   }
@@ -550,6 +670,12 @@ export class PulmonaryEdemaScene {
     this.unitGeometry?.dispose();
     for (const sheath of this.sheaths ?? []) sheath.material.dispose();
     for (const unit of this.units ?? []) unit.material.dispose();
+    // The organ owns its own geometries and materials — five lobes, every tube
+    // of the tree — and hands back a `dispose` for them. Then the subtree, the
+    // way every other class scene ends: without these two the lobes, the tube
+    // surfaces and the vessel material stayed allocated on every teardown.
+    this.lungs?.dispose?.();
+    disposeObject(this.root);
   }
 }
 

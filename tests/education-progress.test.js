@@ -178,11 +178,11 @@ test('education progress: a browser that reads but refuses to write still rememb
   assert.equal(readEducationProgress('write-denied', 4, readOnly).completed, true);
 });
 
-test('education progress: what is on disk wins over what is only in memory', () => {
-  // The merge has a direction. Persisted state is the durable record, so a page
-  // that has an in-memory copy of a scene must not shadow a newer one read back
-  // from storage — otherwise the fallback would quietly outrank the thing it is
-  // standing in for.
+test('education progress: what is on disk wins when the write reached disk', () => {
+  // The merge has a direction, and the direction depends on whether the last
+  // write landed. When it did, disk is the record and the in-memory copy is a
+  // stale copy of it, so disk wins — otherwise the shadow would resurrect
+  // progress another tab had moved on from. The other case is below.
   const storage = memoryStorage();
   saveEducationStep('disk-wins', 1, 4, storage);
   assert.deepEqual(readEducationProgress('disk-wins', 4, storage), { step: 1, completed: false });
@@ -210,4 +210,42 @@ test('education progress: one storage does not see what was saved into another',
   saveEducationStep('only-in-second', 1, 4, second);
   assert.deepEqual(Object.keys(second.value()), ['only-in-second']);
   assert.deepEqual(Object.keys(first.value()), ['only-in-first']);
+});
+
+test('education progress: a refused write keeps its progress against a stale disk record', () => {
+  // The case the merge got backwards. A full quota refuses a write to a key
+  // that already holds an older value, so `getItem` returns real — but stale —
+  // JSON while `setItem` throws. Merging disk over memory there hands the
+  // learner back the step they were on before this session, which is the exact
+  // failure the in-memory copy exists to prevent.
+  let raw = JSON.stringify({ quota: { step: 0, stepCount: 4, completed: false } });
+  const full = {
+    getItem: () => raw,
+    setItem: () => {
+      throw new Error('QuotaExceededError');
+    },
+  };
+
+  assert.deepEqual(readEducationProgress('quota', 4, full), { step: 0, completed: false });
+  saveEducationStep('quota', 3, 4, full);
+  assert.deepEqual(
+    readEducationProgress('quota', 4, full),
+    { step: 3, completed: false },
+    'a stale disk record overrode progress the write could not persist'
+  );
+
+  // And once a write does land, disk is authoritative again.
+  const recovered = {
+    getItem: () => raw,
+    setItem: (key, value) => {
+      raw = value;
+    },
+  };
+  saveEducationStep('quota', 1, 4, recovered);
+  raw = JSON.stringify({ quota: { step: 2, stepCount: 4, completed: false } });
+  assert.deepEqual(
+    readEducationProgress('quota', 4, recovered),
+    { step: 2, completed: false },
+    'a landed write left the shadow outranking disk'
+  );
 });

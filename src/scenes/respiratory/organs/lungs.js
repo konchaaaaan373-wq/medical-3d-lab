@@ -196,6 +196,14 @@ const HILUM_INSET = 0.06;
 /**
  * Both lungs, with their lobes, segments, airways and vessels.
  *
+ * `bronchi` and `vessels` are **opt-in**. A lung has a bronchial tree, but three
+ * scenes were already drawing this organ and two of them build their own
+ * `buildAirway`: defaulting the tree on gave COPD and `breathing-lungs` a
+ * second trachea at a different position and colour, and gave all three a
+ * pulmonary vascular tree nothing in them models — visible at a glance, and
+ * missed here because the render was checked by counting meshes instead of by
+ * looking at it. A caller that wants the tree says so.
+ *
  * @param {{ color?: string, detail?: number, opacity?: number, excursion?: number,
  *           lobeColors?: Record<string, string>, referenceSamples?: number,
  *           bronchi?: boolean, vessels?: boolean }} [options]
@@ -223,8 +231,8 @@ export function buildLungs({
    * they are cut out of.
    */
   referenceSamples = 24000,
-  bronchi = true,
-  vessels = true,
+  bronchi = false,
+  vessels = false,
 } = {}) {
   const object = new THREE.Group();
   object.name = 'lungs';
@@ -346,7 +354,8 @@ export function buildLungs({
 
   // --- airways and vessels -------------------------------------------------
 
-  const tree = bronchi || vessels ? buildBronchovascular({ sides, lobes, colors: lobeColors }) : null;
+  const tree =
+    bronchi || vessels ? buildBronchovascular({ sides, lobes, bronchi, vessels }) : null;
   if (tree) {
     if (bronchi) object.add(tree.bronchi.object);
     if (vessels) object.add(tree.arteries.object, tree.veins.object);
@@ -532,7 +541,16 @@ function paintSegments(geometry, lobeSegments) {
  * on the right the artery is anterior to the bronchus, on the left it is
  * superior to it.
  */
-function buildBronchovascular({ sides, lobes, colors }) {
+/**
+ * `bronchi` and `vessels` gate what is built, not only what is mounted.
+ *
+ * The intrapulmonary branches are parented to the lungs so they breathe with
+ * them, which means they are on screen the moment the lung is — the two
+ * top-level groups the caller chooses not to mount are the extrapulmonary part
+ * only. Gating the mount alone left every lobar and segmental branch drawn for
+ * a caller that asked for neither.
+ */
+function buildBronchovascular({ sides, lobes, bronchi = true, vessels = true }) {
   const disposables = [];
   const bronchusMaterial = tissueMaterial({ color: '#9fb0c8', roughness: 0.45, emissiveIntensity: 0.06 });
   const arteryMaterial = tissueMaterial({ color: '#7f9fd6', roughness: 0.4, emissiveIntensity: 0.05 });
@@ -559,7 +577,10 @@ function buildBronchovascular({ sides, lobes, colors }) {
    * group inherits that lung's inflation, and anything added to the top-level
    * groups does not.
    */
+  /** Whether this tree was asked for at all. */
+  const wanted = { bronchi, arteries: vessels, veins: vessels };
   const tube = (tree, group, material, name, points, radius) => {
+    if (!wanted[tree]) return null;
     const curve = smoothCurve(points.map((p) => [p.x, p.y, p.z]));
     const surface = new TubeSurface(curve, { radius, steps: 24, radial: 10 });
     const mesh = new THREE.Mesh(surface.geometry, material);
@@ -716,10 +737,25 @@ function buildBronchovascular({ sides, lobes, colors }) {
       // vein that drains this part of the lung.
       const draining = lobe.id.includes('lower') ? 'inferiorVein' : 'superiorVein';
       const target = localVein(draining);
+      // Neighbouring segments, taken as **unordered** pairs around the cycle.
+      // With `(i + 1) % n` alone a two-segment lobe pairs 0 with 1 and then 1
+      // with 0, which is the same plane: the right middle lobe drew its one
+      // tributary twice, in the same place, and two translucent tubes in one
+      // place composite to something darker than either.
+      const pairs = [];
+      const seen = new Set();
       for (let i = 0; i < lobeSegments.length; i++) {
-        const a = lobeSegments[i].position.clone();
-        const b = lobeSegments[(i + 1) % lobeSegments.length].position.clone();
-        if (lobeSegments.length < 2) continue;
+        const j = (i + 1) % lobeSegments.length;
+        if (i === j) continue;
+        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairs.push([i, j]);
+      }
+      for (const [index, [first, second]] of pairs.entries()) {
+        const i = index;
+        const a = lobeSegments[first].position.clone();
+        const b = lobeSegments[second].position.clone();
         const between = a.clone().lerp(b, 0.5);
         tube(
           'veins',

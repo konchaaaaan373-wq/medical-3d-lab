@@ -294,6 +294,30 @@ export const LEGEND = [
   { key: 'lymph', label: 'Lymphatic clearance', labelJa: 'リンパ排出' },
 ];
 
+/**
+ * The one plot: filtration against lymphatic clearance, across pressure.
+ *
+ * The model's working shown rather than a picture of it — where the two curves
+ * cross is where the lung stops being able to keep up, and that crossing is the
+ * threshold the read-out reports. Both are solved from the same `solveSteadyState`
+ * the 3D reads, so the plot cannot disagree with the lung beside it.
+ */
+export const CHARTS = [
+  {
+    id: 'filtration-balance',
+    title: 'Filtration against clearance',
+    titleJa: '濾過とリンパ排出',
+    unitLabel: 'mL/h against left atrial pressure',
+    height: 116,
+    x: { unit: 'mmHg', ticks: [4, 10, 20, 30, 40] },
+    y: { unit: 'mL/h', min: 0 },
+    key: [
+      { id: 'filtration', label: 'Filtration', labelJa: '濾過', color: PALETTE.capillary },
+      { id: 'lymph', label: 'Lymphatic clearance', labelJa: 'リンパ排出', color: PALETTE.lymph },
+    ],
+  },
+];
+
 export const RANGE = { min: 0, max: 1, step: 0.01 };
 
 export const PROGRESS_LABEL = {
@@ -343,7 +367,7 @@ export const STAGES = [
     id: 'alveolar',
     name: 'Water in the alveoli',
     nameJa: '肺胞に水が入る',
-    at: 0.88,
+    at: 1,
     focus: ['alveolar', 'shunt'],
     summary:
       'The buffers are spent and fluid is crossing into alveoli. Each flooded alveolus is perfused and not ventilated — a shunt — and now the saturation falls, and oxygen does not fix it.',

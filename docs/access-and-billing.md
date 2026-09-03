@@ -405,8 +405,16 @@ in `ALERT_RULES`, so the policy is reviewable and testable:
 | Kind | Level |
 | --- | --- |
 | `webhook_failed`, `webhook_digest_mismatch` | critical |
-| `reconcile_drift`, `unsupported_price` | error |
+| `reconcile_drift`, `unsupported_price`, `unresolvable_subscription_event`, `payment_final_failure`, `payment_uncollectible` | error |
+| `payment_failed`, `payment_action_required` | warning |
 | `deleted_user_event`, `reconcile_clean` | info |
+
+`unresolvable_subscription_event` is not `deleted_user_event`: that one means
+the account is gone and its billing rows went with it, which is expected. This
+one means the customer has no local mapping and the event carries no metadata
+either, so somebody may be paying with nothing to attach it to. Revocation
+still lands — it needs no owner — and nothing is granted, which is why it is
+`error` and not `critical`.
 
 An alert leaves the deployment, so every string in one passes through the
 product's own redaction layer (`src/telemetry/redact.js`) — reused rather than

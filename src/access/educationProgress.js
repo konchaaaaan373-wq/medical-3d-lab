@@ -11,12 +11,14 @@ const STORAGE_KEY = 'medical3dlab.education-progress.v1';
  */
 const shadows = new WeakMap();
 /** For calls made with no storage at all. */
-let detachedShadow = {};
+let detachedShadow = { store: {}, persisted: true };
 
-const shadowOf = (storage) => (storage ? shadows.get(storage) ?? {} : detachedShadow);
-const rememberShadow = (storage, next) => {
-  if (storage) shadows.set(storage, next);
-  else detachedShadow = next;
+const shadowOf = (storage) =>
+  storage ? shadows.get(storage) ?? { store: {}, persisted: true } : detachedShadow;
+const rememberShadow = (storage, next, persisted) => {
+  const record = { store: next, persisted };
+  if (storage) shadows.set(storage, record);
+  else detachedShadow = record;
 };
 
 const emptyProgress = () => ({ step: 0, completed: false });
@@ -89,27 +91,38 @@ function normaliseRecord(value, stepCount, revision = null) {
  */
 function readStore(storage) {
   const shadow = shadowOf(storage);
-  if (!storage?.getItem) return shadow;
+  if (!storage?.getItem) return shadow.store;
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return { ...shadow };
-    const parsed = JSON.parse(raw);
-    const persisted =
-      parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-    return { ...shadow, ...persisted };
+    const parsed = raw ? JSON.parse(raw) : null;
+    const onDisk = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    // Which of the two is authoritative depends on whether the last write
+    // reached disk. It usually did, and then disk is the record and the shadow
+    // is a stale copy of it — letting the shadow win there would resurrect
+    // progress another tab had moved on from. When the write was refused,
+    // though, disk is the stale one and the shadow is the only place this
+    // session's steps exist: merging disk over it defeats the shadow in exactly
+    // the case it was added for, which is a browser that lets a page read
+    // storage and refuses to let it write.
+    return shadow.persisted ? { ...shadow.store, ...onDisk } : { ...onDisk, ...shadow.store };
   } catch {
-    return shadow;
+    return shadow.store;
   }
 }
 
 function writeStore(next, storage) {
-  rememberShadow(storage, next);
+  let persisted = false;
   try {
     storage?.setItem?.(STORAGE_KEY, JSON.stringify(next));
+    persisted = true;
   } catch {
-    // Private/embedded contexts may deny persistent storage. Progress then
-    // remains useful for this page lifetime without affecting free content.
+    // Private/embedded contexts may deny persistent storage, and a full quota
+    // refuses a write to a key that already holds an older value. Progress then
+    // remains useful for this page lifetime without affecting free content —
+    // which requires `readStore` to know the write was refused, so it is
+    // recorded here rather than inferred later.
   }
+  rememberShadow(storage, next, persisted);
 }
 
 function defaultStorage() {

@@ -190,3 +190,26 @@ node --test tests/pulmonary-edema-model.test.js
 The physiology file is the one that matters: a failure there means the model
 has broken a constraint the literature imposes, not that an implementation
 detail moved.
+
+---
+
+## 17. Revision history
+
+**Revision 3.** No medical change. Three of the scene's surfaces were built to
+contracts they did not match, and are rebuilt to the real ones: the chart is
+declared where the other scenes declare theirs (it had been written as an array
+and returned to nobody), the walk-through uses the fields its panel writes into,
+and the lessons use the shape their panel drives. The last stage moves from 0.88
+to 1 so the progression axis ends where its final stage does. The revision gate
+covers `src/data/pulmonaryEdema.js`, which holds this scene's presentation copy
+alongside its stage definitions, so a change to either raises it.
+
+One wording correction that *is* about the model: a lesson opened "this lung has
+water in a third of its alveoli". Alveolar flooding in this model switches at a
+threshold rather than filling gradually — §10 — so a third is a state it cannot
+produce, and the lesson now says only that the alveoli have water in them.
+
+**Revision 2.** Situations restructured so each declares its own endpoint, after
+the progression slider was found to move nothing in the default situation.
+
+**Revision 1.** First card, with the model.
