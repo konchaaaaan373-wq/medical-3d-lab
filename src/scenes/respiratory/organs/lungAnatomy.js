@@ -65,10 +65,15 @@ export const FISSURES = {
     normal: [0, 0.82, 0.57],
     /**
      * Set per side, and **calibrated rather than measured**: the position that
-     * makes each lower lobe come out at the share of its lung that volumetry
-     * reports — about 53% on the right and about half on the left. The angle
-     * above is the anatomy; this is the number that had to be chosen to land
-     * the anatomy in this particular pair of lungs.
+     * makes each lower lobe come out at about 53% of its lung on the right and
+     * about half on the left. The angle above is the anatomy; this is the
+     * number that had to be chosen to land the anatomy in this particular pair
+     * of lungs.
+     *
+     * **Those two targets are uncited.** They are the approximate shares taught
+     * with the lobes, not figures read out of a series — see the note in
+     * `docs/medical-notes.md`. They are wide enough to be safe as a shape
+     * constraint and are not offered as measurements.
      */
     through: { right: [0, -0.2, 0], left: [0, -0.25, 0] },
   },

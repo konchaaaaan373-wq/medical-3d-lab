@@ -14,7 +14,14 @@ import {
   segmentsOfLobe,
   segmentsOfSide,
 } from '../src/scenes/respiratory/organs/lungAnatomy.js';
-import { carveInside, partCentroid, planeThrough, radialField, surfaceSamples } from '../src/scenes/shared/geometry/carve.js';
+import {
+  carveInside,
+  partCentroid,
+  planeThrough,
+  radialField,
+  starShaped,
+  surfaceSamples,
+} from '../src/scenes/shared/geometry/carve.js';
 
 /**
  * The lung, checked as anatomy.
@@ -23,8 +30,10 @@ import { carveInside, partCentroid, planeThrough, radialField, surfaceSamples } 
  * The lung was rebuilt from a single surface with grooves scratched in it into
  * five closed lobes, eighteen named segments and a bronchovascular tree, and
  * these are the claims that rebuild is making. The volume fractions are the one
- * place a chosen number appears, and they are checked against what volumetry
- * reports rather than against what the builder happens to produce.
+ * place a chosen number appears, and they are checked against a stated target
+ * rather than against what the builder happens to produce — the target being
+ * the approximate shares taught with the lobes, which are uncited and recorded
+ * as such in `docs/medical-notes.md`.
  */
 
 /** Signed volume of a closed mesh. */
@@ -133,10 +142,12 @@ test('the lobes sit where their names say, relative to one another', () => {
   assert.ok(centreOf('left-upper').z > centreOf('left-lower').z);
 });
 
-test('the lobes take the share of each lung that volumetry reports', () => {
+test('the lobes take roughly the share of each lung they are taught to take', () => {
   // The one calibrated claim here. Roughly 35 / 12 / 53 on the right and half
   // and half on the left; the fissure positions were chosen to land these and
-  // nothing else, so this is what holds them.
+  // nothing else, so this is what holds them. The bands are deliberately wide,
+  // because the target is an uncited approximation and a tight band around it
+  // would assert a precision nothing here has.
   assert.ok(share('right-upper') > 0.29 && share('right-upper') < 0.41, `RUL ${(share('right-upper') * 100).toFixed(1)}%`);
   assert.ok(share('right-middle') > 0.08 && share('right-middle') < 0.17, `RML ${(share('right-middle') * 100).toFixed(1)}%`);
   assert.ok(share('right-lower') > 0.46 && share('right-lower') < 0.59, `RLL ${(share('right-lower') * 100).toFixed(1)}%`);
@@ -540,4 +551,21 @@ test('segment colouring is a second reading of one unmoved mesh', () => {
   const after = built.lobes.map((lobe) => volumeOf(lobe.geometry));
   assert.deepEqual(after, before, 'nothing moved');
   built.dispose();
+});
+
+test('each lobe really is star-shaped about the centre it was carved from', () => {
+  // The assumption the whole carve rests on: from the centre, every direction
+  // leaves the surface exactly once. `carve.js` says so in prose and exports a
+  // check so the answer can be measured — this is the measurement. If it ever
+  // fails, the lobe is not a solid the carve can describe and the fix is a
+  // different centre, not a finer mesh.
+  for (const lobe of lungs.lobes) {
+    const { ok, failures } = starShaped(lobe.geometry, lobe.centre, { detail: 2 });
+    assert.ok(
+      ok,
+      `${lobe.id}: ${failures.length} directions leave the surface other than once, ` +
+        `first at ${failures[0]?.direction.toArray().map((v) => v.toFixed(2)).join(', ')} ` +
+        `with ${failures[0]?.hits} crossings`
+    );
+  }
 });

@@ -56,9 +56,13 @@ import * as THREE from 'three';
  *
  * A normal points towards the part on its far side. `through` is a point the
  * plane passes through, and is **calibrated**: the positions were chosen so
- * that the sectors come out at the shares of liver volume the literature
- * reports, and they are the only numbers here that were fitted rather than
- * described.
+ * that the sectors come out near the sectoral shares of liver volume usually
+ * quoted — right liver about 60%, left about 40%, the caudate a few per cent —
+ * and they are the only numbers here that were fitted rather than described.
+ *
+ * **Those shares are uncited**, and real ones vary enough between people that
+ * a resection is planned on the patient's own CT volumetry and never on a
+ * figure like this. `docs/medical-notes.md` records the gap.
  */
 export const PLANES = {
   /**
@@ -83,18 +87,6 @@ export const PLANES = {
    */
   portal: { normal: [-0.12, 1, 0], through: [0, -0.2, 0] },
   /**
-   * The back of the porta hepatis. Everything behind it is taken as the caudate
-   * lobe, which is not part of either the right or the left liver.
-   *
-   * **A simplification, and the largest one here.** The real caudate is a
-   * central mass between the porta and the cava, narrow from side to side. A
-   * box would describe it better and a box cannot be cut from half-spaces — the
-   * complement of one is a union, not an intersection — so bounding it sideways
-   * left slivers at the back of segments II and VII that belonged to no segment
-   * at all. Taken as a slab it partitions cleanly, at the cost of calling a
-   * thin posterior shaving of its neighbours "caudate".
-   */
-  /**
    * The umbilical portion of the left portal vein, which is what separates
    * segment II from segment III.
    *
@@ -106,6 +98,18 @@ export const PLANES = {
    * make a number land.
    */
   leftPortal: { normal: [0.25, 1, -0.62], through: [0, -0.12, 0.05] },
+  /**
+   * The back of the porta hepatis. Everything behind it is taken as the caudate
+   * lobe, which is not part of either the right or the left liver.
+   *
+   * **A simplification, and the largest one here.** The real caudate is a
+   * central mass between the porta and the cava, narrow from side to side. A
+   * box would describe it better and a box cannot be cut from half-spaces — the
+   * complement of one is a union, not an intersection — so bounding it sideways
+   * left slivers at the back of segments II and VII that belonged to no segment
+   * at all. Taken as a slab it partitions cleanly, at the cost of calling a
+   * thin posterior shaving of its neighbours "caudate".
+   */
   caudateFront: { normal: [0, 0, 1], through: [0, 0, -0.82] },
 };
 

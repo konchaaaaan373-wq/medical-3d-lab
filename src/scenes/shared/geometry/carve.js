@@ -208,14 +208,6 @@ export function starShaped(geometry, centre, { detail = 4 } = {}) {
 }
 
 /**
- * A half-space to cut with: keep the side where `normal · p <= constant`.
- *
- * @param {THREE.Vector3} normal pointing towards the part being cut *away*
- * @param {number} constant
- */
-export const cutPlane = (normal, constant) => ({ normal: normal.clone().normalize(), constant });
-
-/**
  * A plane through a point, with a normal pointing at what to discard.
  *
  * The form anatomy is written in: a fissure is described by where it runs and

@@ -262,7 +262,7 @@ asked for. It has been rebuilt.
 | | |
 | --- | --- |
 | Lobes | Five closed meshes whose union is the parenchyma — three right, two left, cut by an oblique fissure on both sides and a horizontal fissure on the right only |
-| Volumes | RUL 36% / RML 12% / RLL 52% of the right lung; 50/50 on the left. The fissure positions were **calibrated** to the shares volumetry reports and nothing else |
+| Volumes | RUL 36% / RML 12% / RLL 52% of the right lung; 50/50 on the left. The fissure positions were **calibrated** to those shares and nothing else, and the shares themselves are the approximate figures taught with the lobes rather than ones read out of a cited series — see `docs/medical-notes.md` |
 | Partition | Every point in the lung falls in exactly one lobe — sampled, not asserted |
 | Segments | Eighteen, named in both languages: ten right, eight left (no left S7, apicoposterior fused, lingula in the left upper lobe). Each placed where its own name says it is, and the placement is what the test checks |
 | Airways | trachea → main → lobar → segmental, with the right main bronchus wider, shorter and steeper than the left |

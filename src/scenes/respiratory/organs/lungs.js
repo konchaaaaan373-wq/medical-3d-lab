@@ -5,6 +5,7 @@ import { tissueMaterial } from '../../shared/materials.js';
 import {
   carveInside,
   carvePart,
+  nearestSite,
   partCentroid,
   planeThrough,
   radialField,
@@ -39,9 +40,11 @@ import {
  * built from the features that make a lung recognisable rather than from a
  * scan, the fissures are flat where real ones are curved and often incomplete,
  * and the segment boundaries are a distance rule rather than a dissection. The
- * lobar volume fractions were calibrated to the shares volumetry reports —
- * roughly 35 / 12 / 53 on the right and half and half on the left — which makes
- * them a target this repository hit, not a measurement it made.
+ * lobar volume fractions were calibrated to roughly 35 / 12 / 53 on the right
+ * and half and half on the left, which makes them a target this repository hit
+ * rather than a measurement it made — and the target itself is uncited, being
+ * the approximate shares taught with the lobes rather than figures read out of
+ * a series. `docs/medical-notes.md` records that gap.
  *
  * The lobes are **separate closed meshes whose union is the lung**, not grooves
  * scratched into one surface, which is what lets one be hidden, moved, coloured
@@ -328,16 +331,11 @@ export function buildLungs({
      */
     segmentAt(point, lobeId) {
       const candidates = lobeId ? segments.filter((segment) => segment.lobe === lobeId) : segments;
-      let best = null;
-      let bestDistance = Infinity;
-      for (const segment of candidates) {
-        const distance = point.distanceToSquared(segment.position);
-        if (distance < bestDistance) {
-          bestDistance = distance;
-          best = segment;
-        }
-      }
-      return best;
+      if (candidates.length === 0) return null;
+      // The same rule the vertex colouring uses, from the same function, so the
+      // colour a vertex is painted and the segment this call names cannot drift
+      // apart.
+      return candidates[nearestSite(point, candidates)];
     },
     /** @param {string} id @param {boolean} visible */
     setLobeVisible(id, visible) {
@@ -423,16 +421,7 @@ function paintSegments(geometry, lobeSegments) {
   );
   for (let i = 0; i < position.count; i++) {
     point.fromBufferAttribute(position, i);
-    let best = 0;
-    let bestDistance = Infinity;
-    for (let s = 0; s < lobeSegments.length; s++) {
-      const distance = point.distanceToSquared(lobeSegments[s].position);
-      if (distance < bestDistance) {
-        bestDistance = distance;
-        best = s;
-      }
-    }
-    const colour = palette[best];
+    const colour = palette[nearestSite(point, lobeSegments)];
     colors[i * 3] = colour.r;
     colors[i * 3 + 1] = colour.g;
     colors[i * 3 + 2] = colour.b;

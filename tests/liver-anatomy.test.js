@@ -14,7 +14,13 @@ import {
   segmentsOfSector,
   veinOrigin,
 } from '../src/scenes/hepatobiliary/organs/liverAnatomy.js';
-import { carveInside, planeThrough, radialField, surfaceSamples } from '../src/scenes/shared/geometry/carve.js';
+import {
+  carveInside,
+  planeThrough,
+  radialField,
+  starShaped,
+  surfaceSamples,
+} from '../src/scenes/shared/geometry/carve.js';
 
 /**
  * The liver, checked as anatomy.
@@ -235,13 +241,34 @@ test('the portal pedicles run inside the segments they supply', () => {
   for (const segment of liver.segments) {
     if (segment.id === 'I') continue;
     assert.ok(vesselNamed(`portal-pedicle-${segment.id}`), `${segment.id} has a portal pedicle`);
-    // The pedicle ends inside its own segment, not on a boundary.
+    // The pedicle ends inside its own segment, **and not near a boundary**.
+    //
+    // Being on the correct side of every plane is not worth asserting on its
+    // own: the pedicle is placed at the centroid of the samples inside those
+    // planes, so it is on the correct side by construction and a test of it
+    // measures the arithmetic rather than the anatomy. The claim with content
+    // is the margin — how far from the nearest boundary it ends — because that
+    // is what distinguishes a pedicle from a hepatic vein, which lies *on* one.
+    const margin = Math.min(
+      ...segment.planes.map((plane) => Math.abs(plane.normal.dot(segment.pedicle) - plane.constant))
+    );
+    // 0.12, in a liver 3.9 wide. The thinnest segment, II, comes out at 0.150
+    // and the rest at 0.19–0.32, against 0 for a hepatic vein on its plane.
     assert.ok(
-      segment.planes.every((plane) => plane.normal.dot(segment.pedicle) - plane.constant <= 0),
-      `${segment.id}'s pedicle ends outside its own segment`
+      margin > 0.12,
+      `${segment.id}'s pedicle ends ${margin.toFixed(3)} from its own boundary, near enough to be a vein`
     );
     assert.equal(liver.segmentAt(segment.pedicle)?.id, segment.id);
   }
+
+  // The caudate is bounded by one plane rather than four — the slab
+  // simplification — so it gets its own, looser figure rather than being left
+  // out of the measurement.
+  const caudate = liver.segmentById('I');
+  const caudateMargin = Math.min(
+    ...caudate.planes.map((plane) => Math.abs(plane.normal.dot(caudate.pedicle) - plane.constant))
+  );
+  assert.ok(caudateMargin > 0.03, `the caudate pedicle ends ${caudateMargin.toFixed(3)} from its front`);
   assert.ok(vesselNamed('portal-vein'));
   assert.ok(vesselNamed('right-portal-branch'));
   assert.ok(vesselNamed('left-portal-branch'));
@@ -264,6 +291,29 @@ test('a hepatic vein and a portal pedicle are not the same kind of thing', () =>
     distanceToCantlie(veinStart) < distanceToCantlie(pedicle),
     'the middle hepatic vein runs nearer its own plane than a neighbouring pedicle does'
   );
+  // How much nearer, so the difference is a figure and not just an ordering: a
+  // vein starts on its plane, a pedicle a fifth of a liver's width away.
+  assert.ok(
+    distanceToCantlie(veinStart) < 1e-9,
+    `the middle hepatic vein starts ${distanceToCantlie(veinStart).toFixed(4)} off its own plane`
+  );
+  assert.ok(
+    distanceToCantlie(pedicle) > 0.15,
+    `segment V's pedicle sits only ${distanceToCantlie(pedicle).toFixed(3)} from Cantlie's line`
+  );
+});
+
+test('each segment really is star-shaped about the centre it was carved from', () => {
+  // What `carve.js` assumes about every part it produces, measured rather than
+  // asserted in prose. A liver is the harder case of the two: nine parts, some
+  // of them thin, and the caudate cut as a slab.
+  for (const segment of liver.segments) {
+    const { ok, failures } = starShaped(segment.geometry, segment.centre, { detail: 2 });
+    assert.ok(
+      ok,
+      `segment ${segment.id}: ${failures.length} directions leave the surface other than once`
+    );
+  }
 });
 
 /* --------------------------------------------------------------------------
