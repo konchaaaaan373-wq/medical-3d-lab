@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  BASELINE_INTERSTITIAL_VOLUME_ML as EDEMA_BASELINE_WATER_ML,
+  INTERSTITIUM as EDEMA_INTERSTITIUM,
+  LYMPHATICS as EDEMA_LYMPHATICS,
+  MAXIMUM_LUNG_WATER_ML as EDEMA_MAXIMUM_WATER_ML,
+  floodingThresholdMmHg as edemaThreshold,
+  stateAt as edemaStateAt,
+} from '../src/models/pulmonaryEdema.js';
+import {
   BASELINE_CIRCULATION,
   CIRCULATION_INTERVENTIONS,
   ILLUSTRATIVE_RESPONSES,
@@ -872,4 +880,70 @@ test('calibration: the treatment slider improves pressure and filtration monoton
     falling(doses.map((s) => s.systemic.cardiacOutputMlPerMin)),
     'the hyperdynamic circulation should settle back rather than be driven harder'
   );
+});
+
+/* --------------------------------------------------------------------------
+   Pulmonary oedema — the numbers this repository chose
+
+   Nothing here is a fact about lungs. Each one pins a constant to the target it
+   was chosen to reproduce, so that moving it has to be deliberate.
+   -------------------------------------------------------------------------- */
+
+test('calibration: a normal lung filters at its lymph flow and gains no water', () => {
+  // The filtration coefficient was solved backwards from this: a resting lung
+  // at a normal atrial pressure filters at the lymph flow a lung is observed to
+  // carry, and therefore neither gains nor loses water.
+  const resting = edemaStateAt(EDEMA_BASELINE_WATER_ML, {});
+  assert.ok(
+    Math.abs(resting.filtrationMlPerHour - EDEMA_LYMPHATICS.baselineFlowMlPerHour) < 0.5,
+    `baseline filtration was ${resting.filtrationMlPerHour.toFixed(1)} mL/h`
+  );
+  assert.ok(Math.abs(resting.netAccumulationMlPerHour) < 0.5, 'a normal lung is in balance');
+  // And the net Starling pressure that produces it is the small positive
+  // number the textbooks give, not a large one cancelled by a small Kf.
+  const net = resting.filtrationMlPerHour / resting.filtrationCoefficient;
+  assert.ok(net > 0 && net < 3, `net filtration pressure was ${net.toFixed(2)} mmHg`);
+});
+
+test('calibration: an unadapted lung floods where the textbooks put the threshold', () => {
+  // Conventionally, alveolar oedema in a previously normal lung above a wedge
+  // pressure of about 25 mmHg. The threshold is searched for, never stored, so
+  // this pins the constants that place it rather than the threshold itself.
+  const threshold = edemaThreshold({});
+  assert.ok(threshold !== null, 'an unadapted lung has a threshold at all');
+  assert.ok(threshold > 20 && threshold < 28, `unadapted flooding threshold was ${threshold.toFixed(1)} mmHg`);
+});
+
+test('calibration: the lymphatic ceilings place the two thresholds where the model claims', () => {
+  // The acute and chronic multiples are invented. What they are chosen for is
+  // the gap between an unadapted lung and one that has lived at pressure.
+  const unadapted = edemaThreshold({ chronicity: 0 });
+  const adapted = edemaThreshold({ chronicity: 1 });
+  assert.ok(adapted - unadapted > 10, `the adaptation should be worth more than 10 mmHg, got ${(adapted - unadapted).toFixed(1)}`);
+  assert.ok(adapted < 50, 'and not so much that the lung becomes indestructible');
+});
+
+test('calibration: the interstitium fills across a clinically recognisable range of lung water', () => {
+  // Extravascular lung water is measured in people, so the numbers this model
+  // reports have to be the numbers a monitor would report: roughly 5 mL/kg dry,
+  // roughly 10 mL/kg when oedema is called present.
+  const kg = 70;
+  assert.ok(
+    EDEMA_BASELINE_WATER_ML / kg > 4 && EDEMA_BASELINE_WATER_ML / kg < 8,
+    `a dry lung holds ${(EDEMA_BASELINE_WATER_ML / kg).toFixed(1)} mL/kg`
+  );
+  assert.ok(
+    EDEMA_INTERSTITIUM.floodThresholdMl / kg > 8 && EDEMA_INTERSTITIUM.floodThresholdMl / kg < 13,
+    `alveoli start filling at ${(EDEMA_INTERSTITIUM.floodThresholdMl / kg).toFixed(1)} mL/kg`
+  );
+});
+
+test('calibration: diversion reduces the shunt without abolishing it', () => {
+  // Hypoxic pulmonary vasoconstriction is real and partial. A fraction that
+  // abolished the shunt would have made flooding harmless; one of zero would
+  // have made the lung worse than it is.
+  const fullyFlooded = edemaStateAt(EDEMA_MAXIMUM_WATER_ML, {});
+  assert.equal(fullyFlooded.floodedFraction, 1, 'the test needs a completely flooded lung');
+  assert.ok(fullyFlooded.shuntFraction > 0.5, `shunt was ${fullyFlooded.shuntFraction.toFixed(2)}`);
+  assert.ok(fullyFlooded.shuntFraction < 0.85, 'but diversion keeps it short of the whole output');
 });

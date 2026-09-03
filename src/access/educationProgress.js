@@ -1,5 +1,25 @@
 const STORAGE_KEY = 'medical3dlab.education-progress.v1';
-let volatileStore = {};
+
+/**
+ * What this page has saved, per storage, for when the storage will not keep it.
+ *
+ * Held against the storage object rather than in one module-level variable,
+ * because the storage is a parameter and a shared shadow is not a shadow of
+ * anything: with one variable, saving into one storage showed up in reads of
+ * another, which is how two of this file's own tests found it. `defaultStorage`
+ * returns the one `localStorage` every time, so the app still gets exactly one.
+ */
+const shadows = new WeakMap();
+/** For calls made with no storage at all. */
+let detachedShadow = { store: {}, persisted: true };
+
+const shadowOf = (storage) =>
+  storage ? shadows.get(storage) ?? { store: {}, persisted: true } : detachedShadow;
+const rememberShadow = (storage, next, persisted) => {
+  const record = { store: next, persisted };
+  if (storage) shadows.set(storage, record);
+  else detachedShadow = record;
+};
 
 const emptyProgress = () => ({ step: 0, completed: false });
 
@@ -55,26 +75,54 @@ function normaliseRecord(value, stepCount, revision = null) {
   };
 }
 
+/**
+ * What this page knows about progress: what is on disk, over what is only here.
+ *
+ * The in-memory copy is not a fallback for when reading fails — it is the whole
+ * record in a context that lets a page *read* storage and refuses to let it
+ * *write*, which is what a private or embedded browser does. There `getItem`
+ * returns null perfectly happily and `setItem` throws, so returning `{}` for an
+ * empty read threw away every step the learner had taken this session: the
+ * fallback `writeStore` keeps was written on every save and read back on none
+ * of them, and the promise in its comment — that progress "remains useful for
+ * this page lifetime" — was not true.
+ *
+ * Disk wins where the two disagree, because disk is the durable record.
+ */
 function readStore(storage) {
-  if (!storage?.getItem) return volatileStore;
+  const shadow = shadowOf(storage);
+  if (!storage?.getItem) return shadow.store;
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    const parsed = raw ? JSON.parse(raw) : null;
+    const onDisk = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    // Which of the two is authoritative depends on whether the last write
+    // reached disk. It usually did, and then disk is the record and the shadow
+    // is a stale copy of it — letting the shadow win there would resurrect
+    // progress another tab had moved on from. When the write was refused,
+    // though, disk is the stale one and the shadow is the only place this
+    // session's steps exist: merging disk over it defeats the shadow in exactly
+    // the case it was added for, which is a browser that lets a page read
+    // storage and refuses to let it write.
+    return shadow.persisted ? { ...shadow.store, ...onDisk } : { ...onDisk, ...shadow.store };
   } catch {
-    return volatileStore;
+    return shadow.store;
   }
 }
 
 function writeStore(next, storage) {
-  volatileStore = next;
+  let persisted = false;
   try {
     storage?.setItem?.(STORAGE_KEY, JSON.stringify(next));
+    persisted = true;
   } catch {
-    // Private/embedded contexts may deny persistent storage. Progress then
-    // remains useful for this page lifetime without affecting free content.
+    // Private/embedded contexts may deny persistent storage, and a full quota
+    // refuses a write to a key that already holds an older value. Progress then
+    // remains useful for this page lifetime without affecting free content —
+    // which requires `readStore` to know the write was refused, so it is
+    // recorded here rather than inferred later.
   }
+  rememberShadow(storage, next, persisted);
 }
 
 function defaultStorage() {

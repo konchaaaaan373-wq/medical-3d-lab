@@ -421,7 +421,10 @@ export class HepatorenalScene {
       (state.portal.resistances.intrahepaticMultiple - 1) /
         (HepatorenalScene.MAX_STRUCTURAL_RESISTANCE - 1)
     );
-    this.liver.object.material.color.copy(HEALTHY_LIVER).lerp(SCARRED_LIVER, scarring);
+    // Nine segment meshes, each with its own material: there is no single
+    // `object.material` on a liver any more, and the organ asks a scene to say
+    // what it means. Cirrhosis is the whole parenchyma.
+    this.liver.setParenchymaColor(HEALTHY_LIVER.clone().lerp(SCARRED_LIVER, scarring));
 
     // The signal, drawn as colour on the vessels that respond to it — and
     // never on the splanchnic bed, because the whole point is that it does not.

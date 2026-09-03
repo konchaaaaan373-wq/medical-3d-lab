@@ -193,6 +193,36 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 
 Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://YOUR_PRODUCTION_DOMAIN` after deployment.
 
+### Granting needs an owner; revoking does not
+
+Every write that grants access resolves the Supabase user first, and refuses if
+it cannot: writing `active` for a subscription whose owner cannot be established
+is how one customer's payment becomes another's access.
+
+**Revocation is the opposite, and must not inherit that rule.** A subscription
+that has stopped entitling has to stop entitling whether or not the local
+mapping can say whose it was — the row is addressed by
+`stripe_subscription_id`, and refusing to touch it does not fail safe, it leaves
+whatever the row already said, which was `active`.
+
+Two failures made that concrete, and both returned **200** to Stripe, which is
+an instruction never to send the event again:
+
+- `subscriptionById` returns `null` on a 404 and throws on everything else, so
+  the `try/catch` written to fall back to the signed event object caught every
+  case except the ordinary one — Stripe no longer serving a deleted
+  subscription. That left a null subscription, which resolved no owner, synced
+  nothing and revoked nothing.
+- With no `billing_customers` row and no `metadata.supabase_user_id`, the
+  handler returned `ignored: deleted_user` — when no user had been deleted —
+  and wrote nothing.
+
+Either way a customer who cancelled kept paid access indefinitely, and nothing
+recorded that it had happened. `revokeSubscriptionLocally` now writes the
+non-entitling status by subscription ID alone, and refuses any status that
+grants access so it cannot be reused as a general writer.
+`tests/billing-webhook.test.js` holds both directions.
+
 ## Content policy
 
 ### Free
@@ -375,8 +405,16 @@ in `ALERT_RULES`, so the policy is reviewable and testable:
 | Kind | Level |
 | --- | --- |
 | `webhook_failed`, `webhook_digest_mismatch` | critical |
-| `reconcile_drift`, `unsupported_price` | error |
+| `reconcile_drift`, `unsupported_price`, `unresolvable_subscription_event`, `payment_final_failure`, `payment_uncollectible` | error |
+| `payment_failed`, `payment_action_required` | warning |
 | `deleted_user_event`, `reconcile_clean` | info |
+
+`unresolvable_subscription_event` is not `deleted_user_event`: that one means
+the account is gone and its billing rows went with it, which is expected. This
+one means the customer has no local mapping and the event carries no metadata
+either, so somebody may be paying with nothing to attach it to. Revocation
+still lands — it needs no owner — and nothing is granted, which is why it is
+`error` and not `critical`.
 
 An alert leaves the deployment, so every string in one passes through the
 product's own redaction layer (`src/telemetry/redact.js`) — reused rather than

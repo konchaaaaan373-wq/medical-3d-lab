@@ -8,6 +8,7 @@ import {
   json,
   subscriptionById,
   stripeGet,
+  revokeSubscriptionLocally,
   supabaseAdmin,
   syncSubscription,
   syncSubscriptionUntilCurrent,
@@ -122,29 +123,46 @@ async function processStripeEvent(event) {
     // Stripe does not guarantee webhook delivery order. Re-read the current
     // subscription before writing local entitlement state so an old `updated`
     // event arriving late cannot overwrite a newer plan/status. Canceled
-    // subscriptions are normally still retrievable; if Stripe refuses the
-    // read after deletion, the signed event object is the safe fallback.
-    let subscription = object;
-    let retrievedCurrent = false;
+    // subscriptions are normally still retrievable; if Stripe no longer serves
+    // the object, the signed event object is the safe fallback.
+    //
+    // Both ways of not getting one have to land on that fallback.
+    // `subscriptionById` **returns null** on a 404 and only throws on anything
+    // else, so a `catch` alone caught every case except the one it was written
+    // for: on the ordinary deleted-subscription 404 this left `subscription`
+    // null, and a null subscription resolves no owner, syncs nothing and
+    // revokes nothing — the event was acknowledged to Stripe and dropped.
+    let current = null;
     try {
-      subscription = await subscriptionById(object.id);
-      retrievedCurrent = Boolean(subscription);
-      if (!subscription && event.type !== 'customer.subscription.deleted') {
-        throw new Error('Current Stripe subscription could not be retrieved.');
-      }
+      current = await subscriptionById(object.id);
     } catch (error) {
       if (event.type !== 'customer.subscription.deleted') throw error;
-      subscription = object;
     }
+    if (!current && event.type !== 'customer.subscription.deleted') {
+      throw new Error('Current Stripe subscription could not be retrieved.');
+    }
+    const retrievedCurrent = Boolean(current);
+    const subscription = current ?? object;
 
     const ownerId = await liveSubscriptionOwnerId(subscription);
     if (!ownerId) {
-      await notify('deleted_user_event', {
+      // No owner, so nothing may be granted. But a subscription that has stopped
+      // entitling still has to stop entitling: the local row is addressed by
+      // subscription ID and does not need to know whose it is to say that it is
+      // over. Skipping this returned 200 for a cancellation, which told Stripe
+      // never to send it again, and left a row reading `active` behind it.
+      const revocation = await revokeSubscriptionLocally(subscription);
+      await notify('unresolvable_subscription_event', {
         eventId: event.id,
         type: event.type,
         subscriptionId: subscription?.id ?? null,
+        status: subscription?.status ?? null,
+        revoked: revocation.revoked,
       });
-      return { status: 'ignored', reason: 'deleted_user' };
+      return {
+        status: 'ignored',
+        reason: revocation.revoked ? 'revoked_without_owner' : 'unknown_owner',
+      };
     }
 
     let syncedSubscription = subscription;

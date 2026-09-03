@@ -340,7 +340,9 @@ test('every material value returns after a round trip through the states', () =>
       afferent: [...glomerulus.parts.afferent.surface.geometry.attributes.position.array.slice(0, 9)],
       tuft: glomerulus.parts.tuft0.material.emissiveIntensity,
       tubule: glomerulus.parts.tubule.material.opacity,
-      liver: built.liver.object.material.color.getHexString(),
+      // The liver is nine segment meshes now; its colour is the colour they
+      // all carry, so the round trip is read off one of them.
+      liver: built.liver.segments.map((segment) => segment.material.color.getHexString()).join(),
       renalArtery: built.circulation.vessels.renalArtery.material.color.getHexString(),
     };
   };

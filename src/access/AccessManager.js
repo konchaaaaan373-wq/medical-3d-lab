@@ -3,6 +3,7 @@ import {
   authConfigured,
   authenticatedFetch,
   consumePasswordRecoveryRedirect,
+  isPasswordRecovery,
   getSession,
   requestPasswordReset,
   signIn,
@@ -65,11 +66,12 @@ export function createAccessManager({ ui }) {
       // Supabase's client-side recovery flow returns credentials in the hash.
       // Consume it before anything can interpret that fragment as a scene name,
       // persist the temporary recovery session, and scrub the tokens from the
-      // visible URL immediately.
-      const recovering = consumePasswordRecoveryRedirect();
-      if (recovering || new URLSearchParams(window.location.search).get('account') === 'recovery') {
-        state.recoveryMode = recovering;
-      }
+      // visible URL immediately. Which signals count as recovery, and why there
+      // are two, is `isPasswordRecovery`.
+      state.recoveryMode = isPasswordRecovery({
+        consumedRecoveryHash: consumePasswordRecoveryRedirect(),
+        search: window.location.search,
+      });
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       const params = new URLSearchParams(window.location.search);

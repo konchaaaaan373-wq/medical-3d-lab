@@ -285,3 +285,72 @@ test('telemetry: recording a visit stores a count and reports a word', async () 
   );
   assert.equal(JSON.parse(storage.map.get(VISIT_STORAGE_KEY)).days, 2);
 });
+
+test('telemetry: a failed send does not swallow what was recorded while it was in flight', async () => {
+  // `send` empties the queue before awaiting the transport, so anything
+  // recorded during the request lands in a fresh array. Restoring the failed
+  // batch by assignment wrote over that array — and the events most likely to
+  // be recorded during a failing send are the ones about the failure.
+  let release;
+  const inFlight = new Promise((resolve) => {
+    release = resolve;
+  });
+  const telemetry = createTelemetry({
+    transport: async () => {
+      await inFlight;
+      throw new Error('offline');
+    },
+  });
+  telemetry.setConsent('granted');
+  telemetry.record('model.start', { scene: SCENE, device: 'phone' });
+
+  const flushing = telemetry.flush();
+  // Recorded while the send is out. It is not in the batch being sent.
+  telemetry.record('model.start', { scene: SCENE, device: 'desktop' });
+  release();
+  assert.equal(await flushing, false);
+
+  assert.equal(telemetry.pending, 2, 'the event recorded mid-send was discarded');
+  assert.equal(telemetry.stats.dropped, 0, 'nor was it counted as dropped');
+});
+
+test('telemetry: a retried batch goes out oldest first', async () => {
+  // The order the cap depends on. A restored event is older than one recorded
+  // while the send was failing, so it goes in front — which is what makes
+  // `slice(-maxQueue)` drop the oldest rather than the newest.
+  //
+  // The mid-send record is the whole test: without one the queue is empty when
+  // the batch is restored and every ordering agrees, which is how the first
+  // version of this passed against a deliberately reversed restore.
+  const batches = [];
+  let attempts = 0;
+  let release;
+  const inFlight = new Promise((resolve) => {
+    release = resolve;
+  });
+  const telemetry = createTelemetry({
+    transport: async (payload) => {
+      attempts += 1;
+      if (attempts === 1) {
+        await inFlight;
+        throw new Error('offline');
+      }
+      batches.push(payload);
+    },
+  });
+  telemetry.setConsent('granted');
+  telemetry.record('model.start', { scene: SCENE, device: 'phone' });
+
+  const flushing = telemetry.flush();
+  telemetry.record('model.start', { scene: SCENE, device: 'desktop' });
+  release();
+  assert.equal(await flushing, false);
+  assert.equal(await telemetry.flush(), true);
+
+  assert.equal(batches.length, 1);
+  assert.deepEqual(
+    batches[0].events.map((event) => event.props.device),
+    ['phone', 'desktop'],
+    'the retried event did not come first'
+  );
+});

@@ -14,6 +14,153 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Fixes
+
+- **A cancelled subscription now actually revokes access.** Two paths through
+  the Stripe webhook acknowledged a cancellation to Stripe — telling it never to
+  send the event again — and wrote nothing to the local row, which went on
+  saying `active`. A customer who cancelled kept paid access indefinitely, and
+  nothing anywhere recorded that it had happened. Revoking no longer requires
+  resolving who owns the subscription; granting still does.
+- **A password reset survives a page refresh.** The recovery dialog was reached
+  by two signals — the tokens in the URL hash, consumed and scrubbed once, and
+  the `?account=recovery` that is left afterwards — and the second was checked
+  for and then discarded. Anybody who reloaded mid-reset got the ordinary
+  sign-in dialog while holding a valid recovery session.
+- **Lesson progress is kept in browsers that refuse to store it.** Private and
+  embedded browsers let a page read storage and refuse to let it write; the
+  in-memory copy built for exactly that case was saved on every step and read
+  back on none, so a learner three steps in returned to step one.
+- **A failed telemetry send no longer eats what was recorded while it was
+  failing** — which is disproportionately the events about the failure.
+
+### The liver, divided the way surgery divides it
+
+- **Eight Couinaud segments**, as nine closed meshes whose union is the
+  parenchyma (segment IV is carried as its superior and inferior halves), each
+  hideable and measurable on its own. Every point in the liver falls in exactly
+  one of them, and the five sectors take the share of liver volume the
+  literature reports.
+- **Cantlie's line is the right/left division, and the falciform ligament is
+  not.** The commonest mistake about liver anatomy is now something the
+  geometry cannot make: the plane of the middle hepatic vein and the ligament
+  are separate objects, a real distance apart, and a test holds them so.
+- **The hepatic veins run between the segments and the portal pedicles run
+  inside them** — the arrangement that makes a segmentectomy possible, and the
+  reason a surgeon finds a resection plane by following a vein. Each vein is
+  projected onto the plane it divides rather than positioned near it.
+- **The caudate lobe belongs to neither side.** It takes a pedicle from both
+  portal branches and drains straight into the cava by its own short veins,
+  which is why it survives what kills the rest of the liver.
+- Removing a sector leaves a real cut surface: taking segments VI and VII away
+  draws the plane of the right hepatic vein, which is what a right posterior
+  sectionectomy looks like.
+
+### The lung, rebuilt as an organ
+
+- **The lung has lobes now.** It used to have grooves: shallow dents scratched
+  into one surface, so it looked lobed and had nothing in it that could be
+  hidden, coloured or measured. It is five closed meshes whose union is the
+  parenchyma — three on the right, two on the left, cut apart by an oblique
+  fissure on both sides and a horizontal fissure on the right only. Every point
+  in the lung falls in exactly one lobe, and that is sampled rather than
+  asserted.
+- **The lobes take roughly the share of each lung they are taught to take** —
+  about 36 / 12 / 52 on the right and half and half on the left, with the middle
+  lobe the smallest of the five. The fissure positions were chosen to land those
+  and nothing else, which makes them a calibration rather than a measurement,
+  and the targets themselves are uncited approximations rather than figures from
+  a series.
+- **Eighteen named bronchopulmonary segments**, ten on the right and eight on
+  the left, in both languages: no left S7 because the heart is there, an
+  apicoposterior segment where the left lung fuses two, and the lingula inside
+  the left upper lobe rather than as a lobe of its own. Each sits where its own
+  name says it does, and that is what the tests check.
+- **A bronchial tree and the vessels that run with it.** Trachea, main, lobar
+  and segmental bronchi, with the right main bronchus wider, shorter and steeper
+  than the left; an artery beside every bronchus; and veins running *between*
+  the segments rather than with them, which is the fact a surgeon finds a
+  segmentectomy plane by. At the hilum, RALS: the artery anterior to the
+  bronchus on the right and superior to it on the left.
+- **Nothing inside the lung comes out of it.** The hilum and the segment
+  centres are declared as anatomical directions and then placed against the
+  lung's own surface, so the declaration says where a structure is and the
+  surface says how far out that is. Written the other way round — as fractions
+  of the lung's extents — seven of the eight hilar structures sat outside the
+  pleura and twenty-one airway and vessel endpoints ended in mid-air, plainly
+  visible on screen while every test passed.
+- **Still schematic in shape.** The outer silhouette is unchanged and is not
+  from a scan; real fissures are curved and frequently incomplete, and the
+  segment boundaries here are a distance rule — the lung nearer one segmental
+  bronchus than any other — which models the definition of a segment rather
+  than tracing a specimen. The right main bronchus is the shorter and the more
+  vertical, which is the claim; the 1 : 2 length ratio of real ones is
+  understated here at 1 : 1.13, because these two lungs are placed symmetrically
+  and a real left hilum is pushed out by the heart.
+- **Building an organ twice now costs once.** Carved parts are kept and handed
+  out as separate copies, which took the test suite from 30 s back to 16 s
+  without changing a single vertex.
+
+### A new model — where the water goes
+
+- **Pulmonary oedema** (`#/pulmonary-edema`, `alpha`). One Starling equation
+  across the pulmonary capillary and the three buffers that oppose it:
+  interstitial pressure rising off its subatmospheric floor, lymphatic flow
+  rising towards a ceiling, and interstitial protein washing down as the flux
+  rises. What comes out of that is the question the scene is named for — above
+  what pressure does water cross, and which space does it fill first.
+- **The threshold is searched for, never stored.** There is no flooding
+  constant anywhere in the model. Lower the albumin, injure the barrier, raise
+  the cardiac output or give the lymphatics months to adapt, and the pressure
+  the lung tolerates moves, because it was never a number in the first place.
+  A previously normal lung floods in the mid-twenties mmHg; the same lung after
+  months at pressure holds out into the high thirties.
+- **Cardiogenic and non-cardiogenic oedema are the same equation.** Nothing
+  switches. Raising the atrial pressure floods the lung through the hydrostatic
+  term; injuring the barrier floods it at a normal pressure through σ — and
+  because σ multiplies the oncotic term, giving albumin stops helping. That
+  falls out of the model rather than being written into it.
+- **The interstitium fills before the alveolus does**, so the scene has a stage
+  where the lung is visibly wet and the saturation has not moved — which is why
+  breathlessness precedes hypoxaemia and the radiograph changes before the
+  oximeter. Only when alveoli flood does a shunt appear, and then oxygen widens
+  the alveolar-to-arterial difference instead of closing it.
+- It reuses the lungs `breathing-lungs` already draws. No organ is modelled
+  twice.
+- Scope, evidence and boundaries are on the same screen: the model card records
+  that the model has **no ventilation and no gravity** — it cannot say how hard
+  someone is breathing, and it fills the lung evenly where real oedema is basal.
+
+### The organ layer, checked the way the heart was
+
+Every organ builder in `src/scenes/*/organs/` was measured against the
+anatomical relationships it claims, rather than looked at. Three defects came
+out of it, all of them the kind that stays invisible while an organ is alone in
+the frame:
+
+- **The spleen presented its hilum to the ribs.** It is a left-sided organ, so
+  its concave visceral surface faces the midline; built facing the other way, it
+  only went wrong once something placed it in a body — and in the
+  cirrhosis/portal-pressure model the splenic vein was drawn starting half a
+  unit away from the notch it is supposed to leave by. The spleen now carries a
+  declared medial axis, and the scene places it by its hilum instead of by a
+  position typed beside the vessel's.
+- **The heart's aorta label pointed at the right atrium.** When the aortic arch
+  was corrected to sweep over the patient's left, the label naming it stayed on
+  the far side of the midline. It is now derived from the arch itself.
+- **Hollow organs were far more opaque than they asked to be.** A closed
+  double-sided wall is crossed twice, so a stomach asking for 0.84 rendered at
+  0.97 and passed 2.6% of its contents instead of 16%. Gastric and intestinal
+  contents — the subject of both scenes that draw them — are now visible through
+  the wall: measured on a real render, the bowel's visible contents went from
+  137 pixels to 1938, and the brightest contents in the stomach doubled.
+
+None of this changes a medical claim or a number; all of it changes whether the
+picture says what the code says it says. `tests/organ-anatomy.test.js` now holds
+the relationships in place — sides, medial and lateral, labels pointing at the
+structures they name, nested organs staying nested, and every shape setter
+returning to where it started.
+
 ### A landing page you can actually touch
 
 - The first screen now contains a working circulation comparison, not an

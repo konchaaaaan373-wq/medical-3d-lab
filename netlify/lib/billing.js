@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { ACCESS_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 
 export const STRIPE_API_VERSION = '2026-08-26.dahlia';
 
@@ -429,6 +430,56 @@ export async function upsertSubscription(
     ],
   });
   return { synced: true, reason: 'synced' };
+}
+
+/**
+ * Write a non-entitling status onto the local row, addressed by subscription ID.
+ *
+ * **Revoking never needs to know who owns a subscription; granting does.** Every
+ * other write here resolves an owner first, and rightly: writing `active` for a
+ * subscription whose owner cannot be established is how one customer's payment
+ * becomes another's access. Revoking is the opposite direction. Refusing to
+ * revoke because the owner is unclear does not fail safe — it leaves whatever
+ * the row already said, and what it already said was `active`.
+ *
+ * That is not hypothetical. A `customer.subscription.deleted` whose customer had
+ * no mapping row returned 200 with `ignored: deleted_user` — no user had been
+ * deleted — and Stripe, having been acknowledged, never sent it again. The row
+ * stayed `active`, and `active` is what `grantsFromSubscriptions` reads. A
+ * customer who cancelled kept paid access indefinitely, and nothing anywhere
+ * recorded that it had happened.
+ *
+ * Refuses to write a status that grants access, so it cannot be reached for and
+ * used as a general writer.
+ *
+ * @param {{ id?: string, status?: string }} subscription
+ */
+export async function revokeSubscriptionLocally(
+  subscription,
+  { admin = supabaseAdmin, now = new Date() } = {}
+) {
+  const subscriptionId = subscription?.id;
+  if (!subscriptionId) return { revoked: false, reason: 'missing_subscription' };
+  const status = subscription.status ?? 'canceled';
+  if (ACCESS_SUBSCRIPTION_STATUSES.has(status)) {
+    return { revoked: false, reason: 'status_grants_access', status };
+  }
+  await admin(`billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: {
+      status,
+      // `boolean not null` in the schema, and the object this reaches for is
+      // often the thin signed event rather than a full subscription — so a
+      // `?? null` here 400s the PATCH and the revocation this function exists
+      // to guarantee never lands, in exactly the deleted-subscription case it
+      // was written for. False is also the true answer: a subscription that has
+      // ended is not going to cancel at the end of a period.
+      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      updated_at: subscriptionStateUpdatedAt(subscription, now),
+    },
+  });
+  return { revoked: true, status };
 }
 
 const SUBSCRIPTION_EVENT_TYPES = new Set([

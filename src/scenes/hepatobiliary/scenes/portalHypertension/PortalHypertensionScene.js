@@ -112,10 +112,6 @@ export class PortalHypertensionScene {
     this.liver.object.position.set(-1.1, 0.15, 0);
     this.liver.object.scale.setScalar(0.92);
 
-    this.spleen = buildSpleen({ color: '#8f4a5a', opacity: 0.72 });
-    this.spleen.object.position.set(2.5, -1.62, 0);
-    this.spleen.object.scale.setScalar(0.42);
-
     this.vessels = buildPortalVasculature({
       portal: PALETTE.portal,
       splanchnic: PALETTE.splanchnic,
@@ -123,6 +119,17 @@ export class PortalHypertensionScene {
       collateral: PALETTE.collateral,
       tips: PALETTE.tips,
     });
+
+    this.spleen = buildSpleen({ color: '#8f4a5a', opacity: 0.72 });
+    const spleenScale = 0.42;
+    this.spleen.object.scale.setScalar(spleenScale);
+    // Placed by its hilum rather than by its centre. The splenic vein has to
+    // leave the notch it is drawn leaving, and a centre typed here beside the
+    // vessel's own start is two numbers that have to be kept in step by hand —
+    // which they were not.
+    this.spleen.object.position
+      .copy(this.vessels.origins.splenic)
+      .addScaledVector(this.spleen.hilum, -spleenScale);
 
     // One stream per destination, so that "where the blood goes" is something
     // the reader watches rather than reads. Each one's rate is a flow.
@@ -243,7 +250,10 @@ export class PortalHypertensionScene {
 
     // The liver's colour follows how scarred it is. Presentation.
     const scarring = clamp((state.resistances.intrahepaticMultiple - 1) / 9);
-    this.liver.object.material.color.copy(HEALTHY_LIVER).lerp(SCARRED_LIVER, scarring);
+    // The liver is nine segment meshes now, each with its own material, so
+    // there is no single `object.material` to reach for. Cirrhosis colours the
+    // whole parenchyma, and saying so is what the organ asks for.
+    this.liver.setParenchymaColor(HEALTHY_LIVER.clone().lerp(SCARRED_LIVER, scarring));
 
     // Streams: rate and brightness follow the flows, so the picture and the
     // read-out cannot disagree about where the blood is going.

@@ -158,6 +158,31 @@ export function consumePasswordRecoveryRedirect({ location, history } = {}) {
   return true;
 }
 
+/**
+ * Is this page load a password recovery?
+ *
+ * Two signals, and either one is enough. The hash carries the tokens and can
+ * only be read once — `consumePasswordRecoveryRedirect` scrubs it immediately so
+ * the tokens cannot linger in a screenshot or a copied URL. `?account=recovery`
+ * is what is left in the address bar after that, and is therefore the only
+ * signal a reload has.
+ *
+ * Written out as a function because inlining it went wrong in the way inlined
+ * boolean logic does: `if (consumed || requested) recoveryMode = consumed` reads
+ * as though it honours both and honours neither but the first — anybody who
+ * reloaded mid-recovery got the ordinary sign-in dialog while holding a valid
+ * recovery session.
+ *
+ * Answering true is not permission to change a password. It decides which
+ * dialog opens; `updatePassword` still requires a live recovery session.
+ *
+ * @param {{ consumedRecoveryHash: boolean, search?: string }} signals
+ */
+export function isPasswordRecovery({ consumedRecoveryHash, search = '' }) {
+  if (consumedRecoveryHash) return true;
+  return new URLSearchParams(search).get('account') === 'recovery';
+}
+
 /** Update the password for a signed-in/recovery session. */
 export async function updatePassword(password) {
   if (!authConfigured()) throw new Error('Account access is not configured yet.');

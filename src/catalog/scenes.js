@@ -124,6 +124,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/asthma/index.js'),
   },
   {
+    id: 'pulmonary-edema',
+    slug: 'pulmonary-edema',
+    titleEn: 'Where the water goes',
+    titleJa: '水は、どこへ行くのか',
+    system: 'respiratory',
+    organ: 'lungs',
+    disease: 'pulmonary-edema',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pulmonary-edema.md',
+    description:
+      'One Starling equation across the pulmonary capillary, and the three buffers that decide whether a raised left atrial pressure ends in a wet interstitium or a flooded alveolus.',
+    descriptionJa:
+      '肺毛細血管を挟んだ 1 つの Starling 式と、上がった左房圧が「湿った間質」で止まるか「水没した肺胞」に至るかを決める 3 つの緩衝機構。',
+    tags: ['physiology', 'haemodynamics', 'gas exchange'],
+    load: () => import('../scenes/respiratory/scenes/pulmonaryEdema/index.js'),
+  },
+  {
     id: 'breathing-lungs',
     slug: 'breathing-lungs',
     titleEn: 'Breathing lungs',
@@ -409,7 +426,6 @@ export const SCENE_MANIFEST = [
  */
 export const PLANNED_SCENES = [
   { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
-  { organ: 'lungs', disease: 'pulmonary-edema', titleEn: 'Pulmonary oedema', titleJa: '肺水腫' },
   { organ: 'lungs', disease: 'pneumothorax', titleEn: 'Pneumothorax', titleJa: '気胸' },
   { organ: 'lungs', disease: 'pulmonary-embolism', titleEn: 'Pulmonary embolism', titleJa: '肺塞栓症' },
   // Chronic kidney disease, acute kidney injury and nephrotic syndrome are now

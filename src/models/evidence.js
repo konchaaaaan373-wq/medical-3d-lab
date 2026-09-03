@@ -1148,10 +1148,163 @@ export const HEPATORENAL_EVIDENCE = defineEvidence('hepatorenal-syndrome', [
 ]);
 
 /** Every registry, for the tests and for anything that wants the whole picture. */
+export const PULMONARY_EDEMA_EVIDENCE = defineEvidence('pulmonary-edema', [
+  {
+    id: 'starling-equation',
+    claim:
+      'Net transvascular water flux across the pulmonary capillary is the filtration coefficient times the difference between the hydrostatic gradient and the reflected oncotic gradient.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'The Starling principle; standard respiratory and microvascular physiology (Guyton & Hall; West).',
+    validation: 'physiology: filtration follows the Starling terms, and only those',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'capillary-above-atrium',
+    claim:
+      'Pulmonary capillary hydrostatic pressure exceeds left atrial pressure by a flow-dependent amount, so raising cardiac output raises capillary pressure at an unchanged atrial pressure.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Pulmonary vascular pressure profile; the venous resistance downstream of the capillary is real and small.',
+    validation: 'physiology: raising pulmonary blood flow floods a lung the same atrial pressure left dry',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'safety-factor',
+    claim:
+      'A lung tolerates a substantial rise in capillary pressure before alveolar flooding, because interstitial pressure rises from a subatmospheric value, lymphatic flow increases, and interstitial protein is washed down — three buffers that subtract from the driving gradient.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The pulmonary oedema safety factor, conventionally quoted as roughly 20 mmHg above the normal capillary pressure (Guyton & Hall).',
+    validation: 'physiology: three separate buffers hold water back, and removing any one lowers the threshold',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'interstitium-before-alveolus',
+    claim:
+      'Water accumulates in the peribronchovascular interstitium before it appears in alveoli, so interstitial oedema exists at pressures that produce no alveolar flooding and no shunt.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'The staged anatomy of pulmonary oedema; radiographic progression from septal lines to alveolar filling.',
+    validation: 'physiology: the interstitium fills before any alveolus does',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'chronic-lymphatic-adaptation',
+    claim:
+      'A lung chronically exposed to a raised left atrial pressure tolerates a higher pressure before flooding than a previously normal lung, because lymphatic drainage adapts.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Long-standing mitral stenosis tolerating pressures that flood an unadapted lung; lymphatic recruitment and enlargement in chronic pulmonary venous hypertension.',
+    validation: 'physiology: an adapted lung floods at a higher pressure than an unadapted one',
+    layer: LAYER.EXTERNAL,
+    note:
+      'The direction is well described; the size of the adaptation this model uses is a calibration, and `lymphatic-capacity` says so.',
+  },
+  {
+    id: 'permeability-defeats-oncotic-pressure',
+    claim:
+      'When the barrier stops reflecting protein, the oncotic term loses its power to hold water back, so oedema appears at a normal filling pressure and raising plasma protein no longer protects.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'The reflection coefficient in the Starling equation; the cardiogenic/non-cardiogenic distinction rests on it.',
+    validation: 'physiology: raising plasma protein stops protecting a lung whose barrier has failed',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'interstitial-protein-tracks-plasma',
+    claim:
+      'Lowering plasma colloid osmotic pressure lowers interstitial colloid osmotic pressure with it, so most of the transcapillary oncotic gradient survives and hypoalbuminaemia alone is a weak cause of pulmonary oedema.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Protein permeability of the pulmonary capillary and the observed weakness of hypoalbuminaemia as an isolated cause of pulmonary oedema.',
+    validation: 'physiology: low plasma protein alone does not flood a lung',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'flooded-alveolus-is-a-shunt',
+    claim:
+      'A flooded alveolus is perfused and not ventilated, so it behaves as a shunt: the alveolar-to-arterial oxygen difference widens with inspired oxygen while the arterial tension barely responds.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'The definition of shunt; the shunt equation and its characteristic refractoriness to inspired oxygen.',
+    validation: 'physiology: oxygen widens the A–a difference in a shunt instead of closing it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'filtration-coefficient',
+    claim:
+      'The filtration coefficient is set so that a reference lung at a normal capillary pressure filters at the lymph flow a normal lung is observed to carry.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source: 'Calibrated to a baseline pulmonary lymph flow of roughly 20 mL/h and a net filtration pressure of about 1 mmHg.',
+    validation: 'calibration: a normal lung filters at its lymph flow and gains no water',
+    layer: LAYER.CALIBRATION,
+    note:
+      'Not a measured Kf. Published pulmonary filtration coefficients vary by an order of magnitude with method and species; this value is a consequence of the baseline this model was asked to reproduce.',
+  },
+  {
+    id: 'flooding-threshold',
+    claim:
+      'An unadapted lung in this model begins to flood alveoli at a left atrial pressure in the mid-twenties mmHg.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrated against the conventional teaching that alveolar oedema appears above a wedge pressure of about 25 mmHg in a previously normal lung.',
+    validation: 'calibration: an unadapted lung floods where the textbooks put the threshold',
+    layer: LAYER.CALIBRATION,
+    note:
+      'The threshold is not stored anywhere; it is searched for. What is calibrated are the constants that place it, and a person\u2019s threshold is not this number.',
+  },
+  {
+    id: 'lymphatic-capacity',
+    claim: 'How far lymphatic clearance can rise, acutely and after chronic adaptation, as multiples of the baseline flow.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No single source gives these multiples for a human lung.',
+    validation: 'calibration: the lymphatic ceilings place the two thresholds where the model claims',
+    layer: LAYER.CALIBRATION,
+    note:
+      'Invented magnitudes. The model claims only the ordering — an adapted lung tolerates more — and never that a particular patient\u2019s lymphatics can carry a particular number of millilitres.',
+  },
+  {
+    id: 'interstitial-compliance',
+    claim: 'The shape of the interstitial pressure–volume curve, and how much water the interstitium holds before alveoli fill.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No human measurement of this curve was used.',
+    validation: 'calibration: the interstitium fills across a clinically recognisable range of lung water',
+    layer: LAYER.CALIBRATION,
+    note:
+      'Chosen so that the reported extravascular lung water spans the range a thermodilution monitor reports \u2014 about 5 mL/kg dry and about 10 mL/kg at the onset of oedema. The curve itself is invented.',
+  },
+  {
+    id: 'hypoxic-diversion',
+    claim: 'How much of the perfusion to a flooded region hypoxic pulmonary vasoconstriction turns away.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'The reflex is well described; its magnitude in flooded lung is not settled and varies widely between people.',
+    validation: 'calibration: diversion reduces the shunt without abolishing it',
+    layer: LAYER.CALIBRATION,
+    note:
+      'An invented fraction, chosen so that diversion reduces the shunt without abolishing it. It stands in for a reflex that is regional, time-dependent and blunted by several common drugs.',
+  },
+  {
+    id: 'no-ventilation',
+    claim:
+      'The model has no ventilation, no respiratory rate and no carbon dioxide, so it cannot say how hard someone is breathing or whether they are tiring.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    layer: LAYER.INTEGRITY,
+    note:
+      'Breathlessness is the symptom this disease presents with and this model does not produce it. Anything the scene says about effort would not be coming from here.',
+  },
+  {
+    id: 'no-gravity',
+    claim: 'Filtration is uniform across the lung: there is no gravitational gradient and no regional distribution.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    layer: LAYER.INTEGRITY,
+    note:
+      'Real oedema is basal and the radiograph is read on that distribution. A reader who takes the even filling drawn here as the shape oedema takes has been misled by the picture rather than by the numbers.',
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
   ASTHMA_EVIDENCE,
   PORTAL_EVIDENCE,
   HEPATORENAL_EVIDENCE,
+  PULMONARY_EDEMA_EVIDENCE,
 ];

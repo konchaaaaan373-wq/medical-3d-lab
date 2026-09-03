@@ -9,8 +9,14 @@ import { tissueMaterial } from '../../shared/materials.js';
  * PROTOTYPE — NOT ANATOMICALLY VALIDATED. Cerebral hemispheres separated by the
  * longitudinal fissure, a folded surface, the cerebellum below and behind, and
  * the brainstem continuing down. Lobes, sulci and every internal structure are
- * absent — the amyloid-β scene is where the nervous system is looked at
- * properly, and this is the shape that says "brain" from across the room.
+ * absent, and nothing here is a substitute for looking at one properly: that is
+ * `src/scenes/nervous/scenes/brainAnatomy/`, a specimen-derived atlas of named
+ * structures. This is the shape that says "brain" from across the room, for the
+ * whole-body view, and it is the only thing it should ever be used as.
+ *
+ * (It used to send readers to the amyloid-β scene for the real anatomy. That
+ * scene's subject is a molecular process and its neurons are schematic; the
+ * atlas arrived afterwards and this pointer was not moved with it.)
  */
 export function buildBrain({ color = '#c8b3d8', stemColor = '#a893c4', cerebellum = '#b09ac9' } = {}) {
   const object = new THREE.Group();

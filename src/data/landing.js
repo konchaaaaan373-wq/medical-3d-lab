@@ -12,6 +12,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
   'amyloid-beta',
   'renal-filtration',
+  'pulmonary-edema',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -32,6 +33,7 @@ export const LANDING_MODEL_TITLES = Object.freeze({
   'brain-anatomy': Object.freeze({ en: '3D brain anatomy', ja: '脳の3D解剖' }),
   'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
   'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
+  'pulmonary-edema': Object.freeze({ en: 'Pulmonary oedema', ja: '肺水腫' }),
   'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
   'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
   'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
@@ -68,6 +70,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '糸球体濾過圧と尿細管輸送を同じモデルで操作。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
+  ),
+  'pulmonary-edema': presentation(
+    'The atrium is at 27. Why is one lung wet and the other flooded?',
+    '左房圧はどちらも 27。なぜ一方は湿るだけで、他方は水没するのか。',
+    ['STARLING', 'LYMPHATICS', 'SHUNT'],
+    ['Starling', 'リンパ', 'シャント']
   ),
   'copd-hyperinflation': presentation(
     'Compare time constants, air trapping and expiratory flow limitation across 12 lung units.',

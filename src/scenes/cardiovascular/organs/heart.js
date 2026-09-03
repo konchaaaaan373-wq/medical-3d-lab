@@ -43,12 +43,17 @@ export function buildHeart({ color = '#b8444c', vesselColor = '#d8737b', atriumC
 
   const atria = new THREE.Group();
   atria.name = 'atria';
+  // Named, and named from the axes rather than from the loop order: this
+  // scene's +x is the patient's left, so the bulge at +x is the left atrium.
+  // Unnamed, nothing downstream could tell them apart and nothing could check
+  // that a label pointed at the correct one.
   for (const sign of [-1, 1]) {
     const atrium = new THREE.Mesh(
       shapedSphere({ detail: 5, scale: [0.34, 0.26, 0.3] }),
       tissueMaterial({ color: atriumColor, roughness: 0.5 })
     );
     atrium.position.set(sign * 0.42, 0.78, -0.06);
+    atrium.name = sign > 0 ? 'left-atrium' : 'right-atrium';
     atria.add(atrium);
   }
 
@@ -57,16 +62,22 @@ export function buildHeart({ color = '#b8444c', vesselColor = '#d8737b', atriumC
   // stomach left of it — is +x. It used to run the other way, over the right,
   // disagreeing both with the apex displacement a few lines up and with the
   // heart-failure scene's own aorta.
-  const arch = new TubeSurface(
-    smoothCurve([
-      [0.05, 0.7, 0.05],
-      [0.1, 1.25, 0],
-      [0.34, 1.6, -0.12],
-      [0.72, 1.42, -0.24],
-      [0.82, 0.9, -0.3],
-    ]),
-    { radius: () => 0.17, steps: 44, radial: 16 }
-  );
+  const archCurve = smoothCurve([
+    [0.05, 0.7, 0.05],
+    [0.1, 1.25, 0],
+    [0.34, 1.6, -0.12],
+    [0.72, 1.42, -0.24],
+    [0.82, 0.9, -0.3],
+  ]);
+  const arch = new TubeSurface(archCurve, { radius: () => 0.17, steps: 44, radial: 16 });
+
+  /**
+   * The top of the arch, as a named landmark rather than a coordinate anyone
+   * outside this file has to know (architecture rule 1). The label hangs off
+   * it, so moving the arch moves the label with it — which is exactly what
+   * failed to happen the last time this vessel was mirrored.
+   */
+  const archApex = archCurve.getPointAt(0.5);
   const archMesh = new THREE.Mesh(arch.geometry, tissueMaterial({ color: vesselColor, roughness: 0.42 }));
   archMesh.name = 'aortic-arch';
 
@@ -76,7 +87,13 @@ export function buildHeart({ color = '#b8444c', vesselColor = '#d8737b', atriumC
     object,
     anchors: {
       heart: new THREE.Vector3(0.95, 0.2, 0.5),
-      aorta: new THREE.Vector3(-1.15, 1.75, 0.2),
+      // Derived from the arch, not typed beside it. When the arch was
+      // corrected to sweep over the patient's left, this anchor was left at
+      // x −1.15 and went on pointing at the right atrium — the label sat on
+      // the wrong side of the midline from the vessel it names, which is
+      // failure mode K in `docs/organ-3d-playbook.md` and the same class of
+      // defect the heart-failure scene's own aorta label once had.
+      aorta: archApex.clone().add(new THREE.Vector3(0.3, 0.42, 0.38)),
     },
     /**
      * One beat, as a shape change: 0 is filled, 1 is at end of ejection.
