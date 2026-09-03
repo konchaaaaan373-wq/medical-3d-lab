@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { anatomicalSide } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
@@ -392,4 +393,38 @@ test('a liver that was not asked for vessels does not have any', () => {
   assert.equal(bare.segments.length, asked.segments.length);
   assert.ok(asked.portal.object.children.length > 0, 'a liver that asked for vessels has none');
   asked.dispose();
+});
+
+test('no scene draws both liver vessel trees', () => {
+  // There are two, they overlap on four structures — the portal vein, the
+  // portal branches, the hepatic vein and the cava — and they are
+  // authoritative for different things: `portalVasculature.js` owns the solved
+  // circulation, `liver.js` owns the anatomy. Drawing both put a second,
+  // unresponsive portal vein inside the same liver as the modelled one.
+  //
+  // Read from the scene sources rather than by building them, because two of
+  // these are class scenes whose vessels are wired in `build()` and the point
+  // is the *call*, not the mesh: a scene that asks `buildLiver` for vessels
+  // while also calling `buildPortalVasculature` is the defect, whether or not
+  // the two happen to be visible at the same moment.
+  const scenes = [
+    'src/scenes/hepatobiliary/scenes/portalHypertension/PortalHypertensionScene.js',
+    'src/scenes/renal/scenes/hepatorenalSyndrome/HepatorenalScene.js',
+    'src/scenes/hepatobiliary/scenes/liverPortalFlow/index.js',
+    'src/scenes/systemic/scenes/bodyOverview/index.js',
+  ];
+  for (const path of scenes) {
+    const source = readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+    const buildsLiver = /buildLiver\(/.test(source);
+    if (!buildsLiver) continue;
+    // Does it ask the liver for vessels?
+    const askedForVessels = /buildLiver\(\{[^}]*vessels:\s*true/s.test(source);
+    // Does it draw a portal circulation of its own?
+    const ownVessels =
+      /buildPortalVasculature\(/.test(source) || /TubeSurface\(/.test(source);
+    assert.ok(
+      !(askedForVessels && ownVessels),
+      `${path} draws its own portal vessels and also asks the liver for a tree`
+    );
+  }
 });

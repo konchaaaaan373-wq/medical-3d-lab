@@ -17,6 +17,34 @@ import { tissueMaterial } from '../../shared/materials.js';
  * rewritable calibres and a path along each one; which of them carry blood,
  * how much, and how wide they are is the scene's business — and the scene
  * gets all of it from a model.
+ *
+ * ## Two liver vessel trees, and which one owns what
+ *
+ * `organs/liver.js` also builds vessels: the intrahepatic tree, with the three
+ * hepatic veins on the planes that divide the Couinaud segments and a portal
+ * pedicle inside each one. Four structures appear in both, measured by name:
+ * **the portal vein, the portal branches, the hepatic vein and the cava.**
+ *
+ * They are authoritative for different things, and a scene must not draw both:
+ *
+ * - **This file owns the solved circulation.** Its vessels have calibres a
+ *   model rewrites every solve, flow streams along their paths, and collaterals
+ *   that appear when portal pressure sends blood around the liver. A disease
+ *   scene wants these.
+ * - **`liver.js` owns the anatomy.** Its tree is fixed: it exists so a segment
+ *   can be pointed at, and so the relation "veins between segments, pedicles
+ *   within them" is something the geometry states rather than a caption. An
+ *   atlas wants these.
+ *
+ * Drawing both put a second, unresponsive portal vein inside the same liver as
+ * the modelled one, in the two scenes whose subject is what portal pressure
+ * does to that vein. `liver.js` takes `vessels` as opt-in for this reason, and
+ * `tests/liver-anatomy.test.js` holds that no scene mounts both trees.
+ *
+ * Making the anatomical tree the one a model drives is the better end state and
+ * is **not** done: it would replace what two clinically-reviewed scenes draw,
+ * including the paths their flow streams follow, and that belongs in a change
+ * that goes back through review rather than in a refactor.
  */
 
 /**
