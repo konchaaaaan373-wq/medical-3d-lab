@@ -63,6 +63,34 @@ const sideVolume = (side) =>
   lungs.lobes.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + lobeVolume.get(lobe.id), 0);
 const share = (id) => lobeVolume.get(id) / sideVolume(LOBES.find((lobe) => lobe.id === id).side);
 
+/** The centre of a lung, from the union of its lobes — the point the field is built about. */
+const lungCentre = (side) => {
+  const box = new THREE.Box3();
+  for (const lobe of lungs.lobes.filter((entry) => entry.side === side)) {
+    lobe.geometry.computeBoundingBox();
+    box.union(lobe.geometry.boundingBox);
+  }
+  return box.getCenter(new THREE.Vector3());
+};
+
+/** Which lung a branch belongs to, from the name the builder gives it. */
+const sideOfBranch = (name) => {
+  if (/^right-/.test(name)) return 'right';
+  if (/^left-/.test(name)) return 'left';
+  if (/^RS/.test(name)) return 'right';
+  if (/^LS/.test(name)) return 'left';
+  return null;
+};
+/** Whether a branch is parented to a lung, and so lives in that lung's coordinates. */
+const isIntrapulmonary = (branch, side) => {
+  let parent = branch.mesh.parent;
+  while (parent) {
+    if (parent.name === `${side}-lung`) return true;
+    parent = parent.parent;
+  }
+  return false;
+};
+
 const branchNamed = (name) => lungs.bronchi.branches.find((branch) => branch.name === name);
 const arteryNamed = (name) => lungs.arteries.branches.find((branch) => branch.name === name);
 const veinNamed = (name) => lungs.veins.branches.find((branch) => branch.name === name);
@@ -322,13 +350,22 @@ test('the right main bronchus is the wider, shorter and steeper of the two', () 
   const lengthOf = (branch) => branch.curve.getLength();
   const right = branchNamed('right-main-bronchus');
   const left = branchNamed('left-main-bronchus');
-  assert.ok(lengthOf(right) < lengthOf(left), `right ${lengthOf(right).toFixed(2)} vs left ${lengthOf(left).toFixed(2)}`);
+  // By a margin, not by a hair. This read 1.457 against 1.446 once — the right
+  // ordering by 0.7%, which is a coin toss dressed as a fact, and it passed.
+  assert.ok(
+    lengthOf(right) < lengthOf(left) * 0.95,
+    `right ${lengthOf(right).toFixed(3)} vs left ${lengthOf(left).toFixed(3)}`
+  );
 
   const descent = (branch) => {
     const heading = branch.curve.getPointAt(1).clone().sub(branch.curve.getPointAt(0)).normalize();
     return Math.acos(Math.max(-1, Math.min(1, heading.dot(ANATOMICAL_AXES.inferior))));
   };
-  assert.ok(descent(right) < descent(left), 'the right main bronchus is the more vertical');
+  assert.ok(
+    descent(right) < descent(left) - 0.15,
+    `the right main bronchus is the more vertical (${((descent(right) * 180) / Math.PI).toFixed(1)}° ` +
+      `against ${((descent(left) * 180) / Math.PI).toFixed(1)}° from vertical)`
+  );
 });
 
 test('an artery runs with every bronchus', () => {
@@ -567,5 +604,64 @@ test('each lobe really is star-shaped about the centre it was carved from', () =
         `first at ${failures[0]?.direction.toArray().map((v) => v.toFixed(2)).join(', ')} ` +
         `with ${failures[0]?.hits} crossings`
     );
+  }
+});
+
+test('nothing intrapulmonary pokes through the pleura', () => {
+  // The defect a rendered frame found and no unit test did. The hilum and the
+  // segment centres were both written as fractions of the lung's extents, which
+  // places a point on an ellipsoid rather than in a lung: seven of the eight
+  // hilar structures and three of the eighteen segment centres fell outside the
+  // surface, so twenty-one vessel and airway endpoints ended in mid-air, plainly
+  // visible in the scene. Every test passed, because nothing asked where the
+  // surface was.
+  const outside = [];
+  for (const tree of ['bronchi', 'arteries', 'veins']) {
+    for (const branch of lungs[tree].branches) {
+      const side = sideOfBranch(branch.name);
+      if (!side || !isIntrapulmonary(branch, side)) continue;
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8;
+        if (!lungs.contains(side, branch.curve.getPointAt(t))) outside.push(`${branch.name}@${t}`);
+      }
+    }
+  }
+  assert.equal(outside.length, 0, `${outside.length} outside: ${outside.slice(0, 6).join(' ')}`);
+});
+
+test('every segment centre lies inside the lung it names a part of', () => {
+  // It is also the seed of the segment partition, so one outside the surface
+  // does not merely draw badly — it anchors a territory from outside the solid
+  // it is dividing. The apical and posterior segments, where the lung tapers,
+  // were the ones that fell out.
+  for (const segment of lungs.segments) {
+    assert.ok(
+      lungs.contains(segment.side, segment.position),
+      `${segment.id} sits outside its own lung at ${segment.position.toArray().map((v) => v.toFixed(2))}`
+    );
+  }
+});
+
+test('the hilum is on the mediastinal surface, not beyond it', () => {
+  // What `HILUM.at` says it is: "where the structures cross the mediastinal
+  // surface". Held as a measurement, because it was written as a fraction of
+  // the extents and was not true.
+  for (const side of ['right', 'left']) {
+    const group = lungs.object.getObjectByName(`${side}-lung`);
+    for (const key of ['bronchus', 'artery', 'superiorVein', 'inferiorVein']) {
+      const local = lungs.hilum[side][key].clone().sub(group.position);
+      assert.ok(lungs.contains(side, local), `the ${side} ${key} enters outside the lung`);
+      // And on the surface rather than buried in the middle of it: a hilum
+      // halfway to the centre would pass the test above and be nowhere near a
+      // hilum. Asked without needing the field — a step further out along the
+      // same ray has to leave the lung.
+      const centre = lungCentre(side);
+      const outward = local.clone().sub(centre);
+      const step = local.clone().add(outward.clone().setLength(0.12));
+      assert.ok(
+        !lungs.contains(side, step),
+        `the ${side} ${key} is still 0.12 inside the lung, so it is not at the surface`
+      );
+    }
   }
 });

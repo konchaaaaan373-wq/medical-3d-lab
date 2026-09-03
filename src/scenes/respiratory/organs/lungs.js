@@ -7,6 +7,8 @@ import {
   carvePart,
   nearestSite,
   partCentroid,
+  radialClamp,
+  radialSurface,
   planeThrough,
   radialField,
   surfaceSamples,
@@ -135,6 +137,63 @@ export const LOBE_COLORS = {
 };
 
 /**
+ * The four hilar structures, placed **on** the mediastinal surface.
+ *
+ * `HILUM` says where the hilum is and how the structures are arranged around
+ * it — RALS — as fractions of the lung's extents. Fractions of the extents put
+ * a point on an ellipsoid, and a lung is not one: written that way, seven of
+ * the eight points sat outside the pleura, so every vessel at the hilum poked
+ * visibly through the lung surface in the rendered scene while every unit test
+ * passed. The declaration supplies the direction and the arrangement; the
+ * surface supplies the distance.
+ *
+ * @param {ReturnType<typeof radialField>} field
+ * @param {ReturnType<typeof anatomicalFrame>} frame
+ * @param {'right' | 'left'} side
+ */
+function hilumOf(field, frame, side) {
+  const at = frame.toLocal(HILUM.at);
+  const arrangement = HILUM[side];
+  const place = (key) =>
+    radialSurface(
+      field,
+      at.clone().add(
+        new THREE.Vector3(
+          arrangement[key][0] * frame.lateralX * frame.half.x,
+          arrangement[key][1] * frame.half.y,
+          arrangement[key][2] * frame.half.z
+        )
+      ),
+      { inset: HILUM_INSET }
+    );
+  return {
+    bronchus: place('bronchus'),
+    artery: place('artery'),
+    superiorVein: place('superiorVein'),
+    inferiorVein: place('inferiorVein'),
+  };
+}
+
+/**
+ * How far inside the pleura a segment's centre is kept, in lung units.
+ *
+ * A segmental bronchus ends at its segment's centre and is drawn with a radius
+ * that tapers to about 0.032, so the margin has to cover the tube as well as
+ * the point. 0.18 in a lung 2.9 long clears it and still leaves the three
+ * corrected segments recognisably where they belong.
+ */
+const SEGMENT_MARGIN = 0.18;
+
+/**
+ * How far inside the pleura the hilar structures are brought.
+ *
+ * They belong *on* the mediastinal surface, so this is small — it exists only
+ * because the lung is scaled about the hilum, which means deflating draws the
+ * surface inward past a point that is exactly on it.
+ */
+const HILUM_INSET = 0.06;
+
+/**
  * Both lungs, with their lobes, segments, airways and vessels.
  *
  * @param {{ color?: string, detail?: number, opacity?: number, excursion?: number,
@@ -206,9 +265,16 @@ export function buildLungs({
       return planeThrough(through, keepAbove ? normal.negate() : normal);
     };
 
+    // A segment's declared position is normalised in the anatomical frame, so
+    // multiplying it by the half-extents places it on an ellipsoid rather than
+    // in the lung. Where the lung tapers — the apex, the posterior segments —
+    // that lands outside the surface: RS2, LS1+2 and LS6 all did, so their
+    // bronchi ended in mid-air and they seeded the segment partition from
+    // outside the solid they were partitioning. Kept inside by a margin wide
+    // enough that the segmental bronchus stops short of the pleura.
     const sideSegments = segmentsOfSide(side).map((segment) => ({
       ...segment,
-      position: frame.toLocal(segment.at),
+      position: radialClamp(field, frame.toLocal(segment.at), { margin: SEGMENT_MARGIN }),
     }));
 
     for (const lobe of lobesOfSide(side)) {
@@ -219,7 +285,16 @@ export function buildLungs({
       // hand-written one was outside its own horizontal fissure.
       const found = partCentroid({ field, bounds, planes, samples: 6000, seed: side === 'right' ? 11 : 13 });
       const lobeCentre = found ? found.centroid : frame.toLocal(lobe.centre);
-      const geometry = carvePart({ field, centre: lobeCentre, planes, detail });
+      const geometry = carvePart({
+        field,
+        centre: lobeCentre,
+        planes,
+        detail,
+        // The field is fixed by the side and how densely its surface was
+        // sampled; everything else the carve depends on is folded in by
+        // `carvePart` itself.
+        cacheKey: `lung:${side}:${referenceSamples}`,
+      });
 
       const lobeSegments = segmentsOfLobe(lobe.id).map((segment) =>
         sideSegments.find((entry) => entry.id === segment.id)
@@ -256,8 +331,16 @@ export function buildLungs({
       segments: sideSegments,
       warp,
       scale: shape.scale,
+      /**
+       * Where each structure crosses the mediastinal surface, in this lung's
+       * own coordinates — computed here rather than in the tree builder so the
+       * point the lung is tethered at and the point its bronchus enters at are
+       * the same point by construction, and so a lung built without a tree
+       * still has a hilum to breathe about.
+       */
+      hilumAt: hilumOf(field, frame, side),
       /** Where the lung is tethered, in its own coordinates. */
-      hilum: frame.toLocal(HILUM.at),
+      hilum: hilumOf(field, frame, side).bronchus,
     };
   }
 
@@ -488,7 +571,20 @@ function buildBronchovascular({ sides, lobes, colors }) {
   };
 
   // --- trachea and carina ---------------------------------------------------
-  const carina = new THREE.Vector3(0, 2.05, 0);
+  //
+  // A little to the **right** of the midline, which is where the lower trachea
+  // sits: the aortic arch pushes it that way. It is also what makes the right
+  // main bronchus the shorter and the more vertical of the two — the fact
+  // behind an inhaled object going right, and behind aspiration pneumonia
+  // being a right-sided disease.
+  //
+  // In life the difference is larger still, roughly 2.5 cm against 5 cm, and
+  // most of that comes from the heart occupying the left mediastinum and
+  // pushing the left hilum further out. These two lungs are placed
+  // symmetrically, so that displacement is not in the model and the ratio here
+  // comes out at about 1 : 1.13 rather than 1 : 2. The **ordering** is the
+  // claim; the ratio is understated, and `docs/medical-notes.md` says so.
+  const carina = new THREE.Vector3(-0.15, 2.05, 0);
   tube(
     'bronchi',
     bronchiGroup,
@@ -500,7 +596,7 @@ function buildBronchovascular({ sides, lobes, colors }) {
 
   const hilum = {};
   for (const side of ['right', 'left']) {
-    const { group, frame } = sides[side];
+    const { group, frame, hilumAt } = sides[side];
     const world = (local) => local.clone().add(group.position);
 
     // Everything inside the lung is parented to the lung, so that it moves when
@@ -517,28 +613,13 @@ function buildBronchovascular({ sides, lobes, colors }) {
     innerVeins.name = `${side}-intrapulmonary-veins`;
     group.add(innerBronchi, innerArteries, innerVeins);
 
-    // The hilum, and the order the structures cross it. Offsets are in the
-    // anatomical frame, so RALS is stated once and lands on the correct axis
-    // for each side rather than being written twice in x and y.
-    const at = frame.toLocal(HILUM.at);
-    const arrangement = HILUM[side];
-    const place = (key) =>
-      world(
-        at
-          .clone()
-          .add(
-            new THREE.Vector3(
-              arrangement[key][0] * frame.lateralX * frame.half.x,
-              arrangement[key][1] * frame.half.y,
-              arrangement[key][2] * frame.half.z
-            )
-          )
-      );
+    // The hilum, and the order the structures cross it — RALS, stated once in
+    // `lungAnatomy.js` and landed on the mediastinal surface by `hilumOf`.
     hilum[side] = {
-      bronchus: place('bronchus'),
-      artery: place('artery'),
-      superiorVein: place('superiorVein'),
-      inferiorVein: place('inferiorVein'),
+      bronchus: world(hilumAt.bronchus),
+      artery: world(hilumAt.artery),
+      superiorVein: world(hilumAt.superiorVein),
+      inferiorVein: world(hilumAt.inferiorVein),
     };
 
     // --- main bronchus -----------------------------------------------------
@@ -569,29 +650,12 @@ function buildBronchovascular({ sides, lobes, colors }) {
     );
 
     // In the lung's own coordinates from here down, because everything below is
-    // inside the lung and has to breathe with it.
-    const localAt = at.clone().add(
-      new THREE.Vector3(
-        arrangement.bronchus[0] * frame.lateralX * frame.half.x,
-        arrangement.bronchus[1] * frame.half.y,
-        arrangement.bronchus[2] * frame.half.z
-      )
-    );
-    const localArtery = at.clone().add(
-      new THREE.Vector3(
-        arrangement.artery[0] * frame.lateralX * frame.half.x,
-        arrangement.artery[1] * frame.half.y,
-        arrangement.artery[2] * frame.half.z
-      )
-    );
-    const localVein = (key) =>
-      at.clone().add(
-        new THREE.Vector3(
-          arrangement[key][0] * frame.lateralX * frame.half.x,
-          arrangement[key][1] * frame.half.y,
-          arrangement[key][2] * frame.half.z
-        )
-      );
+    // inside the lung and has to breathe with it. The same four points as the
+    // world ones above, before the side group's offset — not a second
+    // derivation of them, which is how the two used to disagree.
+    const localAt = hilumAt.bronchus;
+    const localArtery = hilumAt.artery;
+    const localVein = (key) => hilumAt[key];
 
     for (const lobe of lobes.filter((entry) => entry.side === side)) {
       const lobeCentre = lobe.centre.clone();

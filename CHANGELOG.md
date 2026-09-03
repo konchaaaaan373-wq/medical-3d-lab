@@ -45,10 +45,12 @@ person: Safari, Firefox, touch and a screen reader.
   fissure on both sides and a horizontal fissure on the right only. Every point
   in the lung falls in exactly one lobe, and that is sampled rather than
   asserted.
-- **The lobes take the share of each lung that volumetry reports** — about
-  36 / 12 / 52 on the right and half and half on the left, with the middle lobe
-  the smallest of the five. The fissure positions were chosen to land those and
-  nothing else, which makes them a calibration rather than a measurement.
+- **The lobes take roughly the share of each lung they are taught to take** —
+  about 36 / 12 / 52 on the right and half and half on the left, with the middle
+  lobe the smallest of the five. The fissure positions were chosen to land those
+  and nothing else, which makes them a calibration rather than a measurement,
+  and the targets themselves are uncited approximations rather than figures from
+  a series.
 - **Eighteen named bronchopulmonary segments**, ten on the right and eight on
   the left, in both languages: no left S7 because the heart is there, an
   apicoposterior segment where the left lung fuses two, and the lingula inside
@@ -60,11 +62,24 @@ person: Safari, Firefox, touch and a screen reader.
   the segments rather than with them, which is the fact a surgeon finds a
   segmentectomy plane by. At the hilum, RALS: the artery anterior to the
   bronchus on the right and superior to it on the left.
+- **Nothing inside the lung comes out of it.** The hilum and the segment
+  centres are declared as anatomical directions and then placed against the
+  lung's own surface, so the declaration says where a structure is and the
+  surface says how far out that is. Written the other way round — as fractions
+  of the lung's extents — seven of the eight hilar structures sat outside the
+  pleura and twenty-one airway and vessel endpoints ended in mid-air, plainly
+  visible on screen while every test passed.
 - **Still schematic in shape.** The outer silhouette is unchanged and is not
   from a scan; real fissures are curved and frequently incomplete, and the
   segment boundaries here are a distance rule — the lung nearer one segmental
   bronchus than any other — which models the definition of a segment rather
-  than tracing a specimen.
+  than tracing a specimen. The right main bronchus is the shorter and the more
+  vertical, which is the claim; the 1 : 2 length ratio of real ones is
+  understated here at 1 : 1.13, because these two lungs are placed symmetrically
+  and a real left hilum is pushed out by the heart.
+- **Building an organ twice now costs once.** Carved parts are kept and handed
+  out as separate copies, which took the test suite from 30 s back to 16 s
+  without changing a single vertex.
 
 ### A new model — where the water goes
 

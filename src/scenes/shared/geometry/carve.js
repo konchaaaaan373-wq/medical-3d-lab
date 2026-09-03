@@ -222,16 +222,42 @@ export function planeThrough(through, normal) {
 }
 
 /**
+ * Carved parts, kept so that building the same organ twice costs once.
+ *
+ * A carve is deterministic in its inputs, and the same organ gets built many
+ * times over a session — every scene that shows a liver, every test that
+ * constructs one. Carving a lung takes 243 ms of the 340 ms it takes to build
+ * one; handing out a clone of a carve already done takes 3 ms, and a clone is
+ * bit-identical, separately owned and separately disposed.
+ *
+ * Keyed by the caller, because only the caller knows what determined the field
+ * it passed. Callers that pass no key are not cached at all.
+ */
+const carved = new Map();
+
+/**
  * One part of the organ: the solid inside the surface and inside every plane.
  *
  * @param {{ field: ReturnType<typeof radialField>, centre: THREE.Vector3,
  *           planes?: {normal: THREE.Vector3, constant: number}[], detail?: number,
- *           inset?: number }} options
+ *           inset?: number, cacheKey?: string }} options
  *   `centre` must be inside the part — not merely inside the organ. `inset`
  *   pulls the cut faces back by a little so that two parts sharing a fissure do
  *   not z-fight along it.
+ *
+ *   `cacheKey` must identify the **field** — everything else that shapes the
+ *   result is read off the arguments and folded in here, so a caller can only
+ *   get this wrong by naming two different organs the same. Omit it and no
+ *   caching happens, which is always safe.
  */
-export function carvePart({ field, centre, planes = [], detail = 5, inset = 0 }) {
+export function carvePart({ field, centre, planes = [], detail = 5, inset = 0, cacheKey = null }) {
+  const key =
+    cacheKey === null
+      ? null
+      : `${cacheKey}|${detail}|${inset}|${centre.x},${centre.y},${centre.z}|` +
+        planes.map((p) => `${p.normal.x},${p.normal.y},${p.normal.z},${p.constant}`).join(';');
+  if (key !== null && carved.has(key)) return carved.get(key).clone();
+
   const geometry = new THREE.IcosahedronGeometry(1, detail);
   const position = geometry.attributes.position;
   const direction = new THREE.Vector3();
@@ -259,27 +285,39 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0 })
       probe.copy(direction).multiplyScalar(t).add(offset);
       return probe.length() - field.radiusAt(probe);
     };
-    let low = 0;
-    let high = Math.max(1e-6, field.radiusAt(direction) + offset.length()) * 2;
-    // The centre has to be inside for the bracket to be a bracket. `carveInside`
-    // says whether it is, and the builders check rather than assume.
-    for (let grow = 0; grow < 8 && outside(high) < 0; grow++) high *= 1.6;
-    // Twenty-four halvings take the bracket to a millionth of the organ, which
-    // is two orders finer than the field it is searching and therefore as far
-    // as it is worth going.
-    for (let step = 0; step < 24; step++) {
-      const mid = (low + high) / 2;
-      if (outside(mid) < 0) low = mid;
-      else high = mid;
-    }
-    let t = (low + high) / 2;
 
-    // And where each cut comes, if it comes first.
+    // Where the nearest cut comes, if any comes at all.
+    let cut = Infinity;
     for (const plane of planes) {
       const denominator = plane.normal.dot(direction);
       if (denominator <= 1e-9) continue; // this ray never reaches that plane
       const distance = (plane.constant - inset - plane.normal.dot(centre)) / denominator;
-      if (distance > 0 && distance < t) t = distance;
+      if (distance > 0 && distance < cut) cut = distance;
+    }
+
+    let t;
+    if (cut < Infinity && outside(cut) < 0) {
+      // The cut comes while the ray is still inside the organ, so the cut is
+      // the answer and where the surface lies beyond it does not matter. One
+      // field lookup instead of the thirty-two below — and for a lobe most rays
+      // land here, which is most of the cost of carving one.
+      t = cut;
+    } else {
+      let low = 0;
+      let high = Math.max(1e-6, field.radiusAt(direction) + offset.length()) * 2;
+      // The centre has to be inside for the bracket to be a bracket.
+      // `carveInside` says whether it is, and the builders check rather than
+      // assume.
+      for (let grow = 0; grow < 8 && outside(high) < 0; grow++) high *= 1.6;
+      // Twenty-four halvings take the bracket to a millionth of the organ,
+      // which is two orders finer than the field it is searching and therefore
+      // as far as it is worth going.
+      for (let step = 0; step < 24; step++) {
+        const mid = (low + high) / 2;
+        if (outside(mid) < 0) low = mid;
+        else high = mid;
+      }
+      t = Math.min((low + high) / 2, cut);
     }
 
     position.setXYZ(i, centre.x + direction.x * t, centre.y + direction.y * t, centre.z + direction.z * t);
@@ -293,7 +331,11 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0 })
   welded.computeBoundingBox();
   welded.computeBoundingSphere();
   geometry.dispose();
-  return welded;
+  if (key === null) return welded;
+  // The cached copy is never handed out and never disposed, so a caller
+  // disposing what it was given cannot empty the cache under the next caller.
+  carved.set(key, welded);
+  return welded.clone();
 }
 
 /**
@@ -313,6 +355,57 @@ export function carveInside(point, { field, planes = [] }) {
   const direction = point.clone().sub(field.centre);
   if (direction.length() >= field.radiusAt(direction)) return false;
   return planes.every((plane) => plane.normal.dot(point) - plane.constant <= 0);
+}
+
+/**
+ * Put a point **on** the organ's surface, along its own ray from the centre.
+ *
+ * For structures whose whole meaning is that they cross the surface: a hilum,
+ * a root, an entry point. Writing such a point as a fraction of the organ's
+ * half-extents does not place it on the surface, it places it on an ellipsoid
+ * that the organ is not — and the lung's hilum, written that way, sat outside
+ * the pleura on seven of its eight structures, so every vessel at the hilum
+ * visibly poked through the lung. Failure mode: **the root**.
+ *
+ * The declared point supplies the *direction* only. Where the surface is in
+ * that direction is the field's answer, not the caller's.
+ *
+ * @param {ReturnType<typeof radialField>} field
+ * @param {THREE.Vector3} point a point in the same coordinates as the field
+ * @param {{ inset?: number }} [options] how far back inside the surface to stop
+ */
+export function radialSurface(field, point, { inset = 0 } = {}) {
+  const direction = point.clone().sub(field.centre);
+  const length = direction.length();
+  if (length === 0) return point.clone();
+  const radius = Math.max(0, field.radiusAt(direction) - inset);
+  return direction.multiplyScalar(radius / length).add(field.centre);
+}
+
+/**
+ * Keep a point inside the organ, moving it radially only if it is not.
+ *
+ * For points that are *meant* to be interior and are written as anatomical
+ * positions rather than measured ones: three of this lung's eighteen segment
+ * centres — the apical and posterior ones, where the lung tapers — fell outside
+ * the surface when their normalised positions were multiplied by the bounding
+ * box, and a segment whose bronchus ends outside the lung is both visibly wrong
+ * and a bad seed for the partition it anchors.
+ *
+ * A point already inside by more than `margin` is returned unchanged, so this
+ * corrects the cases that need it and touches nothing else.
+ *
+ * @param {ReturnType<typeof radialField>} field
+ * @param {THREE.Vector3} point
+ * @param {{ margin?: number }} [options] how far inside the surface to stop
+ */
+export function radialClamp(field, point, { margin = 0 } = {}) {
+  const direction = point.clone().sub(field.centre);
+  const length = direction.length();
+  if (length === 0) return point.clone();
+  const limit = Math.max(0, field.radiusAt(direction) - margin);
+  if (length <= limit) return point.clone();
+  return direction.multiplyScalar(limit / length).add(field.centre);
 }
 
 /**

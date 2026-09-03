@@ -138,7 +138,15 @@ export function buildLiver({
     // smaller one.
     const found = partCentroid({ field, bounds, planes, samples: 9000, seed: 17 });
     const segmentCentre = found ? found.centroid : frame.toLocal(segment.at);
-    const geometry = carvePart({ field, centre: segmentCentre, planes, detail });
+    const geometry = carvePart({
+      field,
+      centre: segmentCentre,
+      planes,
+      detail,
+      // The field is fixed by how densely the liver's surface was sampled;
+      // everything else the carve depends on is folded in by `carvePart`.
+      cacheKey: `liver:${referenceSamples}`,
+    });
     const material = tissueMaterial({
       color: segmentColors[segment.id] ?? color,
       roughness: 0.5,

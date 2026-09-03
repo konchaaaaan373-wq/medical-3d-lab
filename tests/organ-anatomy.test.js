@@ -456,3 +456,42 @@ test('a hollow organ transmits as much as its wall says it does', () => {
   assert.equal(solid.transparent, false);
   assert.equal(doubleSidedOpacity(0), 0);
 });
+
+test('a carve cached is a carve repeated, and no two builds share one geometry', () => {
+  // The cache exists because building an organ twice used to cost twice, and a
+  // session builds the same liver dozens of times. It is only allowed to exist
+  // if it is invisible: the second build has to be the first build, vertex for
+  // vertex, and the first build's `dispose()` must not reach inside the second.
+  const first = buildLungs({ bronchi: false, vessels: false });
+  const signature = (built) =>
+    built.lobes.map((lobe) => {
+      const p = lobe.geometry.attributes.position;
+      let sum = 0;
+      for (let i = 0; i < p.count; i++) sum += p.getX(i) * 1.7 + p.getY(i) * 2.3 + p.getZ(i) * 3.1;
+      return `${lobe.id}:${p.count}:${sum.toFixed(9)}`;
+    });
+  const before = signature(first);
+  const firstGeometries = first.lobes.map((lobe) => lobe.geometry);
+
+  const second = buildLungs({ bronchi: false, vessels: false });
+  assert.deepEqual(signature(second), before, 'the cached carve differs from the one it stands in for');
+
+  // Equal, and **not the same object**. Two builds sharing one geometry is the
+  // failure that matters: each build writes its own segment colours onto its
+  // parenchyma, so a shared geometry means the second build repaints the first
+  // one's meshes, and in a browser one build's `dispose()` frees the buffer the
+  // other is still drawing from. Checked as identity rather than by disposing
+  // and looking, because `dispose()` off-GPU leaves the vertex arrays intact —
+  // a test that disposed and then asked whether the data was still there would
+  // pass either way, and did.
+  second.lobes.forEach((lobe, index) => {
+    assert.notEqual(lobe.geometry, firstGeometries[index], `${lobe.id} is shared between two builds`);
+  });
+  first.dispose();
+  second.dispose();
+
+  // And a different detail is a different carve, not a cache hit.
+  const coarse = buildLungs({ bronchi: false, vessels: false, detail: 6 });
+  assert.notDeepEqual(signature(coarse), before, 'a coarser lung came back as the finer one');
+  coarse.dispose();
+});

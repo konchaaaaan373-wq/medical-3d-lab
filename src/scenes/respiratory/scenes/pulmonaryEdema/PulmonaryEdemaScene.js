@@ -104,7 +104,7 @@ export class PulmonaryEdemaScene {
   build() {
     const object = new THREE.Group();
 
-    this.lungs = buildLungs({ color: PALETTE.lung, opacity: 0.42, detail: 8 });
+    this.lungs = buildLungs({ color: PALETTE.lung, opacity: 0.42, detail: 14 });
     object.add(this.lungs.object);
 
     // The interstitium, as a sheath on each lung.
