@@ -55,6 +55,16 @@ const sideVolume = (side) =>
 const share = (id) => lobeVolume.get(id) / sideVolume(LOBES.find((lobe) => lobe.id === id).side);
 
 const branchNamed = (name) => lungs.bronchi.branches.find((branch) => branch.name === name);
+const arteryNamed = (name) => lungs.arteries.branches.find((branch) => branch.name === name);
+const veinNamed = (name) => lungs.veins.branches.find((branch) => branch.name === name);
+
+// A branch's curve is in the coordinates of whatever it is parented to — the
+// scene root for the extrapulmonary part of a tree, the lung for the part
+// inside it — so anything comparing across that boundary has to go to world
+// space first.
+lungs.object.updateMatrixWorld(true);
+const worldPointAt = (branch, t) =>
+  branch.curve.getPointAt(t).clone().applyMatrix4(branch.mesh.matrixWorld);
 
 /* --------------------------------------------------------------------------
    Lobes
@@ -312,31 +322,69 @@ test('the right main bronchus is the wider, shorter and steeper of the two', () 
 
 test('an artery runs with every bronchus', () => {
   // The bronchoarterial pair: it is the unit a segment is supplied by, and the
-  // reason a segment can be taken out on its own.
+  // reason a segment can be taken out on its own. Existing is not enough — the
+  // artery has to actually accompany its bronchus, so this measures the gap
+  // along the whole length of the pair and not only at the ends.
+  // The drawing offset that separates the pair so it reads as two vessels
+  // rather than one (`pairOffset` in lungs.js, at scale 1). It is a
+  // presentation distance, not an anatomical one — in life the two are in one
+  // sheath and touching.
+  const pairing = Math.hypot(0.055, 0.02, 0.055);
   for (const segment of SEGMENTS) {
     const bronchus = branchNamed(`${segment.id}-segmental-bronchus`);
-    const artery = lungs.arteries.object.getObjectByName(`${segment.id}-segmental-artery`);
+    const artery = arteryNamed(`${segment.id}-segmental-artery`);
     assert.ok(artery, `${segment.id} has an artery of its own`);
     assert.ok(bronchus, `${segment.id} has a bronchus`);
+    let worst = 0;
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8;
+      worst = Math.max(worst, worldPointAt(bronchus, t).distanceTo(worldPointAt(artery, t)));
+    }
+    // Within one drawing offset of it, and nowhere near the ~0.6 that separates
+    // one segment from the next.
+    assert.ok(
+      worst < pairing * 1.6,
+      `${segment.id}: the artery strays ${worst.toFixed(3)} from its bronchus`
+    );
   }
   for (const lobe of LOBES) {
-    assert.ok(lungs.arteries.object.getObjectByName(`${lobe.id}-lobar-artery`), `${lobe.id} has a lobar artery`);
+    assert.ok(arteryNamed(`${lobe.id}-lobar-artery`), `${lobe.id} has a lobar artery`);
   }
 });
 
 test('the veins run between the segments rather than with them', () => {
   // The fact a surgeon uses to find the plane of a segmentectomy. Each
-  // tributary starts nearer the midpoint of two segments than either of them.
-  const veins = [];
-  lungs.veins.object.traverse((object) => {
-    if (object.isMesh && object.name.includes('intersegmental')) veins.push(object.name);
-  });
-  assert.ok(veins.length >= 8, `expected a tributary between neighbouring segments, found ${veins.length}`);
+  // tributary starts nearer the midpoint of two segments than either of them —
+  // which is the claim actually worth holding, so it is the one measured.
+  const tributaries = lungs.veins.branches.filter((branch) => branch.name.includes('intersegmental'));
+  assert.ok(
+    tributaries.length >= 8,
+    `expected a tributary between neighbouring segments, found ${tributaries.length}`
+  );
+
+  const segmentCentres = lungs.segments.map((segment) => ({
+    id: segment.id,
+    at: segment.position.clone().applyMatrix4(lungs.object.getObjectByName(`${segment.side}-lung`).matrixWorld),
+  }));
+  for (const tributary of tributaries) {
+    const start = worldPointAt(tributary, 0);
+    const sorted = segmentCentres
+      .map((segment) => ({ id: segment.id, d: segment.at.distanceTo(start) }))
+      .sort((a, b) => a.d - b.d);
+    // The two nearest segments are near-equidistant: the tributary starts on
+    // the plane between them, not on either one. A vein that ran with a
+    // segment the way its artery does would fail this.
+    const [first, second] = sorted;
+    assert.ok(
+      second.d - first.d < first.d * 0.5,
+      `${tributary.name} starts ${first.d.toFixed(3)} from ${first.id} but ${second.d.toFixed(3)} from ${second.id}`
+    );
+  }
 
   // And two pulmonary veins leave each hilum.
   for (const side of ['right', 'left']) {
-    assert.ok(lungs.veins.object.getObjectByName(`${side}-superior-pulmonary-vein`));
-    assert.ok(lungs.veins.object.getObjectByName(`${side}-inferior-pulmonary-vein`));
+    assert.ok(veinNamed(`${side}-superior-pulmonary-vein`));
+    assert.ok(veinNamed(`${side}-inferior-pulmonary-vein`));
   }
 });
 
@@ -408,6 +456,59 @@ test('the anatomical frame carries normals by the inverse of the scaling, not by
   // A point, in the same frame, does the opposite.
   const point = frame.toLocal([0, 1, 1]);
   assert.ok(point.y > point.z * 2, 'a point stretches with the frame');
+});
+
+test('the airways and vessels breathe with the lung they are inside', () => {
+  // Failure mode G: an overlay that does not follow its subject. The whole tree
+  // used to sit in the top-level group with world positions baked in at the
+  // rest pose, so inflating moved the parenchyma a quarter of a unit and left
+  // every airway and vessel exactly where it was — in three scenes that animate
+  // this every frame. Nothing in the suite noticed, because everything was
+  // finite and every anatomical relation still held at rest.
+  const built = buildLungs();
+  const meshNamed = (name) => {
+    let found = null;
+    built.object.traverse((object) => {
+      if (object.isMesh && object.name === name) found = object;
+    });
+    return found;
+  };
+  const worldEnd = (name, t) => {
+    const branch = built.bronchi.branches.find((entry) => entry.name === name);
+    const mesh = meshNamed(name);
+    built.object.updateMatrixWorld(true);
+    return branch.curve.getPointAt(t).clone().applyMatrix4(mesh.matrixWorld);
+  };
+  const lobeBase = () => {
+    built.object.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(built.object.getObjectByName('right-lower')).min.y;
+  };
+
+  built.setInflation(0);
+  const restBase = lobeBase();
+  const restTip = worldEnd('RS9-segmental-bronchus', 1);
+
+  built.setInflation(1);
+  const fullBase = lobeBase();
+  const fullTip = worldEnd('RS9-segmental-bronchus', 1);
+
+  assert.ok(restBase - fullBase > 0.1, 'the lung has to actually move for this to be a test');
+  assert.ok(
+    restTip.y - fullTip.y > 0.1,
+    `the segmental bronchus stayed at y ${fullTip.y.toFixed(3)} while its lung descended`
+  );
+
+  // And the extrapulmonary tree does not move, because the lung is tethered at
+  // the hilum: the junction between the main bronchus and the lobar bronchi is
+  // the one point that has to stay put.
+  for (const inflation of [-0.4, 0, 0.5, 1]) {
+    built.setInflation(inflation);
+    const handover = worldEnd('right-main-bronchus', 1).distanceTo(
+      worldEnd('right-lower-lobar-bronchus', 0)
+    );
+    assert.ok(handover < 1e-6, `main and lobar bronchi came apart by ${handover.toFixed(4)} at ${inflation}`);
+  }
+  built.dispose();
 });
 
 test('the lung still answers everything the older scenes ask it', () => {

@@ -244,7 +244,18 @@ export function buildLungs({
     }
 
     object.add(group);
-    sides[side] = { group, frame, field, bounds, centre, segments: sideSegments, warp, scale: shape.scale };
+    sides[side] = {
+      group,
+      frame,
+      field,
+      bounds,
+      centre,
+      segments: sideSegments,
+      warp,
+      scale: shape.scale,
+      /** Where the lung is tethered, in its own coordinates. */
+      hilum: frame.toLocal(HILUM.at),
+    };
   }
 
   // --- airways and vessels -------------------------------------------------
@@ -368,13 +379,25 @@ export function buildLungs({
       for (const side of ['right', 'left']) {
         const group = sides[side].group;
         const home = rest[side];
+        const anchor = sides[side].hilum;
         group.scale.set(sx, sy, sz);
-        // Anchored at the apex: the top of the lung is held by the airway and
-        // barely moves, so the growth has to go downwards.
-        group.position.set(home.x, home.y - 0.24 * excursion * v, home.z);
+        // **Anchored at the hilum**, which is where a lung is actually tethered:
+        // the bronchus and the vessels hold it there and it is the least mobile
+        // part of it, while the base — sitting on the diaphragm — moves most.
+        //
+        // It used to scale about the group's origin and translate downwards,
+        // which moved the hilum. That was survivable while the airways were a
+        // separate static object and is not now that they are inside the lung:
+        // the point where the main bronchus hands over to the lobar bronchi has
+        // to be the one point that does not move.
+        group.position.set(
+          home.x + (1 - sx) * anchor.x,
+          home.y + (1 - sy) * anchor.y,
+          home.z + (1 - sz) * anchor.z
+        );
       }
       for (const region of regions) region.object.scale.set(1 / sx, 1 / sy, 1 / sz);
-      lowestPoint = rest.right.y - 0.24 * excursion * v + baseOfGeometry * sy;
+      lowestPoint = rest.right.y + (1 - sy) * sides.right.hilum.y + baseOfGeometry * sy;
     },
     dispose() {
       for (const item of disposables) item.dispose?.();
@@ -451,21 +474,34 @@ function buildBronchovascular({ sides, lobes, colors }) {
   const veinGroup = new THREE.Group();
   veinGroup.name = 'pulmonary-veins';
 
-  const branches = [];
-  const tube = (group, material, name, points, radius) => {
+  // One registry per tree, holding every branch of it wherever it is parented.
+  // A tree is split across two parents — the part outside the lung is tethered
+  // at the hilum and the part inside it breathes — so the group alone is no
+  // longer the whole tree, and a caller that walked the group would silently
+  // miss everything intrapulmonary. `mesh` is carried so a caller can take a
+  // curve point into world space through `mesh.matrixWorld`; `curve` is in the
+  // coordinates of whatever the branch is parented to.
+  const branches = { bronchi: [], arteries: [], veins: [] };
+  /**
+   * A tube. `group` decides whether it breathes: anything added to a side's own
+   * group inherits that lung's inflation, and anything added to the top-level
+   * groups does not.
+   */
+  const tube = (tree, group, material, name, points, radius) => {
     const curve = smoothCurve(points.map((p) => [p.x, p.y, p.z]));
     const surface = new TubeSurface(curve, { radius, steps: 24, radial: 10 });
     const mesh = new THREE.Mesh(surface.geometry, material);
     mesh.name = name;
     group.add(mesh);
     disposables.push(surface);
-    branches.push({ name, curve, surface });
+    branches[tree].push({ name, curve, surface, mesh });
     return { curve, surface, mesh };
   };
 
   // --- trachea and carina ---------------------------------------------------
   const carina = new THREE.Vector3(0, 2.05, 0);
   tube(
+    'bronchi',
     bronchiGroup,
     bronchusMaterial,
     'trachea',
@@ -477,6 +513,20 @@ function buildBronchovascular({ sides, lobes, colors }) {
   for (const side of ['right', 'left']) {
     const { group, frame } = sides[side];
     const world = (local) => local.clone().add(group.position);
+
+    // Everything inside the lung is parented to the lung, so that it moves when
+    // the lung does. Built in the side group's own coordinates rather than in
+    // world ones — the whole tree used to sit in the top-level group with world
+    // positions baked in at the rest pose, so inflating the lungs moved the
+    // parenchyma a quarter of a unit and left every airway and vessel exactly
+    // where it was. Failure mode G, and three scenes animate this every frame.
+    const innerBronchi = new THREE.Group();
+    innerBronchi.name = `${side}-intrapulmonary-bronchi`;
+    const innerArteries = new THREE.Group();
+    innerArteries.name = `${side}-intrapulmonary-arteries`;
+    const innerVeins = new THREE.Group();
+    innerVeins.name = `${side}-intrapulmonary-veins`;
+    group.add(innerBronchi, innerArteries, innerVeins);
 
     // The hilum, and the order the structures cross it. Offsets are in the
     // anatomical frame, so RALS is stated once and lands on the correct axis
@@ -507,6 +557,7 @@ function buildBronchovascular({ sides, lobes, colors }) {
     const main = hilum[side].bronchus;
     const wide = side === 'right';
     tube(
+      'bronchi',
       bronchiGroup,
       bronchusMaterial,
       `${side}-main-bronchus`,
@@ -516,6 +567,7 @@ function buildBronchovascular({ sides, lobes, colors }) {
     // The artery arrives beside it, from the pulmonary trunk.
     const arteryHilum = hilum[side].artery;
     tube(
+      'arteries',
       arteryGroup,
       arteryMaterial,
       `${side}-pulmonary-artery`,
@@ -527,23 +579,50 @@ function buildBronchovascular({ sides, lobes, colors }) {
       () => 0.11
     );
 
+    // In the lung's own coordinates from here down, because everything below is
+    // inside the lung and has to breathe with it.
+    const localAt = at.clone().add(
+      new THREE.Vector3(
+        arrangement.bronchus[0] * frame.lateralX * frame.half.x,
+        arrangement.bronchus[1] * frame.half.y,
+        arrangement.bronchus[2] * frame.half.z
+      )
+    );
+    const localArtery = at.clone().add(
+      new THREE.Vector3(
+        arrangement.artery[0] * frame.lateralX * frame.half.x,
+        arrangement.artery[1] * frame.half.y,
+        arrangement.artery[2] * frame.half.z
+      )
+    );
+    const localVein = (key) =>
+      at.clone().add(
+        new THREE.Vector3(
+          arrangement[key][0] * frame.lateralX * frame.half.x,
+          arrangement[key][1] * frame.half.y,
+          arrangement[key][2] * frame.half.z
+        )
+      );
+
     for (const lobe of lobes.filter((entry) => entry.side === side)) {
-      const lobeCentre = world(lobe.centre);
-      const lobeBronchusEnd = main.clone().lerp(lobeCentre, 0.55);
+      const lobeCentre = lobe.centre.clone();
+      const lobeBronchusEnd = localAt.clone().lerp(lobeCentre, 0.55);
       tube(
-        bronchiGroup,
+        'bronchi',
+        innerBronchi,
         bronchusMaterial,
         `${lobe.id}-lobar-bronchus`,
-        [main, main.clone().lerp(lobeBronchusEnd, 0.5), lobeBronchusEnd],
+        [localAt, localAt.clone().lerp(lobeBronchusEnd, 0.5), lobeBronchusEnd],
         (u) => 0.082 - 0.018 * u
       );
       tube(
-        arteryGroup,
+        'arteries',
+        innerArteries,
         arteryMaterial,
         `${lobe.id}-lobar-artery`,
         [
-          arteryHilum,
-          arteryHilum.clone().lerp(lobeBronchusEnd, 0.5).add(pairOffset(side, 0.5)),
+          localArtery,
+          localArtery.clone().lerp(lobeBronchusEnd, 0.5).add(pairOffset(side, 0.5)),
           lobeBronchusEnd.clone().add(pairOffset(side, 1)),
         ],
         (u) => 0.07 - 0.016 * u
@@ -551,10 +630,11 @@ function buildBronchovascular({ sides, lobes, colors }) {
 
       const lobeSegments = sides[side].segments.filter((segment) => segment.lobe === lobe.id);
       for (const segment of lobeSegments) {
-        const tip = world(segment.position);
-        segment.bronchusTip = tip.clone();
+        const tip = segment.position.clone();
+        segment.bronchusTip = world(segment.position);
         tube(
-          bronchiGroup,
+          'bronchi',
+          innerBronchi,
           bronchusMaterial,
           `${segment.id}-segmental-bronchus`,
           [lobeBronchusEnd, lobeBronchusEnd.clone().lerp(tip, 0.55), tip],
@@ -563,7 +643,8 @@ function buildBronchovascular({ sides, lobes, colors }) {
         // The artery that goes with it. Offset by a fixed distance so the pair
         // reads as a pair rather than as one vessel drawn twice.
         tube(
-          arteryGroup,
+          'arteries',
+          innerArteries,
           arteryMaterial,
           `${segment.id}-segmental-artery`,
           [
@@ -581,14 +662,15 @@ function buildBronchovascular({ sides, lobes, colors }) {
       // neighbouring segments — the intersegmental plane — and runs back to the
       // vein that drains this part of the lung.
       const draining = lobe.id.includes('lower') ? 'inferiorVein' : 'superiorVein';
-      const target = hilum[side][draining];
+      const target = localVein(draining);
       for (let i = 0; i < lobeSegments.length; i++) {
-        const a = world(lobeSegments[i].position);
-        const b = world(lobeSegments[(i + 1) % lobeSegments.length].position);
+        const a = lobeSegments[i].position.clone();
+        const b = lobeSegments[(i + 1) % lobeSegments.length].position.clone();
         if (lobeSegments.length < 2) continue;
         const between = a.clone().lerp(b, 0.5);
         tube(
-          veinGroup,
+          'veins',
+          innerVeins,
           veinMaterial,
           `${lobe.id}-intersegmental-vein-${i}`,
           [between, between.clone().lerp(target, 0.5), target],
@@ -600,6 +682,7 @@ function buildBronchovascular({ sides, lobes, colors }) {
     // The two pulmonary veins leaving the hilum for the left atrium.
     for (const key of ['superiorVein', 'inferiorVein']) {
       tube(
+        'veins',
         veinGroup,
         veinMaterial,
         `${side}-${key === 'superiorVein' ? 'superior' : 'inferior'}-pulmonary-vein`,
@@ -609,10 +692,13 @@ function buildBronchovascular({ sides, lobes, colors }) {
     }
   }
 
+  // `object` is the extrapulmonary part of each tree, which mounts at the scene
+  // root and stays put; the intrapulmonary part is parented to the lungs so it
+  // breathes with them. `branches` is the tree entire, either way.
   return {
-    bronchi: { object: bronchiGroup, material: bronchusMaterial, branches },
-    arteries: { object: arteryGroup, material: arteryMaterial },
-    veins: { object: veinGroup, material: veinMaterial },
+    bronchi: { object: bronchiGroup, material: bronchusMaterial, branches: branches.bronchi },
+    arteries: { object: arteryGroup, material: arteryMaterial, branches: branches.arteries },
+    veins: { object: veinGroup, material: veinMaterial, branches: branches.veins },
     hilum,
     disposables,
   };
