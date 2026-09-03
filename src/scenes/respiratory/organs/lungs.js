@@ -107,9 +107,27 @@ export function lungWarp({ medial = 1, cardiacNotch = false }) {
  * was nothing to hide, nothing to colour, and nothing whose volume could be
  * asked for. They are planes now, in `lungAnatomy.js`, and they cut.
  */
+/**
+ * The two lungs, each with its own extents and its own place in the chest.
+ *
+ * Three relations `docs/anatomy-specs.md` §1 asks for by name live in these
+ * numbers, and two of them were previously only true by accident:
+ *
+ * - **The right lung is shorter than the left.** `scale.y`, and it always was —
+ *   but by 2.6%, which came out as 2.4% of measured height. Real lungs differ
+ *   by nearer 5–8%, because the liver takes the room. Widened, so the claim
+ *   survives an unrelated change to either lung.
+ * - **The right lung is wider, and larger.** `scale.x`, comfortably.
+ * - **The right diaphragmatic surface sits higher.** This is `at.y`, and it had
+ *   no number at all: both lungs were mounted at the same height, so the right
+ *   base came out 0.028 above the left purely because the right lung was
+ *   shorter. The dome is higher because the liver is under it, which is a fact
+ *   about the liver and belongs in its own figure rather than as a by-product
+ *   of the height.
+ */
 export const SIDE_SHAPE = {
-  right: { scale: [0.92, 1.85, 1.0], warp: { medial: -1 }, at: [-1.24, 0.3, 0] },
-  left: { scale: [0.86, 1.9, 0.98], warp: { medial: 1, cardiacNotch: true }, at: [1.24, 0.3, 0] },
+  right: { scale: [0.92, 1.8, 1.0], warp: { medial: -1 }, at: [-1.24, 0.42, 0] },
+  left: { scale: [0.86, 1.94, 0.98], warp: { medial: 1, cardiacNotch: true }, at: [1.24, 0.3, 0] },
 };
 
 /**
@@ -152,7 +170,12 @@ export const LOBE_COLORS = {
  * @param {'right' | 'left'} side
  */
 function hilumOf(field, frame, side) {
-  const at = frame.toLocal(HILUM.at);
+  // The whole hilum, raised by this side's declared elevation before any of the
+  // RALS offsets are applied — so the arrangement of the four structures
+  // relative to each other is untouched by it.
+  const at = frame
+    .toLocal(HILUM.at)
+    .add(new THREE.Vector3(0, HILUM.elevation[side] * frame.half.y, 0));
   const arrangement = HILUM[side];
   const place = (key) =>
     radialSurface(
