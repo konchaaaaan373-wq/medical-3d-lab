@@ -84,7 +84,15 @@ export const SEGMENT_COLORS = {
 };
 
 /**
- * The liver, its segments, its hepatic veins and its portal pedicles.
+ * The liver, its segments, and optionally its hepatic veins and portal pedicles.
+ *
+ * `vessels` is **opt-in**, for the same reason the lung's tree is. Four scenes
+ * already drew this liver and three of them draw vessels of their own: portal
+ * hypertension and the hepatorenal scene both build a portal tree whose calibre
+ * and visibility are solved from the disease state, and `liver-portal-flow`
+ * draws its own trunk with a flow stream along it. Defaulting these on put a
+ * second, fixed portal tree inside the same liver as the modelled one — in the
+ * two scenes whose entire subject is what the portal pressure does to it.
  *
  * @param {{ color?: string, opacity?: number, detail?: number,
  *           segmentColors?: Record<string, string>, referenceSamples?: number,
@@ -104,7 +112,7 @@ export function buildLiver({
   detail = 10,
   segmentColors = SEGMENT_COLORS,
   referenceSamples = 24000,
-  vessels = true,
+  vessels = false,
 } = {}) {
   const object = new THREE.Group();
   object.name = 'liver';

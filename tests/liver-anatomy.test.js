@@ -51,7 +51,10 @@ function volumeOf(geometry) {
   return Math.abs(volume);
 }
 
-const liver = buildLiver({ detail: 8 });
+// Vessels are opt-in on the builder, because the three scenes that draw this
+// liver draw portal vessels of their own — solved ones, in two of them.
+// Everything about the vessels is asked of a liver that asked for them.
+const liver = buildLiver({ detail: 8, vessels: true });
 const segmentVolume = new Map(liver.segments.map((segment) => [segment.id, volumeOf(segment.geometry)]));
 const totalVolume = [...segmentVolume.values()].reduce((sum, value) => sum + value, 0);
 const sectorShare = (id) =>
@@ -364,4 +367,29 @@ test('every point the builder reports as inside really is inside a segment', () 
   }
   assert.equal(checked, 9);
   built.dispose();
+});
+
+test('a liver that was not asked for vessels does not have any', () => {
+  // Three of the four scenes that build this liver draw portal vessels of
+  // their own, and in two of them — portal hypertension and the hepatorenal
+  // scene — those vessels' calibre is solved from the disease state. A liver
+  // that brings its own fixed portal tree puts a second, unresponsive one
+  // inside the same organ, in the scenes whose entire subject is what the
+  // portal pressure does to it.
+  const bare = buildLiver({ detail: 6 });
+  assert.equal(bare.hepaticVeins, null, 'a bare liver reports hepatic veins');
+  assert.equal(bare.portal, null);
+
+  const drawn = [];
+  bare.object.traverse((object) => {
+    if (object.isMesh && !/^segment-/.test(object.name)) drawn.push(object.name);
+  });
+  assert.deepEqual(drawn, [], `a bare liver drew ${drawn.length} vessel meshes`);
+  bare.dispose();
+
+  // The segments are still all there — it is the vessels that are optional.
+  const asked = buildLiver({ detail: 6, vessels: true });
+  assert.equal(bare.segments.length, asked.segments.length);
+  assert.ok(asked.portal.object.children.length > 0, 'a liver that asked for vessels has none');
+  asked.dispose();
 });
