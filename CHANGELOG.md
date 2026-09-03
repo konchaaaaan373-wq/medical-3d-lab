@@ -14,6 +14,36 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### A new model — where the water goes
+
+- **Pulmonary oedema** (`#/pulmonary-edema`, `alpha`). One Starling equation
+  across the pulmonary capillary and the three buffers that oppose it:
+  interstitial pressure rising off its subatmospheric floor, lymphatic flow
+  rising towards a ceiling, and interstitial protein washing down as the flux
+  rises. What comes out of that is the question the scene is named for — above
+  what pressure does water cross, and which space does it fill first.
+- **The threshold is searched for, never stored.** There is no flooding
+  constant anywhere in the model. Lower the albumin, injure the barrier, raise
+  the cardiac output or give the lymphatics months to adapt, and the pressure
+  the lung tolerates moves, because it was never a number in the first place.
+  A previously normal lung floods in the mid-twenties mmHg; the same lung after
+  months at pressure holds out into the high thirties.
+- **Cardiogenic and non-cardiogenic oedema are the same equation.** Nothing
+  switches. Raising the atrial pressure floods the lung through the hydrostatic
+  term; injuring the barrier floods it at a normal pressure through σ — and
+  because σ multiplies the oncotic term, giving albumin stops helping. That
+  falls out of the model rather than being written into it.
+- **The interstitium fills before the alveolus does**, so the scene has a stage
+  where the lung is visibly wet and the saturation has not moved — which is why
+  breathlessness precedes hypoxaemia and the radiograph changes before the
+  oximeter. Only when alveoli flood does a shunt appear, and then oxygen widens
+  the alveolar-to-arterial difference instead of closing it.
+- It reuses the lungs `breathing-lungs` already draws. No organ is modelled
+  twice.
+- Scope, evidence and boundaries are on the same screen: the model card records
+  that the model has **no ventilation and no gravity** — it cannot say how hard
+  someone is breathing, and it fills the lung evenly where real oedema is basal.
+
 ### The organ layer, checked the way the heart was
 
 Every organ builder in `src/scenes/*/organs/` was measured against the

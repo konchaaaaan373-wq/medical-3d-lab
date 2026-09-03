@@ -12,6 +12,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
   'amyloid-beta',
   'renal-filtration',
+  'pulmonary-edema',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -56,6 +57,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     'どの機序で、尿指標の向きが入れ替わるか。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
+  ),
+  'pulmonary-edema': presentation(
+    'The atrium is at 27. Why is one lung wet and the other flooded?',
+    '左房圧はどちらも 27。なぜ一方は湿るだけで、他方は水没するのか。',
+    ['STARLING', 'LYMPHATICS', 'SHUNT'],
+    ['Starling', 'リンパ', 'シャント']
   ),
   'copd-hyperinflation': presentation(
     'Why can harder expiration stop producing more flow?',

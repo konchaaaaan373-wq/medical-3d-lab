@@ -9,6 +9,7 @@ import {
   COPD_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
+  PULMONARY_EDEMA_EVIDENCE,
   LAYER,
   PORTAL_EVIDENCE,
   defineEvidence,
@@ -57,6 +58,7 @@ const DOSSIERS = {
   asthma: 'docs/model-evidence/asthma.md',
   'portal-hypertension': 'docs/model-evidence/cirrhosis-portal-hypertension.md',
   'hepatorenal-syndrome': 'docs/model-evidence/hepatorenal-syndrome.md',
+  'pulmonary-edema': 'docs/model-evidence/pulmonary-edema.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -181,13 +183,14 @@ test('each scene records the direction it is known to get wrong', () => {
 test('the registries cover every model-backed scene and nothing is duplicated across them', () => {
   assert.deepEqual(
     EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
-    ['circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
+    ['circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome', 'pulmonary-edema']
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
   assert.ok(COPD_EVIDENCE.length >= 8);
   assert.ok(ASTHMA_EVIDENCE.length >= 8);
   assert.ok(PORTAL_EVIDENCE.length >= 8);
   assert.ok(HEPATORENAL_EVIDENCE.length >= 8);
+  assert.ok(PULMONARY_EDEMA_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

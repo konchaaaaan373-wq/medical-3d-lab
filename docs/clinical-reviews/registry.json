@@ -62,9 +62,9 @@
     "unresolvedLimitations": [
       "No versioned clinical attestation exists under the current review standard.",
       "The progression axis is a conceptual aggregation state, not clinical stage, symptom severity, or elapsed disease time.",
-      "A\u03b240 and A\u03b242, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
+      "Aβ40 and Aβ42, tau pathology, neuroinflammation, APP processing, ApoE and patient-level cognition are outside the model.",
       "Particle counts, molecular scale and aggregation thresholds are illustrative rather than measured quantities.",
-      "Individual rendered particles move only forward on the teaching slider even though real A\u03b2 assemblies can interconvert and disassemble."
+      "Individual rendered particles move only forward on the teaching slider even though real Aβ assemblies can interconvert and disassemble."
     ]
   },
   {
@@ -225,6 +225,28 @@
       "Backleak of filtrate across damaged tubular epithelium is an accepted third mechanism of the low GFR in acute tubular injury and is not modelled.",
       "Acid-base, potassium, phosphate, calcium, vitamin D and erythropoietin are absent, as is anything outside the kidney; aldosterone and antidiuretic hormone are inputs standing in for a body that is not modelled.",
       "Several exponents (glomerulotubular balance, urea handling, remnant hyperfiltration, tubular injury feedback) are calibration constants chosen so the reference kidney lands on textbook values; only the sign and the reason for each effect is asserted."
+    ]
+  },
+  {
+    "sceneId": "pulmonary-edema",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "the Starling balance across the pulmonary capillary, the three buffers that oppose it, the staging of interstitial before alveolar filling and the shunt derived from the flooded fraction, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pulmonary-edema.md",
+      "docs/model-evidence/pulmonary-edema.md",
+      "tests/pulmonary-edema-model.test.js",
+      "tests/respiratory-physiology.test.js",
+      "src/models/pulmonaryEdema.js"
+    ],
+    "unresolvedLimitations": [
+      "The model has no gravitational gradient, so it fills the lung evenly where real oedema is basal. Whether a scene that draws an even distribution can teach the staging without teaching the wrong distribution has not been reviewed.",
+      "The model has no ventilation, no respiratory rate and no carbon dioxide, so it cannot produce the symptom this disease presents with. Whether presenting oedema primarily as an oxygenation problem misleads has not been reviewed.",
+      "The scene reports a specific flooding threshold in mmHg for the reference lung. It is searched for rather than stored and moves with every control, but whether reporting it as a number at all invites it being read as a clinical threshold has not been reviewed."
     ]
   }
 ]

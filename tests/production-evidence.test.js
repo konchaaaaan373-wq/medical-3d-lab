@@ -33,7 +33,16 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('migrated production evidence and the existing model registries share one complete registry', () => {
   assert.deepEqual(
     ALL_EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
-    ['heart-failure', 'amyloid-beta', 'circulation', 'copd', 'asthma', 'portal-hypertension', 'hepatorenal-syndrome']
+    [
+      'heart-failure',
+      'amyloid-beta',
+      'circulation',
+      'copd',
+      'asthma',
+      'portal-hypertension',
+      'hepatorenal-syndrome',
+      'pulmonary-edema',
+    ]
   );
 });
 

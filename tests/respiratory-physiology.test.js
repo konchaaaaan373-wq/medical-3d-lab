@@ -10,6 +10,20 @@ import {
   smoothMuscleFraction,
   solveAsthma,
 } from '../src/models/asthma.js';
+import {
+  BASELINE_INTERSTITIAL_VOLUME_ML as PULMONARY_EDEMA_BASELINE_WATER_ML,
+  INTERSTITIUM as PULMONARY_EDEMA_INTERSTITIUM,
+  REFERENCE as PULMONARY_EDEMA_REFERENCE,
+  barrier,
+  baselineInterstitialOncoticPressure,
+  floodingThresholdMmHg,
+  solveFiltration,
+  solveSteadyState as steadyState,
+  stateAt,
+} from '../src/models/pulmonaryEdema.js';
+
+/** A solved lung at its own equilibrium, for the tests that want one. */
+const edemaState = (controls) => steadyState(controls);
 
 /**
  * **Layer 1 — external physiology. What the literature requires of this model.**
@@ -527,4 +541,209 @@ test('physiology: relaxing airway smooth muscle widens the airways and lowers re
   assert.ok(relaxed.medianCalibre > constricted.medianCalibre, 'the airways have to widen');
   assert.ok(relaxed.resistanceRatio < constricted.resistanceRatio, 'and the resistance has to fall');
   assert.ok(relaxed.totalVentilation > constricted.totalVentilation, 'and more air has to reach the lung');
+});
+
+/* --------------------------------------------------------------------------
+   Pulmonary oedema — where the water goes when the left atrium fills
+
+   Every test below would be true if this repository did not exist. None of
+   them quotes a constant from `src/models/pulmonaryEdema.js`: they compare two
+   solved lungs, so they stay true if the calibration moves.
+   -------------------------------------------------------------------------- */
+
+test('physiology: filtration follows the Starling terms, and only those', () => {
+  // Each of the four terms moves the flux in the direction the equation says,
+  // and nothing else does. A model that got any sign wrong here would still
+  // produce oedema, for the wrong reason.
+  const base = {
+    drivingPressureMmHg: 16,
+    filtrationCoefficient: PULMONARY_EDEMA_REFERENCE.filtrationCoefficient,
+    reflectionCoefficient: PULMONARY_EDEMA_REFERENCE.reflectionCoefficient,
+    plasmaOncoticPressureMmHg: PULMONARY_EDEMA_REFERENCE.plasmaOncoticPressureMmHg,
+  };
+  const reference = solveFiltration(base);
+
+  assert.ok(
+    solveFiltration({ ...base, drivingPressureMmHg: 24 }) > reference,
+    'a larger hydrostatic gradient filters more'
+  );
+  assert.ok(
+    solveFiltration({ ...base, plasmaOncoticPressureMmHg: 34 }) < reference,
+    'more plasma protein opposes filtration'
+  );
+  assert.ok(
+    solveFiltration({ ...base, reflectionCoefficient: 0.4 }) > reference,
+    'a barrier that reflects less protein filters more at the same pressures'
+  );
+  assert.ok(
+    solveFiltration({ ...base, filtrationCoefficient: base.filtrationCoefficient * 2 }) > reference,
+    'a more conductive barrier filters more'
+  );
+
+  // And filtration reverses when the oncotic pull exceeds the hydrostatic
+  // push, rather than being clamped at zero: the equation is symmetric.
+  assert.ok(solveFiltration({ ...base, drivingPressureMmHg: 2 }) < 0, 'a low enough gradient absorbs');
+});
+
+test('physiology: raising pulmonary blood flow floods a lung the same atrial pressure left dry', () => {
+  // The capillary is upstream of a resistance, so its pressure is the atrial
+  // pressure plus a flow times that resistance. Exercise therefore floods a
+  // lung whose atrium has not changed — which is why a resting wedge pressure
+  // does not say what the capillary saw an hour ago.
+  const atRest = floodingThresholdMmHg({ pulmonaryFlowLPerMin: 5 });
+  const onExertion = floodingThresholdMmHg({ pulmonaryFlowLPerMin: 15 });
+  assert.ok(onExertion < atRest, `exertion should lower the threshold: ${onExertion} vs ${atRest}`);
+
+  const pressure = (atRest + onExertion) / 2;
+  assert.equal(edemaState({ leftAtrialPressureMmHg: pressure, pulmonaryFlowLPerMin: 5 }).floodedFraction, 0);
+  assert.ok(edemaState({ leftAtrialPressureMmHg: pressure, pulmonaryFlowLPerMin: 15 }).floodedFraction > 0);
+});
+
+test('physiology: three separate buffers hold water back, and removing any one lowers the threshold', () => {
+  // The safety factor is not one mechanism. Interstitial pressure rising from
+  // a subatmospheric value, lymphatic flow increasing, and interstitial
+  // protein washing down each subtract from the driving gradient, and a lung
+  // missing any one of them floods sooner.
+  const intact = floodingThresholdMmHg({});
+
+  // Take the lymphatic reserve away by asking the barrier for more flux than
+  // any ceiling can carry, and the threshold has to fall.
+  const withoutLymphaticReserve = floodingThresholdMmHg({ permeability: 1.6 });
+  assert.ok(withoutLymphaticReserve < intact, 'a barrier that outruns the lymphatics floods sooner');
+
+  // Take the oncotic buffer away and it falls again.
+  const withoutOncotic = floodingThresholdMmHg({ plasmaOncoticPressureMmHg: 16 });
+  assert.ok(withoutOncotic < intact, 'less plasma protein floods sooner');
+
+  // The interstitial pressure buffer shows itself as the distance between the
+  // pressure at which the lung starts gaining water and the pressure at which
+  // an alveolus first fills. Those must not be the same pressure: if they
+  // were, the interstitium would be holding nothing back.
+  let firstGain = null;
+  for (let la = 0; la <= intact; la += 0.5) {
+    if (steadyState({ leftAtrialPressureMmHg: la }).lungWaterMl > PULMONARY_EDEMA_BASELINE_WATER_ML + 1) {
+      firstGain = la;
+      break;
+    }
+  }
+  assert.ok(firstGain !== null, 'the lung starts gaining water somewhere below the flooding threshold');
+  assert.ok(intact - firstGain > 5, 'and holds it in the interstitium over a wide range of pressure');
+});
+
+test('physiology: the interstitium fills before any alveolus does', () => {
+  // The staging is the reason breathlessness precedes hypoxaemia. It is a
+  // claim about ordering, so it is checked over the whole range rather than at
+  // a chosen pressure.
+  for (let la = 0; la <= 45; la += 0.5) {
+    const state = steadyState({ leftAtrialPressureMmHg: la });
+    if (state.alveolarWaterMl > 0) {
+      assert.ok(
+        state.interstitialWaterMl >= PULMONARY_EDEMA_INTERSTITIUM.floodThresholdMl - 1e-9,
+        `alveoli filled at ${la} mmHg with the interstitium not yet full`
+      );
+    }
+    if (state.interstitialWaterMl < PULMONARY_EDEMA_INTERSTITIUM.floodThresholdMl - 1e-9) {
+      assert.equal(state.alveolarWaterMl, 0, `water reached an alveolus at ${la} mmHg before the interstitium was full`);
+      assert.equal(state.floodedFraction, 0);
+    }
+  }
+});
+
+test('physiology: an adapted lung floods at a higher pressure than an unadapted one', () => {
+  // Why the same wedge pressure means two different things in two patients,
+  // and why a chronic mitral stenosis lives at a pressure that would drown a
+  // previously normal lung.
+  const unadapted = floodingThresholdMmHg({ chronicity: 0 });
+  const adapted = floodingThresholdMmHg({ chronicity: 1 });
+  assert.ok(adapted > unadapted, `adaptation should raise the threshold: ${adapted} vs ${unadapted}`);
+
+  const between = (unadapted + adapted) / 2;
+  assert.ok(steadyState({ leftAtrialPressureMmHg: between, chronicity: 0 }).floodedFraction > 0);
+  assert.equal(steadyState({ leftAtrialPressureMmHg: between, chronicity: 1 }).floodedFraction, 0);
+});
+
+test('physiology: raising plasma protein stops protecting a lung whose barrier has failed', () => {
+  // The clinical difference between cardiogenic and non-cardiogenic oedema, as
+  // a property of one equation: σ multiplies the oncotic term, so a barrier
+  // that no longer reflects protein cannot be helped by more of it.
+  //
+  // Measured as **how much more pressure the lung tolerates** for the same rise
+  // in plasma protein, which is what "protecting" means. Measured as lung water
+  // instead, the comparison inverts and appears to say the opposite: a leaking
+  // barrier has a larger filtration coefficient, so the small pressure it has
+  // left to gain still moves more water than the large one an intact barrier
+  // gains. That is a fact about Kf, not about protection, and reading it as
+  // protection would have had this model teaching the reverse of the truth.
+  const protection = (permeability) => {
+    const poor = floodingThresholdMmHg({ permeability, plasmaOncoticPressureMmHg: 18 });
+    const rich = floodingThresholdMmHg({ permeability, plasmaOncoticPressureMmHg: 30 });
+    assert.ok(poor !== null && rich !== null, 'both lungs have a threshold to compare');
+    return rich - poor;
+  };
+  const intact = protection(1);
+  const failed = protection(5);
+  assert.ok(intact > 5, `an intact barrier should buy real tolerance: ${intact.toFixed(1)} mmHg`);
+  assert.ok(
+    failed < intact * 0.4,
+    `a failed barrier should lose most of it: ${failed.toFixed(1)} vs ${intact.toFixed(1)} mmHg`
+  );
+
+  // And the reason, stated separately from the consequence: σ is what the
+  // oncotic gradient is multiplied by, and it is what the injury destroys.
+  const opposition = (permeability, plasmaOncoticPressureMmHg) => {
+    const { reflectionCoefficient } = barrier(permeability);
+    return (
+      reflectionCoefficient *
+      (plasmaOncoticPressureMmHg - baselineInterstitialOncoticPressure(plasmaOncoticPressureMmHg))
+    );
+  };
+  assert.ok(opposition(5, 30) < opposition(1, 30) * 0.3, 'the oncotic term itself has been taken away');
+});
+
+test('physiology: low plasma protein alone does not flood a lung', () => {
+  // Because interstitial protein falls with plasma protein, most of the
+  // transcapillary gradient survives. Hypoalbuminaemia is a real risk factor
+  // and a poor sole cause, and the model has to reproduce both halves.
+  const hypoalbuminaemic = steadyState({ plasmaOncoticPressureMmHg: 14 });
+  assert.equal(hypoalbuminaemic.floodedFraction, 0, 'a normal filling pressure with low albumin must not flood');
+  assert.ok(
+    hypoalbuminaemic.lungWaterMl > steadyState({}).lungWaterMl,
+    'but it must leave the lung wetter than a normal one'
+  );
+  assert.ok(
+    floodingThresholdMmHg({ plasmaOncoticPressureMmHg: 14 }) < floodingThresholdMmHg({}),
+    'and it must lower the pressure the lung tolerates'
+  );
+});
+
+test('physiology: oxygen widens the A–a difference in a shunt instead of closing it', () => {
+  // The defining behaviour of a shunt, and the reason a flooded lung does not
+  // respond to oxygen the way a lung with a diffusion problem does. Blood that
+  // never met an alveolus cannot be improved by what is in the alveolus.
+  const flooded = PULMONARY_EDEMA_INTERSTITIUM.floodThresholdMl + 360;
+  const air = stateAt(flooded, { inspiredOxygenFraction: 0.21 });
+  const oxygen = stateAt(flooded, { inspiredOxygenFraction: 1 });
+
+  assert.ok(air.shuntFraction > 0.2, 'the test needs a substantial shunt to be about anything');
+  assert.ok(
+    oxygen.alveolarArterialDifferenceMmHg > air.alveolarArterialDifferenceMmHg * 3,
+    'oxygen must widen the difference, not close it'
+  );
+  // The arterial tension rises far less than the alveolar one it is compared
+  // against — that disproportion is the finding.
+  const alveolarGain = oxygen.alveolarOxygenMmHg - air.alveolarOxygenMmHg;
+  const arterialGain = oxygen.arterialOxygenMmHg - air.arterialOxygenMmHg;
+  assert.ok(arterialGain > 0, 'oxygen still helps a little');
+  assert.ok(arterialGain < alveolarGain * 0.25, 'but nothing like as much as the alveolar tension rose');
+
+  // A lung with no shunt does not behave this way, which is what makes the
+  // finding a finding rather than a property of the arithmetic.
+  const dry = PULMONARY_EDEMA_BASELINE_WATER_ML;
+  const dryAir = stateAt(dry, { inspiredOxygenFraction: 0.21 });
+  const dryOxygen = stateAt(dry, { inspiredOxygenFraction: 1 });
+  assert.ok(
+    dryOxygen.alveolarArterialDifferenceMmHg < oxygen.alveolarArterialDifferenceMmHg / 4,
+    'a lung without flooding keeps a small difference on oxygen'
+  );
+  assert.ok(dryAir.arterialSaturation > 0.95);
 });

@@ -89,5 +89,16 @@
     "cardRevision": 1,
     "modelDigest": "f44ece5fcda21a9f",
     "cardUpdatedAt": "2026-09-01"
+  },
+  {
+    "sceneId": "pulmonary-edema",
+    "card": "docs/model-cards/pulmonary-edema.md",
+    "modelSources": [
+      "src/models/pulmonaryEdema.js",
+      "src/data/pulmonaryEdema.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "218ad912de829c97",
+    "cardUpdatedAt": "2026-09-03"
   }
 ]
