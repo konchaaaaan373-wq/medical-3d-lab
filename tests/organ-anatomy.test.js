@@ -163,9 +163,23 @@ test('the thyroid’s lobes sit on the sides they are named for', () => {
 });
 
 test('the liver is bulky on the right and thins to an edge on the left', () => {
-  const liver = buildLiver();
+  // The liver is nine Couinaud segments now, so its outer surface is their
+  // union rather than one mesh. Measured over all of them, which is the same
+  // surface it always was.
+  const liver = buildLiver({ vessels: false, detail: 8 });
   liver.object.updateMatrixWorld(true);
-  const position = liver.object.geometry.attributes.position;
+  const vertices = liver.segments.flatMap((segment) => {
+    const attribute = segment.geometry.attributes.position;
+    return Array.from({ length: attribute.count }, (_, i) =>
+      new THREE.Vector3().fromBufferAttribute(attribute, i)
+    );
+  });
+  const position = {
+    count: vertices.length,
+    getX: (i) => vertices[i].x,
+    getY: (i) => vertices[i].y,
+    getZ: (i) => vertices[i].z,
+  };
   const vertex = new THREE.Vector3();
 
   /**
@@ -177,7 +191,7 @@ test('the liver is bulky on the right and thins to an edge on the left', () => {
   const heightAt = (from, to) => {
     const reach = { left: { min: Infinity, max: -Infinity }, right: { min: Infinity, max: -Infinity } };
     for (let i = 0; i < position.count; i++) {
-      vertex.fromBufferAttribute(position, i);
+      vertex.set(position.getX(i), position.getY(i), position.getZ(i));
       const out = Math.abs(vertex.x);
       if (out < from || out > to) continue;
       const side = reach[anatomicalSide(vertex)];
@@ -294,7 +308,18 @@ const LABELLED = [
   // right lung is whichever lobe it hangs off.
   ['lungs', () => buildLungs(), { rightLung: 'right-upper', leftLung: 'left-upper' }],
   ['spleen', () => buildSpleen(), { spleen: 'spleen', hilum: 'spleen', pulp: 'spleen' }],
-  ['liver', () => buildLiver(), { rightLobe: 'liver', leftLobe: 'liver', porta: 'liver' }],
+  // The liver's labels point at segments now: the right lobe label hangs off
+  // segment VII, the left lobe's off III, and the porta sits by segment IVb.
+  [
+    'liver',
+    // At the detail it ships at: which segment a label is nearest depends on
+    // the tessellation, so a coarser liver here would be testing a liver
+    // nobody draws.
+    () => buildLiver({ vessels: false }),
+    // Measured, not guessed: the right lobe label hangs off segment VII, the
+    // left lobe's off II, the porta sits by V and the falciform by IVa.
+    { rightLobe: 'segment-VII', leftLobe: 'segment-II', porta: 'segment-V', falciform: 'segment-IVa' },
+  ],
   ['gallbladder', () => buildGallbladder(), { gallbladder: 'gallbladder' }],
   ['thyroid', () => buildThyroid(), { rightLobe: 'right-lobe', leftLobe: 'left-lobe', isthmus: 'isthmus' }],
   ['stomach', () => buildStomach(), { fundus: 'gastric-body', antrum: 'gastric-body' }],

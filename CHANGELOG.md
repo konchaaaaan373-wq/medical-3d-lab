@@ -14,6 +14,28 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The liver, divided the way surgery divides it
+
+- **Eight Couinaud segments**, as nine closed meshes whose union is the
+  parenchyma (segment IV is carried as its superior and inferior halves), each
+  hideable and measurable on its own. Every point in the liver falls in exactly
+  one of them, and the five sectors take the share of liver volume the
+  literature reports.
+- **Cantlie's line is the right/left division, and the falciform ligament is
+  not.** The commonest mistake about liver anatomy is now something the
+  geometry cannot make: the plane of the middle hepatic vein and the ligament
+  are separate objects, a real distance apart, and a test holds them so.
+- **The hepatic veins run between the segments and the portal pedicles run
+  inside them** — the arrangement that makes a segmentectomy possible, and the
+  reason a surgeon finds a resection plane by following a vein. Each vein is
+  projected onto the plane it divides rather than positioned near it.
+- **The caudate lobe belongs to neither side.** It takes a pedicle from both
+  portal branches and drains straight into the cava by its own short veins,
+  which is why it survives what kills the rest of the liver.
+- Removing a sector leaves a real cut surface: taking segments VI and VII away
+  draws the plane of the right hepatic vein, which is what a right posterior
+  sectionectomy looks like.
+
 ### The lung, rebuilt as an organ
 
 - **The lung has lobes now.** It used to have grooves: shallow dents scratched

@@ -250,7 +250,10 @@ export class PortalHypertensionScene {
 
     // The liver's colour follows how scarred it is. Presentation.
     const scarring = clamp((state.resistances.intrahepaticMultiple - 1) / 9);
-    this.liver.object.material.color.copy(HEALTHY_LIVER).lerp(SCARRED_LIVER, scarring);
+    // The liver is nine segment meshes now, each with its own material, so
+    // there is no single `object.material` to reach for. Cirrhosis colours the
+    // whole parenchyma, and saying so is what the organ asks for.
+    this.liver.setParenchymaColor(HEALTHY_LIVER.clone().lerp(SCARRED_LIVER, scarring));
 
     // Streams: rate and brightness follow the flows, so the picture and the
     // read-out cannot disagree about where the blood is going.

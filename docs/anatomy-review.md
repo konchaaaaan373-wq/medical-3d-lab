@@ -181,7 +181,7 @@ rather than cosmetic:
 | Grade | Builders | What they do that the others do not |
 | --- | --- | --- |
 | Named structure | `nephron`, `glomerulus`, `airwayTree`, `portalVasculature`, `diaphragm` | Expose landmarks by anatomical name, keep physiology and presentation in separately named values, and are consumed by `alpha`+ scenes that read those landmarks rather than retyping them |
-| Named parts | `lungs` | The grade above: the organ is **divided into the parts anatomy names**, as separate closed meshes whose union is the organ, each addressable, hideable and measurable on its own — five lobes, eighteen segments, a bronchial tree and the vessels that run with it (§5.4) |
+| Named parts | `lungs`, `liver` | The grade above: the organ is **divided into the parts anatomy names**, as separate closed meshes whose union is the organ, each addressable, hideable and measurable on its own — five lobes, eighteen segments, a bronchial tree and the vessels that run with it (§5.4) |
 | Sketch | the remaining sixteen | A recognisable silhouette and a shape setter. Correct as far as they go, and explicitly not more |
 
 That split is the intended one — `grand-design.md` §5.4 says not to promote
@@ -292,6 +292,38 @@ segment boundaries are a distance rule — the lung nearer this segmental bronch
 than any other — which is a model of the *definition* of a segment rather than a
 tracing of a specimen. The lobar volume fractions are a target this repository
 hit, not a measurement it made.
+
+### 5.5 The liver, divided the way surgery divides it
+
+Same method, applied to the organ whose division matters most surgically. The
+liver's fissure was a groove too — the falciform ligament, scratched into the
+surface — and, worse, nothing in the file distinguished it from the plane that
+actually divides the right liver from the left. It does now.
+
+| | |
+| --- | --- |
+| Segments | Nine closed meshes whose union is the parenchyma: the eight Couinaud segments, with IV carried as its superior and inferior halves |
+| Sectors | Five, grouped as a resection is planned: caudate, left lateral, left medial, right anterior, right posterior |
+| Volumes | 2 / 16 / 17 / 33 / 32 per cent — **calibrated** to the shares the literature reports, and the only fitted numbers here |
+| Partition | Every point in the liver falls in exactly one segment — sampled, not asserted |
+| Cantlie's line | The plane of the middle hepatic vein divides right liver from left. **The falciform ligament does not**, and the test holds them apart by a real distance |
+| Hepatic veins | Drawn **on** the planes that separate the segments, projected onto them rather than positioned near them |
+| Portal pedicles | Drawn **inside** the segments they supply, and each one is checked to end in its own segment |
+| Caudate | Belongs to neither the right liver nor the left, takes a pedicle from both portal branches, and drains straight into the cava by its own veins |
+
+**Two defects, both found by measuring.** Segments VI and VII carried no
+Cantlie bound, so they reached across the midline and overlapped segment IV —
+0.67% of the liver was in two segments at once. And the middle hepatic vein,
+positioned by a typed coordinate, started a quarter of the organ off the
+oblique plane it *is*; it is projected onto its plane now, because being on the
+boundary is the fact about a hepatic vein.
+
+**The largest simplification is the caudate.** A box describes it and a box
+cannot be cut from half-spaces — the complement of one is a union, not an
+intersection — so bounding it sideways left slivers behind segments II and VII
+belonging to no segment at all. Taken as a posterior slab it partitions
+cleanly, at the cost of calling a thin posterior shaving of its neighbours
+"caudate". That is recorded in `liverAnatomy.js` where the plane is defined.
 
 ### 5.3 Recorded, not changed
 
