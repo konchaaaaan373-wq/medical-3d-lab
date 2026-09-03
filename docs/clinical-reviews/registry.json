@@ -91,6 +91,29 @@
     ]
   },
   {
+    "sceneId": "hfpef",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "LV pressure-volume model, public teaching copy, 3D pressure cue, model card and evidence package prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/hfpef.md",
+      "docs/model-evidence/hfpef.md",
+      "tests/hfpef-physiology.test.js",
+      "tests/hfpef-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "The model isolates passive LV stiffness and does not represent the heterogeneous HFpEF syndrome as a whole.",
+      "Active relaxation, atrial mechanics, pulmonary vascular/right-heart coupling, pericardial restraint, chronotropic reserve and systemic contributors are absent.",
+      "The filling control is a chamber-volume perturbation, not exercise, saline volume, preload pressure or treatment dose.",
+      "The displayed pulmonary cue is driven from LVEDP for teaching and is not PCWP, pulmonary edema severity or lung water.",
+      "The PV-loop path between model-derived corners is illustrative rather than a dynamic valve-timing solution."
+    ]
+  },
+  {
     "sceneId": "copd-hyperinflation",
     "reviewStatus": "stale",
     "reviewerRole": "external clinical reviewer; personal identity not recorded in the repository",

@@ -69,6 +69,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/cardiovascular/scenes/heartFailure/index.js'),
   },
   {
+    id: 'hfpef',
+    slug: 'hfpef',
+    titleEn: 'HFpEF — preserved EF, high filling pressure',
+    titleJa: 'HFpEF — EFが保たれていても充満圧は上がる',
+    system: 'cardiovascular',
+    organ: 'heart',
+    disease: 'hfpef',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/hfpef.md',
+    description:
+      'A pressure-volume model that holds systolic emptying constant while passive LV stiffness rises: the same EDV and EF, but a steeper EDPVR and higher filling pressure.',
+    descriptionJa:
+      '収縮期の駆出を固定したまま左室の受動的スティフネスだけを上げ、同じEDV・EFでもEDPVRが急になり充満圧が上がることを示します。',
+    tags: ['haemodynamics', 'diastolic-function', 'pressure-volume'],
+    load: () => import('../scenes/cardiovascular/scenes/hfpef/index.js'),
+  },
+  {
     id: 'circulation',
     slug: 'circulation',
     titleEn: 'Is circulation maintained?',
