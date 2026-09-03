@@ -121,14 +121,15 @@ the model tests.
   deletion exist.
 - [x] Scene paid capabilities are semantic manifest data and CI-checked against
   authored Patient/Education content and scene maturity.
-- [x] CSP and the remaining security headers are in `public/_headers` and
+- [~] CSP and the remaining security headers are in `public/_headers` and
   guarded by `tests/security-headers.test.js`. The server-only billing event
   ledger (claim/finish, with an attempt count and a reclaim window), per-user
   reconciliation on the request path, a scheduled account-wide reconciliation
-  sweep and an alert policy are all in place; see
-  [`access-and-billing.md`](access-and-billing.md). Scheduling that sweep and
-  pointing `OPS_ALERT_WEBHOOK` somewhere are deployment configuration, and the
-  production runbook for it is in [`release-runbook.md`](release-runbook.md).
+  sweep, a privacy-safe health endpoint and an alert policy are all in place;
+  see [`access-and-billing.md`](access-and-billing.md) and
+  [`billing-operations-runbook.md`](billing-operations-runbook.md). Connect the
+  health endpoint and `OPS_ALERT_WEBHOOK` to the chosen production monitoring
+  service.
 - [ ] Choose real Patient / Education / Complete prices and configure live Stripe
   Products, Prices, Portal, webhook and Netlify Production secrets.
 

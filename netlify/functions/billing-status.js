@@ -1,29 +1,15 @@
 import { commerceReadiness } from '../../src/access/commerceReadiness.js';
 import { json } from '../lib/billing.js';
+import { billingConfiguration } from '../lib/billingConfiguration.js';
 
-const REQUIRED = [
-  'SUPABASE_URL',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_PRICE_PATIENT',
-  'STRIPE_PRICE_EDUCATION',
-  'STRIPE_PRICE_COMPLETE',
-];
-
-const hasAny = (...names) => names.some((name) => Boolean(process.env[name]));
-
-export function billingInfrastructureConfigured() {
-  return (
-    REQUIRED.every((name) => Boolean(process.env[name])) &&
-    hasAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY') &&
-    hasAny('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY')
-  );
+export function billingInfrastructureConfigured(deployContext) {
+  return billingConfiguration(process.env, deployContext).configured;
 }
 
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'GET') return json(405, { error: 'Method not allowed' });
 
-  const infrastructureConfigured = billingInfrastructureConfigured();
+  const infrastructureConfigured = billingInfrastructureConfigured(context?.deploy?.context);
   const readiness = commerceReadiness();
 
   // Charging is enabled only when both infrastructure and reviewed professional

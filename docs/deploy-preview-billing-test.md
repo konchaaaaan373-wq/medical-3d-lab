@@ -22,5 +22,9 @@ The Supabase project may be shared during initial validation. `VITE_SUPABASE_*` 
 10. Confirm terminal/non-paying subscription states no longer grant paid access according to `src/access/policy.js`.
 11. After a terminal cancellation, start Checkout again and confirm a stale local row cannot block repurchase.
 12. Simulate a temporary payment failure and recovery; confirm `past_due` grace, later terminal revocation, and restored access after successful recovery.
+13. Open Netlify → Functions → `scheduled-billing-reconcile` → **Run now**. Confirm the function succeeds and `/api/billing-health` becomes `ok`.
+14. Run `npm run billing:check -- https://DEPLOY_PREVIEW_URL` and confirm all three checks pass.
+
+Scheduled functions do not run on a timer for Deploy Previews. **Run now** is therefore required only for this preview test; published Production runs automatically every hour.
 
 Never commit Stripe secrets, Supabase server secrets, or webhook signing secrets to this repository.

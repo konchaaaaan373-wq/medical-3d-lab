@@ -1,7 +1,11 @@
 import { authenticatedUser, billingCustomerFor, json, safeHash, stripePost } from '../lib/billing.js';
+import { billingPortalConfiguration } from '../lib/billingConfiguration.js';
 
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
+  if (!billingPortalConfiguration(process.env, context?.deploy?.context).configured) {
+    return json(503, { error: 'Billing portal is not configured safely on this deployment.' });
+  }
   try {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Please sign in first.' });

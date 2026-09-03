@@ -64,6 +64,7 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/001_billing.sql`
    - `supabase/migrations/002_single_subscription_lifecycle.sql`
    - `supabase/migrations/20260901154950_billing_event_ledger.sql`
+   - `supabase/migrations/20260902135238_billing_reconciliation_operations.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -73,7 +74,7 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
 
 Legacy `anon` / `service_role` key environment names remain supported as fallbacks during migration, but new deployments should use publishable/secret keys.
 
-The two billing tables have RLS enabled and no browser policies, and browser roles have their table privileges revoked. Netlify Functions authenticate the Supabase access token and then use the server secret.
+All billing tables have RLS enabled and no browser policies, and browser roles have their table privileges revoked. Netlify Functions authenticate the Supabase access token and then use the server secret.
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
 
@@ -101,6 +102,8 @@ A subscription's current **Price ID**, not custom metadata, determines `patient`
 Checkout writes `supabase_user_id` into metadata so an initial Stripe event can be joined to the account. It also writes the plan for audit/debugging, but plan metadata is not trusted for access. This matters because Customer Portal can switch the subscription Price without rewriting arbitrary custom metadata.
 
 If a subscription event arrives with a Price ID that is not one of the configured prices, the webhook marks an existing local row `unsupported_price`; the previous paid entitlement is not allowed to remain active.
+
+All server-to-Stripe requests pin `Stripe-Version: 2026-08-26.dahlia`. Checkout also sends an opaque eight-letter `integration_identifier`; it contains no account or user identity.
 
 ### Customer Portal configuration
 
@@ -186,6 +189,9 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 10. Returning from Checkout performs one Stripe reconciliation and then polls server truth briefly so webhook propagation does not leave a just-paid feature visibly locked.
 11. Existing subscribers use Billing Portal for upgrades, downgrades, payment recovery and cancellation; returning from Portal reconciles the new state immediately.
 12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
+13. The published deployment also runs `scheduled-billing-reconcile` hourly. It processes a bounded least-recently-attempted batch, records only aggregate run outcomes and safe error codes, and automatically rotates past failures.
+
+Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://YOUR_PRODUCTION_DOMAIN` after deployment.
 
 ### Granting needs an owner; revoking does not
 

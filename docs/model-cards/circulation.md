@@ -77,6 +77,15 @@ particles cue oxygen carried per minute. The model outputs themselves are not
 altered for visual effect. Tissue remains neutral because tissue oxygenation is
 not calculated.
 
+The landing page mounts this same `CirculationScene` in its 3D workbench and
+sends interventions through the same `setModelControl` path. Its compact
+read-out is a separate adapter in `landingCirculationDemo.js`: labels,
+explanatory copy, rounding and trend presentation are maintained there and can
+drift from `CirculationScene.getMetrics()`. Tests tie its displayed numbers to
+`solveCirculation`, but both presentation paths remain in review scope. The
+ambient particles behind the page are decorative and are not a circulation
+output.
+
 ## 11. Known failure modes
 
 - A lumped steady-state relation omits pulsatility, compliance and wave reflection.

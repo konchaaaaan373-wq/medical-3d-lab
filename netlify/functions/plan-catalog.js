@@ -1,24 +1,12 @@
 import { commerceReadiness, planIsSellable } from '../../src/access/commerceReadiness.js';
 import { json, stripeGet } from '../lib/billing.js';
+import { billingConfiguration } from '../lib/billingConfiguration.js';
 
 const PLAN_PRICE_ENV = Object.freeze({
   patient: 'STRIPE_PRICE_PATIENT',
   education: 'STRIPE_PRICE_EDUCATION',
   complete: 'STRIPE_PRICE_COMPLETE',
 });
-
-const hasAny = (...names) => names.some((name) => Boolean(process.env[name]));
-
-function billingInfrastructureConfigured() {
-  return (
-    Boolean(process.env.SUPABASE_URL) &&
-    hasAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY') &&
-    hasAny('SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY') &&
-    Boolean(process.env.STRIPE_SECRET_KEY) &&
-    Boolean(process.env.STRIPE_WEBHOOK_SECRET) &&
-    Object.values(PLAN_PRICE_ENV).every((name) => Boolean(process.env[name]))
-  );
-}
 
 const safePrice = (price) => ({
   active: Boolean(price?.active),
@@ -43,10 +31,10 @@ const priceIsUsable = (price) =>
  * not even get advertised as a priced plan. Checkout repeats the same gate and
  * therefore cannot be bypassed by calling the function directly.
  */
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'GET') return json(405, { error: 'Method not allowed' });
 
-  if (!billingInfrastructureConfigured()) {
+  if (!billingConfiguration(process.env, context?.deploy?.context).configured) {
     return json(200, { billingConfigured: false, commerceReady: false, plans: {} });
   }
 

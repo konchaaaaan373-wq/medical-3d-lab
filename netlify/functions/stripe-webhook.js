@@ -15,9 +15,13 @@ import {
   upsertCustomer,
   verifyStripeSignature,
 } from '../lib/billing.js';
+import { billingWebhookConfiguration } from '../lib/billingConfiguration.js';
 
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
+  if (!billingWebhookConfiguration(process.env, context?.deploy?.context).configured) {
+    return json(503, { error: 'Webhook is not configured safely on this deployment.' });
+  }
   const raw = await request.text();
   if (!verifyStripeSignature(raw, request.headers.get('stripe-signature'))) {
     return json(400, { error: 'Invalid Stripe signature' });

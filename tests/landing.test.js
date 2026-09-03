@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { Vector3 } from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
-import { circulationDemoSnapshot } from '../src/app/landingCirculationDemo.js';
+import {
+  circulationDemoSnapshot,
+  createLandingCirculationDemo,
+} from '../src/app/landingCirculationDemo.js';
+import { mountLandingCirculationViewport } from '../src/app/landingCirculationViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
   createLandingFlowField,
@@ -43,6 +48,8 @@ test('landing: circulation read-outs are rounded views of the one model solve', 
     assert.equal(metrics.map.value, Math.round(solved.meanArterialPressureMmHg));
     assert.equal(Number(metrics.co.value), Number(solved.cardiacOutputLMin.toFixed(1)));
     assert.equal(metrics.do2.value, Math.round(solved.oxygenDeliveryMlMin / 10) * 10);
+    assert.match(preview.badge.en, new RegExp(`MAP ${metrics.map.value}$`));
+    assert.match(preview.badge.ja, new RegExp(`MAP ${metrics.map.value}$`));
     assert.match(preview.explanation.en, /MAP|CO|SVR/);
     assert.match(preview.explanation.ja, /MAP|CO|SVR/);
   }
@@ -145,9 +152,11 @@ test('landing: switching to reduced motion cancels the already queued frame', ()
   field.destroy();
 });
 
-test('landing: page chrome stays WebGL-independent and keeps trust axes separate', () => {
+test('landing: the shell stays readable while the hero dynamically mounts the real 3D scene', () => {
   const landing = read('src/app/Landing.js');
   const demo = read('src/app/landingCirculationDemo.js');
+  const main = read('src/main.js');
+  const viewport = read('src/app/landingCirculationViewport.js');
   const flow = read('src/app/landingFlowField.js');
   const css = read('src/styles/landing.css');
 
@@ -155,18 +164,37 @@ test('landing: page chrome stays WebGL-independent and keeps trust axes separate
     assert.doesNotMatch(source, /from ['"]three['"]|\/scenes\//);
   }
   assert.match(demo, /solveCirculation/);
+  assert.match(demo, /import\('\.\/landingCirculationViewport\.js'\)/);
+  assert.match(viewport, /CirculationScene/);
+  assert.match(viewport, /Viewer/);
+  assert.match(viewport, /setModelControl\('intervention'/);
+  assert.match(viewport, /IntersectionObserver/);
+  assert.match(viewport, /viewer\.stop\(\)/);
+  assert.match(viewport, /viewer\.composer\.render\(\)/);
+  assert.match(viewport, /document\.visibilityState/);
+  assert.match(viewport, /SceneClass\.allowAutoRotate !== false/);
+  assert.match(viewport, /container\.addEventListener\('keydown', keyboardMoved\)/);
+  assert.match(viewport, /'ArrowLeft'[\s\S]*'ArrowRight'[\s\S]*'Home'/);
+  assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
+  assert.match(main, /onRendererFailure:[\s\S]*captureRendererFailure\(error/);
+  assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
-  assert.doesNotMatch(landing, /正確な基本モデル|レビュー済みモデルから/);
+  assert.match(landing, /解剖・病態生理の3Dモデル/);
+  assert.doesNotMatch(landing, /病態生理は、|モデルも、根拠も、開いておく。|正確な基本モデル|レビュー済みモデルから/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
-  assert.match(css, /to\s*{\s*left:\s*calc\(100% - 8px\)/);
-  assert.doesNotMatch(css, /@keyframes landing-flow[\s\S]{0,180}\d+vw/);
-  assert.match(css, /min-height:\s*44px/);
+  assert.doesNotMatch(css, /touch-action:\s*none/);
+  assert.match(css, /touch-action:\s*pan-y pinch-zoom/);
+  assert.match(css, /min-height:\s*46px/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
+  assert.match(css, /\.landing-demo-viewport canvas/);
+  assert.match(css, /\.landing-demo-drag-hint\[hidden\]\s*\{[^}]*display:\s*none/s);
   assert.match(
     css,
-    /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.landing-demo-vessel,[\s\S]*?\.landing-demo-resistance,[\s\S]*?transition:\s*none/
+    /\.landing-demo-viewport:focus-visible\s*\{[^}]*outline-offset:\s*-[\d.]+px/s,
+    'the focus indicator must be drawn inside the clipped 3D stage',
   );
+  assert.match(css, /\.landing-demo-state\.is-selected/);
 });
 
 test('landing: the plain-DOM route mounts every model and its working hero controls', () => {
@@ -180,8 +208,13 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
     const cards = findByClass(mounted.element, 'landing-scene-card');
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const values = findByClass(mounted.element, 'landing-demo-metric-value');
+    const viewports = findByClass(mounted.element, 'landing-demo-viewport');
 
     assert.equal(cards.length, PUBLIC_SCENES.length);
+    assert.equal(viewports.length, 1);
+    assert.equal(viewports[0].getAttribute('role'), 'region');
+    assert.equal(viewports[0].getAttribute('tabindex'), '0');
+    assert.equal(viewports[0].getAttribute('aria-describedby'), 'landing-demo-viewport-instructions');
     assert.equal(controls.length, 3);
     assert.equal(controls[0].getAttribute('aria-pressed'), 'true');
     assert.deepEqual(values.map((node) => node.textContent), ['70', '3.6', '510']);
@@ -190,6 +223,212 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
     assert.equal(controls[0].getAttribute('aria-pressed'), 'false');
     assert.equal(controls[2].getAttribute('aria-pressed'), 'true');
     assert.deepEqual(values.map((node) => node.textContent), ['71', '5.1', '710']);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: leaving the route cancels a 3D viewport that is still loading', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  let finishLoading;
+  let mountCount = 0;
+  const loadViewport = () => new Promise((resolve) => {
+    finishLoading = resolve;
+  });
+
+  try {
+    const demo = createLandingCirculationDemo({ loadViewport });
+    const pending = demo.mount();
+    demo.destroy();
+    finishLoading({
+      mountLandingCirculationViewport() {
+        mountCount += 1;
+        return { setIntervention() {}, destroy() {} };
+      },
+    });
+
+    assert.equal(await pending, null);
+    assert.equal(mountCount, 0, 'a detached route must not start a WebGL viewer');
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: a failed 3D preview exposes its fallback message', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  const previousError = console.error;
+  globalThis.window = { requestAnimationFrame() {} };
+  console.error = () => {};
+  const rendererError = new Error('no WebGL');
+  let reportedError = null;
+
+  try {
+    const demo = createLandingCirculationDemo({
+      loadViewport: () => Promise.reject(rendererError),
+      onRendererFailure: (error) => { reportedError = error; },
+    });
+    await demo.mount();
+    const loading = findByClass(demo.element, 'landing-demo-loading')[0];
+    const viewport = findByClass(demo.element, 'landing-demo-viewport')[0];
+    const dragHint = findByClass(demo.element, 'landing-demo-drag-hint')[0];
+
+    assert.equal(loading.getAttribute('aria-hidden'), 'false');
+    assert.equal(loading.getAttribute('role'), 'status');
+    assert.equal(loading.getAttribute('aria-live'), 'polite');
+    assert.match(loading.children.map((node) => node.textContent).join(' '), /3Dプレビュー/);
+    assert.equal(viewport.getAttribute('tabindex'), '-1');
+    assert.equal(viewport.getAttribute('role'), 'presentation');
+    assert.equal(viewport.getAttribute('aria-hidden'), 'true');
+    assert.equal(viewport.getAttribute('aria-label'), '');
+    assert.equal(viewport.getAttribute('aria-describedby'), '');
+    assert.equal(dragHint.getAttribute('hidden'), '');
+    assert.equal(reportedError, rendererError);
+  } finally {
+    console.error = previousError;
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: a scene that fails during setup releases the partial viewer', () => {
+  let viewerDisposed = 0;
+  let sceneDisposed = 0;
+  const container = { dataset: {} };
+
+  class FailingViewer {
+    constructor() {
+      this.renderer = { domElement: { style: {} } };
+      this.scene = { add() {} };
+    }
+
+    dispose() {
+      viewerDisposed += 1;
+    }
+  }
+
+  class FailingScene {
+    constructor() {}
+
+    build() {
+      throw new Error('failed midway through scene build');
+    }
+
+    dispose() {
+      sceneDisposed += 1;
+    }
+  }
+
+  assert.throws(
+    () => mountLandingCirculationViewport(container, {
+      ViewerClass: FailingViewer,
+      SceneClass: FailingScene,
+    }),
+    /failed midway/
+  );
+  assert.equal(sceneDisposed, 1);
+  assert.equal(viewerDisposed, 1);
+  assert.equal(container.dataset.ready, undefined);
+});
+
+test('landing: the focused 3D viewport rotates, zooms and resets from the keyboard', () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
+
+  class KeyboardViewer {
+    static instance = null;
+
+    constructor() {
+      KeyboardViewer.instance = this;
+      this.running = false;
+      this.renderer = { domElement: { style: {} } };
+      this.scene = { add() {} };
+      this.camera = {
+        aspect: 1.5,
+        fov: 42,
+        position: new Vector3(),
+        up: new Vector3(0, 1, 0),
+      };
+      this.controls = {
+        target: new Vector3(),
+        minDistance: 0,
+        maxDistance: 100,
+        autoRotate: true,
+        addEventListener() {},
+        removeEventListener() {},
+        update() {},
+      };
+      this.composer = { render() {} };
+    }
+
+    onResize(handler) {
+      handler();
+      return () => {};
+    }
+
+    onFrame() { return () => {}; }
+    start() { this.running = true; }
+    stop() { this.running = false; }
+    dispose() {}
+  }
+
+  class KeyboardScene {
+    static cameraPose = {
+      position: new Vector3(0, 1, 10),
+      target: new Vector3(0, 0, 0),
+    };
+
+    static framing = { minHorizontalAspect: 1 };
+    static allowAutoRotate = false;
+
+    build() { return {}; }
+    update() {}
+    setModelControl() {}
+    dispose() {}
+  }
+
+  try {
+    const container = new FakeElement('div');
+    const mounted = mountLandingCirculationViewport(container, {
+      ViewerClass: KeyboardViewer,
+      SceneClass: KeyboardScene,
+    });
+    const viewer = KeyboardViewer.instance;
+    const initial = viewer.camera.position.clone();
+    const press = (key) => {
+      let prevented = false;
+      for (const listener of container.listeners.get('keydown') ?? []) {
+        listener({ key, preventDefault: () => { prevented = true; } });
+      }
+      assert.equal(prevented, true, `${key} should not scroll the page while the viewport has focus`);
+    };
+
+    press('ArrowRight');
+    assert.ok(viewer.camera.position.distanceTo(initial) > 0.1);
+    const rotatedDistance = viewer.camera.position.distanceTo(viewer.controls.target);
+
+    press('+');
+    assert.ok(viewer.camera.position.distanceTo(viewer.controls.target) < rotatedDistance);
+
+    press('Home');
+    assert.ok(viewer.camera.position.distanceTo(initial) < 1e-9);
+    assert.equal(viewer.controls.autoRotate, false, 'the scene opts out of automatic rotation');
+    mounted.destroy();
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;

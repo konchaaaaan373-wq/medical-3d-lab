@@ -4,6 +4,7 @@ import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
   billingCustomerFor,
+  checkoutIntegrationIdentifier,
   json,
   priceForPlan,
   reconcileBillingForUser,
@@ -12,9 +13,13 @@ import {
   subscriptionsForCustomer,
   supabaseAdmin,
 } from '../lib/billing.js';
+import { billingConfiguration } from '../lib/billingConfiguration.js';
 
-export default async (request) => {
+export default async (request, context) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
+  if (!billingConfiguration(process.env, context?.deploy?.context).configured) {
+    return json(503, { error: 'Checkout is not configured safely on this deployment.' });
+  }
   try {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Please sign in first.' });
@@ -98,6 +103,7 @@ export default async (request) => {
       success_url: `${origin}/?billing=success&billing_plan=${encodeURIComponent(plan)}&session_id={CHECKOUT_SESSION_ID}${returnHash}`,
       cancel_url: `${origin}/${returnHash}`,
       allow_promotion_codes: 'true',
+      integration_identifier: checkoutIntegrationIdentifier(),
       client_reference_id: user.id,
       'metadata[supabase_user_id]': user.id,
       'metadata[entitlement]': plan,
