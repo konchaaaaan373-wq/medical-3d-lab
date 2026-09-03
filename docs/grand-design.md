@@ -39,6 +39,7 @@ Last updated: 2026-09-03（現在地の数値は §3 参照）
 | キーボード・フォーカス・コントラスト・ズーム | [`accessibility.md`](accessibility.md) |
 | 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 解剖・アートレビューの記録（実測と残課題） | [`anatomy-review.md`](anatomy-review.md) |
+| 臓器別の精密正確性モデル仕様（目標 A レベル・固定する解剖関係） | [`anatomy-specs.md`](anatomy-specs.md) |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |
 | 完成形・現在地・優先順位・共同開発の作法 | **本書** |
@@ -233,6 +234,10 @@ Reel（SNS） / Learning（Educational）   presentation 層の調整のみ
 | heart | A2 | 弁・大血管・肺静脈の 11 関係を実測しテストで固定済み |
 | brain | A2 | 脳回・脳溝・深部構造を選択できる解剖アトラス（alpha） |
 | 残り 20 臓器 | A0–A1（未実測） | スタイライズド。実測テストなし |
+
+臓器ごとの具体的な仕様（目標 A レベル・名前で指せるべき単位・実測で
+固定する解剖関係・受け入れる単純化・upgrade の優先順位）は
+[`anatomy-specs.md`](anatomy-specs.md) が所有します。
 
 **肺を次の anatomy upgrade のパイロットにします。** 理由は要求元が最も
 具体的だから: planned に並ぶ気胸（胸膜腔・虚脱）、肺塞栓（区域動脈）、
