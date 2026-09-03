@@ -425,10 +425,15 @@ export class BrainAnatomyScene {
     return VIEW_SPECS.map(({ id, label, labelJa }) => ({ id, label, labelJa }));
   }
 
+  /** Shared inspection contract; the anatomy names are authored, not inferred. */
+  getInspectionViews() { return this.getAnatomyViews(); }
+
   getAnatomyView(id) {
     const view = VIEW_SPECS.find((candidate) => candidate.id === id);
     return view ? clonePose(view) : null;
   }
+
+  getInspectionView(id) { return this.getAnatomyView(id); }
 
   setAnatomyView(id) {
     const view = VIEW_SPECS.find((candidate) => candidate.id === id);
@@ -439,15 +444,29 @@ export class BrainAnatomyScene {
     return true;
   }
 
+  setInspectionView(id) { return this.setAnatomyView(id); }
+
   getAnatomyColorModes() {
     return BRAIN_COLOR_MODES.map((mode) => ({ ...mode }));
   }
 
+  getInspectionModes() {
+    const previews = {
+      detail: 'conic-gradient(from 30deg, #d9826b, #d8b35f, #54b6a4, #5f93c8, #9b78c8, #d9826b)',
+      anatomical: 'radial-gradient(circle at 32% 27%, #ead7cf 0 13%, #c6aaa3 38%, #a4847e 72%, #705b58 100%)',
+    };
+    return BRAIN_COLOR_MODES.map((mode) => ({ ...mode, preview: previews[mode.id] }));
+  }
+
   getAnatomyColorMode() { return this.colorMode; }
+
+  getInspectionMode() { return this.getAnatomyColorMode(); }
 
   getAnatomyLegendPalette(id = this.colorMode) {
     return { ...(id === 'anatomical' ? BRAIN_ANATOMICAL_PALETTE : BRAIN_PALETTE) };
   }
+
+  getInspectionLegendPalette(id = this.colorMode) { return this.getAnatomyLegendPalette(id); }
 
   setAnatomyColorMode(id) {
     if (!BRAIN_COLOR_MODES.some((mode) => mode.id === id) || id === this.colorMode) return false;
@@ -471,6 +490,8 @@ export class BrainAnatomyScene {
     }
     return true;
   }
+
+  setInspectionMode(id) { return this.setAnatomyColorMode(id); }
 
   setProgress(value) { this.progress = clamp(value); }
 

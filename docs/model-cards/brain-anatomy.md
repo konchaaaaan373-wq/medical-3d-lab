@@ -95,6 +95,14 @@ range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry.
 
+The atlas opts into the shared **Neutral studio** renderer preset so sulcal
+relief and the low-saturation anatomical mode remain legible on a pale field.
+Its six lateral, medial, anterior and superior viewpoints are authored
+anatomical views in the common inspection panel, rather than directions inferred
+by the app. Background, viewpoint, label visibility and colour mode are user
+inspection state only; resetting them does not change the layer progression or
+any anatomical metadata.
+
 The full hemispheric white-matter masses remain almost transparent in the deep
 view; otherwise they would form a second enclosing shell and conceal the nuclei
 the view is meant to teach. Named bundles such as the corpus callosum and fornix

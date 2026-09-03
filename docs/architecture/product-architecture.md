@@ -69,6 +69,12 @@ Reel が「うっ血ビートを目立たせたい」ときに動かしてよい
 実装例は `HeartFailureScene.setCongestionEmphasis()` — 医学 state を一切変えずに
 グロー・波・不透明度・カメラだけを動かします。
 
+Presentation 側にはさらに所有者の異なる 2 面があります。Story / Reel が
+説明の順序として指定する **authored presentation state** と、閲覧者が背景・視点・
+ラベルを選ぶ **user inspection state** です。どちらも医学 state を変更しません。
+同じ material に作用する場合は scene の resolver が base 値から明示的に合成します。
+詳しい契約は [`spatial-inspection.md`](spatial-inspection.md) が所有します。
+
 ---
 
 ## 現在の実装との対応
@@ -80,7 +86,7 @@ Reel が「うっ血ビートを目立たせたい」ときに動かしてよい
 | 3D | `Chamber.js` `BloodField.js` `CongestionOverlay.js` `AggregationField.js` |
 | charts | `components/PressureVolumePanel.js` `PressureWavePanel.js` |
 | metrics | `components/MetricsPanel.js` `LabelLayer.js` |
-| presentation | `app/framing.js` `Viewer.js` / Scene の `set*Emphasis()` |
+| presentation | `app/framing.js` `Viewer.js` / `app/inspection.js` / Scene の `set*Emphasis()` |
 | Reel | `app/ReelMode.js` + Scene の `getReel()` |
 | Learning | `components/LearningPanel.js` + Scene の `getLearningModules()` |
 

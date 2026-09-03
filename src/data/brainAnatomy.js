@@ -694,6 +694,9 @@ export const BRAIN_ANATOMY_META = {
   titleJa: '触れて学ぶ脳の解剖',
   subtitle: 'Point to identify; click or tap to pin any named structure',
   subtitleJa: '触れて部位を確認・クリック／タップで固定',
+  // A pale calibrated field makes fine sulcal relief and low-saturation tissue
+  // readable. Other dynamic scenes keep the graphite renderer default.
+  inspection: { background: 'studio' },
   palette: BRAIN_PALETTE,
   legend: [
     { key: 'frontal', label: 'Frontal lobe', labelJa: '前頭葉' },

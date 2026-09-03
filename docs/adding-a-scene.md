@@ -273,7 +273,15 @@ export class HeartFailureScene {
 | `getPressureVolume()` | 圧-容積ループのパネルが出ます（後述） |
 | `getModelControls()` / `setModelControl(id, value)` / `resetModelControls()` | モデルの入力を動かす操作群。3 つ揃って実装します |
 | `getLearningModules()` | ガイド付き教材。実装したシーンだけ `Learn` ボタンが出ます（後述） |
+| `getInspectionViews()` / `getInspectionView(id)` / `setInspectionView(id)` | 解剖学的方向など、scene 固有の再現可能な視点。未実装なら App が医学的名称を使わない model-relative view を生成します |
+| `getInspectionModes()` / `getInspectionMode()` / `setInspectionMode(id)` | 同じ医学 state の意味ある表示方式（例: 部位別配色／通常解剖色）。任意色変更には使いません |
 | `LEGEND[].activeFrom` | その分子種・要素が登場する進行度。それまで凡例は減光表示になります |
+
+表示フックは `setProgress()` / `setModelControl()` と完全に別です。医学 state を
+変更せず、物体の位置を動かさず、色が医学的な量を符号化している scene ではその色を
+上書きしません。共通の背景・ラベル表示・model-relative view・表示リセットは実装
+しなくても App から提供されます。契約と命名規則は
+[`architecture/spatial-inspection.md`](architecture/spatial-inspection.md) を参照してください。
 
 `getMetrics()` は次の形式の配列を返します。
 

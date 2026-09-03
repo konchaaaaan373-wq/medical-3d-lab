@@ -87,6 +87,17 @@ transmission, congestion.
   `setOutline`, `setCongestionEmphasis` and `setCongestionReveal` change nothing
   the model computes, and say so in their own documentation.
 
+### Inspection stays one action away
+
+The compact console exposes an `Inspect / 観察` entry, not the full set of
+display controls. Opening it gives every model repeatable views, calibrated
+backgrounds, label visibility and a display-only reset. A scene may replace the
+generic camera verbs with medically authored views.
+
+This does not add a third content view beside Learning and Data. It is an
+instrument over the same 3D view, closed by default, and it owns no medical
+state. See [`spatial-inspection.md`](spatial-inspection.md).
+
 ## Where it ended up
 
 At 1440×900: panels cover **20.2%** of the viewport, against 53.8%. The
