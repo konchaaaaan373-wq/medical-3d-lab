@@ -4,6 +4,14 @@ import * as THREE from 'three';
 
 import { ANATOMICAL_AXES, anatomicalSide } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 import { SIDE_SHAPE, buildLungs, lungWarp } from '../src/scenes/respiratory/organs/lungs.js';
+import { buildAirwayTree } from '../src/scenes/respiratory/organs/airwayTree.js';
+import {
+  MAIN_BRONCHUS_INDEX,
+  NAMED_BRANCHES,
+  WHERE_THE_CORRESPONDENCE_ENDS,
+  lateralSignFor,
+  sideOfModelBranch,
+} from '../src/scenes/respiratory/organs/airwayCorrespondence.js';
 import {
   FISSURES,
   LOBES,
@@ -92,6 +100,12 @@ const isIntrapulmonary = (branch, side) => {
     parent = parent.parent;
   }
   return false;
+};
+
+/** One lung's bounds in world space, from the lobes that make it up. */
+const lungBox = (side) => {
+  lungs.object.updateMatrixWorld(true);
+  return new THREE.Box3().setFromObject(lungs.object.getObjectByName(`${side}-lung`));
 };
 
 const branchNamed = (name) => lungs.bronchi.branches.find((branch) => branch.name === name);
@@ -721,4 +735,158 @@ test('no two venous tributaries are drawn in the same place', () => {
     const segments = lungs.segments.filter((segment) => segment.lobe === lobe.id).length;
     assert.equal(count, segments === 2 ? 1 : segments, `${lobe.id} has ${segments} segments and ${count} tributaries`);
   }
+});
+
+/* --------------------------------------------------------------------------
+   The two airway trees, and where they correspond
+   -------------------------------------------------------------------------- */
+
+test('the model tree and the anatomical tree agree about which lung is which', () => {
+  // `docs/anatomy-specs.md` §1 A2 asks for this correspondence to live in one
+  // place. The trap it exists for: the heap's `leftChild(0)` is index 1, and
+  // index 1 supplies the patient's **right** lung. `leftChild` is heap
+  // terminology and carries no anatomy, but the two files derived side
+  // independently and nothing said so.
+  //
+  // Measured against the built tree rather than asserted, so flipping a spread
+  // sign or swapping a rotation axis in `airwayTree.js` fails here instead of
+  // quietly mirroring the lungs.
+  const tree = buildAirwayTree({ generations: 8, drawnGenerations: 4 });
+  const firstLeaf = 2 ** 7 - 1;
+  const generationOf = (index) => Math.floor(Math.log2(index + 1));
+  const leavesUnder = (root) => {
+    const found = [];
+    const stack = [root];
+    while (stack.length) {
+      const index = stack.pop();
+      if (generationOf(index) === 7) {
+        found.push(index);
+        continue;
+      }
+      stack.push(2 * index + 1, 2 * index + 2);
+    }
+    return found;
+  };
+
+  for (const side of ['right', 'left']) {
+    const root = MAIN_BRONCHUS_INDEX[side];
+    const xs = leavesUnder(root).map((index) => tree.leafPositions[index - firstLeaf].x);
+    const mean = xs.reduce((sum, x) => sum + x, 0) / xs.length;
+    const expected = lateralSignFor(side);
+    assert.equal(
+      Math.sign(mean),
+      expected,
+      `heap index ${root} is declared the ${side} lung but its leaves average x ${mean.toFixed(2)}`
+    );
+    // Entirely on that side, not merely on average: a subtree that straddled
+    // the midline would average correctly and still be wrong.
+    for (const x of xs) {
+      assert.equal(Math.sign(x), expected, `a leaf under index ${root} sits at x ${x.toFixed(2)}`);
+    }
+  }
+  tree.dispose?.();
+});
+
+test('the correspondence claims only the generations that can correspond', () => {
+  // The declaration has to stop where the trees stop having the same shape,
+  // and the numbers it stops on have to be the real ones.
+  assert.deepEqual(Object.keys(NAMED_BRANCHES).map(Number), [0, 1, 2]);
+  assert.equal(NAMED_BRANCHES[MAIN_BRONCHUS_INDEX.right], 'right-main-bronchus');
+  assert.equal(NAMED_BRANCHES[MAIN_BRONCHUS_INDEX.left], 'left-main-bronchus');
+
+  // Every name it claims is a branch the geometry actually builds.
+  for (const name of Object.values(NAMED_BRANCHES)) {
+    assert.ok(branchNamed(name), `the correspondence names "${name}", which the lung does not build`);
+  }
+
+  // And the counts it gives for where the mapping ends are the counts.
+  const ends = WHERE_THE_CORRESPONDENCE_ENDS;
+  assert.equal(ends.modelBranchesAtThatGeneration, 2 ** ends.generation);
+  assert.equal(ends.anatomicalBranchesAtThatGeneration, LOBES.length);
+  assert.equal(ends.atGenerationThree.model, 2 ** 3);
+  assert.equal(ends.atGenerationThree.anatomical, SEGMENTS.length);
+  assert.notEqual(
+    ends.modelBranchesAtThatGeneration,
+    ends.anatomicalBranchesAtThatGeneration,
+    'if these ever match, the correspondence does not end here after all'
+  );
+});
+
+test('every model branch has a side, and only the trachea has none', () => {
+  const tracheaIndex = 0;
+  assert.equal(sideOfModelBranch(tracheaIndex), null, 'the trachea belongs to neither lung');
+  for (let index = 1; index < 2 ** 8 - 1; index++) {
+    const side = sideOfModelBranch(index);
+    assert.ok(side === 'right' || side === 'left', `index ${index} has no side`);
+  }
+  // A child is in the same lung as its parent, all the way down. This is the
+  // half of the correspondence that does hold at every generation.
+  for (let index = 1; index < 2 ** 7 - 1; index++) {
+    const side = sideOfModelBranch(index);
+    assert.equal(sideOfModelBranch(2 * index + 1), side, `index ${index}'s left child changed lung`);
+    assert.equal(sideOfModelBranch(2 * index + 2), side, `index ${index}'s right child changed lung`);
+  }
+});
+
+/* --------------------------------------------------------------------------
+   The A1 relations `docs/anatomy-specs.md` §1 asks for by name
+   -------------------------------------------------------------------------- */
+
+test('the right lung is shorter, wider and larger than the left', () => {
+  // Three relations the spec names, each asserted with a margin rather than as
+  // an ordering. The height one was declared but only by 2.6%, which measured
+  // 2.4% — the right direction by less than the noise in anything that touches
+  // either lung. Real lungs differ by nearer 5–8%, the liver taking the room.
+  const height = (side) => lungBox(side).getSize(new THREE.Vector3()).y;
+  const width = (side) => lungBox(side).getSize(new THREE.Vector3()).x;
+
+  const shorter = (height('left') - height('right')) / height('left');
+  assert.ok(
+    shorter > 0.04,
+    `the right lung is only ${(shorter * 100).toFixed(1)}% shorter than the left`
+  );
+  assert.ok(width('right') > width('left') * 1.05, 'the right lung is not clearly the wider');
+
+  const volumeOfSide = (side) =>
+    lungs.lobes.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + volumeOf(lobe.geometry), 0);
+  assert.ok(volumeOfSide('right') > volumeOfSide('left') * 1.05, 'the right lung is not clearly the larger');
+});
+
+test('the right diaphragmatic surface sits higher than the left', () => {
+  // Because the liver is under it. This had no number of its own: both lungs
+  // were mounted at the same height, so the right base came out 0.028 above the
+  // left — 1% — purely because the right lung was shorter. It is now `at.y`,
+  // which is a fact about where the liver is rather than a by-product.
+  const bases = { right: lungBox('right').min.y, left: lungBox('left').min.y };
+  const lift = (bases.right - bases.left) / lungBox('right').getSize(new THREE.Vector3()).y;
+  assert.ok(
+    lift > 0.04,
+    `the right base is only ${(lift * 100).toFixed(1)}% of a lung's height above the left`
+  );
+
+  // And the apices stay near enough level: the right lung is shorter *and*
+  // higher, so it does not end up reaching further up the neck than the left.
+  const apices = { right: lungBox('right').max.y, left: lungBox('left').max.y };
+  assert.ok(
+    Math.abs(apices.right - apices.left) < 0.12,
+    `the apices are ${Math.abs(apices.right - apices.left).toFixed(2)} apart`
+  );
+});
+
+test('the left hilum sits higher than the right', () => {
+  // By roughly a vertebral level, which is the relation the spec names. Both
+  // sides used to carry identical offsets, so the 0.032 that separated them was
+  // arithmetic the claim did not depend on.
+  const gap = lungs.hilum.left.bronchus.y - lungs.hilum.right.bronchus.y;
+  const asFractionOfLung = gap / lungBox('left').getSize(new THREE.Vector3()).y;
+  assert.ok(
+    asFractionOfLung > 0.03,
+    `the left hilum is only ${(asFractionOfLung * 100).toFixed(1)}% of a lung's height above the right`
+  );
+
+  // RALS is unaffected by the elevation, because the elevation moves the whole
+  // hilum and RALS is written relative to it. Checked here as well as in its
+  // own test, because that independence is the reason it is declared this way.
+  assert.ok(lungs.hilum.left.artery.y > lungs.hilum.left.bronchus.y, 'left: artery superior to bronchus');
+  assert.ok(lungs.hilum.right.artery.z > lungs.hilum.right.bronchus.z, 'right: artery anterior to bronchus');
 });

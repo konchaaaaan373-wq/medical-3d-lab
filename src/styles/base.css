@@ -52,6 +52,14 @@ body {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  /* The pale presets below redefine `--ink` **here**, but `body`'s `color` was
+     computed against `:root`'s dark value and every element that does not set
+     its own colour inherits that computed value, not the variable. Without
+     this line the studio and paper backgrounds render the scene title, stage
+     name, legend and read-out labels at a measured contrast of 1.09 — white on
+     near-white — and `brain-anatomy` ships `background: 'studio'` by default.
+     Restating it here restarts inheritance inside the UI subtree. */
+  color: var(--ink);
   display: flex;
   flex-direction: column;
   justify-content: space-between;

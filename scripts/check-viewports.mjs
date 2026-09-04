@@ -262,6 +262,29 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
    * usually lands on. A hit on an ancestor is not — that means something was
    * painted over the control.
    */
+  /**
+   * Is this point outside a scrolling ancestor, rather than under something?
+   *
+   * A control scrolled out of a region that scrolls is reachable — the reader
+   * scrolls to it — and is a different fact from a control with something
+   * painted on top of it. `elementFromPoint` cannot tell them apart: it returns
+   * whatever is painted at the point, and once the scroller no longer covers
+   * that point it returns what is behind the scroller instead.
+   */
+  const clippedByScroller = (element, x, y) => {
+    let node = element.parentElement;
+    while (node && node !== document.body) {
+      const style = getComputedStyle(node);
+      const scrolls = /auto|scroll/.test(`${style.overflowY} ${style.overflowX}`);
+      if (scrolls && node.scrollHeight > node.clientHeight + 1) {
+        const box = node.getBoundingClientRect();
+        const outside = y < box.top || y > box.bottom || x < box.left || x > box.right;
+        if (outside) return true;
+      }
+      node = node.parentElement;
+    }
+    return false;
+  };
   const blockedBy = (element, rect) => {
     const x = Math.round(rect.left + rect.width / 2);
     const y = Math.round(rect.top + rect.height / 2);
@@ -274,6 +297,17 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     // have — and reporting it as occlusion would be a false failure on a
     // scrolling region behaving exactly as designed.
     if (hit.contains(element)) return null;
+    // The same situation, when the scroller is small enough that the hit lands
+    // past it and finds whatever is painted behind — usually the canvas. The
+    // exemption above only fires while the scroller itself is still under the
+    // point; a 37px rail on a 320px phone is not, and the identical "scrolled
+    // out of a region that scrolls" case then reported as occlusion.
+    //
+    // Narrow on purpose: the ancestor has to be a scroll port that is actually
+    // scrolling, and the point has to be outside *its* box. A control covered
+    // while sitting inside its scroller still fails, which is the case this
+    // check was written for.
+    if (clippedByScroller(element, x, y)) return null;
     // Something a pointer passes straight through is not covering anything.
     if (getComputedStyle(hit).pointerEvents === 'none') return null;
 

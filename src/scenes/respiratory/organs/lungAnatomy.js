@@ -233,6 +233,27 @@ export const SEGMENTS = [
 export const HILUM = {
   /** Where the structures cross the mediastinal surface, in the anatomical frame. */
   at: [-0.86, 0.18, -0.14],
+  /**
+   * How much higher one hilum sits than the other, as a fraction of the lung's
+   * own half-height.
+   *
+   * **The left hilum is higher than the right**, by roughly a vertebral level:
+   * the left pulmonary artery has to arch over the left main bronchus, and the
+   * right hilum is pushed down by the more horizontally-set right main
+   * bronchus. It is a relation `docs/anatomy-specs.md` §1 asks for by name.
+   *
+   * It is declared here because it was not declared anywhere: both sides
+   * carried the same offsets, and the left hilum still came out 0.032 above the
+   * right — 1% of the lung's height — as a side effect of the left lung's
+   * slightly larger `scale.y` and of where the surface projection happened to
+   * land. A relation that holds by 1% because of arithmetic it does not depend
+   * on is not held at all, and this branch already found one such assertion
+   * passing at 0.7%. Playbook §2.5 G.
+   *
+   * Applied to the whole hilum rather than to the bronchus alone, so RALS —
+   * which is written relative to the hilum below — is unaffected by it.
+   */
+  elevation: { right: 0, left: 0.16 },
   right: {
     bronchus: [0, 0, 0],
     artery: [0, 0.02, 0.3],
