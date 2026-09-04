@@ -345,8 +345,6 @@ export function buildLungs({
         geometry,
         centre: lobeCentre.clone(),
         planes,
-        /** Where this lobe's own bronchus has to arrive. */
-        hilumSide: frame.toLocal(HILUM.at),
       });
       disposables.push(geometry, lobeMaterial);
       for (const segment of lobeSegments) segments.push(segment);
