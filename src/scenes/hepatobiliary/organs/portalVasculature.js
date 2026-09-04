@@ -41,10 +41,15 @@ import { tissueMaterial } from '../../shared/materials.js';
  * does to that vein. `liver.js` takes `vessels` as opt-in for this reason, and
  * `tests/liver-anatomy.test.js` holds that no scene mounts both trees.
  *
- * Making the anatomical tree the one a model drives is the better end state and
- * is **not** done: it would replace what two clinically-reviewed scenes draw,
- * including the paths their flow streams follow, and that belongs in a change
- * that goes back through review rather than in a refactor.
+ * Merging the two — having a model drive the anatomical tree — is **not** the
+ * better end state as things stand, and `docs/anatomy-specs.md` records why
+ * along with the condition for revisiting it.
+ *
+ * The short version is that the obstacle is upstream: `solvePortalCirculation`
+ * returns no per-segment field at all. One number, `portalLiverFlowMlPerMin`,
+ * is the whole of hepatic portal flow. Driving ten named segmental pedicles
+ * from it would move all ten identically — no information gained, and a
+ * resolution implied that the model does not have.
  */
 
 /**
