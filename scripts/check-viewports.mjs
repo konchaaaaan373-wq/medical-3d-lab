@@ -279,13 +279,22 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
    * phone-sized panel shipped with half its controls untappable while this
    * check reported the surface clean.
    */
-  const createsContainingBlock = (style) =>
-    style.position !== 'static' ||
+  /**
+   * What an ancestor has to do to become the containing block of a *fixed*
+   * descendant. Position alone never does it — only the properties that pull
+   * the viewport-anchored box back into the ancestor's own coordinate space.
+   */
+  const containsFixed = (style) =>
     style.transform !== 'none' ||
     style.filter !== 'none' ||
     style.perspective !== 'none' ||
+    (style.backdropFilter && style.backdropFilter !== 'none') ||
     /transform|filter|perspective/.test(style.willChange) ||
-    /paint|layout|strict|content/.test(style.contain);
+    /paint|layout|strict|content/.test(style.contain) ||
+    (style.containerType && style.containerType !== 'normal');
+
+  /** And for an absolutely positioned one, which any positioning also does. */
+  const createsContainingBlock = (style) => style.position !== 'static' || containsFixed(style);
 
   const clippedOutOf = (element, rect) => {
     const cx = rect.left + rect.width / 2;
@@ -293,30 +302,32 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     // Overflow only clips descendants an ancestor is the containing block for.
     // A fixed bar is anchored to the viewport, so the column it happens to sit
     // inside in the DOM does not clip it — reading it as clipped reported the
-    // whole global navigation as unreachable on three viewports.
-    let position = getComputedStyle(element).position;
-    if (position === 'fixed') return null;
+    // whole global navigation as unreachable on three viewports. A fixed box
+    // *is* clipped once an ancestor transforms or contains, which is why this
+    // tracks what the element is anchored to rather than assuming.
+    let mode = getComputedStyle(element).position;
     for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
       const style = getComputedStyle(node);
-      const isContainingBlock = createsContainingBlock(style);
-      if (position === 'absolute' && !isContainingBlock) {
-        if (style.position === 'fixed') return null;
+      const anchors =
+        mode === 'fixed'
+          ? containsFixed(style)
+          : mode === 'absolute'
+            ? createsContainingBlock(style)
+            : true;
+      if (!anchors) {
+        if (style.position === 'fixed') mode = 'fixed';
         continue;
       }
-      if (isContainingBlock) position = 'static';
+      // Past this ancestor the element sits in its flow, unless the ancestor is
+      // itself anchored to the viewport.
+      mode = style.position === 'fixed' ? 'fixed' : 'static';
       const clipsX = style.overflowX !== 'visible';
       const clipsY = style.overflowY !== 'visible';
-      if (!clipsX && !clipsY) {
-        if (style.position === 'fixed') return null;
-        continue;
-      }
+      if (!clipsX && !clipsY) continue;
       const box = node.getBoundingClientRect();
       const outX = clipsX && (cx < box.left - 1 || cx > box.right + 1);
       const outY = clipsY && (cy < box.top - 1 || cy > box.bottom + 1);
-      if (!outX && !outY) {
-        if (style.position === 'fixed') return null;
-        continue;
-      }
+      if (!outX && !outY) continue;
       const scrollsX = /auto|scroll/.test(style.overflowX) && node.scrollWidth > node.clientWidth + 1;
       const scrollsY = /auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1;
       return {

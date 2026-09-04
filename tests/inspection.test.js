@@ -227,9 +227,16 @@ test('the viewport check tells a scrolled-out control from a stranded one', () =
   assert.match(clip, /stuck: \(outX && !scrollsX\) \|\| \(outY && !scrollsY\)/);
 
   // And overflow only clips what an ancestor is the containing block for, or
-  // the fixed navigation reads as unreachable on every short viewport.
-  assert.match(clip, /if \(position === 'fixed'\) return null;/);
-  assert.match(check, /const createsContainingBlock/);
+  // the fixed navigation reads as unreachable on every short viewport. Position
+  // alone never anchors a fixed box: only a transform, filter or containment
+  // pulls it back into an ancestor's coordinate space, so the two are asked
+  // different questions.
+  assert.match(check, /const containsFixed = \(style\) =>/);
+  assert.match(check, /const createsContainingBlock = \(style\) =>\s*style\.position !== 'static' \|\| containsFixed\(style\)/);
+  assert.match(clip, /mode === 'fixed'\s*\? containsFixed\(style\)/);
+  for (const property of ['transform', 'filter', 'perspective', 'backdropFilter', 'willChange', 'contain', 'containerType']) {
+    assert.ok(check.includes(`style.${property}`), `${property} anchors a fixed descendant`);
+  }
 
   // A stranded control fails; a scrolled-out one is recorded and does not.
   assert.match(check, /bucket: 'covered',\s*\n\s*text: `\$\{describe\(element\)\} ← clipped/);
