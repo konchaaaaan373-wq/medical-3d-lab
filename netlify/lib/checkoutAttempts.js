@@ -3,9 +3,12 @@ import crypto from 'node:crypto';
 import { billingIdentityHash, stripeModeFilter, supabaseAdmin } from './billing.js';
 import { billingStripeMode } from './billingConfiguration.js';
 
-// Stripe accepts explicit Checkout expiry from 30 minutes onward. Five extra
-// minutes absorb the time between our DB claim and Stripe receiving the call.
-const ATTEMPT_TTL_MS = 35 * 60 * 1000;
+// Stripe Checkout defaults to a 24-hour Session. Keep an unconfirmed DB lease
+// slightly longer so a Session whose response was lost can never outlive the
+// attempt that owns its idempotency key. Near expiry, an acquired (but not yet
+// recorded) attempt is renewed before the exact same Stripe request is retried.
+const ATTEMPT_TTL_MS = 24 * 60 * 60 * 1000 + 5 * 60 * 1000;
+const ACQUIRED_RENEW_BEFORE_MS = 30 * 60 * 1000;
 const ACTIVE_ATTEMPT_STATUSES = new Set(['acquired', 'session_created']);
 
 const attemptPath = (userId, mode, suffix = '') =>
@@ -70,7 +73,27 @@ export async function claimCheckoutAttempt({
 
   let rows = await admin(`${attemptPath(userId, mode)}&select=*&limit=1`);
   let existing = rows?.[0] ?? null;
-  if (reusableAttempt(existing, { plan, returnHash, now })) return claimed(existing, true);
+  if (reusableAttempt(existing, { plan, returnHash, now })) {
+    const remaining = Date.parse(existing.expires_at) - now.getTime();
+    if (existing.status === 'acquired' && remaining < ACQUIRED_RENEW_BEFORE_MS) {
+      const renewed = await admin(
+        `${attemptPath(userId, mode)}&attempt_id=eq.${encodeURIComponent(existing.attempt_id)}&status=eq.acquired&expires_at=eq.${encodeURIComponent(existing.expires_at)}`,
+        {
+          method: 'PATCH',
+          prefer: 'return=representation',
+          body: { expires_at: expiresAt, updated_at: now.toISOString() },
+        }
+      );
+      if (renewed?.length) return claimed(renewed[0], true);
+      // A concurrent request may have recorded the Session or renewed the same
+      // attempt. Re-read instead of minting a second idempotency key.
+      rows = await admin(`${attemptPath(userId, mode)}&select=*&limit=1`);
+      existing = rows?.[0] ?? null;
+      if (reusableAttempt(existing, { plan, returnHash, now })) return claimed(existing, true);
+    } else {
+      return claimed(existing, true);
+    }
+  }
   if (
     existing &&
     ACTIVE_ATTEMPT_STATUSES.has(existing.status) &&

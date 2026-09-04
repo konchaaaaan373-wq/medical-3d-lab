@@ -131,10 +131,9 @@ export default async (request, context) => {
       // entitlement still comes from the server-side subscription state.
       success_url: `${origin}/?billing=success&billing_plan=${encodeURIComponent(plan)}&session_id={CHECKOUT_SESSION_ID}${returnHash}`,
       cancel_url: `${origin}/${returnHash}`,
-      // Match Stripe's own expiry to the atomic DB lease. Once the lease can
-      // be replaced, the old Session is no longer completable, preventing two
-      // concurrently valid subscription checkouts for one account.
-      expires_at: Math.floor(Date.parse(attempt.expiresAt) / 1000),
+      // Leave expiry at Stripe's 24-hour default. The DB attempt is kept at
+      // least that long and the request parameters therefore remain identical
+      // when a network failure is retried with the same idempotency key.
       allow_promotion_codes: 'true',
       integration_identifier: checkoutIntegrationIdentifierForAttempt(attempt.attemptId),
       client_reference_id: user.id,

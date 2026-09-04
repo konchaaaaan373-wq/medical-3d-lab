@@ -42,8 +42,49 @@ test('checkout attempts: concurrent identical requests converge on one attempt',
   assert.equal(first.retry, false);
   assert.equal(second.retry, true);
   assert.equal(first.attemptId, second.attemptId);
-  assert.equal(first.expiresAt, '2026-09-04T00:35:00.000Z');
+  assert.equal(first.expiresAt, '2026-09-05T00:05:00.000Z');
   assert.equal(second.expiresAt, first.expiresAt);
+});
+
+test('checkout attempts: an uncreated Session renews safely before a late retry', async () => {
+  let row = {
+    user_id: '11111111-1111-1111-1111-111111111111',
+    stripe_mode: 'test',
+    attempt_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    plan: 'complete',
+    return_hash: '#/copd',
+    status: 'acquired',
+    checkout_session_id: null,
+    expires_at: '2026-09-04T00:20:00.000Z',
+  };
+  const calls = [];
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (options.method === 'POST') return [];
+    if (options.method === 'PATCH') {
+      row = { ...row, ...options.body };
+      return [row];
+    }
+    return [row];
+  };
+  const result = await claimCheckoutAttempt({
+    userId: row.user_id,
+    plan: row.plan,
+    returnHash: row.return_hash,
+    mode: 'test',
+    admin,
+    now: NOW,
+    attemptId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  });
+
+  assert.equal(result.claimed, true);
+  assert.equal(result.retry, true);
+  assert.equal(result.attemptId, 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  assert.equal(result.expiresAt, '2026-09-05T00:05:00.000Z');
+  const renewal = calls.find((call) => call.options.method === 'PATCH');
+  assert.match(renewal.path, /attempt_id=eq\.aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa/);
+  assert.match(renewal.path, /status=eq\.acquired/);
+  assert.match(renewal.path, /expires_at=eq\./);
 });
 
 test('checkout attempts: a different plan cannot overtake an active attempt', async () => {
@@ -84,5 +125,5 @@ test('checkout attempts: endpoint is rate-limited and sends Stripe an idempotenc
   const source = readFileSync(new URL('../netlify/functions/create-checkout.js', import.meta.url), 'utf8');
   assert.match(source, /idempotencyKey: checkoutIdempotencyKey/);
   assert.match(source, /claimCheckoutAttempt/);
-  assert.match(source, /expires_at: Math\.floor\(Date\.parse\(attempt\.expiresAt\)/);
+  assert.doesNotMatch(source, /expires_at:\s*Math\.floor\(Date\.parse\(attempt\.expiresAt\)/);
 });
