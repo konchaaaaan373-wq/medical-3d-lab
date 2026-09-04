@@ -8,7 +8,7 @@ This is the shortest operational path from a deployed build to a trustworthy pai
 - Each run takes the least-recently-attempted customers first and processes 3 by default (configurable up to 10 with `BILLING_RECONCILE_BATCH_SIZE`).
 - A failed customer is moved behind the rest of the queue, so one bad record cannot block everyone else.
 - Successful/ignored webhook ledger rows and reconciliation-run rows older than 90 days are removed automatically. Failed webhook rows remain available for investigation. Only a complete successful pass over every known customer supersedes older Checkout/subscription failures for the current health signal; invoice failures stay degraded until Stripe successfully redelivers or an operator safely replays the event.
-- `/api/billing-health` reports only aggregate health and returns HTTP 503 when configuration, webhook processing, or scheduled reconciliation is degraded. Netlify rate-limits it per visitor before a request reaches Supabase.
+- `/api/billing-health` reports only aggregate health and returns HTTP 503 when configuration, real Stripe Product/Price/Portal readiness, webhook processing, or scheduled reconciliation is degraded. It verifies Stripe even when no customer exists and caches that non-mutating provider check for five minutes. Netlify rate-limits it per visitor before a request reaches Supabase.
 - A normal in-progress hourly run keeps the previous successful health result; a run still marked `running` after five minutes is treated as degraded.
 - The next invocation automatically marks any five-minute-old abandoned run as failed before starting, so a successful retry restores health without a database edit.
 
@@ -34,7 +34,7 @@ All three rows must be `ok: true`. A fresh deployment can show `Billing repair` 
    - the latest `billing_reconciliation_runs` row
    - failed or stale-processing `billing_events` rows
 4. Correct the provider/configuration problem and use **Run now** once. A successful retry resets the customer failure marker and turns health green.
-5. For a failed invoice event, use Stripe Dashboard → Webhooks → the failed event → **Resend** after correcting the problem. Customer reconciliation cannot replay invoice-specific alerts, so the event itself must finish successfully.
+5. For a failed invoice/refund/dispute event, use Stripe Dashboard → Webhooks → the failed event → **Resend** after correcting the problem. Customer reconciliation cannot reconstruct event-specific grace or suspension side effects, so the event itself must finish successfully.
 
 The repair job deliberately does not require the browser publishable key or webhook signing secret, so it continues while the normal webhook path is impaired. Billing Portal likewise uses an operation-specific gate: existing customers retain cancellation and payment-method access during unrelated webhook or Price configuration incidents.
 
@@ -48,6 +48,8 @@ Error codes are deliberately bounded:
 | `stripe_unavailable` | Check Stripe status and let the next run retry. |
 | `supabase` | Check Supabase status, table grants, and the applied migrations. |
 | `stripe_state_churn` | Inspect rapid Portal/subscription changes and rerun after they settle. |
+| `unsupported_price` | Restore the configured Price or migrate the subscription deliberately; access remains closed. |
+| `billing_mapping` | Repair the Customer/Auth ownership mapping, then resend the failed event. |
 | `unknown` | Inspect the Netlify log; raw provider errors are never persisted in Supabase. |
 
 ## Required Stripe restricted-key permissions
@@ -58,7 +60,11 @@ Use a separate `rk_test_…` key for Deploy Previews and `rk_live_…` for Produ
 - Checkout Sessions: Write
 - Billing Portal Sessions: Write
 - Prices: Read
+- Products: Read
 - Subscriptions: Read
+- Charges: Read (resolve subscription refunds/disputes)
+- Invoices: Read (resolve subscription refunds/disputes)
+- Billing Portal Configurations: Read (health verification)
 
 Test the restricted key in a sandbox first. Never put Stripe or Supabase server secrets in source code, `VITE_*` variables, screenshots, support messages, or logs.
 
@@ -68,4 +74,4 @@ Test the restricted key in a sandbox first. Never put Stripe or Supabase server 
 2. Obtain current clinical sign-off for the professional content. The server commerce gate remains closed until then.
 3. Confirm pricing, refund/cancellation policy, support contact, Terms, Privacy, and legally required commerce disclosure.
 4. Confirm tax obligations with a qualified adviser. Configure product tax codes and registrations first; enable Stripe automatic tax only after an applicable registration shows as collecting.
-5. Create live Products/Prices, a live Portal configuration, a live webhook endpoint, and Production-scoped Netlify variables. Test and live webhook signing secrets are different.
+5. Create live Products/Prices, a live Portal configuration, a live webhook endpoint with every event listed in `docs/access-and-billing.md`, and Production-scoped Netlify variables. Test and live webhook signing secrets are different.

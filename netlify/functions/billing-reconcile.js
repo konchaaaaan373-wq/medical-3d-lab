@@ -24,7 +24,8 @@
 import crypto from 'node:crypto';
 
 import { notify } from '../lib/alerts.js';
-import { json, stripeGet, subscriptionById, supabaseAdmin, syncSubscription } from '../lib/billing.js';
+import { json, stripeGet, stripeModeFilter, subscriptionById, supabaseAdmin, syncSubscription } from '../lib/billing.js';
+import { billingStripeMode } from '../lib/billingConfiguration.js';
 import { NON_TERMINAL, findDrift, reconciliationPlan } from '../lib/reconcile.js';
 
 /**
@@ -56,27 +57,25 @@ export default async (request) => {
   const dryRun = new URL(request.url).searchParams.get('dry') === '1';
 
   try {
+    const mode = billingStripeMode(process.env);
     // Only live subscriptions are worth comparing. A terminal row is history,
     // and history does not drift.
     const statuses = NON_TERMINAL.map((status) => `"${status}"`).join(',');
     const localRows =
       (await supabaseAdmin(
-        `billing_subscriptions?status=in.(${statuses})&select=stripe_subscription_id,stripe_customer_id,user_id,entitlement,status,price_id,current_period_end,cancel_at_period_end&limit=500`
+        `billing_subscriptions?${stripeModeFilter(mode)}&status=in.(${statuses})&select=stripe_subscription_id,stripe_customer_id,user_id,entitlement,status,price_id,current_period_end,cancel_at_period_end&limit=500`
       )) ?? [];
 
     // Read each one back from Stripe. A subscription Stripe no longer has
     // returns nothing and shows up as `missing_in_stripe`.
     const byId = new Map();
     for (const row of localRows) {
-      try {
-        // `subscriptionById` rather than a raw fetch: it is what the webhook
-        // and the per-user repair both read Stripe through, and a comparison
-        // that reads Stripe differently from the writer invents drift.
-        const subscription = await subscriptionById(row.stripe_subscription_id);
-        if (subscription?.id) byId.set(subscription.id, subscription);
-      } catch {
-        // Left out deliberately: absence is the signal `findDrift` reads.
-      }
+      // `subscriptionById` returns null only for Stripe's confirmed
+      // `resource_missing`. Authorization, timeout, rate-limit and provider
+      // failures throw and abort this run; treating any of those as absence
+      // would manufacture drift during the outage we are trying to diagnose.
+      const subscription = await subscriptionById(row.stripe_subscription_id);
+      if (subscription?.id) byId.set(subscription.id, subscription);
     }
 
     // And then list Stripe's own live subscriptions.
@@ -137,7 +136,12 @@ export default async (request) => {
         if (!subscription) continue;
         // The same writer the webhook uses, so a repair and a delivery cannot
         // leave the row in two different shapes.
-        await syncSubscription(subscription);
+        const result = await syncSubscription(subscription, { mode });
+        if (result?.synced === false) {
+          const error = new Error(`Subscription sync failed closed: ${result.reason}`);
+          error.code = result.reason;
+          throw error;
+        }
         repaired += 1;
       }
     }
@@ -158,7 +162,7 @@ export default async (request) => {
       dryRun,
     });
   } catch (error) {
-    console.error('billing-reconcile', error);
+    console.error('billing-reconcile failed', { code: error?.code ?? 'unknown' });
     await notify('reconcile_drift', { error: error?.message ?? String(error) });
     return json(500, { error: 'Reconciliation failed' });
   }

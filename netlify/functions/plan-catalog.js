@@ -1,12 +1,17 @@
 import { commerceReadiness, planIsSellable } from '../../src/access/commerceReadiness.js';
 import { json, stripeGet } from '../lib/billing.js';
 import { billingConfiguration } from '../lib/billingConfiguration.js';
+import { cachedStripeCommerceReadiness } from '../lib/billingReadiness.js';
 
 const PLAN_PRICE_ENV = Object.freeze({
   patient: 'STRIPE_PRICE_PATIENT',
   education: 'STRIPE_PRICE_EDUCATION',
   complete: 'STRIPE_PRICE_COMPLETE',
 });
+
+export const config = {
+  rateLimit: { windowLimit: 30, windowSize: 60, aggregateBy: ['ip', 'domain'] },
+};
 
 const safePrice = (price) => ({
   active: Boolean(price?.active),
@@ -41,6 +46,10 @@ export default async (request, context) => {
   const readiness = commerceReadiness();
 
   try {
+    const stripeReadiness = await cachedStripeCommerceReadiness({ environment: process.env });
+    if (!stripeReadiness.ready) {
+      return json(200, { billingConfigured: false, commerceReady: false, plans: {} });
+    }
     const entries = await Promise.all(
       Object.entries(PLAN_PRICE_ENV).map(async ([plan, envName]) => {
         if (!planIsSellable(plan, readiness)) {
@@ -67,7 +76,7 @@ export default async (request, context) => {
       plans,
     });
   } catch (error) {
-    console.error('plan-catalog', error);
+    console.error('plan-catalog failed', { code: error?.code ?? 'unknown' });
     return json(200, { billingConfigured: false, commerceReady: false, plans: {} });
   }
 };

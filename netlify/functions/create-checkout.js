@@ -4,16 +4,28 @@ import { NON_TERMINAL_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 import {
   authenticatedUser,
   billingCustomerFor,
-  checkoutIntegrationIdentifier,
+  checkoutIntegrationIdentifierForAttempt,
   json,
   priceForPlan,
   reconcileBillingForUser,
   safeHash,
+  stripeModeFilter,
   stripePost,
   subscriptionsForCustomer,
   supabaseAdmin,
 } from '../lib/billing.js';
-import { billingConfiguration } from '../lib/billingConfiguration.js';
+import { billingConfiguration, billingStripeMode } from '../lib/billingConfiguration.js';
+import {
+  checkoutIdempotencyKey,
+  checkoutRequestFingerprint,
+  claimCheckoutAttempt,
+  recordCheckoutSession,
+} from '../lib/checkoutAttempts.js';
+import { cachedStripeCommerceReadiness } from '../lib/billingReadiness.js';
+
+export const config = {
+  rateLimit: { windowLimit: 6, windowSize: 60, aggregateBy: ['ip', 'domain'] },
+};
 
 export default async (request, context) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
@@ -53,34 +65,44 @@ export default async (request, context) => {
       });
     }
 
+    const stripeReadiness = await cachedStripeCommerceReadiness({
+      environment: process.env,
+    });
+    if (!stripeReadiness.ready) {
+      return json(503, {
+        error: 'Checkout is temporarily unavailable while billing configuration is verified.',
+      });
+    }
+
     const price = priceForPlan(plan);
     const returnHash = safeHash(body.returnHash);
+    const mode = billingStripeMode(process.env);
 
     // Fast local guard first. It catches the normal case without an extra Stripe
     // request and includes incomplete/payment-recovery states that should be
     // managed rather than duplicated.
     const statuses = [...NON_TERMINAL_SUBSCRIPTION_STATUSES].join(',');
     let existing = await supabaseAdmin(
-      `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
+      `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter(mode)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
     );
     if (existing?.length) {
       // A missed cancellation webhook must not trap a former subscriber in a
       // stale local "active" row forever. Re-read Stripe before deciding that
       // this account can only use Portal.
       try {
-        await reconcileBillingForUser(user.id);
+        await reconcileBillingForUser(user.id, { mode });
       } catch (error) {
         // The safe fallback is Portal, not a second recurring subscription.
-        console.warn('create-checkout reconciliation', error);
+        console.warn('create-checkout reconciliation failed', { code: error?.code ?? 'unknown' });
         return existingSubscription();
       }
       existing = await supabaseAdmin(
-        `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
+        `billing_subscriptions?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter(mode)}&status=in.(${statuses})&select=stripe_subscription_id,status&limit=1`
       );
       if (existing?.length) return existingSubscription();
     }
 
-    const customer = await billingCustomerFor(user);
+    const customer = await billingCustomerFor(user, { mode });
 
     // The webhook may be seconds behind Stripe. Ask Stripe itself before
     // creating Checkout so that "DB has not caught up yet" cannot become a
@@ -92,6 +114,29 @@ export default async (request, context) => {
     }
 
     const origin = new URL(request.url).origin;
+    const requestFingerprint = checkoutRequestFingerprint({
+      userId: user.id,
+      mode,
+      plan,
+      returnHash,
+      customer,
+      price,
+      origin,
+    });
+    const attempt = await claimCheckoutAttempt({
+      userId: user.id,
+      plan,
+      returnHash,
+      requestFingerprint,
+      mode,
+    });
+    if (!attempt.claimed) {
+      return json(409, {
+        error: 'Another checkout is already being prepared for this account. Please try again shortly.',
+        checkoutPending: true,
+      });
+    }
+
     const session = await stripePost('checkout/sessions', {
       mode: 'subscription',
       customer,
@@ -102,21 +147,37 @@ export default async (request, context) => {
       // entitlement still comes from the server-side subscription state.
       success_url: `${origin}/?billing=success&billing_plan=${encodeURIComponent(plan)}&session_id={CHECKOUT_SESSION_ID}${returnHash}`,
       cancel_url: `${origin}/${returnHash}`,
+      // Leave expiry at Stripe's 24-hour default. The DB attempt is kept at
+      // least that long and the request parameters therefore remain identical
+      // when a network failure is retried with the same idempotency key.
       allow_promotion_codes: 'true',
-      integration_identifier: checkoutIntegrationIdentifier(),
+      integration_identifier: checkoutIntegrationIdentifierForAttempt(attempt.attemptId),
       client_reference_id: user.id,
       'metadata[supabase_user_id]': user.id,
       'metadata[entitlement]': plan,
+      'metadata[checkout_attempt_id]': attempt.attemptId,
+      'metadata[stripe_mode]': mode,
       'subscription_data[metadata][supabase_user_id]': user.id,
       'subscription_data[metadata][entitlement]': plan,
+      'subscription_data[metadata][stripe_mode]': mode,
+    }, {
+      idempotencyKey: checkoutIdempotencyKey(user.id, mode, attempt.attemptId),
+    });
+
+    await recordCheckoutSession({
+      userId: user.id,
+      mode,
+      attemptId: attempt.attemptId,
+      sessionId: session.id,
+      expiresAt: session.expires_at,
     });
 
     return json(200, { url: session.url });
   } catch (error) {
-    console.error('create-checkout', error);
+    console.error('create-checkout failed', { code: error?.code ?? 'unknown' });
     const message = /Missing server configuration/.test(error.message)
       ? 'Checkout is not configured on this deployment yet.'
-      : error.message || 'Checkout could not be started.';
+      : 'Checkout could not be started. Please try again.';
     return json(500, { error: message });
   }
 };

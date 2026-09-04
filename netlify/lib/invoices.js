@@ -31,6 +31,15 @@ export const isInvoiceEvent = (type) => INVOICE_EVENTS.includes(String(type));
 
 const idOf = (value) => (typeof value === 'string' ? value : value?.id ?? null);
 
+/** Supports both legacy invoice.subscription and Basil-era invoice.parent. */
+export function invoiceSubscriptionId(invoice = {}) {
+  return (
+    idOf(invoice.subscription) ||
+    idOf(invoice.parent?.subscription_details?.subscription) ||
+    null
+  );
+}
+
 /**
  * What an invoice event means for this product.
  *
@@ -72,7 +81,7 @@ export function classifyInvoice(event) {
 
   return {
     kind,
-    subscriptionId: idOf(invoice.subscription),
+    subscriptionId: invoiceSubscriptionId(invoice),
     customerId: idOf(invoice.customer),
     attempt: Number.isFinite(invoice.attempt_count) ? invoice.attempt_count : 0,
     finalAttempt,

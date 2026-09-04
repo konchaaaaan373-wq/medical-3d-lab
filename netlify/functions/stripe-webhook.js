@@ -1,6 +1,9 @@
 import { supabaseUserExists } from '../lib/account.js';
 import { notify } from '../lib/alerts.js';
 import { classifyInvoice, isInvoiceEvent } from '../lib/invoices.js';
+import { applyFinancialEvent, isFinancialEvent } from '../lib/financialEvents.js';
+import { applyInvoiceBillingState } from '../lib/paymentState.js';
+import { completeCheckoutAttempt } from '../lib/checkoutAttempts.js';
 import {
   claimBillingEvent,
   finishBillingEvent,
@@ -9,13 +12,18 @@ import {
   subscriptionById,
   stripeGet,
   revokeSubscriptionLocally,
+  stripeModeFilter,
   supabaseAdmin,
   syncSubscription,
   syncSubscriptionUntilCurrent,
   upsertCustomer,
   verifyStripeSignature,
 } from '../lib/billing.js';
-import { billingWebhookConfiguration } from '../lib/billingConfiguration.js';
+import {
+  billingStripeMode,
+  billingWebhookConfiguration,
+  stripeEventMatchesDeployment,
+} from '../lib/billingConfiguration.js';
 
 export default async (request, context) => {
   if (request.method !== 'POST') return json(405, { error: 'Method not allowed' });
@@ -34,12 +42,16 @@ export default async (request, context) => {
     return json(400, { error: 'Invalid Stripe event' });
   }
   if (!event?.id || !event?.type) return json(400, { error: 'Invalid Stripe event' });
+  if (!stripeEventMatchesDeployment(event, process.env)) {
+    return json(400, { error: 'Stripe event mode does not match this deployment' });
+  }
+  const mode = billingStripeMode(process.env);
 
   let claim;
   try {
     claim = await claimBillingEvent(event);
   } catch (error) {
-    console.error('stripe-webhook claim', error);
+    console.error('stripe-webhook claim failed', { code: error?.code ?? 'unknown' });
     return json(500, { error: 'Webhook event could not be claimed' });
   }
   if (!claim.claimed) {
@@ -52,9 +64,10 @@ export default async (request, context) => {
   }
 
   try {
-    const outcome = await processStripeEvent(event);
+    const outcome = await processStripeEvent(event, { mode });
     const finished = await finishBillingEvent(event.id, {
       attemptCount: claim.attemptCount,
+      livemode: Boolean(event.livemode),
       status: outcome.status,
       resultCode: outcome.reason ?? null,
     });
@@ -71,13 +84,14 @@ export default async (request, context) => {
     try {
       await finishBillingEvent(event.id, {
         attemptCount: claim.attemptCount,
+        livemode: Boolean(event.livemode),
         status: 'failed',
         resultCode: 'processing_error',
       });
     } catch (ledgerError) {
-      console.error('stripe-webhook ledger failure', ledgerError);
+      console.error('stripe-webhook ledger failure', { code: ledgerError?.code ?? 'unknown' });
     }
-    console.error('stripe-webhook', error);
+    console.error('stripe-webhook processing failed', { code: error?.code ?? 'unknown' });
     await notify('webhook_failed', {
       eventId: event.id,
       type: event.type,
@@ -87,7 +101,7 @@ export default async (request, context) => {
   }
 };
 
-async function processStripeEvent(event) {
+export async function processStripeEvent(event, { mode = billingStripeMode() } = {}) {
   const object = event.data?.object;
 
   if (event.type === 'checkout.session.completed') {
@@ -107,14 +121,21 @@ async function processStripeEvent(event) {
       userId,
       customerId,
       email: object.customer_details?.email ?? null,
-    });
+    }, { mode });
     if (!mapped) throw new Error('Stripe Customer ownership could not be established.');
-    if (object.subscription) {
-      const subscriptionId =
-        typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
-      const subscription = await stripeGet(`subscriptions/${subscriptionId}`);
-      await syncSubscriptionUntilCurrent(subscription, { sync: syncSubscription });
-    }
+    if (!object.subscription) throw new Error('Subscription Checkout completed without a Subscription.');
+    const subscriptionId =
+      typeof object.subscription === 'string' ? object.subscription : object.subscription.id;
+    const subscription = await stripeGet(`subscriptions/${encodeURIComponent(subscriptionId)}`);
+    await syncSubscriptionUntilCurrent(subscription, {
+      sync: (value) => syncSubscription(value, { mode }),
+    });
+    await completeCheckoutAttempt({
+      userId,
+      mode,
+      attemptId: object.metadata?.checkout_attempt_id,
+      sessionId: object.id,
+    });
     return { status: 'processed', reason: 'checkout_synced' };
   }
 
@@ -144,14 +165,14 @@ async function processStripeEvent(event) {
     const retrievedCurrent = Boolean(current);
     const subscription = current ?? object;
 
-    const ownerId = await liveSubscriptionOwnerId(subscription);
+    const ownerId = await liveSubscriptionOwnerId(subscription, mode);
     if (!ownerId) {
       // No owner, so nothing may be granted. But a subscription that has stopped
       // entitling still has to stop entitling: the local row is addressed by
       // subscription ID and does not need to know whose it is to say that it is
       // over. Skipping this returned 200 for a cancellation, which told Stripe
       // never to send it again, and left a row reading `active` behind it.
-      const revocation = await revokeSubscriptionLocally(subscription);
+      const revocation = await revokeSubscriptionLocally(subscription, { mode });
       await notify('unresolvable_subscription_event', {
         eventId: event.id,
         type: event.type,
@@ -167,10 +188,17 @@ async function processStripeEvent(event) {
 
     let syncedSubscription = subscription;
     if (retrievedCurrent) {
-      const converged = await syncSubscriptionUntilCurrent(subscription, { sync: syncSubscription });
+      const converged = await syncSubscriptionUntilCurrent(subscription, {
+        sync: (value) => syncSubscription(value, { mode }),
+      });
       syncedSubscription = converged.subscription ?? subscription;
     } else {
-      await syncSubscription(subscription);
+      const result = await syncSubscription(subscription, { mode });
+      if (result?.synced === false) {
+        const error = new Error(`Subscription sync failed closed: ${result.reason}`);
+        error.code = result.reason;
+        throw error;
+      }
     }
     await upsertCustomer({
       userId: ownerId,
@@ -178,7 +206,7 @@ async function processStripeEvent(event) {
         typeof syncedSubscription.customer === 'string'
           ? syncedSubscription.customer
           : syncedSubscription.customer?.id,
-    });
+    }, { mode });
     return { status: 'processed', reason: 'subscription_synced' };
   }
 
@@ -192,9 +220,19 @@ async function processStripeEvent(event) {
   // record, and that a payment is failing *right now* with a known number of
   // attempts left, which is the moment somebody should be told.
   //
-  // Nothing here writes state. It classifies and, where it matters, alerts.
   if (isInvoiceEvent(event.type)) {
     const invoice = classifyInvoice(event);
+    if (invoice.kind === 'other') {
+      return { status: 'ignored', reason: 'unsupported_invoice' };
+    }
+    if (!invoice.subscriptionId) {
+      // This product only grants recurring-subscription access. A signed
+      // one-off Invoice may legitimately exist in the same Stripe account,
+      // but it must neither mutate entitlements nor page the subscription
+      // operator as if a Medical 3D Lab renewal failed.
+      return { status: 'ignored', reason: 'non_subscription_invoice' };
+    }
+    await applyInvoiceBillingState(event, invoice, { mode });
     if (invoice.alert) {
       await notify(invoice.alert, {
         subscriptionId: invoice.subscriptionId,
@@ -204,22 +242,30 @@ async function processStripeEvent(event) {
         currency: invoice.currency,
       });
     }
-    return invoice.kind === 'other'
-      ? { status: 'ignored', reason: 'unsupported_invoice' }
-      : { status: 'processed', reason: `invoice_${invoice.kind}` };
+    return { status: 'processed', reason: `invoice_${invoice.kind}` };
+  }
+
+  if (isFinancialEvent(event.type)) {
+    const financial = await applyFinancialEvent(event, { mode });
+    if (financial.alert) {
+      await notify(financial.alert, { subscriptionId: financial.subscriptionId });
+    }
+    return financial.handled
+      ? { status: 'processed', reason: financial.reason }
+      : { status: 'ignored', reason: financial.reason };
   }
 
   return { status: 'ignored', reason: 'unsupported_event' };
 }
 
-async function liveSubscriptionOwnerId(subscription) {
+async function liveSubscriptionOwnerId(subscription, mode = billingStripeMode()) {
   if (!subscription) return null;
   const customerId =
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
   let mappedUserId = null;
   if (customerId) {
     const rows = await supabaseAdmin(
-      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&${stripeModeFilter(mode)}&select=user_id&limit=1`
     );
     mappedUserId = rows?.[0]?.user_id ?? null;
   }

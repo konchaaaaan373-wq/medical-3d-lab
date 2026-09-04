@@ -1,5 +1,7 @@
 import { env, envAny, STRIPE_API_VERSION } from './billing.js';
 
+const PROVIDER_TIMEOUT_MS = 8_000;
+
 function supabaseAuthBase() {
   return env('SUPABASE_URL').replace(/\/$/, '');
 }
@@ -13,11 +15,42 @@ function supabaseAdminHeaders() {
   };
 }
 
+/**
+ * Confirms the destructive request with the account password. The short-lived
+ * verification session is immediately revoked and neither credential nor
+ * token is logged, returned to the browser, or persisted by this application.
+ */
+export async function verifySupabasePassword(email, password) {
+  if (!email || typeof password !== 'string' || !password) return false;
+  const key = envAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY');
+  const response = await fetch(`${supabaseAuthBase()}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  });
+  if (!response.ok) return false;
+  const session = await response.json().catch(() => ({}));
+  if (!session?.access_token) return false;
+
+  await fetch(`${supabaseAuthBase()}/auth/v1/logout?scope=local`, {
+    method: 'POST',
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+    },
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+  }).catch(() => {});
+  return true;
+}
+
 /** Returns false only when Supabase confirms the Auth user no longer exists. */
 export async function supabaseUserExists(userId) {
   if (!userId) return false;
   const response = await fetch(`${supabaseAuthBase()}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
     headers: supabaseAdminHeaders(),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   if (response.status === 404) return false;
   if (!response.ok) {
@@ -36,6 +69,7 @@ export async function deleteSupabaseUser(userId) {
   const response = await fetch(`${supabaseAuthBase()}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
     method: 'DELETE',
     headers: supabaseAdminHeaders(),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   if (response.status === 404) return { deleted: true, alreadyMissing: true };
   const body = await response.json().catch(() => ({}));
@@ -56,6 +90,7 @@ export async function deleteStripeCustomer(customerId) {
       Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
       'Stripe-Version': STRIPE_API_VERSION,
     },
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   const body = await response.json().catch(() => ({}));
   if (response.status === 404 || body?.error?.code === 'resource_missing') {

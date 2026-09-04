@@ -21,6 +21,10 @@ const HEALTH_ENV = Object.freeze({
   STRIPE_PRICE_EDUCATION: 'price_education',
   STRIPE_PRICE_COMPLETE: 'price_complete',
 });
+const STRIPE_READY = async () => ({
+  ready: true,
+  checks: { prices: true, products: true, portal: true },
+});
 
 test('billing operations: production deploy includes an hourly bounded repair schedule', () => {
   assert.equal(schedule.schedule, '17 * * * *');
@@ -62,12 +66,13 @@ test('billing operations: reconciliation rotates past failures and records only 
   ];
   const admin = async (path, options = {}) => {
     calls.push({ path, options });
-    if (path.startsWith('billing_customers?select=')) return customers;
+    if (path.startsWith('billing_customers?') && path.includes('select=user_id')) return customers;
     return [];
   };
 
   const result = await runBillingReconciliationBatch({
     admin,
+    mode: 'test',
     reconcile: async (userId) => {
       if (userId === 'user_a') {
         const error = new Error('Stripe 429');
@@ -88,11 +93,12 @@ test('billing operations: reconciliation rotates past failures and records only 
     failedCount: 1,
     deferredCount: 0,
   });
-  const selection = calls.find((call) => call.path.startsWith('billing_customers?select='));
+  const selection = calls.find((call) => call.path.startsWith('billing_customers?') && call.path.includes('select=user_id'));
   assert.match(selection.path, /order=last_reconcile_attempt_at\.asc\.nullsfirst,user_id\.asc/);
   const abandonedRunCleanup = calls.find(
     (call) =>
-      call.path.includes('billing_reconciliation_runs?status=eq.running') &&
+      call.path.includes('billing_reconciliation_runs?') &&
+      call.path.includes('status=eq.running') &&
       call.options.method === 'PATCH'
   );
   assert.deepEqual(abandonedRunCleanup.options.body, {
@@ -109,7 +115,7 @@ test('billing operations: time budget defers remaining customers without marking
   const ticks = [0, 0, 23_000, 23_000];
   const admin = async (path, options = {}) => {
     calls.push({ path, options });
-    if (path.startsWith('billing_customers?select=')) {
+    if (path.startsWith('billing_customers?') && path.includes('select=user_id')) {
       return [
         { user_id: 'user_a', reconcile_failure_count: 0 },
         { user_id: 'user_b', reconcile_failure_count: 0 },
@@ -119,6 +125,7 @@ test('billing operations: time budget defers remaining customers without marking
   };
   const result = await runBillingReconciliationBatch({
     admin,
+    mode: 'test',
     reconcile: async () => ({ reconciled: true }),
     now: new Date('2026-09-02T12:00:00.000Z'),
     clock: () => ticks.shift() ?? 23_000,
@@ -137,7 +144,7 @@ test('billing operations: time budget defers remaining customers without marking
 test('billing operations: a marker write failure counts one customer only once', async () => {
   let markerFailed = false;
   const admin = async (path, options = {}) => {
-    if (path.startsWith('billing_customers?select=')) {
+    if (path.startsWith('billing_customers?') && path.includes('select=user_id')) {
       return [{ user_id: 'user_a', reconcile_failure_count: 0 }];
     }
     if (
@@ -152,6 +159,7 @@ test('billing operations: a marker write failure counts one customer only once',
   };
   const result = await runBillingReconciliationBatch({
     admin,
+    mode: 'test',
     reconcile: async () => ({ reconciled: true }),
     now: new Date('2026-09-02T12:00:00.000Z'),
     clock: () => 100,
@@ -168,7 +176,7 @@ test('billing operations: health output is aggregate and privacy-safe', async ()
   const now = new Date('2026-09-02T12:00:00.000Z');
   const admin = async (path) => {
     if (path.includes('status=eq.running')) return [];
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [
         {
           status: 'succeeded',
@@ -182,10 +190,19 @@ test('billing operations: health output is aggregate and privacy-safe', async ()
     }
     return [];
   };
-  const result = await billingOperationsHealth({ admin, environment: HEALTH_ENV, now });
+  const result = await billingOperationsHealth({
+    admin,
+    checkStripe: STRIPE_READY,
+    environment: HEALTH_ENV,
+    now,
+  });
   assert.equal(result.status, 'ok');
   assert.deepEqual(result.checks, {
     configuration: true,
+    stripeResources: true,
+    stripePrices: true,
+    stripeProducts: true,
+    stripePortal: true,
     scheduledReconciliation: true,
     webhookDelivery: true,
     customerReconciliation: true,
@@ -196,7 +213,7 @@ test('billing operations: health output is aggregate and privacy-safe', async ()
 test('billing operations: stale webhook work or customer failures degrade health', async () => {
   const admin = async (path) => {
     if (path.includes('status=eq.running')) return [];
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
     }
     if (path.includes('status=eq.failed')) return [{ stripe_event_id: 'redacted-by-health-layer' }];
@@ -206,6 +223,7 @@ test('billing operations: stale webhook work or customer failures degrade health
   };
   const result = await billingOperationsHealth({
     admin,
+    checkStripe: STRIPE_READY,
     environment: HEALTH_ENV,
     now: new Date('2026-09-02T12:00:00.000Z'),
   });
@@ -220,7 +238,7 @@ test('billing operations: only a complete customer sweep supersedes older webhoo
   const admin = async (path) => {
     paths.push(path);
     if (path.includes('status=eq.running')) return [];
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
     }
     if (path.includes('select=last_reconciled_at')) {
@@ -231,6 +249,7 @@ test('billing operations: only a complete customer sweep supersedes older webhoo
 
   const result = await billingOperationsHealth({
     admin,
+    checkStripe: STRIPE_READY,
     environment: HEALTH_ENV,
     now: new Date('2026-09-02T12:00:00.000Z'),
   });
@@ -250,7 +269,7 @@ test('billing operations: only a complete customer sweep supersedes older webhoo
 test('billing operations: a customer sweep cannot hide a non-reconcilable invoice failure', async () => {
   const admin = async (path) => {
     if (path.includes('status=eq.running')) return [];
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
     }
     if (path.includes('select=last_reconciled_at')) {
@@ -264,6 +283,7 @@ test('billing operations: a customer sweep cannot hide a non-reconcilable invoic
 
   const result = await billingOperationsHealth({
     admin,
+    checkStripe: STRIPE_READY,
     environment: HEALTH_ENV,
     now: new Date('2026-09-02T12:00:00.000Z'),
   });
@@ -276,7 +296,7 @@ test('billing operations: a fresh running job keeps the latest successful health
   const paths = [];
   const admin = async (path) => {
     paths.push(path);
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
     }
     if (path.includes('status=eq.running')) return [];
@@ -287,6 +307,7 @@ test('billing operations: a fresh running job keeps the latest successful health
   };
   const result = await billingOperationsHealth({
     admin,
+    checkStripe: STRIPE_READY,
     environment: HEALTH_ENV,
     now: new Date('2026-09-02T12:00:00.000Z'),
   });
@@ -302,7 +323,7 @@ test('billing operations: a fresh running job keeps the latest successful health
 
 test('billing operations: a stale running job degrades otherwise recent health', async () => {
   const admin = async (path) => {
-    if (path.includes('billing_reconciliation_runs?status=neq.running')) {
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
       return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
     }
     if (path.includes('status=eq.running')) return [{ run_id: 'not-returned-by-health' }];
@@ -313,6 +334,7 @@ test('billing operations: a stale running job degrades otherwise recent health',
   };
   const result = await billingOperationsHealth({
     admin,
+    checkStripe: STRIPE_READY,
     environment: HEALTH_ENV,
     now: new Date('2026-09-02T12:00:00.000Z'),
   });
@@ -322,8 +344,27 @@ test('billing operations: a stale running job degrades otherwise recent health',
   assert.doesNotMatch(JSON.stringify(result), /not-returned/);
 });
 
+test('billing operations: invalid Stripe resources degrade health even with no customers', async () => {
+  const result = await billingOperationsHealth({
+    admin: async () => [],
+    checkStripe: async () => ({
+      ready: false,
+      checks: { prices: false, products: false, portal: false },
+    }),
+    environment: HEALTH_ENV,
+    now: new Date('2026-09-02T12:00:00.000Z'),
+  });
+  assert.equal(result.status, 'degraded');
+  assert.equal(result.checks.stripeResources, false);
+  assert.equal(result.checks.stripePrices, false);
+  assert.equal(result.checks.stripeProducts, false);
+  assert.equal(result.checks.stripePortal, false);
+});
+
 test('billing operations: common provider failures map to bounded codes', () => {
   assert.equal(reconciliationErrorCode({ status: 403 }), 'stripe_authorization');
   assert.equal(reconciliationErrorCode({ message: 'Supabase REST 500' }), 'supabase');
+  assert.equal(reconciliationErrorCode({ code: 'unsupported_price' }), 'unsupported_price');
+  assert.equal(reconciliationErrorCode({ name: 'TimeoutError' }), 'stripe_unavailable');
   assert.equal(reconciliationErrorCode(new Error('sensitive detail')), 'unknown');
 });

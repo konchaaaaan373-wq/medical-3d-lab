@@ -48,6 +48,8 @@ export function createAccessManager({ ui }) {
   const listeners = new Set();
   let required = null;
   let returnFocus = null;
+  let lifecycleRefreshInstalled = false;
+  let refreshGeneration = 0;
 
   const accountButton = el('button', {
     class: 'account-trigger',
@@ -74,6 +76,7 @@ export function createAccessManager({ ui }) {
       });
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
+      installLifecycleRefresh();
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -130,6 +133,10 @@ export function createAccessManager({ ui }) {
     open,
     close,
     refresh,
+    reportError(message) {
+      state.error = String(message || 'Paid content could not be loaded.');
+      open();
+    },
     subscribe(listener) {
       listeners.add(listener);
       listener(snapshot());
@@ -160,6 +167,29 @@ export function createAccessManager({ ui }) {
     for (const listener of listeners) listener(value);
   }
 
+  function invalidateSessionState() {
+    // Any getSession/entitlements response already in flight belongs to the
+    // previous browser session and must never restore its paid grants.
+    refreshGeneration += 1;
+    state.user = null;
+    state.grants = new Set(FREE);
+    state.subscriptions = [];
+    state.loading = false;
+    state.error = '';
+    state.notice = '';
+  }
+
+  function installLifecycleRefresh() {
+    if (lifecycleRefreshInstalled) return;
+    lifecycleRefreshInstalled = true;
+    const refreshVisibleAccount = () => {
+      if (state.user && document.visibilityState !== 'hidden') void refresh();
+    };
+    window.addEventListener('focus', refreshVisibleAccount);
+    document.addEventListener('visibilitychange', refreshVisibleAccount);
+    window.setInterval(refreshVisibleAccount, 5 * 60 * 1000);
+  }
+
   async function refreshBillingStatus() {
     try {
       const response = await fetch('/.netlify/functions/billing-status', {
@@ -187,12 +217,14 @@ export function createAccessManager({ ui }) {
   }
 
   async function refresh({ reconcile = false } = {}) {
+    const generation = ++refreshGeneration;
     state.loading = true;
     state.error = '';
     notify();
     let reconciliationSucceeded = reconcile ? false : null;
     try {
       const session = await getSession();
+      if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       state.user = session?.user ?? null;
       state.grants = new Set(FREE);
       state.subscriptions = [];
@@ -202,6 +234,7 @@ export function createAccessManager({ ui }) {
           : '/.netlify/functions/entitlements';
         const response = await authenticatedFetch(endpoint);
         const data = await response.json().catch(() => ({}));
+        if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
         if (!response.ok) throw new Error(data.error || 'Could not load access.');
         state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
         state.subscriptions = data.subscriptions ?? [];
@@ -209,12 +242,15 @@ export function createAccessManager({ ui }) {
         if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
       }
     } catch (error) {
+      if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       // Free access is deliberately resilient to billing/auth outages.
       state.error = error.message || 'Could not check access.';
       state.grants = new Set(FREE);
     } finally {
-      state.loading = false;
-      notify();
+      if (generation === refreshGeneration) {
+        state.loading = false;
+        notify();
+      }
     }
     return { reconciliationSucceeded };
   }
@@ -364,11 +400,7 @@ export function createAccessManager({ ui }) {
           on: {
             click: () => {
               signOut();
-              state.user = null;
-              state.grants = new Set(FREE);
-              state.subscriptions = [];
-              state.error = '';
-              state.notice = '';
+              invalidateSessionState();
               notify();
             },
           },
@@ -534,11 +566,7 @@ export function createAccessManager({ ui }) {
     const cancelRecovery = () => {
       signOut();
       state.recoveryMode = false;
-      state.user = null;
-      state.grants = new Set(FREE);
-      state.subscriptions = [];
-      state.error = '';
-      state.notice = '';
+      invalidateSessionState();
       cleanRecoveryQuery();
       notify();
     };

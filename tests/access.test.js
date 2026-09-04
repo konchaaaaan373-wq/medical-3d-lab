@@ -56,13 +56,68 @@ test('access: complete grants both paid use cases', () => {
 
 test('access: past_due has a grace period, terminal/non-paying states do not', () => {
   assert.equal(ACCESS_SUBSCRIPTION_STATUSES.has('past_due'), true);
+  const now = new Date('2026-09-01T00:00:00.000Z');
   assert.deepEqual(
-    grantsFromSubscriptions([{ entitlement: 'complete', status: 'past_due' }]).sort(),
+    grantsFromSubscriptions(
+      [{ entitlement: 'complete', status: 'past_due', grace_until: '2026-09-02T00:00:00.000Z' }],
+      now
+    ).sort(),
     ['education', 'free', 'patient']
+  );
+  assert.deepEqual(
+    grantsFromSubscriptions(
+      [{ entitlement: 'complete', status: 'past_due', grace_until: '2026-09-01T00:00:00.000Z' }],
+      now
+    ),
+    ['free']
+  );
+  assert.deepEqual(
+    grantsFromSubscriptions(
+      [{ entitlement: 'complete', status: 'active', access_suspended_reason: 'dispute' }],
+      now
+    ),
+    ['free']
+  );
+  for (const suspension of [
+    { full_refund_at: '2026-08-31T00:00:00.000Z' },
+    { dispute_opened_at: '2026-08-31T00:00:00.000Z' },
+    {
+      full_refund_at: '2026-08-31T00:00:00.000Z',
+      dispute_opened_at: '2026-08-31T00:00:00.000Z',
+    },
+  ]) {
+    assert.deepEqual(
+      grantsFromSubscriptions([{ entitlement: 'complete', status: 'active', ...suspension }], now),
+      ['free']
+    );
+  }
+  assert.deepEqual(
+    grantsFromSubscriptions(
+      [{
+        entitlement: 'complete',
+        status: 'active',
+        payment_failed_at: '2026-08-20T00:00:00.000Z',
+        grace_until: '2026-08-27T00:00:00.000Z',
+      }],
+      now
+    ),
+    ['free']
   );
 
   for (const status of ['canceled', 'incomplete', 'incomplete_expired', 'unpaid', 'paused']) {
-    assert.deepEqual(grantsFromSubscriptions([{ entitlement: 'complete', status }]), ['free'], status);
+    assert.deepEqual(
+      grantsFromSubscriptions(
+        [{
+          entitlement: 'complete',
+          status,
+          payment_failed_at: '2026-08-31T00:00:00.000Z',
+          grace_until: '2026-09-02T00:00:00.000Z',
+        }],
+        now
+      ),
+      ['free'],
+      `${status}: a stale grace marker must not revive access`
+    );
   }
 });
 

@@ -12,7 +12,19 @@
  * deployment decision; the code that decides *what is worth alerting on* is
  * not, and belongs here either way.
  */
+import crypto from 'node:crypto';
+
 import { redactText } from '../../src/telemetry/redact.js';
+
+const ALERT_TIMEOUT_MS = 3_000;
+const STRIPE_REFERENCE = /\b(?:acct|ch|cs|cus|evt|in|pi|price|prod|req|sub|we)_[A-Za-z0-9_]+\b/g;
+
+function safeAlertString(key, value) {
+  if (/(?:^|_)id$/i.test(key) || /Id$/.test(key)) {
+    return `ref:${crypto.createHash('sha256').update(String(value)).digest('hex').slice(0, 16)}`;
+  }
+  return redactText(value).replace(STRIPE_REFERENCE, '[stripe-reference]').slice(0, 300);
+}
 
 /** Severity, in the order an operator triages. */
 export const LEVELS = Object.freeze(['critical', 'error', 'warning', 'info']);
@@ -40,6 +52,14 @@ export const ALERT_RULES = Object.freeze({
   payment_uncollectible: 'error',
   /** The card needs the customer to authenticate before it will clear. */
   payment_action_required: 'warning',
+  /** A complete refund removes the paid consideration for this access period. */
+  full_refund: 'error',
+  /** Partial refunds need review but do not automatically revoke all access. */
+  partial_refund: 'warning',
+  /** Disputed payments are suspended until Stripe reports the outcome. */
+  dispute_opened: 'critical',
+  dispute_won: 'info',
+  dispute_lost: 'error',
   /** A webhook for an account that no longer exists. Expected during deletion. */
   deleted_user_event: 'info',
   /**
@@ -75,7 +95,7 @@ export function buildAlert(kind, context = {}, { now = () => new Date(), deploym
   const safe = {};
   for (const [key, value] of Object.entries(context)) {
     if (value == null) continue;
-    safe[key] = typeof value === 'string' ? redactText(value).slice(0, 300) : value;
+    safe[key] = typeof value === 'string' ? safeAlertString(key, value) : value;
   }
   return {
     kind,
@@ -110,10 +130,11 @@ export async function notify(kind, context = {}) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(alert),
+      signal: AbortSignal.timeout(ALERT_TIMEOUT_MS),
     });
     return { sent: response.ok, alert };
   } catch (error) {
-    console.error('[billing] alert delivery failed', error?.message ?? error);
+    console.error('[billing] alert delivery failed', { code: error?.code ?? 'unknown' });
     return { sent: false, alert };
   }
 }

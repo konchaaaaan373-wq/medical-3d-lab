@@ -9,6 +9,7 @@
 const STORAGE_KEY = 'medical3dlab.auth.v1';
 let volatileSession = null;
 let refreshInFlight = null;
+let sessionGeneration = 0;
 
 export const AUTH_CONFIG = Object.freeze({
   url: (import.meta.env?.VITE_SUPABASE_URL ?? '').replace(/\/$/, ''),
@@ -41,6 +42,10 @@ function readStored() {
 }
 
 function store(session) {
+  // Invalidates any token rotation that started from an older stored session.
+  // In particular, signOut stores null before the network logout and an older
+  // refresh response must not be allowed to sign the browser back in.
+  sessionGeneration += 1;
   volatileSession = session ?? null;
   try {
     if (!session) localStorage.removeItem(STORAGE_KEY);
@@ -217,6 +222,7 @@ async function refresh(session) {
   // access token together, serialise them through one refresh rather than
   // racing the same refresh token and making one of the two calls log out.
   if (refreshInFlight) return refreshInFlight;
+  const generation = sessionGeneration;
   refreshInFlight = (async () => {
     const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/token?grant_type=refresh_token`, {
       method: 'POST',
@@ -224,10 +230,11 @@ async function refresh(session) {
       body: JSON.stringify({ refresh_token: session.refresh_token }),
     });
     if (!response.ok) {
-      store(null);
+      if (generation === sessionGeneration) store(null);
       return null;
     }
     const next = normaliseSession(await response.json());
+    if (generation !== sessionGeneration) return null;
     store(next);
     return next;
   })();

@@ -1,7 +1,10 @@
 import crypto from 'node:crypto';
 import { ACCESS_SUBSCRIPTION_STATUSES } from '../../src/access/policy.js';
 
+import { billingStripeMode } from './billingConfiguration.js';
+
 export const STRIPE_API_VERSION = '2026-08-26.dahlia';
+const PROVIDER_TIMEOUT_MS = 8_000;
 
 export const json = (status, body) =>
   new Response(JSON.stringify(body), {
@@ -39,6 +42,7 @@ export async function authenticatedUser(request) {
       apikey: envAny('SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY'),
       Authorization: `Bearer ${token}`,
     },
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   if (!response.ok) return null;
   return response.json();
@@ -57,6 +61,7 @@ export async function supabaseAdmin(path, { method = 'GET', body, prefer } = {})
       ...(prefer ? { Prefer: prefer } : {}),
     },
     body: body == null ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
@@ -79,9 +84,15 @@ export async function stripePost(path, params, { idempotencyKey } = {}) {
       ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}),
     },
     body: form,
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || `Stripe ${response.status}`);
+  if (!response.ok) {
+    const error = new Error(data?.error?.message || `Stripe ${response.status}`);
+    error.status = response.status;
+    error.code = data?.error?.code ?? null;
+    throw error;
+  }
   return data;
 }
 
@@ -91,6 +102,7 @@ export async function stripeGet(path) {
       Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
       'Stripe-Version': STRIPE_API_VERSION,
     },
+    signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -107,6 +119,16 @@ const PLAN_PRICE_ENV = Object.freeze({
   education: 'STRIPE_PRICE_EDUCATION',
   complete: 'STRIPE_PRICE_COMPLETE',
 });
+
+export const stripeModeFilter = (mode = billingStripeMode()) =>
+  `stripe_mode=eq.${encodeURIComponent(mode)}`;
+
+export const stripeLivemode = (mode = billingStripeMode()) => mode === 'live';
+
+/** Hashes an Auth UUID before it becomes a provider-visible idempotency label. */
+export function billingIdentityHash(value) {
+  return crypto.createHash('sha256').update(String(value ?? '')).digest('hex').slice(0, 24);
+}
 
 export function priceForPlan(plan) {
   const name = PLAN_PRICE_ENV[plan];
@@ -188,6 +210,12 @@ export function checkoutIntegrationIdentifier(randomBytes = crypto.randomBytes) 
     .join('');
 }
 
+/** Stable for one Checkout attempt, random across attempts, and contains no user identity. */
+export function checkoutIntegrationIdentifierForAttempt(attemptId) {
+  const bytes = crypto.createHash('sha256').update(String(attemptId)).digest().subarray(0, 8);
+  return checkoutIntegrationIdentifier(() => bytes);
+}
+
 /**
  * Stripe API versions that support flexible billing can expose the current
  * period on the subscription item instead of the subscription root. This app
@@ -222,26 +250,39 @@ export function subscriptionStateUpdatedAt(subscription, now = new Date()) {
   return Number.isFinite(seconds) ? new Date(seconds * 1000).toISOString() : now.toISOString();
 }
 
-export async function billingCustomerFor(user) {
-  const rows = await supabaseAdmin(`billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`);
+export async function billingCustomerFor(
+  user,
+  { mode = billingStripeMode(), admin = supabaseAdmin, post = stripePost } = {}
+) {
+  const rows = await admin(
+    `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter(mode)}&select=stripe_customer_id&limit=1`
+  );
   if (rows?.[0]?.stripe_customer_id) return rows[0].stripe_customer_id;
 
   // Two tabs hitting Checkout before the local mapping exists must not create
   // two Stripe Customers: Stripe's one-subscription guard only works reliably
   // when both sessions use the same Customer. The deterministic key makes the
   // customer creation retry/concurrency safe.
-  const customer = await stripePost(
+  const customer = await post(
     'customers',
     {
       email: user.email,
       'metadata[supabase_user_id]': user.id,
+      'metadata[stripe_mode]': mode,
     },
-    { idempotencyKey: `medical3dlab:customer:${user.id}` }
+    { idempotencyKey: `medical3dlab:customer:${mode}:${billingIdentityHash(user.id)}` }
   );
-  await supabaseAdmin('billing_customers?on_conflict=user_id', {
+  await admin('billing_customers?on_conflict=user_id,stripe_mode', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
-    body: [{ user_id: user.id, stripe_customer_id: customer.id, email: user.email ?? null }],
+    body: [
+      {
+        user_id: user.id,
+        stripe_mode: mode,
+        stripe_customer_id: customer.id,
+        email: user.email ?? null,
+      },
+    ],
   });
   return customer.id;
 }
@@ -296,7 +337,86 @@ export function subscriptionStateFingerprint(subscription) {
     priceId: item?.price?.id ?? null,
     periodEnd: subscriptionPeriodEnd(subscription),
     cancelAtPeriodEnd: Boolean(subscription.cancel_at_period_end),
+    latestInvoiceId:
+      typeof subscription.latest_invoice === 'string'
+        ? subscription.latest_invoice
+        : subscription.latest_invoice?.id ?? null,
   });
+}
+
+/**
+ * Repairs a missed invoice.paid delivery only from Stripe-confirmed evidence.
+ *
+ * An `active` status alone is insufficient because Stripe can keep a lifecycle
+ * active while collection is in progress. We therefore require the current
+ * latest Invoice to be paid and to expose its authoritative `paid_at` clock.
+ * A newer payment failure already stored locally wins through the ordered DB
+ * predicate. Re-reading the Subscription immediately before the write prevents
+ * an older paid Invoice from clearing a newly-created billing cycle.
+ */
+export async function repairRecoveredPaymentState(
+  subscription,
+  {
+    admin = supabaseAdmin,
+    get = stripeGet,
+    retrieveSubscription = subscriptionById,
+    mode = billingStripeMode(),
+    now = new Date(),
+  } = {}
+) {
+  if (!subscription?.id || !['active', 'trialing'].includes(subscription.status)) {
+    return { repaired: false, reason: 'status_not_recovered', subscription };
+  }
+  const latestInvoiceId =
+    typeof subscription.latest_invoice === 'string'
+      ? subscription.latest_invoice
+      : subscription.latest_invoice?.id ?? null;
+  if (!latestInvoiceId) return { repaired: false, reason: 'latest_invoice_missing', subscription };
+
+  const invoice =
+    subscription.latest_invoice && typeof subscription.latest_invoice === 'object'
+      ? subscription.latest_invoice
+      : await get(`invoices/${encodeURIComponent(latestInvoiceId)}`);
+  const paidAtSeconds = invoice?.status_transitions?.paid_at;
+  if (
+    invoice?.id !== latestInvoiceId ||
+    (invoice?.paid !== true && invoice?.status !== 'paid') ||
+    !Number.isFinite(paidAtSeconds)
+  ) {
+    return { repaired: false, reason: 'latest_invoice_not_confirmed_paid', subscription };
+  }
+
+  const verifiedSubscription = await retrieveSubscription(subscription.id);
+  if (!verifiedSubscription?.id) {
+    return { repaired: false, reason: 'subscription_missing', subscription: null };
+  }
+  if (
+    subscriptionStateFingerprint(verifiedSubscription) !==
+    subscriptionStateFingerprint(subscription)
+  ) {
+    return { repaired: false, reason: 'subscription_changed', subscription: verifiedSubscription };
+  }
+
+  const paidAt = new Date(paidAtSeconds * 1000).toISOString();
+  const path = `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}&${stripeModeFilter(mode)}`;
+  const rows = await admin(
+    `${path}&payment_failed_at=not.is.null&or=(payment_state_event_at.is.null,payment_state_event_at.lte.${encodeURIComponent(paidAt)})`,
+    {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: {
+        payment_failed_at: null,
+        grace_until: null,
+        payment_state_event_at: paidAt,
+        updated_at: now.toISOString(),
+      },
+    }
+  );
+  return {
+    repaired: Boolean(rows?.length),
+    reason: rows?.length ? 'payment_recovery_repaired' : 'payment_state_already_newer',
+    subscription: verifiedSubscription,
+  };
 }
 
 /**
@@ -314,13 +434,25 @@ export async function syncSubscriptionUntilCurrent(
 
   let current = initialSubscription;
   for (let pass = 1; pass <= maxPasses; pass += 1) {
-    await sync(current);
+    const result = await sync(current);
+    if (result?.synced === false) {
+      const error = new Error(`Subscription sync failed closed: ${result.reason || 'unknown'}`);
+      error.code = result.reason || 'subscription_sync_failed';
+      throw error;
+    }
     const verified = await retrieveSubscription(current.id);
     if (!verified?.id) {
       // The read before this write may have raced a deletion. Never leave that
       // older snapshot active after Stripe confirms the object is now absent.
       const tombstone = { ...current, status: 'missing_from_stripe' };
-      await sync(tombstone);
+      const tombstoneResult = await sync(tombstone);
+      if (tombstoneResult?.synced === false) {
+        const error = new Error(
+          `Subscription tombstone sync failed closed: ${tombstoneResult.reason || 'unknown'}`
+        );
+        error.code = tombstoneResult.reason || 'subscription_sync_failed';
+        throw error;
+      }
       return { subscription: tombstone, passes: pass };
     }
     if (subscriptionStateFingerprint(verified) === subscriptionStateFingerprint(current)) {
@@ -331,15 +463,18 @@ export async function syncSubscriptionUntilCurrent(
   throw new Error('Stripe subscription state did not stabilise during reconciliation.');
 }
 
-export async function upsertCustomer({ userId, customerId, email = null }) {
+export async function upsertCustomer(
+  { userId, customerId, email = null },
+  { mode = billingStripeMode(), admin = supabaseAdmin } = {}
+) {
   if (!userId || !customerId) return false;
 
   const [byUser, byCustomer] = await Promise.all([
-    supabaseAdmin(
-      `billing_customers?user_id=eq.${encodeURIComponent(userId)}&select=user_id,stripe_customer_id&limit=1`
+    admin(
+      `billing_customers?user_id=eq.${encodeURIComponent(userId)}&${stripeModeFilter(mode)}&select=user_id,stripe_customer_id&limit=1`
     ),
-    supabaseAdmin(
-      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id,stripe_customer_id&limit=1`
+    admin(
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&${stripeModeFilter(mode)}&select=user_id,stripe_customer_id&limit=1`
     ),
   ]);
   const conflict = customerMappingConflict({
@@ -352,25 +487,29 @@ export async function upsertCustomer({ userId, customerId, email = null }) {
   if (conflict) {
     console.error('Refusing conflicting Stripe Customer ownership mapping', {
       conflict,
-      userId,
-      customerId,
-      existingUserCustomerId: byUser?.[0]?.stripe_customer_id ?? null,
-      existingCustomerUserId: byCustomer?.[0]?.user_id ?? null,
+      userRef: billingIdentityHash(userId),
+      customerRef: billingIdentityHash(customerId),
+      existingCustomerRef: byUser?.[0]?.stripe_customer_id
+        ? billingIdentityHash(byUser[0].stripe_customer_id)
+        : null,
+      existingUserRef: byCustomer?.[0]?.user_id
+        ? billingIdentityHash(byCustomer[0].user_id)
+        : null,
     });
     return false;
   }
 
-  await supabaseAdmin('billing_customers?on_conflict=user_id', {
+  await admin('billing_customers?on_conflict=user_id,stripe_mode', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
-    body: [{ user_id: userId, stripe_customer_id: customerId, email }],
+    body: [{ user_id: userId, stripe_mode: mode, stripe_customer_id: customerId, email }],
   });
   return true;
 }
 
 export async function upsertSubscription(
   subscription,
-  { admin = supabaseAdmin, now = new Date() } = {}
+  { admin = supabaseAdmin, now = new Date(), mode = billingStripeMode() } = {}
 ) {
   const customerId =
     typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id;
@@ -384,17 +523,17 @@ export async function upsertSubscription(
   let mappedUserId = null;
   if (customerId) {
     const rows = await admin(
-      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&select=user_id&limit=1`
+      `billing_customers?stripe_customer_id=eq.${encodeURIComponent(customerId)}&${stripeModeFilter(mode)}&select=user_id&limit=1`
     );
     mappedUserId = rows?.[0]?.user_id ?? null;
   }
   const userId = subscriptionUserId(mappedUserId, metadataUserId);
   if (mappedUserId && metadataUserId && mappedUserId !== metadataUserId) {
     console.warn('Subscription metadata user disagrees with durable customer mapping; using mapping', {
-      subscriptionId: subscription.id,
-      customerId,
-      mappedUserId,
-      metadataUserId,
+      subscriptionRef: billingIdentityHash(subscription.id),
+      customerRef: billingIdentityHash(customerId),
+      mappedUserRef: billingIdentityHash(mappedUserId),
+      metadataUserRef: billingIdentityHash(metadataUserId),
     });
   }
 
@@ -404,20 +543,22 @@ export async function upsertSubscription(
   const entitlement = planForPrice(priceId);
   if (!userId || !entitlement) {
     console.error('Ignoring subscription with unknown user/price', {
-      subscriptionId: subscription.id,
-      userId: userId ?? null,
-      priceId,
+      reason: !userId ? 'unknown_user' : 'unsupported_price',
+      subscriptionRef: billingIdentityHash(subscription.id),
+      userRef: userId ? billingIdentityHash(userId) : null,
+      priceRef: priceId ? billingIdentityHash(priceId) : null,
     });
     return { synced: false, reason: !userId ? 'unknown_user' : 'unsupported_price' };
   }
 
   const periodEnd = subscriptionPeriodEnd(subscription);
-  await admin('billing_subscriptions?on_conflict=stripe_subscription_id', {
+  await admin('billing_subscriptions?on_conflict=stripe_subscription_id,stripe_mode', {
     method: 'POST',
     prefer: 'resolution=merge-duplicates,return=minimal',
     body: [
       {
         stripe_subscription_id: subscription.id,
+        stripe_mode: mode,
         user_id: userId,
         stripe_customer_id: customerId,
         entitlement,
@@ -456,7 +597,7 @@ export async function upsertSubscription(
  */
 export async function revokeSubscriptionLocally(
   subscription,
-  { admin = supabaseAdmin, now = new Date() } = {}
+  { admin = supabaseAdmin, now = new Date(), mode = billingStripeMode() } = {}
 ) {
   const subscriptionId = subscription?.id;
   if (!subscriptionId) return { revoked: false, reason: 'missing_subscription' };
@@ -464,21 +605,24 @@ export async function revokeSubscriptionLocally(
   if (ACCESS_SUBSCRIPTION_STATUSES.has(status)) {
     return { revoked: false, reason: 'status_grants_access', status };
   }
-  await admin(`billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`, {
-    method: 'PATCH',
-    prefer: 'return=minimal',
-    body: {
-      status,
-      // `boolean not null` in the schema, and the object this reaches for is
-      // often the thin signed event rather than a full subscription — so a
-      // `?? null` here 400s the PATCH and the revocation this function exists
-      // to guarantee never lands, in exactly the deleted-subscription case it
-      // was written for. False is also the true answer: a subscription that has
-      // ended is not going to cancel at the end of a period.
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
-      updated_at: subscriptionStateUpdatedAt(subscription, now),
-    },
-  });
+  await admin(
+    `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}&${stripeModeFilter(mode)}`,
+    {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: {
+        status,
+        // `boolean not null` in the schema, and the object this reaches for is
+        // often the thin signed event rather than a full subscription — so a
+        // `?? null` here 400s the PATCH and the revocation this function exists
+        // to guarantee never lands, in exactly the deleted-subscription case it
+        // was written for. False is also the true answer: a subscription that has
+        // ended is not going to cancel at the end of a period.
+        cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+        updated_at: subscriptionStateUpdatedAt(subscription, now),
+      },
+    }
+  );
   return { revoked: true, status };
 }
 
@@ -519,7 +663,8 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
   if (!event?.id || !event?.type) return { claimed: false, reason: 'invalid_event' };
 
   const timestamp = now.toISOString();
-  const created = await admin('billing_events?on_conflict=stripe_event_id', {
+  const livemode = Boolean(event.livemode);
+  const created = await admin('billing_events?on_conflict=stripe_event_id,livemode', {
     method: 'POST',
     prefer: 'resolution=ignore-duplicates,return=representation',
     body: [
@@ -527,7 +672,7 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
         stripe_event_id: event.id,
         event_type: event.type,
         stripe_object_id: stripeEventObjectId(event),
-        livemode: Boolean(event.livemode),
+        livemode,
         status: 'processing',
         attempt_count: 1,
         first_received_at: timestamp,
@@ -538,7 +683,7 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
   if (created?.length) return { claimed: true, retry: false, attemptCount: 1 };
 
   const rows = await admin(
-    `billing_events?stripe_event_id=eq.${encodeURIComponent(event.id)}&select=status,attempt_count,last_attempt_at&limit=1`
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(event.id)}&livemode=eq.${livemode}&select=status,attempt_count,last_attempt_at&limit=1`
   );
   const existing = rows?.[0];
   if (!existing) throw new Error('Stripe Event claim disappeared before processing.');
@@ -549,7 +694,10 @@ export async function claimBillingEvent(event, { admin = supabaseAdmin, now = ne
     };
   }
 
-  const filters = [`stripe_event_id=eq.${encodeURIComponent(event.id)}`];
+  const filters = [
+    `stripe_event_id=eq.${encodeURIComponent(event.id)}`,
+    `livemode=eq.${livemode}`,
+  ];
   if (existing.status === 'failed') {
     filters.push('status=eq.failed');
   } else {
@@ -580,6 +728,7 @@ export async function finishBillingEvent(
     attemptCount,
     status = 'processed',
     resultCode = null,
+    livemode,
     admin = supabaseAdmin,
     now = new Date(),
   } = {}
@@ -590,8 +739,11 @@ export async function finishBillingEvent(
   if (!Number.isInteger(attemptCount) || attemptCount < 1) {
     throw new Error('Billing event completion requires a valid attempt count.');
   }
+  if (typeof livemode !== 'boolean') {
+    throw new Error('Billing event completion requires its Stripe mode.');
+  }
   const updated = await admin(
-    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&status=eq.processing&attempt_count=eq.${attemptCount}`,
+    `billing_events?stripe_event_id=eq.${encodeURIComponent(eventId)}&livemode=eq.${livemode}&status=eq.processing&attempt_count=eq.${attemptCount}`,
     {
       method: 'PATCH',
       prefer: 'return=representation',
@@ -608,13 +760,16 @@ export async function finishBillingEvent(
 /**
  * Synchronises one Stripe subscription into fail-closed local access state.
  */
-export async function syncSubscription(subscription, { admin = supabaseAdmin } = {}) {
+export async function syncSubscription(
+  subscription,
+  { admin = supabaseAdmin, mode = billingStripeMode() } = {}
+) {
   if (!subscription?.id) return { synced: false, reason: 'missing_subscription' };
   const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
   if (!planForPrice(priceId)) {
     await admin(
-      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}`,
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscription.id)}&${stripeModeFilter(mode)}`,
       {
         method: 'PATCH',
         prefer: 'return=minimal',
@@ -628,7 +783,7 @@ export async function syncSubscription(subscription, { admin = supabaseAdmin } =
     return { synced: false, reason: 'unsupported_price' };
   }
 
-  return upsertSubscription(subscription, { admin });
+  return upsertSubscription(subscription, { admin, mode });
 }
 
 export function missingRemoteSubscriptionIds(localRows, remoteSubscriptions) {
@@ -651,22 +806,31 @@ export async function reconcileBillingForUser(
     admin = supabaseAdmin,
     listSubscriptions = subscriptionsForCustomer,
     retrieveSubscription = subscriptionById,
-    sync = (subscription) => syncSubscription(subscription, { admin }),
+    retrieveInvoice = stripeGet,
+    sync = null,
     now = new Date(),
+    mode = billingStripeMode(),
   } = {}
 ) {
+  const syncCurrent = sync ?? ((subscription) => syncSubscription(subscription, { admin, mode }));
   const customerRows = await admin(
-    `billing_customers?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`
+    `billing_customers?user_id=eq.${encodeURIComponent(userId)}&${stripeModeFilter(mode)}&select=stripe_customer_id&limit=1`
   );
   const customerId = customerRows?.[0]?.stripe_customer_id ?? null;
   if (!customerId) return { reconciled: false, reason: 'no_customer' };
 
   const listedSubscriptions = await listSubscriptions(customerId);
   const localRows = await admin(
-    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id`
+    `billing_subscriptions?user_id=eq.${encodeURIComponent(userId)}&${stripeModeFilter(mode)}&status=in.(incomplete,trialing,active,past_due,unpaid,paused)&select=stripe_subscription_id,payment_failed_at`
   );
   const localNonterminalIds = new Set(
     (localRows ?? []).map((row) => row?.stripe_subscription_id).filter(Boolean)
+  );
+  const localPaymentFailureIds = new Set(
+    (localRows ?? [])
+      .filter((row) => row?.payment_failed_at)
+      .map((row) => row?.stripe_subscription_id)
+      .filter(Boolean)
   );
   const relevantSubscriptions = listedSubscriptions.filter(
     (subscription) =>
@@ -683,9 +847,37 @@ export async function reconcileBillingForUser(
     if (!currentSubscription?.id) continue;
     const converged = await syncSubscriptionUntilCurrent(currentSubscription, {
       retrieveSubscription,
-      sync,
+      sync: syncCurrent,
     });
-    if (converged.subscription?.id) remoteSubscriptions.push(converged.subscription);
+    let latestSubscription = converged.subscription;
+    if (latestSubscription?.id && localPaymentFailureIds.has(latestSubscription.id)) {
+      for (let pass = 0; pass < 3; pass += 1) {
+        const recovery = await repairRecoveredPaymentState(latestSubscription, {
+          admin,
+          get: retrieveInvoice,
+          retrieveSubscription,
+          mode,
+          now,
+        });
+        if (recovery.reason === 'subscription_missing') {
+          latestSubscription = { ...latestSubscription, status: 'missing_from_stripe' };
+          await syncCurrent(latestSubscription);
+          break;
+        }
+        if (recovery.reason !== 'subscription_changed') break;
+        const refreshed = await syncSubscriptionUntilCurrent(recovery.subscription, {
+          retrieveSubscription,
+          sync: syncCurrent,
+        });
+        latestSubscription = refreshed.subscription;
+        if (pass === 2) {
+          const error = new Error('Stripe payment recovery state did not stabilise.');
+          error.code = 'payment_recovery_unstable';
+          throw error;
+        }
+      }
+    }
+    if (latestSubscription?.id) remoteSubscriptions.push(latestSubscription);
   }
 
   const missingCandidates = missingRemoteSubscriptionIds(localRows, remoteSubscriptions);
@@ -697,12 +889,12 @@ export async function reconcileBillingForUser(
     if (currentSubscription?.id) {
       await syncSubscriptionUntilCurrent(currentSubscription, {
         retrieveSubscription,
-        sync,
+        sync: syncCurrent,
       });
       continue;
     }
     await admin(
-      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}`,
+      `billing_subscriptions?stripe_subscription_id=eq.${encodeURIComponent(subscriptionId)}&${stripeModeFilter(mode)}`,
       {
         method: 'PATCH',
         prefer: 'return=minimal',
@@ -715,11 +907,14 @@ export async function reconcileBillingForUser(
     missingCount += 1;
   }
 
-  await admin(`billing_customers?user_id=eq.${encodeURIComponent(userId)}`, {
-    method: 'PATCH',
-    prefer: 'return=minimal',
-    body: { last_reconciled_at: now.toISOString(), updated_at: now.toISOString() },
-  });
+  await admin(
+    `billing_customers?user_id=eq.${encodeURIComponent(userId)}&${stripeModeFilter(mode)}`,
+    {
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      body: { last_reconciled_at: now.toISOString(), updated_at: now.toISOString() },
+    }
+  );
   return {
     reconciled: true,
     remoteCount: listedSubscriptions.length,

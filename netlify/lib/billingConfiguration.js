@@ -10,10 +10,30 @@ const hasAny = (environment, ...names) =>
 const BROWSER_KEY_VARIABLES = Object.freeze(['SUPABASE_PUBLISHABLE_KEY', 'SUPABASE_ANON_KEY']);
 const SERVER_KEY_VARIABLES = Object.freeze(['SUPABASE_SECRET_KEY', 'SUPABASE_SERVICE_ROLE_KEY']);
 
-function stripeMode(key) {
+export function stripeMode(key) {
   if (/^(?:rk|sk)_test_/.test(key ?? '')) return 'test';
   if (/^(?:rk|sk)_live_/.test(key ?? '')) return 'live';
   return 'unknown';
+}
+
+/** The mode every database lookup must be scoped to. */
+export function billingStripeMode(environment = process.env) {
+  const mode = stripeMode(environment.STRIPE_SECRET_KEY);
+  if (mode === 'unknown') throw new Error('Missing server configuration: valid STRIPE_SECRET_KEY');
+  return mode;
+}
+
+/** Signed events must still belong to the key namespace serving this deploy. */
+export function stripeEventMatchesDeployment(event, environment = process.env) {
+  const mode = billingStripeMode(environment);
+  return Boolean(event?.livemode) === (mode === 'live');
+}
+
+/** Fixed grace from the first failed payment; retries never extend it. */
+export function billingPastDueGraceDays(environment = process.env) {
+  const parsed = Number.parseInt(environment.BILLING_PAST_DUE_GRACE_DAYS ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return 7;
+  return Math.min(parsed, 30);
 }
 
 export function stripeDeploymentSafety(

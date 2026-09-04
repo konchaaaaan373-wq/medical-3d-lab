@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
-import { billingConfiguration } from './billingConfiguration.js';
-import { reconcileBillingForUser, supabaseAdmin } from './billing.js';
+import { billingConfiguration, billingStripeMode } from './billingConfiguration.js';
+import { reconcileBillingForUser, stripeModeFilter, supabaseAdmin } from './billing.js';
+import { cachedStripeCommerceReadiness } from './billingReadiness.js';
 
 const DEFAULT_BATCH_SIZE = 3;
 const MAX_BATCH_SIZE = 10;
@@ -30,15 +31,22 @@ export function reconciliationErrorCode(error) {
   const message = String(error?.message ?? '').toLowerCase();
   if (status === 401 || status === 403) return 'stripe_authorization';
   if (status === 429 || code.includes('rate_limit')) return 'stripe_rate_limit';
-  if (status >= 500 || message.includes('stripe 5')) return 'stripe_unavailable';
+  if (
+    status >= 500 ||
+    message.includes('stripe 5') ||
+    error?.name === 'TimeoutError' ||
+    message.includes('timed out')
+  ) return 'stripe_unavailable';
+  if (code === 'unsupported_price') return 'unsupported_price';
+  if (['unknown_user', 'missing_local_subscription'].includes(code)) return 'billing_mapping';
   if (message.includes('missing server configuration')) return 'configuration';
   if (message.includes('supabase')) return 'supabase';
   if (message.includes('stabilis')) return 'stripe_state_churn';
   return 'unknown';
 }
 
-async function finishRun(admin, runId, summary, now) {
-  await admin(`billing_reconciliation_runs?run_id=eq.${encodeURIComponent(runId)}`, {
+async function finishRun(admin, runId, mode, summary, now) {
+  await admin(`billing_reconciliation_runs?run_id=eq.${encodeURIComponent(runId)}&${stripeModeFilter(mode)}`, {
     method: 'PATCH',
     prefer: 'return=minimal',
     body: {
@@ -52,10 +60,10 @@ async function finishRun(admin, runId, summary, now) {
   });
 }
 
-async function retireAbandonedRuns(admin, now) {
+async function retireAbandonedRuns(admin, mode, now) {
   const staleBefore = encodeURIComponent(new Date(now.getTime() - RUN_STALE_MS).toISOString());
   await admin(
-    `billing_reconciliation_runs?status=eq.running&started_at=lte.${staleBefore}`,
+    `billing_reconciliation_runs?${stripeModeFilter(mode)}&status=eq.running&started_at=lte.${staleBefore}`,
     {
       method: 'PATCH',
       prefer: 'return=minimal',
@@ -64,14 +72,14 @@ async function retireAbandonedRuns(admin, now) {
   );
 }
 
-async function pruneCompletedOperations(admin, now) {
+async function pruneCompletedOperations(admin, mode, now) {
   const before = encodeURIComponent(new Date(now.getTime() - RETENTION_MS).toISOString());
   await Promise.all([
-    admin(`billing_reconciliation_runs?completed_at=lt.${before}`, {
+    admin(`billing_reconciliation_runs?${stripeModeFilter(mode)}&completed_at=lt.${before}`, {
       method: 'DELETE',
       prefer: 'return=minimal',
     }),
-    admin(`billing_events?status=in.(processed,ignored)&processed_at=lt.${before}`, {
+    admin(`billing_events?livemode=eq.${mode === 'live'}&status=in.(processed,ignored)&processed_at=lt.${before}`, {
       method: 'DELETE',
       prefer: 'return=minimal',
     }),
@@ -85,21 +93,23 @@ async function pruneCompletedOperations(admin, now) {
  */
 export async function runBillingReconciliationBatch({
   admin = supabaseAdmin,
-  reconcile = (userId) => reconcileBillingForUser(userId, { admin }),
+  reconcile = null,
+  mode = billingStripeMode(),
   now = new Date(),
   clock = () => Date.now(),
   batchSize = reconciliationBatchSize(),
   timeBudgetMs = DEFAULT_TIME_BUDGET_MS,
   runId = crypto.randomUUID(),
 } = {}) {
+  const reconcileCustomer = reconcile ?? ((userId) => reconcileBillingForUser(userId, { admin, mode }));
   const startedAt = clock();
   // A serverless worker can be killed before `finishRun`. The next invocation
   // retires those abandoned rows so a later healthy run can restore health
   // without a manual database edit.
-  await retireAbandonedRuns(admin, now);
+  await retireAbandonedRuns(admin, mode, now);
   const selected =
     (await admin(
-      `billing_customers?select=user_id,reconcile_failure_count&order=last_reconcile_attempt_at.asc.nullsfirst,user_id.asc&limit=${batchSize}`
+      `billing_customers?${stripeModeFilter(mode)}&select=user_id,reconcile_failure_count&order=last_reconcile_attempt_at.asc.nullsfirst,user_id.asc&limit=${batchSize}`
     )) ?? [];
 
   await admin('billing_reconciliation_runs', {
@@ -108,6 +118,7 @@ export async function runBillingReconciliationBatch({
     body: [
       {
         run_id: runId,
+        stripe_mode: mode,
         source: 'scheduled',
         status: 'running',
         selected_count: selected.length,
@@ -124,16 +135,16 @@ export async function runBillingReconciliationBatch({
     if (clock() - startedAt >= timeBudgetMs) break;
     processedCount += 1;
     const attemptAt = new Date(now.getTime() + processedCount - 1).toISOString();
-    await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}`, {
+    await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}&${stripeModeFilter(mode)}`, {
       method: 'PATCH',
       prefer: 'return=minimal',
       body: { last_reconcile_attempt_at: attemptAt },
     });
 
     try {
-      const result = await reconcile(customer.user_id);
+      const result = await reconcileCustomer(customer.user_id);
       if (!result?.reconciled) throw new Error('Billing customer could not be reconciled.');
-      await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}`, {
+      await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}&${stripeModeFilter(mode)}`, {
         method: 'PATCH',
         prefer: 'return=minimal',
         body: { reconcile_failure_count: 0, last_reconcile_error_code: null },
@@ -141,7 +152,7 @@ export async function runBillingReconciliationBatch({
       succeededCount += 1;
     } catch (error) {
       failedCount += 1;
-      await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}`, {
+      await admin(`billing_customers?user_id=eq.${encodeURIComponent(customer.user_id)}&${stripeModeFilter(mode)}`, {
         method: 'PATCH',
         prefer: 'return=minimal',
         body: {
@@ -161,20 +172,21 @@ export async function runBillingReconciliationBatch({
     deferredCount,
   };
   try {
-    await pruneCompletedOperations(admin, now);
+    await pruneCompletedOperations(admin, mode, now);
   } catch {
     // Reconciliation is still useful, but retention failure must be visible to
     // the run ledger and health check instead of being silently reported green.
     summary.status = 'partial';
     summary.maintenanceFailed = true;
   }
-  await finishRun(admin, runId, summary, new Date(now.getTime() + Math.max(1, clock() - startedAt)));
+  await finishRun(admin, runId, mode, summary, new Date(now.getTime() + Math.max(1, clock() - startedAt)));
   return Object.freeze(summary);
 }
 
 /** Returns only operational booleans/timestamps; no customer or Stripe IDs. */
 export async function billingOperationsHealth({
   admin = supabaseAdmin,
+  checkStripe = cachedStripeCommerceReadiness,
   environment = process.env,
   deployContext = environment.CONTEXT ?? '',
   now = new Date(),
@@ -183,19 +195,22 @@ export async function billingOperationsHealth({
   if (!configuration.configured) {
     return { status: 'unconfigured', mode: configuration.mode, checks: { configuration: false } };
   }
+  const mode = billingStripeMode(environment);
+  const livemode = mode === 'live';
+  const stripeReadiness = await checkStripe({ environment, now });
 
   const staleRunBefore = encodeURIComponent(
     new Date(now.getTime() - RUN_STALE_MS).toISOString()
   );
   const [runs, staleRuns, leastRecentlyReconciled] = await Promise.all([
     admin(
-      'billing_reconciliation_runs?status=neq.running&select=status,started_at,completed_at&order=started_at.desc&limit=1'
+      `billing_reconciliation_runs?${stripeModeFilter(mode)}&status=neq.running&select=status,started_at,completed_at&order=started_at.desc&limit=1`
     ),
     admin(
-      `billing_reconciliation_runs?status=eq.running&started_at=lte.${staleRunBefore}&select=run_id&limit=1`
+      `billing_reconciliation_runs?${stripeModeFilter(mode)}&status=eq.running&started_at=lte.${staleRunBefore}&select=run_id&limit=1`
     ),
     admin(
-      'billing_customers?select=last_reconciled_at&order=last_reconciled_at.asc.nullsfirst&limit=1'
+      `billing_customers?${stripeModeFilter(mode)}&select=last_reconciled_at&order=last_reconciled_at.asc.nullsfirst&limit=1`
     ),
   ]);
   const latest = runs?.[0] ?? null;
@@ -226,18 +241,18 @@ export async function billingOperationsHealth({
     failedCustomers,
   ] = await Promise.all([
     admin(
-      `billing_events?status=eq.failed&event_type=in.(${reconcilableEvents})&last_attempt_at=gt.${eventAfter}&select=stripe_event_id&limit=1`
+      `billing_events?livemode=eq.${livemode}&status=eq.failed&event_type=in.(${reconcilableEvents})&last_attempt_at=gt.${eventAfter}&select=stripe_event_id&limit=1`
     ),
     admin(
-      `billing_events?status=eq.processing&event_type=in.(${reconcilableEvents})&last_attempt_at=gt.${eventAfter}&last_attempt_at=lte.${staleClaimBefore}&select=stripe_event_id&limit=1`
+      `billing_events?livemode=eq.${livemode}&status=eq.processing&event_type=in.(${reconcilableEvents})&last_attempt_at=gt.${eventAfter}&last_attempt_at=lte.${staleClaimBefore}&select=stripe_event_id&limit=1`
     ),
     admin(
-      `billing_events?status=eq.failed&event_type=not.in.(${reconcilableEvents})&select=stripe_event_id&limit=1`
+      `billing_events?livemode=eq.${livemode}&status=eq.failed&event_type=not.in.(${reconcilableEvents})&select=stripe_event_id&limit=1`
     ),
     admin(
-      `billing_events?status=eq.processing&event_type=not.in.(${reconcilableEvents})&last_attempt_at=lte.${staleClaimBefore}&select=stripe_event_id&limit=1`
+      `billing_events?livemode=eq.${livemode}&status=eq.processing&event_type=not.in.(${reconcilableEvents})&last_attempt_at=lte.${staleClaimBefore}&select=stripe_event_id&limit=1`
     ),
-    admin('billing_customers?reconcile_failure_count=gt.0&select=user_id&limit=1'),
+    admin(`billing_customers?${stripeModeFilter(mode)}&reconcile_failure_count=gt.0&select=user_id&limit=1`),
   ]);
 
   const webhookDelivery = ![
@@ -247,15 +262,27 @@ export async function billingOperationsHealth({
     staleNonReconcilableClaims,
   ].some((rows) => rows?.length);
   const customerReconciliation = !failedCustomers?.length;
-  const healthy = scheduledReconciliation && webhookDelivery && customerReconciliation;
+  const healthy =
+    stripeReadiness.ready &&
+    scheduledReconciliation &&
+    webhookDelivery &&
+    customerReconciliation;
 
   return {
-    status: healthy ? 'ok' : latest || staleRuns?.length ? 'degraded' : 'pending',
+    status: healthy
+      ? 'ok'
+      : !stripeReadiness.ready || latest || staleRuns?.length
+        ? 'degraded'
+        : 'pending',
     mode: configuration.mode,
     checkedAt: now.toISOString(),
     lastCompletedAt: latest?.completed_at ?? null,
     checks: {
       configuration: true,
+      stripeResources: stripeReadiness.ready,
+      stripePrices: stripeReadiness.checks.prices,
+      stripeProducts: stripeReadiness.checks.products,
+      stripePortal: stripeReadiness.checks.portal,
       scheduledReconciliation,
       webhookDelivery,
       customerReconciliation,
