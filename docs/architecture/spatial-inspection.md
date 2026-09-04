@@ -115,6 +115,42 @@ bone/muscle taxonomy. A control is justified only when changing it helps answer
 the scene's central question. The scene must specify a safe minimum opacity and
 compose the result with Story/Reel presentation state in one resolver.
 
+## Short windows: what does not fit, and what was tried
+
+The panel is a rail item. On a tall window the rail holds it and the read-outs
+together. On a short one it cannot, and this is a measured limit rather than a
+defect to tune away.
+
+| Window | Band between navigation and console | Panel wants |
+| --- | --- | --- |
+| 932x430 · circulation | 103px | 355px |
+| 932x430 · brain atlas | 179px | 419px |
+| 320x568 | 199px | 417px |
+| 390x844 | 514px | 417px — fits |
+
+The console owns the bottom of the frame and spans its full width, so the band
+is all there is. Two redesigns were built and measured against it, and both
+were worse than scrolling:
+
+- **Promoting the panel to a fixed overlay in the band.** Laying its sections
+  out side by side did cut what it wants from 419px to 219px, but 219 does not
+  fit in 103 either, and the panel then became an 81px strip of translucent
+  chrome sitting over the title card and the read-outs. It read as a rendering
+  fault.
+- **Compacting it in place.** Tighter sections and denser grids recover about
+  30px of a 250px shortfall. It does not change the outcome and costs legibility
+  on the window that needed it most.
+
+What ships instead: the panel keeps a usable floor, scrolls inside itself, and
+fades its last pixels while content remains below. Every control is reachable —
+the viewport check measures the panel opened and reports anything stranded — and
+what sits past the fold is recorded rather than hidden.
+
+Making this genuinely fit is a product decision, not a layout trick: it means
+choosing what the inspection surface shows on a 430px-tall window, in what
+order, at what density. Do not reintroduce a fixed overlay or a tuned constant
+without measuring the band on the scene being changed.
+
 ## Reset semantics
 
 “Reset” is intentionally not one operation:
