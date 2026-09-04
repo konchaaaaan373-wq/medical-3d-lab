@@ -79,6 +79,17 @@ test('paid content: authored guides are no longer imported into the browser acce
   );
 });
 
+test('paid content: logout invalidates every in-flight entitlement refresh', () => {
+  const source = readFileSync(new URL('../src/access/AccessManager.js', import.meta.url), 'utf8');
+  const authSource = readFileSync(new URL('../src/access/auth.js', import.meta.url), 'utf8');
+  assert.match(source, /const generation = \+\+refreshGeneration/);
+  assert.match(source, /if \(generation !== refreshGeneration\) return \{ reconciliationSucceeded: false, stale: true \};/);
+  assert.match(source, /function invalidateSessionState\(\) \{[\s\S]*refreshGeneration \+= 1;/);
+  assert.match(source, /signOut\(\);\s*invalidateSessionState\(\);\s*notify\(\);/);
+  assert.match(authSource, /function store\(session\) \{[\s\S]*sessionGeneration \+= 1;/);
+  assert.match(authSource, /const generation = sessionGeneration;[\s\S]*if \(generation !== sessionGeneration\) return null;[\s\S]*store\(next\);/);
+});
+
 function response(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
