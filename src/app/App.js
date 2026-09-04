@@ -15,6 +15,7 @@ import {
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
 import { prefersReducedMotion } from '../utils/motion.js';
+import { markScrollable } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
@@ -565,6 +566,19 @@ export async function createApp({ stage, ui }) {
     },
   });
 
+  // The rail is a shared scroll box: on a short or narrow window its contents
+  // genuinely run past its edge, and a clipped panel reads as one that simply
+  // ends. Both it and the display panel say when there is more below.
+  const rail = el('div', { class: 'rail' }, [
+    inspectionPanel.element,
+    anatomyInfo?.element,
+    legend.element,
+    metricsPanel?.element,
+    el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+  ]);
+  markScrollable(rail);
+  markScrollable(inspectionPanel.element);
+
   ui.append(
     el('div', { class: 'top-bar' }, [
       // The model panels go on the left, where there is room for them: the rail
@@ -579,13 +593,7 @@ export async function createApp({ stage, ui }) {
         controlsInConsole ? null : modelControls?.element,
         scopePanel?.element,
       ]),
-      el('div', { class: 'rail' }, [
-        inspectionPanel.element,
-        anatomyInfo?.element,
-        legend.element,
-        metricsPanel?.element,
-        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
-      ]),
+      rail,
     ]),
     el('div', { class: 'panel console' }, [
       stageReadout.element,

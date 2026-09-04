@@ -3355,3 +3355,12 @@
   border-color: rgba(150, 220, 255, 0.42);
   background: rgba(150, 220, 255, 0.12);
 }
+
+/* A scrolling region that is clipped looks exactly like one that ends there.
+   `markScrollable` sets this while content remains below the fold, so the last
+   few pixels fade instead of being cut flat. It costs no layout space, which
+   matters most on the short windows where the clipping happens. */
+.rail.has-more,
+.inspection-panel.has-more {
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%);
+}

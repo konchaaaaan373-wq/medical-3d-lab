@@ -213,3 +213,29 @@ test('the panel never outgrows the rail that clips it', () => {
   const rail = controls.slice(controls.indexOf('.rail {'), controls.indexOf('.rail::-webkit-scrollbar'));
   assert.match(rail, /overflow-x:\s*hidden/, 'the constraint above is what makes this clip safe');
 });
+
+test('the viewport check tells a scrolled-out control from a stranded one', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+  const clip = check.slice(check.indexOf('const clippedOutOf'), check.indexOf('const blockedBy'));
+
+  // The distinction the panel bug turned on: a region that scrolls on the
+  // escaping axis can be scrolled to the control, a region that hides that axis
+  // never can. Reading both the same way is what let a phone-sized panel ship
+  // with half its controls untappable.
+  assert.match(clip, /scrollsX = \/auto\|scroll\/\.test\(style\.overflowX\)/);
+  assert.match(clip, /scrollsY = \/auto\|scroll\/\.test\(style\.overflowY\)/);
+  assert.match(clip, /stuck: \(outX && !scrollsX\) \|\| \(outY && !scrollsY\)/);
+
+  // And overflow only clips what an ancestor is the containing block for, or
+  // the fixed navigation reads as unreachable on every short viewport.
+  assert.match(clip, /if \(position === 'fixed'\) return null;/);
+  assert.match(check, /const createsContainingBlock/);
+
+  // A stranded control fails; a scrolled-out one is recorded and does not.
+  assert.match(check, /bucket: 'covered',\s*\n\s*text: `\$\{describe\(element\)\} ← clipped/);
+  assert.match(check, /bucket: 'scrolled',/);
+  assert.match(check, /control\(s\) scrolled out of a panel/);
+
+  // The panel ships closed, so it has to be opened or none of it is measured.
+  assert.match(check, /aria-controls'\) === 'spatial-inspection-panel'/);
+});

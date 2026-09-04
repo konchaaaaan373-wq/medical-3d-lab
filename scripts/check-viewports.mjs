@@ -262,17 +262,92 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
    * usually lands on. A hit on an ancestor is not — that means something was
    * painted over the control.
    */
+  /**
+   * Is the control cut out of an ancestor's overflow box, and can it be reached?
+   *
+   * A control can be laid out correctly, be the right size, and still have been
+   * clipped out of a scrolling region's visible box. `elementFromPoint` at its
+   * centre then answers with whatever is painted there instead — sometimes that
+   * ancestor, but just as often a sibling subtree such as the 3D canvas, which
+   * reads as occlusion and is not.
+   *
+   * The distinction that decides whether it is a defect is the axis's own
+   * `overflow`. A region that scrolls on the escaping axis can be scrolled to
+   * the control, so it is reachable and merely undiscoverable. A region that
+   * hides that axis never can: the control is painted, measured, and
+   * permanently untouchable. Both used to be read the same way, which is how a
+   * phone-sized panel shipped with half its controls untappable while this
+   * check reported the surface clean.
+   */
+  const createsContainingBlock = (style) =>
+    style.position !== 'static' ||
+    style.transform !== 'none' ||
+    style.filter !== 'none' ||
+    style.perspective !== 'none' ||
+    /transform|filter|perspective/.test(style.willChange) ||
+    /paint|layout|strict|content/.test(style.contain);
+
+  const clippedOutOf = (element, rect) => {
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // Overflow only clips descendants an ancestor is the containing block for.
+    // A fixed bar is anchored to the viewport, so the column it happens to sit
+    // inside in the DOM does not clip it — reading it as clipped reported the
+    // whole global navigation as unreachable on three viewports.
+    let position = getComputedStyle(element).position;
+    if (position === 'fixed') return null;
+    for (let node = element.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      const isContainingBlock = createsContainingBlock(style);
+      if (position === 'absolute' && !isContainingBlock) {
+        if (style.position === 'fixed') return null;
+        continue;
+      }
+      if (isContainingBlock) position = 'static';
+      const clipsX = style.overflowX !== 'visible';
+      const clipsY = style.overflowY !== 'visible';
+      if (!clipsX && !clipsY) {
+        if (style.position === 'fixed') return null;
+        continue;
+      }
+      const box = node.getBoundingClientRect();
+      const outX = clipsX && (cx < box.left - 1 || cx > box.right + 1);
+      const outY = clipsY && (cy < box.top - 1 || cy > box.bottom + 1);
+      if (!outX && !outY) {
+        if (style.position === 'fixed') return null;
+        continue;
+      }
+      const scrollsX = /auto|scroll/.test(style.overflowX) && node.scrollWidth > node.clientWidth + 1;
+      const scrollsY = /auto|scroll/.test(style.overflowY) && node.scrollHeight > node.clientHeight + 1;
+      return {
+        node,
+        axis: outX ? 'horizontally' : 'vertically',
+        stuck: (outX && !scrollsX) || (outY && !scrollsY),
+      };
+    }
+    return null;
+  };
+
   const blockedBy = (element, rect) => {
     const x = Math.round(rect.left + rect.width / 2);
     const y = Math.round(rect.top + rect.height / 2);
     if (x < 0 || y < 0 || x >= doc.clientWidth || y >= doc.clientHeight) return null;
+    // Clipping is answered before occlusion. A control cut out of a scrolling
+    // region is not "covered by" whatever the point happens to land on.
+    const clipped = clippedOutOf(element, rect);
+    if (clipped) {
+      return clipped.stuck
+        ? {
+            bucket: 'covered',
+            text: `${describe(element)} ← clipped ${clipped.axis} out of ${describe(clipped.node)}, which cannot scroll to it`,
+          }
+        : {
+            bucket: 'scrolled',
+            text: `${describe(element)} ← scrolled out of ${describe(clipped.node)}`,
+          };
+    }
     const hit = document.elementFromPoint(x, y);
     if (!hit || hit === element || element.contains(hit)) return null;
-    // An ancestor is not something painted *over* a control. It is what
-    // `elementFromPoint` returns when the control has been clipped out of view
-    // by that ancestor's own `overflow` — which several panels in this product
-    // have — and reporting it as occlusion would be a false failure on a
-    // scrolling region behaving exactly as designed.
     if (hit.contains(element)) return null;
     // Something a pointer passes straight through is not covering anything.
     if (getComputedStyle(hit).pointerEvents === 'none') return null;
@@ -284,10 +359,10 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
         (selector) => element.matches(selector) || element.closest(selector),
       );
       return forbidden
-        ? { fatal: true, text: `${describe(element)} ← ${overlay.selector} is covering the console` }
-        : { fatal: false, text: `${describe(element)} ← ${overlay.selector}` };
+        ? { bucket: 'covered', text: `${describe(element)} ← ${overlay.selector} is covering the console` }
+        : { bucket: 'transient', text: `${describe(element)} ← ${overlay.selector}` };
     }
-    return { fatal: true, text: `${describe(element)} ← covered by ${describe(hit)}` };
+    return { bucket: 'covered', text: `${describe(element)} ← covered by ${describe(hit)}` };
   };
 
   const belowFloor = [];
@@ -295,6 +370,7 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const unreachable = [];
   const covered = [];
   const coveredByTransient = [];
+  const scrolledOut = [];
   for (const element of document.querySelectorAll(INTERACTIVE)) {
     if (!visible(element)) continue;
     if (exemptions.some((selector) => element.closest(selector))) continue;
@@ -303,7 +379,10 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     }
     const rect = element.getBoundingClientRect();
     const blocker = blockedBy(element, rect);
-    if (blocker) (blocker.fatal ? covered : coveredByTransient).push(blocker.text);
+    if (blocker) {
+      const bucket = { covered, transient: coveredByTransient, scrolled: scrolledOut }[blocker.bucket];
+      bucket.push(blocker.text);
+    }
     if (inlineLinks && isInlineLink(element)) continue;
     const smallest = Math.min(rect.width, rect.height);
     const size = `${describe(element)} → ${Math.round(rect.width)}×${Math.round(rect.height)}px`;
@@ -319,6 +398,7 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     unreachable,
     covered,
     coveredByTransient,
+    scrolledOut,
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
@@ -488,6 +568,24 @@ try {
 
         const kind = surface.needsRenderer ? 'scene' : 'reading';
 
+        // The inspection surface ships closed, so nothing inside it was ever
+        // measured: its controls were untappable on a phone for a whole
+        // release while this check called the scene clean. A viewer who opens
+        // it is looking at the same surface, so measure it opened too, and walk its
+        // controls with the keyboard like any others.
+        if (surface.needsRenderer) {
+          const opened = await page.evaluate(() => {
+            const button = [...document.querySelectorAll('.controls button')].find(
+              (candidate) => candidate.getAttribute('aria-controls') === 'spatial-inspection-panel',
+            );
+            if (!button) return false;
+            if (button.getAttribute('aria-expanded') !== 'true') button.click();
+            return true;
+          });
+          if (!opened) notes.push(`${where}: no inspection control to open`);
+          await page.waitForTimeout(250);
+        }
+
         // The keyboard walk runs first, because it marks each stop in the DOM
         // and the measurement reads those marks to name what the ring missed.
         let tab = null;
@@ -584,6 +682,15 @@ try {
           notes.push(
             `${where}: ${measured.coveredByTransient.length} control(s) under a one-time overlay` +
               ` (${measured.coveredByTransient.slice(0, 3).join('; ')})`,
+          );
+        }
+        if (measured.scrolledOut.length) {
+          // Reachable, but only by scrolling a region whose scrollability the
+          // viewer has to discover. Worth seeing in the report; not a failure,
+          // because the control can be scrolled to.
+          notes.push(
+            `${where}: ${measured.scrolledOut.length} control(s) scrolled out of a panel` +
+              ` (${measured.scrolledOut.slice(0, 3).join('; ')})`,
           );
         }
         if (fullTabWalk && measured.unreachable.length) {
