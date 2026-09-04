@@ -8,6 +8,7 @@ import {
   isSubscriptionEvent,
   missingRemoteSubscriptionIds,
   reconcileBillingForUser,
+  repairRecoveredPaymentState,
   stripeEventObjectId,
   subscriptionById,
   subscriptionStateUpdatedAt,
@@ -124,6 +125,7 @@ test('billing lifecycle: only the worker that owns an attempt can finish it', as
   };
   const finished = await finishBillingEvent(EVENT.id, {
     attemptCount: 1,
+    livemode: false,
     admin,
     now: new Date('2026-09-01T12:00:00.000Z'),
   });
@@ -151,6 +153,7 @@ test('billing lifecycle: reconciliation fails closed when a live local row vanis
     return [];
   };
   const result = await reconcileBillingForUser('user_123', {
+    mode: 'test',
     admin,
     listSubscriptions: async (customerId) => {
       assert.equal(customerId, 'cus_123');
@@ -178,6 +181,113 @@ test('billing lifecycle: reconciliation fails closed when a live local row vanis
       (call) => call.path.includes('billing_customers?user_id=eq.user_123') && call.options.method === 'PATCH'
     )
   );
+});
+
+test('billing lifecycle: reconciliation repairs a missed paid event from the current latest Invoice', async () => {
+  const calls = [];
+  const currentSubscription = {
+    id: 'sub_recovered',
+    customer: 'cus_123',
+    status: 'active',
+    latest_invoice: 'in_recovered',
+    items: { data: [{ price: { id: 'price_complete' } }] },
+  };
+  const admin = async (path, options = {}) => {
+    calls.push({ path, options });
+    if (path.includes('billing_customers?user_id=eq.') && !options.method) {
+      return [{ stripe_customer_id: 'cus_123' }];
+    }
+    if (path.includes('billing_subscriptions?user_id=eq.') && !options.method) {
+      return [{
+        stripe_subscription_id: 'sub_recovered',
+        payment_failed_at: '2026-09-01T00:00:00.000Z',
+      }];
+    }
+    if (path.includes('payment_failed_at=not.is.null') && options.method === 'PATCH') return [{}];
+    return [];
+  };
+
+  const result = await reconcileBillingForUser('user_123', {
+    mode: 'test',
+    admin,
+    listSubscriptions: async () => [currentSubscription],
+    retrieveSubscription: async () => currentSubscription,
+    retrieveInvoice: async (path) => {
+      assert.equal(path, 'invoices/in_recovered');
+      return {
+        id: 'in_recovered',
+        status: 'paid',
+        paid: true,
+        status_transitions: {
+          paid_at: Date.parse('2026-09-03T00:00:00.000Z') / 1000,
+        },
+      };
+    },
+    sync: async () => ({ synced: true }),
+    now: new Date('2026-09-04T00:00:00.000Z'),
+  });
+
+  assert.equal(result.reconciled, true);
+  const repair = calls.find((call) => call.path.includes('payment_failed_at=not.is.null'));
+  assert.ok(repair);
+  assert.match(repair.path, /stripe_mode=eq\.test/);
+  assert.match(repair.path, /payment_state_event_at\.lte\.2026-09-03/);
+  assert.equal(repair.options.body.payment_failed_at, null);
+  assert.equal(repair.options.body.grace_until, null);
+  assert.equal(repair.options.body.payment_state_event_at, '2026-09-03T00:00:00.000Z');
+});
+
+test('billing lifecycle: active status alone cannot clear a payment failure', async () => {
+  let writes = 0;
+  const currentSubscription = {
+    id: 'sub_collecting',
+    status: 'active',
+    latest_invoice: 'in_collecting',
+  };
+  const result = await repairRecoveredPaymentState(currentSubscription, {
+    mode: 'test',
+    get: async () => ({
+      id: 'in_collecting',
+      status: 'open',
+      paid: false,
+      status_transitions: { paid_at: null },
+    }),
+    retrieveSubscription: async () => assert.fail('an unpaid Invoice must not reach repair'),
+    admin: async () => {
+      writes += 1;
+      return [{}];
+    },
+  });
+
+  assert.equal(result.reason, 'latest_invoice_not_confirmed_paid');
+  assert.equal(writes, 0);
+});
+
+test('billing lifecycle: a paid Invoice cannot clear a newer billing cycle', async () => {
+  let writes = 0;
+  const previous = {
+    id: 'sub_cycle',
+    status: 'active',
+    latest_invoice: 'in_previous',
+  };
+  const result = await repairRecoveredPaymentState(previous, {
+    mode: 'test',
+    get: async () => ({
+      id: 'in_previous',
+      status: 'paid',
+      paid: true,
+      status_transitions: { paid_at: Date.parse('2026-09-03T00:00:00.000Z') / 1000 },
+    }),
+    retrieveSubscription: async () => ({ ...previous, latest_invoice: 'in_current' }),
+    admin: async () => {
+      writes += 1;
+      return [{}];
+    },
+  });
+
+  assert.equal(result.reason, 'subscription_changed');
+  assert.equal(result.subscription.latest_invoice, 'in_current');
+  assert.equal(writes, 0);
 });
 
 test('billing lifecycle: Stripe subscription listing follows every pagination cursor', async () => {
@@ -208,6 +318,7 @@ test('billing lifecycle: reconciliation re-fetches list snapshots before writing
   };
 
   const result = await reconcileBillingForUser('user_123', {
+    mode: 'test',
     admin,
     listSubscriptions: async () => [{ id: 'sub_123', status: 'active' }],
     retrieveSubscription: async () => ({ id: 'sub_123', status: 'canceled' }),
@@ -237,6 +348,25 @@ test('billing lifecycle: post-write verification repairs a retrieve-to-write rac
   assert.equal(result.passes, 2);
 });
 
+test('billing lifecycle: convergence includes a same-status latest Invoice change', async () => {
+  const synced = [];
+  const retrieved = [
+    { id: 'sub_123', status: 'active', latest_invoice: 'in_new' },
+    { id: 'sub_123', status: 'active', latest_invoice: 'in_new' },
+  ];
+  const result = await syncSubscriptionUntilCurrent(
+    { id: 'sub_123', status: 'active', latest_invoice: 'in_old' },
+    {
+      sync: async (subscription) => synced.push(subscription.latest_invoice),
+      retrieveSubscription: async () => retrieved.shift(),
+    }
+  );
+
+  assert.deepEqual(synced, ['in_old', 'in_new']);
+  assert.equal(result.subscription.latest_invoice, 'in_new');
+  assert.equal(result.passes, 2);
+});
+
 test('billing lifecycle: post-write resource absence creates a fail-closed tombstone', async () => {
   const synced = [];
   const result = await syncSubscriptionUntilCurrent(
@@ -250,6 +380,19 @@ test('billing lifecycle: post-write resource absence creates a fail-closed tombs
   assert.deepEqual(synced, ['active', 'missing_from_stripe']);
   assert.equal(result.subscription.status, 'missing_from_stripe');
   assert.equal(result.passes, 1);
+});
+
+test('billing lifecycle: an unsupported Price cannot be reported as a successful sync', async () => {
+  await assert.rejects(
+    syncSubscriptionUntilCurrent(
+      { id: 'sub_unknown', status: 'active' },
+      {
+        sync: async () => ({ synced: false, reason: 'unsupported_price' }),
+        retrieveSubscription: async () => assert.fail('failed writes must not be verified as success'),
+      }
+    ),
+    (error) => error.code === 'unsupported_price'
+  );
 });
 
 test('billing lifecycle: terminal history keeps Stripe lifecycle chronology', () => {
@@ -290,6 +433,7 @@ test('billing lifecycle: reconciliation skips per-item reads for terminal histor
     status: 'canceled',
   }));
   const result = await reconcileBillingForUser('user_123', {
+    mode: 'test',
     admin,
     listSubscriptions: async () => history,
     retrieveSubscription: async () => {
@@ -319,6 +463,7 @@ test('billing lifecycle: apparent list gaps are verified by ID before fail-closi
   };
 
   const result = await reconcileBillingForUser('user_123', {
+    mode: 'test',
     admin,
     listSubscriptions: async () => [],
     retrieveSubscription: async (subscriptionId) => ({ id: subscriptionId, status: 'active' }),

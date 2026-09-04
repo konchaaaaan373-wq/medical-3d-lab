@@ -109,6 +109,16 @@ test('invoices: an expanded object rather than an id is handled the same', () =>
   assert.equal(classification.subscriptionId, 'sub_expanded');
 });
 
+test('invoices: current Stripe parent.subscription_details shape resolves the subscription', () => {
+  const classification = classifyInvoice(
+    invoiceEvent('invoice.paid', {
+      subscription: null,
+      parent: { subscription_details: { subscription: 'sub_parent' } },
+    })
+  );
+  assert.equal(classification.subscriptionId, 'sub_parent');
+});
+
 test('invoices: a malformed event is classified rather than thrown at', () => {
   const classification = classifyInvoice({});
   assert.equal(classification.kind, 'other');
@@ -132,14 +142,11 @@ test('ledger: an invoice event names the object it belongs to', () => {
   assert.equal(classified.customerId, 'cus_1');
 });
 
-test('webhook: invoice events are answered without touching entitlement state', () => {
+test('webhook: invoice events persist bounded grace or recovery state', () => {
   assert.match(webhook, /isInvoiceEvent\(event\.type\)/);
   const block = webhook.slice(webhook.indexOf('isInvoiceEvent(event.type)'));
   const body = block.slice(0, block.indexOf("unsupported_event"));
-  assert.ok(
-    !/syncSubscription|upsertSubscription|supabaseAdmin/.test(body),
-    'entitlement already follows the subscription events'
-  );
+  assert.match(body, /applyInvoiceBillingState/);
 });
 
 test('webhook: a payment failure raises the alert its classification asked for', () => {

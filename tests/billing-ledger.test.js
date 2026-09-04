@@ -64,10 +64,10 @@ test('webhook: renewal and payment failure are handled, not dropped as unsupport
   assert.match(webhook, /invoice_\$\{invoice\.kind\}/);
 });
 
-test('webhook: an invoice branch writes no state', () => {
+test('webhook: an invoice branch applies bounded payment state', () => {
   const branch = webhook.slice(webhook.indexOf('isInvoiceEvent(event.type)'));
   const body = branch.slice(0, branch.indexOf('unsupported_event'));
-  assert.ok(!/syncSubscription|upsertSubscription|supabaseAdmin/.test(body));
+  assert.match(body, /applyInvoiceBillingState/);
 });
 
 test('webhook: the failures worth waking somebody for raise an alert', () => {
@@ -94,7 +94,12 @@ test('alerts: nothing personal travels in an alert', () => {
     subscriptionId: 'sub_456',
   });
   assert.ok(!looksSensitive(JSON.stringify(alert)), JSON.stringify(alert));
-  assert.equal(alert.context.subscriptionId, 'sub_456');
+  assert.match(alert.context.subscriptionId, /^ref:[a-f0-9]{16}$/);
+  assert.doesNotMatch(JSON.stringify(alert), /sub_456|nurse@clinic\.example|sk_live/);
+  assert.notEqual(
+    alert.context.subscriptionId,
+    buildAlert('webhook_failed', { subscriptionId: 'sub_789' }).context.subscriptionId
+  );
   assert.equal(alert.level, 'critical');
 });
 
@@ -124,6 +129,11 @@ test('alerts: a channel that is down cannot turn into an unhandled failure', asy
   assert.equal(result.sent, false);
 });
 
+test('alerts: outbound delivery has a deadline', () => {
+  const alerts = read('netlify/lib/alerts.js');
+  assert.match(alerts, /AbortSignal\.timeout\(ALERT_TIMEOUT_MS\)/);
+});
+
 test('alerts: a configured channel receives the built alert as JSON', async () => {
   process.env.OPS_ALERT_WEBHOOK = 'https://alerts.example/hook';
   const calls = [];
@@ -135,5 +145,6 @@ test('alerts: a configured channel receives the built alert as JSON', async () =
   assert.equal(result.sent, true);
   assert.equal(calls[0].url, 'https://alerts.example/hook');
   assert.equal(calls[0].body.level, 'error');
-  assert.equal(calls[0].body.context.priceId, 'price_x');
+  assert.match(calls[0].body.context.priceId, /^ref:[a-f0-9]{16}$/);
+  assert.doesNotMatch(JSON.stringify(calls[0].body), /price_x|sub_9/);
 });

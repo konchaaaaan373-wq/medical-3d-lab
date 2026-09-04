@@ -22,12 +22,17 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `src/access/auth.js` — small Supabase email/password auth client using the public REST API; no auth framework added.
 - `src/access/AccessManager.js` — account state, paywall, Checkout launch, Billing Portal launch and entitlement refresh.
 - `src/access/installAccess.js` — attaches paid modes around an already-built scene without changing the medical model.
-- `src/data/patientGuides.js` — patient-facing guides for heart failure, COPD, asthma and portal hypertension.
+- `src/data/patientGuides.js` / `educationGuides.js` — server-bundled authored guides; the browser installer does not import them.
 - `src/components/PatientGuidePanel.js` — patient explanation UI.
 - `netlify/functions/*` — authenticated entitlement lookup, Stripe Checkout, Stripe Customer Portal and webhook sync.
 - `supabase/migrations/001_billing.sql` — server-only billing state.
 - `supabase/migrations/002_single_subscription_lifecycle.sql` — DB-level one-non-terminal-subscription guard.
 - `supabase/migrations/20260901154950_billing_event_ledger.sql` — server-only Stripe Event ledger and reconciliation marker.
+- `supabase/migrations/20260902135238_billing_reconciliation_operations.sql` — bounded scheduled repair state.
+- `supabase/migrations/20260904015408_billing_environment_and_checkout_guards.sql` — test/live isolation, atomic Checkout attempts and payment-grace/suspension state.
+- `supabase/migrations/20260904015515_billing_remove_unscoped_indexes.sql` — removes superseded pre-isolation indexes.
+- `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql` — rejects billing writes that omit their Stripe namespace.
+- `supabase/migrations/20260904020833_billing_ordered_access_events.sql` — makes payment, refund and dispute updates monotonic and independent.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -53,6 +58,7 @@ What **is** protected server-side:
 - Stripe customer/subscription identifiers;
 - creation of Checkout/Portal sessions;
 - entitlement decisions returned to the signed-in user.
+- paid guide payload delivery through `paid-content`, after a fresh mode-scoped entitlement check.
 
 Do not put patient names, IDs, dates of birth, diagnoses or other patient-identifying data into Medical 3D Lab accounts or billing metadata. Patient explanation mode currently takes **no patient data**; it only changes how the general model is explained.
 
@@ -65,6 +71,10 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/002_single_subscription_lifecycle.sql`
    - `supabase/migrations/20260901154950_billing_event_ledger.sql`
    - `supabase/migrations/20260902135238_billing_reconciliation_operations.sql`
+   - `supabase/migrations/20260904015408_billing_environment_and_checkout_guards.sql`
+   - `supabase/migrations/20260904015515_billing_remove_unscoped_indexes.sql`
+   - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql`
+   - `supabase/migrations/20260904020833_billing_ordered_access_events.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -74,9 +84,11 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
 
 Legacy `anon` / `service_role` key environment names remain supported as fallbacks during migration, but new deployments should use publishable/secret keys.
 
-All billing tables have RLS enabled and no browser policies, and browser roles have their table privileges revoked. Netlify Functions authenticate the Supabase access token and then use the server secret.
+All billing tables have RLS enabled and no browser policies, and browser roles have their table privileges revoked. Netlify Functions authenticate the Supabase access token and then use the server secret. Customer, Subscription, reconciliation and webhook-ledger reads/writes are scoped to the active Stripe `test` or `live` namespace; sandbox rows can never grant live access.
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
+
+Account deletion is accepted only by the Production function, requires the current password again, closes the mode-matched Stripe Customer before deleting Supabase Auth, and is rate-limited. OAuth-only accounts are not currently offered by this app.
 
 ## Stripe setup
 
@@ -119,11 +131,12 @@ Stripe supports subscription updates and cancellations in Customer Portal. Plan 
 
 ### Prevent duplicate subscriptions
 
-Use all three protections:
+Use all four protections:
 
 1. **Application/server check:** `create-checkout` refuses a new Checkout while the user has any non-terminal subscription lifecycle (`incomplete`, `trialing`, `active`, `past_due`, `unpaid`, `paused`) and sends them to Billing Portal instead.
-2. **Database guard:** a partial unique index permits at most one such lifecycle per Supabase user in local billing state.
-3. **Stripe Checkout setting:** enable Stripe's **Limit customers to one subscription** / redirect existing subscribers to Customer Portal. Checkout is given the existing Stripe Customer ID, so Stripe can perform its own duplicate-subscription check.
+2. **Atomic attempt guard:** a server-only row serialises Checkout creation per user and Stripe mode. Concurrent identical requests reuse one Stripe idempotency key; a different in-flight plan is refused.
+3. **Database guard:** a partial unique index permits at most one such lifecycle per Supabase user and Stripe mode in local billing state.
+4. **Stripe Checkout setting:** enable Stripe's **Limit customers to one subscription** / redirect existing subscribers to Customer Portal. Checkout is given the existing Stripe Customer ID, so Stripe can perform its own duplicate-subscription check.
 
 Do not rely on the client button being disabled as duplicate-charge protection.
 
@@ -141,10 +154,18 @@ Listen for:
 - `customer.subscription.deleted`
 - `customer.subscription.paused`
 - `customer.subscription.resumed`
+- `invoice.paid`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
+- `invoice.payment_action_required`
+- `invoice.marked_uncollectible`
+- `charge.refunded`
+- `charge.dispute.created`
+- `charge.dispute.closed`
 
 Store the signing secret as `STRIPE_WEBHOOK_SECRET`.
 
-The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance before processing an event. It claims each Stripe Event ID in the server-only `billing_events` ledger, acknowledges completed duplicates without repeating their work, and permits failed or abandoned processing to be retried. The ledger stores identifiers and outcomes, not raw Stripe payloads.
+The function verifies Stripe's signature against the **raw request body** with a five-minute timestamp tolerance and rejects a signed test/live mode mismatch before processing an event. It claims each Stripe Event ID plus mode in the server-only `billing_events` ledger, acknowledges completed duplicates without repeating their work, and permits failed or abandoned processing to be retried. The ledger stores identifiers and outcomes, not raw Stripe payloads.
 
 Subscription events are re-read from Stripe before local persistence, so out-of-order webhook delivery cannot overwrite newer Stripe state. Checkout and Customer Portal returns also request one authoritative reconciliation from Stripe. Opening Account performs the same explicit re-check, and a stale local subscription is reconciled before it can block a legitimate repurchase.
 
@@ -156,7 +177,7 @@ Paid access is granted for:
 
 - `active`
 - `trialing`
-- `past_due` — a temporary grace period while Stripe retries payment / waits for customer action
+- `past_due` — only until the fixed `grace_until` recorded from the first failed payment
 
 Paid access is not granted for:
 
@@ -167,7 +188,7 @@ Paid access is not granted for:
 - `canceled`
 - unknown/local fail-closed statuses such as `unsupported_price`
 
-`past_due` grace avoids taking a clinician or learner out of a paid mode for a transient payment failure. Stripe eventually transitions unresolved failures according to the account's Billing retry settings.
+`past_due` grace avoids taking a clinician or learner out of a paid mode for a transient payment failure, but it is bounded independently of Stripe's retry status. `BILLING_PAST_DUE_GRACE_DAYS` defaults to 7 days (maximum 30), and later retries never extend the deadline. Payment, refund and dispute streams each keep their last event time, so delayed delivery cannot overwrite a newer outcome. A paid invoice clears the failure marker and restores a preceding full-refund suspension; an open/lost dispute remains independent and only a won dispute clears it.
 
 ## Netlify environment variables
 
@@ -181,7 +202,7 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 2. They press a locked **Patient** or **Lesson** control.
 3. Account/paywall opens.
 4. User signs in or creates an account.
-5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists locally or at Stripe, and creates a Stripe Checkout Session.
+5. `create-checkout` authenticates the Supabase bearer token server-side, verifies no non-terminal subscription already exists locally or at Stripe, atomically claims one Checkout attempt, and creates a Stripe Checkout Session with a stable per-attempt idempotency key.
 6. Stripe completes payment and emits subscription events.
 7. `stripe-webhook` verifies the raw-body signature, claims the Event ID and stores current Stripe subscription state in Supabase.
 8. The webhook derives the plan from the subscription Price ID.
@@ -333,7 +354,7 @@ questions they cannot answer:
 
 ### The ledger
 
-`billing_events` is append-only and keyed on Stripe's own event id.
+`billing_events` is append-only and keyed on Stripe's event id plus its test/live mode.
 `claimBillingEvent` / `finishBillingEvent` in `netlify/lib/billing.js` implement
 a claim-then-finish protocol with an attempt count and a reclaim window, so two
 workers cannot process one delivery and a worker that dies mid-flight does not
@@ -351,11 +372,10 @@ Three properties the webhook keeps:
 - **A failure is recorded as `failed`, not left unrecorded**, so a retry can
   tell "never seen" from "tried and broke". It still returns 500, so Stripe
   retries, and it raises a `webhook_failed` alert.
-- **Renewal and payment failure are handled rather than dropped.** Entitlement
-  already follows the subscription events; the invoice events
-  (`netlify/lib/invoices.js`) carry the two facts those cannot — that a renewal
-  happened at all, and that a payment is failing with a known number of attempts
-  left. Neither writes state.
+- **Renewal and payment failure are handled rather than dropped.** Invoice
+  events record a fixed grace window from the first failure, clear it on
+  recovery, and close it immediately when an invoice becomes uncollectible.
+  Full refunds and disputes also write a fail-closed access suspension.
 
 ### Reconciliation, at two scopes
 
@@ -405,9 +425,10 @@ in `ALERT_RULES`, so the policy is reviewable and testable:
 | Kind | Level |
 | --- | --- |
 | `webhook_failed`, `webhook_digest_mismatch` | critical |
-| `reconcile_drift`, `unsupported_price`, `unresolvable_subscription_event`, `payment_final_failure`, `payment_uncollectible` | error |
-| `payment_failed`, `payment_action_required` | warning |
-| `deleted_user_event`, `reconcile_clean` | info |
+| `dispute_opened` | critical |
+| `reconcile_drift`, `unsupported_price`, `unresolvable_subscription_event`, `payment_final_failure`, `payment_uncollectible`, `full_refund`, `dispute_lost` | error |
+| `payment_failed`, `payment_action_required`, `partial_refund` | warning |
+| `deleted_user_event`, `reconcile_clean`, `dispute_won` | info |
 
 `unresolvable_subscription_event` is not `deleted_user_event`: that one means
 the account is gone and its billing rows went with it, which is expected. This

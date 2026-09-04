@@ -1,17 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { deleteStripeCustomer, deleteSupabaseUser, supabaseUserExists } from '../netlify/lib/account.js';
+import {
+  deleteStripeCustomer,
+  deleteSupabaseUser,
+  supabaseUserExists,
+  verifySupabasePassword,
+} from '../netlify/lib/account.js';
 
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
 
 function restore() {
   globalThis.fetch = originalFetch;
-  process.env.SUPABASE_URL = originalEnv.SUPABASE_URL;
-  process.env.SUPABASE_SECRET_KEY = originalEnv.SUPABASE_SECRET_KEY;
-  process.env.SUPABASE_SERVICE_ROLE_KEY = originalEnv.SUPABASE_SERVICE_ROLE_KEY;
-  process.env.STRIPE_SECRET_KEY = originalEnv.STRIPE_SECRET_KEY;
+  for (const name of [
+    'SUPABASE_URL',
+    'SUPABASE_SECRET_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SUPABASE_PUBLISHABLE_KEY',
+    'STRIPE_SECRET_KEY',
+  ]) {
+    if (originalEnv[name] == null) delete process.env[name];
+    else process.env[name] = originalEnv[name];
+  }
 }
 
 test.afterEach(restore);
@@ -60,8 +71,32 @@ test('account deletion: a deleted Auth identity is distinguishable from an infra
   assert.equal(await supabaseUserExists('gone'), false);
 });
 
+test('account deletion: current password is verified and the temporary session is revoked', async () => {
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_example';
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), options });
+    return new Response(
+      JSON.stringify(String(url).includes('/token?') ? { access_token: 'temporary-token' } : {}),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+  assert.equal(await verifySupabasePassword('user@example.com', 'current-password'), true);
+  assert.match(calls[0].url, /grant_type=password/);
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    email: 'user@example.com',
+    password: 'current-password',
+  });
+  assert.match(calls[1].url, /\/logout\?scope=local$/);
+  assert.equal(calls[1].options.headers.Authorization, 'Bearer temporary-token');
+});
+
 test('account deletion endpoint closes Stripe before deleting Auth', () => {
   const source = readFileSync(new URL('../netlify/functions/delete-account.js', import.meta.url), 'utf8');
+  assert.match(source, /verifySupabasePassword/);
+  assert.match(source, /reauthenticationRequired: true/);
+  assert.match(source, /deployContext !== 'production'/);
   const stripe = source.indexOf('await deleteStripeCustomer(customerId)');
   const auth = source.indexOf('await deleteSupabaseUser(user.id)');
   assert.ok(stripe >= 0 && auth > stripe, 'Stripe billing must close before Auth deletion');

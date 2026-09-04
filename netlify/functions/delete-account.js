@@ -1,6 +1,14 @@
-import { deleteStripeCustomer, deleteSupabaseUser } from '../lib/account.js';
-import { authenticatedUser, json, supabaseAdmin } from '../lib/billing.js';
-import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
+import {
+  deleteStripeCustomer,
+  deleteSupabaseUser,
+  verifySupabasePassword,
+} from '../lib/account.js';
+import { authenticatedUser, json, stripeModeFilter, supabaseAdmin } from '../lib/billing.js';
+import { billingStripeMode, stripeDeploymentSafety } from '../lib/billingConfiguration.js';
+
+export const config = {
+  rateLimit: { windowLimit: 3, windowSize: 3600, aggregateBy: ['ip', 'domain'] },
+};
 
 /**
  * Permanently removes one Medical 3D Lab account.
@@ -15,13 +23,26 @@ import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
  */
 export default async (request, context) => {
   if (request.method !== 'DELETE') return json(405, { error: 'Method not allowed' });
+  const deployContext = context?.deploy?.context ?? process.env.CONTEXT ?? '';
+  if (deployContext && deployContext !== 'production') {
+    return json(403, { error: 'Account deletion is available only on the production deployment.' });
+  }
 
   try {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Please sign in first.' });
+    const body = await request.json().catch(() => ({}));
+    if (typeof body.password !== 'string' || !body.password) {
+      return json(400, { error: 'Current password is required.', reauthenticationRequired: true });
+    }
+    if (!(await verifySupabasePassword(user.email, body.password))) {
+      return json(403, { error: 'Current password could not be verified.' });
+    }
+
+    const mode = billingStripeMode(process.env);
 
     const rows = await supabaseAdmin(
-      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id&limit=1`
+      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter(mode)}&select=stripe_customer_id&limit=1`
     );
     const customerId = rows?.[0]?.stripe_customer_id ?? null;
 
@@ -29,7 +50,7 @@ export default async (request, context) => {
     // account usable and recoverable rather than leaving recurring billing with
     // no Medical 3D Lab identity attached to it.
     if (customerId) {
-      if (!stripeDeploymentSafety(process.env, context?.deploy?.context).safe) {
+      if (!stripeDeploymentSafety(process.env, deployContext).safe) {
         return json(503, { error: 'Billing is not configured safely on this deployment.' });
       }
       await deleteStripeCustomer(customerId);
@@ -38,9 +59,9 @@ export default async (request, context) => {
     await deleteSupabaseUser(user.id);
     return json(200, { deleted: true });
   } catch (error) {
-    console.error('delete-account', error);
+    console.error('delete-account failed', { code: error?.code ?? 'unknown' });
     return json(500, {
-      error: error.message || 'Account could not be deleted safely.',
+      error: 'Account could not be deleted safely. Please try again.',
     });
   }
 };

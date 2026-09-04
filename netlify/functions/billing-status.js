@@ -2,6 +2,10 @@ import { commerceReadiness } from '../../src/access/commerceReadiness.js';
 import { json } from '../lib/billing.js';
 import { billingConfiguration } from '../lib/billingConfiguration.js';
 
+export const config = {
+  rateLimit: { windowLimit: 60, windowSize: 60, aggregateBy: ['ip', 'domain'] },
+};
+
 export function billingInfrastructureConfigured(deployContext) {
   return billingConfiguration(process.env, deployContext).configured;
 }

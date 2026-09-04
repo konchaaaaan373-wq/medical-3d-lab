@@ -35,6 +35,27 @@ export const PLAN = Object.freeze({
  */
 export const ACCESS_SUBSCRIPTION_STATUSES = new Set(['active', 'trialing', 'past_due']);
 
+/** The single access decision shared by API grants and account presentation. */
+export function subscriptionGrantsAccess(subscription, now = new Date()) {
+  // A payment retry window can never revive a lifecycle that Stripe has already
+  // moved to a terminal or otherwise non-entitling status. Check the Stripe
+  // status before considering local grace markers, which may legitimately lag
+  // behind a later subscription.updated/deleted event.
+  if (!ACCESS_SUBSCRIPTION_STATUSES.has(subscription?.status)) return false;
+  if (
+    subscription?.access_suspended_reason ||
+    subscription?.full_refund_at ||
+    subscription?.dispute_opened_at
+  ) return false;
+  if (subscription?.payment_failed_at) {
+    const graceUntil = Date.parse(subscription?.grace_until);
+    return Number.isFinite(graceUntil) && graceUntil > now.getTime();
+  }
+  if (subscription?.status === 'active' || subscription?.status === 'trialing') return true;
+  const graceUntil = Date.parse(subscription?.grace_until);
+  return Number.isFinite(graceUntil) && graceUntil > now.getTime();
+}
+
 /**
  * A user with any of these already has a live subscription lifecycle and must
  * manage it rather than create a second recurring subscription.
@@ -96,10 +117,10 @@ export function canAccess(grants, required = ENTITLEMENT.FREE) {
  *
  * @param {{ entitlement?: string, status?: string }[]} subscriptions
  */
-export function grantsFromSubscriptions(subscriptions = []) {
+export function grantsFromSubscriptions(subscriptions = [], now = new Date()) {
   const grants = new Set([ENTITLEMENT.FREE]);
   for (const subscription of subscriptions) {
-    if (!ACCESS_SUBSCRIPTION_STATUSES.has(subscription.status)) continue;
+    if (!subscriptionGrantsAccess(subscription, now)) continue;
     for (const entitlement of PLAN_GRANTS[subscription.entitlement] ?? []) grants.add(entitlement);
   }
   return [...grants];

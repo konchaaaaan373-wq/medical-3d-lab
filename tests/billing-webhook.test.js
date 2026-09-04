@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import crypto from 'node:crypto';
-import stripeWebhook from '../netlify/functions/stripe-webhook.js';
+import stripeWebhook, { processStripeEvent } from '../netlify/functions/stripe-webhook.js';
 import { ACCESS_SUBSCRIPTION_STATUSES } from '../src/access/policy.js';
 import { ALERT_RULES } from '../netlify/lib/alerts.js';
 
@@ -194,6 +194,7 @@ test('billing webhook: a cancellation revokes access even when no owner can be r
       call.options.method === 'PATCH'
   );
   assert.ok(revocation, 'the cancellation was never written to the local subscription row');
+  assert.match(revocation.target, /stripe_mode=eq\.test/);
   const written = JSON.parse(revocation.options.body);
   assert.equal(written.status, 'canceled');
   // Every column this writes has to be one the schema accepts. The object it
@@ -260,6 +261,40 @@ test('billing webhook: an unresolvable owner on a live subscription still grants
     false,
     'an active subscription with no resolvable owner was written to the entitlement table'
   );
+});
+
+test('billing webhook: a signed live event is rejected by a test deployment before DB access', async () => {
+  configure();
+  let fetched = false;
+  globalThis.fetch = async () => {
+    fetched = true;
+    throw new Error('must not be called');
+  };
+  const result = await stripeWebhook(signedRequest({
+    id: 'evt_wrong_mode',
+    type: 'customer.subscription.updated',
+    livemode: true,
+    data: { object: subscription },
+  }));
+  assert.equal(result.status, 400);
+  assert.equal(fetched, false);
+});
+
+test('billing webhook: a one-off invoice cannot mutate subscription access', async () => {
+  let fetched = false;
+  globalThis.fetch = async () => {
+    fetched = true;
+    throw new Error('must not be called');
+  };
+  const outcome = await processStripeEvent(
+    {
+      type: 'invoice.payment_failed',
+      data: { object: { id: 'in_one_off', customer: 'cus_123', attempt_count: 1 } },
+    },
+    { mode: 'test' }
+  );
+  assert.deepEqual(outcome, { status: 'ignored', reason: 'non_subscription_invoice' });
+  assert.equal(fetched, false);
 });
 
 function response(body, status = 200) {

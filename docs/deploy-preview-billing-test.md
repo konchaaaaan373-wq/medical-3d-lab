@@ -21,9 +21,10 @@ The Supabase project may be shared during initial validation. `VITE_SUPABASE_*` 
 9. Return from Portal and confirm the displayed plan/status is reconciled without a manual page reload.
 10. Confirm terminal/non-paying subscription states no longer grant paid access according to `src/access/policy.js`.
 11. After a terminal cancellation, start Checkout again and confirm a stale local row cannot block repurchase.
-12. Simulate a temporary payment failure and recovery; confirm `past_due` grace, later terminal revocation, and restored access after successful recovery.
-13. Open Netlify → Functions → `scheduled-billing-reconcile` → **Run now**. Confirm the function succeeds and `/api/billing-health` becomes `ok`.
-14. Run `npm run billing:check -- https://DEPLOY_PREVIEW_URL` and confirm all three checks pass.
+12. Simulate a temporary payment failure and recovery; confirm the first failure fixes `grace_until`, later retries do not extend it, expiry revokes access even if Stripe still says `past_due`, and successful payment restores access.
+13. Simulate a partial refund, full refund, dispute opened, dispute won and dispute lost. Confirm only a full refund/dispute suspends access, a later paid invoice clears only the full-refund state, and only a won dispute clears the independent dispute state. Resend an older event and confirm it cannot reverse the newer result.
+14. Open Netlify → Functions → `scheduled-billing-reconcile` → **Run now**. Confirm the function succeeds and `/api/billing-health` becomes `ok`.
+15. Run `npm run billing:check -- https://DEPLOY_PREVIEW_URL` and confirm configuration, Stripe resources, webhook processing and repair checks pass.
 
 Scheduled functions do not run on a timer for Deploy Previews. **Run now** is therefore required only for this preview test; published Production runs automatically every hour.
 

@@ -48,6 +48,7 @@ export function createAccessManager({ ui }) {
   const listeners = new Set();
   let required = null;
   let returnFocus = null;
+  let lifecycleRefreshInstalled = false;
 
   const accountButton = el('button', {
     class: 'account-trigger',
@@ -74,6 +75,7 @@ export function createAccessManager({ ui }) {
       });
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
+      installLifecycleRefresh();
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -130,6 +132,10 @@ export function createAccessManager({ ui }) {
     open,
     close,
     refresh,
+    reportError(message) {
+      state.error = String(message || 'Paid content could not be loaded.');
+      open();
+    },
     subscribe(listener) {
       listeners.add(listener);
       listener(snapshot());
@@ -158,6 +164,17 @@ export function createAccessManager({ ui }) {
     render();
     const value = snapshot();
     for (const listener of listeners) listener(value);
+  }
+
+  function installLifecycleRefresh() {
+    if (lifecycleRefreshInstalled) return;
+    lifecycleRefreshInstalled = true;
+    const refreshVisibleAccount = () => {
+      if (state.user && document.visibilityState !== 'hidden') void refresh();
+    };
+    window.addEventListener('focus', refreshVisibleAccount);
+    document.addEventListener('visibilitychange', refreshVisibleAccount);
+    window.setInterval(refreshVisibleAccount, 5 * 60 * 1000);
   }
 
   async function refreshBillingStatus() {

@@ -1,8 +1,7 @@
 import { createEducationGuidePanel } from '../components/EducationGuidePanel.js';
 import { createPatientGuidePanel } from '../components/PatientGuidePanel.js';
-import { educationGuideFor } from '../data/educationGuides.js';
-import { patientGuideFor } from '../data/patientGuides.js';
 import { el } from '../utils/dom.js';
+import { authenticatedFetch } from './auth.js';
 import {
   educationResumeIndex,
   markEducationGuideComplete,
@@ -29,36 +28,29 @@ export function installAccess({ app, access, ui, sceneId }) {
   const coordinator = createModeCoordinator();
 
   if (features.patient) {
-    const guide = patientGuideFor(sceneId);
-    if (guide) {
-      coordinator.register(
-        'patient',
-        installPatientGuide({
-          app,
-          access,
-          ui,
-          guide,
-          activate: () => coordinator.activate('patient'),
-        })
-      );
-    }
+    coordinator.register(
+      'patient',
+      installPatientGuide({
+        app,
+        access,
+        ui,
+        sceneId,
+        activate: () => coordinator.activate('patient'),
+      })
+    );
   }
 
   if (features.education) {
-    const guide = educationGuideFor(sceneId);
-    if (guide) {
-      coordinator.register(
-        'education-guide',
-        installEducationGuide({
-          app,
-          access,
-          ui,
-          guide,
-          sceneId,
-          activate: () => coordinator.activate('education-guide'),
-        })
-      );
-    }
+    coordinator.register(
+      'education-guide',
+      installEducationGuide({
+        app,
+        access,
+        ui,
+        sceneId,
+        activate: () => coordinator.activate('education-guide'),
+      })
+    );
     installEducationGate({
       app,
       access,
@@ -66,6 +58,14 @@ export function installAccess({ app, access, ui, sceneId }) {
       activateLesson: () => coordinator.activate('lesson'),
     });
   }
+}
+
+async function loadPaidGuide(sceneId, type) {
+  const query = new URLSearchParams({ scene: sceneId, type });
+  const response = await authenticatedFetch(`/.netlify/functions/paid-content?${query}`);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body.guide) throw new Error(body.error || 'Paid content could not be loaded.');
+  return body.guide;
 }
 
 function createModeCoordinator() {
@@ -101,7 +101,7 @@ function mountAccountButton(access, ui) {
   nav.insertBefore(access.accountButton, trigger);
 }
 
-function installPatientGuide({ app, access, ui, guide, activate }) {
+function installPatientGuide({ app, access, ui, sceneId, activate }) {
   const row = ui.querySelector('.button-row');
   const consolePanel = ui.querySelector('.console');
   if (!row || !consolePanel) return null;
@@ -109,21 +109,8 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   let open = false;
   let sessionSnapshot = null;
   let previousDataView = false;
-  const guidePanel = createPatientGuidePanel({
-    guide,
-    setProgress: (value) => {
-      app.playback.pause();
-      app.playback.set(value);
-    },
-    onExit: closeGuide,
-    onPresentationChange: (enabled) => {
-      ui.classList.toggle('is-patient-presentation', enabled && open);
-      // Presenting full-screen to a patient is a different use from reading
-      // the guide beside the model, so it is worth telling apart.
-      if (enabled && open) emitAppEvent('guide:open', { fullscreen: true });
-    },
-  });
-  consolePanel.append(guidePanel.element);
+  let guidePanel = null;
+  let guidePromise = null;
 
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   const button = el('button', {
@@ -137,13 +124,47 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
     lock,
   ]);
   button.title = 'Patient explanation mode';
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     if (!access.has(ENTITLEMENT.PATIENT)) {
       access.open(ENTITLEMENT.PATIENT);
       return;
     }
-    open ? closeGuide() : openGuide();
+    if (open) return closeGuide();
+    button.disabled = true;
+    try {
+      const panel = await ensureGuide();
+      if (!panel || !access.has(ENTITLEMENT.PATIENT)) return;
+      openGuide();
+    } catch {
+      access.reportError?.('Paid patient content could not be loaded. Please try again.');
+    } finally {
+      button.disabled = false;
+    }
   });
+
+  async function ensureGuide() {
+    if (guidePanel) return guidePanel;
+    guidePromise ??= loadPaidGuide(sceneId, 'patient').catch((error) => {
+      guidePromise = null;
+      throw error;
+    });
+    const guide = await guidePromise;
+    if (!access.has(ENTITLEMENT.PATIENT)) return null;
+    guidePanel = createPatientGuidePanel({
+      guide,
+      setProgress: (value) => {
+        app.playback.pause();
+        app.playback.set(value);
+      },
+      onExit: closeGuide,
+      onPresentationChange: (enabled) => {
+        ui.classList.toggle('is-patient-presentation', enabled && open);
+        if (enabled && open) emitAppEvent('guide:open', { fullscreen: true });
+      },
+    });
+    consolePanel.append(guidePanel.element);
+    return guidePanel;
+  }
 
   // Patient explanation is a primary use case, so keep it before utilities and
   // close to Story rather than burying it beside PNG/export controls.
@@ -184,7 +205,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   function closeGuide() {
     if (!open) return;
     open = false;
-    guidePanel.setPresentation(false);
+    guidePanel?.setPresentation(false);
     ui.classList.remove('is-patient-guide', 'is-patient-presentation');
     button.classList.remove('is-on');
     button.setAttribute('aria-pressed', 'false');
@@ -200,7 +221,7 @@ function installPatientGuide({ app, access, ui, guide, activate }) {
   return closeGuide;
 }
 
-function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
+function installEducationGuide({ app, access, ui, sceneId, activate }) {
   const row = ui.querySelector('.button-row');
   const consolePanel = ui.querySelector('.console');
   if (!row || !consolePanel) return null;
@@ -208,7 +229,10 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
   let open = false;
   let sessionSnapshot = null;
   let educationUnlocked = false;
-  let progress = readEducationGuideProgress(sceneId, guide);
+  let guide = null;
+  let guidePanel = null;
+  let guidePromise = null;
+  let progress = { step: 0, completed: false };
 
   const completeMark = el('span', {
     class: 'education-mode-complete',
@@ -216,24 +240,6 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
     text: '✓',
     hidden: '',
   });
-
-  const guidePanel = createEducationGuidePanel({
-    guide,
-    setProgress: (value) => {
-      app.playback.pause();
-      app.playback.set(value);
-    },
-    onStepChange: (index) => {
-      progress = saveEducationGuideStep(sceneId, guide, index);
-      renderProgress();
-    },
-    onComplete: () => {
-      progress = markEducationGuideComplete(sceneId, guide);
-      renderProgress();
-    },
-    onExit: closeGuide,
-  });
-  consolePanel.append(guidePanel.element);
 
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   const button = el('button', {
@@ -247,12 +253,22 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
     completeMark,
     lock,
   ]);
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     if (!access.has(ENTITLEMENT.EDUCATION)) {
       access.open(ENTITLEMENT.EDUCATION);
       return;
     }
-    open ? closeGuide() : openGuide();
+    if (open) return closeGuide();
+    button.disabled = true;
+    try {
+      const panel = await ensureGuide();
+      if (!panel || !access.has(ENTITLEMENT.EDUCATION)) return;
+      openGuide();
+    } catch {
+      access.reportError?.('Paid education content could not be loaded. Please try again.');
+    } finally {
+      button.disabled = false;
+    }
   });
 
   const patientButton = row.querySelector('.patient-mode-button');
@@ -269,18 +285,50 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
 
   renderProgress();
 
+  async function ensureGuide() {
+    if (guidePanel) return guidePanel;
+    guidePromise ??= loadPaidGuide(sceneId, 'education').catch((error) => {
+      guidePromise = null;
+      throw error;
+    });
+    const loadedGuide = await guidePromise;
+    if (!access.has(ENTITLEMENT.EDUCATION)) return null;
+    guide = loadedGuide;
+    progress = readEducationGuideProgress(sceneId, guide);
+    guidePanel = createEducationGuidePanel({
+      guide,
+      setProgress: (value) => {
+        app.playback.pause();
+        app.playback.set(value);
+      },
+      onStepChange: (index) => {
+        progress = saveEducationGuideStep(sceneId, guide, index);
+        renderProgress();
+      },
+      onComplete: () => {
+        progress = markEducationGuideComplete(sceneId, guide);
+        renderProgress();
+      },
+      onExit: closeGuide,
+    });
+    consolePanel.append(guidePanel.element);
+    renderProgress();
+    return guidePanel;
+  }
+
   function renderProgress() {
     const completed = educationUnlocked && progress.completed;
     completeMark.hidden = !completed;
     button.classList.toggle('is-completed', completed);
-    button.dataset.educationProgress = `${progress.step + 1}/${guide.steps.length}`;
+    const stepCount = guide?.steps?.length ?? 0;
+    button.dataset.educationProgress = stepCount ? `${progress.step + 1}/${stepCount}` : '0/0';
 
     const stateCopy = !educationUnlocked
       ? ' — locked'
       : progress.completed
         ? ' — completed'
         : progress.step > 0
-          ? ` — resume step ${progress.step + 1} of ${guide.steps.length}`
+          ? ` — resume step ${progress.step + 1} of ${stepCount}`
           : '';
     button.setAttribute('aria-label', `Medical education teaching guide${stateCopy}`);
     button.title = `Medical education teaching guide${stateCopy}`;
@@ -298,7 +346,7 @@ function installEducationGuide({ app, access, ui, guide, sceneId, activate }) {
 
     sessionSnapshot = captureGuideSession(app.playback);
     open = true;
-    guidePanel.reset(educationResumeIndex(progress));
+    guidePanel?.reset(educationResumeIndex(progress));
     ui.classList.add('is-education-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');

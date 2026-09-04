@@ -193,7 +193,7 @@ test('endpoint: compares the token in constant time', () => {
 test('endpoint: only ever writes the local cache, never Stripe', () => {
   // Through `syncSubscription` — the same writer the webhook uses, so a repair
   // and a delivery cannot leave the row in two different shapes.
-  assert.match(endpoint, /syncSubscription\(subscription\)/);
+  assert.match(endpoint, /syncSubscription\(subscription, \{ mode \}\)/);
   assert.ok(!/stripePost|stripe\.subscriptions\.update|method: 'POST'.*stripe/i.test(endpoint));
 });
 
@@ -225,6 +225,11 @@ test('endpoint: it asks Stripe what Stripe has, not only about what we know of',
 test('endpoint: hitting the listing ceiling is reported, not swallowed', () => {
   assert.match(endpoint, /truncated/);
   assert.match(endpoint, /outgrown this pass/);
+});
+
+test('endpoint: provider failures cannot masquerade as missing subscriptions', () => {
+  assert.ok(!/subscriptionById\([^)]*\);\s*if \(subscription\?\.id\)[^}]*\}\s*catch/s.test(endpoint));
+  assert.match(endpoint, /resource_missing/);
 });
 
 test('reconcile: the period is read from Stripe the same way the writer reads it', () => {
