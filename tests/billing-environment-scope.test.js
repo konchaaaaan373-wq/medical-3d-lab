@@ -67,3 +67,13 @@ test('billing environment: payment, refund and dispute clocks are independent', 
     assert.match(migration, new RegExp(`add column if not exists ${column}`));
   }
 });
+
+test('billing environment: Checkout retries persist an opaque request fingerprint', () => {
+  const migration = readFileSync(
+    new URL('../supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql', import.meta.url),
+    'utf8'
+  );
+  assert.match(migration, /add column if not exists request_fingerprint text/i);
+  assert.match(migration, /\^\[0-9a-f\]\{64\}\$/);
+  assert.doesNotMatch(migration, /customer_id|price_id/);
+});

@@ -4,11 +4,13 @@ import { readFileSync } from 'node:fs';
 
 import {
   checkoutIdempotencyKey,
+  checkoutRequestFingerprint,
   claimCheckoutAttempt,
 } from '../netlify/lib/checkoutAttempts.js';
 import { config as checkoutRateLimit } from '../netlify/functions/create-checkout.js';
 
 const NOW = new Date('2026-09-04T00:00:00.000Z');
+const REQUEST_FINGERPRINT = 'f'.repeat(64);
 
 test('checkout attempts: concurrent identical requests converge on one attempt', async () => {
   let row = null;
@@ -25,6 +27,7 @@ test('checkout attempts: concurrent identical requests converge on one attempt',
     userId: '11111111-1111-1111-1111-111111111111',
     plan: 'complete',
     returnHash: '#/copd',
+    requestFingerprint: REQUEST_FINGERPRINT,
     mode: 'test',
     admin,
     now: NOW,
@@ -34,6 +37,7 @@ test('checkout attempts: concurrent identical requests converge on one attempt',
     userId: '11111111-1111-1111-1111-111111111111',
     plan: 'complete',
     returnHash: '#/copd',
+    requestFingerprint: REQUEST_FINGERPRINT,
     mode: 'test',
     admin,
     now: NOW,
@@ -53,6 +57,7 @@ test('checkout attempts: an uncreated Session renews safely before a late retry'
     attempt_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     plan: 'complete',
     return_hash: '#/copd',
+    request_fingerprint: REQUEST_FINGERPRINT,
     status: 'acquired',
     checkout_session_id: null,
     expires_at: '2026-09-04T00:20:00.000Z',
@@ -71,6 +76,7 @@ test('checkout attempts: an uncreated Session renews safely before a late retry'
     userId: row.user_id,
     plan: row.plan,
     returnHash: row.return_hash,
+    requestFingerprint: REQUEST_FINGERPRINT,
     mode: 'test',
     admin,
     now: NOW,
@@ -92,6 +98,7 @@ test('checkout attempts: a different plan cannot overtake an active attempt', as
     attempt_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     plan: 'patient',
     return_hash: '#/',
+    request_fingerprint: REQUEST_FINGERPRINT,
     status: 'acquired',
     expires_at: '2026-09-04T00:30:00.000Z',
   };
@@ -100,11 +107,51 @@ test('checkout attempts: a different plan cannot overtake an active attempt', as
     userId: '11111111-1111-1111-1111-111111111111',
     plan: 'education',
     returnHash: '#/',
+    requestFingerprint: REQUEST_FINGERPRINT,
     mode: 'test',
     admin,
     now: NOW,
   });
   assert.deepEqual(result, { claimed: false, reason: 'different_attempt_in_progress' });
+});
+
+test('checkout attempts: a changed Stripe request cannot reuse an idempotency key', async () => {
+  const row = {
+    attempt_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    plan: 'complete',
+    return_hash: '#/copd',
+    request_fingerprint: 'a'.repeat(64),
+    status: 'acquired',
+    expires_at: '2026-09-05T00:05:00.000Z',
+  };
+  const admin = async (_path, options = {}) => (options.method === 'POST' ? [] : [row]);
+  const result = await claimCheckoutAttempt({
+    userId: '11111111-1111-1111-1111-111111111111',
+    plan: row.plan,
+    returnHash: row.return_hash,
+    requestFingerprint: 'b'.repeat(64),
+    mode: 'test',
+    admin,
+    now: NOW,
+  });
+  assert.deepEqual(result, { claimed: false, reason: 'different_attempt_in_progress' });
+});
+
+test('checkout attempts: request identity covers price and origin without exposing raw values', () => {
+  const base = {
+    userId: '11111111-1111-1111-1111-111111111111',
+    mode: 'test',
+    plan: 'complete',
+    returnHash: '#/copd',
+    customer: 'cus_example',
+    price: 'price_example',
+    origin: 'https://medical3dlab.netlify.app',
+  };
+  const fingerprint = checkoutRequestFingerprint(base);
+  assert.match(fingerprint, /^[a-f0-9]{64}$/);
+  assert.notEqual(fingerprint, checkoutRequestFingerprint({ ...base, price: 'price_repriced' }));
+  assert.notEqual(fingerprint, checkoutRequestFingerprint({ ...base, origin: 'https://alias.example' }));
+  assert.doesNotMatch(fingerprint, /price|medical3dlab|cus_/);
 });
 
 test('checkout attempts: Stripe key is stable per attempt and contains no user identity', () => {

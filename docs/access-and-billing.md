@@ -33,6 +33,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260904015515_billing_remove_unscoped_indexes.sql` — removes superseded pre-isolation indexes.
 - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql` — rejects billing writes that omit their Stripe namespace.
 - `supabase/migrations/20260904020833_billing_ordered_access_events.sql` — makes payment, refund and dispute updates monotonic and independent.
+- `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql` — binds each Checkout idempotency key to one exact request identity.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -75,6 +76,7 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/20260904015515_billing_remove_unscoped_indexes.sql`
    - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql`
    - `supabase/migrations/20260904020833_billing_ordered_access_events.sql`
+   - `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`

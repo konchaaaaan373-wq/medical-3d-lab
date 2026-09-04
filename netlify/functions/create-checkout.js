@@ -17,6 +17,7 @@ import {
 import { billingConfiguration, billingStripeMode } from '../lib/billingConfiguration.js';
 import {
   checkoutIdempotencyKey,
+  checkoutRequestFingerprint,
   claimCheckoutAttempt,
   recordCheckoutSession,
 } from '../lib/checkoutAttempts.js';
@@ -112,7 +113,23 @@ export default async (request, context) => {
       return existingSubscription();
     }
 
-    const attempt = await claimCheckoutAttempt({ userId: user.id, plan, returnHash, mode });
+    const origin = new URL(request.url).origin;
+    const requestFingerprint = checkoutRequestFingerprint({
+      userId: user.id,
+      mode,
+      plan,
+      returnHash,
+      customer,
+      price,
+      origin,
+    });
+    const attempt = await claimCheckoutAttempt({
+      userId: user.id,
+      plan,
+      returnHash,
+      requestFingerprint,
+      mode,
+    });
     if (!attempt.claimed) {
       return json(409, {
         error: 'Another checkout is already being prepared for this account. Please try again shortly.',
@@ -120,7 +137,6 @@ export default async (request, context) => {
       });
     }
 
-    const origin = new URL(request.url).origin;
     const session = await stripePost('checkout/sessions', {
       mode: 'subscription',
       customer,

@@ -14,10 +14,14 @@ const ACTIVE_ATTEMPT_STATUSES = new Set(['acquired', 'session_created']);
 const attemptPath = (userId, mode, suffix = '') =>
   `billing_checkout_attempts?user_id=eq.${encodeURIComponent(userId)}&${stripeModeFilter(mode)}${suffix}`;
 
-function reusableAttempt(row, { plan, returnHash, now }) {
+function reusableAttempt(row, { plan, returnHash, requestFingerprint, now }) {
   if (!row || !ACTIVE_ATTEMPT_STATUSES.has(row.status)) return false;
   if (Date.parse(row.expires_at) <= now.getTime()) return false;
-  return row.plan === plan && row.return_hash === returnHash;
+  return (
+    row.plan === plan &&
+    row.return_hash === returnHash &&
+    row.request_fingerprint === requestFingerprint
+  );
 }
 
 function claimed(row, retry) {
@@ -39,13 +43,16 @@ export async function claimCheckoutAttempt({
   userId,
   plan,
   returnHash,
+  requestFingerprint,
   mode = billingStripeMode(),
   admin = supabaseAdmin,
   now = new Date(),
   attemptId = crypto.randomUUID(),
 } = {}) {
-  if (!userId || !plan || !returnHash || !attemptId) {
-    throw new Error('Checkout attempt requires a user, plan, return path and attempt ID.');
+  if (!userId || !plan || !returnHash || !requestFingerprint || !attemptId) {
+    throw new Error(
+      'Checkout attempt requires a user, plan, return path, request fingerprint and attempt ID.'
+    );
   }
 
   const expiresAt = new Date(now.getTime() + ATTEMPT_TTL_MS).toISOString();
@@ -55,6 +62,7 @@ export async function claimCheckoutAttempt({
     attempt_id: attemptId,
     plan,
     return_hash: returnHash,
+    request_fingerprint: requestFingerprint,
     status: 'acquired',
     checkout_session_id: null,
     created_at: now.toISOString(),
@@ -73,7 +81,7 @@ export async function claimCheckoutAttempt({
 
   let rows = await admin(`${attemptPath(userId, mode)}&select=*&limit=1`);
   let existing = rows?.[0] ?? null;
-  if (reusableAttempt(existing, { plan, returnHash, now })) {
+  if (reusableAttempt(existing, { plan, returnHash, requestFingerprint, now })) {
     const remaining = Date.parse(existing.expires_at) - now.getTime();
     if (existing.status === 'acquired' && remaining < ACQUIRED_RENEW_BEFORE_MS) {
       const renewed = await admin(
@@ -89,7 +97,9 @@ export async function claimCheckoutAttempt({
       // attempt. Re-read instead of minting a second idempotency key.
       rows = await admin(`${attemptPath(userId, mode)}&select=*&limit=1`);
       existing = rows?.[0] ?? null;
-      if (reusableAttempt(existing, { plan, returnHash, now })) return claimed(existing, true);
+      if (reusableAttempt(existing, { plan, returnHash, requestFingerprint, now })) {
+        return claimed(existing, true);
+      }
     } else {
       return claimed(existing, true);
     }
@@ -118,8 +128,42 @@ export async function claimCheckoutAttempt({
 
   rows = await admin(`${attemptPath(userId, mode)}&select=*&limit=1`);
   existing = rows?.[0] ?? null;
-  if (reusableAttempt(existing, { plan, returnHash, now })) return claimed(existing, true);
+  if (reusableAttempt(existing, { plan, returnHash, requestFingerprint, now })) {
+    return claimed(existing, true);
+  }
   return { claimed: false, reason: 'attempt_claimed_elsewhere' };
+}
+
+/**
+ * Fingerprint every non-attempt-specific Checkout Session parameter. The
+ * attempt ID itself is stable whenever an attempt is reused and is already
+ * part of the idempotency key, integration identifier and metadata.
+ */
+export function checkoutRequestFingerprint({
+  userId,
+  mode,
+  plan,
+  returnHash,
+  customer,
+  price,
+  origin,
+} = {}) {
+  const request = {
+    requestShape: 'medical3dlab-checkout-session-v1',
+    mode: 'subscription',
+    customer,
+    lineItems: [{ price, quantity: 1 }],
+    successUrl: `${origin}/?billing=success&billing_plan=${encodeURIComponent(plan)}&session_id={CHECKOUT_SESSION_ID}${returnHash}`,
+    cancelUrl: `${origin}/${returnHash}`,
+    allowPromotionCodes: true,
+    clientReferenceId: userId,
+    metadata: { supabaseUserId: userId, entitlement: plan, stripeMode: mode },
+    subscriptionMetadata: { supabaseUserId: userId, entitlement: plan, stripeMode: mode },
+  };
+  if (Object.values({ userId, mode, plan, returnHash, customer, price, origin }).some((v) => !v)) {
+    throw new Error('Checkout request fingerprint requires every request identity field.');
+  }
+  return crypto.createHash('sha256').update(JSON.stringify(request)).digest('hex');
 }
 
 export function checkoutIdempotencyKey(userId, mode, attemptId) {
