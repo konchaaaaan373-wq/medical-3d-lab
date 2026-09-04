@@ -209,6 +209,11 @@ export async function createApp({ stage, ui }) {
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false, resumeAutoRotate: true };
+  // Story and Reel are built much further down, but a viewpoint can be applied
+  // from a scene's selection callback, which is wired up before that. Reading
+  // those bindings directly here would throw before they initialise, so the
+  // question is asked through one that exists from the start.
+  let sequenceOwnsCamera = () => false;
   let inspectionPanel = null;
   let inspectionOpen = false;
 
@@ -300,7 +305,7 @@ export async function createApp({ stage, ui }) {
     // A guided sequence and a recording own the camera outright and rewrite the
     // shot every frame. Accepting a viewpoint here would leave the panel
     // claiming a pose the next frame discards, so it is refused instead.
-    if (storyMode?.active || reelMode?.active) return false;
+    if (sequenceOwnsCamera()) return false;
     const accepted = scene.setInspectionView?.(id) ?? scene.setAnatomyView?.(id);
     if (accepted === false) return false;
     const pose = inspectionPoseFor(id);
@@ -901,6 +906,8 @@ export async function createApp({ stage, ui }) {
         },
       })
     : null;
+
+  sequenceOwnsCamera = () => Boolean(storyMode?.active || reelMode?.active);
 
   function toggleReel() {
     if (!reelMode) return;

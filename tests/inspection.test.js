@@ -170,10 +170,22 @@ test('a running sequence owns the camera, so no viewpoint is accepted or claimed
   // Story and Reel rewrite the shot every frame and return before the
   // inspection tween runs, so accepting a view would leave the panel marking a
   // pose the next frame discards.
-  assert.match(applyView, /storyMode\?\.active \|\| reelMode\?\.active/);
+  assert.match(applyView, /if \(sequenceOwnsCamera\(\)\) return false;/);
   assert.ok(
-    applyView.indexOf('storyMode?.active') < applyView.indexOf('setShot('),
+    applyView.indexOf('sequenceOwnsCamera()') < applyView.indexOf('setShot('),
     'the sequence check comes before the camera is moved'
+  );
+  // Story and Reel are created hundreds of lines below this function, which a
+  // scene's selection callback can reach first. Naming them directly would
+  // throw before they initialise, and `?.` does not soften a dead-zone read.
+  assert.match(source, /let sequenceOwnsCamera = \(\) => false;/);
+  assert.ok(
+    source.indexOf('let sequenceOwnsCamera') < source.indexOf('function applyInspectionView'),
+    'the binding exists before anything can ask it'
+  );
+  assert.ok(
+    source.indexOf('sequenceOwnsCamera = () => Boolean(') > source.indexOf('const storyMode'),
+    'and is wired to the real modes once they exist'
   );
 
   // While the sequence hides the console and the rail, their controls must also
