@@ -2215,7 +2215,16 @@
   gap: 7px;
   padding: 4px 9px 5px;
   border-radius: 8px;
+  /* Always dark, whatever the renderer background is: a 3D label sits over the
+     render rather than over the chrome, and the render can be any colour. The
+     text on it therefore has to be light on every preset too, which is what
+     `--label-ink*` below are for — `--ink-faint` flips to #586770 on the pale
+     presets and put the Japanese line at a measured contrast of 1.11 against
+     this chip. */
   background: rgba(6, 11, 20, 0.6);
+  --label-ink: #eaf2ff;
+  --label-ink-faint: rgba(234, 242, 255, 0.66);
+  color: var(--label-ink);
   border: 1px solid var(--border);
   backdrop-filter: blur(6px);
   white-space: nowrap;
@@ -2265,7 +2274,9 @@
 
 .label-ja {
   font-size: 9px;
-  color: var(--ink-faint);
+  /* The chip's own faint ink, not the chrome's: this text is on the dark chip
+     above, which does not follow the background preset. */
+  color: var(--label-ink-faint, var(--ink-faint));
 }
 
 /* ---------- bottom console ---------- */
@@ -2965,7 +2976,10 @@
 #ui[data-lang='ja'] .label-ja {
   font-size: 12px;
   font-weight: 600;
-  color: var(--ink);
+  /* The chip's ink, not the chrome's — this rule outranks `.label-ja` and was
+     putting the label at a contrast of 1.11 on the pale presets, where it is
+     the only line the label has. */
+  color: var(--label-ink, var(--ink));
   letter-spacing: 0.01em;
 }
 

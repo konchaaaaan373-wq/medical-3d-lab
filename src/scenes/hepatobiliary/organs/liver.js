@@ -94,6 +94,11 @@ export const SEGMENT_COLORS = {
  * second, fixed portal tree inside the same liver as the modelled one — in the
  * two scenes whose entire subject is what the portal pressure does to it.
  *
+ * Which of the two trees owns the portal vein, the portal branches, the hepatic
+ * vein and the cava — the four structures both build — is written once, in
+ * `organs/portalVasculature.js`. Short version: that file owns the solved
+ * circulation, this one owns the anatomy, and no scene may draw both.
+ *
  * @param {{ color?: string, opacity?: number, detail?: number,
  *           segmentColors?: Record<string, string>, referenceSamples?: number,
  *           vessels?: boolean }} [options]

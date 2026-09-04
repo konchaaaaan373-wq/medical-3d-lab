@@ -14,6 +14,25 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The lung's left and right, held where they come from
+
+- **Three relations the anatomy spec asks for by name now have numbers in the
+  places their causes belong.** The right lung is 6.7% shorter than the left,
+  its diaphragmatic surface sits 7.0% higher because the liver is under it, and
+  the left hilum sits 5.9% higher than the right. All three used to come out in
+  the right direction by about 1% — as by-products of arithmetic they did not
+  depend on, which is the same as not holding them.
+- **The two airway trees now agree in writing about which lung is which.** The
+  asthma model solves a symmetric binary tree; the lung builds an anatomical
+  one. Below the main bronchi they cannot correspond — a binary tree has 2^g
+  branches and a lung's counts are not powers of two — and the side, which does
+  correspond all the way down, was being derived independently in both files.
+  It is stated once now, with a test that measures the built tree against it.
+- **The two liver vessel trees say which of them owns what.** Four structures
+  are drawn by both, and they are authoritative for different things: one owns
+  the solved circulation, the other the anatomy. No scene may draw both, and a
+  test holds it.
+
 ### Fixes
 
 - **A cancelled subscription now actually revokes access.** Two paths through

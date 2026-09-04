@@ -360,6 +360,14 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     const hit = document.elementFromPoint(x, y);
     if (!hit || hit === element || element.contains(hit)) return null;
     if (hit.contains(element)) return null;
+    // The case #37 named here — a rail too small to still be under the point,
+    // so the hit finds the canvas behind it — is answered by `clippedOutOf`
+    // above, before the point is consulted at all. Asking the axis's own
+    // overflow rather than whether the ancestor scrolls at all is what keeps a
+    // control stranded by `overflow-x: hidden` a failure: the rail that hid it
+    // horizontally was scrolling vertically the whole time, so a test for
+    // "scrolls, and the point is outside it" excuses exactly the defect this
+    // has to catch.
     // Something a pointer passes straight through is not covering anything.
     if (getComputedStyle(hit).pointerEvents === 'none') return null;
 

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { anatomicalSide } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
@@ -392,4 +393,85 @@ test('a liver that was not asked for vessels does not have any', () => {
   assert.equal(bare.segments.length, asked.segments.length);
   assert.ok(asked.portal.object.children.length > 0, 'a liver that asked for vessels has none');
   asked.dispose();
+});
+
+/** Every scene source that calls `name(`, found rather than listed. */
+function sceneSourcesCalling(name) {
+  const root = new URL('../src/scenes/', import.meta.url);
+  const found = [];
+  const walk = (directory) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const child = new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, directory);
+      if (entry.isDirectory()) {
+        walk(child);
+        continue;
+      }
+      if (!entry.name.endsWith('.js')) continue;
+      const source = readFileSync(child, 'utf8');
+      // The organ's own module calls itself; it is not a scene.
+      if (child.pathname.includes('/organs/')) continue;
+      if (new RegExp(`\\b${name}\\(`).test(source)) {
+        found.push({ path: child.pathname.slice(child.pathname.indexOf('src/')), source });
+      }
+    }
+  };
+  walk(root);
+  return found;
+}
+
+/**
+ * The argument text of every `name(...)` call, by balancing brackets.
+ *
+ * A regex cannot do this: `buildLiver\({[^}]*vessels:\s*true` stops at the first
+ * `}`, so a nested object literal anywhere before the flag — `segmentColors:
+ * { … }` — hides it, and the guard passes while being violated. Verified: that
+ * pattern matches `buildLiver({ color: X, vessels: true })` and misses
+ * `buildLiver({ segmentColors: { I: '#fff' }, vessels: true })`.
+ */
+function callArguments(source, name) {
+  const calls = [];
+  const opener = new RegExp(`\\b${name}\\(`, 'g');
+  let match;
+  while ((match = opener.exec(source)) !== null) {
+    let depth = 1;
+    let index = match.index + match[0].length;
+    const from = index;
+    while (index < source.length && depth > 0) {
+      const character = source[index];
+      if ('([{'.includes(character)) depth += 1;
+      else if (')]}'.includes(character)) depth -= 1;
+      index += 1;
+    }
+    calls.push(source.slice(from, index - 1));
+  }
+  return calls;
+}
+
+test('no scene draws both liver vessel trees', () => {
+  // There are two, they overlap on four structures — the portal vein, the
+  // portal branches, the hepatic vein and the cava — and they are
+  // authoritative for different things: `portalVasculature.js` owns the solved
+  // circulation, `liver.js` owns the anatomy. Drawing both put a second,
+  // unresponsive portal vein inside the same liver as the modelled one.
+  //
+  // Read from the scene sources rather than by building them, because the
+  // defect is the *call*: a scene that asks `buildLiver` for vessels while
+  // also drawing a portal circulation of its own is wrong whether or not the
+  // two happen to be visible in the same frame.
+  //
+  // Callers are discovered rather than listed — a hardcoded list covers the
+  // scenes that existed when it was written and silently exempts the next one.
+  const callers = sceneSourcesCalling('buildLiver');
+  assert.ok(callers.length >= 3, `expected several scenes to build a liver, found ${callers.length}`);
+
+  for (const { path, source } of callers) {
+    const askedForVessels = callArguments(source, 'buildLiver').some((argument) =>
+      /\bvessels\s*:\s*true\b/.test(argument)
+    );
+    const ownVessels = /buildPortalVasculature\(/.test(source) || /new TubeSurface\(/.test(source);
+    assert.ok(
+      !(askedForVessels && ownVessels),
+      `${path} draws its own portal vessels and also asks the liver for a tree`
+    );
+  }
 });
