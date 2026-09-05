@@ -14,8 +14,11 @@ import {
 import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
 import { myocardialVolumeFor, ventricleShape } from '../src/models/cardiacMechanics.js';
 import { buildCoronaryArteries, radiusAlong } from '../src/scenes/cardiovascular/organs/coronaryArteries.js';
+import { ROOT_PROPORTIONS, buildAorticRoot } from '../src/scenes/cardiovascular/organs/aorticRoot.js';
+import { MyocardialIschemiaScene } from '../src/scenes/cardiovascular/scenes/myocardialIschemia/MyocardialIschemiaScene.js';
 import {
   AHA_SEGMENTS,
+  AORTIC_SINUSES,
   CORONARY_BRANCHES,
   CORONARY_SINUSES,
   DOMINANCE,
@@ -659,4 +662,105 @@ test('the territory map is a convention, and the file says where it is wrong', (
   assert.match(text, /segment 3/i, 'the file names the segment the chart gets wrong');
   assert.match(text, /Cerqueira/, 'and cites where the chart comes from');
   assert.match(text, /vari(es|ation)/i, 'and says the anatomy varies between people');
+});
+
+// ---------------------------------------------------------------------------
+// The aortic root the arteries leave from.
+//
+// It was not drawn at all. `buildCoronaryArteries` took a root as
+// `{ centre, radius }` and put each ostium on it, and nothing rendered that
+// root — so in every frame the two coronary trunks began in mid-air above the
+// ventricle. The scene's subject is a narrowing *in* one of those arteries, and
+// a reader could see where they went but not where they came from.
+// ---------------------------------------------------------------------------
+
+test('each coronary ostium sits on the root that is actually drawn', () => {
+  // The relation the whole file is written around, one level up: the ostium is
+  // derived from the sinus and the root, and the root is drawn from the same
+  // two, so they cannot come apart. Measured against the built mesh rather than
+  // against the formula, because agreeing with itself is not the claim.
+  const centre = new THREE.Vector3(-1.13, 2.6, 0.32);
+  const radius = 0.95;
+  const root = buildAorticRoot({ centre, radius });
+  const arteries = buildCoronaryArteries({
+    surfacePoint: epicardialSurfacePoint,
+    shape: shapeAt(0.2),
+    root: { centre, radius },
+  });
+
+  const position = root.mesh.geometry.attributes.position;
+  const vertex = new THREE.Vector3();
+  const nearestVertex = (point) => {
+    let best = Infinity;
+    for (let i = 0; i < position.count; i++) {
+      vertex.fromBufferAttribute(position, i);
+      best = Math.min(best, vertex.distanceTo(point));
+    }
+    return best;
+  };
+
+  for (const id of ['rca', 'left-main']) {
+    const ostium = arteries.branchById(id).points[0];
+    const gap = nearestVertex(ostium);
+    assert.ok(
+      gap < 0.06 * radius,
+      `the ${id} ostium is on the root's wall: ${gap.toFixed(3)} from the nearest drawn vertex`
+    );
+  }
+  root.dispose();
+  arteries.dispose();
+});
+
+test('the root bulges at its sinuses and is pinched at the commissures', () => {
+  // A root drawn as a plain cylinder is a tube, not a root. What makes it one
+  // is three swellings with the ostia in two of them — and the pinch between
+  // them, which a sum of three lobes would fill in instead of leaving.
+  const root = buildAorticRoot({ centre: new THREE.Vector3(0, 0, 0), radius: 1 });
+  const azimuthOf = (sinus) => Math.atan2(sinus.direction[0], sinus.direction[2]);
+
+  for (const sinus of AORTIC_SINUSES) {
+    const phi = azimuthOf(sinus);
+    const widest = root.radiusAt(phi, ROOT_PROPORTIONS.bulgeAt);
+    assert.ok(widest > 1.15, `${sinus.id} swells past the nominal radius: ${widest.toFixed(3)}`);
+    assert.ok(
+      Math.abs(root.radiusAt(phi, 1) - 1) < 1e-9,
+      `${sinus.id} is back at the nominal radius by the sinotubular junction`
+    );
+  }
+
+  const [a, b] = AORTIC_SINUSES.map(azimuthOf);
+  const commissure = (a + b) / 2;
+  assert.ok(
+    Math.abs(root.radiusAt(commissure, ROOT_PROPORTIONS.bulgeAt) - 1) < 1e-9,
+    'the commissure between two sinuses does not swell'
+  );
+  root.dispose();
+});
+
+test('the root stands on the valve plane and rises out of the ventricle', () => {
+  // The centre was a typed triple that put the sinotubular junction *below* the
+  // ventricle's own shoulder. Nothing noticed, because nothing drew the root —
+  // the coordinate stayed perfectly valid while its meaning had moved.
+  const scene = new MyocardialIschemiaScene({});
+  scene.build();
+  scene.setProgress(0.05);
+  scene.phase = 0.999;
+  scene.applyModelToScene();
+
+  const ventricle = new THREE.Box3().setFromObject(scene.myocardium);
+  const drawn = new THREE.Box3().setFromObject(scene.aorticRoot.object);
+
+  assert.ok(
+    Math.abs(scene.aorticRoot.annulusY - ANATOMY.baseY) < 1e-6,
+    `the annulus sits on the valve plane: ${scene.aorticRoot.annulusY} against ${ANATOMY.baseY}`
+  );
+  assert.ok(
+    scene.aorticRoot.junctionY > scene.aorticRoot.annulusY,
+    'and the sinotubular junction is above it'
+  );
+  assert.ok(
+    drawn.max.y > ventricle.max.y + 0.5,
+    `the root clears the ventricle's shoulder: ${drawn.max.y.toFixed(2)} against ${ventricle.max.y.toFixed(2)}`
+  );
+  scene.dispose();
 });

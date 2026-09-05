@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import {
+  BULLSEYE,
   CHARTS,
   DISCLAIMER,
   DISCLAIMER_JA,
@@ -38,7 +39,38 @@ import {
   VENTRICLE_SHAPING,
 } from '../heartFailure/geometry/ventricleGeometry.js';
 import { buildCoronaryArteries } from '../../organs/coronaryArteries.js';
-import { TERRITORY_MASS_FRACTION, territoryWeightsAt } from '../../organs/coronaryAnatomy.js';
+import { ROOT_PROPORTIONS, buildAorticRoot } from '../../organs/aorticRoot.js';
+import { AHA_RINGS, TERRITORY_MASS_FRACTION, territoryWeightsAt } from '../../organs/coronaryAnatomy.js';
+
+/**
+ * The bullseye's static half: the seventeen segments, in rings, with the
+ * colours the 3D paints them.
+ *
+ * Assembled here rather than in `src/data/` because it joins two things neither
+ * of those owns — the anatomy's segment table and the scene's palette — and
+ * assembled from `AHA_RINGS` rather than listed, so a plot cannot put a segment
+ * in a territory the anatomy does not.
+ */
+function bullseyeSpec() {
+  return {
+    ...BULLSEYE,
+    colors: { ...TERRITORY_COLORS },
+    ischemic: WALL_COLORS.ischemic,
+    rings: AHA_RINGS.map((ring) => ({
+      level: ring.level,
+      below: ring.below,
+      segments: ring.segments.map((segment) => ({
+        id: segment.id,
+        number: segment.number,
+        phi: segment.phi,
+        span: segment.span,
+        territory: segment.territory,
+        label: segment.label,
+        labelJa: segment.labelJa,
+      })),
+    })),
+  };
+}
 
 /**
  * How strongly the territory's own hue is mixed into the wall at rest.
@@ -163,6 +195,7 @@ export class MyocardialIschemiaScene {
    * one level up.
    */
   static meta = {
+    bullseye: bullseyeSpec(),
     id: 'myocardial-ischemia',
     status: 'alpha',
     title: 'Which muscle a narrowed artery starves',
@@ -193,9 +226,23 @@ export class MyocardialIschemiaScene {
    * at the same time as the wall it feeds, or the scene's one relation is a
    * caption rather than a picture.
    */
+  /**
+   * Where the scene opens from.
+   *
+   * Anterior and a little toward the patient's right, because that is the side
+   * the anterior descending's territory faces — placed toward the patient's
+   * left it was looking at circumflex territory while the story talked about
+   * the anterior wall.
+   *
+   * The target rides above the subject's centre because the console covers the
+   * bottom of the frame, and `framing.js` only accounts for that bottom inset —
+   * the header along the top is the scene's own to clear. Raised from −2.2 when
+   * the aortic root was drawn: the subject grew 1.2 units taller at the base
+   * and the top of the root was passing behind the header.
+   */
   static cameraPose = {
-    position: new THREE.Vector3(-2.4, 1.0, 19.5),
-    target: new THREE.Vector3(0, -2.2, 0),
+    position: new THREE.Vector3(-2.4, 1.6, 20.4),
+    target: new THREE.Vector3(0, -1.35, 0),
   };
 
   constructor({ viewer } = {}) {
@@ -268,10 +315,33 @@ export class MyocardialIschemiaScene {
 
     this.restPositions = Float32Array.from(this.geometry.attributes.position.array);
 
+    // The aortic root, and the arteries from the *same* descriptor.
+    //
+    // Its centre was a typed triple, `(-1.13, 1.56, 0.32)`, which put the
+    // sinotubular junction at y 1.56 — below the ventricle's own shoulder at
+    // 2.08, so had anything drawn the root it would have been buried in
+    // myocardium. Nothing did draw it, which is why that went unnoticed and why
+    // both coronary trunks began in mid-air in every render.
+    //
+    // Derived now: the annulus sits on the valve plane and the junction a root
+    // above it, so the root rises out of the base wherever the base is.
+    const rootRadius = 0.95;
+    const aorticRoot = {
+      centre: new THREE.Vector3(
+        -1.13,
+        ANATOMY.baseY + ROOT_PROPORTIONS.height * rootRadius,
+        0.32
+      ),
+      radius: rootRadius,
+    };
+    this.aorticRoot = buildAorticRoot({ ...aorticRoot, color: VESSEL_COLORS.root });
+    this.root.add(this.aorticRoot.object);
+    this.disposables.push(this.aorticRoot);
+
     this.coronaries = buildCoronaryArteries({
       surfacePoint: epicardialSurfacePoint,
       shape: this.restShape,
-      root: { centre: new THREE.Vector3(-1.13, 1.56, 0.32), radius: 0.95 },
+      root: aorticRoot,
       color: VESSEL_COLORS.open,
     });
     this.root.add(this.coronaries.object);
@@ -732,6 +802,23 @@ export class MyocardialIschemiaScene {
         })),
       },
     };
+  }
+
+  /**
+   * The bullseye's per-frame half: how much burden each segment carries.
+   *
+   * A segment's burden is its territory's burden — the model does not resolve
+   * finer than a territory, and a plot that varied segment by segment would be
+   * claiming a resolution nothing solved.
+   */
+  getBullseye() {
+    const burden = {};
+    for (const ring of AHA_RINGS) {
+      for (const segment of ring.segments) {
+        burden[segment.id] = this.myocardialState.ischemicBurden[segment.territory];
+      }
+    }
+    return { [BULLSEYE.id]: { burden } };
   }
 
   getModelControls() {

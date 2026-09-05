@@ -5,7 +5,7 @@
 | Scene | `#/myocardial-ischemia` |
 | Model | [`src/models/myocardialIschemia.js`](../../src/models/myocardialIschemia.js) |
 | Shared solver | [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js) |
-| Anatomy | [`src/scenes/cardiovascular/organs/coronaryAnatomy.js`](../../src/scenes/cardiovascular/organs/coronaryAnatomy.js) |
+| Anatomy | [`src/scenes/cardiovascular/organs/coronaryAnatomy.js`](../../src/scenes/cardiovascular/organs/coronaryAnatomy.js), [`aorticRoot.js`](../../src/scenes/cardiovascular/organs/aorticRoot.js) |
 | Evidence | [`../model-evidence/myocardial-ischemia.md`](../model-evidence/myocardial-ischemia.md) |
 | Catalog status | `alpha` |
 | Clinical review | **none** |
@@ -116,7 +116,7 @@ Absolute triples are only comparable within one pinned camera: measured against 
 ## 11. Known failure modes
 
 - **A reader may take the territory map as their own anatomy.** It is a fixed convention that measurement disagrees with — see §14.
-- **From the opening camera most of the visible wall is one territory** — 73% of the camera-facing vertices are anterior descending. The watershed is drawn as a line so the boundary is visible without rotating, but the *other two* territories still need the reader to turn the heart round.
+- **From the opening camera most of the visible wall is one territory** — 73% of the camera-facing vertices are anterior descending. Two things answer that: the watershed is drawn as a line, so the boundary is visible without rotating, and the AHA 17-segment plot beside the heart shows all three territories at once. The 3D still only shows the half facing the camera; the plot is where the whole map is.
 - **A reader may read "the artery is open" as "the heart is working."** The scene is built to correct that, and it can also be misread as saying stunning always resolves. It does not always.
 - **The three severities the scene offers are not degrees of stenosis.** They are supply factors.
 - **The anterior descending stops short of the apex** in the geometry, so its apical territory is drawn without a vessel over it. Recorded in `coronaryAnatomy.js`.
@@ -154,8 +154,22 @@ No clinician has reviewed the calibration, the teaching text or the territory pr
 
 ## 17. Revision history
 
+### Revision 3 — the aortic root, and a valve that was not one
+
+The two coronary sinuses were **169.9° apart**. A trileaflet aortic valve has three cusps and they divide the circle, so they are 120° apart — this is geometry, not a citation, and 170° is no aortic root. Nothing caught it: the only tests asked which side each sinus faced, and a pair nearly opposite each other passes that comfortably.
+
+The three sinuses are now placed at 120°, with the third — the non-coronary cusp, which no artery leaves — declared for the first time, because a *drawn* root has three bulges and drawing two would be a root that does not exist. **Where the triad sits is textbook and unverified here**: the right coronary cusp anterior, the left coronary cusp left and a little posterior, the non-coronary cusp right-posterior. Egress to publishers is blocked from this build environment, so that arrangement is recall, and it carries the same caveat as every other source in this scene.
+
+The root is also *drawn* now. It was a `{ centre, radius }` the arteries were placed from and nothing rendered, so both coronary trunks began in mid-air in every frame — a reader could see where the arteries went and not where they came from, in a scene about a narrowing inside one of them. Its centre was a typed triple that put the sinotubular junction below the ventricle's own shoulder; derived from the valve plane now, so the root rises out of the base wherever the base is. The ostia sit on the drawn wall by construction: the sinuses swell below the junction and the wall is back at its nominal radius by the time the ostia are placed, which is also where real coronary ostia are.
+
+Nothing in the ischemia model itself changed. No supply, demand, burden, contractility or circulation quantity moves.
+
+### Revision 2 — never written
+
+`docs/model-cards/revisions.json` registered this card at revision 2 the day it was created, while the card documented one revision. There was no second version: the number was seeded wrong and the mismatch sat between the two files, which is exactly what a revision gate exists to prevent and what it did not catch, because it compares the *model's* digest against the card and not the card's own numbering against the registry. Recorded rather than quietly renumbered.
+
 ### Revision 1 — first version
 
 Reversible ischemia over a right-dominant specimen, with the AHA territory map and the shared cardiac solver.
 
-No model quantity has changed since. The corrections recorded in [`../anatomy-review.md`](../anatomy-review.md) §5.10 are all presentation and geometry — a seam, arteries that did not move with the wall, a chart wired to keys its panel does not read — and none of them touched the model.
+The corrections recorded in [`../anatomy-review.md`](../anatomy-review.md) §5.10 up to that point are all presentation and geometry — a seam, arteries that did not move with the wall, a chart wired to keys its panel does not read, a territory map below the lighting floor — and none of them touched the model.

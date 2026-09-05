@@ -45,6 +45,18 @@ Egress to medical publishers is blocked from this build environment, so no figur
 
 **Validation.** Ejection fraction falls 4.6 absolute points at the severe deficit with preload and afterload unchanged, and the same lesion in the anterior descending's territory costs more than in the circumflex's.
 
+### The aortic root the arteries leave from
+
+**Claim.** The aortic valve has three cusps, so its three sinuses are 120° apart; the right coronary cusp is the anterior one, the left coronary cusp sits left and a little posterior, and the non-coronary cusp is right-posterior. The coronary ostia sit at or just below the sinotubular junction.
+
+**Source.** The 120° spacing is geometry and needs none. The arrangement and the ostial level are textbook. **Not read here** — egress blocked.
+
+**Implementation.** `SINUS_AZIMUTH_DEG` and `AORTIC_SINUSES` in `coronaryAnatomy.js`; `buildAorticRoot` in `aorticRoot.js`, whose sinuses swell below the junction and return to the nominal radius before the ostia are placed, so an ostium at `centre + direction × radius` lands on the drawn wall.
+
+**Assumption.** That one root shape stands for every root. Sinus proportions, ostial height and how eccentric an ostium can be all vary between people and none of that is here.
+
+**Validation.** `tests/organ-anatomy.test.js` asserts the 120° spacing and which way each cusp faces; `tests/coronary-anatomy.test.js` measures each ostium against the *drawn* mesh, and that the sinuses bulge while the commissures do not. Putting the sinuses back 170° apart fails two tests; flattening the bulge fails another.
+
 ## 2. What this repository chose
 
 | Choice | Why | What it costs |
@@ -65,6 +77,7 @@ Egress to medical publishers is blocked from this build environment, so no figur
 - **Subendocardial-to-subepicardial gradient.** Ischemia is worst nearest the cavity, and this model has no transmural depth at all.
 - **Dyssynchrony**, tethering, and the mechanical interaction between an ischemic segment and the segments working around it.
 - **Anything after reversibility**: necrosis, scar, remodelling, arrhythmia.
+- **A verified aortic root.** The 120° spacing is geometry, but where the triad sits, how far a sinus bulges and how high the ostia are were not read from anything here.
 
 ## 4. How to check it
 

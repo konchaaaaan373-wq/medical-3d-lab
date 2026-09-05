@@ -730,13 +730,68 @@ territory map.
    `<map_fragment>` re-emits the fill both before *and* after the line, and
    against the first match that reads as correctly ordered.
 
+16. **The aortic valve had two cusps 170° apart.** Drawing the root exposed it:
+   `CORONARY_SINUSES` put the right and left coronary sinuses **169.9°** apart,
+   nearly opposite each other, and a trileaflet valve's three cusps divide the
+   circle at 120°. That is geometry rather than a citation, and no test caught
+   it — the only ones asked which side each sinus faced, which a pair 170° apart
+   passes comfortably. The three sinuses are declared by azimuth now, the
+   non-coronary cusp among them, and the 120° spacing is asserted.
+
+   Where the triad *sits* — right coronary cusp anterior, left coronary cusp
+   left and a little posterior, non-coronary right-posterior — is textbook and
+   is **not verified here**, because egress to publishers is blocked. It carries
+   the same caveat as every other source in this scene.
+
+17. **Both coronary trunks began in mid-air.** `buildCoronaryArteries` takes the
+   root as `{ centre, radius }` and puts each ostium on it, and nothing drew
+   that root: in every render a reader could see where the arteries went and not
+   where they came from, in a scene about a narrowing inside one of them. It
+   also left the base of the heart as a bare shoulder, which read as a lid on a
+   pot rather than as the plane a ventricle has been cut at.
+
+   The root is drawn now, from the *same* descriptor the arteries are placed
+   from, so the ostia sit on its wall by construction rather than by a second
+   coordinate that agrees until someone edits one. Its centre was a typed
+   triple — `(-1.13, 1.56, 0.32)` — which put the sinotubular junction at y 1.56,
+   *below* the ventricle's own shoulder at 2.08; had anything drawn the root it
+   would have been buried in myocardium, and nothing did, so the coordinate
+   stayed perfectly valid while its meaning moved. Derived from the valve plane
+   now. Measured: ostia 0.020 scene units from the nearest drawn vertex, sinuses
+   swelling to 1.235 of the nominal radius with the commissures at 1.000, and
+   the root standing 1.23 above the ventricle's shoulder.
+
+   The subject grew 1.2 units taller, which pushed the top of the root behind
+   the header — `framing.js` accounts for the console along the bottom and the
+   header along the top is the scene's own to clear. The opening pose was
+   raised; everything now sits inside 105–677 px of an 860 px frame whose
+   usable band is 72–728.
+
+18. **A 3D heart cannot show a territory map, and now something beside it can.**
+   Even with the watershed drawn as a line, 73% of the wall facing the opening
+   camera belongs to one artery and the other two territories are round the
+   back. The AHA 17-segment plot — the short axis flattened — is the one
+   projection where all seventeen segments and all three territories are visible
+   together, and it is how the question is asked clinically.
+
+   It cannot disagree with the heart beside it: every wedge's angle is the
+   segment's own `phi`, out of the same table the 3D reads, so the plot is
+   `(sin φ, −cos φ)` where the ventricle is `(sin φ, ·, cos φ)` — the same two
+   numbers, the ventricle seen down its own long axis. Rotating the segment ring
+   in the anatomy rotates the plot with it, and a test fails if it does not.
+   `docs/product-principles.md` is explicit that 3D is a means: where 2D answers
+   a question better, it is the honest choice.
+
+   It goes first in the rail, not last: pushed below three other panels it fell
+   under the fold, which is where a reader never finds it.
+
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded
-in `coronaryAnatomy.js` and in the model card. The ventricle is drawn without a
-valve plane or great vessels above it, so the basal shoulder reads as a lid;
-nothing is blown out (the brightest pixel in the frame is UI chrome at luminance
-241, the brightest on the heart 141), but it is a presentational weakness of
-showing the ventricle alone.
+in `coronaryAnatomy.js` and in the model card. The root's three sinuses are
+mostly occluded by the ventricle's own shoulder from any anterior view, which is
+where they anatomically are; only the ascending stub reads from the opening
+camera. Nothing is blown out (the brightest pixel in the frame is UI chrome at
+luminance 241, the brightest on the heart 141).
 
 ## 6. Not covered by this review
 

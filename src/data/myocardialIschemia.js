@@ -93,10 +93,17 @@ export const WALL_COLORS = Object.freeze({
   ischemic: '#3f4a63',
 });
 
-/** The vessel, and the vessel when its flow is cut. */
+/** The vessel, the vessel when its flow is cut, and the aorta they leave from. */
 export const VESSEL_COLORS = Object.freeze({
   open: '#c0424b',
   restricted: '#6f4a55',
+  /**
+   * Paler and less saturated than the arteries, because the root is context
+   * rather than subject: it is drawn so the coronaries have somewhere to come
+   * from and the base of the heart reads as a valve plane, and it should not
+   * compete with the vessel the scene is about.
+   */
+  root: '#c88f86',
 });
 
 /** The read-outs, in the order they are shown. */
@@ -199,6 +206,28 @@ export const CHARTS = [
     ],
   },
 ];
+
+/** The bullseye's own copy. Its geometry comes from the anatomy, not from here. */
+export const BULLSEYE = {
+  id: 'aha-territories',
+  title: 'All seventeen segments at once',
+  titleJa: '17 セグメントを一度に',
+  height: 132,
+  // One line. Three lines of caption cost more of the rail than the plot did,
+  // and the rail has room for the title card and about one panel.
+  caption: 'The short axis, flattened',
+  captionJa: '短軸を平面に開いた図',
+  orientation: {
+    anterior: 'anterior',
+    anteriorJa: '前壁',
+    septal: 'septal',
+    septalJa: '中隔',
+    inferior: 'inferior',
+    inferiorJa: '下壁',
+    lateral: 'lateral',
+    lateralJa: '側壁',
+  },
+};
 
 /** What the scene does not model, shown beside it rather than buried. */
 export const SCOPE = {

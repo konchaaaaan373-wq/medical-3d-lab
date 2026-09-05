@@ -7,6 +7,7 @@ import { MyocardialIschemiaScene } from '../src/scenes/cardiovascular/scenes/myo
 import { STAGES, METRICS, CHARTS, SCOPE, TERRITORY_COLORS, WALL_COLORS } from '../src/data/myocardialIschemia.js';
 import { TERRITORIES } from '../src/models/coronaryTerritories.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
+import { AHA_SEGMENTS } from '../src/scenes/cardiovascular/organs/coronaryAnatomy.js';
 
 /**
  * The ischemia scene, against the contract the App actually calls it with.
@@ -638,4 +639,90 @@ test('the territory boundary is actually injected into the shader three.js will 
     resolved.lastIndexOf('onLine') > multiply,
     'the line is drawn over the fill, not under it'
   );
+});
+
+test('the bullseye shows all seventeen segments, in the anatomy’s own angles', () => {
+  // Why the panel exists: on the 3D heart the territory map cannot be seen at
+  // once — 73% of the wall facing the opening camera is one artery's, and the
+  // other two territories are round the back. A reader who does not rotate sees
+  // one region and no map. The short axis flattened is the one projection where
+  // all seventeen segments and all three territories are visible together, and
+  // it is how the question is asked clinically.
+  const spec = MyocardialIschemiaScene.meta.bullseye;
+  assert.ok(spec, 'the scene declares one');
+
+  const drawn = spec.rings.flatMap((ring) => ring.segments);
+  assert.equal(drawn.length, AHA_SEGMENTS.length, 'every segment is drawn');
+  assert.equal(spec.rings.length, 4, 'basal, mid, apical, apex');
+
+  // Derived from the segment table, not listed again: a plot that carried its
+  // own copy could put a segment in a territory the anatomy does not.
+  for (const segment of AHA_SEGMENTS) {
+    const wedge = drawn.find((w) => w.id === segment.id);
+    assert.ok(wedge, `segment ${segment.number} is on the plot`);
+    assert.equal(wedge.territory, segment.territory, `segment ${segment.number}'s artery`);
+    assert.equal(wedge.phi, segment.phi, `segment ${segment.number} sits at the anatomy's angle`);
+  }
+
+  // Each ring's wedges tile the circle exactly: no gap, no overlap.
+  for (const ring of spec.rings) {
+    const total = ring.segments.reduce((sum, s) => sum + s.span, 0);
+    assert.ok(
+      Math.abs(total - Math.PI * 2) < 1e-9,
+      `the ${ring.level} ring closes: ${total} radians over ${ring.segments.length} segments`
+    );
+  }
+
+  // The convention that falls out of using the anatomy's own azimuth: the plot
+  // is `(sin φ, −cos φ)` where the ventricle is `(sin φ, ·, cos φ)`, which puts
+  // anterior at twelve o'clock, the septum at nine and the lateral wall at
+  // three — the heart seen from the apex.
+  const wallAt = (wall) => drawn.find((w) => AHA_SEGMENTS.find((s) => s.id === w.id)?.wall === wall);
+  assert.ok(Math.abs(Math.sin(wallAt('anterior').phi)) < 1e-9, 'anterior is at the top');
+  assert.ok(Math.cos(wallAt('anterior').phi) > 0.99, 'and not the bottom');
+  assert.ok(Math.cos(wallAt('inferior').phi) < -0.99, 'inferior is at the bottom');
+  assert.ok(Math.sin(wallAt('anterolateral').phi) > 0, 'the lateral wall is on the patient’s left');
+  assert.ok(Math.sin(wallAt('anteroseptal').phi) < 0, 'and the septum on their right');
+});
+
+test('every segment on the bullseye carries its own territory’s burden', () => {
+  // The model does not resolve finer than a territory. A plot that varied
+  // segment by segment would be claiming a resolution nothing solved.
+  const scene2 = new MyocardialIschemiaScene({});
+  scene2.build();
+  scene2.setProgress(0.62);
+
+  const spec = MyocardialIschemiaScene.meta.bullseye;
+  const frame = scene2.getBullseye()[spec.id];
+  assert.ok(frame?.burden, 'the frame carries burden by segment');
+  assert.equal(Object.keys(frame.burden).length, AHA_SEGMENTS.length);
+
+  for (const segment of AHA_SEGMENTS) {
+    assert.equal(
+      frame.burden[segment.id],
+      scene2.myocardialState.ischemicBurden[segment.territory],
+      `segment ${segment.number} reads the ${segment.territory}'s burden`
+    );
+  }
+
+  // And the claim the panel is there to make: at a lesion in one artery, that
+  // artery's segments carry burden and the others carry none.
+  const laden = AHA_SEGMENTS.filter((s) => frame.burden[s.id] > 0.2).map((s) => s.territory);
+  assert.ok(laden.length > 0, 'something is ischemic at all');
+  assert.deepEqual([...new Set(laden)], ['lad'], 'and only the anterior descending’s segments are');
+});
+
+test('the bullseye is a panel the shell can drive like any other', () => {
+  // App pushes it into the same list as the charts and then updates, resizes
+  // and focuses everything in that list without knowing what any of it is.
+  const spec = MyocardialIschemiaScene.meta.bullseye;
+  assert.ok(spec.id && spec.title && spec.titleJa, 'it is identified and titled in both languages');
+  assert.ok(spec.caption && spec.captionJa, 'and captioned in both');
+  for (const key of ['anterior', 'septal', 'inferior', 'lateral']) {
+    assert.ok(spec.orientation[key] && spec.orientation[`${key}Ja`], `${key} is labelled in both`);
+  }
+  for (const territory of TERRITORIES) {
+    assert.match(spec.colors[territory], /^#[0-9a-f]{6}$/i, `${territory} has a colour to fill with`);
+  }
+  assert.match(spec.ischemic, /^#[0-9a-f]{6}$/i, 'and there is a colour to fade toward');
 });

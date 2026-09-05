@@ -8,11 +8,13 @@ import { doubleSidedOpacity, wallMaterial } from '../src/scenes/shared/materials
 import { buildHeart } from '../src/scenes/cardiovascular/organs/heart.js';
 import {
   AHA_SEGMENTS,
+  AORTIC_SINUSES,
   CORONARY_BRANCHES,
   CORONARY_SINUSES,
   DOMINANCE,
   GROOVES,
   LATERAL_PHI,
+  NON_CORONARY_SINUS,
   SEPTAL_PHI,
   dominantTerritoryAt,
 } from '../src/scenes/cardiovascular/organs/coronaryAnatomy.js';
@@ -578,4 +580,44 @@ test('the specimen is dominant on one side, and its posterior descending agrees'
     DOMINANCE === 'right' ? 'rca' : 'lcx',
     `a ${DOMINANCE}-dominant heart gives the posterior descending to the ${DOMINANCE} side`
   );
+});
+
+
+test('the aortic root has three sinuses and they are 120 degrees apart', () => {
+  // Not a citation — a trileaflet valve has three cusps and they divide the
+  // circle. Written as raw vectors, the two coronary sinuses were **169.9°**
+  // apart, which is nearly opposite and is no aortic root. Nothing caught it:
+  // the tests above only ask which side each one faces, and a pair 170° apart
+  // passes that comfortably.
+  assert.equal(AORTIC_SINUSES.length, 3, 'three cusps, three sinuses');
+  const ids = new Set(AORTIC_SINUSES.map((s) => s.id));
+  assert.equal(ids.size, 3, 'and they are three different sinuses');
+  assert.ok(ids.has(NON_CORONARY_SINUS.id), 'including the one no artery leaves');
+
+  const dirs = AORTIC_SINUSES.map((s) => new THREE.Vector3(...s.direction).normalize());
+  for (let i = 0; i < 3; i++) {
+    const j = (i + 1) % 3;
+    const degrees = (dirs[i].angleTo(dirs[j]) * 180) / Math.PI;
+    assert.ok(
+      Math.abs(degrees - 120) < 3,
+      `${AORTIC_SINUSES[i].id} and ${AORTIC_SINUSES[j].id} are 120° apart: ${degrees.toFixed(1)}°`
+    );
+  }
+});
+
+test('each aortic sinus faces the way its name says', () => {
+  // The right coronary cusp is the anterior one, the left coronary cusp sits
+  // left and a little posterior, and the non-coronary cusp is right-posterior.
+  // Textbook rather than measured here — egress to publishers is blocked from
+  // this environment — and recorded as such in `coronaryAnatomy.js`.
+  const of = (d) => new THREE.Vector3(...d).normalize();
+  const right = of(CORONARY_SINUSES.right.direction);
+  const left = of(CORONARY_SINUSES.left.direction);
+  const none = of(NON_CORONARY_SINUS.direction);
+
+  assert.ok(right.dot(ANATOMICAL_AXES.anterior) > 0.8, 'the right coronary sinus is the anterior one');
+  assert.ok(left.dot(ANATOMICAL_AXES.left) > 0.8, 'the left coronary sinus faces the patient’s left');
+  assert.ok(left.dot(ANATOMICAL_AXES.anterior) < 0, 'and a little behind it');
+  assert.ok(none.dot(ANATOMICAL_AXES.posterior) > 0.5, 'the non-coronary sinus is posterior');
+  assert.ok(none.dot(ANATOMICAL_AXES.right) > 0.5, 'and to the patient’s right');
 });

@@ -180,28 +180,77 @@ export const GROOVES = Object.freeze({
  * patient's left and back. Both are built from `ANATOMICAL_AXES` so that a
  * scene which ever corrects its mirroring corrects these with it.
  */
+/**
+ * How far each sinus is turned from anterior, in the transverse plane, positive
+ * toward the patient's left — the way an aortic root is described looking down
+ * on it.
+ *
+ * **The spacing is geometry, not a citation.** A trileaflet valve has three
+ * sinuses and they are 120° apart. Written as raw vectors, this file had the
+ * two coronary sinuses **169.9°** apart — nearly opposite each other, which no
+ * aortic root is — and nothing caught it, because the only tests were "the
+ * left one faces left" and "each ostium is nearer its own sinus than the
+ * other's", and a pair 170° apart passes both comfortably.
+ *
+ * **Where the triad sits is textbook and is not verified here.** The right
+ * coronary cusp is the anterior one, the left coronary cusp sits left and a
+ * little posterior, and the non-coronary cusp is right-posterior. Egress to
+ * medical publishers is blocked from this build environment, so what is behind
+ * that arrangement is recall rather than a page that was read — recorded in
+ * `docs/model-evidence/myocardial-ischemia.md` with the same caveat every other
+ * source in this scene carries.
+ */
+const SINUS_AZIMUTH_DEG = Object.freeze({ right: -15, left: 105, nonCoronary: -135 });
+
+/** A transverse-plane direction, from an azimuth in degrees and a small tilt. */
+function sinusDirection(azimuthDeg, tilt = -0.06) {
+  const radians = (azimuthDeg * Math.PI) / 180;
+  const horizontal = Math.sqrt(Math.max(0, 1 - tilt * tilt));
+  const left = Math.sin(radians) * horizontal;
+  const anterior = Math.cos(radians) * horizontal;
+  return Object.freeze([
+    ANATOMICAL_AXES.left.x * left + ANATOMICAL_AXES.anterior.x * anterior,
+    tilt,
+    ANATOMICAL_AXES.left.z * left + ANATOMICAL_AXES.anterior.z * anterior,
+  ]);
+}
+
 export const CORONARY_SINUSES = Object.freeze({
   right: Object.freeze({
     id: 'right-coronary-sinus',
     label: 'Right coronary sinus',
     labelJa: '右冠尖',
-    direction: Object.freeze([
-      ANATOMICAL_AXES.right.x * 0.82 + ANATOMICAL_AXES.anterior.x * 0.57,
-      -0.06,
-      ANATOMICAL_AXES.right.z * 0.82 + ANATOMICAL_AXES.anterior.z * 0.57,
-    ]),
+    direction: sinusDirection(SINUS_AZIMUTH_DEG.right),
   }),
   left: Object.freeze({
     id: 'left-coronary-sinus',
     label: 'Left coronary sinus',
     labelJa: '左冠尖',
-    direction: Object.freeze([
-      ANATOMICAL_AXES.left.x * 0.74 + ANATOMICAL_AXES.posterior.x * 0.67,
-      -0.06,
-      ANATOMICAL_AXES.left.z * 0.74 + ANATOMICAL_AXES.posterior.z * 0.67,
-    ]),
+    direction: sinusDirection(SINUS_AZIMUTH_DEG.left),
   }),
 });
+
+/**
+ * The third sinus, which no coronary artery leaves.
+ *
+ * Kept out of `CORONARY_SINUSES` because nothing coronary starts there and a
+ * map of ostia should not have an entry that owns none. It is here because a
+ * *drawn* aortic root has three bulges, and drawing two would be a root that
+ * does not exist.
+ */
+export const NON_CORONARY_SINUS = Object.freeze({
+  id: 'non-coronary-sinus',
+  label: 'Non-coronary sinus',
+  labelJa: '無冠尖',
+  direction: sinusDirection(SINUS_AZIMUTH_DEG.nonCoronary),
+});
+
+/** Every sinus of the root, coronary or not, in the order they are drawn. */
+export const AORTIC_SINUSES = Object.freeze([
+  CORONARY_SINUSES.right,
+  CORONARY_SINUSES.left,
+  NON_CORONARY_SINUS,
+]);
 
 /**
  * Which sinus each trunk starts from.
@@ -372,6 +421,29 @@ export const AHA_SEGMENTS = Object.freeze([
         ? APICAL_WALL_PHI[segment.wall]
         : WALL_PHI[segment.wall],
 })));
+
+/**
+ * The seventeen segments as the four rings a bullseye is drawn in.
+ *
+ * Derived from `AHA_SEGMENTS` rather than listed again, so a plot cannot show a
+ * segment in a territory the anatomy does not put it in — and so rotating the
+ * ring here rotates the plot with it. The angular span is what six or four
+ * segments divide the circle into; it is not a separate number to keep in step.
+ *
+ * `below` names the ring nearer the apex, which is how a plot knows where a
+ * territory changes with depth rather than around.
+ */
+export const AHA_RINGS = Object.freeze(
+  ['basal', 'mid', 'apical', 'apex'].map((level, index, levels) => {
+    const segments = AHA_SEGMENTS.filter((segment) => segment.level === level);
+    const span = level === 'apex' ? Math.PI * 2 : (Math.PI * 2) / segments.length;
+    return Object.freeze({
+      level,
+      below: levels[index + 1] ?? null,
+      segments: Object.freeze(segments.map((segment) => Object.freeze({ ...segment, span }))),
+    });
+  })
+);
 
 /** Segment numbers by supplying artery, derived so the two cannot disagree. */
 export const SEGMENTS_OF_TERRITORY = Object.freeze(

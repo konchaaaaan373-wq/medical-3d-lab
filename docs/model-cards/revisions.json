@@ -109,8 +109,8 @@
       "src/models/coronaryTerritories.js",
       "src/scenes/cardiovascular/organs/coronaryAnatomy.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "dfc2e518e07713b3",
+    "cardRevision": 3,
+    "modelDigest": "05ad04c9017d332e",
     "cardUpdatedAt": "2026-09-05"
   }
 ]
