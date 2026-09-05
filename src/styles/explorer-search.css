@@ -1,25 +1,25 @@
-/* ========================================================================== 
-   Explorer search and catalogue filters
-   ========================================================================== */
+/* Explorer search and catalogue filters. */
 
 .explorer-search {
+  position: relative;
   width: 100%;
-  margin-top: 21px;
+  margin-top: 24px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 13px;
 }
 
 .explorer-search-input {
   width: 100%;
-  min-height: 47px;
-  padding: 11px 14px;
+  min-height: 52px;
+  padding: 12px 16px;
   border: 1px solid var(--explorer-rule-strong, var(--border));
-  border-radius: 2px;
-  background: #090f17;
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(16, 47, 59, 0.04);
   color: var(--explorer-ink, var(--ink));
   font: inherit;
-  font-size: 13px;
+  font-size: 16px;
 }
 
 .explorer-search-input::placeholder {
@@ -31,79 +31,77 @@
 .explorer-filter-chip:focus-visible,
 .explorer-filter-select:focus-visible,
 .explorer-search-clear:focus-visible {
-  outline: 2px solid var(--explorer-accent, var(--accent));
+  outline: 3px solid rgba(8, 115, 131, 0.28);
   outline-offset: 2px;
 }
 
 .explorer-search-row {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 14px 20px;
   flex-wrap: wrap;
-  min-height: 38px;
+  min-height: 42px;
 }
 
 .explorer-filter-group {
   display: inline-flex;
   align-items: stretch;
-  gap: 18px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .explorer-filter-chip {
-  position: relative;
-  min-height: 34px;
-  padding: 4px 0 6px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: transparent;
-  color: var(--explorer-faint, var(--ink-faint));
-  font: inherit;
-  font-size: 11px;
-  font-weight: 560;
+  min-height: 40px;
+  padding: 7px 11px;
+  border: 1px solid var(--explorer-rule);
+  border-radius: 7px;
+  background: #f7fafb;
+  color: var(--explorer-muted, var(--ink-faint));
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
 .explorer-filter-chip:hover {
-  color: var(--explorer-ink, var(--ink));
+  border-color: rgba(8, 115, 131, 0.4);
+  color: var(--explorer-accent-strong, var(--ink));
 }
 
 .explorer-filter-chip.is-current {
-  border-bottom-color: var(--explorer-accent, var(--accent));
-  background: none;
-  color: var(--explorer-ink, var(--ink));
+  border-color: var(--explorer-accent, var(--accent));
+  background: var(--explorer-accent, var(--accent));
+  color: #fff;
 }
 
 .explorer-filter-status {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: 40px;
 }
 
 .explorer-filter-label {
-  font-size: 11px;
   color: var(--explorer-faint, var(--ink-faint));
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .explorer-filter-select {
-  min-height: 36px;
-  padding: 6px 32px 6px 10px;
+  min-height: 40px;
+  padding: 7px 34px 7px 10px;
   border: 1px solid var(--explorer-rule, var(--border));
-  border-radius: 2px;
-  background: #090f17;
+  border-radius: 7px;
+  background: #fff;
   color: var(--explorer-muted, var(--ink-dim));
-  font: inherit;
-  font-size: 11px;
   cursor: pointer;
+  font: inherit;
+  font-size: 13px;
 }
 
 .explorer-search-summary {
@@ -117,47 +115,46 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  font-size: 11px;
-  line-height: 1.35;
   color: var(--explorer-faint, var(--ink-faint));
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  line-height: 1.35;
 }
 
 .explorer-search-clear {
-  min-height: 30px;
-  padding: 3px 0;
+  min-height: 34px;
+  padding: 4px 2px;
   border: 0;
   border-bottom: 1px solid var(--explorer-rule-strong, var(--border));
-  border-radius: 0;
   background: transparent;
-  color: var(--explorer-faint, var(--ink-faint));
-  font: inherit;
-  font-size: 11px;
+  color: var(--explorer-muted, var(--ink-faint));
   cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
+  font: inherit;
+  font-size: 12px;
 }
 
 .explorer-search-clear:hover {
-  color: var(--explorer-ink, var(--ink));
   border-color: var(--explorer-accent, var(--accent));
+  color: var(--explorer-accent-strong, var(--ink));
 }
 
 .explorer-no-results {
   margin: 18px auto;
   width: min(760px, calc(100% - 24px));
-  padding: 20px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
   text-align: center;
   color: var(--explorer-faint, var(--ink-faint));
 }
 
 .explorer-no-results strong {
   color: var(--explorer-ink, var(--ink));
-  font-size: 15px;
+  font-size: 17px;
 }
 
 .explorer-no-results[hidden],
@@ -170,12 +167,12 @@
 
 @media (max-width: 720px) {
   .explorer-search {
-    margin-top: 14px;
+    margin-top: 19px;
   }
 
   .explorer-search-input {
-    min-height: 44px;
-    font-size: 12px;
+    min-height: 48px;
+    font-size: 16px;
   }
 
   .explorer-search-row {
@@ -184,15 +181,14 @@
 
   .explorer-filter-group {
     width: 100%;
-    gap: 22px;
   }
 
   .explorer-filter-chip {
-    flex: 0 1 auto;
+    flex: 1 1 calc(50% - 4px);
   }
 
   .explorer-filter-status {
-    flex: 1;
+    flex: 1 1 100%;
   }
 
   .explorer-filter-select {

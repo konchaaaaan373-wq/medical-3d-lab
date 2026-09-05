@@ -62,8 +62,8 @@ export class PulmonaryEdemaScene {
   static meta = {
     id: 'pulmonary-edema',
     status: 'alpha',
-    title: 'Where the water goes',
-    titleJa: '水は、どこへ行くのか',
+    title: 'Pulmonary oedema',
+    titleJa: '肺水腫',
     subtitle:
       'One Starling equation and three buffers · the pressure at which a lung floods is searched for, never stored',
     subtitleJa:

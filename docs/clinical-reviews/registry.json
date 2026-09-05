@@ -248,5 +248,47 @@
       "The model has no ventilation, no respiratory rate and no carbon dioxide, so it cannot produce the symptom this disease presents with. Whether presenting oedema primarily as an oxygenation problem misleads has not been reviewed.",
       "The scene reports a specific flooding threshold in mmHg for the reference lung. It is searched for rather than stored and moves with every control, but whether reporting it as a number at all invites it being read as a clinical threshold has not been reviewed."
     ]
+  },
+  {
+    "sceneId": "pneumonia-consolidation",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "regional ventilation-perfusion model of alveolar consolidation and intrapulmonary shunt, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pneumonia.md",
+      "docs/model-evidence/pneumonia.md",
+      "tests/pneumonia-model.test.js",
+      "src/models/pneumonia.js"
+    ],
+    "unresolvedLimitations": [
+      "The twelve equal regional units and their clustered ordering are illustrative and do not reproduce lobar, segmental, bronchopneumonic or imaging distributions.",
+      "The model represents alveolar consolidation only and contains no pathogen, immune response, respiratory mechanics, PaO2, SpO2, carbon dioxide or treatment response.",
+      "Hypoxic pulmonary vasoconstriction is one bounded diversion scalar and has no patient-level calibration; the displayed shunt is a model fraction, not a clinical shunt measurement."
+    ]
+  },
+  {
+    "sceneId": "pulmonary-embolism",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "parallel-territory model of pulmonary vascular obstruction, underperfused ventilation and relative vascular load, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pulmonary-embolism.md",
+      "docs/model-evidence/pulmonary-embolism.md",
+      "tests/pulmonary-embolism-model.test.js",
+      "src/models/pulmonaryEmbolism.js"
+    ],
+    "unresolvedLimitations": [
+      "The twelve equal parallel vascular territories, fixed driving pressure and obstruction ordering are illustrative and do not reproduce pulmonary arterial anatomy or CT clot burden.",
+      "The model contains no changing cardiac output, vasoactive response, vascular recruitment, RV geometry, RV-pulmonary artery coupling, oxygenation, carbon dioxide, infarction or treatment.",
+      "The underperfused-ventilation and relative-resistance outputs are model indices, not VD/VT, measured PVR, pulmonary artery pressure, RV function, clinical category or risk score."
+    ]
   }
 ]

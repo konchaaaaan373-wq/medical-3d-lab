@@ -135,8 +135,9 @@ async function boot() {
   }
 
   if (route.kind === 'explorer' || route.kind === 'lab') {
-    // Both catalogue surfaces are plain DOM: no renderer, scene module or
-    // geometry. The Lab/public split is a catalogue projection, not a second app.
+    // The catalogue content is plain DOM and survives without WebGL. The public
+    // Explorer may progressively add small, lazy organ previews; Lab remains a
+    // catalogue projection rather than a second app.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
     createExplorer({

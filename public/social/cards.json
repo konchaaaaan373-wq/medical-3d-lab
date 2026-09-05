@@ -33,6 +33,14 @@
       "bodyChars": 40,
       "html": "634797a5ab99c8d3"
     },
+    "pneumonia": {
+      "bodyChars": 82,
+      "html": "6ad14caba3812c4d"
+    },
+    "pulmonary-embolism": {
+      "bodyChars": 82,
+      "html": "1ef9c0d871446270"
+    },
     "pulmonary-edema": {
       "bodyChars": 82,
       "html": "24de5d31ec239941"
@@ -43,7 +51,7 @@
     },
     "site": {
       "bodyChars": 82,
-      "html": "ab211def5b2a17c8"
+      "html": "55a4e0df3dd7ee5a"
     }
   }
 }

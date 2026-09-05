@@ -13,6 +13,8 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'amyloid-beta',
   'renal-filtration',
   'pulmonary-edema',
+  'pneumonia-consolidation',
+  'pulmonary-embolism',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -34,6 +36,8 @@ export const LANDING_MODEL_TITLES = Object.freeze({
   'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
   'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
   'pulmonary-edema': Object.freeze({ en: 'Pulmonary oedema', ja: '肺水腫' }),
+  'pneumonia-consolidation': Object.freeze({ en: 'Pneumonia', ja: '肺炎' }),
+  'pulmonary-embolism': Object.freeze({ en: 'Pulmonary embolism', ja: '肺塞栓症' }),
   'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
   'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
   'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
@@ -76,6 +80,18 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '左房圧はどちらも 27。なぜ一方は湿るだけで、他方は水没するのか。',
     ['STARLING', 'LYMPHATICS', 'SHUNT'],
     ['Starling', 'リンパ', 'シャント']
+  ),
+  'pneumonia-consolidation': presentation(
+    'Add clustered alveolar consolidation; watch ventilation fall while perfusion persists.',
+    '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
+    ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
+    ['コンソリデーション', '換気', 'シャント']
+  ),
+  'pulmonary-embolism': presentation(
+    'Obstruct parallel pulmonary vessels; watch perfusion fall while ventilation persists and relative PVR rises.',
+    '並列肺血管を閉塞し、換気が残る一方で灌流が低下し、相対PVRが上がる過程を確認。',
+    ['PERFUSION', 'DEAD SPACE', 'RELATIVE PVR'],
+    ['灌流', '死腔機序', '相対PVR']
   ),
   'copd-hyperinflation': presentation(
     'Compare time constants, air trapping and expiratory flow limitation across 12 lung units.',

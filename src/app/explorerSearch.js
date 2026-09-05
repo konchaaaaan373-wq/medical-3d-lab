@@ -1,8 +1,12 @@
-import { featuresForScene } from '../access/features.js';
 import { clinicalReviewForScene, clinicalReviewMatchesFilter } from '../catalog/clinicalReview.js';
 import { organById } from '../catalog/taxonomy.js';
 
-export const EXPLORER_MODE_FILTERS = Object.freeze(['all', 'patient', 'education']);
+export const EXPLORER_MODE_FILTERS = Object.freeze([
+  'all',
+  'patient',
+  'education',
+  'clinical-learning',
+]);
 export const EXPLORER_STATUS_FILTERS = Object.freeze([
   'all',
   'reviewed-plus',
@@ -65,6 +69,8 @@ export function sceneSearchDocument({ scene, system, organ }) {
     scene?.description,
     scene?.descriptionJa,
     scene?.disease,
+    ...(scene?.conditions ?? []),
+    ...(scene?.uses ?? []),
     ...(scene?.tags ?? []),
     review?.reviewStatus,
     review?.reviewerRole,
@@ -83,10 +89,7 @@ export function sceneMatchesExplorerFilters(record, filters = {}) {
   const mode = EXPLORER_MODE_FILTERS.includes(filters.mode) ? filters.mode : 'all';
   const status = EXPLORER_STATUS_FILTERS.includes(filters.status) ? filters.status : 'all';
   const review = EXPLORER_REVIEW_FILTERS.includes(filters.review) ? filters.review : 'all';
-  const features = featuresForScene(scene);
-
-  if (mode === 'patient' && !features.patient) return false;
-  if (mode === 'education' && !features.education) return false;
+  if (mode !== 'all' && !(scene.uses ?? ['education']).includes(mode)) return false;
 
   if (status === 'reviewed-plus' && !['reviewed', 'production'].includes(scene.status)) return false;
   if (!['all', 'reviewed-plus'].includes(status) && scene.status !== status) return false;

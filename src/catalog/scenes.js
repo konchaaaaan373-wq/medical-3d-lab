@@ -44,6 +44,8 @@ export const SCENE_MANIFEST = [
     system: 'nervous',
     organ: 'brain',
     disease: 'alzheimers',
+    conditions: ['Alzheimer disease', 'amyloid-beta aggregation'],
+    uses: ['patient', 'education'],
     status: 'production',
     access: { patient: true, education: true },
     description: 'Aβ monomer → oligomer → fibril → plaque, as one continuous aggregation state.',
@@ -59,6 +61,8 @@ export const SCENE_MANIFEST = [
     system: 'cardiovascular',
     organ: 'heart',
     disease: 'heart-failure',
+    conditions: ['heart failure', 'HFrEF'],
+    uses: ['patient', 'education', 'clinical-learning'],
     status: 'production',
     access: { patient: true, education: true },
     description:
@@ -75,7 +79,9 @@ export const SCENE_MANIFEST = [
     titleJa: '循環、保たれてる？',
     system: 'cardiovascular',
     organ: 'heart',
-    disease: null,
+    disease: 'low-cardiac-output',
+    conditions: ['low cardiac output'],
+    uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/circulation.md',
     description:
@@ -94,6 +100,7 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'copd',
+    uses: ['patient', 'education', 'clinical-learning'],
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/copd.md',
@@ -113,6 +120,7 @@ export const SCENE_MANIFEST = [
     organ: 'lungs',
     organs: ['lungs', 'airway'],
     disease: 'asthma',
+    uses: ['patient', 'education', 'clinical-learning'],
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/asthma.md',
@@ -131,6 +139,7 @@ export const SCENE_MANIFEST = [
     system: 'respiratory',
     organ: 'lungs',
     disease: 'pulmonary-edema',
+    uses: ['patient', 'education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/pulmonary-edema.md',
     description:
@@ -139,6 +148,44 @@ export const SCENE_MANIFEST = [
       '肺毛細血管を挟んだ 1 つの Starling 式と、上がった左房圧が「湿った間質」で止まるか「水没した肺胞」に至るかを決める 3 つの緩衝機構。',
     tags: ['physiology', 'haemodynamics', 'gas exchange'],
     load: () => import('../scenes/respiratory/scenes/pulmonaryEdema/index.js'),
+  },
+  {
+    id: 'pneumonia-consolidation',
+    slug: 'pneumonia',
+    titleEn: 'Pneumonia',
+    titleJa: '肺炎',
+    system: 'respiratory',
+    organ: 'lungs',
+    disease: 'pneumonia',
+    conditions: ['pneumonia', 'alveolar consolidation', 'intrapulmonary shunt'],
+    uses: ['patient', 'education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pneumonia.md',
+    description:
+      'Twelve regional units show the core V/Q mechanism: alveolar consolidation removes ventilation while perfusion persists, creating intrapulmonary shunt.',
+    descriptionJa:
+      '12領域の肺モデルで、肺胞性コンソリデーションにより換気が失われても灌流が残り、肺内シャントが生じる基本的なV/Q機序を示します。',
+    tags: ['gas-exchange', 'consolidation', 'shunt', 'ventilation-perfusion'],
+    load: () => import('../scenes/respiratory/scenes/pneumonia/index.js'),
+  },
+  {
+    id: 'pulmonary-embolism',
+    slug: 'pulmonary-embolism',
+    titleEn: 'Pulmonary embolism',
+    titleJa: '肺塞栓症',
+    system: 'respiratory',
+    organ: 'lungs',
+    disease: 'pulmonary-embolism',
+    conditions: ['pulmonary embolism', 'alveolar dead space', 'right ventricular afterload'],
+    uses: ['patient', 'education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pulmonary-embolism.md',
+    description:
+      'Twelve parallel vascular territories show ventilation continuing beyond obstructed perfusion, the resulting dead-space mechanism and rising relative pulmonary vascular load.',
+    descriptionJa:
+      '12本の並列肺血管領域で、灌流が遮断された先でも換気が続く死腔機序と、相対的な肺血管負荷の上昇を示します。',
+    tags: ['gas-exchange', 'dead-space', 'pulmonary-vascular-resistance', 'ventilation-perfusion'],
+    load: () => import('../scenes/respiratory/scenes/pulmonaryEmbolism/index.js'),
   },
   {
     id: 'breathing-lungs',
@@ -194,6 +241,8 @@ export const SCENE_MANIFEST = [
     organ: 'liver',
     organs: ['liver', 'spleen'],
     disease: 'cirrhosis',
+    conditions: ['cirrhosis', 'portal hypertension'],
+    uses: ['patient', 'education', 'clinical-learning'],
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/cirrhosis-portal-hypertension.md',
@@ -213,6 +262,7 @@ export const SCENE_MANIFEST = [
     organ: 'kidney',
     organs: ['kidney', 'liver'],
     disease: 'hepatorenal-syndrome',
+    uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/hepatorenal-syndrome.md',
     description:
@@ -230,7 +280,9 @@ export const SCENE_MANIFEST = [
     system: 'renal',
     organ: 'kidney',
     organs: ['kidney'],
-    disease: null,
+    disease: 'renal-dysfunction',
+    conditions: ['prerenal AKI', 'tubular injury', 'urinary obstruction', 'CKD', 'nephrotic syndrome'],
+    uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/renal-filtration.md',
     description:
@@ -425,9 +477,7 @@ export const SCENE_MANIFEST = [
  * real question worth a scene.
  */
 export const PLANNED_SCENES = [
-  { organ: 'lungs', disease: 'pneumonia', titleEn: 'Pneumonia', titleJa: '肺炎' },
   { organ: 'lungs', disease: 'pneumothorax', titleEn: 'Pneumothorax', titleJa: '気胸' },
-  { organ: 'lungs', disease: 'pulmonary-embolism', titleEn: 'Pulmonary embolism', titleJa: '肺塞栓症' },
   // Chronic kidney disease, acute kidney injury and nephrotic syndrome are now
   // *situations* inside `renal-filtration` rather than three separate scenes:
   // they share one model, and splitting them would have meant three copies of

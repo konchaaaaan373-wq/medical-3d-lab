@@ -1,26 +1,24 @@
-/* The organ explorer, and the status badge it shares with the scene view.
-   The 3D scenes use luminous overlay chrome because it sits on top of anatomy.
-   The Explorer is a reading surface, so it deliberately uses a flatter,
-   editorial visual language: solid fields, rules and text instead of glow. */
+/* Organ Explorer v2 — a bright clinical-atlas reading surface with dark,
+   specimen-like 3D wells. Scene pages keep their own luminous overlay chrome. */
 
 html[data-route='explorer'] {
-  --explorer-bg: #070b11;
-  --explorer-surface: #0c121b;
-  --explorer-surface-raised: #101823;
-  --explorer-rule: rgba(190, 205, 224, 0.17);
-  --explorer-rule-strong: rgba(190, 205, 224, 0.32);
-  --explorer-ink: #edf2f6;
-  --explorer-muted: #a6b0bd;
-  --explorer-faint: #778392;
-  --explorer-accent: #78a9ad;
+  --explorer-bg: #edf3f5;
+  --explorer-surface: #ffffff;
+  --explorer-surface-raised: #f5f9fa;
+  --explorer-rule: rgba(16, 47, 59, 0.13);
+  --explorer-rule-strong: rgba(16, 47, 59, 0.25);
+  --explorer-ink: #102f3a;
+  --explorer-muted: #49656f;
+  --explorer-faint: #6e848c;
+  --explorer-accent: #087383;
+  --explorer-accent-strong: #045564;
 }
 
-/* The explorer is a document, not an overlay. The viewport release it needs is
-   shared with every other reading route in `reading-surface.css`; what stays
-   here is only what is particular to this surface. */
 html[data-route='explorer'],
 html[data-route='explorer'] body {
-  background: var(--explorer-bg);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(65, 151, 164, 0.12), transparent 30rem),
+    var(--explorer-bg);
   color: var(--explorer-ink);
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Sans',
     'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Noto Sans JP', sans-serif;
@@ -29,347 +27,691 @@ html[data-route='explorer'] body {
 html[data-route='explorer'] .explorer > .panel {
   background: var(--explorer-surface);
   border-color: var(--explorer-rule);
-  border-radius: 4px;
-  box-shadow: none;
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(16, 47, 59, 0.07);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 .explorer {
-  width: min(1180px, 100%);
+  width: min(1320px, 100%);
   margin: 0 auto;
-  padding: 30px 24px 72px;
+  padding: 28px 28px 80px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 30px;
 }
 
 .explorer-header {
-  padding: 29px 30px 27px;
   position: relative;
-  border-top: 3px solid var(--explorer-accent);
+  overflow: clip;
+  padding: 42px 42px 34px;
+  border-top: 6px solid var(--explorer-accent);
 }
 
-.explorer-header .title {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-  max-width: 720px;
-  font-size: clamp(24px, 3vw, 36px);
-  font-weight: 650;
-  letter-spacing: -0.025em;
-}
-
-.explorer-header .title .lang-ja {
-  font-size: 0.62em;
-  color: var(--explorer-muted);
-  font-weight: 500;
+.explorer-header::before {
+  position: absolute;
+  top: -130px;
+  right: -100px;
+  width: 360px;
+  height: 360px;
+  border: 70px solid rgba(8, 115, 131, 0.055);
+  border-radius: 50%;
+  content: '';
+  pointer-events: none;
 }
 
 .explorer-header .eyebrow {
-  margin-bottom: 8px;
+  margin: 0 0 12px;
   color: var(--explorer-accent);
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.18em;
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: 0.16em;
   opacity: 1;
+  text-transform: uppercase;
 }
 
-/* The scene view hides the subtitle on a short or narrow window to protect the
-   3D frame. The explorer has no 3D frame to protect, and this line is what says
-   what the project is — so it is restored at every size. */
-.explorer-header .subtitle {
-  display: block;
-  max-width: 66ch;
-  margin-top: 10px;
+.explorer-header .title {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 14px;
+  max-width: 820px;
+  margin: 0;
+  color: var(--explorer-ink);
+  font-size: clamp(34px, 4.5vw, 58px);
+  font-weight: 730;
+  letter-spacing: -0.045em;
+  line-height: 1.04;
+}
+
+.explorer-header .title .lang-ja {
+  font-size: 0.52em;
   color: var(--explorer-muted);
-  line-height: 1.75;
+  font-weight: 620;
+  letter-spacing: -0.025em;
+}
+
+.explorer-header .subtitle {
+  position: relative;
+  display: block;
+  max-width: 76ch;
+  margin: 18px 0 0;
+  color: var(--explorer-muted);
+  font-size: 16px;
   letter-spacing: 0;
-  font-size: 13px;
+  line-height: 1.75;
 }
 
 .explorer-header .subtitle .lang-ja {
   display: block;
 }
 
-.explorer-header .ui-toggle {
-  position: absolute;
-  top: 18px;
-  right: 18px;
+.explorer-use-lanes {
+  position: relative;
+  margin-top: 30px;
+  padding-top: 26px;
+  border-top: 1px solid var(--explorer-rule);
+}
+
+.explorer-use-lanes-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1.2fr);
+  gap: 28px;
+  align-items: end;
+  margin-bottom: 15px;
+}
+
+.explorer-use-lanes-title,
+.explorer-use-lanes-note,
+.explorer-use-lane-title,
+.explorer-use-lane-note {
+  display: flex;
+  flex-direction: column;
+}
+
+.explorer-use-lanes-title {
+  color: var(--explorer-ink);
+  font-size: 20px;
+  font-weight: 720;
+}
+
+.explorer-use-lanes-title .lang-ja {
+  font-size: 16px;
+  color: var(--explorer-muted);
+}
+
+.explorer-use-lanes-note {
+  color: var(--explorer-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.explorer-use-lane-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.explorer-use-lane {
+  position: relative;
+  min-height: 150px;
+  padding: 21px 20px 19px;
+  border: 1px solid rgba(8, 115, 131, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #f5fbfc, #eef6f7);
+}
+
+.explorer-use-lane.is-clinical {
+  border-color: rgba(166, 105, 25, 0.24);
+  background: linear-gradient(145deg, #fffbf3, #f8f1e5);
+}
+
+.explorer-use-lane-number {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--explorer-accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.explorer-use-lane.is-clinical .explorer-use-lane-number {
+  color: #98621c;
+}
+
+.explorer-use-lane-title {
+  margin-bottom: 9px;
+  color: var(--explorer-ink);
+  font-size: 16px;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.explorer-use-lane-title .lang-ja {
+  color: var(--explorer-muted);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.explorer-use-lane-note {
+  color: var(--explorer-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .explorer-jump {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 22px;
-  margin-top: 19px;
-  padding-top: 13px;
+  gap: 7px;
+  margin-top: 22px;
+  padding-top: 20px;
   border-top: 1px solid var(--explorer-rule);
 }
 
 .explorer-jump .scene-pill {
-  position: relative;
-  padding: 7px 0 6px;
-  border: 0;
-  border-radius: 0;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--explorer-rule);
+  border-radius: 999px;
+  background: #fff;
   color: var(--explorer-muted);
-  font-size: 11px;
-  font-weight: 550;
-  letter-spacing: 0.02em;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0;
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
 }
 
-.explorer-jump .scene-pill::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 2px;
-  left: 0;
-  height: 1px;
-  background: var(--explorer-accent);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 140ms ease;
-}
-
-.explorer-jump .scene-pill:hover {
-  color: var(--explorer-ink);
-}
-
-.explorer-jump .scene-pill:hover::after {
-  transform: scaleX(1);
-}
-
-.explorer-jump .scene-pill .lang-ja {
-  margin-left: 0;
-  opacity: 1;
+.explorer-jump .scene-pill:hover,
+.explorer-jump .scene-pill:focus-visible {
+  border-color: rgba(8, 115, 131, 0.5);
+  background: #eef8f9;
+  color: var(--explorer-accent-strong);
 }
 
 .explorer-system {
-  padding: 2px 5px 12px;
-  scroll-margin-top: 16px;
+  padding: 0;
+  scroll-margin-top: 18px;
 }
 
 .explorer-system-name {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  margin: 16px 0 5px;
-  padding-bottom: 11px;
-  border-bottom: 1px solid var(--explorer-rule-strong);
+  gap: 11px;
+  margin: 0 0 12px;
+  padding: 0 6px;
+  border: 0;
   color: var(--explorer-ink);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
+  font-size: 21px;
+  font-weight: 730;
+  letter-spacing: -0.015em;
 }
 
 .explorer-system-name .lang-ja {
-  font-size: 13px;
   color: var(--explorer-muted);
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .explorer-count {
   margin-left: auto;
-  font-size: 12px;
   color: var(--explorer-faint);
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
 .explorer-organ {
   display: grid;
-  grid-template-columns: 180px minmax(0, 1fr);
-  gap: 22px;
-  padding: 17px 0;
+  grid-template-columns: minmax(235px, 290px) minmax(0, 1fr);
+  gap: 24px;
   align-items: start;
-  border-bottom: 1px solid var(--explorer-rule);
+  padding: 22px;
+  border: 1px solid var(--explorer-rule);
+  border-radius: 18px;
+  background: var(--explorer-surface);
+  box-shadow: 0 14px 36px rgba(16, 47, 59, 0.065);
+}
+
+.explorer-organ + .explorer-organ {
+  margin-top: 14px;
 }
 
 .explorer-organ.is-empty {
-  opacity: 0.55;
+  opacity: 0.65;
+}
+
+.explorer-organ-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
 }
 
 .explorer-organ-name {
-  margin: 3px 0 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--explorer-muted);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  margin: 0;
+  color: var(--explorer-ink);
+  font-size: 25px;
+  font-weight: 760;
+  line-height: 1.1;
 }
 
-.explorer-organ-name .lang-ja {
-  font-size: 12px;
+.explorer-organ-name .lang-en {
   color: var(--explorer-faint);
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.explorer-organ-model-count {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  color: var(--explorer-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.explorer-organ-preview {
+  position: relative;
+  width: 100%;
+  min-height: 238px;
+  overflow: clip;
+  border: 1px solid rgba(158, 215, 224, 0.12);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 48% 42%, rgba(59, 118, 133, 0.3), transparent 52%),
+    linear-gradient(145deg, #173440, #091a24 72%);
+  box-shadow: inset 0 0 60px rgba(1, 10, 15, 0.45);
+}
+
+.explorer-organ-preview::after {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(192, 230, 236, 0.22);
+  border-top-color: rgba(192, 230, 236, 0.72);
+  border-radius: 50%;
+  content: '';
+  opacity: 0.75;
+  animation: explorer-preview-spinner 4.5s linear infinite;
+}
+
+.explorer-organ-preview[data-preview-state='ready']::after,
+.explorer-organ-preview[data-preview-state='unavailable']::after {
+  display: none;
+}
+
+.explorer-organ-preview canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.explorer-preview-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: rgba(208, 235, 239, 0.38);
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+}
+
+.explorer-organ-preview[data-preview-state='ready'] .explorer-preview-placeholder {
+  opacity: 0;
+}
+
+.explorer-preview-caption {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+  color: var(--explorer-faint);
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 .explorer-scenes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 .explorer-scene {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 11px;
   min-width: 0;
-  max-width: none;
-  padding: 16px 17px 17px;
+  height: 100%;
+  padding: 19px 20px 17px;
   border: 1px solid var(--explorer-rule);
-  border-radius: 3px;
-  background: var(--explorer-surface);
+  border-radius: 12px;
+  background: var(--explorer-surface-raised);
   color: var(--explorer-ink);
   text-decoration: none;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease,
+    background 150ms ease;
 }
 
-a.explorer-scene:hover {
-  border-color: var(--explorer-rule-strong);
-  background: var(--explorer-surface-raised);
+a.explorer-scene:hover,
+a.explorer-scene:focus-visible {
+  z-index: 1;
+  border-color: rgba(8, 115, 131, 0.44);
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(16, 47, 59, 0.1);
+  transform: translateY(-2px);
 }
 
 .explorer-scene.is-planned {
-  opacity: 0.5;
-  border-style: dashed;
   min-width: 0;
+  border-style: dashed;
+  opacity: 0.62;
+}
+
+.explorer-scene-kicker,
+.explorer-scene-footer,
+.explorer-scene-trust {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.explorer-scene-kicker {
+  min-height: 20px;
+  padding-right: 28px;
+}
+
+.explorer-scene-kind {
+  display: flex;
+  flex-direction: column;
+  color: var(--explorer-accent);
+  font-size: 11px;
+  font-weight: 760;
+  letter-spacing: 0.07em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.explorer-scene-kind .lang-ja {
+  letter-spacing: 0;
+  text-transform: none;
 }
 
 .explorer-scene-title {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 9px;
-  font-size: 15px;
-  font-weight: 620;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  color: var(--explorer-ink);
+  font-size: 19px;
+  font-weight: 740;
+  letter-spacing: -0.015em;
   line-height: 1.35;
 }
 
 .explorer-scene-title .lang-ja {
-  font-size: 13px;
-  font-weight: 500;
   color: var(--explorer-muted);
+  font-size: 15px;
+  font-weight: 630;
 }
 
 .explorer-scene-note {
   max-width: 72ch;
-  font-size: 12px;
-  line-height: 1.7;
   color: var(--explorer-muted);
+  font-size: 14px;
+  line-height: 1.72;
 }
 
 .explorer-scene-note .lang-ja {
   display: block;
 }
 
+.explorer-scene-footer {
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 5px;
+}
+
+.explorer-use-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.explorer-use-badge {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 7px;
+  border-radius: 5px;
+  background: #e7f3f5;
+  color: #316873;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.explorer-use-badge.is-clinical-learning {
+  background: #f4ecdf;
+  color: #79551f;
+}
+
+.explorer-scene-open {
+  display: inline-flex;
+  flex-direction: column;
+  color: var(--explorer-accent-strong);
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.explorer-scene-open::after {
+  content: ' →';
+}
+
+.explorer-scene-trust {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--explorer-rule);
+}
+
 .explorer-footer {
-  padding: 18px 20px;
-  font-size: 11px;
-  line-height: 1.7;
+  padding: 20px 24px;
   color: var(--explorer-faint);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .explorer-footer .lang-ja {
   display: block;
 }
 
-/* ---------- status badge ----------
-   Shown on anything that is not production, in the explorer and on the scene's
-   own title card. A viewer should never have to guess whether what they are
-   looking at has been checked. */
+/* Shared status badge for the scene title card. */
 .status-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 7px;
   border-radius: 999px;
+  background: rgba(255, 168, 76, 0.14);
+  box-shadow: inset 0 0 0 1px rgba(255, 168, 76, 0.36);
+  color: #ffd8a8;
   font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: #ffd8a8;
-  background: rgba(255, 168, 76, 0.14);
-  box-shadow: inset 0 0 0 1px rgba(255, 168, 76, 0.36);
   white-space: nowrap;
 }
 
 .status-badge .lang-ja {
-  text-transform: none;
   letter-spacing: 0.02em;
+  text-transform: none;
 }
 
 .status-badge.is-reviewed {
-  color: #a8e6c4;
   background: rgba(76, 220, 150, 0.12);
   box-shadow: inset 0 0 0 1px rgba(76, 220, 150, 0.32);
+  color: #a8e6c4;
 }
 
 .status-badge.is-planned {
-  color: var(--ink-faint);
   background: rgba(140, 175, 225, 0.08);
   box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--ink-faint);
 }
 
 .title-card .status-badge {
   margin-top: 7px;
 }
 
-/* On the catalogue, maturity is metadata rather than a promotional badge. */
+/* On the catalogue, maturity is quiet metadata rather than the headline. */
 .explorer .status-badge {
   gap: 3px;
-  padding: 0 0 0 7px;
-  border-radius: 0;
-  color: #d9bd8e;
-  background: none;
-  box-shadow: inset 2px 0 0 rgba(217, 189, 142, 0.72);
-  font-size: 11px;
-  font-weight: 550;
-  letter-spacing: 0.01em;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: #f4eadb;
+  box-shadow: none;
+  color: #805b28;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0;
   text-transform: none;
 }
 
 .explorer .status-badge.is-reviewed {
-  color: #91c2ab;
-  background: none;
-  box-shadow: inset 2px 0 0 rgba(145, 194, 171, 0.7);
+  background: #e3f2ea;
+  box-shadow: none;
+  color: #28694d;
 }
 
 .explorer .status-badge.is-planned {
+  background: #e9eef0;
+  box-shadow: none;
   color: var(--explorer-faint);
-  background: none;
-  box-shadow: inset 2px 0 0 var(--explorer-rule-strong);
 }
 
-@media (max-width: 720px) {
-  .explorer {
-    padding: 14px 12px 48px;
-    gap: 18px;
+@keyframes explorer-preview-spinner {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 980px) {
+  .explorer-use-lane-grid {
+    grid-template-columns: 1fr;
   }
 
-  .explorer-header {
-    padding: 72px 18px 21px;
-  }
-
-  .explorer-header .title {
-    font-size: 25px;
+  .explorer-use-lane {
+    min-height: auto;
   }
 
   .explorer-organ {
     grid-template-columns: 1fr;
-    gap: 10px;
-    padding: 15px 0;
+  }
+
+  .explorer-organ-identity {
+    display: grid;
+    grid-template-columns: minmax(220px, 0.85fr) minmax(0, 1.15fr);
+    gap: 14px 18px;
+  }
+
+  .explorer-organ-heading {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .explorer-organ-preview {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 720px) {
+  .explorer {
+    padding: 12px 12px 50px;
+    gap: 23px;
+  }
+
+  .explorer-header {
+    padding: 74px 18px 23px;
+    border-radius: 14px;
+  }
+
+  .explorer-header .title {
+    font-size: 35px;
+  }
+
+  .explorer-header .subtitle {
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .explorer-use-lanes-heading {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .explorer-use-lane {
+    padding: 17px;
+  }
+
+  .explorer-system-name {
+    font-size: 18px;
+  }
+
+  .explorer-organ {
+    gap: 18px;
+    padding: 14px;
+    border-radius: 14px;
+  }
+
+  .explorer-organ-identity {
+    display: block;
+  }
+
+  .explorer-organ-heading {
+    margin-bottom: 11px;
+  }
+
+  .explorer-organ-name {
+    font-size: 23px;
+  }
+
+  .explorer-organ-preview {
+    min-height: 230px;
+  }
+
+  .explorer-scenes {
+    grid-template-columns: 1fr;
   }
 
   .explorer-scene {
     min-width: 0;
-    padding: 15px;
+    padding: 17px;
   }
 
+  .explorer-scene-title {
+    font-size: 18px;
+  }
 }
 
-/* The scene view drops the subtitle on a small screen to protect the 3D frame.
-   The explorer has no 3D frame to protect and the line is what says what this
-   project is, so it stays. */
+@media (prefers-reduced-motion: reduce) {
+  .explorer-organ-preview::after {
+    animation: none;
+  }
+
+  .explorer-scene {
+    transition: none;
+  }
+}

@@ -149,7 +149,7 @@ test('the explorer can be drawn from the catalogue alone', () => {
   for (const scene of SCENES) assert.ok(reachable.has(scene.id), `${scene.id} appears on the explorer`);
 });
 
-test('a scene from another system is not repeated under every organ it draws', () => {
+test('the explorer files each scene once under its primary organ', () => {
   // The whole-body view draws nine organs; listing it under all of them would
   // bury the scenes those organs are actually about.
   const overview = sceneById('body-overview');
@@ -157,9 +157,26 @@ test('a scene from another system is not repeated under every organ it draws', (
   assert.ok(scenesForOrgan('stomach').includes(overview), 'it is still an answer to "what shows the stomach?"');
   assert.ok(!scenesListedForOrgan('stomach').includes(overview), 'but it is not listed under the stomach');
   assert.ok(scenesListedForOrgan('whole-body').includes(overview), 'it is listed under its own organ');
-  // A scene that spans organs inside its own system stays listed under each.
+  // A scene that spans organs inside its own system remains searchable by the
+  // anatomy it draws, but is not duplicated in a second Explorer row.
   const upperGi = sceneById('upper-gi-peristalsis');
-  assert.ok(scenesListedForOrgan('esophagus').includes(upperGi), 'the oesophagus is not left blank');
+  assert.ok(scenesForOrgan('esophagus').includes(upperGi), 'the oesophagus remains part of the scene');
+  assert.ok(!scenesListedForOrgan('esophagus').includes(upperGi), 'the card is not duplicated under the oesophagus');
+  assert.ok(scenesListedForOrgan('stomach').includes(upperGi), 'the card is filed under its primary organ');
+  const copd = sceneById('copd-hyperinflation');
+  assert.ok(scenesForOrgan('airway').includes(copd), 'COPD remains searchable through the airway it depicts');
+  assert.ok(!scenesListedForOrgan('airway').includes(copd), 'COPD appears only once in the Explorer');
+  assert.ok(scenesListedForOrgan('lungs').includes(copd), 'COPD is filed under the lungs');
+});
+
+test('respiratory public coverage starts with five textbook disease models', () => {
+  const respiratory = SCENES.filter(
+    (scene) => scene.system === 'respiratory' && scene.status !== 'prototype' && scene.disease
+  );
+  assert.deepEqual(
+    respiratory.map((scene) => scene.disease).sort(),
+    ['asthma', 'copd', 'pneumonia', 'pulmonary-edema', 'pulmonary-embolism']
+  );
 });
 
 test('planned disease scenes point at real organs and are not loadable', () => {
