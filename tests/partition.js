@@ -17,14 +17,32 @@ import { carvePart } from '../src/scenes/shared/geometry/carve.js';
  * That last point is why this file exists. Dividing each part by the sum of the
  * parts can never detect any of it: the answer is 1 whatever the parts are. The
  * only checks with teeth measure the parts against **the organ**, which is what
- * both functions below do.
+ * `partitionReport` does.
  *
- * This is not hypothetical in this repository. The liver's caudate is a slab
- * rather than the box it should be precisely because bounding it sideways left
- * unclaimed slivers behind segments II and VII; the note on `caudateFront` in
- * `liverAnatomy.js` records that. The lobes of the lung once summed to 182% of
- * the lung they were cut from, because a fixed-point iteration for the surface
- * crossing silently failed to converge for an off-centre part.
+ * ## Everything here is measured against the uncut organ, deliberately
+ *
+ * The organ is carved once from the same field at the same detail with no
+ * cutting planes, and that solid supplies both the sampling box and the volume
+ * the parts are compared to. It is not a convenience — deriving either from the
+ * parts reintroduces the same blindness in a subtler place.
+ *
+ * Sampling inside a box unioned from the *parts'* bounding boxes cannot see a
+ * region that no part claims **and** that lies outside every part's box: an
+ * unclaimed cap at one end of the organ is exactly that shape, and it removes
+ * itself from the sample. Measured on this liver with a cap lopped off every
+ * segment, the part-derived box reported 0.78% of points unassigned where the
+ * organ's own box reported 4.80% — the same defect, six times smaller. A defect
+ * one-sixth of that size passes the first and fails the second. So the caller
+ * does not get to supply bounds at all.
+ *
+ * ## Prior art in this repository
+ *
+ * The liver's caudate is a slab rather than the box it should be precisely
+ * because bounding it sideways left unclaimed slivers behind segments II and
+ * VII; the note on `caudateFront` in `liverAnatomy.js` records that. The lobes
+ * of the lung once summed to 182% of the lung they were cut from, because a
+ * fixed-point iteration for the surface crossing silently failed to converge
+ * for an off-centre part.
  */
 
 /** Whether a point lies inside a part, by the rule the carve itself cuts with. */
@@ -51,21 +69,41 @@ function generator(seed) {
 }
 
 /**
- * How cleanly a set of parts covers the solid they were cut from.
+ * How cleanly a set of parts covers the organ they were cut from, and whether
+ * they add up to it.
  *
- * Rejection-samples the organ's interior and asks each point how many parts
- * claim it. The answer should be exactly one every time.
+ * Rejection-samples the organ's interior — the *organ's*, not the parts' — and
+ * asks each point how many parts claim it. The answer should be exactly one
+ * every time. Then compares the summed part volumes against the uncut organ,
+ * which sampling cannot see: a carve is a polyhedron inscribed in the surface,
+ * so cutting one solid into several loses a little at every new facet.
  *
  * @param {object} options
- * @param {THREE.Box3} options.bounds a box containing the organ
+ * @param {ReturnType<import('../src/scenes/shared/geometry/carve.js').radialField>} options.field
+ *   the distance field the parts were cut out of, taken from a part so that the
+ *   solid measured against is the one that was actually cut
+ * @param {number} options.detail the detail the parts were carved at — the
+ *   organ is carved at the same one, so any difference is the cuts and not the
+ *   method
  * @param {(point: THREE.Vector3) => boolean} options.contains whether a point is in the organ
- * @param {Array<{ id: string, planes: Array<{normal: THREE.Vector3, constant: number}> }>} options.parts
+ * @param {Array<{ id: string, planes: Array<{normal: THREE.Vector3, constant: number}>,
+ *   geometry: THREE.BufferGeometry }>} options.parts
+ * @param {(geometry: THREE.BufferGeometry) => number} options.volumeOf
  * @param {number} [options.samples] interior points to evaluate, not points tried
  * @param {number} [options.seed]
  * @returns {{ samples: number, unassigned: number, multiple: number,
- *   unassignedRate: number, multipleRate: number, worst: string | null }}
+ *   unassignedRate: number, multipleRate: number, worst: string | null,
+ *   wholeVolume: number, partVolume: number, shortfall: number }}
  */
-export function partitionQuality({ bounds, contains, parts, samples = 50000, seed = 1 }) {
+export function partitionReport({ field, detail, contains, parts, volumeOf, samples = 50000, seed = 1 }) {
+  const whole = carvePart({ field, centre: field.centre.clone(), planes: [], detail });
+  whole.computeBoundingBox();
+  // A margin, so that a defect touching the surface is sampled from both sides
+  // rather than clipped by the box that is supposed to contain it.
+  const bounds = whole.boundingBox.clone().expandByScalar(0.02);
+  const wholeVolume = volumeOf(whole);
+  whole.dispose();
+
   const random = generator(seed);
   const min = bounds.min;
   const size = bounds.getSize(new THREE.Vector3());
@@ -95,14 +133,17 @@ export function partitionQuality({ bounds, contains, parts, samples = 50000, see
       claims++;
       claimant = part.id;
     }
+    const where = `(${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)})`;
     if (claims === 0) {
       unassigned++;
-      if (worst === null) worst = `no part claims (${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)})`;
+      if (worst === null) worst = `no part claims ${where}`;
     } else if (claims > 1) {
       multiple++;
-      if (worst === null) worst = `${claims} parts claim (${point.x.toFixed(3)}, ${point.y.toFixed(3)}, ${point.z.toFixed(3)}), one of them ${claimant}`;
+      if (worst === null) worst = `${claims} parts claim ${where}, one of them ${claimant}`;
     }
   }
+
+  const partVolume = parts.reduce((total, part) => total + volumeOf(part.geometry), 0);
 
   return {
     samples: inside,
@@ -111,27 +152,9 @@ export function partitionQuality({ bounds, contains, parts, samples = 50000, see
     unassignedRate: inside === 0 ? 1 : unassigned / inside,
     multipleRate: inside === 0 ? 1 : multiple / inside,
     worst,
+    wholeVolume,
+    partVolume,
+    /** How far short of the organ the parts fall, as a fraction. Positive is short. */
+    shortfall: 1 - partVolume / wholeVolume,
   };
-}
-
-/**
- * The volume of the uncut solid a set of parts came from.
- *
- * Carved from the same field at the same detail with no cutting planes at all,
- * so the comparison is like for like: any difference from the sum of the parts
- * is the carve's own error at the cuts, not a difference of method. Carving the
- * organ at a finer detail than the parts would make the parts look as though
- * they had lost volume they never had.
- *
- * @param {object} options
- * @param {ReturnType<import('../src/scenes/shared/geometry/carve.js').radialField>} options.field
- * @param {number} options.detail the detail the parts were carved at
- * @param {(geometry: THREE.BufferGeometry) => number} options.volumeOf
- * @returns {number}
- */
-export function wholeVolume({ field, detail, volumeOf }) {
-  const geometry = carvePart({ field, centre: field.centre.clone(), planes: [], detail });
-  const volume = volumeOf(geometry);
-  geometry.dispose();
-  return volume;
 }

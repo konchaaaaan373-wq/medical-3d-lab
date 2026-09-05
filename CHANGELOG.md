@@ -22,8 +22,8 @@ person: Safari, Firefox, touch and a screen reader.
   right lung against a reference 16%, and the right lower lobe 52.0% against
   48%. In the liver the two right sectors came out within 0.4 percentage points
   of each other — the anterior sector should lead the posterior by about 14 —
-  and segment VIII, which is the largest segment of the liver, was sitting
-  behind segment VII.
+  and segment VIII, the largest segment of the liver, was leading segment VII
+  by 0.2 points where the source's medians differ by nine.
 - **The numbers carry their limits with them.** The lung values are inspiratory,
   supine, and from a northern Dutch cohort aged 45 and over; they are one
   teaching reference specimen, not a normal range and not a prediction for any

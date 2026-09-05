@@ -365,10 +365,19 @@ Bold is what was outside the band the source supports. Five of the twelve were.
 
 **The right liver was the substantive error.** The two right sectors came out
 at 32.8% and 32.4% — a gap of 0.4 percentage points, which is a coin toss
-presented as anatomy. Mise puts segment VIII alone at a median 26.1% of the
-liver, above every other segment; here VIII was 18.9%, behind VII. The
-anterior sector leads the posterior by 14 points now, and a test refuses
-anything under 8.
+presented as anatomy. Mise puts segment VIII at a median 26.1% of the liver;
+here it was 18.9%, seven points low, and its lead over VII was 0.21 points
+where the source's medians differ by nine.
+
+The *order* of the segments was very nearly right before — VIII > VII > IV > V
+> VI > III > II > I against Mise's VIII > VII > IV > V > III > VI > II > I, one
+transposition. That is worth stating plainly, because an earlier draft of this
+section claimed VIII had been behind VII, and the measurements say otherwise:
+18.92% against 18.71%. What was wrong was the *magnitudes*, and the fact that
+two orderings held by fractions of a point. An ordering that survives by two
+parts in a thousand is not being asserted by the geometry; it is being landed
+on. Both are now held by margins a test refuses to go under — 8 points between
+the right sectors, 5 between VIII and VII.
 
 **Nothing was tuned by hand.** The plane offsets are a coordinate-descent fit —
 three for the lung (two fissure offsets on the right, one on the left), six for
@@ -388,6 +397,16 @@ Now each carved part carries the distance field it was cut out of, so the solid
 being checked is the one that was actually cut, and `tests/partition.js` asks
 50,000 interior points how many parts claim each. Both organs: nothing
 unclaimed, nothing claimed twice.
+
+**The sampling box is derived from the organ, not from the parts**, and the
+caller cannot supply one. Review of the first version caught this: a box
+unioned from the parts' bounding boxes cannot contain a region that no part
+claims *and* that lies outside every part's box, and an unclaimed cap at one
+end of the organ is exactly that shape — it removes itself from the sample.
+Measured with a cap lopped off every liver segment, the part-derived box
+reported 0.78% of points unassigned where the organ's own box reported 4.80%.
+The same defect, six times smaller; one a sixth of that size passes the first
+and fails the second.
 
 The parts also have to sum to **the organ**, which sampling cannot see. They
 fall short, and by an amount that halves as the mesh refines — right lung

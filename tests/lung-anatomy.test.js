@@ -23,7 +23,7 @@ import {
   segmentsOfLobe,
   segmentsOfSide,
 } from '../src/scenes/respiratory/organs/lungAnatomy.js';
-import { partitionQuality, wholeVolume } from './partition.js';
+import { partitionReport } from './partition.js';
 import {
   carveInside,
   partCentroid,
@@ -252,43 +252,39 @@ test('the lobes partition the lung: they fill it, and they do not overlap', () =
   // the lung rather than against each other. Each lobe carries the distance
   // field it was cut out of, so the solid being partitioned here is the one
   // that was actually partitioned — not a second lung rebuilt from the same
-  // parameters, which would drift the moment the shape changed.
+  // parameters, which would drift the moment the shape changed. The report
+  // derives its own sampling bounds from that field; see `partition.js` for
+  // why the caller is not allowed to supply them.
   const built = buildLungs({ detail: PARTITION_DETAIL, bronchi: false, vessels: false });
   for (const side of ['right', 'left']) {
     const parts = built.lobes.filter((lobe) => lobe.side === side);
-    const bounds = new THREE.Box3();
-    for (const lobe of parts) {
-      lobe.geometry.computeBoundingBox();
-      bounds.union(lobe.geometry.boundingBox);
-    }
-    bounds.expandByScalar(0.02);
-
-    const quality = partitionQuality({
-      bounds,
+    const report = partitionReport({
+      field: parts[0].field,
+      detail: PARTITION_DETAIL,
       contains: (point) => built.contains(side, point),
       parts,
+      volumeOf,
       samples: 50000,
       seed: side === 'right' ? 7 : 11,
     });
-    assert.equal(quality.samples, 50000, `${side}: the sample has to land in the lung 50000 times`);
+
+    assert.equal(report.samples, 50000, `${side}: the sample has to land in the lung 50000 times`);
     assert.ok(
-      quality.unassignedRate <= 0.001,
-      `${side}: ${quality.unassigned} of ${quality.samples} points belong to no lobe — ${quality.worst}`
+      report.unassignedRate <= 0.001,
+      `${side}: ${report.unassigned} of ${report.samples} points belong to no lobe — ${report.worst}`
     );
     assert.ok(
-      quality.multipleRate <= 0.001,
-      `${side}: ${quality.multiple} of ${quality.samples} points belong to more than one lobe — ${quality.worst}`
+      report.multipleRate <= 0.001,
+      `${side}: ${report.multiple} of ${report.samples} points belong to more than one lobe — ${report.worst}`
     );
 
     // And the lobes have to add up to the lung, which sampling cannot see: a
     // carve is a polyhedron inscribed in the surface, so cutting one solid into
     // several loses a little at every new facet. This is the check that caught
     // the lobes summing to 182% of their lung.
-    const whole = wholeVolume({ field: parts[0].field, detail: PARTITION_DETAIL, volumeOf });
-    const sum = parts.reduce((total, lobe) => total + volumeOf(lobe.geometry), 0);
     assert.ok(
-      Math.abs(sum / whole - 1) <= 0.01,
-      `${side}: the lobes sum to ${(100 * (sum / whole)).toFixed(2)}% of the lung they were cut from`
+      Math.abs(report.shortfall) <= 0.01,
+      `${side}: the lobes sum to ${(100 * (1 - report.shortfall)).toFixed(2)}% of the lung they were cut from`
     );
   }
   built.dispose();
@@ -303,10 +299,19 @@ test('the volume a carve loses at its cuts is resolution, not a hole', () => {
   const measure = (detail) => {
     const built = buildLungs({ detail, bronchi: false, vessels: false });
     const parts = built.lobes.filter((lobe) => lobe.side === 'right');
-    const whole = wholeVolume({ field: parts[0].field, detail, volumeOf });
-    const sum = parts.reduce((total, lobe) => total + volumeOf(lobe.geometry), 0);
+    const report = partitionReport({
+      field: parts[0].field,
+      detail,
+      contains: (point) => built.contains('right', point),
+      parts,
+      volumeOf,
+      // Only the volumes are wanted here, so the sample is small on purpose;
+      // the partition itself is checked at full strength above.
+      samples: 2000,
+      seed: 3,
+    });
     built.dispose();
-    return 1 - sum / whole;
+    return report.shortfall;
   };
   const coarse = measure(5);
   const fine = measure(12);

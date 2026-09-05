@@ -17,7 +17,7 @@ import {
   segmentsOfSector,
   veinOrigin,
 } from '../src/scenes/hepatobiliary/organs/liverAnatomy.js';
-import { partitionQuality, wholeVolume } from './partition.js';
+import { partitionReport } from './partition.js';
 import {
   carveInside,
   planeThrough,
@@ -127,8 +127,8 @@ test('each sector takes the share of the liver the reference specimen gives it',
   // The right anterior sector is the larger of the two right sectors, and by a
   // margin rather than a rounding. This is the relation the previous
   // calibration got wrong: it produced 32.8% and 32.4%, a gap of 0.4 points,
-  // which is a coin toss dressed as anatomy. Mise puts VIII alone above either
-  // of VI and VII, and the anterior sector carries VIII.
+  // which is a coin toss dressed as anatomy. Mise's medians put the anterior
+  // sector fourteen points ahead.
   const gap = sectorShare('right-anterior') - sectorShare('right-posterior');
   assert.ok(
     gap >= 0.08,
@@ -160,11 +160,15 @@ test('each segment takes the share of the liver the reference specimen gives it'
   }
 
   // Segment VIII is the largest, which is the one ordering Mise states in the
-  // abstract and the one this geometry previously had backwards: VIII came out
-  // at 18.9% behind VII at 18.7% and level with VI at 13.7%, when it should
-  // lead every other segment outright.
+  // abstract. The previous geometry did have it largest — at 18.92% against
+  // VII's 18.71%, a lead of 0.21 points where the source's medians differ by
+  // nine. An ordering that holds by two parts in a thousand is not an ordering
+  // the geometry asserts; it is one it happened to land on, and the sector gap
+  // above is what actually holds it now.
   const largest = [...asReported.entries()].sort((a, b) => b[1] - a[1])[0][0];
   assert.equal(largest, 'VIII', 'segment VIII is the largest segment of the liver');
+  const lead = asReported.get('VIII') - asReported.get('VII');
+  assert.ok(lead >= 0.05, `VIII leads VII by ${(lead * 100).toFixed(2)} points, which is not a lead`);
 });
 
 test('segment IV is halved by choice, and says so rather than citing anyone', () => {
@@ -189,37 +193,31 @@ test('the segments partition the liver: they fill it, and they do not overlap', 
   // this matters here: it is taken as a slab rather than the box it should be
   // precisely because bounding it sideways left wedges behind segments II and
   // VII that belonged to no segment at all, and nothing about the picture said
-  // so.
+  // so. The report derives its own sampling bounds from the organ; see
+  // `partition.js` for why the caller is not allowed to supply them.
   const built = buildLiver({ detail: PARTITION_DETAIL });
-  const bounds = new THREE.Box3();
-  for (const segment of built.segments) {
-    segment.geometry.computeBoundingBox();
-    bounds.union(segment.geometry.boundingBox);
-  }
-  bounds.expandByScalar(0.02);
-
-  const quality = partitionQuality({
-    bounds,
+  const report = partitionReport({
+    field: built.segments[0].field,
+    detail: PARTITION_DETAIL,
     contains: (point) => built.contains(point),
     parts: built.segments,
+    volumeOf,
     samples: 50000,
     seed: 23,
   });
-  assert.equal(quality.samples, 50000, 'the sample has to land in the liver 50000 times');
-  assert.ok(
-    quality.unassignedRate <= 0.001,
-    `${quality.unassigned} of ${quality.samples} points belong to no segment — ${quality.worst}`
-  );
-  assert.ok(
-    quality.multipleRate <= 0.001,
-    `${quality.multiple} of ${quality.samples} points belong to more than one segment — ${quality.worst}`
-  );
 
-  const whole = wholeVolume({ field: built.segments[0].field, detail: PARTITION_DETAIL, volumeOf });
-  const sum = built.segments.reduce((total, segment) => total + volumeOf(segment.geometry), 0);
+  assert.equal(report.samples, 50000, 'the sample has to land in the liver 50000 times');
   assert.ok(
-    Math.abs(sum / whole - 1) <= 0.01,
-    `the segments sum to ${(100 * (sum / whole)).toFixed(2)}% of the liver they were cut from`
+    report.unassignedRate <= 0.001,
+    `${report.unassigned} of ${report.samples} points belong to no segment — ${report.worst}`
+  );
+  assert.ok(
+    report.multipleRate <= 0.001,
+    `${report.multiple} of ${report.samples} points belong to more than one segment — ${report.worst}`
+  );
+  assert.ok(
+    Math.abs(report.shortfall) <= 0.01,
+    `the segments sum to ${(100 * (1 - report.shortfall)).toFixed(2)}% of the liver they were cut from`
   );
   built.dispose();
 });
