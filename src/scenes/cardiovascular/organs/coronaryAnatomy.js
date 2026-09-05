@@ -1,4 +1,5 @@
 import { ANATOMICAL_AXES } from '../scenes/heartFailure/anatomy.js';
+import { TERRITORIES } from '../../../models/coronaryTerritories.js';
 
 /**
  * The coronary arteries and the myocardium they supply.
@@ -280,8 +281,15 @@ export const CORONARY_BRANCHES = Object.freeze([
 /** Right-dominant, and stated where a test can read it. */
 export const DOMINANCE = 'right';
 
-/** The three territories a myocardial segment can belong to. */
-export const TERRITORIES = Object.freeze(['lad', 'rca', 'lcx']);
+/**
+ * The three territories a myocardial segment can belong to.
+ *
+ * Re-exported from the model layer rather than declared here, so the geometry
+ * and the ischemia model cannot end up with different ideas of what a territory
+ * is. The list is anatomical, which is why it is a shared vocabulary rather
+ * than something either side owns.
+ */
+export { TERRITORIES, TERRITORY_LABELS } from '../../../models/coronaryTerritories.js';
 
 /**
  * The AHA 17-segment model, and which artery supplies each segment.
