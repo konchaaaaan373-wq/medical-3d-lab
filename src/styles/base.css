@@ -28,7 +28,10 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  /* `--page-ground` is set from the active background preset's own bottom
+     colour, so the page behind the canvas matches the backdrop rather than
+     showing near-black through it while the first frames are drawn. */
+  background: var(--page-ground, var(--bg));
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;

@@ -74,8 +74,24 @@ export async function createApp({ stage, ui }) {
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
+
+  /**
+   * The page behind the canvas is part of the background, not a separate one.
+   *
+   * The renderer needs a few frames after the loading veil lifts before the
+   * backdrop is on screen. Measured on a pale scene: the veil was gone at
+   * ~300ms and the first light frame arrived at ~700ms, so every load of the
+   * brain atlas opened with 400ms of near-black under a light-themed panel.
+   * Painting the page with the preset's own bottom colour closes that window,
+   * and keeps the ground right wherever else the canvas does not reach.
+   */
+  const paintPageGround = (preset) => {
+    document.documentElement.style.setProperty('--page-ground', preset.backdrop.bottom);
+  };
+
   const initialBackground = viewer.setBackgroundPreset(defaultBackground.id);
   ui.dataset.background = initialBackground.id;
+  paintPageGround(initialBackground);
 
   /**
    * Learning view is the default: the 3D subject, the stage it is in, and the
@@ -336,6 +352,7 @@ export async function createApp({ stage, ui }) {
   function applyInspectionBackground(id) {
     const accepted = viewer.setBackgroundPreset(id);
     ui.dataset.background = accepted.id;
+    paintPageGround(accepted);
     inspectionPanel?.setBackground(accepted.id);
     return accepted.id === id;
   }

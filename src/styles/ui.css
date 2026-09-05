@@ -110,7 +110,23 @@
 
 /* Everything else in the rail states a model read-out, so it keeps its size
    and the panel above shrinks first. */
-.rail > *:not(.inspection-panel) {
+/* The selection card is prose — a heading, how to work the model, and where the
+   model came from — and it carries its own scroll box. When the display panel
+   is open and the rail cannot hold both, this is the item that gives up height:
+   the legend cannot, because the colour modes rewrite its rows and it has to
+   stay beside the buttons that change it. Without this the panel was the only
+   thing that could shrink, so it absorbed the whole deficit and Background fell
+   off the bottom on an ordinary 1440x900 desktop. */
+.rail > .anatomy-info {
+  flex: 0 12 auto;
+  min-height: 76px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.rail > *:not(.inspection-panel):not(.anatomy-info) {
   flex: 0 0 auto;
 }
 
@@ -181,7 +197,7 @@
 }
 
 .inspection-section + .inspection-section {
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
 .inspection-section-label {
@@ -295,13 +311,17 @@
 }
 
 .inspection-footer {
-  margin-top: 11px;
-  padding-top: 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
 .inspection-reset {
   width: 100%;
+  min-width: 0;
   min-height: 36px;
   padding: 7px 10px;
   border: 1px solid var(--border);

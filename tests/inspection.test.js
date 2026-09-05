@@ -156,8 +156,26 @@ test('the display panel yields the rail instead of evicting the read-outs it cha
   assert.match(panel, /flex:\s*0 1 auto/, 'so it is the rail item that shrinks');
   assert.match(
     controls,
-    /\.rail > \*:not\(\.inspection-panel\)\s*\{\s*flex:\s*0 0 auto/,
+    /\.rail > \*:not\(\.inspection-panel\):not\(\.anatomy-info\)\s*\{\s*flex:\s*0 0 auto/,
     'every model read-out in the rail keeps its size'
+  );
+
+  // The legend is the read-out the colour modes rewrite, so it must keep its
+  // size. The selection card is prose with its own scroll box, and it is the
+  // one item allowed to give height back — without it the panel absorbed the
+  // whole deficit and Background fell off the bottom of an ordinary desktop.
+  const card = controls.slice(
+    controls.indexOf('.rail > .anatomy-info {'),
+    controls.indexOf('.rail > *:not(.inspection-panel)')
+  );
+  assert.ok(card.length, 'the selection card has a rail rule of its own');
+  assert.match(card, /flex:\s*0 \d+ auto/, 'it yields ahead of the panel');
+  assert.match(card, /min-height:\s*\d+px/, 'down to a floor, not to nothing');
+  assert.match(card, /overflow-y:\s*auto/, 'and scrolls what no longer fits');
+  assert.doesNotMatch(
+    controls.slice(controls.indexOf('.rail > *:not(.inspection-panel)')),
+    /^\.legend\s*\{[^}]*flex:\s*0 [1-9]/m,
+    'the legend never shrinks'
   );
 });
 
