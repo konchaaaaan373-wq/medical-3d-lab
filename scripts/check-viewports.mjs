@@ -26,6 +26,7 @@
  * Options:
  *   --dist <dir>     built site to serve (default: dist)
  *   --json <file>    write the full measurement table as JSON
+ *   --engine <name>  chromium (default), firefox or webkit
  *   --viewport <id>  check one viewport (repeatable)
  *   --surface <id>   check one surface (repeatable)
  *   --headed         show the browser
@@ -62,6 +63,8 @@ const jsonOut = value('--json');
 const onlyViewports = values('--viewport');
 const onlySurfaces = values('--surface');
 const headed = flag('--headed');
+const ENGINES = ['chromium', 'firefox', 'webkit'];
+const engineName = value('--engine', 'chromium');
 
 const viewports = onlyViewports.length
   ? VIEWPORTS.filter((viewport) => onlyViewports.includes(viewport.id))
@@ -95,11 +98,11 @@ if (!existsSync(join(distDir, 'index.html'))) {
  * plainly here rather than passing quietly when it is absent — a check that
  * succeeds because it did not run is worse than no check.
  */
-async function loadChromium() {
+async function loadEngine(name) {
   for (const pkg of ['playwright', 'playwright-core']) {
     try {
       const mod = await import(pkg);
-      return mod.chromium ?? mod.default?.chromium;
+      return (mod[name] ?? mod.default?.[name]) || null;
     } catch (error) {
       if (error?.code !== 'ERR_MODULE_NOT_FOUND') throw error;
     }
@@ -107,14 +110,18 @@ async function loadChromium() {
   return null;
 }
 
-const chromium = await loadChromium();
-if (!chromium) {
+if (!ENGINES.includes(engineName)) {
+  die(`Unknown --engine "${engineName}". Choose one of: ${ENGINES.join(', ')}.`);
+}
+
+const browserType = await loadEngine(engineName);
+if (!browserType) {
   die(
     [
-      'Playwright is not installed, so nothing was measured.',
+      `Playwright is not installed, so nothing was measured (${engineName}).`,
       '',
       '  npm i --no-save playwright',
-      '  npx playwright install --with-deps chromium',
+      `  npx playwright install --with-deps ${engineName}`,
       '  npm run verify:ui',
       '',
       'It is deliberately not a dependency: `npm test` must stay a plain',
@@ -387,14 +394,32 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const belowFloor = [];
   const belowIntent = [];
   const unreachable = [];
+  const unreachableLinks = [];
   const covered = [];
   const coveredByTransient = [];
   const scrolledOut = [];
+  // Links are counted apart from the rest. Safari does not move focus to a link
+  // on Tab unless full keyboard access is on, so on a WebKit run "no link was
+  // ever focused" is a fact about the engine, while "this button was never
+  // focused" is a fact about the page. Reported as one thing they are
+  // indistinguishable, and the engine's convention would bury every real
+  // finding under a list of every link on the surface.
+  let linksPresent = 0;
+  let linksReached = 0;
+  let controlsReached = 0;
   for (const element of document.querySelectorAll(INTERACTIVE)) {
     if (!visible(element)) continue;
     if (exemptions.some((selector) => element.closest(selector))) continue;
-    if (element.getAttribute('tabindex') !== '-1' && !element.hasAttribute('data-vp-focus')) {
-      unreachable.push(describe(element));
+    const isLink = element.tagName === 'A' && element.hasAttribute('href');
+    const reached = element.hasAttribute('data-vp-focus');
+    if (isLink) {
+      linksPresent += 1;
+      if (reached) linksReached += 1;
+    } else if (reached) {
+      controlsReached += 1;
+    }
+    if (element.getAttribute('tabindex') !== '-1' && !reached) {
+      (isLink ? unreachableLinks : unreachable).push(describe(element));
     }
     const rect = element.getBoundingClientRect();
     const blocker = blockedBy(element, rect);
@@ -415,6 +440,10 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     belowFloor,
     belowIntent,
     unreachable,
+    unreachableLinks,
+    // Tab reached other controls but not one single link: the engine does not
+    // tab to links, rather than the page having lost all of them at once.
+    engineSkipsLinks: linksPresent > 0 && linksReached === 0 && controlsReached > 0,
     covered,
     coveredByTransient,
     scrolledOut,
@@ -511,15 +540,42 @@ const BROWSER_ARGS = [
   '--disable-features=OptimizationHints,Translate,MediaRouter,AutofillServerCommunication,InterestFeedContentSuggestions',
 ];
 
-const browser = await chromium.launch({
-  headless: !headed,
-  executablePath: process.env.CHROMIUM_PATH || undefined,
-  args: BROWSER_ARGS,
-});
+// `BROWSER_ARGS` are Chromium switches; Firefox and WebKit neither accept nor
+// need them, and the network isolation they provide is done for every engine by
+// the route below instead.
+// The package can be present while the engine's binary was never downloaded —
+// `playwright install chromium` does not fetch Firefox. That fails here rather
+// than at import, and Playwright's own stack trace buries the one line worth
+// reading, so it is answered with the command that fixes it.
+let browser;
+try {
+  browser = await browserType.launch({
+    headless: !headed,
+    ...(engineName === 'chromium'
+      ? { executablePath: process.env.CHROMIUM_PATH || undefined, args: BROWSER_ARGS }
+      : {}),
+  });
+} catch (error) {
+  const missing = /Executable doesn't exist|playwright install/i.test(error?.message ?? '');
+  die(
+    missing
+      ? [
+          `The ${engineName} browser is not installed, so nothing was measured.`,
+          '',
+          `  npx playwright install --with-deps ${engineName}`,
+          '  npm run verify:ui' + (engineName === 'chromium' ? '' : ` -- --engine ${engineName}`),
+        ].join('\n')
+      : `Could not start ${engineName}: ${error?.message ?? error}`,
+  );
+}
 
-const engine = `Chromium ${browser.version()}`;
+const ENGINE_LABEL = { chromium: 'Chromium', firefox: 'Firefox', webkit: 'WebKit' };
+const engine = `${ENGINE_LABEL[engineName]} ${browser.version()}`;
 const problems = [];
 const notes = [];
+// Set when an engine turned out not to tab to links at all, so the summary can
+// say which coverage this run did not have rather than implying it did.
+let engineLinkNote = false;
 const shortfalls = [];
 const rows = [];
 
@@ -538,8 +594,14 @@ try {
     const fullTabWalk = viewport.width === narrowest || viewport.width === widest;
     // The build asks Google for a webfont. CI has no reason to reach the
     // internet to answer a layout question, and the fallback stack is what a
-    // reader with a blocked font sees anyway.
-    await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());
+    // reader with a blocked font sees anyway. Chromium is additionally sealed
+    // by `--host-resolver-rules`; this is the part that holds on every engine,
+    // so a Firefox or WebKit run is isolated the same way rather than quietly
+    // reaching the network.
+    await page.route(
+      (url) => (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== '127.0.0.1',
+      (route) => route.abort(),
+    );
 
     for (const surface of surfaces) {
       const where = `${viewport.id} · ${surface.label}`;
@@ -718,6 +780,23 @@ try {
               `\n    ${measured.unreachable.slice(0, 6).join('\n    ')}`,
           );
         }
+        if (fullTabWalk && measured.unreachableLinks.length) {
+          if (measured.engineSkipsLinks) {
+            // Not this page's defect and not silently dropped: link reachability
+            // is simply not measurable on an engine that does not tab to links,
+            // and the other two engines in the matrix do measure it.
+            engineLinkNote = true;
+            notes.push(
+              `${where}: link focus not measured — ${engine} moved focus to none of ` +
+                `${measured.unreachableLinks.length} link(s) while reaching other controls`,
+            );
+          } else {
+            problems.push(
+              `${where}: ${measured.unreachableLinks.length} visible link(s) the Tab key never reached` +
+                `\n    ${measured.unreachableLinks.slice(0, 6).join('\n    ')}`,
+            );
+          }
+        }
         if (measured.belowIntent.length) {
           shortfalls.push({
             viewport: viewport.id,
@@ -749,7 +828,9 @@ try {
           belowIntent: measured.belowIntent.length,
           covered: measured.covered.length,
           controls: measured.interactiveCount,
-          unreachable: fullTabWalk ? measured.unreachable.length : null,
+          unreachable: fullTabWalk
+            ? measured.unreachable.length + (measured.engineSkipsLinks ? 0 : measured.unreachableLinks.length)
+            : null,
           tabStops: tab?.stops ?? null,
           scrollHeight: measured.scrollHeight,
           canvas: measured.hasCanvas,
@@ -835,7 +916,12 @@ if (shortfalls.length) {
 
 console.log('\nStill only a person can do these, on real hardware:');
 for (const line of [
-  'Safari (iOS and macOS) and Firefox — this script drives Chromium only.',
+  engineName === 'chromium'
+    ? 'Safari and Firefox — this run drove Chromium. CI runs all three engines.'
+    : 'Safari on real iOS: WebKit here is the engine, not the browser or the OS.',
+  ...(engineLinkNote
+    ? [`Tabbing to links: ${engine} does not, so this run could not measure it.`]
+    : []),
   'A screen reader: VoiceOver and TalkBack reading each surface end to end.',
   'Pinch zoom to 400% and the software keyboard covering the viewport.',
   'Orbiting a scene by touch, and whether the gesture fights the page scroll.',

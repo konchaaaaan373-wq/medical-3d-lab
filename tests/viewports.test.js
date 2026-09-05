@@ -242,3 +242,53 @@ test('validator: an overlay list that forbids nothing is caught', () => {
   assert.match(complain([{ selector: '.x', why: 'too short', mustNotCover: ['.console'] }]), /does not say why/);
   assert.match(complain([{ selector: '.x', why: 'y'.repeat(40) }]), /declares no limit/);
 });
+
+test('the viewport check can drive more than one engine, and CI drives them all', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // Chromium switches are Chromium's. Firefox rejects unknown arguments and
+  // WebKit ignores them, so they must not be passed to either.
+  assert.match(check, /const ENGINES = \['chromium', 'firefox', 'webkit'\]/);
+  assert.match(check, /engineName === 'chromium'\s*\?\s*\{ executablePath/);
+
+  // The network seal has to hold on every engine: `--host-resolver-rules` is a
+  // Chromium flag, so the route is what isolates Firefox and WebKit.
+  const route = check.slice(check.indexOf('await page.route('), check.indexOf('for (const surface of surfaces)'));
+  assert.match(route, /url\.hostname !== '127\.0\.0\.1'/, 'anything off the local server is aborted');
+
+  // An engine whose binary was never downloaded must say so, not throw
+  // Playwright's stack at the reader.
+  assert.match(check, /npx playwright install --with-deps \$\{engineName\}/);
+
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  for (const engine of ['chromium', 'firefox', 'webkit']) {
+    assert.ok(ci.includes(engine), `CI installs and runs ${engine}`);
+  }
+  // One engine failing is a finding about that engine, not a reason to stop
+  // measuring the others.
+  assert.match(ci, /fail-fast: false/);
+  // Each engine's report is its own artifact, or they overwrite each other.
+  assert.match(ci, /name: viewport-report-\$\{\{ matrix\.engine \}\}/);
+});
+
+test('an engine that does not tab to links is told apart from a page that lost one', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // Safari does not move focus to a link on Tab unless full keyboard access is
+  // on. Counted together with the buttons, that convention would bury every
+  // real finding on a WebKit run under a list of every link on the surface.
+  assert.match(check, /const unreachableLinks = \[\]/);
+  assert.match(check, /engineSkipsLinks: linksPresent > 0 && linksReached === 0 && controlsReached > 0/);
+
+  // The distinction has to be earned: Tab must have reached other controls, or
+  // "no link was focused" is just as likely to be a broken focus ring.
+  assert.match(check, /if \(measured\.engineSkipsLinks\)/);
+  assert.match(check, /link focus not measured/);
+
+  // And it is a note, not a silence — the run says which coverage it lacked.
+  assert.match(check, /Tabbing to links: \$\{engine\} does not, so this run could not measure it\./);
+
+  // Where the engine does tab to links, an unreachable one still fails.
+  const branch = check.slice(check.indexOf('if (fullTabWalk && measured.unreachableLinks.length)'));
+  assert.match(branch.slice(0, 900), /visible link\(s\) the Tab key never reached/);
+});

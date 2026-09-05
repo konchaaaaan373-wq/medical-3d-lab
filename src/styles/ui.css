@@ -110,7 +110,23 @@
 
 /* Everything else in the rail states a model read-out, so it keeps its size
    and the panel above shrinks first. */
-.rail > *:not(.inspection-panel) {
+/* The selection card is prose — a heading, how to work the model, and where the
+   model came from — and it carries its own scroll box. When the display panel
+   is open and the rail cannot hold both, this is the item that gives up height:
+   the legend cannot, because the colour modes rewrite its rows and it has to
+   stay beside the buttons that change it. Without this the panel was the only
+   thing that could shrink, so it absorbed the whole deficit and Background fell
+   off the bottom on an ordinary 1440x900 desktop. */
+.rail > .anatomy-info {
+  flex: 0 12 auto;
+  min-height: 76px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.rail > *:not(.inspection-panel):not(.anatomy-info) {
   flex: 0 0 auto;
 }
 
@@ -181,7 +197,7 @@
 }
 
 .inspection-section + .inspection-section {
-  margin-top: 10px;
+  margin-top: 7px;
 }
 
 .inspection-section-label {
@@ -295,13 +311,17 @@
 }
 
 .inspection-footer {
-  margin-top: 11px;
-  padding-top: 9px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px;
+  margin-top: 9px;
+  padding-top: 8px;
   border-top: 1px solid var(--border);
 }
 
 .inspection-reset {
   width: 100%;
+  min-width: 0;
   min-height: 36px;
   padding: 7px 10px;
   border: 1px solid var(--border);
@@ -3377,4 +3397,72 @@
 .rail.has-more,
 .inspection-panel.has-more {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%);
+}
+
+/*
+ * On a phone the display panel is a sheet at the foot of the frame.
+ *
+ * In the rail it only ever got a ~200px column beside the title card, which
+ * forced the six viewpoints into a cramped two-column grid, clipped "Neutral
+ * studio", and on circulation showed 208px of a panel that wanted 340. It also
+ * held the right half of the screen from top to bottom — the worst shape to
+ * leave a model in, because a wide short band shows an organ better than a
+ * narrow tall slot.
+ *
+ * Only the panel moves. The selection card and the legend stay in the rail and
+ * simply move up into the space it leaves. The sheet is opaque rather than the
+ * usual translucent panel: over a model it would read as a smear, and over the
+ * chrome behind it as a rendering fault.
+ */
+/* The sheet needs a band to sit in. Below this height there is none — a 320x568
+   phone spends it all on the navigation, the cards and the console — so the
+   panel stays in the rail there, scrolling, which is the documented fallback. */
+@media (max-width: 560px) and (min-height: 640px) {
+  .inspection-panel:not([hidden]) {
+    position: fixed;
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(var(--console-height, 0px) + 20px);
+    z-index: 12;
+    width: auto;
+    max-width: none;
+    min-height: 0;
+    /* Never taller than the band above the console, less the room the title and
+       selection cards need. A tall console (circulation ships 359px of one)
+       would otherwise push the sheet up into them. */
+    max-height: min(
+      50dvh,
+      calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 22px)
+    );
+    background: var(--panel-sheet);
+    box-shadow: var(--shadow);
+  }
+
+  /* With the full width there is room for the six viewpoints in two rows. */
+  .inspection-views {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* These hold on every phone, sheet or no sheet. */
+@media (max-width: 560px) {
+  /* What stays in the rail has to fit it. The selection card asks for 242px in
+     a 192px rail, and a flex item is free to overflow its container: it was
+     spilling 50px to the left, under the title card, whether the panel was open
+     or not. Wrapping is the right answer for prose. */
+  .rail > *:not(.inspection-panel) {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* Three labels in a 192px row broke mid-word ("UIを隠 / す"). Let each keep
+     its own line and wrap the row instead. */
+  .rail-buttons {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .rail-buttons > * {
+    white-space: nowrap;
+  }
 }

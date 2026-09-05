@@ -70,8 +70,9 @@ the model tests.
   measured target sizes, the skip link, the whole focus ring and console
   errors. It found two real defects — the Trust page scrolled 426 px sideways
   at 320 px, and ten controls sat below the WCAG 2.5.8 floor — and both are
-  fixed. **Remaining:** Safari and Firefox, and touch on real hardware. The
-  check drives Chromium only and says so at the end of every run.
+  fixed. CI now measures Chromium, Firefox and WebKit. **Remaining:** Safari on
+  a real handset and touch on real hardware; the check says what it cannot
+  cover at the end of every run.
 - [~] Run keyboard, focus, contrast, zoom and screen-reader checks across Landing,
   Explorer, Patient Presenter, Education Presenter and Account. Contrast, focus,
   landmarks, skip links, language marking, reduced motion, target sizes and the

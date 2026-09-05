@@ -15,7 +15,7 @@ import {
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
 import { prefersReducedMotion } from '../utils/motion.js';
-import { markScrollable } from '../utils/scrollHint.js';
+import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
@@ -75,8 +75,24 @@ export async function createApp({ stage, ui }) {
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
+
+  /**
+   * The page behind the canvas is part of the background, not a separate one.
+   *
+   * The renderer needs a few frames after the loading veil lifts before the
+   * backdrop is on screen. Measured on a pale scene: the veil was gone at
+   * ~300ms and the first light frame arrived at ~700ms, so every load of the
+   * brain atlas opened with 400ms of near-black under a light-themed panel.
+   * Painting the page with the preset's own bottom colour closes that window,
+   * and keeps the ground right wherever else the canvas does not reach.
+   */
+  const paintPageGround = (preset) => {
+    document.documentElement.style.setProperty('--page-ground', preset.backdrop.bottom);
+  };
+
   const initialBackground = viewer.setBackgroundPreset(defaultBackground.id);
   ui.dataset.background = initialBackground.id;
+  paintPageGround(initialBackground);
 
   /**
    * Learning view is the default: the 3D subject, the stage it is in, and the
@@ -337,6 +353,7 @@ export async function createApp({ stage, ui }) {
   function applyInspectionBackground(id) {
     const accepted = viewer.setBackgroundPreset(id);
     ui.dataset.background = accepted.id;
+    paintPageGround(accepted);
     inspectionPanel?.setBackground(accepted.id);
     return accepted.id === id;
   }
@@ -594,8 +611,18 @@ export async function createApp({ stage, ui }) {
   markScrollable(rail);
   markScrollable(inspectionPanel.element);
 
-  ui.append(
-    el('div', { class: 'top-bar' }, [
+  const consoleElement = el('div', { class: 'panel console' }, [
+    stageReadout.element,
+    causalStory?.element,
+    learningPanel?.element,
+    controlsInConsole ? modelControls?.element : null,
+    controlPanel.element,
+  ]);
+  // On a phone the display panel docks just above the console. Only the console
+  // knows how tall it is, and it differs by scene.
+  publishHeight(consoleElement, ui, '--console-height');
+
+  const topBar = el('div', { class: 'top-bar' }, [
       // The model panels go on the left, where there is room for them: the rail
       // already carries the legend and the read-out, and stacking four panels
       // there pushes the console off a laptop screen.
@@ -608,15 +635,15 @@ export async function createApp({ stage, ui }) {
         controlsInConsole ? null : modelControls?.element,
         scopePanel?.element,
       ]),
-      rail,
-    ]),
-    el('div', { class: 'panel console' }, [
-      stageReadout.element,
-      causalStory?.element,
-      learningPanel?.element,
-      controlsInConsole ? modelControls?.element : null,
-      controlPanel.element,
-    ]),
+    rail,
+  ]);
+  // The phone sheet stops where the title and selection cards end, rather than
+  // at a reserved constant that is only right on the scene it was measured on.
+  publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);
+
+  ui.append(
+    topBar,
+    consoleElement,
     labels.element
   );
 

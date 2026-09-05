@@ -130,11 +130,12 @@ export function createInspectionPanel({
       ['Background', '背景'],
       el('div', { class: 'inspection-grid inspection-backgrounds', role: 'group', 'aria-label': 'Background / 背景' }, backgroundButtons)
     ),
-    section(
-      ['Annotations', '注釈'],
-      el('div', { class: 'inspection-grid inspection-annotations' }, [labelsButton])
-    ),
+    // The label toggle sits with the reset rather than under a heading of its
+    // own. A section label above a single self-describing switch cost 53px of a
+    // panel that had 262 to spend, which is what pushed Background off the
+    // bottom of the rail on an ordinary desktop.
     el('div', { class: 'inspection-footer' }, [
+      labelsButton,
       el('button', {
         class: 'inspection-reset',
         type: 'button',

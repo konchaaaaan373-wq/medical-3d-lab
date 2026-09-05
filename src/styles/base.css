@@ -6,6 +6,9 @@
   --ink-faint: #6b7c95;
   --panel: rgba(10, 16, 28, 0.62);
   --panel-strong: rgba(8, 13, 24, 0.86);
+  /* Opaque: a phone sheet sits over the model and over other chrome, and
+     anything showing through it reads as a rendering fault, not a panel. */
+  --panel-sheet: #0a1019;
   --border: rgba(140, 175, 225, 0.16);
   --accent: #38e1ef;
   --accent-hover: #6bf0fa;
@@ -28,7 +31,10 @@ body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--bg);
+  /* `--page-ground` is set from the active background preset's own bottom
+     colour, so the page behind the canvas matches the backdrop rather than
+     showing near-black through it while the first frames are drawn. */
+  background: var(--page-ground, var(--bg));
   color: var(--ink);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
@@ -82,6 +88,7 @@ body {
   --ink-faint: #586770;
   --panel: rgba(250, 251, 249, 0.78);
   --panel-strong: rgba(252, 252, 250, 0.94);
+  --panel-sheet: #fbfbf9;
   --border: rgba(28, 48, 58, 0.2);
   --accent: #006b74;
   --accent-hover: #005861;

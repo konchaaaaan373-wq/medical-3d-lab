@@ -122,8 +122,9 @@ a blanket rule on `a`.
 
 `src/app/viewports.js` declares the sizes the product promises to work at and
 the rules it must keep at each one; `npm run verify:ui` drives a headless
-Chromium against them and `tests/viewports.test.js` keeps the declaration
-honest. Six viewports — 320, 375 and 430 px portrait, a 932 × 430 landscape
+browser against them and `tests/viewports.test.js` keeps the declaration
+honest. It runs Chromium by default and takes `--engine firefox` or
+`--engine webkit`; CI runs all three. Six viewports — 320, 375 and 430 px portrait, a 932 × 430 landscape
 phone, a tablet and a desktop — across nine routes, which is 54 combinations
 and about a minute.
 
@@ -165,8 +166,10 @@ consent question was pinned to the bottom of the viewport, which is where every
 scene pins its console, and on a phone it covered the console entirely. See
 [`anatomy-review.md`](anatomy-review.md) §2.
 
-**What it is not.** It drives one engine, headless, on a desktop machine. It
-cannot see a Safari-only flexbox bug, an Android font-inflation surprise, a
+**What it is not.** It drives browser engines, headless, on a desktop machine.
+Three of them in CI, which is enough to catch a layout or CSS rule one engine
+reads differently — but WebKit on Linux is the engine Safari is built on, not
+Safari and not iOS. It still cannot see an Android font-inflation surprise, a
 notch, or a software keyboard eating the viewport. It is the half of a device
 pass that is found by looking rather than by feeling, automated so that the
 person doing the other half spends their time on the part only a person can do.
@@ -187,8 +190,11 @@ devices:
 
 - Screen-reader passes with VoiceOver, NVDA and TalkBack — particularly the
   bilingual announcements, the scene switcher and the account modal.
-- Safari and Firefox. The viewport matrix drives Chromium only, and the
-  failures it cannot see are exactly the engine-specific ones.
+- Safari on real iOS and macOS. CI measures WebKit, which covers the layout
+  and CSS half — the `dvh`, `env(safe-area-inset-*)`, `mask-image` and `:has()`
+  this product's chrome is built on. What it does not cover is the browser
+  around that engine: its toolbars, its viewport units while they collapse, and
+  how it behaves on a real handset.
 - Touch: orbiting a scene with a finger, and whether that gesture fights the
   page scroll or the browser's own pinch zoom.
 - A software keyboard covering the viewport, and a notch or rounded corner

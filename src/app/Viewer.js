@@ -268,7 +268,16 @@ export class Viewer {
     this.scene?.fog?.color.set(preset.fog);
     if (this.scene?.fog) this.scene.fog.density = preset.fogDensity;
     if (this.scene) this.scene.environmentIntensity = preset.environmentIntensity;
-    if (this.renderer) this.renderer.toneMappingExposure = preset.exposure;
+    if (this.renderer) {
+      this.renderer.toneMappingExposure = preset.exposure;
+      // The canvas is opaque, so whatever the frame is cleared to is what shows
+      // wherever the backdrop mesh has not drawn — including the frames between
+      // the loading veil lifting and the backdrop's first paint. Left at the
+      // default black, a pale preset opened with a near-black frame under a
+      // light-themed panel. Clearing to the preset's own ground colour costs
+      // nothing and cannot drift from it.
+      this.renderer.setClearColor(preset.backdrop.bottom, 1);
+    }
     if (this.bloomPass) this.bloomPass.strength = preset.bloomStrength;
     return preset;
   }

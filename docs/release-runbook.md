@@ -47,8 +47,9 @@ because it downloads a browser and must not sit in front of the unit tests.
 Running them again before a tag is not redundant: it is the difference between
 "a commit passed" and "this commit passed".
 
-`verify:ui` is Chromium only, and prints what it cannot cover at the end of
-every run. Those lines are the manual pass in §3, not a disclaimer.
+`verify:ui` runs Chromium, Firefox and WebKit in CI, and prints what it still
+cannot cover at the end of every run. Those lines are the manual pass in §3,
+not a disclaimer — WebKit is Safari's engine, not Safari on a handset.
 
 ## 3. What a person still has to decide
 
