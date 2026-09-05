@@ -54,15 +54,22 @@ import * as THREE from 'three';
 /**
  * The planes the segments are cut by, in the anatomical frame.
  *
- * A normal points towards the part on its far side. `through` is a point the
- * plane passes through, and is **calibrated**: the positions were chosen so
- * that the sectors come out near the sectoral shares of liver volume usually
- * quoted — right liver about 60%, left about 40%, the caudate a few per cent —
- * and they are the only numbers here that were fitted rather than described.
+ * A normal points towards the part on its far side. Each **normal is the
+ * anatomy** — the orientation of the vein or ligament the plane is named for.
+ * Each `through` is **fitted**: it is the offset that makes the carved
+ * segments take the volume shares in `SEGMENT_VOLUME_SHARES`, and it is the
+ * only kind of number in this file chosen rather than described.
  *
- * **Those shares are uncited**, and real ones vary enough between people that
- * a resection is planned on the patient's own CT volumetry and never on a
- * figure like this. `docs/medical-notes.md` records the gap.
+ * The fit is a coordinate descent on six offsets — Cantlie, the right hepatic
+ * vein, the falciform, the portal plane, the umbilical portion and the front
+ * of the caudate — against the nine measured mesh volumes, run once and the
+ * result written down. `tests/liver-anatomy.test.js` re-measures it, so an
+ * offset edited by hand fails rather than drifting.
+ *
+ * A fitted offset is **not** a measurement of anything. It says where a plane
+ * had to sit in *this* organ's shape to reproduce the reference specimen's
+ * volumes; a different liver shape would need different offsets for the same
+ * anatomy. `docs/medical-notes.md` records that distinction.
  */
 export const PLANES = {
   /**
@@ -73,19 +80,19 @@ export const PLANES = {
    */
   cantlie: { normal: [1, 0, -0.22], through: [-0.02, 0, 0] },
   /** The right hepatic vein, between the anterior and posterior right sectors. */
-  rightHepaticVein: { normal: [1, 0, 0.42], through: [-0.4, 0, 0] },
+  rightHepaticVein: { normal: [1, 0, 0.42], through: [-0.494, 0, 0] },
   /**
    * The left hepatic vein, running with the falciform ligament: segment IV on
    * its right, segments II and III on its left.
    */
-  falciform: { normal: [1, 0, -0.1], through: [0.25, 0, 0] },
+  falciform: { normal: [1, 0, -0.1], through: [0.21, 0, 0] },
   /**
    * The portal plane, through the right and left portal branches. Nearly
    * transverse, tipped a little because the left branch runs higher than the
    * right. It divides segments IV to VIII into their superior and inferior
    * halves; the left lateral sector has its own plane, below.
    */
-  portal: { normal: [-0.12, 1, 0], through: [0, -0.2, 0] },
+  portal: { normal: [-0.12, 1, 0], through: [0, -0.326, 0] },
   /**
    * The umbilical portion of the left portal vein, which is what separates
    * segment II from segment III.
@@ -97,7 +104,7 @@ export const PLANES = {
    * 1% of the liver instead of eight. The tilt is the anatomy, not a fudge to
    * make a number land.
    */
-  leftPortal: { normal: [0.25, 1, -0.62], through: [0, -0.12, 0.05] },
+  leftPortal: { normal: [0.25, 1, -0.62], through: [0, -0.126, 0.05] },
   /**
    * The back of the porta hepatis. Everything behind it is taken as the caudate
    * lobe, which is not part of either the right or the left liver.
@@ -110,7 +117,7 @@ export const PLANES = {
    * at all. Taken as a slab it partitions cleanly, at the cost of calling a
    * thin posterior shaving of its neighbours "caudate".
    */
-  caudateFront: { normal: [0, 0, 1], through: [0, 0, -0.82] },
+  caudateFront: { normal: [0, 0, 1], through: [0, 0, -0.747] },
 };
 
 /**
@@ -245,23 +252,68 @@ export const SEGMENTS = [
 ];
 
 /**
+ * The share of the liver each Couinaud segment takes, in the reference
+ * specimen this organ is.
+ *
+ * **Source.** Mise Y, Satou S, Shindoh J, Conrad C, Aoki T, Hasegawa K,
+ * Sugawara Y, Kokudo N. *Three-dimensional volumetry in 107 normal livers
+ * reveals clinically relevant inter-segment variation in size.* HPB (Oxford)
+ * 2014;16(5):439–447. doi:10.1111/hpb.12157. Perfusion-based 3D volumetry of
+ * 107 normal livers, segments defined by the portal branch each is fed by —
+ * the same definition this file cuts by.
+ *
+ * **Derivation.** The paper's per-segment medians are taken and summed; because
+ * medians of eight distributions do not sum to the median of their total, the
+ * printed values come to 98.4% rather than 100%. They are scaled by 100/98.4
+ * and rounded to whole percentage points, which is the resolution the geometry
+ * can hold. Segment IV is one number here and is cut into IVa and IVb below.
+ *
+ * **What this is not.** One internally consistent reference specimen, not a
+ * normal range and not a prediction for any person. Mise's own finding is that
+ * these vary widely between people — segment VIII ran from 11.1% to 38.0% of
+ * the liver across the 107 — and that is why a resection is planned on the
+ * patient's own volumetry. `docs/medical-notes.md` records the rest.
+ */
+export const SEGMENT_VOLUME_SHARES = Object.freeze({
+  I: 0.04,
+  II: 0.08,
+  III: 0.1,
+  IV: 0.14,
+  V: 0.13,
+  VI: 0.08,
+  VII: 0.17,
+  VIII: 0.26,
+});
+
+/**
+ * How segment IV is split between its superior and inferior halves.
+ *
+ * **Not from Mise.** The paper reports segment IV whole, so there is no
+ * published IVa/IVb ratio to take. Halving it is a stated simplification and
+ * must not be quoted as a literature ratio.
+ */
+export const SEGMENT_IV_SPLIT = Object.freeze({ IVa: 0.5, IVb: 0.5 });
+
+/**
  * The sectors, and the resections they correspond to.
  *
  * A sector is what a hepatic vein bounds, and it is the unit an anatomical
  * resection is planned in — which is the whole reason the segments are grouped
  * this way rather than by which lobe they look like they are in.
+ *
+ * `share` is **derived** from `SEGMENT_VOLUME_SHARES` rather than typed, so a
+ * sector target and its segments' targets cannot drift apart.
  */
 export const SECTORS = [
-  { id: 'caudate', label: 'Caudate', labelJa: '尾状葉', segments: ['I'], liver: 'independent', share: 0.02 },
-  { id: 'left-lateral', label: 'Left lateral', labelJa: '左外側区域', segments: ['II', 'III'], liver: 'left', share: 0.17 },
-  { id: 'left-medial', label: 'Left medial', labelJa: '左内側区域', segments: ['IVa', 'IVb'], liver: 'left', share: 0.17 },
+  { id: 'caudate', label: 'Caudate', labelJa: '尾状葉', segments: ['I'], liver: 'independent' },
+  { id: 'left-lateral', label: 'Left lateral', labelJa: '左外側区域', segments: ['II', 'III'], liver: 'left' },
+  { id: 'left-medial', label: 'Left medial', labelJa: '左内側区域', segments: ['IVa', 'IVb'], liver: 'left' },
   {
     id: 'right-anterior',
     label: 'Right anterior',
     labelJa: '右前区域',
     segments: ['V', 'VIII'],
     liver: 'right',
-    share: 0.32,
   },
   {
     id: 'right-posterior',
@@ -269,9 +321,21 @@ export const SECTORS = [
     labelJa: '右後区域',
     segments: ['VI', 'VII'],
     liver: 'right',
-    share: 0.32,
   },
-];
+].map((sector) => Object.freeze({ ...sector, share: sector.segments.reduce((sum, id) => sum + shareOfSegment(id), 0) }));
+
+/**
+ * The reference share of one carved part, which is a segment or half of IV.
+ *
+ * @param {string} id a key of `SEGMENTS`, so `'IVa'` and `'IVb'` as well as `'I'`…`'VIII'`
+ * @returns {number} its share of the whole liver, 0–1
+ */
+export function shareOfSegment(id) {
+  if (id === 'IVa' || id === 'IVb') return SEGMENT_VOLUME_SHARES.IV * SEGMENT_IV_SPLIT[id];
+  const share = SEGMENT_VOLUME_SHARES[id];
+  if (share === undefined) throw new Error(`No reference share for liver segment "${id}"`);
+  return share;
+}
 
 /**
  * The three hepatic veins, as the boundaries they are.

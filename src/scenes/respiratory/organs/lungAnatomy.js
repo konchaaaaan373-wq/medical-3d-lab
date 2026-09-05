@@ -64,25 +64,72 @@ export const FISSURES = {
   oblique: {
     normal: [0, 0.82, 0.57],
     /**
-     * Set per side, and **calibrated rather than measured**: the position that
-     * makes each lower lobe come out at about 53% of its lung on the right and
-     * about half on the left. The angle above is the anatomy; this is the
-     * number that had to be chosen to land the anatomy in this particular pair
-     * of lungs.
+     * Set per side, and **fitted**: the offset that makes the carved lobes take
+     * the shares in `LOBE_VOLUME_SHARES`. The angle above is the anatomy; this
+     * is where the plane had to sit in *this* pair of lungs to land it.
      *
-     * **Those two targets are uncited.** They are the approximate shares taught
-     * with the lobes, not figures read out of a series — see the note in
-     * `docs/medical-notes.md`. They are wide enough to be safe as a shape
-     * constraint and are not offered as measurements.
+     * A fitted offset is not a measurement. `tests/lung-anatomy.test.js`
+     * re-measures the shares it produces, so editing it by hand fails.
      */
-    through: { right: [0, -0.2, 0], left: [0, -0.25, 0] },
+    through: { right: [0, -0.261, 0], left: [0, -0.263, 0] },
   },
   /**
    * Right lung only. Runs forward from the oblique fissure at about the fourth
    * rib. The reason the right lung has three lobes and the left has two.
    */
-  horizontal: { normal: [0, 0.97, 0.24], through: { right: [0, -0.1, 0], left: [0, -0.1, 0] } },
+  horizontal: { normal: [0, 0.97, 0.24], through: { right: [0, -0.091, 0], left: [0, -0.1, 0] } },
 };
+
+/**
+ * The share of its own lung each lobe takes, in the reference specimen this
+ * organ is.
+ *
+ * **Shares of one lung, not of both.** The right three sum to 1 and the left
+ * two sum to 1. Stated the other way round the numbers look wrong to anyone who
+ * knows the right lung is the larger, which is why the denominator is named
+ * here rather than left to be inferred.
+ *
+ * **Source.** Bakker JT, et al. *Reference formulas for chest CT-derived lobar
+ * volumes in the lung-healthy general population.* Eur Radiol 2024.
+ * doi:10.1007/s00330-024-11123-6. Lobar volumes segmented automatically from
+ * inspiratory low-dose chest CT in 7306 lung-healthy participants of the
+ * Imaging in Lifelines (ImaLife) cohort. The published sex-specific means were
+ * weighted by the number of men and women, converted to shares of their own
+ * lung and rounded to whole percentage points.
+ *
+ * **Read this before quoting the numbers.** Four limits travel with them:
+ *
+ * - they are **inspiratory** volumes. Lobes do not keep these shares through a
+ *   breath, and an expiratory scan gives different ones;
+ * - the cohort is **northern Dutch, 97.5% of European ancestry, aged 45 and
+ *   over** (mean 60.3 ± 9.5). It is not a paediatric, Asian or young-adult
+ *   reference;
+ * - shares vary with **sex, age, height and build**, and the weighting above
+ *   throws that variation away deliberately — one specimen cannot carry it;
+ * - they are **supine**. Yamada et al. (Respiration 2020;99:598, upright CT)
+ *   measured the same lobes standing and got different volumes, the lower lobes
+ *   moving most.
+ *
+ * So: a reference specimen for teaching where the fissures fall and how much
+ * lung each lobe is. Not a normal range, not a patient prediction, and not a
+ * threshold anything should be judged against.
+ *
+ * **Derivation not independently checked.** The weighting above was performed
+ * from Bakker's Table 1 by the collaborator who specified this work; network
+ * egress to the publisher, PMC and the mirror hosts is blocked from this
+ * environment, so the table itself has not been read here. What could be
+ * checked was the cohort description, and one independent cross-check: the
+ * worked subject in Yamada et al. comes to 35.0 / 18.8 / 46.2% supine, which
+ * falls inside the bands the tests assert. `docs/medical-notes.md` records this
+ * as the open item it is.
+ */
+export const LOBE_VOLUME_SHARES = Object.freeze({
+  'right-upper': 0.36,
+  'right-middle': 0.16,
+  'right-lower': 0.48,
+  'left-upper': 0.51,
+  'left-lower': 0.49,
+});
 
 /**
  * Five lobes: three on the right, two on the left.

@@ -10,11 +10,14 @@ import {
   PLANES,
   SECTORS,
   SEGMENTS,
+  SEGMENT_IV_SPLIT,
+  SEGMENT_VOLUME_SHARES,
   anatomicalFrame,
   segmentsOfLiver,
   segmentsOfSector,
   veinOrigin,
 } from '../src/scenes/hepatobiliary/organs/liverAnatomy.js';
+import { partitionQuality, wholeVolume } from './partition.js';
 import {
   carveInside,
   planeThrough,
@@ -27,9 +30,10 @@ import {
  * The liver, checked as anatomy.
  *
  * Couinaud's division is not a diagram: it is what makes a segment removable,
- * and every claim below is a fact about that. The sector volume fractions are
- * the one calibrated number, and they are checked against what the literature
- * reports rather than against what the builder produces.
+ * and every claim below is a fact about that. The volume shares are the one
+ * fitted number, and they are checked against a named reference specimen
+ * rather than against whatever the builder happens to produce — which is the
+ * only way a calibration can fail.
  */
 
 function volumeOf(geometry) {
@@ -56,6 +60,9 @@ function volumeOf(geometry) {
 // liver draw portal vessels of their own — solved ones, in two of them.
 // Everything about the vessels is asked of a liver that asked for them.
 const liver = buildLiver({ detail: 8, vessels: true });
+
+/** The mesh resolution the partition claims are measured at. */
+const PARTITION_DETAIL = 8;
 const segmentVolume = new Map(liver.segments.map((segment) => [segment.id, volumeOf(segment.geometry)]));
 const totalVolume = [...segmentVolume.values()].reduce((sum, value) => sum + value, 0);
 const sectorShare = (id) =>
@@ -87,63 +94,141 @@ test('there are eight Couinaud segments, and each is a solid of its own', () => 
   }
 });
 
-test('the segments partition the liver: they fill it, and they do not overlap', () => {
-  // The property that makes a segmentectomy possible at all. Sampled against
-  // the surface the segments were cut from, using the builder's own warp so
-  // that a copy of it here cannot drift from the original.
-  const samples = surfaceSamples(liverWarp, LIVER_SCALE, 12000);
-  const bounds = new THREE.Box3();
-  const probe = new THREE.Vector3();
-  for (let i = 0; i < samples.length; i += 3) {
-    bounds.expandByPoint(probe.set(samples[i], samples[i + 1], samples[i + 2]));
-  }
-  const centre = bounds.getCenter(new THREE.Vector3());
-  const field = radialField(samples, centre);
-  const frame = anatomicalFrame(bounds);
+/**
+ * How far a measured share may sit from its reference value, in percentage
+ * points of the whole liver.
+ *
+ * Wider than the lung's, and deliberately so. Mise's own headline finding is
+ * how much these vary: segment VIII ran from 11.1% to 38.0% of the liver across
+ * 107 normal livers. A band tight enough to pin the geometry to the median
+ * would be asserting that the median is the anatomy, which is the mistake the
+ * paper exists to correct. These are wide enough to say "this is a liver of
+ * ordinary proportions" and no more.
+ *
+ * The sectors are held tighter than their segments because a sector is what a
+ * resection is planned in, and because the segment bands are wide enough that
+ * two of them drifting the same way could move a sector out of any useful
+ * range while both stayed legal.
+ */
+const SEGMENT_TOLERANCE_PP = { I: 3, II: 4, III: 4, IV: 5, V: 5, VI: 4, VII: 6, VIII: 6 };
+const SECTOR_TOLERANCE_PP = { caudate: 3, 'left-lateral': 5, 'left-medial': 5, 'right-anterior': 5, 'right-posterior': 5 };
 
-  const regions = SEGMENTS.map((segment) => ({
-    id: segment.id,
-    planes: segment.bounded.map(({ plane, positive }) => {
-      const normal = frame.toLocalNormal(PLANES[plane].normal);
-      return planeThrough(frame.toLocal(PLANES[plane].through), positive ? normal.negate() : normal);
-    }),
-  }));
-
-  const size = bounds.getSize(new THREE.Vector3());
-  let seed = 4242;
-  const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
-  let inside = 0;
-  let exactlyOne = 0;
-  for (let i = 0; i < 40000; i++) {
-    probe.set(
-      bounds.min.x + random() * size.x,
-      bounds.min.y + random() * size.y,
-      bounds.min.z + random() * size.z
-    );
-    if (!carveInside(probe, { field })) continue;
-    inside += 1;
-    const hits = regions.filter((region) => carveInside(probe, { field, planes: region.planes })).length;
-    if (hits === 1) exactlyOne += 1;
-  }
-  assert.ok(inside > 4000, `the sample has to land in the liver, got ${inside}`);
-  assert.equal(exactlyOne, inside, 'every point in the liver belongs to exactly one segment');
-});
-
-test('the sectors take the share of the liver the literature reports', () => {
-  // The calibrated claim: the plane positions were chosen to land these and
-  // nothing else. A caudate of a couple of per cent, the two left sectors
-  // sharing about a third between them, and the two right sectors a third each.
+test('each sector takes the share of the liver the reference specimen gives it', () => {
   for (const sector of SECTORS) {
-    const share = sectorShare(sector.id);
+    const measured = sectorShare(sector.id);
+    const tolerance = SECTOR_TOLERANCE_PP[sector.id] / 100;
     assert.ok(
-      Math.abs(share - sector.share) < 0.05,
-      `${sector.id} took ${(share * 100).toFixed(1)}% against a target of ${(sector.share * 100).toFixed(0)}%`
+      Math.abs(measured - sector.share) <= tolerance,
+      `${sector.id} took ${(measured * 100).toFixed(2)}%, against ` +
+        `${(sector.share * 100).toFixed(0)}% ± ${SECTOR_TOLERANCE_PP[sector.id]}`
     );
   }
+
+  // The right anterior sector is the larger of the two right sectors, and by a
+  // margin rather than a rounding. This is the relation the previous
+  // calibration got wrong: it produced 32.8% and 32.4%, a gap of 0.4 points,
+  // which is a coin toss dressed as anatomy. Mise puts VIII alone above either
+  // of VI and VII, and the anterior sector carries VIII.
+  const gap = sectorShare('right-anterior') - sectorShare('right-posterior');
+  assert.ok(
+    gap >= 0.08,
+    `the right anterior sector leads the posterior by ${(gap * 100).toFixed(1)} points, which is not a lead`
+  );
+
   const right = sectorShare('right-anterior') + sectorShare('right-posterior');
   const left = sectorShare('left-lateral') + sectorShare('left-medial');
   assert.ok(right > left * 1.5, `the right liver is much the larger: ${(right * 100).toFixed(0)}% vs ${(left * 100).toFixed(0)}%`);
-  assert.ok(sectorShare('caudate') < 0.05, 'and the caudate is a small part of it');
+  assert.ok(sectorShare('caudate') < 0.08, 'and the caudate is a small part of it');
+});
+
+test('each segment takes the share of the liver the reference specimen gives it', () => {
+  // Segment IV is measured as one, because that is how the source reports it.
+  // IVa and IVb are checked separately below, against the split this repository
+  // chose rather than against a number anybody published.
+  const measured = new Map(SEGMENTS.map((segment) => [segment.id, segmentVolume.get(segment.id) / totalVolume]));
+  const fourth = measured.get('IVa') + measured.get('IVb');
+  const asReported = new Map([...measured].filter(([id]) => id !== 'IVa' && id !== 'IVb'));
+  asReported.set('IV', fourth);
+
+  for (const [id, share] of asReported) {
+    const target = SEGMENT_VOLUME_SHARES[id];
+    const tolerance = SEGMENT_TOLERANCE_PP[id] / 100;
+    assert.ok(
+      Math.abs(share - target) <= tolerance,
+      `segment ${id} took ${(share * 100).toFixed(2)}%, against ${(target * 100).toFixed(0)}% ± ${SEGMENT_TOLERANCE_PP[id]}`
+    );
+  }
+
+  // Segment VIII is the largest, which is the one ordering Mise states in the
+  // abstract and the one this geometry previously had backwards: VIII came out
+  // at 18.9% behind VII at 18.7% and level with VI at 13.7%, when it should
+  // lead every other segment outright.
+  const largest = [...asReported.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  assert.equal(largest, 'VIII', 'segment VIII is the largest segment of the liver');
+});
+
+test('segment IV is halved by choice, and says so rather than citing anyone', () => {
+  // The one share here with no source behind it. Held to the split that was
+  // chosen, so that a future edit toward some published ratio has to change
+  // this constant and its note together — and held loosely, because the halving
+  // is an admission of ignorance and a tight band would dress it as knowledge.
+  assert.equal(SEGMENT_IV_SPLIT.IVa + SEGMENT_IV_SPLIT.IVb, 1);
+  const superior = segmentVolume.get('IVa') / (segmentVolume.get('IVa') + segmentVolume.get('IVb'));
+  assert.ok(
+    Math.abs(superior - 0.5) < 0.15,
+    `IVa took ${(superior * 100).toFixed(1)}% of segment IV, which is no longer "about half"`
+  );
+
+  // And the claim is not made anywhere in prose either.
+  const anatomy = readFileSync(new URL('../src/scenes/hepatobiliary/organs/liverAnatomy.js', import.meta.url), 'utf8');
+  assert.match(anatomy, /Not from Mise/, 'the IVa\/IVb split says where it does not come from');
+});
+
+test('the segments partition the liver: they fill it, and they do not overlap', () => {
+  // Nine parts against the solid they were cut from. The caudate is the reason
+  // this matters here: it is taken as a slab rather than the box it should be
+  // precisely because bounding it sideways left wedges behind segments II and
+  // VII that belonged to no segment at all, and nothing about the picture said
+  // so.
+  const built = buildLiver({ detail: PARTITION_DETAIL });
+  const bounds = new THREE.Box3();
+  for (const segment of built.segments) {
+    segment.geometry.computeBoundingBox();
+    bounds.union(segment.geometry.boundingBox);
+  }
+  bounds.expandByScalar(0.02);
+
+  const quality = partitionQuality({
+    bounds,
+    contains: (point) => built.contains(point),
+    parts: built.segments,
+    samples: 50000,
+    seed: 23,
+  });
+  assert.equal(quality.samples, 50000, 'the sample has to land in the liver 50000 times');
+  assert.ok(
+    quality.unassignedRate <= 0.001,
+    `${quality.unassigned} of ${quality.samples} points belong to no segment — ${quality.worst}`
+  );
+  assert.ok(
+    quality.multipleRate <= 0.001,
+    `${quality.multiple} of ${quality.samples} points belong to more than one segment — ${quality.worst}`
+  );
+
+  const whole = wholeVolume({ field: built.segments[0].field, detail: PARTITION_DETAIL, volumeOf });
+  const sum = built.segments.reduce((total, segment) => total + volumeOf(segment.geometry), 0);
+  assert.ok(
+    Math.abs(sum / whole - 1) <= 0.01,
+    `the segments sum to ${(100 * (sum / whole)).toFixed(2)}% of the liver they were cut from`
+  );
+  built.dispose();
+});
+
+test('every segment is a closed solid with a real volume', () => {
+  for (const segment of SEGMENTS) {
+    const volume = segmentVolume.get(segment.id);
+    assert.ok(Number.isFinite(volume) && volume > 0, `${segment.id} encloses a finite positive volume`);
+  }
 });
 
 test("Cantlie's line is the right/left division, and it is not the falciform ligament", () => {

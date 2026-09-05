@@ -176,6 +176,12 @@ export function buildLiver({
       geometry,
       centre: segmentCentre.clone(),
       planes,
+      /**
+       * The distance field this segment was cut out of — the whole liver.
+       * Carried so the solid a segment is a piece of can be reconstructed from
+       * the segment, which is what checking a partition needs.
+       */
+      field,
       /** Where this segment's portal pedicle ends, inside it. */
       pedicle: segmentCentre.clone(),
     });
