@@ -189,12 +189,22 @@ permanently red:
   with the buttons, that convention reports every link on every surface as
   unreachable.
 - **A runner with no GPU may have no WebGL2.** Firefox on a GitHub runner
-  declines the context outright — `AllowWebgl2:false restricts context creation
-  on this system` — and three.js has required WebGL2 since r163, so every 3D
-  surface drops to the renderer fallback and logs the refusal. Counted as page
-  defects that is twelve failures a run: two surfaces on each of six viewports.
-  The check now asks Firefox for a software context first, and if the engine
-  still declines, the refusal becomes one note per surface naming the engine.
+  declines the context, and three.js has required WebGL2 since r163, so every
+  3D surface drops to the renderer fallback and logs the refusal. Counted as
+  page defects that is twelve failures a run: two surfaces on each of six
+  viewports. The check asks Firefox for a software context first, and if the
+  engine still declines, the refusal becomes one note per surface naming the
+  engine.
+
+  The note covers the product's *own* handling of that failure too, and it has
+  to: `landingCirculationDemo`'s catch and the scene bootstrap's both log the
+  error, Chromium renders those as the message three.js gave them while Firefox
+  renders the same Error object as the bare word `Error`, and no pattern loose
+  enough to catch `Error` is safe. So the question asked is which surface hit
+  the refusal, not which words were logged. **The cost is stated rather than
+  hidden:** an unrelated page error on one of those surfaces is noted instead
+  of failing on that engine. It is still printed, and the other two engines
+  still fail on it — which is a reason the matrix drives three.
 
 Both distinctions are *earned*, not assumed: the Tab one needs Tab to have
 reached other controls first, and the WebGL one needs the engine to have said,

@@ -320,15 +320,29 @@ test('an engine with no WebGL2 is told apart from a renderer that failed', () =>
 
   // And it is a note, not a silence — the errors are shown, and the run says
   // which coverage it lacked.
-  assert.match(check, /renderer error\(s\) not counted/);
+  assert.match(check, /error\(s\) not counted/);
   assert.match(
     check,
     /Anything drawn by the renderer: \$\{engine\} makes no WebGL2 context on this machine\./,
   );
 
+  // The surface is the question, not the wording. The product's own handlers
+  // log the failure too — `landingCirculationDemo`'s catch and the scene
+  // bootstrap's — and Chromium renders those as the message three.js gave them
+  // while Firefox renders the same Error object as the bare word `Error`. A
+  // pattern loose enough to catch `Error` catches everything, so what is asked
+  // is whether *this surface* hit the refusal.
+  assert.match(check, /const rendererDown = \(\) =>/);
+  assert.match(check, /!engineHasWebgl2 && rendererConsole\.length > 0/);
+  assert.match(check, /const downstream = \[\.\.\.rendererConsole, \.\.\.console_\]/);
+
   // Where the engine does have WebGL2, a renderer error is still the page's.
-  const branch = check.slice(check.indexOf('if (console_.length)'));
+  const branch = check.slice(check.indexOf('} else if (console_.length)'));
   assert.match(branch.slice(0, 400), /console error\(s\)/);
+  assert.ok(
+    check.includes('} else if (console_.length)'),
+    'the failure branch is the else of the excuse, so one cannot swallow the other',
+  );
 });
 
 test('Firefox is asked for a software context before it is excused', () => {

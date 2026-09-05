@@ -636,7 +636,9 @@ const engineHasWebgl2 = await (async () => {
  *
  * Only consulted when the engine has already said it has no WebGL2, so these
  * cannot excuse a renderer that failed for some other reason on an engine that
- * has one.
+ * has one. What they identify is the *surface* that hit the refusal — the
+ * errors that follow are the product's own handling of it, and cannot be
+ * recognised by their text.
  */
 const RENDERER_CONSOLE = [
   /WebGL context could not be created/i,
@@ -698,6 +700,15 @@ try {
         }
         console_.push(text);
       };
+      // Everything else logged on a surface whose renderer just failed is the
+      // product handling that failure — `landingCirculationDemo`'s catch and
+      // the scene bootstrap's — and it cannot be told apart by its text. On
+      // Chromium those handlers log the message three.js gave them, which the
+      // patterns above match; on Firefox the same handlers log an Error object
+      // the console renders as the bare word `Error`. Matching harder is the
+      // wrong answer to that: a pattern loose enough to catch `Error` catches
+      // everything. So the question asked is which surface, not which words.
+      const rendererDown = () => !engineHasWebgl2 && rendererConsole.length > 0;
       const onError = (error) => console_.push(`uncaught: ${error.message}`);
       page.on('console', onConsole);
       page.on('pageerror', onError);
@@ -900,16 +911,23 @@ try {
                 'so the renderer fallback was measured instead',
           );
         }
-        if (rendererConsole.length) {
+        if (rendererDown()) {
           // Named rather than swallowed, so a run that could not exercise the
-          // renderer never looks like one that did.
+          // renderer never looks like one that did — and every line it did not
+          // count is printed, including the product's own.
+          //
+          // The cost, stated: a page error on this surface that had nothing to
+          // do with the renderer is noted here instead of failing. It is still
+          // shown, and Chromium and WebKit still fail on it — which is the
+          // whole reason the matrix drives three engines.
           engineRendererNote = true;
+          const downstream = [...rendererConsole, ...console_];
           notes.push(
-            `${where}: ${rendererConsole.length} renderer error(s) not counted — ` +
-              `${engine} has no WebGL2 here\n    ${rendererConsole.slice(0, 2).join('\n    ')}`,
+            `${where}: ${downstream.length} error(s) not counted — ` +
+              `${engine} has no WebGL2 here, so the renderer and everything that ` +
+              `handled its failure could not be measured\n    ${downstream.slice(0, 3).join('\n    ')}`,
           );
-        }
-        if (console_.length) {
+        } else if (console_.length) {
           problems.push(`${where}: ${console_.length} console error(s)\n    ${console_.slice(0, 3).join('\n    ')}`);
         }
 
