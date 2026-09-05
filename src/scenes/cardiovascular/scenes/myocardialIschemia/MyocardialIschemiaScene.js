@@ -86,6 +86,30 @@ const MAP_TINT = 0.26;
 const MAP_EDGE = 3;
 
 /**
+ * The territory boundary, drawn as a line rather than left to the fill.
+ *
+ * A fill cannot carry a map on this surface. The lighting is not grey, so a
+ * patch's hue moves with which way it faces — 0.0447 of chromaticity scatter
+ * for a single flat colour — and from the opening camera nearly the whole
+ * visible wall is one territory anyway, so a reader who does not rotate sees a
+ * region and not a map of three. A *line* is local contrast, and local contrast
+ * survives both.
+ *
+ * Drawn in the fragment shader, not in the vertex colours, because the mesh is
+ * 48 columns around: one vertex of boundary is about half a scene unit, which
+ * lands as a 25 px band rather than a line, and making the mesh dense enough to
+ * draw a line with vertices would quadruple a per-frame cost that is already
+ * 4 ms. Scaling the threshold by `fwidth` instead gives a boundary the same
+ * couple of pixels wide wherever it is and however far away.
+ *
+ * It does not fade with burden the way the territory hue does. Watching one
+ * territory go ischemic, the question a reader is checking is whether the
+ * discoloured patch *is* the territory — which needs the boundary still drawn.
+ */
+const BOUNDARY_WIDTH_PX = 2.4;
+const BOUNDARY_DARKEN = 0.45;
+
+/**
  * Myocardial ischemia: which muscle a narrowed artery starves.
  *
  * The scene exists for one relation that a picture makes obvious and a
@@ -221,6 +245,7 @@ export class MyocardialIschemiaScene {
       metalness: 0.02,
       vertexColors: true,
     });
+
     this.myocardium = new THREE.Mesh(this.geometry, this.material);
     this.myocardium.name = 'myocardium';
     this.root.add(this.myocardium);
@@ -232,6 +257,14 @@ export class MyocardialIschemiaScene {
     // frame budget.
     this.vertexTerritory = this.mapVerticesToTerritories();
     this.massFraction = TERRITORY_MASS_FRACTION;
+    // The same weights the map is painted from, handed to the shader so the
+    // boundary between territories can be drawn as a line the mesh is far too
+    // coarse to carry in its vertices.
+    this.geometry.setAttribute(
+      'territory',
+      new THREE.BufferAttribute(this.vertexTerritory, TERRITORIES.length)
+    );
+    this.drawTerritoryBoundaries(this.material);
 
     this.restPositions = Float32Array.from(this.geometry.attributes.position.array);
 
@@ -246,6 +279,59 @@ export class MyocardialIschemiaScene {
     this.solve();
     this.applyModelToScene();
     return this.root;
+  }
+
+  /**
+   * Put a line on the watershed between two territories.
+   *
+   * `territoryWeightsAt` is smooth on purpose, so "the boundary" is where the
+   * top two weights meet. `fwidth` turns that into a fixed number of pixels
+   * rather than a fixed number of scene units, which is what makes it a
+   * boundary rather than a band that grows as the reader zooms in.
+   *
+   * Injected into the standard material rather than replacing it: the wall
+   * still has to be lit like tissue, and every other scene property — the
+   * vertex colours, the roughness, the shadowing — stays exactly as it was.
+   *
+   * @param {THREE.Material} material
+   */
+  drawTerritoryBoundaries(material) {
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.boundaryWidth = { value: BOUNDARY_WIDTH_PX };
+      shader.uniforms.boundaryDarken = { value: BOUNDARY_DARKEN };
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec3 territory;\nvarying vec3 vTerritory;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvTerritory = territory;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nvarying vec3 vTerritory;\nuniform float boundaryWidth;\nuniform float boundaryDarken;'
+        )
+        .replace(
+          '#include <color_fragment>',
+          [
+            '#include <color_fragment>',
+            'float topWeight = max(vTerritory.x, max(vTerritory.y, vTerritory.z));',
+            'float lowWeight = min(vTerritory.x, min(vTerritory.y, vTerritory.z));',
+            '// The runner-up, exactly: the sum less the largest and smallest.',
+            '// Written first as "the sum of the other two", which is the same',
+            '// on a two-territory boundary and wrong wherever all three are',
+            '// live — it would have drawn a line round the triple point.',
+            'float runnerUp = vTerritory.x + vTerritory.y + vTerritory.z - topWeight - lowWeight;',
+            '// Zero where two territories are level, growing away from the',
+            '// watershed in both directions.',
+            'float gap = topWeight - runnerUp;',
+            'float band = fwidth(gap) * boundaryWidth;',
+            'float onLine = 1.0 - smoothstep(0.0, max(band, 1e-5), gap);',
+            'diffuseColor.rgb *= mix(1.0, boundaryDarken, onLine);',
+          ].join('\n')
+        );
+      // Kept so a test can see the injection happened at all: a chunk name that
+      // stops matching in a future three.js leaves the material compiling
+      // perfectly and drawing no line.
+      this.boundaryShader = shader;
+    };
+    material.needsUpdate = true;
   }
 
   /**

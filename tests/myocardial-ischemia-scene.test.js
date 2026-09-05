@@ -566,3 +566,76 @@ test('sharpening the map does not touch what the model solved', () => {
   assert.equal(a.getState().ladWallMotion, before.wall, 'nor the wall motion');
   assert.equal(a.getState().ladBurden, before.burden, 'nor the burden');
 });
+
+test('the territory boundary is actually injected into the shader three.js will compile', () => {
+  // The boundary between two territories is drawn in the fragment shader,
+  // because the mesh is 48 columns around and one vertex of boundary lands as a
+  // 25 px band rather than a line. Shader injection has one failure mode and it
+  // is silent: `onBeforeCompile` string-replaces `#include <color_fragment>`,
+  // and if a future three.js renames or reorders that chunk the replace matches
+  // nothing, the material compiles perfectly, and the map simply has no
+  // boundaries. Nothing else in the suite would notice.
+  //
+  // So this runs the hook against three's *real* shader source — available in
+  // node, no GL context needed — and checks the injection took.
+  const scene2 = new MyocardialIschemiaScene({});
+  scene2.build();
+
+  assert.ok(
+    scene2.geometry.attributes.territory,
+    'the weights the boundary is derived from reach the shader as an attribute'
+  );
+  assert.equal(scene2.geometry.attributes.territory.itemSize, TERRITORIES.length);
+  assert.equal(typeof scene2.material.onBeforeCompile, 'function', 'the hook is installed');
+
+  const shader = {
+    uniforms: {},
+    vertexShader: THREE.ShaderLib.physical.vertexShader,
+    fragmentShader: THREE.ShaderLib.physical.fragmentShader,
+  };
+  scene2.material.onBeforeCompile(shader);
+
+  assert.match(shader.vertexShader, /attribute vec3 territory;/, 'the attribute is declared');
+  assert.match(shader.vertexShader, /vTerritory = territory;/, 'and passed to the fragment stage');
+  assert.match(shader.fragmentShader, /varying vec3 vTerritory;/, 'which receives it');
+  assert.match(shader.fragmentShader, /diffuseColor\.rgb \*= mix\(1\.0, boundaryDarken, onLine\);/,
+    'and darkens the wall on the watershed');
+  assert.ok(shader.uniforms.boundaryWidth?.value > 0, 'the line has a width');
+  assert.ok(
+    shader.uniforms.boundaryDarken?.value > 0 && shader.uniforms.boundaryDarken.value < 1,
+    'and darkens rather than blacks out or does nothing'
+  );
+
+  // The injection has to land *after* the vertex colours are applied, or the
+  // territory fill overwrites the line.
+  //
+  // Against the *multiply*, not against `vColor`. Written as
+  // `indexOf('onLine') > indexOf('vColor')` this passed either way, because the
+  // first `vColor` in the shader is its varying declaration at the top — so the
+  // test read as a position check and measured nothing. Moving the injection to
+  // `<normal_fragment_begin>`, which really does draw the line under the fill,
+  // failed nothing.
+  //
+  // Ordering is checked on the *resolved* shader, in the order three builds it:
+  // the hook runs against source that still has `#include` directives in it,
+  // and the chunks are expanded afterwards. Checked against the unresolved
+  // source, `diffuseColor.rgb *= vColor;` is not there at all yet.
+  const resolve = (source) => {
+    let out = source;
+    for (let pass = 0; pass < 4; pass++) {
+      out = out.replace(/#include <(\w+)>/g, (whole, name) => THREE.ShaderChunk[name] ?? whole);
+    }
+    return out;
+  };
+  const resolved = resolve(shader.fragmentShader);
+  // The *last* application of the fill, not the first. Injecting at
+  // `<map_fragment>` re-emits `<color_fragment>` before the line and leaves the
+  // original one after it, so the fill is applied twice and paints over the
+  // line — and against `indexOf` that read as correctly ordered.
+  const multiply = resolved.lastIndexOf('diffuseColor.rgb *= vColor;');
+  assert.ok(multiply > 0, 'the vertex colours are applied somewhere');
+  assert.ok(
+    resolved.lastIndexOf('onLine') > multiply,
+    'the line is drawn over the fill, not under it'
+  );
+});

@@ -99,6 +99,8 @@ Two presentation constants carry it, `MAP_TINT` and `MAP_EDGE`, and both are fit
 
 The first version of this scene failed it: the six pairs separated by 0.76–1.19× the floor, so the legend named three territory colours a reader could not find. It is 1.12–2.29× now. `MAP_EDGE` sharpens a *copy* of the territory weights for drawing only — burden and wall motion read them exactly as the model produced them, because a coronary watershed is not a line and the model does not claim one.
 
+The watershed itself is drawn as a line, in the fragment shader, at a fixed couple of pixels wide. A fill alone cannot carry a map on a lit curved surface, and a line can: it is local contrast, so it survives both the lighting and a camera that sees mostly one territory. **The line is a drawn convention, not a claim that the boundary is sharp** — the model's weights stay smooth underneath it, and §14 says what the map is and is not.
+
 Measured off the rendered frames on a pinned camera — each vertex identified by territory first, then projected — the anterior aspect reads:
 
 | Territory | rest | burden | median Δ red |
@@ -114,7 +116,7 @@ Absolute triples are only comparable within one pinned camera: measured against 
 ## 11. Known failure modes
 
 - **A reader may take the territory map as their own anatomy.** It is a fixed convention that measurement disagrees with — see §14.
-- **The map is a fill, and from the opening camera most of the visible wall is one territory.** What a reader sees without rotating is a region, not a map of three. Boundaries drawn as lines would survive any camera; they are not drawn.
+- **From the opening camera most of the visible wall is one territory** — 73% of the camera-facing vertices are anterior descending. The watershed is drawn as a line so the boundary is visible without rotating, but the *other two* territories still need the reader to turn the heart round.
 - **A reader may read "the artery is open" as "the heart is working."** The scene is built to correct that, and it can also be misread as saying stunning always resolves. It does not always.
 - **The three severities the scene offers are not degrees of stenosis.** They are supply factors.
 - **The anterior descending stops short of the apex** in the geometry, so its apical territory is drawn without a vessel over it. Recorded in `coronaryAnatomy.js`.

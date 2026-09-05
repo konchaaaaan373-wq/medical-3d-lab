@@ -697,17 +697,46 @@ territory map.
    hangs. Mirroring the sinuses, moving the anterior descending onto the free
    wall, and declaring left dominance each fail one of them.
 
+14. **A fill cannot carry a map, and the fill was all there was.** Even at
+   1.12–2.29× the lighting floor, from the opening camera nearly the whole
+   visible wall is one territory — 73% of the camera-facing vertices are
+   anterior descending — so a reader who does not rotate sees a region, not a
+   map of three. This was recorded as "the right next change and it is not made
+   here", which is the wrong place to stop when the change is named and known.
+
+   The boundary is now drawn as a **line**, in the fragment shader. Local
+   contrast survives both problems at once: it does not care which way the
+   surface faces, and it is visible from any camera that can see the watershed
+   at all. Vertex colours cannot do it — the mesh is 48 columns around, so one
+   vertex of boundary is a 25 px band, and a mesh dense enough to draw a line
+   would quadruple a per-frame cost already at 3 ms. Scaling the threshold by
+   `fwidth` gives a line the same couple of pixels wide wherever it is.
+   Measured on the anterior aspect: present on 124 of 125 sampled rows, median
+   contrast 70/255 against the wall beside it, and no cost per frame because it
+   is per-pixel work.
+
+   The line does not fade with burden the way the territory hue does. Watching
+   one territory go ischemic, what a reader is checking is whether the
+   discoloured patch *is* the territory — which needs the boundary still drawn.
+
+15. **A fourth test that did not measure what it was named for**, in the guard
+   for finding 14. The injection must land after the vertex colours are applied
+   or the fill paints over the line; written as
+   `indexOf('onLine') > indexOf('vColor')` it passed either way, because the
+   first `vColor` in the shader is its varying declaration at the top. Two
+   further corrections were needed before the mutation failed: the ordering has
+   to be checked on the shader with its `#include` chunks *resolved*, in the
+   order three.js builds it, and against `lastIndexOf` — injecting at
+   `<map_fragment>` re-emits the fill both before *and* after the line, and
+   against the first match that reads as correctly ordered.
+
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded
 in `coronaryAnatomy.js` and in the model card. The ventricle is drawn without a
 valve plane or great vessels above it, so the basal shoulder reads as a lid;
 nothing is blown out (the brightest pixel in the frame is UI chrome at luminance
 241, the brightest on the heart 141), but it is a presentational weakness of
-showing the ventricle alone. And the territory map is a *fill*: from the default
-anterior camera nearly the whole visible wall is one territory, so what a reader
-sees from that one view is a region, not a map of three. Drawing the boundaries
-as lines rather than filling the regions would survive any lighting and any
-camera; it is the right next change and is not made here.
+showing the ventricle alone.
 
 ## 6. Not covered by this review
 
