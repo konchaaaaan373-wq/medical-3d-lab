@@ -57,6 +57,7 @@ export function mountOrganPreview(container, organId) {
   let lastTime = 0;
   let renderer = null;
   let scene = null;
+  let camera = null;
   let model = null;
   let built = null;
   let resizeObserver = null;
@@ -73,8 +74,8 @@ export function mountOrganPreview(container, organId) {
     !motion?.matches;
 
   const render = () => {
-    if (disposed || !renderer || !scene) return;
-    renderer.render(scene, renderer.userData.camera);
+    if (disposed || !renderer || !scene || !camera) return;
+    renderer.render(scene, camera);
   };
 
   const tick = (time) => {
@@ -105,7 +106,7 @@ export function mountOrganPreview(container, organId) {
     const width = Math.max(1, Math.round(container.clientWidth));
     const height = Math.max(1, Math.round(container.clientHeight));
     renderer.setSize(width, height, false);
-    const camera = renderer.userData.camera;
+    if (!camera) return;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     render();
@@ -133,8 +134,7 @@ export function mountOrganPreview(container, organId) {
       container.append(renderer.domElement);
 
       scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(34, 1, 0.01, 100);
-      renderer.userData.camera = camera;
+      camera = new THREE.PerspectiveCamera(34, 1, 0.01, 100);
       scene.add(
         new THREE.HemisphereLight('#d8f0ff', '#17222b', 2.15),
         makeDirectionalLight(THREE, '#fff4e7', 3.8, [3.8, 4.6, 5.4]),
@@ -184,6 +184,7 @@ export function mountOrganPreview(container, organId) {
       built = null;
       model = null;
       scene = null;
+      camera = null;
       renderer = null;
       if (disposed) return;
       container.dataset.previewState = 'unavailable';
