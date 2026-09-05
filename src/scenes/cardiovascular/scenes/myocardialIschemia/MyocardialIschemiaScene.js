@@ -41,6 +41,51 @@ import { buildCoronaryArteries } from '../../organs/coronaryArteries.js';
 import { TERRITORY_MASS_FRACTION, territoryWeightsAt } from '../../organs/coronaryAnatomy.js';
 
 /**
+ * How strongly the territory's own hue is mixed into the wall at rest.
+ *
+ * Presentation, and fitted to a stated criterion rather than to taste: **at
+ * rest, each pair of territories must separate in chromaticity by more than the
+ * chromaticity varies inside a single territory**, so a reader can see three
+ * regions without being told they are there. The legend names three territory
+ * colours; if they are not findable on the model, the legend is lying.
+ *
+ * The confound is not what it first looks like. Painting *one flat colour* on
+ * every vertex and measuring the visible surface, chromaticity still scatters
+ * by **0.0447** — the lighting in this scene is not grey, so which way a patch
+ * faces shifts its hue by about as much as a weak tint does. That number is the
+ * floor a painted map has to clear, and it is measured rather than assumed.
+ *
+ * Against it, at 0.16 with the weights unsharpened, the six territory pairs
+ * separated by 0.034-0.053: **0.76-1.19x the floor.** The legend named three
+ * colours that were not on the model.
+ *
+ * Fitted upward only as far as the criterion needs, because every step spends
+ * tissue realism: at 0.22 the weakest pair is still under the floor (0.96x), at
+ * 0.34 the heart reads as a terracotta pot in the render. 0.26 gives
+ * 1.12-2.29x, and the one pair near the bottom of that range is the anterior
+ * descending against the circumflex *seen from behind*, which is a nine-vertex
+ * apical sliver rather than a boundary a reader is asked to find.
+ */
+const MAP_TINT = 0.26;
+
+/**
+ * How hard the map's boundaries are, as an exponent on the territory weights.
+ *
+ * The model's weights are deliberately smooth: a coronary watershed is not a
+ * line, and `territoryWeightsAt` refuses to claim one. But a *map* drawn from
+ * smooth weights has no edge anywhere, and most of the scatter inside a
+ * "territory" above was blend from its neighbours rather than lighting. So the
+ * drawing sharpens a copy — `w^MAP_EDGE`, renormalized — while `burden` and
+ * `held`, which are physics, keep reading the weights exactly as the model
+ * produced them.
+ *
+ * This is a presentation choice about how a boundary is drawn, not a claim that
+ * the boundary is sharp. The scope panel and the model card both say the
+ * territory map is a convention.
+ */
+const MAP_EDGE = 3;
+
+/**
  * Myocardial ischemia: which muscle a narrowed artery starves.
  *
  * The scene exists for one relation that a picture makes obvious and a
@@ -413,21 +458,31 @@ export class MyocardialIschemiaScene {
     const tint = new THREE.Color();
     const territoryTint = TERRITORIES.map((territory) => new THREE.Color(TERRITORY_COLORS[territory]));
 
+    const sharp = new Float32Array(TERRITORIES.length);
+
     for (let v = 0; v < position.count; v++) {
       const base = v * TERRITORIES.length;
       let held = 0;
       let burden = 0;
+      let sharpTotal = 0;
+      for (let i = 0; i < TERRITORIES.length; i++) {
+        const weight = this.vertexTerritory[base + i];
+        const territory = TERRITORIES[i];
+        // Physics reads the weights as the model produced them.
+        held += weight * (1 - wallMotionAmplitude(this.myocardialState, territory));
+        burden += weight * this.myocardialState.ischemicBurden[territory];
+        // The *map* reads a sharpened copy. See MAP_EDGE.
+        sharp[i] = weight ** MAP_EDGE;
+        sharpTotal += sharp[i];
+      }
       let r = 0;
       let g = 0;
       let b = 0;
       for (let i = 0; i < TERRITORIES.length; i++) {
-        const weight = this.vertexTerritory[base + i];
-        const territory = TERRITORIES[i];
-        held += weight * (1 - wallMotionAmplitude(this.myocardialState, territory));
-        burden += weight * this.myocardialState.ischemicBurden[territory];
-        r += weight * territoryTint[i].r;
-        g += weight * territoryTint[i].g;
-        b += weight * territoryTint[i].b;
+        const share = sharp[i] / sharpTotal;
+        r += share * territoryTint[i].r;
+        g += share * territoryTint[i].g;
+        b += share * territoryTint[i].b;
       }
 
       const p = v * 3;
@@ -439,14 +494,11 @@ export class MyocardialIschemiaScene {
 
       // Colour reads burden, never supply — the rule the model exists to keep.
       tint.copy(supplied).lerp(ischemic, Math.min(1, burden));
-      // A trace of the territory's own hue, so which artery owns which wall is
-      // legible even at rest, when no wall is ischemic and every one is the
-      // same colour.
       // The territory's own hue fades out as burden rises, so at rest the map
       // is legible and under ischemia the burden is what the eye reads. Holding
       // the hue at a fixed share instead kept a third of the signal fighting
       // the other two thirds.
-      const hue = 0.16 * (1 - Math.min(1, burden));
+      const hue = MAP_TINT * (1 - Math.min(1, burden));
       colors[p] = tint.r * (1 - hue) + r * hue;
       colors[p + 1] = tint.g * (1 - hue) + g * hue;
       colors[p + 2] = tint.b * (1 - hue) + b * hue;

@@ -6,6 +6,16 @@ import { ANATOMICAL_AXES, anatomicalSide } from '../src/scenes/cardiovascular/sc
 import { doubleSidedOpacity, wallMaterial } from '../src/scenes/shared/materials.js';
 
 import { buildHeart } from '../src/scenes/cardiovascular/organs/heart.js';
+import {
+  AHA_SEGMENTS,
+  CORONARY_BRANCHES,
+  CORONARY_SINUSES,
+  DOMINANCE,
+  GROOVES,
+  LATERAL_PHI,
+  SEPTAL_PHI,
+  dominantTerritoryAt,
+} from '../src/scenes/cardiovascular/organs/coronaryAnatomy.js';
 import { buildBrain } from '../src/scenes/nervous/organs/brain.js';
 import { buildAirway } from '../src/scenes/respiratory/organs/airway.js';
 import { buildLungs } from '../src/scenes/respiratory/organs/lungs.js';
@@ -494,4 +504,78 @@ test('a carve cached is a carve repeated, and no two builds share one geometry',
   const coarse = buildLungs({ bronchi: false, vessels: false, detail: 6 });
   assert.notDeepEqual(signature(coarse), before, 'a coarser lung came back as the finer one');
   coarse.dispose();
+});
+
+
+// ---------------------------------------------------------------------------
+// The coronary tree. `coronary-anatomy.test.js` measures it against its own
+// spec in its own units; what belongs *here* is the part that has to agree with
+// every other organ — the frame, and which side of the body each thing is on.
+//
+// This file was not updated when the coronary organ was added, which the
+// playbook's checklist explicitly asks for: "新しい臓器を足したら、まずそこに行を
+// 足してください". The scene's own suite passed throughout.
+// ---------------------------------------------------------------------------
+
+test('the coronary tree is built in the frame the heart declares', () => {
+  // +x is the patient's left, so the left coronary's sinus faces left and the
+  // right coronary's faces right. Written as raw vectors in the organ file,
+  // these are exactly the numbers that stay valid while their meaning moves.
+  const left = ANATOMICAL_AXES.left;
+  const leftward = (id) => new THREE.Vector3(...CORONARY_SINUSES[id].direction).normalize().dot(left);
+
+  const ids = Object.keys(CORONARY_SINUSES);
+  const leftId = ids.find((id) => /left/i.test(id));
+  const rightId = ids.find((id) => /right/i.test(id));
+  assert.ok(leftId && rightId, `the sinuses are named for their sides: ${ids.join(', ')}`);
+  assert.ok(leftward(leftId) > 0, `the ${leftId} sinus faces the patient's left`);
+  assert.ok(leftward(rightId) < 0, `the ${rightId} sinus faces the patient's right`);
+});
+
+test('the circumflex runs over the free wall and the descending arteries over the septum', () => {
+  // The one relation the ischemia scene depends on and the one a mirrored
+  // build would break while every vessel still looked correct: the artery in
+  // the interventricular groove is over the septum, and the artery on the free
+  // wall is a different artery.
+  const anterior = GROOVES[CORONARY_BRANCHES.find((b) => b.id === 'lad').groove];
+  const lateral = GROOVES[CORONARY_BRANCHES.find((b) => b.id === 'lcx').groove];
+
+  const near = (a, b) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  assert.ok(
+    near(anterior.phi, SEPTAL_PHI) < near(anterior.phi, LATERAL_PHI),
+    'the anterior descending runs nearer the septum than the free wall'
+  );
+  const lateralPhi = lateral.phi ?? (lateral.phiFrom + lateral.phiTo) / 2;
+  assert.ok(
+    near(lateralPhi, LATERAL_PHI) < near(lateralPhi, SEPTAL_PHI),
+    'and the circumflex nearer the free wall than the septum'
+  );
+});
+
+test('every myocardial segment is supplied, and by the artery the chart names', () => {
+  // The territory map is the scene's answer to "which muscle does this artery
+  // feed". A segment with no owner, or one whose centre resolves to a
+  // different artery than the table assigns it, is that answer being wrong
+  // somewhere a reader cannot see.
+  assert.equal(AHA_SEGMENTS.length, 17, 'the AHA model has seventeen segments');
+  for (const segment of AHA_SEGMENTS) {
+    assert.equal(
+      dominantTerritoryAt(segment.t, segment.phi),
+      segment.territory,
+      `segment ${segment.id} resolves to the ${segment.territory}`
+    );
+  }
+});
+
+test('the specimen is dominant on one side, and its posterior descending agrees', () => {
+  // Dominance is a property of the specimen, and the posterior descending is
+  // how you read it. Declared one way and drawn the other, the scene teaches
+  // an anatomy that does not exist.
+  const pda = CORONARY_BRANCHES.find((b) => b.id === 'pda');
+  assert.ok(pda, 'the specimen has a posterior descending');
+  assert.equal(
+    pda.parent,
+    DOMINANCE === 'right' ? 'rca' : 'lcx',
+    `a ${DOMINANCE}-dominant heart gives the posterior descending to the ${DOMINANCE} side`
+  );
 });

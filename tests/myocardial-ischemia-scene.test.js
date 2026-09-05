@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import * as THREE from 'three';
+
 import { MyocardialIschemiaScene } from '../src/scenes/cardiovascular/scenes/myocardialIschemia/MyocardialIschemiaScene.js';
-import { STAGES, METRICS, CHARTS, SCOPE } from '../src/data/myocardialIschemia.js';
+import { STAGES, METRICS, CHARTS, SCOPE, TERRITORY_COLORS, WALL_COLORS } from '../src/data/myocardialIschemia.js';
 import { TERRITORIES } from '../src/models/coronaryTerritories.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 
@@ -381,4 +383,186 @@ test('the arteries stay on the wall through the beat, not only where they were b
       );
     }
   }
+});
+
+test('the three territories the legend names are three colours on the model', () => {
+  // The legend carries a swatch for each of the three territories. If a reader
+  // cannot find those three regions on the heart, the legend describes a map
+  // that is not drawn — and for a scene whose whole claim is *where* the
+  // starved muscle is, that is the claim failing, not a cosmetic miss. It
+  // shipped that way: 16% of the territory's own hue over unsharpened weights,
+  // and on the rendered frame the six pairs separated by 0.034-0.053 against a
+  // lighting floor of 0.0447. Signal under noise, both aspects.
+  //
+  // **This is a necessary condition, not the criterion.** The criterion is a
+  // property of the render, and the render is not available to `node --test`.
+  // Measured across four settings, the rendered separation is 0.455-0.517x the
+  // vertex-buffer separation asserted here — not a constant, because sharpening
+  // the map changes the ratio as well as the magnitude. So a vertex threshold
+  // can only be set at the *optimistic* end of that range: 0.0447 / 0.517 =
+  // 0.086. Clearing it does not prove the render clears its floor; failing it
+  // proves the render cannot. It catches the tint (0.16 and 0.22 both fail);
+  // it does *not* catch dropping the sharpening, which passes here at 0.089 and
+  // fails the render at 0.041. That one is held by the next test and by the
+  // render measurement recorded in `docs/anatomy-review.md` §5.10.
+  const painted = new MyocardialIschemiaScene({});
+  painted.build();
+  painted.setProgress(0.02); // at rest: nothing ischemic, the map at its most legible
+  painted.phase = 0.999;
+  painted.applyModelToScene();
+
+  const color = painted.geometry.attributes.color;
+  const chroma = (r, g, b) => { const s2 = r + g + b || 1; return [r / s2, g / s2]; };
+  const samples = { lad: [], rca: [], lcx: [] };
+  for (let v = 0; v < color.count; v++) {
+    const base = v * TERRITORIES.length;
+    const w = TERRITORIES.map((_, i) => painted.vertexTerritory[base + i]);
+    const best = w.indexOf(Math.max(...w));
+    if (w[best] < 0.7) continue;
+    samples[TERRITORIES[best]].push(chroma(color.getX(v), color.getY(v), color.getZ(v)));
+  }
+
+  const med = (xs) => { const a = [...xs].sort((p, q) => p - q); return a[(a.length - 1) >> 1]; };
+  const centre = {};
+  for (const t of TERRITORIES) {
+    assert.ok(samples[t].length > 20, `${t} covers enough of the wall to be a region at all`);
+    centre[t] = [med(samples[t].map((q) => q[0])), med(samples[t].map((q) => q[1]))];
+  }
+
+  const NECESSARY = 0.086;
+  for (const [a, b] of [['lad', 'rca'], ['lad', 'lcx'], ['rca', 'lcx']]) {
+    const sep = Math.hypot(centre[a][0] - centre[b][0], centre[a][1] - centre[b][1]);
+    assert.ok(
+      sep > NECESSARY,
+      `${a} and ${b} are different colours on the wall: ${sep.toFixed(4)}, and below ` +
+        `${NECESSARY} the render cannot clear its lighting floor`
+    );
+  }
+
+  // And each region is painted its *own* legend colour rather than merely some
+  // other colour — a swapped swatch separates just as well and means the map
+  // points at the wrong artery.
+  //
+  // Compared as a *direction*, not a position. At rest every vertex starts from
+  // the same supplied-wall colour and the tint is only a quarter of the mix, so
+  // all three regions still sit nearest the reddest swatch; the question is
+  // which way each one was pushed, which is what the reader's eye picks up
+  // against the surrounding wall.
+  const supplied = new THREE.Color(WALL_COLORS.supplied);
+  const linear = { lad: [], rca: [], lcx: [] };
+  for (let v = 0; v < color.count; v++) {
+    const b2 = v * TERRITORIES.length;
+    const w = TERRITORIES.map((_, i) => painted.vertexTerritory[b2 + i]);
+    const best = w.indexOf(Math.max(...w));
+    if (w[best] < 0.7) continue;
+    linear[TERRITORIES[best]].push([color.getX(v), color.getY(v), color.getZ(v)]);
+  }
+  const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((x) => x / n); };
+  const dot = (a, b) => a.reduce((s2, x, i) => s2 + x * b[i], 0);
+  for (const t of TERRITORIES) {
+    const mean = [0, 1, 2].map((k) => linear[t].reduce((s2, c) => s2 + c[k], 0) / linear[t].length);
+    const shift = unit([mean[0] - supplied.r, mean[1] - supplied.g, mean[2] - supplied.b]);
+    const towards = (id) => {
+      const sw = new THREE.Color(TERRITORY_COLORS[id]);
+      return dot(shift, unit([sw.r - supplied.r, sw.g - supplied.g, sw.b - supplied.b]));
+    };
+    for (const other of TERRITORIES) {
+      if (other === t) continue;
+      assert.ok(
+        towards(t) > towards(other),
+        `the ${t} region is pushed towards the ${t} swatch (${towards(t).toFixed(3)}) ` +
+          `more than the ${other} one (${towards(other).toFixed(3)})`
+      );
+    }
+  }
+});
+
+test('the map is drawn with an edge the model does not claim', () => {
+  // `territoryWeightsAt` is deliberately smooth: a coronary watershed is not a
+  // line, and the model refuses to draw one. A map painted straight from those
+  // weights has no edge anywhere, and most of what looked like "lighting
+  // scatter inside a territory" was its neighbours bleeding in. So the drawing
+  // sharpens a copy.
+  //
+  // This is the test that catches the sharpening being dropped, which the
+  // previous one cannot: at MAP_EDGE 1 the vertex separation is 0.089 — over
+  // that test's threshold — while the rendered separation is 0.041, under the
+  // 0.0447 floor.
+  const painted = new MyocardialIschemiaScene({});
+  painted.build();
+  painted.setProgress(0.02);
+  painted.phase = 0.999;
+  painted.applyModelToScene();
+
+  const color = painted.geometry.attributes.color;
+  const tints = TERRITORIES.map((t) => new THREE.Color(TERRITORY_COLORS[t]));
+
+  // The most mixed vertex that still has an owner is where an edge either
+  // exists or does not.
+  let mixed = -1;
+  let lowest = Infinity;
+  for (let v = 0; v < color.count; v++) {
+    const base = v * TERRITORIES.length;
+    const w = TERRITORIES.map((_, i) => painted.vertexTerritory[base + i]);
+    const top = Math.max(...w);
+    if (top < 0.55 || top > 0.75) continue;
+    if (top < lowest) { lowest = top; mixed = v; }
+  }
+  assert.ok(mixed >= 0, 'the map has boundary vertices to check');
+
+  const base = mixed * TERRITORIES.length;
+  const w = TERRITORIES.map((_, i) => painted.vertexTerritory[base + i]);
+  const owner = w.indexOf(Math.max(...w));
+
+  // Compared as directions away from the shared supplied-wall colour, so the
+  // two things being compared live in the same space. The first version of this
+  // test compared the *final* colour against the *tint blend* — a final colour
+  // is three quarters supplied wall, a tint blend is none of it — and passed at
+  // every setting, including the one it was written to reject.
+  const supplied = new THREE.Color(WALL_COLORS.supplied);
+  const from = (c) => [c[0] - supplied.r, c[1] - supplied.g, c[2] - supplied.b];
+  const unit = (v) => { const n = Math.hypot(...v) || 1; return v.map((x) => x / n); };
+  const dot = (a, b) => a.reduce((s2, x, i) => s2 + x * b[i], 0);
+
+  const tint = (i) => { const c = tints[i]; return [c.r, c.g, c.b]; };
+  const smooth = [0, 1, 2].map((k) => w.reduce((s2, wi, i) => s2 + wi * tint(i)[k], 0));
+  const drawn = [color.getX(mixed), color.getY(mixed), color.getZ(mixed)];
+
+  const ownWay = unit(from(tint(owner)));
+  const sharpened = dot(unit(from(drawn)), ownWay);
+  const unsharpened = dot(unit(from(smooth)), ownWay);
+  assert.ok(
+    sharpened > unsharpened,
+    `a boundary vertex (owner weight ${lowest.toFixed(2)}) is pushed further towards its own ` +
+      `territory than the model's smooth weights would push it: ${sharpened.toFixed(4)} against ${unsharpened.toFixed(4)}`
+  );
+});
+
+test('sharpening the map does not touch what the model solved', () => {
+  // MAP_EDGE sharpens a *copy* of the weights, for drawing. Burden and wall
+  // motion read the weights as the model produced them, because those are
+  // physics and a coronary watershed is not a line. If the sharpening ever
+  // leaks into them, the ventricle's contraction is being scaled by a
+  // presentation constant.
+  const a = new MyocardialIschemiaScene({});
+  a.build();
+  a.setProgress(0.62);
+  const before = {
+    ef: a.getState().ejectionFraction,
+    wall: a.getState().ladWallMotion,
+    burden: a.getState().ladBurden,
+  };
+  // The mass weighting the solver uses comes from the segment table, not from
+  // anything the map does with the per-vertex weights.
+  assert.deepEqual(
+    Object.keys(a.massFraction).sort(),
+    [...TERRITORIES].sort(),
+    'the solver weights territories, not vertices'
+  );
+  const sum = TERRITORIES.reduce((s, t) => s + a.massFraction[t], 0);
+  assert.ok(Math.abs(sum - 1) < 1e-9, `mass fractions sum to 1: ${sum}`);
+  a.applyModelToScene();
+  assert.equal(a.getState().ejectionFraction, before.ef, 'drawing does not move the ejection fraction');
+  assert.equal(a.getState().ladWallMotion, before.wall, 'nor the wall motion');
+  assert.equal(a.getState().ladBurden, before.burden, 'nor the burden');
 });

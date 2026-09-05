@@ -578,30 +578,36 @@ part — several were only visible once the one before it was fixed.
    flow" multiplied whatever the stage had set, and its default was 1, so at the
    stages that mattered it changed nothing. It is the lesion's severity now.
 
-**A measurement I got wrong, and the correction.** This section previously
-recorded that the anterior wall darkened by 31/255 in red between the baseline
-and the severe stage while the circumflex wall darkened by 16 — a differential
-of "about 6%" — and concluded that the picture was not making the scene's
-central claim. **That measurement was wrong, and so was the conclusion.**
+**A measurement I got wrong twice, and what it took to get right.**
 
-It came from averaging fixed screen rectangles between two frames, which is
-wrong twice over: a rectangle is not a territory, and the ventricle's shape
-changes between the two stages, so the same rectangle sees different tissue in
-each. Redone by identifying each vertex's territory first, projecting it into
-each frame and taking the difference per vertex — same vertex, same territory,
-both frames — the anterior aspect at 1280×860 reads:
+*First version.* This section recorded that the anterior wall darkened by 31/255
+in red against the circumflex wall's 16 — "about 6%" — and concluded the picture
+was not making the scene's claim. That came from averaging fixed screen
+rectangles between two frames: a rectangle is not a territory, and the
+ventricle's shape changes between stages, so the same rectangle sees different
+tissue in each.
+
+*Second version.* Redone per vertex — territory decided first, then projected
+into each frame — it read −29 against −5, and this section published absolute
+triples like rgb(133, 57, 56) as though they were properties of the scene.
+**They were not reproducible.** The same state measured after five separate page
+loads gave red 103, 130, 133, 136 and 144. The harness was pinning the camera
+against `viewer.controls.target`, which the app sets while framing the scene on
+load and does not put in the same place twice; five samples *within* one load
+agreed exactly, which is why it looked stable. Pinned against the scene's own
+declared `cameraPose.target`, two fresh loads now agree to the digit.
+
+*What holds.* The per-vertex **differences** were always sound — same load, same
+camera — and they are what the claim rests on. Measured on a pinned camera:
 
 | Territory | rest | burden | median Δ red, per vertex |
 | --- | --- | --- | --- |
-| anterior descending | rgb(133, 57, 56) | rgb(95, 48, 55) | **−29** |
-| circumflex | rgb(126, 67, 63) | rgb(122, 66, 63) | −5 |
-| right coronary | not visible from in front | | |
+| anterior descending | rgb(143, 65, 53) | rgb(95, 48, 50) | **−32** |
+| circumflex | rgb(120, 88, 68) | rgb(116, 82, 66) | −6 |
+| right coronary, from behind | unchanged at every stage | | **0** |
 
-From behind, over the same episode, the right coronary's wall moves by **0** in
-every channel at every stage, and the circumflex's by 0 — the anterior
-descending's deficit discolours the anterior descending's muscle and nothing
-else. The lighting difference between the two regions at rest is 7 units of red;
-the burden change is 38. The claim is being made by the picture.
+The anterior descending's deficit discolours the anterior descending's muscle
+and nothing else, from either aspect. The claim is being made by the picture.
 
 Regional wall motion carries the same signal independently. Mean vertex
 excursion from end diastole to systole, by territory:
@@ -647,12 +653,61 @@ territory map.
    spec and the frame data are now checked against the panel's own key list, so
    a key the panel ignores fails a test instead of being drawn nowhere.
 
+11. **The legend named three colours that were not on the model.** The scene's
+   claim is spatial — *which* muscle a narrowed artery starves — and the resting
+   territory map is how a reader is supposed to read the answer off the heart.
+   It was a 16% tint over the model's deliberately smooth weights, and it was
+   invisible.
+
+   The confound is not the obvious one. Painting **one flat colour** on every
+   vertex and measuring the visible surface, chromaticity still scatters by
+   **0.0447**: the lighting in this scene is not grey, so which way a patch
+   faces shifts its hue by about as much as a weak tint does. That is the floor
+   a painted map has to clear, and against it the six territory pairs separated
+   by 0.034–0.053 — **0.76–1.19×**. Signal at or under noise, on both aspects,
+   every pair.
+
+   Two changes, both presentation and both named in the code: the tint rose to
+   0.26, and the *map* now reads a sharpened copy of the weights (`w³`,
+   renormalized) while burden and wall motion keep reading them exactly as the
+   model produced them. Separations are now **1.12–2.29×** the floor. The tint
+   was fitted upward only as far as the criterion needs — at 0.22 the weakest
+   pair is still under the floor at 0.96×, and at 0.34 the heart renders as a
+   terracotta pot.
+
+12. **Three tests in a row that did not measure what they were named for.**
+   Writing the guard for finding 11 produced, in order: one that asserted vertex
+   colours against the *render's* lighting floor and passed at every setting it
+   was written to reject; one that compared a final colour against a tint blend
+   — different spaces — and also passed at every setting; and a third attempt to
+   calibrate a vertex-level proxy for the render, abandoned when the measurement
+   showed the vertex→render ratio is **not constant** (0.455 unsharpened, 0.517
+   sharpened), so a configuration can clear a vertex threshold and fail the
+   render. What shipped is two tests: a *necessary* condition on the tint with
+   its blind spot stated in the file, and a separate test on the sharpening. The
+   quantitative criterion is a render property and lives here, in this document.
+
+13. **`tests/organ-anatomy.test.js` never learned about the coronary tree.** The
+   playbook's checklist says, of a new organ, 「新しい臓器を足したら、まずそこに行を
+   足してください」 — because a checklist walked by hand leaves nothing behind for
+   the next person who changes the shape. A whole organ was added and that file
+   was not touched. It now carries four rows: the frame the sinuses are built
+   in, the septal-versus-free-wall relation, every AHA segment resolving to its
+   charted artery, and dominance agreeing with where the posterior descending
+   hangs. Mirroring the sinuses, moving the anterior descending onto the free
+   wall, and declaring left dominance each fail one of them.
+
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded
 in `coronaryAnatomy.js` and in the model card. The ventricle is drawn without a
 valve plane or great vessels above it, so the basal shoulder reads as a lid;
-nothing is blown out (the brightest pixel on the heart is rgb(209, 103, 108)),
-but it is a presentational weakness of showing the ventricle alone.
+nothing is blown out (the brightest pixel in the frame is UI chrome at luminance
+241, the brightest on the heart 141), but it is a presentational weakness of
+showing the ventricle alone. And the territory map is a *fill*: from the default
+anterior camera nearly the whole visible wall is one territory, so what a reader
+sees from that one view is a region, not a map of three. Drawing the boundaries
+as lines rather than filling the regions would survive any lighting and any
+camera; it is the right next change and is not made here.
 
 ## 6. Not covered by this review
 

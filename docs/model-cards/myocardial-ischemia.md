@@ -95,21 +95,26 @@ The one direction taken from published work rather than fitted is the **asymmetr
 
 The colour scale is presentation: full burden is a strong desaturation the muscle would not literally show. A trace of each territory's own hue is mixed in so the map is legible at rest, when nothing is ischemic.
 
-Measured off the rendered frames rather than off the colour constants — each vertex identified by territory first, then projected into each frame, so the sample is known myocardium and not a screen rectangle — the anterior aspect reads:
+Two presentation constants carry it, `MAP_TINT` and `MAP_EDGE`, and both are fitted to a criterion measured off the render rather than chosen by eye. The criterion: **at rest, each pair of territories must differ in colour by more than a single flat colour already varies across the same surface.** That floor is 0.0447 in chromaticity, measured by painting every vertex one colour — the lighting in this scene is not grey, so which way a patch faces shifts its hue about as much as a weak tint does.
+
+The first version of this scene failed it: the six pairs separated by 0.76–1.19× the floor, so the legend named three territory colours a reader could not find. It is 1.12–2.29× now. `MAP_EDGE` sharpens a *copy* of the territory weights for drawing only — burden and wall motion read them exactly as the model produced them, because a coronary watershed is not a line and the model does not claim one.
+
+Measured off the rendered frames on a pinned camera — each vertex identified by territory first, then projected — the anterior aspect reads:
 
 | Territory | rest | burden | median Δ red |
 | --- | --- | --- | --- |
-| anterior descending | rgb(133, 57, 56) | rgb(95, 48, 55) | −29 |
-| circumflex | rgb(126, 67, 63) | rgb(122, 66, 63) | −5 |
+| anterior descending | rgb(143, 65, 53) | rgb(95, 48, 50) | −32 |
+| circumflex | rgb(120, 88, 68) | rgb(116, 82, 66) | −6 |
 | right coronary, from behind | unchanged at every stage | | 0 |
 
-The difference in lighting between those two regions at rest is 7 units of red; the change ischemia makes is 38. That ratio is the point: a reader cannot mistake the shading for the burden.
+Absolute triples are only comparable within one pinned camera: measured against `viewer.controls.target`, which the app sets while framing on load, the same state read anywhere from red 103 to 144 across page loads. The **differences** are what the claim rests on.
 
 **Wall motion is not exaggerated.** How far each part of the wall travels is the contractility multiplier, unmodified, and it is the same multiplier the ejection fraction fell by. Measured on the mesh, mean excursion from end diastole to systole falls 22% in the anterior descending's territory at peak burden and 34% after reperfusion, against 5% and 8% in the other two — and that 5-8% is the whole ventricle ejecting less, not a leak in the territory map.
 
 ## 11. Known failure modes
 
 - **A reader may take the territory map as their own anatomy.** It is a fixed convention that measurement disagrees with — see §14.
+- **The map is a fill, and from the opening camera most of the visible wall is one territory.** What a reader sees without rotating is a region, not a map of three. Boundaries drawn as lines would survive any camera; they are not drawn.
 - **A reader may read "the artery is open" as "the heart is working."** The scene is built to correct that, and it can also be misread as saying stunning always resolves. It does not always.
 - **The three severities the scene offers are not degrees of stenosis.** They are supply factors.
 - **The anterior descending stops short of the apex** in the geometry, so its apical territory is drawn without a vessel over it. Recorded in `coronaryAnatomy.js`.
