@@ -3,16 +3,18 @@ import assert from 'node:assert/strict';
 import { CIRCULATION_KEYFRAMES, STAGES } from '../src/data/heartFailure.js';
 import {
   sampleHemodynamics,
-  cavityVolumeAt,
-  ventricleShape,
-  myocardialVolumeFor,
-  radiusForVolume,
-  advanceCardiacPhase,
   circulationParameters,
   congestionFromPressure,
   pressureVolumeCurves,
 } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
-import { solveSteadyState, walkBeat, COMPARTMENTS } from '../src/scenes/cardiovascular/scenes/heartFailure/circulation.js';
+import {
+  advanceCardiacPhase,
+  cavityVolumeAt,
+  myocardialVolumeFor,
+  radiusForVolume,
+  ventricleShape,
+} from '../src/models/cardiacMechanics.js';
+import { solveSteadyState, walkBeat, COMPARTMENTS } from '../src/models/cardiacMechanics.js';
 import { COMPARISON_OFFSET } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 
 /**

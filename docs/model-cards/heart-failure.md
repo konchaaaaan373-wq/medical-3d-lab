@@ -4,7 +4,7 @@
 | --- | --- |
 | **Scene** | `heart-failure` |
 | **Model** | closed-loop time-varying-elastance circulation |
-| **Primary implementation** | `src/scenes/cardiovascular/scenes/heartFailure/circulation.js` + `hemodynamics.js` |
+| **Primary implementation** | `src/models/cardiacMechanics.js` (the solver, shared) + `src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js` (this disease's stages) |
 | **Content / parameters** | `src/data/heartFailure.js` |
 | **External physiology tests** | `tests/heart-failure-physiology.test.js` |
 | **Evidence dossier** | `docs/model-evidence/heart-failure.md` |
@@ -79,3 +79,37 @@ Mechanism teaching, model exploration and general explanation. It must not be us
 **Clinical Review registry:** `legacy-unversioned`
 
 The scene predates the current versioned Clinical Review standard. This model card, evidence dossier and external physiology layer migrate the evidence boundary into the current format, but **do not retroactively create a clinical sign-off**. Promotion from `legacy-unversioned` requires an independent clinical reviewer to sign a specific commit in `docs/clinical-reviews/registry.json`.
+
+## 10. Revision history
+
+### Revision 2 — the solver moved out of the scene
+
+**No claim in this card changed.** The time-varying elastance model and the
+seven-compartment circulation it drives moved from
+`src/scenes/cardiovascular/scenes/heartFailure/circulation.js` to
+`src/models/cardiacMechanics.js`, and the chamber-geometry and beat-phase
+helpers moved with them out of `hemodynamics.js`. What remains in the scene is
+the part that is specific to *this* disease: the keyframe interpolation that
+turns a position on the progression into mechanical parameters.
+
+The reason is a second scene. Myocardial ischemia has to solve the same cardiac
+cycle under the same loading state, and a second implementation of a beat is
+how two scenes start disagreeing about one heart. Ownership now sits in the
+model layer and both scenes read it.
+
+**The move was verified as a move.** Every authored stage, each public input at
+its minimum, default and maximum one factor at a time, and five points in the
+cardiac cycle were captured before the change and again after: parameters,
+solved state, pressure-volume curves, chamber shape, flows, traces and
+per-phase pressures. The two captures are **byte-identical** — not within the
+1e-9 / 1e-8 tolerance the extraction was held to, exactly equal.
+`tests/cardiac-mechanics.test.js` pins that against
+`tests/fixtures/cardiac-mechanics.json`, and a 1e-7 relative perturbation to
+one line of the solver fails it.
+
+**One thing worth flagging for a future revision.** `beatPhaseAt` carries
+English and Japanese labels, and it now lives in `src/models/`, where rule 2
+says presentation values do not belong. It was moved unchanged because the
+requirement here was equivalence, and rewriting it would have made the
+verification above meaningless. Splitting the naming from the partition is a
+separate change with its own reason to happen.

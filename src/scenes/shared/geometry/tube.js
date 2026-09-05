@@ -87,6 +87,23 @@ export class TubeSurface {
     this.geometry.computeBoundingSphere();
   }
 
+  /**
+   * Re-read the curve after its control points have moved.
+   *
+   * The spaced points and the Frenet frames are sampled once in the
+   * constructor, so a tube whose curve is edited in place keeps drawing itself
+   * along the old path until this is called. Separate from `refresh` because
+   * the two are different costs: `refresh` rewrites the cross-sections along a
+   * path that has not changed, and this re-derives the path.
+   */
+  resample() {
+    this.points = this.curve.getSpacedPoints(this.steps);
+    const frames = this.curve.computeFrenetFrames(this.steps, false);
+    this.normals = frames.normals;
+    this.binormals = frames.binormals;
+    this.refresh();
+  }
+
   /** Point on the centre line, for hanging a label or a particle stream off. */
   pointAt(u) {
     return this.curve.getPointAt(Math.min(1, Math.max(0, u))).clone();

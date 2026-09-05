@@ -6,12 +6,8 @@ import { CavityOutline } from './CavityOutline.js';
 import { PALETTE } from '../../../../data/heartFailure.js';
 import { bloodVertexShader, bloodFragmentShader } from './shaders/blood.js';
 import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
-import {
-  sampleHemodynamics,
-  myocardialVolumeFor,
-  ventricleShape,
-  cavityVolumeAt,
-} from './hemodynamics.js';
+import { sampleHemodynamics } from './hemodynamics.js';
+import { cavityVolumeAt, myocardialVolumeFor, ventricleShape } from '../../../../models/cardiacMechanics.js';
 
 /**
  * A second, healthy ventricle shown beside the remodelled one.

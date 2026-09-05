@@ -451,6 +451,348 @@ the surface crossing is unstable. It is present on `origin/main` and is
 slightly *smaller* now that the caudate is a coherent mass. Recorded rather
 than fixed because it belongs to the carve, not to this calibration.
 
+### 5.9 The coronary arteries, and what the render caught that the tests did not
+
+The heart's A3-a supplement: five named epicardial arteries and the AHA
+17-segment territory map, owned by the organ layer. The spec was settled first,
+which is the repository's own rule and was worth following here — the ownership
+question turned out to be the one that shaped the code.
+
+**The builder is handed the epicardium rather than importing one.** A scene
+supplies `surfacePoint`; the organ layer decides *where on that surface* a
+vessel runs, in named grooves. So nothing in the coronary tree imports the
+ventricle geometry, nothing imports a scene, and — the part that matters — the
+tree has no second opinion about where the heart's surface is.
+
+**Four defects found by measuring, in the order they were found.**
+
+1. **The right coronary ran round the patient's left.** Its groove was written
+   with the far azimuth a full turn ahead: the same crux modulo 2π, so both
+   ends were exactly where they belong, while the sweep between them went the
+   long way round — the right coronary artery lying along the circumflex. Only
+   the middle of the vessel showed it, which is why a test now measures the
+   midpoint of every vessel.
+2. **The atrioventricular grooves were above the surface's definition.** Placed
+   at t 0.9, past `shoulderStartT`, where the analytic epicardium is clamped
+   and its finite-difference normal is degenerate. The circumflex oscillated
+   between 2.6 radii outside the wall and 1.7 inside it, sample by sample.
+3. **The lift did not taper with the vessel.** Held at the proximal calibre, a
+   vessel that narrows to 55% of itself stands 2.4 of its own radii off the
+   surface distally while sitting 1.35 off it proximally — the same absolute
+   gap, and a distal half that reads as detached.
+4. **The tips hung below the heart.** Not caught by any measurement, because
+   every measurement said the vessels sat correctly on the epicardium. They
+   did — on the *analytic* epicardium, which was not the surface being drawn.
+
+**And the diagnosis of the fourth was wrong, which review caught.** It was put
+down to the mesh sealing its apex. The real cause is that the lathe does not
+put the epicardium at the outer profile at all: it puts it at the cavity **plus
+the wall**, with the wall scaled by `wallThicknessFactor`, and then adds the
+right ventricle on top as a bulge about the septal aspect. Both terms are
+functions of azimuth — the field thins the apex to 60% and boosts the septum by
+22%, and the right-ventricular lobe is 0.085 of the outer semi-length, more
+than half a wall thickness.
+
+So the surface the vessels were laid on was wrong in two places at once: too
+far out at the apex, and too far *in* along the septum, which is where the
+right coronary and both interventricular grooves run. Measured on the built
+mesh, the septal disagreement was 0.55 against a 0.90 wall — the right coronary
+was placed half a wall inside the surface that gets drawn.
+
+`epicardialSurfacePoint` now performs the same blend and adds the same lobe, so
+there is one derivation of the epicardium. The worst disagreement over the
+whole surface fell from 0.55 to 0.14, and at the apex from 0.68 to 0.003. The
+arteries reach further down the ventricle as a result — `APICAL_STOP_T` came
+from 0.20 to 0.14 — and measured against the mesh at each sample's own place on
+it, the worst clearance anywhere on the tree is −0.07 of a local vessel radius,
+against a limit of a whole radius.
+
+**That one test has been wrong twice, in two different ways, and both passed
+while something was visibly broken.** It was first named for the mesh and never
+touched it — it compared the analytic epicardium against the analytic *cavity*.
+Rewritten to read the mesh, it read **one lathe column**, which cannot see an
+angular effect, and the two largest terms out here are both functions of
+azimuth. It now sweeps every column and every row below the shoulder, and a
+second test measures each vessel against the mesh at the sample's own place on
+it. Removing either half of the blend now fails them.
+
+A real anatomical cost remains, smaller than before: the anterior descending
+reaches the apex and often turns around it, and this one stops about a seventh
+of the way up, because a surface of revolution has no normal at its tip.
+`APICAL_STOP_T` carries the reason and the measured clearance.
+
+**Five mutations, each caught by its own test:** the two ostia swapped; the
+posterior descending taken off the circumflex, making the heart left-dominant;
+the short-axis ring rotated so the anterior descending supplies the inferior
+wall; the right coronary sent the long way round again; and the vessels buried
+in the muscle.
+
+**Sixteen renders** — anterior, posterior, inferior and left lateral, each with
+and without the territory map painted on the epicardium, at 1280×800 and
+390×844. The territory map is the check worth naming: from the front the
+anterior wall and septum are anterior-descending territory with circumflex on
+the patient's left edge; from behind the inferior wall is right-coronary
+territory with the posterior descending running down the middle of it. Vessel
+and territory coincide, which is the relation an ischemia scene depends on and
+the one that a rotated ring would break while every vessel still looked right.
+
+### 5.10 The ischemia scene — what ten rounds of rendering it found
+
+The scene is registered `alpha` with the four-point set, and every test passes.
+Architecture rule 6 says that is not enough: a 3D scene is not finished until it
+has been looked at. Ten separate defects came out of looking, and one of them
+was a measurement in this section that was itself wrong. They are listed here in
+the order they were found rather than tidied, because the order is the useful
+part — several were only visible once the one before it was fixed.
+
+**What the render found, in the order it found it.**
+
+1. **The scene did not render at all.** `SceneClass.cameraPose` is a *static*
+   the App reads while framing the camera, before any instance exists, and the
+   class had none — so the whole surface fell back to "3D renderer
+   unavailable". The scene test written specifically to prevent this class of
+   bug missed it, because it only called instance methods. It now asserts every
+   static the shell reads, and removing `cameraPose.target` fails it.
+2. **The heart was drawn cut open.** It inherited `ANATOMY.cutAngle`, a 99°
+   wedge that exists so the heart-failure scene can show the chamber. Here the
+   subject is the outside, and the wedge removed most of the anterior wall —
+   the one wall this scene is about.
+3. **Closing the wedge put a bright stripe down the anterior wall.** The lathe
+   builds the two cap faces whether the wedge is open or not, and closed they
+   sit on the wall and catch the key light. Only the epicardial group is drawn
+   now.
+4. **The camera looked at the wrong side.** It was placed toward the patient's
+   left, which is circumflex territory. The anterior descending's territory is
+   anterior and to the *right*.
+5. **The story's last stage never ran.** Reperfusion began at progress 1, which
+   is the end, so the restored flow occupied none of the episode: the scene
+   finished with an artery that was open in the caption and shut in every
+   number.
+6. **The territory mass fractions were wrong twice.** Counted by vertex, the
+   lathe's vertices are uniform in its own parameters and not in area, so the
+   apex was over-weighted. Weighted by area, the mesh carries a right ventricle
+   as a context lobe while the AHA model describes the left one. Both gave the
+   right coronary the largest share of the left ventricle. They now come from
+   the segment table — 7/17, 5/17, 5/17.
+7. **The model control could only make things worse.** "Anterior descending
+   flow" multiplied whatever the stage had set, and its default was 1, so at the
+   stages that mattered it changed nothing. It is the lesion's severity now.
+
+**A measurement I got wrong twice, and what it took to get right.**
+
+*First version.* This section recorded that the anterior wall darkened by 31/255
+in red against the circumflex wall's 16 — "about 6%" — and concluded the picture
+was not making the scene's claim. That came from averaging fixed screen
+rectangles between two frames: a rectangle is not a territory, and the
+ventricle's shape changes between stages, so the same rectangle sees different
+tissue in each.
+
+*Second version.* Redone per vertex — territory decided first, then projected
+into each frame — it read −29 against −5, and this section published absolute
+triples like rgb(133, 57, 56) as though they were properties of the scene.
+**They were not reproducible.** The same state measured after five separate page
+loads gave red 103, 130, 133, 136 and 144. The harness was pinning the camera
+against `viewer.controls.target`, which the app sets while framing the scene on
+load and does not put in the same place twice; five samples *within* one load
+agreed exactly, which is why it looked stable. Pinned against the scene's own
+declared `cameraPose.target`, two fresh loads now agree to the digit.
+
+*What holds.* The per-vertex **differences** were always sound — same load, same
+camera — and they are what the claim rests on. Measured on a pinned camera:
+
+| Territory | rest | burden | median Δ red, per vertex |
+| --- | --- | --- | --- |
+| anterior descending | rgb(143, 65, 53) | rgb(95, 48, 50) | **−32** |
+| circumflex | rgb(120, 88, 68) | rgb(116, 82, 66) | −6 |
+| right coronary, from behind | unchanged at every stage | | **0** |
+
+The anterior descending's deficit discolours the anterior descending's muscle
+and nothing else, from either aspect. The claim is being made by the picture.
+
+Regional wall motion carries the same signal independently. Mean vertex
+excursion from end diastole to systole, by territory:
+
+| | anterior descending | right coronary | circumflex |
+| --- | --- | --- | --- |
+| rest | 0.700 | 0.575 | 0.616 |
+| burden | 0.546 (−22%) | 0.545 (−5%) | 0.584 (−5%) |
+| reperfused | 0.462 (−34%) | 0.527 (−8%) | 0.565 (−8%) |
+
+The colour and the motion fall in the same region, and both keep falling after
+flow is restored, which is the stunning the scene is about. The 5-8% the other
+two territories lose is the whole ventricle ejecting less, not a leak in the
+territory map.
+
+**What the render then found, and what was fixed.**
+
+8. **A slit down the anterior wall, background showing through the myocardium.**
+   13-19 px wide at mid-height, closing at the apex. The lathe's cut boundaries
+   bow with side-specific S-curves instead of lying in flat radial planes, and
+   the bow pulls both edges *away* from the wedge — so applied to a lathe built
+   with no wedge it prised the first and last columns apart. The bow is now
+   capped by the wedge it shapes, which is exactly 1 at the heart-failure
+   scene's 99° and 0 here. The normal weld across the seam now tests how far
+   apart the two columns are rather than how far up the wedge has sealed, so a
+   closed lathe welds at every height instead of only near the apex.
+9. **The arteries did not move with the heart.** Built once on the
+   end-diastolic epicardium and never relaid, they stayed put while the wall
+   contracted away from underneath them: the furthest sample of the anterior
+   descending went from 0.34 scene units off the wall at end diastole to 0.64 at
+   mid-systole, at the apex, and in a render the two descending arteries left
+   the silhouette and hung in space below the heart. Every clearance test in the
+   suite measured the moment the vessels were built, so none of them saw it.
+   They are relaid on the wall every frame now — including the regional part, so
+   an artery over myocardium that has stopped contracting travels as far as that
+   myocardium does and no further. Worst clearance through the beat is 0.32.
+10. **The chart beside the scene was dead.** Its spec declared `label`,
+   `xLabel` and `yLabel` and its per-frame data returned `domain` and `marker` —
+   five keys `ChartPanel` does not read. The axes silently auto-scaled, the
+   progress marker never drew, and drawing the axes threw a `TypeError` on
+   `spec.x.invert`. The test that was meant to cover this asserted `chart.label`,
+   a key nothing reads: it checked a contract it had never looked up. Both the
+   spec and the frame data are now checked against the panel's own key list, so
+   a key the panel ignores fails a test instead of being drawn nowhere.
+
+11. **The legend named three colours that were not on the model.** The scene's
+   claim is spatial — *which* muscle a narrowed artery starves — and the resting
+   territory map is how a reader is supposed to read the answer off the heart.
+   It was a 16% tint over the model's deliberately smooth weights, and it was
+   invisible.
+
+   The confound is not the obvious one. Painting **one flat colour** on every
+   vertex and measuring the visible surface, chromaticity still scatters by
+   **0.0447**: the lighting in this scene is not grey, so which way a patch
+   faces shifts its hue by about as much as a weak tint does. That is the floor
+   a painted map has to clear, and against it the six territory pairs separated
+   by 0.034–0.053 — **0.76–1.19×**. Signal at or under noise, on both aspects,
+   every pair.
+
+   Two changes, both presentation and both named in the code: the tint rose to
+   0.26, and the *map* now reads a sharpened copy of the weights (`w³`,
+   renormalized) while burden and wall motion keep reading them exactly as the
+   model produced them. Separations are now **1.12–2.29×** the floor. The tint
+   was fitted upward only as far as the criterion needs — at 0.22 the weakest
+   pair is still under the floor at 0.96×, and at 0.34 the heart renders as a
+   terracotta pot.
+
+12. **Three tests in a row that did not measure what they were named for.**
+   Writing the guard for finding 11 produced, in order: one that asserted vertex
+   colours against the *render's* lighting floor and passed at every setting it
+   was written to reject; one that compared a final colour against a tint blend
+   — different spaces — and also passed at every setting; and a third attempt to
+   calibrate a vertex-level proxy for the render, abandoned when the measurement
+   showed the vertex→render ratio is **not constant** (0.455 unsharpened, 0.517
+   sharpened), so a configuration can clear a vertex threshold and fail the
+   render. What shipped is two tests: a *necessary* condition on the tint with
+   its blind spot stated in the file, and a separate test on the sharpening. The
+   quantitative criterion is a render property and lives here, in this document.
+
+13. **`tests/organ-anatomy.test.js` never learned about the coronary tree.** The
+   playbook's checklist says, of a new organ, 「新しい臓器を足したら、まずそこに行を
+   足してください」 — because a checklist walked by hand leaves nothing behind for
+   the next person who changes the shape. A whole organ was added and that file
+   was not touched. It now carries four rows: the frame the sinuses are built
+   in, the septal-versus-free-wall relation, every AHA segment resolving to its
+   charted artery, and dominance agreeing with where the posterior descending
+   hangs. Mirroring the sinuses, moving the anterior descending onto the free
+   wall, and declaring left dominance each fail one of them.
+
+14. **A fill cannot carry a map, and the fill was all there was.** Even at
+   1.12–2.29× the lighting floor, from the opening camera nearly the whole
+   visible wall is one territory — 73% of the camera-facing vertices are
+   anterior descending — so a reader who does not rotate sees a region, not a
+   map of three. This was recorded as "the right next change and it is not made
+   here", which is the wrong place to stop when the change is named and known.
+
+   The boundary is now drawn as a **line**, in the fragment shader. Local
+   contrast survives both problems at once: it does not care which way the
+   surface faces, and it is visible from any camera that can see the watershed
+   at all. Vertex colours cannot do it — the mesh is 48 columns around, so one
+   vertex of boundary is a 25 px band, and a mesh dense enough to draw a line
+   would quadruple a per-frame cost already at 3 ms. Scaling the threshold by
+   `fwidth` gives a line the same couple of pixels wide wherever it is.
+   Measured on the anterior aspect: present on 124 of 125 sampled rows, median
+   contrast 70/255 against the wall beside it, and no cost per frame because it
+   is per-pixel work.
+
+   The line does not fade with burden the way the territory hue does. Watching
+   one territory go ischemic, what a reader is checking is whether the
+   discoloured patch *is* the territory — which needs the boundary still drawn.
+
+15. **A fourth test that did not measure what it was named for**, in the guard
+   for finding 14. The injection must land after the vertex colours are applied
+   or the fill paints over the line; written as
+   `indexOf('onLine') > indexOf('vColor')` it passed either way, because the
+   first `vColor` in the shader is its varying declaration at the top. Two
+   further corrections were needed before the mutation failed: the ordering has
+   to be checked on the shader with its `#include` chunks *resolved*, in the
+   order three.js builds it, and against `lastIndexOf` — injecting at
+   `<map_fragment>` re-emits the fill both before *and* after the line, and
+   against the first match that reads as correctly ordered.
+
+16. **The aortic valve had two cusps 170° apart.** Drawing the root exposed it:
+   `CORONARY_SINUSES` put the right and left coronary sinuses **169.9°** apart,
+   nearly opposite each other, and a trileaflet valve's three cusps divide the
+   circle at 120°. That is geometry rather than a citation, and no test caught
+   it — the only ones asked which side each sinus faced, which a pair 170° apart
+   passes comfortably. The three sinuses are declared by azimuth now, the
+   non-coronary cusp among them, and the 120° spacing is asserted.
+
+   Where the triad *sits* — right coronary cusp anterior, left coronary cusp
+   left and a little posterior, non-coronary right-posterior — is textbook and
+   is **not verified here**, because egress to publishers is blocked. It carries
+   the same caveat as every other source in this scene.
+
+17. **Both coronary trunks began in mid-air.** `buildCoronaryArteries` takes the
+   root as `{ centre, radius }` and puts each ostium on it, and nothing drew
+   that root: in every render a reader could see where the arteries went and not
+   where they came from, in a scene about a narrowing inside one of them. It
+   also left the base of the heart as a bare shoulder, which read as a lid on a
+   pot rather than as the plane a ventricle has been cut at.
+
+   The root is drawn now, from the *same* descriptor the arteries are placed
+   from, so the ostia sit on its wall by construction rather than by a second
+   coordinate that agrees until someone edits one. Its centre was a typed
+   triple — `(-1.13, 1.56, 0.32)` — which put the sinotubular junction at y 1.56,
+   *below* the ventricle's own shoulder at 2.08; had anything drawn the root it
+   would have been buried in myocardium, and nothing did, so the coordinate
+   stayed perfectly valid while its meaning moved. Derived from the valve plane
+   now. Measured: ostia 0.020 scene units from the nearest drawn vertex, sinuses
+   swelling to 1.235 of the nominal radius with the commissures at 1.000, and
+   the root standing 1.23 above the ventricle's shoulder.
+
+   The subject grew 1.2 units taller, which pushed the top of the root behind
+   the header — `framing.js` accounts for the console along the bottom and the
+   header along the top is the scene's own to clear. The opening pose was
+   raised; everything now sits inside 105–677 px of an 860 px frame whose
+   usable band is 72–728.
+
+18. **A 3D heart cannot show a territory map, and now something beside it can.**
+   Even with the watershed drawn as a line, 73% of the wall facing the opening
+   camera belongs to one artery and the other two territories are round the
+   back. The AHA 17-segment plot — the short axis flattened — is the one
+   projection where all seventeen segments and all three territories are visible
+   together, and it is how the question is asked clinically.
+
+   It cannot disagree with the heart beside it: every wedge's angle is the
+   segment's own `phi`, out of the same table the 3D reads, so the plot is
+   `(sin φ, −cos φ)` where the ventricle is `(sin φ, ·, cos φ)` — the same two
+   numbers, the ventricle seen down its own long axis. Rotating the segment ring
+   in the anatomy rotates the plot with it, and a test fails if it does not.
+   `docs/product-principles.md` is explicit that 3D is a means: where 2D answers
+   a question better, it is the honest choice.
+
+   It goes first in the rail, not last: pushed below three other panels it fell
+   under the fold, which is where a reader never finds it.
+
+**What is still open.** The anterior descending stops short of the apex in the
+geometry, so its apical territory is drawn without a vessel over it — recorded
+in `coronaryAnatomy.js` and in the model card. The root's three sinuses are
+mostly occluded by the ventricle's own shoulder from any anterior view, which is
+where they anatomically are; only the ascending stub reads from the opening
+camera. Nothing is blown out (the brightest pixel in the frame is UI chrome at
+luminance 241, the brightest on the heart 141).
+
 ## 6. Not covered by this review
 
 - The remaining scenes. The gate names the flagships; the rest are reviewed

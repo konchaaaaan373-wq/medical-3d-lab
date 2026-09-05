@@ -2,7 +2,7 @@ import { REEL_COPY } from '../../../../data/heartFailure.js';
 import { cueOpacity, sampleTrack } from '../../../../utils/Timeline.js';
 import { STAGES } from '../../../../data/heartFailure.js';
 import { sampleHemodynamics } from './hemodynamics.js';
-import { volumeAtPhase } from './circulation.js';
+import { volumeAtPhase } from '../../../../models/cardiacMechanics.js';
 
 /** Total length of the sequence, in seconds. */
 export const REEL_DURATION = 15.0;

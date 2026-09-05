@@ -124,6 +124,23 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/asthma/index.js'),
   },
   {
+    id: 'myocardial-ischemia',
+    slug: 'myocardial-ischemia',
+    titleEn: 'Which muscle a narrowed artery starves',
+    titleJa: '細くなった血管は、どの筋肉を飢えさせるか',
+    system: 'cardiovascular',
+    organ: 'heart',
+    disease: 'myocardial-ischemia',
+    status: 'alpha',
+    modelCard: 'docs/model-cards/myocardial-ischemia.md',
+    description:
+      'A coronary artery does not supply the groove it runs in — it supplies everything downstream. Oxygen debt accumulates before a wall stops moving, and restoring the flow does not restore the contraction.',
+    descriptionJa:
+      '冠動脈は自分が走る溝を養うのではなく、下流のすべてを養います。壁が動かなくなる前に酸素負債が溜まり、血流を戻しても収縮は戻りません。',
+    tags: ['physiology', 'haemodynamics', 'perfusion'],
+    load: () => import('../scenes/cardiovascular/scenes/myocardialIschemia/index.js'),
+  },
+  {
     id: 'pulmonary-edema',
     slug: 'pulmonary-edema',
     titleEn: 'Where the water goes',

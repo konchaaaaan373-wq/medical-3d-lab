@@ -194,6 +194,42 @@ function surfaceNoise(t, phi) {
  */
 const CUT_FACE_OPEN = 0.45;
 
+/**
+ * How close the two ends of the lathe have to be, as a fraction of the
+ * ventricle's outer semi-length, before their shading is welded into one
+ * surface.
+ */
+const WELD_SPAN = 0.02;
+
+/**
+ * The widest the two cut boundaries can bow apart, in radians: both sides at
+ * the peak of both their S-curves, pulling away from each other.
+ */
+const MAX_CUT_BOW =
+  VENTRICLE_SHAPING.cutCurveA +
+  VENTRICLE_SHAPING.cutCurveB +
+  VENTRICLE_SHAPING.cutCurveA2 +
+  VENTRICLE_SHAPING.cutCurveB2;
+
+/**
+ * How much of the cut boundary's bow a wedge of this angle can afford.
+ *
+ * The bow makes each cut edge an S-curve rather than a flat radial plane, and
+ * it pulls both edges *away* from the wedge — which is why it has to be capped
+ * by the wedge itself. A lathe closed all the way round (`cutAngle` 0) has no
+ * cut boundary to shape, and applying the bow to it prises the first and last
+ * columns apart: on the ischemia scene that was a 13-19 px slit straight down
+ * the anterior wall, background showing through the myocardium, widest at
+ * mid-height and closing at the apex where `sealOpenFraction` already damped
+ * the warp to nothing.
+ *
+ * At the 99° wedge the heart-failure scene cuts, this is exactly 1 and the
+ * geometry is unchanged: 1.728 rad of wedge against 0.25 rad of bow.
+ */
+function cutBowScale(cutAngle) {
+  return Math.min(1, cutAngle / MAX_CUT_BOW);
+}
+
 /** How far the cut wedge is open at profile fraction t: 0 sealed, 1 fully. */
 function sealOpenFraction(t) {
   return smooth(0.08, VENTRICLE_SHAPING.apexSealEnd, t);
@@ -303,6 +339,97 @@ export function cavitySurfacePoint(shape, t, phi, out) {
   out.set(
     r * Math.sin(phi) + S.apexDriftX * shape.outerSemiLength * w + bow,
     -shape.cavitySemiLength * Math.cos(a),
+    r * Math.cos(phi) + S.apexDriftZ * shape.outerSemiLength * w
+  );
+  return out;
+}
+
+/**
+ * A point on the epicardial surface, in chamber-local space.
+ *
+ * The outer counterpart of `cavitySurfacePoint`, and it exists for the same
+ * reason: something outside this file has to put things *on* the ventricle, and
+ * the only alternative is a second derivation of where the ventricle is. The
+ * coronary arteries run on this surface, and a vessel placed by its own idea of
+ * the epicardium sinks into muscle at one azimuth and floats off it at another.
+ *
+ * ## It has to be the wall the mesh draws, not the profile the wall came from
+ *
+ * The lathe does not put the epicardium at the outer profile. It puts it at the
+ * cavity **plus the wall**, with the wall scaled by `wallThicknessFactor` — a
+ * field that boosts the septum by 22%, trims the free wall, and thins the apex
+ * to 60%. So the drawn surface sits further out than the raw outer profile on
+ * the septal side and further in at the apex, by a fifth of a wall thickness
+ * either way.
+ *
+ * The first version of this function returned the raw outer profile. Review
+ * caught it: the right coronary crosses the septal aspect, where the boost
+ * moves the visible wall outward by more than the vessel's own lift, so the
+ * artery was partly buried in muscle — while every test of it passed, because
+ * those tests compared against the same raw profile the vessel was placed on.
+ * That is also, it turned out, the real explanation for a gap at the apex that
+ * had been put down to the mesh sealing its tip: `apexThicknessFactor` is 0.6,
+ * and it pulls the epicardium toward the cavity there.
+ *
+ * Now it blends the two profiles exactly as the lathe does, so there is one
+ * derivation of the epicardium and both consumers read it.
+ *
+ * Two things are still skipped, for the same reason `cavitySurfacePoint` skips
+ * them: the trabecular relief, which is noise on the endocardium, and the basal
+ * shoulder above `shoulderStartT`, where the mesh arcs over toward the valve
+ * plane along a path that depends on the cavity rim. `t` clamps there, which is
+ * where the atrioventricular grooves sit anyway.
+ *
+ * @param {{ cavityRadius: number, cavitySemiLength: number, outerRadius: number,
+ *   outerSemiLength: number, baseY: number }} shape
+ * @param {number} t 0 apex .. `shoulderStartT` at the top of the body; higher clamps
+ * @param {number} phi azimuth: 0 anterior, π/2 the patient's left
+ * @param {THREE.Vector3} out
+ * @param {{ contextLobe?: boolean }} [options] whether this heart draws its right ventricle
+ */
+export function epicardialSurfacePoint(shape, t, phi, out, { contextLobe = true } = {}) {
+  const S = VENTRICLE_SHAPING;
+  // Clamped to the top of the ventricular body, and clamped *once*: above
+  // `shoulderStartT` the mesh rounds over into the valve plane along an arc
+  // this form does not carry, so the whole point freezes there rather than its
+  // height alone. Freezing only the height left the surface still drifting
+  // sideways with no change in t, which makes the finite-difference normal
+  // degenerate — and a vessel laid along a degenerate normal oscillates in and
+  // out of the muscle, which is exactly what the circumflex did.
+  const clamped = THREE.MathUtils.clamp(t, 0, S.shoulderStartT);
+
+  const dip = S.shoulderDip * shape.outerSemiLength;
+  const outerMax = Math.acos(
+    THREE.MathUtils.clamp(-(shape.baseY - dip) / shape.outerSemiLength, -1, 1)
+  );
+  const innerMax = Math.acos(
+    THREE.MathUtils.clamp(-shape.baseY / shape.cavitySemiLength, -1, 1)
+  );
+
+  const aOuter = (clamped / S.shoulderStartT) * outerMax;
+  const aCavity = clamped * innerMax;
+  const outerR = shape.outerRadius * Math.pow(Math.sin(aOuter), S.outerProfileExponent) * outerAngularShape(phi);
+  const outerY = -shape.outerSemiLength * Math.cos(aOuter);
+  const cavityR = shape.cavityRadius * Math.pow(Math.sin(aCavity), S.cavityProfileExponent) * cavityAngularShape(phi);
+  const cavityY = -shape.cavitySemiLength * Math.cos(aCavity);
+
+  // The wall, redistributed — the same blend `updateVentricleGeometry` applies.
+  const wall = wallThicknessFactor(clamped, phi);
+  const y = cavityY + (outerY - cavityY) * wall;
+  let r = cavityR + (outerR - cavityR) * wall;
+
+  // And the right ventricle, which the lathe adds on top as a bulge about the
+  // septal aspect. It is the largest single term out here — 0.085 of the outer
+  // semi-length, more than half a wall thickness — and it sits exactly where
+  // the right coronary and both interventricular grooves run. Left out, the
+  // right coronary was placed on a surface half a wall inside the one drawn.
+  if (contextLobe) r += rvLobe(clamped, phi) * shape.outerSemiLength;
+
+  const w = (1 - clamped) * (1 - clamped);
+  const bow = Math.sin(Math.PI * clamped) * S.longAxisBow * shape.outerSemiLength;
+  out.set(
+    r * Math.sin(phi) + S.apexDriftX * shape.outerSemiLength * w + bow,
+    y,
     r * Math.cos(phi) + S.apexDriftZ * shape.outerSemiLength * w
   );
   return out;
@@ -597,15 +724,20 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
    */
   const writePair = (i, phiBase, edge0, edge1, outIndex, inIndex) => {
     const t = tArr[i];
+    const bowScale = cutBowScale(basePhi[0] * 2);
     // The cut boundaries bow with side-specific S-curves rather than lying
     // in flat radial planes; the warp fades into the surface columns.
     const cutWarp =
       edge0 > 0
-        ? edge0 * (SH.cutCurveA * Math.sin(Math.PI * t + 0.25) + SH.cutCurveB * Math.sin(2.2 * Math.PI * t + 1.1))
+        ? bowScale *
+          edge0 *
+          (SH.cutCurveA * Math.sin(Math.PI * t + 0.25) + SH.cutCurveB * Math.sin(2.2 * Math.PI * t + 1.1))
         : 0;
     const cutWarp1 =
       edge1 > 0
-        ? -edge1 * (SH.cutCurveA2 * Math.sin(Math.PI * t + 0.55) + SH.cutCurveB2 * Math.sin(1.7 * Math.PI * t + 0.3))
+        ? -bowScale *
+          edge1 *
+          (SH.cutCurveA2 * Math.sin(Math.PI * t + 0.55) + SH.cutCurveB2 * Math.sin(1.7 * Math.PI * t + 0.3))
         : 0;
     const phi0 = Math.PI + (phiBase - Math.PI) * spanScale[i] + (cutWarp + cutWarp1) * sealOpenFraction(t);
     const phi = phi0 + torsion * twistW[i];
@@ -697,15 +829,28 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   kit.geometry.attributes.position.needsUpdate = true;
   kit.geometry.computeVertexNormals();
 
-  // Where the wedge has closed, the first and last lathe columns coincide;
-  // averaging their normals welds the shading across the seam so the sealed
-  // apex reads as one continuous surface instead of a crease.
+  // Where the first and last lathe columns coincide, averaging their normals
+  // welds the shading across the seam so the surface reads as continuous
+  // instead of creasing along it.
+  //
+  // The test is how far apart the two columns actually are, not how far up the
+  // wedge has sealed. Those pick out the same rows on a cut lathe — the columns
+  // only come together near the apex — but not on a closed one, where they meet
+  // at every height and the crease would otherwise run the full length of the
+  // anterior wall. The tolerance is a fraction of the ventricle's own length so
+  // it means the same thing at any size; the sealed apex of the 99° wedge sits
+  // at about 0.5% of it, and the open wedge above at fifty times that.
   const normals = kit.geometry.attributes.normal.array;
+  const weldTolerance = WELD_SPAN * outerSemiLength;
   for (let i = 0; i < N; i++) {
-    if (sealOpenFraction(tArr[i]) > 0.45) continue;
     for (const idx of [i, profileCount - 1 - i]) {
       const a = idx * 3;
       const b = (S * profileCount + idx) * 3;
+      const apart =
+        Math.abs(positions[a] - positions[b]) +
+        Math.abs(positions[a + 1] - positions[b + 1]) +
+        Math.abs(positions[a + 2] - positions[b + 2]);
+      if (apart > weldTolerance) continue;
       const nx = normals[a] + normals[b];
       const ny = normals[a + 1] + normals[b + 1];
       const nz = normals[a + 2] + normals[b + 2];

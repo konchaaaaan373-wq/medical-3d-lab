@@ -14,6 +14,63 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Myocardial ischemia, as a model and a scene that is not yet finished
+
+- **A model of ischemia as a debt that accumulates.** Supply over demand gives a
+  deficit, the deficit integrates into a burden, and the burden drives
+  contractility through a lag that is slower coming back than going out —
+  because that is what stunning is. Nothing downstream reads supply, so a wall
+  cannot go red the moment an artery narrows.
+- **One solve behind everything.** The wall's colour, how far it moves, the
+  ejection fraction and every number come from a single call to the shared
+  cardiac model, with end-systolic elastance scaled by how hard the ventricle
+  can still contract.
+- **The scene is registered `alpha` but is not finished.** The render found
+  seven defects and fixed them; it also found that the anterior wall's
+  discolouration is only about 6% more than the wall that is not ischemic, which
+  is not enough for the picture to be making the scene's one claim. That is
+  recorded in `docs/anatomy-review.md` §5.10 rather than left to be noticed.
+
+### The heart has coronary arteries, and the myocardium knows which one feeds it
+
+- **Five named epicardial arteries**, each in the groove it is named for, and
+  the AHA 17-segment territory map as one source of truth that the scene's
+  colour, wall motion, legend and read-out will all read. Owned by the organ
+  layer: the builder is handed the heart's surface rather than importing one,
+  so a vessel cannot end up with its own opinion about where the heart is.
+- **The territory map is a convention, and the code says where it is wrong.**
+  The AHA chart assigns segment 3 to the right coronary; contrast-enhanced MR
+  finds it is anterior-descending territory, and five other segments overlap
+  two arteries between people. A model that shows a fixed map without recording
+  that is claiming more than it has.
+- **One right-dominant specimen.** The posterior descending comes off the right
+  coronary. Left-dominant and balanced circulations are not modelled.
+- **The anterior descending stops short of the apex**, which real ones do not.
+  A surface of revolution has no normal at its tip, so there is no "away from
+  the wall" to lay a vessel along there. The reason and the measured clearance
+  are recorded where the number is.
+
+### One heart, so two scenes cannot disagree about it
+
+- **The cardiac solver moved out of the heart-failure scene.** The time-varying
+  elastance model and the seven-compartment circulation it drives now live in
+  `src/models/cardiacMechanics.js`, with the chamber geometry and the named
+  parts of a beat. The heart-failure scene keeps what is specific to that
+  disease — the keyframes that turn a position on the progression into
+  mechanical parameters — and became one of two readers rather than the owner.
+- **Nothing about the heart-failure model changed.** Every authored stage, each
+  control at its minimum, default and maximum, and five points in the cardiac
+  cycle were captured before the move and again after. The two captures are
+  identical, not merely within tolerance, and a test pins them so a future edit
+  has to change them deliberately.
+- **Why now.** The myocardial ischemia scene has to solve the same cardiac cycle
+  under the same loading state. A second implementation of a beat is how two
+  scenes start showing different hearts, and neither would look wrong on its
+  own. The specification for that scene — what the coronary geometry owns, the
+  AHA territory map and where it disagrees with measurement, and the fact that
+  the first version is reversible ischemia with no infarct — is settled in
+  `docs/anatomy-specs.md` before any of it is built.
+
 ### The lobes and the liver segments now take the volumes a source gives them
 
 - **The shares stopped being uncited, and two of them stopped being wrong.**

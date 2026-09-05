@@ -24,6 +24,7 @@ import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
 import { createPressureWavePanel } from '../components/PressureWavePanel.js';
+import { createBullseyePanel } from '../components/BullseyePanel.js';
 import { createChartPanel } from '../components/ChartPanel.js';
 import { createModelScopePanel } from '../components/ModelScopePanel.js';
 import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
@@ -453,6 +454,17 @@ export async function createApp({ stage, ui }) {
    * and out of the render loop.
    */
   const chartPanels = (meta.charts ?? []).map((spec) => createChartPanel(spec));
+
+  // A scene may also declare a segment map — a subject flattened so that all of
+  // it is visible at once, where a 3D view can only show the half facing the
+  // camera. Split the same way as a chart: the wedges, their names and their
+  // colours are declared beside the scene's other wording, and only what fills
+  // them arrives per frame. Same panel interface, so everything below that
+  // updates, resizes or focuses a chart handles this without knowing what it is.
+  // First in the rail, not last. It answers the scene's own question — which
+  // muscle a narrowed artery starves — and pushed to the bottom of four panels
+  // it fell below the rail's fold, which is where a reader never finds it.
+  if (meta.bullseye) chartPanels.unshift(createBullseyePanel(meta.bullseye));
   const chartById = new Map(chartPanels.map((panel) => [panel.id, panel]));
 
   // Optional: what the model answers, what it does not, and where it came from.
@@ -561,6 +573,9 @@ export async function createApp({ stage, ui }) {
       // showing two different solutions of the same state.
       const charts = scene.getCharts();
       for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+    }
+    if (meta.bullseye && scene.getBullseye) {
+      for (const [id, map] of Object.entries(scene.getBullseye())) chartById.get(id)?.update(map);
     }
     if (!pvPanel) return;
     // One read of the model, shared by both plots, so they cannot disagree.
@@ -728,6 +743,9 @@ export async function createApp({ stage, ui }) {
     if (chartPanels.length && scene.getCharts && !reelMode?.active) {
       const charts = scene.getCharts();
       for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+      if (meta.bullseye && scene.getBullseye) {
+        for (const [id, map] of Object.entries(scene.getBullseye())) chartById.get(id)?.update(map);
+      }
       // And so is the read-out. A scene whose model keeps working after the
       // control that changed it — a lung climbing to a new resting volume, a
       // network being re-solved to full accuracy once the slider is let go —

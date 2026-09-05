@@ -33,12 +33,12 @@
     "sceneId": "heart-failure",
     "card": "docs/model-cards/heart-failure.md",
     "modelSources": [
-      "src/scenes/cardiovascular/scenes/heartFailure/circulation.js",
+      "src/models/cardiacMechanics.js",
       "src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "73bcc25269f28a25",
-    "cardUpdatedAt": "2026-09-01"
+    "cardRevision": 3,
+    "modelDigest": "f0e94de89bd2546d",
+    "cardUpdatedAt": "2026-09-05"
   },
   {
     "sceneId": "copd-hyperinflation",
@@ -100,5 +100,17 @@
     "cardRevision": 4,
     "modelDigest": "8815703fb151d470",
     "cardUpdatedAt": "2026-09-03"
+  },
+  {
+    "sceneId": "myocardial-ischemia",
+    "card": "docs/model-cards/myocardial-ischemia.md",
+    "modelSources": [
+      "src/models/myocardialIschemia.js",
+      "src/models/coronaryTerritories.js",
+      "src/scenes/cardiovascular/organs/coronaryAnatomy.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "05ad04c9017d332e",
+    "cardUpdatedAt": "2026-09-05"
   }
 ]
