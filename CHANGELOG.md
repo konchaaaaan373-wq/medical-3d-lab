@@ -14,6 +14,23 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Myocardial ischemia, as a model and a scene that is not yet finished
+
+- **A model of ischemia as a debt that accumulates.** Supply over demand gives a
+  deficit, the deficit integrates into a burden, and the burden drives
+  contractility through a lag that is slower coming back than going out —
+  because that is what stunning is. Nothing downstream reads supply, so a wall
+  cannot go red the moment an artery narrows.
+- **One solve behind everything.** The wall's colour, how far it moves, the
+  ejection fraction and every number come from a single call to the shared
+  cardiac model, with end-systolic elastance scaled by how hard the ventricle
+  can still contract.
+- **The scene is registered `alpha` but is not finished.** The render found
+  seven defects and fixed them; it also found that the anterior wall's
+  discolouration is only about 6% more than the wall that is not ischemic, which
+  is not enough for the picture to be making the scene's one claim. That is
+  recorded in `docs/anatomy-review.md` §5.10 rather than left to be noticed.
+
 ### The heart has coronary arteries, and the myocardium knows which one feeds it
 
 - **Five named epicardial arteries**, each in the groove it is named for, and

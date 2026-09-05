@@ -383,6 +383,37 @@ export const SEGMENTS_OF_TERRITORY = Object.freeze(
   )
 );
 
+/**
+ * How much of the left ventricle each territory supplies.
+ *
+ * Derived from the segment table by the AHA model's own convention: the
+ * seventeen segments are taken as equal shares of left-ventricular mass, so a
+ * territory's share is simply how many segments it holds. That gives 7/17,
+ * 5/17 and 5/17 — 41%, 29% and 29% — which is why a proximal anterior
+ * descending lesion is the one with a name.
+ *
+ * **Measured off the ventricle mesh instead, this comes out wrong**, and the
+ * reasons are worth recording because both look like they should work.
+ * Counting vertices over-weights the apex, where the lathe's rings are small
+ * but its vertices are as dense as anywhere; weighting by surface area fixes
+ * that and is still wrong, because the mesh carries a **right ventricle** as a
+ * context lobe and the AHA model is a model of the left one — so a third of the
+ * measured area belonged to a chamber the territories do not describe. Both
+ * gave the right coronary the largest share of the left ventricle, which it
+ * does not have.
+ *
+ * So this is derived from the table rather than from geometry, and it is still
+ * one source of truth: edit which segments a territory holds and this follows.
+ */
+export const TERRITORY_MASS_FRACTION = Object.freeze(
+  Object.fromEntries(
+    TERRITORIES.map((territory) => [
+      territory,
+      SEGMENTS_OF_TERRITORY[territory].length / AHA_SEGMENTS.length,
+    ])
+  )
+);
+
 /** The shortest signed angle between two azimuths. */
 function angleBetween(a, b) {
   const d = ((a - b + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;

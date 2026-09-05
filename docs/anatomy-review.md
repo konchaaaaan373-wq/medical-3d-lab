@@ -536,6 +536,62 @@ territory with the posterior descending running down the middle of it. Vessel
 and territory coincide, which is the relation an ischemia scene depends on and
 the one that a rotated ring would break while every vessel still looked right.
 
+### 5.10 The ischemia scene — built, registered, and **not finished**
+
+The scene exists, is registered `alpha` with the four-point set, and every test
+passes. It is **not done**, by architecture rule 6: the render says it does not
+yet show its own central relation clearly enough, and that is recorded here
+rather than left for a reader to notice.
+
+**What the render found, in the order it found it.**
+
+1. **The scene did not render at all.** `SceneClass.cameraPose` is a *static*
+   the App reads while framing the camera, before any instance exists, and the
+   class had none — so the whole surface fell back to "3D renderer
+   unavailable". The scene test written specifically to prevent this class of
+   bug missed it, because it only called instance methods. It now asserts every
+   static the shell reads, and removing `cameraPose.target` fails it.
+2. **The heart was drawn cut open.** It inherited `ANATOMY.cutAngle`, a 99°
+   wedge that exists so the heart-failure scene can show the chamber. Here the
+   subject is the outside, and the wedge removed most of the anterior wall —
+   the one wall this scene is about.
+3. **Closing the wedge put a bright stripe down the anterior wall.** The lathe
+   builds the two cap faces whether the wedge is open or not, and closed they
+   sit on the wall and catch the key light. Only the epicardial group is drawn
+   now.
+4. **The camera looked at the wrong side.** It was placed toward the patient's
+   left, which is circumflex territory. The anterior descending's territory is
+   anterior and to the *right*.
+5. **The story's last stage never ran.** Reperfusion began at progress 1, which
+   is the end, so the restored flow occupied none of the episode: the scene
+   finished with an artery that was open in the caption and shut in every
+   number.
+6. **The territory mass fractions were wrong twice.** Counted by vertex, the
+   lathe's vertices are uniform in its own parameters and not in area, so the
+   apex was over-weighted. Weighted by area, the mesh carries a right ventricle
+   as a context lobe while the AHA model describes the left one. Both gave the
+   right coronary the largest share of the left ventricle. They now come from
+   the segment table — 7/17, 5/17, 5/17.
+7. **The model control could only make things worse.** "Anterior descending
+   flow" multiplied whatever the stage had set, and its default was 1, so at the
+   stages that mattered it changed nothing. It is the lesion's severity now.
+
+**What is still wrong.** Measured off the rendered frames, the anterior wall
+darkens by 31/255 in red between the baseline and the severe stage, and the
+circumflex wall — which should barely change — darkens by 16. The *differential*
+is about 6%, so what a reader sees is the whole heart dimming slightly, with a
+regional bias they have to be told about. The scene's one claim is that the
+discoloured muscle is somewhere else than the narrowing, and at this contrast
+that claim is not being made by the picture.
+
+Two candidates, neither yet tried: the colour ramp may be too small a step for
+the lighting it is under, or the territory weights over the visible anterior
+surface may be diluted enough to halve the effect. **It needs measuring before
+it needs changing** — the last several of these were fixed by measuring and one
+was made worse by guessing.
+
+A seam also remains where the closed lathe's first and last columns meet.
+
 ## 6. Not covered by this review
 
 - The remaining scenes. The gate names the flagships; the rest are reviewed

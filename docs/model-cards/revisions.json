@@ -100,5 +100,17 @@
     "cardRevision": 4,
     "modelDigest": "8815703fb151d470",
     "cardUpdatedAt": "2026-09-03"
+  },
+  {
+    "sceneId": "myocardial-ischemia",
+    "card": "docs/model-cards/myocardial-ischemia.md",
+    "modelSources": [
+      "src/models/myocardialIschemia.js",
+      "src/models/coronaryTerritories.js",
+      "src/scenes/cardiovascular/organs/coronaryAnatomy.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "dfc2e518e07713b3",
+    "cardUpdatedAt": "2026-09-05"
   }
 ]

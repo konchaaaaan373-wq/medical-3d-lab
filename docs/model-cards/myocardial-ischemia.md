@@ -1,0 +1,140 @@
+# Model card — myocardial ischemia: which muscle a narrowed artery starves
+
+| | |
+| --- | --- |
+| Scene | `#/myocardial-ischemia` |
+| Model | [`src/models/myocardialIschemia.js`](../../src/models/myocardialIschemia.js) |
+| Shared solver | [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js) |
+| Anatomy | [`src/scenes/cardiovascular/organs/coronaryAnatomy.js`](../../src/scenes/cardiovascular/organs/coronaryAnatomy.js) |
+| Evidence | [`../model-evidence/myocardial-ischemia.md`](../model-evidence/myocardial-ischemia.md) |
+| Catalog status | `alpha` |
+| Clinical review | **none** |
+
+## 1. What question this model answers
+
+**Where a coronary artery narrows, which myocardium stops contracting, and what that costs the whole circulation.**
+
+The relation the scene exists for is spatial and is why it is in 3D: the discoloured wall is nowhere near the narrowing. A lesion in the anterior descending sits in a groove on the front of the heart; what fails is the anterior wall and the septum, because that is what the artery feeds. Rotate to the back and the inferior wall is untouched.
+
+The second relation is temporal: oxygen debt has to accumulate before muscle stops contracting, and has to be repaid before it starts again — and the repayment is far slower than the recovery of blood flow.
+
+## 2. What it is
+
+A per-territory oxygen supply/demand balance whose deficit integrates into an **ischemic burden**; burden drives contractility through a one-sided lag; and one number — how hard the ventricle can still contract — crosses into the shared time-varying elastance model, where every whole-heart consequence is solved once.
+
+Three territories: the anterior descending, the right coronary and the circumflex, over the AHA 17-segment model of the left ventricle.
+
+## 3. What it is not
+
+- **Not a stenosis-to-flow calculation.** Supply is a scale factor on a territory. There is no lumen, no Poiseuille law, and nothing here relates a diameter to a flow reserve.
+- **Not infarction.** Reversible ischemia only: no necrosis, no scar, no infarct expansion. The scene stops where muscle would start to die, because nothing that decides whether muscle dies is modelled.
+- **Not a clock.** The axis is normalized episode progress. Real time-courses depend on collateral supply, preconditioning, territory size and how complete the occlusion is, none of which are here.
+- **Not anyone's coronary anatomy.** One right-dominant specimen; no left-dominant or balanced circulation.
+- **No ECG, chest pain, troponin or prognosis.**
+
+## 4. Inputs
+
+| Input | Meaning | Range |
+| --- | --- | --- |
+| `supplyFactor[territory]` | fraction of normal flow down that artery | 0 – 1 |
+| `demandFactor` | scales every territory's demand together | > 0 |
+| `deltaProgress` | how much of a normalized episode elapses | > 0 |
+| preload / afterload | as the shared cardiac model takes them | scene: 0.7 – 1.4 |
+
+## 5. Outputs
+
+`supplyDemandRatio`, `ischemicBurden` and `contractilityMultiplier` per territory; `episodeProgress`; and, through the shared solver, the whole pressure-volume loop — end-diastolic and end-systolic volume, stroke volume, ejection fraction, cardiac output, arterial and filling pressures.
+
+## 6. State variables
+
+`ischemicBurden` (0–1) and `contractilityBurden` (0–1) per territory. The second is a lagged copy of the first and is state rather than a derived quantity, because the lag is the point: without it, restoring flow would restore wall motion in the same frame.
+
+## 7. Governing relations
+
+Under-supplied, per unit of progress:
+
+```
+d(burden)/dp = BURDEN_RISE · (1 − ratio) · (1 − burden)
+```
+
+Supplied:
+
+```
+d(burden)/dp = −BURDEN_FALL · burden
+```
+
+Contractility follows a lagged burden, at `CONTRACTILITY_ONSET` while it rises and `CONTRACTILITY_RECOVERY` while it falls, and
+
+```
+contractility = 1 − CONTRACTILITY_LOSS · laggedBurden
+```
+
+The ventricle's contractility is the territory shares weighted by mass, and it scales `Ees` in the shared solver — because in a time-varying elastance model `Ees` **is** contractility.
+
+## 8. Constants and where they came from
+
+| Constant | Value | Where it came from |
+| --- | --- | --- |
+| `BASELINE_SUPPLY_DEMAND` | 1.25 | the coronary circulation runs with reserve at rest; the size of the margin is chosen so three severities separate |
+| `BURDEN_RISE` | 4 | fitted to the shape the scene has to show |
+| `BURDEN_FALL` | 1 | fitted; clears about 63% over a full normalized recovery |
+| `CONTRACTILITY_LOSS` | 0.55 | fitted to a 35–60% loss of excursion at high burden |
+| `CONTRACTILITY_ONSET` | 6 | fast, because hypokinesis is early |
+| `CONTRACTILITY_RECOVERY` | 0.55 | slow, because stunning is |
+| territory mass fractions | 7/17, 5/17, 5/17 | derived from the AHA segment table, taking the seventeen segments as equal shares |
+
+**None of these is a measurement.** They are behavioural calibration: chosen so the model behaves the way ischemia behaves.
+
+## 9. Calibration vs measurement
+
+Everything in §8 is calibration. What is *not* calibration is the coronary anatomy — which sinus each artery starts from, which groove it runs in, and which segments it supplies — and the ejection fraction, which is solved rather than assigned.
+
+The one direction taken from published work rather than fitted is the **asymmetry**: hypokinesis is early and recovery is late. That is myocardial stunning, and it is the reason the lag is one-sided rather than a convenience.
+
+## 10. What is exaggerated for visibility, and what is not
+
+The colour scale is presentation: full burden is a strong desaturation the muscle would not literally show. A trace of each territory's own hue is mixed in so the map is legible at rest, when nothing is ischemic.
+
+**Wall motion is not exaggerated.** How far each part of the wall travels is the contractility multiplier, unmodified, and it is the same multiplier the ejection fraction fell by.
+
+## 11. Known failure modes
+
+- **A reader may take the territory map as their own anatomy.** It is a fixed convention that measurement disagrees with — see §14.
+- **A reader may read "the artery is open" as "the heart is working."** The scene is built to correct that, and it can also be misread as saying stunning always resolves. It does not always.
+- **The three severities the scene offers are not degrees of stenosis.** They are supply factors.
+- **The anterior descending stops short of the apex** in the geometry, so its apical territory is drawn without a vessel over it. Recorded in `coronaryAnatomy.js`.
+
+## 12. What it must never be used for
+
+Judging whether a person is having a heart attack. Assessing anyone's coronary anatomy or dominance. Estimating a stenosis. Inferring how long ischemia has lasted or how much time remains. Selecting or timing treatment. Interpreting an echocardiogram or an angiogram.
+
+## 13. Uncertainty
+
+The largest uncertainty is that the calibration constants have no series behind them. The model's *shape* — accumulate, saturate, order by severity, recover slowly — is defensible; its *rates* are chosen.
+
+The second is the territory map, which is a convention rather than a measurement and is quantifiably wrong in places (§14).
+
+## 14. Where the model could mislead
+
+**The territory map is wrong about segment 3, and the model shows it anyway.** The AHA chart assigns the basal inferoseptal segment to the right coronary; contrast-enhanced cardiac MR correspondence studies find it is anterior-descending territory. Only segments 6 and 12 are specific to the circumflex and only segment 10 to the right coronary; segments 4, 5, 9, 11 and 15 overlap two arteries between people.
+
+That is not a defect to fix — it is the nature of a fixed territory assignment, and using one is only honest if the disagreement is stated. It is stated in `coronaryAnatomy.js`, in the scope panel and here.
+
+**The wall's colour could be read as tissue damage.** It is burden, which is reversible by construction in this model. Nothing here goes on to die.
+
+## 15. Review status
+
+**Catalog status:** `alpha`
+**Clinical review:** none recorded.
+
+No clinician has reviewed the calibration, the teaching text or the territory presentation. The scene carries the Prototype-class badge and the scope panel accordingly.
+
+## 16. How to check it
+
+`tests/myocardial-ischemia.test.js` holds the behavioural acceptance criteria — every one quoted from `docs/anatomy-specs.md` §2 A3-a, which was written before the model existed. `tests/coronary-anatomy.test.js` holds the anatomy: origins in aortic root diameters, courses in cardiac lengths, and clearance against the built mesh in local vessel radii.
+
+## 17. Revision history
+
+### Revision 1 — first version
+
+Reversible ischemia over a right-dominant specimen, with the AHA territory map and the shared cardiac solver.
