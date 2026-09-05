@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { circulationParameters } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
-import { solveSteadyState } from '../src/scenes/cardiovascular/scenes/heartFailure/circulation.js';
+import { solveSteadyState } from '../src/models/cardiacMechanics.js';
 
 function copyReference() {
   const base = circulationParameters(0);

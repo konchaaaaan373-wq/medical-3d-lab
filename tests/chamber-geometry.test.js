@@ -8,11 +8,8 @@ import {
   rvLobeMaxExtent,
   VENTRICLE_SHAPING,
 } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
-import {
-  sampleHemodynamics,
-  myocardialVolumeFor,
-  ventricleShape,
-} from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
+import { sampleHemodynamics } from '../src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js';
+import { myocardialVolumeFor, ventricleShape } from '../src/models/cardiacMechanics.js';
 import { COMPARISON_OFFSET } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 import { ANATOMY } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 
