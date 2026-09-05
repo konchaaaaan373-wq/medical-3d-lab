@@ -36,19 +36,20 @@ test('explorer search: clinical review metadata is searchable without copying it
   assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { query: 'legacy-unversioned' }), true);
 });
 
-test('explorer filters: paid professional modes fail closed when all authored guides require re-review', () => {
+test('explorer use filters describe intended contexts independently of paid access', () => {
   const patient = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'patient' }));
   const education = SCENE_MANIFEST.filter((scene) => sceneMatchesExplorerFilters(recordFor(scene.id), { mode: 'education' }));
 
-  assert.deepEqual(patient.map((scene) => scene.id).sort(), []);
-  assert.deepEqual(education.map((scene) => scene.id).sort(), []);
+  assert.ok(patient.some((scene) => scene.id === 'amyloid-beta'));
+  assert.ok(patient.some((scene) => scene.id === 'pneumonia-consolidation'));
+  assert.ok(education.some((scene) => scene.id === 'brain-anatomy'));
+  assert.ok(education.length > patient.length);
 });
 
-test('explorer filters: authored legacy guides are hidden from paid product filters until re-reviewed', () => {
-  for (const sceneId of ['heart-failure', 'amyloid-beta']) {
-    assert.equal(sceneMatchesExplorerFilters(recordFor(sceneId), { mode: 'patient' }), false, sceneId);
-    assert.equal(sceneMatchesExplorerFilters(recordFor(sceneId), { mode: 'education' }), false, sceneId);
-  }
+test('explorer use filters expose clinical learning without claiming decision support', () => {
+  assert.equal(sceneMatchesExplorerFilters(recordFor('heart-failure'), { mode: 'clinical-learning' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('circulation'), { mode: 'clinical-learning' }), true);
+  assert.equal(sceneMatchesExplorerFilters(recordFor('brain-anatomy'), { mode: 'clinical-learning' }), false);
 });
 
 test('explorer filters: reviewed-plus means model maturity reviewed or production, not prototype', () => {
