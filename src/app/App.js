@@ -15,7 +15,7 @@ import {
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
 import { prefersReducedMotion } from '../utils/motion.js';
-import { markScrollable } from '../utils/scrollHint.js';
+import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
@@ -596,8 +596,18 @@ export async function createApp({ stage, ui }) {
   markScrollable(rail);
   markScrollable(inspectionPanel.element);
 
-  ui.append(
-    el('div', { class: 'top-bar' }, [
+  const consoleElement = el('div', { class: 'panel console' }, [
+    stageReadout.element,
+    causalStory?.element,
+    learningPanel?.element,
+    controlsInConsole ? modelControls?.element : null,
+    controlPanel.element,
+  ]);
+  // On a phone the display panel docks just above the console. Only the console
+  // knows how tall it is, and it differs by scene.
+  publishHeight(consoleElement, ui, '--console-height');
+
+  const topBar = el('div', { class: 'top-bar' }, [
       // The model panels go on the left, where there is room for them: the rail
       // already carries the legend and the read-out, and stacking four panels
       // there pushes the console off a laptop screen.
@@ -610,15 +620,15 @@ export async function createApp({ stage, ui }) {
         controlsInConsole ? null : modelControls?.element,
         scopePanel?.element,
       ]),
-      rail,
-    ]),
-    el('div', { class: 'panel console' }, [
-      stageReadout.element,
-      causalStory?.element,
-      learningPanel?.element,
-      controlsInConsole ? modelControls?.element : null,
-      controlPanel.element,
-    ]),
+    rail,
+  ]);
+  // The phone sheet stops where the title and selection cards end, rather than
+  // at a reserved constant that is only right on the scene it was measured on.
+  publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);
+
+  ui.append(
+    topBar,
+    consoleElement,
     labels.element
   );
 

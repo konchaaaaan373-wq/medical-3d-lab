@@ -30,3 +30,34 @@ export function markScrollable(element) {
     element.removeEventListener('scroll', update);
   };
 }
+
+/**
+ * Publishes an element's live height as a custom property.
+ *
+ * On a phone the display panel docks above the console, and the console is a
+ * different height on every scene. Measuring it beats guessing: a constant
+ * tuned against one scene is wrong on the next.
+ *
+ * @param {HTMLElement} element the element to measure
+ * @param {HTMLElement} target the element the property is set on
+ * @param {string} property the custom property name
+ * @param {(box: DOMRect) => number} [pick] which measurement to publish
+ * @returns {() => void} stops observing
+ */
+export function publishHeight(element, target, property, pick = (box) => box.height) {
+  if (!element || !target) return () => {};
+  const update = () => {
+    target.style.setProperty(property, `${Math.round(pick(element.getBoundingClientRect()))}px`);
+  };
+  // A resize can change the measurement without changing the observed box, so
+  // the window is watched too — where there is one.
+  const view = typeof window === 'undefined' ? null : window;
+  view?.addEventListener('resize', update, { passive: true });
+  const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(update) : null;
+  observer?.observe(element);
+  update();
+  return () => {
+    observer?.disconnect();
+    view?.removeEventListener('resize', update);
+  };
+}
