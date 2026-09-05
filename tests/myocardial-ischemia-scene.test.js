@@ -152,6 +152,49 @@ test('the metrics panel gets a finite number for every read-out', () => {
   }
 });
 
+/**
+ * The keys `components/ChartPanel.js` actually reads, from its own docblock.
+ *
+ * Listed here so that a key the panel ignores fails a test instead of being
+ * drawn nowhere. That is not hypothetical: the first version of this chart
+ * declared `label`, `xLabel` and `yLabel` in the spec and returned `domain` and
+ * `marker` in the data, and every one of those five is invisible to the panel.
+ * The result was a chart on an auto-scaled axis with no progress marker, and a
+ * `TypeError` from `spec.x.invert` the moment it drew its axes — and the test
+ * that was supposed to cover it asserted `chart.label`, a key nothing reads.
+ * A test can only check a contract it has actually looked up.
+ */
+const CHART_SPEC_KEYS = new Set([
+  'id',
+  'title',
+  'titleJa',
+  'unitLabel',
+  'x',
+  'y',
+  'key',
+  'height',
+]);
+const CHART_DATA_KEYS = new Set(['x', 'y', 'series', 'bars', 'bands', 'rules', 'markers', 'note']);
+
+test('the chart spec is the shape the panel reads', () => {
+  for (const spec of CHARTS) {
+    assert.ok(spec.title && spec.titleJa, `${spec.id} is titled in both languages`);
+    for (const axis of ['x', 'y']) {
+      assert.ok(spec[axis], `${spec.id} declares its ${axis} axis`);
+      assert.ok(
+        Number.isFinite(spec[axis].min) && Number.isFinite(spec[axis].max),
+        `${spec.id}'s ${axis} axis is fixed, so the chart cannot rescale under the reader`
+      );
+    }
+    for (const entry of spec.key ?? []) {
+      assert.ok(entry.id && entry.label && entry.labelJa && entry.color, 'every key entry is complete');
+    }
+    for (const key of Object.keys(spec)) {
+      assert.ok(CHART_SPEC_KEYS.has(key), `${spec.id} declares "${key}", which the panel does not read`);
+    }
+  }
+});
+
 test('the chart is keyed the way the panel looks it up, and its series are drawable', () => {
   // The failure this catches ran for nobody: a chart returned as an array when
   // the App reads an object keyed by the ids `meta.charts` declares.
@@ -161,7 +204,24 @@ test('the chart is keyed the way the panel looks it up, and its series are drawa
   for (const declared of CHARTS) {
     const chart = charts[declared.id];
     assert.ok(chart, `the panel's id "${declared.id}" is present`);
-    assert.ok(chart.label && chart.labelJa, 'labelled in both languages');
+    for (const key of Object.keys(chart)) {
+      assert.ok(CHART_DATA_KEYS.has(key), `the frame sends "${key}", which the panel does not read`);
+    }
+    // `dash` on a rule is the pattern the panel hands to `setLineDash`, not a
+    // flag. `dash: true` throws, and the docblock said `dash?` without saying
+    // of what.
+    for (const rule of chart.rules ?? []) {
+      assert.ok(
+        rule.dash === undefined || (Array.isArray(rule.dash) && rule.dash.every(Number.isFinite)),
+        'a rule dashes with a pattern, not a boolean'
+      );
+      assert.ok(rule.axis === 'x' || rule.axis === 'y', 'and names an axis');
+    }
+    assert.ok(chart.markers?.length === 1, 'the reader can see where on the episode they are');
+    assert.ok(
+      Number.isFinite(chart.markers[0].x) && Number.isFinite(chart.markers[0].y),
+      'and the marker is somewhere drawable'
+    );
     assert.ok(Array.isArray(chart.series) && chart.series.length === TERRITORIES.length);
     for (const series of chart.series) {
       assert.ok(series.points.length > 10, `${series.id} has points to draw`);
@@ -257,4 +317,68 @@ test('the scene disposes without leaving its geometry behind', () => {
   fresh.update(0.016);
   fresh.dispose();
   assert.equal(fresh.root.children.length, 0, 'the group is emptied');
+});
+
+test('the arteries stay on the wall through the beat, not only where they were built', () => {
+  // The vessels are built once, on the end-diastolic epicardium. Left there,
+  // they do not move while the ventricle contracts away from underneath them:
+  // measured this way, the anterior descending's furthest sample went from 0.34
+  // scene units off the wall at end diastole to 0.64 at mid-systole, at the
+  // apex — and in a render the two descending arteries left the silhouette and
+  // hung in space below the heart. Nothing in the suite saw it, because every
+  // clearance test measured the moment the vessels were built.
+  //
+  // Distance is to the nearest vertex of the mesh that is actually drawn, which
+  // overstates the gap by up to half the row spacing. That is why this is a
+  // comparison against end diastole rather than an absolute bound: the same
+  // overstatement is in both numbers.
+  const beating = new MyocardialIschemiaScene({});
+  beating.build();
+  const position = beating.geometry.attributes.position;
+
+  const furthestFromWall = () => {
+    const worst = new Map();
+    for (const branch of beating.coronaries.branches) {
+      if (!branch.where.length) continue;
+      const offset = branch.points.length - branch.where.length;
+      let far = 0;
+      for (let i = 0; i < branch.where.length; i++) {
+        const p = branch.points[offset + i];
+        let near = Infinity;
+        for (let v = 0; v < position.count; v++) {
+          const dx = position.getX(v) - p.x;
+          const dy = position.getY(v) - p.y;
+          const dz = position.getZ(v) - p.z;
+          const d = dx * dx + dy * dy + dz * dz;
+          if (d < near) near = d;
+        }
+        far = Math.max(far, Math.sqrt(near));
+      }
+      worst.set(branch.id, far);
+    }
+    return worst;
+  };
+
+  beating.setProgress(0.05);
+  beating.phase = 0.999; // end diastole: the wall the vessels were laid on
+  beating.applyModelToScene();
+  const atRest = furthestFromWall();
+
+  for (const [progress, phase] of [
+    [0.05, 0.3],
+    [0.62, 0.3],
+    [0.62, 0.5],
+    [0.93, 0.3],
+  ]) {
+    beating.setProgress(progress);
+    beating.phase = phase;
+    beating.applyModelToScene();
+    for (const [id, far] of furthestFromWall()) {
+      assert.ok(
+        far <= atRest.get(id) * 1.15,
+        `${id} stays on the wall at progress ${progress}, phase ${phase}: ` +
+          `${far.toFixed(2)} against ${atRest.get(id).toFixed(2)} at end diastole`
+      );
+    }
+  }
 });

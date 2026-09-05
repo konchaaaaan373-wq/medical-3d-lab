@@ -95,7 +95,17 @@ The one direction taken from published work rather than fitted is the **asymmetr
 
 The colour scale is presentation: full burden is a strong desaturation the muscle would not literally show. A trace of each territory's own hue is mixed in so the map is legible at rest, when nothing is ischemic.
 
-**Wall motion is not exaggerated.** How far each part of the wall travels is the contractility multiplier, unmodified, and it is the same multiplier the ejection fraction fell by.
+Measured off the rendered frames rather than off the colour constants — each vertex identified by territory first, then projected into each frame, so the sample is known myocardium and not a screen rectangle — the anterior aspect reads:
+
+| Territory | rest | burden | median Δ red |
+| --- | --- | --- | --- |
+| anterior descending | rgb(133, 57, 56) | rgb(95, 48, 55) | −29 |
+| circumflex | rgb(126, 67, 63) | rgb(122, 66, 63) | −5 |
+| right coronary, from behind | unchanged at every stage | | 0 |
+
+The difference in lighting between those two regions at rest is 7 units of red; the change ischemia makes is 38. That ratio is the point: a reader cannot mistake the shading for the burden.
+
+**Wall motion is not exaggerated.** How far each part of the wall travels is the contractility multiplier, unmodified, and it is the same multiplier the ejection fraction fell by. Measured on the mesh, mean excursion from end diastole to systole falls 22% in the anterior descending's territory at peak burden and 34% after reperfusion, against 5% and 8% in the other two — and that 5-8% is the whole ventricle ejecting less, not a leak in the territory map.
 
 ## 11. Known failure modes
 
@@ -131,6 +141,8 @@ No clinician has reviewed the calibration, the teaching text or the territory pr
 
 ## 16. How to check it
 
+`tests/myocardial-ischemia-scene.test.js` holds the scene contract, including that the arteries stay on the wall through the beat and that the chart is the shape the panel reads — both of which failed silently until the scene was rendered and looked at.
+
 `tests/myocardial-ischemia.test.js` holds the behavioural acceptance criteria — every one quoted from `docs/anatomy-specs.md` §2 A3-a, which was written before the model existed. `tests/coronary-anatomy.test.js` holds the anatomy: origins in aortic root diameters, courses in cardiac lengths, and clearance against the built mesh in local vessel radii.
 
 ## 17. Revision history
@@ -138,3 +150,5 @@ No clinician has reviewed the calibration, the teaching text or the territory pr
 ### Revision 1 — first version
 
 Reversible ischemia over a right-dominant specimen, with the AHA territory map and the shared cardiac solver.
+
+No model quantity has changed since. The corrections recorded in [`../anatomy-review.md`](../anatomy-review.md) §5.10 are all presentation and geometry — a seam, arteries that did not move with the wall, a chart wired to keys its panel does not read — and none of them touched the model.

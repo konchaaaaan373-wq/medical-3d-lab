@@ -536,12 +536,14 @@ territory with the posterior descending running down the middle of it. Vessel
 and territory coincide, which is the relation an ischemia scene depends on and
 the one that a rotated ring would break while every vessel still looked right.
 
-### 5.10 The ischemia scene — built, registered, and **not finished**
+### 5.10 The ischemia scene — what ten rounds of rendering it found
 
-The scene exists, is registered `alpha` with the four-point set, and every test
-passes. It is **not done**, by architecture rule 6: the render says it does not
-yet show its own central relation clearly enough, and that is recorded here
-rather than left for a reader to notice.
+The scene is registered `alpha` with the four-point set, and every test passes.
+Architecture rule 6 says that is not enough: a 3D scene is not finished until it
+has been looked at. Ten separate defects came out of looking, and one of them
+was a measurement in this section that was itself wrong. They are listed here in
+the order they were found rather than tidied, because the order is the useful
+part — several were only visible once the one before it was fixed.
 
 **What the render found, in the order it found it.**
 
@@ -576,21 +578,81 @@ rather than left for a reader to notice.
    flow" multiplied whatever the stage had set, and its default was 1, so at the
    stages that mattered it changed nothing. It is the lesion's severity now.
 
-**What is still wrong.** Measured off the rendered frames, the anterior wall
-darkens by 31/255 in red between the baseline and the severe stage, and the
-circumflex wall — which should barely change — darkens by 16. The *differential*
-is about 6%, so what a reader sees is the whole heart dimming slightly, with a
-regional bias they have to be told about. The scene's one claim is that the
-discoloured muscle is somewhere else than the narrowing, and at this contrast
-that claim is not being made by the picture.
+**A measurement I got wrong, and the correction.** This section previously
+recorded that the anterior wall darkened by 31/255 in red between the baseline
+and the severe stage while the circumflex wall darkened by 16 — a differential
+of "about 6%" — and concluded that the picture was not making the scene's
+central claim. **That measurement was wrong, and so was the conclusion.**
 
-Two candidates, neither yet tried: the colour ramp may be too small a step for
-the lighting it is under, or the territory weights over the visible anterior
-surface may be diluted enough to halve the effect. **It needs measuring before
-it needs changing** — the last several of these were fixed by measuring and one
-was made worse by guessing.
+It came from averaging fixed screen rectangles between two frames, which is
+wrong twice over: a rectangle is not a territory, and the ventricle's shape
+changes between the two stages, so the same rectangle sees different tissue in
+each. Redone by identifying each vertex's territory first, projecting it into
+each frame and taking the difference per vertex — same vertex, same territory,
+both frames — the anterior aspect at 1280×860 reads:
 
-A seam also remains where the closed lathe's first and last columns meet.
+| Territory | rest | burden | median Δ red, per vertex |
+| --- | --- | --- | --- |
+| anterior descending | rgb(133, 57, 56) | rgb(95, 48, 55) | **−29** |
+| circumflex | rgb(126, 67, 63) | rgb(122, 66, 63) | −5 |
+| right coronary | not visible from in front | | |
+
+From behind, over the same episode, the right coronary's wall moves by **0** in
+every channel at every stage, and the circumflex's by 0 — the anterior
+descending's deficit discolours the anterior descending's muscle and nothing
+else. The lighting difference between the two regions at rest is 7 units of red;
+the burden change is 38. The claim is being made by the picture.
+
+Regional wall motion carries the same signal independently. Mean vertex
+excursion from end diastole to systole, by territory:
+
+| | anterior descending | right coronary | circumflex |
+| --- | --- | --- | --- |
+| rest | 0.700 | 0.575 | 0.616 |
+| burden | 0.546 (−22%) | 0.545 (−5%) | 0.584 (−5%) |
+| reperfused | 0.462 (−34%) | 0.527 (−8%) | 0.565 (−8%) |
+
+The colour and the motion fall in the same region, and both keep falling after
+flow is restored, which is the stunning the scene is about. The 5-8% the other
+two territories lose is the whole ventricle ejecting less, not a leak in the
+territory map.
+
+**What the render then found, and what was fixed.**
+
+8. **A slit down the anterior wall, background showing through the myocardium.**
+   13-19 px wide at mid-height, closing at the apex. The lathe's cut boundaries
+   bow with side-specific S-curves instead of lying in flat radial planes, and
+   the bow pulls both edges *away* from the wedge — so applied to a lathe built
+   with no wedge it prised the first and last columns apart. The bow is now
+   capped by the wedge it shapes, which is exactly 1 at the heart-failure
+   scene's 99° and 0 here. The normal weld across the seam now tests how far
+   apart the two columns are rather than how far up the wedge has sealed, so a
+   closed lathe welds at every height instead of only near the apex.
+9. **The arteries did not move with the heart.** Built once on the
+   end-diastolic epicardium and never relaid, they stayed put while the wall
+   contracted away from underneath them: the furthest sample of the anterior
+   descending went from 0.34 scene units off the wall at end diastole to 0.64 at
+   mid-systole, at the apex, and in a render the two descending arteries left
+   the silhouette and hung in space below the heart. Every clearance test in the
+   suite measured the moment the vessels were built, so none of them saw it.
+   They are relaid on the wall every frame now — including the regional part, so
+   an artery over myocardium that has stopped contracting travels as far as that
+   myocardium does and no further. Worst clearance through the beat is 0.32.
+10. **The chart beside the scene was dead.** Its spec declared `label`,
+   `xLabel` and `yLabel` and its per-frame data returned `domain` and `marker` —
+   five keys `ChartPanel` does not read. The axes silently auto-scaled, the
+   progress marker never drew, and drawing the axes threw a `TypeError` on
+   `spec.x.invert`. The test that was meant to cover this asserted `chart.label`,
+   a key nothing reads: it checked a contract it had never looked up. Both the
+   spec and the frame data are now checked against the panel's own key list, so
+   a key the panel ignores fails a test instead of being drawn nowhere.
+
+**What is still open.** The anterior descending stops short of the apex in the
+geometry, so its apical territory is drawn without a vessel over it — recorded
+in `coronaryAnatomy.js` and in the model card. The ventricle is drawn without a
+valve plane or great vessels above it, so the basal shoulder reads as a lid;
+nothing is blown out (the brightest pixel on the heart is rgb(209, 103, 108)),
+but it is a presentational weakness of showing the ventricle alone.
 
 ## 6. Not covered by this review
 

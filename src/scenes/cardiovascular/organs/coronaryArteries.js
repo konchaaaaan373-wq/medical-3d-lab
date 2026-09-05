@@ -7,6 +7,7 @@ import {
   CORONARY_SINUSES,
   GROOVES,
   OSTIUM_OF,
+  territoryWeightsAt,
 } from './coronaryAnatomy.js';
 
 /**
@@ -87,11 +88,21 @@ const CENTRELINE_SAMPLES = 44;
  * axis" and "out of the surface" are not the same direction, and near the apex
  * they differ enough to bury a vessel.
  */
+const scratch = {
+  here: new THREE.Vector3(),
+  alongT: new THREE.Vector3(),
+  alongPhi: new THREE.Vector3(),
+  outward: new THREE.Vector3(),
+};
+
 function surfaceNormal(surfacePoint, shape, t, phi, out) {
   const eps = 1e-3;
-  const here = surfacePoint(shape, t, phi, new THREE.Vector3());
-  const alongT = surfacePoint(shape, Math.min(t + eps, 1), phi, new THREE.Vector3()).sub(here);
-  const alongPhi = surfacePoint(shape, t, phi + eps, new THREE.Vector3()).sub(here);
+  // Reused rather than allocated: the arteries are relaid on the wall every
+  // frame, and three vectors per sample per vessel is a few thousand short-
+  // lived objects a second for nothing.
+  const here = surfacePoint(shape, t, phi, scratch.here);
+  const alongT = surfacePoint(shape, Math.min(t + eps, 1), phi, scratch.alongT).sub(here);
+  const alongPhi = surfacePoint(shape, t, phi + eps, scratch.alongPhi).sub(here);
   out.copy(alongPhi).cross(alongT);
   // Near the apex the surface's radius goes to zero and the two tangents become
   // parallel, so their cross product is noise rather than a direction. Fall
@@ -107,7 +118,7 @@ function surfaceNormal(surfacePoint, shape, t, phi, out) {
   // The cross product's sign depends on the winding of the two tangents, which
   // is a property of the caller's surface rather than something this file gets
   // to assume. Point it away from the long axis and let that settle it.
-  const outward = new THREE.Vector3(here.x, 0, here.z);
+  const outward = scratch.outward.set(here.x, 0, here.z);
   if (outward.lengthSq() > 1e-9 && out.dot(outward.normalize()) < 0) out.negate();
   return out;
 }
@@ -120,7 +131,7 @@ function surfaceNormal(surfacePoint, shape, t, phi, out) {
  * declared in `coronaryAnatomy.js` and neither is written here, so a vessel
  * cannot end up in a groove nothing named.
  */
-function centrelineFor(branch, { surfacePoint, shape }, where = []) {
+function centrelineFor(branch, { surfacePoint, shape, displace }, where = []) {
   const groove = GROOVES[branch.groove];
   if (!groove) throw new Error(`Branch "${branch.id}" names no groove`);
 
@@ -149,14 +160,29 @@ function centrelineFor(branch, { surfacePoint, shape }, where = []) {
     // such — nothing anatomical says a coronary artery thins into the wall.
     const apical = Math.min(1, Math.max(0, (t - APICAL_LIFT_FADE_T) / APICAL_LIFT_FADE_T));
     const lift = radiusAlong(branch, u) * LIFT_IN_RADII * apical;
-    surfacePoint(shape, t, phi, point);
-    surfaceNormal(surfacePoint, shape, t, phi, normal);
-    points.push(point.clone().addScaledVector(normal, lift));
     // Where on the ventricle this sample sits, carried rather than searched
     // for later. A test that has to invert the surface to find out is measuring
     // its own search as much as the vessel — and near the apex, where the mesh
     // rows are furthest apart, the search's error is larger than the vessel.
-    where.push({ u, t, phi, lift });
+    //
+    // Reused across relays rather than rebuilt. `u`, `t` and `phi` are fixed by
+    // the groove and the sample count, so only the lift can change — and the
+    // territory weights, which are anatomy and so belong to this layer, are
+    // then computed once for the life of the vessel instead of once a frame.
+    let here = where[i];
+    if (here) here.lift = lift;
+    else where.push((here = { u, t, phi, lift, weights: territoryWeightsAt(t, phi) }));
+
+    surfacePoint(shape, t, phi, point);
+    surfaceNormal(surfacePoint, shape, t, phi, normal);
+    point.addScaledVector(normal, lift);
+    // The caller may move the sample once it is placed — that is how a scene
+    // whose wall does not move uniformly (a hypokinetic segment, say) keeps the
+    // artery over that segment moving with it. The organ layer stays out of
+    // *why* it moves: it hands over where on the ventricle the sample sits and
+    // takes back a point.
+    if (displace) displace(point, here);
+    points.push(point.clone());
   }
   return points;
 }
@@ -205,27 +231,33 @@ export function buildCoronaryArteries({
   const branches = [];
   const byId = new Map();
 
-  for (const branch of CORONARY_BRANCHES) {
+  /**
+   * The control points of one vessel, on the epicardium as it is right now.
+   *
+   * Shared by the first build and by every `layOn` after it, because a vessel
+   * relaid by different code from the one that placed it is a vessel that
+   * drifts off the heart the moment the heart moves — which is the failure this
+   * whole file is written against.
+   */
+  const controlPointsFor = (branch, context, where) => {
     let points;
-    const where = [];
-
     if (branch.ostium) {
       // A trunk: it starts at its own sinus and reaches the groove it runs in.
-      const start = ostiumPoint(CORONARY_SINUSES[OSTIUM_OF[branch.id === 'rca' ? 'rca' : 'leftMain']], root);
-      points = branch.groove ? [start, ...centrelineFor(branch, { surfacePoint, shape }, where)] : [start];
+      const start = ostiumPoint(CORONARY_SINUSES[OSTIUM_OF[branch.id === 'rca' ? 'rca' : 'leftMain']], context.root);
+      points = branch.groove ? [start, ...centrelineFor(branch, context, where)] : [start];
       if (!branch.groove) {
         // The left main is a short trunk with no groove of its own. It ends
         // where its two branches begin, which is where the anterior
         // interventricular groove starts — derived, not typed, so the trunk
         // and its branches cannot come apart.
         const lad = CORONARY_BRANCHES.find((b) => b.id === 'lad');
-        const [first] = centrelineFor(lad, { surfacePoint, shape });
+        const [first] = centrelineFor(lad, context);
         points = [start, start.clone().lerp(first, 0.55), first];
       }
     } else {
       const parent = byId.get(branch.parent);
       if (!parent) throw new Error(`Branch "${branch.id}" names a parent that is not built yet`);
-      const own = centrelineFor(branch, { surfacePoint, shape }, where);
+      const own = centrelineFor(branch, context, where);
       // Joined to the parent's nearest point rather than to its end, because
       // the posterior descending leaves the right coronary at the crux, which
       // is where the right atrioventricular groove turns down — a place along
@@ -241,8 +273,20 @@ export function buildCoronaryArteries({
       }
       points = [nearest, ...own];
     }
+    return points;
+  };
+
+  for (const branch of CORONARY_BRANCHES) {
+    const where = [];
+    const points = controlPointsFor(branch, { surfacePoint, shape, root }, where);
 
     const curve = smoothCurve(points.map((p) => [p.x, p.y, p.z]));
+    // The arc-length table is rebuilt every time the vessel is relaid on a
+    // moving wall, and Three's default of 200 divisions is more than a
+    // 44-point spline sampled at 48 steps can use. 64 is worth about 6% of the
+    // relay — small, but it is 200 curve evaluations per vessel per frame that
+    // buy nothing.
+    curve.arcLengthDivisions = 64;
     const surface = new TubeSurface(curve, {
       radius: (u) => radiusAlong(branch, u),
       steps: 48,
@@ -276,6 +320,39 @@ export function buildCoronaryArteries({
 
   return {
     object,
+    /**
+     * Lay the arteries back down on the wall, wherever the wall is now.
+     *
+     * Built once and left alone, these vessels sit where the *end-diastolic*
+     * epicardium was. Measured against the mesh that is actually drawn, the
+     * furthest an artery stood off the wall went from 0.35 scene units at end
+     * diastole to 0.64 at mid-systole — at the apex, where the vessels are
+     * thinnest — and in a render the two descending arteries left the
+     * silhouette and hung in space below the heart. A beating ventricle moves
+     * away from anything that does not beat with it.
+     *
+     * `displace` is the caller's chance to move each sample after it is placed
+     * on the surface; the scene uses it to hold an artery back over myocardium
+     * that is not contracting, so a vessel travels as far as the wall under it
+     * and no further.
+     *
+     * @param {object} shape the epicardium as it is now
+     * @param {{ displace?: (point: THREE.Vector3,
+     *   where: { u: number, t: number, phi: number, lift: number }) => void }} [options]
+     */
+    layOn(shape, { displace } = {}) {
+      for (const record of branches) {
+        const points = controlPointsFor(record, { surfacePoint, shape, root, displace }, record.where);
+        record.points = points;
+        if (record.curve.points.length !== points.length) {
+          record.curve.points = points.map((p) => p.clone());
+        } else {
+          for (let i = 0; i < points.length; i++) record.curve.points[i].copy(points[i]);
+        }
+        record.curve.updateArcLengths();
+        record.surface.resample();
+      }
+    },
     /** Five named epicardial arteries. */
     branches,
     branchById: (id) => byId.get(id) ?? null,

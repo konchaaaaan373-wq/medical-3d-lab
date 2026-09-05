@@ -194,6 +194,42 @@ function surfaceNoise(t, phi) {
  */
 const CUT_FACE_OPEN = 0.45;
 
+/**
+ * How close the two ends of the lathe have to be, as a fraction of the
+ * ventricle's outer semi-length, before their shading is welded into one
+ * surface.
+ */
+const WELD_SPAN = 0.02;
+
+/**
+ * The widest the two cut boundaries can bow apart, in radians: both sides at
+ * the peak of both their S-curves, pulling away from each other.
+ */
+const MAX_CUT_BOW =
+  VENTRICLE_SHAPING.cutCurveA +
+  VENTRICLE_SHAPING.cutCurveB +
+  VENTRICLE_SHAPING.cutCurveA2 +
+  VENTRICLE_SHAPING.cutCurveB2;
+
+/**
+ * How much of the cut boundary's bow a wedge of this angle can afford.
+ *
+ * The bow makes each cut edge an S-curve rather than a flat radial plane, and
+ * it pulls both edges *away* from the wedge — which is why it has to be capped
+ * by the wedge itself. A lathe closed all the way round (`cutAngle` 0) has no
+ * cut boundary to shape, and applying the bow to it prises the first and last
+ * columns apart: on the ischemia scene that was a 13-19 px slit straight down
+ * the anterior wall, background showing through the myocardium, widest at
+ * mid-height and closing at the apex where `sealOpenFraction` already damped
+ * the warp to nothing.
+ *
+ * At the 99° wedge the heart-failure scene cuts, this is exactly 1 and the
+ * geometry is unchanged: 1.728 rad of wedge against 0.25 rad of bow.
+ */
+function cutBowScale(cutAngle) {
+  return Math.min(1, cutAngle / MAX_CUT_BOW);
+}
+
 /** How far the cut wedge is open at profile fraction t: 0 sealed, 1 fully. */
 function sealOpenFraction(t) {
   return smooth(0.08, VENTRICLE_SHAPING.apexSealEnd, t);
@@ -688,15 +724,20 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
    */
   const writePair = (i, phiBase, edge0, edge1, outIndex, inIndex) => {
     const t = tArr[i];
+    const bowScale = cutBowScale(basePhi[0] * 2);
     // The cut boundaries bow with side-specific S-curves rather than lying
     // in flat radial planes; the warp fades into the surface columns.
     const cutWarp =
       edge0 > 0
-        ? edge0 * (SH.cutCurveA * Math.sin(Math.PI * t + 0.25) + SH.cutCurveB * Math.sin(2.2 * Math.PI * t + 1.1))
+        ? bowScale *
+          edge0 *
+          (SH.cutCurveA * Math.sin(Math.PI * t + 0.25) + SH.cutCurveB * Math.sin(2.2 * Math.PI * t + 1.1))
         : 0;
     const cutWarp1 =
       edge1 > 0
-        ? -edge1 * (SH.cutCurveA2 * Math.sin(Math.PI * t + 0.55) + SH.cutCurveB2 * Math.sin(1.7 * Math.PI * t + 0.3))
+        ? -bowScale *
+          edge1 *
+          (SH.cutCurveA2 * Math.sin(Math.PI * t + 0.55) + SH.cutCurveB2 * Math.sin(1.7 * Math.PI * t + 0.3))
         : 0;
     const phi0 = Math.PI + (phiBase - Math.PI) * spanScale[i] + (cutWarp + cutWarp1) * sealOpenFraction(t);
     const phi = phi0 + torsion * twistW[i];
@@ -788,15 +829,28 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   kit.geometry.attributes.position.needsUpdate = true;
   kit.geometry.computeVertexNormals();
 
-  // Where the wedge has closed, the first and last lathe columns coincide;
-  // averaging their normals welds the shading across the seam so the sealed
-  // apex reads as one continuous surface instead of a crease.
+  // Where the first and last lathe columns coincide, averaging their normals
+  // welds the shading across the seam so the surface reads as continuous
+  // instead of creasing along it.
+  //
+  // The test is how far apart the two columns actually are, not how far up the
+  // wedge has sealed. Those pick out the same rows on a cut lathe — the columns
+  // only come together near the apex — but not on a closed one, where they meet
+  // at every height and the crease would otherwise run the full length of the
+  // anterior wall. The tolerance is a fraction of the ventricle's own length so
+  // it means the same thing at any size; the sealed apex of the 99° wedge sits
+  // at about 0.5% of it, and the open wedge above at fifty times that.
   const normals = kit.geometry.attributes.normal.array;
+  const weldTolerance = WELD_SPAN * outerSemiLength;
   for (let i = 0; i < N; i++) {
-    if (sealOpenFraction(tArr[i]) > 0.45) continue;
     for (const idx of [i, profileCount - 1 - i]) {
       const a = idx * 3;
       const b = (S * profileCount + idx) * 3;
+      const apart =
+        Math.abs(positions[a] - positions[b]) +
+        Math.abs(positions[a + 1] - positions[b + 1]) +
+        Math.abs(positions[a + 2] - positions[b + 2]);
+      if (apart > weldTolerance) continue;
       const nx = normals[a] + normals[b];
       const ny = normals[a + 1] + normals[b + 1];
       const nz = normals[a + 2] + normals[b + 2];

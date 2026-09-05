@@ -157,19 +157,46 @@ export const METRICS = [
   },
 ];
 
-/** The charts, by the id each panel is keyed on. */
+/**
+ * The charts, by the id each panel is keyed on.
+ *
+ * The shape here is the one `components/ChartPanel.js` documents — `title`,
+ * `x`, `y`, `key` — and it has to be, because nothing checks it at import time.
+ * Written first with `label`, `xLabel` and `yLabel`, the panel drew the series
+ * against an auto-scaled axis, never drew the progress marker at all, and threw
+ * a `TypeError` reading `spec.x.invert` the moment it tried to draw the axes.
+ * The scene looked fine; the chart beside it was dead. That is the same failure
+ * the pulmonary oedema scene shipped, one component along.
+ *
+ * Both axes are fixed at 0-1 rather than scaled to the data. Burden runs to
+ * about 0.73 over this episode and an auto-scaled axis would stretch that to
+ * fill the panel, which is precisely the misreading a burden chart exists to
+ * prevent: it would show a territory at three-quarters of its capacity as one
+ * at the top of the scale.
+ */
 export const CHARTS = [
   {
     id: 'burden-over-episode',
-    label: 'Ischemic burden through the episode',
-    labelJa: '経過中の虚血負荷',
-    caption:
-      'Burden is an integral, not a reading. The gap between the two curves after flow returns is stunning.',
-    captionJa:
-      '負荷は「読み取り値」ではなく積分です。血流が戻ったあとの 2 本の差が stunning です。',
-    xLabel: 'Episode progress',
-    xLabelJa: '経過（正規化）',
-    yLabel: '0 – 1',
+    title: 'Ischemic burden through the episode',
+    titleJa: '経過中の虚血負荷',
+    // Appended to the title in whichever language is showing, so it has to read
+    // in both. English prose here produced "経過中の虚血負荷 · 0 – 1 against
+    // episode progress" on the Japanese surface.
+    unitLabel: '0 – 1',
+    height: 116,
+    x: {
+      label: 'Episode progress',
+      labelJa: '経過（正規化）',
+      min: 0,
+      max: 1,
+      ticks: [0, 0.5, 1],
+    },
+    y: { label: 'Ischemic burden', labelJa: '虚血負荷', min: 0, max: 1, ticks: [0, 0.5, 1] },
+    key: [
+      { id: 'lad', label: 'Anterior descending', labelJa: '左前下行枝', color: TERRITORY_COLORS.lad },
+      { id: 'rca', label: 'Right coronary', labelJa: '右冠動脈', color: TERRITORY_COLORS.rca },
+      { id: 'lcx', label: 'Circumflex', labelJa: '左回旋枝', color: TERRITORY_COLORS.lcx },
+    ],
   },
 ];
 

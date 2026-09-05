@@ -399,6 +399,8 @@ export class MyocardialIschemiaScene {
     });
     beating.baseY = ANATOMY.baseY;
     updateVentricleGeometry(this.kit, beating, {});
+    /** The wall as it is drawn this frame, for anything that has to sit on it. */
+    this.beatingShape = beating;
 
     // Regional wall motion: pull each vertex back toward where it sits at end
     // diastole, in proportion to how much contraction its territory has lost.
@@ -452,6 +454,29 @@ export class MyocardialIschemiaScene {
     position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.computeVertexNormals();
+
+    // The arteries lie on the wall, so they move with it — both parts of it.
+    // The beat is the obvious part: built once and left alone, the vessels sat
+    // where the end-diastolic epicardium had been, and by mid-systole the two
+    // descending arteries had left the silhouette and were hanging in space
+    // below the apex. The regional part matters more for what this scene
+    // teaches: an artery over myocardium that has stopped contracting travels
+    // as far as that myocardium does and no further, which is the same
+    // `held` the wall itself is blended back by.
+    const atRest = new THREE.Vector3();
+    const atNow = new THREE.Vector3();
+    this.coronaries.layOn(beating, {
+      displace: (point, where) => {
+        let held = 0;
+        for (const territory of TERRITORIES) {
+          held += where.weights[territory] * (1 - wallMotionAmplitude(this.myocardialState, territory));
+        }
+        if (held <= 0) return;
+        epicardialSurfacePoint(this.restShape, where.t, where.phi, atRest);
+        epicardialSurfacePoint(beating, where.t, where.phi, atNow);
+        point.addScaledVector(atRest.sub(atNow), held);
+      },
+    });
 
     // The narrowed artery darkens — the vessel, not the muscle it feeds.
     const lad = this.coronaries.branchById('lad');
@@ -544,19 +569,29 @@ export class MyocardialIschemiaScene {
       });
     }
 
+    // The per-frame half of the chart contract, and only that: the title, the
+    // axes and the key are static and live in `src/data/`. Written first with a
+    // `domain` and a `marker` — neither of which the panel reads — the axes
+    // silently auto-scaled and the "you are here" dot never appeared.
     const chart = CHARTS[0];
+    const walkingBurden = series.find((entry) => entry.id === 'lad');
+    const here = walkingBurden.points[Math.round(this.progress * 60)];
     return {
       [chart.id]: {
-        label: chart.label,
-        labelJa: chart.labelJa,
-        caption: chart.caption,
-        captionJa: chart.captionJa,
-        xLabel: chart.xLabel,
-        xLabelJa: chart.xLabelJa,
-        yLabel: chart.yLabel,
-        domain: { x: [0, 1], y: [0, 1] },
-        marker: { x: this.progress },
+        x: { min: 0, max: 1 },
+        y: { min: 0, max: 1 },
         series,
+        // Where on the episode the reader is, on the curve the scene is about.
+        markers: [{ x: here.x, y: here.y, color: TERRITORY_COLORS.lad, radius: 3 }],
+        // Where each stage begins, so the curve's shape can be read against the
+        // story. `dash` is a dash *pattern* here, not a flag: the panel passes
+        // it straight to `setLineDash`, and `true` throws.
+        rules: STAGES.filter((stage) => stage.at > 0).map((stage) => ({
+          axis: 'x',
+          at: stage.at,
+          color: 'rgba(255, 255, 255, 0.18)',
+          dash: [2, 4],
+        })),
       },
     };
   }

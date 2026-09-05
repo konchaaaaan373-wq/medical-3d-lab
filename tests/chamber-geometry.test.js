@@ -256,3 +256,55 @@ test('systolic torsion rotates the apex and leaves the base alone', () => {
   assert.ok(rimDelta < 0.01, `base must not rotate under torsion (got ${rimDelta.toFixed(3)})`);
   assert.ok(positions.count > 0);
 });
+
+test('a lathe with no wedge closes: its first and last columns meet', () => {
+  // The cut boundaries bow with side-specific S-curves instead of lying in flat
+  // radial planes, and the bow pulls both edges *away* from the wedge. Applied
+  // to a lathe built with no wedge at all, it prised the two ends apart: on the
+  // ischemia scene, which closes the wedge because it looks at the outside of
+  // the heart, that was a 13-19 px slit straight down the middle of the
+  // anterior wall with the background showing through it — widest at
+  // mid-height, closing at the apex where the seal already damped the warp.
+  //
+  // The bow is capped by the wedge it shapes, so at `cutAngle` 0 there is none.
+  const shape = { ...solvedShape(0.2), baseY: ANATOMY.baseY };
+  const kit = buildVentricleGeometry({ profilePoints: 26, segments: 48, cutAngle: 0 });
+  updateVentricleGeometry(kit, shape, { torsion: 0.05 });
+
+  let worst = 0;
+  let worstAt = null;
+  for (let i = 0; i < kit.profileCount; i++) {
+    const a = vertexAt(kit, 0, i);
+    const b = vertexAt(kit, kit.S, i);
+    const gap = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    if (gap > worst) {
+      worst = gap;
+      worstAt = `profile row ${i}`;
+    }
+  }
+  // A tenth of the wall thickness. What is left is the azimuthal surface noise,
+  // whose frequencies are not whole numbers and so do not repeat over 2π.
+  assert.ok(
+    worst < 0.1 * shape.wallThickness,
+    `the seam closes: worst ${worst.toFixed(4)} at ${worstAt}, wall ${shape.wallThickness.toFixed(3)}`
+  );
+});
+
+test('the wedge the heart-failure scene cuts keeps its bowed cut boundary', () => {
+  // The cap on the bow must not quietly flatten the cut edges of the scene the
+  // bow was written for: 99° of wedge against 0.25 rad of bow at its very
+  // widest, so the cap is 1 and the boundary is untouched.
+  const shape = { ...solvedShape(0.2), baseY: ANATOMY.baseY };
+  const kit = buildVentricleGeometry({ profilePoints: 26, segments: 48, cutAngle: ANATOMY.cutAngle });
+  updateVentricleGeometry(kit, shape, { torsion: 0 });
+
+  // The first column's azimuth should wander with height rather than sitting at
+  // one angle, which is what "not a flat radial plane" means.
+  const angles = [];
+  for (let i = 2; i < 26; i++) {
+    const p = vertexAt(kit, 0, i);
+    angles.push(Math.atan2(p.x, p.z));
+  }
+  const spread = Math.max(...angles) - Math.min(...angles);
+  assert.ok(spread > 0.05, `the cut edge still bows: azimuth spread ${spread.toFixed(3)} rad`);
+});
