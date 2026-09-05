@@ -181,6 +181,29 @@ Playwright is deliberately not a dependency. `npm test` stays a plain
 on demand in its own CI job, and says so plainly when it is missing rather than
 passing because it did not run.
 
+**What one engine cannot cover, it says rather than fails.** Two facts about an
+engine are not facts about the product, and both would otherwise paint a job
+permanently red:
+
+- **Safari does not Tab to links** unless full keyboard access is on. Counted
+  with the buttons, that convention reports every link on every surface as
+  unreachable.
+- **A runner with no GPU may have no WebGL2.** Firefox on a GitHub runner
+  declines the context outright — `AllowWebgl2:false restricts context creation
+  on this system` — and three.js has required WebGL2 since r163, so every 3D
+  surface drops to the renderer fallback and logs the refusal. Counted as page
+  defects that is twelve failures a run: two surfaces on each of six viewports.
+  The check now asks Firefox for a software context first, and if the engine
+  still declines, the refusal becomes one note per surface naming the engine.
+
+Both distinctions are *earned*, not assumed: the Tab one needs Tab to have
+reached other controls first, and the WebGL one needs the engine to have said,
+on a blank page before any surface was measured, that it cannot make a context
+at all. An engine that can still has its renderer errors counted as the page's.
+Whatever a run could not cover is printed in the manual list at the end of it,
+so the coverage this file promises and the coverage a run delivered cannot
+drift apart quietly.
+
 ---
 
 ## 3. What CI cannot check

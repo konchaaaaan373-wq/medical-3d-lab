@@ -292,3 +292,55 @@ test('an engine that does not tab to links is told apart from a page that lost o
   const branch = check.slice(check.indexOf('if (fullTabWalk && measured.unreachableLinks.length)'));
   assert.match(branch.slice(0, 900), /visible link\(s\) the Tab key never reached/);
 });
+
+test('an engine with no WebGL2 is told apart from a renderer that failed', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // On a runner with no GPU, Firefox declines the context outright
+  // (`AllowWebgl2:false restricts context creation on this system`) and three.js
+  // has required WebGL2 since r163 — so every 3D surface drops to the fallback
+  // and logs the refusal. Counted as page defects, that is twelve failures per
+  // run: two surfaces on every viewport, and a job painted red by the machine
+  // it runs on rather than by the product.
+  assert.match(check, /const engineHasWebgl2 = await/);
+  assert.match(check, /canvas\.getContext\('webgl2'\)/);
+
+  // Asked once, of a blank page, before any surface is measured — or the answer
+  // is about a surface rather than about the engine.
+  const probe = check.slice(check.indexOf('const engineHasWebgl2'));
+  assert.ok(
+    check.indexOf('const engineHasWebgl2') < check.indexOf('for (const surface of surfaces)'),
+    'the probe runs before the first surface',
+  );
+  assert.match(probe.slice(0, 900), /browser\.newPage\(\)/);
+
+  // The distinction is earned: only an engine that has already said it has no
+  // WebGL2 gets its renderer errors excused.
+  assert.match(check, /if \(!engineHasWebgl2 && RENDERER_CONSOLE\.some/);
+
+  // And it is a note, not a silence — the errors are shown, and the run says
+  // which coverage it lacked.
+  assert.match(check, /renderer error\(s\) not counted/);
+  assert.match(
+    check,
+    /Anything drawn by the renderer: \$\{engine\} makes no WebGL2 context on this machine\./,
+  );
+
+  // Where the engine does have WebGL2, a renderer error is still the page's.
+  const branch = check.slice(check.indexOf('if (console_.length)'));
+  assert.match(branch.slice(0, 400), /console error\(s\)/);
+});
+
+test('Firefox is asked for a software context before it is excused', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // Excusing the engine is the fallback, not the first move: a runner that will
+  // give Firefox a software WebGL2 context should be measuring the 3D surfaces,
+  // not noting that it could not.
+  assert.match(check, /const FIREFOX_PREFS = \{/);
+  for (const pref of ['webgl.force-enabled', 'webgl.forbid-software']) {
+    assert.ok(check.includes(pref), `it asks for ${pref}`);
+  }
+  // Firefox prefs are Firefox's, the same way the Chromium switches are.
+  assert.match(check, /engineName === 'firefox' \? \{ firefoxUserPrefs: FIREFOX_PREFS \} : \{\}/);
+});

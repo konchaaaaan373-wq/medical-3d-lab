@@ -540,6 +540,25 @@ const BROWSER_ARGS = [
   '--disable-features=OptimizationHints,Translate,MediaRouter,AutofillServerCommunication,InterestFeedContentSuggestions',
 ];
 
+/**
+ * Firefox's own reasons for refusing a WebGL2 context, answered where we can.
+ *
+ * On a CI runner with no GPU, Firefox's gfx layer refuses the context outright
+ * — `AllowWebgl2:false restricts context creation on this system` — and three.js
+ * has required WebGL2 since r163, so every 3D surface drops to the renderer
+ * fallback. These ask it to allow a software context instead of declining.
+ *
+ * They are a *try*, not a guarantee: whether a given runner honours them
+ * depends on its blocklist, which is why the run also has to survive the case
+ * where it still says no. That is what `engineHasWebgl2` below is for.
+ */
+const FIREFOX_PREFS = {
+  'webgl.force-enabled': true,
+  'webgl.disabled': false,
+  'webgl.forbid-software': false,
+  'gfx.webrender.software': true,
+};
+
 // `BROWSER_ARGS` are Chromium switches; Firefox and WebKit neither accept nor
 // need them, and the network isolation they provide is done for every engine by
 // the route below instead.
@@ -554,6 +573,7 @@ try {
     ...(engineName === 'chromium'
       ? { executablePath: process.env.CHROMIUM_PATH || undefined, args: BROWSER_ARGS }
       : {}),
+    ...(engineName === 'firefox' ? { firefoxUserPrefs: FIREFOX_PREFS } : {}),
   });
 } catch (error) {
   const missing = /Executable doesn't exist|playwright install/i.test(error?.message ?? '');
@@ -571,6 +591,61 @@ try {
 
 const ENGINE_LABEL = { chromium: 'Chromium', firefox: 'Firefox', webkit: 'WebKit' };
 const engine = `${ENGINE_LABEL[engineName]} ${browser.version()}`;
+
+/**
+ * Can this engine, on this machine, make a WebGL2 context at all?
+ *
+ * Asked once, of a blank page, before any surface is measured — so the answer
+ * is a fact about the engine and the runner, not about anything the product
+ * does. On a GitHub runner Firefox answers no: its gfx layer declines with
+ * `AllowWebgl2:false restricts context creation on this system`, and three.js
+ * has required WebGL2 since r163, so every 3D surface drops to the renderer
+ * fallback and three.js logs its refusal as a console error.
+ *
+ * Without this the run reported that refusal as twelve page defects — two
+ * surfaces on every viewport, on every scene — which is a job painted red by
+ * the machine it runs on. With it, the same console lines become one note per
+ * surface naming the engine, and the run says at the end which coverage it
+ * therefore lacked. Everything that does not need a renderer — layout,
+ * overflow, target sizes, the Tab walk — is measured exactly as before.
+ *
+ * The distinction is earned rather than assumed, the same way the Tab-to-links
+ * one is: an engine that *can* make a context still has its renderer errors
+ * counted as failures, because then they are the page's.
+ */
+const engineHasWebgl2 = await (async () => {
+  const page = await browser.newPage();
+  try {
+    return await page.evaluate(() => {
+      try {
+        const canvas = document.createElement('canvas');
+        return Boolean(canvas.getContext('webgl2'));
+      } catch {
+        return false;
+      }
+    });
+  } catch {
+    return false;
+  } finally {
+    await page.close();
+  }
+})();
+
+/**
+ * three.js refusing to start, in its own words.
+ *
+ * Only consulted when the engine has already said it has no WebGL2, so these
+ * cannot excuse a renderer that failed for some other reason on an engine that
+ * has one.
+ */
+const RENDERER_CONSOLE = [
+  /WebGL context could not be created/i,
+  /Error creating WebGL context/i,
+  /WebGL creation failed/i,
+  /WebGL 1 is not supported/i,
+  /AllowWebgl2/i,
+];
+let engineRendererNote = false;
 const problems = [];
 const notes = [];
 // Set when an engine turned out not to tab to links at all, so the summary can
@@ -610,10 +685,17 @@ try {
       process.stdout.write(`  ${where}${' '.repeat(Math.max(1, 42 - where.length))}`);
       const startedAt = Date.now();
       const console_ = [];
+      const rendererConsole = [];
       const onConsole = (message) => {
         if (message.type() !== 'error') return;
         const text = message.text();
         if (IGNORED_CONSOLE.some((pattern) => pattern.test(text))) return;
+        // An engine with no WebGL2 says so through three.js, once per attempt.
+        // That is the runner talking, not the page.
+        if (!engineHasWebgl2 && RENDERER_CONSOLE.some((pattern) => pattern.test(text))) {
+          rendererConsole.push(text);
+          return;
+        }
         console_.push(text);
       };
       const onError = (error) => console_.push(`uncaught: ${error.message}`);
@@ -811,7 +893,21 @@ try {
           // is designed to stay usable without one. It is recorded, because a
           // scene check that silently measured the fallback every time would
           // be reporting on something else.
-          notes.push(`${where}: no WebGL canvas — the renderer fallback was measured instead`);
+          notes.push(
+            engineHasWebgl2
+              ? `${where}: no WebGL canvas — the renderer fallback was measured instead`
+              : `${where}: no WebGL canvas — ${engine} makes no WebGL2 context on this machine, ` +
+                'so the renderer fallback was measured instead',
+          );
+        }
+        if (rendererConsole.length) {
+          // Named rather than swallowed, so a run that could not exercise the
+          // renderer never looks like one that did.
+          engineRendererNote = true;
+          notes.push(
+            `${where}: ${rendererConsole.length} renderer error(s) not counted — ` +
+              `${engine} has no WebGL2 here\n    ${rendererConsole.slice(0, 2).join('\n    ')}`,
+          );
         }
         if (console_.length) {
           problems.push(`${where}: ${console_.length} console error(s)\n    ${console_.slice(0, 3).join('\n    ')}`);
@@ -921,6 +1017,9 @@ for (const line of [
     : 'Safari on real iOS: WebKit here is the engine, not the browser or the OS.',
   ...(engineLinkNote
     ? [`Tabbing to links: ${engine} does not, so this run could not measure it.`]
+    : []),
+  ...(engineRendererNote
+    ? [`Anything drawn by the renderer: ${engine} makes no WebGL2 context on this machine.`]
     : []),
   'A screen reader: VoiceOver and TalkBack reading each surface end to end.',
   'Pinch zoom to 400% and the software keyboard covering the viewport.',
