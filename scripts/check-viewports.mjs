@@ -394,14 +394,32 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const belowFloor = [];
   const belowIntent = [];
   const unreachable = [];
+  const unreachableLinks = [];
   const covered = [];
   const coveredByTransient = [];
   const scrolledOut = [];
+  // Links are counted apart from the rest. Safari does not move focus to a link
+  // on Tab unless full keyboard access is on, so on a WebKit run "no link was
+  // ever focused" is a fact about the engine, while "this button was never
+  // focused" is a fact about the page. Reported as one thing they are
+  // indistinguishable, and the engine's convention would bury every real
+  // finding under a list of every link on the surface.
+  let linksPresent = 0;
+  let linksReached = 0;
+  let controlsReached = 0;
   for (const element of document.querySelectorAll(INTERACTIVE)) {
     if (!visible(element)) continue;
     if (exemptions.some((selector) => element.closest(selector))) continue;
-    if (element.getAttribute('tabindex') !== '-1' && !element.hasAttribute('data-vp-focus')) {
-      unreachable.push(describe(element));
+    const isLink = element.tagName === 'A' && element.hasAttribute('href');
+    const reached = element.hasAttribute('data-vp-focus');
+    if (isLink) {
+      linksPresent += 1;
+      if (reached) linksReached += 1;
+    } else if (reached) {
+      controlsReached += 1;
+    }
+    if (element.getAttribute('tabindex') !== '-1' && !reached) {
+      (isLink ? unreachableLinks : unreachable).push(describe(element));
     }
     const rect = element.getBoundingClientRect();
     const blocker = blockedBy(element, rect);
@@ -422,6 +440,10 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     belowFloor,
     belowIntent,
     unreachable,
+    unreachableLinks,
+    // Tab reached other controls but not one single link: the engine does not
+    // tab to links, rather than the page having lost all of them at once.
+    engineSkipsLinks: linksPresent > 0 && linksReached === 0 && controlsReached > 0,
     covered,
     coveredByTransient,
     scrolledOut,
@@ -551,6 +573,9 @@ const ENGINE_LABEL = { chromium: 'Chromium', firefox: 'Firefox', webkit: 'WebKit
 const engine = `${ENGINE_LABEL[engineName]} ${browser.version()}`;
 const problems = [];
 const notes = [];
+// Set when an engine turned out not to tab to links at all, so the summary can
+// say which coverage this run did not have rather than implying it did.
+let engineLinkNote = false;
 const shortfalls = [];
 const rows = [];
 
@@ -755,6 +780,23 @@ try {
               `\n    ${measured.unreachable.slice(0, 6).join('\n    ')}`,
           );
         }
+        if (fullTabWalk && measured.unreachableLinks.length) {
+          if (measured.engineSkipsLinks) {
+            // Not this page's defect and not silently dropped: link reachability
+            // is simply not measurable on an engine that does not tab to links,
+            // and the other two engines in the matrix do measure it.
+            engineLinkNote = true;
+            notes.push(
+              `${where}: link focus not measured — ${engine} moved focus to none of ` +
+                `${measured.unreachableLinks.length} link(s) while reaching other controls`,
+            );
+          } else {
+            problems.push(
+              `${where}: ${measured.unreachableLinks.length} visible link(s) the Tab key never reached` +
+                `\n    ${measured.unreachableLinks.slice(0, 6).join('\n    ')}`,
+            );
+          }
+        }
         if (measured.belowIntent.length) {
           shortfalls.push({
             viewport: viewport.id,
@@ -786,7 +828,9 @@ try {
           belowIntent: measured.belowIntent.length,
           covered: measured.covered.length,
           controls: measured.interactiveCount,
-          unreachable: fullTabWalk ? measured.unreachable.length : null,
+          unreachable: fullTabWalk
+            ? measured.unreachable.length + (measured.engineSkipsLinks ? 0 : measured.unreachableLinks.length)
+            : null,
           tabStops: tab?.stops ?? null,
           scrollHeight: measured.scrollHeight,
           canvas: measured.hasCanvas,
@@ -875,6 +919,9 @@ for (const line of [
   engineName === 'chromium'
     ? 'Safari and Firefox — this run drove Chromium. CI runs all three engines.'
     : 'Safari on real iOS: WebKit here is the engine, not the browser or the OS.',
+  ...(engineLinkNote
+    ? [`Tabbing to links: ${engine} does not, so this run could not measure it.`]
+    : []),
   'A screen reader: VoiceOver and TalkBack reading each surface end to end.',
   'Pinch zoom to 400% and the software keyboard covering the viewport.',
   'Orbiting a scene by touch, and whether the gesture fights the page scroll.',
