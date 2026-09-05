@@ -309,33 +309,50 @@ export function cavitySurfacePoint(shape, t, phi, out) {
 }
 
 /**
- * A point on the (analytic) epicardial surface, in chamber-local space.
+ * A point on the epicardial surface, in chamber-local space.
  *
  * The outer counterpart of `cavitySurfacePoint`, and it exists for the same
  * reason: something outside this file has to put things *on* the ventricle, and
  * the only alternative is a second derivation of where the ventricle is. The
  * coronary arteries run on this surface, and a vessel placed by its own idea of
- * the epicardium sinks into muscle at one phase and floats off it at another.
+ * the epicardium sinks into muscle at one azimuth and floats off it at another.
  *
- * Like `cavitySurfacePoint`, this is the analytic form: no trabecular relief, no
- * noise, and **no basal shoulder** — above `shoulderStartT` the mesh rounds over
- * into the valve plane along a quarter-arc that depends on the cavity rim, and
- * reproducing that here would be the second derivation this is meant to avoid.
- * `t` is therefore clamped to the shoulder start, which is where the
- * atrioventricular grooves sit anyway. `tests/coronary-anatomy.test.js` measures
- * this against the built mesh.
+ * ## It has to be the wall the mesh draws, not the profile the wall came from
  *
- * @param {{ outerRadius: number, outerSemiLength: number, baseY: number }} shape
- * @param {number} t 0 apex .. `shoulderStartT` at the top of the ventricular body; higher clamps
+ * The lathe does not put the epicardium at the outer profile. It puts it at the
+ * cavity **plus the wall**, with the wall scaled by `wallThicknessFactor` — a
+ * field that boosts the septum by 22%, trims the free wall, and thins the apex
+ * to 60%. So the drawn surface sits further out than the raw outer profile on
+ * the septal side and further in at the apex, by a fifth of a wall thickness
+ * either way.
+ *
+ * The first version of this function returned the raw outer profile. Review
+ * caught it: the right coronary crosses the septal aspect, where the boost
+ * moves the visible wall outward by more than the vessel's own lift, so the
+ * artery was partly buried in muscle — while every test of it passed, because
+ * those tests compared against the same raw profile the vessel was placed on.
+ * That is also, it turned out, the real explanation for a gap at the apex that
+ * had been put down to the mesh sealing its tip: `apexThicknessFactor` is 0.6,
+ * and it pulls the epicardium toward the cavity there.
+ *
+ * Now it blends the two profiles exactly as the lathe does, so there is one
+ * derivation of the epicardium and both consumers read it.
+ *
+ * Two things are still skipped, for the same reason `cavitySurfacePoint` skips
+ * them: the trabecular relief, which is noise on the endocardium, and the basal
+ * shoulder above `shoulderStartT`, where the mesh arcs over toward the valve
+ * plane along a path that depends on the cavity rim. `t` clamps there, which is
+ * where the atrioventricular grooves sit anyway.
+ *
+ * @param {{ cavityRadius: number, cavitySemiLength: number, outerRadius: number,
+ *   outerSemiLength: number, baseY: number }} shape
+ * @param {number} t 0 apex .. `shoulderStartT` at the top of the body; higher clamps
  * @param {number} phi azimuth: 0 anterior, π/2 the patient's left
  * @param {THREE.Vector3} out
+ * @param {{ contextLobe?: boolean }} [options] whether this heart draws its right ventricle
  */
-export function epicardialSurfacePoint(shape, t, phi, out) {
+export function epicardialSurfacePoint(shape, t, phi, out, { contextLobe = true } = {}) {
   const S = VENTRICLE_SHAPING;
-  const dip = S.shoulderDip * shape.outerSemiLength;
-  const outerMax = Math.acos(
-    THREE.MathUtils.clamp(-(shape.baseY - dip) / shape.outerSemiLength, -1, 1)
-  );
   // Clamped to the top of the ventricular body, and clamped *once*: above
   // `shoulderStartT` the mesh rounds over into the valve plane along an arc
   // this form does not carry, so the whole point freezes there rather than its
@@ -344,13 +361,39 @@ export function epicardialSurfacePoint(shape, t, phi, out) {
   // degenerate — and a vessel laid along a degenerate normal oscillates in and
   // out of the muscle, which is exactly what the circumflex did.
   const clamped = THREE.MathUtils.clamp(t, 0, S.shoulderStartT);
-  const a = (clamped / S.shoulderStartT) * outerMax;
-  const r = shape.outerRadius * Math.pow(Math.sin(a), S.outerProfileExponent) * outerAngularShape(phi);
+
+  const dip = S.shoulderDip * shape.outerSemiLength;
+  const outerMax = Math.acos(
+    THREE.MathUtils.clamp(-(shape.baseY - dip) / shape.outerSemiLength, -1, 1)
+  );
+  const innerMax = Math.acos(
+    THREE.MathUtils.clamp(-shape.baseY / shape.cavitySemiLength, -1, 1)
+  );
+
+  const aOuter = (clamped / S.shoulderStartT) * outerMax;
+  const aCavity = clamped * innerMax;
+  const outerR = shape.outerRadius * Math.pow(Math.sin(aOuter), S.outerProfileExponent) * outerAngularShape(phi);
+  const outerY = -shape.outerSemiLength * Math.cos(aOuter);
+  const cavityR = shape.cavityRadius * Math.pow(Math.sin(aCavity), S.cavityProfileExponent) * cavityAngularShape(phi);
+  const cavityY = -shape.cavitySemiLength * Math.cos(aCavity);
+
+  // The wall, redistributed — the same blend `updateVentricleGeometry` applies.
+  const wall = wallThicknessFactor(clamped, phi);
+  const y = cavityY + (outerY - cavityY) * wall;
+  let r = cavityR + (outerR - cavityR) * wall;
+
+  // And the right ventricle, which the lathe adds on top as a bulge about the
+  // septal aspect. It is the largest single term out here — 0.085 of the outer
+  // semi-length, more than half a wall thickness — and it sits exactly where
+  // the right coronary and both interventricular grooves run. Left out, the
+  // right coronary was placed on a surface half a wall inside the one drawn.
+  if (contextLobe) r += rvLobe(clamped, phi) * shape.outerSemiLength;
+
   const w = (1 - clamped) * (1 - clamped);
   const bow = Math.sin(Math.PI * clamped) * S.longAxisBow * shape.outerSemiLength;
   out.set(
     r * Math.sin(phi) + S.apexDriftX * shape.outerSemiLength * w + bow,
-    -shape.outerSemiLength * Math.cos(a),
+    y,
     r * Math.cos(phi) + S.apexDriftZ * shape.outerSemiLength * w
   );
   return out;

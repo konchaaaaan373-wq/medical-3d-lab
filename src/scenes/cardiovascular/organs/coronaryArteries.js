@@ -120,7 +120,7 @@ function surfaceNormal(surfacePoint, shape, t, phi, out) {
  * declared in `coronaryAnatomy.js` and neither is written here, so a vessel
  * cannot end up in a groove nothing named.
  */
-function centrelineFor(branch, { surfacePoint, shape }) {
+function centrelineFor(branch, { surfacePoint, shape }, where = []) {
   const groove = GROOVES[branch.groove];
   if (!groove) throw new Error(`Branch "${branch.id}" names no groove`);
 
@@ -152,6 +152,11 @@ function centrelineFor(branch, { surfacePoint, shape }) {
     surfacePoint(shape, t, phi, point);
     surfaceNormal(surfacePoint, shape, t, phi, normal);
     points.push(point.clone().addScaledVector(normal, lift));
+    // Where on the ventricle this sample sits, carried rather than searched
+    // for later. A test that has to invert the surface to find out is measuring
+    // its own search as much as the vessel — and near the apex, where the mesh
+    // rows are furthest apart, the search's error is larger than the vessel.
+    where.push({ u, t, phi, lift });
   }
   return points;
 }
@@ -202,11 +207,12 @@ export function buildCoronaryArteries({
 
   for (const branch of CORONARY_BRANCHES) {
     let points;
+    const where = [];
 
     if (branch.ostium) {
       // A trunk: it starts at its own sinus and reaches the groove it runs in.
       const start = ostiumPoint(CORONARY_SINUSES[OSTIUM_OF[branch.id === 'rca' ? 'rca' : 'leftMain']], root);
-      points = branch.groove ? [start, ...centrelineFor(branch, { surfacePoint, shape })] : [start];
+      points = branch.groove ? [start, ...centrelineFor(branch, { surfacePoint, shape }, where)] : [start];
       if (!branch.groove) {
         // The left main is a short trunk with no groove of its own. It ends
         // where its two branches begin, which is where the anterior
@@ -219,7 +225,7 @@ export function buildCoronaryArteries({
     } else {
       const parent = byId.get(branch.parent);
       if (!parent) throw new Error(`Branch "${branch.id}" names a parent that is not built yet`);
-      const own = centrelineFor(branch, { surfacePoint, shape });
+      const own = centrelineFor(branch, { surfacePoint, shape }, where);
       // Joined to the parent's nearest point rather than to its end, because
       // the posterior descending leaves the right coronary at the crux, which
       // is where the right atrioventricular groove turns down — a place along
@@ -254,6 +260,12 @@ export function buildCoronaryArteries({
       curve,
       points,
       surface,
+      /**
+       * Where each centreline sample sits on the ventricle, and how far it was
+       * lifted off it. Carried so anything checking this vessel against the
+       * drawn mesh can look at the same place rather than searching for it.
+       */
+      where,
       /** This vessel's calibre a fraction `u` along itself. */
       radiusAt: (u) => radiusAlong(branch, u),
     };

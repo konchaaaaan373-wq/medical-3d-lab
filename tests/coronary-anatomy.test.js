@@ -150,63 +150,121 @@ function distanceToGroove(point, groove) {
    The surface the vessels are laid on
    -------------------------------------------------------------------------- */
 
-test('the analytic epicardium agrees with the mesh, and where it stops agreeing', () => {
-  // The first version of this test was named for the mesh and never touched it:
-  // it compared the analytic epicardium against the analytic *cavity*, which
-  // says nothing about what is drawn. It passed while the vessels hung below
-  // the heart in a render. A test named for a thing it does not measure is
-  // worse than no test, so this one builds the mesh and reads its vertices.
+/** The ventricle's own mesh, and a way to read it at an exact place on it. */
+function builtMesh() {
   const kit = buildVentricleGeometry({ cutAngle: 0.001 });
   updateVentricleGeometry(kit, shape, {});
+  const position = kit.geometry.attributes.position;
+  const TAU = Math.PI * 2;
+  const wrap = (angle) => ((angle % TAU) + TAU) % TAU;
+  const at = (column, row) =>
+    new THREE.Vector3().fromBufferAttribute(position, column * kit.profileCount + row);
+
+  // Bilinear over the lathe's own grid, so a point can be compared at the exact
+  // `(t, phi)` it was placed at rather than at whichever vertex happens to be
+  // nearest. Nearest-vertex was tried and measures the vertex spacing: it
+  // reported vessels swinging between three radii inside the wall and three
+  // outside it, sample to sample, on a tree that never left the surface.
+  const surfaceAt = (t, phi) => {
+    const row = Math.min(kit.N - 1, Math.max(0, t * (kit.N - 1)));
+    const r0 = Math.floor(row);
+    const r1 = Math.min(kit.N - 1, r0 + 1);
+    const step = kit.basePhi[1] - kit.basePhi[0];
+    const column = wrap(phi - kit.basePhi[0]) / step;
+    const c0 = Math.min(kit.S, Math.floor(column));
+    const c1 = Math.min(kit.S, c0 + 1);
+    const a = at(c0, r0).lerp(at(c0, r1), row - r0);
+    const b = at(c1, r0).lerp(at(c1, r1), row - r0);
+    return a.lerp(b, column - c0);
+  };
+  return { kit, surfaceAt, dispose: () => kit.geometry.dispose() };
+}
+
+test('the analytic epicardium is the surface the mesh actually draws', () => {
+  // This test has been wrong twice, in two different ways, and both are worth
+  // recording because both passed while something was visibly broken.
+  //
+  // It was first named for the mesh and never touched it: it compared the
+  // analytic epicardium against the analytic *cavity*. It passed while vessel
+  // tips hung below the heart.
+  //
+  // It then read the mesh — along **one lathe column**. That cannot see an
+  // angular effect, and the thing it could not see was the largest term out
+  // here: the lathe puts the epicardium at the cavity plus the wall, with the
+  // wall scaled by `wallThicknessFactor`, and adds the right ventricle on top
+  // as a bulge about the septal aspect. Both are functions of azimuth. The
+  // right coronary crosses the septum, so it was placed half a wall inside the
+  // surface that gets drawn, and the single-column test agreed it was fine.
+  //
+  // So: every column, every row, below the shoulder.
+  const { kit, dispose } = builtMesh();
   const position = kit.geometry.attributes.position;
   const vertex = new THREE.Vector3();
   const analytic = new THREE.Vector3();
 
-  // Column 0 of the lathe, row by row: the mesh's own epicardial profile at a
-  // known azimuth, against the analytic form at the same `t`. Comparing whole
-  // surfaces by nearest vertex would mostly measure the vertex spacing.
-  // The bands are where the gap was measured to change character, not round
-  // numbers: it sits at 0.15–0.20 from t 0.4 up to the shoulder, then climbs
-  // steadily to 0.68 at the tip as the mesh's apex seal takes over.
-  const BODY_FROM = 0.4;
-  let worstBody = 0;
-  let apexGap = 0;
-  for (let i = 0; i < kit.N; i++) {
-    const t = i / (kit.N - 1);
-    if (t > VENTRICLE_SHAPING.shoulderStartT) continue; // the shoulder is out of range by design
-    vertex.fromBufferAttribute(position, i);
-    epicardialSurfacePoint(shape, t, kit.basePhi[0], analytic);
-    const gap = vertex.distanceTo(analytic);
-    if (t >= BODY_FROM) worstBody = Math.max(worstBody, gap);
-    if (t <= 0.05) apexGap = Math.max(apexGap, gap);
+  let worst = 0;
+  let worstAt = null;
+  let worstAwayFromCut = 0;
+  for (let column = 0; column <= kit.S; column++) {
+    const phi = kit.basePhi[column];
+    for (let row = 0; row < kit.N; row++) {
+      const t = row / (kit.N - 1);
+      if (t > VENTRICLE_SHAPING.shoulderStartT) continue; // the shoulder is out of range by design
+      vertex.fromBufferAttribute(position, column * kit.profileCount + row);
+      epicardialSurfacePoint(shape, t, phi, analytic);
+      const gap = vertex.distanceTo(analytic);
+      if (gap > worst) {
+        worst = gap;
+        worstAt = `t=${t.toFixed(2)}, phi=${phi.toFixed(2)}`;
+      }
+      // The two lathe columns either side of the cut are remapped to close the
+      // apex, which this form does not carry; they are reported separately
+      // rather than quietly excluded.
+      const nearCut = column <= 1 || column >= kit.S - 1;
+      if (!nearCut) worstAwayFromCut = Math.max(worstAwayFromCut, gap);
+    }
   }
 
-  // Through the body the two agree to within a quarter of the wall thickness,
-  // which is what makes it safe to lay vessels on the analytic surface: the
-  // disagreement is smaller than the structure the vessel sits on.
   assert.ok(
-    worstBody < 0.25 * shape.wallThickness,
-    `analytic and mesh agree above t=${BODY_FROM}: worst gap ${worstBody.toFixed(3)} against a wall of ${shape.wallThickness.toFixed(3)}`
+    worstAwayFromCut < 0.2 * shape.wallThickness,
+    `analytic and mesh agree to a fifth of the wall away from the cut: worst ${worstAwayFromCut.toFixed(4)} ` +
+      `against a wall of ${shape.wallThickness.toFixed(3)}`
   );
-
-  // And they disagree at the apex, because the mesh seals its tip and the
-  // analytic form does not. Asserted rather than ignored: this is the whole
-  // reason the coronary arteries stop short of the apex, and if the seal were
-  // ever ported into the analytic form this test would fail and send whoever
-  // did it to `APICAL_STOP_T`, which could then be lowered.
   assert.ok(
-    apexGap > 0.3,
-    `the mesh seals its apex and the analytic form does not — gap ${apexGap.toFixed(3)}`
+    worst < 0.35 * shape.wallThickness,
+    `and to a third of it including the cut columns: worst ${worst.toFixed(4)} at ${worstAt}`
   );
+  dispose();
+});
 
-  // The consequence, stated where it bites: no vessel reaches below the mesh.
-  kit.geometry.computeBoundingBox();
-  const lowest = kit.geometry.boundingBox.min.y;
+test('no artery is buried in the mesh that is drawn', () => {
+  // Measured at each sample's own place on the ventricle — the builder carries
+  // it — so this is the vessel against the surface, not the vessel against a
+  // search for the surface.
+  const { surfaceAt, dispose } = builtMesh();
+  let worst = Infinity;
+  let worstAt = null;
+
   for (const spec of CORONARY_BRANCHES) {
-    const tip = branch(spec.id).curve.getPoint(1);
-    assert.ok(tip.y >= lowest, `${spec.id} ends inside the heart, not below it (${tip.y.toFixed(2)} vs ${lowest.toFixed(2)})`);
+    if (!spec.groove) continue; // the left main runs in none; it is not on the ventricle
+    const record = branch(spec.id);
+    const offset = record.points.length - record.where.length;
+    record.where.forEach(({ u, t, phi }, i) => {
+      const placed = record.points[offset + i];
+      const radial = new THREE.Vector3(Math.sin(phi), 0, Math.cos(phi));
+      const clearance =
+        new THREE.Vector3().subVectors(placed, surfaceAt(t, phi)).dot(radial) / radiusAlong(spec, u);
+      if (clearance < worst) {
+        worst = clearance;
+        worstAt = `${spec.id} at u=${u.toFixed(2)}`;
+      }
+    });
   }
-  kit.geometry.dispose();
+
+  // The spec allows nothing sunk a whole radius. Measured, the worst is a
+  // graze at the apical end of the anterior descending, where the vessel stops.
+  assert.ok(worst > -0.25, `no artery is buried: worst clearance ${worst.toFixed(2)}r at ${worstAt}`);
+  dispose();
 });
 
 test('the epicardium is outside the cavity everywhere', () => {

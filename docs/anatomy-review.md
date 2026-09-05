@@ -482,21 +482,44 @@ tree has no second opinion about where the heart's surface is.
    gap, and a distal half that reads as detached.
 4. **The tips hung below the heart.** Not caught by any measurement, because
    every measurement said the vessels sat correctly on the epicardium. They
-   did — on the *analytic* epicardium, whose apex sits 0.68 below the mesh's,
-   because the mesh seals its tip and the analytic form does not.
+   did — on the *analytic* epicardium, which was not the surface being drawn.
 
-The fourth is the one worth keeping. **A test named for the mesh never touched
-it**: "the analytic epicardium is the surface the mesh actually draws" compared
-the analytic epicardium against the analytic *cavity*. It passed throughout. It
-now builds the ventricle and reads its vertices, and it states both halves of
-what it finds — the two agree to 0.15–0.20 through the body, about a fifth of
-the wall thickness, and diverge to 0.68 into the sealed apex. The vessels stop
-where the agreement holds, and the divergence is asserted so that porting the
-seal into the analytic form would trip this test rather than pass silently.
+**And the diagnosis of the fourth was wrong, which review caught.** It was put
+down to the mesh sealing its apex. The real cause is that the lathe does not
+put the epicardium at the outer profile at all: it puts it at the cavity **plus
+the wall**, with the wall scaled by `wallThicknessFactor`, and then adds the
+right ventricle on top as a bulge about the septal aspect. Both terms are
+functions of azimuth — the field thins the apex to 60% and boosts the septum by
+22%, and the right-ventricular lobe is 0.085 of the outer semi-length, more
+than half a wall thickness.
 
-That divergence is the one real anatomical cost here: the anterior descending
-reaches the apex and often turns around it, and this one stops about a fifth of
-the way up. `APICAL_STOP_T` carries the reason.
+So the surface the vessels were laid on was wrong in two places at once: too
+far out at the apex, and too far *in* along the septum, which is where the
+right coronary and both interventricular grooves run. Measured on the built
+mesh, the septal disagreement was 0.55 against a 0.90 wall — the right coronary
+was placed half a wall inside the surface that gets drawn.
+
+`epicardialSurfacePoint` now performs the same blend and adds the same lobe, so
+there is one derivation of the epicardium. The worst disagreement over the
+whole surface fell from 0.55 to 0.14, and at the apex from 0.68 to 0.003. The
+arteries reach further down the ventricle as a result — `APICAL_STOP_T` came
+from 0.20 to 0.14 — and measured against the mesh at each sample's own place on
+it, the worst clearance anywhere on the tree is −0.07 of a local vessel radius,
+against a limit of a whole radius.
+
+**That one test has been wrong twice, in two different ways, and both passed
+while something was visibly broken.** It was first named for the mesh and never
+touched it — it compared the analytic epicardium against the analytic *cavity*.
+Rewritten to read the mesh, it read **one lathe column**, which cannot see an
+angular effect, and the two largest terms out here are both functions of
+azimuth. It now sweeps every column and every row below the shoulder, and a
+second test measures each vessel against the mesh at the sample's own place on
+it. Removing either half of the blend now fails them.
+
+A real anatomical cost remains, smaller than before: the anterior descending
+reaches the apex and often turns around it, and this one stops about a seventh
+of the way up, because a surface of revolution has no normal at its tip.
+`APICAL_STOP_T` carries the reason and the measured clearance.
 
 **Five mutations, each caught by its own test:** the two ostia swapped; the
 posterior descending taken off the circumflex, making the heart left-dominant;

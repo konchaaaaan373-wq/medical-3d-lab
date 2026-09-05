@@ -73,29 +73,24 @@ const BASE_T = 0.76;
 /**
  * Where the interventricular arteries stop, short of the very tip.
  *
- * **This is a simplification with an anatomical cost, and the cost is real.**
- * The anterior descending reaches the apex and commonly turns around it onto
- * the inferior surface; here it stops about a fifth of the way up. Two reasons,
- * and both are about the surface rather than about the artery:
+ * **A simplification with a real anatomical cost:** the anterior descending
+ * reaches the apex and commonly turns around it onto the inferior surface, and
+ * here it stops about a seventh of the way up. The reason is the surface, not
+ * the artery — at the tip a surface of revolution has no well-defined normal,
+ * because its radius goes to zero, so there is no "away from the wall" to lay a
+ * vessel along.
  *
- * - at the tip a surface of revolution has no well-defined normal, because its
- *   radius goes to zero, so there is no "away from the wall" to lay a vessel
- *   along;
- * - the ventricle's **mesh seals its apex** and the analytic surface these
- *   vessels are placed on does not. Measured on the built mesh, the apex vertex
- *   sits at y −5.67 where the analytic form says −6.36 — a difference of 0.68,
- *   against about 0.2 through the mid-body. Vessels drawn down to the analytic
- *   apex therefore hang below the heart that is actually drawn, which is what
- *   a render showed: two arteries ending in mid-air while every measurement of
- *   them said they sat correctly on the epicardium.
+ * This was 0.2 while the epicardium the vessels are placed on disagreed with
+ * the one the mesh draws — a disagreement first put down to the mesh sealing
+ * its apex, and actually the wall-thickness field, which thins the apex to 60%
+ * and boosts the septum by 22%. With that blend now shared, the two surfaces
+ * agree to about 0.02 along the vessels, and the arteries reach further down.
  *
- * The honest fix is to port the mesh's apex seal into
- * `epicardialSurfacePoint`, which is a change to the ventricle geometry rather
- * than to the coronary tree. Until then the vessels stop where the two surfaces
- * still agree, and `tests/coronary-anatomy.test.js` measures that agreement so
- * this number cannot quietly drift away from the reason for it.
+ * Measured against the built mesh at each sample's own place on it, the worst
+ * clearance anywhere on the tree is −0.07 of a local vessel radius: grazing,
+ * against a limit of a whole radius.
  */
-const APICAL_STOP_T = 0.2;
+const APICAL_STOP_T = 0.14;
 
 /**
  * The grooves, as the paths the arteries actually run in.

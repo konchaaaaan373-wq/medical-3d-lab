@@ -29,9 +29,9 @@ person: Safari, Firefox, touch and a screen reader.
 - **One right-dominant specimen.** The posterior descending comes off the right
   coronary. Left-dominant and balanced circulations are not modelled.
 - **The anterior descending stops short of the apex**, which real ones do not.
-  The reason is recorded where the number is: the ventricle's mesh seals its
-  tip and the surface the vessels are laid on does not, and a vessel drawn to
-  the analytic apex hangs below the heart that is actually drawn.
+  A surface of revolution has no normal at its tip, so there is no "away from
+  the wall" to lay a vessel along there. The reason and the measured clearance
+  are recorded where the number is.
 
 ### One heart, so two scenes cannot disagree about it
 
