@@ -345,6 +345,15 @@ export function buildLungs({
         geometry,
         centre: lobeCentre.clone(),
         planes,
+        /**
+         * The distance field this lobe was cut out of — its whole lung.
+         *
+         * Carried so that the solid a lobe is a piece of can be reconstructed
+         * from the lobe. A partition is only checkable against the thing it
+         * partitions, and without this the only way to get at the uncut lung
+         * is to rebuild it.
+         */
+        field,
       });
       disposables.push(geometry, lobeMaterial);
       for (const segment of lobeSegments) segments.push(segment);

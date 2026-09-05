@@ -337,6 +337,120 @@ cleanly, at the cost of calling a thin posterior shaving of its neighbours
   at properly. The specimen-derived atlas arrived afterwards and the pointer was
   not moved; it now names the atlas. No geometry changed.
 
+### 5.6 The volume shares, recalibrated against named sources
+
+The lobe and segment shares had been fitted to numbers nobody published — "the
+approximate shares taught with the lobes", recorded as uncited in three places.
+Two of them were also wrong in ways a source settles.
+
+**What was measured before, and what it is now.** Mesh volume from the closed
+meshes the scenes draw, at the detail the anatomy tests use.
+
+| | before | now | reference | band |
+|---|---|---|---|---|
+| RUL (of right lung) | 35.60% | 36.10% | 36% | ±3 |
+| RML | **12.37%** | 15.88% | 16% | ±3 |
+| RLL | **52.03%** | 48.01% | 48% | ±3 |
+| LUL (of left lung) | 50.22% | 51.00% | 51% | ±4 |
+| LLL | 49.78% | 49.00% | 49% | ±4 |
+| liver right anterior (V+VIII) | **32.81%** | 39.05% | 39% | ±5 |
+| liver right posterior (VI+VII) | **32.39%** | 25.05% | 25% | ±5 |
+| liver S8 | **18.87%** | 26.02% | 26% | ±6 |
+| liver S6 | **13.70%** | 8.33% | 8% | ±4 |
+| liver S1 (caudate) | 2.07% | 3.94% | 4% | ±3 |
+| liver left lateral (II+III) | 16.07% | 17.93% | 18% | ±5 |
+| liver left medial (IV) | 16.66% | 14.04% | 14% | ±5 |
+
+Bold is what was outside the band the source supports. Five of the twelve were.
+
+**The right liver was the substantive error.** The two right sectors came out
+at 32.8% and 32.4% — a gap of 0.4 percentage points, which is a coin toss
+presented as anatomy. Mise puts segment VIII at a median 26.1% of the liver;
+here it was 18.9%, seven points low, and its lead over VII was 0.21 points
+where the source's medians differ by nine.
+
+The *order* of the segments was very nearly right before — VIII > VII > IV > V
+> VI > III > II > I against Mise's VIII > VII > IV > V > III > VI > II > I, one
+transposition. That is worth stating plainly, because an earlier draft of this
+section claimed VIII had been behind VII, and the measurements say otherwise:
+18.92% against 18.71%. What was wrong was the *magnitudes*, and the fact that
+two orderings held by fractions of a point. An ordering that survives by two
+parts in a thousand is not being asserted by the geometry; it is being landed
+on. Both are now held by margins a test refuses to go under — 8 points between
+the right sectors, 5 between VIII and VII.
+
+**Nothing was tuned by hand.** The plane offsets are a coordinate-descent fit —
+three for the lung (two fissure offsets on the right, one on the left), six for
+the liver — run once against the measured mesh volumes and written down. Each
+normal, which is the anatomy, is untouched. `docs/medical-notes.md` records why
+a fitted offset is not a measurement of anything.
+
+### 5.7 The partition test could not have failed
+
+The check that the parts tile the organ was dividing each part by the sum of the
+parts. That quantity is 1 for any set of parts whatever, so the shares could
+never detect a missing or doubly-claimed wedge. The old sampling test was
+sound but thin — 40,000 tries yielding about 13,000 interior points, and it
+rebuilt a second copy of the organ to sample.
+
+Now each carved part carries the distance field it was cut out of, so the solid
+being checked is the one that was actually cut, and `tests/partition.js` asks
+50,000 interior points how many parts claim each. Both organs: nothing
+unclaimed, nothing claimed twice.
+
+**The sampling box is derived from the organ, not from the parts**, and the
+caller cannot supply one. Review of the first version caught this: a box
+unioned from the parts' bounding boxes cannot contain a region that no part
+claims *and* that lies outside every part's box, and an unclaimed cap at one
+end of the organ is exactly that shape — it removes itself from the sample.
+Measured with a cap lopped off every liver segment, the part-derived box
+reported 0.78% of points unassigned where the organ's own box reported 4.80%.
+The same defect, six times smaller; one a sixth of that size passes the first
+and fails the second.
+
+The parts also have to sum to **the organ**, which sampling cannot see. They
+fall short, and by an amount that halves as the mesh refines — right lung
+1.30% at detail 5, 0.74% at 8, 0.34% at 14; liver 1.30 / 0.96 / 0.39. That is
+the inscribed-polyhedron error of a star-shaped carve, not a hole, and a test
+now asserts the convergence rather than only the magnitude, because an
+approximation and a defect look identical at any one resolution and behave
+oppositely across two.
+
+**Note for anyone tightening this:** at detail 5, which is what the scenes
+draw with by default, the shortfall is 1.3% and would fail a flat 1.0% budget.
+The anatomy claims are measured at detail 8.
+
+### 5.8 What the render showed
+
+38 real renders: 18 of the bare geometry (lung anterior / posterior / hilar,
+lobe and segment colouring; liver anterior / inferior / posterior) and 20 of
+the six scenes that draw these organs (`pulmonary-edema`, `breathing-lungs`,
+`copd`, `liver-portal-flow`, `portal-hypertension`, `body-overview` at its
+respiratory and digestive stages), each at 1280×800 and 390×844. Every one
+compared against the same shot on `origin/main`.
+
+- **No holes, no double surfaces, no flicker** at any fissure or Couinaud
+  plane. The fissure lines read as single seams.
+- **Nothing is renamed or recoloured.** `body-overview` at its first stage is
+  pixel-identical to the baseline, which is the control — no lung or liver is
+  on screen there. Where they are drawn the diff is 0.7–2.2% of the frame and
+  confined to the organ.
+- **Labels still land.** `liver-portal-flow` puts 右葉 / 左葉 / 肝門部 / 胆嚢 on
+  the same structures after the planes moved; `body-overview` keeps the lung
+  and liver at the same position and scale inside the body.
+- **The caudate now reads as a caudate.** At 2% it was a shaving on the
+  posterior surface; at 4% it is a distinct mass between the porta and the
+  cava, which is what the posterior view is for.
+- **Console clean.** The only failing request is the Google Fonts stylesheet,
+  which this build environment blocks, identically on the baseline.
+
+**One defect found, pre-existing, not fixed here.** A small starburst of thin
+degenerate triangles sits beside the inferior vena cava on the liver's
+posterior aspect — rays from a segment's centre that graze a cutting plane, so
+the surface crossing is unstable. It is present on `origin/main` and is
+slightly *smaller* now that the caudate is a coherent mass. Recorded rather
+than fixed because it belongs to the carve, not to this calibration.
+
 ## 6. Not covered by this review
 
 - The remaining scenes. The gate names the flagships; the rest are reviewed

@@ -14,6 +14,33 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The lobes and the liver segments now take the volumes a source gives them
+
+- **The shares stopped being uncited, and two of them stopped being wrong.**
+  Lobe volumes now follow Bakker et al. (Eur Radiol 2024) and Couinaud segment
+  volumes follow Mise et al. (HPB 2014). The right middle lobe was 12.4% of the
+  right lung against a reference 16%, and the right lower lobe 52.0% against
+  48%. In the liver the two right sectors came out within 0.4 percentage points
+  of each other — the anterior sector should lead the posterior by about 14 —
+  and segment VIII, the largest segment of the liver, was leading segment VII
+  by 0.2 points where the source's medians differ by nine.
+- **The numbers carry their limits with them.** The lung values are inspiratory,
+  supine, and from a northern Dutch cohort aged 45 and over; they are one
+  teaching reference specimen, not a normal range and not a prediction for any
+  person. Mise's own finding is that segment VIII runs from 11% to 38% of the
+  liver between people, which is why liver resections are planned on the
+  patient's own volumetry. All of that is recorded where the constants are
+  declared and in `docs/medical-notes.md`.
+- **The lung derivation has not been independently checked here.** The weighting
+  of Bakker's Table 1 was done by the collaborator who specified the work; this
+  build environment cannot reach the publisher, PMC or the mirrors. What could
+  be checked is recorded, including an independent cross-check that lands
+  inside the bands. `docs/anatomy-specs.md` carries it as an open item.
+- **The check that the parts fill the organ could not previously fail.** It
+  divided each part by the sum of the parts, which is 1 for any parts at all.
+  It now asks 50,000 points inside the organ how many parts claim each, and
+  separately whether the parts add up to the organ they were cut from.
+
 ### The lung's left and right, held where they come from
 
 - **Three relations the anatomy spec asks for by name now have numbers in the

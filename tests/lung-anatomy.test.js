@@ -15,6 +15,7 @@ import {
 import {
   FISSURES,
   LOBES,
+  LOBE_VOLUME_SHARES,
   SEGMENTS,
   SIDES,
   anatomicalFrame,
@@ -22,6 +23,7 @@ import {
   segmentsOfLobe,
   segmentsOfSide,
 } from '../src/scenes/respiratory/organs/lungAnatomy.js';
+import { partitionReport } from './partition.js';
 import {
   carveInside,
   partCentroid,
@@ -69,6 +71,16 @@ function volumeOf(geometry) {
 // none of them wants one. Everything about the tree is asked of a lung that
 // asked for it.
 const lungs = buildLungs({ bronchi: true, vessels: true });
+
+/**
+ * The mesh resolution the partition claims are measured at.
+ *
+ * Finer than the default the scenes draw with, because the shortfall a carve
+ * leaves at its cuts is a function of resolution and the claim being made is
+ * about the partition rather than about any one scene's mesh. The scenes'
+ * default is checked too — by the convergence test, which measures both ends.
+ */
+const PARTITION_DETAIL = 8;
 const lobeVolume = new Map(lungs.lobes.map((lobe) => [lobe.id, volumeOf(lobe.geometry)]));
 const sideVolume = (side) =>
   lungs.lobes.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + lobeVolume.get(lobe.id), 0);
@@ -187,77 +199,128 @@ test('the lobes sit where their names say, relative to one another', () => {
   assert.ok(centreOf('left-upper').z > centreOf('left-lower').z);
 });
 
-test('the lobes take roughly the share of each lung they are taught to take', () => {
-  // The one calibrated claim here. Roughly 35 / 12 / 53 on the right and half
-  // and half on the left; the fissure positions were chosen to land these and
-  // nothing else, so this is what holds them. The bands are deliberately wide,
-  // because the target is an uncited approximation and a tight band around it
-  // would assert a precision nothing here has.
-  assert.ok(share('right-upper') > 0.29 && share('right-upper') < 0.41, `RUL ${(share('right-upper') * 100).toFixed(1)}%`);
-  assert.ok(share('right-middle') > 0.08 && share('right-middle') < 0.17, `RML ${(share('right-middle') * 100).toFixed(1)}%`);
-  assert.ok(share('right-lower') > 0.46 && share('right-lower') < 0.59, `RLL ${(share('right-lower') * 100).toFixed(1)}%`);
-  assert.ok(share('left-upper') > 0.43 && share('left-upper') < 0.57, `LUL ${(share('left-upper') * 100).toFixed(1)}%`);
-  assert.ok(share('left-lower') > 0.43 && share('left-lower') < 0.57, `LLL ${(share('left-lower') * 100).toFixed(1)}%`);
+/**
+ * How far a measured share may sit from its reference value, in percentage
+ * points of its own lung.
+ *
+ * Not a confidence interval and not a normal range — the reference is a single
+ * specimen and has neither. It is the width inside which this geometry is
+ * making the claim, chosen so that the two independent readings of the same
+ * anatomy both fall inside it: Bakker's weighted cohort means, and the worked
+ * subject in Yamada et al., who comes to 35.0 / 18.8 / 46.2 on the right. A
+ * band that excluded one of those would be asserting a precision no source
+ * here has.
+ */
+const LOBE_TOLERANCE_PP = { right: 3, left: 4 };
 
-  // The middle lobe is the smallest of the five, on either side.
+test('each lobe takes the share of its own lung the reference specimen gives it', () => {
+  for (const lobe of LOBES) {
+    const target = LOBE_VOLUME_SHARES[lobe.id];
+    const tolerance = LOBE_TOLERANCE_PP[lobe.side] / 100;
+    const measured = share(lobe.id);
+    assert.ok(
+      Math.abs(measured - target) <= tolerance,
+      `${lobe.short} took ${(measured * 100).toFixed(2)}% of the ${lobe.side} lung, ` +
+        `against ${(target * 100).toFixed(0)}% ± ${LOBE_TOLERANCE_PP[lobe.side]}`
+    );
+  }
+
+  // Shares of one lung, so each side sums to 1 by construction — which is why
+  // that is not asserted here. It cannot fail, and a test that cannot fail is
+  // worse than no test: it reads like cover. What the parts are checked
+  // against is the lung itself, in the partition test below.
+
+  // The middle lobe is the smallest of the five, on either side. True of the
+  // reference values and true of real lungs, and it is the ordering that a
+  // fissure offset edited in the wrong direction breaks first.
   const smallest = [...lobeVolume.entries()].sort((a, b) => a[1] - b[1])[0][0];
   assert.equal(smallest, 'right-middle');
 });
 
-test('the lobes partition the lung: they fill it, and they do not overlap', () => {
-  // The property that makes them lobes rather than five blobs. Checked by
-  // sampling the lung the lobes were cut from and asking how many lobes each
-  // point falls in — it has to be exactly one.
+test('the reference shares are shares of one lung, and each lung is whole', () => {
+  // The denominator, asserted where it is declared rather than left to a
+  // reader. Stated against both lungs the numbers would be wrong by a factor
+  // of about two, and the geometry would still pass every band above.
   for (const side of ['right', 'left']) {
-    const built = buildLungs({ bronchi: false, vessels: false });
-    const lobesHere = built.lobes.filter((lobe) => lobe.side === side);
-    const bounds = new THREE.Box3();
-    for (const lobe of lobesHere) {
-      lobe.geometry.computeBoundingBox();
-      bounds.union(lobe.geometry.boundingBox);
-    }
-    // The whole lung, from the builder's own warp rather than a copy of it. A
-    // second copy here would drift from the first the moment the shape changed,
-    // and this test would then be checking that two lungs nobody draws agree.
-    const shape = SIDE_SHAPE[side];
-    const samples = surfaceSamples(lungWarp(shape.warp), shape.scale, 12000);
-    const wholeBounds = new THREE.Box3();
-    const probe = new THREE.Vector3();
-    for (let i = 0; i < samples.length; i += 3) {
-      wholeBounds.expandByPoint(probe.set(samples[i], samples[i + 1], samples[i + 2]));
-    }
-    const centre = wholeBounds.getCenter(new THREE.Vector3());
-    const field = radialField(samples, centre);
-    const frame = anatomicalFrame(side, wholeBounds);
-
-    const planesFor = (lobe) =>
-      lobe.bounded.map(({ fissure, keepAbove }) => {
-        const definition = FISSURES[fissure];
-        const normal = frame.toLocalNormal(definition.normal);
-        return planeThrough(frame.toLocal(definition.through[side]), keepAbove ? normal.negate() : normal);
-      });
-    const regions = lobesOfSide(side).map((lobe) => ({ id: lobe.id, planes: planesFor(lobe) }));
-
-    let inside = 0;
-    let exactlyOne = 0;
-    const size = wholeBounds.getSize(new THREE.Vector3());
-    let seed = 99;
-    const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
-    for (let i = 0; i < 30000; i++) {
-      probe.set(
-        wholeBounds.min.x + random() * size.x,
-        wholeBounds.min.y + random() * size.y,
-        wholeBounds.min.z + random() * size.z
-      );
-      if (!carveInside(probe, { field })) continue;
-      inside += 1;
-      const hits = regions.filter((region) => carveInside(probe, { field, planes: region.planes })).length;
-      if (hits === 1) exactlyOne += 1;
-    }
-    assert.ok(inside > 3000, `${side}: the sample has to actually land in the lung, got ${inside}`);
-    assert.equal(exactlyOne, inside, `${side}: every point in the lung belongs to exactly one lobe`);
-    built.dispose();
+    const total = lobesOfSide(side).reduce((sum, lobe) => sum + LOBE_VOLUME_SHARES[lobe.id], 0);
+    assert.ok(Math.abs(total - 1) < 1e-9, `the ${side} lobes' reference shares sum to ${total}`);
   }
+});
+
+test('the lobes partition the lung: they fill it, and they do not overlap', () => {
+  // The property that makes them lobes rather than five blobs, checked against
+  // the lung rather than against each other. Each lobe carries the distance
+  // field it was cut out of, so the solid being partitioned here is the one
+  // that was actually partitioned — not a second lung rebuilt from the same
+  // parameters, which would drift the moment the shape changed. The report
+  // derives its own sampling bounds from that field; see `partition.js` for
+  // why the caller is not allowed to supply them.
+  const built = buildLungs({ detail: PARTITION_DETAIL, bronchi: false, vessels: false });
+  for (const side of ['right', 'left']) {
+    const parts = built.lobes.filter((lobe) => lobe.side === side);
+    const report = partitionReport({
+      field: parts[0].field,
+      detail: PARTITION_DETAIL,
+      contains: (point) => built.contains(side, point),
+      parts,
+      volumeOf,
+      samples: 50000,
+      seed: side === 'right' ? 7 : 11,
+    });
+
+    assert.equal(report.samples, 50000, `${side}: the sample has to land in the lung 50000 times`);
+    assert.ok(
+      report.unassignedRate <= 0.001,
+      `${side}: ${report.unassigned} of ${report.samples} points belong to no lobe — ${report.worst}`
+    );
+    assert.ok(
+      report.multipleRate <= 0.001,
+      `${side}: ${report.multiple} of ${report.samples} points belong to more than one lobe — ${report.worst}`
+    );
+
+    // And the lobes have to add up to the lung, which sampling cannot see: a
+    // carve is a polyhedron inscribed in the surface, so cutting one solid into
+    // several loses a little at every new facet. This is the check that caught
+    // the lobes summing to 182% of their lung.
+    assert.ok(
+      Math.abs(report.shortfall) <= 0.01,
+      `${side}: the lobes sum to ${(100 * (1 - report.shortfall)).toFixed(2)}% of the lung they were cut from`
+    );
+  }
+  built.dispose();
+});
+
+test('the volume a carve loses at its cuts is resolution, not a hole', () => {
+  // The previous test allows the parts to fall 1% short of the whole, and that
+  // allowance is only safe if the shortfall is the inscribed-polyhedron error
+  // and not a wedge belonging to nobody. The two look identical at one
+  // resolution and behave oppositely across resolutions: an approximation error
+  // shrinks as the mesh refines, a hole does not.
+  const measure = (detail) => {
+    const built = buildLungs({ detail, bronchi: false, vessels: false });
+    const parts = built.lobes.filter((lobe) => lobe.side === 'right');
+    const report = partitionReport({
+      field: parts[0].field,
+      detail,
+      contains: (point) => built.contains('right', point),
+      parts,
+      volumeOf,
+      // Only the volumes are wanted here, so the sample is small on purpose;
+      // the partition itself is checked at full strength above.
+      samples: 2000,
+      seed: 3,
+    });
+    built.dispose();
+    return report.shortfall;
+  };
+  const coarse = measure(5);
+  const fine = measure(12);
+  assert.ok(coarse > 0, `a carve should lose volume at its cuts, not gain it (${coarse})`);
+  assert.ok(
+    fine < coarse * 0.7,
+    `refining the mesh should shrink the shortfall: ${(100 * coarse).toFixed(3)}% at detail 5, ` +
+      `${(100 * fine).toFixed(3)}% at detail 12`
+  );
 });
 
 /* --------------------------------------------------------------------------
