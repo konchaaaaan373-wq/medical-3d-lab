@@ -60,7 +60,10 @@ jobs:
   viewport-matrix:
     name: viewport matrix (${{ matrix.engine }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 54 combinations per engine, and Firefox and WebKit are slower to start
+    # than Chromium. A timeout here reads as a broken job rather than what it
+    # is, so there is room for the two new engines to be slow.
+    timeout-minutes: 30
     strategy:
       # One engine failing is a finding about that engine, not a reason to stop
       # measuring the others.
