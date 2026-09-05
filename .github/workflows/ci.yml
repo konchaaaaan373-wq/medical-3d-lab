@@ -58,9 +58,20 @@ jobs:
   # about its own reach — the manual half of the device pass is listed in
   # `docs/accessibility.md` and reprinted by the script itself.
   viewport-matrix:
-    name: viewport matrix
+    name: viewport matrix (${{ matrix.engine }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      # One engine failing is a finding about that engine, not a reason to stop
+      # measuring the others.
+      fail-fast: false
+      matrix:
+        # WebKit is the engine Safari is built on. It is not Safari, and it is
+        # not iOS — what it catches is the layout and CSS half (dvh, env(),
+        # mask-image, :has()), which is where this product's own chrome lives.
+        # The rest of the device pass stays manual and is listed in
+        # `docs/accessibility.md`.
+        engine: [chromium, firefox, webkit]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -72,11 +83,11 @@ jobs:
       # Not a devDependency on purpose: a browser automation stack is a large
       # thing to make every contributor download to run the unit tests.
       - run: npm i --no-save playwright@1.62.1
-      - run: npx playwright install --with-deps chromium
-      - run: npm run verify:ui -- --json viewport-report.json
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - run: npm run verify:ui -- --engine ${{ matrix.engine }} --json viewport-report-${{ matrix.engine }}.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: viewport-report
-          path: viewport-report.json
+          name: viewport-report-${{ matrix.engine }}
+          path: viewport-report-${{ matrix.engine }}.json
           if-no-files-found: ignore
