@@ -14,6 +14,25 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The heart has coronary arteries, and the myocardium knows which one feeds it
+
+- **Five named epicardial arteries**, each in the groove it is named for, and
+  the AHA 17-segment territory map as one source of truth that the scene's
+  colour, wall motion, legend and read-out will all read. Owned by the organ
+  layer: the builder is handed the heart's surface rather than importing one,
+  so a vessel cannot end up with its own opinion about where the heart is.
+- **The territory map is a convention, and the code says where it is wrong.**
+  The AHA chart assigns segment 3 to the right coronary; contrast-enhanced MR
+  finds it is anterior-descending territory, and five other segments overlap
+  two arteries between people. A model that shows a fixed map without recording
+  that is claiming more than it has.
+- **One right-dominant specimen.** The posterior descending comes off the right
+  coronary. Left-dominant and balanced circulations are not modelled.
+- **The anterior descending stops short of the apex**, which real ones do not.
+  The reason is recorded where the number is: the ventricle's mesh seals its
+  tip and the surface the vessels are laid on does not, and a vessel drawn to
+  the analytic apex hangs below the heart that is actually drawn.
+
 ### One heart, so two scenes cannot disagree about it
 
 - **The cardiac solver moved out of the heart-failure scene.** The time-varying

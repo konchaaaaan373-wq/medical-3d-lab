@@ -308,6 +308,54 @@ export function cavitySurfacePoint(shape, t, phi, out) {
   return out;
 }
 
+/**
+ * A point on the (analytic) epicardial surface, in chamber-local space.
+ *
+ * The outer counterpart of `cavitySurfacePoint`, and it exists for the same
+ * reason: something outside this file has to put things *on* the ventricle, and
+ * the only alternative is a second derivation of where the ventricle is. The
+ * coronary arteries run on this surface, and a vessel placed by its own idea of
+ * the epicardium sinks into muscle at one phase and floats off it at another.
+ *
+ * Like `cavitySurfacePoint`, this is the analytic form: no trabecular relief, no
+ * noise, and **no basal shoulder** — above `shoulderStartT` the mesh rounds over
+ * into the valve plane along a quarter-arc that depends on the cavity rim, and
+ * reproducing that here would be the second derivation this is meant to avoid.
+ * `t` is therefore clamped to the shoulder start, which is where the
+ * atrioventricular grooves sit anyway. `tests/coronary-anatomy.test.js` measures
+ * this against the built mesh.
+ *
+ * @param {{ outerRadius: number, outerSemiLength: number, baseY: number }} shape
+ * @param {number} t 0 apex .. `shoulderStartT` at the top of the ventricular body; higher clamps
+ * @param {number} phi azimuth: 0 anterior, π/2 the patient's left
+ * @param {THREE.Vector3} out
+ */
+export function epicardialSurfacePoint(shape, t, phi, out) {
+  const S = VENTRICLE_SHAPING;
+  const dip = S.shoulderDip * shape.outerSemiLength;
+  const outerMax = Math.acos(
+    THREE.MathUtils.clamp(-(shape.baseY - dip) / shape.outerSemiLength, -1, 1)
+  );
+  // Clamped to the top of the ventricular body, and clamped *once*: above
+  // `shoulderStartT` the mesh rounds over into the valve plane along an arc
+  // this form does not carry, so the whole point freezes there rather than its
+  // height alone. Freezing only the height left the surface still drifting
+  // sideways with no change in t, which makes the finite-difference normal
+  // degenerate — and a vessel laid along a degenerate normal oscillates in and
+  // out of the muscle, which is exactly what the circumflex did.
+  const clamped = THREE.MathUtils.clamp(t, 0, S.shoulderStartT);
+  const a = (clamped / S.shoulderStartT) * outerMax;
+  const r = shape.outerRadius * Math.pow(Math.sin(a), S.outerProfileExponent) * outerAngularShape(phi);
+  const w = (1 - clamped) * (1 - clamped);
+  const bow = Math.sin(Math.PI * clamped) * S.longAxisBow * shape.outerSemiLength;
+  out.set(
+    r * Math.sin(phi) + S.apexDriftX * shape.outerSemiLength * w + bow,
+    -shape.outerSemiLength * Math.cos(a),
+    r * Math.cos(phi) + S.apexDriftZ * shape.outerSemiLength * w
+  );
+  return out;
+}
+
 /** Wall-thickness multiplier field w(t, phi); t = 0 apex, 1 base. */
 export function wallThicknessFactor(t, phi) {
   const S = VENTRICLE_SHAPING;

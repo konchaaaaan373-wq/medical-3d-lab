@@ -451,6 +451,68 @@ the surface crossing is unstable. It is present on `origin/main` and is
 slightly *smaller* now that the caudate is a coherent mass. Recorded rather
 than fixed because it belongs to the carve, not to this calibration.
 
+### 5.9 The coronary arteries, and what the render caught that the tests did not
+
+The heart's A3-a supplement: five named epicardial arteries and the AHA
+17-segment territory map, owned by the organ layer. The spec was settled first,
+which is the repository's own rule and was worth following here — the ownership
+question turned out to be the one that shaped the code.
+
+**The builder is handed the epicardium rather than importing one.** A scene
+supplies `surfacePoint`; the organ layer decides *where on that surface* a
+vessel runs, in named grooves. So nothing in the coronary tree imports the
+ventricle geometry, nothing imports a scene, and — the part that matters — the
+tree has no second opinion about where the heart's surface is.
+
+**Four defects found by measuring, in the order they were found.**
+
+1. **The right coronary ran round the patient's left.** Its groove was written
+   with the far azimuth a full turn ahead: the same crux modulo 2π, so both
+   ends were exactly where they belong, while the sweep between them went the
+   long way round — the right coronary artery lying along the circumflex. Only
+   the middle of the vessel showed it, which is why a test now measures the
+   midpoint of every vessel.
+2. **The atrioventricular grooves were above the surface's definition.** Placed
+   at t 0.9, past `shoulderStartT`, where the analytic epicardium is clamped
+   and its finite-difference normal is degenerate. The circumflex oscillated
+   between 2.6 radii outside the wall and 1.7 inside it, sample by sample.
+3. **The lift did not taper with the vessel.** Held at the proximal calibre, a
+   vessel that narrows to 55% of itself stands 2.4 of its own radii off the
+   surface distally while sitting 1.35 off it proximally — the same absolute
+   gap, and a distal half that reads as detached.
+4. **The tips hung below the heart.** Not caught by any measurement, because
+   every measurement said the vessels sat correctly on the epicardium. They
+   did — on the *analytic* epicardium, whose apex sits 0.68 below the mesh's,
+   because the mesh seals its tip and the analytic form does not.
+
+The fourth is the one worth keeping. **A test named for the mesh never touched
+it**: "the analytic epicardium is the surface the mesh actually draws" compared
+the analytic epicardium against the analytic *cavity*. It passed throughout. It
+now builds the ventricle and reads its vertices, and it states both halves of
+what it finds — the two agree to 0.15–0.20 through the body, about a fifth of
+the wall thickness, and diverge to 0.68 into the sealed apex. The vessels stop
+where the agreement holds, and the divergence is asserted so that porting the
+seal into the analytic form would trip this test rather than pass silently.
+
+That divergence is the one real anatomical cost here: the anterior descending
+reaches the apex and often turns around it, and this one stops about a fifth of
+the way up. `APICAL_STOP_T` carries the reason.
+
+**Five mutations, each caught by its own test:** the two ostia swapped; the
+posterior descending taken off the circumflex, making the heart left-dominant;
+the short-axis ring rotated so the anterior descending supplies the inferior
+wall; the right coronary sent the long way round again; and the vessels buried
+in the muscle.
+
+**Sixteen renders** — anterior, posterior, inferior and left lateral, each with
+and without the territory map painted on the epicardium, at 1280×800 and
+390×844. The territory map is the check worth naming: from the front the
+anterior wall and septum are anterior-descending territory with circumflex on
+the patient's left edge; from behind the inferior wall is right-coronary
+territory with the posterior descending running down the middle of it. Vessel
+and territory coincide, which is the relation an ischemia scene depends on and
+the one that a rotated ring would break while every vessel still looked right.
+
 ## 6. Not covered by this review
 
 - The remaining scenes. The gate names the flagships; the rest are reviewed
