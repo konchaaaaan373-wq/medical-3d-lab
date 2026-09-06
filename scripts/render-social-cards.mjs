@@ -5,6 +5,11 @@
  *   npm i --no-save playwright && npx playwright install --with-deps chromium
  *   npm run cards
  *
+ * The set is the **crawlable** one — a scene that is both open and public —
+ * because a card previews a page, and a scene with no page has nothing to
+ * preview. When the release opens more models the set grows, and
+ * `npm run cards:check` fails until this has been run again.
+ *
  * The PNGs are **committed**, not built. A link preview is a static asset that
  * a crawler fetches once and caches for weeks, and making every build depend on
  * a browser download to produce nine images that change perhaps twice a year is
@@ -26,7 +31,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PUBLIC_SCENES } from '../src/catalog/index.js';
+import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { SYSTEMS } from '../src/catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../src/catalog/clinicalReview.js';
 import {
@@ -84,7 +89,7 @@ const systemById = new Map(SYSTEMS.map((system) => [system.id, system]));
 
 /** Everything to draw: one card per public scene, plus one for the site. */
 const cards = [
-  ...PUBLIC_SCENES.map((scene) => ({
+  ...CRAWLABLE_SCENES.map((scene) => ({
     slug: scene.slug,
     // A function of the description length, because the rasteriser retries
     // with a shorter one until the browser says the card fits.
@@ -95,7 +100,7 @@ const cards = [
         bodyChars,
       }),
   })),
-  { slug: 'site', html: () => siteCardHtml({ sceneCount: PUBLIC_SCENES.length }) },
+  { slug: 'site', html: () => siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length }) },
 ].filter((card) => only.length === 0 || only.includes(card.slug));
 
 mkdirSync(outDir, { recursive: true });

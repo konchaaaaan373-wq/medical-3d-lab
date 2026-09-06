@@ -167,6 +167,14 @@ export class BrainAnatomyScene {
       }
       this.attachAtlas(atlas);
     } catch (error) {
+      // A scene disposed while its atlas was still in flight cancelled this
+      // fetch itself. The success path above already knows that and drops the
+      // model on the floor; reporting the failure is the same case in the
+      // other branch, and the abort is not a defect but the disposal arriving
+      // first. Left in, it is worse than noise: leaving the landing page while
+      // the hero is fetching printed a console error onto the *next* page,
+      // because the rejection is delivered as the old document goes away.
+      if (this.disposed) return this.root;
       console.error('[brain-anatomy] atlas load failed', error);
       this._setStatus({ state: 'error', selectableCount: 0, atlasCount: 0, error });
     }

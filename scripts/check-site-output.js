@@ -21,7 +21,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { LAB_SCENES, PUBLIC_SCENES } from '../src/catalog/index.js';
+import { SCENES } from '../src/catalog/index.js';
+import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
 
@@ -68,7 +69,7 @@ if (existsSync(join(distDir, 'index.html'))) {
   pages.set('the application shell', readFileSync(join(distDir, 'index.html'), 'utf8'));
 }
 
-for (const scene of PUBLIC_SCENES) {
+for (const scene of CRAWLABLE_SCENES) {
   const path = join(distDir, scenePagePath(scene));
   if (!existsSync(path)) {
     problems.push(`${scene.id}: no generated page at ${scenePagePath(scene)}`);
@@ -83,10 +84,14 @@ for (const scene of PUBLIC_SCENES) {
   }
 }
 
-// A Prototype scene reaching a crawler is a claim we did not intend to make.
-for (const scene of LAB_SCENES) {
+// A scene the release has not opened reaching a crawler is a claim we did not
+// intend to make: for a Prototype because its shape and motion are provisional,
+// and for anything else because the page would invite a reader to open a model
+// that answers "to be updated".
+for (const scene of SCENES) {
+  if (CRAWLABLE_SCENES.includes(scene)) continue;
   if (existsSync(join(distDir, scenePagePath(scene)))) {
-    problems.push(`${scene.id}: Prototype work must not be published to the crawlable surface`);
+    problems.push(`${scene.id}: neither open nor public, so it must not be on the crawlable surface`);
   }
 }
 
@@ -95,11 +100,12 @@ if (!existsSync(join(distDir, 'robots.txt'))) problems.push('robots.txt was not 
 const sitemapPath = join(distDir, 'sitemap.xml');
 if (existsSync(sitemapPath)) {
   const xml = readFileSync(sitemapPath, 'utf8');
-  for (const scene of PUBLIC_SCENES) {
+  for (const scene of CRAWLABLE_SCENES) {
     if (!xml.includes(`/s/${scene.slug}/`)) problems.push(`${scene.id}: missing from the sitemap`);
   }
-  for (const scene of LAB_SCENES) {
-    if (xml.includes(`/s/${scene.slug}/`)) problems.push(`${scene.id}: Prototype work is in the sitemap`);
+  for (const scene of SCENES) {
+    if (CRAWLABLE_SCENES.includes(scene)) continue;
+    if (xml.includes(`/s/${scene.slug}/`)) problems.push(`${scene.id}: not crawlable, but in the sitemap`);
   }
 
   // Canonical, Open Graph and the sitemap are all baked in at build time from
@@ -138,7 +144,9 @@ if (existsSync(sitemapPath)) {
   notes.push('sitemap.xml was not emitted — VITE_SITE_URL is not configured for this build.');
 }
 
-console.log(`Crawlable surface — ${PUBLIC_SCENES.length} scene pages checked in ${distDir}`);
+console.log(
+  `Crawlable surface — ${CRAWLABLE_SCENES.length} of ${SCENES.length} scene pages checked in ${distDir}`
+);
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (problems.length) {
@@ -146,4 +154,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('  ok    every public scene has a page, and no Prototype does');
+console.log('  ok    every crawlable scene has a page, and nothing else does');

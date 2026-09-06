@@ -1,5 +1,7 @@
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { EXPLORER_ROUTE, LANDING_ROUTE, PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
+import { isSceneReleased } from '../catalog/release.js';
+import { betaUnlocked } from './releaseGate.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
 
@@ -112,10 +114,18 @@ function trustCard(scene) {
           reviewBadge(review),
         ]),
       ]),
-      el('a', { class: 'trust-open-model', href: sceneRoute(scene) }, [
-        el('span', { class: 'lang-en', text: 'Open model →' }),
-        el('span', { class: 'lang-ja', text: 'モデルを開く →' }),
-      ]),
+      // Trust stays open while most of what it describes is not: saying which
+      // models are reviewed is more honest with the closed ones listed than
+      // with the page hidden. What it must not do is offer to open one.
+      betaUnlocked() || isSceneReleased(scene)
+        ? el('a', { class: 'trust-open-model', href: sceneRoute(scene) }, [
+            el('span', { class: 'lang-en', text: 'Open model →' }),
+            el('span', { class: 'lang-ja', text: 'モデルを開く →' }),
+          ])
+        : el('span', { class: 'trust-open-model is-locked' }, [
+            el('span', { class: 'lang-en', text: 'To be updated' }),
+            el('span', { class: 'lang-ja', text: '準備中' }),
+          ]),
     ]),
     el('p', { class: 'trust-review-note' }, [
       el('span', { class: 'lang-en', text: note.en }),

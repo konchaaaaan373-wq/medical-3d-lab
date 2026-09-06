@@ -86,8 +86,11 @@ function generator(seed) {
  *   organ is carved at the same one, so any difference is the cuts and not the
  *   method
  * @param {(point: THREE.Vector3) => boolean} options.contains whether a point is in the organ
- * @param {Array<{ id: string, planes: Array<{normal: THREE.Vector3, constant: number}>,
+ * @param {Array<{ id: string, planes?: Array<{normal: THREE.Vector3, constant: number}>,
+ *   inside?: (point: THREE.Vector3) => boolean,
  *   geometry: THREE.BufferGeometry }>} options.parts
+ *   `inside` overrides `planes` for a part that is not a half-space
+ *   intersection — a shell, for instance
  * @param {(geometry: THREE.BufferGeometry) => number} options.volumeOf
  * @param {number} [options.samples] interior points to evaluate, not points tried
  * @param {number} [options.seed]
@@ -129,7 +132,11 @@ export function partitionReport({ field, detail, contains, parts, volumeOf, samp
     let claims = 0;
     let claimant = null;
     for (const part of parts) {
-      if (!insidePlanes(point, part.planes)) continue;
+      // A part is normally the organ intersected with half-spaces, and its
+      // planes say what it holds. A part that is not — a shell between two
+      // surfaces, say — brings its own predicate, because "inside every plane"
+      // cannot describe a cavity.
+      if (!(part.inside ? part.inside(point) : insidePlanes(point, part.planes))) continue;
       claims++;
       claimant = part.id;
     }

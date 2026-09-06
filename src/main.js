@@ -16,9 +16,11 @@ import './styles/access-explorer.css';
 import './styles/landing.css';
 import './styles/trust.css';
 import './styles/scene-fallback.css';
+import './styles/locked.css';
 import './styles/telemetry.css';
 import './styles/legal.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
+import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 
 /**
@@ -55,10 +57,15 @@ async function boot() {
   const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
   const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
 
+  // Which routes the current release opens. Decided before anything is
+  // recorded or loaded: a locked route must not enter recent history, and must
+  // not download the scene chunk it is refusing to show.
+  const open = routeOpen(route);
+
   // Recent history is navigation convenience only: one published scene id, no
   // model controls or personal/clinical state. Storage denial is swallowed by
   // the helper and can never block the free scene from opening.
-  if (route.kind === 'scene') recordSceneVisit(route.sceneId);
+  if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
 
   // Account/access is product chrome, not part of a medical scene. Start its
   // network work in parallel on every route. A slow auth or billing provider may
@@ -77,6 +84,22 @@ async function boot() {
     console.error('access init', error);
   });
 
+  if (!open) {
+    // A shared link to work that is not open yet still has to answer as a page:
+    // what it points at, that the beta holds it back, and where the open models
+    // are. No scene module is imported on this path.
+    document.documentElement.dataset.route = 'locked';
+    const { createLockedSurface } = await import('./app/LockedSurface.js');
+    createLockedSurface({ ui, route, accountButton: access.accountButton });
+    void observe({ ui, surface: 'landing' });
+    void accessReady;
+    window.addEventListener('hashchange', () => {
+      if (isInPageAnchor(window.location.hash)) return;
+      window.location.reload();
+    });
+    return;
+  }
+
   if (route.kind === 'landing') {
     document.documentElement.dataset.route = 'landing';
     const { createLanding } = await import('./app/Landing.js');
@@ -84,10 +107,14 @@ async function boot() {
     createLanding({
       ui,
       accountButton: access.accountButton,
-      onRendererFailure: async (error) => {
+      onRendererFailure: async (error, context) => {
         const observability = await observabilityReady;
         observability?.reporter.captureRendererFailure(error, {
-          scene: 'circulation',
+          // The hero shows a different organ on different days, and it says
+          // which one failed. Naming one scene for all of them — as this did
+          // while it still said `circulation`, a scene the landing page has
+          // not run since the hero was replaced — reports the wrong thing.
+          scene: context?.sceneId ?? 'landing-hero',
           device: observability.deviceClass,
           reason: rendererFailureReason(error),
           fallbackShown: true,

@@ -10,6 +10,14 @@
    was unreachable, and no test could see it because the rule was missing
    rather than wrong.
 
+   The beta's "to be updated" surface is the same kind of thing and was the
+   next one forgotten. It kept the pinned viewport and scrolled itself with
+   `overflow: auto` on `#ui`, which reads as correct in Chromium and WebKit
+   and is not: Firefox makes a scrollable container keyboard-focusable, so on
+   any viewport short enough to scroll, the first Tab stop was the scroll box
+   and not the skip link. The root scroller is exempt from that, which is one
+   more reason a document route should scroll the document.
+
    So the release lives here once, for every reading route. A new document
    route is added to this selector and inherits a page that scrolls, reflows
    at 400% zoom and does not trap content off-screen. Each route's own
@@ -24,7 +32,9 @@ html[data-route='explorer'] body,
 html[data-route='trust'],
 html[data-route='trust'] body,
 html[data-route='legal'],
-html[data-route='legal'] body {
+html[data-route='legal'] body,
+html[data-route='locked'],
+html[data-route='locked'] body {
   height: auto;
   min-height: 100%;
   overflow: visible;
@@ -34,7 +44,8 @@ html[data-route='legal'] body {
 html[data-route='landing'] #stage,
 html[data-route='explorer'] #stage,
 html[data-route='trust'] #stage,
-html[data-route='legal'] #stage {
+html[data-route='legal'] #stage,
+html[data-route='locked'] #stage {
   display: none;
 }
 
@@ -42,7 +53,8 @@ html[data-route='legal'] #stage {
 html[data-route='landing'] #ui,
 html[data-route='explorer'] #ui,
 html[data-route='trust'] #ui,
-html[data-route='legal'] #ui {
+html[data-route='legal'] #ui,
+html[data-route='locked'] #ui {
   position: static;
   inset: auto;
   display: block;
@@ -52,7 +64,8 @@ html[data-route='legal'] #ui {
 
 html[data-route='explorer'] #ui,
 html[data-route='trust'] #ui,
-html[data-route='legal'] #ui {
+html[data-route='legal'] #ui,
+html[data-route='locked'] #ui {
   padding: 0;
 }
 
@@ -113,7 +126,8 @@ html[data-route='trust'] :focus-visible {
   html[data-route='landing'] *,
   html[data-route='explorer'] *,
   html[data-route='trust'] *,
-  html[data-route='legal'] * {
+  html[data-route='legal'] *,
+  html[data-route='locked'] * {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

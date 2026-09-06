@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 
-import { PUBLIC_SCENES } from './src/catalog/index.js';
+import { CRAWLABLE_SCENES } from './src/catalog/release.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
 
@@ -21,9 +21,10 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       siteMetadataPlugin({
-        // Public scenes only: Prototype work lives on the Lab shelf and is
-        // deliberately not something a search result can strip the caveat from.
-        scenes: PUBLIC_SCENES,
+        // Open *and* public — `catalog/release.js` holds the two rules
+        // together, because a set that satisfies only one of them is a bug in
+        // whichever channel it is not checked in.
+        scenes: CRAWLABLE_SCENES,
         reviews: clinicalReviews,
         baseUrl: env.VITE_SITE_URL ?? '',
       }),
