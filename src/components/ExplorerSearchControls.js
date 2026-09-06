@@ -66,6 +66,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
           ['all', 'All', 'すべて'],
           ['patient', 'Patient', '患者説明'],
           ['education', 'Education', '医学教育'],
+          ['clinical-learning', 'Clinical cases', '臨床ケース'],
         ].map(([id, label, labelJa]) => {
           const button = el(
             'button',

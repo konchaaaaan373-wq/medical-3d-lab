@@ -4,7 +4,7 @@ import { el } from '../utils/dom.js';
 const DEMO_STATES = Object.freeze([
   Object.freeze({ value: CIRCULATION_INTERVENTIONS.BASELINE, label: 'Baseline', labelJa: '基準' }),
   Object.freeze({ value: CIRCULATION_INTERVENTIONS.FLUID, label: 'Fluid responsive', labelJa: '輸液反応' }),
-  Object.freeze({ value: CIRCULATION_INTERVENTIONS.DOBUTAMINE, label: 'Dobutamine', labelJa: 'DOB反応' }),
+  Object.freeze({ value: CIRCULATION_INTERVENTIONS.DOBUTAMINE, label: 'Dobutamine', labelJa: 'ドブタミン（DOB）反応' }),
 ]);
 
 const STATE_LABELS = Object.freeze(Object.fromEntries(

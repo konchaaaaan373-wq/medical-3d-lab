@@ -42,6 +42,8 @@ test('migrated production evidence and the existing model registries share one c
       'portal-hypertension',
       'hepatorenal-syndrome',
       'pulmonary-edema',
+      'pneumonia-consolidation',
+      'pulmonary-embolism',
     ]
   );
 });

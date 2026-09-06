@@ -3395,6 +3395,7 @@
    few pixels fade instead of being cut flat. It costs no layout space, which
    matters most on the short windows where the clipping happens. */
 .rail.has-more,
+.top-left.has-more,
 .inspection-panel.has-more {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%);
 }

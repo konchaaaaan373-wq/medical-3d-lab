@@ -54,8 +54,8 @@ export class RenalFiltrationScene {
   static meta = {
     id: 'renal-filtration',
     status: 'alpha',
-    title: 'Where filtration fails',
-    titleJa: '濾過は、どこで落ちるのか',
+    title: 'AKI, CKD and nephrotic syndrome',
+    titleJa: 'AKI・CKD・ネフローゼ症候群',
     subtitle: 'One nephron, one Starling balance, one mass balance · every number here is a reading of the same solve',
     subtitleJa:
       '1 個のネフロン、1 つの Starling 平衡、1 つの物質収支 ｜ 画面上のすべての数値が同じ解から導かれています',

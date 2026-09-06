@@ -18,7 +18,17 @@ export const SCENES = SCENE_MANIFEST.map((entry) => ({
   // explorer uses to decide an organ is covered, `organ` is where it is filed.
   organs: entry.organs ?? [entry.organ],
   disease: entry.disease ?? null,
+  // `titleEn`/`titleJa` are the textbook names every surface shows and searches
+  // by. A scene may keep its narrative question as a `storyTitle`; it is shown
+  // beside the textbook name, never instead of it.
+  storyTitleEn: entry.storyTitleEn ?? null,
+  storyTitleJa: entry.storyTitleJa ?? null,
+  conditions: entry.conditions ?? (entry.disease ? [entry.disease] : []),
   tags: entry.tags ?? [],
+  // Intended reading contexts are catalogue information. They are deliberately
+  // separate from `access`, which describes paid feature availability and can
+  // fail closed when a clinical review becomes stale.
+  uses: entry.uses ?? ['education'],
 }));
 
 /** Public product and experimental work are two views over one registry. */
@@ -71,16 +81,14 @@ export const scenesForOrgan = (organId, scenes = SCENES) =>
 /**
  * The scenes worth listing under an organ on an explorer surface.
  *
- * A scene that draws an organ from another system — the whole-body view draws
- * nine of them — is not listed under each one. It is a real answer to "what
- * shows the stomach?", but repeating the same card under ten organs buries the
- * scenes that are actually about them, and the whole-body view is one click
- * away in its own section.
+ * A scene may draw several organs, but it is filed under exactly one primary
+ * organ. `scenesForOrgan()` remains the anatomy/search query for every organ a
+ * scene depicts; this narrower projection prevents COPD appearing once under
+ * the airway and again under the lungs, or a cross-organ scene repeating down
+ * the page.
  */
 export const scenesListedForOrgan = (organId, scenes = SCENES) =>
-  scenesForOrgan(organId, scenes).filter(
-    (scene) => scene.organ === organId || scene.system === organById(organId)?.system
-  );
+  scenes.filter((scene) => scene.organ === organId);
 
 /** Scenes filed under a system, in registration order. */
 export const scenesForSystem = (systemId, scenes = SCENES) =>
@@ -201,6 +209,31 @@ export function validateCatalog(scenes = SCENES) {
       problems.push(`${where}: organ "${scene.organ}" does not belong to system "${scene.system}"`);
     }
     if (!STATUS_IDS.includes(scene.status)) problems.push(`${where}: unknown status "${scene.status}"`);
+
+    for (const key of ['titleEn', 'titleJa']) {
+      if (typeof scene[key] !== 'string' || !scene[key].trim()) problems.push(`${where}: ${key} is required`);
+    }
+    if ((scene.storyTitleEn == null) !== (scene.storyTitleJa == null)) {
+      problems.push(`${where}: storyTitleEn and storyTitleJa must be declared together`);
+    }
+    for (const key of ['storyTitleEn', 'storyTitleJa']) {
+      if (scene[key] != null && (typeof scene[key] !== 'string' || !scene[key].trim())) {
+        problems.push(`${where}: ${key} must be a non-empty string when declared`);
+      }
+    }
+
+    if (!Array.isArray(scene.conditions) || scene.conditions.some((condition) => typeof condition !== 'string')) {
+      problems.push(`${where}: conditions must be an array of strings`);
+    }
+
+    const allowedUses = new Set(['patient', 'education', 'clinical-learning']);
+    if (!Array.isArray(scene.uses) || scene.uses.length === 0) {
+      problems.push(`${where}: uses must be a non-empty array`);
+    } else {
+      for (const use of scene.uses) {
+        if (!allowedUses.has(use)) problems.push(`${where}: unknown catalogue use "${use}"`);
+      }
+    }
 
     if (scene.access != null) {
       if (!scene.access || typeof scene.access !== 'object' || Array.isArray(scene.access)) {

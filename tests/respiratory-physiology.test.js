@@ -21,6 +21,8 @@ import {
   solveSteadyState as steadyState,
   stateAt,
 } from '../src/models/pulmonaryEdema.js';
+import { solvePneumonia } from '../src/models/pneumonia.js';
+import { solvePulmonaryEmbolism } from '../src/models/pulmonaryEmbolism.js';
 
 /** A solved lung at its own equilibrium, for the tests that want one. */
 const edemaState = (controls) => steadyState(controls);
@@ -746,4 +748,89 @@ test('physiology: oxygen widens the A–a difference in a shunt instead of closi
     'a lung without flooding keeps a small difference on oxygen'
   );
   assert.ok(dryAir.arterialSaturation > 0.95);
+});
+
+/* --------------------------------------------------------------------------
+   Regional V/Q — pneumonia and pulmonary embolism
+   -------------------------------------------------------------------------- */
+
+test('physiology: perfusing lung that receives no ventilation is shunt, and hypoxic vasoconstriction reduces it without abolishing it', () => {
+  // Shunt is defined by blood that crosses lung it cannot exchange gas in.
+  // Every consolidated share in the model receives no ventilation and keeps
+  // some perfusion, so it contributes to the shunt; HPV can divert flow away
+  // from it, and in a real lung never diverts all of it.
+  const none = solvePneumonia({ consolidatedFraction: 0.4, hypoxicVasoconstriction: 0 });
+  const strong = solvePneumonia({ consolidatedFraction: 0.4, hypoxicVasoconstriction: 1 });
+  for (const state of [none, strong]) {
+    const consolidated = state.units.filter((unit) => unit.consolidation > 0);
+    assert.ok(consolidated.length > 0);
+    for (const unit of consolidated) {
+      assert.ok(unit.ventilation < 1, `unit ${unit.id} lost ventilation`);
+      assert.ok(unit.perfusion > 0, `unit ${unit.id} is still perfused`);
+    }
+    assert.ok(state.shuntFraction > 0);
+  }
+  assert.ok(strong.shuntFraction < none.shuntFraction, 'HPV diverts flow away from consolidated lung');
+  assert.ok(strong.shuntFraction > none.shuntFraction * 0.4, 'and diverts nothing like all of it');
+});
+
+test('physiology: consolidation removes ventilation without removing perfusion, so the shunt grows with the consolidated share', () => {
+  let previous = solvePneumonia({ consolidatedFraction: 0 });
+  assert.equal(previous.shuntFraction, 0);
+  assert.equal(previous.ventilationFraction, 1);
+  for (let step = 1; step <= 25; step += 1) {
+    const state = solvePneumonia({ consolidatedFraction: step / 25 });
+    assert.ok(state.ventilationFraction < previous.ventilationFraction, `ventilation falls at ${step / 25}`);
+    assert.ok(state.shuntFraction > previous.shuntFraction, `shunt rises at ${step / 25}`);
+    assert.ok(state.units.every((unit) => unit.perfusion > 0), 'no unit loses its perfusion to consolidation');
+    previous = state;
+  }
+  // The solver boundary: a lung with no aerated share has no ventilation and
+  // is still perfused. This is a check on the arithmetic, not a stage of
+  // pneumonia; the scene's teaching axis stops well before it.
+  const total = solvePneumonia({ consolidatedFraction: 1 });
+  assert.equal(total.ventilationFraction, 0);
+  assert.ok(total.units.every((unit) => unit.perfusion > 0));
+});
+
+test('physiology: obstructing a pulmonary vessel leaves the ventilation it served in place, which is dead space rather than shunt', () => {
+  const state = solvePulmonaryEmbolism({ obstruction: 0.7 });
+  const obstructed = state.units.filter((unit) => unit.occlusion > 0);
+  assert.ok(obstructed.length > 0);
+  for (const unit of obstructed) {
+    assert.equal(unit.ventilation, 1, `unit ${unit.id} keeps breathing`);
+    assert.ok(unit.perfusionAtFixedPressure < 1, `unit ${unit.id} lost perfusion`);
+  }
+  assert.ok(state.underperfusedVentilationFraction > 0);
+  // The mirror image of consolidation: no unit here is perfused and
+  // unventilated, and no unit there is ventilated and unperfused.
+  const consolidated = solvePneumonia({ consolidatedFraction: 0.4 });
+  assert.ok(state.units.every((unit) => unit.ventilation >= unit.perfusionAtFixedPressure), 'embolism: ventilation ≥ perfusion everywhere');
+  assert.ok(
+    consolidated.units.every((unit) => unit.ventilation <= 1 && unit.perfusionConductance > 0),
+    'consolidation: every unit is still perfused'
+  );
+  assert.ok(consolidated.shuntFraction > 0 && state.underperfusedVentilationFraction > 0);
+});
+
+test('physiology: removing parallel vascular conductance raises resistance, and faster than the share removed', () => {
+  // Resistances in parallel add as conductances. Removing a fraction x of
+  // equal parallel paths at one driving pressure leaves conductance 1 − x and
+  // resistance 1 / (1 − x), which grows faster than 1 + x: the last paths
+  // carry disproportionately more.
+  let previous = solvePulmonaryEmbolism({ obstruction: 0 });
+  assert.equal(previous.relativePulmonaryVascularResistance, 1);
+  for (let step = 1; step <= 20; step += 1) {
+    const state = solvePulmonaryEmbolism({ obstruction: step / 20 });
+    assert.ok(state.totalConductanceFraction < previous.totalConductanceFraction, `conductance falls at ${step / 20}`);
+    assert.ok(state.relativePulmonaryVascularResistance > previous.relativePulmonaryVascularResistance, `resistance rises at ${step / 20}`);
+    const removed = 1 - state.totalConductanceFraction;
+    assert.ok(
+      Math.abs(state.relativePulmonaryVascularResistance - 1 / (1 - removed)) < 1e-9,
+      'resistance is the reciprocal of the remaining parallel conductance'
+    );
+    assert.ok(state.relativePulmonaryVascularResistance > 1 + removed, 'and it is convex in the share removed');
+    previous = state;
+  }
+  assert.ok(previous.totalConductanceFraction > 0, 'the teaching axis never removes the whole bed');
 });

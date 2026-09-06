@@ -14,6 +14,104 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Two new respiratory models, and the Explorer rebuilt around organs
+
+- **Pneumonia** (`#/pneumonia`, `alpha`, clinical review pending). Twelve
+  regional units; alveolar consolidation removes ventilation from a unit while
+  its perfusion persists, and the perfusion that still crosses non-ventilated
+  lung is the shunt mechanism. Hypoxic vasoconstriction diverts some of that
+  flow and never all of it. The slider consolidates at most 60% of the
+  conceptual lung; the solver's total-consolidation boundary is kept for tests
+  and is not a stage a reader is walked into. No PaO₂, SpO₂, pathogen, imaging
+  or treatment.
+- **Pulmonary embolism** (`#/pulmonary-embolism`, `alpha`, clinical review
+  pending). Twelve parallel vascular territories at one fixed driving
+  pressure; obstruction removes perfusion while ventilation continues, which
+  is dead space, and removing parallel conductance raises a relative PVR
+  (shown to one decimal). No pressure, right-ventricular response, clot
+  burden, risk class or treatment.
+- **Both models carry the full alpha set**: a model layer, an evidence dossier
+  with a code-side registry, a model card, a scope panel, physiology tests and
+  scene tests. Non-finite input to either solver falls back safely.
+- **The Explorer files every model once, under its primary organ**, with a
+  slow, lazy 3D preview per organ (brain, heart, lungs, liver, kidneys). At
+  most two WebGL contexts are alive at a time; a preview that scrolls away
+  gives its context back and rebuilds on return, a lost context is never shown
+  as ready, and the preview pauses on hover or touch, off-screen, in a hidden
+  tab and under reduced motion.
+- **Every model has one name.** The textbook name in the catalogue is what the
+  Explorer, the search, favourites, the landing page, the scene header, the
+  page metadata and the social card all show, so a reader who searches for
+  what the card says finds it. Narrative titles ("Where the water goes")
+  remain as a story line beside the name. Short abbreviations such as PE, CAP
+  and AKI are matched as whole words.
+- **Three uses, and one of them fails closed.** Patient explanation, medical
+  education and clinical case learning are the product's use contexts. The
+  patient-explanation badge and filter appear only on a model with a
+  versioned clinical review, under the same rule as the paid patient mode.
+  Clinical case learning stops at case-based mechanism review: no patient-
+  specific dosing (dobutamine included), diagnosis, severity grading or
+  decision support.
+### Myocardial ischemia, as a model and a scene that is not yet finished
+
+- **A model of ischemia as a debt that accumulates.** Supply over demand gives a
+  deficit, the deficit integrates into a burden, and the burden drives
+  contractility through a lag that is slower coming back than going out —
+  because that is what stunning is. Nothing downstream reads supply, so a wall
+  cannot go red the moment an artery narrows.
+- **One solve behind everything.** The wall's colour, how far it moves, the
+  ejection fraction and every number come from a single call to the shared
+  cardiac model, with end-systolic elastance scaled by how hard the ventricle
+  can still contract.
+- **The scene is registered `alpha` and has been looked at, repeatedly.**
+  Rendering it found twenty-eight defects across ten rounds and a code review,
+  and two of the twenty-eight were measurements this project had itself
+  published wrong. The territory map is legible on the model now — the
+  watershed is drawn as a line, because a fill alone could not carry it — and
+  the AHA 17-segment plot beside the heart shows all three territories at once,
+  which no view of a 3D heart can. Every round, with its numbers, is in
+  `docs/anatomy-review.md` §5.10.
+
+### The heart has coronary arteries, and the myocardium knows which one feeds it
+
+- **Five named epicardial arteries**, each in the groove it is named for, and
+  the AHA 17-segment territory map as one source of truth that the scene's
+  colour, wall motion, legend and read-out will all read. Owned by the organ
+  layer: the builder is handed the heart's surface rather than importing one,
+  so a vessel cannot end up with its own opinion about where the heart is.
+- **The territory map is a convention, and the code says where it is wrong.**
+  The AHA chart assigns segment 3 to the right coronary; contrast-enhanced MR
+  finds it is anterior-descending territory, and five other segments overlap
+  two arteries between people. A model that shows a fixed map without recording
+  that is claiming more than it has.
+- **One right-dominant specimen.** The posterior descending comes off the right
+  coronary. Left-dominant and balanced circulations are not modelled.
+- **The anterior descending stops short of the apex**, which real ones do not.
+  A surface of revolution has no normal at its tip, so there is no "away from
+  the wall" to lay a vessel along there. The reason and the measured clearance
+  are recorded where the number is.
+
+### One heart, so two scenes cannot disagree about it
+
+- **The cardiac solver moved out of the heart-failure scene.** The time-varying
+  elastance model and the seven-compartment circulation it drives now live in
+  `src/models/cardiacMechanics.js`, with the chamber geometry and the named
+  parts of a beat. The heart-failure scene keeps what is specific to that
+  disease — the keyframes that turn a position on the progression into
+  mechanical parameters — and became one of two readers rather than the owner.
+- **Nothing about the heart-failure model changed.** Every authored stage, each
+  control at its minimum, default and maximum, and five points in the cardiac
+  cycle were captured before the move and again after. The two captures are
+  identical, not merely within tolerance, and a test pins them so a future edit
+  has to change them deliberately.
+- **Why now.** The myocardial ischemia scene has to solve the same cardiac cycle
+  under the same loading state. A second implementation of a beat is how two
+  scenes start showing different hearts, and neither would look wrong on its
+  own. The specification for that scene — what the coronary geometry owns, the
+  AHA territory map and where it disagrees with measurement, and the fact that
+  the first version is reversible ischemia with no infarct — is settled in
+  `docs/anatomy-specs.md` before any of it is built.
+
 ### The site has one public address
 
 - **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
