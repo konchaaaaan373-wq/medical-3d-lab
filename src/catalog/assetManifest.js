@@ -132,10 +132,27 @@ export const QA_APPLIES = Object.freeze({
   [ASSET_KIND.MATERIAL]: Object.freeze([QA_GATE.FORMAT_VALIDATION, QA_GATE.VISUAL_REVIEW]),
 });
 
-/** Gates whose passing state is tied to one exact file: they must name the hash they were run against. */
+/**
+ * Gates whose passing state is tied to one exact file: they must name the hash
+ * they were run against, and the gate refuses them when the output has moved
+ * since.
+ *
+ * `anatomyExpertReview` belongs here for the reason the others do, and more
+ * so: it is the only gate that can establish anatomical correctness, and no
+ * other gate can stand in for it. A replaced mesh updates the format, semantic
+ * and visual records, and an expert sign-off left unbound would silently carry
+ * over to geometry the expert never saw.
+ *
+ * `clinicianReview` is deliberately not here. It is a judgement about the
+ * *scene*, and its staleness is already owned by the review registry's
+ * `stalePaths` against a reviewed commit
+ * (`docs/clinical-reviews/registry.json`, `src/catalog/clinicalReview.js`).
+ * Binding it to a file hash as well would put one obligation in two places.
+ */
 export const HASH_BOUND_GATES = Object.freeze([
   QA_GATE.FORMAT_VALIDATION,
   QA_GATE.SEMANTIC_INTEGRITY,
+  QA_GATE.ANATOMY_EXPERT_REVIEW,
   QA_GATE.VISUAL_REVIEW,
 ]);
 

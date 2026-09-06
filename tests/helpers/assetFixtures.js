@@ -36,7 +36,7 @@ const passedFormat = () => ({
 export const passedMeshQa = () => ({
   formatValidation: passedFormat(),
   semanticIntegrity: { status: QA_STATUS.PASSED, assetSha256: FIXTURE_HASH, reference: 'tests/fixture.test.js', scope: 'fixture' },
-  anatomyExpertReview: { status: QA_STATUS.PASSED, reference: 'docs/fixture-qa.md', scope: 'fixture' },
+  anatomyExpertReview: { status: QA_STATUS.PASSED, assetSha256: FIXTURE_HASH, reference: 'docs/fixture-qa.md', scope: 'fixture' },
   visualReview: {
     status: QA_STATUS.PASSED,
     assetSha256: FIXTURE_HASH,

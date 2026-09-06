@@ -14,6 +14,7 @@ import {
   LICENSE_DECISION,
   OBLIGATION_STATUS,
   QA_APPLIES,
+  HASH_BOUND_GATES,
   QA_GATE,
   QA_GATE_IDS,
   QA_STATUS,
@@ -292,11 +293,13 @@ test('not-applicable is accepted only where the kind says the gate does not appl
 });
 
 test('a gate cannot pass without a reference, and a hash-bound gate cannot pass without naming the file', () => {
-  const blind = validateAssetManifest([withQa(meshFixture(), QA_GATE.ANATOMY_EXPERT_REVIEW, { status: QA_STATUS.PASSED, reference: null })]);
-  assert.ok(has(blind, /qa\.anatomyExpertReview passed without a reference/), blind);
-  const { assetSha256: _h, ...noHash } = meshFixture().qa.visualReview;
-  const unbound = validateAssetManifest([withQa(meshFixture(), QA_GATE.VISUAL_REVIEW, noHash)]);
-  assert.ok(has(unbound, /qa\.visualReview passed without naming the asset hash/), unbound);
+  const blind = validateAssetManifest([withQa(meshFixture(), QA_GATE.CLINICIAN_REVIEW, { status: QA_STATUS.PASSED, reference: null })]);
+  assert.ok(has(blind, /qa\.clinicianReview passed without a reference/), blind);
+  for (const gate of HASH_BOUND_GATES) {
+    const { assetSha256: _h, ...noHash } = meshFixture().qa[gate];
+    const unbound = validateAssetManifest([withQa(meshFixture(), gate, noHash)]);
+    assert.ok(has(unbound, new RegExp(`qa\\.${gate} passed without naming the asset hash`)), `${gate}: ${unbound}`);
+  }
   const { commit: _c, browser: _b, ...thin } = meshFixture().qa.visualReview;
   const thinProblems = validateAssetManifest([withQa(meshFixture(), QA_GATE.VISUAL_REVIEW, thin)]);
   assert.ok(has(thinProblems, /visualReview\.browser is missing/) && has(thinProblems, /visualReview\.commit must be/), thinProblems);
@@ -334,10 +337,36 @@ test('a validator run with errors or warnings, or against another version of the
   assert.ok(has(assetReleaseProblems(errors), /formatValidation has 2 errors/));
   const warnings = withQa(meshFixture(), QA_GATE.FORMAT_VALIDATION, { ...meshFixture().qa.formatValidation, warnings: 1 });
   assert.ok(has(assetReleaseProblems(warnings), /0 errors and 1 warnings/));
-  for (const gate of [QA_GATE.FORMAT_VALIDATION, QA_GATE.SEMANTIC_INTEGRITY, QA_GATE.VISUAL_REVIEW]) {
+  for (const gate of HASH_BOUND_GATES) {
     const stale = withQa(meshFixture(), gate, { ...meshFixture().qa[gate], assetSha256: 'b'.repeat(64) });
     assert.ok(has(assetReleaseProblems(stale), new RegExp(`${gate} was run against a different file`)), gate);
   }
+});
+
+test('an anatomy expert sign-off does not carry over to a mesh the expert never saw', () => {
+  // The gate that establishes anatomical correctness is the one no other gate
+  // can stand in for, so replacing the mesh must invalidate it even when the
+  // cheaper gates have been re-run against the new file.
+  assert.ok(HASH_BOUND_GATES.includes(QA_GATE.ANATOMY_EXPERT_REVIEW), 'anatomy review is bound to the file');
+  const replacedHash = 'c'.repeat(64);
+  const replaced = {
+    ...meshFixture(),
+    output: { ...meshFixture().output, sha256: replacedHash },
+    qa: {
+      ...meshFixture().qa,
+      // Every cheap gate re-run against the new mesh; only the expert's is stale.
+      formatValidation: { ...meshFixture().qa.formatValidation, assetSha256: replacedHash },
+      semanticIntegrity: { ...meshFixture().qa.semanticIntegrity, assetSha256: replacedHash },
+      visualReview: { ...meshFixture().qa.visualReview, assetSha256: replacedHash },
+    },
+  };
+  const problems = assetReleaseProblems(replaced, { sceneStatus: 'reviewed' });
+  assert.deepEqual(problems, [
+    'asset "fixture-atlas": anatomyExpertReview was run against a different file (' + FIXTURE_HASH + '), not the current one',
+  ]);
+  // Clinician review is not hash-bound: the review registry's stalePaths owns
+  // that question, and one obligation does not live in two places.
+  assert.ok(!HASH_BOUND_GATES.includes(QA_GATE.CLINICIAN_REVIEW));
 });
 
 test('a QA reference or a licence record that does not exist blocks release when a resolver is supplied', () => {

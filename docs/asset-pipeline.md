@@ -57,9 +57,13 @@ scene that has not. `failed` at any gate blocks at every scene status. There
 is no free-text waiver: a gate may be `not-applicable` only where the asset's
 `kind` says it does not apply (`QA_APPLIES` in the manifest module — a
 texture has no anatomy to review), and a reviewer can read that rule in one
-place. The three file-bound gates (8, 9a, 10) record the hash they ran
+place. The four file-bound gates (8, 9a, 9b, 10) record the hash they ran
 against; a review of a previous version of the file is not a review of this
-one.
+one. That includes the expert anatomy review, deliberately: it is the only
+gate that can establish anatomical correctness, so a replaced mesh must not
+inherit it while the cheaper gates are simply re-run. Clinician review is the
+one review gate not bound to a hash, because the clinical-review registry
+already owns its staleness through `stalePaths`.
 
 ## The record
 

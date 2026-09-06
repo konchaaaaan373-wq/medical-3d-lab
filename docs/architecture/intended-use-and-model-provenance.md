@@ -201,8 +201,12 @@ It refuses when:
   `clinicianReview` may be `pending` for an **alpha** scene, because alpha is
   the status that means the review has not happened;
 - the glTF Validator run has errors or warnings, or the validator, semantic
-  integrity or visual review record names a different file hash than the
-  current output — a review of another version is not a review of this one;
+  integrity, expert anatomy or visual review record names a different file
+  hash than the current output — a review of another version is not a review
+  of this one, and the expert anatomy review is bound this way precisely
+  because no cheaper gate can stand in for it. Clinician review is the
+  exception: the clinical-review registry already owns its staleness through
+  `stalePaths`;
 - an imaging-derived asset's de-identification is not `confirmed` (a
   structured status, not a sentence);
 - `release.status` is not `released`.
