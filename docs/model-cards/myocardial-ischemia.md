@@ -154,6 +154,14 @@ No clinician has reviewed the calibration, the teaching text or the territory pr
 
 ## 17. Revision history
 
+### Revision 4 — one answer to where a trunk leaves the aorta
+
+No anatomy changed. `OSTIUM_OF` — which sinus each trunk starts from — was typed out beside `CORONARY_BRANCHES`, whose entries carry the same fact in an `ostium` field. Two answers to one question, and the code used both: the builder that *draws* a trunk selected its sinus by branch id through `OSTIUM_OF`, while `ostiumOf()`, which is what a test or a label asks, read `branch.ostium`. Swapping a branch's `ostium` would have moved the reported ostium and left the drawn vessel where it was, and nothing compared the two.
+
+`OSTIUM_OF` is now derived from the branch list and keyed by real branch id (`left-main`, not `leftMain` — the hand-typed key was not the id of anything). The builder reads `branch.ostium` and throws if it names no sinus, rather than defaulting every trunk that is not the RCA to the left sinus, which is what the id test did.
+
+Measured against the previous version, every coronary centreline sample and every drawn vertex is identical to the last bit, at four points across the progression. The digest moved because the source did; the model did not.
+
 ### Revision 3 — the aortic root, and a valve that was not one
 
 The two coronary sinuses were **169.9° apart**. A trileaflet aortic valve has three cusps and they divide the circle, so they are 120° apart — this is geometry, not a citation, and 170° is no aortic root. Nothing caught it: the only tests asked which side each sinus faced, and a pair nearly opposite each other passes that comfortably.

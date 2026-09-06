@@ -362,12 +362,88 @@ test('each artery starts from its own aortic sinus', () => {
   assert.ok(leftSinus.x > ROOT.centre.x, 'the left sinus is left of the root’s centre');
   assert.ok(rightSinus.x < ROOT.centre.x, 'the right sinus is right of the root’s centre');
   assert.equal(OSTIUM_OF.rca, 'right');
-  assert.equal(OSTIUM_OF.leftMain, 'left');
+  assert.equal(OSTIUM_OF['left-main'], 'left');
+});
+
+// The trunk's `ostium` field and the point the trunk is *drawn* from used to be
+// two separate answers: the builder selected the sinus by branch id, while
+// `ostiumOf` read `branch.ostium`. Nothing compared them, so swapping a branch's
+// `ostium` moved the reported ostium and left the drawn vessel where it was.
+test('each trunk is drawn from the sinus its own record names', () => {
+  for (const record of tree.branches) {
+    if (!record.ostium) continue;
+    const named = new THREE.Vector3()
+      .copy(ROOT.centre)
+      .addScaledVector(
+        new THREE.Vector3(...CORONARY_SINUSES[record.ostium].direction).normalize(),
+        ROOT.radius
+      );
+    const drawn = record.curve.getPoint(0);
+    const reported = tree.ostiumOf(record.id);
+    assert.ok(
+      drawn.distanceTo(named) <= 1e-6,
+      `${record.id} is drawn from the "${record.ostium}" sinus it names: ${drawn.distanceTo(named).toFixed(4)} away`
+    );
+    assert.ok(
+      reported.distanceTo(named) <= 1e-6,
+      `ostiumOf('${record.id}') reports the "${record.ostium}" sinus: ${reported.distanceTo(named).toFixed(4)} away`
+    );
+  }
 });
 
 /* --------------------------------------------------------------------------
    Course
    -------------------------------------------------------------------------- */
+
+// The left main runs in no groove of its own: it ends where the anterior
+// interventricular groove starts. Derived from the LAD rather than typed, so
+// the trunk and its branches cannot come apart — and, since it is derived once
+// per relay from a single sample rather than from the LAD's whole centreline,
+// this is the relation that says the shortcut is the same shortcut.
+test('the left main ends where the anterior interventricular groove starts', () => {
+  const lm = branch('left-main');
+  const lad = branch('lad');
+  const groove = GROOVES.anteriorInterventricular;
+
+  const end = lm.points[lm.points.length - 1];
+  // `lad.points[0]` is the join to the parent — the nearest point on the left
+  // main — so comparing against *that* is a tautology and passes however wrong
+  // the junction is. `points[1]` is the LAD's own first groove sample, which is
+  // the thing the left main is supposed to have been derived from.
+  assert.ok(
+    end.distanceTo(lad.points[1]) <= 1e-9,
+    `the left main ends at the LAD's own first sample: ${end.distanceTo(lad.points[1]).toExponential(2)} apart`
+  );
+
+  // And that sample is the groove's start, not one step in. Stated as "nearer
+  // the start than the next sample along" rather than as a distance, because
+  // the vessel is lifted off the surface and the heart it sits on dilates:
+  // any absolute tolerance would have to be loose enough to swallow exactly
+  // the error being looked for.
+  const phi = groove.phi !== undefined ? groove.phi : groove.phiFrom;
+  const at = (t) => epicardialSurfacePoint(shape, t, phi, new THREE.Vector3());
+  const first = at(groove.from);
+  const second = at(groove.from + (groove.to - groove.from) / 43);
+  assert.ok(
+    end.distanceTo(first) < 0.75 * end.distanceTo(second),
+    `it sits at the top of the groove, not one sample down it: ` +
+      `${(end.distanceTo(first) / L).toFixed(4)}L from the first sample, ` +
+      `${(end.distanceTo(second) / L).toFixed(4)}L from the second`
+  );
+
+  // Every other vessel starts on its parent, which is what makes the tree one
+  // connected thing rather than five vessels near each other.
+  for (const record of tree.branches) {
+    if (!record.parent) continue;
+    const parent = branch(record.parent);
+    let nearest = Infinity;
+    for (const point of parent.points) nearest = Math.min(nearest, point.distanceTo(record.points[0]));
+    assert.ok(
+      nearest <= 1e-9,
+      `${record.id} starts on ${record.parent}: ${nearest.toExponential(2)} away`
+    );
+  }
+});
 
 test('each artery runs in the groove it is named for', () => {
   const cases = [

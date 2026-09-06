@@ -536,7 +536,7 @@ territory with the posterior descending running down the middle of it. Vessel
 and territory coincide, which is the relation an ischemia scene depends on and
 the one that a rotated ring would break while every vessel still looked right.
 
-### 5.10 The ischemia scene — what ten rounds of rendering it found
+### 5.10 The ischemia scene — what ten rounds of rendering, and one code review, found
 
 The scene is registered `alpha` with the four-point set, and every test passes.
 Architecture rule 6 says that is not enough: a 3D scene is not finished until it
@@ -784,6 +784,107 @@ territory map.
 
    It goes first in the rail, not last: pushed below three other panels it fell
    under the fold, which is where a reader never finds it.
+
+**What a code review of the finished branch found on top of that.** Eight
+findings, each checked by measurement before it was accepted; three were real
+defects a reader would have hit, three were work the machine was doing for
+nothing or a second source of truth waiting to diverge, and the numbering
+continues the list above because they are the same scene.
+
+19. **"Predict it" broke on the first click.** `getLearningModules()` returned a
+   shape the scene had invented rather than the one `LearningPanel`
+   dereferences. Every failure mode at once: the option buttons rendered the
+   literal word `undefined` because the panel reads `option.label` and the
+   scene wrote `text`; `setProgress(module.setup.progress)` set `NaN`;
+   `Object.entries(setup)` ran over a *string* and fired `setControl` once per
+   character; `module.watch.map` threw; and `manipulation.control: 'progress'`
+   was a silent no-op, because `setModelControl` handles `'supply'` and
+   `'afterload'` and nothing else. The test that was supposed to cover this
+   asserted the invented contract, so it passed throughout.
+
+   This is the **fifth** test on this branch that asserted a contract it had
+   made up rather than the one its consumer implements (findings 12 and 15 are
+   the earlier four). The rule that comes out of it is now in
+   `docs/organ-3d-playbook.md`: derive the assertion from the consumer — the
+   keys the component actually dereferences — never from what reads sensibly at
+   the producer. The rewritten test does that, and cross-checks the shape
+   against `CopdScene`'s modules, which the same panel renders. Five mutations,
+   each exactly what shipped, all caught.
+
+20. **The seam weld never reached the screen.** The ventricle's lathe seam is
+   welded by averaging the normals of the two coincident columns — and
+   `applyModelToScene` then called `computeVertexNormals()`, which recomputes
+   every normal from the faces and throws the weld away. Measured: worst normal
+   mismatch across the seam after `applyModelToScene`, **1.0000** — the two
+   columns pointing in opposite directions. The weld is now an exported
+   `weldLatheSeam(kit, outerSemiLength)` the scene re-applies after recomputing,
+   and the same measurement reads **0.0000** at four (progress, phase) states.
+   The mutation "the re-weld removed" fails with the number in the message.
+
+21. **The burden chart was rebuilt every frame.** Its series depends only on
+   `lesionSupply`, which changes when the reader moves a slider, not sixty times
+   a second. Cached on that value.
+
+22. **The stage-boundary supply/demand ratio was read off the wrong supply.**
+   It used the scene's current supply factor where it wanted the one at the
+   stage boundary.
+
+23. **The left main rebuilt the whole LAD to read one point.** It ends where the
+   anterior interventricular groove starts, derived from the LAD rather than
+   typed — but derived through `centrelineFor`, which builds all 44 samples,
+   each with a surface point, a surface normal and a territory kernel, so that
+   43 of them could be thrown away. Every frame. Split into
+   `centrelineSample(branch, context, i)`; 300 relays went from **352.6 ms to
+   271.5 ms**, and every centreline sample and every drawn vertex is identical
+   to the last bit against the previous version, at four points across the
+   progression.
+
+   The test written for it was itself vacuous on the first attempt: it compared
+   the left main's end against `lad.points[0]`, which *is* the join to the
+   parent, so it held however wrong the junction was. Against `points[1]` — the
+   LAD's own first groove sample — the mutation "read sample 1 instead of
+   sample 0" fails, and the second assertion is stated as "nearer the groove's
+   start than the next sample along" rather than as a distance, because a
+   tolerance loose enough to survive the ventricle dilating is loose enough to
+   swallow the error being looked for.
+
+24. **Two answers to which sinus a trunk leaves.** Recorded in the model card as
+   revision 4: the builder that draws a trunk selected its sinus by branch id
+   through `OSTIUM_OF`, while `ostiumOf()` — what a test or a label asks — read
+   `branch.ostium`. Nothing compared them. `OSTIUM_OF` is derived from the
+   branch list now, and the new test fails with `left-main is drawn from the
+   "left" sinus it names: 1.6425 away` when the two are made to disagree.
+
+25. **`TubeSurface.resample()` dropped the tube's calibre.** New on this branch,
+   for relaying the arteries on a moving wall: it re-derives the path and then
+   called `refresh()` with no modifier, so a tube that had been constricted came
+   back at its base radius. Latent — no current caller both constricts and
+   resamples — but `TubeSurface` is what every hollow organ here is drawn with,
+   bronchi and bowel and ureter included, and a travelling constriction is
+   exactly what those pass. The modifier is the tube's current *shape* now,
+   remembered by `refresh` and re-applied by `resample`; a bare `refresh()`
+   still means "no modifier from now on". `tests/tube-geometry.test.js` measures
+   the drawn cross-section rather than the stored callback, and the mutation
+   fails with `resampling keeps the constriction: 0.3000, expected 0.1200`.
+
+26. **What the render after the review found.** The learning flow now works from
+   the reader's side: the four option buttons carry their real labels, the
+   question and the observation read, and nothing logs an error. Two smaller
+   things came out of looking at it. The second module's chip read
+   `Stunning stunning` — its `shortJa` was the English word, never translated.
+   And the model-controls title broke mid-word (「…に対し／てか」) wrapping
+   around the reset link in a 236 px panel; shortened.
+
+   Measured, not fixed: **the left panel column hides 186 px of its 520 px at
+   1440 × 900**, and the panel below the fold is the ischemic burden chart. The
+   right rail hides 40 px of its own. This is the columns doing what they were
+   written to do — `.top-left` and `.rail` scroll rather than push the console
+   off the screen — but it means finding 18's argument cuts both ways: putting
+   the bullseye first put the burden chart under the fold instead, and at
+   1280 × 720 there is 344 px hidden on the left. It is a layout question for
+   every scene with four panels, not this scene's, so it is recorded here
+   rather than fixed inside a coronary PR. At 1920 × 1080 the left column hides
+   64 px and the rail nothing.
 
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded

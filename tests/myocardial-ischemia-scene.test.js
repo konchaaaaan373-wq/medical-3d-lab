@@ -8,6 +8,7 @@ import { STAGES, METRICS, CHARTS, SCOPE, TERRITORY_COLORS, WALL_COLORS } from '.
 import { TERRITORIES } from '../src/models/coronaryTerritories.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { AHA_SEGMENTS } from '../src/scenes/cardiovascular/organs/coronaryAnatomy.js';
+import { CopdScene } from '../src/scenes/respiratory/scenes/copd/CopdScene.js';
 
 /**
  * The ischemia scene, against the contract the App actually calls it with.
@@ -246,27 +247,91 @@ test('the chart is keyed the way the panel looks it up, and its series are drawa
 });
 
 test('every learning module matches the panel it is rendered by', () => {
-  // The shape the LearningPanel requires. The pulmonary oedema scene's modules
-  // threw a TypeError on the first click because this was never checked.
+  // The pulmonary oedema scene's modules threw a TypeError on the first click
+  // because this was never checked. This file's first version of the check
+  // then asserted a contract *this scene invented* — `option.text`,
+  // `setup` as a sentence, `observation` as a string — and passed while the
+  // panel rendered every answer button as the literal word `undefined`, set
+  // progress to NaN, called `setControl` once per character of the setup
+  // sentence, and threw on the missing `watch` array. A test that checks a
+  // contract it made up is worse than no test: it reports the miss as covered.
+  //
+  // So the shape below is read off `components/LearningPanel.js` — every field
+  // it actually dereferences — and cross-checked against a scene whose lessons
+  // work, so the two cannot drift apart.
   const modules = scene.getLearningModules();
+  const working = new CopdScene({}).getLearningModules();
   assert.ok(modules.length >= 2, 'there are modules');
+  assert.ok(working.length >= 1, 'and a scene to compare the shape against');
+
+  const metricIds = new Set(scene.getMetrics().map((row) => row.id));
+  const controlIds = new Set(scene.getModelControls().map((entry) => entry.id));
+
   for (const module of modules) {
     assert.ok(module.id && module.title && module.titleJa, `${module.id} is titled in both languages`);
+
+    // `setup` is applied as `setProgress(setup.progress)` and then
+    // `setControl(id, value)` for every other entry — not prose.
+    assert.equal(typeof module.setup, 'object', `${module.id}: setup is a state, not a sentence`);
+    assert.ok(Number.isFinite(module.setup.progress), `${module.id}: setup names a progress`);
+    for (const id of Object.keys(module.setup)) {
+      if (id === 'progress') continue;
+      assert.ok(controlIds.has(id), `${module.id}: setup sets "${id}", which is a real model control`);
+    }
+
     assert.ok(module.question?.text && module.question?.textJa, `${module.id} asks a question`);
-    assert.ok(Array.isArray(module.question.options), `${module.id} has options`);
-    assert.ok(module.question.options.length >= 3, `${module.id} has enough options to be a question`);
+    assert.ok(module.question.options?.length >= 3, `${module.id} has enough options to be a question`);
     for (const option of module.question.options) {
-      assert.ok(option.id && option.text && option.textJa, `${module.id}: every option is bilingual`);
+      // The panel renders `option.label` / `option.labelJa`. With `text` the
+      // buttons read `undefined`, which is what shipped.
+      assert.ok(option.id, `${module.id}: every option is identified`);
+      assert.ok(option.label && option.labelJa, `${module.id}: every option is labelled in both languages`);
     }
     assert.ok(
       module.question.options.some((option) => option.id === module.question.answer),
       `${module.id}: the answer is one of the options`
     );
-    assert.equal(typeof module.setup, 'string', `${module.id}: setup is flat text`);
+
+    // The manipulation is driven through `setControl`, so it has to name a
+    // control the scene handles. `progress` is not one — `setModelControl`
+    // ignores it silently and the lesson moves nothing.
     assert.ok(module.manipulation?.control, `${module.id}: the manipulation names a control`);
+    assert.ok(
+      controlIds.has(module.manipulation.control),
+      `${module.id}: "${module.manipulation.control}" is a control the scene handles`
+    );
     assert.ok(Number.isFinite(module.manipulation.to), `${module.id}: and a value to move it to`);
-    assert.ok(module.observation && module.explanation, `${module.id}: says what to see and why`);
+    assert.ok(module.manipulation.seconds > 0, `${module.id}: over a real duration`);
+    for (const key of ['action', 'actionJa', 'text', 'textJa']) {
+      assert.ok(module.manipulation[key], `${module.id}: the manipulation has ${key}`);
+    }
+
+    // `snapshot()` maps `watch` over the metric rows and reads `row.label`.
+    assert.ok(Array.isArray(module.watch) && module.watch.length, `${module.id}: names what to watch`);
+    for (const id of module.watch) {
+      assert.ok(metricIds.has(id), `${module.id}: watches "${id}", which is a metric this scene reports`);
+    }
+
+    // Both are read as `.text` / `.textJa`, not as strings.
+    for (const part of ['observation', 'explanation']) {
+      assert.equal(typeof module[part], 'object', `${module.id}: ${part} is an object`);
+      assert.ok(module[part].text && module[part].textJa, `${module.id}: ${part} is bilingual`);
+    }
   }
+
+  // And the shape matches a scene whose lessons are known to run.
+  const shapeOf = (module) =>
+    Object.entries({
+      setup: typeof module.setup,
+      option: typeof module.question.options[0].label,
+      manipulation: typeof module.manipulation.to,
+      watch: Array.isArray(module.watch),
+      observation: typeof module.observation.text,
+      explanation: typeof module.explanation.text,
+    })
+      .map(([key, value]) => `${key}:${value}`)
+      .join(' ');
+  assert.equal(shapeOf(modules[0]), shapeOf(working[0]), 'the same shape a working scene uses');
 });
 
 test('the model controls round-trip, and reset really resets', () => {
@@ -725,4 +790,54 @@ test('the bullseye is a panel the shell can drive like any other', () => {
     assert.match(spec.colors[territory], /^#[0-9a-f]{6}$/i, `${territory} has a colour to fill with`);
   }
   assert.match(spec.ischemic, /^#[0-9a-f]{6}$/i, 'and there is a colour to fade toward');
+});
+
+test('the seam stays welded after the scene has moved the wall', () => {
+  // `updateVentricleGeometry` welds the two ends of a closed lathe so the
+  // surface does not crease down the middle. It is the last thing it does to
+  // the normals — and this scene then moves every vertex for regional wall
+  // motion and recomputes them, which threw the weld away every frame. The
+  // fix that introduced the weld was written for *this* scene and never
+  // reached its screen; measured, the two columns' normals differed by 1.0 of
+  // a unit vector.
+  const moved = new MyocardialIschemiaScene({});
+  moved.build();
+
+  const { S, profileCount, N } = moved.kit;
+  const normal = moved.geometry.attributes.normal;
+  const worstSeam = () => {
+    let worst = 0;
+    for (let i = 0; i < N; i++) {
+      for (const idx of [i, profileCount - 1 - i]) {
+        const b = S * profileCount + idx;
+        if (b >= normal.count) continue;
+        worst = Math.max(
+          worst,
+          Math.hypot(
+            normal.getX(idx) - normal.getX(b),
+            normal.getY(idx) - normal.getY(b),
+            normal.getZ(idx) - normal.getZ(b)
+          )
+        );
+      }
+    }
+    return worst;
+  };
+
+  // Through the beat and through the episode: the wall moves for both, and the
+  // weld has to survive both.
+  for (const [progress, phase] of [
+    [0.05, 0.999],
+    [0.05, 0.3],
+    [0.62, 0.3],
+    [0.93, 0.5],
+  ]) {
+    moved.setProgress(progress);
+    moved.phase = phase;
+    moved.applyModelToScene();
+    assert.ok(
+      worstSeam() < 1e-6,
+      `the seam is welded at progress ${progress}, phase ${phase}: worst ${worstSeam().toFixed(4)}`
+    );
+  }
 });

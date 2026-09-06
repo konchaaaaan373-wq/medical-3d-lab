@@ -6,7 +6,6 @@ import {
   CORONARY_BRANCHES,
   CORONARY_SINUSES,
   GROOVES,
-  OSTIUM_OF,
   territoryWeightsAt,
 } from './coronaryAnatomy.js';
 
@@ -131,60 +130,79 @@ function surfaceNormal(surfacePoint, shape, t, phi, out) {
  * declared in `coronaryAnatomy.js` and neither is written here, so a vessel
  * cannot end up in a groove nothing named.
  */
-function centrelineFor(branch, { surfacePoint, shape, displace }, where = []) {
+function centrelineFor(branch, context, where = []) {
+  const points = [];
+  for (let i = 0; i < CENTRELINE_SAMPLES; i++) {
+    points.push(centrelineSample(branch, context, i, where));
+  }
+  return points;
+}
+
+// Reused rather than allocated, for the same reason as `scratch` above: this
+// runs CENTRELINE_SAMPLES times per vessel per frame.
+const sampleScratch = { point: new THREE.Vector3(), normal: new THREE.Vector3() };
+
+/**
+ * One sample of a vessel's centreline, by index.
+ *
+ * Split out of `centrelineFor` because one caller needs a single sample: the
+ * left main ends where the LAD begins, and reading that through the whole
+ * centreline meant rebuilding all 44 samples of the LAD — surface point,
+ * surface normal and territory kernels for each — every frame, to keep the
+ * first one and throw the other 43 away.
+ *
+ * @returns {THREE.Vector3} a new vector; the scratch is not handed out.
+ */
+function centrelineSample(branch, { surfacePoint, shape, displace }, i, where = []) {
   const groove = GROOVES[branch.groove];
   if (!groove) throw new Error(`Branch "${branch.id}" names no groove`);
 
-  const point = new THREE.Vector3();
-  const normal = new THREE.Vector3();
-  const points = [];
+  const point = sampleScratch.point;
+  const normal = sampleScratch.normal;
 
-  for (let i = 0; i < CENTRELINE_SAMPLES; i++) {
-    const u = i / (CENTRELINE_SAMPLES - 1);
-    const t = groove.t !== undefined ? groove.t : groove.from + (groove.to - groove.from) * u;
-    const phi =
-      groove.phi !== undefined
-        ? groove.phi
-        : groove.phiFrom + (groove.phiTo - groove.phiFrom) * u;
-    // The lift tapers with the vessel. Held at the proximal calibre instead, a
-    // vessel that narrows to 55% of itself ends up standing 2.4 of its own
-    // radii off the surface at its far end while sitting 1.35 off it at the
-    // near end — the same absolute gap, and a distal half that looks detached.
-    //
-    // It also fades to nothing at the apex. Down there the outward normal has
-    // turned to point along the axis rather than away from it, so the same lift
-    // carries the tube *past* the tip instead of off the surface: in a render
-    // the two descending arteries ended in mid-air below the heart, while every
-    // measurement of them said they were sitting correctly on the epicardium a
-    // radius and a bit out. The falloff is presentation, and it is named as
-    // such — nothing anatomical says a coronary artery thins into the wall.
-    const apical = Math.min(1, Math.max(0, (t - APICAL_LIFT_FADE_T) / APICAL_LIFT_FADE_T));
-    const lift = radiusAlong(branch, u) * LIFT_IN_RADII * apical;
-    // Where on the ventricle this sample sits, carried rather than searched
-    // for later. A test that has to invert the surface to find out is measuring
-    // its own search as much as the vessel — and near the apex, where the mesh
-    // rows are furthest apart, the search's error is larger than the vessel.
-    //
-    // Reused across relays rather than rebuilt. `u`, `t` and `phi` are fixed by
-    // the groove and the sample count, so only the lift can change — and the
-    // territory weights, which are anatomy and so belong to this layer, are
-    // then computed once for the life of the vessel instead of once a frame.
-    let here = where[i];
-    if (here) here.lift = lift;
-    else where.push((here = { u, t, phi, lift, weights: territoryWeightsAt(t, phi) }));
+  const u = i / (CENTRELINE_SAMPLES - 1);
+  const t = groove.t !== undefined ? groove.t : groove.from + (groove.to - groove.from) * u;
+  const phi =
+    groove.phi !== undefined
+      ? groove.phi
+      : groove.phiFrom + (groove.phiTo - groove.phiFrom) * u;
+  // The lift tapers with the vessel. Held at the proximal calibre instead, a
+  // vessel that narrows to 55% of itself ends up standing 2.4 of its own
+  // radii off the surface at its far end while sitting 1.35 off it at the
+  // near end — the same absolute gap, and a distal half that looks detached.
+  //
+  // It also fades to nothing at the apex. Down there the outward normal has
+  // turned to point along the axis rather than away from it, so the same lift
+  // carries the tube *past* the tip instead of off the surface: in a render
+  // the two descending arteries ended in mid-air below the heart, while every
+  // measurement of them said they were sitting correctly on the epicardium a
+  // radius and a bit out. The falloff is presentation, and it is named as
+  // such — nothing anatomical says a coronary artery thins into the wall.
+  const apical = Math.min(1, Math.max(0, (t - APICAL_LIFT_FADE_T) / APICAL_LIFT_FADE_T));
+  const lift = radiusAlong(branch, u) * LIFT_IN_RADII * apical;
+  // Where on the ventricle this sample sits, carried rather than searched
+  // for later. A test that has to invert the surface to find out is measuring
+  // its own search as much as the vessel — and near the apex, where the mesh
+  // rows are furthest apart, the search's error is larger than the vessel.
+  //
+  // Reused across relays rather than rebuilt. `u`, `t` and `phi` are fixed by
+  // the groove and the sample count, so only the lift can change — and the
+  // territory weights, which are anatomy and so belong to this layer, are
+  // then computed once for the life of the vessel instead of once a frame.
+  let here = where[i];
+  if (here) here.lift = lift;
+  else where[i] = here = { u, t, phi, lift, weights: territoryWeightsAt(t, phi) };
 
-    surfacePoint(shape, t, phi, point);
-    surfaceNormal(surfacePoint, shape, t, phi, normal);
-    point.addScaledVector(normal, lift);
-    // The caller may move the sample once it is placed — that is how a scene
-    // whose wall does not move uniformly (a hypokinetic segment, say) keeps the
-    // artery over that segment moving with it. The organ layer stays out of
-    // *why* it moves: it hands over where on the ventricle the sample sits and
-    // takes back a point.
-    if (displace) displace(point, here);
-    points.push(point.clone());
-  }
-  return points;
+  surfacePoint(shape, t, phi, point);
+  surfaceNormal(surfacePoint, shape, t, phi, normal);
+  point.addScaledVector(normal, lift);
+  // The caller may move the sample once it is placed — that is how a scene
+  // whose wall does not move uniformly (a hypokinetic segment, say) keeps the
+  // artery over that segment moving with it. The organ layer stays out of
+  // *why* it moves: it hands over where on the ventricle the sample sits and
+  // takes back a point.
+  if (displace) displace(point, here);
+  return point.clone();
 }
 
 /**
@@ -239,11 +257,25 @@ export function buildCoronaryArteries({
    * drifts off the heart the moment the heart moves — which is the failure this
    * whole file is written against.
    */
+  /**
+   * The one sample the left main needs from the LAD: where the anterior
+   * interventricular groove starts. Its own `where` entry, so the territory
+   * weights are computed once here too rather than once a frame.
+   */
+  const junction = [];
+
   const controlPointsFor = (branch, context, where) => {
     let points;
     if (branch.ostium) {
       // A trunk: it starts at its own sinus and reaches the groove it runs in.
-      const start = ostiumPoint(CORONARY_SINUSES[OSTIUM_OF[branch.id === 'rca' ? 'rca' : 'leftMain']], context.root);
+      // Read off the branch's own `ostium`, which is what `ostiumOf` below
+      // reports to a caller. Selecting the sinus by branch id here instead —
+      // as this did — meant the drawn vessel and the reported ostium had two
+      // separate sources of truth, and the id test defaulted every trunk that
+      // is not the RCA to the left sinus rather than failing.
+      const sinus = CORONARY_SINUSES[branch.ostium];
+      if (!sinus) throw new Error(`Branch "${branch.id}" names no aortic sinus "${branch.ostium}"`);
+      const start = ostiumPoint(sinus, context.root);
       points = branch.groove ? [start, ...centrelineFor(branch, context, where)] : [start];
       if (!branch.groove) {
         // The left main is a short trunk with no groove of its own. It ends
@@ -251,7 +283,7 @@ export function buildCoronaryArteries({
         // interventricular groove starts — derived, not typed, so the trunk
         // and its branches cannot come apart.
         const lad = CORONARY_BRANCHES.find((b) => b.id === 'lad');
-        const [first] = centrelineFor(lad, context);
+        const first = centrelineSample(lad, context, 0, junction);
         points = [start, start.clone().lerp(first, 0.55), first];
       }
     } else {

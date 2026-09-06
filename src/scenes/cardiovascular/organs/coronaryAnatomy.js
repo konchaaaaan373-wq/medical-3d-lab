@@ -253,16 +253,6 @@ export const AORTIC_SINUSES = Object.freeze([
 ]);
 
 /**
- * Which sinus each trunk starts from.
- *
- * A separate map from the sinuses themselves, because "the right coronary
- * starts in the right sinus" is the claim a test has to be able to break by
- * swapping two entries. Buried inside the branch list it would be a field
- * nothing compares.
- */
-export const OSTIUM_OF = Object.freeze({ rca: 'right', leftMain: 'left' });
-
-/**
  * The named epicardial arteries, as a tree.
  *
  * Only the trunks and the three vessels a territory is named for. Septal and
@@ -321,6 +311,21 @@ export const CORONARY_BRANCHES = Object.freeze([
     radius: 0.09,
   }),
 ]);
+
+/**
+ * Which sinus each trunk starts from, keyed by branch id.
+ *
+ * Derived from the branch list rather than written beside it. Typed out
+ * separately — as it was — it is a second answer to "where does the left main
+ * leave the aorta?", and the drawing code picked one map while `ostiumOf`
+ * picked the other. A test can still break the claim by swapping the `ostium`
+ * fields above, which is the edit that would actually be made.
+ */
+export const OSTIUM_OF = Object.freeze(
+  Object.fromEntries(
+    CORONARY_BRANCHES.filter((branch) => branch.ostium).map((branch) => [branch.id, branch.ostium])
+  )
+);
 
 /** Right-dominant, and stated where a test can read it. */
 export const DOMINANCE = 'right';

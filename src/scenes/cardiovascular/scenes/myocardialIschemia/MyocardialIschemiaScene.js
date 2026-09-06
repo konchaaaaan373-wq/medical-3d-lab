@@ -27,15 +27,17 @@ import {
   episodeAt,
   restingMyocardium,
   solveIschemicCirculation,
+  supplyDemandRatios,
   wallMotionAmplitude,
 } from '../../../../models/myocardialIschemia.js';
-import { myocardialVolumeFor, ventricleShape, cavityVolumeAt, beatPhaseAt, advanceCardiacPhase } from '../../../../models/cardiacMechanics.js';
+import { myocardialVolumeFor, ventricleShape, cavityVolumeAt, advanceCardiacPhase } from '../../../../models/cardiacMechanics.js';
 import { circulationParameters } from '../heartFailure/hemodynamics.js';
 import { ANATOMY } from '../heartFailure/anatomy.js';
 import {
   buildVentricleGeometry,
   updateVentricleGeometry,
   epicardialSurfacePoint,
+  weldLatheSeam,
   VENTRICLE_SHAPING,
 } from '../heartFailure/geometry/ventricleGeometry.js';
 import { buildCoronaryArteries } from '../../organs/coronaryArteries.js';
@@ -474,15 +476,6 @@ export class MyocardialIschemiaScene {
     return weights;
   }
 
-  /** Where the episode currently is, as a supply factor and a progress. */
-  controlsNow() {
-    let supply = 1;
-    for (const stage of STAGES) {
-      if (this.progress >= stage.at) supply = stage.supply;
-    }
-    return { supplyFactor: { lad: supply }, progress: this.progress };
-  }
-
   /**
    * The one solve everything reads.
    *
@@ -512,7 +505,16 @@ export class MyocardialIschemiaScene {
         from: myocardium,
       });
     }
-    this.myocardialState = myocardium;
+    // At a progress exactly on a stage's start — 0.22, 0.45 and 0.80 are all
+    // slider stops — no time has yet elapsed under that stage, so the ratio
+    // still carried the *previous* stage's supply while the caption named the
+    // new one. The read-out is "supply / demand", and at the moment supply
+    // falls it has to say so; the burden it drives is an integral and rightly
+    // still zero.
+    this.myocardialState = {
+      ...myocardium,
+      supplyDemandRatio: supplyDemandRatios({ supplyFactor: { lad: this.supplyAt(this.progress) } }),
+    };
 
     const parameters = {
       ...this.baseParameters,
@@ -524,7 +526,6 @@ export class MyocardialIschemiaScene {
       massFraction: this.massFraction,
     });
     this.solution = solved.solution;
-    this.shape = this.shapeFor(myocardium);
 
     const cycle = solved.solution.cycle;
     this.state = {
@@ -662,6 +663,13 @@ export class MyocardialIschemiaScene {
     position.needsUpdate = true;
     this.geometry.attributes.color.needsUpdate = true;
     this.geometry.computeVertexNormals();
+    // Regional wall motion moved the vertices after `updateVentricleGeometry`
+    // welded the seam, and recomputing the normals threw that weld away — so
+    // the closed lathe this scene draws had a shading crease down the anterior
+    // wall every frame, in exactly the place the weld exists to remove. The
+    // rule lives in the geometry; the scene has to ask for it again because it
+    // is the one that invalidated it.
+    weldLatheSeam(this.kit, this.beatingShape.outerSemiLength);
 
     // The arteries lie on the wall, so they move with it — both parts of it.
     // The beat is the obvious part: built once and left alone, the vessels sat
@@ -752,6 +760,34 @@ export class MyocardialIschemiaScene {
    * up, and the gap after reperfusion is the thing the scene is about.
    */
   getCharts() {
+    // Re-walking the whole episode is ~540 integration steps, and the curve
+    // only moves when the lesion's severity does — not with the beat, and not
+    // with where the reader is on the story. Cached on the one input it
+    // depends on rather than recomputed sixty times a second.
+    if (this.chartCache?.lesionSupply !== this.lesionSupply) {
+      this.chartCache = { lesionSupply: this.lesionSupply, series: this.burdenSeries() };
+    }
+    const chart = CHARTS[0];
+    const series = this.chartCache.series;
+    const here = series.find((entry) => entry.id === 'lad').points[Math.round(this.progress * 60)];
+    return {
+      [chart.id]: {
+        x: { min: 0, max: 1 },
+        y: { min: 0, max: 1 },
+        series,
+        markers: [{ x: here.x, y: here.y, color: TERRITORY_COLORS.lad, radius: 3 }],
+        rules: STAGES.filter((stage) => stage.at > 0).map((stage) => ({
+          axis: 'x',
+          at: stage.at,
+          color: 'rgba(255, 255, 255, 0.18)',
+          dash: [2, 4],
+        })),
+      },
+    };
+  }
+
+  /** The burden curve of a whole episode, at the severity now selected. */
+  burdenSeries() {
     const series = TERRITORIES.map((territory) => ({
       id: territory,
       label: TERRITORY_LABELS[territory].label,
@@ -777,31 +813,7 @@ export class MyocardialIschemiaScene {
       });
     }
 
-    // The per-frame half of the chart contract, and only that: the title, the
-    // axes and the key are static and live in `src/data/`. Written first with a
-    // `domain` and a `marker` — neither of which the panel reads — the axes
-    // silently auto-scaled and the "you are here" dot never appeared.
-    const chart = CHARTS[0];
-    const walkingBurden = series.find((entry) => entry.id === 'lad');
-    const here = walkingBurden.points[Math.round(this.progress * 60)];
-    return {
-      [chart.id]: {
-        x: { min: 0, max: 1 },
-        y: { min: 0, max: 1 },
-        series,
-        // Where on the episode the reader is, on the curve the scene is about.
-        markers: [{ x: here.x, y: here.y, color: TERRITORY_COLORS.lad, radius: 3 }],
-        // Where each stage begins, so the curve's shape can be read against the
-        // story. `dash` is a dash *pattern* here, not a flag: the panel passes
-        // it straight to `setLineDash`, and `true` throws.
-        rules: STAGES.filter((stage) => stage.at > 0).map((stage) => ({
-          axis: 'x',
-          at: stage.at,
-          color: 'rgba(255, 255, 255, 0.18)',
-          dash: [2, 4],
-        })),
-      },
-    };
+    return series;
   }
 
   /**
@@ -877,73 +889,116 @@ export class MyocardialIschemiaScene {
     };
   }
 
+  /**
+   * The two lessons, in the shape `components/LearningPanel.js` reads.
+   *
+   * Every field here is the panel's, checked against what it actually
+   * dereferences rather than against a shape that reads sensibly. The first
+   * version of this file got almost all of them wrong — options carried `text`
+   * where the panel renders `label`, so every answer button said `undefined`;
+   * `setup` was a sentence where the panel expects `{ progress, ...controls }`,
+   * so `setProgress(setup.progress)` set NaN and `Object.entries` on the string
+   * fired `setControl` once per character; `observation` and `explanation` were
+   * strings where the panel reads `.text`; there was no `watch` array at all,
+   * so `snapshot()` threw; and the manipulation named `progress`, which
+   * `setModelControl` does not handle, so it moved nothing.
+   *
+   * None of that was visible from the scene: it needs the panel. The test that
+   * was meant to cover it asserted a contract this file invented, which is the
+   * same miss as the chart's and is why the suite was green throughout.
+   */
   getLearningModules() {
     return [
       {
         id: 'where-it-shows',
         title: 'Where does a narrowed artery show?',
         titleJa: '細くなった血管は、どこに現れるか',
+        short: 'Where',
+        shortJa: 'どこに',
+        // Part-way through the episode, with the lesion at its default
+        // severity: far enough in that the debt is accumulating, before the
+        // wall has given up its excursion.
+        setup: { progress: 0.3, supply: DEFAULT_LESION_SUPPLY, afterload: 1 },
         question: {
-          text: 'The anterior descending artery narrows. Which part of the heart stops moving?',
-          textJa: '左前下行枝が細くなりました。心臓のどこが動かなくなりますか。',
+          text: 'Flow down the anterior descending falls. Which part of the heart stops moving?',
+          textJa: '左前下行枝の血流が落ちます。心臓のどこが動かなくなりますか。',
           options: [
-            { id: 'a', text: 'The artery itself', textJa: '血管そのもの' },
-            { id: 'b', text: 'The anterior wall and the septum', textJa: '前壁と中隔' },
-            { id: 'c', text: 'The inferior wall', textJa: '下壁' },
-            { id: 'd', text: 'The whole ventricle, evenly', textJa: '心室全体が均等に' },
+            { id: 'artery', label: 'The artery itself', labelJa: '血管そのもの' },
+            { id: 'anterior', label: 'The anterior wall and the septum', labelJa: '前壁と中隔' },
+            { id: 'inferior', label: 'The inferior wall', labelJa: '下壁' },
+            { id: 'whole', label: 'The whole ventricle, evenly', labelJa: '心室全体が均等に' },
           ],
-          answer: 'b',
+          answer: 'anterior',
         },
-        setup: 'Start at the beginning of the episode, with every territory supplied.',
-        setupJa: '経過の最初、すべての支配域が灌流されている状態から始めます。',
         manipulation: {
-          control: 'progress',
-          to: 0.68,
-          seconds: 6,
-          action: 'Advance to where the debt shows, then rotate to the back of the heart.',
-          actionJa: '負債が現れるところまで進め、心臓の裏側へ回してください。',
+          control: 'supply',
+          to: 0.15,
+          seconds: 4,
+          action: 'Tighten the narrowing',
+          actionJa: '狭窄を強くする',
+          text: 'Cut the flow past the narrowing to 15% of normal. Nothing else moves.',
+          textJa: '狭窄部を通る血流を正常の 15% まで落とします。ほかは何も動かしません。',
+          hint: 'Watch the supply/demand ratio first, then the burden, then how far the anterior wall still travels.',
+          hintJa: 'まず供給／需要比、次に虚血負荷、最後に前壁がまだどれだけ動いているかを見てください。',
         },
-        observation:
-          'The discoloured muscle is on the front and the septum, and the inferior wall behind is untouched. The narrowing is in a groove on the front; what fails is everything downstream of it.',
-        observationJa:
-          '色の変わった筋肉は前壁と中隔にあり、裏の下壁は無傷です。狭窄は前面の溝にあり、破綻するのはその下流すべてです。',
-        explanation:
-          'A coronary artery does not supply the place it runs through — it supplies everything downstream. That is why territories are worth drawing, and why an anterior lesion and an inferior lesion look nothing alike.',
-        explanationJa:
-          '冠動脈は、自分が走っている場所を養うのではなく、下流のすべてを養います。だから支配域を描く価値があり、前壁病変と下壁病変はまったく違って見えます。',
+        watch: ['lad-supply-demand', 'lad-burden', 'lad-wall-motion', 'ejection-fraction'],
+        observation: {
+          text: 'The ratio fell first, the burden climbed after it, and the wall gave up its excursion after that. On the model, the discoloured muscle is the anterior wall and the septum — rotate to the back and the inferior wall is untouched.',
+          textJa: '先に比が落ち、遅れて負荷が上がり、そのあとで壁が動きを失いました。モデル上で色が変わるのは前壁と中隔です——裏へ回すと下壁は無傷のままです。',
+        },
+        explanation: {
+          text: 'A coronary artery does not supply the place it runs through — it supplies everything downstream. The narrowing is in a groove on the front of the heart; what fails is the muscle that groove feeds. That is the whole reason territories are worth drawing, and why an anterior lesion and an inferior one look nothing alike.',
+          textJa: '冠動脈は自分が走っている場所を養うのではなく、下流のすべてを養います。狭窄は心臓前面の溝にあり、破綻するのはその溝が養う筋肉です。支配域を描く価値も、前壁病変と下壁病変がまるで違って見える理由も、そこにあります。',
+          footnote:
+            'The territory map is a fixed convention that measurement disagrees with in places — segment 3 above all. The model card says where.',
+          footnoteJa:
+            '支配域マップは固定の慣習であり、実測とは一部食い違います（とくにセグメント 3）。どこが食い違うかはモデルカードにあります。',
+        },
       },
       {
         id: 'stunning',
         title: 'The artery is open. Is the heart working?',
         titleJa: '血管は開いた。心臓は働いているか',
+        short: 'Stunning',
+        shortJa: 'スタニング',
+        // Deep into the episode, where a debt has been run up and there is
+        // something for reopening the artery to fail to undo.
+        setup: { progress: 0.78, supply: DEFAULT_LESION_SUPPLY, afterload: 1 },
         question: {
-          text: 'Flow down the anterior descending is restored. What happens to the anterior wall?',
-          textJa: '左前下行枝の血流が回復しました。前壁はどうなりますか。',
+          text: 'The narrowing is opened and flow is normal within a beat. What happens to the anterior wall?',
+          textJa: '狭窄が開き、血流は一拍で正常に戻ります。前壁はどうなりますか。',
           options: [
-            { id: 'a', text: 'It starts moving normally again immediately', textJa: 'すぐに正常に動き出す' },
-            { id: 'b', text: 'It stays hypokinetic well after flow returns', textJa: '血流が戻ったあともしばらく低収縮のまま' },
-            { id: 'c', text: 'It never recovers', textJa: '二度と回復しない' },
-            { id: 'd', text: 'It contracts harder than normal to catch up', textJa: '遅れを取り戻そうと普段より強く収縮する' },
+            { id: 'at-once', label: 'It moves normally again at once', labelJa: 'すぐに正常に動き出す' },
+            { id: 'lags', label: 'It stays hypokinetic well after flow returns', labelJa: '血流が戻ったあともしばらく低収縮のまま' },
+            { id: 'never', label: 'It never recovers', labelJa: '二度と回復しない' },
+            { id: 'harder', label: 'It contracts harder than normal to catch up', labelJa: '遅れを取り戻そうと普段より強く収縮する' },
           ],
-          answer: 'b',
+          answer: 'lags',
         },
-        setup: 'Run the episode to the point where the anterior wall has clearly stopped keeping up.',
-        setupJa: '前壁が明らかに追いつかなくなるところまで経過を進めます。',
         manipulation: {
-          control: 'progress',
+          control: 'supply',
           to: 1,
-          seconds: 8,
-          action: 'Advance into reperfusion and watch the supply read-out and the wall separately.',
-          actionJa: '再灌流まで進め、供給の数値と壁の動きを別々に見てください。',
+          seconds: 4,
+          action: 'Open the artery',
+          actionJa: '血管を開く',
+          text: 'Restore flow past the narrowing to normal.',
+          textJa: '狭窄部を通る血流を正常に戻します。',
+          hint: 'The supply/demand ratio answers immediately. Watch how long the burden and the wall take.',
+          hintJa: '供給／需要比はすぐに応じます。負荷と壁がどれだけ時間を要するかを見てください。',
         },
-        observation:
-          'Supply returns to normal within a beat. The burden falls slowly, and the wall follows the burden rather than the supply — it is still visibly hypokinetic at the end.',
-        observationJa:
-          '供給は一拍で正常に戻ります。負荷はゆっくり下がり、壁は供給ではなく負荷に従います——最後まで目に見えて低収縮のままです。',
-        explanation:
-          'This is myocardial stunning. It is why "the artery is open" and "the heart is working" are two different statements, and why a wall that is not moving is not proof that the muscle is dead.',
-        explanationJa:
-          'これが心筋 stunning です。「血管が開いた」と「心臓が働いている」が別の主張である理由であり、動かない壁が「心筋が死んでいる」証拠にならない理由です。',
+        watch: ['lad-supply-demand', 'lad-burden', 'lad-wall-motion', 'ejection-fraction'],
+        observation: {
+          text: 'Supply came back in one step. The burden is still being paid off, and the wall is still moving less than it should — the ejection fraction with it.',
+          textJa: '供給は一手で戻りました。負荷はまだ返済の途中で、壁はまだ本来より動いていません——駆出率もそれに従います。',
+        },
+        explanation: {
+          text: 'Muscle that has been ischemic stays hypokinetic long after its blood supply is restored. That is stunning, and it is why "the artery is open" and "the heart is working" are two different statements — the kind of gap that makes a procedure look successful while the patient is not yet better.',
+          textJa: '虚血にさらされた心筋は、血流が回復したあとも長く低収縮のままです。これが stunning であり、「血管が開いた」と「心臓が働いている」が別の主張である理由です。手技は成功したように見えて、患者はまだ良くなっていない——その隔たりです。',
+          footnote:
+            'How long is not modelled. The axis is normalized episode progress, and real recovery depends on how deep and how long the ischemia was.',
+          footnoteJa:
+            '所要時間はモデル化していません。時間軸は正規化された経過であり、実際の回復は虚血の深さと長さに依存します。',
+        },
       },
     ];
   }

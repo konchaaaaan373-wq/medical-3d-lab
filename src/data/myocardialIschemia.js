@@ -289,7 +289,9 @@ export const MODEL_SCOPE = {
 
 export const MODEL_CONTROLS_COPY = {
   title: 'How tight, and against how much work?',
-  titleJa: 'どれだけ細く、どれだけの仕事に対してか',
+  // Short enough not to wrap around the reset link in a 236 px panel: the
+  // long form broke mid-word as 「…に対し／てか」.
+  titleJa: '狭窄の強さと、心臓の仕事量',
   subtitle: 'Flow past the narrowing is a fraction of normal, not a stenosis diameter',
   subtitleJa: '狭窄部を通る血流は「正常比」であって、内腔径ではありません',
   placement: 'console',

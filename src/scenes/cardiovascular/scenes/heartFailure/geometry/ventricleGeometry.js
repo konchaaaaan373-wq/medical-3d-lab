@@ -829,19 +829,47 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
   kit.geometry.attributes.position.needsUpdate = true;
   kit.geometry.computeVertexNormals();
 
-  // Where the first and last lathe columns coincide, averaging their normals
-  // welds the shading across the seam so the surface reads as continuous
-  // instead of creasing along it.
-  //
-  // The test is how far apart the two columns actually are, not how far up the
-  // wedge has sealed. Those pick out the same rows on a cut lathe — the columns
-  // only come together near the apex — but not on a closed one, where they meet
-  // at every height and the crease would otherwise run the full length of the
-  // anterior wall. The tolerance is a fraction of the ventricle's own length so
-  // it means the same thing at any size; the sealed apex of the 99° wedge sits
-  // at about 0.5% of it, and the open wedge above at fifty times that.
+  weldLatheSeam(kit, outerSemiLength);
+  kit.geometry.computeBoundingSphere();
+}
+
+/**
+ * Weld the shading across the seam where the lathe's two ends meet.
+ *
+ * Where the first and last lathe columns coincide, averaging their normals
+ * makes the surface read as continuous instead of creasing along it. The test
+ * is how far apart the two columns actually are, not how far up the wedge has
+ * sealed. Those pick out the same rows on a cut lathe — the columns only come
+ * together near the apex — but not on a closed one, where they meet at every
+ * height and the crease would otherwise run the full length of the anterior
+ * wall. The tolerance is a fraction of the ventricle's own length so it means
+ * the same thing at any size; the sealed apex of the 99° wedge sits at about
+ * 0.5% of it, and the open wedge above at fifty times that.
+ *
+ * **Exported because it does not survive on its own.** It is the last thing
+ * done to the normals, so any caller that afterwards moves vertices and
+ * recomputes normals throws it away. The ischemia scene does exactly that —
+ * regional wall motion pulls each vertex back toward end diastole and the scene
+ * calls `computeVertexNormals()` after — so the weld written for its closed
+ * lathe was discarded every frame and the crease it removes was on the screen
+ * the whole time. Measured: the two columns' normals differed by 1.0 of a unit
+ * vector, which is not welded at all. Anything that recomputes this geometry's
+ * normals has to call this afterwards.
+ *
+ * @param {ReturnType<typeof buildVentricleGeometry>} kit
+ * @param {number} [outerSemiLength] the shape's own scale; taken from the
+ *   geometry's bounding sphere when the caller does not have it to hand
+ */
+export function weldLatheSeam(kit, outerSemiLength) {
+  const { N, S, profileCount } = kit;
+  const positions = kit.geometry.attributes.position.array;
   const normals = kit.geometry.attributes.normal.array;
-  const weldTolerance = WELD_SPAN * outerSemiLength;
+  let scale = outerSemiLength;
+  if (!(scale > 0)) {
+    if (!kit.geometry.boundingSphere) kit.geometry.computeBoundingSphere();
+    scale = kit.geometry.boundingSphere?.radius ?? 0;
+  }
+  const weldTolerance = WELD_SPAN * scale;
   for (let i = 0; i < N; i++) {
     for (const idx of [i, profileCount - 1 - i]) {
       const a = idx * 3;
@@ -861,5 +889,4 @@ export function updateVentricleGeometry(kit, shape, motion = {}) {
     }
   }
   kit.geometry.attributes.normal.needsUpdate = true;
-  kit.geometry.computeBoundingSphere();
 }
