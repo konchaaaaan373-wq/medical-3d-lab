@@ -16,6 +16,8 @@ The acquisition surface remains the accurate interactive model. Paid access is a
 
 The distinction is intentional: **the model stays the source of truth; the paid product is the way the model is taught or presented.**
 
+**The `patient` entitlement is patient *explanation*, not a patient-specific model.** It unlocks a jargon-light presentation of the same representative model, which a patient or family member can look at with or without a clinician present. It takes no patient data, stores none, personalises nothing, and neither diagnoses nor predicts. In the model-profile vocabulary it is the intended use `patient-explanation`; `patient-derived-geometry` and `patient-predictive` are not offered anywhere in this product and are refused by CI. Intended use and entitlement are separate axes: a scene with `access.patient` must declare the use, and a free scene may declare it without any entitlement. The boundary, and the separate clinical programme that would be needed to cross it, are owned by [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md). Nothing in this document changes billing logic to say so.
+
 ## Current implementation
 
 - `src/access/policy.js` — pure entitlement vocabulary and subscription-status rules.
@@ -154,7 +156,11 @@ Do not rely on the client button being disabled as duplicate-charge protection.
 
 Create a Stripe webhook endpoint:
 
-`https://<production-domain>/.netlify/functions/stripe-webhook`
+`https://med-3d-lab.necofindjob.com/.netlify/functions/stripe-webhook`
+
+The endpoint follows the primary domain. Moving it means a new endpoint and a
+new `STRIPE_WEBHOOK_SECRET`; the order is in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain).
 
 Listen for:
 
@@ -204,6 +210,10 @@ Paid access is not granted for:
 
 Set the values from `.env.example` in Netlify Project configuration. Secret values must not use a `VITE_` prefix.
 
+**Every value is per deploy context, and the list view does not say which one.** "1 value in 1 deploy context" is equally true of a variable set for Production and one set only for Deploy Previews; open the variable and read the Production row. A `VITE_` variable also reaches a build only from the **Builds** scope, and only on the next build — it is compiled in, not read at runtime.
+
+**As of this writing, Production holds no Stripe configuration.** `STRIPE_SECRET_KEY`, the three price IDs, `STRIPE_WEBHOOK_SECRET` and `SUPABASE_SECRET_KEY` carry values for Deploy Previews only, which is how [`deploy-preview-billing-test.md`](deploy-preview-billing-test.md) exercises billing with test keys. Production therefore reports `billingConfigured: false` and sells nothing; accounts and free models work, which is the documented degradation. Enabling paid access in production is a separate change: live keys, a live-mode webhook endpoint and its own signing secret. The key modes are enforced, not advisory — `stripeDeploymentSafety` rejects a test key in production and a live key outside it, so preview values cannot simply be copied across.
+
 The Functions directory does not need a custom `netlify.toml`; Netlify's default is `netlify/functions`.
 
 ## Billing lifecycle
@@ -222,7 +232,7 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
 13. The published deployment also runs `scheduled-billing-reconcile` hourly. It processes a bounded least-recently-attempted batch, records only aggregate run outcomes and safe error codes, and automatically rotates past failures.
 
-Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://YOUR_PRODUCTION_DOMAIN` after deployment.
+Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://med-3d-lab.necofindjob.com` after deployment.
 
 ### Granting needs an owner; revoking does not
 
@@ -272,6 +282,7 @@ Do not degrade the free model into a medically inaccurate teaser.
 Must:
 
 - use the same reviewed model;
+- take no patient input: it is a presentation of the representative model, never a model of the patient;
 - use the scene's real progression/control semantics — never reinterpret an exercise/demand axis as disease severity;
 - minimise jargon;
 - avoid diagnosis, prognosis and patient-specific estimates;

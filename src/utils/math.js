@@ -2,6 +2,20 @@
 
 export const clamp = (v, min = 0, max = 1) => Math.min(max, Math.max(min, v));
 
+/**
+ * `clamp` for an input that may not be a number at all.
+ *
+ * A model control arrives from a slider, a URL, a lesson or a test, and `NaN`
+ * passes through `Math.min`/`Math.max` untouched and then through every sum
+ * after it. Non-finite input takes `fallback` (itself clamped); `±Infinity`
+ * lands on the nearer bound, which is what an over-driven slider means.
+ */
+export function clampFinite(v, fallback, min = 0, max = 1) {
+  const value = Number(v);
+  if (Number.isNaN(value)) return clamp(Number(fallback), min, max);
+  return clamp(value, min, max);
+}
+
 export const lerp = (a, b, t) => a + (b - a) * t;
 
 /** Smooth 0..1 ramp between `edge0` and `edge1` (same semantics as GLSL smoothstep). */

@@ -14,6 +14,169 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Two new respiratory models, and the Explorer rebuilt around organs
+
+- **Pneumonia** (`#/pneumonia`, `alpha`, clinical review pending). Twelve
+  regional units; alveolar consolidation removes ventilation from a unit while
+  its perfusion persists, and the perfusion that still crosses non-ventilated
+  lung is the shunt mechanism. Hypoxic vasoconstriction diverts some of that
+  flow and never all of it. The slider consolidates at most 60% of the
+  conceptual lung; the solver's total-consolidation boundary is kept for tests
+  and is not a stage a reader is walked into. No PaO₂, SpO₂, pathogen, imaging
+  or treatment.
+- **Pulmonary embolism** (`#/pulmonary-embolism`, `alpha`, clinical review
+  pending). Twelve parallel vascular territories at one fixed driving
+  pressure; obstruction removes perfusion while ventilation continues, which
+  is dead space, and removing parallel conductance raises a relative PVR
+  (shown to one decimal). No pressure, right-ventricular response, clot
+  burden, risk class or treatment.
+- **Both models carry the full alpha set**: a model layer, an evidence dossier
+  with a code-side registry, a model card, a scope panel, physiology tests and
+  scene tests. Non-finite input to either solver falls back safely.
+- **The Explorer files every model once, under its primary organ**, with a
+  slow, lazy 3D preview per organ (brain, heart, lungs, liver, kidneys). At
+  most two WebGL contexts are alive at a time; a preview that scrolls away
+  gives its context back and rebuilds on return, a lost context is never shown
+  as ready, and the preview pauses on hover or touch, off-screen, in a hidden
+  tab and under reduced motion.
+- **Every model has one name.** The textbook name in the catalogue is what the
+  Explorer, the search, favourites, the landing page, the scene header, the
+  page metadata and the social card all show, so a reader who searches for
+  what the card says finds it. Narrative titles ("Where the water goes")
+  remain as a story line beside the name. Short abbreviations such as PE, CAP
+  and AKI are matched as whole words.
+- **Three uses, and one of them fails closed.** Patient explanation, medical
+  education and clinical case learning are the product's use contexts. The
+  patient-explanation badge and filter appear only on a model with a
+  versioned clinical review, under the same rule as the paid patient mode.
+  Clinical case learning stops at case-based mechanism review: no patient-
+  specific dosing (dobutamine included), diagnosis, severity grading or
+  decision support.
+### Myocardial ischemia, as a model and a scene that is not yet finished
+
+- **A model of ischemia as a debt that accumulates.** Supply over demand gives a
+  deficit, the deficit integrates into a burden, and the burden drives
+  contractility through a lag that is slower coming back than going out —
+  because that is what stunning is. Nothing downstream reads supply, so a wall
+  cannot go red the moment an artery narrows.
+- **One solve behind everything.** The wall's colour, how far it moves, the
+  ejection fraction and every number come from a single call to the shared
+  cardiac model, with end-systolic elastance scaled by how hard the ventricle
+  can still contract.
+- **The scene is registered `alpha` and has been looked at, repeatedly.**
+  Rendering it found twenty-eight defects across ten rounds and a code review,
+  and two of the twenty-eight were measurements this project had itself
+  published wrong. The territory map is legible on the model now — the
+  watershed is drawn as a line, because a fill alone could not carry it — and
+  the AHA 17-segment plot beside the heart shows all three territories at once,
+  which no view of a 3D heart can. Every round, with its numbers, is in
+  `docs/anatomy-review.md` §5.10.
+
+### The heart has coronary arteries, and the myocardium knows which one feeds it
+
+- **Five named epicardial arteries**, each in the groove it is named for, and
+  the AHA 17-segment territory map as one source of truth that the scene's
+  colour, wall motion, legend and read-out will all read. Owned by the organ
+  layer: the builder is handed the heart's surface rather than importing one,
+  so a vessel cannot end up with its own opinion about where the heart is.
+- **The territory map is a convention, and the code says where it is wrong.**
+  The AHA chart assigns segment 3 to the right coronary; contrast-enhanced MR
+  finds it is anterior-descending territory, and five other segments overlap
+  two arteries between people. A model that shows a fixed map without recording
+  that is claiming more than it has.
+- **One right-dominant specimen.** The posterior descending comes off the right
+  coronary. Left-dominant and balanced circulations are not modelled.
+- **The anterior descending stops short of the apex**, which real ones do not.
+  A surface of revolution has no normal at its tip, so there is no "away from
+  the wall" to lay a vessel along there. The reason and the measured clearance
+  are recorded where the number is.
+
+### One heart, so two scenes cannot disagree about it
+
+- **The cardiac solver moved out of the heart-failure scene.** The time-varying
+  elastance model and the seven-compartment circulation it drives now live in
+  `src/models/cardiacMechanics.js`, with the chamber geometry and the named
+  parts of a beat. The heart-failure scene keeps what is specific to that
+  disease — the keyframes that turn a position on the progression into
+  mechanical parameters — and became one of two readers rather than the owner.
+- **Nothing about the heart-failure model changed.** Every authored stage, each
+  control at its minimum, default and maximum, and five points in the cardiac
+  cycle were captured before the move and again after. The two captures are
+  identical, not merely within tolerance, and a test pins them so a future edit
+  has to change them deliberately.
+- **Why now.** The myocardial ischemia scene has to solve the same cardiac cycle
+  under the same loading state. A second implementation of a beat is how two
+  scenes start showing different hearts, and neither would look wrong on its
+  own. The specification for that scene — what the coronary geometry owns, the
+  AHA territory map and where it disagrees with measurement, and the fact that
+  the first version is reversible ischemia with no infarct — is settled in
+  `docs/anatomy-specs.md` before any of it is built.
+
+### What each model may be used for is now written down, and tested
+
+- **Every public scene now carries a model profile** (`src/catalog/modelProfiles.js`):
+  where its geometry comes from, how much its numbers can carry, whom it
+  stands for, and what it is for and must never be used for. All ten are
+  representative teaching models; every one prohibits diagnosis, treatment
+  selection and dose selection; none claims external validation. No scene's
+  status, review state or model changed.
+- **Patient mode is fixed as patient explanation, not a patient-specific model.**
+  It shows the same general model with less jargon, takes no patient data, and
+  the test suite now refuses any scene that claims otherwise — as it refuses
+  clinical research or clinical care as an intended use anywhere in the app.
+- **The brain atlas has a provenance record** (`src/catalog/assetManifest.js`)
+  and a measured QA record (`docs/asset-qa/brain-atlas-glb.md`): the upstream
+  file re-verified byte for byte, its seven components and their licences
+  including the Human Connectome Project acknowledgment the tract templates
+  require (now in `public/assets/brain/ATTRIBUTION.md`), a pinned glTF
+  Validator run with 0 errors, and a browser render. What nobody has done —
+  an anatomist's review, a clinician's sign-off — is recorded as pending, so
+  the asset passes the release gate for its alpha scene only. Future external
+  meshes follow `docs/asset-pipeline.md` and cannot reach a public scene
+  without clearing the same gate.
+
+### The site has one public address
+
+- **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
+  comes from the deploy rather than from the code, so moving the site remains a
+  deploy change — but it is now written down, in the release runbook, in the
+  discoverability document and beside the variable in `.env.example`, instead of
+  being knowledge somebody had to already have.
+- **A trailing slash no longer makes a second site.** `https://site` and
+  `https://site/` are the same site to the person typing them into a deploy
+  environment, and they now produce the same canonical, the same Open Graph URLs
+  and the same sitemap. The home page had been declaring itself at an address
+  the sitemap did not use.
+- **The build can now be checked against the domain it was meant for.**
+  `npm run verify:site -- --origin <url>` fails when the sitemap or any page's
+  canonical, `og:url` or preview image names something else. Stating the origin
+  from outside the build is the point: the addresses are all baked in from one
+  variable, so a build carrying a stale one agrees with itself perfectly while
+  every page names the host the site has left — invisible in a browser, decisive
+  to a crawler. Without `--origin`, the check is the weaker one that the output
+  at least names a single host.
+- **The origin is in the repository now, not in a dashboard.** `netlify.toml`
+  sets `VITE_SITE_URL` for production and leaves it empty for preview deploys —
+  a preview is not the site, so it claims no canonical and emits no sitemap.
+  Moving the domain is a commit that is reviewed, tested and revertible instead
+  of a value somebody has to remember to retype, and remembering was the whole
+  failure mode.
+- **The deployed site can be checked, not just the build.**
+  `npm run verify:live -- <origin>` fetches robots.txt, the sitemap, the home
+  page, every scene page and the preview card from the published origin, and
+  fails if what is served names another host, has no canonical, lost the
+  sitemap or published a Prototype scene. `--redirects-from <old-origin>` also
+  proves old links still lead to the new one. This is what catches a domain
+  that moved while an older deploy stayed published — the case no local check
+  can see, because the build is not what the public is being served.
+- **The rest of the move is a checklist, not memory.** Supabase's redirect
+  allowlist and the new Stripe webhook endpoint come *before* the cutover —
+  password reset returns the user to the running origin, and a new endpoint has
+  a new signing secret, so doing either afterwards breaks them for everybody
+  already on the new domain. Redirects from the old host, the sitemap
+  resubmission, and retiring the old endpoint afterwards are in the release
+  runbook.
+
 ### The lobes and the liver segments now take the volumes a source gives them
 
 - **The shares stopped being uncited, and two of them stopped being wrong.**

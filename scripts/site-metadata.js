@@ -39,16 +39,45 @@ const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&
 export const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ESCAPES[char]);
 
 /**
+ * The configured origin in one spelling.
+ *
+ * `VITE_SITE_URL` is typed by a person into a deploy environment, and the same
+ * site is written `https://example.org` and `https://example.org/` with equal
+ * conviction. Both must produce the same addresses, or the product tells a
+ * crawler two different things about one page depending on how the variable
+ * happened to be typed on the day the domain changed.
+ *
+ * @param {string} value
+ */
+export function normaliseBaseUrl(value) {
+  return String(value ?? '')
+    .trim()
+    .replace(/\/+$/, '');
+}
+
+/**
  * Join a base URL and a path without producing `//` or losing a subpath.
  *
  * @param {string} base
  * @param {string} path
  */
 export function absoluteUrl(base, path = '') {
-  if (!base) return '';
-  const root = base.endsWith('/') ? base : `${base}/`;
-  return `${root}${String(path).replace(/^\//, '')}`;
+  const root = normaliseBaseUrl(base);
+  if (!root) return '';
+  return `${root}/${String(path).replace(/^\//, '')}`;
 }
+
+/**
+ * The site root's own address.
+ *
+ * Deliberately the same expression the sitemap uses for the root entry: the
+ * home page's canonical and the sitemap's first `<loc>` are a claim about one
+ * page, and if they disagree over a trailing slash the product has published
+ * two addresses for its front door.
+ *
+ * @param {string} base
+ */
+export const siteRootUrl = (base) => absoluteUrl(base, '');
 
 /**
  * Everything a crawler, a link preview and a sitemap need about one scene.
@@ -336,7 +365,8 @@ export function siteJsonLd({ baseUrl = '' } = {}) {
     description: `${SITE_TAGLINE_JA} / ${SITE_TAGLINE_EN}`,
     inLanguage: ['ja', 'en'],
   };
-  if (baseUrl) data.url = baseUrl;
+  const url = siteRootUrl(baseUrl);
+  if (url) data.url = url;
   return data;
 }
 

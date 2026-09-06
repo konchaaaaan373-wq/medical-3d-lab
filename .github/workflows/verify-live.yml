@@ -1,0 +1,48 @@
+# Asks the published site whether it is still the site we think it is.
+#
+# Separate from `ci.yml` on purpose: this one needs the public internet and a
+# deployment, so it cannot gate a pull request — a red run here means the
+# deploy is wrong, not the branch. It runs on a schedule because the failures
+# it catches are silent by nature: a domain that moved without a redeploy, a
+# preview card that stopped being served, a sitemap that lost its addresses.
+# Nobody notices those in a browser; a crawler notices immediately.
+name: Verify the deployed site
+
+on:
+  workflow_dispatch:
+    inputs:
+      origin:
+        description: Origin to check (scheme included)
+        required: false
+        default: https://med-3d-lab.necofindjob.com
+      redirects_from:
+        description: Optional old origin that must still redirect here
+        required: false
+        default: ''
+  schedule:
+    # 07:20 JST daily. Off the hour: a scheduled run at :00 queues behind
+    # everyone else's.
+    - cron: '20 22 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the published site
+        run: |
+          npm run verify:live -- \
+            "${ORIGIN:-https://med-3d-lab.necofindjob.com}" \
+            ${REDIRECTS_FROM:+--redirects-from "$REDIRECTS_FROM"}
+        env:
+          ORIGIN: ${{ inputs.origin }}
+          REDIRECTS_FROM: ${{ inputs.redirects_from }}

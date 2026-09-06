@@ -3,6 +3,7 @@ import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { createClinicalReviewDetails } from '../components/ClinicalReviewDetails.js';
 import { prefersReducedMotion } from '../utils/motion.js';
+import { hasOrganPreview, mountOrganPreview } from './organPreview.js';
 import '../styles/clinical-review.css';
 import {
   EXPLORER_ROUTE,
@@ -16,7 +17,7 @@ import {
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
-import { productBadgesForScene } from '../access/features.js';
+import { activeUsesForScene, productBadgesForScene } from '../access/features.js';
 import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
   emptyOrganMatchesExplorerFilters,
@@ -28,8 +29,9 @@ import {
  * Catalogue surface shared by the public Organ Explorer and Experimental Lab.
  *
  * Both are projections of the same scene manifest. Public excludes Prototype;
- * Lab includes Prototype (and the declared backlog) explicitly. Neither route
- * imports Three.js or a scene module.
+ * Lab includes Prototype (and the declared backlog) explicitly. Public organ
+ * previews lazy-load only the reusable overview geometry near the viewport;
+ * the catalogue itself stays complete without WebGL.
  *
  * Favorites and recents store scene IDs only — never model controls, patient
  * information, account state or clinical data.
@@ -52,6 +54,8 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const systemViews = new Map();
   const jumpLinks = new Map();
   const favoriteButtons = new Map();
+  const previewMounts = [];
+  const previewCleanups = [];
 
   const bilingual = (en, ja, className = '') =>
     el('span', { class: className }, [
@@ -98,6 +102,29 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       })
     );
 
+  const useLabels = Object.freeze({
+    patient: ['Patient explanation', '患者説明'],
+    education: ['Medical education', '医学教育'],
+    'clinical-learning': ['Clinical case learning', '臨床ケース学習'],
+  });
+
+  // Only uses a reader may act on today. A declared-but-gated patient use is
+  // explained once, in the three-uses section, never printed on a card.
+  const useBadges = (scene) =>
+    el(
+      'span',
+      { class: 'explorer-use-badges', 'aria-label': 'Available uses / 利用できる用途' },
+      activeUsesForScene(scene).map((id) => {
+        const labels = useLabels[id];
+        return labels
+          ? el('span', { class: `explorer-use-badge is-${id}` }, [
+              el('span', { class: 'lang-en', text: labels[0] }),
+              el('span', { class: 'lang-ja', text: labels[1] }),
+            ])
+          : null;
+      }).filter(Boolean)
+    );
+
   function favoriteButtonFor(scene) {
     const button = el('button', {
       class: 'explorer-favorite-toggle',
@@ -118,17 +145,30 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
 
   const sceneCard = (scene, system, organ) => {
     const link = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
+      el('span', { class: 'explorer-scene-kicker' }, [
+        bilingual(
+          scene.disease ? 'Pathophysiology' : 'Anatomy & physiology',
+          scene.disease ? '病態モデル' : '解剖・生理',
+          'explorer-scene-kind'
+        ),
+        badge(scene.status),
+      ]),
       el('span', { class: 'explorer-scene-title' }, [
         el('span', { class: 'lang-en', text: scene.titleEn }),
         el('span', { class: 'lang-ja', text: scene.titleJa }),
-        badge(scene.status),
       ]),
-      productBadges(scene),
-      reviewBadge(scene),
+      scene.storyTitleEn
+        ? bilingual(scene.storyTitleEn, scene.storyTitleJa, 'explorer-scene-story')
+        : null,
       el('span', { class: 'explorer-scene-note' }, [
         el('span', { class: 'lang-en', text: scene.description }),
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
       ]),
+      el('span', { class: 'explorer-scene-footer' }, [
+        useBadges(scene),
+        bilingual('Open model', 'モデルを開く', 'explorer-scene-open'),
+      ]),
+      el('span', { class: 'explorer-scene-trust' }, [productBadges(scene), reviewBadge(scene)]),
     ]);
     const children = [link, favoriteButtonFor(scene)];
     if (!isLab) children.push(createClinicalReviewDetails(scene));
@@ -168,10 +208,33 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           }
         : null;
 
+    const preview = !isLab && hasOrganPreview(organ.id)
+      ? el('div', {
+          class: `explorer-organ-preview is-${organ.id}`,
+          'aria-hidden': 'true',
+          'data-organ': organ.id,
+        }, [el('span', { class: 'explorer-preview-placeholder', text: organ.labelJa })])
+      : null;
+    if (preview) previewMounts.push({ element: preview, organId: organ.id });
+
+    const diseaseCount = organ.scenes.filter((scene) => scene.disease).length;
     const element = el('div', { class: `explorer-organ${organ.scenes.length ? '' : ' is-empty'}` }, [
-      el('h3', { class: 'explorer-organ-name' }, [
-        el('span', { class: 'lang-en', text: organ.label }),
-        el('span', { class: 'lang-ja', text: organ.labelJa }),
+      el('div', { class: 'explorer-organ-identity' }, [
+        el('div', { class: 'explorer-organ-heading' }, [
+          el('h3', { class: 'explorer-organ-name' }, [
+            el('span', { class: 'lang-ja', text: organ.labelJa }),
+            el('span', { class: 'lang-en', text: organ.label }),
+          ]),
+          diseaseCount
+            ? bilingual(
+                `${diseaseCount} pathophysiology model${diseaseCount === 1 ? '' : 's'}`,
+                `病態モデル ${diseaseCount}件`,
+                'explorer-organ-model-count'
+              )
+            : null,
+        ]),
+        preview,
+        preview ? previewCaption() : null,
       ]),
       el('div', { class: 'explorer-scenes' }, [
         ...scenes.map((record) => record.element),
@@ -345,6 +408,31 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         ),
       ]);
 
+  const useLanes = isLab
+    ? null
+    : el('section', { class: 'explorer-use-lanes', 'aria-label': 'Three product uses' }, [
+        el('div', { class: 'explorer-use-lanes-heading' }, [
+          bilingual('Three ways to use the models', '3つの使い方', 'explorer-use-lanes-title'),
+          bilingual(
+            'The same physiology needs a different explanation and safety boundary for each setting.',
+            '同じ病態でも、用途ごとに説明の深さと安全境界を分けます。',
+            'explorer-use-lanes-note'
+          ),
+        ]),
+        el('div', { class: 'explorer-use-lane-grid' }, [
+          useLane('01', 'Patient explanation', '患者説明',
+            'A calm visual story with plain language and only the controls needed for conversation. Shown on a model only after a versioned clinical review; models still under review carry no patient badge.',
+            '平易な言葉と必要最小限の操作で、患者さんとの会話に使える説明。版を固定した医学レビュー完了後にモデルごとに有効化し、レビュー未完了のモデルには患者説明バッジを表示しません。'),
+          useLane('02', 'Medical education', '医学教育',
+            'Mechanism, comparison, prediction and feedback from one internally consistent model.',
+            '1つの整合したモデルで、機序・比較・予測・フィードバックまで学ぶ。'),
+          useLane('03', 'Clinical case learning', '臨床ケース学習',
+            'Currently limited to case-based review of mechanism. Patient-specific dose adjustment (for example dobutamine, DOB), treatment recommendation, diagnosis, severity grading and decision support are not provided in this product. Any future clinical decision support would be a separately validated product.',
+            '現在提供するのは症例ベースの機序確認までです。患者別の用量調整（ドブタミン（DOB）など）、治療推奨、診断、重症度判定、意思決定支援は本製品では提供しません。将来の臨床意思決定支援は、別途検証された製品として扱います。',
+            'is-clinical'),
+        ]),
+      ]);
+
   // A `main` landmark, not a `div`: the Explorer is the page on this route, and
   // a screen reader's landmark list is how somebody reaches it without tabbing
   // through the header. The skip link targets the first catalogue section
@@ -361,6 +449,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         el('span', { class: 'lang-ja', text: subtitle[1] }),
       ]),
       productKey,
+      useLanes,
       search.element,
       jump,
       headerActions,
@@ -393,21 +482,73 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   languageToggle.init();
   syncLibrary();
   applyFilters();
+  if (!isLab) {
+    for (const mount of previewMounts) {
+      previewCleanups.push(mountOrganPreview(mount.element, mount.organId));
+    }
+  }
 
   // Slash is a conventional catalogue-search shortcut and is otherwise unused
   // on this plain-DOM route. Do not steal it from a text field.
-  window.addEventListener('keydown', (event) => {
+  const searchShortcut = (event) => {
     if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
     event.preventDefault();
     search.focus();
-  });
+  };
+  window.addEventListener('keydown', searchShortcut);
 
   document.title = isLab
     ? 'Experimental Lab — Medical 3D Lab'
     : 'Organ explorer — Medical 3D Lab';
 
-  return { element, route: isLab ? LAB_ROUTE : EXPLORER_ROUTE, search };
+  return {
+    element,
+    route: isLab ? LAB_ROUTE : EXPLORER_ROUTE,
+    search,
+    dispose() {
+      window.removeEventListener('keydown', searchShortcut);
+      while (previewCleanups.length) previewCleanups.pop()?.();
+    },
+  };
+
+  /**
+   * What the preview actually does on this device, so the caption never
+   * promises a rotation the reader asked not to see, or a hover a touch screen
+   * cannot make.
+   */
+  function previewCaption() {
+    const caption = el('span', { class: 'explorer-preview-caption' });
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const coarse = window.matchMedia?.('(pointer: coarse)');
+    const render = () => {
+      const [en, ja] = reduced?.matches
+        ? ['Still 3D orientation preview (reduced motion)', '3D概観・静止画（動きを減らす設定を反映）']
+        : coarse?.matches
+          ? ['Slow 3D orientation preview · pauses while touched', '3D概観・ゆっくり自動回転（触れている間は停止）']
+          : ['Slow 3D orientation preview · pauses on hover', '3D概観・ゆっくり自動回転（ポインタを重ねると停止）'];
+      caption.replaceChildren(
+        el('span', { class: 'lang-en', text: en }),
+        el('span', { class: 'lang-ja', text: ja })
+      );
+    };
+    render();
+    reduced?.addEventListener?.('change', render);
+    coarse?.addEventListener?.('change', render);
+    previewCleanups.push(() => {
+      reduced?.removeEventListener?.('change', render);
+      coarse?.removeEventListener?.('change', render);
+    });
+    return caption;
+  }
+
+  function useLane(number, titleEn, titleJa, noteEn, noteJa, className = '') {
+    return el('article', { class: `explorer-use-lane ${className}`.trim() }, [
+      el('span', { class: 'explorer-use-lane-number', text: number }),
+      bilingual(titleEn, titleJa, 'explorer-use-lane-title'),
+      bilingual(noteEn, noteJa, 'explorer-use-lane-note'),
+    ]);
+  }
 
   function libraryShortcut(scene, recent = false) {
     return el('a', { class: 'explorer-library-link', href: sceneRoute(scene) }, [

@@ -57,9 +57,17 @@ export class TubeSurface {
 
   /**
    * Rewrite the surface.
+   *
+   * The modifier is remembered, because it is the tube's current *shape* and
+   * not a one-off instruction: a constricted bowel that is then resampled onto
+   * a moved path is still constricted. `refresh()` with no modifier therefore
+   * also means "no modifier from now on", which is what a caller that stops
+   * passing one is asking for.
+   *
    * @param {(u: number, base: number) => number} [modifier] u is 0..1 along the tube
    */
   refresh(modifier) {
+    this.modifier = modifier;
     const position = this.geometry.attributes.position;
     const { steps, radial, arc, arcStart } = this;
     const point = new THREE.Vector3();
@@ -85,6 +93,25 @@ export class TubeSurface {
     position.needsUpdate = true;
     this.geometry.computeVertexNormals();
     this.geometry.computeBoundingSphere();
+  }
+
+  /**
+   * Re-read the curve after its control points have moved.
+   *
+   * The spaced points and the Frenet frames are sampled once in the
+   * constructor, so a tube whose curve is edited in place keeps drawing itself
+   * along the old path until this is called. Separate from `refresh` because
+   * the two are different costs: `refresh` rewrites the cross-sections along a
+   * path that has not changed, and this re-derives the path. The radius
+   * modifier last given to `refresh` is re-applied, so moving a tube's path
+   * does not quietly inflate it back to its base calibre.
+   */
+  resample() {
+    this.points = this.curve.getSpacedPoints(this.steps);
+    const frames = this.curve.computeFrenetFrames(this.steps, false);
+    this.normals = frames.normals;
+    this.binormals = frames.binormals;
+    this.refresh(this.modifier);
   }
 
   /** Point on the centre line, for hanging a label or a particle stream off. */

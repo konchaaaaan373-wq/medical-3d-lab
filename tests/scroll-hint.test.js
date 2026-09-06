@@ -66,7 +66,79 @@ test('the cue is styled where the panels are, not written inline', () => {
   assert.ok(cue.length, 'markScrollable is there to read');
   assert.doesNotMatch(cue, /\.style\./, 'the hint sets a class; the stylesheet owns the look');
   const controls = readFileSync(new URL('../src/styles/ui.css', import.meta.url), 'utf8');
-  assert.match(controls, /\.rail\.has-more[\s\S]{0,80}mask-image/);
+  assert.match(controls, /\.rail\.has-more[\s\S]{0,120}mask-image/);
+});
+
+/*
+ * Every scroll box in the frame carries the cue, not just the ones it was
+ * written for.
+ *
+ * `.top-left` was the one that did not, and it is the one that clips most: on
+ * the ischemia scene it shows 433 px of 520 at 1440x900 and 253 px at
+ * 1280x720, so the panel at the bottom of the stack is cut with nothing on
+ * screen to say it is there. Asserted against the source rather than a render
+ * because the wiring is what went missing — the util and the style were both
+ * already correct.
+ */
+/*
+ * A mask is not free: it makes the masked element a stacking context and paints
+ * its *fixed* descendants inside it.
+ *
+ * The global navigation is `position: fixed` and used to live inside
+ * `.top-left`. The moment `.top-left` got the mask, the nav went into the
+ * masked stacking context and the WebGL canvas came out on top of it: at
+ * 320x568 and 375x812 all four header controls — brand, favourite, sign in,
+ * the catalogue trigger — measured as covered by the canvas. `verify:ui`
+ * caught it in CI; the local run of the same script did not, which is why this
+ * is asserted here as well.
+ */
+test('the fixed navigation is not inside the column that gets masked', () => {
+  const app = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8');
+  const column = app.slice(app.indexOf("el('div', { class: 'top-left' }"), app.indexOf('const topBar'));
+  assert.ok(column.length, "the top-left column is there to read");
+  assert.doesNotMatch(
+    column,
+    /sceneSwitcher\?\.element/,
+    'the global navigation is fixed; masking an ancestor of it hides it behind the canvas'
+  );
+  assert.match(app, /ui\.append\([\s\S]{0,700}sceneSwitcher\?\.element/, 'it is appended to the shell instead');
+
+  // And the rule that used to depend on the old parent no longer does, or Story
+  // would stop hiding the nav without anything failing.
+  const nav = readFileSync(new URL('../src/styles/navigation.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(nav, /\.top-left\s*>\s*\.global-scene-nav/);
+  assert.match(nav, /#ui\.is-story \.global-scene-nav\s*\{[\s\S]{0,80}pointer-events:\s*none/);
+});
+
+test('every scrolling column in the frame says when there is more below', () => {
+  // Comments stripped first: a commented-out call still reads as the call, and
+  // the first version of this test passed with `markScrollable(topLeft)` sitting
+  // behind a `//`.
+  const app = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8')
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
+    .join('\n');
+  const styles = readFileSync(new URL('../src/styles/ui.css', import.meta.url), 'utf8');
+
+  // The regions that scroll, by their own stylesheet: each declares
+  // `overflow-y: auto` and a `max-height`, which is what makes clipping
+  // possible in the first place.
+  for (const region of ['rail', 'top-left']) {
+    const at = styles.indexOf(`.${region} {`);
+    assert.ok(at >= 0, `.${region} is styled`);
+    const block = styles.slice(at, styles.indexOf('}', at));
+    assert.match(block, /overflow-y:\s*auto/, `.${region} scrolls`);
+    assert.match(
+      styles,
+      new RegExp(`\\.${region}\\.has-more`),
+      `.${region} has somewhere for the cue to land`
+    );
+    assert.match(
+      app,
+      new RegExp(`markScrollable\\(\\s*${region === 'rail' ? 'rail' : 'topLeft'}\\s*\\)`),
+      `.${region} is actually given the cue`
+    );
+  }
 });
 
 

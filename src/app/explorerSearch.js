@@ -1,8 +1,13 @@
-import { featuresForScene } from '../access/features.js';
+import { activeUsesForScene } from '../access/features.js';
 import { clinicalReviewForScene, clinicalReviewMatchesFilter } from '../catalog/clinicalReview.js';
 import { organById } from '../catalog/taxonomy.js';
 
-export const EXPLORER_MODE_FILTERS = Object.freeze(['all', 'patient', 'education']);
+export const EXPLORER_MODE_FILTERS = Object.freeze([
+  'all',
+  'patient',
+  'education',
+  'clinical-learning',
+]);
 export const EXPLORER_STATUS_FILTERS = Object.freeze([
   'all',
   'reviewed-plus',
@@ -25,9 +30,28 @@ export function queryTokens(query) {
   return fold(query).split(/\s+/u).filter(Boolean);
 }
 
-function containsAll(document, tokens) {
+/**
+ * A short Latin token is matched as a whole word.
+ *
+ * "PE" is a disease. As a substring it is also "pe" in "peristalsis",
+ * "perfusion" and "pressure", which is why it used to return ten of twelve
+ * public models. Below `WHOLE_WORD_MAX_LENGTH` a query made of Latin letters
+ * and digits has to stand on its own in the document; longer tokens and any
+ * token with other script (Japanese has no spaces to bound a word) keep the
+ * substring behaviour that lets "肺" find "肺水腫".
+ */
+const WHOLE_WORD_MAX_LENGTH = 3;
+const LATIN_TOKEN = /^[a-z0-9]+$/u;
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export function tokenMatches(document, token) {
   const text = fold(document);
-  return tokens.every((token) => text.includes(token));
+  if (token.length > WHOLE_WORD_MAX_LENGTH || !LATIN_TOKEN.test(token)) return text.includes(token);
+  return new RegExp(`(^|[^a-z0-9])${escapeRegExp(token)}(?=[^a-z0-9]|$)`, 'u').test(text);
+}
+
+function containsAll(document, tokens) {
+  return tokens.every((token) => tokenMatches(document, token));
 }
 
 function contextDocument({ system, organ }) {
@@ -62,9 +86,12 @@ export function sceneSearchDocument({ scene, system, organ }) {
     scene?.slug,
     scene?.titleEn,
     scene?.titleJa,
+    scene?.storyTitleEn,
+    scene?.storyTitleJa,
     scene?.description,
     scene?.descriptionJa,
     scene?.disease,
+    ...(scene?.conditions ?? []),
     ...(scene?.tags ?? []),
     review?.reviewStatus,
     review?.reviewerRole,
@@ -83,10 +110,9 @@ export function sceneMatchesExplorerFilters(record, filters = {}) {
   const mode = EXPLORER_MODE_FILTERS.includes(filters.mode) ? filters.mode : 'all';
   const status = EXPLORER_STATUS_FILTERS.includes(filters.status) ? filters.status : 'all';
   const review = EXPLORER_REVIEW_FILTERS.includes(filters.review) ? filters.review : 'all';
-  const features = featuresForScene(scene);
-
-  if (mode === 'patient' && !features.patient) return false;
-  if (mode === 'education' && !features.education) return false;
+  // Use filters follow what a card shows. Patient explanation fails closed
+  // until a versioned clinical review exists, exactly as the paid mode does.
+  if (mode !== 'all' && !activeUsesForScene(scene).includes(mode)) return false;
 
   if (status === 'reviewed-plus' && !['reviewed', 'production'].includes(scene.status)) return false;
   if (!['all', 'reviewed-plus'].includes(status) && scene.status !== status) return false;

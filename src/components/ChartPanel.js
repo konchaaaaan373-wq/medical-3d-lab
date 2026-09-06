@@ -32,10 +32,10 @@ import { inLanguage } from '../utils/language.js';
  * ### Data (per frame)
  * ```
  * { x?: { min, max }, y?: { min, max },
- *   series?: [{ id, color, points: [{x,y}], width?, dash?, closed?, fill?, alpha? }],
+ *   series?: [{ id, color, points: [{x,y}], width?, dash?: number[], closed?, fill?, alpha? }],
  *   bars?:   [{ id?, color, x0, x1, y, alpha? }],
  *   bands?:  [{ axis: 'x'|'y', from, to, color }],
- *   rules?:  [{ axis: 'x'|'y', at, color, dash?, label?, labelJa? }],
+ *   rules?:  [{ axis: 'x'|'y', at, color, dash?: number[], label?, labelJa? }],
  *   markers?:[{ x, y, color, radius?, label?, labelJa? }],
  *   note?:   { text, textJa } }
  * ```
@@ -102,7 +102,7 @@ export function createChartPanel(spec) {
 
     const x = (value) => {
       const t = (value - xRange.min) / (xRange.max - xRange.min || 1);
-      return padding.left + (spec.x.invert ? 1 - t : t) * width;
+      return padding.left + (spec.x?.invert ? 1 - t : t) * width;
     };
     const y = (value) =>
       padding.top + height - ((value - yRange.min) / (yRange.max - yRange.min || 1)) * height;

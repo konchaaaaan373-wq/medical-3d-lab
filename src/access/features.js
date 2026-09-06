@@ -71,6 +71,37 @@ export function featuresForScene(sceneOrId) {
 }
 
 /**
+ * Whether "patient explanation" may be shown as a use a reader can act on.
+ *
+ * The catalogue declares the contexts a scene is *intended* for. Patient
+ * explanation is the one of them that is safety-gated: it becomes visible on a
+ * card, and selectable in the explorer's use filter, under exactly the rule the
+ * paid patient mode uses — a reviewed/production model with a versioned clinical
+ * review of the current lineage. An unreviewed alpha model is never presented
+ * as intended for a patient, however it is declared.
+ *
+ * @param {string|{id?:string,status?:string,uses?:string[]}} sceneOrId
+ */
+export function patientUseEnabled(sceneOrId) {
+  const scene = sceneFor(sceneOrId);
+  if (!scene || !(scene.uses ?? []).includes('patient')) return false;
+  return PAID_READY_STATUSES.has(scene.status) && hasVersionedClinicalReview(scene);
+}
+
+/**
+ * The declared uses a surface may present today: every non-patient context as
+ * declared, and patient explanation only when `patientUseEnabled`.
+ *
+ * @param {string|{id?:string,status?:string,uses?:string[]}} sceneOrId
+ * @returns {string[]}
+ */
+export function activeUsesForScene(sceneOrId) {
+  const scene = sceneFor(sceneOrId);
+  const declared = scene?.uses ?? ['education'];
+  return declared.filter((use) => use !== 'patient' || patientUseEnabled(scene));
+}
+
+/**
  * Compact product labels used by catalogue surfaces. They describe currently
  * available product modes, not merely authored-but-unreviewed content.
  *

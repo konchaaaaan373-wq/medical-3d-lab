@@ -19,7 +19,7 @@ Netlify Scheduled Functions have a 30-second execution limit. Do not raise the b
 After the first scheduled run has completed:
 
 ```bash
-npm run billing:check -- https://YOUR_PRODUCTION_DOMAIN
+npm run billing:check -- https://med-3d-lab.necofindjob.com
 ```
 
 All three rows must be `ok: true`. A fresh deployment can show `Billing repair` as pending until the first hourly run. To test immediately, open Netlify → **Functions** → **scheduled-billing-reconcile** → **Run now**, then rerun the command.

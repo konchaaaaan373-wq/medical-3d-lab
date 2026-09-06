@@ -33,15 +33,14 @@ import {
 } from './storyboard.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from './anatomy.js';
 import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from './geometry/ventricleGeometry.js';
+import { sampleHemodynamics, pressureVolumeCurves } from './hemodynamics.js';
 import {
-  sampleHemodynamics,
-  myocardialVolumeFor,
-  ventricleShape,
+  advanceCardiacPhase,
   beatPhaseAt,
   cavityVolumeAt,
-  advanceCardiacPhase,
-  pressureVolumeCurves,
-} from './hemodynamics.js';
+  myocardialVolumeFor,
+  ventricleShape,
+} from '../../../../models/cardiacMechanics.js';
 import {
   STAGES,
   LEGEND,

@@ -82,10 +82,107 @@ Set for the deploy:
 
 | Variable | Why |
 | --- | --- |
-| `VITE_SITE_URL` | Without it there is no sitemap and no canonical URLs |
 | `VITE_RELEASE` | Labels the telemetry batches so a spike can be attributed |
 | `VITE_TELEMETRY_ENDPOINT`, `VITE_FEEDBACK_ENDPOINT` | Same-origin; see [`observability.md`](observability.md) |
 | `BILLING_RECONCILE_TOKEN`, `OPS_ALERT_WEBHOOK` | See [`access-and-billing.md`](access-and-billing.md) |
+
+**The production origin is `https://med-3d-lab.necofindjob.com`, and it is set
+in [`netlify.toml`](../netlify.toml)** as `VITE_SITE_URL` — not in a dashboard,
+so moving the site is a commit that is reviewed and revertible. A preview
+deploy gets the variable empty on purpose: it is not the site, so it claims no
+canonical and emits no sitemap. Nothing in `src/` names the domain either way;
+the build takes the origin from its environment and guesses nothing without it.
+
+After the deploy, check the site that is actually being served. This runs in
+CI — **Actions → Verify the deployed site → Run workflow** — and again on a
+daily schedule, so a deploy that silently stopped being the published one is
+found without anybody remembering to look. The same check runs from a checkout:
+
+```bash
+npm run verify:live -- https://med-3d-lab.necofindjob.com
+```
+
+It fetches robots.txt, the sitemap, the home page, every scene page and the
+preview card, and fails if the deployed build names any other host — which is
+what a deploy that did not take, or took from the wrong branch, looks like from
+outside.
+
+### A variable belongs to a deploy context, not to the site
+
+Netlify scopes every environment variable by deploy context, and the summary
+line in its list does not say **which** context holds the value. A variable
+reading "1 value in 1 deploy context" can be set for Deploy Previews and empty
+in Production, and nothing about the site says so: the build simply runs
+without it. That is not hypothetical here — it is why the published site served
+`VITE_SUPABASE_URL`-less builds, and it took a UI panel saying "account access
+has not been configured" to notice.
+
+So when a variable seems not to apply: open it and read the **Production** row
+before doubting the value itself. And remember that a variable added after a
+deploy reaches nothing until the next build — `import.meta.env` is baked in at
+build time, not read at runtime.
+
+### Changing the primary domain
+
+The origin is baked into the build, so **a domain change that is not followed by
+a rebuild leaves every page naming the old host** — invisible in a browser,
+decisive to a crawler. Two of these steps are ordered before the cutover on
+purpose: Supabase and Stripe both key on the origin, and doing them afterwards
+means a window in which password reset and webhook delivery are broken for
+everyone already on the new domain.
+
+Prepare, before the domain moves:
+
+1. Add the new origin to Supabase Auth's redirect allowlist, keeping the old one
+   until the move is done. Password reset sends the user back to
+   `window.location.origin`, so an origin Supabase does not recognise makes
+   reset fail for everybody on the new domain.
+2. Add a Stripe webhook endpoint at
+   `<new-origin>/.netlify/functions/stripe-webhook`, alongside the existing one.
+   A new endpoint has a **new signing secret**: set `STRIPE_WEBHOOK_SECRET` from
+   it in the same deploy as step 4, or every event fails signature verification
+   and paid access stops updating. Two live endpoints are safe — the webhook is
+   idempotent per event and the ledger records what it has already processed.
+
+Then move:
+
+3. Point the domain at the host and set it as the primary domain; wait for the
+   certificate.
+4. Change `VITE_SITE_URL` in [`netlify.toml`](../netlify.toml) to the new
+   origin, merge it, set `STRIPE_WEBHOOK_SECRET` to the new endpoint's secret,
+   and **redeploy**. Nothing is rebuilt without this step, so without it every
+   page still names the old host.
+5. Verify the rebuild before trusting it:
+
+   ```bash
+   npm run verify:site -- --origin <new-origin>
+   ```
+
+   Given the origin the build was meant for, this fails when the sitemap or any
+   page's canonical, `og:url` or preview image names something else. Without
+   `--origin` it can only check that the output agrees with itself — and a build
+   made with a stale `VITE_SITE_URL` agrees with itself perfectly.
+6. Keep the previous host serving a redirect for as long as links to it exist.
+   A shared model URL outlives the domain it was shared from.
+
+Then confirm, against the deployed site rather than the build:
+
+7. `npm run billing:check -- <new-origin>` — see
+   [`billing-operations-runbook.md`](billing-operations-runbook.md).
+8. Check the deployed site, not the build — this, not step 5, is what catches a
+   domain that moved without a redeploy. Run it from **Actions → Verify the
+   deployed site**, giving it the new origin and the old one, or from a
+   checkout:
+
+   ```bash
+   npm run verify:live -- <new-origin> --redirects-from <old-origin>
+   ```
+
+   Then resubmit the sitemap to Search Console. (`verify:live` confirms the
+   preview card is served; whether it *renders* is still worth one real share.)
+9. Retire the old Stripe webhook endpoint and drop the old origin from the
+   Supabase allowlist once the redirect has been in place long enough that no
+   live session is still on it.
 
 ## 5. Rollback
 
