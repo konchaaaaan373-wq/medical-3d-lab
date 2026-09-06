@@ -66,7 +66,49 @@ test('the cue is styled where the panels are, not written inline', () => {
   assert.ok(cue.length, 'markScrollable is there to read');
   assert.doesNotMatch(cue, /\.style\./, 'the hint sets a class; the stylesheet owns the look');
   const controls = readFileSync(new URL('../src/styles/ui.css', import.meta.url), 'utf8');
-  assert.match(controls, /\.rail\.has-more[\s\S]{0,80}mask-image/);
+  assert.match(controls, /\.rail\.has-more[\s\S]{0,120}mask-image/);
+});
+
+/*
+ * Every scroll box in the frame carries the cue, not just the ones it was
+ * written for.
+ *
+ * `.top-left` was the one that did not, and it is the one that clips most: on
+ * the ischemia scene it shows 433 px of 520 at 1440x900 and 253 px at
+ * 1280x720, so the panel at the bottom of the stack is cut with nothing on
+ * screen to say it is there. Asserted against the source rather than a render
+ * because the wiring is what went missing — the util and the style were both
+ * already correct.
+ */
+test('every scrolling column in the frame says when there is more below', () => {
+  // Comments stripped first: a commented-out call still reads as the call, and
+  // the first version of this test passed with `markScrollable(topLeft)` sitting
+  // behind a `//`.
+  const app = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8')
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'))
+    .join('\n');
+  const styles = readFileSync(new URL('../src/styles/ui.css', import.meta.url), 'utf8');
+
+  // The regions that scroll, by their own stylesheet: each declares
+  // `overflow-y: auto` and a `max-height`, which is what makes clipping
+  // possible in the first place.
+  for (const region of ['rail', 'top-left']) {
+    const at = styles.indexOf(`.${region} {`);
+    assert.ok(at >= 0, `.${region} is styled`);
+    const block = styles.slice(at, styles.indexOf('}', at));
+    assert.match(block, /overflow-y:\s*auto/, `.${region} scrolls`);
+    assert.match(
+      styles,
+      new RegExp(`\\.${region}\\.has-more`),
+      `.${region} has somewhere for the cue to land`
+    );
+    assert.match(
+      app,
+      new RegExp(`markScrollable\\(\\s*${region === 'rail' ? 'rail' : 'topLeft'}\\s*\\)`),
+      `.${region} is actually given the cue`
+    );
+  }
 });
 
 

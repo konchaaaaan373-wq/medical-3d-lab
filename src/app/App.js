@@ -622,21 +622,26 @@ export async function createApp({ stage, ui }) {
   // knows how tall it is, and it differs by scene.
   publishHeight(consoleElement, ui, '--console-height');
 
-  const topBar = el('div', { class: 'top-bar' }, [
-      // The model panels go on the left, where there is room for them: the rail
-      // already carries the legend and the read-out, and stacking four panels
-      // there pushes the console off a laptop screen.
-      el('div', { class: 'top-left' }, [
-        createTitleCard(meta),
-        sceneSwitcher?.element,
-        pvPanel?.element,
-        wavePanel?.element,
-        ...chartPanels.map((panel) => panel.element),
-        controlsInConsole ? null : modelControls?.element,
-        scopePanel?.element,
-      ]),
-    rail,
+  // The model panels go on the left, where there is room for them: the rail
+  // already carries the legend and the read-out, and stacking four panels
+  // there pushes the console off a laptop screen.
+  const topLeft = el('div', { class: 'top-left' }, [
+    createTitleCard(meta),
+    sceneSwitcher?.element,
+    pvPanel?.element,
+    wavePanel?.element,
+    ...chartPanels.map((panel) => panel.element),
+    controlsInConsole ? null : modelControls?.element,
+    scopePanel?.element,
   ]);
+  // And it scrolls for the same reason the rail does — but it was the one
+  // scroll box in the frame that never said so. Measured on the ischemia scene,
+  // which carries four panels here: at 1440×900 it shows 433 px of 520 and at
+  // 1280×720 it shows 253, so the panel at the bottom of the stack is cut with
+  // nothing on screen to say it is there. Same cue as the rail, no layout cost.
+  markScrollable(topLeft);
+
+  const topBar = el('div', { class: 'top-bar' }, [topLeft, rail]);
   // The phone sheet stops where the title and selection cards end, rather than
   // at a reserved constant that is only right on the scene it was measured on.
   publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);

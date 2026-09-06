@@ -875,16 +875,47 @@ continues the list above because they are the same scene.
    And the model-controls title broke mid-word (「…に対し／てか」) wrapping
    around the reset link in a 236 px panel; shortened.
 
-   Measured, not fixed: **the left panel column hides 186 px of its 520 px at
-   1440 × 900**, and the panel below the fold is the ischemic burden chart. The
-   right rail hides 40 px of its own. This is the columns doing what they were
-   written to do — `.top-left` and `.rail` scroll rather than push the console
-   off the screen — but it means finding 18's argument cuts both ways: putting
-   the bullseye first put the burden chart under the fold instead, and at
-   1280 × 720 there is 344 px hidden on the left. It is a layout question for
-   every scene with four panels, not this scene's, so it is recorded here
-   rather than fixed inside a coronary PR. At 1920 × 1080 the left column hides
-   64 px and the rail nothing.
+27. **The left column hid a panel, and the first measurement of it was wrong
+   in the way findings 3 and 4 were wrong.** The first number recorded here was
+   "186 px of 520 hidden at 1440 × 900". It was measured with the **telemetry consent
+   banner on screen** — which on a scene route is an in-flow flex item between
+   the top bar and the console, 76 px plus 24 px of gaps, and which every reader
+   dismisses once and never sees again. A quantity that depends on a one-time
+   overlay is not a property of the layout. Measured again with it answered:
+
+   | viewport | banner up | dismissed | rail |
+   |---|---|---|---|
+   | 1920 × 1080 | 53 px hidden | **0** | 0 |
+   | 1440 × 900 | 175 px | **87 px of 520** | 0 |
+   | 1280 × 720 | 334 px | **267 px of 520** | 121 px |
+
+   So it is smaller than first written, and still real: at 1440 × 900 the
+   burden chart shows 31 px of its 168, and at 1280 × 720 the bullseye itself
+   is cut. The columns scrolling is deliberate — the alternative, measured, is
+   the console pushed to y = 684 in a 900 px window — so what was actually
+   wrong is that **`.top-left` was the one scroll box in the frame that never
+   said it had more below.** `markScrollable` was already written, already
+   styled, and already wired to the rail and the inspection panel; the left
+   column was missed. It has the cue now, at no layout cost, and a test asserts
+   that every region the stylesheet gives `overflow-y: auto` and a `has-more`
+   rule is actually handed the cue in `App.js` — the first version of which
+   passed with the call commented out, so it strips comments before matching.
+
+   Verified in the browser on five surfaces, and the interesting row is not
+   this scene's: **COPD was hiding 198 px** in the same column at 1440 × 900,
+   and had been for as long as it has had four panels. Heart failure hides
+   nothing and correctly shows no cue, which is the control that says the cue
+   is not simply always on.
+
+   | surface | left column hidden | cue | rail hidden | cue |
+   |---|---|---|---|---|
+   | ischemia 1440 × 900 | 87 px | on | 0 | off |
+   | ischemia 1280 × 720 | 267 px | on | 121 px | on |
+   | ischemia 390 × 844 | 14 px | on | 0 | off |
+   | **COPD 1440 × 900** | **198 px** | on | 0 | off |
+   | heart failure 1440 × 900 | 0 | **off** | 0 | off |
+
+   No page errors on any of the five.
 
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded
