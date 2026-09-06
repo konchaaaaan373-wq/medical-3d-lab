@@ -32,7 +32,7 @@ a statement about who may rely on the model or for what.**
 | Intended use | Same model? | Allowed | Not allowed |
 | --- | --- | --- | --- |
 | `general-education` | yes | Explore normal and disordered mechanism | Decisions about an individual |
-| `patient-explanation` | yes | A clinician shows the **general** model with less jargon | Entering a patient's values; diagnosis; prognosis; treatment or dose suggestion |
+| `patient-explanation` | yes | An explanation of the **representative** model that a patient or family can look at, with or without a clinician present | Entering a patient's values; personalisation; diagnosis; prognosis; treatment or dose suggestion |
 | `medical-education` | yes | Equations, read-outs, comparison, challenges, clinical context | Prediction beyond the model's validity |
 | `clinical-research` | reusable, version-pinned, re-validated | Study patient-specific input and decision support | Treating the public educational validation as clinical validity |
 | `clinical-care` | out of scope | Only after an intended-use statement and a regulatory determination | Mixing into the current site |
@@ -43,10 +43,14 @@ entitlement, no UI and no API** for the last two, and this is enforced by
 
 ### Patient explanation is not patient-specific
 
-The `patient` entitlement ([`access-and-billing.md`](../access-and-billing.md))
-unlocks a jargon-light presentation of the **same representative model**. It
-takes no patient data, stores none, and predicts nothing about the person in
-the room. The thing `product-principles.md` §13 warned against — "one wants to
+`patient-explanation` means an explanation of the **same representative
+model** that a patient or family member can look at, whether or not a
+clinician is present. It takes no patient data, stores none, personalises
+nothing, and predicts nothing about the person looking at it. The `patient`
+entitlement ([`access-and-billing.md`](../access-and-billing.md)) is one paid
+surface for that use; intended use and billing are separate axes, so a paid
+`patient` capability *requires* the use to be declared, and a free scene may
+declare it too. The thing `product-principles.md` §13 warned against — "one wants to
 type in *this* patient's EF" — remains exactly as forbidden as it was; what
 changed is that the general-model explanation now exists as a product surface,
 and this document names the line it sits behind.
@@ -135,10 +139,11 @@ as JSDoc. Two departures from the strategy's list, both recorded there:
   and the dossiers record that the build environment could not reach the
   literature. The level is reserved for the day a dossier cites a dataset
   range and a test holds the model inside it.
-- `externally-validated`, `patient-predictive`, `clinical-research` and
-  `clinical-care` were not assigned to anything, and cannot be assigned
-  without a `validationRecords` entry — none of which exist, and none of which
-  were invented.
+- `literature-calibrated`, `externally-validated`, `cohort-derived`, the two
+  patient-specific levels, `clinical-research` and `clinical-care` were not
+  assigned to anything. Each needs a `validationRecords` entry naming a
+  repository-relative file that exists — none of which exist, and none of
+  which were invented.
 - Every current profile is `representative`; `production` did not raise a
   claim, and `patient: true` was read as *patient-explanation*, never as
   patient-specific.
@@ -153,28 +158,57 @@ as JSDoc. Two departures from the strategy's list, both recorded there:
 `tests/model-profiles.test.js` and `tests/asset-manifest.test.js` fail the
 build when (the check is test-side on purpose: the profile and asset data are
 not read by the runtime, and pulling them into the entry chunk for a
-validation nobody calls in the browser cost 8 kB of eager JavaScript):
+validation nobody calls in the browser cost 8 kB of eager JavaScript). Both
+validators return a list of problems and never throw, so a record that is
+wrong in three ways gets three lines rather than a `TypeError`.
+
+**Profiles**
 
 - a profile id is duplicated, a scene references a profile that does not
   exist, or a non-prototype scene has none;
-- any value falls outside the closed vocabulary, or a list is empty or
-  repeats itself;
-- a non-clinical profile omits `diagnosis`, `treatment-selection` or
-  `dose-selection` from its prohibitions;
+- any value falls outside the closed vocabulary, a list is not a list, is
+  empty, or repeats itself;
+- any profile — clinical ones included — omits `diagnosis`,
+  `treatment-selection` or `dose-selection` from its prohibitions. Omission
+  is never permission; a future clinical-care surface gets its own schema;
+- a claim that needs evidence (`literature-calibrated`,
+  `externally-validated`, `cohort-derived`, `patient-derived-geometry`,
+  `patient-predictive`, `clinical-research`, `clinical-care`) has no
+  `validationRecords`, or a record is a URL, an absolute path, escapes the
+  repository, or does not exist;
 - a scene in the public app claims `clinical-research`, `clinical-care`,
   `patient-derived-geometry`, `patient-predictive` or `externally-validated`
   — with or without a validation record, because the product has no release
   surface for any of them;
-- a `patient` capability exists without `patient-explanation` declared, or
-  the reverse;
-- atlas-, imaging-, hybrid- or molecular-based geometry names no asset, or a
-  procedural profile names one (a procedural scene that starts loading a GLB
-  has become `hybrid` and must say so);
-- a named asset is not in the asset manifest, or an asset used by a public
-  scene fails the release gate for that scene's maturity.
+- a `patient` capability exists without `patient-explanation` declared (the
+  reverse is allowed: a free scene may be one a patient looks at);
+- the assets a profile names disagree with its geometry basis (§5), cover an
+  organ the scene does not draw, or are missing from the asset manifest.
+
+**Assets — the release gate.** `assetReleaseProblems()` is closed by default
+and is applied to every asset a public scene names, for that scene's status.
+It refuses when:
+
+- `license.commercialUse` or `license.redistribution` is anything but
+  `allowed`; the decision has no record; any licence obligation (attribution,
+  ShareAlike, a data provider's acknowledgment, notice retention) is not
+  `satisfied` by a file that exists;
+- any hash is missing;
+- any QA gate that applies to the asset's kind is `failed` (at every scene
+  status), `pending`, `not-applicable` or unrecorded. `not-applicable` is
+  accepted only where `QA_APPLIES` says the gate does not apply to that kind;
+  there is no free-text waiver. The one deferral: `anatomyExpertReview` and
+  `clinicianReview` may be `pending` for an **alpha** scene, because alpha is
+  the status that means the review has not happened;
+- the glTF Validator run has errors or warnings, or the validator, semantic
+  integrity or visual review record names a different file hash than the
+  current output — a review of another version is not a review of this one;
+- an imaging-derived asset's de-identification is not `confirmed` (a
+  structured status, not a sentence);
+- `release.status` is not `released`.
 
 Structural room is left for the future without pretending it has arrived: a
-high claim is *structurally* valid with a `validationRecords` entry, and is
+high claim is *structurally* valid with a real `validationRecords` file, and is
 *still refused* by the public-app rule. Lifting the second needs the separate
 programme in §1, not a test edit.
 
@@ -202,12 +236,32 @@ model-driven chamber are two things at different scales, and
   pipeline in [`asset-pipeline.md`](../asset-pipeline.md): licence and PHI
   review, hashing, validation, semantic and anatomy QA, device QA, medical
   review, then a versioned release.
-- The first external candidate is one normal heart from the HRA 3D Reference
-  Object Library, taken into a **Lab** comparison against the existing
-  dynamic chambers and not wired to the production heart-failure scene. That
-  is the next pull request, not this one, and its go/no-go is a measured
-  improvement in medicine, interaction or performance without breaking the
-  existing motion.
+- **A GLB is a transport format, not a provenance.** `geometryBasis` says
+  where a scene's shape came from; an asset's `sourceType` says where that
+  file's content came from; `format` says how it is stored. A procedural
+  organ exported to a GLB is still `procedural`, and a procedural profile may
+  name procedural mesh assets and third-party materials. The cross-check is
+  on provenance: a `procedural` profile may not name an atlas-, imaging- or
+  structure-derived mesh (that is `hybrid`, and must say so); a
+  `reference-atlas`, `imaging-derived` or `molecular` profile may name only
+  meshes of that source type; `hybrid` must name at least one non-procedural
+  mesh. Assets carry `kind` (`mesh` or `material`), and a material has no
+  geometry block to fill.
+- **An asset must cover only organs its scene draws.** The one structured
+  exception is a systemic-context asset whose `organs` include `whole-body`,
+  which any scene may draw as surroundings. There is no free-text override.
+- **The order of the next two pieces of work is fixed across the documents**
+  ([`public-release-roadmap.md`](../public-release-roadmap.md),
+  [`grand-design.md`](../grand-design.md) §5.3, [`asset-pipeline.md`](../asset-pipeline.md)):
+  1. **HRA normal heart** — the Phase 1 *technical* proof of the asset
+     pipeline, in **Lab** or a development harness, compared against the
+     existing procedural heart and the model-driven chambers, and never
+     wired to the production heart-failure scene. Its go/no-go is a measured
+     gain in medicine, interaction or performance without breaking the
+     existing motion.
+  2. **Lung** — the first *production-facing* anatomy upgrade (A2 plus the
+     pulled A3 structures in `anatomy-specs.md` §1), which the respiratory
+     disease scenes are waiting on.
 
 ---
 
@@ -215,5 +269,8 @@ model-driven chamber are two things at different scales, and
 
 It does not change any scene's `status`, any review state, any A level, any
 medical model, any price, any route or any pixel. It adds a vocabulary, ten
-honest classifications, one honest asset record, and the tests that keep them
-honest.
+honest classifications, one honest asset record with its measured QA
+([`docs/asset-qa/brain-atlas-glb.md`](../asset-qa/brain-atlas-glb.md)), and
+the tests that keep them honest. The brain atlas passes the release gate for
+its `alpha` scene only; promoting `brain-anatomy` will fail CI until an
+anatomist's review and a clinician's review are recorded as passed.

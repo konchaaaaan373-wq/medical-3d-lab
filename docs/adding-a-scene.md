@@ -635,7 +635,8 @@ Prototype バッジが外れるということは「この画面の数字は信�
 mechanistic か）、誰を表すか（representative）、用途と禁止用途——いずれも
 閉じた語彙で、model card の文章を複製しません。根拠が曖昧なら低い区分にし、
 `externally-validated` や `clinical-care` を推測で付けないでください。
-`patient: true` を持つシーンは `patient-explanation` を宣言します。規則の全文は
+`patient: true` を持つシーンは `patient-explanation` を宣言します（逆は要求しません——
+無料の患者説明シーンは許容します）。規則の全文は
 [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)、
 検査は `tests/model-profiles.test.js`。
 

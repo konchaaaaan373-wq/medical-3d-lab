@@ -273,8 +273,11 @@ clinical-research / clinical-care / patient-derived-geometry /
 patient-predictive を一切含まず**、`tests/model-profiles.test.js` がそれを
 固定します。患者説明モード（`patient` entitlement）は一般モデルの見せ方で、
 patient-specific ではありません。外部 mesh は
-[`asset-pipeline.md`](asset-pipeline.md) を通って asset manifest に記録された
-ものだけが scene から参照でき、procedural の臓器ビルダーはそのまま残ります。
+[`asset-pipeline.md`](asset-pipeline.md) を通って asset manifest に記録され、
+license obligation と QA（format / semantic integrity / anatomy expert /
+visual / clinician）を通ったものだけが public scene から参照でき、
+procedural の臓器ビルダーはそのまま残ります。GLB は transport format であって
+provenance ではありません。
 判断の全文は
 [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)。
 
@@ -375,6 +378,12 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 着手する前に、それらが指す構造までその臓器の A レベルを上げるのが先です。
 最初のパイロットは肺（→ A2 + 要求分の A3）で、これが Tier A の肺水腫と
 Tier B の肺炎・肺塞栓・気胸の前提になります。
+
+**外部 asset の順序（roadmap「Model platform foundation」と同じ）**:
+① HRA 正常心臓 — asset pipeline の技術検証（Phase 1）。Lab で既存の procedural
+心臓・モデル駆動の心腔と比較し、production には接続しない。
+② 肺 — 最初の production-facing anatomy upgrade。①で検証した工程で、
+review を含む全 gate を通す。この順を変えるときは理由を書き残す。
 
 #### Tier A — 既存パターンの再利用で成立し、既存シーンと連結するもの
 

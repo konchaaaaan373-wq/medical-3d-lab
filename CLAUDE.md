@@ -129,9 +129,11 @@ scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠�
   general-education / patient-explanation / medical-education の 3 つ。
   clinical-research / clinical-care は別系統で、現行 product に route・entitlement・
   UI・API を足さない
-- **Patient mode は患者説明であって patient-specific ではない。** 患者データを
-  取らない・保存しない・個人を予測しない。`patient: true` は
-  `patient-explanation` を意味し、それ以上を意味しない
+- **Patient explanation は patient-specific ではない。** 患者・家族が医療者の同席の
+  有無にかかわらず見られる代表モデルの説明であり、患者データを取らない・保存しない・
+  個別化しない・診断や予後予測をしない。用途と課金権限は別軸: `patient: true` の
+  シーンは `patient-explanation` を宣言しなければならないが、逆は要求しない
+  （無料の患者説明シーンは許容する）
 - **主張の種類は 1 つのバッジに潰さない。** geometryBasis / mechanismLevel /
   personalization / intendedUses・prohibitedUses は model profile が、
   `status` は catalog が、レビューは registry が、A スケールは anatomy-specs が持つ。
@@ -143,9 +145,13 @@ scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠�
   禁止用途として明示する**
 - **外部 3D asset は `src/catalog/assetManifest.js` に記録してから参照する。**
   source・license 判断・hash・座標と単位・変換工程・semantic parts・QA を失わない。
-  `unknown` は「調査中」であって release gate 通過ではない。procedural のビルダーは
-  消さない。Blender は offline 工程で runtime 依存にしない。MCP は操作窓口で記録ではない。
-  raw DICOM・PHI・第三者 binary・token を repo に入れない
+  license は component 単位で記録し、attribution / ShareAlike / acknowledgment の
+  obligation を release gate が確認する。`unknown` / `restricted` は release gate 通過
+  ではない。QA は formatValidation / semanticIntegrity / anatomyExpertReview /
+  visualReview / clinicianReview を分け、確認していないものを passed にしない。
+  GLB は transport format であって provenance ではない（procedural の GLB は procedural）。
+  procedural のビルダーは消さない。Blender は offline 工程で runtime 依存にしない。
+  MCP は操作窓口で記録ではない。raw DICOM・PHI・第三者 binary・token を repo に入れない
 
 ### アーキテクチャ規則
 

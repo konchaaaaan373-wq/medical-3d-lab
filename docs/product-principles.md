@@ -229,8 +229,8 @@ medical-3d-lab は **educational conceptual model** です。患者個別のシ�
 §3 の 3 層は読者への届け方であって、モデルを何に使ってよいかの宣言では
 ありません。現行 product の用途は **general education / patient explanation /
 medical education** の 3 つで、**clinical research / clinical care は含みません**。
-患者説明は同じ一般モデルの見せ方であり、患者の値を入れる patient-specific
-モデルではありません。各シーンが公開する主張の種類（形の出典・数値の重さ・
+患者説明は、患者・家族が医療者の同席の有無にかかわらず見られる同じ代表モデルの
+見せ方であり、患者の値を入れる patient-specific モデルではありません。各シーンが公開する主張の種類（形の出典・数値の重さ・
 誰を表すか・用途と禁止用途）は `src/catalog/modelProfiles.js` が閉じた語彙で
 持ち、CI が境界を守ります。所有文書は
 [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)。

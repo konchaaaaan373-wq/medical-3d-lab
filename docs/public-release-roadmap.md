@@ -194,15 +194,27 @@ would cause it. The decision record is
   every external asset, with the one existing GLB back-filled honestly. CI
   refuses `clinical-research`, `clinical-care`, `patient-derived-geometry`,
   `patient-predictive` and `externally-validated` anywhere in the public app,
-  and requires every current scene to prohibit diagnosis, treatment selection
-  and dose selection. No status, review state, model, price or route changed.
-- [ ] **Phase 1 — asset pipeline proof.** One normal heart from the HRA 3D
+  requires every profile to prohibit diagnosis, treatment selection and dose
+  selection, and applies a closed asset release gate (licence decision and
+  per-component obligations, hashes, five QA gates bound to the file hash) to
+  every asset a public scene draws. The brain atlas was re-judged under it,
+  not grandfathered: releasable for its `alpha` scene only
+  ([`asset-qa/brain-atlas-glb.md`](asset-qa/brain-atlas-glb.md)). No status,
+  review state, model, price or route changed.
+- [ ] **Phase 1 — asset pipeline proof (first).** One normal heart from the HRA 3D
   Reference Object Library through [`asset-pipeline.md`](asset-pipeline.md):
   source, licence, hash and attribution recorded; Slicer/Blender → GLB →
   validator → optimisation reproducible; compared in **Lab** or a development
   harness against the procedural heart and the model-driven chambers, and
   **not connected to production**. Go only on a measured gain in medicine,
   interaction or performance that leaves the existing dynamics intact.
+- [ ] **Lung anatomy upgrade (second) — the first production-facing asset.**
+  The organ whose disease scenes wait on named structures
+  ([`anatomy-specs.md`](anatomy-specs.md) §1: A2 plus the pulled A3), through
+  the pipeline the heart pilot proved and every gate including expert and
+  clinician review. This order — HRA heart pilot, then lung — is the same in
+  [`grand-design.md`](grand-design.md) §5.3 and
+  [`asset-pipeline.md`](asset-pipeline.md); changing it needs a written reason.
 - [ ] Later phases (heart-family model redesign separating pressure overload,
   volume overload and myocardial injury; aortic stenosis as the first textbook
   disease; Patient / Education depth; a separately gated clinical R&D
@@ -232,6 +244,7 @@ would cause it. The decision record is
 | 11 | Link-preview cards drawn from the catalogue, and the review states three published pages were getting wrong | Done |
 | 12 | Intended-use and model-provenance contracts: model profiles, asset manifest, public-app guards, document alignment | Done |
 | 13 | HRA normal-heart Lab pilot through the asset pipeline, not connected to production | Queued |
+| 14 | Lung anatomy upgrade: the first production-facing external asset, after batch 13 | Queued |
 
 ## Definition of done for every batch
 

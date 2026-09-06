@@ -26,10 +26,16 @@ person: Safari, Firefox, touch and a screen reader.
   It shows the same general model with less jargon, takes no patient data, and
   the test suite now refuses any scene that claims otherwise — as it refuses
   clinical research or clinical care as an intended use anywhere in the app.
-- **The brain atlas has a provenance record** (`src/catalog/assetManifest.js`):
-  source revision, CC BY-SA 4.0, file hash, extent, part count and which QA
-  steps it never went through. Future external meshes follow
-  `docs/asset-pipeline.md` and cannot be referenced without such a record.
+- **The brain atlas has a provenance record** (`src/catalog/assetManifest.js`)
+  and a measured QA record (`docs/asset-qa/brain-atlas-glb.md`): the upstream
+  file re-verified byte for byte, its seven components and their licences
+  including the Human Connectome Project acknowledgment the tract templates
+  require (now in `public/assets/brain/ATTRIBUTION.md`), a pinned glTF
+  Validator run with 0 errors, and a browser render. What nobody has done —
+  an anatomist's review, a clinician's sign-off — is recorded as pending, so
+  the asset passes the release gate for its alpha scene only. Future external
+  meshes follow `docs/asset-pipeline.md` and cannot reach a public scene
+  without clearing the same gate.
 
 ### The lobes and the liver segments now take the volumes a source gives them
 
