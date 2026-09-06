@@ -1,10 +1,12 @@
 /* The "to be updated" answer for a route the beta has not opened yet.
    A reading surface, not a scene: no canvas, no console, scrolls normally. */
 
-#ui.has-locked-surface {
-  pointer-events: auto;
-  overflow: auto;
-}
+/* The surface is a document, so it scrolls the document: `reading-surface.css`
+   releases `html`, `body` and `#ui` for `data-route='locked'` along with every
+   other reading route. Scrolling `#ui` itself instead put a Tab stop in front
+   of the skip link in Firefox, which makes a scroll container focusable. The
+   class stays because it is what marks the surface for anything that needs to
+   ask, and because `destroy()` has to have something to remove. */
 
 .locked-surface {
   min-height: 100%;
