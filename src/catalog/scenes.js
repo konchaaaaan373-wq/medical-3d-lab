@@ -18,6 +18,9 @@
  *  status       prototype | alpha | reviewed | production (see taxonomy.js)
  *  access       optional paid professional-use surfaces; omitted means free-only
  *  modelCard    repository-relative model card path for alpha/reviewed scenes
+ *  modelProfile id of the release profile in `modelProfiles.js` — what kind of claim the
+ *               scene makes (geometry basis, mechanism level, personalization, intended and
+ *               prohibited uses). Required above prototype; it carries no medical text
  *  load         () => import('...') returning a module whose default export is the scene class
  */
 export const SCENE_MANIFEST = [
@@ -32,6 +35,7 @@ export const SCENE_MANIFEST = [
     conditions: ['brain anatomy', 'gyri and sulci', '脳解剖'],
     status: 'alpha',
     modelCard: 'docs/model-cards/brain-anatomy.md',
+    modelProfile: 'brain-anatomy-reference-atlas',
     description: 'Select individual gyri and sulci, peel back an operculum and reveal deep structures in place.',
     descriptionJa: '脳回・脳溝を個別に選択し、弁蓋部を薄くして島皮質と深部構造を本来の位置で観察します。',
     tags: ['anatomy', 'interactive', 'cortex'],
@@ -51,6 +55,7 @@ export const SCENE_MANIFEST = [
     uses: ['patient', 'education'],
     status: 'production',
     access: { patient: true, education: true },
+    modelProfile: 'amyloid-beta-aggregation-illustration',
     description: 'Aβ monomer → oligomer → fibril → plaque, as one continuous aggregation state.',
     descriptionJa: 'Aβ のモノマー → オリゴマー → 線維 → プラークを、連続した凝集状態として示します。',
     tags: ['molecular', 'aggregation', 'neurodegeneration'],
@@ -68,6 +73,7 @@ export const SCENE_MANIFEST = [
     uses: ['patient', 'education', 'clinical-learning'],
     status: 'production',
     access: { patient: true, education: true },
+    modelProfile: 'heart-failure-elastance-loop',
     description:
       'Closed-loop time-varying elastance: remodelling, the PV loop and the pressure waveform from one model.',
     descriptionJa:
@@ -89,6 +95,7 @@ export const SCENE_MANIFEST = [
     uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/circulation.md',
+    modelProfile: 'circulation-steady-state-lumped',
     description:
       'One constructed low-output case with MAP 70: choose baseline, a fluid-responsive state or a dobutamine state and compare pressure, flow and calculated global oxygen delivery.',
     descriptionJa:
@@ -110,6 +117,7 @@ export const SCENE_MANIFEST = [
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/copd.md',
+    modelProfile: 'copd-time-constant-units',
     description:
       'Twelve lung units with their own time constants: why incomplete expiration produces dynamic hyperinflation, and why extra expiratory effort stops increasing flow once expiratory flow limitation is reached.',
     descriptionJa:
@@ -131,6 +139,7 @@ export const SCENE_MANIFEST = [
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/asthma.md',
+    modelProfile: 'asthma-airway-network',
     description:
       'A branching airway tree solved as a network: how a uniform bronchoconstrictor stimulus can produce clustered, heterogeneous regional ventilation.',
     descriptionJa:
@@ -152,6 +161,7 @@ export const SCENE_MANIFEST = [
     uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/myocardial-ischemia.md',
+    modelProfile: 'myocardial-ischemia-supply-demand',
     description:
       'A coronary artery does not supply the groove it runs in — it supplies everything downstream. Oxygen debt accumulates before a wall stops moving, and restoring the flow does not restore the contraction.',
     descriptionJa:
@@ -173,6 +183,7 @@ export const SCENE_MANIFEST = [
     uses: ['patient', 'education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/pulmonary-edema.md',
+    modelProfile: 'pulmonary-edema-starling-buffers',
     description:
       'One Starling equation across the pulmonary capillary, and the three buffers that decide whether a raised left atrial pressure ends in a wet interstitium or a flooded alveolus.',
     descriptionJa:
@@ -192,6 +203,7 @@ export const SCENE_MANIFEST = [
     uses: ['patient', 'education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/pneumonia.md',
+    modelProfile: 'pneumonia-consolidation-shunt',
     description:
       'Twelve regional units show the core V/Q mechanism: alveolar consolidation removes ventilation while perfusion persists, creating intrapulmonary shunt.',
     descriptionJa:
@@ -211,6 +223,7 @@ export const SCENE_MANIFEST = [
     uses: ['patient', 'education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/pulmonary-embolism.md',
+    modelProfile: 'pulmonary-embolism-dead-space',
     description:
       'Twelve parallel vascular territories show ventilation continuing beyond obstructed perfusion, the resulting dead-space mechanism and rising relative pulmonary vascular load.',
     descriptionJa:
@@ -277,6 +290,7 @@ export const SCENE_MANIFEST = [
     status: 'reviewed',
     access: { patient: true, education: true },
     modelCard: 'docs/model-cards/cirrhosis-portal-hypertension.md',
+    modelProfile: 'portal-hypertension-resistance-network',
     description:
       'The portal circulation as a flow-conserving network: why portal hypertension can persist despite redistribution through collaterals, and why HVPG is not the portal pressure gradient.',
     descriptionJa:
@@ -297,6 +311,7 @@ export const SCENE_MANIFEST = [
     uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/hepatorenal-syndrome.md',
+    modelProfile: 'hepatorenal-two-organ-circulation',
     description:
       'Two organs solved as one circulation. It isolates the haemodynamic and neurohumoral component of HRS-AKI — how far the circulation alone can take glomerular filtration — and models no kidney injury, which is a boundary of the model rather than a claim about the syndrome.',
     descriptionJa:
@@ -319,6 +334,7 @@ export const SCENE_MANIFEST = [
     uses: ['education', 'clinical-learning'],
     status: 'alpha',
     modelCard: 'docs/model-cards/renal-filtration.md',
+    modelProfile: 'renal-filtration-starling-mass-balance',
     description:
       'The Starling balance across one glomerular capillary and the tubular mass balance below it, solved together. FENa, the urea-to-creatinine ratio, urine sodium and urine osmolality are not four facts to memorise here — they are four readings of the same solve, which is what lets a reader move a mechanism and watch which of them inverts.',
     descriptionJa:

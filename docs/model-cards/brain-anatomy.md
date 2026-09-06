@@ -8,6 +8,7 @@
 | **Tests** | [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js), [`tests/anatomy-colour-ui.test.js`](../../tests/anatomy-colour-ui.test.js) |
 | **Evidence** | [`docs/model-evidence/brain-anatomy.md`](../model-evidence/brain-anatomy.md) |
 | **Asset notice** | [`public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md) |
+| **Asset provenance and QA** | [`src/catalog/assetManifest.js`](../../src/catalog/assetManifest.js), [`docs/asset-qa/brain-atlas-glb.md`](../asset-qa/brain-atlas-glb.md) |
 
 ## 1. What question this model answers
 

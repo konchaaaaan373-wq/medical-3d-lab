@@ -224,6 +224,17 @@ medical-3d-lab は **educational conceptual model** です。患者個別のシ�
 | モデル以上の主張をしない | 全病態を 1 つのモデルに詰め込む |
 | 単純化した部分を明示する | |
 
+### 用途（intended use）は配信レイヤーとは別の軸
+
+§3 の 3 層は読者への届け方であって、モデルを何に使ってよいかの宣言では
+ありません。現行 product の用途は **general education / patient explanation /
+medical education** の 3 つで、**clinical research / clinical care は含みません**。
+患者説明は、患者・家族が医療者の同席の有無にかかわらず見られる同じ代表モデルの
+見せ方であり、患者の値を入れる patient-specific モデルではありません。各シーンが公開する主張の種類（形の出典・数値の重さ・
+誰を表すか・用途と禁止用途）は `src/catalog/modelProfiles.js` が閉じた語彙で
+持ち、CI が境界を守ります。所有文書は
+[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)。
+
 ### 正確さと分かりやすさの優先順位
 
 > **医学的に誤ってはいけない。しかし、医学的に完全である必要はない。**
@@ -418,8 +429,11 @@ Educational Module は 1 本だけです。これは意図的で、**1 モジュ
 
 ### 現状
 
-無料。静的サイトなのでホスティング費用も実質ゼロ。アカウントも決済も
-バックエンドもありません。
+無料で公開する方針は変わっていません。課金基盤（Supabase / Stripe /
+Netlify Functions）は sandbox で実装済みですが、live price は設定しておらず、
+有料化は Gate 2 の ADR の後です（[`access-and-billing.md`](access-and-billing.md)、
+[`public-release-roadmap.md`](public-release-roadmap.md)）。以下は
+その ADR に向けて残している検討記録です。
 
 ### 検討した案と、その問題点
 
@@ -439,6 +453,11 @@ Educational Module は 1 本だけです。これは意図的で、**1 モジュ
 
 ### 「患者個別の説明用」は tier ではなく別プロダクト
 
+（2026-09 更新）患者説明モードは `patient` entitlement として実装済みで、
+同じ代表モデルを専門用語を減らして見せる**だけ**です。下の表の最後の行——
+その患者の値を入れる——は実装していませんし、現行 product には入れません。
+以下の検討は、その線を引いた理由の記録です。
+
 患者説明という**利用文脈**自体は、一般的な機序を平易に示す範囲で現行モデルに
 持てます。一方、患者個別値を入力する説明製品は要件が根本的に違います。
 
@@ -457,8 +476,10 @@ Educational Module は 1 本だけです。これは意図的で、**1 モジュ
 を破ります。また、患者に見せる目的で個別の値を入力させるものは、規制上の
 位置づけ（医療機器該当性）も現状とは変わります。
 
-**やるなら「有料 tier を足す」ではなく、独立した製品判断として。**
+**patient-specific をやるなら「有料 tier を足す」ではなく、独立した製品判断として。**
 現行の免責文言・UI・モデルの前提をそのまま流用することはできません。
+境界の定義と CI での固定は
+[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)。
 
 ### 「教育用が有料」は、実際には「教育機関向け機能が有料」
 

@@ -1,6 +1,6 @@
 # Grand design — アプリ全体の設計図
 
-Last updated: 2026-09-05（現在地の数値は §3 参照）
+Last updated: 2026-09-06（現在地の数値は §3 参照）
 
 このプロジェクトの**完成形（1.0 の姿）**と**現在地**、その差分を埋める
 **優先順位**を 1 枚に固定した文書です。人間と複数の AI エージェント
@@ -41,6 +41,9 @@ Last updated: 2026-09-05（現在地の数値は §3 参照）
 | 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 解剖・アートレビューの記録（実測と残課題） | [`anatomy-review.md`](anatomy-review.md) |
 | 臓器別の精密正確性モデル仕様（目標 A レベル・固定する解剖関係） | [`anatomy-specs.md`](anatomy-specs.md) |
+| 配信レイヤーと intended use の区別・Patient explanation と patient-specific の境界・Model Profile / Asset Manifest の所有関係 | [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md) |
+| 外部 3D asset の製作工程・停止条件・出典記録 | [`asset-pipeline.md`](asset-pipeline.md) と [`../src/catalog/assetManifest.js`](../src/catalog/assetManifest.js)（記録） |
+| 各シーンの主張の種類（geometry / mechanism / personalization / intended・prohibited use） | [`../src/catalog/modelProfiles.js`](../src/catalog/modelProfiles.js)（コードが登録簿） |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |
 | 完成形・現在地・優先順位・共同開発の作法 | **本書** |
@@ -74,7 +77,8 @@ Last updated: 2026-09-05（現在地の数値は §3 参照）
 | シーン数 | 26（production 2 / reviewed 3 / alpha 7 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
 | 公開モデル | 12（うち病態モデル 11）。呼吸器は喘息 / COPD / 肺水腫 / 肺炎 / 肺塞栓症の 5 病態 |
-| 医学モデル層（`src/models/`） | copd / asthma / portalHypertension / hepatorenal / renalFiltration / pulmonaryEdema / pneumonia / pulmonaryEmbolism の 8 本 + 共通ユーティリティ |
+| 医学モデル層（`src/models/`） | asthma / cardiacMechanics / circulation / copd / coronaryTerritories / hepatorenal / myocardialIschemia / pneumonia / portalHypertension / pulmonaryEdema / pulmonaryEmbolism / renalFiltration の 12 本 + 共通ユーティリティ |
+| 主張の種類（model profile） | 非 prototype の 12 シーンすべてが `src/catalog/modelProfiles.js` に登録済み。全シーンが representative で、診断・治療選択・用量選択を禁止用途に明示 |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
 | テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・**臓器レイヤーの解剖学的整合性**（左右・内外側・ラベルの指す先・入れ子・状態の往復）・性能予算・計測の匿名性（`node --test`） |
 | 計測 | 性能予算と launch metrics を宣言済み。送信は consent ゲート付きで、endpoint 未設定なら何も送らない（[`observability.md`](observability.md)） |
@@ -85,14 +89,14 @@ Last updated: 2026-09-05（現在地の数値は §3 参照）
   医学モデル層の分離、教材主張の CI 検証。ここは完成形でもこのまま使う
 - **reference implementation**: Heart Failure は 3 層すべてが実物として揃った
   唯一のテーマ。Amyloid-β は別系統（分子過程）の参照実装
-- **信頼の 4 点セット**の運用実績: alpha 4 シーンがモデル層・evidence・
+- **信頼の 4 点セット**の運用実績: reviewed / alpha の 8 シーンがモデル層・evidence・
   model card・scope panel を揃えている
 
 ### ギャップ（「完成の 1/10」の中身）
 
 体感の 1/10 は**シーン数の不足ではなく**、次の 4 軸で読むべきです。
 
-1. **深さ** — 3 層の機構（Reel + Learning）自体は Heart Failure と alpha
+1. **深さ** — 3 層の機構（Reel + Learning）自体は Heart Failure と reviewed
    3 本（COPD・喘息・門脈圧亢進症）に実装済み。ただし**臨床レビューを通って
    3 層が信頼つきで成立しているのは Heart Failure の 1 テーマだけ**で、
    production の Amyloid-β には Reel も Learning もなく、HRS には Learning が
@@ -181,6 +185,7 @@ Explorer の用途バッジは「今そのモデルで使える用途」だけ�
 | 公開カタログと Lab（prototype 隔離）の分割 | `src/catalog/` の status 駆動 | Gate 0B |
 | Heart Failure / Amyloid-β のモデル層移設 | `src/models/` へ | Gate 0A |
 | per-scene メタデータ・social card・sitemap | ビルド時生成（実装済み。social card の raster のみ未） | Gate 3 |
+| Model profile（用途・出典の契約）と Asset manifest | `src/catalog/modelProfiles.js` / `assetManifest.js`（実装済み、§4.6） | Phase 0（roadmap「Model platform foundation」） |
 
 ### 4.4 Model patterns library — 本当の資産
 
@@ -273,6 +278,32 @@ Explorer の用途バッジは「今そのモデルで使える用途」だけ�
 肺塞栓の現行 alpha が解く12機能領域は、18の名前つき肺区域とは別で、対応を
 捏造しません。次の解剖課題は気胸が要求する臓側・壁側胸膜と胸膜腔です。
 
+### 4.6 Model provenance — 用途と出典は status とも A とも別の軸
+
+**方針（2026-09 追加）: 1 つの「正確さ」バッジを作らない。** シーンが公開する
+主張の種類は 4 軸に分けて機械可読に持ち、CI で境界を守ります。
+
+| 軸 | 語彙 | 所有 |
+| --- | --- | --- |
+| geometryBasis（形の出典） | procedural / reference-atlas / imaging-derived / hybrid / molecular | model profile |
+| mechanismLevel（数値の重さ） | none / illustrative / mechanistic / literature-calibrated / externally-validated | model profile |
+| personalization（誰を表すか） | representative / cohort-derived / patient-derived-geometry / patient-predictive | model profile |
+| intendedUses / prohibitedUses（用途） | general-education / patient-explanation / medical-education（現行）; clinical-research / clinical-care（別系統） | model profile |
+
+status（実装成熟度）・臨床レビュー（署名）・A スケール（臓器の解剖）はこれと
+直交したまま、それぞれの既存 owner に残ります。**現行 public product は
+clinical-research / clinical-care / patient-derived-geometry /
+patient-predictive を一切含まず**、`tests/model-profiles.test.js` がそれを
+固定します。患者説明モード（`patient` entitlement）は一般モデルの見せ方で、
+patient-specific ではありません。外部 mesh は
+[`asset-pipeline.md`](asset-pipeline.md) を通って asset manifest に記録され、
+license obligation と QA（format / semantic integrity / anatomy expert /
+visual / clinician）を通ったものだけが public scene から参照でき、
+procedural の臓器ビルダーはそのまま残ります。GLB は transport format であって
+provenance ではありません。
+判断の全文は
+[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)。
+
 ---
 
 ## 5. 拡張戦略 — 臓器の深さ × 病態の広がり
@@ -328,12 +359,12 @@ Explorer の用途バッジは「今そのモデルで使える用途」だけ�
 
 | 臓器 | status | Reel | Learning | 横断・治療・経過 |
 | --- | --- | --- | --- | --- |
-| heart | production（心不全） | ✓ | ✓ | — |
-| brain | production（Aβ） | ✗ | ✗ | 経過（進行度）が主題そのもの |
+| heart | production（心不全）+ alpha ×2（循環・心筋虚血） | ✓ | ✓ | — |
+| brain | production（Aβ）+ alpha（脳解剖アトラス） | ✗ | ✗ | 経過（進行度）が主題そのもの |
 | lungs / airway | reviewed ×2（COPD・喘息）+ alpha ×3（肺水腫・肺炎・肺塞栓） | ✓ | ✓ | 肺水腫が心不全の左房圧側、肺塞栓が右室後負荷側と接続可能 |
-| liver / spleen | alpha（門脈圧亢進） | ✓ | ✓ | HRS に参加 |
+| liver / spleen | reviewed（門脈圧亢進） | ✓ | ✓ | HRS に参加 |
 | kidney | alpha ×2（HRS・濾過） | ✓（HRS） | ✓（濾過） | 2 臓器 1 循環 + 治療機序 |
-| 残り 17 臓器 | prototype | — | — | — |
+| 残り 15 臓器 | prototype | — | — | — |
 
 この表から読める**深さの負債**: production の Amyloid-β が Reel と
 Learning を持たず、HRS が Learning を持たない。新しい臓器へ広げる前に、
@@ -376,6 +407,12 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 肺パイロットは A2 + 部分 A3 まで完了しました。現行の肺炎・肺塞栓は
 名前のない12機能領域に限定し、肺区域との1対1対応を主張しません。気胸は
 残る胸膜・胸膜腔の upgrade 後に扱います。
+
+**外部 asset の順序（roadmap「Model platform foundation」と同じ）**:
+① HRA 正常心臓 — asset pipeline の技術検証（Phase 1）。Lab で既存の procedural
+心臓・モデル駆動の心腔と比較し、production には接続しない。
+② 肺 — 最初の production-facing anatomy upgrade。①で検証した工程で、
+review を含む全 gate を通す。この順を変えるときは理由を書き残す。
 
 #### Tier A — 既存パターンの再利用で成立し、既存シーンと連結するもの
 
@@ -468,6 +505,9 @@ Claude Code・Codex いずれも、このリポジトリで作業するときの
 7. **Organ と Disease を混ぜない** — 臓器ビルダーに疾患名を持ち込まない
 8. **病態は正確な臓器の上に載せる** — 疾患が指す構造の A レベル（§4.5）を
    臓器が満たしていないまま、その構造についての主張をしない
+9. **用途と出典を混ぜない** — 配信レイヤー（SNS / Interactive / Educational）は
+   intended use ではない。現行 product に clinical-research / clinical-care /
+   patient-specific を入れない。外部 asset は asset manifest なしに参照しない（§4.6）
 
 ### 変更の種類ごとの作法
 
@@ -477,7 +517,8 @@ Claude Code・Codex いずれも、このリポジトリで作業するときの
 | シーン追加 | [`adding-a-scene.md`](adding-a-scene.md) の手順（suitability check → proposal → 実装 → カタログ登録） |
 | 臓器の形状完成 | [`organ-3d-playbook.md`](organ-3d-playbook.md) 末尾のチェックリストを測る |
 | 臓器の解剖 upgrade（A スケール） | pull 型の理由（どの疾患候補がその構造を指すか）を明記 + ランドマーク実測を `tests/semantic-anatomy.test.js` に固定 + [`anatomy-review.md`](anatomy-review.md) に記録 |
-| alpha 以上への昇格 | 4 点セット + 昇格条件（adding-a-scene §8）。臨床レビューなしで reviewed 以上にしない |
+| alpha 以上への昇格 | 4 点セット + 昇格条件（adding-a-scene §8）+ `src/catalog/modelProfiles.js` への model profile 登録。臨床レビューなしで reviewed 以上にしない |
+| 外部 3D asset の追加 | [`asset-pipeline.md`](asset-pipeline.md) の工程を通し、`src/catalog/assetManifest.js` に記録してから scene / profile から参照する。production の置換は Lab 比較の後 |
 | 3D シーンの変更 | unit test 合格だけで完成としない。実レンダリング確認まで（architecture-rules §6） |
 | 本書の地図・現在地を古くする変更 | **同じ PR で本書を更新** |
 
@@ -495,8 +536,12 @@ roadmap の *Definition of done for every batch* に従います: 1 PR = 1 つ�
 - **収益化の形** — 検討済みの案と却下理由は
   [`product-principles.md`](product-principles.md) §13。決めるのは
   SNS → Interactive の導線で実データを見てから（Gate 2 の ADR）
-- **患者説明用プロダクト** — tier ではなく別製品判断。患者個別値の入力は
-  現行の前提（educational conceptual model）を破る
+- **患者個別（patient-specific）モデルと臨床支援** — 患者説明モードは実装済み
+  （`patient` entitlement、一般モデルの見せ方で患者データは扱わない）。
+  患者個別値の入力・診断・治療・用量の提案は、intended-use statement・
+  hazard analysis・検証データ・規制該当性を持つ別の Clinical R&D 系統の
+  開始判断なしに現行 product へ入れない
+  （[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)）
 - **SSO / LTI・施設機能** — 具体的な顧客が要求するまで作らない（Gate 4）
 
 ---
