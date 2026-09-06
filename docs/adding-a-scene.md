@@ -378,12 +378,22 @@ export { HeartFailureScene as default, HeartFailureScene } from './HeartFailureS
 {
   id: 'breathing-lungs',        // URL（#/<slug>）。公開後は変えない
   slug: 'breathing-lungs',
-  titleEn: 'Breathing lungs',
-  titleJa: '呼吸と肺',
+  titleEn: 'Breathing lungs',   // 教科書的な正式名。Explorer・検索・お気に入り・
+  titleJa: '呼吸と肺',           // Landing・シーンヘッダ・metadata・social card はすべてここから導出
+  // storyTitleEn / storyTitleJa: 物語的な問い（例: 'Where the water goes'）を残したい
+  // ときだけ、両言語セットで宣言する。正式名の代わりにはならず、カードに添えて出る
   system: 'respiratory',
   organ: 'lungs',               // どこに分類されるか
   organs: ['lungs', 'airway'],  // 実際に描いている臓器すべて（省略時は [organ]）
   disease: null,                // 正常生理なら null、疾患シーンなら疾患 id
+  conditions: ['pneumonia', 'CAP', '市中肺炎'],
+                                // 検索語。画面に出る病名・一般的な略称・日本語表記を並べる
+                                // （省略時は [disease]）。3 文字以下の英字は単語一致で検索される
+  uses: ['education', 'clinical-learning'],
+                                // 想定用途: 'patient' | 'education' | 'clinical-learning'
+                                // （省略時は ['education']）。'patient' は宣言しても、
+                                // reviewed 以上 + 現行系統の医学レビュー完了まで
+                                // バッジ・フィルタには出ない（features.js と同じ fail closed）
   status: 'prototype',
   description: '...',           // Organ Explorer のカード（英）
   descriptionJa: '...',         //                        （日）

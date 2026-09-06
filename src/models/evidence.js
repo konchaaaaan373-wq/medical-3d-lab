@@ -1300,6 +1300,178 @@ export const PULMONARY_EDEMA_EVIDENCE = defineEvidence('pulmonary-edema', [
   },
 ]);
 
+/** @see src/models/pneumonia.js, docs/model-evidence/pneumonia.md */
+export const PNEUMONIA_EVIDENCE = defineEvidence('pneumonia-consolidation', [
+  {
+    id: 'shunt-definition',
+    claim:
+      'Blood that perfuses lung receiving no ventilation is intrapulmonary shunt; gas that ventilates lung receiving no perfusion is dead space. The two are the opposite ends of regional V/Q mismatch.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Definition of shunt and dead space; Slobod et al., Annals of Intensive Care 2022 (open full text), for the regional distinction; West, Respiratory Physiology.',
+    validation:
+      'physiology: perfusing lung that receives no ventilation is shunt, and hypoxic vasoconstriction reduces it without abolishing it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'consolidation-removes-ventilation',
+    claim:
+      'Alveolar consolidation replaces air with inflammatory fluid and cells, removing regional ventilation while perfusion of the region may persist.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Slobod et al. 2022, above; standard descriptions of lobar and bronchopneumonic consolidation.',
+    validation:
+      'physiology: consolidation removes ventilation without removing perfusion, so the shunt grows with the consolidated share',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'hpv-partial-diversion',
+    claim:
+      'Hypoxic pulmonary vasoconstriction diverts blood away from poorly ventilated lung, reducing the shunt, but does not abolish perfusion of consolidated lung.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Slobod et al. 2022, above; the direction is textbook, the magnitude in pneumonia is variable and is not claimed here.',
+    validation:
+      'physiology: perfusing lung that receives no ventilation is shunt, and hypoxic vasoconstriction reduces it without abolishing it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'twelve-equal-units',
+    claim: 'The lung is twelve equal regional units, six a side, at the sample sites `buildLungs()` provides.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. Chosen so the spatial mismatch can be seen; the count matches the other respiratory scenes.',
+    note:
+      'Not acini, not the eighteen named bronchopulmonary segments the same organ builder carries, and not a radiographic distribution. Equal units hide lobar, segmental and gravitational variation.',
+  },
+  {
+    id: 'consolidation-order',
+    claim: 'Consolidation spreads through the units in one fixed, clustered, lower-lung-first order.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. Invented so adjacent units consolidate together and the shunt is visible as a region rather than as scattered points.',
+    note: 'Real pneumonia can be lobar, bronchopneumonic, multifocal or diffuse. The order is a legibility choice and claims nothing about natural history.',
+  },
+  {
+    id: 'hpv-gain',
+    claim: 'At full hypoxic vasoconstriction a fully consolidated unit keeps 28% of its conductance (gain 0.72).',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. The gain was invented so diversion is visible and the shunt survives it; the default HPV strength (0.55) is likewise chosen.',
+    note: 'Not a measured vascular response. Regional HPV in pneumonia is heterogeneous and can be blunted by inflammation.',
+  },
+  {
+    id: 'teaching-range',
+    claim: 'The public progression axis consolidates at most 60% of this conceptual lung; the solver domain remains 0–1.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A scope decision, chosen so the slider ends before the lung loses its aerated share. Total consolidation is kept as a boundary condition for tests only.',
+    note: 'Not a severity threshold and not a survivable-fraction claim. 60% is where the teaching axis stops, nothing more.',
+  },
+  {
+    id: 'uniform-perfusion-within-unit',
+    claim: 'Perfusion is uniform within a regional unit, so its consolidated share receives perfusion in proportion to its size.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: 'A modelling convenience: the shunt expression reads each unit as an aerated and a consolidated subfraction under one conductance.',
+    note: 'Real consolidation redistributes flow within the region as well as away from it. The model claims the direction of the shunt, never its size.',
+  },
+  {
+    id: 'no-oxygenation',
+    claim: 'The model shunt fraction is a fraction of model perfusion; it is not a clinical shunt, a PaO2 or an SpO2.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    note:
+      'There is no gas content, no mixed venous saturation and no dissociation curve here, so nothing the scene shows can be read as arterial oxygenation or as a response to oxygen.',
+  },
+  {
+    id: 'no-mechanics-or-time',
+    claim: 'There is no pathogen, immune response, secretion, compliance, work of breathing or time course.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    note:
+      'The slider is a spatial teaching axis, not days of illness. Pneumonia presents with cough, fever and breathlessness, none of which this model can produce.',
+  },
+]);
+
+/** @see src/models/pulmonaryEmbolism.js, docs/model-evidence/pulmonary-embolism.md */
+export const PULMONARY_EMBOLISM_EVIDENCE = defineEvidence('pulmonary-embolism', [
+  {
+    id: 'dead-space-definition',
+    claim:
+      'Gas that ventilates lung receiving no perfusion is alveolar dead space; the ventilated-but-unperfused lung of embolism is the opposite end of V/Q mismatch from the perfused-but-unventilated lung of consolidation.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Definition of alveolar dead space; Robertson, European Respiratory Journal 2015 (dead-space review); West.',
+    validation:
+      'physiology: obstructing a pulmonary vessel leaves the ventilation it served in place, which is dead space rather than shunt',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'obstruction-spares-ventilation',
+    claim:
+      'Pulmonary vascular obstruction removes distal perfusion without mechanically stopping ventilation of the territory it served.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Goldhaber & Elliott, Circulation 2003; Robertson 2015, above. Reflex bronchoconstriction and later redistribution exist and are omitted.',
+    validation:
+      'physiology: obstructing a pulmonary vessel leaves the ventilation it served in place, which is dead space rather than shunt',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'parallel-conductance-raises-resistance',
+    claim:
+      'Vascular paths in parallel add as conductances, so removing paths at one driving pressure raises total resistance as the reciprocal of the remaining conductance — faster than the share removed.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Resistances in parallel; ESC/ERS 2019 acute pulmonary embolism guideline for loss of cross-sectional area raising pulmonary vascular resistance.',
+    validation: 'physiology: removing parallel vascular conductance raises resistance, and faster than the share removed',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'twelve-equal-territories',
+    claim: 'The pulmonary vascular bed is twelve equal parallel territories, one per regional unit of `buildLungs()`.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. Chosen so a clot, a branch and the ventilated bed it feeds can be pointed at; the count matches the other respiratory scenes.',
+    note: 'Not a pulmonary arterial tree, not the named segmental arteries `lungs.js` carries, and not readable as CT clot burden.',
+  },
+  {
+    id: 'obstruction-order',
+    claim: 'Obstruction involves the territories in one fixed order, right side first.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source: 'No source. Invented as a stable visual ordering.',
+    note: 'Claims nothing about which lobes emboli favour, or about central versus peripheral clot.',
+  },
+  {
+    id: 'fixed-driving-pressure',
+    claim: 'The network is evaluated at one fixed model driving pressure, so perfusion of a territory equals its remaining conductance.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: "Ohm's-law network at constant pressure, used for a relative statement only.",
+    note:
+      'In a real embolism pressure rises, cardiac output may fall, and open territories recruit and distend. The relative PVR shown is the inverse conductance of this fixed-pressure network, not a measured PVR.',
+  },
+  {
+    id: 'obstruction-cap',
+    claim: 'The teaching axis obstructs at most 65% of the modelled territories, leaving a third of the conductance open at full travel.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source: 'A scope decision, chosen so the axis ends short of total obstruction while individual paths can still occlude completely.',
+    note: 'Not a survivable clot burden and not a severity threshold. It is where the slider stops.',
+  },
+  {
+    id: 'rv-afterload-not-modelled',
+    claim: 'The scene reads a rising relative PVR as rising right-ventricular afterload; the model contains no right ventricle.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'ESC/ERS 2019 for the direction; nothing here for what the ventricle does with it.',
+    note:
+      'RV dilatation, RV–pulmonary artery uncoupling, hypotension and shock cannot emerge from this model. The direction of the load is shown; the response to it is not.',
+  },
+  {
+    id: 'no-haemodynamics',
+    claim: 'There is no pulmonary artery pressure, no cardiac output, no vascular recruitment and no vasoactive response.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    note: 'The percentages and the relative PVR are network indices. None of them is a pressure, a flow or a risk category.',
+  },
+  {
+    id: 'no-gas-content',
+    claim: 'There is no carbon dioxide and no gas content, so the underperfused-ventilation index is not a clinical VD/VT.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source: 'A scope decision, not a finding.',
+    note: 'Clinical dead space is measured from expired CO2 against arterial CO2. The index here counts ventilated territories that lost perfusion and nothing else.',
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1307,4 +1479,6 @@ export const EVIDENCE_REGISTRIES = [
   PORTAL_EVIDENCE,
   HEPATORENAL_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
+  PNEUMONIA_EVIDENCE,
+  PULMONARY_EMBOLISM_EVIDENCE,
 ];

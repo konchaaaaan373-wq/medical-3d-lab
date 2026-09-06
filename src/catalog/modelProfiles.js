@@ -300,6 +300,52 @@ export const MODEL_PROFILES = Object.freeze([
       'illustrative, so nothing is calibrated to a literature range.',
   },
   {
+    profileId: 'myocardial-ischemia-supply-demand',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A per-territory oxygen supply/demand balance whose deficit integrates into a burden that drives contractility ' +
+      'into the shared time-varying-elastance solver. The card says it is not a stenosis-to-flow calculation, not ' +
+      'infarction, not a clock and not anyone\'s coronary anatomy — one right-dominant specimen — so which artery to ' +
+      'open is outside it as well as which drug.',
+  },
+  {
+    profileId: 'pneumonia-consolidation-shunt',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A deterministic twelve-region V/Q model in which perfusion continues through a non-aerated share that hypoxic ' +
+      'vasoconstriction only partly diverts. The consolidated fraction is a teaching axis, not severity, elapsed time ' +
+      'or an imaging score, and the vasoconstriction strength is an illustrative constant.',
+  },
+  {
+    profileId: 'pulmonary-embolism-dead-space',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Twelve equal pulmonary vascular territories in parallel at one fixed driving pressure: obstruction removes ' +
+      'distal perfusion while the paired ventilation stays, so dead space rises and conductance falls. The card says ' +
+      'it is not a vascular tree, a clot-burden model, an RV model, a risk score or a treatment-response model.',
+  },
+  {
     profileId: 'pulmonary-edema-starling-buffers',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

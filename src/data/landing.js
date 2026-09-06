@@ -13,6 +13,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'amyloid-beta',
   'renal-filtration',
   'pulmonary-edema',
+  'pneumonia-consolidation',
+  'pulmonary-embolism',
+  'myocardial-ischemia',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -27,23 +30,11 @@ const presentation = (question, questionJa, signals, signalsJa) =>
     signalsJa: Object.freeze([...signalsJa]),
   });
 
-export const LANDING_MODEL_TITLES = Object.freeze({
-  circulation: Object.freeze({ en: 'Circulation & oxygen delivery', ja: '循環・酸素運搬' }),
-  'heart-failure': Object.freeze({ en: 'Heart failure', ja: '心不全' }),
-  'brain-anatomy': Object.freeze({ en: '3D brain anatomy', ja: '脳の3D解剖' }),
-  'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
-  'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
-  'pulmonary-edema': Object.freeze({ en: 'Pulmonary oedema', ja: '肺水腫' }),
-  'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
-  'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
-  'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
-  'hepatorenal-syndrome': Object.freeze({ en: 'Hepatorenal syndrome', ja: '肝腎症候群' }),
-});
 
 export const LANDING_MODEL_PRESENTATION = Object.freeze({
   circulation: presentation(
     'Compare MAP, cardiac output and global DO₂ across baseline, fluid response and dobutamine.',
-    'MAP・心拍出量・全身DO₂を、基準／輸液反応／DOBで比較。',
+    'MAP・心拍出量・全身DO₂を、基準／輸液反応／ドブタミン（DOB）で比較。',
     ['MAP', 'CO', 'DO₂'],
     ['血圧', '血流', '酸素運搬']
   ),
@@ -71,11 +62,29 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
   ),
+  'myocardial-ischemia': presentation(
+    'The artery narrows here. Rotate the heart: the wall that stops moving is somewhere else.',
+    '血管が細くなるのはここ。心臓を回すと、動かなくなる壁は別の場所にあります。',
+    ['TERRITORY', 'BURDEN', 'STUNNING'],
+    ['支配域', '虚血負荷', 'stunning']
+  ),
   'pulmonary-edema': presentation(
     'The atrium is at 27. Why is one lung wet and the other flooded?',
     '左房圧はどちらも 27。なぜ一方は湿るだけで、他方は水没するのか。',
     ['STARLING', 'LYMPHATICS', 'SHUNT'],
     ['Starling', 'リンパ', 'シャント']
+  ),
+  'pneumonia-consolidation': presentation(
+    'Add clustered alveolar consolidation; watch ventilation fall while perfusion persists.',
+    '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
+    ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
+    ['コンソリデーション', '換気', 'シャント']
+  ),
+  'pulmonary-embolism': presentation(
+    'Obstruct parallel pulmonary vessels; watch perfusion fall while ventilation persists and relative PVR rises.',
+    '並列肺血管を閉塞し、換気が残る一方で灌流が低下し、相対PVRが上がる過程を確認。',
+    ['PERFUSION', 'DEAD SPACE', 'RELATIVE PVR'],
+    ['灌流', '死腔機序', '相対PVR']
   ),
   'copd-hyperinflation': presentation(
     'Compare time constants, air trapping and expiratory flow limitation across 12 lung units.',
@@ -111,8 +120,9 @@ export function landingPresentationFor(scene) {
     (scene.tags ?? []).slice(0, 3),
     (scene.tags ?? []).slice(0, 3)
   );
-  const title = LANDING_MODEL_TITLES[scene.id] ?? { en: scene.titleEn, ja: scene.titleJa };
-  return Object.freeze({ ...entry, title: title.en, titleJa: title.ja });
+  // The catalogue's textbook title is the only name a model has. The landing
+  // adds a question and three signals, never a second title.
+  return Object.freeze({ ...entry, title: scene.titleEn, titleJa: scene.titleJa });
 }
 
 /** Curated order, with any future public scene still included at the end. */
@@ -133,7 +143,6 @@ export function validateLandingPresentation(scenes) {
 
   for (const scene of scenes) {
     const entry = LANDING_MODEL_PRESENTATION[scene.id];
-    const title = LANDING_MODEL_TITLES[scene.id];
     if (!entry) problems.push(`${scene.id}: no landing presentation`);
     else {
       if (!entry.question || !entry.questionJa) problems.push(`${scene.id}: the landing question is not bilingual`);
@@ -141,7 +150,7 @@ export function validateLandingPresentation(scenes) {
         problems.push(`${scene.id}: the landing mechanism needs three bilingual signals`);
       }
     }
-    if (!title?.en || !title?.ja) problems.push(`${scene.id}: the landing title is not bilingual`);
+    if (!scene.titleEn || !scene.titleJa) problems.push(`${scene.id}: the catalogue title is not bilingual`);
     if (!orderedIds.has(scene.id)) problems.push(`${scene.id}: missing from LANDING_MODEL_ORDER`);
   }
 

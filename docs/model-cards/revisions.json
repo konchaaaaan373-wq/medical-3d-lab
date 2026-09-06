@@ -33,12 +33,12 @@
     "sceneId": "heart-failure",
     "card": "docs/model-cards/heart-failure.md",
     "modelSources": [
-      "src/scenes/cardiovascular/scenes/heartFailure/circulation.js",
+      "src/models/cardiacMechanics.js",
       "src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "73bcc25269f28a25",
-    "cardUpdatedAt": "2026-09-01"
+    "cardRevision": 3,
+    "modelDigest": "f0e94de89bd2546d",
+    "cardUpdatedAt": "2026-09-05"
   },
   {
     "sceneId": "copd-hyperinflation",
@@ -100,5 +100,39 @@
     "cardRevision": 4,
     "modelDigest": "8815703fb151d470",
     "cardUpdatedAt": "2026-09-03"
+  },
+  {
+    "sceneId": "myocardial-ischemia",
+    "card": "docs/model-cards/myocardial-ischemia.md",
+    "modelSources": [
+      "src/models/myocardialIschemia.js",
+      "src/models/coronaryTerritories.js",
+      "src/scenes/cardiovascular/organs/coronaryAnatomy.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "0ed5f2af9c21f469",
+    "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "pneumonia-consolidation",
+    "card": "docs/model-cards/pneumonia.md",
+    "modelSources": [
+      "src/models/pneumonia.js",
+      "src/data/pneumonia.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "6745c661d97cd049",
+    "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "pulmonary-embolism",
+    "card": "docs/model-cards/pulmonary-embolism.md",
+    "modelSources": [
+      "src/models/pulmonaryEmbolism.js",
+      "src/data/pulmonaryEmbolism.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "cf008ab5bb6d5cfa",
+    "cardUpdatedAt": "2026-09-06"
   }
 ]

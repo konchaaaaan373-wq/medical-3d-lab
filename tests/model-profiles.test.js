@@ -137,20 +137,34 @@ test('every profile prohibits diagnosis, treatment selection and dose selection'
   }
 });
 
-test('the eight solver scenes are mechanistic, amyloid is illustrative and the brain atlas claims no mechanism', () => {
+test('every solver scene is mechanistic, amyloid is illustrative and the brain atlas claims no mechanism', () => {
+  // Listed exhaustively rather than counted: a new scene has to be classified
+  // deliberately here, which is the point of the registry.
   const levels = Object.fromEntries(NON_PROTOTYPE.map((scene) => [scene.id, modelProfileForScene(scene).mechanismLevel]));
   assert.deepEqual(levels, {
     'brain-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,
+    'myocardial-ischemia': MECHANISM_LEVEL.MECHANISTIC,
     'copd-hyperinflation': MECHANISM_LEVEL.MECHANISTIC,
     'asthma-heterogeneity': MECHANISM_LEVEL.MECHANISTIC,
     'pulmonary-edema': MECHANISM_LEVEL.MECHANISTIC,
+    'pneumonia-consolidation': MECHANISM_LEVEL.MECHANISTIC,
+    'pulmonary-embolism': MECHANISM_LEVEL.MECHANISTIC,
     'portal-hypertension': MECHANISM_LEVEL.MECHANISTIC,
     'hepatorenal-syndrome': MECHANISM_LEVEL.MECHANISTIC,
     'renal-filtration': MECHANISM_LEVEL.MECHANISTIC,
   });
+});
+
+test('the ischemia scene forbids planning a procedure as well as choosing a treatment', () => {
+  // Its subject is which artery feeds which wall, which is exactly the reading
+  // somebody could mistake for a revascularisation decision. The card says it
+  // is not a stenosis-to-flow calculation and not anyone's coronary anatomy.
+  const profile = modelProfileById('myocardial-ischemia-supply-demand');
+  assert.ok(profile.prohibitedUses.includes(PROHIBITED_USE.PROCEDURE_PLANNING));
+  assert.ok(profile.prohibitedUses.includes(PROHIBITED_USE.PROGNOSIS));
 });
 
 test('every scene with a paid patient capability declares patient-explanation', () => {
