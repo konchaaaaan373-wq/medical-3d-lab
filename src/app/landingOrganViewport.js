@@ -68,11 +68,22 @@ export function mountLandingOrganViewport(container, {
   let scenePose = null;
   /** An upgrade asked for while the hero was off screen, waiting to be let in. */
   let pendingUpgrade = null;
+  /**
+   * Stage 2 while it is still fetching, before it has anything to show.
+   *
+   * Held separately from `detail` so it can be disposed at all: a scene that
+   * has not finished loading is not yet the detail, and without this the only
+   * reference to it lived inside `upgrade`'s own call. That is how an
+   * abandoned atlas fetch got reported as a failure — nothing could tell the
+   * scene it had been abandoned.
+   */
+  let loadingDetail = null;
 
   const disposeAll = () => {
     if (disposed) return;
     disposed = true;
     targetOrganId = null;
+    releaseLoadingDetail();
     releaseDetail();
     releaseModel();
     while (cleanups.length) {
@@ -95,6 +106,17 @@ export function mountLandingOrganViewport(container, {
     holder = null;
     built = null;
     builtOrganId = null;
+  }
+
+  function releaseLoadingDetail() {
+    if (!loadingDetail) return;
+    const pending = loadingDetail;
+    loadingDetail = null;
+    try {
+      pending.dispose?.();
+    } catch (error) {
+      console.error('landing organ detail dispose', error);
+    }
   }
 
   function releaseDetail() {
@@ -319,6 +341,22 @@ export function mountLandingOrganViewport(container, {
     const visibilityChanged = () => syncActivity();
     document.addEventListener('visibilitychange', visibilityChanged);
     cleanups.push(() => document.removeEventListener('visibilitychange', visibilityChanged));
+
+    // Leaving the page cancels whatever the hero had in flight, and the detail
+    // scene decides whether a failed fetch is worth reporting by asking
+    // whether it was disposed. Nothing told it, so a reader who clicked away
+    // during the upgrade got the abort reported as a load failure — on the
+    // page they had just arrived at, since the rejection lands as the old
+    // document goes. Ending the hero here is what makes the cancellation
+    // legible as an ending.
+    //
+    // `persisted` means the page is going into the back/forward cache and will
+    // be resumed exactly as it is, so it has to survive that untouched.
+    const pageHidden = (event) => {
+      if (!event.persisted) disposeAll();
+    };
+    window.addEventListener('pagehide', pageHidden);
+    cleanups.push(() => window.removeEventListener('pagehide', pageHidden));
     motion?.addEventListener?.('change', syncActivity);
     cleanups.push(() => motion?.removeEventListener?.('change', syncActivity));
 
@@ -360,6 +398,7 @@ export function mountLandingOrganViewport(container, {
         if (gen !== generation || disposed) return null;
 
         scene = new SceneClass({ viewer });
+        loadingDetail = scene;
         root = scene.build();
         // Built but not shown: the builder stays on screen while the scene
         // fetches whatever it fetches, so the frame is never empty.
@@ -371,6 +410,7 @@ export function mountLandingOrganViewport(container, {
         releaseModel();
         viewer.scene.remove(lights);
         root.visible = true;
+        loadingDetail = null;
         detail = { scene, root, sceneId };
         detailRoot = root;
         scenePose = { cameraPose: SceneClass.cameraPose, framing: SceneClass.framing };
@@ -387,6 +427,7 @@ export function mountLandingOrganViewport(container, {
         // Silent by design. The builder is still on screen and is still a real
         // organ; a hero is not the place to report a failed fetch.
         root?.parent?.remove(root);
+        if (loadingDetail === scene) loadingDetail = null;
         try {
           scene?.dispose?.();
         } catch (disposeError) {

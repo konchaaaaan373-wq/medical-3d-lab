@@ -447,6 +447,9 @@ test('landing hero viewport: swapping organs never leaves two models in the fram
   globalThis.window = {
     innerWidth: 1200,
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    // The hero ends itself when the page goes away, so it listens here.
+    addEventListener() {},
+    removeEventListener() {},
   };
 
   try {
@@ -495,6 +498,9 @@ test('landing hero viewport: the focused 3D viewport rotates, zooms and resets f
   globalThis.window = {
     innerWidth: 1200,
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    // The hero ends itself when the page goes away, so it listens here.
+    addEventListener() {},
+    removeEventListener() {},
   };
 
   try {
@@ -553,6 +559,9 @@ test('landing hero viewport: the detailed model replaces the builder, and a fail
   globalThis.window = {
     innerWidth: 1200,
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    // The hero ends itself when the page goes away, so it listens here.
+    addEventListener() {},
+    removeEventListener() {},
   };
   console.error = () => {};
 
@@ -662,6 +671,68 @@ test('language control: the document language follows the visible language', () 
     assert.equal(toggle.element.textContent, 'English');
     assert.deepEqual(changes, ['ja', 'en']);
   } finally {
+    restoreDocument();
+  }
+});
+
+/* The hero fetches several megabytes in the background. A reader who leaves
+   before it lands cancels that fetch, and a scene that is not told it was
+   abandoned reports the cancellation as a load failure — onto whatever page
+   they went to next, because the rejection arrives as the old document goes.
+   The scene decides that by asking whether it was disposed, so something has
+   to dispose it, and the half that was missing is that a scene still loading
+   is not yet `detail` and had no reference anything could reach. */
+test('landing hero viewport: leaving the page ends an upgrade that is still loading', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  const listeners = new Map();
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener: (type, handler) => listeners.set(type, handler),
+    removeEventListener: (type) => listeners.delete(type),
+  };
+
+  class Loading {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    static disposed = 0;
+    constructor() {
+      this.root = new THREE.Group();
+      this.root.name = 'still-loading';
+      // Never settles: this is the scene mid-fetch, which is the whole case.
+      this.ready = new Promise(() => {});
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() { Loading.disposed += 1; }
+  }
+
+  try {
+    const FakeViewer = createFakeViewerClass();
+    const mounted = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => Loading,
+    });
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+
+    const pageHidden = listeners.get('pagehide');
+    assert.ok(pageHidden, 'the hero listens for the page going away');
+
+    // Into the back/forward cache: the page is resumed exactly as it is, so
+    // the hero has to still be there when the reader comes back.
+    pageHidden({ persisted: true });
+    assert.equal(Loading.disposed, 0, 'a bfcached page is paused, not ended');
+
+    pageHidden({ persisted: false });
+    assert.equal(Loading.disposed, 1, 'leaving disposes the scene that was still fetching');
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
     restoreDocument();
   }
 });
