@@ -637,6 +637,19 @@ Prototype バッジが外れるということは「この画面の数字は信�
 言うことなので、**その主張の境界も同じ画面の上になければなりません。**
 リポジトリを探しに行かないと分からない、では遅すぎます。
 
+### そして、model profile — 主張の種類の登録
+
+4 点が揃ったら、そのシーンが**どの種類の主張をしているか**を
+`src/catalog/modelProfiles.js` に登録し、`SCENE_MANIFEST` の `modelProfile`
+から参照します。形の出典（procedural か atlas か）、数値の重さ（illustrative か
+mechanistic か）、誰を表すか（representative）、用途と禁止用途——いずれも
+閉じた語彙で、model card の文章を複製しません。根拠が曖昧なら低い区分にし、
+`externally-validated` や `clinical-care` を推測で付けないでください。
+`patient: true` を持つシーンは `patient-explanation` を宣言します（逆は要求しません——
+無料の患者説明シーンは許容します）。規則の全文は
+[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md)、
+検査は `tests/model-profiles.test.js`。
+
 ### そのほか、`alpha` 以上のシーンが持つもの
 
 - **`getCharts()` と `meta.charts`** — プロットの静的な部分（題・軸・凡例）は

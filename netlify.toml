@@ -1,0 +1,32 @@
+# Deploy configuration.
+#
+# This file owns exactly one thing: the origin the site is published at. Build
+# command, publish directory and function settings stay where they already are
+# in the Netlify site configuration — this file does not restate them, so it
+# cannot silently override a setting nobody meant to change here.
+#
+# The origin still lives in the deploy rather than in `src/` (the code takes it
+# from the environment and guesses nothing without it, per
+# `docs/discoverability.md`). What changed is that the deploy now states it in
+# the repository: moving the domain is a commit that is reviewed, tested and
+# rolled back like any other, instead of a value somebody has to remember to
+# retype into a dashboard — and remembering was the failure the domain-change
+# checklist in `docs/release-runbook.md` exists to prevent.
+
+[build.environment]
+  VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
+
+# A preview deploy is not the site.
+#
+# Given the production origin it would tell a crawler that the preview *is*
+# production; given its own it would advertise an address that disappears when
+# the branch does. So it declares neither: with the variable empty the build
+# still emits every scene page — they are useful without JavaScript, which is
+# most of why they exist — but omits canonical and Open Graph URLs and skips
+# the sitemap, which is what `docs/discoverability.md` asks for whenever the
+# origin is not known.
+[context.deploy-preview.environment]
+  VITE_SITE_URL = ""
+
+[context.branch-deploy.environment]
+  VITE_SITE_URL = ""

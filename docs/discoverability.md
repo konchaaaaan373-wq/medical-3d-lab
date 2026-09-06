@@ -62,8 +62,10 @@ does not claim.
 | --- | --- |
 | `VITE_SITE_URL` | Pages are built; canonical/OG URLs omitted and no sitemap |
 
-Set it to the deployment origin — in production
-`https://med-3d-lab.necofindjob.com` — with no trailing path unless the site is
+It is set in [`../netlify.toml`](../netlify.toml) — in production
+`https://med-3d-lab.necofindjob.com`, and deliberately empty for preview
+deploys, which are not the site and so claim no canonical and emit no sitemap.
+Set it to the deployment origin, with no trailing path unless the site is
 served from a subpath (`https://example.org/lab`). Links from a scene page into
 the app are relative (`../../#/<slug>`), so a subpath deployment works either
 way.
@@ -92,11 +94,21 @@ npm run verify:site -- --origin https://med-3d-lab.necofindjob.com
 ```
 
 And a domain that moved with no redeploy at all is not visible in any local
-build: it is caught by fetching `/sitemap.xml` on the new origin. Both are steps
-in the checklist in
-[`release-runbook.md`](release-runbook.md#changing-the-primary-domain), with the
-rest of the move — Stripe's webhook endpoint, Supabase's redirect allowlist,
-redirects from the old host.
+build, because the build is not what the public is being served. That takes a
+request to the site itself:
+
+```bash
+npm run verify:live -- https://med-3d-lab.necofindjob.com
+```
+
+`scripts/check-live-site.mjs` fetches robots.txt, the sitemap, the home page,
+every scene page and the preview card from the deployed origin, and fails if
+what is served names another host, omits a canonical, has lost the sitemap, or
+publishes a Prototype scene. It needs the live site, so it is not in CI; it is a
+step in the deploy section and in the domain-change checklist in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain), which
+also covers the rest of the move — Stripe's webhook endpoint, Supabase's
+redirect allowlist, redirects from the old host.
 
 ## 5. Social cards
 
@@ -177,7 +189,8 @@ That is the other reason they are committed rather than built, and the reason
   ever listed.
 - `npm run verify:site` — that the build actually emitted it. A plugin that
   silently stops running is the failure nobody notices until a preview is blank
-  weeks later.
+  weeks later. Not in CI, because it needs the deployed site: `npm run
+  verify:live -- <origin>`, which asks the published site the same questions.
 - `tests/social-cards.test.js` — what a card says, and that the committed set
   matches the public catalogue.
 - `npm run cards:check` — that the committed rasters still match the catalogue
