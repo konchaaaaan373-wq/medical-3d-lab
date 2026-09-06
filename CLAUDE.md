@@ -8,7 +8,8 @@ npm test           # node --test "tests/*.test.js"
 npm run build      # vite build
 ```
 
-- `src/catalog/` — **どんな system / organ / scene が存在するか**。ここが唯一の登録先
+- `src/catalog/` — **どんな system / organ / scene が存在するか**。ここが唯一の登録先。
+  `modelProfiles.js`（各シーンの主張の種類）と `assetManifest.js`（外部 asset の出典）もここ
 - `src/models/` — **医学モデル層**。純粋な JS で、`three` も DOM も import しません。
   `node --test` だけで検証できることが条件です。詳細は
   [`src/models/README.md`](src/models/README.md)
@@ -24,6 +25,8 @@ npm run build      # vite build
   （Claim → Source → Implementation → Assumption → Validation）
 - `docs/model-cards/<scene>.md` — そのモデルが答える問い、答えない問い、
   誤解を生みうる場所
+- `docs/architecture/intended-use-and-model-provenance.md` — 用途と出典の境界の所有文書。
+  `docs/asset-pipeline.md` — 外部 3D asset の工程と停止条件
 
 ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
 （別名 `#/explore`）が全身の Organ Explorer。ルートは `src/catalog/scenes.js`
@@ -105,6 +108,8 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠けていれば、
 そのシーンは数値を出す資格がありません。バッジが外れる（`production`）
 条件には**臨床レビュー**が含まれます。レビューを受けずに上げないでください。
+加えて `src/catalog/modelProfiles.js` に **model profile** を登録し、
+`SCENE_MANIFEST` の `modelProfile` から参照します（下の「用途と出典の契約」）。
 
 ### 医学表現
 
@@ -114,6 +119,33 @@ scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠�
   臨床計測値と同一視しない。一例を一般則として書かない
 - 単純化したことは [`docs/medical-notes.md`](docs/medical-notes.md) に必ず書く
 - 医学的な値を変えたら `npm test` を通す
+
+### 用途と出典の契約
+
+所有文書は [`docs/architecture/intended-use-and-model-provenance.md`](docs/architecture/intended-use-and-model-provenance.md)。
+`tests/model-profiles.test.js` と `tests/asset-manifest.test.js` が守ります。
+
+- **配信レイヤー（SNS / Interactive / Educational）は用途ではない。** 用途は
+  general-education / patient-explanation / medical-education の 3 つ。
+  clinical-research / clinical-care は別系統で、現行 product に route・entitlement・
+  UI・API を足さない
+- **Patient mode は患者説明であって patient-specific ではない。** 患者データを
+  取らない・保存しない・個人を予測しない。`patient: true` は
+  `patient-explanation` を意味し、それ以上を意味しない
+- **主張の種類は 1 つのバッジに潰さない。** geometryBasis / mechanismLevel /
+  personalization / intendedUses・prohibitedUses は model profile が、
+  `status` は catalog が、レビューは registry が、A スケールは anatomy-specs が持つ。
+  `production` は実装成熟度であり、external validation ではない
+- **根拠が曖昧なら低い区分へ。** `externally-validated` / `patient-predictive` /
+  `clinical-care` を推測で付けない。`literature-calibrated` は、dossier が引用可能な
+  範囲を示し、テストがその範囲を固定しているときだけ
+- **すべての現行シーンは diagnosis / treatment-selection / dose-selection を
+  禁止用途として明示する**
+- **外部 3D asset は `src/catalog/assetManifest.js` に記録してから参照する。**
+  source・license 判断・hash・座標と単位・変換工程・semantic parts・QA を失わない。
+  `unknown` は「調査中」であって release gate 通過ではない。procedural のビルダーは
+  消さない。Blender は offline 工程で runtime 依存にしない。MCP は操作窓口で記録ではない。
+  raw DICOM・PHI・第三者 binary・token を repo に入れない
 
 ### アーキテクチャ規則
 

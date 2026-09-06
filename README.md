@@ -19,7 +19,8 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 **[`docs/public-release-roadmap.md`](docs/public-release-roadmap.md)** を進捗台帳にします。
 
 対象は心臓と脳だけではなく **人体全体** です。現在 11 の系統・22 の臓器を
-カタログに登録し、20 シーンを実装しています。全身の一覧は
+カタログに登録し、24 シーン（production 2 / reviewed 3 / alpha 5 /
+prototype 14）を実装しています。全身の一覧は
 **`#/organs`**（Organ Explorer）から。
 
 **深く作り込んだシーン（production）**
@@ -29,20 +30,29 @@ PV ループも、圧波形も、すべて同じモデルの解から出てい�
 | **心不全** | 後負荷を上げると SV はなぜ下がる？ EF 58% と 29% では何が違う？ | `#/heart-failure` |
 | **アミロイドβの蓄積** | Aβ はどうやって小さな分子からプラークになる？ | `#/amyloid-beta` |
 
-**モデル層を分離したシーン（alpha）** — 純粋な JS の医学モデルを
+**モデル層を分離したシーン（reviewed / alpha）** — 純粋な JS の医学モデルを
 `src/models/` に持ち、evidence dossier・model card・scope panel をセットで
-備えたシーンです。数値を出す資格があるのはこの 4 つと production の 2 つだけです。
+備えたシーンです。数値を出す資格があるのはこの 8 つと production の 2 つだけです。
 
 | テーマ | 中心にある問い | URL | status |
 | --- | --- | --- | --- |
-| **COPD と動的過膨張** | 息を吐ききる前に次の吸気が来ると、肺の中で何が起きる？ | `#/copd` | alpha |
-| **喘息の不均一性** | 同じ刺激で、なぜ気道樹の一部だけが閉じる？ | `#/asthma` | alpha |
-| **肝硬変と門脈圧亢進症** | 側副血行路が開いても、なぜ圧は下がりきらない？ HVPG は何を測っている？ | `#/portal-hypertension` | alpha |
+| **COPD と動的過膨張** | 息を吐ききる前に次の吸気が来ると、肺の中で何が起きる？ | `#/copd` | reviewed |
+| **喘息の不均一性** | 同じ刺激で、なぜ気道樹の一部だけが閉じる？ | `#/asthma` | reviewed |
+| **肝硬変と門脈圧亢進症** | 側副血行路が開いても、なぜ圧は下がりきらない？ HVPG は何を測っている？ | `#/portal-hypertension` | reviewed |
 | **肝腎症候群（HRS-AKI）** | 腎障害を与えていないモデルで、循環だけで濾過量はどこまで落ちる？ | `#/hepatorenal-syndrome` | alpha |
+| **循環、保たれてる？** | MAP 70 を保ったまま、心拍出量と計算上の DO₂ は上がる？ | `#/circulation` | alpha |
+| **水は、どこへ行くのか** | どの圧から水が肺へ出て、間質と肺胞のどちらから満ちる？ | `#/pulmonary-edema` | alpha |
+| **濾過は、どこで落ちるのか** | 濾過が落ちたとき、ネフロンのどこで落ちた？ 外から見分けられる？ | `#/renal-filtration` | alpha |
+| **触れて学ぶ脳の解剖** | 名前のある皮質・深部構造は脳のどこにあり、日英で何と呼ぶ？ | `#/brain-anatomy` | alpha |
 
-`alpha` はモデル・evidence dossier・model card・scope panel が揃っている一方、
-修正後の最終臨床レビューが完了していない状態です。`reviewed` への昇格は、
-対象コミットを明示した再レビューの記録が残った時点で行います。
+`reviewed` は臨床レビューの記録があるシーンです（現在の 3 本は、レビュー対象
+コミットより後の変更があるため Trust 面では「再レビュー必要」と表示されます）。
+`alpha` は 4 点セットは揃っているが臨床レビューが完了していない状態で、
+`reviewed` への昇格は、対象コミットを明示したレビューの記録が残った時点で行います。
+各シーンが**どの種類の主張をしているか**（形の出典・数値の重さ・誰を表すか・
+用途と禁止用途）は `src/catalog/modelProfiles.js` に登録してあり、現行の
+全シーンは representative な教育モデルで、診断・治療選択・用量選択を禁止用途と
+しています。
 
 **全身プロトタイプ（prototype）** — 呼吸と肺 / 嚥下と胃の蠕動 / 腸管の輸送 /
 門脈血流と胆汁 / 膵臓の分泌 / 濾過から膀胱まで / 甲状腺ホルモンの放出 /
@@ -121,8 +131,11 @@ EF / EDV / ESV / SV / CO / 左室拡張末期圧 / 肺静脈圧 / 動脈圧は
 - PC / スマートフォン 両対応。フレームレートが落ちる端末では
   bloom → 解像度 の順に自動で品質を下げます
 
-外部の 3D モデルやテクスチャは一切使っていません。Three.js の primitive・particle・
-line・custom shader だけで構成しているため、追加のアセット取得なしで動きます。
+脳の解剖アトラス（`#/brain-anatomy`、CC BY-SA 4.0 の GLB。出典と判断は
+`public/assets/brain/ATTRIBUTION.md` と `src/catalog/assetManifest.js`）を除き、
+外部の 3D モデルやテクスチャは使っていません。それ以外は Three.js の primitive・
+particle・line・custom shader だけで構成しているため、追加のアセット取得なしで
+動きます。外部 asset を足す工程は [`docs/asset-pipeline.md`](docs/asset-pipeline.md)。
 
 > ⚠️ **これは教育目的の簡易モデルです。** 分子シミュレーションではなく、
 > 形・数・大きさ・時間経過はすべて理解を助けるためのイメージ図です。
@@ -216,20 +229,24 @@ Netlify などの静的ホスティングに置けます（すべて無料枠で
 medical-3d-lab/
 ├─ index.html                  エントリ HTML（UI は JS 側で生成）
 ├─ vite.config.js
-├─ public/                     静的ファイル置き場（現状は空）
+├─ public/                     静的ファイル（脳アトラス GLB と出典、social card、_headers）
 ├─ tests/                      モデル整合性テスト（node --test）
 ├─ docs/
 │  ├─ product-principles.md    ★ 設計思想（source of truth）
 │  ├─ adding-a-scene.md        シーン・臓器・疾患を追加する手順 + 採否チェック
 │  ├─ medical-notes.md         医学的な表現の方針と注意
 │  ├─ medical-audit-2026-08-24.md  医学監査の記録
+│  ├─ asset-pipeline.md        外部 3D asset の工程と停止条件
 │  └─ architecture/
-│     └─ product-architecture.md  層の依存関係
+│     ├─ product-architecture.md  層の依存関係
+│     └─ intended-use-and-model-provenance.md  用途と出典の境界
 └─ src/
    ├─ main.js                  起動処理とルート分岐（scene / explorer）
    ├─ catalog/                 ★ どんな system / organ / scene があるか
    │  ├─ taxonomy.js           11 系統・22 臓器・status の定義
    │  ├─ scenes.js             シーンの manifest（唯一の登録先）+ 予定の疾患シーン
+   │  ├─ modelProfiles.js      各シーンの主張の種類（形の出典・数値の重さ・用途）
+   │  ├─ assetManifest.js      外部 3D asset の出典・license・hash・QA
    │  └─ index.js              カタログへの問い合わせと整合性検証
    ├─ app/
    │  ├─ App.js                シーンと UI の接続（状態は進行度ひとつだけ）
@@ -328,8 +345,8 @@ EF・充満圧・圧波形を得ています。表を編集して数値を変え
 SNS → Interactive → Educational が成立しているほうを高く評価します
 （[`docs/product-principles.md`](docs/product-principles.md) §9, §11）。
 
-次の一手は、新テーマを増やすことではなく **Heart Failure に Educational
-Module を足して 3 層を一度完成させること**です。
+実装順と完了条件は [`docs/public-release-roadmap.md`](docs/public-release-roadmap.md)、
+完成形と現在地は [`docs/grand-design.md`](docs/grand-design.md) が持ちます。
 
 ```text
 Heart Failure    SNS ✓   Interactive ✓   Educational ✓

@@ -1,6 +1,6 @@
 # Public release roadmap
 
-Last updated: 2026-09-02
+Last updated: 2026-09-06
 
 This is the ordered source of truth for taking Medical 3D Lab from a working
 model catalogue to a trustworthy public product. It records release gates, not
@@ -174,6 +174,41 @@ the model tests.
 - [ ] Keep patient-identifiable clinical data out of the product unless a
   separate privacy, security and regulatory programme is deliberately opened.
 
+## Model platform foundation — alongside the gates, not ahead of them
+
+The gates above decide when the product ships. This track decides what the
+product may *claim* and where its geometry may *come from*, so that adding
+external meshes or deeper models later cannot quietly widen either. It does
+not displace a gate; it removes a class of accident before the work that
+would cause it. The decision record is
+[`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md).
+
+- [x] **Phase 0 — alignment and contracts.** Delivery layers (SNS / Interactive /
+  Educational) and intended uses (general education / patient explanation /
+  medical education, with clinical research and clinical care as a separate
+  track) are distinguished in the owner documents and in a machine-readable
+  model profile per non-prototype scene (`src/catalog/modelProfiles.js`).
+  Patient mode is fixed as patient *explanation*, never patient-specific. An
+  asset-manifest contract (`src/catalog/assetManifest.js`) records source,
+  licence decision, hashes, coordinates, conversion, semantic parts and QA for
+  every external asset, with the one existing GLB back-filled honestly. CI
+  refuses `clinical-research`, `clinical-care`, `patient-derived-geometry`,
+  `patient-predictive` and `externally-validated` anywhere in the public app,
+  and requires every current scene to prohibit diagnosis, treatment selection
+  and dose selection. No status, review state, model, price or route changed.
+- [ ] **Phase 1 — asset pipeline proof.** One normal heart from the HRA 3D
+  Reference Object Library through [`asset-pipeline.md`](asset-pipeline.md):
+  source, licence, hash and attribution recorded; Slicer/Blender → GLB →
+  validator → optimisation reproducible; compared in **Lab** or a development
+  harness against the procedural heart and the model-driven chambers, and
+  **not connected to production**. Go only on a measured gain in medicine,
+  interaction or performance that leaves the existing dynamics intact.
+- [ ] Later phases (heart-family model redesign separating pressure overload,
+  volume overload and myocardial injury; aortic stenosis as the first textbook
+  disease; Patient / Education depth; a separately gated clinical R&D
+  programme) are sequenced in the strategy and start only after Phase 1
+  reports.
+
 ## Small-batch implementation order
 
 | Batch | Deliverable | Status |
@@ -195,6 +230,8 @@ the model tests.
 | 9 | Billing operations: renewal/failure/repurchase E2E in the Stripe sandbox | Queued |
 | 10 | Live pricing/configuration and paid-beta launch checklist | Queued |
 | 11 | Link-preview cards drawn from the catalogue, and the review states three published pages were getting wrong | Done |
+| 12 | Intended-use and model-provenance contracts: model profiles, asset manifest, public-app guards, document alignment | Done |
+| 13 | HRA normal-heart Lab pilot through the asset pipeline, not connected to production | Queued |
 
 ## Definition of done for every batch
 

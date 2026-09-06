@@ -14,6 +14,23 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### What each model may be used for is now written down, and tested
+
+- **Every public scene now carries a model profile** (`src/catalog/modelProfiles.js`):
+  where its geometry comes from, how much its numbers can carry, whom it
+  stands for, and what it is for and must never be used for. All ten are
+  representative teaching models; every one prohibits diagnosis, treatment
+  selection and dose selection; none claims external validation. No scene's
+  status, review state or model changed.
+- **Patient mode is fixed as patient explanation, not a patient-specific model.**
+  It shows the same general model with less jargon, takes no patient data, and
+  the test suite now refuses any scene that claims otherwise — as it refuses
+  clinical research or clinical care as an intended use anywhere in the app.
+- **The brain atlas has a provenance record** (`src/catalog/assetManifest.js`):
+  source revision, CC BY-SA 4.0, file hash, extent, part count and which QA
+  steps it never went through. Future external meshes follow
+  `docs/asset-pipeline.md` and cannot be referenced without such a record.
+
 ### The lobes and the liver segments now take the volumes a source gives them
 
 - **The shares stopped being uncited, and two of them stopped being wrong.**
