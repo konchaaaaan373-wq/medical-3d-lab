@@ -45,3 +45,9 @@ not validated against measured data. They are built so that the *direction and
 the reason* for a change are right — raise expiratory resistance and end-
 expiratory volume rises, and it rises because there is not enough time to empty
 — and they are deliberately not built to predict a number for a person.
+
+What kind of claim each scene built on one of these publishes — procedural
+geometry, a mechanistic but not literature-calibrated model, a representative
+case, education as the only intended use — is recorded per scene in
+[`../catalog/modelProfiles.js`](../catalog/modelProfiles.js), and a model in
+this directory does not get to say otherwise about itself.

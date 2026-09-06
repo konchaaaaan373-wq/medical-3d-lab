@@ -112,6 +112,29 @@ person: Safari, Firefox, touch and a screen reader.
   the first version is reversible ischemia with no infarct — is settled in
   `docs/anatomy-specs.md` before any of it is built.
 
+### What each model may be used for is now written down, and tested
+
+- **Every public scene now carries a model profile** (`src/catalog/modelProfiles.js`):
+  where its geometry comes from, how much its numbers can carry, whom it
+  stands for, and what it is for and must never be used for. All ten are
+  representative teaching models; every one prohibits diagnosis, treatment
+  selection and dose selection; none claims external validation. No scene's
+  status, review state or model changed.
+- **Patient mode is fixed as patient explanation, not a patient-specific model.**
+  It shows the same general model with less jargon, takes no patient data, and
+  the test suite now refuses any scene that claims otherwise — as it refuses
+  clinical research or clinical care as an intended use anywhere in the app.
+- **The brain atlas has a provenance record** (`src/catalog/assetManifest.js`)
+  and a measured QA record (`docs/asset-qa/brain-atlas-glb.md`): the upstream
+  file re-verified byte for byte, its seven components and their licences
+  including the Human Connectome Project acknowledgment the tract templates
+  require (now in `public/assets/brain/ATTRIBUTION.md`), a pinned glTF
+  Validator run with 0 errors, and a browser render. What nobody has done —
+  an anatomist's review, a clinician's sign-off — is recorded as pending, so
+  the asset passes the release gate for its alpha scene only. Future external
+  meshes follow `docs/asset-pipeline.md` and cannot reach a public scene
+  without clearing the same gate.
+
 ### The site has one public address
 
 - **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
@@ -132,6 +155,20 @@ person: Safari, Firefox, touch and a screen reader.
   every page names the host the site has left — invisible in a browser, decisive
   to a crawler. Without `--origin`, the check is the weaker one that the output
   at least names a single host.
+- **The origin is in the repository now, not in a dashboard.** `netlify.toml`
+  sets `VITE_SITE_URL` for production and leaves it empty for preview deploys —
+  a preview is not the site, so it claims no canonical and emits no sitemap.
+  Moving the domain is a commit that is reviewed, tested and revertible instead
+  of a value somebody has to remember to retype, and remembering was the whole
+  failure mode.
+- **The deployed site can be checked, not just the build.**
+  `npm run verify:live -- <origin>` fetches robots.txt, the sitemap, the home
+  page, every scene page and the preview card from the published origin, and
+  fails if what is served names another host, has no canonical, lost the
+  sitemap or published a Prototype scene. `--redirects-from <old-origin>` also
+  proves old links still lead to the new one. This is what catches a domain
+  that moved while an older deploy stayed published — the case no local check
+  can see, because the build is not what the public is being served.
 - **The rest of the move is a checklist, not memory.** Supabase's redirect
   allowlist and the new Stripe webhook endpoint come *before* the cutover —
   password reset returns the user to the running origin, and a new endpoint has
