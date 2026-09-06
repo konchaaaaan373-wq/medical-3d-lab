@@ -61,3 +61,31 @@ test('billing readiness: mode mismatch or missing cancellation fails closed', as
     checks: { prices: false, products: false, portal: false },
   });
 });
+
+test('billing readiness: an accidentally free recurring Price cannot enable paid access', async () => {
+  const result = await stripeCommerceReadiness({
+    environment: ENV,
+    get: async (path) => {
+      if (path.startsWith('prices/')) {
+        return {
+          ...livePrice(),
+          unit_amount: path.includes('patient') ? 0 : 1980,
+          product: `prod_${path}`,
+        };
+      }
+      if (path.startsWith('products/')) return { active: true, livemode: true };
+      return {
+        data: [{
+          active: true,
+          livemode: true,
+          features: {
+            payment_method_update: { enabled: true },
+            subscription_cancel: { enabled: true },
+          },
+        }],
+      };
+    },
+  });
+  assert.equal(result.ready, false);
+  assert.equal(result.checks.prices, false);
+});

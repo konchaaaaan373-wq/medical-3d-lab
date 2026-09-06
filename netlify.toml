@@ -1,9 +1,11 @@
 # Deploy configuration.
 #
-# This file owns exactly one thing: the origin the site is published at. Build
-# command, publish directory and function settings stay where they already are
-# in the Netlify site configuration — this file does not restate them, so it
-# cannot silently override a setting nobody meant to change here.
+# Two things live here, and nothing else: the origin the site is published at,
+# and the schedule of the one function that has to run whether or not anybody
+# visits. Build command, publish directory and the rest of the function
+# settings stay where they already are in the Netlify site configuration —
+# this file does not restate them, so it cannot silently override a setting
+# nobody meant to change here.
 #
 # The origin still lives in the deploy rather than in `src/` (the code takes it
 # from the environment and guesses nothing without it, per
@@ -30,3 +32,9 @@
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
+
+[functions."scheduled-billing-reconcile"]
+  # Keep the production repair schedule in Netlify's deployment manifest as
+  # well as the function export. The manifest is the authoritative fallback
+  # when build-time function metadata discovery changes.
+  schedule = "17 * * * *"

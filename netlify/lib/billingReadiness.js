@@ -16,6 +16,7 @@ function priceReady(price, livemode) {
       price?.type === 'recurring' &&
       price?.recurring?.interval &&
       Number.isFinite(price?.unit_amount) &&
+      price.unit_amount > 0 &&
       price?.currency &&
       Boolean(price?.livemode) === livemode
   );

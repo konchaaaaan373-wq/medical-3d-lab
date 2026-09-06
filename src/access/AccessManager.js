@@ -42,6 +42,7 @@ export function createAccessManager({ ui }) {
     planCatalog: {},
     loading: false,
     recoveryMode: false,
+    deletionMode: false,
     error: '',
     notice: '',
   };
@@ -175,6 +176,7 @@ export function createAccessManager({ ui }) {
     state.grants = new Set(FREE);
     state.subscriptions = [];
     state.loading = false;
+    state.deletionMode = false;
     state.error = '';
     state.notice = '';
   }
@@ -277,6 +279,7 @@ export function createAccessManager({ ui }) {
     document.documentElement.classList.remove('has-access-modal');
     required = null;
     state.notice = '';
+    state.deletionMode = false;
     render();
     requestAnimationFrame(() => {
       if (focusTarget?.isConnected) focusTarget.focus();
@@ -363,10 +366,35 @@ export function createAccessManager({ ui }) {
       text: '×',
       on: { click: close },
     });
-    const kickerEn = recovery ? 'Password recovery' : required ? 'Unlock this mode' : 'Medical 3D Lab account';
-    const kickerJa = recovery ? 'パスワード再設定' : required ? 'このモードを利用する' : 'Medical 3D Lab アカウント';
-    const titleEn = recovery ? 'Choose a new password' : required ? ENTITLEMENT_COPY[required]?.label ?? 'Access' : 'Access & billing';
-    const titleJa = recovery ? '新しいパスワードを設定' : required ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権' : '利用権・お支払い';
+    const deleting = state.deletionMode;
+    const kickerEn = recovery
+      ? 'Password recovery'
+      : deleting
+        ? 'Permanent account deletion'
+        : required
+          ? 'Unlock this mode'
+          : 'Medical 3D Lab account';
+    const kickerJa = recovery
+      ? 'パスワード再設定'
+      : deleting
+        ? 'アカウントの完全削除'
+        : required
+          ? 'このモードを利用する'
+          : 'Medical 3D Lab アカウント';
+    const titleEn = recovery
+      ? 'Choose a new password'
+      : deleting
+        ? 'Delete account'
+        : required
+          ? ENTITLEMENT_COPY[required]?.label ?? 'Access'
+          : 'Access & billing';
+    const titleJa = recovery
+      ? '新しいパスワードを設定'
+      : deleting
+        ? 'アカウントを削除'
+        : required
+          ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権'
+          : '利用権・お支払い';
     const head = el('header', { class: 'access-head' }, [
       el('div', {}, [
         el('div', { class: 'access-kicker lang-en', text: kickerEn }),
@@ -387,6 +415,7 @@ export function createAccessManager({ ui }) {
     }
 
     if (recovery) return [head, passwordRecoveryForm()];
+    if (state.deletionMode) return [head, accountDeletionForm()];
     if (!state.user) return [head, authForm()];
 
     return [
@@ -430,9 +459,109 @@ export function createAccessManager({ ui }) {
             on: { click: openPortal },
           })
         : null,
+      el('button', {
+        class: 'access-delete-account',
+        type: 'button',
+        disabled: state.loading ? '' : null,
+        text: 'Delete account / アカウント削除',
+        on: {
+          click: () => {
+            state.deletionMode = true;
+            state.notice = '';
+            state.error = '';
+            notify();
+          },
+        },
+      }),
       state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
       state.error ? el('p', { class: 'access-error', text: state.error }) : null,
     ].filter(Boolean);
+  }
+
+  function accountDeletionForm() {
+    const password = el('input', {
+      class: 'access-input',
+      type: 'password',
+      autocomplete: 'current-password',
+      placeholder: 'Current password / 現在のパスワード',
+      required: '',
+    });
+
+    const deleteAccount = async (event) => {
+      event?.preventDefault();
+      state.notice = '';
+      state.error = '';
+      const currentPassword = password.value;
+      if (!currentPassword) {
+        state.notice = '現在のパスワードを入力してください。';
+        notify();
+        return;
+      }
+
+      try {
+        state.loading = true;
+        notify();
+        const response = await authenticatedFetch('/.netlify/functions/delete-account', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: currentPassword }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.deleted !== true) {
+          throw new Error(data.error || 'Account could not be deleted safely.');
+        }
+
+        // Clear browser credentials and invalidate every in-flight entitlement
+        // read after the server has confirmed Stripe closure and Auth deletion.
+        signOut();
+        invalidateSessionState();
+        state.notice = 'Account and subscription deleted. / アカウントと契約を削除しました。';
+      } catch (error) {
+        state.error = error.message || 'アカウントを安全に削除できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return el('form', {
+      class: 'access-auth access-delete-confirmation',
+      on: { submit: deleteAccount },
+    }, [
+      el('p', {
+        class: 'access-copy lang-en',
+        text: 'This permanently cancels the subscription, deletes the account and removes saved progress. Enter your current password to continue.',
+      }),
+      el('p', {
+        class: 'access-copy lang-ja',
+        text: '契約を解約し、アカウントと保存済みの進捗を完全に削除します。続行するには現在のパスワードを入力してください。',
+      }),
+      password,
+      el('div', { class: 'access-auth-actions' }, [
+        el('button', {
+          class: 'access-secondary',
+          type: 'button',
+          disabled: state.loading ? '' : null,
+          text: 'Cancel / 戻る',
+          on: {
+            click: () => {
+              state.deletionMode = false;
+              state.notice = '';
+              state.error = '';
+              notify();
+            },
+          },
+        }),
+        el('button', {
+          class: 'access-danger',
+          type: 'submit',
+          disabled: state.loading ? '' : null,
+          text: state.loading ? 'Deleting… / 削除中…' : 'Delete permanently / 完全に削除',
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', text: state.error }) : null,
+    ].filter(Boolean));
   }
 
   function authForm() {

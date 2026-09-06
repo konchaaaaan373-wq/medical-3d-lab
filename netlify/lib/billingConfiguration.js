@@ -16,6 +16,10 @@ export function stripeMode(key) {
   return 'unknown';
 }
 
+function validStripeServerKey(key) {
+  return /^(?:rk|sk)_(?:test|live)_[A-Za-z0-9]+$/.test(key ?? '');
+}
+
 /** The mode every database lookup must be scoped to. */
 export function billingStripeMode(environment = process.env) {
   const mode = stripeMode(environment.STRIPE_SECRET_KEY);
@@ -38,15 +42,25 @@ export function billingPastDueGraceDays(environment = process.env) {
 
 export function stripeDeploymentSafety(
   environment = process.env,
-  deployContext = environment.CONTEXT ?? ''
+  deployContext = environment.CONTEXT ?? '',
+  { requireRestrictedKey = false } = {}
 ) {
   const mode = stripeMode(environment.STRIPE_SECRET_KEY);
   const issues = [];
   if (!environment.STRIPE_SECRET_KEY) issues.push('missing_stripe_key');
-  else if (mode === 'unknown') issues.push('invalid_stripe_key');
+  else if (mode === 'unknown' || !validStripeServerKey(environment.STRIPE_SECRET_KEY)) {
+    issues.push('invalid_stripe_key');
+  }
   if (deployContext === 'production' && mode === 'test') issues.push('test_key_in_production');
   if (deployContext && deployContext !== 'production' && mode === 'live') {
     issues.push('live_key_outside_production');
+  }
+  if (
+    requireRestrictedKey &&
+    deployContext === 'production' &&
+    /^sk_live_/.test(environment.STRIPE_SECRET_KEY ?? '')
+  ) {
+    issues.push('unrestricted_stripe_key_in_production');
   }
   return Object.freeze({ mode, safe: issues.length === 0, issues: Object.freeze(issues) });
 }
@@ -76,6 +90,7 @@ function operationConfiguration(
     requireServerKey = false,
     requireWebhook = false,
     requirePrices = false,
+    requireRestrictedKey = false,
   } = {}
 ) {
   const requiredVariables = [
@@ -95,7 +110,7 @@ function operationConfiguration(
   }
 
   const issues = [];
-  const stripe = stripeDeploymentSafety(environment, deployContext);
+  const stripe = stripeDeploymentSafety(environment, deployContext, { requireRestrictedKey });
 
   if (
     !missing.includes('SUPABASE_URL') &&
@@ -147,6 +162,7 @@ export function billingConfiguration(
     requireServerKey: true,
     requireWebhook: true,
     requirePrices: true,
+    requireRestrictedKey: true,
   });
 }
 
