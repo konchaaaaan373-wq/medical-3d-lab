@@ -28,7 +28,8 @@
  * it is not part of CI — it is a step in the domain-change checklist in
  * `docs/release-runbook.md` and a check after any deploy that moved the site.
  */
-import { LAB_SCENES, PUBLIC_SCENES } from '../src/catalog/index.js';
+import { SCENES } from '../src/catalog/index.js';
+import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { canonicalOf, originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePageUrl } from './site-metadata.js';
 
@@ -118,20 +119,25 @@ if (!sitemap.ok) {
   if (locations.length === 0) {
     problems.push('/sitemap.xml carries no addresses — the published build emitted no sitemap');
   }
-  for (const entry of locations.length ? PUBLIC_SCENES : []) {
+  // The crawlable set, not the public one: a scene has to be both open and
+  // public to have a page at all (`catalog/release.js`), so asking the live
+  // site for a page the build deliberately did not emit would fail this job
+  // every morning for a reason that is not a defect.
+  for (const entry of locations.length ? CRAWLABLE_SCENES : []) {
     if (!locations.includes(`${origin}/${scenePageUrl(entry)}`)) {
       problems.push(`${entry.id}: missing from the published sitemap`);
     }
   }
-  for (const entry of LAB_SCENES) {
+  for (const entry of SCENES) {
+    if (CRAWLABLE_SCENES.includes(entry)) continue;
     if (locations.some((loc) => loc.includes(`/s/${entry.slug}/`))) {
-      problems.push(`${entry.id}: Prototype work is in the published sitemap`);
+      problems.push(`${entry.id}: not crawlable, but in the published sitemap`);
     }
   }
 }
 
 await checkPage('the home page', '/', `${origin}/`);
-for (const entry of PUBLIC_SCENES) {
+for (const entry of CRAWLABLE_SCENES) {
   const path = `/${scenePageUrl(entry)}`;
   await checkPage(entry.id, path, `${origin}${path}`);
 }

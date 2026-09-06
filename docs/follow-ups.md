@@ -268,6 +268,51 @@ CI の viewport matrix（`scripts/check-viewports.mjs`）は `#/organs` の
 `cards:check` が落ちるので、手順を [`release-runbook.md`](release-runbook.md) に書くか、
 CI で生成して artifact 化するかを決める。
 
+**β のカード集合変更でもう一度踏みました（2026-09-06）。** `npm i --no-save
+playwright` の後、期待する headless shell が無かったので
+`PLAYWRIGHT_BROWSERS_PATH` に既存 chromium への symlink を張って生成しています。
+このとき既存 5 枚がバイト単位で一致したので、フォントは同一と確認できました
+——再生成のたびにこれを確かめる手順が要る、というのがこの項目の本体です。
+**公開範囲を広げたら再生成が必須**です（サイトカードが公開件数を出すため）。
+
+### F-24 腎臓 A2 の残り — 乳頭・腎杯と継ぎ目 — P2（β 臓器 A2 化）
+
+`buildKidney({ parts: true })` は A2 に到達し
+（[`../src/catalog/anatomy.js`](../src/catalog/anatomy.js)）、レンダリングでも
+皮質・錐体・腎柱が読めますが、次の 3 つは概略のままです。
+
+- **乳頭が 1 点に収束**していて、小腎杯に個別に入っていない。腎杯は各乳頭の
+  位置に描かれるだけで、受け皿になっていない
+- **腎洞を刳り抜いていない**。空洞は半空間の交わりでは作れないため
+  （肝臓の尾状葉と同じ理由）
+- **錐体の切断面は detail 18 でようやくギザギザが収まる**。皮質はシェルなので
+  切断面が無く、外から見るぶんには 10 でも足りる
+- 完了の定義: 乳頭ごとに腎杯が受け皿になり、detail 12 程度で錐体の縁が
+  破綻しないこと。`docs/anatomy-specs.md` §3 に残作業として記載済み
+
+### F-25 A2 未達 15 臓器の着手順 — P2（全臓器解剖モデル）
+
+「すべての臓器が脳と同じ A2 水準の解剖モデルを持つ」は要件になりました
+（[`grand-design.md`](grand-design.md) §4.5）。到達は 6 臓器、未達 15 臓器で、
+各行の `next` に「A2 にするとは何を作ることか」が 1 行入っています。
+
+- 決めていないのは**順番**です。`anatomy-specs.md` の優先順位表は pull 元
+  （疾患シーン）で並んでいますが、β で見えるのは脳と心臓だけなので、
+  当面どの臓器を上げても β の見た目は変わりません
+- 完了の定義: 次の 3 臓器を決めて `anatomy-specs.md` に節を書く
+
+### F-26 β 終了時に戻すもの — P1（β 公開）
+
+`src/catalog/release.js` の `RELEASE_CHANNEL` を変えるだけでロックは外れますが、
+同時に見直すものがあります。
+
+- **`npm run cards` の再実行が必須**。カード集合が広がり、サイトカードの
+  「公開モデル N 件」も変わるため、`cards:check` は実行するまで落ちます
+- Explorer は β の間だけ全カタログを描き、それ以外では `PUBLIC_SCENES` に戻ります
+- Lab へのリンクは β の間だけ隠されています（`SceneSwitcher` / Landing / fallback）
+- 完了の定義: チャンネル変更後に `npm test` / `verify:site` / `cards:check` /
+  `verify:live` がすべて緑
+
 ### F-17 grand-design §3 の数値の自動化 — P3
 
 `docs/grand-design.md` §3「現在地」のシーン数・モデル層本数は手で更新して

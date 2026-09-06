@@ -46,6 +46,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | 配信レイヤーと intended use の区別・Patient explanation と patient-specific の境界・Model Profile / Asset Manifest の所有関係 | [`architecture/intended-use-and-model-provenance.md`](architecture/intended-use-and-model-provenance.md) |
 | 外部 3D asset の製作工程・停止条件・出典記録 | [`asset-pipeline.md`](asset-pipeline.md) と [`../src/catalog/assetManifest.js`](../src/catalog/assetManifest.js)（記録） |
 | 各シーンの主張の種類（geometry / mechanism / personalization / intended・prohibited use） | [`../src/catalog/modelProfiles.js`](../src/catalog/modelProfiles.js)（コードが登録簿） |
+| 各臓器の解剖モデルがどこまで到達しているか（A レベルと根拠） | [`../src/catalog/anatomy.js`](../src/catalog/anatomy.js)（コードが登録簿） |
 | 医学モデル層の書き方（純 JS・three/DOM 禁止） | [`../src/models/README.md`](../src/models/README.md) |
 | どんな system / organ / scene が**存在するか** | [`../src/catalog/`](../src/catalog/)（コードが登録簿） |
 | 完成形・現在地・優先順位・共同開発の作法 | **本書** |
