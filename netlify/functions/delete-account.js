@@ -3,12 +3,32 @@ import {
   deleteSupabaseUser,
   verifySupabasePassword,
 } from '../lib/account.js';
-import { authenticatedUser, json, stripeModeFilter, supabaseAdmin } from '../lib/billing.js';
+import { authenticatedUser, json, supabaseAdmin } from '../lib/billing.js';
 import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
 
 export const config = {
   rateLimit: { windowLimit: 3, windowSize: 3600, aggregateBy: ['ip', 'domain'] },
 };
+
+const DELETION_KEY_VARIABLE = Object.freeze({
+  test: 'STRIPE_TEST_SECRET_KEY_FOR_DELETION',
+  live: 'STRIPE_LIVE_SECRET_KEY_FOR_DELETION',
+});
+
+function stripeDeletionKey(mode, environment = process.env) {
+  const candidates = [
+    environment.STRIPE_SECRET_KEY,
+    environment[DELETION_KEY_VARIABLE[mode]],
+  ];
+  const validationContext = mode === 'live' ? 'production' : 'deploy-preview';
+  return candidates.find((secretKey) => {
+    const safety = stripeDeploymentSafety(
+      { STRIPE_SECRET_KEY: secretKey },
+      validationContext
+    );
+    return safety.safe && safety.mode === mode;
+  }) ?? null;
+}
 
 /**
  * Permanently removes one Medical 3D Lab account.
@@ -51,25 +71,31 @@ export default async (request, context) => {
       body: [{ user_id: user.id }],
     });
 
-    // Ask the database whether this identity has ever had a live Customer
-    // before requiring Stripe configuration. A free account must remain
-    // deletable while Stripe is down or not configured at all. Conversely, a
-    // live Customer can never be skipped just because the current key is
-    // absent or points at the sandbox namespace.
-    const rows = await supabaseAdmin(
-      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter('live')}&select=stripe_customer_id&limit=1`
-    );
-    const customerId = rows?.[0]?.stripe_customer_id ?? null;
+    // Delete every provider identity before Auth cascades the mode-scoped
+    // mappings. A project may contain both sandbox and live Customers after a
+    // preview-to-production rollout; dropping either mapping first would leave
+    // personal data at Stripe with no durable way to find it again.
+    const customers = (await supabaseAdmin(
+      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id,stripe_mode&order=stripe_mode.asc`
+    )) ?? [];
+    const deletionTargets = customers.map((customer) => ({
+      ...customer,
+      secretKey: stripeDeletionKey(customer.stripe_mode),
+    }));
+    if (deletionTargets.some((target) => !target.secretKey)) {
+      return json(503, {
+        error: 'Account deletion cannot safely reach every stored billing environment.',
+      });
+    }
 
     // This is intentionally before Auth deletion. A Stripe failure leaves the
     // account usable and recoverable rather than leaving recurring billing with
-    // no Medical 3D Lab identity attached to it.
-    if (customerId) {
-      const stripeSafety = stripeDeploymentSafety(process.env, deployContext);
-      if (!stripeSafety.safe || stripeSafety.mode !== 'live') {
-        return json(503, { error: 'Billing is not configured safely on this deployment.' });
-      }
-      await deleteStripeCustomer(customerId);
+    // no Medical 3D Lab identity attached to it. Deletion is idempotent, so a
+    // retry safely continues if one mode succeeded before another failed.
+    for (const customer of deletionTargets) {
+      await deleteStripeCustomer(customer.stripe_customer_id, {
+        secretKey: customer.secretKey,
+      });
     }
 
     await deleteSupabaseUser(user.id);

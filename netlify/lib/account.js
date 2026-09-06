@@ -82,12 +82,16 @@ export async function deleteSupabaseUser(userId) {
  * customer. This must happen before Auth deletion: losing the app identity
  * while leaving recurring billing alive is the unsafe failure direction.
  */
-export async function deleteStripeCustomer(customerId) {
+export async function deleteStripeCustomer(
+  customerId,
+  { secretKey } = {}
+) {
   if (!customerId) return { deleted: false, skipped: true };
+  const credential = secretKey ?? env('STRIPE_SECRET_KEY');
   const response = await fetch(`https://api.stripe.com/v1/customers/${encodeURIComponent(customerId)}`, {
     method: 'DELETE',
     headers: {
-      Authorization: `Bearer ${env('STRIPE_SECRET_KEY')}`,
+      Authorization: `Bearer ${credential}`,
       'Stripe-Version': STRIPE_API_VERSION,
     },
     signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
