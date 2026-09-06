@@ -48,18 +48,28 @@ export const VIEWPORTS = [
  * `needsRenderer` marks the one that builds a WebGL scene. It is checked too —
  * a scene's overlay chrome has the same obligations as a document — but a
  * failure there has to be told apart from the renderer simply being
- * unavailable in a headless browser.
+ * unavailable in a headless browser. It has to name a scene the current
+ * release actually opens, or the run measures the "to be updated" page while
+ * reporting that it measured a scene.
+ *
+ * `locked` marks a route the release is holding back — a model it has not
+ * opened, or the Lab. Every one of them renders the same plain reading page
+ * rather than the thing its route names, and they are checked because a person
+ * who followed a shared link lands on one: an apology that scrolls sideways at
+ * 320 px is still a broken page. The flag has to agree with
+ * `catalog/release.js`, and `tests/viewports.test.js` holds it there.
  */
 export const SURFACES = [
   { id: 'landing', route: '#/', label: 'Landing' },
   { id: 'explorer', route: '#/organs', label: 'Explorer' },
-  { id: 'lab', route: '#/lab', label: 'Lab' },
+  { id: 'lab', route: '#/lab', label: 'Lab', locked: true },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },
   { id: 'commerce', route: '#/commerce', label: 'Commercial disclosure' },
   { id: 'support', route: '#/support', label: 'Support' },
-  { id: 'scene', route: '#/renal-filtration', label: 'Scene', needsRenderer: true },
+  { id: 'locked', route: '#/copd', label: 'To be updated', locked: true },
+  { id: 'scene', route: '#/brain-anatomy', label: 'Scene', needsRenderer: true },
 ];
 
 /**

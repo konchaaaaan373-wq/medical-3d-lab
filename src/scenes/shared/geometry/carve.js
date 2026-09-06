@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 /**
  * Cutting a solid organ into the parts anatomy names.
@@ -336,6 +336,69 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0, c
   // disposing what it was given cannot empty the cache under the next caller.
   carved.set(key, welded);
   return welded.clone();
+}
+
+
+/**
+ * The same organ, shrunk towards its own centre.
+ *
+ * Wraps a field rather than resampling one, so the inner surface is the outer
+ * surface's own shape at a smaller radius — every dent and every notch comes
+ * with it. That is what makes it usable as a tissue boundary: the
+ * corticomedullary junction of a kidney follows the kidney, and a boundary
+ * assembled out of flat planes does not.
+ *
+ * @param {ReturnType<typeof radialField>} field
+ * @param {number} factor 0–1, the fraction of the radius the inner surface keeps
+ */
+export function scaledField(field, factor) {
+  return {
+    centre: field.centre,
+    radiusAt: (direction) => field.radiusAt(direction) * factor,
+  };
+}
+
+/**
+ * The solid between two nested surfaces: a shell.
+ *
+ * The inner surface is turned inside out and carried along with the outer one,
+ * so the result encloses the space between them and nothing else. Its signed
+ * volume is the outer volume less the inner, which is what a shell's volume is,
+ * and it renders as a wall with a cavity rather than as two solids.
+ *
+ * Both surfaces must be closed and the inner one must lie inside the outer;
+ * `scaledField` is how that is arranged here. This is what lets an organ's
+ * outer layer be **one part** instead of a ring of caps: a cortex is
+ * continuous, and cutting it into wedges to make the arithmetic work would be
+ * inventing a boundary that is not in the organ.
+ *
+ * @param {THREE.BufferGeometry} outer consumed — disposed by the caller
+ * @param {THREE.BufferGeometry} inner consumed — disposed by the caller
+ */
+export function shellBetween(outer, inner) {
+  const cavity = inner.clone();
+  const index = cavity.getIndex();
+  if (index) {
+    const array = index.array;
+    for (let i = 0; i < array.length; i += 3) {
+      const swap = array[i + 1];
+      array[i + 1] = array[i + 2];
+      array[i + 2] = swap;
+    }
+    index.needsUpdate = true;
+  }
+  const normal = cavity.getAttribute('normal');
+  if (normal) {
+    for (let i = 0; i < normal.count; i += 1) {
+      normal.setXYZ(i, -normal.getX(i), -normal.getY(i), -normal.getZ(i));
+    }
+    normal.needsUpdate = true;
+  }
+  const shell = mergeGeometries([outer.clone(), cavity], false);
+  cavity.dispose();
+  shell.computeBoundingBox();
+  shell.computeBoundingSphere();
+  return shell;
 }
 
 /**

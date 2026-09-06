@@ -13,7 +13,7 @@ import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
  * Favorites are local navigation preferences only. They store scene IDs and do
  * not carry model, patient, account or billing state.
  */
-export function createSceneSwitcher({ groups, currentId }) {
+export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const scenes = groups.flatMap((group) => group.scenes);
   if (!scenes.length) return null;
 
@@ -90,7 +90,10 @@ export function createSceneSwitcher({ groups, currentId }) {
     ]
   );
 
-  const switchShelf = el(
+  // Omitted when the release does not open the Lab: a shelf link that lands on
+  // "to be updated" is worse than no shelf link, and this menu is reached from
+  // inside a model, where the reader was already somewhere that worked.
+  const switchShelf = !showLab && !isLab ? null : el(
     'a',
     {
       class: 'global-nav-explorer is-secondary',

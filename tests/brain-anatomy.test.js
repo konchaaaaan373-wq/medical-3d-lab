@@ -430,3 +430,61 @@ function hexToLab(hex) {
 function cie76(left, right) {
   return Math.hypot(...left.map((value, index) => value - right[index]));
 }
+
+/* --------------------------------------------------------------------------
+   Abandoning the fetch
+
+   The landing hero fetches this atlas in the background. A reader who clicks
+   away while it is in flight cancels it, and the rejection is delivered as the
+   old document goes — so a failure reported here is printed onto whatever page
+   they went to next. The success path already drops a model that arrived after
+   disposal; these two fix the same question being answered differently in the
+   other branch.
+   -------------------------------------------------------------------------- */
+
+/** Enough of a viewer for `build()` to take the loading path. */
+const loaderViewport = () => ({
+  renderer: {
+    domElement: { style: {}, addEventListener() {}, removeEventListener() {} },
+  },
+});
+
+test('an atlas fetch abandoned by disposal is not reported as a failure', async () => {
+  const said = [];
+  const wasError = console.error;
+  console.error = (...args) => said.push(args);
+  let fail = () => {};
+  try {
+    const scene = new BrainAnatomyScene({
+      viewer: loaderViewport(),
+      atlasLoader: () => new Promise((_, reject) => { fail = reject; }),
+    });
+    scene.build();
+    scene.dispose();
+    fail(new TypeError('Load failed'));
+    await scene.ready;
+    assert.deepEqual(said, [], 'the scene cancelled this fetch itself');
+    assert.notEqual(scene.status.state, 'error', 'a disposed scene has no state left to report');
+  } finally {
+    console.error = wasError;
+  }
+});
+
+test('an atlas that genuinely fails is still reported', async () => {
+  const said = [];
+  const wasError = console.error;
+  console.error = (...args) => said.push(args);
+  try {
+    const scene = new BrainAnatomyScene({
+      viewer: loaderViewport(),
+      atlasLoader: () => Promise.reject(new TypeError('Load failed')),
+    });
+    scene.build();
+    await scene.ready;
+    assert.equal(said.length, 1, 'a live scene that cannot load its atlas says so');
+    assert.equal(scene.status.state, 'error');
+    scene.dispose();
+  } finally {
+    console.error = wasError;
+  }
+});

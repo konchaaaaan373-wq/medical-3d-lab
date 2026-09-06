@@ -5,6 +5,7 @@ import {
   sceneById,
   statusById,
 } from '../catalog/index.js';
+import { betaUnlocked } from './releaseGate.js';
 import { el } from '../utils/dom.js';
 
 /**
@@ -68,7 +69,9 @@ export function createSceneFailureFallback({ ui, sceneId }) {
         ]),
         link(EXPLORER_ROUTE, 'Browse public models', '公開モデルを見る', true),
         link(LANDING_ROUTE, 'Home', 'ホーム'),
-        link(LAB_ROUTE, 'Experimental Lab', '実験室'),
+        // Lab is a locked route during the beta; a recovery screen must not
+        // hand out a link that lands on another apology.
+        betaUnlocked() ? link(LAB_ROUTE, 'Experimental Lab', '実験室') : null,
       ]),
     ]),
   ].filter(Boolean));

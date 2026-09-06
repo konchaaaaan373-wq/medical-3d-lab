@@ -5,10 +5,6 @@
       "bodyChars": 82,
       "html": "4afdb488948c0092"
     },
-    "asthma": {
-      "bodyChars": 82,
-      "html": "99466e7ae8d02af2"
-    },
     "brain-anatomy": {
       "bodyChars": 82,
       "html": "dc6473d8a13bada7"
@@ -17,45 +13,17 @@
       "bodyChars": 46,
       "html": "83a97b7d53244fad"
     },
-    "copd": {
-      "bodyChars": 64,
-      "html": "a31b258cf4627d9f"
-    },
     "heart-failure": {
       "bodyChars": 82,
       "html": "878478a7da7063fc"
-    },
-    "hepatorenal-syndrome": {
-      "bodyChars": 40,
-      "html": "8c2622b5f421ef25"
     },
     "myocardial-ischemia": {
       "bodyChars": 82,
       "html": "7e4d4716b6c65c39"
     },
-    "pneumonia": {
-      "bodyChars": 82,
-      "html": "6ad14caba3812c4d"
-    },
-    "portal-hypertension": {
-      "bodyChars": 40,
-      "html": "634797a5ab99c8d3"
-    },
-    "pulmonary-edema": {
-      "bodyChars": 82,
-      "html": "faa3f69112b1d6a1"
-    },
-    "pulmonary-embolism": {
-      "bodyChars": 82,
-      "html": "1ef9c0d871446270"
-    },
-    "renal-filtration": {
-      "bodyChars": 46,
-      "html": "fb1f709e945b316a"
-    },
     "site": {
       "bodyChars": 82,
-      "html": "04007af8fb0b6c7b"
+      "html": "373824fc659d2e17"
     }
   }
 }

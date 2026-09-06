@@ -11,7 +11,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 
-import { PUBLIC_SCENES, LAB_SCENES } from '../src/catalog/index.js';
+import { PUBLIC_SCENES, SCENES } from '../src/catalog/index.js';
+import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { SYSTEMS } from '../src/catalog/taxonomy.js';
 import {
   CLINICAL_REVIEW_PRESENTABLE_STATUSES,
@@ -97,10 +98,17 @@ test('cards: every review state a surface can meet has copy of its own', () => {
   }
 });
 
-test('cards: a card is never drawn for a scene the catalogue does not publish', () => {
-  const labSlugs = new Set(LAB_SCENES.map((scene) => scene.slug));
-  for (const slug of labSlugs) {
-    assert.ok(!existsSync(social(`${slug}.png`)), `${slug} is a Lab scene and must not be advertised`);
+test('cards: a card is never drawn for a scene that has no page to preview', () => {
+  // A card previews a page. A scene with no page — because it is a Prototype,
+  // or because the release has not opened it — has nothing to preview, and a
+  // card left behind for one keeps being served to whoever shares the URL.
+  const crawlable = new Set(CRAWLABLE_SCENES.map((scene) => scene.slug));
+  for (const scene of SCENES) {
+    if (crawlable.has(scene.slug)) continue;
+    assert.ok(
+      !existsSync(social(`${scene.slug}.png`)),
+      `${scene.slug} has no crawlable page and must not be advertised`
+    );
   }
 });
 
@@ -118,7 +126,7 @@ test('cards: the committed set still says what the catalogue says', () => {
 
 test('cards: every committed card is a 1200x630 PNG within its size cap', () => {
   let total = 0;
-  for (const scene of [...PUBLIC_SCENES.map((s) => s.slug), 'site']) {
+  for (const scene of [...CRAWLABLE_SCENES.map((s) => s.slug), 'site']) {
     const png = readFileSync(social(`${scene}.png`));
     const size = pngSize(png);
     assert.ok(size, `${scene} is not a PNG`);

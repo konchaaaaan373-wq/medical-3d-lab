@@ -18,7 +18,8 @@ import {
 import { DEVICE_CLASS_IDS, PHONE_MAX_WIDTH } from '../src/app/performanceBudget.js';
 import { TOUCH_TARGET } from '../src/styles/palette.js';
 import { namesScene, resolveRoute } from '../src/app/router.js';
-import { RESERVED_ROUTE_SLUGS } from '../src/catalog/index.js';
+import { RESERVED_ROUTE_SLUGS, sceneById } from '../src/catalog/index.js';
+import { isRouteReleased, isSceneReleased } from '../src/catalog/release.js';
 
 // --- the matrix itself -----------------------------------------------------
 
@@ -90,15 +91,45 @@ test('surfaces: every checked route is a route this product actually has', () =>
       // pass for a typo.
       assert.equal(route.kind, 'scene', `"${surface.route}" is not a scene route`);
       assert.ok(namesScene(surface.route), `"${surface.route}" names no scene in the catalogue`);
-    } else {
+    } else if (!surface.locked) {
       assert.notEqual(route.kind, 'scene', `"${surface.route}" fell through to a scene`);
     }
   }
 });
 
+test('surfaces: the locked flag is the release, not a flag somebody remembered', () => {
+  // The run reports what each surface is. A route the release holds back
+  // renders the "to be updated" page whatever its name says, so a surface
+  // marked Lab that is really that page measures one thing and reports
+  // another — which is the defect this matrix already fixed once, for the
+  // surface that was supposed to build a renderer.
+  for (const surface of SURFACES) {
+    const open = isRouteReleased(resolveRoute(surface.route));
+    assert.equal(
+      Boolean(surface.locked),
+      !open,
+      `"${surface.route}" is ${open ? 'open' : 'locked'} and is marked ${surface.locked ? 'locked' : 'open'}`
+    );
+    if (surface.locked) {
+      assert.ok(!surface.needsRenderer, `"${surface.route}" is locked, so nothing builds a renderer on it`);
+    }
+  }
+  assert.ok(SURFACES.some((surface) => surface.locked), 'the beta has locked routes; one of them is checked');
+});
+
+test('surfaces: the scene measured with a renderer is one the release actually opens', () => {
+  const scene = SURFACES.find((surface) => surface.needsRenderer);
+  assert.ok(scene, 'one surface has to build a real scene');
+  assert.equal(
+    isSceneReleased(sceneById(resolveRoute(scene.route).sceneId)),
+    true,
+    'a locked route renders a reading page, so this run would measure the wrong thing'
+  );
+});
+
 test('surfaces: the shell routes checked here are the shell routes the catalogue reserves', () => {
-  const checked = SURFACES.filter((surface) => !surface.needsRenderer).map((surface) =>
-    surface.route.replace(/^#\/?/, ''),
+  const checked = SURFACES.filter((surface) => !surface.needsRenderer && !surface.locked).map(
+    (surface) => surface.route.replace(/^#\/?/, ''),
   );
   for (const slug of checked) {
     if (slug === '') continue; // the landing page has no slug to reserve

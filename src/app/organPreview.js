@@ -31,64 +31,17 @@
  * a parameter, so the whole lifecycle runs under `node --test` with fakes.
  * The Explorer passes nothing and gets the real browser.
  */
+import {
+  LUNG_PREVIEW_QUALITY,
+  ORGAN_PREVIEW_BUILDERS,
+  createOrganLights,
+  hasOrganModel,
+} from './organModels.js';
 
-const BUILDERS = Object.freeze({
-  brain: async () => {
-    const { buildBrain } = await import('../scenes/nervous/organs/brain.js');
-    return buildBrain({ color: '#d5b9dc', stemColor: '#ae91bd', cerebellum: '#bd9ecb' });
-  },
-  heart: async () => {
-    const { buildHeart } = await import('../scenes/cardiovascular/organs/heart.js');
-    return buildHeart({ color: '#c9505d', vesselColor: '#df7b82', atriumColor: '#a84253' });
-  },
-  lungs: async () => {
-    const { buildLungs } = await import('../scenes/respiratory/organs/lungs.js');
-    return buildLungs(LUNG_PREVIEW_QUALITY);
-  },
-  liver: async () => {
-    const { buildLiver } = await import('../scenes/hepatobiliary/organs/liver.js');
-    return buildLiver({ detail: 4, referenceSamples: 2500, opacity: 0.94 });
-  },
-  kidney: async (THREE) => {
-    const { buildKidney } = await import('../scenes/renal/organs/kidney.js');
-    const left = buildKidney({ side: 'left', opacity: 0.92 });
-    const right = buildKidney({ side: 'right', opacity: 0.92 });
-    left.object.position.x = 0.72;
-    right.object.position.x = -0.72;
-    right.object.position.y = -0.13;
-    const object = new THREE.Group();
-    object.name = 'kidneys-preview';
-    object.add(left.object, right.object);
-    return {
-      object,
-      dispose: () => {
-        left.dispose?.();
-        right.dispose?.();
-      },
-    };
-  },
-});
-
-/**
- * How finely the lung preview is built.
- *
- * `lungs.js` cuts five lobes out of one sampled surface. Two things go wrong
- * when it is built cheaply: the rim between a lobe and its fissure zigzags
- * at the spacing of the tessellation (`detail`), and the surface itself grows
- * a ragged fuzz where the sampled field is too sparse (`referenceSamples`).
- * Measured at preview size (290 × 238 CSS px, DPR 2), Node build time as the
- * median of five:
- *
- *   detail  5 / 2 500 samples   34 ms   1 945 vertices   stepped lobes, torn fissures
- *   detail  8 / 6 000 samples   38 ms   4 195 vertices   sawtooth along every fissure
- *   detail 10 / 8 000 samples   26 ms   6 225 vertices   fissures fine, fuzz on the apex
- *   detail 10 / 12 000 samples  39 ms   6 225 vertices   clean — adopted
- *   detail 12 / 12 000 samples  51 ms   8 655 vertices   no visible gain
- *
- * The builder's own default (12 / 24 000) is for a scene that fills the
- * viewport; the preview does not need it.
- */
-export const LUNG_PREVIEW_QUALITY = Object.freeze({ detail: 10, referenceSamples: 12000, opacity: 0.96 });
+// Re-exported because this is where the Explorer and its tests have always
+// asked for it. `organModels.js` owns which organs exist and how finely each
+// builds; this module owns the lifecycle of one preview on one page.
+export { LUNG_PREVIEW_QUALITY };
 
 /** How many WebGL contexts the previews may hold between them. */
 export const DEFAULT_MAX_ACTIVE_PREVIEWS = 2;
@@ -99,7 +52,7 @@ export const OFFSCREEN_RELEASE_DELAY_MS = 1500;
 /** How long a lost context is given to come back before the preview rebuilds. */
 export const CONTEXT_LOSS_RECOVERY_DELAY_MS = 1500;
 
-export const hasOrganPreview = (organId) => organId in BUILDERS;
+export const hasOrganPreview = hasOrganModel;
 
 /**
  * A pool of renderer slots shared by every preview on the page.
@@ -175,7 +128,7 @@ const defaultPool = () => (sharedPool ??= createPreviewPool());
  * @returns {(() => void) & { inspect: () => object }}
  */
 export function mountOrganPreview(container, organId, deps = {}) {
-  const build = (deps.builders ?? BUILDERS)[organId];
+  const build = (deps.builders ?? ORGAN_PREVIEW_BUILDERS)[organId];
   const noop = () => {};
   noop.inspect = () => ({ phase: 'unsupported', generation: 0, hasRenderer: false });
   if (!build) return noop;
@@ -377,11 +330,7 @@ export function mountOrganPreview(container, organId, deps = {}) {
 
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(34, 1, 0.01, 100);
-      scene.add(
-        new THREE.HemisphereLight('#d8f0ff', '#17222b', 2.15),
-        makeDirectionalLight(THREE, '#fff4e7', 3.8, [3.8, 4.6, 5.4]),
-        makeDirectionalLight(THREE, '#7cc8d8', 2.2, [-4.2, 1.2, -3.5])
-      );
+      scene.add(createOrganLights(THREE));
 
       model = new THREE.Group();
       model.name = `${organId}-explorer-preview`;
@@ -533,12 +482,6 @@ export function mountOrganPreview(container, organId, deps = {}) {
     holdsSlot: pool.holds(handle),
   });
   return dispose;
-}
-
-function makeDirectionalLight(THREE, color, intensity, position) {
-  const light = new THREE.DirectionalLight(color, intensity);
-  light.position.set(...position);
-  return light;
 }
 
 function disposeTree(root) {

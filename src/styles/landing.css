@@ -1153,3 +1153,183 @@ html[data-route='landing'] {
   .landing-scene-open,
   .landing-button { transition: none; }
 }
+
+/* Beta release ------------------------------------------------------------
+   The brain and the heart are open; everything else is listed but not opened.
+   A locked model gets a line rather than a card: twenty-two dashed cards ahead
+   of five real ones reads as a broken page, not as a roadmap. */
+
+.landing-beta-note {
+  position: relative;
+  z-index: 1;
+  margin: clamp(30px, 6vh, 62px) 0 0;
+  padding: clamp(20px, 3vw, 30px);
+  border: 1px solid var(--landing-line);
+  border-left: 2px solid var(--landing-cyan);
+  border-radius: 6px;
+  background: var(--landing-panel);
+}
+
+.landing-beta-note .landing-section-title {
+  max-width: 24em;
+}
+
+.landing-beta-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 68ch;
+  margin: 14px 0 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.72;
+}
+
+.landing-beta-copy .lang-ja {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.landing-locked-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--landing-line);
+}
+
+.landing-locked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 8em) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  min-height: 46px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--landing-line);
+}
+
+.landing-locked-system {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.landing-locked-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.landing-locked-name .lang-ja {
+  color: var(--ink-dim);
+}
+
+.landing-locked-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--landing-cargo);
+  font-size: 10px;
+  font-weight: 740;
+  letter-spacing: 0.05em;
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .landing-locked-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-locked-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .landing-locked-system {
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+  }
+}
+
+/* Organ hero -------------------------------------------------------------- */
+
+/* Stage 2 arriving. Driven from the viewport's own state by a sibling
+   selector, so there is one place the state lives. It never announces a
+   failure — the builder on screen is a real organ either way. */
+.landing-demo-detail {
+  position: absolute;
+  z-index: 6;
+  left: 24px;
+  bottom: 18px;
+  display: none;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border: 1px solid var(--landing-line);
+  border-radius: 999px;
+  background: rgba(2, 4, 8, 0.72);
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 620;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+}
+
+.landing-demo-viewport[data-detail='loading'] ~ .landing-demo-detail {
+  display: flex;
+}
+
+.landing-demo-detail-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--landing-cyan);
+  animation: landing-loading 900ms ease-in-out infinite alternate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-demo-detail-dot {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .landing-demo-detail {
+    left: 14px;
+    bottom: 14px;
+    font-size: 10px;
+  }
+}
+
+/* The organs the beta opens, rather than three model states. */
+.landing-demo-state-grid.is-organs {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+}
+
+/* No metrics above it any more: the organ line is the whole read-out. */
+.landing-demo-readout.is-organ .landing-demo-explanation {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.landing-demo-case[hidden] {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .landing-demo-state-grid.is-organs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

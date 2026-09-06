@@ -1,16 +1,18 @@
 import {
   EXPLORER_ROUTE,
   LAB_ROUTE,
-  PUBLIC_SCENES,
+  SCENES,
   sceneRoute,
   statusById,
   systemById,
 } from '../catalog/index.js';
+import { isSceneReleased } from '../catalog/release.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { landingPresentationFor, orderLandingScenes } from '../data/landing.js';
-import { createLandingCirculationDemo } from './landingCirculationDemo.js';
+import { createLandingOrganHero } from './landingOrganHero.js';
 import { createLandingFlowField } from './landingFlowField.js';
+import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
 
 const TRUST_ROUTE = '#/trust';
@@ -21,13 +23,25 @@ const dual = (en, ja, className = '') => [
 ];
 
 /**
- * Product-first landing page. The first viewport is the actual circulation
- * scene, not a mock-up or a description of one.
+ * Product-first landing page. The first viewport is a real organ model, not a
+ * mock-up or a description of one — and which organ it is changes by the day.
+ *
+ * The model index lists the whole catalogue. During the beta the disease models
+ * are drawn as "to be updated" cards rather than being dropped: a visitor
+ * deciding whether this is worth following should be able to see what is being
+ * built, and a card that cannot be opened is more honest than a shorter list.
  */
 export function createLanding({ ui, accountButton = null, onRendererFailure = () => {} }) {
-  const scenes = orderLandingScenes(PUBLIC_SCENES);
+  const unlocked = betaUnlocked();
+  const ordered = orderLandingScenes(SCENES);
+  // Two lists rather than one grid of mixed states. Twenty-two dashed cards
+  // ahead of five real ones does not read as a roadmap, it reads as a broken
+  // page — so what is open gets a card and what is not gets a line.
+  const scenes = unlocked ? ordered : ordered.filter(isSceneReleased);
+  const locked = unlocked ? [] : ordered.filter((scene) => !isSceneReleased(scene));
+  const openCount = scenes.length;
   const flowField = createLandingFlowField();
-  const circulationDemo = createLandingCirculationDemo({ onRendererFailure });
+  const organHero = createLandingOrganHero({ onRendererFailure });
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
@@ -76,6 +90,23 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
     ]);
   };
 
+  /**
+   * A model the beta has not opened: one line, not a card.
+   *
+   * Deliberately not a link. The deep link still answers — `#/copd` shared
+   * before the beta keeps working and reaches the "to be updated" page — it
+   * just is not offered here, because a link that looks openable and then
+   * apologises is worse than a line that says so on its face.
+   */
+  const lockedRow = (scene) => {
+    const system = systemById(scene.system);
+    return el('li', { class: 'landing-locked-row', dataset: { scene: scene.id } }, [
+      el('span', { class: 'landing-locked-system' }, dual(system?.label ?? scene.system, system?.labelJa ?? scene.system)),
+      el('span', { class: 'landing-locked-name' }, dual(scene.titleEn, scene.titleJa)),
+      el('span', { class: 'landing-locked-mark' }, dual('To be updated', '準備中')),
+    ]);
+  };
+
   const element = el('main', { class: 'landing' }, [
     el('header', { class: 'landing-nav' }, [
       el('a', { class: 'landing-brand', href: '#/', 'aria-label': 'Medical 3D Lab home' }, [
@@ -87,9 +118,9 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
         el('span', { class: 'landing-brand-name', text: 'Medical 3D Lab' }),
       ]),
       el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation / 製品ナビゲーション' }, [
-        shellLink(EXPLORER_ROUTE, '3D models', '3Dモデル', 'landing-nav-link'),
+        shellLink(EXPLORER_ROUTE, 'Organ models', '臓器モデル', 'landing-nav-link'),
         shellLink(TRUST_ROUTE, 'Sources & review', '根拠・レビュー', 'landing-nav-link'),
-        shellLink(LAB_ROUTE, 'Experimental', '実験モデル', 'landing-nav-link'),
+        unlocked ? shellLink(LAB_ROUTE, 'Experimental', '実験モデル', 'landing-nav-link') : null,
       ]),
       el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
@@ -97,24 +128,43 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
     el('section', { class: 'landing-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('header', { class: 'landing-hero-heading' }, [
         el('div', {}, [
-          el('p', { class: 'landing-eyebrow' }, dual('INTERACTIVE MEDICAL MODELS', '操作できる医学モデル')),
+          el('p', { class: 'landing-eyebrow' }, dual('BETA  /  BRAIN & HEART', 'β版  /  脳と心臓')),
           el('h1', { class: 'landing-title' }, dual(
             '3D models of anatomy and pathophysiology',
             '解剖・病態生理の3Dモデル'
           )),
         ]),
         el('dl', { class: 'landing-hero-facts' }, [
-          el('div', {}, [el('dt', { text: String(scenes.length) }), el('dd', {}, dual('models', '公開モデル'))]),
-          el('div', {}, [el('dt', {}, dual('FREE', '無料')), el('dd', {}, dual('core models', '基本モデル'))]),
+          el('div', {}, [el('dt', { text: String(openCount) }), el('dd', {}, dual('open models', '公開モデル'))]),
+          el('div', {}, [el('dt', {}, dual('FREE', '無料')), el('dd', {}, dual('every model', 'すべて'))]),
           el('div', {}, [el('dt', {}, dual('NONE', '不要')), el('dd', {}, dual('account', 'アカウント'))]),
         ]),
       ]),
-      el('div', { class: 'landing-hero-instrument' }, [circulationDemo.element]),
+      el('div', { class: 'landing-hero-instrument' }, [organHero.element]),
       el('div', { class: 'landing-hero-actions' }, [
-        shellLink('#/circulation', 'Open the circulation model', '循環モデルを全画面で開く', 'landing-button primary landing-cta'),
-        shellLink(EXPLORER_ROUTE, 'See all 3D models', '3Dモデルをすべて見る', 'landing-button secondary landing-cta'),
+        shellLink(EXPLORER_ROUTE, 'See the open models', '公開中のモデルを見る', 'landing-button primary landing-cta'),
+        shellLink(TRUST_ROUTE, 'Sources & review', '根拠・レビュー', 'landing-button secondary landing-cta'),
       ]),
     ]),
+
+    unlocked
+      ? null
+      : el('section', { class: 'landing-beta-note', 'aria-labelledby': 'landing-beta-title' }, [
+          el('p', { class: 'landing-section-kicker' }, dual('WHAT IS OPEN', '公開している範囲')),
+          el('h2', { class: 'landing-section-title', id: 'landing-beta-title' }, dual(
+            'Two organs, finished. The rest is still being built.',
+            'まずは2つの臓器を、仕上げた形で。'
+          )),
+          el('p', { class: 'landing-beta-copy' }, dual(
+            'The beta opens the brain and the heart. Each of these models has a model layer, an '
+            + 'evidence dossier and a model card behind it, and every card says how mature it is and '
+            + 'whether a clinician has reviewed it — separately, because they are different claims. '
+            + 'The models still marked schematic are not shown; they are listed below instead.',
+            'β版で公開しているのは脳と心臓です。いずれもモデル層・根拠資料・モデルカードを備え、'
+            + '実装の成熟度と医学レビューの状態を、別々の指標としてカードに表示しています。'
+            + '形や動きがまだ模式的なモデルは公開せず、下に一覧として載せています。'
+          )),
+        ]),
 
     el('section', { class: 'landing-section landing-models', 'aria-labelledby': 'landing-models-title' }, [
       el('div', { class: 'landing-section-head' }, [
@@ -129,6 +179,21 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
       ]),
       el('div', { class: 'landing-scene-grid' }, scenes.map(sceneCard)),
     ]),
+
+    locked.length
+      ? el('section', { class: 'landing-section landing-locked', 'aria-labelledby': 'landing-locked-title' }, [
+          el('div', { class: 'landing-section-head' }, [
+            el('div', {}, [
+              el('p', { class: 'landing-section-kicker' }, dual('IN DEVELOPMENT', '開発中')),
+              el('h2', { class: 'landing-section-title', id: 'landing-locked-title' }, dual(
+                `${locked.length} more models, to be updated`,
+                `準備中のモデル ${locked.length}件`
+              )),
+            ]),
+          ]),
+          el('ul', { class: 'landing-locked-list' }, locked.map(lockedRow)),
+        ])
+      : null,
 
     el('section', { class: 'landing-method', 'aria-labelledby': 'landing-method-title' }, [
       el('div', { class: 'landing-method-heading' }, [
@@ -146,7 +211,7 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
 
     el('section', { class: 'landing-closing' }, [
       el('div', {}, [
-        el('p', { class: 'landing-section-kicker' }, dual('FREE CORE MODELS', '基本モデルは無料')),
+        el('p', { class: 'landing-section-kicker' }, dual('FREE, NO SIGN-UP', '無料・登録不要')),
         el('h2', {}, dual('Open one. No account required.', '登録せず、そのまま開けます。')),
       ]),
       shellLink(EXPLORER_ROUTE, 'Open the model index', 'モデル一覧を開く', 'landing-button primary landing-cta'),
@@ -166,18 +231,18 @@ export function createLanding({ ui, accountButton = null, onRendererFailure = ()
         shellLink(TRUST_ROUTE, 'Model information', 'モデル情報', 'landing-footer-link'),
       ]),
     ]),
-  ]);
+  ].filter(Boolean));
 
   ui.append(skipLink(), flowField.element, element);
   languageToggle.init();
-  void circulationDemo.mount();
+  void organHero.mount();
   document.title = 'Medical 3D Lab — 解剖・病態生理の3Dモデル';
 
   return {
     element,
-    circulationDemo,
+    organHero,
     destroy() {
-      circulationDemo.destroy();
+      organHero.destroy();
       flowField.destroy();
       languageToggle.element.remove();
       element.remove();
