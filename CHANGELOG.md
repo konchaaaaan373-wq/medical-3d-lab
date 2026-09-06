@@ -14,30 +14,54 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
-### Beta: the organ models are open, the disease models are not
+### Every organ gets an anatomy model, at the accuracy the brain reached
 
-- **The beta ships the organ models.** Anatomy and normal motion — brain,
-  lungs, heart in the whole-body view, liver, kidneys, gut, glands, bone,
-  muscle — are open, free, with no account. Every model that puts numbers on a
-  disease answers "TO BE UPDATED / 準備中" instead. An organ model claims a
-  shape; a disease model claims a number, and a number waits for its model
-  layer, evidence dossier, model card and clinical review.
-- **A shared link to a locked model still works.** It reaches a page that names
-  the model, says the beta is holding it back and why, and points at the models
-  that are open. Nothing about those scenes was deleted, and the catalogue
-  still lists them — as cards that are deliberately not links.
-- **The landing page now opens on a real organ, and it changes.** The hero
-  builds one organ model live, starting with the brain, and rotates by the
-  calendar day through brain, heart, lungs, liver and kidneys. A visitor can
-  also pick one. It replaces the circulation hero, which is one of the models
-  the beta holds back.
+- **The design requirement is now written down and enforced.** Every organ in
+  the body gets an anatomy model, and the bar is the one `brain-anatomy` met:
+  the parts anatomy names, as separate closed meshes, addressable by name.
+  `src/catalog/anatomy.js` carries one row per organ with its level and the
+  test that holds that level up, and `tests/anatomy-ledger.test.js` fails if an
+  organ is ever added without one. `docs/grand-design.md` §4.5,
+  `docs/anatomy-specs.md` and `CLAUDE.md` state the requirement; none of them
+  restates the ledger, so the two cannot drift.
+- **This reverses the previous policy.** Organs used to be upgraded only when a
+  planned disease scene needed the structure, and the rest were frozen at a
+  silhouette — which produced four modelled organs and eighteen sketches. Pull
+  now decides the *order*, and how far past the bar to go; it no longer decides
+  whether an organ gets a real anatomy model at all.
+- **Legibility is an acceptance condition, not a finishing touch.** Dividing an
+  organ into named parts only counts when those boundaries can be told apart in
+  a real render, measured against the checklist in `docs/organ-3d-playbook.md`.
+  Accuracy nobody can see is not accuracy.
+- Where the work stands is a command, not a paragraph: five organs are at the
+  bar, sixteen are not, and each of the sixteen says in one line what taking it
+  there means.
+
+### Beta: the brain and the heart
+
+- **The beta opens the brain and the heart, and nothing schematic.** Five
+  models — the brain atlas, amyloid-β, heart failure, low cardiac output and
+  myocardial ischaemia — free, no account. Every other model in the catalogue
+  answers "TO BE UPDATED / 準備中". A model is opened once it has a model
+  layer, an evidence dossier and a model card behind it; a Prototype, whose
+  shape is an outline and whose motion is provisional by its own definition, is
+  listed but not opened.
+- **A shared link to a model that is not open still works.** It reaches a page
+  that names the model, says the beta is holding it back and why, and points at
+  the models that are open. Nothing was deleted, and the catalogue still lists
+  everything: the Explorer keeps each one under its organ as a card that is
+  deliberately not a link, and the landing page lists them as lines under the
+  models it can actually open.
+- **The landing page opens on a real organ, and it changes.** The hero builds
+  one live and alternates by the calendar day between the brain and the heart;
+  a visitor can also pick. It replaces the circulation hero.
 - **Development is unchanged.** `npm run dev` sees everything; a deployed build
   opens with `?preview=1` and closes again with `?preview=0`.
-  [`docs/beta-release.md`](docs/beta-release.md) has the whole rule.
-- Known gap: the organ models that are still `prototype` remain off the
-  crawlable surface, so sharing one on social media shows the site card rather
-  than a card for that model. Publishing Prototype work to a crawler is a claim
-  this project has decided not to make, and the beta did not overturn it.
+  `docs/beta-release.md` has the whole rule.
+- Known gap: models that are still Prototype stay off the crawlable surface, so
+  sharing one shows the site card rather than a card for that model.
+  Publishing Prototype work to a crawler is a claim this project decided not to
+  make, and a change to the public range is not the moment to overturn it.
 
 ### Two new respiratory models, and the Explorer rebuilt around organs
 

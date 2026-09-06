@@ -42,8 +42,8 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
   const titleJa = scene?.titleJa ?? (route.kind === 'lab' ? '実験モデル' : 'Medical 3D Lab');
 
   // Three open models to land on rather than one, so the page is a way in and
-  // not just a dead end. Anything released will do; the first three are the
-  // brain and the two organs beside it in catalogue order.
+  // not just a dead end. Anything released will do; the first three in
+  // catalogue order are the brain atlas and two of the heart models.
   const suggestions = RELEASED_SCENES.slice(0, 3);
 
   const element = el('main', { class: 'locked-surface', role: 'main' }, [
@@ -81,20 +81,20 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
         el('span', {
           class: 'lang-en',
           text:
-            'Medical 3D Lab is in beta. The organ models — anatomy and normal motion — are open now. '
-            + 'Models that put numbers on a disease stay closed until their model layer, evidence and '
-            + 'clinical review are finished, because a number is a claim and this one is not ready to make.',
+            'Medical 3D Lab is in beta. The brain and the heart are open; the rest of the catalogue '
+            + 'is still being finished. A model is opened once it has a model layer, an evidence '
+            + 'dossier and a model card behind it — not before, because everything on screen is a claim.',
         }),
         el('span', {
           class: 'lang-ja',
           text:
-            'Medical 3D Lab は現在β版です。解剖と正常な動きを見る臓器モデルは公開しています。'
-            + '病態に数値を与えるモデルは、モデル層・根拠・医学レビューが揃うまで公開しません。'
-            + '数値は主張であり、まだその準備ができていないためです。',
+            'Medical 3D Lab は現在β版です。公開しているのは脳と心臓のモデルで、'
+            + 'ほかは準備中です。モデル層・根拠資料・モデルカードが揃ってから公開します。'
+            + '画面に出るものはすべて主張だからです。',
         }),
       ]),
       el('div', { class: 'locked-actions' }, [
-        link(EXPLORER_ROUTE, 'Open the organ models', '臓器モデルを見る', 'locked-link primary'),
+        link(EXPLORER_ROUTE, 'Open the models that are ready', '公開中のモデルを見る', 'locked-link primary'),
         link(LANDING_ROUTE, 'Home', 'ホーム'),
       ]),
       suggestions.length

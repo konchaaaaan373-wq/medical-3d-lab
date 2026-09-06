@@ -38,8 +38,15 @@ npm run build      # vite build
 
 対象は心臓と脳だけではなく **人体全体** です。最終的に anatomy / physiology /
 pathology / disease progression / treatment mechanism を臓器横断的に扱います。
-ただし **anatomy atlas を作るのが目的ではありません**。中心はあくまで
-「疾患・病態を理解するための 3D visualization」です。
+中心はあくまで「疾患・病態を理解するための 3D visualization」で、
+**眺めるだけの anatomy atlas を作ること自体が目的ではありません**。
+ただしその土台として、**すべての臓器が解剖モデルを持ちます**——到達点は
+`brain-anatomy` と同じ A2 水準（名前で指せる部分に、閉じたメッシュとして
+分かれている）です。病態は解剖を指すので、指す先が無ければ何も主張できません。
+どの臓器がいまどこにいるかは [`src/catalog/anatomy.js`](src/catalog/anatomy.js)
+が持ち、`tests/anatomy-ledger.test.js` が抜けを検出します。方針は
+[`docs/grand-design.md`](docs/grand-design.md) §4.5、臓器ごとの仕様は
+[`docs/anatomy-specs.md`](docs/anatomy-specs.md)。
 
 設計判断の source of truth は
 [`docs/product-principles.md`](docs/product-principles.md) です。
@@ -51,7 +58,11 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 - **3D is a means, not the goal.** 2D の静止画より理解が明確に改善しないなら
   3D にしない。「回せると格好いい」は理由にならない
 - **Favor dynamic concepts.** 時間変化・因果・複数変数の連動があるものを選ぶ。
-  静的な解剖ビューアは作らない
+  ただし**解剖モデルは全臓器ぶん作ります**——これは土台であって、
+  「ただ回せるだけの臓器ビュー」を各論として量産することではありません
+- **Accuracy you cannot see is not accuracy.** 名前で指せる部分に分けたなら、
+  その境界が実レンダリングで見分けられるところまでが完了条件です
+  （[`docs/organ-3d-playbook.md`](docs/organ-3d-playbook.md) 末尾のチェックリスト）
 - **One medical source of truth.** 1 つの医学 state から 3D・数値・グラフ・
   ラベル・SNS・教材がすべて派生する。グラフ用に別の近似を書かない
 - **Never alter physiology for visual impact.** 見えにくいときに動かすのは
@@ -92,21 +103,21 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 `src/` に死んだコードとして残さないでください——git が版を持っており、
 `git log --follow <path>` で読めます。
 
-### いま公開しているのは臓器モデルだけ（β）
+### いま公開しているのは脳と心臓だけ（β）
 
-現在は **β 公開中**で、開いているのは**臓器モデル**（`scene.disease` が
-`null` のシーン — 解剖と正常な動き）だけです。病態モデルは実装も開発も
-続いていますが、ルートもカタログのカードも「TO BE UPDATED / 準備中」で
-止めています。判定は `src/catalog/release.js` の 1 か所だけが持ちます——
-**公開シーンの一覧をどこかに書き写さないでください。**
+現在は **β 公開中**で、開いているのは**脳と心臓の、prototype でないシーン**
+だけです（現在 5 件）。それ以外はルートもカタログのカードも
+「TO BE UPDATED / 準備中」で止めています。`prototype` は定義上
+「形は概略、動きは仮」なので公開しません。判定は `src/catalog/release.js` の
+1 か所だけが持ちます——**公開シーンの一覧をどこかに書き写さないでください。**
 
 開発は止まりません。`npm run dev` は無条件で全部見えますし、
 デプロイ済みビルドは `?preview=1` を 1 回開けばその端末でアンロックされます
 （`?preview=0` で解除）。詳細と β の終わらせ方は
 [`docs/beta-release.md`](docs/beta-release.md)。
 
-トップページの hero は臓器モデルを 1 つ実表示し、**日替わりで入れ替わります**
-（初日は脳）。順序と対応するシーンは `src/data/landingHero.js`。
+トップページの hero は臓器を 1 つ実表示し、**日替わりで入れ替わります**
+（初日は脳、翌日は心臓）。順序と対応するシーンは `src/data/landingHero.js`。
 
 ### Scene status
 

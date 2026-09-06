@@ -9,13 +9,25 @@
 /**
  * The order the landing lists models in.
  *
- * The organ models the beta opens come first, brain first, because they are
- * what a visitor arriving from a link can actually open. The disease models
- * follow, listed as "to be updated" rather than hidden: what is being built is
- * part of what the page is saying.
+ * The models the beta opens come first — the brain and the heart — because
+ * they are what a visitor arriving from a link can actually open. Everything
+ * else follows, listed as "to be updated" rather than hidden: what is being
+ * built is part of what the page is saying.
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
+  'heart-failure',
+  'circulation',
+  'myocardial-ischemia',
+  'amyloid-beta',
+  'renal-filtration',
+  'pulmonary-edema',
+  'pneumonia-consolidation',
+  'pulmonary-embolism',
+  'copd-hyperinflation',
+  'asthma-heterogeneity',
+  'portal-hypertension',
+  'hepatorenal-syndrome',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -30,18 +42,6 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'muscle-contraction',
   'uterine-cycle',
   'prostate-outflow',
-  'circulation',
-  'heart-failure',
-  'amyloid-beta',
-  'renal-filtration',
-  'pulmonary-edema',
-  'pneumonia-consolidation',
-  'pulmonary-embolism',
-  'myocardial-ischemia',
-  'copd-hyperinflation',
-  'asthma-heterogeneity',
-  'portal-hypertension',
-  'hepatorenal-syndrome',
 ]);
 
 const presentation = (question, questionJa, signals, signalsJa) =>

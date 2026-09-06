@@ -1155,10 +1155,9 @@ html[data-route='landing'] {
 }
 
 /* Beta release ------------------------------------------------------------
-   The organ models are open; the disease models are listed but not opened.
-   A locked card has to read as deliberate — not as a card that failed to
-   load — so it keeps the same shape and loses the accent, the lift and the
-   pointer. */
+   The brain and the heart are open; everything else is listed but not opened.
+   A locked model gets a line rather than a card: twenty-two dashed cards ahead
+   of five real ones reads as a broken page, not as a roadmap. */
 
 .landing-beta-note {
   position: relative;
@@ -1191,41 +1190,83 @@ html[data-route='landing'] {
   font-size: 12px;
 }
 
-.landing-scene-card.is-locked {
-  --scene-accent: rgba(176, 198, 229, 0.5);
-  cursor: default;
+.landing-locked-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 26px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--landing-line);
+}
+
+.landing-locked-row {
+  display: grid;
+  grid-template-columns: minmax(0, 8em) minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 14px;
+  min-height: 46px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--landing-line);
+}
+
+.landing-locked-system {
+  display: flex;
+  flex-direction: column;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.landing-locked-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   color: var(--ink-dim);
-  background: linear-gradient(150deg, rgba(10, 14, 22, 0.86), rgba(5, 8, 13, 0.9));
-  border-style: dashed;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
-.landing-scene-card.is-locked:hover {
-  transform: none;
-  border-color: rgba(176, 198, 229, 0.17);
-}
-
-.landing-scene-card.is-locked .landing-scene-name {
+.landing-locked-name .lang-ja {
   color: var(--ink-dim);
 }
 
-.landing-scene-locked-mark {
+.landing-locked-mark {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 1px;
   color: var(--landing-cargo);
-  font-size: 8.5px;
-  font-weight: 780;
-  letter-spacing: 0.1em;
+  font-size: 10px;
+  font-weight: 740;
+  letter-spacing: 0.05em;
   text-align: right;
   white-space: nowrap;
 }
 
+@media (max-width: 900px) {
+  .landing-locked-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .landing-locked-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .landing-locked-system {
+    grid-column: 1 / -1;
+    margin-bottom: 2px;
+  }
+}
+
 /* Organ hero -------------------------------------------------------------- */
 
-/* Five organs rather than three states, so the row is a row of five. */
+/* The organs the beta opens, rather than three model states. */
 .landing-demo-state-grid.is-organs {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
 }
 
 /* No metrics above it any more: the organ line is the whole read-out. */
@@ -1237,12 +1278,6 @@ html[data-route='landing'] {
 
 .landing-demo-case[hidden] {
   display: none;
-}
-
-@media (max-width: 900px) {
-  .landing-demo-state-grid.is-organs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (max-width: 560px) {

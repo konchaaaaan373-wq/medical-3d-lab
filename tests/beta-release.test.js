@@ -4,12 +4,12 @@ import { readFileSync } from 'node:fs';
 
 import { SCENES, sceneById } from '../src/catalog/index.js';
 import {
+  BETA_ORGANS,
   DEV_UNLOCK_PARAM,
   DEV_UNLOCK_STORAGE_KEY,
   LOCKED_SCENES,
   RELEASED_SCENES,
   RELEASE_CHANNEL,
-  isOrganModel,
   isRouteReleased,
   isSceneReleased,
   resolveDevUnlock,
@@ -20,8 +20,9 @@ import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-do
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('beta release: the catalogue is split by whether a model makes a claim about a disease', () => {
+test('beta release: only the beta organs, and nothing still schematic, is open', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
+  assert.deepEqual([...BETA_ORGANS], ['brain', 'heart']);
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -30,21 +31,42 @@ test('beta release: the catalogue is split by whether a model makes a claim abou
   );
 
   for (const scene of RELEASED_SCENES) {
-    assert.equal(scene.disease, null, `${scene.id} is open, so it must not be about a disease`);
-    assert.equal(isOrganModel(scene), true);
-  }
-  for (const scene of LOCKED_SCENES) {
-    assert.ok(scene.disease, `${scene.id} is locked, so it must be a disease model`);
+    assert.ok(BETA_ORGANS.includes(scene.organ), `${scene.id} is open but is not a beta organ`);
+    assert.notEqual(
+      scene.status,
+      'prototype',
+      `${scene.id} is open, and a Prototype's shape and motion are provisional by definition`
+    );
   }
 
-  // The models the beta is being spread with. Named so that opening one is a
-  // deliberate edit here rather than a side effect of adding a scene.
-  assert.equal(isSceneReleased(sceneById('brain-anatomy')), true);
-  assert.equal(isSceneReleased(sceneById('body-overview')), true);
-  assert.equal(isSceneReleased(sceneById('breathing-lungs')), true);
-  assert.equal(isSceneReleased(sceneById('heart-failure')), false);
-  assert.equal(isSceneReleased(sceneById('amyloid-beta')), false);
-  assert.equal(isSceneReleased(sceneById('circulation')), false);
+  // Nothing under the beta organs is left behind by accident: if it is locked
+  // and it is a brain or heart scene, the only reason may be its maturity.
+  for (const scene of LOCKED_SCENES) {
+    if (BETA_ORGANS.includes(scene.organ)) {
+      assert.equal(scene.status, 'prototype', `${scene.id} is a beta organ but is locked`);
+    }
+  }
+
+  // The models the beta is being spread with. Named so that opening or closing
+  // one is a deliberate edit here rather than a side effect of adding a scene.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), [
+    'brain-anatomy',
+    'amyloid-beta',
+    'heart-failure',
+    'circulation',
+    'myocardial-ischemia',
+  ]);
+
+  // The heart has no anatomy-grade scene, so opening the heart means opening
+  // models that put numbers on a disease. That is a deliberate part of this
+  // release, not an oversight — and each of them carries its own scope panel.
+  const heart = RELEASED_SCENES.filter((scene) => scene.organ === 'heart');
+  assert.ok(heart.length > 0);
+  assert.ok(heart.every((scene) => scene.disease));
+
+  for (const id of ['copd-hyperinflation', 'renal-filtration', 'breathing-lungs', 'body-overview']) {
+    assert.equal(isSceneReleased(sceneById(id)), false, id);
+  }
 });
 
 test('beta release: the product shell stays open and the experimental surface does not', () => {
@@ -58,11 +80,18 @@ test('beta release: the product shell stays open and the experimental surface do
   assert.equal(isRouteReleased(resolveRoute('#/experimental')), false);
 
   assert.equal(isRouteReleased(resolveRoute('#/brain-anatomy')), true);
-  assert.equal(isRouteReleased(resolveRoute('#/heart-failure')), false);
+  assert.equal(isRouteReleased(resolveRoute('#/heart-failure')), true);
+  assert.equal(isRouteReleased(resolveRoute('#/copd')), false);
+  assert.equal(isRouteReleased(resolveRoute('#/breathing-lungs')), false);
 
-  // An unknown slug resolves to the historic default scene, which is locked.
-  // It must land on "to be updated", not silently open a disease model.
-  assert.equal(isRouteReleased(resolveRoute('#/not-a-scene')), false);
+  // An unknown slug resolves to the historic default scene. That scene happens
+  // to be open, so a typo lands on a model rather than an apology — which is
+  // the historic behaviour and is fine. What must not happen is a typo opening
+  // something the release is holding back.
+  assert.equal(
+    isRouteReleased(resolveRoute('#/not-a-scene')),
+    isSceneReleased(sceneById(resolveRoute('#/not-a-scene').sceneId))
+  );
   assert.equal(isRouteReleased(null), false);
 });
 
@@ -106,13 +135,12 @@ test('beta release: a locked deep link still answers as a page', () => {
 
   try {
     const ui = new FakeElement('div');
-    const surface = createLockedSurface({ ui, route: resolveRoute('#/heart-failure') });
+    const surface = createLockedSurface({ ui, route: resolveRoute('#/copd') });
     const text = collect(surface.element).join(' ');
 
     assert.match(text, /TO BE UPDATED/);
     assert.match(text, /準備中/);
-    assert.match(text, /Heart failure/, 'the page says what the link pointed at');
-    assert.match(text, /心不全/);
+    assert.match(text, /COPD/, 'the page says what the link pointed at');
 
     // Every link it offers has to be a route the beta actually opens.
     const hrefs = links(surface.element);
@@ -165,7 +193,8 @@ test('beta release: the catalogue surfaces read the same gate rather than their 
   }
   // A locked model is not a link that apologises — it is not a link.
   assert.match(explorer, /el\('span', \{ class: 'explorer-scene is-locked' \}/);
-  assert.match(landing, /class: 'landing-scene-card is-locked'/);
+  assert.match(landing, /class: 'landing-locked-row'/);
+  assert.doesNotMatch(landing, /landing-scene-card is-locked/);
   assert.doesNotMatch(locked, /from ['"]three['"]|\/scenes\//);
   // The browser half reads the storage key and the parameter name from the
   // rule; a second spelling of either is how the unlock quietly stops working.

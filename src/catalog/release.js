@@ -1,5 +1,5 @@
 /**
- * What the current release actually opens to the public.
+ * What the current release actually opens.
  *
  * The catalogue says which scenes *exist*; this file says which of them are
  * finished enough to be handed to somebody who arrived from a social post.
@@ -7,16 +7,23 @@
  * keeps being developed — it is simply answered with "to be updated" instead of
  * being opened.
  *
- * ## Why the split is anatomy vs. disease
+ * ## Two organs, and nothing schematic
  *
- * An organ model answers "what does this look like, and how does it move".
- * Its claim is a shape. A disease model answers "what is going wrong, and by
- * how much" — it puts numbers on a screen, and those numbers are only worth
- * showing once the model layer, the evidence dossier, the model card and the
- * scope panel are all in place (see `docs/adding-a-scene.md`). The beta ships
- * the first kind and holds back the second. `scene.disease` is already the
- * catalogue's own name for that difference, so nothing new has to be kept in
- * sync: a scene declared with a disease is locked, one without is open.
+ * The beta opens the brain and the heart, and only at `alpha` or better.
+ *
+ * Those are the two organs this project has actually invested in, and the bar
+ * is the one the catalogue already enforces: a `prototype` is "形は概略、動きは
+ * 仮" by its own definition, so a beta made of prototypes would be handing a
+ * first-time visitor the least-finished half of the work while the models that
+ * have a model layer, an evidence dossier and a model card stayed hidden. Two
+ * finished organs say more about what this is than twenty sketches.
+ *
+ * Note what this is *not*: it is not "anatomy only". There is no anatomy-grade
+ * heart scene in the catalogue — every heart scene is about a disease — so
+ * opening the heart means opening heart failure, low cardiac output and
+ * myocardial ischaemia, numbers included. Those three carry their own scope
+ * panels and their review state is shown on every card and on `#/trust`, which
+ * is where a claim about a number is answered.
  *
  * ## This is a curtain, not a lock
  *
@@ -28,22 +35,41 @@
  */
 import { SCENES, sceneById } from './index.js';
 
-/** Bump to `'public'` — one line — when the disease models are ready to open. */
+/** Bump to `'public'` — one line — when the whole catalogue is ready to open. */
 export const RELEASE_CHANNEL = 'beta';
+
+/** The organs the beta is being spread with. */
+export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
+
+/**
+ * Maturity a scene needs before the beta will open it.
+ *
+ * `prototype` is excluded by name rather than by listing the three that are
+ * allowed, so that a status added later fails closed at the test rather than
+ * silently joining the release.
+ */
+export const BETA_EXCLUDED_STATUS = 'prototype';
 
 /**
  * An organ model: anatomy, or the normal motion of one organ. No disease, no
  * clinical read-out.
+ *
+ * Kept because the Explorer prints it on every card, and because it is the
+ * honest name for the difference between the two kinds of scene. It is no
+ * longer what decides the release — see above.
  *
  * @param {{disease?: string|null}|null} scene
  */
 export const isOrganModel = (scene) => Boolean(scene) && !scene.disease;
 
 /** Whether this scene is open in the current release channel. */
-export const isSceneReleased = (scene) =>
-  RELEASE_CHANNEL !== 'beta' ? Boolean(scene) : isOrganModel(scene);
+export const isSceneReleased = (scene) => {
+  if (!scene) return false;
+  if (RELEASE_CHANNEL !== 'beta') return true;
+  return BETA_ORGANS.includes(scene.organ) && scene.status !== BETA_EXCLUDED_STATUS;
+};
 
-/** The organ models the beta ships, in catalogue order. */
+/** The models the beta ships, in catalogue order. */
 export const RELEASED_SCENES = SCENES.filter(isSceneReleased);
 
 /** Declared, built, and deliberately not open yet. */
@@ -52,15 +78,15 @@ export const LOCKED_SCENES = SCENES.filter((scene) => !isSceneReleased(scene));
 /**
  * Product-shell routes that stay open.
  *
- * The landing page and the catalogue are how a visitor reaches an organ model
- * at all. The legal documents are open because a person may need them on a
- * device that cannot start WebGL, and `#/trust` because saying which models are
- * reviewed — and which are not — is more honest with the locked ones listed
- * than with the page hidden.
+ * The landing page and the catalogue are how a visitor reaches a model at all.
+ * The legal documents are open because a person may need them on a device that
+ * cannot start WebGL, and `#/trust` because saying which models are reviewed —
+ * and which are not — is more honest with the locked ones listed than with the
+ * page hidden.
  *
- * `lab` is not here: it is the experimental surface, and in the beta the
- * prototypes it used to hold are the public organ models. It stays reachable
- * to a developer through the unlock below.
+ * `lab` is not here: it is the experimental surface, and every scene on it is
+ * a prototype the beta is holding back. It stays reachable to a developer
+ * through the unlock below.
  */
 const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'trust', 'legal']);
 

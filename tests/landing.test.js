@@ -35,7 +35,7 @@ test('landing: every listed model has one curated question and stays reachable',
     ordered.map((scene) => scene.id),
     LANDING_MODEL_ORDER
   );
-  assert.equal(ordered[0].id, 'brain-anatomy', 'the beta leads with an organ model, not a disease model');
+  assert.equal(ordered[0].id, 'brain-anatomy', 'the beta leads with a model it actually opens');
 
   // The open models come first. A visitor who stops reading part way down has
   // still only seen models they can actually open.
@@ -209,10 +209,10 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   );
   assert.match(css, /\.landing-demo-state\.is-selected/);
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
-  assert.match(css, /\.landing-scene-card\.is-locked/);
+  assert.match(css, /\.landing-locked-row/);
 });
 
-test('landing: the plain-DOM route lists every model, opens the released ones and works the hero', () => {
+test('landing: the index shows the open models as cards and the rest as lines', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -221,19 +221,24 @@ test('landing: the plain-DOM route lists every model, opens the released ones an
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui });
     const cards = findByClass(mounted.element, 'landing-scene-card');
-    const locked = cards.filter((card) => card.classList.contains('is-locked'));
+    const lockedRows = findByClass(mounted.element, 'landing-locked-row');
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
 
-    assert.equal(cards.length, SCENES.length, 'the index lists what is coming as well as what is open');
-    assert.equal(locked.length, LOCKED_SCENES.length);
+    // Every card is an openable model, and every model is accounted for.
+    assert.equal(cards.length, RELEASED_SCENES.length);
+    assert.equal(lockedRows.length, LOCKED_SCENES.length);
+    assert.equal(cards.length + lockedRows.length, SCENES.length);
     assert.ok(RELEASED_SCENES.length > 0);
 
     for (const card of cards) {
-      const isLocked = card.classList.contains('is-locked');
-      // A locked card is not an anchor at all, so there is no click to disable.
-      assert.equal(card.tagName, isLocked ? 'DIV' : 'A', card.dataset.scene);
-      assert.equal(isLocked, !isSceneReleased(sceneById(card.dataset.scene)));
+      assert.equal(card.tagName, 'A', card.dataset.scene);
+      assert.equal(isSceneReleased(sceneById(card.dataset.scene)), true, card.dataset.scene);
+    }
+    // A locked model gets a line, and a line is not a link.
+    for (const row of lockedRows) {
+      assert.equal(row.tagName, 'LI', row.dataset.scene);
+      assert.equal(isSceneReleased(sceneById(row.dataset.scene)), false, row.dataset.scene);
     }
 
     assert.equal(viewports.length, 1);
@@ -272,10 +277,10 @@ test('landing hero: the open link and the day badge follow the organ on screen',
     assert.equal(badge.hidden, false, "the day's own organ is marked as such");
     assert.equal(link.getAttribute('href'), '#/brain-anatomy');
 
-    void hero.setOrgan('lungs');
-    assert.equal(hero.organ, 'lungs');
+    void hero.setOrgan('heart');
+    assert.equal(hero.organ, 'heart');
     assert.equal(badge.hidden, true, 'a hand-picked organ is not today’s model');
-    assert.equal(link.getAttribute('href'), '#/breathing-lungs');
+    assert.equal(link.getAttribute('href'), '#/heart-failure');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;

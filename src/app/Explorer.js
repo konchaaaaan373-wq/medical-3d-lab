@@ -47,11 +47,11 @@ import {
  */
 export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const isLab = scope === 'lab';
-  // During the beta the public catalogue is the *whole* catalogue: the organ
-  // models open, and the disease models listed as "to be updated" rather than
+  // During the beta the public catalogue is the *whole* catalogue: the models
+  // the release opens, and the rest listed as "to be updated" rather than
   // hidden. Hiding them would make the page shorter and the roadmap invisible,
-  // and a reader who arrives from a link about heart failure would find no
-  // trace of it. `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
+  // and a reader who arrives from a link about COPD would find no trace of it.
+  // `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
   const beta = !isLab && !betaUnlocked();
   const scopedScenes = isLab ? LAB_SCENES : beta ? SCENES : PUBLIC_SCENES;
   const lockedFor = (scene) => beta && !isSceneReleased(scene);
@@ -414,8 +414,8 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       ]
     : beta
       ? [
-          'Beta: the organ models are open — anatomy and normal motion, free, no account. The disease models are listed as "to be updated" until their model layer, evidence and clinical review are finished.',
-          'β版：解剖と正常な動きを見る臓器モデルを公開しています（無料・登録不要）。病態モデルは、モデル層・根拠・医学レビューが揃うまで「準備中」として一覧にのみ掲載します。',
+          'Beta: the brain and the heart are open — free, no account. Every other model is listed as "to be updated" and is not yet opened; the ones still marked Prototype are schematic in shape or motion and are deliberately not shown.',
+          'β版：脳と心臓のモデルを公開しています（無料・登録不要）。ほかのモデルは「準備中」として一覧にのみ掲載します。Prototype のモデルは形や動きがまだ模式的なため、意図的に公開していません。',
         ]
       : [
           'Explore anatomy and pathophysiology with model maturity and clinical-review status shown separately. Work in progress lives in the Lab.',
@@ -425,12 +425,12 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const productKey = beta
     ? el('div', { class: 'explorer-product-key is-beta' }, [
         el('span', { class: 'explorer-access-badge is-free' }, [
-          el('span', { class: 'lang-en', text: 'Beta — organ models open' }),
-          el('span', { class: 'lang-ja', text: 'β版 — 臓器モデル公開中' }),
+          el('span', { class: 'lang-en', text: 'Beta — brain and heart open' }),
+          el('span', { class: 'lang-ja', text: 'β版 — 脳と心臓を公開中' }),
         ]),
         bilingual(
-          'An organ model shows a shape and how it moves. A disease model puts numbers on a screen, and a number is a claim — so it stays closed until it can be backed.',
-          '臓器モデルが示すのは形と動きです。病態モデルは数値を出します。数値は主張なので、裏づけが揃うまで公開しません。',
+          'An open model has a model layer, an evidence dossier and a model card behind it. A model whose shape or motion is still schematic carries a Prototype badge and is not opened.',
+          '公開しているモデルは、モデル層・根拠資料・モデルカードを備えたものです。形や動きが模式的なモデルには Prototype バッジが付き、公開しません。',
           'explorer-product-note'
         ),
       ])
@@ -463,10 +463,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         ),
       ]);
 
-  // The three professional uses describe what the *disease* models are for, and
-  // during the beta every one of those is locked. Selling three uses of twelve
-  // models nobody can open is not information, it is noise.
-  const useLanes = isLab || beta
+  const useLanes = isLab
     ? null
     : el('section', { class: 'explorer-use-lanes', 'aria-label': 'Three product uses' }, [
         el('div', { class: 'explorer-use-lanes-heading' }, [
@@ -522,7 +519,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           text: isLab
             ? 'Lab is intentionally experimental. Prototype scenes may use stylised anatomy or placeholder motion and must not be read as reviewed medical models.'
             : beta
-              ? 'Educational conceptual models. Many organ models are still Prototype: the shape is an outline and the motion is provisional, so they carry a Prototype badge and make no claim of accuracy.'
+              ? 'Educational conceptual models. Model maturity and versioned clinical review are different trust signals and are shown separately on every open card. Prototype work — an outline shape and provisional motion — is listed but not opened.'
               : 'Educational conceptual models. Clinical-review attestation is shown separately from product/model maturity; Prototype work is kept in the Experimental Lab.',
         }),
         el('span', {
@@ -530,7 +527,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           text: isLab
             ? 'Labは意図的に実験段階です。Prototypeには簡略化された解剖や仮の動きが含まれ、レビュー済み医学モデルとして解釈しないでください。'
             : beta
-              ? '教育目的の概念モデルです。臓器モデルの多くはまだPrototypeで、形は概略・動きは仮です。Prototypeバッジを表示し、精度を主張しません。'
+              ? '教育目的の概念モデルです。モデルの成熟度と、版を固定した医学レビューは別のTrust指標として各カードに表示します。Prototype（形は概略・動きは仮）は一覧に載せますが公開しません。'
               : '教育目的の概念モデルです。医学レビューの状態はモデル成熟度とは別に表示し、PrototypeはExperimental Labに分離しています。',
         }),
       ]),

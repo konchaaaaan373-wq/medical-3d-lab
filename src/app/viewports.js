@@ -66,7 +66,7 @@ export const SURFACES = [
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },
   { id: 'commerce', route: '#/commerce', label: 'Commercial disclosure' },
   { id: 'support', route: '#/support', label: 'Support' },
-  { id: 'locked', route: '#/heart-failure', label: 'To be updated', locked: true },
+  { id: 'locked', route: '#/copd', label: 'To be updated', locked: true },
   { id: 'scene', route: '#/brain-anatomy', label: 'Scene', needsRenderer: true },
 ];
 

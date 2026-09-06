@@ -18,9 +18,15 @@
 /**
  * The rotation, brain first.
  *
- * `sceneId` is the organ model this hero opens. The heart has no anatomy scene
- * of its own yet — every heart scene in the catalogue is about a disease — so
- * it opens the whole-body view, which is built from this same heart builder.
+ * Two organs, because two organs are what the beta opens. `sceneId` is the
+ * model the hero opens; both are `alpha` or better and neither is a prototype,
+ * which `tests/landing.test.js` holds.
+ *
+ * The heart has no anatomy scene of its own — every heart scene in the
+ * catalogue is about a disease — so its hero opens heart failure, the model
+ * this project treats as its reference implementation. The shape in the frame
+ * is the shared heart builder either way, and the line below describes that
+ * shape rather than the disease behind the link.
  */
 export const HERO_ORGANS = Object.freeze([
   Object.freeze({
@@ -31,33 +37,16 @@ export const HERO_ORGANS = Object.freeze([
   }),
   Object.freeze({
     organ: 'heart',
-    sceneId: 'body-overview',
-    lineEn: 'The chambers and great vessels, in their place in the body.',
-    lineJa: '心房・心室と大血管を、体の中の位置関係のまま。',
-  }),
-  Object.freeze({
-    organ: 'lungs',
-    sceneId: 'breathing-lungs',
-    lineEn: 'Five lobes, two fissures, and the airway that reaches them.',
-    lineJa: '5つの肺葉と葉間裂、そこへ届く気道。',
-  }),
-  Object.freeze({
-    organ: 'liver',
-    sceneId: 'liver-portal-flow',
-    lineEn: 'The lobes, and the portal blood that crosses them.',
-    lineJa: '肝葉と、そこを通り抜ける門脈血。',
-  }),
-  Object.freeze({
-    organ: 'kidney',
-    sceneId: 'urinary-filtration',
-    lineEn: 'Cortex, medulla and pelvis — where the filtrate leaves.',
-    lineJa: '皮質・髄質・腎盂。濾過された尿が出ていく道筋。',
+    sceneId: 'heart-failure',
+    lineEn: 'The chambers and the great vessels leaving them.',
+    lineJa: '心房・心室と、そこから出ていく大血管。',
   }),
 ]);
 
 /**
  * Day zero of the rotation. Chosen as the beta release date so the first day
- * shows the brain, which is what the hero is being introduced with.
+ * shows the brain, which is what the hero is being introduced with. With two
+ * organs the hero alternates day by day.
  */
 export const HERO_ROTATION_EPOCH_UTC = Date.UTC(2026, 8, 6);
 
