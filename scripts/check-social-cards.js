@@ -23,7 +23,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { PUBLIC_SCENES } from '../src/catalog/index.js';
+import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { SYSTEMS } from '../src/catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../src/catalog/clinicalReview.js';
 import { CARD_HEIGHT, CARD_WIDTH, cardDigest, siteCardHtml, socialCardHtml } from './social-card.js';
@@ -66,8 +66,8 @@ export function socialCardProblems(dir = join('public', 'social')) {
   const recorded = manifest?.cards ?? {};
 
   const expected = [
-    ...PUBLIC_SCENES.map((scene) => ({ slug: scene.slug, html: (n) => htmlForScene(scene, n) })),
-    { slug: SITE_CARD, html: () => siteCardHtml({ sceneCount: PUBLIC_SCENES.length }) },
+    ...CRAWLABLE_SCENES.map((scene) => ({ slug: scene.slug, html: (n) => htmlForScene(scene, n) })),
+    { slug: SITE_CARD, html: () => siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length }) },
   ];
 
   for (const { slug, html } of expected) {
@@ -112,7 +112,7 @@ export function pngSize(buffer) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const problems = socialCardProblems(process.argv[2]);
-  console.log(`Link-preview cards — ${PUBLIC_SCENES.length + 1} expected at ${CARD_WIDTH}x${CARD_HEIGHT}`);
+  console.log(`Link-preview cards — ${CRAWLABLE_SCENES.length + 1} expected at ${CARD_WIDTH}x${CARD_HEIGHT}`);
   if (problems.length) {
     console.error(`\n${problems.length} problem(s):`);
     for (const problem of problems) console.error(`  - ${problem}`);

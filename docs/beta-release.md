@@ -98,17 +98,21 @@ Landing・Explorer・ルーターは同じ答えを見ます。
 
 ---
 
-## 4. 既知のギャップ
+## 4. クロール面とカード
 
-**prototype の臓器モデルは crawlable ではありません。**
-`scripts/check-site-output.js` が「Prototype work must not be published to the
-crawlable surface」を強制しており、prerender・sitemap・link-preview カード
-（`public/social/`）はいずれも `PUBLIC_SCENES` を対象にしています。
-つまり `#/breathing-lungs` を SNS に貼っても、専用の OGP カードではなく
-サイト共通カードが出ます。
+**クロール可能なページとリンクプレビューのカードは「公開中 かつ prototype でない」
+シーンだけ**です（`CRAWLABLE_SCENES`）。理由は 2 つあり、どちらか片方だけで
+集合を作ると、もう片方のチャンネルでバグになります。
 
-これは意図的に**変更していません**——prototype をクローラに出すのは
-「するつもりのない主張をする」ことだ、という既存の判断
-（[`discoverability.md`](discoverability.md)）を、公開範囲の変更のついでに
-覆すべきではないためです。SNS の入口として個別カードが必要になったら、
-それは「その臓器モデルを `alpha` に上げる」という別の判断です。
+- **公開していない** — 静的ページが「対話モデルを開く」と誘っておいて
+  「準備中」を返すのは、サイトが守れない約束です
+- **prototype** — 形も動きも仮なので、検索結果はその但し書きが最も剥がれる場所です
+
+`RELEASED_SCENES` だけで作ると、**β を終わらせた瞬間に prototype 14 件が
+クロール面に出ます**（`isSceneReleased` はチャンネルが変わると全 true）。
+`PUBLIC_SCENES` だけで作るのは β 前の状態で、開けない 9 件を宣伝していました。
+
+いま出ているのは 5 ページ ＋ カード 6 枚（サイトカード込み）です。
+**公開範囲を広げたら `npm run cards` を実行してください**——
+`npm run cards:check` はそれまで落ちます。サイトカードの「公開モデル N 件」も
+この集合から数えるので、実行しないと数が古いままになります。

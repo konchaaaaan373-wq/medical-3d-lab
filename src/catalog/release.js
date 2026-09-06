@@ -76,6 +76,27 @@ export const RELEASED_SCENES = SCENES.filter(isSceneReleased);
 export const LOCKED_SCENES = SCENES.filter((scene) => !isSceneReleased(scene));
 
 /**
+ * What a crawler is allowed to see: a scene has to be **both** open and public.
+ *
+ * Two independent reasons to withhold a page, and a set that satisfies only one
+ * of them is a bug in whichever channel it is not checked in:
+ *
+ * - **Not open** — a static page inviting a reader to "open the interactive
+ *   model" that then answers "to be updated" is a promise the site cannot keep.
+ * - **Prototype** — its shape and motion are provisional by definition, and a
+ *   search result is exactly where that caveat gets stripped off.
+ *
+ * Taking `RELEASED_SCENES` alone was wrong and would not have shown until the
+ * beta ended: `isSceneReleased` returns true for everything once the channel
+ * changes, so the day this opens is the day fourteen prototypes are published
+ * to the crawlable surface. Taking `PUBLIC_SCENES` alone was the state before
+ * the beta, and it published nine models nobody could open.
+ */
+export const CRAWLABLE_SCENES = SCENES.filter(
+  (scene) => isSceneReleased(scene) && scene.status !== BETA_EXCLUDED_STATUS
+);
+
+/**
  * Product-shell routes that stay open.
  *
  * The landing page and the catalogue are how a visitor reaches a model at all.

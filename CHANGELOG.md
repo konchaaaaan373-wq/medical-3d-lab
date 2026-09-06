@@ -76,10 +76,12 @@ person: Safari, Firefox, touch and a screen reader.
 - **Development is unchanged.** `npm run dev` sees everything; a deployed build
   opens with `?preview=1` and closes again with `?preview=0`.
   `docs/beta-release.md` has the whole rule.
-- Known gap: models that are still Prototype stay off the crawlable surface, so
-  sharing one shows the site card rather than a card for that model.
-  Publishing Prototype work to a crawler is a claim this project decided not to
-  make, and a change to the public range is not the moment to overturn it.
+- The crawlable surface and the link-preview cards are the models that are
+  **both** open and public: five pages and six cards. A page that invites a
+  reader to open a model the release has not opened is a promise the site
+  cannot keep, and a Prototype in a search result is a caveat stripped off.
+  The site card counts what is open — five — rather than what is in the
+  catalogue.
 
 ### Two new respiratory models, and the Explorer rebuilt around organs
 

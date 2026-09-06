@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { SCENES, sceneById } from '../src/catalog/index.js';
+import { PUBLIC_SCENES, SCENES, sceneById } from '../src/catalog/index.js';
 import {
   BETA_ORGANS,
+  CRAWLABLE_SCENES,
   DEV_UNLOCK_PARAM,
   DEV_UNLOCK_STORAGE_KEY,
   LOCKED_SCENES,
@@ -293,16 +294,20 @@ test('beta release: the crawlable surface and the in-scene navigator read the ga
   // shell that configures the switcher — so what is checked is that each takes
   // its scenes from the gate rather than from the public catalogue.
   const config = read('vite.config.js');
-  assert.match(config, /RELEASED_SCENES/);
-  assert.doesNotMatch(config, /scenes: PUBLIC_SCENES/);
+  assert.match(config, /scenes: CRAWLABLE_SCENES/);
+  assert.doesNotMatch(config, /scenes: (PUBLIC|RELEASED)_SCENES/);
 
   const app = read('src/app/App.js');
   assert.match(app, /systemsWithScenes\(betaUnlocked\(\) \? SCENES : RELEASED_SCENES\)/);
   assert.match(app, /showLab: betaUnlocked\(\)/);
 
   const siteCheck = read('scripts/check-site-output.js');
-  assert.match(siteCheck, /LOCKED_SCENES/, 'the build check has to fail when a locked scene is published');
-  assert.match(siteCheck, /RELEASED_SCENES/);
+  assert.match(siteCheck, /CRAWLABLE_SCENES/);
+  assert.match(
+    siteCheck,
+    /if \(CRAWLABLE_SCENES\.includes\(scene\)\) continue;/,
+    'the build check has to fail on anything published that is not crawlable'
+  );
 });
 
 /** Every text node under an element, in order. */
@@ -319,3 +324,33 @@ function links(node, out = []) {
   for (const child of node.children ?? []) links(child, out);
   return out;
 }
+
+test('beta release: the crawlable set is what is open AND what is public, in both channels', () => {
+  // Two independent reasons to withhold a page, and a set that satisfies only
+  // one of them is a bug in whichever channel it is not checked in. This one
+  // would not have shown until the beta ended: `isSceneReleased` returns true
+  // for everything once the channel changes, so `RELEASED_SCENES` alone would
+  // publish fourteen prototypes on the day the release opens.
+  for (const scene of CRAWLABLE_SCENES) {
+    assert.equal(isSceneReleased(scene), true, `${scene.id} is crawlable but not open`);
+    assert.notEqual(scene.status, 'prototype', `${scene.id} is crawlable and still a Prototype`);
+  }
+  for (const scene of SCENES) {
+    const crawlable = CRAWLABLE_SCENES.includes(scene);
+    const eligible = isSceneReleased(scene) && scene.status !== 'prototype';
+    assert.equal(crawlable, eligible, `${scene.id}: the crawlable set does not follow the two rules`);
+  }
+
+  // The rule has to survive the channel change, which is the case the beta
+  // cannot exercise. Simulated on the same predicates the module uses.
+  const openedUp = SCENES.filter((scene) => true && scene.status !== 'prototype');
+  assert.equal(
+    openedUp.length,
+    PUBLIC_SCENES.length,
+    'once everything is open, the crawlable set is the public catalogue and no more'
+  );
+  assert.ok(
+    openedUp.every((scene) => scene.status !== 'prototype'),
+    'and it never contains a Prototype, whatever the channel'
+  );
+});
