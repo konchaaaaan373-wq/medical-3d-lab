@@ -87,8 +87,9 @@ export const ORGAN_ANATOMY = Object.freeze([
   {
     organ: 'kidney',
     level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — both hila face the midline, the medulla stays inside the cortex, every filtration path reaches the collecting system',
-    next: 'A2: cortex, medulla, pyramids, columns and the pelvis as named parts, with the nephron builder attached where it belongs',
+    evidence: 'tests/organ-anatomy.test.js — both hila face the midline, the medulla stays inside the cortex, every filtration path reaches the collecting system; tests/kidney-anatomy.test.js holds the lobar division that is being built towards A2',
+    next:
+      'A2 is close but not reached. `buildKidney({ parts: true })` divides the parenchyma into seven renal lobes — a cortical cap and a medullary pyramid each — plus the hilar lips, and places a nephron across the three scales (glomerulus in the cortex, loop in the medulla). What is not there yet is the render: the cut faces only stop zigzagging at detail 40, the papillae converge to a point instead of into their calyces, and the renal columns are not cut out at all. A level is not raised on geometry that does not survive being looked at.',
   },
   {
     organ: 'thyroid',
