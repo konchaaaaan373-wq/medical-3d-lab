@@ -48,7 +48,14 @@ export const VIEWPORTS = [
  * `needsRenderer` marks the one that builds a WebGL scene. It is checked too —
  * a scene's overlay chrome has the same obligations as a document — but a
  * failure there has to be told apart from the renderer simply being
- * unavailable in a headless browser.
+ * unavailable in a headless browser. It has to name a scene the current
+ * release actually opens, or the run measures the "to be updated" page while
+ * reporting that it measured a scene.
+ *
+ * `locked` marks a scene route the release is holding back. It renders a plain
+ * reading page rather than a scene, and it is checked because a person who
+ * followed a shared link lands on it — an apology that scrolls sideways at
+ * 320 px is still a broken page.
  */
 export const SURFACES = [
   { id: 'landing', route: '#/', label: 'Landing' },
@@ -59,7 +66,8 @@ export const SURFACES = [
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },
   { id: 'commerce', route: '#/commerce', label: 'Commercial disclosure' },
   { id: 'support', route: '#/support', label: 'Support' },
-  { id: 'scene', route: '#/renal-filtration', label: 'Scene', needsRenderer: true },
+  { id: 'locked', route: '#/heart-failure', label: 'To be updated', locked: true },
+  { id: 'scene', route: '#/brain-anatomy', label: 'Scene', needsRenderer: true },
 ];
 
 /**

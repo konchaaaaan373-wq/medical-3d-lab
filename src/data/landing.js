@@ -6,10 +6,32 @@
  * each scene's model card/evidence dossier owns the claims behind the words.
  */
 
+/**
+ * The order the landing lists models in.
+ *
+ * The organ models the beta opens come first, brain first, because they are
+ * what a visitor arriving from a link can actually open. The disease models
+ * follow, listed as "to be updated" rather than hidden: what is being built is
+ * part of what the page is saying.
+ */
 export const LANDING_MODEL_ORDER = Object.freeze([
+  'brain-anatomy',
+  'breathing-lungs',
+  'body-overview',
+  'liver-portal-flow',
+  'urinary-filtration',
+  'upper-gi-peristalsis',
+  'intestinal-transit',
+  'pancreatic-secretion',
+  'thyroid-hormone',
+  'adrenal-response',
+  'spleen-filtration',
+  'bone-remodeling',
+  'muscle-contraction',
+  'uterine-cycle',
+  'prostate-outflow',
   'circulation',
   'heart-failure',
-  'brain-anatomy',
   'amyloid-beta',
   'renal-filtration',
   'pulmonary-edema',
@@ -32,6 +54,90 @@ const presentation = (question, questionJa, signals, signalsJa) =>
 
 
 export const LANDING_MODEL_PRESENTATION = Object.freeze({
+  'body-overview': presentation(
+    'See where every organ model sits relative to the others.',
+    '各臓器モデルが体のどこにあるかを一望。',
+    ['ORIENTATION', 'ORGANS', 'SCALE'],
+    ['位置関係', '臓器', 'スケール']
+  ),
+  'breathing-lungs': presentation(
+    'Trachea, main bronchi and both lungs through one breathing cycle.',
+    '気管・主気管支・両肺の、1呼吸ぶんの動き。',
+    ['AIRWAY', 'LOBES', 'CYCLE'],
+    ['気道', '肺葉', '呼吸周期']
+  ),
+  'upper-gi-peristalsis': presentation(
+    'Follow one constriction wave down the esophagus and around the stomach.',
+    '食道を下り、胃体部を回る収縮波を追う。',
+    ['SWALLOW', 'WAVE', 'STOMACH'],
+    ['嚥下', '収縮波', '胃']
+  ),
+  'intestinal-transit': presentation(
+    'Segmentation giving way to propulsive peristalsis along the bowel.',
+    '分節運動から推進性蠕動へ移る腸管の動き。',
+    ['SEGMENTATION', 'PROPULSION', 'TRANSIT'],
+    ['分節運動', '推進', '輸送']
+  ),
+  'liver-portal-flow': presentation(
+    'Portal inflow crossing the lobes, and the gallbladder emptying.',
+    '肝葉を通る門脈血流と、胆嚢の収縮。',
+    ['PORTAL', 'LOBES', 'BILE'],
+    ['門脈', '肝葉', '胆汁']
+  ),
+  'pancreatic-secretion': presentation(
+    'One gland, two outputs: enzymes to the duct, insulin to the blood.',
+    '1つの腺がもつ2つの分泌 — 膵管へ、血中へ。',
+    ['EXOCRINE', 'ENDOCRINE', 'DUCT'],
+    ['外分泌', '内分泌', '膵管']
+  ),
+  'urinary-filtration': presentation(
+    'Filtrate leaving the kidneys, down the ureters, into the bladder.',
+    '腎から尿管を下り、膀胱へ至る流れ。',
+    ['KIDNEY', 'URETER', 'BLADDER'],
+    ['腎', '尿管', '膀胱']
+  ),
+  'thyroid-hormone': presentation(
+    'Follicles releasing hormone into the capillaries around them.',
+    '濾胞から周囲の毛細血管へ放出されるホルモン。',
+    ['FOLLICLE', 'RELEASE', 'CAPILLARY'],
+    ['濾胞', '放出', '毛細血管']
+  ),
+  'adrenal-response': presentation(
+    'Cortex and medulla: two layers with two release time-courses.',
+    '皮質と髄質 — 2つの層、2つの時間経過。',
+    ['CORTEX', 'MEDULLA', 'TIME COURSE'],
+    ['皮質', '髄質', '時間経過']
+  ),
+  'spleen-filtration': presentation(
+    'Red cells crossing the red pulp; the aged ones stay behind.',
+    '赤脾髄を通る赤血球と、そこで捕捉される老化赤血球。',
+    ['RED PULP', 'TRANSIT', 'RETENTION'],
+    ['赤脾髄', '通過', '捕捉']
+  ),
+  'bone-remodeling': presentation(
+    'Resorption, reversal, formation — at staggered sites, over time.',
+    '吸収・反転期・形成が、部位ごとにずれて進む。',
+    ['RESORPTION', 'REVERSAL', 'FORMATION'],
+    ['吸収', '反転期', '形成']
+  ),
+  'muscle-contraction': presentation(
+    'A muscle belly shortening and thickening between its tendons.',
+    '腱の間で短縮し、太くなる筋腹。',
+    ['RECRUITMENT', 'SHORTENING', 'TENDON'],
+    ['動員', '短縮', '腱']
+  ),
+  'uterine-cycle': presentation(
+    'Endometrial thickness across one cycle, in section.',
+    '1周期を通じた子宮内膜の厚さを、断面で。',
+    ['CYCLE', 'ENDOMETRIUM', 'SECTION'],
+    ['周期', '内膜', '断面']
+  ),
+  'prostate-outflow': presentation(
+    'Prostatic volume against the calibre of the urethra running through it.',
+    '前立腺の体積と、その中を通る尿道の内径。',
+    ['VOLUME', 'URETHRA', 'CALIBRE'],
+    ['体積', '尿道', '内径']
+  ),
   circulation: presentation(
     'Compare MAP, cardiac output and global DO₂ across baseline, fluid response and dobutamine.',
     'MAP・心拍出量・全身DO₂を、基準／輸液反応／ドブタミン（DOB）で比較。',
@@ -135,10 +241,16 @@ export function orderLandingScenes(scenes) {
   });
 }
 
-/** The landing cannot silently lose a public model or show an empty question. */
+/**
+ * The landing cannot silently lose a model or show an empty question.
+ *
+ * Pass the set the landing actually renders — during the beta that is the whole
+ * catalogue, because the locked models are listed as "to be updated" rather
+ * than dropped.
+ */
 export function validateLandingPresentation(scenes) {
   const problems = [];
-  const publicIds = new Set(scenes.map((scene) => scene.id));
+  const listedIds = new Set(scenes.map((scene) => scene.id));
   const orderedIds = new Set(LANDING_MODEL_ORDER);
 
   for (const scene of scenes) {
@@ -155,7 +267,7 @@ export function validateLandingPresentation(scenes) {
   }
 
   for (const id of LANDING_MODEL_ORDER) {
-    if (!publicIds.has(id)) problems.push(`${id}: ordered on the landing but not public`);
+    if (!listedIds.has(id)) problems.push(`${id}: ordered on the landing but not in the catalogue`);
   }
   if (orderedIds.size !== LANDING_MODEL_ORDER.length) problems.push('LANDING_MODEL_ORDER contains a duplicate');
   return problems;

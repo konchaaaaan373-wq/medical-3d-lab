@@ -14,6 +14,31 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Beta: the organ models are open, the disease models are not
+
+- **The beta ships the organ models.** Anatomy and normal motion — brain,
+  lungs, heart in the whole-body view, liver, kidneys, gut, glands, bone,
+  muscle — are open, free, with no account. Every model that puts numbers on a
+  disease answers "TO BE UPDATED / 準備中" instead. An organ model claims a
+  shape; a disease model claims a number, and a number waits for its model
+  layer, evidence dossier, model card and clinical review.
+- **A shared link to a locked model still works.** It reaches a page that names
+  the model, says the beta is holding it back and why, and points at the models
+  that are open. Nothing about those scenes was deleted, and the catalogue
+  still lists them — as cards that are deliberately not links.
+- **The landing page now opens on a real organ, and it changes.** The hero
+  builds one organ model live, starting with the brain, and rotates by the
+  calendar day through brain, heart, lungs, liver and kidneys. A visitor can
+  also pick one. It replaces the circulation hero, which is one of the models
+  the beta holds back.
+- **Development is unchanged.** `npm run dev` sees everything; a deployed build
+  opens with `?preview=1` and closes again with `?preview=0`.
+  [`docs/beta-release.md`](docs/beta-release.md) has the whole rule.
+- Known gap: the organ models that are still `prototype` remain off the
+  crawlable surface, so sharing one on social media shows the site card rather
+  than a card for that model. Publishing Prototype work to a crawler is a claim
+  this project has decided not to make, and the beta did not overturn it.
+
 ### Two new respiratory models, and the Explorer rebuilt around organs
 
 - **Pneumonia** (`#/pneumonia`, `alpha`, clinical review pending). Twelve

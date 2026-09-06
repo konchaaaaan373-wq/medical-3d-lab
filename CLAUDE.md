@@ -92,6 +92,22 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 `src/` に死んだコードとして残さないでください——git が版を持っており、
 `git log --follow <path>` で読めます。
 
+### いま公開しているのは臓器モデルだけ（β）
+
+現在は **β 公開中**で、開いているのは**臓器モデル**（`scene.disease` が
+`null` のシーン — 解剖と正常な動き）だけです。病態モデルは実装も開発も
+続いていますが、ルートもカタログのカードも「TO BE UPDATED / 準備中」で
+止めています。判定は `src/catalog/release.js` の 1 か所だけが持ちます——
+**公開シーンの一覧をどこかに書き写さないでください。**
+
+開発は止まりません。`npm run dev` は無条件で全部見えますし、
+デプロイ済みビルドは `?preview=1` を 1 回開けばその端末でアンロックされます
+（`?preview=0` で解除）。詳細と β の終わらせ方は
+[`docs/beta-release.md`](docs/beta-release.md)。
+
+トップページの hero は臓器モデルを 1 つ実表示し、**日替わりで入れ替わります**
+（初日は脳）。順序と対応するシーンは `src/data/landingHero.js`。
+
 ### Scene status
 
 カタログの各シーンは `prototype → alpha → reviewed → production` のどれかです。

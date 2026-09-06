@@ -32,6 +32,7 @@ Last updated: 2026-09-05（現在地の数値は §3 参照）
 | 各モデルの主張の根拠（Claim → Source → …） | [`model-evidence/`](model-evidence/) |
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
 | モデルカードの改訂とレビューの陳腐化検知 | [`model-cards/README.md`](model-cards/README.md) |
+| **いま何が公開されていて、何がロックされているか** | [`beta-release.md`](beta-release.md) |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | リリース手順・ロールバック・障害対応 | [`release-runbook.md`](release-runbook.md) |
 | 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |

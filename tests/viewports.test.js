@@ -18,7 +18,8 @@ import {
 import { DEVICE_CLASS_IDS, PHONE_MAX_WIDTH } from '../src/app/performanceBudget.js';
 import { TOUCH_TARGET } from '../src/styles/palette.js';
 import { namesScene, resolveRoute } from '../src/app/router.js';
-import { RESERVED_ROUTE_SLUGS } from '../src/catalog/index.js';
+import { RESERVED_ROUTE_SLUGS, sceneById } from '../src/catalog/index.js';
+import { isSceneReleased } from '../src/catalog/release.js';
 
 // --- the matrix itself -----------------------------------------------------
 
@@ -90,15 +91,36 @@ test('surfaces: every checked route is a route this product actually has', () =>
       // pass for a typo.
       assert.equal(route.kind, 'scene', `"${surface.route}" is not a scene route`);
       assert.ok(namesScene(surface.route), `"${surface.route}" names no scene in the catalogue`);
+    } else if (surface.locked) {
+      // A locked model's route is a scene route that answers with a reading
+      // page. It has to still name a real scene, or the page it renders would
+      // be apologising for something that does not exist.
+      assert.equal(route.kind, 'scene', `"${surface.route}" is not a scene route`);
+      assert.ok(namesScene(surface.route), `"${surface.route}" names no scene in the catalogue`);
+      assert.equal(
+        isSceneReleased(sceneById(route.sceneId)),
+        false,
+        `"${surface.route}" is open, so it is not the locked surface`
+      );
     } else {
       assert.notEqual(route.kind, 'scene', `"${surface.route}" fell through to a scene`);
     }
   }
 });
 
+test('surfaces: the scene measured with a renderer is one the release actually opens', () => {
+  const scene = SURFACES.find((surface) => surface.needsRenderer);
+  assert.ok(scene, 'one surface has to build a real scene');
+  assert.equal(
+    isSceneReleased(sceneById(resolveRoute(scene.route).sceneId)),
+    true,
+    'a locked route renders a reading page, so this run would measure the wrong thing'
+  );
+});
+
 test('surfaces: the shell routes checked here are the shell routes the catalogue reserves', () => {
-  const checked = SURFACES.filter((surface) => !surface.needsRenderer).map((surface) =>
-    surface.route.replace(/^#\/?/, ''),
+  const checked = SURFACES.filter((surface) => !surface.needsRenderer && !surface.locked).map(
+    (surface) => surface.route.replace(/^#\/?/, ''),
   );
   for (const slug of checked) {
     if (slug === '') continue; // the landing page has no slug to reserve

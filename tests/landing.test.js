@@ -1,72 +1,89 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { Vector3 } from 'three';
+import * as THREE from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
-import {
-  circulationDemoSnapshot,
-  createLandingCirculationDemo,
-} from '../src/app/landingCirculationDemo.js';
-import { mountLandingCirculationViewport } from '../src/app/landingCirculationViewport.js';
+import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
+import { mountLandingOrganViewport } from '../src/app/landingOrganViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
   createLandingFlowField,
   landingFlowConfig,
 } from '../src/app/landingFlowField.js';
-import { PUBLIC_SCENES } from '../src/catalog/index.js';
+import { SCENES, organById, sceneById } from '../src/catalog/index.js';
+import { LOCKED_SCENES, RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
+import { hasOrganModel } from '../src/app/organModels.js';
 import { createLanguageToggle } from '../src/components/LanguageToggle.js';
 import {
   LANDING_MODEL_ORDER,
   orderLandingScenes,
   validateLandingPresentation,
 } from '../src/data/landing.js';
-import { CIRCULATION_INTERVENTIONS, solveCirculation } from '../src/models/circulation.js';
+import { HERO_ORGANS, featuredHeroOrgan, heroRotationDay } from '../src/data/landingHero.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('landing: every public model has one curated question and stays reachable', () => {
-  assert.deepEqual(validateLandingPresentation(PUBLIC_SCENES), []);
+test('landing: every listed model has one curated question and stays reachable', () => {
+  assert.deepEqual(validateLandingPresentation(SCENES), []);
 
-  const ordered = orderLandingScenes(PUBLIC_SCENES);
-  assert.equal(ordered.length, PUBLIC_SCENES.length);
-  assert.equal(new Set(ordered.map((scene) => scene.id)).size, PUBLIC_SCENES.length);
+  const ordered = orderLandingScenes(SCENES);
+  assert.equal(ordered.length, SCENES.length);
+  assert.equal(new Set(ordered.map((scene) => scene.id)).size, SCENES.length);
   assert.deepEqual(
     ordered.map((scene) => scene.id),
     LANDING_MODEL_ORDER
   );
-  assert.equal(ordered[0].id, 'circulation', 'the working hero model also leads the model index');
+  assert.equal(ordered[0].id, 'brain-anatomy', 'the beta leads with an organ model, not a disease model');
+
+  // The open models come first. A visitor who stops reading part way down has
+  // still only seen models they can actually open.
+  const firstLocked = ordered.findIndex((scene) => !isSceneReleased(scene));
+  const lastOpen = ordered.reduce((last, scene, index) => (isSceneReleased(scene) ? index : last), -1);
+  assert.ok(firstLocked > lastOpen, 'released models must not be interleaved with locked ones');
 });
 
-test('landing: circulation read-outs are rounded views of the one model solve', () => {
-  for (const intervention of Object.values(CIRCULATION_INTERVENTIONS)) {
-    const solved = solveCirculation({ intervention });
-    const preview = circulationDemoSnapshot(intervention);
-    const metrics = Object.fromEntries(preview.metrics.map((metric) => [metric.id, metric]));
+test('landing hero: the featured organ is a pure function of the date, and starts on the brain', () => {
+  const day = (offset) => new Date(Date.UTC(2026, 8, 6 + offset));
 
-    assert.equal(metrics.map.value, Math.round(solved.meanArterialPressureMmHg));
-    assert.equal(Number(metrics.co.value), Number(solved.cardiacOutputLMin.toFixed(1)));
-    assert.equal(metrics.do2.value, Math.round(solved.oxygenDeliveryMlMin / 10) * 10);
-    assert.match(preview.badge.en, new RegExp(`MAP ${metrics.map.value}$`));
-    assert.match(preview.badge.ja, new RegExp(`MAP ${metrics.map.value}$`));
-    assert.match(preview.explanation.en, /MAP|CO|SVR/);
-    assert.match(preview.explanation.ja, /MAP|CO|SVR/);
+  assert.equal(heroRotationDay(day(0)), 0);
+  assert.equal(featuredHeroOrgan(day(0)).organ, 'brain', 'the rotation opens on the brain');
+
+  // Same date, same organ — twice, and from a different clock time on that day.
+  assert.equal(
+    featuredHeroOrgan(new Date(Date.UTC(2026, 8, 8, 3, 14))).organ,
+    featuredHeroOrgan(new Date(Date.UTC(2026, 8, 8, 21, 47))).organ
+  );
+
+  // One full turn covers every organ exactly once, then repeats.
+  const cycle = HERO_ORGANS.map((_, offset) => featuredHeroOrgan(day(offset)).organ);
+  assert.deepEqual(new Set(cycle).size, HERO_ORGANS.length);
+  assert.equal(featuredHeroOrgan(day(HERO_ORGANS.length)).organ, cycle[0]);
+
+  // A clock set before the epoch still lands on a real organ rather than
+  // indexing off the front of the rotation.
+  assert.ok(featuredHeroOrgan(day(-3))?.organ);
+});
+
+test('landing hero: every rotation entry is a real organ that opens a released model', () => {
+  assert.equal(HERO_ORGANS[0].organ, 'brain');
+  for (const entry of HERO_ORGANS) {
+    assert.ok(organById(entry.organ), `${entry.organ} is not an organ in the taxonomy`);
+    assert.equal(hasOrganModel(entry.organ), true, `${entry.organ} has no standalone builder`);
+
+    const scene = sceneById(entry.sceneId);
+    assert.ok(scene, `${entry.sceneId} is not a registered scene`);
+    assert.equal(
+      isSceneReleased(scene),
+      true,
+      `the hero must never offer a model the release has locked (${entry.sceneId})`
+    );
+    for (const key of ['lineEn', 'lineJa']) {
+      assert.equal(typeof entry[key], 'string');
+      assert.ok(entry[key].trim().length > 0, `${entry.organ}: ${key} is empty`);
+    }
   }
-});
-
-test('landing: the preview preserves the model’s intended comparison', () => {
-  const baseline = circulationDemoSnapshot(CIRCULATION_INTERVENTIONS.BASELINE);
-  const fluid = circulationDemoSnapshot(CIRCULATION_INTERVENTIONS.FLUID);
-  const dobutamine = circulationDemoSnapshot(CIRCULATION_INTERVENTIONS.DOBUTAMINE);
-  const changes = (snapshot) => snapshot.metrics.map((metric) => metric.change?.id ?? null);
-
-  assert.deepEqual(changes(baseline), [null, null, null]);
-  assert.deepEqual(changes(fluid), ['up', 'up', 'up']);
-  assert.deepEqual(changes(dobutamine), ['flat', 'up', 'up']);
-  assert.ok(dobutamine.flowDurationSeconds < baseline.flowDurationSeconds);
-  assert.ok(dobutamine.vesselCalibrePx > baseline.vesselCalibrePx);
-  assert.ok(dobutamine.resistanceOpacity < baseline.resistanceOpacity);
 });
 
 test('landing: ambient particles have explicit device, data and motion budgets', () => {
@@ -152,36 +169,32 @@ test('landing: switching to reduced motion cancels the already queued frame', ()
   field.destroy();
 });
 
-test('landing: the shell stays readable while the hero dynamically mounts the real 3D scene', () => {
+test('landing: the shell stays readable while the hero dynamically mounts a real organ model', () => {
   const landing = read('src/app/Landing.js');
-  const demo = read('src/app/landingCirculationDemo.js');
+  const hero = read('src/app/landingOrganHero.js');
   const main = read('src/main.js');
-  const viewport = read('src/app/landingCirculationViewport.js');
+  const viewport = read('src/app/landingOrganViewport.js');
   const flow = read('src/app/landingFlowField.js');
   const css = read('src/styles/landing.css');
 
-  for (const source of [landing, demo, flow]) {
+  for (const source of [landing, hero, flow]) {
     assert.doesNotMatch(source, /from ['"]three['"]|\/scenes\//);
   }
-  assert.match(demo, /solveCirculation/);
-  assert.match(demo, /import\('\.\/landingCirculationViewport\.js'\)/);
-  assert.match(viewport, /CirculationScene/);
+  assert.match(hero, /featuredHeroOrgan/);
+  assert.match(hero, /import\('\.\/landingOrganViewport\.js'\)/);
+  assert.match(viewport, /ORGAN_HERO_BUILDERS/);
   assert.match(viewport, /Viewer/);
-  assert.match(viewport, /setModelControl\('intervention'/);
   assert.match(viewport, /IntersectionObserver/);
   assert.match(viewport, /viewer\.stop\(\)/);
   assert.match(viewport, /viewer\.composer\.render\(\)/);
   assert.match(viewport, /document\.visibilityState/);
-  assert.match(viewport, /SceneClass\.allowAutoRotate !== false/);
   assert.match(viewport, /container\.addEventListener\('keydown', keyboardMoved\)/);
   assert.match(viewport, /'ArrowLeft'[\s\S]*'ArrowRight'[\s\S]*'Home'/);
   assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
   assert.match(main, /onRendererFailure:[\s\S]*captureRendererFailure\(error/);
-  assert.match(viewport, /catch \(error\) \{\s*disposeAll\(\);\s*throw error;/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
   assert.match(landing, /解剖・病態生理の3Dモデル/);
-  assert.doesNotMatch(landing, /病態生理は、|モデルも、根拠も、開いておく。|正確な基本モデル|レビュー済みモデルから/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
   assert.doesNotMatch(css, /touch-action:\s*none/);
   assert.match(css, /touch-action:\s*pan-y pinch-zoom/);
@@ -195,9 +208,11 @@ test('landing: the shell stays readable while the hero dynamically mounts the re
     'the focus indicator must be drawn inside the clipped 3D stage',
   );
   assert.match(css, /\.landing-demo-state\.is-selected/);
+  assert.match(css, /\.landing-demo-state-grid\.is-organs/);
+  assert.match(css, /\.landing-scene-card\.is-locked/);
 });
 
-test('landing: the plain-DOM route mounts every model and its working hero controls', () => {
+test('landing: the plain-DOM route lists every model, opens the released ones and works the hero', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -206,23 +221,61 @@ test('landing: the plain-DOM route mounts every model and its working hero contr
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui });
     const cards = findByClass(mounted.element, 'landing-scene-card');
+    const locked = cards.filter((card) => card.classList.contains('is-locked'));
     const controls = findByClass(mounted.element, 'landing-demo-state');
-    const values = findByClass(mounted.element, 'landing-demo-metric-value');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
 
-    assert.equal(cards.length, PUBLIC_SCENES.length);
+    assert.equal(cards.length, SCENES.length, 'the index lists what is coming as well as what is open');
+    assert.equal(locked.length, LOCKED_SCENES.length);
+    assert.ok(RELEASED_SCENES.length > 0);
+
+    for (const card of cards) {
+      const isLocked = card.classList.contains('is-locked');
+      // A locked card is not an anchor at all, so there is no click to disable.
+      assert.equal(card.tagName, isLocked ? 'DIV' : 'A', card.dataset.scene);
+      assert.equal(isLocked, !isSceneReleased(sceneById(card.dataset.scene)));
+    }
+
     assert.equal(viewports.length, 1);
     assert.equal(viewports[0].getAttribute('role'), 'region');
     assert.equal(viewports[0].getAttribute('tabindex'), '0');
     assert.equal(viewports[0].getAttribute('aria-describedby'), 'landing-demo-viewport-instructions');
-    assert.equal(controls.length, 3);
-    assert.equal(controls[0].getAttribute('aria-pressed'), 'true');
-    assert.deepEqual(values.map((node) => node.textContent), ['70', '3.6', '510']);
 
-    controls[2].click();
-    assert.equal(controls[0].getAttribute('aria-pressed'), 'false');
-    assert.equal(controls[2].getAttribute('aria-pressed'), 'true');
-    assert.deepEqual(values.map((node) => node.textContent), ['71', '5.1', '710']);
+    assert.equal(controls.length, HERO_ORGANS.length);
+    const featured = featuredHeroOrgan();
+    const featuredIndex = HERO_ORGANS.indexOf(featured);
+    assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'true');
+
+    const other = (featuredIndex + 1) % HERO_ORGANS.length;
+    controls[other].click();
+    assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'false');
+    assert.equal(controls[other].getAttribute('aria-pressed'), 'true');
+    assert.equal(mounted.organHero.organ, HERO_ORGANS[other].organ);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing hero: the open link and the day badge follow the organ on screen', () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = {};
+
+  try {
+    const hero = createLandingOrganHero({ now: () => new Date(Date.UTC(2026, 8, 6)) });
+    const badge = findByClass(hero.element, 'landing-demo-case')[0];
+    const link = findByClass(hero.element, 'landing-demo-link')[0];
+
+    assert.equal(hero.organ, 'brain');
+    assert.equal(badge.hidden, false, "the day's own organ is marked as such");
+    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+
+    void hero.setOrgan('lungs');
+    assert.equal(hero.organ, 'lungs');
+    assert.equal(badge.hidden, true, 'a hand-picked organ is not today’s model');
+    assert.equal(link.getAttribute('href'), '#/breathing-lungs');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -242,13 +295,13 @@ test('landing: leaving the route cancels a 3D viewport that is still loading', a
   });
 
   try {
-    const demo = createLandingCirculationDemo({ loadViewport });
-    const pending = demo.mount();
-    demo.destroy();
+    const hero = createLandingOrganHero({ loadViewport });
+    const pending = hero.mount();
+    hero.destroy();
     finishLoading({
-      mountLandingCirculationViewport() {
+      mountLandingOrganViewport() {
         mountCount += 1;
-        return { setIntervention() {}, destroy() {} };
+        return { setOrgan: async () => null, destroy() {} };
       },
     });
 
@@ -261,7 +314,7 @@ test('landing: leaving the route cancels a 3D viewport that is still loading', a
   }
 });
 
-test('landing: a failed 3D preview exposes its fallback message', async () => {
+test('landing: a failed 3D hero exposes its fallback message', async () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   const previousError = console.error;
@@ -271,14 +324,14 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
   let reportedError = null;
 
   try {
-    const demo = createLandingCirculationDemo({
+    const hero = createLandingOrganHero({
       loadViewport: () => Promise.reject(rendererError),
       onRendererFailure: (error) => { reportedError = error; },
     });
-    await demo.mount();
-    const loading = findByClass(demo.element, 'landing-demo-loading')[0];
-    const viewport = findByClass(demo.element, 'landing-demo-viewport')[0];
-    const dragHint = findByClass(demo.element, 'landing-demo-drag-hint')[0];
+    await hero.mount();
+    const loading = findByClass(hero.element, 'landing-demo-loading')[0];
+    const viewport = findByClass(hero.element, 'landing-demo-viewport')[0];
+    const dragHint = findByClass(hero.element, 'landing-demo-drag-hint')[0];
 
     assert.equal(loading.getAttribute('aria-hidden'), 'false');
     assert.equal(loading.getAttribute('role'), 'status');
@@ -299,15 +352,19 @@ test('landing: a failed 3D preview exposes its fallback message', async () => {
   }
 });
 
-test('landing: a scene that fails during setup releases the partial viewer', () => {
+test('landing: a viewer that fails during setup is released, not left half-built', () => {
   let viewerDisposed = 0;
-  let sceneDisposed = 0;
-  const container = { dataset: {} };
+  const container = { dataset: {}, addEventListener() {}, removeEventListener() {} };
 
   class FailingViewer {
     constructor() {
       this.renderer = { domElement: { style: {} } };
-      this.scene = { add() {} };
+      this.scene = {
+        add() {
+          throw new Error('failed midway through viewer setup');
+        },
+        remove() {},
+      };
     }
 
     dispose() {
@@ -315,31 +372,56 @@ test('landing: a scene that fails during setup releases the partial viewer', () 
     }
   }
 
-  class FailingScene {
-    constructor() {}
-
-    build() {
-      throw new Error('failed midway through scene build');
-    }
-
-    dispose() {
-      sceneDisposed += 1;
-    }
-  }
-
   assert.throws(
-    () => mountLandingCirculationViewport(container, {
-      ViewerClass: FailingViewer,
-      SceneClass: FailingScene,
-    }),
+    () => mountLandingOrganViewport(container, { ViewerClass: FailingViewer }),
     /failed midway/
   );
-  assert.equal(sceneDisposed, 1);
   assert.equal(viewerDisposed, 1);
   assert.equal(container.dataset.ready, undefined);
 });
 
-test('landing: the focused 3D viewport rotates, zooms and resets from the keyboard', () => {
+/** A Viewer stand-in with real Three objects, so framing maths runs for real. */
+function createFakeViewerClass() {
+  class FakeViewer {
+    static instance = null;
+
+    constructor() {
+      FakeViewer.instance = this;
+      this.running = false;
+      this.renderer = { domElement: { style: {} } };
+      this.scene = new THREE.Scene();
+      this.camera = new THREE.PerspectiveCamera(42, 1.5, 0.1, 200);
+      this.controls = {
+        target: new THREE.Vector3(),
+        minDistance: 0,
+        maxDistance: 100,
+        autoRotate: true,
+        autoRotateSpeed: 0,
+        addEventListener() {},
+        removeEventListener() {},
+        update() {},
+      };
+      this.composer = { render() {} };
+    }
+
+    onResize() { return () => {}; }
+    start() { this.running = true; }
+    stop() { this.running = false; }
+    dispose() {}
+  }
+  return FakeViewer;
+}
+
+const cubeBuilders = {
+  brain: async (Three) => ({
+    object: new Three.Mesh(new Three.BoxGeometry(2, 2, 2), new Three.MeshBasicMaterial()),
+  }),
+  heart: async (Three) => ({
+    object: new Three.Mesh(new Three.BoxGeometry(1, 1, 1), new Three.MeshBasicMaterial()),
+  }),
+};
+
+test('landing hero viewport: swapping organs never leaves two models in the frame', async () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   document.visibilityState = 'visible';
@@ -350,65 +432,64 @@ test('landing: the focused 3D viewport rotates, zooms and resets from the keyboa
     matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
   };
 
-  class KeyboardViewer {
-    static instance = null;
+  try {
+    const FakeViewer = createFakeViewerClass();
+    const container = new FakeElement('div');
+    const mounted = mountLandingOrganViewport(container, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+    });
 
-    constructor() {
-      KeyboardViewer.instance = this;
-      this.running = false;
-      this.renderer = { domElement: { style: {} } };
-      this.scene = { add() {} };
-      this.camera = {
-        aspect: 1.5,
-        fov: 42,
-        position: new Vector3(),
-        up: new Vector3(0, 1, 0),
-      };
-      this.controls = {
-        target: new Vector3(),
-        minDistance: 0,
-        maxDistance: 100,
-        autoRotate: true,
-        addEventListener() {},
-        removeEventListener() {},
-        update() {},
-      };
-      this.composer = { render() {} };
-    }
+    await mounted.setOrgan('brain');
+    const heroes = () => FakeViewer.instance.scene.children.filter((child) => child.name.endsWith('-hero'));
+    assert.deepEqual(heroes().map((child) => child.name), ['brain-hero']);
+    assert.equal(container.dataset.organ, 'brain');
+    assert.equal(container.dataset.ready, 'true');
 
-    onResize(handler) {
-      handler();
-      return () => {};
-    }
+    await mounted.setOrgan('heart');
+    assert.deepEqual(heroes().map((child) => child.name), ['heart-hero']);
+    assert.equal(mounted.organ, 'heart');
 
-    onFrame() { return () => {}; }
-    start() { this.running = true; }
-    stop() { this.running = false; }
-    dispose() {}
+    // Two swaps in flight at once: the loser must throw its own build away,
+    // and the second click must not short-circuit against the organ that is
+    // still on screen while the first build is still running.
+    const [first, second] = await Promise.all([mounted.setOrgan('brain'), mounted.setOrgan('heart')]);
+    assert.equal(first, null, 'a superseded build attaches nothing');
+    assert.equal(second, 'heart');
+    assert.equal(heroes().length, 1);
+    assert.deepEqual(heroes().map((child) => child.name), ['heart-hero']);
+    assert.equal(mounted.organ, 'heart');
+
+    mounted.destroy();
+    assert.equal(heroes().length, 0);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
   }
+});
 
-  class KeyboardScene {
-    static cameraPose = {
-      position: new Vector3(0, 1, 10),
-      target: new Vector3(0, 0, 0),
-    };
-
-    static framing = { minHorizontalAspect: 1 };
-    static allowAutoRotate = false;
-
-    build() { return {}; }
-    update() {}
-    setModelControl() {}
-    dispose() {}
-  }
+test('landing hero viewport: the focused 3D viewport rotates, zooms and resets from the keyboard', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
 
   try {
+    const FakeViewer = createFakeViewerClass();
     const container = new FakeElement('div');
-    const mounted = mountLandingCirculationViewport(container, {
-      ViewerClass: KeyboardViewer,
-      SceneClass: KeyboardScene,
+    const mounted = mountLandingOrganViewport(container, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
     });
-    const viewer = KeyboardViewer.instance;
+    await mounted.setOrgan('brain');
+
+    const viewer = FakeViewer.instance;
     const initial = viewer.camera.position.clone();
     const press = (key) => {
       let prevented = false;
@@ -426,8 +507,7 @@ test('landing: the focused 3D viewport rotates, zooms and resets from the keyboa
     assert.ok(viewer.camera.position.distanceTo(viewer.controls.target) < rotatedDistance);
 
     press('Home');
-    assert.ok(viewer.camera.position.distanceTo(initial) < 1e-9);
-    assert.equal(viewer.controls.autoRotate, false, 'the scene opts out of automatic rotation');
+    assert.ok(viewer.camera.position.distanceTo(initial) < 1e-9, 'Home restores the opening pose');
     mounted.destroy();
   } finally {
     restoreDocument();
