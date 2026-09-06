@@ -112,5 +112,27 @@
     "cardRevision": 4,
     "modelDigest": "0ed5f2af9c21f469",
     "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "pneumonia-consolidation",
+    "card": "docs/model-cards/pneumonia.md",
+    "modelSources": [
+      "src/models/pneumonia.js",
+      "src/data/pneumonia.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "6745c661d97cd049",
+    "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "pulmonary-embolism",
+    "card": "docs/model-cards/pulmonary-embolism.md",
+    "modelSources": [
+      "src/models/pulmonaryEmbolism.js",
+      "src/data/pulmonaryEmbolism.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "cf008ab5bb6d5cfa",
+    "cardUpdatedAt": "2026-09-06"
   }
 ]

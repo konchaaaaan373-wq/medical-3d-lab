@@ -65,8 +65,8 @@ export class CirculationScene {
   static meta = {
     id: 'circulation',
     status: 'alpha',
-    title: 'Is circulation maintained?',
-    titleJa: '循環、保たれてる？',
+    title: 'Low cardiac output and oxygen delivery',
+    titleJa: '低心拍出量と酸素供給',
     subtitle: 'MAP is pressure, not flow · one constructed low-output case',
     subtitleJa: 'MAPは圧であって血流ではない ｜ 1つの低拍出概念症例',
     progression: { enabled: false },
