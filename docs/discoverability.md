@@ -77,12 +77,26 @@ sitemap's first entry gives it.
 
 **The origin lives in the deploy, not in `src/`.** Moving the site is then a
 deploy change rather than a code change — but the pages are generated at build
-time, so a domain change takes effect only on a rebuild. `npm run verify:site`
-fails when a page's canonical, `og:url` or preview image names a host the
-sitemap does not, which is what an un-rebuilt or stale-variable deploy looks
-like. The rest of the move — Stripe's webhook endpoint, Supabase's redirect
-allowlist, redirects from the old host — is the checklist in
-[`release-runbook.md`](release-runbook.md#changing-the-primary-domain).
+time, so a domain change takes effect only on a rebuild.
+
+`npm run verify:site` checks the emitted output against itself: every page's
+canonical, `og:url` and preview image must name the host the sitemap names.
+That catches a generator emitting two different addresses for one site. It does
+**not** catch a build made with a stale `VITE_SITE_URL`, because such a build
+agrees with itself perfectly — every page and the sitemap name the host the site
+has left, together. For that, the intended origin has to come from outside the
+build:
+
+```bash
+npm run verify:site -- --origin https://med-3d-lab.necofindjob.com
+```
+
+And a domain that moved with no redeploy at all is not visible in any local
+build: it is caught by fetching `/sitemap.xml` on the new origin. Both are steps
+in the checklist in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain), with the
+rest of the move — Stripe's webhook endpoint, Supabase's redirect allowlist,
+redirects from the old host.
 
 ## 5. Social cards
 

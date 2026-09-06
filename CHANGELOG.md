@@ -26,15 +26,21 @@ person: Safari, Firefox, touch and a screen reader.
   environment, and they now produce the same canonical, the same Open Graph URLs
   and the same sitemap. The home page had been declaring itself at an address
   the sitemap did not use.
-- **A domain change cannot quietly ship pages that name the old host.** The
-  addresses are baked in at build time, so a domain move without a rebuild is
-  invisible in a browser and decisive to a crawler. `npm run verify:site` now
-  fails when a page's canonical, `og:url` or preview image points somewhere the
-  sitemap does not.
-- **The rest of the move is a checklist, not memory.** The Stripe webhook
-  endpoint and its new signing secret, Supabase's redirect allowlist (password
-  reset returns to the running origin), redirects from the old host, and the
-  sitemap resubmission are in the release runbook.
+- **The build can now be checked against the domain it was meant for.**
+  `npm run verify:site -- --origin <url>` fails when the sitemap or any page's
+  canonical, `og:url` or preview image names something else. Stating the origin
+  from outside the build is the point: the addresses are all baked in from one
+  variable, so a build carrying a stale one agrees with itself perfectly while
+  every page names the host the site has left — invisible in a browser, decisive
+  to a crawler. Without `--origin`, the check is the weaker one that the output
+  at least names a single host.
+- **The rest of the move is a checklist, not memory.** Supabase's redirect
+  allowlist and the new Stripe webhook endpoint come *before* the cutover —
+  password reset returns the user to the running origin, and a new endpoint has
+  a new signing secret, so doing either afterwards breaks them for everybody
+  already on the new domain. Redirects from the old host, the sitemap
+  resubmission, and retiring the old endpoint afterwards are in the release
+  runbook.
 
 ### The lobes and the liver segments now take the volumes a source gives them
 
