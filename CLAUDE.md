@@ -36,6 +36,24 @@ npm run build      # vite build
 
 ---
 
+## 作業は Claude 側で完結させる
+
+**人間に手順書を渡して終わりにしないでください。** 実行できるものは実行し、
+結果を報告する。これが既定の進め方です。
+
+- 検証コマンドを「手元で実行してください」と案内しない。CI から実行できるなら
+  ワークフローにする（`verify:live` がその例：
+  `.github/workflows/verify-live.yml`）。GitHub Actions は
+  `mcp__github__actions_run_trigger` で起動でき、ログも読めます
+- リポジトリの外にしか無い設定（Netlify / Stripe / Supabase のコンソール）は
+  本当に人手が要る数少ない例外です。その場合も、**回数を最小にする**
+  ——「変数を UI で毎回設定」ではなく `netlify.toml` に持たせる、のように、
+  次回から人手が要らなくなる形に寄せる
+- 人手が要る作業を頼むときは、**判断が要る点だけを一度にまとめて**聞く。
+  1 手ずつ往復させない
+
+---
+
 ## Product definition
 
 > **Make invisible physiology visible, interactive, and understandable.**

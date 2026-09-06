@@ -202,6 +202,10 @@ Paid access is not granted for:
 
 Set the values from `.env.example` in Netlify Project configuration. Secret values must not use a `VITE_` prefix.
 
+**Every value is per deploy context, and the list view does not say which one.** "1 value in 1 deploy context" is equally true of a variable set for Production and one set only for Deploy Previews; open the variable and read the Production row. A `VITE_` variable also reaches a build only from the **Builds** scope, and only on the next build — it is compiled in, not read at runtime.
+
+**As of this writing, Production holds no Stripe configuration.** `STRIPE_SECRET_KEY`, the three price IDs, `STRIPE_WEBHOOK_SECRET` and `SUPABASE_SECRET_KEY` carry values for Deploy Previews only, which is how [`deploy-preview-billing-test.md`](deploy-preview-billing-test.md) exercises billing with test keys. Production therefore reports `billingConfigured: false` and sells nothing; accounts and free models work, which is the documented degradation. Enabling paid access in production is a separate change: live keys, a live-mode webhook endpoint and its own signing secret. The key modes are enforced, not advisory — `stripeDeploymentSafety` rejects a test key in production and a live key outside it, so preview values cannot simply be copied across.
+
 The Functions directory does not need a custom `netlify.toml`; Netlify's default is `netlify/functions`.
 
 ## Billing lifecycle

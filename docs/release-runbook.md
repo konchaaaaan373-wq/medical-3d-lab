@@ -93,7 +93,10 @@ deploy gets the variable empty on purpose: it is not the site, so it claims no
 canonical and emits no sitemap. Nothing in `src/` names the domain either way;
 the build takes the origin from its environment and guesses nothing without it.
 
-After the deploy, check the site that is actually being served:
+After the deploy, check the site that is actually being served. This runs in
+CI — **Actions → Verify the deployed site → Run workflow** — and again on a
+daily schedule, so a deploy that silently stopped being the published one is
+found without anybody remembering to look. The same check runs from a checkout:
 
 ```bash
 npm run verify:live -- https://med-3d-lab.necofindjob.com
@@ -103,6 +106,21 @@ It fetches robots.txt, the sitemap, the home page, every scene page and the
 preview card, and fails if the deployed build names any other host — which is
 what a deploy that did not take, or took from the wrong branch, looks like from
 outside.
+
+### A variable belongs to a deploy context, not to the site
+
+Netlify scopes every environment variable by deploy context, and the summary
+line in its list does not say **which** context holds the value. A variable
+reading "1 value in 1 deploy context" can be set for Deploy Previews and empty
+in Production, and nothing about the site says so: the build simply runs
+without it. That is not hypothetical here — it is why the published site served
+`VITE_SUPABASE_URL`-less builds, and it took a UI panel saying "account access
+has not been configured" to notice.
+
+So when a variable seems not to apply: open it and read the **Production** row
+before doubting the value itself. And remember that a variable added after a
+deploy reaches nothing until the next build — `import.meta.env` is baked in at
+build time, not read at runtime.
 
 ### Changing the primary domain
 
@@ -152,7 +170,9 @@ Then confirm, against the deployed site rather than the build:
 7. `npm run billing:check -- <new-origin>` — see
    [`billing-operations-runbook.md`](billing-operations-runbook.md).
 8. Check the deployed site, not the build — this, not step 5, is what catches a
-   domain that moved without a redeploy:
+   domain that moved without a redeploy. Run it from **Actions → Verify the
+   deployed site**, giving it the new origin and the old one, or from a
+   checkout:
 
    ```bash
    npm run verify:live -- <new-origin> --redirects-from <old-origin>
