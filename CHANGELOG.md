@@ -25,11 +25,14 @@ person: Safari, Firefox, touch and a screen reader.
   ejection fraction and every number come from a single call to the shared
   cardiac model, with end-systolic elastance scaled by how hard the ventricle
   can still contract.
-- **The scene is registered `alpha` but is not finished.** The render found
-  seven defects and fixed them; it also found that the anterior wall's
-  discolouration is only about 6% more than the wall that is not ischemic, which
-  is not enough for the picture to be making the scene's one claim. That is
-  recorded in `docs/anatomy-review.md` §5.10 rather than left to be noticed.
+- **The scene is registered `alpha` and has been looked at, repeatedly.**
+  Rendering it found twenty-eight defects across ten rounds and a code review,
+  and two of the twenty-eight were measurements this project had itself
+  published wrong. The territory map is legible on the model now — the
+  watershed is drawn as a line, because a fill alone could not carry it — and
+  the AHA 17-segment plot beside the heart shows all three territories at once,
+  which no view of a 3D heart can. Every round, with its numbers, is in
+  `docs/anatomy-review.md` §5.10.
 
 ### The heart has coronary arteries, and the myocardium knows which one feeds it
 
@@ -70,6 +73,34 @@ person: Safari, Firefox, touch and a screen reader.
   AHA territory map and where it disagrees with measurement, and the fact that
   the first version is reversible ischemia with no infarct — is settled in
   `docs/anatomy-specs.md` before any of it is built.
+
+### The site has one public address
+
+- **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
+  comes from the deploy rather than from the code, so moving the site remains a
+  deploy change — but it is now written down, in the release runbook, in the
+  discoverability document and beside the variable in `.env.example`, instead of
+  being knowledge somebody had to already have.
+- **A trailing slash no longer makes a second site.** `https://site` and
+  `https://site/` are the same site to the person typing them into a deploy
+  environment, and they now produce the same canonical, the same Open Graph URLs
+  and the same sitemap. The home page had been declaring itself at an address
+  the sitemap did not use.
+- **The build can now be checked against the domain it was meant for.**
+  `npm run verify:site -- --origin <url>` fails when the sitemap or any page's
+  canonical, `og:url` or preview image names something else. Stating the origin
+  from outside the build is the point: the addresses are all baked in from one
+  variable, so a build carrying a stale one agrees with itself perfectly while
+  every page names the host the site has left — invisible in a browser, decisive
+  to a crawler. Without `--origin`, the check is the weaker one that the output
+  at least names a single host.
+- **The rest of the move is a checklist, not memory.** Supabase's redirect
+  allowlist and the new Stripe webhook endpoint come *before* the cutover —
+  password reset returns the user to the running origin, and a new endpoint has
+  a new signing secret, so doing either afterwards breaks them for everybody
+  already on the new domain. Redirects from the old host, the sitemap
+  resubmission, and retiring the old endpoint afterwards are in the release
+  runbook.
 
 ### The lobes and the liver segments now take the volumes a source gives them
 

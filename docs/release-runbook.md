@@ -87,6 +87,66 @@ Set for the deploy:
 | `VITE_TELEMETRY_ENDPOINT`, `VITE_FEEDBACK_ENDPOINT` | Same-origin; see [`observability.md`](observability.md) |
 | `BILLING_RECONCILE_TOKEN`, `OPS_ALERT_WEBHOOK` | See [`access-and-billing.md`](access-and-billing.md) |
 
+**The production origin is `https://med-3d-lab.necofindjob.com`.** That is the
+primary domain, and therefore the value of `VITE_SITE_URL` — with or without a
+trailing slash, the build normalises it to one address. It is written here and
+nowhere in `src/`: the code takes the origin from the deploy so that changing
+where the site lives is a deploy change and not a code change.
+
+### Changing the primary domain
+
+The origin is baked into the build, so **a domain change that is not followed by
+a rebuild leaves every page naming the old host** — invisible in a browser,
+decisive to a crawler. Two of these steps are ordered before the cutover on
+purpose: Supabase and Stripe both key on the origin, and doing them afterwards
+means a window in which password reset and webhook delivery are broken for
+everyone already on the new domain.
+
+Prepare, before the domain moves:
+
+1. Add the new origin to Supabase Auth's redirect allowlist, keeping the old one
+   until the move is done. Password reset sends the user back to
+   `window.location.origin`, so an origin Supabase does not recognise makes
+   reset fail for everybody on the new domain.
+2. Add a Stripe webhook endpoint at
+   `<new-origin>/.netlify/functions/stripe-webhook`, alongside the existing one.
+   A new endpoint has a **new signing secret**: set `STRIPE_WEBHOOK_SECRET` from
+   it in the same deploy as step 4, or every event fails signature verification
+   and paid access stops updating. Two live endpoints are safe — the webhook is
+   idempotent per event and the ledger records what it has already processed.
+
+Then move:
+
+3. Point the domain at the host and set it as the primary domain; wait for the
+   certificate.
+4. Set `VITE_SITE_URL` to the new origin, set `STRIPE_WEBHOOK_SECRET` to the new
+   endpoint's secret, and **redeploy**. Nothing is rebuilt without this step, so
+   without it every page still names the old host.
+5. Verify the rebuild before trusting it:
+
+   ```bash
+   npm run verify:site -- --origin <new-origin>
+   ```
+
+   Given the origin the build was meant for, this fails when the sitemap or any
+   page's canonical, `og:url` or preview image names something else. Without
+   `--origin` it can only check that the output agrees with itself — and a build
+   made with a stale `VITE_SITE_URL` agrees with itself perfectly.
+6. Keep the previous host serving a redirect for as long as links to it exist.
+   A shared model URL outlives the domain it was shared from.
+
+Then confirm, against the deployed site rather than the build:
+
+7. `npm run billing:check -- <new-origin>` — see
+   [`billing-operations-runbook.md`](billing-operations-runbook.md).
+8. Fetch `/robots.txt` and `/sitemap.xml` on the new origin and check they name
+   the new origin: this, not the build check, is what catches a domain that
+   moved without a redeploy. Resubmit the sitemap to Search Console, and
+   re-share one link to confirm the preview card renders from the new host.
+9. Retire the old Stripe webhook endpoint and drop the old origin from the
+   Supabase allowlist once the redirect has been in place long enough that no
+   live session is still on it.
+
 ## 5. Rollback
 
 **Redeploy the previous tag.** Do not revert on `main` and wait for a build:
