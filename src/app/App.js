@@ -627,7 +627,6 @@ export async function createApp({ stage, ui }) {
   // there pushes the console off a laptop screen.
   const topLeft = el('div', { class: 'top-left' }, [
     createTitleCard(meta),
-    sceneSwitcher?.element,
     pvPanel?.element,
     wavePanel?.element,
     ...chartPanels.map((panel) => panel.element),
@@ -647,6 +646,15 @@ export async function createApp({ stage, ui }) {
   publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);
 
   ui.append(
+    // The global navigation is `position: fixed` and anchored to the viewport,
+    // so its parent is a paint-order decision, not a layout one — and it used
+    // to sit inside `.top-left`. That mattered the moment `.top-left` got the
+    // scroll cue: `mask-image` makes the masked element a stacking context and
+    // paints its *fixed* descendants inside it, and on a phone the four header
+    // controls — brand, favourite, sign in, the catalogue trigger — measured
+    // as covered by the canvas at 320×568 and 375×812. `verify:ui` caught it;
+    // the nav lives beside the top bar now, where nothing masks it.
+    sceneSwitcher?.element,
     topBar,
     consoleElement,
     labels.element

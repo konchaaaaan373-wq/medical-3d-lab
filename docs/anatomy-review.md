@@ -917,6 +917,31 @@ continues the list above because they are the same scene.
 
    No page errors on any of the five.
 
+28. **And the cue broke the header on a phone, which only CI caught.** The
+   fade is `mask-image`, and **a mask makes the masked element a stacking
+   context that its `position: fixed` descendants are painted inside**. The
+   global navigation is fixed, and its DOM parent happened to be `.top-left`.
+   Masking the column dropped the nav into the masked context and the WebGL
+   canvas came out on top of it: at 320 × 568 and 375 × 812, `elementFromPoint`
+   at the centre of all four header controls — brand, favourite, sign in, the
+   catalogue trigger — returned the canvas. Turning the mask off returned all
+   four to `ok`, which is the measurement that identifies the cause rather than
+   the symptom.
+
+   Nothing about the layout was wrong: the controls were the right size, in the
+   right place, inside the viewport, and untouchable. `npm run verify:ui`
+   **in CI** failed on it; the same script run locally passed, so "green on this
+   machine" was not worth anything here.
+
+   The fix is on the fixed element, not on the effect: a fixed element's parent
+   is a paint-order decision, not a layout one, so the nav is appended beside
+   the top bar now and its rect is unchanged on every surface measured. The
+   Story rule that hid it through `.top-left > .global-scene-nav` is rescoped;
+   both mutations — the nav put back inside the column, and the Story rule left
+   on the old parent — fail. The general rule is `docs/organ-3d-playbook.md`
+   §2.4 I: before putting a mask, filter, opacity or blend on an element, look
+   for `position: fixed` in its subtree.
+
 **What is still open.** The anterior descending stops short of the apex in the
 geometry, so its apical territory is drawn without a vessel over it — recorded
 in `coronaryAnatomy.js` and in the model card. The root's three sinuses are

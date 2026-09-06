@@ -429,6 +429,31 @@ toLocalNormal([lat, vert, ant]) { return set(lat*sign/half.x, vert/half.y, ant/h
 「名前の通りのことを測っていないテスト」は、無いより悪いです。無ければ
 危ないと分かりますが、あると安全だと思い込みます。
 
+### I. マスクは、その要素の `position: fixed` の子孫も一緒に巻き込む
+
+スクロールする列に「まだ下がある」というフェード（`mask-image`）を足したところ、
+**電話サイズでヘッダーの操作 4 つが canvas の下に沈みました**——ブランド・お気に入り・
+サインイン・カタログ。理由は 1 行です。**`mask-image` は要素に stacking context を作り、
+その中には `position: fixed` の子孫も含めて描かれます。** グローバルナビは `fixed` で
+ビューポートに貼り付いていますが、DOM 上の親はたまたま `.top-left` でした。
+親をマスクした瞬間、ナビはその stacking context の中に落ち、canvas が上に来ます。
+
+`elementFromPoint` で測ると 320×568 / 375×812 で 4 つとも
+`covered by canvas`、マスクを切ると 4 つとも `ok`。**CI の `verify:ui` が捕まえ、
+同じスクリプトのローカル実行は捕まえませんでした**（Chromium のビルド差）。
+つまりこれは「ローカルで緑だから安全」が効かない種類の欠陥です。
+
+`transform` / `filter` / `perspective` / `backdrop-filter` / `contain` /
+`will-change` は *fixed の containing block* を作るのでよく知られていますが、
+`mask` は containing block は作らないのに **描画だけは巻き込む**ので、
+レイアウトを測っても異常が出ません。位置は正しく、サイズも正しく、
+ただ触れないだけです。
+
+**エフェクト（mask / filter / opacity < 1 / mix-blend-mode）を要素に足すときは、
+その部分木に `position: fixed` が居ないかを先に見てください。** 居るなら、
+エフェクトを足す側ではなく **fixed の側を外に出す**のが正解です——`fixed` の親は
+描画順の決定であってレイアウトの決定ではないので、動かしても位置は変わりません。
+
 ---
 
 ## 3. 回帰ハーネス
