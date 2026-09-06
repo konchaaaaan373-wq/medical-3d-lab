@@ -33,6 +33,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
 | モデルカードの改訂とレビューの陳腐化検知 | [`model-cards/README.md`](model-cards/README.md) |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
+| マージ済みだが未確認・未決定・先送りの個別事項（残課題台帳） | [`follow-ups.md`](follow-ups.md) |
 | リリース手順・ロールバック・障害対応 | [`release-runbook.md`](release-runbook.md) |
 | 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |
 | クロール可能なページ・OGP・sitemap | [`discoverability.md`](discoverability.md) |
@@ -74,11 +75,11 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 
 | 指標 | 値 |
 | --- | --- |
-| シーン数 | 26（production 2 / reviewed 3 / alpha 7 / prototype 14） |
+| シーン数 | 27（production 2 / reviewed 3 / alpha 8 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
-| 公開モデル | 12（うち病態モデル 11）。呼吸器は喘息 / COPD / 肺水腫 / 肺炎 / 肺塞栓症の 5 病態 |
+| 公開モデル | 13（うち病態モデル 12）。呼吸器は喘息 / COPD / 肺水腫 / 肺炎 / 肺塞栓症の 5 病態、心臓は心不全 / 低心拍出量 / 心筋虚血 |
 | 医学モデル層（`src/models/`） | asthma / cardiacMechanics / circulation / copd / coronaryTerritories / hepatorenal / myocardialIschemia / pneumonia / portalHypertension / pulmonaryEdema / pulmonaryEmbolism / renalFiltration の 12 本 + 共通ユーティリティ |
-| 主張の種類（model profile） | 非 prototype の 12 シーンすべてが `src/catalog/modelProfiles.js` に登録済み。全シーンが representative で、診断・治療選択・用量選択を禁止用途に明示 |
+| 主張の種類（model profile） | 非 prototype のシーンすべてが `src/catalog/modelProfiles.js` に登録済み（`tests/model-profiles.test.js` が数を固定）。全シーンが representative で、診断・治療選択・用量選択を禁止用途に明示 |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
 | テスト | カタログ整合性・モデル整合性・**教材の答えのモデルからの再導出**・**臓器レイヤーの解剖学的整合性**（左右・内外側・ラベルの指す先・入れ子・状態の往復）・性能予算・計測の匿名性（`node --test`） |
 | 計測 | 性能予算と launch metrics を宣言済み。送信は consent ゲート付きで、endpoint 未設定なら何も送らない（[`observability.md`](observability.md)） |

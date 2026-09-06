@@ -27,6 +27,8 @@ npm run build      # vite build
   誤解を生みうる場所
 - `docs/architecture/intended-use-and-model-provenance.md` — 用途と出典の境界の所有文書。
   `docs/asset-pipeline.md` — 外部 3D asset の工程と停止条件
+- `docs/follow-ups.md` — **マージ済みだが未確認・未決定・先送りの残課題台帳**。
+  一区切りの PR を出すときはここに書き足し、解決したら Resolved へ移す
 
 ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
 （別名 `#/explore`）が全身の Organ Explorer。ルートは `src/catalog/scenes.js`
