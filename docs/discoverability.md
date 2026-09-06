@@ -62,10 +62,41 @@ does not claim.
 | --- | --- |
 | `VITE_SITE_URL` | Pages are built; canonical/OG URLs omitted and no sitemap |
 
-Set it to the deployment origin, with no trailing path unless the site is
+Set it to the deployment origin — in production
+`https://med-3d-lab.necofindjob.com` — with no trailing path unless the site is
 served from a subpath (`https://example.org/lab`). Links from a scene page into
 the app are relative (`../../#/<slug>`), so a subpath deployment works either
 way.
+
+**A trailing slash is not a second site.** The variable is typed by a person
+into a deploy environment, and `https://site` and `https://site/` mean the same
+thing to that person. The build normalises it once, so both spellings produce
+the same canonical, the same Open Graph URLs and the same sitemap; the home
+page's canonical is the site root (`https://site/`), which is the address the
+sitemap's first entry gives it.
+
+**The origin lives in the deploy, not in `src/`.** Moving the site is then a
+deploy change rather than a code change — but the pages are generated at build
+time, so a domain change takes effect only on a rebuild.
+
+`npm run verify:site` checks the emitted output against itself: every page's
+canonical, `og:url` and preview image must name the host the sitemap names.
+That catches a generator emitting two different addresses for one site. It does
+**not** catch a build made with a stale `VITE_SITE_URL`, because such a build
+agrees with itself perfectly — every page and the sitemap name the host the site
+has left, together. For that, the intended origin has to come from outside the
+build:
+
+```bash
+npm run verify:site -- --origin https://med-3d-lab.necofindjob.com
+```
+
+And a domain that moved with no redeploy at all is not visible in any local
+build: it is caught by fetching `/sitemap.xml` on the new origin. Both are steps
+in the checklist in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain), with the
+rest of the move — Stripe's webhook endpoint, Supabase's redirect allowlist,
+redirects from the old host.
 
 ## 5. Social cards
 

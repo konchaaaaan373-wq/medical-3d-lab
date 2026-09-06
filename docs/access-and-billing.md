@@ -148,7 +148,11 @@ Do not rely on the client button being disabled as duplicate-charge protection.
 
 Create a Stripe webhook endpoint:
 
-`https://<production-domain>/.netlify/functions/stripe-webhook`
+`https://med-3d-lab.necofindjob.com/.netlify/functions/stripe-webhook`
+
+The endpoint follows the primary domain. Moving it means a new endpoint and a
+new `STRIPE_WEBHOOK_SECRET`; the order is in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain).
 
 Listen for:
 
@@ -216,7 +220,7 @@ The Functions directory does not need a custom `netlify.toml`; Netlify's default
 12. Webhook delivery remains the normal update path. Reconciliation is a repair path for missed/delayed events and stale local rows.
 13. The published deployment also runs `scheduled-billing-reconcile` hourly. It processes a bounded least-recently-attempted batch, records only aggregate run outcomes and safe error codes, and automatically rotates past failures.
 
-Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://YOUR_PRODUCTION_DOMAIN` after deployment.
+Operational health and recovery steps are in [`billing-operations-runbook.md`](billing-operations-runbook.md). Run `npm run billing:check -- https://med-3d-lab.necofindjob.com` after deployment.
 
 ### Granting needs an owner; revoking does not
 
