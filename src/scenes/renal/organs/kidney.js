@@ -7,6 +7,8 @@ import {
   partCentroid,
   planeThrough,
   radialField,
+  scaledField,
+  shellBetween,
   surfaceSamples,
 } from '../../shared/geometry/carve.js';
 import { mucosaMaterial, tissueMaterial } from '../../shared/materials.js';
@@ -17,12 +19,27 @@ import {
   SINUS_CENTRE,
   anatomicalFrame,
   fanDirection,
+  medullaryParts,
   papillaAt,
-  parenchymaParts,
 } from './kidneyAnatomy.js';
 
 /** The unit sphere's scaling into a kidney: taller than it is wide or deep. */
 export const KIDNEY_SCALE = Object.freeze([0.62, 0.98, 0.6]);
+
+/**
+ * Two palettes, because the two builds have to make different things visible.
+ *
+ * The landmark build has one nested shape standing for the medulla, and its
+ * job is to read as a kidney at thumbnail size, so the two tones are close.
+ * The lobed build has to make the pyramids tell themselves apart from the
+ * cortex that runs between them — a division nobody can see is not a division
+ * (docs/grand-design.md §4.5 rule 4) — so the medulla is pale against a deep
+ * cortex, which is also how a cut kidney looks.
+ */
+export const KIDNEY_PALETTE = Object.freeze({
+  landmark: Object.freeze({ cortex: '#a0555c', medulla: '#c9757c' }),
+  lobed: Object.freeze({ cortex: '#93454f', medulla: '#e2a9ad' }),
+});
 
 /**
  * A kidney, with its hilum and collecting system.
@@ -48,8 +65,8 @@ export const KIDNEY_SCALE = Object.freeze([0.62, 0.98, 0.6]);
  */
 export function buildKidney({
   side = 'left',
-  color = '#a0555c',
-  medullaColor = '#c9757c',
+  color = null,
+  medullaColor = null,
   opacity = 0.82,
   parts = false,
   /**
@@ -58,15 +75,17 @@ export function buildKidney({
    * or an interlobar plane, so the rim between them zigzags at the
    * tessellation's spacing.
    *
-   * Fourteen, measured against the kidney the parts were cut from: at 10 the
-   * seventeen parts sum to 96.0% of it, at 14 to 97.6%, at 20 to 98.7% for
-   * twice the build time. A kidney's parts are thinner than a liver's — a
-   * cortical cap is a shell a third of the parenchyma deep — so they need more
-   * of the sphere they are sampled on than a liver segment does.
+   * Eighteen, measured on the render rather than on the arithmetic: the
+   * cortex is a shell with no cut faces at all and looks right from ten, but
+   * the pyramids inside it show their rims through it, and those stop
+   * zigzagging around eighteen. It costs about 1.2 s to build and is cached.
    */
-  detail = 14,
+  detail = 18,
   referenceSamples = 14000,
 } = {}) {
+  const palette = parts ? KIDNEY_PALETTE.lobed : KIDNEY_PALETTE.landmark;
+  const cortexColor = color ?? palette.cortex;
+  const medullaTone = medullaColor ?? palette.medulla;
   // `medial` is the sign of the side the hilum faces: the left kidney (screen
   // right) has its hilum towards screen-left, and vice versa.
   const medial = side === 'left' ? 1 : -1;
@@ -97,8 +116,8 @@ export function buildKidney({
       side,
       medial,
       warp,
-      color,
-      medullaColor,
+      color: cortexColor,
+      medullaColor: medullaTone,
       opacity,
       detail,
       referenceSamples,
@@ -107,13 +126,13 @@ export function buildKidney({
 
   const cortex = new THREE.Mesh(
     shapedSphere({ detail: 8, scale: [0.62, 0.98, 0.6], warp }),
-    tissueMaterial({ color, roughness: 0.5, opacity })
+    tissueMaterial({ color: cortexColor, roughness: 0.5, opacity })
   );
   cortex.name = 'cortex';
 
   const medulla = new THREE.Mesh(
     shapedSphere({ detail: 6, scale: [0.42, 0.66, 0.4], warp }),
-    tissueMaterial({ color: medullaColor, roughness: 0.55, emissiveIntensity: 0.08 })
+    tissueMaterial({ color: medullaTone, roughness: 0.55, emissiveIntensity: 0.08 })
   );
   medulla.name = 'medulla';
 
@@ -201,42 +220,59 @@ function buildLobedKidney({
   // kidneys and only this line knows which way round they are.
   const frame = anatomicalFrame(bounds, medial);
 
-  /** An interlobar plane as a cut: the normal points at what is discarded. */
-  const cutFor = ({ normal, through, keep }) => {
-    const localNormal = frame.toLocalNormal(normal);
-    return planeThrough(
-      frame.toLocal(through),
-      keep === 'positive' ? localNormal.negate() : localNormal
-    );
-  };
+  /**
+   * The corticomedullary junction: the organ's own surface, shrunk towards its
+   * centre by the cortex's share of the radius.
+   *
+   * Two earlier versions were worse. A fixed depth along each lobe's axis falls
+   * outside the organ near the poles, because the parenchyma is thick laterally
+   * and thin at the hilum. A plane per lobe is flat, and this boundary is not:
+   * it follows the capsule, notch for notch, which is what a junction does.
+   */
+  const inner = scaledField(field, 1 - CORTEX_THICKNESS_FRACTION);
 
   const disposables = [];
   const built = [];
   const parenchyma = new THREE.Group();
   parenchyma.name = 'parenchyma';
 
-  // The medial margin is cortex too, so it takes cortical tissue's colour with
-  // a slightly deeper tone — enough that a reader can see where the fan of
-  // lobes ends and the hilar lips begin. The boundary is real and invisible
-  // otherwise, and a division nobody can see is not a division
-  // (grand-design §4.5 rule 4).
-  const columnColor = new THREE.Color(color).offsetHSL(0, 0.03, -0.05).getStyle();
+  // The cortex is one part, not a ring of caps: a cortex is continuous, and
+  // cutting it into wedges to make the arithmetic work would be inventing a
+  // boundary the organ does not have.
+  const capsule = carvePart({ field, centre: field.centre.clone(), planes: [], detail, cacheKey: `kidney:${side}:${referenceSamples}:outer` });
+  const junction = carvePart({ field: inner, centre: field.centre.clone(), planes: [], detail, cacheKey: `kidney:${side}:${referenceSamples}:inner` });
+  const cortexGeometry = shellBetween(capsule, junction);
+  capsule.dispose();
+  junction.dispose();
+  const cortexMaterial = tissueMaterial({ color, roughness: 0.5, opacity, emissiveIntensity: 0.04 });
+  const cortexMesh = new THREE.Mesh(cortexGeometry, cortexMaterial);
+  cortexMesh.name = 'cortex';
+  parenchyma.add(cortexMesh);
+  built.push({
+    id: 'cortex',
+    kind: 'cortex',
+    label: 'Renal cortex',
+    labelJa: '腎皮質',
+    mesh: cortexMesh,
+    material: cortexMaterial,
+    geometry: cortexGeometry,
+    centre: field.centre.clone(),
+    planes: [],
+    field,
+    /** A shell, so "inside every plane" cannot describe it. */
+    inside: (point) => carveInside(point, { field }) && !carveInside(point, { field: inner }),
+  });
+  disposables.push(cortexGeometry, cortexMaterial);
 
   /**
-   * Each lobe's axis, measured: where it leaves the organ, where its
-   * corticomedullary junction falls, and where its papilla sits.
+   * Each lobe's axis, measured on the inner solid: where the junction is along
+   * it, and where its papilla sits.
    *
-   * Cast a ray from the sinus along the lobe's own axis and find where it
-   * leaves the organ. Bisected rather than solved: the field is anchored at the
-   * organ's centre and this ray starts at the sinus, so the two do not share a
+   * Bisected rather than solved: the field is anchored at the organ's centre
+   * and this ray starts at the sinus, so the two do not share a
    * parameterisation, and a fixed-point iteration converges only when they
-   * nearly do — which is the defect that once made a lung's lobes sum to 182%
-   * of the lung.
-   *
-   * The junction is then a **fraction** of the way back from the surface, not a
-   * fixed depth. The parenchyma is thick laterally and thin at the hilum, and a
-   * depth that sits sensibly under the convex border falls outside the organ
-   * near the poles.
+   * nearly do — the defect that once made a lung's lobes sum to 182% of the
+   * lung.
    */
   const sinusLocal = frame.toLocal(SINUS_CENTRE);
   const axes = new Map();
@@ -247,49 +283,62 @@ function buildLobedKidney({
       .normalize();
     const probe = new THREE.Vector3();
     const offset = sinusLocal.clone().sub(field.centre);
-    const outside = (t) => {
-      probe.copy(direction).multiplyScalar(t).add(offset);
-      return probe.length() - field.radiusAt(probe);
+    const crossing = (radiusAt) => {
+      const outside = (t) => {
+        probe.copy(direction).multiplyScalar(t).add(offset);
+        return probe.length() - radiusAt(probe);
+      };
+      let low = 0;
+      let high = Math.max(1e-6, radiusAt(direction) + offset.length()) * 2;
+      for (let grow = 0; grow < 8 && outside(high) < 0; grow += 1) high *= 1.6;
+      for (let step = 0; step < 24; step += 1) {
+        const mid = (low + high) / 2;
+        if (outside(mid) < 0) low = mid;
+        else high = mid;
+      }
+      return direction.clone().multiplyScalar((low + high) / 2).add(sinusLocal);
     };
-    let low = 0;
-    let high = Math.max(1e-6, field.radiusAt(direction) + offset.length()) * 2;
-    for (let grow = 0; grow < 8 && outside(high) < 0; grow += 1) high *= 1.6;
-    for (let step = 0; step < 24; step += 1) {
-      const mid = (low + high) / 2;
-      if (outside(mid) < 0) low = mid;
-      else high = mid;
-    }
-    const surface = direction.clone().multiplyScalar((low + high) / 2).add(sinusLocal);
-    const junction = surface.clone().lerp(sinusLocal, CORTEX_THICKNESS_FRACTION);
     axes.set(lobe.id, {
       direction,
-      surface,
-      junction,
+      surface: crossing((v) => field.radiusAt(v)),
+      junction: crossing((v) => inner.radiusAt(v)),
       papilla: frame.toLocal(papillaAt(lobe)),
     });
   }
-  const junctionAt = (lobe) => frame.toAnatomical(axes.get(lobe.id).junction);
 
-  for (const part of parenchymaParts({ junctionAt })) {
+  /** An interlobar plane as a cut: the normal points at what is discarded. */
+  const cutFor = ({ normal, through, keep }) => {
+    const localNormal = frame.toLocalNormal(normal);
+    return planeThrough(
+      frame.toLocal(through),
+      keep === 'positive' ? localNormal.negate() : localNormal
+    );
+  };
+
+
+  for (const part of medullaryParts()) {
     const planes = part.cuts.map(cutFor);
     // Found, not written down: a carve is star-shaped about its centre, and a
     // centre outside its own part produces a different solid rather than a
     // smaller one.
-    const found = partCentroid({ field, bounds, planes, samples: 9000, seed: 23 });
+    const found = partCentroid({ field: inner, bounds, planes, samples: 9000, seed: 23 });
     // A part that carved empty is a broken partition, not something to skip
-    // past: the cuts describe the whole parenchyma, so every one of them has to
-    // find tissue. Skipping is how five missing cortical caps went unnoticed
-    // through a build that reported success.
+    // past: the cuts describe the whole inner solid, so every one of them has
+    // to find tissue. Skipping is how five missing cortical caps went
+    // unnoticed through a build that reported success.
     if (!found) throw new Error(`kidney: the part "${part.id}" carved empty`);
     const geometry = carvePart({
-      field,
+      field: inner,
       centre: found.centroid,
       planes,
       detail,
-      cacheKey: `kidney:${side}:${referenceSamples}`,
+      cacheKey: `kidney:${side}:${referenceSamples}:inner`,
     });
     const material = tissueMaterial({
-      color: part.kind === 'medulla' ? medullaColor : part.id.startsWith('medial-margin') ? columnColor : color,
+      // A column and the hilar lips are cortex, so they are the cortex's own
+      // colour: what has to be visible here is pyramid against cortex, not
+      // column against cap.
+      color: part.kind === 'medulla' ? medullaColor : color,
       roughness: part.kind === 'medulla' ? 0.55 : 0.5,
       opacity,
       emissiveIntensity: part.kind === 'medulla' ? 0.08 : 0.04,
@@ -297,7 +346,20 @@ function buildLobedKidney({
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = part.id;
     parenchyma.add(mesh);
-    built.push({ ...part, mesh, material, geometry, centre: found.centroid.clone(), planes, field });
+    built.push({
+      ...part,
+      mesh,
+      material,
+      geometry,
+      centre: found.centroid.clone(),
+      planes,
+      field: inner,
+      // The sector planes alone do not describe this part: they say which wedge
+      // of the fan it is, and the inner surface says it stops at the
+      // corticomedullary junction. Without the second half, every point in the
+      // cortex satisfies some wedge and the parts overlap threefold.
+      inside: (point) => carveInside(point, { field: inner, planes }),
+    });
     disposables.push(geometry, material);
   }
 
@@ -391,6 +453,7 @@ function buildLobedKidney({
     frame,
     bounds,
     /** @param {string} id */
+    innerField: inner,
     part: (id) => partIndex.get(id) ?? null,
     partsOfKind: (kind) => built.filter((part) => part.kind === kind),
     nephronSites,

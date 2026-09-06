@@ -63,15 +63,9 @@
  * - **The medial margin is not a lobe.** Past the poles there is hilum rather
  *   than a pyramid, so the parenchyma there — the lips the vessels and the
  *   pelvis pass between — is cortex in three parts of its own.
- * - **The renal columns are not cut out as meshes.** A column is cortex, and
- *   here the two pyramids meet along the plane it would occupy. Cutting one is
- *   what a half-space carve does worst: a column is the thinnest part in the
- *   organ, and a mesh built star-shaped about its own centroid could not
- *   resolve it — with columns the parts summed to 95% of the kidney they were
- *   cut from and without them 98%, and the missing 3% is a gap along every
- *   boundary on screen. `COLUMNS` still says where each one is, so a scene can
- *   point at a column; it just cannot hide one. This is the kidney's caudate
- *   slab: the same trade, for the same reason, recorded the same way.
+ * - **The corticomedullary junction is the organ's own surface, shrunk.** It
+ *   follows every dent and notch the kidney has, which is far closer than a
+ *   plane per lobe, but a real junction is not a scaled copy of the capsule.
  */
 import * as THREE from 'three';
 
@@ -118,7 +112,24 @@ export const CORTICOMEDULLARY_DEPTH = 0.62;
  * third tissue, so it is now where it belongs: inside the cortical part, named
  * by an anchor rather than cut out as a mesh.
  */
-export const LOBE_HALF_ANGLE = 15;
+export const LOBE_HALF_ANGLE = 11;
+
+/**
+ * Half-width of a renal column, in degrees of the coronal fan.
+ *
+ * A column is cortex reaching in between two pyramids. It is carved from the
+ * inner solid rather than from the whole organ, which is what makes it a part a
+ * mesh can resolve: cut from the organ it was a wedge running the entire depth
+ * and the parts summed to 95% of the kidney, a gap along every boundary.
+ */
+export const COLUMN_HALF_ANGLE = 4;
+
+/**
+ * The angle from one lobe to the next. A lobe's half-width and a column's must
+ * add up to half of it, or the sectors overlap — which they did, by two degrees
+ * on each side, and 1071 of 40000 sampled points were claimed twice.
+ */
+export const LOBE_PITCH = 30;
 
 /** How many parts the medial margin is cut into. */
 export const MEDIAL_MARGIN_PARTS = 3;
@@ -197,19 +208,25 @@ export function fanBoundaries() {
 }
 
 /**
- * Every part the parenchyma is cut into, with the cuts that bound it.
+ * The fan the **inner** solid is cut into, with the cuts that bound each part.
+ *
+ * The cortex is not here: it is the shell between the organ's surface and the
+ * corticomedullary junction, and it is one part rather than a ring of caps
+ * because a cortex is continuous. Cutting it into wedges to make the arithmetic
+ * work would be inventing a boundary that is not in the organ. `kidney.js`
+ * builds it with `shellBetween`.
+ *
+ * What the fan divides is everything inside that junction, and it divides it
+ * into two kinds:
+ *
+ * - **medulla** — a pyramid, apex at the papilla and base at the junction
+ * - **cortex** — a renal column between two pyramids, and the hilar lips past
+ *   the poles. Both are cortex reaching in past the junction, which is what a
+ *   column is: not a third tissue, but the cortex between the pyramids.
  *
  * A cut is `{ normal, through, keep }` in anatomical coordinates: `keep` is the
  * side of the plane the part is on, `'positive'` meaning the side the normal
  * points at.
- *
- * The three kinds:
- *
- * - **cortex** — a lobe's sector, outside its corticomedullary plane
- * - **medulla** — the same sector, inside it: the pyramid, whose apex is the
- *   papilla and whose base is the corticomedullary junction
- * - **column** — the full depth of a column sector, from the surface to the
- *   sinus, because a column is cortex reaching between two pyramids
  */
 /**
  * @param {{ junctionAt?: (lobe: typeof LOBES[number]) => [number, number, number] }} [options]
@@ -220,7 +237,7 @@ export function fanBoundaries() {
  *   the builder knows the surface. The default is a fixed depth, which is
  *   wrong near the hilum and is here so this module stands on its own.
  */
-export function parenchymaParts({ junctionAt = null } = {}) {
+export function medullaryParts() {
   const parts = [];
 
   /** The plane between two fan sectors: it contains the fan axis. */
@@ -235,15 +252,14 @@ export function parenchymaParts({ junctionAt = null } = {}) {
   /**
    * A closed angular sector of the fan. Nothing bounds it on the inside.
    *
-   * The renal sinus is **not** cut out of the parenchyma. It was, in the first
-   * version — everything medial of one plane — and the plane took 27% of the
-   * organ with it, tissue that then belonged to no part at all: the bean wraps
-   * medially at both poles, so "medial of a line" is not "sinus". A cavity
-   * cannot be cut from half-spaces (the complement of one is a union, not an
-   * intersection), which is the same reason the liver's caudate is a slab. So
-   * the sectors fill the organ, the pyramids converge where the sinus is, and
-   * the collecting system is drawn in that convergence rather than carved from
-   * it. `docs/medical-notes.md` records it.
+   * The renal sinus is **not** cut out. It was, in the first version —
+   * everything medial of one plane — and the plane took 27% of the organ with
+   * it, tissue that then belonged to no part at all: the bean wraps medially at
+   * both poles, so "medial of a line" is not "sinus". A cavity cannot be cut
+   * from half-spaces (the complement of one is a union, not an intersection),
+   * which is the same reason the liver's caudate is a slab. So the sectors fill
+   * the inner solid, the pyramids converge where the sinus is, and the
+   * collecting system is drawn in that convergence rather than carved from it.
    */
   const sector = (fromAngle, toAngle) => [
     sectorCut(fromAngle, 'positive'),
@@ -251,24 +267,6 @@ export function parenchymaParts({ junctionAt = null } = {}) {
   ];
 
   for (const lobe of LOBES) {
-    const direction = fanDirection(lobe.angle);
-    const junction = {
-      normal: direction,
-      through:
-        junctionAt?.(lobe) ??
-        SINUS_CENTRE.map((value, axis) => value + direction[axis] * CORTICOMEDULLARY_DEPTH),
-    };
-    const bounds = sector(lobe.angle - LOBE_HALF_ANGLE, lobe.angle + LOBE_HALF_ANGLE);
-
-    parts.push({
-      id: `cortex-${lobe.id}`,
-      kind: 'cortex',
-      lobe: lobe.id,
-      angle: lobe.angle,
-      label: `${lobe.label} — cortex`,
-      labelJa: `${lobe.labelJa}・皮質`,
-      cuts: [...bounds, { ...junction, keep: 'positive' }],
-    });
     parts.push({
       id: `pyramid-${lobe.id}`,
       kind: 'medulla',
@@ -276,19 +274,30 @@ export function parenchymaParts({ junctionAt = null } = {}) {
       angle: lobe.angle,
       label: `${lobe.label} — medullary pyramid`,
       labelJa: `${lobe.labelJa}・髄質錐体`,
-      cuts: [...bounds, { ...junction, keep: 'negative' }],
+      cuts: sector(lobe.angle - LOBE_HALF_ANGLE, lobe.angle + LOBE_HALF_ANGLE),
     });
   }
 
-  // The medial margin: what is left of the fan once the seven lobes have taken
-  // the lateral half. It is cortex — the lips of the hilum, which the vessels
-  // and the pelvis pass between — and it has no pyramid under it because past
-  // the poles there is an opening rather than tissue.
+  for (const column of COLUMNS) {
+    parts.push({
+      id: column.id,
+      kind: 'cortex',
+      angle: column.angle,
+      between: column.between,
+      label: column.label,
+      labelJa: column.labelJa,
+      cuts: sector(column.angle - COLUMN_HALF_ANGLE, column.angle + COLUMN_HALF_ANGLE),
+    });
+  }
+
+  // The hilar lips: what is left of the fan once the seven lobes and the
+  // columns between them have taken the lateral half. Cortex, because past the
+  // poles there is an opening rather than a pyramid.
   //
-  // Cut into three rather than left as one sector of a hundred and sixty
+  // Cut into three rather than left as one sector of a hundred and fifty
   // degrees: the kidney is concave on this side, a carve is star-shaped about
   // its own centre, and one part that wraps a concavity is the shape a carve
-  // represents worst. Three smaller ones each stay close to convex.
+  // represents worst.
   const outermost = LOBES[0].angle + LOBE_HALF_ANGLE;
   const span = (360 - 2 * outermost) / MEDIAL_MARGIN_PARTS;
   for (let index = 0; index < MEDIAL_MARGIN_PARTS; index += 1) {

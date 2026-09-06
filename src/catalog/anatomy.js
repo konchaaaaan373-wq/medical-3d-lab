@@ -86,10 +86,9 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'kidney',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — both hila face the midline, the medulla stays inside the cortex, every filtration path reaches the collecting system; tests/kidney-anatomy.test.js holds the lobar division that is being built towards A2',
-    next:
-      'A2 is close but not reached. `buildKidney({ parts: true })` divides the parenchyma into seven renal lobes — a cortical cap and a medullary pyramid each — plus the hilar lips, and places a nephron across the three scales (glomerulus in the cortex, loop in the medulla). What is not there yet is the render: the cut faces only stop zigzagging at detail 40, the papillae converge to a point instead of into their calyces, and the renal columns are not cut out at all. A level is not raised on geometry that does not survive being looked at.',
+    level: 'A2',
+    evidence: 'tests/kidney-anatomy.test.js — the cortex as one shell between the capsule and the corticomedullary junction, seven medullary pyramids and the cortical columns between them partitioning what is inside it, the collecting system from papilla to pelvis, and a nephron placed across the three scales (glomerulus in the cortex, loop of Henle in the medulla)',
+    next: 'A3: the segmental arteries and the interlobar/arcuate hierarchy, which renovascular hypertension and prerenal AKI point at. Also still schematic: the papillae converge on one point rather than into separate calyces, and the junction is the capsule scaled rather than a surface of its own.',
   },
   {
     organ: 'thyroid',

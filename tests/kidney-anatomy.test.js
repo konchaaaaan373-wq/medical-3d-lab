@@ -8,9 +8,12 @@ import {
   COLUMNS,
   CORTEX_THICKNESS_FRACTION,
   LOBES,
+  COLUMN_HALF_ANGLE,
+  LOBE_HALF_ANGLE,
+  LOBE_PITCH,
   MEDIAL_MARGIN_PARTS,
   SINUS_CENTRE,
-  parenchymaParts,
+  medullaryParts,
 } from '../src/scenes/renal/organs/kidneyAnatomy.js';
 import { carveInside } from '../src/scenes/shared/geometry/carve.js';
 import { partitionReport } from './partition.js';
@@ -26,13 +29,13 @@ import { partitionReport } from './partition.js';
  */
 
 /**
- * The mesh resolution the claims are measured at, and what it buys.
+ * The mesh resolution the claims are measured at.
  *
- * A kidney's parts are thinner than a liver's — a cortical cap is a shell a
- * third of the parenchyma deep — so a mesh built star-shaped about a part's own
- * centroid needs more of the sphere it is sampled on. Measured against the
- * kidney the parts were cut from: 10 → 96.0%, 14 → 97.6%, 20 → 98.7% for twice
- * the build time.
+ * Measured against the kidney the parts were cut from: 100.7% at detail 10,
+ * 101.5% at 14, 102.0% at 20. Cutting the cortex out as a shell rather than as
+ * a ring of caps is what brought this within a couple of per cent at a
+ * tessellation anyone would ship — the caps were the thin parts, and thin parts
+ * are what a star-shaped carve represents worst.
  */
 const DETAIL = 14;
 const SAMPLES = 12000;
@@ -60,8 +63,8 @@ function volumeOf(geometry) {
   return Math.abs(total);
 }
 
-test('kidney: the parts are the lobes — cortex, pyramid, and the columns between', () => {
-  const parts = parenchymaParts();
+test('kidney: the cortex is one part and the fan divides what is inside it', () => {
+  const parts = medullaryParts();
   assert.equal(LOBES.length, 7, 'seven pyramids is the arrangement a coronal section is taught with');
   assert.equal(COLUMNS.length, LOBES.length - 1, 'a column sits between each adjacent pair, and only there');
 
@@ -69,25 +72,36 @@ test('kidney: the parts are the lobes — cortex, pyramid, and the columns betwe
     counts[part.kind] = (counts[part.kind] ?? 0) + 1;
     return counts;
   }, {});
-  // Seven cortical caps plus the medial margin, which is cortex with no pyramid
-  // under it because past the poles there is hilum rather than tissue.
-  // Seven cortical caps and seven pyramids, plus the hilar lips as cortex in
-  // three parts. No column meshes: see the note below.
-  assert.deepEqual(kinds, { cortex: LOBES.length + MEDIAL_MARGIN_PARTS, medulla: LOBES.length });
+  // Seven pyramids, and the cortex that reaches in between and past them: six
+  // columns and the hilar lips. The cortex proper is not in this list — it is
+  // the shell outside the junction, and it is one part because a cortex is
+  // continuous.
+  assert.deepEqual(kinds, {
+    medulla: LOBES.length,
+    cortex: COLUMNS.length + MEDIAL_MARGIN_PARTS,
+  });
 
   for (const part of parts) {
     assert.ok(part.id, 'every part is addressable by name');
     assert.ok(part.label?.trim() && part.labelJa?.trim(), `${part.id} is named in both languages`);
-    // Two planes close an angular sector; a lobe's cortex and pyramid take a
-    // third, the corticomedullary junction that separates them.
-    const expected = part.id.startsWith('medial-margin') ? 2 : 3;
-    assert.equal(part.cuts.length, expected, `${part.id} is bounded by the cuts that define it`);
+    // Two planes close an angular sector; nothing bounds it on the inside,
+    // because the sinus is not carved out.
+    assert.equal(part.cuts.length, 2, `${part.id} is bounded by the sector that defines it`);
   }
-  // A column is cortex, and this model does not cut one out: the two pyramids
-  // meet along the plane it would occupy. `COLUMNS` still says where each one
-  // is, so a scene can point at a column; it cannot hide one.
-  assert.equal(parts.filter((part) => part.kind === 'column').length, 0);
-  assert.equal(COLUMNS.length, LOBES.length - 1);
+
+  // A column is cortex, not a third tissue. Getting this wrong is how a model
+  // ends up teaching that there is medulla between the pyramids.
+  for (const column of COLUMNS) {
+    assert.equal(parts.find((part) => part.id === column.id)?.kind, 'cortex');
+  }
+
+  // The sectors have to tile the fan exactly. Two degrees of slop here is not
+  // a rounding error: it is a pyramid and the column beside it both claiming
+  // the same tissue, and no picture shows it.
+  assert.equal(LOBE_HALF_ANGLE + COLUMN_HALF_ANGLE, LOBE_PITCH / 2);
+  for (let index = 1; index < LOBES.length; index += 1) {
+    assert.equal(LOBES[index - 1].angle - LOBES[index].angle, LOBE_PITCH, 'the fan is evenly spaced');
+  }
 });
 
 test('kidney: the parts partition the parenchyma — they fill it and do not overlap', () => {
@@ -116,30 +130,40 @@ test('kidney: the parts partition the parenchyma — they fill it and do not ove
     report.multipleRate <= 0.001,
     `${report.multiple} of ${report.samples} points belong to more than one part — ${report.worst}`
   );
-  // Three per cent, and the number is the tessellation rather than the
+  // Two per cent, and the number is the tessellation rather than the
   // partition: not one sampled point belongs to no part or to two, which are
-  // the checks that catch a cut on the wrong side. What the shortfall measures
-  // is how well a star-shaped mesh represents a part this thin, and it closes
-  // on the organ as the detail rises — 96.0% at 10, 97.6% at 14, 98.7% at 20.
+  // the checks that catch a cut on the wrong side. What is left is how well a
+  // star-shaped mesh represents each part — 100.7% of the organ at detail 10,
+  // 101.5% at 14 — and the sign is a reminder that a carve about a centroid
+  // can bulge across a concavity as well as fall short of a convexity.
   assert.ok(
-    Math.abs(report.shortfall) <= 0.03,
+    Math.abs(report.shortfall) <= 0.02,
     `the parts sum to ${(100 * (1 - report.shortfall)).toFixed(2)}% of the kidney they were cut from`
   );
   kidney.dispose();
 });
 
-test('kidney: the cortex is outside the medulla, in every lobe', () => {
+test('kidney: the cortex is outside the medulla, and it wraps every pyramid', () => {
   const kidney = build();
-  const sinus = new THREE.Vector3().copy(kidney.frame.toLocal(SINUS_CENTRE));
+  const cortex = kidney.part('cortex');
+  assert.ok(cortex, 'the cortex is one named part');
 
   for (const lobe of LOBES) {
-    const cortex = kidney.part(`cortex-${lobe.id}`);
     const pyramid = kidney.part(`pyramid-${lobe.id}`);
-    assert.ok(cortex && pyramid, `${lobe.id} has both a cortex and a pyramid`);
+    assert.ok(pyramid, `${lobe.id} has a pyramid`);
+    // Every pyramid lies inside the corticomedullary junction, so no point of
+    // one is ever in the cortex. That is the claim the whole division rests on.
     assert.ok(
-      cortex.centre.distanceTo(sinus) > pyramid.centre.distanceTo(sinus),
-      `${lobe.id}: the cortex must sit further from the sinus than its pyramid does`
+      !cortex.inside(pyramid.centre),
+      `${lobe.id}: no part of a pyramid may be in the cortex`
     );
+  }
+
+  // And the cortex is outside: a point just under the capsule is cortex, a
+  // point at the sinus is not.
+  for (const site of kidney.nephronSites) {
+    assert.ok(cortex.inside(site.surface.clone().lerp(site.corticomedullaryJunction, 0.2)));
+    assert.ok(!cortex.inside(site.papilla));
   }
   kidney.dispose();
 });
@@ -168,27 +192,40 @@ test('kidney: every papilla points at the sinus, and a calyx cups it', () => {
   // And the collecting system converges: every calyx is nearer the pelvis than
   // the cortex it drains, which is the direction urine actually travels.
   for (const calyx of kidney.calyces) {
-    const cortex = kidney.part(`cortex-${calyx.lobe}`);
+    const site = kidney.nephronSites.find((entry) => entry.lobe === calyx.lobe);
     assert.ok(
-      calyx.papilla.distanceTo(kidney.pelvisCentre) < cortex.centre.distanceTo(kidney.pelvisCentre),
+      calyx.papilla.distanceTo(kidney.pelvisCentre) < site.surface.distanceTo(kidney.pelvisCentre),
       `${calyx.lobe}: the papilla drains towards the pelvis`
     );
   }
   kidney.dispose();
 });
 
-test('kidney: the cortex is about a third of the parenchyma, wherever it is measured', () => {
+test('kidney: the corticomedullary junction is the capsule, shrunk — not a plane', () => {
   const kidney = build();
-  const sinus = new THREE.Vector3().copy(kidney.frame.toLocal(SINUS_CENTRE));
 
   for (const site of kidney.nephronSites) {
-    const thickness = site.surface.distanceTo(sinus);
+    // Every point of the junction sits at the same fraction of the organ's own
+    // radius in its own direction, because the junction *is* the surface scaled
+    // towards the centre. That is the claim: it follows the organ rather than
+    // being assembled out of flats, and it is checked against the field the
+    // capsule came from rather than against a number written down here.
+    const direction = site.corticomedullaryJunction.clone().sub(kidney.field.centre);
+    const kept = direction.length() / kidney.field.radiusAt(direction);
+    assert.ok(
+      Math.abs(kept - (1 - CORTEX_THICKNESS_FRACTION)) < 0.01,
+      `${site.lobe}: the junction sits at ${(kept * 100).toFixed(1)}% of the radius`
+    );
+
+    // Measured the way a section is read — from the sinus outwards — the cortex
+    // is about a third of the parenchyma everywhere. It varies, because the
+    // sinus is not the centre the junction was scaled about, and the point of
+    // recording the range is that it is a proportion rather than a number.
+    const thickness = site.surface.distanceTo(kidney.frame.toLocal(SINUS_CENTRE));
     const cortical = site.surface.distanceTo(site.corticomedullaryJunction);
     const fraction = cortical / thickness;
-    // The proportion is the claim, and it has to hold at the poles as well as
-    // at the convex border — which is exactly what a fixed depth could not do.
     assert.ok(
-      Math.abs(fraction - CORTEX_THICKNESS_FRACTION) < 0.02,
+      fraction > 0.25 && fraction < 0.45,
       `${site.lobe}: cortex is ${(fraction * 100).toFixed(1)}% of the parenchyma`
     );
   }
@@ -201,48 +238,41 @@ test('kidney: a nephron sits with its glomerulus in the cortex and its loop in t
   // a nephron placed the other way round would be a different organ — and
   // nothing in `nephron.js` or in the macro geometry can notice on its own.
   const kidney = build();
+  const cortex = kidney.part('cortex');
 
   for (const site of kidney.nephronSites) {
-    const cortex = kidney.part(`cortex-${site.lobe}`);
     const pyramid = kidney.part(`pyramid-${site.lobe}`);
 
+    assert.ok(cortex.inside(site.glomerulus), `${site.lobe}: the glomerulus has to be in the cortex`);
     assert.ok(
-      carveInside(site.glomerulus, { field: kidney.field, planes: cortex.planes }),
-      `${site.lobe}: the glomerulus has to be in the cortex`
-    );
-    assert.ok(
-      !carveInside(site.glomerulus, { field: kidney.field, planes: pyramid.planes }),
+      !carveInside(site.glomerulus, { field: pyramid.field, planes: pyramid.planes }),
       `${site.lobe}: and not in the pyramid`
     );
     assert.ok(
-      carveInside(site.loopTip, { field: kidney.field, planes: pyramid.planes }),
+      carveInside(site.loopTip, { field: pyramid.field, planes: pyramid.planes }),
       `${site.lobe}: the loop of Henle descends into the medulla`
     );
-    assert.ok(
-      !carveInside(site.loopTip, { field: kidney.field, planes: cortex.planes }),
-      `${site.lobe}: and does not stay in the cortex`
-    );
+    assert.ok(!cortex.inside(site.loopTip), `${site.lobe}: and does not stay in the cortex`);
   }
   kidney.dispose();
 });
 
-test('kidney: each renal column is named for the two pyramids it lies between', () => {
-  // The columns are description rather than geometry here, so what is checked
-  // is the description: every one sits strictly between the two pyramids it
-  // names, and it names two that exist.
+test('kidney: each renal column is cortex, between the two pyramids it names', () => {
   const kidney = build();
   for (const column of COLUMNS) {
     const [first, second] = column.between;
+    const part = kidney.part(column.id);
+    assert.ok(part, `${column.id} is built`);
+    assert.equal(part.kind, 'cortex', 'a column is cortex reaching in, not a third tissue');
+
     const left = LOBES.find((lobe) => lobe.id === first);
     const right = LOBES.find((lobe) => lobe.id === second);
-    assert.ok(left && right, `${column.id} names two lobes that exist`);
     const [low, high] = [left.angle, right.angle].sort((a, b) => a - b);
     assert.ok(
       column.angle > low && column.angle < high,
       `${column.id} sits at ${column.angle}°, not between ${low}° and ${high}°`
     );
     assert.ok(kidney.part(`pyramid-${first}`) && kidney.part(`pyramid-${second}`));
-    assert.equal(kidney.part(column.id), null, 'and it is not carved as a part of its own');
   }
   kidney.dispose();
 });
@@ -267,9 +297,9 @@ test('kidney: both kidneys turn the same anatomy towards the midline', () => {
       `and its pelvis sits on the medial side, where the ureter leaves`
     );
     assert.equal(
-      anatomicalSide(kidney.part('cortex-lateral').centre),
+      anatomicalSide(kidney.part('pyramid-lateral').centre),
       side,
-      'while the lobe on the convex border sits laterally'
+      'while the pyramid on the convex border sits laterally'
     );
     assert.equal(kidney.parts.length, 17, 'the same parts are built on both sides');
     kidney.dispose();
