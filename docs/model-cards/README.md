@@ -44,6 +44,17 @@ scene whose review was never current in the first place. Two obligations, two
 mechanisms, and neither is a copy of the other — which is worth stating,
 because they were briefly implemented twice.
 
+## Nor is it the model profile
+
+A third neighbour, also deliberately elsewhere. `src/catalog/modelProfiles.js`
+classifies each scene's claim in a closed vocabulary — where the geometry
+comes from, how much the numbers can carry, whom the model stands for, what it
+is for and what it must never be used for — so that a test can hold the
+public product to it. It copies nothing from the card: the card says *what*
+the model answers and where it misleads, the profile says *what kind of thing*
+it is. See
+[`../architecture/intended-use-and-model-provenance.md`](../architecture/intended-use-and-model-provenance.md).
+
 ## The one on the record today
 
 `portal-hypertension` was reviewed at `b77cb83`. The hepatorenal work later
