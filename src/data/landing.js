@@ -15,6 +15,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'pulmonary-edema',
   'pneumonia-consolidation',
   'pulmonary-embolism',
+  'myocardial-ischemia',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -60,6 +61,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '糸球体濾過圧と尿細管輸送を同じモデルで操作。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
+  ),
+  'myocardial-ischemia': presentation(
+    'The artery narrows here. Rotate the heart: the wall that stops moving is somewhere else.',
+    '血管が細くなるのはここ。心臓を回すと、動かなくなる壁は別の場所にあります。',
+    ['TERRITORY', 'BURDEN', 'STUNNING'],
+    ['支配域', '虚血負荷', 'stunning']
   ),
   'pulmonary-edema': presentation(
     'The atrium is at 27. Why is one lung wet and the other flooded?',

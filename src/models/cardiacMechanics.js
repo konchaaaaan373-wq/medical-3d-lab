@@ -382,3 +382,181 @@ export function sampleTrace(phases, values, phase) {
   const t = position - Math.floor(position);
   return values[index] + (values[next] - values[index]) * t;
 }
+
+/* --------------------------------------------------------------------------
+   Chamber geometry and the named parts of a beat
+
+   These read the solved cycle rather than the parameters, and every scene that
+   draws a ventricle needs them, so they live with the solver rather than with
+   any one disease. Moved here from the heart-failure scene when the ischemia
+   scene needed the same cycle; the functions are unchanged.
+   -------------------------------------------------------------------------- */
+
+/** Scene units are centimetres, so 1 mL of blood is 1 cubic scene unit. */
+const ML_PER_CUBIC_UNIT = 1;
+
+/**
+ * Myocardial density, g/mL. Used only to express the model's myocardial volume
+ * as a mass for reference; it is NOT shown in the UI, because the chamber is a
+ * truncated-ellipsoid approximation rather than an integrated ventricular
+ * shape and would imply a precision the model does not have.
+ */
+export const MYOCARDIAL_DENSITY_G_PER_ML = 1.05;
+
+/**
+ * Cavity volume at a point in the cardiac cycle.
+ *
+ * Read from the beat the circulation model settled into, so isovolumic periods,
+ * the shape of ejection and the two phases of filling are all whatever the
+ * mechanics produced rather than a curve chosen to look like a heartbeat.
+ *
+ * @param {number} phase 0..1 through the cycle
+ */
+export function cavityVolumeAt(phase, state) {
+  return volumeAtPhase(state.cycle, phase);
+}
+
+/**
+ * Cavity radius for a volume, treating the chamber as a prolate spheroid with
+ * semi-axes (r, ratio·r, r): V = 4/3·π·ratio·r³.
+ */
+export function radiusForVolume(volumeMl, longToShortAxisRatio) {
+  return Math.cbrt(volumeMl / ML_PER_CUBIC_UNIT / ((4 / 3) * Math.PI * longToShortAxisRatio));
+}
+
+/**
+ * Myocardial volume implied by a disease state's end-diastolic geometry.
+ *
+ * This is the OUTER half of a deliberately two-layer model:
+ *
+ *   disease state -> ED cavity volume (solved) + ED wall thickness
+ *                 -> myocardial volume FOR THAT STATE        <- changes between states
+ *                 -> held constant through one cardiac cycle <- incompressibility
+ *                 -> systolic wall thickening emerges geometrically
+ *
+ * Treating myocardium as incompressible is a reasonable assumption *within* a
+ * beat. It would be wrong across disease states, where hypertrophy means real
+ * growth of muscle — so myocardial volume is recomputed whenever the state
+ * changes and only held fixed inside a cycle.
+ *
+ * Multiplying it by MYOCARDIAL_DENSITY_G_PER_ML gives a mass figure, but that
+ * figure is a property of this ellipsoid approximation and must not be read as
+ * a clinical echocardiographic LV mass measurement — which is why it is never
+ * displayed.
+ */
+export function myocardialVolumeFor({ edvMl, wallMm, longToShortAxisRatio }) {
+  const inner = radiusForVolume(edvMl, longToShortAxisRatio);
+  const outer = inner + wallMm / 10; // mm -> cm (scene units)
+  return (4 / 3) * Math.PI * longToShortAxisRatio * (outer ** 3 - inner ** 3);
+}
+
+/**
+ * Chamber geometry for the current instant, with myocardial volume held fixed
+ * across the beat (see `myocardialVolumeFor`).
+ */
+export function ventricleShape({ cavityVolumeMl, myocardialVolumeMl, longToShortAxisRatio }) {
+  const cavityRadius = radiusForVolume(cavityVolumeMl, longToShortAxisRatio);
+  const outerRadius = radiusForVolume(cavityVolumeMl + myocardialVolumeMl, longToShortAxisRatio);
+  return {
+    cavityRadius,
+    outerRadius,
+    cavitySemiLength: cavityRadius * longToShortAxisRatio,
+    outerSemiLength: outerRadius * longToShortAxisRatio,
+    wallThickness: outerRadius - cavityRadius,
+    /** Wall thickness relative to cavity radius — rises with concentric hypertrophy. */
+    relativeWallThickness: (outerRadius - cavityRadius) / cavityRadius,
+  };
+}
+
+/**
+ * Advances the position in the cardiac cycle.
+ *
+ * Kept here rather than inline in the scene so that it is covered by tests:
+ * reading the wrong field off the state object silently produced NaN geometry
+ * once, and a NaN that only shows up as a warning in the console is exactly the
+ * kind of failure that reaches users.
+ *
+ * @param {number} phase current position, 0..1
+ * @param {number} dt seconds elapsed
+ * @param {number} hr heart rate, beats per minute
+ */
+export function advanceCardiacPhase(phase, dt, hr) {
+  if (!Number.isFinite(phase) || !Number.isFinite(dt) || !Number.isFinite(hr) || hr <= 0) {
+    throw new RangeError(`advanceCardiacPhase: bad input (phase=${phase}, dt=${dt}, hr=${hr})`);
+  }
+  const next = (phase + (dt * hr) / 60) % 1;
+  return next < 0 ? next + 1 : next;
+}
+
+/**
+ * Which part of the beat a phase is in, named.
+ *
+ * The partition is the solved valve times, not fixed fractions of the cycle:
+ * `ejectionStartPhase` and `ejectionEndPhase` are when the model's aortic valve
+ * actually opens and shuts, so the isovolumic periods lengthen or shorten with
+ * the state rather than staying where a constant put them.
+ *
+ * It lives here, with the model, because everything that names a moment has to
+ * name the same one — the label over the 3D, the phase caption on the loop, the
+ * highlighted leg of the loop, and the shaded band on the waveform are all this
+ * function read at the same phase.
+ *
+ * `from`/`to` are carried so a plot can highlight the leg without re-deriving
+ * the boundaries and drifting out of step with the label.
+ *
+ * @param {number} phase 0..1, or anything that wraps into it
+ * @param {{ ejectionStartPhase: number, ejectionEndPhase: number }} state
+ * @returns {{ id: string, label: string, labelJa: string, short: string,
+ *   shortJa: string, from: number, to: number }}
+ */
+export function beatPhaseAt(phase, state) {
+  const wrapped = phase - Math.floor(phase);
+  const { ejectionStartPhase, ejectionEndPhase } = state;
+  // Relaxation has no second valve event to end it — the mitral valve opens
+  // when the ventricle falls below the atrium, which the solver gives as a
+  // pressure crossing rather than as a stored time. This is a presentation
+  // constant for how long "end systole" stays named, not a model value.
+  const relaxationEnd = ejectionEndPhase + 0.12;
+  if (wrapped < ejectionStartPhase) {
+    return {
+      id: 'isovolumic',
+      label: 'Systole — contraction begins',
+      labelJa: '収縮期 — 収縮開始',
+      short: 'Isovolumic contraction',
+      shortJa: '等容性収縮',
+      from: 0,
+      to: ejectionStartPhase,
+    };
+  }
+  if (wrapped < ejectionEndPhase) {
+    return {
+      id: 'ejection',
+      label: 'Systole — ejection',
+      labelJa: '収縮期 — 駆出',
+      short: 'Ejection',
+      shortJa: '駆出',
+      from: ejectionStartPhase,
+      to: ejectionEndPhase,
+    };
+  }
+  if (wrapped < relaxationEnd) {
+    return {
+      id: 'end-systole',
+      label: 'End systole',
+      labelJa: '収縮末期',
+      short: 'Isovolumic relaxation',
+      shortJa: '等容性弛緩',
+      from: ejectionEndPhase,
+      to: relaxationEnd,
+    };
+  }
+  return {
+    id: 'filling',
+    label: 'Diastole — filling',
+    labelJa: '拡張期 — 充満',
+    short: 'Filling',
+    shortJa: '充満',
+    from: relaxationEnd,
+    to: 1,
+  };
+}
