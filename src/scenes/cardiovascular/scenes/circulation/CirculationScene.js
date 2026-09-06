@@ -112,13 +112,24 @@ export class CirculationScene {
 
     this.arteryTube = new TubeSurface(ARTERIAL_PATH, { radius: () => 0.15, steps: 64, radial: 16 });
     this.veinTube = new TubeSurface(VENOUS_PATH, { radius: () => 0.13, steps: 60, radial: 14 });
+    // Both vessels are walls you look through, because the particles inside
+    // them are the scene: flow as cardiac output, and the oxygen it carries.
+    // They were opaque, and the flow was visible only because the tube was
+    // wound inside out and its near wall culled. Stated instead of inherited.
+    const VESSEL_WALL_OPACITY = 0.42;
     this.arteryMaterial = tissueMaterial({
       color: '#a95061',
       roughness: 0.38,
       emissive: PALETTE.pressure,
       emissiveIntensity: 0.08,
+      opacity: VESSEL_WALL_OPACITY,
     });
-    this.veinMaterial = tissueMaterial({ color: '#526a92', roughness: 0.5, emissiveIntensity: 0.04 });
+    this.veinMaterial = tissueMaterial({
+      color: '#526a92',
+      roughness: 0.5,
+      emissiveIntensity: 0.04,
+      opacity: VESSEL_WALL_OPACITY,
+    });
     this.artery = new THREE.Mesh(this.arteryTube.geometry, this.arteryMaterial);
     this.artery.name = 'arterial-path';
     this.vein = new THREE.Mesh(this.veinTube.geometry, this.veinMaterial);
