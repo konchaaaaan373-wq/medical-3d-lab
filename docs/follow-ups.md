@@ -90,6 +90,31 @@ WCAG AA の数値測定をしていません。
 
 ---
 
+### F-24 WebKit で脳アトラスの読み込みが間欠的に失敗する — P1（`#46`、`#44` のマージ時に観測）
+
+`viewport matrix (webkit)` が `main`（`88b1c58`、`#46`）で失敗しました。ログの最後は
+`[brain-anatomy] atlas load failed TypeError: Load failed` で、Chromium と
+Firefox は同じコミットで緑です。**同じ内容を含む `#44` のヘッド（`c484a79`）では
+WebKit も成功**したため、**決定論的な欠陥ではなく間欠的**と考えられます。
+
+`TypeError: Load failed` は WebKit が fetch の失敗全般に返す文言で、中断と
+本当の失敗を区別しません。`BrainAnatomyScene._loadAtlas()` は
+「破棄済みなら報告しない」ガードを `#46` で入れていますが、破棄が走らない経路
+（ページ遷移でドキュメントごと消える等）では素通りします。3.9 MB の
+`assets/brain/brain.glb` を取得中に測定が次のサーフェスへ移ると、この形になります。
+
+- **間欠的な赤は本物の赤を見逃させます。** 再実行で緑になる状態を放置すると、
+  次に本当に壊れたときに「また flake だろう」と判断される。優先度はそこにあります。
+- 確かめ方: WebKit で `verify:ui` を複数回まわして再現率を見る。中断由来なら、
+  fetch を `AbortController` で明示的に畳んで中断を成功扱いにするか、
+  `pagehide` / `visibilitychange` で「離脱中」を記録して報告を抑える。
+  本当に読み込めていないなら、それは Safari 利用者に見えている欠陥であり、
+  優先度も対処もまったく別になる。**まず区別すること。**
+- この環境には WebKit が無く（Chromium のみ）、ローカル再現はできません。
+  CI 往復か、WebKit の入る環境が要ります。
+- 完了の定義: 原因が「中断」か「本当の失敗」かを記録し、前者なら報告を止める修正、
+  後者なら読み込みの修正。いずれも WebKit の `verify:ui` を 3 回連続で緑にする。
+
 ### F-20 パスワード再設定の実地確認 — P1（ドメイン切替）
 
 Supabase の Site URL / Redirect URLs は新 origin
