@@ -555,9 +555,16 @@
 .anatomy-count { color: var(--ink-dim); font-size: 9.5px; }
 .anatomy-grade { color: var(--ink-faint); font-size: 8.5px; line-height: 1.35; }
 .anatomy-source {
+  /* WCAG 2.5.8. Two 8.5px lines come to 12px, which is half the floor: the
+     padding is the target, not decoration. Measured by the viewport matrix
+     only once it began driving `#/brain-anatomy`, which is the scene that has
+     this link — a control is only as checked as the surface it sits on. */
+  min-height: 24px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   width: fit-content;
+  padding: 3px 0;
   color: var(--ink-faint);
   font-size: 8.5px;
   text-decoration: none;
@@ -2472,7 +2479,10 @@
   -webkit-appearance: none;
   appearance: none;
   flex: 1;
-  height: 22px;
+  /* 24px, not 22: the WCAG 2.5.8 floor the build enforces. The track and the
+     thumb are drawn inside it and are unchanged — what grew is the part a
+     finger has to land on. */
+  height: 24px;
   background: transparent;
   cursor: pointer;
 }

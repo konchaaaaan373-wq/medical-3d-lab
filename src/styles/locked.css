@@ -23,6 +23,12 @@
 }
 
 .locked-brand {
+  /* WCAG 2.5.8: the text is 19px tall, so the link needs the rest of the
+     target itself. The landing page's brand link gets there through its mark;
+     this one is a word on its own. */
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
   color: var(--ink);
   text-decoration: none;
 }
