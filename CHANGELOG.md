@@ -34,6 +34,20 @@ person: Safari, Firefox, touch and a screen reader.
   every page names the host the site has left — invisible in a browser, decisive
   to a crawler. Without `--origin`, the check is the weaker one that the output
   at least names a single host.
+- **The origin is in the repository now, not in a dashboard.** `netlify.toml`
+  sets `VITE_SITE_URL` for production and leaves it empty for preview deploys —
+  a preview is not the site, so it claims no canonical and emits no sitemap.
+  Moving the domain is a commit that is reviewed, tested and revertible instead
+  of a value somebody has to remember to retype, and remembering was the whole
+  failure mode.
+- **The deployed site can be checked, not just the build.**
+  `npm run verify:live -- <origin>` fetches robots.txt, the sitemap, the home
+  page, every scene page and the preview card from the published origin, and
+  fails if what is served names another host, has no canonical, lost the
+  sitemap or published a Prototype scene. `--redirects-from <old-origin>` also
+  proves old links still lead to the new one. This is what catches a domain
+  that moved while an older deploy stayed published — the case no local check
+  can see, because the build is not what the public is being served.
 - **The rest of the move is a checklist, not memory.** Supabase's redirect
   allowlist and the new Stripe webhook endpoint come *before* the cutover —
   password reset returns the user to the running origin, and a new endpoint has

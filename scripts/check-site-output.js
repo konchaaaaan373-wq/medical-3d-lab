@@ -22,6 +22,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { LAB_SCENES, PUBLIC_SCENES } from '../src/catalog/index.js';
+import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
 
 const args = process.argv.slice(2);
@@ -36,15 +37,6 @@ const distDir = positional[0] ?? 'dist';
 const problems = [];
 const notes = [];
 
-/** An origin, or null — never a throw, so one bad address cannot hide the rest. */
-function originOf(url) {
-  try {
-    return new URL(String(url)).origin;
-  } catch {
-    return null;
-  }
-}
-
 let expectedOrigin = '';
 if (requestedOrigin) {
   expectedOrigin = originOf(requestedOrigin) ?? '';
@@ -54,19 +46,10 @@ if (requestedOrigin) {
   }
 }
 
-/**
- * The addresses by which a page names *itself* — canonical, Open Graph and
- * the preview image. Deliberately not every absolute URL in the markup: a
- * page also links to a font host and to sources, and those are supposed to
- * be somewhere else.
- */
+/** The distinct origins a page names itself at, bad addresses reported. */
 function selfDeclaredOrigins(html) {
   const origins = new Set();
-  const tags = html.match(/<(?:link|meta)[^>]*>/g) ?? [];
-  for (const tag of tags) {
-    if (!/rel="canonical"|og:url|og:image|twitter:image/.test(tag)) continue;
-    const url = tag.match(/(?:href|content)="(https?:\/\/[^"]+)"/)?.[1];
-    if (!url) continue;
+  for (const url of selfDeclaredUrls(html)) {
     const origin = originOf(url);
     if (origin) origins.add(origin);
     else problems.push(`a page declares itself at an unparseable address: ${url}`);
