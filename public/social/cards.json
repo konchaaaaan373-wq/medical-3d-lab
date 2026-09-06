@@ -29,6 +29,10 @@
       "bodyChars": 40,
       "html": "8c2622b5f421ef25"
     },
+    "myocardial-ischemia": {
+      "bodyChars": 40,
+      "html": "2d322065c3fe5b16"
+    },
     "portal-hypertension": {
       "bodyChars": 40,
       "html": "634797a5ab99c8d3"
@@ -43,7 +47,7 @@
     },
     "site": {
       "bodyChars": 82,
-      "html": "ab211def5b2a17c8"
+      "html": "7fd183a0fff59954"
     }
   }
 }

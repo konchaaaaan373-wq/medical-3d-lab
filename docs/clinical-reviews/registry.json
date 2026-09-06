@@ -248,5 +248,30 @@
       "The model has no ventilation, no respiratory rate and no carbon dioxide, so it cannot produce the symptom this disease presents with. Whether presenting oedema primarily as an oxygenation problem misleads has not been reviewed.",
       "The scene reports a specific flooding threshold in mmHg for the reference lung. It is searched for rather than stored and moves with every control, but whether reporting it as a number at all invites it being read as a clinical threshold has not been reviewed."
     ]
+  },
+  {
+    "sceneId": "myocardial-ischemia",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "coronary territory anatomy, the accumulation of ischemic burden, and its regional and global mechanical consequences"
+    ],
+    "sources": [
+      "docs/model-cards/myocardial-ischemia.md",
+      "docs/model-evidence/myocardial-ischemia.md",
+      "tests/myocardial-ischemia.test.js",
+      "tests/coronary-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the ischemia calibration and of the teaching text is not recorded.",
+      "The coronary territory map is the AHA fixed assignment, which measurement disagrees with in places — segment 3 is charted to the right coronary and measures as anterior-descending territory, and five further segments overlap two arteries between people.",
+      "One right-dominant specimen. Left-dominant and balanced circulations are not modelled.",
+      "Supply is a scale factor on a territory and not a stenosis: there is no flow calculation and no relationship here between a lumen and a flow reserve.",
+      "The time axis is normalized episode progress and not minutes. No claim is made about how long ischemia takes to develop or to recover.",
+      "Reversible ischemia only. No infarction, necrosis, scar or infarct expansion; no ECG, chest pain, troponin or prognosis.",
+      "The scene must not be used to assess a person's coronary anatomy, to judge whether someone is having a heart attack, or to infer treatment."
+    ]
   }
 ]

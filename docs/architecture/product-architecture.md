@@ -81,7 +81,7 @@ Presentation 側にはさらに所有者の異なる 2 面があります。Stor
 
 | 層 | 実装 |
 | --- | --- |
-| Shared Medical Model | `cardiovascular/scenes/heartFailure/circulation.js`, `hemodynamics.js` / `nervous/scenes/amyloidBeta/aggregationLayout.js` |
+| Shared Medical Model | `src/models/cardiacMechanics.js` (heart failure and ischemia read the same solver), `cardiovascular/scenes/heartFailure/hemodynamics.js` / `nervous/scenes/amyloidBeta/aggregationLayout.js` |
 | state | `Playback` の進行度 1 つ + Scene が解いた state |
 | 3D | `Chamber.js` `BloodField.js` `CongestionOverlay.js` `AggregationField.js` |
 | charts | `components/PressureVolumePanel.js` `PressureWavePanel.js` |

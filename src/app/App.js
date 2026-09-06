@@ -24,6 +24,7 @@ import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createMetricsPanel } from '../components/MetricsPanel.js';
 import { createPressureVolumePanel } from '../components/PressureVolumePanel.js';
 import { createPressureWavePanel } from '../components/PressureWavePanel.js';
+import { createBullseyePanel } from '../components/BullseyePanel.js';
 import { createChartPanel } from '../components/ChartPanel.js';
 import { createModelScopePanel } from '../components/ModelScopePanel.js';
 import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
@@ -453,6 +454,17 @@ export async function createApp({ stage, ui }) {
    * and out of the render loop.
    */
   const chartPanels = (meta.charts ?? []).map((spec) => createChartPanel(spec));
+
+  // A scene may also declare a segment map — a subject flattened so that all of
+  // it is visible at once, where a 3D view can only show the half facing the
+  // camera. Split the same way as a chart: the wedges, their names and their
+  // colours are declared beside the scene's other wording, and only what fills
+  // them arrives per frame. Same panel interface, so everything below that
+  // updates, resizes or focuses a chart handles this without knowing what it is.
+  // First in the rail, not last. It answers the scene's own question — which
+  // muscle a narrowed artery starves — and pushed to the bottom of four panels
+  // it fell below the rail's fold, which is where a reader never finds it.
+  if (meta.bullseye) chartPanels.unshift(createBullseyePanel(meta.bullseye));
   const chartById = new Map(chartPanels.map((panel) => [panel.id, panel]));
 
   // Optional: what the model answers, what it does not, and where it came from.
@@ -562,6 +574,9 @@ export async function createApp({ stage, ui }) {
       const charts = scene.getCharts();
       for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
     }
+    if (meta.bullseye && scene.getBullseye) {
+      for (const [id, map] of Object.entries(scene.getBullseye())) chartById.get(id)?.update(map);
+    }
     if (!pvPanel) return;
     // One read of the model, shared by both plots, so they cannot disagree.
     const pressureVolume = scene.getPressureVolume();
@@ -607,26 +622,39 @@ export async function createApp({ stage, ui }) {
   // knows how tall it is, and it differs by scene.
   publishHeight(consoleElement, ui, '--console-height');
 
-  const topBar = el('div', { class: 'top-bar' }, [
-      // The model panels go on the left, where there is room for them: the rail
-      // already carries the legend and the read-out, and stacking four panels
-      // there pushes the console off a laptop screen.
-      el('div', { class: 'top-left' }, [
-        createTitleCard(meta),
-        sceneSwitcher?.element,
-        pvPanel?.element,
-        wavePanel?.element,
-        ...chartPanels.map((panel) => panel.element),
-        controlsInConsole ? null : modelControls?.element,
-        scopePanel?.element,
-      ]),
-    rail,
+  // The model panels go on the left, where there is room for them: the rail
+  // already carries the legend and the read-out, and stacking four panels
+  // there pushes the console off a laptop screen.
+  const topLeft = el('div', { class: 'top-left' }, [
+    createTitleCard(meta),
+    pvPanel?.element,
+    wavePanel?.element,
+    ...chartPanels.map((panel) => panel.element),
+    controlsInConsole ? null : modelControls?.element,
+    scopePanel?.element,
   ]);
+  // And it scrolls for the same reason the rail does — but it was the one
+  // scroll box in the frame that never said so. Measured on the ischemia scene,
+  // which carries four panels here: at 1440×900 it shows 433 px of 520 and at
+  // 1280×720 it shows 253, so the panel at the bottom of the stack is cut with
+  // nothing on screen to say it is there. Same cue as the rail, no layout cost.
+  markScrollable(topLeft);
+
+  const topBar = el('div', { class: 'top-bar' }, [topLeft, rail]);
   // The phone sheet stops where the title and selection cards end, rather than
   // at a reserved constant that is only right on the scene it was measured on.
   publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);
 
   ui.append(
+    // The global navigation is `position: fixed` and anchored to the viewport,
+    // so its parent is a paint-order decision, not a layout one — and it used
+    // to sit inside `.top-left`. That mattered the moment `.top-left` got the
+    // scroll cue: `mask-image` makes the masked element a stacking context and
+    // paints its *fixed* descendants inside it, and on a phone the four header
+    // controls — brand, favourite, sign in, the catalogue trigger — measured
+    // as covered by the canvas at 320×568 and 375×812. `verify:ui` caught it;
+    // the nav lives beside the top bar now, where nothing masks it.
+    sceneSwitcher?.element,
     topBar,
     consoleElement,
     labels.element
@@ -728,6 +756,9 @@ export async function createApp({ stage, ui }) {
     if (chartPanels.length && scene.getCharts && !reelMode?.active) {
       const charts = scene.getCharts();
       for (const [id, chart] of Object.entries(charts)) chartById.get(id)?.update(chart);
+      if (meta.bullseye && scene.getBullseye) {
+        for (const [id, map] of Object.entries(scene.getBullseye())) chartById.get(id)?.update(map);
+      }
       // And so is the read-out. A scene whose model keeps working after the
       // control that changed it — a lung climbing to a new resting volume, a
       // network being re-solved to full accuracy once the slider is let go —

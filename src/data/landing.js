@@ -13,6 +13,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'amyloid-beta',
   'renal-filtration',
   'pulmonary-edema',
+  'myocardial-ischemia',
   'copd-hyperinflation',
   'asthma-heterogeneity',
   'portal-hypertension',
@@ -34,6 +35,7 @@ export const LANDING_MODEL_TITLES = Object.freeze({
   'amyloid-beta': Object.freeze({ en: 'Amyloid-β', ja: 'アミロイドβ' }),
   'renal-filtration': Object.freeze({ en: 'Renal filtration', ja: '腎濾過' }),
   'pulmonary-edema': Object.freeze({ en: 'Pulmonary oedema', ja: '肺水腫' }),
+  'myocardial-ischemia': Object.freeze({ en: 'Myocardial ischemia', ja: '心筋虚血' }),
   'copd-hyperinflation': Object.freeze({ en: 'COPD', ja: 'COPD' }),
   'asthma-heterogeneity': Object.freeze({ en: 'Asthma', ja: '喘息' }),
   'portal-hypertension': Object.freeze({ en: 'Portal hypertension', ja: '門脈圧亢進症' }),
@@ -70,6 +72,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '糸球体濾過圧と尿細管輸送を同じモデルで操作。',
     ['STARLING', 'FILTRATION', 'TUBULE'],
     ['Starling', '濾過', '尿細管']
+  ),
+  'myocardial-ischemia': presentation(
+    'The artery narrows here. Rotate the heart: the wall that stops moving is somewhere else.',
+    '血管が細くなるのはここ。心臓を回すと、動かなくなる壁は別の場所にあります。',
+    ['TERRITORY', 'BURDEN', 'STUNNING'],
+    ['支配域', '虚血負荷', 'stunning']
   ),
   'pulmonary-edema': presentation(
     'The atrium is at 27. Why is one lung wet and the other flooded?',
