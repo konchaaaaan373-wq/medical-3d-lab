@@ -52,6 +52,33 @@ person: Safari, Firefox, touch and a screen reader.
   Clinical case learning stops at case-based mechanism review: no patient-
   specific dosing (dobutamine included), diagnosis, severity grading or
   decision support.
+### The site has one public address
+
+- **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
+  comes from the deploy rather than from the code, so moving the site remains a
+  deploy change — but it is now written down, in the release runbook, in the
+  discoverability document and beside the variable in `.env.example`, instead of
+  being knowledge somebody had to already have.
+- **A trailing slash no longer makes a second site.** `https://site` and
+  `https://site/` are the same site to the person typing them into a deploy
+  environment, and they now produce the same canonical, the same Open Graph URLs
+  and the same sitemap. The home page had been declaring itself at an address
+  the sitemap did not use.
+- **The build can now be checked against the domain it was meant for.**
+  `npm run verify:site -- --origin <url>` fails when the sitemap or any page's
+  canonical, `og:url` or preview image names something else. Stating the origin
+  from outside the build is the point: the addresses are all baked in from one
+  variable, so a build carrying a stale one agrees with itself perfectly while
+  every page names the host the site has left — invisible in a browser, decisive
+  to a crawler. Without `--origin`, the check is the weaker one that the output
+  at least names a single host.
+- **The rest of the move is a checklist, not memory.** Supabase's redirect
+  allowlist and the new Stripe webhook endpoint come *before* the cutover —
+  password reset returns the user to the running origin, and a new endpoint has
+  a new signing secret, so doing either afterwards breaks them for everybody
+  already on the new domain. Redirects from the old host, the sitemap
+  resubmission, and retiring the old endpoint afterwards are in the release
+  runbook.
 
 ### The lobes and the liver segments now take the volumes a source gives them
 

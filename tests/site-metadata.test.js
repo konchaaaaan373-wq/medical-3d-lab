@@ -17,6 +17,8 @@ import {
   scenePagePath,
   scenePageUrl,
   siteJsonLd,
+  normaliseBaseUrl,
+  siteRootUrl,
 } from '../scripts/site-metadata.js';
 
 const BASE = 'https://medical3d.example';
@@ -111,8 +113,36 @@ test('json-ld: normal-physiology scenes have no disease topic invented for them'
 
 test('json-ld: the site entry omits its URL when none is configured', () => {
   assert.equal(siteJsonLd().url, undefined);
-  assert.equal(siteJsonLd({ baseUrl: BASE }).url, BASE);
+  assert.equal(siteJsonLd({ baseUrl: BASE }).url, `${BASE}/`);
   assert.equal(siteJsonLd().name, SITE_NAME);
+});
+
+test('metadata: the site root has one address, whatever the trailing slash', () => {
+  // A domain change is typed into a deploy environment by a person, and
+  // `https://site` and `https://site/` are the same site. They must not
+  // produce two canonicals for one page.
+  for (const typed of [BASE, `${BASE}/`, `${BASE}//`, ` ${BASE} `]) {
+    assert.equal(normaliseBaseUrl(typed), BASE);
+    assert.equal(siteRootUrl(typed), `${BASE}/`);
+    assert.equal(sceneMetadata(scene('copd'), { baseUrl: typed }).canonical, `${BASE}/s/copd/`);
+    assert.equal(siteJsonLd({ baseUrl: typed }).url, `${BASE}/`);
+    assert.ok(buildRobots({ baseUrl: typed }).includes(`Sitemap: ${BASE}/sitemap.xml`));
+  }
+  assert.equal(normaliseBaseUrl(''), '');
+  assert.equal(siteRootUrl(''), '');
+});
+
+test('metadata: the home page and the sitemap agree on the site root', () => {
+  // The shell's canonical and the sitemap's first entry are a claim about the
+  // same page. Disagreeing over a trailing slash publishes two front doors.
+  const xml = buildSitemap(PUBLIC_SCENES, { baseUrl: BASE, lastModified: '2026-09-01' });
+  const firstLoc = xml.match(/<loc>([^<]+)<\/loc>/)[1];
+  assert.equal(firstLoc, siteRootUrl(BASE));
+  assert.ok(
+    headTags({ title: 't', description: 'd', canonical: siteRootUrl(BASE) }).some((line) =>
+      line.includes(`rel="canonical" href="${firstLoc}"`)
+    )
+  );
 });
 
 test('sitemap: is skipped rather than emitted with relative paths', () => {

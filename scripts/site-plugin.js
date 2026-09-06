@@ -26,14 +26,17 @@ import {
   SITE_NAME,
   SITE_TAGLINE_EN,
   SITE_TAGLINE_JA,
+  absoluteUrl,
   buildRobots,
   buildSitemap,
   headTags,
   jsonLdScript,
   missingSocialCards,
+  normaliseBaseUrl,
   renderScenePage,
   scenePagePath,
   siteJsonLd,
+  siteRootUrl,
 } from './site-metadata.js';
 
 /** Slugs for which a raster preview image actually exists. */
@@ -50,7 +53,12 @@ function socialCardSlugs(root) {
 /**
  * @param {{ scenes: object[], reviews?: object[], root?: string, baseUrl?: string }} options
  */
-export function siteMetadataPlugin({ scenes, reviews = [], root = process.cwd(), baseUrl = '' } = {}) {
+export function siteMetadataPlugin({ scenes, reviews = [], root = process.cwd(), baseUrl: configuredUrl = '' } = {}) {
+  // Normalised once, here, where the deploy environment reaches the build.
+  // Everything downstream then addresses one site however the variable was
+  // typed — which is the moment a domain change is most likely to be typed a
+  // second way.
+  const baseUrl = normaliseBaseUrl(configuredUrl);
   const reviewById = new Map(reviews.map((record) => [record.sceneId, record]));
   const socialCards = socialCardSlugs(root);
 
@@ -67,8 +75,8 @@ export function siteMetadataPlugin({ scenes, reviews = [], root = process.cwd(),
       const tags = headTags({
         title: `${SITE_NAME} — ${SITE_TAGLINE_EN}`,
         description: `${SITE_TAGLINE_JA} / ${SITE_TAGLINE_EN}`,
-        canonical: baseUrl,
-        image: baseUrl && socialCards.has('site') ? `${baseUrl.replace(/\/$/, '')}/social/site.png` : '',
+        canonical: siteRootUrl(baseUrl),
+        image: socialCards.has('site') ? absoluteUrl(baseUrl, 'social/site.png') : '',
       })
         // `index.html` already carries its own title and description; the
         // build must not give the page two of either.
