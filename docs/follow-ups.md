@@ -27,12 +27,16 @@ squash `81fea92`）のレビューと修正。`#40` = 冠動脈解剖・心筋�
 `#42` の CI は PR 上で全緑（Chromium / Firefox / WebKit）でしたが、squash 後の
 `main` での実行と Netlify 本番反映は見ていません。
 
-- 確かめ方: `main` の最新 CI run が success であること。本番で `#/organs`、
-  `#/pneumonia`、`#/pulmonary-embolism`、`#/myocardial-ischemia` を開く。
-  `npm run build && npm run verify:site -- --origin https://med-3d-lab.necofindjob.com`
-  で canonical / og:url / sitemap を確認（[`discoverability.md`](discoverability.md)）。
-- 完了の定義: 4 ルートが表示され、Explorer で臓器プレビューが 2 枚まで同時に
-  描画され、social card 画像（`public/social/*.png`）が本番 URL で返る。
+- **配信面は確認済み（2026-09-06）。** `verify:live` を Actions から実行し、
+  robots.txt・sitemap・トップ・公開 13 シーンページ・`social/site.png` がすべて 200、
+  canonical / og:url / sitemap がすべて `https://med-3d-lab.necofindjob.com` を
+  指すことを確認しました（`#/pneumonia`・`#/pulmonary-embolism`・
+  `#/myocardial-ischemia` の各シーンページを含む）。以後は毎日 07:20 JST に自動実行。
+- **残っているのはブラウザ側だけです。** 上の確認は HTTP と HTML であって、
+  レンダリングではありません。実ブラウザで `#/organs` を開き、Explorer の臓器
+  プレビューが同時 2 枚まで描画されること、4 ルートが実際に表示されることは未確認。
+- 完了の定義: 実ブラウザで 4 ルートが表示され、Explorer のプレビューが上限 2 枚で
+  描画される（F-02 と同じ端末確認で兼ねられます）。
 
 ### F-02 実機での WebGL コンテキスト管理 — P1（`#42`）
 
@@ -83,6 +87,56 @@ WCAG AA の数値測定をしていません。
 
 - 確かめ方: 次の PR の Deploy Preview で `#/pneumonia` などを直接開く。
   `curl -I` で `Content-Security-Policy` と `Cache-Control` を確認。
+
+---
+
+### F-20 パスワード再設定の実地確認 — P1（ドメイン切替）
+
+Supabase の Site URL / Redirect URLs は新 origin
+（`https://med-3d-lab.necofindjob.com`、`/**` 付き）に更新済みで、再デプロイ後に
+認証 UI が出ることも確認しました。**ただしメールを受け取る往復は未実施です。**
+ここは自動チェックが構造的に届かない唯一の箇所で（受信箱が要る）、
+壊れていても誰も報告してくれません。
+
+- 確かめ方: ログアウト状態（シークレットウィンドウが早い）でナビ右上の
+  `○ ログイン` → メールアドレスを入力 → `Forgot password? / パスワードを忘れた`。
+  届いたリンクが `https://med-3d-lab.necofindjob.com/?account=recovery` に着地し、
+  「新しいパスワードを設定」フォームが出ること。
+- 完了の定義: 上記が通り、実際に新しいパスワードでログインできる。
+
+### F-21 旧ドメインからのリダイレクト未確認 — P2（ドメイン切替）
+
+`verify:live` には `--redirects-from` があり旧 origin → 新 origin の
+リダイレクトを検証できますが、**旧ドメイン名がこのセッションで確定していない**ため
+渡していません。共有済みリンクは、共有元のドメインより長生きします。
+
+- 確かめ方: Netlify の Domain management で旧ドメインが alias として残っていることを
+  確認し、Actions → Verify the deployed site → `redirects_from` に旧 origin を入れて実行。
+- 完了の定義: 旧 origin が 3xx で新 origin に向いていることを 1 回記録する。
+
+### F-22 Search Console への sitemap 再送信 — P3（ドメイン切替）
+
+新 origin のプロパティ追加と `sitemap.xml` の送信が未実施です。放置でも数週間で
+追随しますが、その間は旧 URL が結果に残ります。
+
+- 完了の定義: 新プロパティで sitemap が「成功」になり、旧プロパティは
+  リダイレクトが認識されるまで残す。
+
+### F-23 本番の課金は未設定のまま — P2（ドメイン切替で判明）
+
+Netlify の Production には Stripe の 4 変数（`STRIPE_SECRET_KEY`、価格 3 種）と
+`STRIPE_WEBHOOK_SECRET`、`SUPABASE_SECRET_KEY` が入っておらず、値は Deploy Previews
+のみにあります。[`deploy-preview-billing-test.md`](deploy-preview-billing-test.md) の
+運用（プレビューで test キー）と一致しており、事故ではありません。本番は
+`billingConfigured: false` で、アカウントと無料モデルだけが動く状態です。
+
+- 決めること: 本番で有料アクセスをいつ開くか。開くなら live キー一式、live モードの
+  webhook エンドポイントとその署名シークレットが要ります（プレビューの値は
+  `stripeDeploymentSafety` が拒否するのでコピー不可）。手順は
+  [`release-runbook.md`](release-runbook.md#changing-the-primary-domain) と
+  [`access-and-billing.md`](access-and-billing.md)。
+- 完了の定義: 開く場合は `npm run billing:check` が 3 行とも ok。開かない場合は
+  その決定を roadmap の Gate に書く。
 
 ---
 
