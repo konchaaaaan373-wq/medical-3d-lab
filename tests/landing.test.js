@@ -5,7 +5,7 @@ import * as THREE from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
-import { mountLandingOrganViewport } from '../src/app/landingOrganViewport.js';
+import { mountLandingOrganViewport, shouldLoadDetail } from '../src/app/landingOrganViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
   createLandingFlowField,
@@ -69,6 +69,17 @@ test('landing hero: the featured organ is a pure function of the date, and start
 test('landing hero: every rotation entry is a real organ that opens a released model', () => {
   assert.equal(HERO_ORGANS[0].organ, 'brain');
   for (const entry of HERO_ORGANS) {
+    // The detailed model that replaces the builder has to be a scene the
+    // release actually opens, or the hero would be showing geometry from
+    // something a visitor is told is not ready.
+    if (entry.upgradeSceneId) {
+      const upgrade = sceneById(entry.upgradeSceneId);
+      assert.ok(upgrade, `${entry.upgradeSceneId} is not a registered scene`);
+      assert.equal(isSceneReleased(upgrade), true, entry.upgradeSceneId);
+    }
+    for (const key of ['kickerEn', 'kickerJa']) {
+      assert.ok(entry[key]?.trim(), `${entry.organ}: ${key} is empty`);
+    }
     assert.ok(organById(entry.organ), `${entry.organ} is not an organ in the taxonomy`);
     assert.equal(hasOrganModel(entry.organ), true, `${entry.organ} has no standalone builder`);
 
@@ -410,6 +421,7 @@ function createFakeViewerClass() {
     }
 
     onResize() { return () => {}; }
+    onFrame() { return () => {}; }
     start() { this.running = true; }
     stop() { this.running = false; }
     dispose() {}
@@ -515,6 +527,118 @@ test('landing hero viewport: the focused 3D viewport rotates, zooms and resets f
     assert.ok(viewer.camera.position.distanceTo(initial) < 1e-9, 'Home restores the opening pose');
     mounted.destroy();
   } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+
+test('landing hero: the detailed model is not sent down a metered or crawling connection', () => {
+  assert.equal(shouldLoadDetail(undefined), true, 'a browser that does not report is given the model');
+  assert.equal(shouldLoadDetail({ effectiveType: '4g' }), true);
+  assert.equal(shouldLoadDetail({ effectiveType: '3g' }), true);
+  assert.equal(shouldLoadDetail({ saveData: true, effectiveType: '4g' }), false, 'data saver is a request');
+  assert.equal(shouldLoadDetail({ effectiveType: '2g' }), false);
+  assert.equal(shouldLoadDetail({ effectiveType: 'slow-2g' }), false);
+});
+
+test('landing hero viewport: the detailed model replaces the builder, and a failure keeps it', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  const previousError = console.error;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
+  console.error = () => {};
+
+  /** A scene shaped like the real ones: built at once, contents arrive later. */
+  const makeSceneClass = (name) => {
+    let resolveReady;
+    class FakeScene {
+      static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+      static framing = { minHorizontalAspect: 1 };
+      static allowAutoRotate = false;
+      static settle = null;
+      constructor({ viewer }) {
+        this.viewer = viewer;
+        this.root = new THREE.Group();
+        this.root.name = name;
+        this.ready = new Promise((resolve) => { resolveReady = resolve; });
+        FakeScene.settle = resolveReady;
+      }
+      build() { return this.root; }
+      update() {}
+      dispose() { FakeScene.disposed = (FakeScene.disposed ?? 0) + 1; }
+    }
+    return FakeScene;
+  };
+
+  try {
+    const FakeViewer = createFakeViewerClass();
+    const Detailed = makeSceneClass('detailed-brain');
+    const container = new FakeElement('div');
+    const mounted = mountLandingOrganViewport(container, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => Detailed,
+    });
+
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    const names = () => FakeViewer.instance.scene.children.map((child) => child.name);
+
+    // The builder is on screen and the scene is built but not yet shown, so the
+    // frame is never empty while the atlas is being fetched.
+    assert.ok(names().includes('brain-hero'), 'the builder holds the frame while stage 2 loads');
+    assert.equal(container.dataset.detail, 'loading');
+    const staged = FakeViewer.instance.scene.children.find((c) => c.name === 'detailed-brain');
+    assert.ok(staged);
+    assert.equal(staged.visible, false, 'stage 2 stays hidden until it is ready');
+
+    Detailed.settle();
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(container.dataset.detail, 'ready');
+    assert.equal(staged.visible, true);
+    assert.ok(!names().includes('brain-hero'), 'the builder comes down once it has been replaced');
+    assert.equal(mounted.detailScene, 'brain-anatomy');
+    // The scene brought its own lighting rig, so the hero's comes off.
+    assert.ok(!names().includes('organ-lights'));
+
+    // A metered connection is never sent the detailed model at all.
+    const cheap = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => { throw new Error('must not be reached'); },
+      detailAllowed: () => false,
+    });
+    await cheap.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    assert.equal(cheap.detailScene, null);
+    cheap.destroy();
+
+    // And a failed load leaves the builder exactly where it was, silently.
+    const failingContainer = new FakeElement('div');
+    const failing = mountLandingOrganViewport(failingContainer, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => { throw new Error('atlas gone'); },
+    });
+    await failing.setOrgan('heart', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(failing.detailScene, null);
+    assert.equal(failingContainer.dataset.detail, 'unavailable');
+    assert.ok(
+      FakeViewer.instance.scene.children.some((child) => child.name === 'heart-hero'),
+      'a failed upgrade is invisible: the builder is still the model on screen'
+    );
+    failing.destroy();
+    mounted.destroy();
+  } finally {
+    console.error = previousError;
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;

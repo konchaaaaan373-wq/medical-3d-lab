@@ -14,6 +14,24 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The landing hero shows the real model, in two stages
+
+- **The hero now builds the organ's actual anatomy model.** The brain is the
+  397-structure atlas, not the landmark silhouette that stood in for it; the
+  heart is the coronary anatomy. What a visitor arriving from a link sees is
+  the thing itself.
+- **It loads in two stages, so nobody waits for it.** The lightweight builder is
+  on screen as soon as Three.js is, and the detailed model — 4.5 MB of atlas,
+  for the brain — replaces it in place once it has finished loading. The frame
+  is never empty, and the page is never held up.
+- **It is skipped where it would cost more than it gives**: on a data-saver
+  connection, on 2G, and while the hero is off screen. A failed load says
+  nothing at all — the builder is a real organ, and a hero is not the place to
+  report a network error.
+- The scene's authored view is kept — which side of an organ a reader opens on
+  is an anatomical decision — but its distance is refitted to the hero's short,
+  wide frame, and only ever further away, never closer than the scene asked.
+
 ### Every organ gets an anatomy model, at the accuracy the brain reached
 
 - **The design requirement is now written down and enforced.** Every organ in

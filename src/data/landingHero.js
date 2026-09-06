@@ -18,28 +18,38 @@
 /**
  * The rotation, brain first.
  *
- * Two organs, because two organs are what the beta opens. `sceneId` is the
- * model the hero opens; both are `alpha` or better and neither is a prototype,
- * which `tests/landing.test.js` holds.
+ * Two organs, because two organs are what the beta opens.
+ *
+ * - `sceneId` is the model the hero's link opens.
+ * - `upgradeSceneId` is the scene whose geometry replaces the lightweight
+ *   builder once it has loaded (`landingOrganViewport.js`). It is the organ's
+ *   real anatomy model; the builder is what stands in until it arrives.
  *
  * The heart has no anatomy scene of its own — every heart scene in the
- * catalogue is about a disease — so its hero opens heart failure, the model
- * this project treats as its reference implementation. The shape in the frame
- * is the shared heart builder either way, and the line below describes that
- * shape rather than the disease behind the link.
+ * catalogue is about a disease — so its link opens heart failure, the model
+ * this project treats as its reference implementation, while the geometry that
+ * replaces the builder is the coronary anatomy, which is the most accurate
+ * heart in the repository. That the heart has no anatomy model of its own is a
+ * recorded gap, not a decision: see `src/catalog/anatomy.js`.
  */
 export const HERO_ORGANS = Object.freeze([
   Object.freeze({
     organ: 'brain',
     sceneId: 'brain-anatomy',
+    upgradeSceneId: 'brain-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
     lineEn: 'Gyri, sulci and the deep structures underneath them.',
     lineJa: '脳回と脳溝、そしてその下にある深部構造。',
   }),
   Object.freeze({
     organ: 'heart',
     sceneId: 'heart-failure',
-    lineEn: 'The chambers and the great vessels leaving them.',
-    lineJa: '心房・心室と、そこから出ていく大血管。',
+    upgradeSceneId: 'myocardial-ischemia',
+    kickerEn: 'CORONARY ANATOMY',
+    kickerJa: '冠動脈解剖',
+    lineEn: 'The chambers, the great vessels, and the arteries that feed the muscle.',
+    lineJa: '心房・心室と大血管、そして心筋を養う冠動脈。',
   }),
 ]);
 

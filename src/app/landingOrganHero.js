@@ -38,6 +38,7 @@ export function createLandingOrganHero({
   let destroyed = false;
 
   const todayBadge = el('span', { class: 'landing-demo-case' });
+  const kicker = el('p', { class: 'landing-demo-kicker' });
   const title = el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' });
   const explanation = el('p', { class: 'landing-demo-explanation' });
   const openLink = el('a', { class: 'landing-demo-link landing-cta', href: '#/' });
@@ -68,6 +69,15 @@ export function createLandingOrganHero({
     ...dual('Loading 3D model', '3Dモデルを読み込み中'),
   ]);
 
+  // Stage 2 is arriving. Shown only while it is, driven from the viewport's own
+  // `data-detail` state by a sibling selector, so nothing has to be kept in
+  // sync from JavaScript. It never reports a failure: if the detailed model
+  // does not arrive, the builder on screen is still a real organ.
+  const detailNote = el('div', { class: 'landing-demo-detail', 'aria-hidden': 'true' }, [
+    el('span', { class: 'landing-demo-detail-dot' }),
+    ...dual('Loading the detailed model', '詳細モデルを読み込み中'),
+  ]);
+
   const organButtons = organs.map((entry, index) => {
     const organ = organById(entry.organ);
     const button = el('button', {
@@ -90,10 +100,11 @@ export function createLandingOrganHero({
   const element = el('article', { class: 'landing-demo is-organ', 'aria-labelledby': 'landing-demo-title' }, [
     el('div', { class: 'landing-demo-stage' }, [
       viewport,
+      detailNote,
       viewportLoading,
       el('header', { class: 'landing-demo-header' }, [
         el('div', {}, [
-          el('p', { class: 'landing-demo-kicker' }, dual('LIVE 3D  /  ANATOMY', 'LIVE 3D  /  解剖')),
+          kicker,
           title,
         ]),
         todayBadge,
@@ -113,8 +124,8 @@ export function createLandingOrganHero({
       }, [explanation]),
       el('footer', { class: 'landing-demo-footer' }, [
         el('span', { class: 'landing-demo-boundary' }, dual(
-          'Anatomy model: shape and normal motion. No disease state and no clinical values.',
-          '解剖モデルです。形と正常な動きのみで、病態や臨床数値は扱いません。'
+          'Educational conceptual model — not patient-specific diagnosis or treatment.',
+          '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。'
         )),
         openLink,
       ]),
@@ -129,6 +140,10 @@ export function createLandingOrganHero({
     const nameJa = organ?.labelJa ?? selected.organ;
 
     element.dataset.organ = selected.organ;
+    kicker.replaceChildren(...dual(
+      `LIVE 3D  /  ${selected.kickerEn}`,
+      `LIVE 3D  /  ${selected.kickerJa}`
+    ));
     title.replaceChildren(...dual(nameEn, nameJa));
     explanation.replaceChildren(...dual(selected.lineEn, selected.lineJa));
 
@@ -158,7 +173,7 @@ export function createLandingOrganHero({
     render();
     if (!mountedViewport) return;
     try {
-      await mountedViewport.setOrgan(organId);
+      await mountedViewport.setOrgan(organId, { upgradeSceneId: entry.upgradeSceneId ?? null });
     } catch (error) {
       console.error('landing organ hero', error);
     }
@@ -181,7 +196,9 @@ export function createLandingOrganHero({
           return null;
         }
         mountedViewport = instance;
-        await instance.setOrgan(selected.organ);
+        await instance.setOrgan(selected.organ, {
+          upgradeSceneId: selected.upgradeSceneId ?? null,
+        });
         if (destroyed) {
           instance.destroy();
           mountedViewport = null;
