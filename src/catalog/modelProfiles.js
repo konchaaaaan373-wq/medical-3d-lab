@@ -11,8 +11,8 @@
  * That gap is what this registry closes, and it closes it with a closed
  * vocabulary on purpose. Four axes are kept apart because collapsing them is
  * how a product starts over-claiming: a `production` scene is not a validated
- * one, a solved circulation is not a calibrated one, and a model a clinician
- * shows a patient is not a model of that patient.
+ * one, a solved circulation is not a calibrated one, and a model a patient
+ * looks at is not a model of that patient.
  *
  * What a profile is **not**: a copy of the model card, the evidence dossier or
  * the review record. It carries no medical text and no numbers. It names the
@@ -20,20 +20,27 @@
  * public product to it. The reasoning behind the axes is in
  * `docs/architecture/intended-use-and-model-provenance.md`.
  *
- * Pure data and pure functions. No `three`, no DOM, no scene import.
+ * Pure data and pure functions. No `three`, no DOM, no scene import, no
+ * filesystem: whether a referenced record exists is answered by a resolver the
+ * caller injects.
  */
+import { ASSET_KIND, ASSET_SOURCE_TYPE, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
 
 export const MODEL_PROFILE_SCHEMA_VERSION = 1;
 
-/** Where the shape on screen comes from. */
+/**
+ * Where the shape on screen comes from. This is provenance, not file format:
+ * a procedurally generated organ stays `procedural` when it is stored as a
+ * GLB, and an atlas mesh stays `reference-atlas` however it is compressed.
+ */
 export const GEOMETRY_BASIS = Object.freeze({
-  /** Built in code from primitives, curves and particles for teaching. Claims no atlas provenance. */
+  /** Built in code, or generated from parameters and reproducible from them. Claims no atlas provenance. */
   PROCEDURAL: 'procedural',
   /** Derived from a normal reference atlas or curated mesh whose provenance the asset manifest fixes. */
   REFERENCE_ATLAS: 'reference-atlas',
   /** Segmented from CT/MRI. One subject's shape is neither a population normal nor a prediction. */
   IMAGING_DERIVED: 'imaging-derived',
-  /** A deliberate combination of procedural geometry with atlas- or image-derived assets. */
+  /** A deliberate combination of procedural geometry with atlas-, image- or structure-derived assets. */
   HYBRID: 'hybrid',
   /** From structural data (PDB and the like) or an explicitly stated molecular representation rule. */
   MOLECULAR: 'molecular',
@@ -74,11 +81,17 @@ export const PERSONALIZATION = Object.freeze({
 /**
  * Who the model is for. This is the axis that must never be confused with the
  * delivery layers (SNS / Interactive / Educational), which are ways of reaching
- * a reader, not claims about what the model may be used for.
+ * a reader, not claims about what the model may be used for — and it is not
+ * the billing axis either: a paid `patient` capability *requires* the use to
+ * be declared, but a free scene may declare it too.
  */
 export const INTENDED_USE = Object.freeze({
   GENERAL_EDUCATION: 'general-education',
-  /** Shown *by* a clinician *to* a patient, as the general model. Takes no patient data. */
+  /**
+   * An explanation of the representative model that a patient or family can
+   * look at, whether or not a clinician is present. Takes no patient data,
+   * personalises nothing, and neither diagnoses nor predicts.
+   */
   PATIENT_EXPLANATION: 'patient-explanation',
   MEDICAL_EDUCATION: 'medical-education',
   /** A separate validation, quality and regulatory track. Not offered by the current product. */
@@ -89,11 +102,12 @@ export const INTENDED_USE = Object.freeze({
 
 /**
  * What a model must not be used for. The first three are the strategy's
- * minimum for every current scene. `prognosis` and `procedure-planning` are
- * added because the clinical-review registry already records them as
- * limitations (the patient-guide policy forbids prognosis; the brain atlas
- * must not be used for lesion localisation, operative planning or navigation),
- * and a prohibition the registry states in prose should be one a test can read.
+ * minimum for every profile in this schema. `prognosis` and
+ * `procedure-planning` are added because the clinical-review registry already
+ * records them as limitations (the patient-guide policy forbids prognosis; the
+ * brain atlas must not be used for lesion localisation, operative planning or
+ * navigation), and a prohibition the registry states in prose should be one a
+ * test can read.
  */
 export const PROHIBITED_USE = Object.freeze({
   DIAGNOSIS: 'diagnosis',
@@ -103,7 +117,11 @@ export const PROHIBITED_USE = Object.freeze({
   PROCEDURE_PLANNING: 'procedure-planning',
 });
 
-/** Every current-product profile must prohibit at least these. */
+/**
+ * Every profile in schema 1 must prohibit at least these — a clinical-research
+ * profile included. Omission is never read as permission; a future
+ * clinical-care surface gets its own schema and an explicit permission model.
+ */
 export const CORE_PROHIBITED_USES = Object.freeze([
   PROHIBITED_USE.DIAGNOSIS,
   PROHIBITED_USE.TREATMENT_SELECTION,
@@ -122,13 +140,24 @@ export const PATIENT_SPECIFIC_PERSONALIZATION = Object.freeze([
   PERSONALIZATION.PATIENT_PREDICTIVE,
 ]);
 
-/** Geometry bases that must point at an asset whose provenance the asset manifest records. */
+/** Geometry bases that must point at a mesh asset whose provenance the asset manifest records. */
 export const ASSET_BACKED_GEOMETRY = Object.freeze([
   GEOMETRY_BASIS.REFERENCE_ATLAS,
   GEOMETRY_BASIS.IMAGING_DERIVED,
   GEOMETRY_BASIS.HYBRID,
   GEOMETRY_BASIS.MOLECULAR,
 ]);
+
+/** For each single-provenance geometry basis, the one asset source type its mesh assets may have. */
+const MESH_SOURCE_FOR_BASIS = Object.freeze({
+  [GEOMETRY_BASIS.PROCEDURAL]: ASSET_SOURCE_TYPE.PROCEDURAL,
+  [GEOMETRY_BASIS.REFERENCE_ATLAS]: ASSET_SOURCE_TYPE.REFERENCE_ATLAS,
+  [GEOMETRY_BASIS.IMAGING_DERIVED]: ASSET_SOURCE_TYPE.IMAGING_DERIVED,
+  [GEOMETRY_BASIS.MOLECULAR]: ASSET_SOURCE_TYPE.MOLECULAR,
+});
+
+/** An asset with this organ is systemic context and may be drawn by a scene of any organ. */
+export const SYSTEMIC_CONTEXT_ORGAN = 'whole-body';
 
 const values = (enumeration) => Object.freeze(Object.values(enumeration));
 export const GEOMETRY_BASIS_IDS = values(GEOMETRY_BASIS);
@@ -145,10 +174,10 @@ export const PROHIBITED_USE_IDS = values(PROHIBITED_USE);
  * @property {string} mechanismLevel one of MECHANISM_LEVEL
  * @property {string} personalization one of PERSONALIZATION
  * @property {string[]} intendedUses non-empty, from INTENDED_USE
- * @property {string[]} prohibitedUses non-empty, from PROHIBITED_USE
- * @property {string[]} assets asset ids from `assetManifest.js`; empty for procedural geometry
- * @property {string[]} validationRecords repository-relative paths. Required, non-empty, for any claim
- *   above the current product's ceiling (see `profileMakesHighClaim`). Never invented; today every profile has none.
+ * @property {string[]} prohibitedUses non-empty, from PROHIBITED_USE, always including CORE_PROHIBITED_USES
+ * @property {string[]} assets asset ids from `assetManifest.js`
+ * @property {string[]} validationRecords repository-relative paths of the records that back any claim in
+ *   `profileNeedsEvidence`. Each must exist in the repository. Never invented; today every profile has none.
  * @property {string} basis one sentence on why this classification, pointing at the card or dossier
  */
 
@@ -340,30 +369,42 @@ const BY_ID = new Map(MODEL_PROFILES.map((profile) => [profile.profileId, profil
 
 /** @param {string} id */
 export const modelProfileById = (id, profiles = MODEL_PROFILES) =>
-  (profiles === MODEL_PROFILES ? BY_ID.get(id) : profiles.find((p) => p.profileId === id)) ?? null;
+  (profiles === MODEL_PROFILES ? BY_ID.get(id) : profiles.find((p) => p?.profileId === id)) ?? null;
 
 /** The profile a scene manifest entry references, or null. */
 export const modelProfileForScene = (scene, profiles = MODEL_PROFILES) =>
-  scene?.modelProfile ? modelProfileById(scene.modelProfile, profiles) : null;
+  typeof scene?.modelProfile === 'string' ? modelProfileById(scene.modelProfile, profiles) : null;
 
-/** The claims that would take a profile past what the current public product may publish. */
+const list = (value) => (Array.isArray(value) ? value : []);
+
+/**
+ * Claims that must be backed by a record on file. This is the structural line:
+ * a profile making one of these without a `validationRecords` entry is
+ * malformed, whatever product it is in.
+ */
+export const profileNeedsEvidence = (profile) =>
+  [MECHANISM_LEVEL.LITERATURE_CALIBRATED, MECHANISM_LEVEL.EXTERNALLY_VALIDATED].includes(profile?.mechanismLevel) ||
+  [PERSONALIZATION.COHORT_DERIVED, ...PATIENT_SPECIFIC_PERSONALIZATION].includes(profile?.personalization) ||
+  list(profile?.intendedUses).some((use) => CLINICAL_INTENDED_USES.includes(use));
+
+/** The claims the current public product has no release surface for, records or not. */
 export const profileMakesHighClaim = (profile) =>
-  profile.mechanismLevel === MECHANISM_LEVEL.EXTERNALLY_VALIDATED ||
-  PATIENT_SPECIFIC_PERSONALIZATION.includes(profile.personalization) ||
-  (profile.intendedUses ?? []).some((use) => CLINICAL_INTENDED_USES.includes(use));
+  profile?.mechanismLevel === MECHANISM_LEVEL.EXTERNALLY_VALIDATED ||
+  PATIENT_SPECIFIC_PERSONALIZATION.includes(profile?.personalization) ||
+  list(profile?.intendedUses).some((use) => CLINICAL_INTENDED_USES.includes(use));
 
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const isStringList = (value) => Array.isArray(value) && value.every((item) => typeof item === 'string' && item.trim());
 
-function checkList(problems, where, name, list, allowed) {
-  if (!isStringList(list)) {
+function checkList(problems, where, name, value, allowed) {
+  if (!isStringList(value)) {
     problems.push(`${where}: ${name} must be an array of non-empty strings`);
     return false;
   }
-  if (new Set(list).size !== list.length) problems.push(`${where}: ${name} has duplicates`);
+  if (new Set(value).size !== value.length) problems.push(`${where}: ${name} has duplicates`);
   if (allowed) {
-    for (const item of list) {
+    for (const item of value) {
       if (!allowed.includes(item)) problems.push(`${where}: ${name} contains "${item}", which is not in the closed vocabulary`);
     }
   }
@@ -373,8 +414,10 @@ function checkList(problems, where, name, list, allowed) {
 /**
  * Everything structurally wrong with a set of profiles, on their own.
  *
- * Returned rather than thrown, in the shape `validateCatalog` uses. Not wired
- * into `validateCatalog` itself: nothing in the browser reads profiles, and
+ * Returned rather than thrown, in the shape `validateCatalog` uses, and it
+ * must never throw on malformed input — a profile whose `intendedUses` is a
+ * string gets a line saying so, not a TypeError. Not wired into
+ * `validateCatalog` itself: nothing in the browser reads profiles, and
  * importing them there put 8 kB into the eager entry chunk for a check only
  * the test suite runs. Cross-checks against scenes and assets are
  * `modelProfileProblems`, below.
@@ -384,13 +427,14 @@ function checkList(problems, where, name, list, allowed) {
 export function validateModelProfiles(profiles = MODEL_PROFILES) {
   const problems = [];
   const seen = new Set();
+  if (!Array.isArray(profiles)) return ['the profile registry is not an array'];
 
   for (const profile of profiles) {
-    const where = `profile "${profile?.profileId ?? '(no id)'}"`;
-    if (!profile || typeof profile !== 'object') {
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
       problems.push('a profile is not an object');
       continue;
     }
+    const where = `profile "${typeof profile.profileId === 'string' && profile.profileId ? profile.profileId : '(no id)'}"`;
     if (typeof profile.profileId !== 'string' || !ID_PATTERN.test(profile.profileId)) {
       problems.push(`${where}: profileId must be a kebab-case string`);
     } else if (seen.has(profile.profileId)) {
@@ -416,31 +460,32 @@ export function validateModelProfiles(profiles = MODEL_PROFILES) {
       if (profile.intendedUses.length === 0) problems.push(`${where}: intendedUses is empty`);
     }
     if (checkList(problems, where, 'prohibitedUses', profile.prohibitedUses, PROHIBITED_USE_IDS)) {
-      if (profile.prohibitedUses.length === 0) problems.push(`${where}: prohibitedUses is empty`);
-      const clinical = (profile.intendedUses ?? []).some((use) => CLINICAL_INTENDED_USES.includes(use));
-      if (!clinical) {
-        for (const required of CORE_PROHIBITED_USES) {
-          if (!profile.prohibitedUses.includes(required)) {
-            problems.push(`${where}: a non-clinical profile must prohibit "${required}"`);
-          }
+      for (const required of CORE_PROHIBITED_USES) {
+        if (!profile.prohibitedUses.includes(required)) {
+          problems.push(`${where}: schema ${MODEL_PROFILE_SCHEMA_VERSION} requires every profile to prohibit "${required}"`);
         }
       }
+    } else {
+      problems.push(`${where}: cannot confirm the required prohibitions without a prohibitedUses list`);
     }
-    checkList(problems, where, 'assets', profile.assets);
-    if (Array.isArray(profile.assets)) {
-      if (profile.geometryBasis === GEOMETRY_BASIS.PROCEDURAL && profile.assets.length > 0) {
-        problems.push(`${where}: procedural geometry lists assets — reclassify as hybrid or drop the assets`);
-      }
+    if (checkList(problems, where, 'assets', profile.assets)) {
       if (ASSET_BACKED_GEOMETRY.includes(profile.geometryBasis) && profile.assets.length === 0) {
         problems.push(`${where}: ${profile.geometryBasis} geometry must name at least one asset`);
       }
     }
     if (checkList(problems, where, 'validationRecords', profile.validationRecords)) {
-      if (profileMakesHighClaim(profile) && profile.validationRecords.length === 0) {
+      for (const record of profile.validationRecords) {
+        if (!isRepositoryPath(record)) {
+          problems.push(`${where}: validationRecords entry "${record}" is not a repository-relative path`);
+        }
+      }
+      if (profileNeedsEvidence(profile) && profile.validationRecords.length === 0) {
         problems.push(
-          `${where}: externally-validated, patient-specific or clinical claims require validationRecords`
+          `${where}: literature-calibrated, externally-validated, cohort-derived, patient-specific and clinical claims require validationRecords`
         );
       }
+    } else if (profileNeedsEvidence(profile)) {
+      problems.push(`${where}: a claim that needs evidence has no usable validationRecords`);
     }
     if (typeof profile.basis !== 'string' || !profile.basis.trim()) {
       problems.push(`${where}: basis must say why this classification was made`);
@@ -451,27 +496,88 @@ export function validateModelProfiles(profiles = MODEL_PROFILES) {
 }
 
 /**
+ * Whether an asset is in scope for a scene's organs.
+ *
+ * The rule is a subset: every organ the asset covers must be one the scene
+ * declares in `organs`. The one structured exception is a systemic-context
+ * asset — one whose organs include `whole-body` — which any scene may draw as
+ * surroundings. There is no free-text override.
+ */
+export function assetOrganProblems(scene, asset) {
+  const problems = [];
+  const assetOrgans = list(asset?.organs);
+  if (assetOrgans.includes(SYSTEMIC_CONTEXT_ORGAN)) return problems;
+  const sceneOrgans = new Set(list(scene?.organs).length ? scene.organs : [scene?.organ]);
+  for (const organ of assetOrgans) {
+    if (!sceneOrgans.has(organ)) problems.push(`asset "${asset.assetId}" covers "${organ}", which scene "${scene?.id}" does not draw`);
+  }
+  return problems;
+}
+
+/**
+ * Whether the assets a profile names agree with its geometry basis.
+ *
+ * Provenance, not format: a GLB of a procedural organ is still procedural.
+ * Material assets (textures and the like) are allowed under any basis; the
+ * rule is about mesh assets.
+ */
+export function geometryBasisProblems(profile, assets) {
+  const problems = [];
+  const where = `profile "${profile?.profileId}"`;
+  const meshes = assets.filter((asset) => asset?.kind === ASSET_KIND.MESH);
+  const basis = profile?.geometryBasis;
+  if (basis === GEOMETRY_BASIS.HYBRID) {
+    if (!meshes.some((asset) => asset.sourceType !== ASSET_SOURCE_TYPE.PROCEDURAL)) {
+      problems.push(`${where}: hybrid geometry must name at least one atlas-, imaging- or structure-derived mesh asset`);
+    }
+    return problems;
+  }
+  const expected = MESH_SOURCE_FOR_BASIS[basis];
+  if (!expected) return problems;
+  for (const asset of meshes) {
+    if (asset.sourceType !== expected) {
+      problems.push(
+        `${where}: ${basis} geometry cannot use mesh asset "${asset.assetId}" of source type "${asset.sourceType}" — ` +
+          (basis === GEOMETRY_BASIS.PROCEDURAL ? 'reclassify as hybrid' : `only ${expected} meshes fit this basis`)
+      );
+    }
+  }
+  if (ASSET_BACKED_GEOMETRY.includes(basis) && meshes.length === 0 && assets.length > 0) {
+    problems.push(`${where}: ${basis} geometry names only material assets and no mesh`);
+  }
+  return problems;
+}
+
+/**
  * Cross-checks between profiles, the scene manifest and the asset manifest.
  *
  * These are the policy lines: which scenes need a profile, what the public
- * product may not claim, and that a paid patient surface is declared as an
- * intended use in both directions.
+ * product may not claim, that a paid patient surface declares its use, that
+ * evidence records exist, and that every asset a public scene draws has
+ * passed the release gate for that scene's maturity.
  *
  * @param {object} options
  * @param {readonly object[]} options.scenes scene manifest entries
  * @param {readonly ModelProfile[]} [options.profiles]
  * @param {(id: string) => object | null} [options.assetById] resolver into the asset manifest
  * @param {(scene: object) => string | null} [options.modelCardFor] how a scene's model card is found
+ * @param {(path: string) => boolean} [options.fileExists] whether a repository path exists; omitted skips existence checks
  */
 export function modelProfileProblems({
   scenes,
   profiles = MODEL_PROFILES,
   assetById = null,
   modelCardFor = (scene) => scene.modelCard ?? null,
+  fileExists = null,
 }) {
   const problems = [];
+  if (!Array.isArray(scenes)) return ['scenes is not an array'];
 
   for (const scene of scenes) {
+    if (!scene || typeof scene !== 'object') {
+      problems.push('a scene entry is not an object');
+      continue;
+    }
     const where = `scene "${scene.id ?? '(no id)'}"`;
     const isPrototype = scene.status === 'prototype';
 
@@ -488,13 +594,15 @@ export function modelProfileProblems({
       problems.push(`${where}: modelProfile "${scene.modelProfile}" is not a registered profile`);
       continue;
     }
+    const intendedUses = list(profile.intendedUses);
 
     // There is no clinical release surface, no patient-data path and no
     // external-validation record anywhere in this product. A registered scene
     // — public or Lab — therefore cannot carry one of these claims, whatever
-    // its status. Lifting this needs the separate programme described in
+    // its status and whatever records it names. Lifting this needs the
+    // separate programme described in
     // docs/architecture/intended-use-and-model-provenance.md, not a test edit.
-    for (const use of profile.intendedUses ?? []) {
+    for (const use of intendedUses) {
       if (CLINICAL_INTENDED_USES.includes(use)) {
         problems.push(`${where}: the public app has no release surface for intended use "${use}"`);
       }
@@ -506,6 +614,15 @@ export function modelProfileProblems({
       problems.push(`${where}: no external-validation record exists in this repository, so mechanismLevel cannot be "${profile.mechanismLevel}"`);
     }
 
+    // Evidence must be on file, not merely named.
+    if (fileExists) {
+      for (const record of list(profile.validationRecords)) {
+        if (isRepositoryPath(record) && !fileExists(record)) {
+          problems.push(`${where}: validation record "${record}" does not exist in the repository`);
+        }
+      }
+    }
+
     if (isPrototype) {
       if (![MECHANISM_LEVEL.NONE, MECHANISM_LEVEL.ILLUSTRATIVE].includes(profile.mechanismLevel)) {
         problems.push(`${where}: a prototype publishes no numbers, so its profile cannot claim "${profile.mechanismLevel}"`);
@@ -514,22 +631,33 @@ export function modelProfileProblems({
       problems.push(`${where}: a profiled ${scene.status} scene must have a model card`);
     }
 
-    // The `patient` capability *is* the patient-explanation surface. Having
-    // one without declaring the use hides a claim; declaring the use without
-    // the surface claims a use the product does not offer.
-    const hasPatientSurface = scene.access?.patient === true;
-    const declaresPatientUse = (profile.intendedUses ?? []).includes(INTENDED_USE.PATIENT_EXPLANATION);
-    if (hasPatientSurface && !declaresPatientUse) {
+    // A paid `patient` capability *is* a patient-explanation surface, so the
+    // use must be declared. The reverse is not required: intended use and
+    // billing are separate axes, and a free scene may be one a patient can
+    // look at.
+    if (scene.access?.patient === true && !intendedUses.includes(INTENDED_USE.PATIENT_EXPLANATION)) {
       problems.push(`${where}: has a patient capability but its profile does not declare "patient-explanation"`);
-    }
-    if (declaresPatientUse && !hasPatientSurface) {
-      problems.push(`${where}: declares "patient-explanation" but offers no patient capability`);
     }
 
     if (assetById) {
-      for (const assetId of profile.assets ?? []) {
-        if (!assetById(assetId)) problems.push(`${where}: profile asset "${assetId}" is not in the asset manifest`);
+      const assets = [];
+      for (const assetId of list(profile.assets)) {
+        const asset = assetById(assetId);
+        if (!asset) {
+          problems.push(`${where}: profile asset "${assetId}" is not in the asset manifest`);
+          continue;
+        }
+        assets.push(asset);
+        problems.push(...assetOrganProblems(scene, asset).map((line) => `${where}: ${line}`));
+        if (!isPrototype) {
+          problems.push(
+            ...assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists: fileExists ?? undefined }).map(
+              (line) => `${where}: ${line}`
+            )
+          );
+        }
       }
+      problems.push(...geometryBasisProblems(profile, assets));
     }
   }
 

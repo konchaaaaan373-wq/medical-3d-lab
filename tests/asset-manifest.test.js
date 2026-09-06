@@ -1,27 +1,44 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { readFileSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { ORGANS, SCENES } from '../src/catalog/index.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import {
+  ASSET_KIND,
   ASSET_MANIFEST,
-  ASSET_MANIFEST_SCHEMA_VERSION,
   ASSET_SOURCE_TYPE,
+  ASSESSMENT_BASIS,
   CONDITIONAL_FIELDS,
+  DEIDENTIFICATION_STATUS,
   LICENSE_DECISION,
+  OBLIGATION_STATUS,
+  QA_APPLIES,
+  QA_GATE,
+  QA_GATE_IDS,
   QA_STATUS,
   RELEASE_STATUS,
   assetById,
   assetIsReleasable,
   assetReleaseProblems,
+  isRepositoryPath,
   validateAssetManifest,
 } from '../src/catalog/assetManifest.js';
+import {
+  CONDITIONAL_BLOCKS,
+  FIXTURE_HASH,
+  materialFixture,
+  meshFixture,
+  meshOfType,
+  withLicense,
+  withQa,
+} from './helpers/assetFixtures.js';
 
 /**
  * The asset-manifest contract: an external 3D asset does not enter the
- * product without its source, licence, hash, coordinates, conversion and QA
- * on record — and a record is not the same thing as a licence gate passed.
+ * product without its source, licence obligations, hashes, coordinates,
+ * conversion and QA on record — and a record is not the same thing as a
+ * release gate passed.
  *
  * Nothing below fetches anything. The one real entry is checked against the
  * file already in the repository; everything else is a fixture, and says so.
@@ -29,73 +46,9 @@ import {
 
 const repoPath = (path) => new URL(`../${path}`, import.meta.url);
 const sha256 = (path) => createHash('sha256').update(readFileSync(repoPath(path))).digest('hex');
+const fileExists = (path) => existsSync(repoPath(path));
 const ORGAN_IDS = new Set(ORGANS.map((organ) => organ.id));
-const FIXTURE_HASH = 'a'.repeat(64);
-
-/** A complete reference-atlas record, to be broken one field at a time. */
-const fixture = (overrides = {}) => ({
-  assetId: 'fixture-atlas',
-  schemaVersion: ASSET_MANIFEST_SCHEMA_VERSION,
-  sourceType: ASSET_SOURCE_TYPE.REFERENCE_ATLAS,
-  format: 'glb',
-  organ: 'heart',
-  structureScope: 'Fixture: a heart for tests.',
-  source: { name: 'Fixture atlas', url: 'https://example.invalid/fixture', version: 'v0', retrievedAt: '2026-01-01' },
-  license: {
-    spdx: 'CC-BY-4.0',
-    url: 'https://creativecommons.org/licenses/by/4.0/',
-    attribution: 'Fixture contributors',
-    redistribution: LICENSE_DECISION.ALLOWED,
-    commercialUse: LICENSE_DECISION.ALLOWED,
-    decisionRecord: 'docs/fixture-decision.md',
-    decisionNote: 'Fixture decision.',
-  },
-  sources: [{ path: 'https://example.invalid/fixture.glb', sha256: FIXTURE_HASH }],
-  output: { path: 'public/assets/fixture/fixture.glb', sha256: FIXTURE_HASH, bytes: 1 },
-  geometry: { coordinateSystem: 'glTF', units: 'metres', extent: 'fixture', scaleNote: 'fixture' },
-  pipeline: { tools: ['fixture-tool 1.0'], generator: null, steps: ['fixture step'] },
-  semanticParts: { partIdSource: 'fixture extras', mappingModule: null, partCount: 0 },
-  acceptedSimplifications: [],
-  knownDefects: [],
-  budget: { triangles: 1, materials: 1, textures: 0, bytes: 1, targetDevices: 'fixture' },
-  qa: {
-    validator: { status: QA_STATUS.PASSED, reference: 'fixture' },
-    anatomyTests: { status: QA_STATUS.PASSED, reference: 'fixture' },
-    visualReview: { status: QA_STATUS.PASSED, reference: 'fixture' },
-    clinicianReview: { status: QA_STATUS.PASSED, reference: 'fixture' },
-  },
-  replacement: { replaces: null, rollback: 'fixture' },
-  release: { status: RELEASE_STATUS.RELEASED, note: 'fixture' },
-  atlas: { sourceObjectId: 'fixture-object', derivativeTerms: 'fixture' },
-  ...overrides,
-});
-
-const CONDITIONAL_BLOCKS = {
-  [ASSET_SOURCE_TYPE.REFERENCE_ATLAS]: { atlas: { sourceObjectId: 'x', derivativeTerms: 'x' } },
-  [ASSET_SOURCE_TYPE.IMAGING_DERIVED]: {
-    imaging: {
-      dataset: 'x',
-      subjectProvenance: 'x',
-      deidentification: 'confirmed by fixture',
-      segmentationMethod: 'x',
-      registrationMethod: 'x',
-      manualEdits: 'none',
-    },
-  },
-  [ASSET_SOURCE_TYPE.PROCEDURAL]: {
-    procedural: { generatorVersion: 'x', seedOrConfig: 'x', inputParameters: 'x', regenerate: 'x' },
-  },
-  [ASSET_SOURCE_TYPE.MOLECULAR]: { molecular: { accession: '1ABC', assembly: '1', structureVersion: 'x' } },
-  [ASSET_SOURCE_TYPE.THIRD_PARTY_MATERIAL]: {
-    material: { items: [{ name: 'x', source: 'x', license: 'x', sha256: FIXTURE_HASH }] },
-  },
-};
-
-/** A fixture of another source type: drop the atlas block, add the right one. */
-const fixtureOfType = (sourceType, overrides = {}) => {
-  const { atlas: _atlas, ...base } = fixture({ sourceType });
-  return { ...base, ...CONDITIONAL_BLOCKS[sourceType], ...overrides };
-};
+const has = (problems, pattern) => problems.some((line) => pattern.test(line));
 
 // ---------------------------------------------------------------------------
 // The manifest as it stands
@@ -118,14 +71,15 @@ test('every recorded output file exists and its hash and size are what the manif
   }
 });
 
-test('every path a record points at exists in the repository', () => {
+test('every repository path a record points at exists', () => {
   for (const asset of ASSET_MANIFEST) {
     const paths = [
       asset.license.decisionRecord,
-      asset.semanticParts.mappingModule,
+      ...asset.license.obligations.map((o) => o.satisfiedBy),
+      asset.semanticParts?.mappingModule,
       ...Object.values(asset.qa).map((gate) => gate.reference),
-    ].filter((path) => path && !/^[a-z]+:\/\//.test(path));
-    for (const path of paths) assert.doesNotThrow(() => statSync(repoPath(path)), `${asset.assetId}: ${path}`);
+    ].filter((path) => path != null);
+    for (const path of paths) assert.ok(fileExists(path), `${asset.assetId}: ${path}`);
   }
 });
 
@@ -133,15 +87,53 @@ test('the manifest contains only the brain atlas, and no binary was added for th
   assert.deepEqual(ASSET_MANIFEST.map((asset) => asset.assetId), ['brain-atlas-glb']);
 });
 
-test('the brain atlas record is honest about what was not verified', () => {
+test('the brain atlas record states what was measured and what was not', () => {
   const brain = assetById('brain-atlas-glb');
+  assert.equal(brain.kind, ASSET_KIND.MESH);
   assert.equal(brain.sourceType, ASSET_SOURCE_TYPE.REFERENCE_ATLAS);
   assert.equal(brain.license.spdx, 'CC-BY-SA-4.0');
-  assert.equal(brain.sources[0].sha256, null, 'the upstream hash was not fetched, and is not guessed');
-  assert.match(brain.sources[0].note, /not independently verified/);
+  assert.equal(brain.license.assessment, ASSESSMENT_BASIS.ENGINEERING, 'a licence reading by an engineer says so');
+  assert.equal(brain.source.retrievedAt, null, 'the original download date is not invented');
+  assert.match(brain.source.retrievedAtNote, /not recorded/);
+  assert.equal(brain.sources[0].sha256, brain.output.sha256, 'the upstream file was re-downloaded and matched');
+  assert.equal(brain.sources[0].gitBlobSha, 'c80dd62202b5cf8a2a43c7a019311781bd95457c');
+  assert.equal(brain.sources[0].bytes, 4650816);
+  assert.equal(brain.qa.formatValidation.toolVersion, '2.0.0-dev.3.10');
+  assert.equal(brain.qa.formatValidation.errors, 0);
+  assert.equal(brain.qa.formatValidation.warnings, 0);
+  assert.match(brain.qa.formatValidation.scope, /Draco/, 'the validator cannot see through Draco, and the record says so');
+  assert.equal(brain.qa.anatomyExpertReview.status, QA_STATUS.PENDING, 'no anatomist has reviewed it');
   assert.equal(brain.qa.clinicianReview.status, QA_STATUS.PENDING, 'matches the review registry');
-  assert.equal(brain.qa.validator.status, QA_STATUS.NOT_REQUIRED, 'the glTF validator has not been run here');
-  assert.match(brain.license.decisionNote, /not a legal review/);
+  assert.equal(brain.qa.visualReview.status, QA_STATUS.PASSED);
+  assert.match(brain.qa.visualReview.browser, /Chromium/);
+  assert.match(brain.qa.visualReview.scope, /Not an anatomical judgement/);
+  assert.equal(brain.components.length, 7, 'the composite is recorded component by component');
+  assert.ok(brain.components.some((c) => c.id === 'hcp1065-tracts' && /WU-Minn/.test(c.additionalTerms)));
+  assert.ok(brain.license.obligations.some((o) => o.id === 'hcp-acknowledgment' && o.status === OBLIGATION_STATUS.SATISFIED));
+});
+
+test('the attribution notice discharges every obligation the manifest records', () => {
+  const brain = assetById('brain-atlas-glb');
+  const notice = readFileSync(repoPath('public/assets/brain/ATTRIBUTION.md'), 'utf8');
+  assert.match(notice, /Human Connectome Project, WU-Minn/, 'the HCP acknowledgment is present');
+  assert.match(notice, /1U54MH091657/);
+  assert.match(notice, /CC BY-SA 4\.0/);
+  assert.match(notice, /engineering assessment/i);
+  for (const component of brain.components) {
+    if (component.id === 'brainproject') continue;
+    assert.ok(notice.includes(component.url), `${component.id} is credited with its URL`);
+  }
+});
+
+test('the brain atlas passes the release gate for an alpha scene only: expert and clinician review are pending', () => {
+  const brain = assetById('brain-atlas-glb');
+  assert.deepEqual(assetReleaseProblems(brain, { sceneStatus: 'alpha', fileExists }), []);
+  for (const sceneStatus of ['reviewed', 'production', undefined]) {
+    const problems = assetReleaseProblems(brain, { sceneStatus, fileExists });
+    assert.ok(has(problems, /anatomyExpertReview is pending/), `${sceneStatus}: ${problems}`);
+    assert.ok(has(problems, /clinicianReview is pending/), `${sceneStatus}: ${problems}`);
+    assert.equal(problems.length, 2, `${sceneStatus}: nothing else blocks it`);
+  }
 });
 
 test('an asset referenced by a public scene has passed the release gate for that scene\'s maturity', () => {
@@ -150,148 +142,257 @@ test('an asset referenced by a public scene has passed the release gate for that
     for (const id of profile?.assets ?? []) {
       const asset = assetById(id);
       assert.ok(asset, `${scene.id}: ${id} exists`);
-      const requireClinicianReview = ['reviewed', 'production'].includes(scene.status);
-      assert.deepEqual(assetReleaseProblems(asset, { requireClinicianReview }), [], `${scene.id} → ${id}`);
+      assert.deepEqual(assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists }), [], `${scene.id} → ${id}`);
     }
   }
 });
 
 // ---------------------------------------------------------------------------
-// Completeness for each source type
+// Completeness for each kind and source type
 
-test('a complete record of every source type passes, and each needs only its own conditional block', () => {
-  for (const sourceType of Object.values(ASSET_SOURCE_TYPE)) {
-    assert.deepEqual(validateAssetManifest([fixtureOfType(sourceType)], { organIds: ORGAN_IDS }), [], sourceType);
+test('a complete mesh record of every mesh source type passes, with only its own conditional block', () => {
+  for (const sourceType of [ASSET_SOURCE_TYPE.REFERENCE_ATLAS, ASSET_SOURCE_TYPE.IMAGING_DERIVED, ASSET_SOURCE_TYPE.PROCEDURAL, ASSET_SOURCE_TYPE.MOLECULAR]) {
+    assert.deepEqual(validateAssetManifest([meshOfType(sourceType)], { organIds: ORGAN_IDS }), [], sourceType);
   }
+});
+
+test('a complete third-party material record passes without any geometry, and a mesh cannot be third-party', () => {
+  assert.deepEqual(validateAssetManifest([materialFixture()], { organIds: ORGAN_IDS }), []);
+  const mesh = validateAssetManifest([meshOfType(ASSET_SOURCE_TYPE.THIRD_PARTY)]);
+  assert.ok(has(mesh, /a mesh asset cannot have sourceType "third-party"/), mesh);
+});
+
+test('a material carrying a geometry block, or a mesh without one, is rejected rather than padded', () => {
+  const padded = validateAssetManifest([materialFixture({ geometry: meshFixture().geometry })]);
+  assert.ok(has(padded, /has no geometry of its own/), padded);
+  const { geometry: _g, semanticParts: _s, ...bare } = meshFixture();
+  const missing = validateAssetManifest([bare]);
+  assert.ok(has(missing, /needs a geometry block/), missing);
+  assert.ok(has(missing, /needs a semanticParts block/), missing);
 });
 
 test('a record missing its source type\'s conditional block, or any field in it, is rejected', () => {
   for (const [sourceType, { block, fields }] of Object.entries(CONDITIONAL_FIELDS)) {
-    const complete = fixtureOfType(sourceType);
+    const complete = sourceType === ASSET_SOURCE_TYPE.THIRD_PARTY ? materialFixture() : meshOfType(sourceType);
     const { [block]: _dropped, ...withoutBlock } = complete;
     const missing = validateAssetManifest([withoutBlock]);
-    assert.ok(missing.some((line) => line.includes(`requires a "${block}" block`)), `${sourceType}: ${missing}`);
+    assert.ok(has(missing, new RegExp(`requires a "${block}" block`)), `${sourceType}: ${missing}`);
 
     for (const field of fields) {
       const broken = { ...complete, [block]: { ...complete[block], [field]: Array.isArray(complete[block][field]) ? [] : '' } };
       const problems = validateAssetManifest([broken]);
-      assert.ok(problems.some((line) => line.includes(`${block}.${field} is required`)), `${sourceType}.${field}: ${problems}`);
+      assert.ok(has(problems, new RegExp(`${block}\\.${field} is required|${block}\\.${field} must be`)), `${sourceType}.${field}: ${problems}`);
     }
   }
 });
 
 test('a record carrying another source type\'s block is rejected rather than silently accepted', () => {
-  const mixed = fixture({ imaging: CONDITIONAL_BLOCKS[ASSET_SOURCE_TYPE.IMAGING_DERIVED].imaging });
+  const mixed = meshFixture({ imaging: CONDITIONAL_BLOCKS[ASSET_SOURCE_TYPE.IMAGING_DERIVED].imaging });
   const problems = validateAssetManifest([mixed]);
-  assert.ok(problems.some((line) => /"imaging" block that belongs to imaging-derived/.test(line)), problems);
+  assert.ok(has(problems, /"imaging" block that belongs to imaging-derived/), problems);
 });
 
-test('third-party materials are recorded item by item, each with its own licence and hash', () => {
-  const material = fixtureOfType(ASSET_SOURCE_TYPE.THIRD_PARTY_MATERIAL, {
-    material: { items: [{ name: 'tex', source: 'x', license: '', sha256: 'nothex' }] },
-  });
-  const problems = validateAssetManifest([material]);
-  assert.ok(problems.some((line) => /material.items\[0\].license is missing/.test(line)), problems);
-  assert.ok(problems.some((line) => /material.items\[0\].sha256 must be 64 hex/.test(line)), problems);
+test('de-identification is a structured status, never a sentence the gate would have to parse', () => {
+  for (const vague of ['confirmed', 'yes, mostly', 'pending', 'probably fine', '']) {
+    const imaging = meshOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED);
+    imaging.imaging = { ...imaging.imaging, deidentification: vague };
+    const problems = validateAssetManifest([imaging]);
+    assert.ok(has(problems, /deidentification must be an object with status/), `"${vague}": ${problems}`);
+    assert.ok(has(assetReleaseProblems(imaging), /de-identification .* not confirmed/), `"${vague}" is also blocked at release`);
+  }
+  const unrecorded = meshOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED);
+  unrecorded.imaging = { ...unrecorded.imaging, deidentification: { status: DEIDENTIFICATION_STATUS.CONFIRMED, method: 'x', reference: null } };
+  assert.ok(has(validateAssetManifest([unrecorded]), /confirmed without a repository record/));
+});
+
+test('an imaging-derived asset is blocked at release unless de-identification is confirmed', () => {
+  for (const status of [DEIDENTIFICATION_STATUS.PENDING, DEIDENTIFICATION_STATUS.NOT_CONFIRMED]) {
+    const imaging = meshOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED);
+    imaging.imaging = { ...imaging.imaging, deidentification: { status, method: 'x', reference: 'docs/fixture-deid.md' } };
+    assert.deepEqual(validateAssetManifest([imaging]), [], `${status} is a complete record`);
+    assert.ok(has(assetReleaseProblems(imaging), /de-identification .* not confirmed/), status);
+  }
+  assert.equal(assetIsReleasable(meshOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED)), true);
 });
 
 // ---------------------------------------------------------------------------
-// The common core rejects what it must
+// The common core rejects what it must, and never throws
 
-test('an unknown source type, licence decision, QA status or release status is rejected', () => {
+test('an unknown kind, source type, licence decision, assessment, QA status, obligation kind or release status is rejected', () => {
   const cases = [
-    [fixture({ sourceType: 'scan' }), /unknown sourceType "scan"/],
-    [fixture({ license: { ...fixture().license, commercialUse: 'yes' } }), /license.commercialUse must be one of/],
-    [fixture({ qa: { ...fixture().qa, validator: { status: 'ok', reference: null } } }), /qa.validator.status must be one of/],
-    [fixture({ release: { status: 'live', note: 'x' } }), /release.status must be one of/],
+    [meshFixture({ kind: 'blob' }), /unknown kind "blob"/],
+    [meshFixture({ sourceType: 'scan' }), /unknown sourceType "scan"/],
+    [withLicense(meshFixture(), { commercialUse: 'yes' }), /license\.commercialUse must be one of/],
+    [withLicense(meshFixture(), { assessment: 'vibes' }), /license\.assessment must be one of/],
+    [withQa(meshFixture(), QA_GATE.FORMAT_VALIDATION, { status: 'ok', reference: null }), /qa\.formatValidation\.status must be one of/],
+    [withLicense(meshFixture(), { obligations: [{ ...meshFixture().license.obligations[0], kind: 'vibes' }] }), /obligations\[0\]\.kind must be one of/],
+    [meshFixture({ release: { status: 'live', note: 'x' } }), /release\.status must be one of/],
   ];
   for (const [entry, expected] of cases) {
     const problems = validateAssetManifest([entry]);
-    assert.ok(problems.some((line) => expected.test(line)), `${expected}: ${problems}`);
+    assert.ok(has(problems, expected), `${expected}: ${problems}`);
   }
 });
 
-test('hashes are 64 hex characters, and a missing source hash needs a note', () => {
-  const bad = validateAssetManifest([fixture({ output: { path: 'public/x.glb', sha256: 'abc' } })]);
-  assert.ok(bad.some((line) => /output.sha256 must be 64 lowercase hex/.test(line)), bad);
-
-  const nullOutput = validateAssetManifest([fixture({ output: { path: 'public/x.glb', sha256: null, note: 'x' } })]);
-  assert.ok(nullOutput.some((line) => /output.sha256 is required/.test(line)), nullOutput);
-
-  const silentNull = validateAssetManifest([fixture({ sources: [{ path: 'https://example.invalid/a', sha256: null }] })]);
-  assert.ok(silentNull.some((line) => /sources\[0\].sha256 is null without a note/.test(line)), silentNull);
-
-  const withNote = validateAssetManifest([fixture({ sources: [{ path: 'https://example.invalid/a', sha256: null, note: 'not fetched' }] })]);
-  assert.deepEqual(withNote, []);
+test('malformed input of every shape produces problem lines, not exceptions', () => {
+  const garbage = [null, 42, 'asset', [], {}, { assetId: 'a' }, { assetId: 'b', qa: 'no', license: 'no', sources: 'no', components: 'no', output: 'no' }];
+  let problems;
+  assert.doesNotThrow(() => { problems = validateAssetManifest(garbage); });
+  assert.ok(problems.length > 10);
+  assert.ok(problems.every((line) => typeof line === 'string' && line.length > 0));
+  assert.doesNotThrow(() => assetReleaseProblems(null));
+  assert.deepEqual(assetReleaseProblems(null), ['asset "(no id)": not an asset record']);
+  assert.doesNotThrow(() => assetReleaseProblems({ assetId: 'b', qa: 'no', license: 'no', sources: 'no' }));
+  assert.deepEqual(validateAssetManifest('nope'), ['the asset manifest is not an array']);
 });
 
-test('duplicate ids, an output path that is a URL, and a bad date are rejected', () => {
-  const twice = validateAssetManifest([fixture(), fixture()]);
-  assert.ok(twice.some((line) => /duplicate assetId/.test(line)), twice);
+test('hashes are 64 hex characters, a missing source hash needs a note, and a released asset needs every hash', () => {
+  const bad = validateAssetManifest([meshFixture({ output: { path: 'public/x.glb', sha256: 'abc' } })]);
+  assert.ok(has(bad, /output\.sha256 must be 64 lowercase hex/), bad);
 
-  const url = validateAssetManifest([fixture({ output: { path: 'https://cdn.invalid/x.glb', sha256: FIXTURE_HASH } })]);
-  assert.ok(url.some((line) => /output.path must be repository-relative/.test(line)), url);
+  const nullOutput = validateAssetManifest([meshFixture({ output: { path: 'public/x.glb', sha256: null, note: 'x' } })]);
+  assert.ok(has(nullOutput, /output\.sha256 is required/), nullOutput);
 
-  const date = validateAssetManifest([fixture({ source: { ...fixture().source, retrievedAt: 'September' } })]);
-  assert.ok(date.some((line) => /retrievedAt must be an ISO date/.test(line)), date);
+  const silentNull = validateAssetManifest([meshFixture({ sources: [{ path: 'https://example.invalid/a', sha256: null }] })]);
+  assert.ok(has(silentNull, /sources\[0\]\.sha256 is null without a note/), silentNull);
+
+  const withNote = meshFixture({ sources: [{ path: 'https://example.invalid/a', sha256: null, note: 'not fetched' }] });
+  assert.deepEqual(validateAssetManifest([withNote]), [], 'a noted gap is a valid record');
+  assert.ok(has(assetReleaseProblems(withNote), /sources\[0\] has no recorded hash/), 'and a blocked release');
 });
 
-test('a QA gate cannot pass without a reference, nor be waived without a reason', () => {
-  const passedBlind = validateAssetManifest([fixture({ qa: { ...fixture().qa, anatomyTests: { status: QA_STATUS.PASSED, reference: null } } })]);
-  assert.ok(passedBlind.some((line) => /qa.anatomyTests passed without a reference/.test(line)), passedBlind);
-
-  const waived = validateAssetManifest([fixture({ qa: { ...fixture().qa, validator: { status: QA_STATUS.NOT_REQUIRED, reference: null } } })]);
-  assert.ok(waived.some((line) => /qa.validator is not-required without a note/.test(line)), waived);
+test('duplicate ids, an output path that is a URL, bad dates and a bad commit are rejected', () => {
+  assert.ok(has(validateAssetManifest([meshFixture(), meshFixture()]), /duplicate assetId/));
+  assert.ok(has(validateAssetManifest([meshFixture({ output: { path: 'https://cdn.invalid/x.glb', sha256: FIXTURE_HASH } })]), /output\.path must be repository-relative/));
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: 'September' } })]), /retrievedAt must be an ISO date or null/));
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: null } })]), /retrievedAt is null without a retrievedAtNote/));
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: 'abc' } })]), /introducedIn must be a 40-character commit/));
 });
 
-test('an organ outside the taxonomy and a replacement target outside the manifest are reported', () => {
-  const organ = validateAssetManifest([fixture({ organ: 'gizzard' })], { organIds: ORGAN_IDS });
-  assert.ok(organ.some((line) => /organ "gizzard" is not in the taxonomy/.test(line)), organ);
-
-  const replaces = validateAssetManifest([fixture({ replacement: { replaces: 'ghost', rollback: 'x' } })]);
-  assert.ok(replaces.some((line) => /replaces "ghost", which is not in the manifest/.test(line)), replaces);
+test('repository paths are relative, inside the repository, and never URLs', () => {
+  assert.equal(isRepositoryPath('docs/x.md'), true);
+  for (const bad of ['/docs/x.md', '../secrets', 'docs/../../x', 'https://example.invalid/x', '', 'docs//x']) {
+    assert.equal(isRepositoryPath(bad), false, bad);
+  }
 });
 
 // ---------------------------------------------------------------------------
-// Releasability is a different question from validity
+// QA gates: applicability is data, not a note
 
-test('a structurally valid record with an unknown licence is valid and not releasable', () => {
-  const unknown = fixture({ license: { ...fixture().license, commercialUse: LICENSE_DECISION.UNKNOWN } });
-  assert.deepEqual(validateAssetManifest([unknown]), [], 'the record is complete');
-  const problems = assetReleaseProblems(unknown);
-  assert.ok(problems.some((line) => /commercial use has not been decided/.test(line)), problems);
-  assert.equal(assetIsReleasable(unknown), false);
+test('not-applicable is accepted only where the kind says the gate does not apply', () => {
+  for (const gate of QA_GATE_IDS) {
+    const problems = validateAssetManifest([withQa(meshFixture(), gate, { status: QA_STATUS.NOT_APPLICABLE })]);
+    assert.ok(has(problems, new RegExp(`qa\\.${gate} applies to a mesh asset and cannot be not-applicable`)), `${gate}: ${problems}`);
+  }
+  const material = materialFixture();
+  for (const gate of QA_GATE_IDS.filter((g) => !QA_APPLIES.material.includes(g))) {
+    const problems = validateAssetManifest([withQa(material, gate, { status: QA_STATUS.PASSED, reference: 'docs/fixture-qa.md' })]);
+    assert.ok(has(problems, new RegExp(`qa\\.${gate} does not apply to a material asset`)), `${gate}: ${problems}`);
+  }
 });
 
-test('restricted redistribution, a missing decision record, or a non-released status blocks release', () => {
-  const restricted = fixture({ license: { ...fixture().license, redistribution: LICENSE_DECISION.RESTRICTED } });
-  assert.ok(assetReleaseProblems(restricted).some((line) => /redistribution is "restricted"/.test(line)));
+test('a gate cannot pass without a reference, and a hash-bound gate cannot pass without naming the file', () => {
+  const blind = validateAssetManifest([withQa(meshFixture(), QA_GATE.ANATOMY_EXPERT_REVIEW, { status: QA_STATUS.PASSED, reference: null })]);
+  assert.ok(has(blind, /qa\.anatomyExpertReview passed without a reference/), blind);
+  const { assetSha256: _h, ...noHash } = meshFixture().qa.visualReview;
+  const unbound = validateAssetManifest([withQa(meshFixture(), QA_GATE.VISUAL_REVIEW, noHash)]);
+  assert.ok(has(unbound, /qa\.visualReview passed without naming the asset hash/), unbound);
+  const { commit: _c, browser: _b, ...thin } = meshFixture().qa.visualReview;
+  const thinProblems = validateAssetManifest([withQa(meshFixture(), QA_GATE.VISUAL_REVIEW, thin)]);
+  assert.ok(has(thinProblems, /visualReview\.browser is missing/) && has(thinProblems, /visualReview\.commit must be/), thinProblems);
+});
 
-  const undecided = fixture({ license: { ...fixture().license, decisionRecord: null } });
-  assert.ok(assetReleaseProblems(undecided).some((line) => /decision has no record/.test(line)));
+test('the release gate blocks every applicable gate that is failed, pending or unrecorded', () => {
+  for (const gate of QA_GATE_IDS) {
+    const failed = withQa(meshFixture(), gate, { ...meshFixture().qa[gate], status: QA_STATUS.FAILED });
+    for (const sceneStatus of ['alpha', 'reviewed', 'production', undefined]) {
+      assert.ok(has(assetReleaseProblems(failed, { sceneStatus }), new RegExp(`${gate} failed`)), `${gate} failed blocks at ${sceneStatus}`);
+    }
+    const pending = withQa(meshFixture(), gate, { status: QA_STATUS.PENDING, reference: 'docs/fixture-qa.md' });
+    assert.ok(has(assetReleaseProblems(pending), new RegExp(`${gate} is pending, not passed`)), `${gate} pending blocks by default`);
+    const { [gate]: _dropped, ...rest } = meshFixture().qa;
+    assert.ok(has(assetReleaseProblems({ ...meshFixture(), qa: rest }), new RegExp(`${gate} is not recorded, not passed`)), `${gate} unrecorded blocks`);
+  }
+});
 
+test('only the expert and clinician reviews may be pending, and only for an alpha scene', () => {
+  for (const gate of [QA_GATE.ANATOMY_EXPERT_REVIEW, QA_GATE.CLINICIAN_REVIEW]) {
+    const pending = withQa(meshFixture(), gate, { status: QA_STATUS.PENDING, reference: 'docs/fixture-qa.md' });
+    assert.equal(assetIsReleasable(pending, { sceneStatus: 'alpha' }), true, `${gate} may wait at alpha`);
+    for (const sceneStatus of ['reviewed', 'production', 'prototype', undefined]) {
+      assert.equal(assetIsReleasable(pending, { sceneStatus }), false, `${gate} pending blocks at ${sceneStatus}`);
+    }
+  }
+  for (const gate of [QA_GATE.FORMAT_VALIDATION, QA_GATE.SEMANTIC_INTEGRITY, QA_GATE.VISUAL_REVIEW]) {
+    const pending = withQa(meshFixture(), gate, { status: QA_STATUS.PENDING, reference: 'docs/fixture-qa.md' });
+    assert.equal(assetIsReleasable(pending, { sceneStatus: 'alpha' }), false, `${gate} pending blocks even at alpha`);
+  }
+});
+
+test('a validator run with errors or warnings, or against another version of the file, does not count', () => {
+  const errors = withQa(meshFixture(), QA_GATE.FORMAT_VALIDATION, { ...meshFixture().qa.formatValidation, errors: 2 });
+  assert.ok(has(assetReleaseProblems(errors), /formatValidation has 2 errors/));
+  const warnings = withQa(meshFixture(), QA_GATE.FORMAT_VALIDATION, { ...meshFixture().qa.formatValidation, warnings: 1 });
+  assert.ok(has(assetReleaseProblems(warnings), /0 errors and 1 warnings/));
+  for (const gate of [QA_GATE.FORMAT_VALIDATION, QA_GATE.SEMANTIC_INTEGRITY, QA_GATE.VISUAL_REVIEW]) {
+    const stale = withQa(meshFixture(), gate, { ...meshFixture().qa[gate], assetSha256: 'b'.repeat(64) });
+    assert.ok(has(assetReleaseProblems(stale), new RegExp(`${gate} was run against a different file`)), gate);
+  }
+});
+
+test('a QA reference or a licence record that does not exist blocks release when a resolver is supplied', () => {
+  const asset = meshFixture();
+  const missing = (path) => path !== 'docs/fixture-qa.md';
+  const problems = assetReleaseProblems(asset, { fileExists: missing });
+  assert.ok(has(problems, /formatValidation reference "docs\/fixture-qa.md" does not exist/), problems);
+  const noDecision = assetReleaseProblems(asset, { fileExists: (path) => path !== 'docs/fixture-decision.md' });
+  assert.ok(has(noDecision, /licence decision record "docs\/fixture-decision.md" does not exist/), noDecision);
+  assert.ok(has(noDecision, /obligation "attribution" points at "docs\/fixture-decision.md", which does not exist/), noDecision);
+});
+
+// ---------------------------------------------------------------------------
+// Licence: the decision, the obligations, the components
+
+test('restricted or unknown commercial use or redistribution is a valid record and a blocked release', () => {
+  for (const field of ['commercialUse', 'redistribution']) {
+    for (const decision of [LICENSE_DECISION.RESTRICTED, LICENSE_DECISION.UNKNOWN]) {
+      const asset = withLicense(meshFixture(), { [field]: decision });
+      assert.deepEqual(validateAssetManifest([asset]), [], `${field}=${decision} is a complete record`);
+      const problems = assetReleaseProblems(asset);
+      assert.ok(has(problems, new RegExp(`${field === 'commercialUse' ? 'commercial use' : 'redistribution'} is "${decision}", not allowed`)), `${field}=${decision}: ${problems}`);
+      assert.equal(assetIsReleasable(asset), false);
+    }
+  }
+});
+
+test('a pending obligation, an obligation without a record, or a missing decision record blocks release', () => {
+  const base = meshFixture();
+  const pending = withLicense(base, { obligations: [{ ...base.license.obligations[0], status: OBLIGATION_STATUS.PENDING }] });
+  assert.ok(has(assetReleaseProblems(pending), /obligation "attribution" is not satisfied/));
+  const unrecorded = withLicense(base, { obligations: [{ ...base.license.obligations[0], satisfiedBy: null }] });
+  assert.ok(has(validateAssetManifest([unrecorded]), /is satisfied by nothing/));
+  assert.ok(has(assetReleaseProblems(unrecorded), /obligation "attribution" names no record/));
+  const undecided = withLicense(base, { decisionRecord: null });
+  assert.ok(has(assetReleaseProblems(undecided), /decision has no record/));
+});
+
+test('ShareAlike components must have a share-alike obligation, and components must be attributed', () => {
+  const base = meshFixture();
+  const sa = { ...base, components: [{ ...base.components[0], license: 'CC-BY-SA-4.0' }] };
+  assert.ok(has(validateAssetManifest([sa]), /ShareAlike components but no share-alike obligation/));
+  const unattributed = withLicense(base, { obligations: [] });
+  assert.ok(has(validateAssetManifest([unattributed]), /has components but no attribution obligation/));
+  const orphan = withLicense(base, { obligations: [{ ...base.license.obligations[0], components: ['ghost'] }] });
+  assert.ok(has(validateAssetManifest([orphan]), /names component "ghost", which is not listed/));
+  const uncomposed = { ...base, components: [] };
+  assert.ok(has(validateAssetManifest([uncomposed]), /must list the components it is composed of/));
+});
+
+test('a non-released status, an organ outside the taxonomy, and a replacement target outside the manifest are reported', () => {
   for (const status of [RELEASE_STATUS.CANDIDATE, RELEASE_STATUS.LAB, RELEASE_STATUS.RETIRED]) {
-    const staged = fixture({ release: { status, note: 'x' } });
-    assert.ok(assetReleaseProblems(staged).some((line) => line.includes(`release status is "${status}"`)), status);
+    assert.ok(has(assetReleaseProblems(meshFixture({ release: { status, note: 'x' } })), new RegExp(`release status is "${status}"`)), status);
   }
-});
-
-test('an imaging-derived asset cannot be released without confirmed de-identification', () => {
-  for (const value of ['pending', 'unknown', 'no']) {
-    const imaging = fixtureOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED);
-    imaging.imaging = { ...imaging.imaging, deidentification: value };
-    assert.deepEqual(validateAssetManifest([imaging]), [], `"${value}" is a complete record`);
-    const problems = assetReleaseProblems(imaging);
-    assert.ok(problems.some((line) => /de-identification .* not confirmed/.test(line)), `${value}: ${problems}`);
-  }
-  assert.equal(assetIsReleasable(fixtureOfType(ASSET_SOURCE_TYPE.IMAGING_DERIVED)), true);
-});
-
-test('clinician review is demanded only when the referencing scene claims review', () => {
-  const pending = fixture({ qa: { ...fixture().qa, clinicianReview: { status: QA_STATUS.PENDING, reference: 'x' } } });
-  assert.equal(assetIsReleasable(pending), true, 'an alpha scene may show it');
-  assert.equal(assetIsReleasable(pending, { requireClinicianReview: true }), false, 'a reviewed scene may not');
-
-  const failed = fixture({ qa: { ...fixture().qa, clinicianReview: { status: QA_STATUS.FAILED, reference: 'x' } } });
-  assert.equal(assetIsReleasable(failed), false, 'a failed review blocks release regardless');
+  assert.ok(has(validateAssetManifest([meshFixture({ organs: ['gizzard'] })], { organIds: ORGAN_IDS }), /organ "gizzard" is not in the taxonomy/));
+  assert.ok(has(validateAssetManifest([meshFixture({ organs: [] })]), /organs must be a non-empty list/));
+  assert.ok(has(validateAssetManifest([meshFixture({ replacement: { replaces: 'ghost', rollback: 'x' } })]), /replaces "ghost", which is not in the manifest/));
 });

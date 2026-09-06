@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { SCENES, ORGANS } from '../src/catalog/index.js';
 import { modelCardForScene } from '../src/catalog/clinicalReview.js';
-import { assetById, ASSET_MANIFEST } from '../src/catalog/assetManifest.js';
+import { ASSET_MANIFEST, ASSET_SOURCE_TYPE, QA_GATE, QA_STATUS, assetById } from '../src/catalog/assetManifest.js';
 import {
   MODEL_PROFILES,
   MODEL_PROFILE_SCHEMA_VERSION,
@@ -15,11 +16,14 @@ import {
   CORE_PROHIBITED_USES,
   CLINICAL_INTENDED_USES,
   PATIENT_SPECIFIC_PERSONALIZATION,
+  assetOrganProblems,
+  geometryBasisProblems,
   modelProfileById,
   modelProfileForScene,
   modelProfileProblems,
   validateModelProfiles,
 } from '../src/catalog/modelProfiles.js';
+import { materialFixture, meshFixture, meshOfType, withQa } from './helpers/assetFixtures.js';
 
 /**
  * The model-profile contract: what kind of claim each scene makes, in a
@@ -31,6 +35,9 @@ import {
  */
 
 const NON_PROTOTYPE = SCENES.filter((scene) => scene.status !== 'prototype');
+const fileExists = (path) => existsSync(new URL(`../${path}`, import.meta.url));
+const modelCardFor = (scene) => scene.modelCard ?? modelCardForScene(scene);
+const has = (problems, pattern) => problems.some((line) => pattern.test(line));
 
 /** A profile that passes on its own, to be broken one field at a time. */
 const wellFormed = (overrides = {}) => ({
@@ -51,10 +58,15 @@ const wellFormed = (overrides = {}) => ({
 const fixtureScene = (overrides = {}) => ({
   id: 'fixture-scene',
   status: 'alpha',
+  organ: 'heart',
+  organs: ['heart'],
   modelCard: 'docs/model-cards/fixture.md',
   modelProfile: 'fixture-profile',
   ...overrides,
 });
+
+/** A resolver over a list of fixture assets. */
+const assetsById = (assets) => (id) => assets.find((asset) => asset.assetId === id) ?? null;
 
 const problemsOf = (profile, scene, extra = {}) =>
   modelProfileProblems({ scenes: [scene], profiles: [profile], ...extra });
@@ -64,10 +76,7 @@ const problemsOf = (profile, scene, extra = {}) =>
 
 test('the model-profile registry is well formed and every scene reference resolves', () => {
   assert.deepEqual(validateModelProfiles(), []);
-  assert.deepEqual(
-    modelProfileProblems({ scenes: SCENE_MANIFEST, assetById, modelCardFor: (scene) => scene.modelCard ?? modelCardForScene(scene) }),
-    []
-  );
+  assert.deepEqual(modelProfileProblems({ scenes: SCENE_MANIFEST, assetById, modelCardFor, fileExists }), []);
 });
 
 test('profile ids are unique', () => {
@@ -108,10 +117,7 @@ test('no scene in the public app is patient-derived or patient-predictive', () =
   for (const scene of SCENES) {
     const profile = modelProfileForScene(scene);
     if (!profile) continue;
-    assert.ok(
-      !PATIENT_SPECIFIC_PERSONALIZATION.includes(profile.personalization),
-      `${scene.id} represents nobody in particular`
-    );
+    assert.ok(!PATIENT_SPECIFIC_PERSONALIZATION.includes(profile.personalization), `${scene.id} represents nobody in particular`);
   }
 });
 
@@ -123,38 +129,33 @@ test('no scene in the public app claims external validation, and every current s
   }
 });
 
-test('every current-product profile prohibits diagnosis, treatment selection and dose selection', () => {
-  for (const scene of NON_PROTOTYPE) {
-    const profile = modelProfileForScene(scene);
+test('every profile prohibits diagnosis, treatment selection and dose selection', () => {
+  for (const profile of MODEL_PROFILES) {
     for (const use of CORE_PROHIBITED_USES) {
-      assert.ok(profile.prohibitedUses.includes(use), `${scene.id} prohibits ${use}`);
+      assert.ok(profile.prohibitedUses.includes(use), `${profile.profileId} prohibits ${use}`);
     }
   }
 });
 
-test('a scene with a patient capability declares patient-explanation, and only such a scene does', () => {
-  for (const scene of NON_PROTOTYPE) {
-    const profile = modelProfileForScene(scene);
-    const declares = profile.intendedUses.includes(INTENDED_USE.PATIENT_EXPLANATION);
-    assert.equal(declares, scene.access?.patient === true, `${scene.id}: patient surface and intended use agree`);
-  }
+test('the eight solver scenes are mechanistic, amyloid is illustrative and the brain atlas claims no mechanism', () => {
+  const levels = Object.fromEntries(NON_PROTOTYPE.map((scene) => [scene.id, modelProfileForScene(scene).mechanismLevel]));
+  assert.deepEqual(levels, {
+    'brain-anatomy': MECHANISM_LEVEL.NONE,
+    'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
+    circulation: MECHANISM_LEVEL.MECHANISTIC,
+    'copd-hyperinflation': MECHANISM_LEVEL.MECHANISTIC,
+    'asthma-heterogeneity': MECHANISM_LEVEL.MECHANISTIC,
+    'pulmonary-edema': MECHANISM_LEVEL.MECHANISTIC,
+    'portal-hypertension': MECHANISM_LEVEL.MECHANISTIC,
+    'hepatorenal-syndrome': MECHANISM_LEVEL.MECHANISTIC,
+    'renal-filtration': MECHANISM_LEVEL.MECHANISTIC,
+  });
 });
 
-test('production is engineering maturity: the two production scenes still claim no more than mechanistic', () => {
-  for (const scene of SCENES.filter((entry) => entry.status === 'production')) {
-    const profile = modelProfileForScene(scene);
-    assert.ok(
-      [MECHANISM_LEVEL.ILLUSTRATIVE, MECHANISM_LEVEL.MECHANISTIC].includes(profile.mechanismLevel),
-      `${scene.id}: ${profile.mechanismLevel}`
-    );
-  }
-});
-
-test('no current scene is literature-calibrated: the evidence registry files calibrations as chosen targets', () => {
-  // This is a statement about today's evidence, not a ceiling. It flips when a
-  // dossier cites a dataset range and a test holds the model inside it.
-  for (const scene of NON_PROTOTYPE) {
-    assert.notEqual(modelProfileForScene(scene).mechanismLevel, MECHANISM_LEVEL.LITERATURE_CALIBRATED, scene.id);
+test('every scene with a paid patient capability declares patient-explanation', () => {
+  for (const scene of NON_PROTOTYPE.filter((entry) => entry.access?.patient === true)) {
+    assert.ok(modelProfileForScene(scene).intendedUses.includes(INTENDED_USE.PATIENT_EXPLANATION), scene.id);
   }
 });
 
@@ -163,7 +164,6 @@ test('the brain atlas is the only asset-backed geometry, and its asset is in the
   assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy']);
   const profile = modelProfileForScene(backed[0]);
   assert.equal(profile.geometryBasis, GEOMETRY_BASIS.REFERENCE_ATLAS);
-  assert.equal(profile.mechanismLevel, MECHANISM_LEVEL.NONE, 'an atlas makes no mechanism claim');
   for (const id of profile.assets) assert.ok(assetById(id), `${id} is in the asset manifest`);
   assert.ok(profile.prohibitedUses.includes(PROHIBITED_USE.PROCEDURE_PLANNING), 'the review registry forbids operative planning');
 });
@@ -179,7 +179,7 @@ test('no profile carries a validation record, because none exists in this reposi
 });
 
 // ---------------------------------------------------------------------------
-// The validator rejects what it must
+// The validator rejects what it must, and never throws
 
 test('an unknown value on any axis is rejected', () => {
   for (const [field, value] of [
@@ -190,121 +190,117 @@ test('an unknown value on any axis is rejected', () => {
     const problems = validateModelProfiles([wellFormed({ [field]: value })]);
     assert.ok(problems.some((line) => line.includes(field) && line.includes(value)), `${field}=${value}: ${problems}`);
   }
-  const uses = validateModelProfiles([wellFormed({ intendedUses: ['general-education', 'marketing'] })]);
-  assert.ok(uses.some((line) => line.includes('"marketing"')), uses);
-  const prohibited = validateModelProfiles([wellFormed({ prohibitedUses: [...CORE_PROHIBITED_USES, 'fun'] })]);
-  assert.ok(prohibited.some((line) => line.includes('"fun"')), prohibited);
+  assert.ok(has(validateModelProfiles([wellFormed({ intendedUses: ['general-education', 'marketing'] })]), /"marketing"/));
+  assert.ok(has(validateModelProfiles([wellFormed({ prohibitedUses: [...CORE_PROHIBITED_USES, 'fun'] })]), /"fun"/));
+});
+
+test('a profile whose intendedUses is not an array gets a problem line, not a TypeError, from both validators', () => {
+  for (const value of ['general-education', null, 42, { use: 'x' }]) {
+    let problems;
+    assert.doesNotThrow(() => { problems = validateModelProfiles([wellFormed({ intendedUses: value })]); });
+    assert.ok(has(problems, /intendedUses must be an array of non-empty strings/), `${JSON.stringify(value)}: ${problems}`);
+    assert.doesNotThrow(() => {
+      problems = problemsOf(wellFormed({ intendedUses: value }), fixtureScene({ access: { patient: true } }), { assetById });
+    });
+    assert.ok(has(problems, /does not declare "patient-explanation"/), 'the cross-check still runs on the rest of the record');
+  }
+});
+
+test('malformed profiles, scenes and registries of every shape produce problem lines, not exceptions', () => {
+  assert.doesNotThrow(() => validateModelProfiles([null, 42, 'profile', [], {}, { profileId: 'x', prohibitedUses: 'none', assets: 7 }]));
+  assert.deepEqual(validateModelProfiles('nope'), ['the profile registry is not an array']);
+  assert.doesNotThrow(() => modelProfileProblems({ scenes: [null, 'scene', {}, { id: 'a', status: 'alpha', modelProfile: 7 }], profiles: [] }));
+  assert.deepEqual(modelProfileProblems({ scenes: 'nope' }), ['scenes is not an array']);
 });
 
 test('duplicate ids, duplicate list entries and empty lists are rejected', () => {
-  const twice = validateModelProfiles([wellFormed(), wellFormed()]);
-  assert.ok(twice.some((line) => /duplicate profileId/.test(line)), twice);
-
-  const doubled = validateModelProfiles([wellFormed({ intendedUses: ['general-education', 'general-education'] })]);
-  assert.ok(doubled.some((line) => /intendedUses has duplicates/.test(line)), doubled);
-
-  const empty = validateModelProfiles([wellFormed({ intendedUses: [] })]);
-  assert.ok(empty.some((line) => /intendedUses is empty/.test(line)), empty);
-
-  const blank = validateModelProfiles([wellFormed({ prohibitedUses: ['diagnosis', ''] })]);
-  assert.ok(blank.some((line) => /prohibitedUses must be an array of non-empty strings/.test(line)), blank);
+  assert.ok(has(validateModelProfiles([wellFormed(), wellFormed()]), /duplicate profileId/));
+  assert.ok(has(validateModelProfiles([wellFormed({ intendedUses: ['general-education', 'general-education'] })]), /intendedUses has duplicates/));
+  assert.ok(has(validateModelProfiles([wellFormed({ intendedUses: [] })]), /intendedUses is empty/));
+  assert.ok(has(validateModelProfiles([wellFormed({ prohibitedUses: ['diagnosis', ''] })]), /prohibitedUses must be an array of non-empty strings/));
 });
 
 test('a wrong schema version, a bad id and a missing basis are rejected', () => {
-  const problems = validateModelProfiles([
-    wellFormed({ profileId: 'Not Kebab', schemaVersion: 2, basis: '' }),
-  ]);
-  assert.ok(problems.some((line) => /kebab-case/.test(line)), problems);
-  assert.ok(problems.some((line) => /schemaVersion must be 1/.test(line)), problems);
-  assert.ok(problems.some((line) => /basis must say why/.test(line)), problems);
+  const problems = validateModelProfiles([wellFormed({ profileId: 'Not Kebab', schemaVersion: 2, basis: '' })]);
+  assert.ok(has(problems, /kebab-case/), problems);
+  assert.ok(has(problems, /schemaVersion must be 1/), problems);
+  assert.ok(has(problems, /basis must say why/), problems);
 });
 
-test('a non-clinical profile that fails to prohibit diagnosis, treatment selection or dose selection is rejected', () => {
+test('schema 1 requires diagnosis, treatment selection and dose selection to be prohibited by every profile, clinical ones included', () => {
   for (const missing of CORE_PROHIBITED_USES) {
-    const problems = validateModelProfiles([
-      wellFormed({ prohibitedUses: CORE_PROHIBITED_USES.filter((use) => use !== missing) }),
+    const educational = validateModelProfiles([wellFormed({ prohibitedUses: CORE_PROHIBITED_USES.filter((use) => use !== missing) })]);
+    assert.ok(has(educational, new RegExp(`requires every profile to prohibit "${missing}"`)), `${missing}: ${educational}`);
+    const clinical = validateModelProfiles([
+      wellFormed({
+        intendedUses: [INTENDED_USE.CLINICAL_RESEARCH],
+        prohibitedUses: CORE_PROHIBITED_USES.filter((use) => use !== missing),
+        validationRecords: ['docs/asset-qa/brain-atlas-glb.md'],
+      }),
     ]);
-    assert.ok(problems.some((line) => line.includes(`must prohibit "${missing}"`)), `${missing}: ${problems}`);
+    assert.ok(has(clinical, new RegExp(`requires every profile to prohibit "${missing}"`)), `clinical, ${missing}: ${clinical}`);
   }
 });
 
-test('procedural geometry may not list assets, and atlas or imaging geometry must', () => {
-  const procedural = validateModelProfiles([wellFormed({ assets: ['brain-atlas-glb'] })]);
-  assert.ok(procedural.some((line) => /procedural geometry lists assets/.test(line)), procedural);
-  for (const basis of [GEOMETRY_BASIS.REFERENCE_ATLAS, GEOMETRY_BASIS.IMAGING_DERIVED, GEOMETRY_BASIS.HYBRID, GEOMETRY_BASIS.MOLECULAR]) {
-    const problems = validateModelProfiles([wellFormed({ geometryBasis: basis })]);
-    assert.ok(problems.some((line) => line.includes(`${basis} geometry must name at least one asset`)), `${basis}: ${problems}`);
-  }
-});
-
-test('a high claim without a validation record is rejected structurally, before any product rule applies', () => {
+test('claims that need evidence are rejected without a validation record: calibrated, validated, cohort, patient-specific, clinical', () => {
   const cases = [
+    { mechanismLevel: MECHANISM_LEVEL.LITERATURE_CALIBRATED },
     { mechanismLevel: MECHANISM_LEVEL.EXTERNALLY_VALIDATED },
-    { personalization: PERSONALIZATION.PATIENT_PREDICTIVE },
+    { personalization: PERSONALIZATION.COHORT_DERIVED },
     { personalization: PERSONALIZATION.PATIENT_DERIVED_GEOMETRY },
-    { intendedUses: [INTENDED_USE.CLINICAL_RESEARCH], prohibitedUses: [PROHIBITED_USE.DOSE_SELECTION] },
-    { intendedUses: [INTENDED_USE.CLINICAL_CARE], prohibitedUses: [PROHIBITED_USE.DOSE_SELECTION] },
+    { personalization: PERSONALIZATION.PATIENT_PREDICTIVE },
+    { intendedUses: [INTENDED_USE.CLINICAL_RESEARCH] },
+    { intendedUses: [INTENDED_USE.CLINICAL_CARE] },
   ];
   for (const overrides of cases) {
     const problems = validateModelProfiles([wellFormed(overrides)]);
-    assert.ok(problems.some((line) => /require validationRecords/.test(line)), `${JSON.stringify(overrides)}: ${problems}`);
-    // With a record the structure passes — the product rule below still refuses it.
-    assert.deepEqual(validateModelProfiles([wellFormed({ ...overrides, validationRecords: ['docs/validation/fixture.md'] })]), []);
+    assert.ok(has(problems, /require validationRecords/), `${JSON.stringify(overrides)}: ${problems}`);
+    assert.deepEqual(validateModelProfiles([wellFormed({ ...overrides, validationRecords: ['docs/asset-qa/brain-atlas-glb.md'] })]), []);
   }
 });
 
-test('the public app refuses a clinical intended use even when a validation record is present', () => {
+test('a validation record must be a repository-relative path that exists', () => {
+  for (const bad of ['https://example.invalid/paper', '/etc/passwd', '../outside.md', 'docs//x.md']) {
+    const problems = validateModelProfiles([wellFormed({ mechanismLevel: MECHANISM_LEVEL.LITERATURE_CALIBRATED, validationRecords: [bad] })]);
+    assert.ok(has(problems, /is not a repository-relative path/), `${bad}: ${problems}`);
+  }
+  const phantom = wellFormed({ mechanismLevel: MECHANISM_LEVEL.LITERATURE_CALIBRATED, validationRecords: ['docs/validation/does-not-exist.md'] });
+  assert.deepEqual(validateModelProfiles([phantom]), [], 'structurally fine');
+  const problems = problemsOf(phantom, fixtureScene(), { fileExists });
+  assert.ok(has(problems, /"docs\/validation\/does-not-exist.md" does not exist in the repository/), problems);
+  const real = wellFormed({ mechanismLevel: MECHANISM_LEVEL.LITERATURE_CALIBRATED, validationRecords: ['docs/asset-qa/brain-atlas-glb.md'] });
+  assert.deepEqual(problemsOf(real, fixtureScene(), { fileExists }), [], 'a calibrated claim with a real record is allowed in the public app');
+});
+
+test('the public app refuses clinical uses, patient-specific models and external validation even with a record on file', () => {
+  const record = ['docs/asset-qa/brain-atlas-glb.md'];
   for (const use of CLINICAL_INTENDED_USES) {
-    const profile = wellFormed({
-      intendedUses: [use],
-      prohibitedUses: [PROHIBITED_USE.DOSE_SELECTION],
-      validationRecords: ['docs/validation/fixture.md'],
-    });
-    const problems = problemsOf(profile, fixtureScene());
-    assert.ok(problems.some((line) => line.includes(`no release surface for intended use "${use}"`)), `${use}: ${problems}`);
+    const problems = problemsOf(wellFormed({ intendedUses: [use], validationRecords: record }), fixtureScene(), { fileExists });
+    assert.ok(has(problems, new RegExp(`no release surface for intended use "${use}"`)), `${use}: ${problems}`);
   }
-});
-
-test('the public app refuses patient-derived geometry and patient-predictive models, on Lab scenes too', () => {
   for (const personalization of PATIENT_SPECIFIC_PERSONALIZATION) {
-    const profile = wellFormed({ personalization, validationRecords: ['docs/validation/fixture.md'] });
     for (const status of ['alpha', 'production', 'prototype']) {
-      const scene = fixtureScene({ status });
-      const problems = problemsOf(profile, scene);
-      assert.ok(problems.some((line) => line.includes(`cannot be "${personalization}"`)), `${status}/${personalization}: ${problems}`);
+      const problems = problemsOf(wellFormed({ personalization, validationRecords: record }), fixtureScene({ status }), { fileExists });
+      assert.ok(has(problems, new RegExp(`cannot be "${personalization}"`)), `${status}/${personalization}: ${problems}`);
     }
   }
-});
-
-test('the public app refuses an externally-validated claim because no such record exists here', () => {
-  const profile = wellFormed({ mechanismLevel: MECHANISM_LEVEL.EXTERNALLY_VALIDATED, validationRecords: ['docs/validation/fixture.md'] });
-  const problems = problemsOf(profile, fixtureScene());
-  assert.ok(problems.some((line) => /no external-validation record exists/.test(line)), problems);
+  const validated = problemsOf(wellFormed({ mechanismLevel: MECHANISM_LEVEL.EXTERNALLY_VALIDATED, validationRecords: record }), fixtureScene(), { fileExists });
+  assert.ok(has(validated, /no external-validation record exists/), validated);
 });
 
 test('a non-prototype scene without a profile, or with a dangling one, is reported', () => {
-  const missing = modelProfileProblems({ scenes: [fixtureScene({ modelProfile: undefined })], profiles: [wellFormed()] });
-  assert.ok(missing.some((line) => /must reference a modelProfile/.test(line)), missing);
-
-  const dangling = modelProfileProblems({ scenes: [fixtureScene({ modelProfile: 'no-such-profile' })], profiles: [wellFormed()] });
-  assert.ok(dangling.some((line) => /"no-such-profile" is not a registered profile/.test(line)), dangling);
-
-  const sketch = modelProfileProblems({ scenes: [fixtureScene({ status: 'prototype', modelProfile: undefined })], profiles: [] });
-  assert.deepEqual(sketch, [], 'a prototype may go without one');
+  assert.ok(has(modelProfileProblems({ scenes: [fixtureScene({ modelProfile: undefined })], profiles: [wellFormed()] }), /must reference a modelProfile/));
+  assert.ok(has(modelProfileProblems({ scenes: [fixtureScene({ modelProfile: 'no-such-profile' })], profiles: [wellFormed()] }), /"no-such-profile" is not a registered profile/));
+  assert.deepEqual(modelProfileProblems({ scenes: [fixtureScene({ status: 'prototype', modelProfile: undefined })], profiles: [] }), [], 'a prototype may go without one');
 });
 
 test('a prototype may reference a profile only if it claims no mechanism', () => {
-  const illustrative = wellFormed({ mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE });
-  assert.deepEqual(problemsOf(illustrative, fixtureScene({ status: 'prototype' })), []);
-  const mechanistic = wellFormed();
-  const problems = problemsOf(mechanistic, fixtureScene({ status: 'prototype' }));
-  assert.ok(problems.some((line) => /a prototype publishes no numbers/.test(line)), problems);
+  assert.deepEqual(problemsOf(wellFormed({ mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE }), fixtureScene({ status: 'prototype' })), []);
+  assert.ok(has(problemsOf(wellFormed(), fixtureScene({ status: 'prototype' })), /a prototype publishes no numbers/));
 });
 
 test('a profiled alpha, reviewed or production scene must have a model card', () => {
-  const problems = problemsOf(wellFormed(), fixtureScene({ modelCard: undefined }));
-  assert.ok(problems.some((line) => /must have a model card/.test(line)), problems);
-  // The production scenes find theirs through the clinical-review registry.
+  assert.ok(has(problemsOf(wellFormed(), fixtureScene({ modelCard: undefined })), /must have a model card/));
   for (const id of ['heart-failure', 'amyloid-beta']) {
     const scene = SCENE_MANIFEST.find((entry) => entry.id === id);
     assert.equal(scene.modelCard, undefined, `${id} does not duplicate the path into the manifest`);
@@ -312,27 +308,79 @@ test('a profiled alpha, reviewed or production scene must have a model card', ()
   }
 });
 
-test('patient capability and patient-explanation must agree in both directions', () => {
+test('a paid patient capability requires patient-explanation, but a free scene may declare it too', () => {
   const withoutUse = problemsOf(wellFormed(), fixtureScene({ access: { patient: true } }));
-  assert.ok(withoutUse.some((line) => /does not declare "patient-explanation"/.test(line)), withoutUse);
-
-  const withoutSurface = problemsOf(
+  assert.ok(has(withoutUse, /does not declare "patient-explanation"/), withoutUse);
+  const freePatientScene = problemsOf(
     wellFormed({ intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.PATIENT_EXPLANATION] }),
     fixtureScene()
   );
-  assert.ok(withoutSurface.some((line) => /offers no patient capability/.test(line)), withoutSurface);
+  assert.deepEqual(freePatientScene, [], 'intended use and billing are separate axes');
 });
+
+// ---------------------------------------------------------------------------
+// Assets: existence, organ scope, provenance agreement, release gate
 
 test('a profile asset that is not in the asset manifest is reported', () => {
   const profile = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: ['no-such-asset'] });
-  const problems = problemsOf(profile, fixtureScene(), { assetById });
-  assert.ok(problems.some((line) => /"no-such-asset" is not in the asset manifest/.test(line)), problems);
-  const real = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: [ASSET_MANIFEST[0].assetId] });
-  assert.deepEqual(problemsOf(real, fixtureScene(), { assetById }), []);
+  assert.ok(has(problemsOf(profile, fixtureScene(), { assetById }), /"no-such-asset" is not in the asset manifest/));
 });
 
-test('the vocabulary is closed: every organ named by an asset-backed profile is a real organ', () => {
-  // A sanity check that the two registries are talking about the same body.
+test('an asset must cover only organs the scene draws, unless it is whole-body context', () => {
+  const liver = meshFixture({ assetId: 'fixture-liver', organs: ['liver'] });
+  const heartScene = fixtureScene();
+  assert.ok(has(assetOrganProblems(heartScene, liver), /covers "liver", which scene "fixture-scene" does not draw/));
+  const profile = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: ['fixture-liver'] });
+  assert.ok(has(problemsOf(profile, heartScene, { assetById: assetsById([liver]) }), /covers "liver"/));
+
+  const twoOrgans = fixtureScene({ organs: ['heart', 'liver'] });
+  assert.deepEqual(assetOrganProblems(twoOrgans, liver), [], 'a multi-organ scene may draw each of its organs');
+  const context = meshFixture({ assetId: 'fixture-body', organs: ['whole-body', 'heart', 'lungs'] });
+  assert.deepEqual(assetOrganProblems(heartScene, context), [], 'a whole-body context asset is the structured exception');
+});
+
+test('geometry basis and asset provenance must agree: format is not provenance', () => {
+  const proceduralGlb = meshOfType(ASSET_SOURCE_TYPE.PROCEDURAL, { assetId: 'fixture-procedural' });
+  const atlas = meshFixture({ assetId: 'fixture-atlas' });
+  const texture = materialFixture({ assetId: 'fixture-material' });
+  const resolver = assetsById([proceduralGlb, atlas, texture]);
+  const scene = fixtureScene();
+
+  const proceduralWithGlb = wellFormed({ geometryBasis: GEOMETRY_BASIS.PROCEDURAL, assets: ['fixture-procedural', 'fixture-material'] });
+  assert.deepEqual(problemsOf(proceduralWithGlb, scene, { assetById: resolver }), [], 'a procedural organ stored as a GLB is still procedural');
+
+  const proceduralWithAtlas = wellFormed({ geometryBasis: GEOMETRY_BASIS.PROCEDURAL, assets: ['fixture-atlas'] });
+  assert.ok(has(problemsOf(proceduralWithAtlas, scene, { assetById: resolver }), /procedural geometry cannot use mesh asset "fixture-atlas" of source type "reference-atlas" — reclassify as hybrid/));
+
+  const atlasWithProcedural = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: ['fixture-procedural'] });
+  assert.ok(has(problemsOf(atlasWithProcedural, scene, { assetById: resolver }), /only reference-atlas meshes fit this basis/));
+
+  const atlasWithOnlyTexture = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: ['fixture-material'] });
+  assert.ok(has(problemsOf(atlasWithOnlyTexture, scene, { assetById: resolver }), /names only material assets and no mesh/));
+
+  const hybridAllProcedural = wellFormed({ geometryBasis: GEOMETRY_BASIS.HYBRID, assets: ['fixture-procedural'] });
+  assert.ok(has(problemsOf(hybridAllProcedural, scene, { assetById: resolver }), /hybrid geometry must name at least one atlas-, imaging- or structure-derived mesh asset/));
+
+  const hybrid = wellFormed({ geometryBasis: GEOMETRY_BASIS.HYBRID, assets: ['fixture-procedural', 'fixture-atlas'] });
+  assert.deepEqual(problemsOf(hybrid, scene, { assetById: resolver }), []);
+  assert.deepEqual(geometryBasisProblems(wellFormed({ geometryBasis: GEOMETRY_BASIS.PROCEDURAL }), []), [], 'a procedural scene drawn in code names no asset at all');
+});
+
+test('a public scene\'s asset must pass the release gate for that scene\'s maturity', () => {
+  const pendingReview = withQa(meshFixture(), QA_GATE.CLINICIAN_REVIEW, { status: QA_STATUS.PENDING, reference: 'docs/fixture-qa.md' });
+  const profile = wellFormed({ geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS, assets: ['fixture-atlas'] });
+  const resolver = assetsById([pendingReview]);
+  assert.deepEqual(problemsOf(profile, fixtureScene({ status: 'alpha' }), { assetById: resolver }), [], 'alpha may wait for review');
+  for (const status of ['reviewed', 'production']) {
+    assert.ok(has(problemsOf(profile, fixtureScene({ status }), { assetById: resolver }), /clinicianReview is pending, not passed/), status);
+  }
+  const failedValidator = withQa(meshFixture(), QA_GATE.FORMAT_VALIDATION, { ...meshFixture().qa.formatValidation, status: QA_STATUS.FAILED });
+  assert.ok(has(problemsOf(profile, fixtureScene({ status: 'alpha' }), { assetById: assetsById([failedValidator]) }), /formatValidation failed/));
+  const unknownLicence = { ...meshFixture(), license: { ...meshFixture().license, commercialUse: 'unknown' } };
+  assert.ok(has(problemsOf(profile, fixtureScene({ status: 'alpha' }), { assetById: assetsById([unknownLicence]) }), /commercial use is "unknown"/));
+});
+
+test('the two registries talk about the same body', () => {
   const organIds = new Set(ORGANS.map((organ) => organ.id));
-  for (const asset of ASSET_MANIFEST) assert.ok(organIds.has(asset.organ), asset.assetId);
+  for (const asset of ASSET_MANIFEST) for (const organ of asset.organs) assert.ok(organIds.has(organ), `${asset.assetId}: ${organ}`);
 });
