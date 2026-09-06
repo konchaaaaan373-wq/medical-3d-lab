@@ -1,0 +1,5 @@
+[functions."scheduled-billing-reconcile"]
+  # Keep the production repair schedule in Netlify's deployment manifest as
+  # well as the function export. The manifest is the authoritative fallback
+  # when build-time function metadata discovery changes.
+  schedule = "17 * * * *"

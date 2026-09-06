@@ -7,6 +7,7 @@ const DEFAULT_BATCH_SIZE = 3;
 const MAX_BATCH_SIZE = 10;
 const DEFAULT_TIME_BUDGET_MS = 22_000;
 const RUN_FRESHNESS_MS = 3 * 60 * 60 * 1000;
+const CUSTOMER_RECONCILIATION_FRESHNESS_MS = 24 * 60 * 60 * 1000;
 const RUN_STALE_MS = 5 * 60 * 1000;
 const EVENT_RECLAIM_MS = 5 * 60 * 1000;
 const RETENTION_MS = 90 * 24 * 60 * 60 * 1000;
@@ -261,7 +262,22 @@ export async function billingOperationsHealth({
     failedNonReconcilableEvents,
     staleNonReconcilableClaims,
   ].some((rows) => rows?.length);
-  const customerReconciliation = !failedCustomers?.length;
+  // A successful bounded batch is not the same thing as a complete sweep. On
+  // a fresh deployment the first three customers can succeed while every
+  // other customer still has `last_reconciled_at = null`; reporting green at
+  // that point hides exactly the stale entitlement this worker exists to find.
+  // Once every known customer has been seen, the oldest successful read is the
+  // sweep watermark. Keep it bounded so an undersized batch cannot report
+  // healthy forever as the customer population grows.
+  const hasCustomers = Boolean(leastRecentlyReconciled?.length);
+  const oldestReconciledAt = Date.parse(
+    leastRecentlyReconciled?.[0]?.last_reconciled_at
+  );
+  const customerCoverage =
+    !hasCustomers ||
+    (Number.isFinite(oldestReconciledAt) &&
+      now.getTime() - oldestReconciledAt <= CUSTOMER_RECONCILIATION_FRESHNESS_MS);
+  const customerReconciliation = customerCoverage && !failedCustomers?.length;
   const healthy =
     stripeReadiness.ready &&
     scheduledReconciliation &&
@@ -285,6 +301,7 @@ export async function billingOperationsHealth({
       stripePortal: stripeReadiness.checks.portal,
       scheduledReconciliation,
       webhookDelivery,
+      customerCoverage,
       customerReconciliation,
     },
   };

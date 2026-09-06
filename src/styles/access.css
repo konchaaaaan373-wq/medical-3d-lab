@@ -181,6 +181,8 @@
 .access-secondary,
 .access-manage,
 .access-plan-cta,
+.access-danger,
+.access-delete-account,
 .access-text-button {
   font: inherit;
   cursor: pointer;
@@ -189,7 +191,8 @@
 .access-primary,
 .access-secondary,
 .access-manage,
-.access-plan-cta {
+.access-plan-cta,
+.access-danger {
   min-height: 40px;
   border-radius: 9px;
   padding: 8px 12px;
@@ -210,7 +213,32 @@
   color: var(--ink-dim);
 }
 
-.access-plan-cta:disabled {
+.access-danger {
+  border: 1px solid color-mix(in srgb, #ff6b6b 58%, var(--border));
+  background: color-mix(in srgb, #ff6b6b 12%, transparent);
+  color: #ffb0b0;
+  font-weight: 700;
+}
+
+.access-delete-account {
+  display: block;
+  margin: 15px auto 0;
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.access-delete-account:hover,
+.access-delete-account:focus-visible {
+  color: #ffb0b0;
+}
+
+.access-plan-cta:disabled,
+.access-danger:disabled,
+.access-delete-account:disabled {
   opacity: 0.55;
   cursor: default;
 }

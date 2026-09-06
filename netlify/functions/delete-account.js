@@ -4,7 +4,7 @@ import {
   verifySupabasePassword,
 } from '../lib/account.js';
 import { authenticatedUser, json, stripeModeFilter, supabaseAdmin } from '../lib/billing.js';
-import { billingStripeMode, stripeDeploymentSafety } from '../lib/billingConfiguration.js';
+import { stripeDeploymentSafety } from '../lib/billingConfiguration.js';
 
 export const config = {
   rateLimit: { windowLimit: 3, windowSize: 3600, aggregateBy: ['ip', 'domain'] },
@@ -15,8 +15,9 @@ export const config = {
  *
  * Ordering is deliberate:
  *   1. authenticate the current browser identity;
- *   2. close the Stripe Customer first (which closes attached subscriptions);
- *   3. delete Supabase Auth; billing rows cascade from auth.users.
+ *   2. write the database marker that serialises against Checkout;
+ *   3. close the Stripe Customer (which closes attached subscriptions);
+ *   4. delete Supabase Auth; billing rows cascade from auth.users.
  *
  * If Stripe cannot be closed, Auth is left intact so the user retains a way to
  * manage billing instead of becoming an identity-less paying customer.
@@ -24,7 +25,7 @@ export const config = {
 export default async (request, context) => {
   if (request.method !== 'DELETE') return json(405, { error: 'Method not allowed' });
   const deployContext = context?.deploy?.context ?? process.env.CONTEXT ?? '';
-  if (deployContext && deployContext !== 'production') {
+  if (deployContext !== 'production') {
     return json(403, { error: 'Account deletion is available only on the production deployment.' });
   }
 
@@ -39,10 +40,24 @@ export default async (request, context) => {
       return json(403, { error: 'Current password could not be verified.' });
     }
 
-    const mode = billingStripeMode(process.env);
+    // This server-only marker is the serialisation point against Checkout. A
+    // database trigger rejects new or reacquired Checkout attempts from now
+    // until Auth deletion cascades the marker away. If a provider call fails,
+    // retain the marker so a second tab cannot start a new subscription while
+    // the user retries this destructive operation.
+    await supabaseAdmin('billing_account_deletions?on_conflict=user_id', {
+      method: 'POST',
+      prefer: 'resolution=ignore-duplicates,return=minimal',
+      body: [{ user_id: user.id }],
+    });
 
+    // Ask the database whether this identity has ever had a live Customer
+    // before requiring Stripe configuration. A free account must remain
+    // deletable while Stripe is down or not configured at all. Conversely, a
+    // live Customer can never be skipped just because the current key is
+    // absent or points at the sandbox namespace.
     const rows = await supabaseAdmin(
-      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter(mode)}&select=stripe_customer_id&limit=1`
+      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&${stripeModeFilter('live')}&select=stripe_customer_id&limit=1`
     );
     const customerId = rows?.[0]?.stripe_customer_id ?? null;
 
@@ -50,7 +65,8 @@ export default async (request, context) => {
     // account usable and recoverable rather than leaving recurring billing with
     // no Medical 3D Lab identity attached to it.
     if (customerId) {
-      if (!stripeDeploymentSafety(process.env, deployContext).safe) {
+      const stripeSafety = stripeDeploymentSafety(process.env, deployContext);
+      if (!stripeSafety.safe || stripeSafety.mode !== 'live') {
         return json(503, { error: 'Billing is not configured safely on this deployment.' });
       }
       await deleteStripeCustomer(customerId);

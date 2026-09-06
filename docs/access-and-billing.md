@@ -34,6 +34,8 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql` — rejects billing writes that omit their Stripe namespace.
 - `supabase/migrations/20260904020833_billing_ordered_access_events.sql` — makes payment, refund and dispute updates monotonic and independent.
 - `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql` — binds each Checkout idempotency key to one exact request identity.
+- `supabase/migrations/20260906043135_billing_account_deletion_lock.sql` — serialises account deletion against new or reacquired Checkout attempts.
+- `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql` — prevents a concurrent first Customer from retaining account identity after deletion starts.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -77,6 +79,8 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql`
    - `supabase/migrations/20260904020833_billing_ordered_access_events.sql`
    - `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql`
+   - `supabase/migrations/20260906043135_billing_account_deletion_lock.sql`
+   - `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -90,7 +94,7 @@ All billing tables have RLS enabled and no browser policies, and browser roles h
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
 
-Account deletion is accepted only by the Production function, requires the current password again, closes the mode-matched Stripe Customer before deleting Supabase Auth, and is rate-limited. OAuth-only accounts are not currently offered by this app.
+Account deletion is available from the signed-in account panel, is accepted only by the Production function, requires the current password again, writes a server-only deletion marker that blocks concurrent Checkout attempts, closes an existing live Stripe Customer before deleting Supabase Auth, clears the browser session after server confirmation, and is rate-limited. A free account with no live billing identity remains deletable when Stripe is unavailable or not configured; an account with a live Customer fails closed until Stripe confirms closure. OAuth-only accounts are not currently offered by this app.
 
 ## Stripe setup
 
@@ -117,7 +121,7 @@ Checkout writes `supabase_user_id` into metadata so an initial Stripe event can 
 
 If a subscription event arrives with a Price ID that is not one of the configured prices, the webhook marks an existing local row `unsupported_price`; the previous paid entitlement is not allowed to remain active.
 
-All server-to-Stripe requests pin `Stripe-Version: 2026-08-26.dahlia`. Checkout also sends an opaque eight-letter `integration_identifier`; it contains no account or user identity.
+All server-to-Stripe requests pin `Stripe-Version: 2026-08-26.dahlia`. Production Checkout additionally requires an `rk_live_` restricted key and refuses an unrestricted `sk_live_` key; webhook processing, reconciliation and Billing Portal remain available during key rotation so an existing customer is never trapped. Checkout also sends an opaque eight-letter `integration_identifier`; it contains no account or user identity. Recurring Prices must have a positive base amount; a mistakenly configured zero-price plan fails readiness rather than granting paid access for no consideration.
 
 ### Customer Portal configuration
 

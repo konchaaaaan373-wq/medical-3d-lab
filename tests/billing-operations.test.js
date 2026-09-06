@@ -28,6 +28,12 @@ const STRIPE_READY = async () => ({
 
 test('billing operations: production deploy includes an hourly bounded repair schedule', () => {
   assert.equal(schedule.schedule, '17 * * * *');
+  const netlifyConfiguration = readFileSync(
+    new URL('../netlify.toml', import.meta.url),
+    'utf8'
+  );
+  assert.match(netlifyConfiguration, /\[functions\."scheduled-billing-reconcile"\]/);
+  assert.match(netlifyConfiguration, /schedule\s*=\s*"17 \* \* \* \*"/);
   const migration = readFileSync(
     new URL(
       '../supabase/migrations/20260902135238_billing_reconciliation_operations.sql',
@@ -205,6 +211,7 @@ test('billing operations: health output is aggregate and privacy-safe', async ()
     stripePortal: true,
     scheduledReconciliation: true,
     webhookDelivery: true,
+    customerCoverage: true,
     customerReconciliation: true,
   });
   assert.doesNotMatch(JSON.stringify(result), /user_|cus_|sub_|@/);
@@ -290,6 +297,51 @@ test('billing operations: a customer sweep cannot hide a non-reconcilable invoic
   assert.equal(result.status, 'degraded');
   assert.equal(result.checks.webhookDelivery, false);
   assert.doesNotMatch(JSON.stringify(result), /not-returned/);
+});
+
+test('billing operations: one successful batch cannot hide customers never reconciled', async () => {
+  const admin = async (path) => {
+    if (path.includes('status=eq.running')) return [];
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
+      return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
+    }
+    if (path.includes('select=last_reconciled_at')) return [{ last_reconciled_at: null }];
+    return [];
+  };
+
+  const result = await billingOperationsHealth({
+    admin,
+    checkStripe: STRIPE_READY,
+    environment: HEALTH_ENV,
+    now: new Date('2026-09-02T12:00:00.000Z'),
+  });
+
+  assert.equal(result.status, 'degraded');
+  assert.equal(result.checks.customerCoverage, false);
+  assert.equal(result.checks.customerReconciliation, false);
+});
+
+test('billing operations: an overloaded queue cannot keep reporting an old sweep as current', async () => {
+  const admin = async (path) => {
+    if (path.includes('status=eq.running')) return [];
+    if (path.includes('billing_reconciliation_runs?') && path.includes('status=neq.running')) {
+      return [{ status: 'succeeded', completed_at: '2026-09-02T11:17:05.000Z' }];
+    }
+    if (path.includes('select=last_reconciled_at')) {
+      return [{ last_reconciled_at: '2026-08-31T11:00:00.000Z' }];
+    }
+    return [];
+  };
+
+  const result = await billingOperationsHealth({
+    admin,
+    checkStripe: STRIPE_READY,
+    environment: HEALTH_ENV,
+    now: new Date('2026-09-02T12:00:00.000Z'),
+  });
+
+  assert.equal(result.status, 'degraded');
+  assert.equal(result.checks.customerCoverage, false);
 });
 
 test('billing operations: a fresh running job keeps the latest successful health result', async () => {
