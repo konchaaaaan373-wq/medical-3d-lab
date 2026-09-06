@@ -453,7 +453,9 @@ test('account deletion: legacy Customer provenance is verified and saved before 
       return response({
         id: 'cus_legacy',
         livemode: true,
-        metadata: { supabase_user_id: 'user-legacy', stripe_mode: 'live' },
+        // Customers created before mode scoping have no stripe_mode metadata;
+        // the durable DB mode plus Stripe's livemode are the migration proof.
+        metadata: { supabase_user_id: 'user-legacy' },
       });
     }
     if (target.endsWith('/v1/customers/cus_legacy') && options.method === 'DELETE') {

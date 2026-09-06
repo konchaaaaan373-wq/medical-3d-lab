@@ -110,7 +110,8 @@ export default async (request, context) => {
         if (
           !existing ||
           existing.metadata?.supabase_user_id !== user.id ||
-          existing.metadata?.stripe_mode !== customer.stripe_mode ||
+          (existing.metadata?.stripe_mode &&
+            existing.metadata.stripe_mode !== customer.stripe_mode) ||
           Boolean(existing.livemode) !== expectedLivemode
         ) {
           return json(503, {
