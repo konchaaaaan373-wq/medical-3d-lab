@@ -66,6 +66,8 @@ export function mountLandingOrganViewport(container, {
   let detailFrame = null;
   /** Set from the upgraded scene's own authored pose; null while stage 1 owns framing. */
   let scenePose = null;
+  /** An upgrade asked for while the hero was off screen, waiting to be let in. */
+  let pendingUpgrade = null;
 
   const disposeAll = () => {
     if (disposed) return;
@@ -325,6 +327,11 @@ export function mountLandingOrganViewport(container, {
       ? new Observer(([entry]) => {
           inView = Boolean(entry?.isIntersecting);
           syncActivity();
+          if (inView && pendingUpgrade && pendingUpgrade.gen === generation) {
+            const waiting = pendingUpgrade;
+            pendingUpgrade = null;
+            void upgrade(waiting.gen, waiting.sceneId);
+          }
         }, { threshold: 0.01 })
       : null;
     visibilityObserver?.observe(container);
@@ -336,6 +343,14 @@ export function mountLandingOrganViewport(container, {
      */
     async function upgrade(gen, sceneId) {
       if (!sceneId || disposed || !detailAllowed()) return null;
+      // Off screen, this is several megabytes fetched for a frame nobody is
+      // looking at. Held until the hero comes into view, which on this page is
+      // usually immediately and on a deep link into the middle of it is not.
+      if (!inView) {
+        pendingUpgrade = { gen, sceneId };
+        return null;
+      }
+      pendingUpgrade = null;
       container.dataset.detail = 'loading';
 
       let scene = null;
@@ -424,6 +439,7 @@ export function mountLandingOrganViewport(container, {
         }
 
         releaseDetail();
+        pendingUpgrade = null;
         if (!lights.parent) viewer.scene.add(lights);
         allowAutoRotate = true;
         releaseModel();

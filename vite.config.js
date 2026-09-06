@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 
-import { PUBLIC_SCENES } from './src/catalog/index.js';
+import { RELEASED_SCENES } from './src/catalog/release.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
 
@@ -21,9 +21,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       siteMetadataPlugin({
-        // Public scenes only: Prototype work lives on the Lab shelf and is
-        // deliberately not something a search result can strip the caveat from.
-        scenes: PUBLIC_SCENES,
+        // Released scenes only, for two reasons that point the same way.
+        // Prototype work lives on the Lab shelf and is deliberately not
+        // something a search result can strip the caveat from; and a static
+        // page for a model the release has not opened invites a reader to
+        // "open the interactive model" and then answers "to be updated",
+        // which is a promise the site cannot keep.
+        scenes: RELEASED_SCENES,
         reviews: clinicalReviews,
         baseUrl: env.VITE_SITE_URL ?? '',
       }),

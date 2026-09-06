@@ -52,15 +52,17 @@ export const VIEWPORTS = [
  * release actually opens, or the run measures the "to be updated" page while
  * reporting that it measured a scene.
  *
- * `locked` marks a scene route the release is holding back. It renders a plain
- * reading page rather than a scene, and it is checked because a person who
- * followed a shared link lands on it — an apology that scrolls sideways at
- * 320 px is still a broken page.
+ * `locked` marks a route the release is holding back — a model it has not
+ * opened, or the Lab. Every one of them renders the same plain reading page
+ * rather than the thing its route names, and they are checked because a person
+ * who followed a shared link lands on one: an apology that scrolls sideways at
+ * 320 px is still a broken page. The flag has to agree with
+ * `catalog/release.js`, and `tests/viewports.test.js` holds it there.
  */
 export const SURFACES = [
   { id: 'landing', route: '#/', label: 'Landing' },
   { id: 'explorer', route: '#/organs', label: 'Explorer' },
-  { id: 'lab', route: '#/lab', label: 'Lab' },
+  { id: 'lab', route: '#/lab', label: 'Lab', locked: true },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },

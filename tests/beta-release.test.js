@@ -15,7 +15,11 @@ import {
   resolveDevUnlock,
 } from '../src/catalog/release.js';
 import { createLockedSurface } from '../src/app/LockedSurface.js';
-import { resolveRoute } from '../src/app/router.js';
+import { createSceneFailureFallback } from '../src/app/SceneFailureFallback.js';
+import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
+import { createTrust } from '../src/app/Trust.js';
+import { systemsWithScenes } from '../src/catalog/index.js';
+import { isInPageAnchor, resolveRoute } from '../src/app/router.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -203,6 +207,102 @@ test('beta release: the catalogue surfaces read the same gate rather than their 
   assert.match(gate, /DEV_UNLOCK_PARAM/);
   assert.doesNotMatch(gate, new RegExp(`['\"]${DEV_UNLOCK_STORAGE_KEY.replace('.', '\\.')}['\"]`));
   assert.doesNotMatch(gate, /resolveDevUnlock\([\s\S]{0,200}devBuild:\s*false/);
+});
+
+
+/**
+ * Every surface that hands out a link, checked against the gate.
+ *
+ * This is the test the review found missing. The gate was applied to the
+ * router, the landing page and the Explorer, and three other surfaces went on
+ * offering links into models the release does not open: the in-scene switcher,
+ * the Trust page's "Open model", and the crawlable pages the build emits. Each
+ * was a link a reader could follow from inside something that worked to a page
+ * that apologises. Checking them one at a time is how the fourth one gets
+ * missed, so this checks them together, by walking what they actually render.
+ */
+test('beta release: no surface offers a link the release cannot honour', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.documentElement = new FakeElement('html');
+  // The switcher reads the UI root to decide where its sheet mounts, and the
+  // surfaces bind to the document for escape keys and visibility.
+  document.getElementById = () => new FakeElement('div');
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  document.visibilityState = 'visible';
+  globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }) };
+
+  const offered = (root) => {
+    const found = [];
+    const walk = (node) => {
+      const href = node.attributes?.get?.('href');
+      if (href) found.push(href);
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(root);
+    // In-page anchors address the page that is already open; the skip link and
+    // the Explorer's section jumps are not routes.
+    return found.filter((href) => !isInPageAnchor(href));
+  };
+
+  try {
+    const surfaces = [];
+
+    surfaces.push([
+      'scene switcher',
+      createSceneSwitcher({
+        groups: systemsWithScenes(RELEASED_SCENES),
+        currentId: RELEASED_SCENES[0].id,
+        showLab: false,
+      }).element,
+    ]);
+
+    const trustUi = new FakeElement('div');
+    await createTrust({ ui: trustUi });
+    surfaces.push(['trust', trustUi]);
+
+    const fallbackUi = new FakeElement('div');
+    createSceneFailureFallback({ ui: fallbackUi, sceneId: RELEASED_SCENES[0].id });
+    surfaces.push(['scene failure fallback', fallbackUi]);
+
+    const lockedUi = new FakeElement('div');
+    createLockedSurface({ ui: lockedUi, route: resolveRoute('#/copd') });
+    surfaces.push(['locked surface', lockedUi]);
+
+    for (const [name, root] of surfaces) {
+      const hrefs = offered(root);
+      assert.ok(hrefs.length > 0, `${name} offers no links at all, which is probably a broken mount`);
+      for (const href of hrefs) {
+        assert.equal(
+          isRouteReleased(resolveRoute(href)),
+          true,
+          `${name} offers "${href}", which the release does not open`
+        );
+      }
+    }
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('beta release: the crawlable surface and the in-scene navigator read the gate', () => {
+  // Two surfaces this test file cannot mount — the build config, and the app
+  // shell that configures the switcher — so what is checked is that each takes
+  // its scenes from the gate rather than from the public catalogue.
+  const config = read('vite.config.js');
+  assert.match(config, /RELEASED_SCENES/);
+  assert.doesNotMatch(config, /scenes: PUBLIC_SCENES/);
+
+  const app = read('src/app/App.js');
+  assert.match(app, /systemsWithScenes\(betaUnlocked\(\) \? SCENES : RELEASED_SCENES\)/);
+  assert.match(app, /showLab: betaUnlocked\(\)/);
+
+  const siteCheck = read('scripts/check-site-output.js');
+  assert.match(siteCheck, /LOCKED_SCENES/, 'the build check has to fail when a locked scene is published');
+  assert.match(siteCheck, /RELEASED_SCENES/);
 });
 
 /** Every text node under an element, in order. */

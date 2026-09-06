@@ -19,7 +19,7 @@ import { DEVICE_CLASS_IDS, PHONE_MAX_WIDTH } from '../src/app/performanceBudget.
 import { TOUCH_TARGET } from '../src/styles/palette.js';
 import { namesScene, resolveRoute } from '../src/app/router.js';
 import { RESERVED_ROUTE_SLUGS, sceneById } from '../src/catalog/index.js';
-import { isSceneReleased } from '../src/catalog/release.js';
+import { isRouteReleased, isSceneReleased } from '../src/catalog/release.js';
 
 // --- the matrix itself -----------------------------------------------------
 
@@ -91,21 +91,30 @@ test('surfaces: every checked route is a route this product actually has', () =>
       // pass for a typo.
       assert.equal(route.kind, 'scene', `"${surface.route}" is not a scene route`);
       assert.ok(namesScene(surface.route), `"${surface.route}" names no scene in the catalogue`);
-    } else if (surface.locked) {
-      // A locked model's route is a scene route that answers with a reading
-      // page. It has to still name a real scene, or the page it renders would
-      // be apologising for something that does not exist.
-      assert.equal(route.kind, 'scene', `"${surface.route}" is not a scene route`);
-      assert.ok(namesScene(surface.route), `"${surface.route}" names no scene in the catalogue`);
-      assert.equal(
-        isSceneReleased(sceneById(route.sceneId)),
-        false,
-        `"${surface.route}" is open, so it is not the locked surface`
-      );
-    } else {
+    } else if (!surface.locked) {
       assert.notEqual(route.kind, 'scene', `"${surface.route}" fell through to a scene`);
     }
   }
+});
+
+test('surfaces: the locked flag is the release, not a flag somebody remembered', () => {
+  // The run reports what each surface is. A route the release holds back
+  // renders the "to be updated" page whatever its name says, so a surface
+  // marked Lab that is really that page measures one thing and reports
+  // another — which is the defect this matrix already fixed once, for the
+  // surface that was supposed to build a renderer.
+  for (const surface of SURFACES) {
+    const open = isRouteReleased(resolveRoute(surface.route));
+    assert.equal(
+      Boolean(surface.locked),
+      !open,
+      `"${surface.route}" is ${open ? 'open' : 'locked'} and is marked ${surface.locked ? 'locked' : 'open'}`
+    );
+    if (surface.locked) {
+      assert.ok(!surface.needsRenderer, `"${surface.route}" is locked, so nothing builds a renderer on it`);
+    }
+  }
+  assert.ok(SURFACES.some((surface) => surface.locked), 'the beta has locked routes; one of them is checked');
 });
 
 test('surfaces: the scene measured with a renderer is one the release actually opens', () => {

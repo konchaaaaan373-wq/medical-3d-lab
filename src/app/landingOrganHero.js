@@ -20,7 +20,8 @@ const dual = (en, ja, className = '') => [
  * dynamic import, so the page shell, the catalogue and the copy all render on
  * a browser that cannot start WebGL at all.
  *
- * @param {{loadViewport?: () => Promise<any>, onRendererFailure?: (error:Error) => void,
+ * @param {{loadViewport?: () => Promise<any>,
+ *          onRendererFailure?: (error:Error, context:{organ:string, sceneId:string|null}) => void,
  *          now?: () => Date, organs?: typeof HERO_ORGANS}} [options]
  */
 export function createLandingOrganHero({
@@ -212,7 +213,15 @@ export function createLandingOrganHero({
         if (destroyed) return null;
         console.error('landing 3D organ hero', error);
         try {
-          void Promise.resolve(onRendererFailure(error)).catch(() => {});
+          // With what failed, not with what used to be here: the hero builds a
+          // different organ on different days, and a report that names one
+          // scene for all of them cannot be acted on.
+          void Promise.resolve(
+            onRendererFailure(error, {
+              organ: selected.organ,
+              sceneId: selected.upgradeSceneId ?? selected.sceneId ?? null,
+            })
+          ).catch(() => {});
         } catch {
           /* diagnostics must never prevent the fallback from rendering */
         }

@@ -108,3 +108,11 @@
 .trust-drift-body:last-child {
   margin-bottom: 0;
 }
+
+/* A model the release has not opened: the card still says what it is and how
+   it was reviewed, and stops short of offering to open it. */
+.trust-open-model.is-locked {
+  color: var(--ink-faint);
+  border-style: dashed;
+  cursor: default;
+}

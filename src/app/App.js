@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
+import { SCENES } from '../catalog/index.js';
+import { RELEASED_SCENES } from '../catalog/release.js';
+import { betaUnlocked } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
@@ -593,7 +596,15 @@ export async function createApp({ stage, ui }) {
     pvPanel.update(pressureVolume);
     wavePanel?.update(pressureVolume);
   }
-  const sceneSwitcher = createSceneSwitcher({ groups: systemsWithScenes(), currentId: resolveSceneId() });
+  // Scoped to what the release opens. The switcher is reached *from* a model,
+  // so every row in it is an invitation; one that lands on "to be updated" is
+  // the worst place to put that page, because the reader was already inside the
+  // product. Lab is a locked route in the beta, so its shelf link comes off too.
+  const sceneSwitcher = createSceneSwitcher({
+    groups: systemsWithScenes(betaUnlocked() ? SCENES : RELEASED_SCENES),
+    currentId: resolveSceneId(),
+    showLab: betaUnlocked(),
+  });
 
   const uiToggle = el('button', {
     class: 'ui-toggle',

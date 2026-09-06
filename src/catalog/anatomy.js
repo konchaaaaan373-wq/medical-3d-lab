@@ -243,7 +243,10 @@ export function validateAnatomyLedger(entries = ORGAN_ANATOMY, organs = ORGANS) 
     }
   }
 
-  const reference = byOrgan.get(ANATOMY_REFERENCE_ORGAN);
+  // From `entries`, not from the module's own map: a validator that reads the
+  // constant it is meant to be checking is a rule that can never fail, which is
+  // the same kind of blindness `tests/partition.js` exists to avoid.
+  const reference = entries.find((entry) => entry.organ === ANATOMY_REFERENCE_ORGAN);
   if (!reference) problems.push(`the reference organ "${ANATOMY_REFERENCE_ORGAN}" has no row`);
   else if (!meetsAnatomyTarget(reference)) {
     problems.push(`the reference organ "${ANATOMY_REFERENCE_ORGAN}" is itself below the target`);

@@ -107,10 +107,14 @@ async function boot() {
     createLanding({
       ui,
       accountButton: access.accountButton,
-      onRendererFailure: async (error) => {
+      onRendererFailure: async (error, context) => {
         const observability = await observabilityReady;
         observability?.reporter.captureRendererFailure(error, {
-          scene: 'circulation',
+          // The hero shows a different organ on different days, and it says
+          // which one failed. Naming one scene for all of them — as this did
+          // while it still said `circulation`, a scene the landing page has
+          // not run since the hero was replaced — reports the wrong thing.
+          scene: context?.sceneId ?? 'landing-hero',
           device: observability.deviceClass,
           reason: rendererFailureReason(error),
           fallbackShown: true,
