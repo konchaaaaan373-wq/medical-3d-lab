@@ -31,7 +31,7 @@ function restore() {
 
 test.afterEach(restore);
 
-test('account deletion: Stripe Customer is deleted with server credentials and missing is idempotent', async () => {
+test('account deletion: verified Stripe Customer absence is idempotent', async () => {
   process.env.STRIPE_SECRET_KEY = 'sk_test_example';
   const calls = [];
   globalThis.fetch = async (url, options = {}) => {
@@ -42,12 +42,21 @@ test('account deletion: Stripe Customer is deleted with server credentials and m
     });
   };
 
-  const result = await deleteStripeCustomer('cus_deleted');
+  const result = await deleteStripeCustomer('cus_deleted', { allowMissing: true });
   assert.equal(result.deleted, true);
   assert.equal(result.alreadyMissing, true);
   assert.equal(calls[0].options.method, 'DELETE');
   assert.match(calls[0].options.headers.Authorization, /^Bearer sk_test_example$/);
   assert.match(calls[0].url, /\/v1\/customers\/cus_deleted$/);
+});
+
+test('account deletion: unverified Stripe Customer absence fails closed', async () => {
+  process.env.STRIPE_SECRET_KEY = 'sk_test_example';
+  globalThis.fetch = async () => response({ error: { code: 'resource_missing' } }, 404);
+  await assert.rejects(
+    deleteStripeCustomer('cus_unknown'),
+    (error) => error.code === 'unverified_customer_absence'
+  );
 });
 
 test('account deletion: Supabase Auth deletion uses the server-only admin endpoint', async () => {
@@ -153,6 +162,16 @@ test('account deletion: the database prevents Checkout from racing the destructi
   assert.match(transactionMigration, /before insert on public\.billing_account_deletions/i);
   assert.match(transactionMigration, /tg_table_name = 'billing_customers'/i);
   assert.match(transactionMigration, /new\.stripe_customer_id is not distinct from old\.stripe_customer_id/i);
+
+  const provenanceMigration = readFileSync(
+    new URL(
+      '../supabase/migrations/20260906050213_billing_stripe_account_provenance.sql',
+      import.meta.url
+    ),
+    'utf8'
+  );
+  assert.match(provenanceMigration, /add column if not exists stripe_account_id text/i);
+  assert.match(provenanceMigration, /\^acct_\[A-Za-z0-9\]\+\$/);
 });
 
 test('account deletion: personal data is attached only after Customer ownership is durable', async () => {
@@ -249,7 +268,7 @@ test('account deletion: a free account remains deletable without Stripe configur
   const customerRead = calls.find((call) => call.target.includes('/rest/v1/billing_customers?'));
   assert.equal(lock.options.method, 'POST');
   assert.ok(calls.indexOf(lock) < calls.indexOf(customerRead));
-  assert.ok(calls.some((call) => call.target.includes('select=stripe_customer_id,stripe_mode')));
+  assert.ok(calls.some((call) => call.target.includes('stripe_account_id')));
   assert.equal(calls.some((call) => call.target.includes('api.stripe.com')), false);
 });
 
@@ -273,9 +292,16 @@ test('account deletion: every stored Stripe mode closes before Auth is deleted',
     if (target.includes('/rest/v1/billing_account_deletions?')) return response([]);
     if (target.includes('/rest/v1/billing_customers?')) {
       return response([
-        { stripe_customer_id: 'cus_live', stripe_mode: 'live' },
-        { stripe_customer_id: 'cus_test', stripe_mode: 'test' },
+        { stripe_customer_id: 'cus_live', stripe_mode: 'live', stripe_account_id: 'acct_live' },
+        { stripe_customer_id: 'cus_test', stripe_mode: 'test', stripe_account_id: 'acct_test' },
       ]);
+    }
+    if (target.endsWith('/v1/account')) {
+      return response({
+        id: options.headers.Authorization === 'Bearer rk_live_primary'
+          ? 'acct_live'
+          : 'acct_test',
+      });
     }
     if (target.includes('api.stripe.com/v1/customers/cus_live')) {
       assert.equal(options.headers.Authorization, 'Bearer rk_live_primary');
@@ -301,7 +327,9 @@ test('account deletion: every stored Stripe mode closes before Auth is deleted',
   );
 
   assert.equal(result.status, 200);
-  const stripeDeletes = calls.filter((call) => call.target.includes('api.stripe.com'));
+  const stripeDeletes = calls.filter(
+    (call) => call.target.includes('/v1/customers/') && call.options.method === 'DELETE'
+  );
   const authDelete = calls.find(
     (call) => call.target.endsWith('/auth/v1/admin/users/user-both') && call.options.method === 'DELETE'
   );
@@ -329,8 +357,8 @@ test('account deletion: missing access to one stored Stripe mode keeps Auth inta
     if (target.includes('/rest/v1/billing_account_deletions?')) return response([]);
     if (target.includes('/rest/v1/billing_customers?')) {
       return response([
-        { stripe_customer_id: 'cus_live', stripe_mode: 'live' },
-        { stripe_customer_id: 'cus_test', stripe_mode: 'test' },
+        { stripe_customer_id: 'cus_live', stripe_mode: 'live', stripe_account_id: 'acct_live' },
+        { stripe_customer_id: 'cus_test', stripe_mode: 'test', stripe_account_id: 'acct_test' },
       ]);
     }
     throw new Error(`Unexpected request: ${options.method ?? 'GET'} ${target}`);
@@ -348,6 +376,112 @@ test('account deletion: missing access to one stored Stripe mode keeps Auth inta
   assert.equal(result.status, 503);
   assert.equal(calls.some((call) => call.target.includes('api.stripe.com')), false);
   assert.equal(calls.some((call) => call.target.includes('/auth/v1/admin/users/')), false);
+});
+
+test('account deletion: a same-mode key from another Stripe account keeps Auth intact', async () => {
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_example';
+  process.env.SUPABASE_SECRET_KEY = 'sb_secret_example';
+  process.env.STRIPE_SECRET_KEY = 'rk_live_wrong_account';
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.endsWith('/auth/v1/user')) {
+      return response({ id: 'user-provenance', email: 'provenance@example.com' });
+    }
+    if (target.includes('/auth/v1/token?grant_type=password')) {
+      return response({ access_token: 'temporary-token' });
+    }
+    if (target.includes('/auth/v1/logout?scope=local')) return response({});
+    if (target.includes('/rest/v1/billing_account_deletions?')) return response([]);
+    if (target.includes('/rest/v1/billing_customers?')) {
+      return response([{
+        stripe_customer_id: 'cus_real',
+        stripe_mode: 'live',
+        stripe_account_id: 'acct_expected',
+      }]);
+    }
+    if (target.endsWith('/v1/account')) return response({ id: 'acct_wrong' });
+    throw new Error(`Unexpected request: ${options.method ?? 'GET'} ${target}`);
+  };
+
+  const result = await deleteAccount(
+    new Request('https://medical3dlab.example/.netlify/functions/delete-account', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer current-session', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'current-password' }),
+    }),
+    { deploy: { context: 'production' } }
+  );
+
+  assert.equal(result.status, 503);
+  assert.equal(calls.some((call) => call.options.method === 'DELETE'), false);
+  assert.equal(calls.some((call) => call.target.includes('/auth/v1/admin/users/')), false);
+});
+
+test('account deletion: legacy Customer provenance is verified and saved before deletion', async () => {
+  process.env.SUPABASE_URL = 'https://example.supabase.co';
+  process.env.SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_example';
+  process.env.SUPABASE_SECRET_KEY = 'sb_secret_example';
+  process.env.STRIPE_SECRET_KEY = 'rk_live_primary';
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.endsWith('/auth/v1/user')) {
+      return response({ id: 'user-legacy', email: 'legacy@example.com' });
+    }
+    if (target.includes('/auth/v1/token?grant_type=password')) {
+      return response({ access_token: 'temporary-token' });
+    }
+    if (target.includes('/auth/v1/logout?scope=local')) return response({});
+    if (target.includes('/rest/v1/billing_account_deletions?')) return response([]);
+    if (target.includes('/rest/v1/billing_customers?') && options.method === 'GET') {
+      return response([{
+        stripe_customer_id: 'cus_legacy',
+        stripe_mode: 'live',
+        stripe_account_id: null,
+      }]);
+    }
+    if (target.includes('/rest/v1/billing_customers?') && options.method === 'PATCH') {
+      assert.deepEqual(JSON.parse(options.body), { stripe_account_id: 'acct_verified' });
+      return response([]);
+    }
+    if (target.endsWith('/v1/account')) return response({ id: 'acct_verified' });
+    if (target.endsWith('/v1/customers/cus_legacy') && !options.method) {
+      return response({
+        id: 'cus_legacy',
+        livemode: true,
+        metadata: { supabase_user_id: 'user-legacy', stripe_mode: 'live' },
+      });
+    }
+    if (target.endsWith('/v1/customers/cus_legacy') && options.method === 'DELETE') {
+      return response({ id: 'cus_legacy', deleted: true });
+    }
+    if (target.endsWith('/auth/v1/admin/users/user-legacy') && options.method === 'DELETE') {
+      return response({ id: 'user-legacy' });
+    }
+    throw new Error(`Unexpected request: ${options.method ?? 'GET'} ${target}`);
+  };
+
+  const result = await deleteAccount(
+    new Request('https://medical3dlab.example/.netlify/functions/delete-account', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer current-session', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: 'current-password' }),
+    }),
+    { deploy: { context: 'production' } }
+  );
+
+  assert.equal(result.status, 200);
+  const provenance = calls.find(
+    (call) => call.target.includes('/rest/v1/billing_customers?') && call.options.method === 'PATCH'
+  );
+  const stripeDelete = calls.find(
+    (call) => call.target.endsWith('/v1/customers/cus_legacy') && call.options.method === 'DELETE'
+  );
+  assert.ok(calls.indexOf(provenance) < calls.indexOf(stripeDelete));
 });
 
 test('account deletion: signed-in users can reach a password-confirmed destructive UI', () => {

@@ -1,6 +1,8 @@
 import {
   deleteStripeCustomer,
   deleteSupabaseUser,
+  retrieveStripeCustomer,
+  stripeAccountIdForKey,
   verifySupabasePassword,
 } from '../lib/account.js';
 import { authenticatedUser, json, supabaseAdmin } from '../lib/billing.js';
@@ -76,7 +78,7 @@ export default async (request, context) => {
     // preview-to-production rollout; dropping either mapping first would leave
     // personal data at Stripe with no durable way to find it again.
     const customers = (await supabaseAdmin(
-      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id,stripe_mode&order=stripe_mode.asc`
+      `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&select=stripe_customer_id,stripe_mode,stripe_account_id&order=stripe_mode.asc`
     )) ?? [];
     const deletionTargets = customers.map((customer) => ({
       ...customer,
@@ -88,6 +90,45 @@ export default async (request, context) => {
       });
     }
 
+    // A test/live prefix does not identify the Stripe account that owns a
+    // Customer. Bind each mapping to the immutable acct_* identity before a
+    // `resource_missing` response can count as successful deletion. Legacy
+    // rows are backfilled only after this exact Customer is retrieved with the
+    // candidate key; a wrong-account key therefore leaves Auth intact.
+    for (const customer of deletionTargets) {
+      const accountId = await stripeAccountIdForKey(customer.secretKey);
+      if (customer.stripe_account_id && customer.stripe_account_id !== accountId) {
+        return json(503, {
+          error: 'Account deletion cannot verify a stored billing environment.',
+        });
+      }
+      if (!customer.stripe_account_id) {
+        const existing = await retrieveStripeCustomer(customer.stripe_customer_id, {
+          secretKey: customer.secretKey,
+        });
+        const expectedLivemode = customer.stripe_mode === 'live';
+        if (
+          !existing ||
+          existing.metadata?.supabase_user_id !== user.id ||
+          existing.metadata?.stripe_mode !== customer.stripe_mode ||
+          Boolean(existing.livemode) !== expectedLivemode
+        ) {
+          return json(503, {
+            error: 'Account deletion cannot verify a stored billing identity.',
+          });
+        }
+        await supabaseAdmin(
+          `billing_customers?user_id=eq.${encodeURIComponent(user.id)}&stripe_mode=eq.${encodeURIComponent(customer.stripe_mode)}&stripe_customer_id=eq.${encodeURIComponent(customer.stripe_customer_id)}`,
+          {
+            method: 'PATCH',
+            prefer: 'return=minimal',
+            body: { stripe_account_id: accountId },
+          }
+        );
+      }
+      customer.verifiedAccountId = accountId;
+    }
+
     // This is intentionally before Auth deletion. A Stripe failure leaves the
     // account usable and recoverable rather than leaving recurring billing with
     // no Medical 3D Lab identity attached to it. Deletion is idempotent, so a
@@ -95,6 +136,7 @@ export default async (request, context) => {
     for (const customer of deletionTargets) {
       await deleteStripeCustomer(customer.stripe_customer_id, {
         secretKey: customer.secretKey,
+        allowMissing: Boolean(customer.verifiedAccountId),
       });
     }
 

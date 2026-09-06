@@ -37,6 +37,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260906043135_billing_account_deletion_lock.sql` — serialises account deletion against new or reacquired Checkout attempts.
 - `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql` — prevents a concurrent first Customer from retaining account identity after deletion starts.
 - `supabase/migrations/20260906045116_billing_account_transaction_lock.sql` — orders deletion and billing writes on one per-user transaction lock while allowing reconciliation bookkeeping.
+- `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql` — records the immutable Stripe account that owns each Customer before missing objects can be accepted as deleted.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -83,6 +84,7 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/20260906043135_billing_account_deletion_lock.sql`
    - `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql`
    - `supabase/migrations/20260906045116_billing_account_transaction_lock.sql`
+   - `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -96,7 +98,7 @@ All billing tables have RLS enabled and no browser policies, and browser roles h
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
 
-Account deletion is available from the signed-in account panel, is accepted only by the Production function, requires the current password again, and writes a server-only deletion marker. Deletion and Checkout contend on the same per-user database transaction lock, closing the uncommitted-marker race; reconciliation bookkeeping remains available while a failed deletion waits for retry. Every stored sandbox/live Stripe Customer is deleted with a mode-matched server key before Supabase Auth is removed, the browser session is cleared only after server confirmation, and the endpoint is rate-limited. A free account with no billing identity remains deletable when Stripe is unavailable or not configured. When both Stripe modes have stored Customers, configure the mode-specific server-only `STRIPE_TEST_SECRET_KEY_FOR_DELETION` or `STRIPE_LIVE_SECRET_KEY_FOR_DELETION`; missing access fails closed rather than orphaning provider data. OAuth-only accounts are not currently offered by this app.
+Account deletion is available from the signed-in account panel, is accepted only by the Production function, requires the current password again, and writes a server-only deletion marker. Deletion and Checkout contend on the same per-user database transaction lock, closing the uncommitted-marker race; reconciliation bookkeeping remains available while a failed deletion waits for retry. Every stored sandbox/live Stripe Customer is deleted with a mode-matched server key before Supabase Auth is removed. The key's immutable Stripe `acct_*` identity must match stored provenance; a legacy row is backfilled only after that exact Customer is retrieved, so a same-mode key from another account can never turn `resource_missing` into a false success. The browser session is cleared only after server confirmation, and the endpoint is rate-limited. A free account with no billing identity remains deletable when Stripe is unavailable or not configured. When both Stripe modes have stored Customers, configure the mode-specific server-only `STRIPE_TEST_SECRET_KEY_FOR_DELETION` or `STRIPE_LIVE_SECRET_KEY_FOR_DELETION`; missing or mismatched access fails closed rather than orphaning provider data. OAuth-only accounts are not currently offered by this app.
 
 ## Stripe setup
 
