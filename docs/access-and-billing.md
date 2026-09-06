@@ -214,7 +214,7 @@ Set the values from `.env.example` in Netlify Project configuration. Secret valu
 
 **As of this writing, Production holds no Stripe configuration.** `STRIPE_SECRET_KEY`, the three price IDs, `STRIPE_WEBHOOK_SECRET` and `SUPABASE_SECRET_KEY` carry values for Deploy Previews only, which is how [`deploy-preview-billing-test.md`](deploy-preview-billing-test.md) exercises billing with test keys. Production therefore reports `billingConfigured: false` and sells nothing; accounts and free models work, which is the documented degradation. Enabling paid access in production is a separate change: live keys, a live-mode webhook endpoint and its own signing secret. The key modes are enforced, not advisory — `stripeDeploymentSafety` rejects a test key in production and a live key outside it, so preview values cannot simply be copied across.
 
-The Functions directory does not need a custom `netlify.toml`; Netlify's default is `netlify/functions`.
+The functions directory is not configured anywhere: Netlify's default is already `netlify/functions`. What [`../netlify.toml`](../netlify.toml) does hold is the published origin and the hourly reconciliation schedule — everything else about the build stays in the Netlify site configuration, so the file cannot override a setting nobody meant to change there.
 
 ## Billing lifecycle
 
