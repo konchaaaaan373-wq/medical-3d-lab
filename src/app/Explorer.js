@@ -17,7 +17,7 @@ import {
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
-import { productBadgesForScene } from '../access/features.js';
+import { activeUsesForScene, productBadgesForScene } from '../access/features.js';
 import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
   emptyOrganMatchesExplorerFilters,
@@ -56,12 +56,6 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const favoriteButtons = new Map();
   const previewMounts = [];
   const previewCleanups = [];
-  const textbookTitles = Object.freeze({
-    'amyloid-beta': ['Amyloid-β aggregation in Alzheimer disease', 'Alzheimer病：アミロイドβ凝集'],
-    circulation: ['Low cardiac output and oxygen delivery', '低心拍出量と酸素供給'],
-    'pulmonary-edema': ['Pulmonary oedema', '肺水腫'],
-    'renal-filtration': ['AKI, CKD and nephrotic syndrome', 'AKI・CKD・ネフローゼ症候群'],
-  });
 
   const bilingual = (en, ja, className = '') =>
     el('span', { class: className }, [
@@ -114,11 +108,13 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
     'clinical-learning': ['Clinical case learning', '臨床ケース学習'],
   });
 
+  // Only uses a reader may act on today. A declared-but-gated patient use is
+  // explained once, in the three-uses section, never printed on a card.
   const useBadges = (scene) =>
     el(
       'span',
-      { class: 'explorer-use-badges', 'aria-label': 'Intended uses / 想定用途' },
-      (scene.uses ?? ['education']).map((id) => {
+      { class: 'explorer-use-badges', 'aria-label': 'Available uses / 利用できる用途' },
+      activeUsesForScene(scene).map((id) => {
         const labels = useLabels[id];
         return labels
           ? el('span', { class: `explorer-use-badge is-${id}` }, [
@@ -148,7 +144,6 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   }
 
   const sceneCard = (scene, system, organ) => {
-    const title = textbookTitles[scene.id] ?? [scene.titleEn, scene.titleJa];
     const link = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, [
       el('span', { class: 'explorer-scene-kicker' }, [
         bilingual(
@@ -159,9 +154,12 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         badge(scene.status),
       ]),
       el('span', { class: 'explorer-scene-title' }, [
-        el('span', { class: 'lang-en', text: title[0] }),
-        el('span', { class: 'lang-ja', text: title[1] }),
+        el('span', { class: 'lang-en', text: scene.titleEn }),
+        el('span', { class: 'lang-ja', text: scene.titleJa }),
       ]),
+      scene.storyTitleEn
+        ? bilingual(scene.storyTitleEn, scene.storyTitleJa, 'explorer-scene-story')
+        : null,
       el('span', { class: 'explorer-scene-note' }, [
         el('span', { class: 'lang-en', text: scene.description }),
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
@@ -236,13 +234,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
             : null,
         ]),
         preview,
-        preview
-          ? bilingual(
-              'Slow 3D orientation preview · pauses on hover',
-              '3D概観・ゆっくり自動回転（触れると停止）',
-              'explorer-preview-caption'
-            )
-          : null,
+        preview ? previewCaption() : null,
       ]),
       el('div', { class: 'explorer-scenes' }, [
         ...scenes.map((record) => record.element),
@@ -429,14 +421,14 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         ]),
         el('div', { class: 'explorer-use-lane-grid' }, [
           useLane('01', 'Patient explanation', '患者説明',
-            'A calm visual story with plain language and only the controls needed for conversation.',
-            '平易な言葉と必要最小限の操作で、患者さんとの会話に使える説明。'),
+            'A calm visual story with plain language and only the controls needed for conversation. Shown on a model only after a versioned clinical review; models still under review carry no patient badge.',
+            '平易な言葉と必要最小限の操作で、患者さんとの会話に使える説明。版を固定した医学レビュー完了後にモデルごとに有効化し、レビュー未完了のモデルには患者説明バッジを表示しません。'),
           useLane('02', 'Medical education', '医学教育',
             'Mechanism, comparison, prediction and feedback from one internally consistent model.',
             '1つの整合したモデルで、機序・比較・予測・フィードバックまで学ぶ。'),
-          useLane('03', 'Clinical application', '臨床応用',
-            'Case-based mechanism review is available. Patient-specific dosing or recommendations require a separate validated product and are not enabled here.',
-            '症例ベースの機序確認まで。DOBなどの患者別用量調整・推奨は、別の検証済み製品として扱い、ここでは有効化しません。',
+          useLane('03', 'Clinical case learning', '臨床ケース学習',
+            'Currently limited to case-based review of mechanism. Patient-specific dose adjustment (for example dobutamine, DOB), treatment recommendation, diagnosis, severity grading and decision support are not provided in this product. Any future clinical decision support would be a separately validated product.',
+            '現在提供するのは症例ベースの機序確認までです。患者別の用量調整（ドブタミン（DOB）など）、治療推奨、診断、重症度判定、意思決定支援は本製品では提供しません。将来の臨床意思決定支援は、別途検証された製品として扱います。',
             'is-clinical'),
         ]),
       ]);
@@ -519,6 +511,36 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       while (previewCleanups.length) previewCleanups.pop()?.();
     },
   };
+
+  /**
+   * What the preview actually does on this device, so the caption never
+   * promises a rotation the reader asked not to see, or a hover a touch screen
+   * cannot make.
+   */
+  function previewCaption() {
+    const caption = el('span', { class: 'explorer-preview-caption' });
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const coarse = window.matchMedia?.('(pointer: coarse)');
+    const render = () => {
+      const [en, ja] = reduced?.matches
+        ? ['Still 3D orientation preview (reduced motion)', '3D概観・静止画（動きを減らす設定を反映）']
+        : coarse?.matches
+          ? ['Slow 3D orientation preview · pauses while touched', '3D概観・ゆっくり自動回転（触れている間は停止）']
+          : ['Slow 3D orientation preview · pauses on hover', '3D概観・ゆっくり自動回転（ポインタを重ねると停止）'];
+      caption.replaceChildren(
+        el('span', { class: 'lang-en', text: en }),
+        el('span', { class: 'lang-ja', text: ja })
+      );
+    };
+    render();
+    reduced?.addEventListener?.('change', render);
+    coarse?.addEventListener?.('change', render);
+    previewCleanups.push(() => {
+      reduced?.removeEventListener?.('change', render);
+      coarse?.removeEventListener?.('change', render);
+    });
+    return caption;
+  }
 
   function useLane(number, titleEn, titleJa, noteEn, noteJa, className = '') {
     return el('article', { class: `explorer-use-lane ${className}`.trim() }, [

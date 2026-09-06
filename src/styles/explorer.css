@@ -346,8 +346,14 @@ html[data-route='explorer'] .explorer > .panel {
 }
 
 .explorer-organ-preview[data-preview-state='ready']::after,
-.explorer-organ-preview[data-preview-state='unavailable']::after {
+.explorer-organ-preview[data-preview-state='unavailable']::after,
+.explorer-organ-preview[data-preview-state='lost']::after {
   display: none;
+}
+
+/* A lost context leaves a blank canvas behind; the name shows through it. */
+.explorer-organ-preview[data-preview-state='lost'] canvas {
+  visibility: hidden;
 }
 
 .explorer-organ-preview canvas {
@@ -466,6 +472,16 @@ a.explorer-scene:focus-visible {
   color: var(--explorer-muted);
   font-size: 15px;
   font-weight: 630;
+}
+
+.explorer-scene-story {
+  display: flex;
+  flex-direction: column;
+  margin-top: -4px;
+  color: var(--explorer-faint);
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .explorer-scene-note {

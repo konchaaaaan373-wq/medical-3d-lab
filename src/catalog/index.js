@@ -18,6 +18,11 @@ export const SCENES = SCENE_MANIFEST.map((entry) => ({
   // explorer uses to decide an organ is covered, `organ` is where it is filed.
   organs: entry.organs ?? [entry.organ],
   disease: entry.disease ?? null,
+  // `titleEn`/`titleJa` are the textbook names every surface shows and searches
+  // by. A scene may keep its narrative question as a `storyTitle`; it is shown
+  // beside the textbook name, never instead of it.
+  storyTitleEn: entry.storyTitleEn ?? null,
+  storyTitleJa: entry.storyTitleJa ?? null,
   conditions: entry.conditions ?? (entry.disease ? [entry.disease] : []),
   tags: entry.tags ?? [],
   // Intended reading contexts are catalogue information. They are deliberately
@@ -204,6 +209,18 @@ export function validateCatalog(scenes = SCENES) {
       problems.push(`${where}: organ "${scene.organ}" does not belong to system "${scene.system}"`);
     }
     if (!STATUS_IDS.includes(scene.status)) problems.push(`${where}: unknown status "${scene.status}"`);
+
+    for (const key of ['titleEn', 'titleJa']) {
+      if (typeof scene[key] !== 'string' || !scene[key].trim()) problems.push(`${where}: ${key} is required`);
+    }
+    if ((scene.storyTitleEn == null) !== (scene.storyTitleJa == null)) {
+      problems.push(`${where}: storyTitleEn and storyTitleJa must be declared together`);
+    }
+    for (const key of ['storyTitleEn', 'storyTitleJa']) {
+      if (scene[key] != null && (typeof scene[key] !== 'string' || !scene[key].trim())) {
+        problems.push(`${where}: ${key} must be a non-empty string when declared`);
+      }
+    }
 
     if (!Array.isArray(scene.conditions) || scene.conditions.some((condition) => typeof condition !== 'string')) {
       problems.push(`${where}: conditions must be an array of strings`);

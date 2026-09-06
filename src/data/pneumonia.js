@@ -41,15 +41,15 @@ export const STAGES = Object.freeze([
     name: 'Larger involved fraction',
     nameJa: '病変範囲の拡大',
     at: 0.82,
-    summary: 'More regional perfusion reaches non-aerated units, while hypoxic vasoconstriction can only partly divert it.',
-    summaryJa: '含気を失った領域へ流れる血液の割合が増え、低酸素性肺血管収縮による血流転換だけでは補い切れません。',
+    summary: 'More regional perfusion reaches non-aerated units, while hypoxic vasoconstriction can only partly divert it. The axis stops at 60% of this lung; total consolidation is a solver boundary, not a stage.',
+    summaryJa: '含気を失った領域へ流れる血液の割合が増え、低酸素性肺血管収縮による血流転換だけでは補い切れません。教材軸はこの概念肺の60%で止まり、全肺コンソリデーションは病期ではなくソルバーの境界です。',
   },
 ]);
 
 export const RANGE = Object.freeze({ min: 0, max: 1, step: 0.01 });
 export const PROGRESS_LABEL = Object.freeze({
-  label: 'Consolidated fraction in this teaching lung',
-  labelJa: 'この概念肺でのコンソリデーション範囲',
+  label: 'Teaching axis · full travel consolidates 60% of this conceptual lung',
+  labelJa: '教材軸 ｜ 右端でこの概念肺の60%がコンソリデーション',
 });
 
 export const MODEL_SCOPE = Object.freeze({
@@ -85,6 +85,10 @@ export const MODEL_SCOPE = Object.freeze({
     {
       text: 'The spatial order is chosen for legibility and is not a lobar, segmental or radiographic distribution.',
       textJa: '空間的な並びは見やすさのためで、肺葉・肺区域・画像上の分布を表しません。',
+    },
+    {
+      text: 'The slider is a teaching axis whose full travel consolidates 60% of this conceptual lung. The solver accepts 0–100%, and 100% is a boundary check (no ventilation, perfusion retained), not a stage of pneumonia.',
+      textJa: 'スライダーは教材軸で、右端でこの概念肺の60%がコンソリデーションになります。ソルバー自体は0〜100%を受け付けますが、100%は「換気ゼロ・灌流残存」を確かめる境界条件であり、肺炎の病期ではありません。',
     },
   ],
   sources: [

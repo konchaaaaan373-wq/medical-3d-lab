@@ -14,6 +14,45 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Two new respiratory models, and the Explorer rebuilt around organs
+
+- **Pneumonia** (`#/pneumonia`, `alpha`, clinical review pending). Twelve
+  regional units; alveolar consolidation removes ventilation from a unit while
+  its perfusion persists, and the perfusion that still crosses non-ventilated
+  lung is the shunt mechanism. Hypoxic vasoconstriction diverts some of that
+  flow and never all of it. The slider consolidates at most 60% of the
+  conceptual lung; the solver's total-consolidation boundary is kept for tests
+  and is not a stage a reader is walked into. No PaO₂, SpO₂, pathogen, imaging
+  or treatment.
+- **Pulmonary embolism** (`#/pulmonary-embolism`, `alpha`, clinical review
+  pending). Twelve parallel vascular territories at one fixed driving
+  pressure; obstruction removes perfusion while ventilation continues, which
+  is dead space, and removing parallel conductance raises a relative PVR
+  (shown to one decimal). No pressure, right-ventricular response, clot
+  burden, risk class or treatment.
+- **Both models carry the full alpha set**: a model layer, an evidence dossier
+  with a code-side registry, a model card, a scope panel, physiology tests and
+  scene tests. Non-finite input to either solver falls back safely.
+- **The Explorer files every model once, under its primary organ**, with a
+  slow, lazy 3D preview per organ (brain, heart, lungs, liver, kidneys). At
+  most two WebGL contexts are alive at a time; a preview that scrolls away
+  gives its context back and rebuilds on return, a lost context is never shown
+  as ready, and the preview pauses on hover or touch, off-screen, in a hidden
+  tab and under reduced motion.
+- **Every model has one name.** The textbook name in the catalogue is what the
+  Explorer, the search, favourites, the landing page, the scene header, the
+  page metadata and the social card all show, so a reader who searches for
+  what the card says finds it. Narrative titles ("Where the water goes")
+  remain as a story line beside the name. Short abbreviations such as PE, CAP
+  and AKI are matched as whole words.
+- **Three uses, and one of them fails closed.** Patient explanation, medical
+  education and clinical case learning are the product's use contexts. The
+  patient-explanation badge and filter appear only on a model with a
+  versioned clinical review, under the same rule as the paid patient mode.
+  Clinical case learning stops at case-based mechanism review: no patient-
+  specific dosing (dobutamine included), diagnosis, severity grading or
+  decision support.
+
 ### The lobes and the liver segments now take the volumes a source gives them
 
 - **The shares stopped being uncited, and two of them stopped being wrong.**

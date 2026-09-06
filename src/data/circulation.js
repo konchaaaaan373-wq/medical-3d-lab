@@ -67,7 +67,7 @@ export const INTERVENTION_OPTIONS = [
   {
     value: 'dobutamine',
     label: 'Dobutamine state',
-    labelJa: 'DOB反応',
+    labelJa: 'ドブタミン（DOB）反応',
     effect: 'contractile SV up · SVR down',
     effectJa: '収縮性SV↑／SVR↓',
   },

@@ -32,6 +32,11 @@ model, risk score or treatment-response model.
 | --- | --- | --- |
 | `obstruction` | 0–1 | Position on a teaching axis that involves at most 65% of the model territories |
 
+The slider's caption says so on screen: full travel obstructs 65% of the
+modelled territories, and the territory read-out reports that fraction, not
+the slider position. Non-finite input (`NaN`) falls back to the reference lung
+and `±Infinity` lands on the nearer bound.
+
 The input is not clinical severity, elapsed time or a radiographic score.
 
 ## 5. Outputs
@@ -39,7 +44,9 @@ The input is not clinical severity, elapsed time or a radiographic score.
 - Per-territory occlusion, fixed ventilation and perfusion at the fixed model pressure
 - Total pulmonary vascular conductance relative to baseline
 - Underperfused-ventilation fraction
-- Relative pulmonary vascular resistance (`1 / relative conductance`)
+- Relative pulmonary vascular resistance (`1 / relative conductance`), shown
+  to one decimal because an inverse conductance of twelve equal paths carries
+  no more precision than that
 
 No clinical pressure, VD/VT, RV function or risk category is emitted.
 
@@ -113,7 +120,9 @@ node --test tests/pulmonary-embolism-model.test.js
 
 The tests fix the reference state, persistent ventilation, monotonic loss of
 conductance, rising relative resistance, complete obstruction of individual
-paths, the sub-total-lung cap and absence of clinical outputs.
+paths, the sub-total-lung cap, absence of clinical outputs and safe handling
+of non-finite input; `tests/pulmonary-embolism-scene.test.js` checks that the
+scene's twelve territories, emboli and read-outs all come from the same solve.
 
 ## 16. Revision identity
 

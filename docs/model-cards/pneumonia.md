@@ -32,10 +32,17 @@ specific lobar/segmental distribution.
 
 | Input | Range | Meaning |
 | --- | --- | --- |
-| `consolidatedFraction` | 0–1 | Non-aerated fraction of this teaching lung; exposed as the progression axis |
+| `consolidatedFraction` | 0–1 (solver domain) | Non-aerated fraction of this teaching lung |
 | `hypoxicVasoconstriction` | 0–1; default 0.55 | Relative strength of perfusion diversion; fixed in the current UI |
 
-Neither input is clinical severity, elapsed time or an imaging score.
+**Solver domain and teaching range are different things.** The solver accepts
+the whole interval and `1` is kept as a boundary condition: a fully
+consolidated lung proves that ventilation reaches zero while perfusion does
+not. The public scene's progression axis maps `0–1` onto
+`consolidatedFraction = progress × PNEUMONIA_TEACHING_MAX_CONSOLIDATION`
+(0.6), so a reader is never walked into a lung with no aerated share as if it
+were a stage of pneumonia. Neither input is clinical severity, elapsed time or
+an imaging score.
 
 ## 5. Outputs
 
@@ -88,7 +95,8 @@ read-out and the geometry consume the same solve.
 ## 11. Where it could mislead
 
 The slider can look like disease progression, and the percentages can look like
-measurements. They are neither. Clustered spheres do not reproduce radiographs,
+measurements. They are neither. Full travel of the slider consolidates 60% of
+this conceptual lung; that is the end of the teaching axis, not a severity. Clustered spheres do not reproduce radiographs,
 CT, acini or named bronchopulmonary segments.
 
 ## 12. Safety boundary
@@ -116,7 +124,10 @@ node --test tests/pneumonia-model.test.js
 ```
 
 The tests fix the reference state, monotonic ventilation loss and shunt rise,
-persisting perfusion, bounded HPV diversion and finite 0–1 outputs.
+persisting perfusion, bounded HPV diversion, finite 0–1 outputs for any input
+(including `NaN` and `±Infinity`), the solver boundary at total consolidation,
+and — in `tests/pneumonia-scene.test.js` — that the scene's slider never drives
+the solver past the 60% teaching range.
 
 ## 16. Revision identity
 

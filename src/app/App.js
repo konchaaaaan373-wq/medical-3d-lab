@@ -69,8 +69,18 @@ export async function createApp({ stage, ui }) {
   // The catalogue owns how far a scene has been taken, so the badge on screen
   // cannot drift from the entry the explorer draws. A scene that does not know
   // its own status is not a special case — it simply reads it from here.
+  //
+  // The same is true of the name. The catalogue's textbook title is what the
+  // explorer, the search, the landing page and the crawlable metadata all show,
+  // so the header over the 3D reads it too; a scene's own `meta.title` is only
+  // the fallback for a scene the catalogue does not know.
   const entry = sceneById(resolveSceneId());
-  const meta = { ...SceneClass.meta, status: entry?.status ?? SceneClass.meta.status ?? 'production' };
+  const meta = {
+    ...SceneClass.meta,
+    status: entry?.status ?? SceneClass.meta.status ?? 'production',
+    title: entry?.titleEn ?? SceneClass.meta.title,
+    titleJa: entry?.titleJa ?? SceneClass.meta.titleJa,
+  };
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);

@@ -49,8 +49,8 @@ export const STAGES = Object.freeze([
 
 export const RANGE = Object.freeze({ min: 0, max: 1, step: 0.01 });
 export const PROGRESS_LABEL = Object.freeze({
-  label: 'Obstructed vascular territory in this teaching lung',
-  labelJa: 'この概念肺での閉塞血管領域',
+  label: 'Teaching axis · full travel obstructs 65% of the modelled territories',
+  labelJa: '教材軸 ｜ 右端でモデル領域の65%が閉塞',
 });
 
 export const MODEL_SCOPE = Object.freeze({

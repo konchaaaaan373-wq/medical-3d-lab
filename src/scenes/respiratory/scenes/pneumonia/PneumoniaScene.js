@@ -12,7 +12,10 @@ import {
   RANGE,
   STAGES,
 } from '../../../../data/pneumonia.js';
-import { solvePneumonia } from '../../../../models/pneumonia.js';
+import {
+  PNEUMONIA_TEACHING_MAX_CONSOLIDATION,
+  solvePneumonia,
+} from '../../../../models/pneumonia.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp } from '../../../../utils/math.js';
 import { createStudioLights } from '../../../shared/lighting.js';
@@ -129,9 +132,17 @@ export class PneumoniaScene {
     return this.root;
   }
 
+  /**
+   * The progression is the public teaching axis, not the solver's domain: full
+   * travel consolidates `PNEUMONIA_TEACHING_MAX_CONSOLIDATION` of the lung. The
+   * solver keeps `1` as a boundary a test can drive; a reader is not walked
+   * into a lung with no aerated share as if it were a stage of pneumonia.
+   */
   setProgress(value) {
     this.progress = clamp(value);
-    this.state = solvePneumonia({ consolidatedFraction: this.progress });
+    this.state = solvePneumonia({
+      consolidatedFraction: this.progress * PNEUMONIA_TEACHING_MAX_CONSOLIDATION,
+    });
     this.applyState();
   }
 

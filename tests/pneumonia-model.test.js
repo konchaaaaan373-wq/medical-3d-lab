@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  PNEUMONIA_TEACHING_MAX_CONSOLIDATION,
   PNEUMONIA_UNIT_COUNT,
   solvePneumonia,
 } from '../src/models/pneumonia.js';
@@ -39,6 +40,10 @@ test('pneumonia: consolidated units remain perfused, which is the shunt mechanis
 });
 
 test('pneumonia: a fully consolidated share has no ventilation', () => {
+  // The solver boundary. The public scene never drives the solver here —
+  // `PNEUMONIA_TEACHING_MAX_CONSOLIDATION` caps the slider — but the model
+  // must still be right at its own edge.
+  assert.ok(PNEUMONIA_TEACHING_MAX_CONSOLIDATION > 0 && PNEUMONIA_TEACHING_MAX_CONSOLIDATION < 1);
   const state = solvePneumonia({ consolidatedFraction: 1 });
   assert.equal(state.ventilationFraction, 0);
   assert.ok(state.units.every((unit) => unit.consolidation === 1));
@@ -54,8 +59,9 @@ test('pneumonia: HPV diverts some flow without abolishing shunt', () => {
 });
 
 test('pneumonia: all reported fractions stay finite and bounded', () => {
-  for (const consolidatedFraction of [-1, 0, 0.37, 1, 2]) {
+  for (const consolidatedFraction of [-1, 0, 0.37, 1, 2, NaN, Infinity, -Infinity, 'not a number', undefined]) {
     const state = solvePneumonia({ consolidatedFraction });
+    assert.ok(Number.isFinite(state.controls.consolidatedFraction), `control ${consolidatedFraction}`);
     for (const key of [
       'consolidatedFraction',
       'ventilationFraction',
@@ -66,6 +72,15 @@ test('pneumonia: all reported fractions stay finite and bounded', () => {
       assert.ok(state[key] >= 0 && state[key] <= 1, `${key} stays a fraction`);
     }
   }
+  // Non-finite input takes the default rather than poisoning every sum;
+  // ±Infinity means "as far as the control goes" and lands on the bound.
+  assert.deepEqual(solvePneumonia({ consolidatedFraction: NaN }).controls, solvePneumonia().controls);
+  assert.equal(solvePneumonia({ consolidatedFraction: Infinity }).controls.consolidatedFraction, 1);
+  assert.equal(solvePneumonia({ consolidatedFraction: -Infinity }).controls.consolidatedFraction, 0);
+  assert.equal(
+    solvePneumonia({ consolidatedFraction: 0.5, hypoxicVasoconstriction: NaN }).controls.hypoxicVasoconstriction,
+    solvePneumonia().controls.hypoxicVasoconstriction
+  );
 });
 
 test('pneumonia: the public scope panel is complete and bilingual', () => {

@@ -1,7 +1,19 @@
-import { clamp } from '../utils/math.js';
+import { clampFinite } from '../utils/math.js';
 
 /** Twelve regional units: six in each lung, matching `buildLungs().regions`. */
 export const PNEUMONIA_UNIT_COUNT = 12;
+
+/**
+ * How far the public teaching axis is allowed to consolidate this lung.
+ *
+ * The solver's domain is the whole interval `0–1`, and `1` is kept because a
+ * fully consolidated lung is the boundary that proves ventilation reaches zero
+ * while perfusion does not. It is not a state a reader should be walked into
+ * as "more pneumonia": a lung with no aerated share is not a pneumonia stage,
+ * and the scene's slider stops here instead. The public scene maps its
+ * progression `0–1` onto `consolidatedFraction = progress × this`.
+ */
+export const PNEUMONIA_TEACHING_MAX_CONSOLIDATION = 0.6;
 
 // A deterministic focal-to-multifocal teaching pattern. The order is not a
 // claim that pneumonia follows one natural history; it merely keeps adjacent
@@ -24,17 +36,22 @@ export const DEFAULT_PNEUMONIA_CONTROLS = Object.freeze({
  * not produce PaO2, SpO2, a radiograph, a pathogen, or a treatment response.
  */
 export function solvePneumonia(controls = {}) {
-  const consolidatedFraction = clamp(
-    controls.consolidatedFraction ?? DEFAULT_PNEUMONIA_CONTROLS.consolidatedFraction
+  // The domain is 0–1 for both inputs. Anything that is not a finite number
+  // (NaN, undefined, a string that does not parse) takes the default, and
+  // ±Infinity lands on the nearer bound rather than propagating into every sum.
+  const consolidatedFraction = clampFinite(
+    controls.consolidatedFraction,
+    DEFAULT_PNEUMONIA_CONTROLS.consolidatedFraction
   );
-  const hypoxicVasoconstriction = clamp(
-    controls.hypoxicVasoconstriction ?? DEFAULT_PNEUMONIA_CONTROLS.hypoxicVasoconstriction
+  const hypoxicVasoconstriction = clampFinite(
+    controls.hypoxicVasoconstriction,
+    DEFAULT_PNEUMONIA_CONTROLS.hypoxicVasoconstriction
   );
   const rankByUnit = new Map(PNEUMONIA_CONSOLIDATION_ORDER.map((unit, rank) => [unit, rank]));
 
   const units = Array.from({ length: PNEUMONIA_UNIT_COUNT }, (_, id) => {
     const rank = rankByUnit.get(id);
-    const consolidation = clamp(consolidatedFraction * PNEUMONIA_UNIT_COUNT - rank);
+    const consolidation = clampFinite(consolidatedFraction * PNEUMONIA_UNIT_COUNT - rank, 0);
     // `consolidation` is the non-aerated share inside this regional unit. Its
     // complementary share is ventilated; the consolidated share itself gets
     // no ventilation and is the portion that can contribute to shunt.

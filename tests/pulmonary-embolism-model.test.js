@@ -50,6 +50,23 @@ test('pulmonary embolism: the teaching axis is bounded below total-lung obstruct
   assert.ok(Number.isFinite(state.relativePulmonaryVascularResistance));
 });
 
+test('pulmonary embolism: non-finite input falls back safely and infinities land on the bounds', () => {
+  const reference = solvePulmonaryEmbolism();
+  for (const obstruction of [NaN, 'abc', undefined, null]) {
+    const state = solvePulmonaryEmbolism({ obstruction });
+    assert.deepEqual(state.controls, reference.controls, String(obstruction));
+    assert.equal(state.relativePulmonaryVascularResistance, 1);
+  }
+  assert.equal(solvePulmonaryEmbolism({ obstruction: Infinity }).controls.obstruction, 1);
+  assert.equal(solvePulmonaryEmbolism({ obstruction: -Infinity }).controls.obstruction, 0);
+  for (const obstruction of [-3, 0, 0.5, 1, 7, Infinity]) {
+    const state = solvePulmonaryEmbolism({ obstruction });
+    for (const key of ['obstructedTerritory', 'totalConductanceFraction', 'underperfusedVentilationFraction', 'relativePulmonaryVascularResistance']) {
+      assert.ok(Number.isFinite(state[key]), `${key} at ${obstruction}`);
+    }
+  }
+});
+
 test('pulmonary embolism: the solver emits no clinical pressure, gas or risk score', () => {
   const document = Object.keys(solvePulmonaryEmbolism({ obstruction: 0.5 })).join(' ');
   assert.doesNotMatch(document, /pao2|spo2|pressure|mortality|risk|rvFunction|vdVt/i);

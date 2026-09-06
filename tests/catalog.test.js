@@ -206,3 +206,19 @@ test('organ scenes and disease scenes are distinguishable without reading the co
   assert.ok(SCENES.some((scene) => scene.disease !== null), 'at least one disease scene');
   assert.ok(SCENES.some((scene) => scene.disease === null), 'at least one organ scene');
 });
+
+test('a story title is optional, bilingual when present, and never replaces the textbook name', () => {
+  for (const scene of SCENES) {
+    assert.ok(scene.titleEn.trim() && scene.titleJa.trim(), `${scene.id} is named in both languages`);
+    if (scene.storyTitleEn || scene.storyTitleJa) {
+      assert.ok(scene.storyTitleEn && scene.storyTitleJa, `${scene.id}: a story title needs both languages`);
+      assert.notEqual(scene.storyTitleEn, scene.titleEn, `${scene.id}: a story title is not the name`);
+    }
+  }
+  const lopsided = SCENES.map((scene) =>
+    scene.id === 'pulmonary-edema' ? { ...scene, storyTitleJa: null } : scene
+  );
+  assert.ok(validateCatalog(lopsided).some((problem) => /storyTitleEn and storyTitleJa/.test(problem)));
+  const unnamed = SCENES.map((scene) => (scene.id === 'pneumonia-consolidation' ? { ...scene, titleJa: ' ' } : scene));
+  assert.ok(validateCatalog(unnamed).some((problem) => /titleJa is required/.test(problem)));
+});

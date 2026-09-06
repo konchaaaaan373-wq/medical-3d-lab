@@ -108,9 +108,9 @@
       "src/models/pneumonia.js",
       "src/data/pneumonia.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "9ade024233254f16",
-    "cardUpdatedAt": "2026-09-05"
+    "cardRevision": 2,
+    "modelDigest": "6745c661d97cd049",
+    "cardUpdatedAt": "2026-09-06"
   },
   {
     "sceneId": "pulmonary-embolism",
@@ -119,8 +119,8 @@
       "src/models/pulmonaryEmbolism.js",
       "src/data/pulmonaryEmbolism.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "f55cda1068ceffc8",
-    "cardUpdatedAt": "2026-09-05"
+    "cardRevision": 2,
+    "modelDigest": "cf008ab5bb6d5cfa",
+    "cardUpdatedAt": "2026-09-06"
   }
 ]

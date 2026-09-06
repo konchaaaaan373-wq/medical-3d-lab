@@ -15,10 +15,10 @@ import {
 import { solvePulmonaryEmbolism } from '../../../../models/pulmonaryEmbolism.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp } from '../../../../utils/math.js';
-import { TubeSurface, smoothCurve } from '../../../shared/geometry/tube.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { tissueMaterial } from '../../../shared/materials.js';
 import { buildLungs } from '../../organs/lungs.js';
+import { buildVascularTerritory } from '../../organs/vascularTerritory.js';
 
 /**
  * Pulmonary embolism as a ventilation-without-perfusion problem.
@@ -74,7 +74,7 @@ export class PulmonaryEmbolismScene {
     this.airGeometry = new THREE.SphereGeometry(0.18, 16, 11);
     this.flowGeometry = new THREE.SphereGeometry(0.05, 10, 8);
     this.embolusGeometry = new THREE.SphereGeometry(0.12, 14, 10);
-    this.vesselSurfaces = [];
+    this.territories = [];
     this.units = [];
 
     const basePerfusion = new THREE.Color(PALETTE.perfusion);
@@ -90,20 +90,12 @@ export class PulmonaryEmbolismScene {
       for (const region of regions) {
         const id = this.units.length;
         const target = region.object.position.clone().applyMatrix4(lung.matrix);
-        const middle = hilum.clone().lerp(target, 0.55);
-        middle.z += 0.12;
-        middle.y += id % 2 === 0 ? 0.08 : -0.04;
-        const curve = smoothCurve([
-          [hilum.x, hilum.y, hilum.z],
-          [middle.x, middle.y, middle.z],
-          [target.x, target.y, target.z],
-        ]);
-        const surface = new TubeSurface(curve, {
-          radius: (u) => 0.064 - 0.026 * u,
-          steps: 28,
-          radial: 9,
+        const territory = buildVascularTerritory({
+          hilum,
+          target,
+          bow: { z: 0.12, y: id % 2 === 0 ? 0.08 : -0.04 },
         });
-        this.vesselSurfaces.push(surface);
+        this.territories.push(territory);
 
         const vesselMaterial = tissueMaterial({
           color: PALETTE.perfusion,
@@ -112,7 +104,7 @@ export class PulmonaryEmbolismScene {
           emissiveIntensity: 0.09,
           opacity: 0.78,
         });
-        const vessel = new THREE.Mesh(surface.geometry, vesselMaterial);
+        const vessel = new THREE.Mesh(territory.geometry, vesselMaterial);
         vessel.name = `pulmonary-territory-${id}`;
 
         const embolusMaterial = tissueMaterial({
@@ -124,7 +116,7 @@ export class PulmonaryEmbolismScene {
         });
         const embolus = new THREE.Mesh(this.embolusGeometry, embolusMaterial);
         embolus.name = `embolus-${id}`;
-        embolus.position.copy(curve.getPointAt(0.24));
+        embolus.position.copy(territory.anchors.proximalOcclusionSite);
         embolus.visible = false;
 
         const flow = new THREE.Mesh(this.flowGeometry, vesselMaterial);
@@ -144,7 +136,7 @@ export class PulmonaryEmbolismScene {
 
         this.units.push({
           id,
-          curve,
+          territory,
           vessel,
           vesselMaterial,
           embolus,
@@ -190,7 +182,7 @@ export class PulmonaryEmbolismScene {
       // Ventilation remains present even when this unit loses perfusion.
       unit.air.scale.setScalar(0.78 + 0.42 * breath);
       const t = (this.phase * (0.35 + 0.65 * solved.perfusionAtFixedPressure) + unit.id * 0.083) % 1;
-      unit.flow.position.copy(unit.curve.getPointAt(t));
+      unit.flow.position.copy(unit.territory.pointAt(t));
       unit.flow.scale.setScalar(0.6 + 0.55 * solved.perfusionAtFixedPressure);
     }
   }
@@ -217,14 +209,16 @@ export class PulmonaryEmbolismScene {
         id: 'pvr',
         label: 'Relative pulmonary vascular resistance',
         labelJa: '相対肺血管抵抗',
-        value: this.state.relativePulmonaryVascularResistance.toFixed(2),
+        // One decimal: this is an inverse conductance of twelve equal paths,
+        // and a second digit would claim a precision the network does not have.
+        value: this.state.relativePulmonaryVascularResistance.toFixed(1),
         unit: '× baseline',
       },
     ];
   }
 
   getAnnotations() {
-    const clot = this.units?.[0]?.curve.getPointAt(0.24) ?? new THREE.Vector3(-0.7, 0.5, 0.3);
+    const clot = this.units?.[0]?.territory.anchors.proximalOcclusionSite ?? new THREE.Vector3(-0.7, 0.5, 0.3);
     return [
       {
         id: 'continued-ventilation',
@@ -251,7 +245,7 @@ export class PulmonaryEmbolismScene {
   }
 
   dispose() {
-    for (const surface of this.vesselSurfaces ?? []) surface.dispose();
+    for (const territory of this.territories ?? []) territory.dispose();
     this.lungs?.dispose?.();
     disposeObject(this.root);
   }
