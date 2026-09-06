@@ -470,6 +470,43 @@ test('an atlas fetch abandoned by disposal is not reported as a failure', async 
   }
 });
 
+test('an atlas fetch abandoned by leaving the page is not reported as a failure', async () => {
+  // Disposal is only one of the two ways a page stops mattering. Following a
+  // link to another document does not dispose the scene, so this case reached
+  // the console — as `Failed to fetch` in Chromium and `Load failed` in
+  // WebKit, where it read as an engine defect and failed CI intermittently.
+  const said = [];
+  const wasError = console.error;
+  const previousWindow = globalThis.window;
+  const handlers = new Map();
+  globalThis.window = {
+    addEventListener: (type, handler) => handlers.set(type, handler),
+    removeEventListener: (type, handler) => {
+      if (handlers.get(type) === handler) handlers.delete(type);
+    },
+  };
+  console.error = (...args) => said.push(args);
+  let fail = () => {};
+  try {
+    const scene = new BrainAnatomyScene({
+      viewer: loaderViewport(),
+      atlasLoader: () => new Promise((_, reject) => { fail = reject; }),
+    });
+    scene.build();
+    assert.ok(handlers.has('pagehide'), 'the scene knows when its document is going away');
+    handlers.get('pagehide')();
+    fail(new TypeError('Failed to fetch'));
+    await scene.ready;
+    assert.deepEqual(said, [], 'the navigation cancelled this fetch; the atlas did not fail');
+    scene.dispose();
+    assert.ok(!handlers.has('pagehide'), 'and the listener leaves with the scene');
+  } finally {
+    console.error = wasError;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
 test('an atlas that genuinely fails is still reported', async () => {
   const said = [];
   const wasError = console.error;
