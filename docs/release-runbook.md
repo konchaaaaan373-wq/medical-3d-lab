@@ -87,6 +87,40 @@ Set for the deploy:
 | `VITE_TELEMETRY_ENDPOINT`, `VITE_FEEDBACK_ENDPOINT` | Same-origin; see [`observability.md`](observability.md) |
 | `BILLING_RECONCILE_TOKEN`, `OPS_ALERT_WEBHOOK` | See [`access-and-billing.md`](access-and-billing.md) |
 
+**The production origin is `https://med-3d-lab.necofindjob.com`.** That is the
+primary domain, and therefore the value of `VITE_SITE_URL` — with or without a
+trailing slash, the build normalises it to one address. It is written here and
+nowhere in `src/`: the code takes the origin from the deploy so that changing
+where the site lives is a deploy change and not a code change.
+
+### Changing the primary domain
+
+The origin is baked into the build, so **a domain change that is not followed by
+a rebuild leaves every page naming the old host** — invisible in a browser,
+decisive to a crawler. In order:
+
+1. Point the domain at the host and set it as the primary domain; wait for the
+   certificate.
+2. Set `VITE_SITE_URL` to the new origin and **redeploy**. `npm run verify:site`
+   fails the build output if any page's canonical, `og:url` or preview image
+   names a host the sitemap does not — which is what a stale variable looks
+   like.
+3. Keep the previous host serving a redirect for as long as links to it exist.
+   A shared model URL outlives the domain it was shared from.
+4. Update the Stripe webhook endpoint to
+   `https://<new-origin>/.netlify/functions/stripe-webhook`. A new endpoint has
+   a **new signing secret**: set `STRIPE_WEBHOOK_SECRET` from it, or every
+   subsequent event fails signature verification and paid access stops
+   updating.
+5. Add the new origin to Supabase Auth's redirect allowlist. Password reset
+   sends the user back to `window.location.origin`, so an origin Supabase does
+   not recognise makes reset fail for everybody on the new domain.
+6. `npm run billing:check -- https://<new-origin>` — see
+   [`billing-operations-runbook.md`](billing-operations-runbook.md).
+7. Fetch `/robots.txt` and `/sitemap.xml` on the new origin, resubmit the
+   sitemap to Search Console, and re-share one link to confirm the preview card
+   renders from the new host.
+
 ## 5. Rollback
 
 **Redeploy the previous tag.** Do not revert on `main` and wait for a build:

@@ -62,10 +62,27 @@ does not claim.
 | --- | --- |
 | `VITE_SITE_URL` | Pages are built; canonical/OG URLs omitted and no sitemap |
 
-Set it to the deployment origin, with no trailing path unless the site is
+Set it to the deployment origin — in production
+`https://med-3d-lab.necofindjob.com` — with no trailing path unless the site is
 served from a subpath (`https://example.org/lab`). Links from a scene page into
 the app are relative (`../../#/<slug>`), so a subpath deployment works either
 way.
+
+**A trailing slash is not a second site.** The variable is typed by a person
+into a deploy environment, and `https://site` and `https://site/` mean the same
+thing to that person. The build normalises it once, so both spellings produce
+the same canonical, the same Open Graph URLs and the same sitemap; the home
+page's canonical is the site root (`https://site/`), which is the address the
+sitemap's first entry gives it.
+
+**The origin lives in the deploy, not in `src/`.** Moving the site is then a
+deploy change rather than a code change — but the pages are generated at build
+time, so a domain change takes effect only on a rebuild. `npm run verify:site`
+fails when a page's canonical, `og:url` or preview image names a host the
+sitemap does not, which is what an un-rebuilt or stale-variable deploy looks
+like. The rest of the move — Stripe's webhook endpoint, Supabase's redirect
+allowlist, redirects from the old host — is the checklist in
+[`release-runbook.md`](release-runbook.md#changing-the-primary-domain).
 
 ## 5. Social cards
 

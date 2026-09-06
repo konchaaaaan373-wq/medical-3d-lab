@@ -21,6 +21,28 @@ const distDir = process.argv[2] ?? 'dist';
 const problems = [];
 const notes = [];
 
+/**
+ * The addresses by which a page names *itself* — canonical, Open Graph and
+ * the preview image. Deliberately not every absolute URL in the markup: a
+ * page also links to a font host and to sources, and those are supposed to
+ * be somewhere else.
+ */
+function selfDeclaredOrigins(html) {
+  const origins = new Set();
+  const tags = html.match(/<(?:link|meta)[^>]*>/g) ?? [];
+  for (const tag of tags) {
+    if (!/rel="canonical"|og:url|og:image|twitter:image/.test(tag)) continue;
+    const url = tag.match(/(?:href|content)="(https?:\/\/[^"]+)"/)?.[1];
+    if (!url) continue;
+    try {
+      origins.add(new URL(url).origin);
+    } catch {
+      problems.push(`a page declares itself at an unparseable address: ${url}`);
+    }
+  }
+  return origins;
+}
+
 if (!existsSync(distDir)) {
   console.error(`No build found at "${distDir}" — run \`npm run build\` first.`);
   process.exit(1);
@@ -57,6 +79,27 @@ if (existsSync(sitemapPath)) {
   }
   for (const scene of LAB_SCENES) {
     if (xml.includes(`/s/${scene.slug}/`)) problems.push(`${scene.id}: Prototype work is in the sitemap`);
+  }
+
+  // A domain change is the one moment these can disagree: canonical, Open
+  // Graph and the sitemap are all baked at build time from `VITE_SITE_URL`,
+  // so a deploy that moved to a new domain without rebuilding — or rebuilt
+  // with the variable still holding the old one — publishes pages that name a
+  // host the sitemap does not. That is invisible in the browser and decisive
+  // to a crawler, which is exactly the failure worth a check.
+  const siteOrigin = new URL(xml.match(/<loc>([^<]+)<\/loc>/)?.[1] ?? 'https://invalid.invalid').origin;
+  const pages = [
+    ['the application shell', join(distDir, 'index.html')],
+    ...PUBLIC_SCENES.map((scene) => [scene.id, join(distDir, scenePagePath(scene))]),
+  ];
+  for (const [name, path] of pages) {
+    if (!existsSync(path)) continue;
+    const foreign = [...selfDeclaredOrigins(readFileSync(path, 'utf8'))].filter(
+      (origin) => origin !== siteOrigin
+    );
+    if (foreign.length) {
+      problems.push(`${name}: addresses ${foreign.join(', ')} but the sitemap says ${siteOrigin}`);
+    }
   }
 } else {
   // Not a failure: without VITE_SITE_URL a sitemap would be relative paths,

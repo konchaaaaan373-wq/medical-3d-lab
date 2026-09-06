@@ -14,6 +14,28 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The site has one public address
+
+- **Production is `https://med-3d-lab.necofindjob.com`.** The origin still
+  comes from the deploy rather than from the code, so moving the site remains a
+  deploy change — but it is now written down, in the release runbook, in the
+  discoverability document and beside the variable in `.env.example`, instead of
+  being knowledge somebody had to already have.
+- **A trailing slash no longer makes a second site.** `https://site` and
+  `https://site/` are the same site to the person typing them into a deploy
+  environment, and they now produce the same canonical, the same Open Graph URLs
+  and the same sitemap. The home page had been declaring itself at an address
+  the sitemap did not use.
+- **A domain change cannot quietly ship pages that name the old host.** The
+  addresses are baked in at build time, so a domain move without a rebuild is
+  invisible in a browser and decisive to a crawler. `npm run verify:site` now
+  fails when a page's canonical, `og:url` or preview image points somewhere the
+  sitemap does not.
+- **The rest of the move is a checklist, not memory.** The Stripe webhook
+  endpoint and its new signing secret, Supabase's redirect allowlist (password
+  reset returns to the running origin), redirects from the old host, and the
+  sitemap resubmission are in the release runbook.
+
 ### The lobes and the liver segments now take the volumes a source gives them
 
 - **The shares stopped being uncited, and two of them stopped being wrong.**
