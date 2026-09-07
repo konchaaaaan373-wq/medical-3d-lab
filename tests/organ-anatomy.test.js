@@ -805,6 +805,27 @@ test('a tube that changes calibre closes at the calibre it ends on', () => {
 // behind — a see-through wall that still rejected everything behind it.
 // ---------------------------------------------------------------------------
 
+test('an organ whose comment says you can see inside it, you can see inside', () => {
+  // The pancreas states it in its own header: "The gland is drawn translucent
+  // so the duct and the islets inside it are visible". It was 0.84, which lets
+  // 16% of the duct through — a number that only ever worked because the tube
+  // was wound inside out and the gland's near wall was culled, so nothing stood
+  // between the viewer and the duct at all. Correcting the winding put the wall
+  // back and the duct disappeared. The claim is the test now.
+  const pancreas = buildPancreas();
+  const gland = [];
+  pancreas.object.traverse((node) => { if (node.isMesh && node.name === 'gland') gland.push(node); });
+  assert.equal(gland.length, 1, 'the gland is one mesh');
+  const material = gland[0].material;
+  assert.equal(material.transparent, true);
+  const layers = material.side === THREE.DoubleSide ? 2 : 1;
+  const throughput = (1 - material.opacity) ** layers;
+  assert.ok(
+    throughput > 0.4,
+    `the gland lets ${(100 * throughput).toFixed(0)}% of the duct through — not enough to call it translucent`
+  );
+});
+
 test('the tubule wall stays see-through at every filtration rate', () => {
   const nephron = buildNephron();
   const walls = () =>

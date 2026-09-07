@@ -14,6 +14,38 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Every vessel in the product was drawn inside out
+
+- **Tubes were wound the wrong way, and had no ends.** All 42 of them, plus the
+  aortic root, which builds its own geometry the same way. Under a front-side
+  material that draws the *far* wall with its normal pointing back at the
+  camera, so a coronary artery rendered as a flat ribbon rather than a round
+  vessel. A tube's silhouette is the same either way round, which is why this
+  survived review. Vessels are round and correctly lit now, and the aorta no
+  longer shows the background through its open top.
+- **Two models were relying on it.** The blood and oxygen moving inside the
+  circulation model's vessels, and the filtrate inside the nephron's tubule,
+  were visible only because the near wall was being culled. Both walls are
+  declared translucent now, which is what they always should have been — and
+  the nephron's own "opacity tracks filtrate" control had never worked, because
+  the material it was written for was not transparent. The pancreas says in its
+  header that the gland is drawn translucent so the duct inside shows; it was
+  letting 16% through, and now does what it says.
+- **No medical claim changed.** These are lighting and geometry defects; no
+  parameter, boundary or proportion moved.
+
+### The kidney's collecting system is a tree, and its cut faces are exact
+
+- **A minor calyx cups each papilla** and drains through a superior, middle or
+  inferior major calyx into the pelvis. Seven ducts used to run from seven
+  papillae to a single point in the middle of the sinus.
+- **The parts no longer change shape with their own resolution.** Cutting an
+  organ into named parts left every cut face zigzagging at the tessellation's
+  spacing, so each part lost a sawtooth of volume along every cut and the finer
+  the mesh the less it lost. The mesh is cut along that rim now. The kidney
+  draws at detail 12 where it needed 18, with 55% of the triangles, and looks
+  better than 18 did.
+
 ### The landing hero shows the real model, in two stages
 
 - **The hero now builds the organ's actual anatomy model.** The brain is the
