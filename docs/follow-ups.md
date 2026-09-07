@@ -323,6 +323,23 @@ playwright` の後、期待する headless shell が無かったので
 
 ## E. その他
 
+### F-25 「Lab をモデル中心のカタログへ」（旧 PR #28）の意図 — P3
+
+PR #28 は Lab の一覧を「シーン一覧」から「モデル一覧」へ組み替える提案でしたが、
+`#42` の Explorer 全面刷新と `src/app/Explorer.js`・`src/styles/explorer.css` で
+正面衝突し、機械的なマージでは解決できません。**PR は閉じました**が、
+問いは残ります: Lab の一覧は「シーン」と「モデル」のどちらを単位にすべきか。
+
+- 判断材料: 現在の Explorer は臓器プレビュー付きのシーン一覧です。1 つのモデルが
+  複数シーンに現れる関係（同じ肺を asthma と normal-lung が使う）を一覧で表すべきか、
+  それはカタログではなく `docs/grand-design.md` の地図が持つべきか。
+- やるなら: 現行 Explorer の上に作り直す。ブランチ `fix/lab-model-catalogue` は
+  参照用に残っており、`git log --follow` で読めます。
+- 完了の定義: 単位を決めて `docs/product-principles.md` に 1 行で書く。UI を変える
+  かどうかはその後の判断。
+
+
+
 ### F-18 ブランチ `feat/organ-explorer-v2` の削除 — P3
 
 squash マージ済み。リモートに残っているので、参照が不要になったら削除。
