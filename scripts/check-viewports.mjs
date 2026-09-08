@@ -574,12 +574,12 @@ async function captureB1Evidence(browser) {
       await page.goto(`${base}${evidence.route}`, { waitUntil: 'load', timeout: 30_000 });
       await page.waitForSelector('#ui > *', { state: 'attached', timeout: 20_000 });
 
-      const consentButton = page.locator('.consent-banner button').first();
+      const consentBanner = page.locator('.consent-banner');
+      await consentBanner.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+      const consentButton = consentBanner.locator('button').first();
       if (await consentButton.isVisible().catch(() => false)) {
         await consentButton.click();
-        await page.waitForFunction(() => !document.querySelector('.consent-banner'), null, {
-          timeout: 5_000,
-        });
+        await consentBanner.waitFor({ state: 'detached', timeout: 5_000 });
       }
 
       await page.waitForFunction(
@@ -653,6 +653,9 @@ async function captureB1Evidence(browser) {
       }
       if (state.loadingVisible) {
         throw new Error('the loading state is still visible');
+      }
+      if (await consentBanner.isVisible().catch(() => false)) {
+        throw new Error('the consent banner still obscures the evidence viewport');
       }
 
       await page.screenshot({ path: imagePath, fullPage: false });
