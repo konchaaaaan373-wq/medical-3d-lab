@@ -5,15 +5,18 @@ the structures this scene names were checked against the files that are
 actually being served, by whom, on what date, and what was *not* checked.
 The clinical review of this model is **pending** and every surface says so —
 see [`../clinical-reviews/registry.json`](../clinical-reviews/registry.json).
-It is also not the anatomy/CG quality pass (B3), which has not happened.
+It is also not the anatomy/CG quality pass (B3). Part of B3 has now happened —
+the scene was rendered at all six of its fixed viewpoints in both colour modes
+and one defect was found and fixed (see below) — but that is an engineer looking
+at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-08 (re-taken after B2-1 changed the selection behaviour) |
-| **Decided by** | Claude Opus 5, acting as B0 implementer |
+| **Decided at** | 2026-09-08 (re-taken after B3-1 changed what a medial view draws) |
+| **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **6**, source digest `584cdfefac8a7464` |
+| **Scene revision** | model card revision **7**, source digest `077b33cb293c8730` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -24,7 +27,7 @@ card revision. Either one closes the beta until this record is taken again —
 which is the point: a decision about one version of a model is not a decision
 about a different one.
 
-## Why this was re-taken, twice
+## Why this was re-taken, three times
 
 **Revision 4 → 5.** B2-1 changed what a click selects — a structure drawn from
 several meshes is now one structure rather than whichever piece the atlas
@@ -34,6 +37,16 @@ registered last — and added a part tree and an isolate control.
 The getters were right and the panels were not: the card went on naming a
 structure from the discarded model and a row stayed marked selected, because a
 surface that repaints on an event was never sent one. The reset is announced now.
+
+**Revision 6 → 7.** B3-1 changed what a medial view draws. Rendered at its own
+fixed viewpoints for the first time, a medial view turned out to be a hollow
+cortical shell: the corpus callosum, the thalamus and the white matter behind
+them were all held at zero opacity by the layer slider, so the middle of the
+view was empty and the page background showed through the far wall. The midline
+block is present for a medial view now, and ghosts back out as depth is asked
+for. Nothing moved, nothing was recoloured, no structure id changed — but what
+the reader is shown for two of the six viewpoints did, so this record is taken
+again against the new revision.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
@@ -62,8 +75,12 @@ the same name under the same branch. Selecting in 3D highlights the matching
 row and opens the branch holding it; clicking a row puts that structure on the
 card. Both directions were driven.
 
-**Viewpoints** — six are offered and one was applied: Left lateral / Left
-medial / Right lateral / Right medial / Anterior / Superior.
+**Viewpoints** — six are offered and one was applied by the drive: Left lateral
+/ Left medial / Right lateral / Right medial / Anterior / Superior. All six were
+also **rendered** in both colour modes, at one camera per viewpoint, before and
+after the B3-1 change — [`docs/screenshots/b3-1/`](../screenshots/b3-1/), and the
+reading of them is [`docs/anatomy-review.md`](../anatomy-review.md) §3.1. That is
+a rendering check, not an anatomical one.
 
 **Interactions**
 
@@ -105,6 +122,7 @@ and the asset release gate passes against the file on disk.
 - [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js), [`tests/anatomy-colour-ui.test.js`](../../tests/anatomy-colour-ui.test.js)
 - [`docs/asset-qa/brain-atlas-glb.md`](../asset-qa/brain-atlas-glb.md) — format and semantic QA of the mesh
 - [`docs/anatomy-review.md`](../anatomy-review.md) — the engineering anatomy review, including its open judgement calls
+- [`docs/screenshots/b3-1/README.md`](../screenshots/b3-1/README.md) — the fixed-view renders, before and after, and how to reproduce them
 - [`public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md)
 
 ## Not checked
@@ -117,7 +135,13 @@ and the asset release gate passes against the file on disk.
 - **No label was verified against a reference atlas.** That is an anatomy
   expert's judgement; this decision does not make it.
 - Deep structures behind the anatomical-layer slider were not exercised — the
-  drive stays at layer 0, the cortical surface.
+  drive stays at layer 0, the cortical surface. What a medial view now shows at
+  the midline was rendered and looked at; it was not clicked through structure by
+  structure.
+- **The posterior and inferior views the acceptance list asks for do not exist**
+  (F-39), so nothing was checked on them.
+- Whether the cerebellum should show folia is unsettled — a question about the
+  source mesh rather than about this renderer (F-38).
 - Touch, Safari and Firefox were not driven; one engine, on a desktop.
 - No screen-reader pass over the selection card.
 - **No clinical review.** The registry records this scene as `pending` and the

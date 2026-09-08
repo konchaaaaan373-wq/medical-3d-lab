@@ -149,6 +149,54 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   scene.dispose();
 });
 
+test('a medial view closes the midline instead of showing through a hollow shell', () => {
+  const scene = buildScene();
+  const callosum = find(scene, 'Corpus callosum', 'median');
+  const enclosingWhiteMatter = find(scene, 'White matter of telencephalon', 'left');
+  const thalamus = find(scene, 'Mediodorsal nucleus', 'left');
+  const keptCortex = find(scene, 'Middle frontal gyrus', 'left');
+  const ventricle = find(scene, 'Lateral ventricle', 'left');
+
+  // At rest on a lateral view the midline block is depth the reader has not
+  // asked for, and stays hidden. That part is unchanged.
+  settle(scene);
+  assert.equal(callosum.material.opacity, 0, 'a lateral view still starts at the cortical surface');
+  assert.equal(thalamus.material.opacity, 0);
+  assert.equal(enclosingWhiteMatter.material.opacity, 0);
+
+  // On a medial view it is not depth: it *is* the surface being looked at. The
+  // corpus callosum, the thalamus and the white matter behind them are what a
+  // reader sees at the midline, and without them the medial view was a hollow
+  // cortical shell — a hole where the callosum belongs, and the background
+  // visible through the far wall because the material is front-side only.
+  scene.setAnatomyView('left-medial');
+  settle(scene);
+  assert.equal(keptCortex.material.opacity, 1, 'the kept hemisphere\'s cortical shell is unchanged');
+  assert.ok(callosum.material.opacity > 0.94, 'the corpus callosum closes the midline');
+  assert.ok(thalamus.material.opacity > 0.94, 'the thalamus closes the midline');
+  assert.ok(enclosingWhiteMatter.material.opacity > 0.94, 'the hemisphere is solid behind it');
+  assert.ok(callosum.material.depthWrite, 'and writes depth, so nothing shows through it');
+  assert.equal(ventricle.material.opacity, 0, 'a cavity is not a surface and stays on the slider');
+
+  // Depth still means depth. Dragging the layer up on a medial view has to
+  // ghost the enclosing mass again, or it simply replaces the cortical shell
+  // with a white one and hides the basal ganglia — the failure the ghost was
+  // introduced for.
+  scene.setProgress(1);
+  settle(scene);
+  assert.ok(enclosingWhiteMatter.material.opacity < 0.1, 'the enclosing mass ghosts as depth is asked for');
+  assert.ok(thalamus.material.opacity > 0.94, 'and the deep structures stay');
+
+  // Leaving the medial view puts the midline back where it was.
+  scene.setProgress(0);
+  scene.setAnatomyView('left-lateral');
+  settle(scene);
+  for (const mesh of [callosum, thalamus, enclosingWhiteMatter]) {
+    assert.equal(mesh.visible, false, `${mesh.userData.bx_label} is back under the surface`);
+  }
+  scene.dispose();
+});
+
 test('the layer sequence hides rather than separates anatomy and exposes the insula', () => {
   const scene = buildScene();
   const originalPositions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
@@ -356,6 +404,7 @@ const FIXTURE_STRUCTURES = [
   structure(173, 'Lateral ventricle', 'left', 'ventricles', 'Telencephalon', [0.22, 0.18, 0]),
   structure(74, 'Corpus callosum', 'median', 'white_matter', 'Telencephalon', [0, 0.28, 0]),
   structure(433, 'White matter of telencephalon', 'left', 'white_matter', 'Telencephalon', [0.45, 0.1, 0]),
+  structure(281, 'Mediodorsal nucleus', 'left', 'diencephalon', 'Diencephalon', [0.28, 0.05, -0.1]),
   structure(312, 'Pons', 'left', 'brainstem', 'Brainstem', [0, -0.65, -0.15]),
   structure(28, 'Anterior quadrangular lobule', 'left', 'cerebellum', 'Cerebellum', [0.45, -0.65, -0.6]),
 ];

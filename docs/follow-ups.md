@@ -344,6 +344,60 @@ Explorer（`#/organs`）も**カード 1 枚**になります。B0 は公開判�
 - 触る先: `src/data/brainAnatomy.js` の `sideHierarchy` / `structureFamily`。
   **変更すると model card revision が動き、公開判断の取り直しが要ります**
 
+### F-36 モデルがフレーム上方に寄り、下 1/3 が空く — P2（B3）
+
+固定ビューはすべて camera target が `y = -0.35`、モデル中心が `y = +0.08` で、
+1280×720 のフレームでモデルは上に寄り、下 1/3 が背景のままです
+（[`screenshots/b3-1/`](screenshots/b3-1/) のどの画像でも見えます）。
+これは**カメラの問題であって形状の問題ではありません**。ただし実アプリでは
+下に console、右に panel が載るので、「余白を詰める」が正解とは限りません。
+
+- どう決めるか: UI を出した実画面（1280×720 と 375×667）で、モデルが
+  console と panel に隠れずどこまで大きくできるかを測ってから target を動かす
+- 触る先: `BrainAnatomyScene` の `VIEW_SPECS`（+ `framing`）。
+  **変更すると model card revision が動き、公開判断の取り直しが要ります**
+- 完了の定義: 6 固定ビューで、UI を表示した状態のモデル占有面積が現在より
+  広く、かつどのビューでもモデルが UI に切られていない
+
+### F-37 注釈ラベルが深度を無視して反対半球の上に出る — P1（B3）
+
+`getAnnotations()` の 2 つのラベル（中心溝・中側頭回）はどちらも**左半球**の
+構造に固定されていますが、DOM のオーバーレイなので深度テストが効かず、
+**右外側ビューでも右半球の表面に重なって表示**されます
+（[`screenshots/b3-1/before/right-lateral--colour-map.png`](screenshots/b3-1/before/right-lateral--colour-map.png)）。
+読み手には「右半球のこの位置が中心溝」と読めてしまい、**左右の取り違え**を
+招きます。受入条件 E（viewer-left を patient-left の代わりに使わない）の趣旨に
+反するのはこの点です——固定ビュー自体の左右は正しいことを確認済み
+（[`anatomy-review.md`](anatomy-review.md) §3.1）。
+
+- どう決めるか: アンカーがカメラから見て手前の面にあるときだけ描く
+  （occlusion test）か、ビューの側と一致するラベルだけ出す
+- 触る先: `BrainAnatomyScene.getAnnotations()` と App の注釈描画
+- 完了の定義: 右外側ビューで左半球のラベルが出ない、または隠れる
+
+### F-38 小脳が滑らかで小葉の襞（folia）が無い — P2（B3 / asset）
+
+小脳は滑らかな塊として描かれ、皮質のような細かい起伏がありません。内側ビューでは
+小葉が分離した「花」のように見えます。これは**レンダリングではなく元 mesh の
+忠実度の問題**の可能性が高く、照明や材質で隠すべきものではありません。
+
+- どう決めるか: 上流 asset の小脳 mesh の三角形密度と法線を実測し、
+  「元データにそもそも襞が無い」のか「LOD で失われた」のかを分ける。
+  前者なら**この atlas の受け入れた単純化として記録**し、
+  `assetManifest` の `acceptedSimplifications` に足す
+- 触らないもの: 推測で襞を彫らない（受入条件の禁止事項）
+- 完了の定義: どちらであるかが記録され、必要なら asset 側の課題として登録
+
+### F-39 後面・下面の固定ビューが無い — P2（B3）
+
+受入条件 §7 が求める固定ビューは外側左右・前面・**後面**・内側面・**下面**です。
+現在の `VIEW_SPECS` は左右外側・左右内側・前面・上面の 6 つで、後面と下面が
+ありません。下面は海馬傍回・眼窩面・脳幹下端の確認に要ります。
+
+- 触る先: `BrainAnatomyScene` の `VIEW_SPECS`。
+  **変更すると model card revision が動き、公開判断の取り直しが要ります**
+- 完了の定義: 8 ビューが `npm run shots:anatomy` の contact sheet に出る
+
 ### F-28 poster が「モデルの写真」ではない — P2（B0）
 
 `publicManifest.js` の `posterPath` が指すのは `npm run cards` が

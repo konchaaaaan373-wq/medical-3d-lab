@@ -766,14 +766,32 @@ function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {
     const deepGhost = metadata.bx_side === 'right' ? 0.015 : 0.075;
     return surfaceOpacity + (deepGhost - surfaceOpacity) * deepReveal;
   }
+  // On a medial view the midline block is not depth the reader asked for: it is
+  // the surface they are looking at. The corpus callosum, the fornix, the
+  // thalamus and hypothalamus and the white matter behind them are what a
+  // medial view of a hemisphere shows, and the layer slider was holding all of
+  // it at zero — so at rest the medial view was a hollow cortical shell with a
+  // hole where the callosum belongs, and, the material being front-side only,
+  // the background showing through the far wall. Nothing here moves or
+  // recolours anything; it decides which of the meshes already in the atlas are
+  // present for the view being asked for.
+  const midlineSolid = Boolean(medialSide);
+
   // The hemispheric white-matter meshes are enclosing masses. Leaving either
-  // opaque would simply replace the cortical shell with another shell and hide
-  // the basal ganglia again; named commissures and bundles can remain solid.
+  // opaque *while the reader is asking for depth* would simply replace the
+  // cortical shell with another shell and hide the basal ganglia again, so the
+  // enclosing mass is solid at the medial surface and ghosts back out as the
+  // layer is dragged in. Named commissures and bundles can remain solid.
   if (category === 'white_matter') {
-    return (label === 'White matter of telencephalon' ? 0.035 : 0.92) * deepReveal;
+    if (label === 'White matter of telencephalon') {
+      return midlineSolid ? 1 - 0.965 * deepReveal : 0.035 * deepReveal;
+    }
+    return midlineSolid ? 1 : 0.92 * deepReveal;
   }
+  // A ventricle is a cavity, not a surface: filling the medial view with one
+  // would be inventing a wall. It stays on the slider in every view.
   if (category === 'ventricles') return 0.78 * deepReveal;
-  if (category === 'deep_grey' || category === 'diencephalon') return deepReveal;
+  if (category === 'deep_grey' || category === 'diencephalon') return midlineSolid ? 1 : deepReveal;
   return 0;
 }
 

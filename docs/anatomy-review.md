@@ -126,6 +126,67 @@ Structure identity is already defended by `tests/brain-anatomy.test.js`, which
 checks that labels come from the atlas rather than from prose, so nothing was
 added here.
 
+### 3.1 The fixed views, compared — and the medial view was hollow
+
+**Left lateral was the only view this section had ever rendered.** B3-1 rendered
+all six the scene offers, in both colour modes, at one camera per view and one
+viewport (1280×720, Chromium headless), with the interface hidden so nothing but
+the model is in the frame. The set is in
+[`docs/screenshots/b3-1/`](screenshots/b3-1/) and is reproducible with
+`npm run shots:anatomy`.
+
+Compared that way, the lateral views hold up and **the medial views did not**.
+
+| | what the picture showed | which kind of problem |
+| --- | --- | --- |
+| Left/right lateral | Gyri and sulci read as relief in both modes; the lobes separate; anterior is at the viewer's left in the left lateral view and at the right in the right lateral one | — |
+| Left/right medial | A ring of cortical parcels around **an empty middle**: no corpus callosum, no thalamus, and the background visible through the far wall | display state |
+| Anterior | The interhemispheric fissure, both frontal poles, the temporal poles and the brainstem, correctly placed | — |
+| Superior | Both hemispheres and the fissure; no defect found | — |
+
+The hollow medial view was **not a shape problem and not a lighting one**. The
+corpus callosum, the fornix, the thalamus and the hypothalamus are all in the
+atlas and all in the right place; the layer slider was holding every one of them
+at zero opacity until the reader asked for depth, and a medial view at rest
+therefore showed a cortical shell with a hole in it — and, the materials being
+front-side only, the page background through the far wall. What a medial view
+shows *is* the midline block, so the block is now present for that view and
+ghosts back out as the layer is dragged in, which is what the ghost was for.
+Nothing moved, nothing was recoloured, no id changed;
+`a medial view closes the midline instead of showing through a hollow shell` in
+`tests/brain-anatomy.test.js` fixes it, and the before/after pair at the same
+camera is in the screenshot directory.
+
+The other four views are unchanged by that fix — provably (the expressions are
+identical when no medial side is set) and observably. Left lateral, anterior and
+superior are **byte-identical** before and after, in both colour modes. Right
+lateral differs in 2179 of 921,600 pixels, and all of it is the two annotation
+labels rather than the model: rendered again with the labels off
+(`npm run shots:anatomy -- --no-labels`), the pair differs in two pixels by one
+channel value. The labels are a DOM overlay placed from the projected camera to
+a tenth of a pixel, and a medial view now draws more meshes, so the frames before
+it are slower and the camera's ease has taken a different number of steps by the
+time the label is placed. Sub-pixel, in text, and not the geometry.
+
+**Patient left, not viewer left.** Check E of the acceptance list passes for the
+views themselves. The two default annotations are anchored to structures the
+atlas marks `bx_side: 'left'`; in the anterior view their 3D anchors project to
+the **viewer's right**, which is the convention an anterior view is supposed to
+have, and the two lateral views are consistent with that — walking the camera
+round to the patient's left puts their anterior on the viewer's left, which is
+what `left-lateral` shows. The scene's camera positions say the same thing
+independently: the atlas is turned half a turn about the vertical at load, which
+puts the atlas's own left at world −x, and `left-lateral` is the camera at −x.
+What is *not* right is where those labels are drawn — see F-37 below.
+
+**Also seen, and not fixed here.** These are recorded rather than settled:
+F-36 (the model sits high in the frame, with the lower third of the canvas
+empty), F-37 (annotation labels are not depth-tested, so a left-hemisphere label
+is drawn over the right hemisphere in the right lateral view), F-38 (the
+cerebellum reads as smooth lobules with no folia, which is a question about the
+source mesh, not about this renderer) and F-39 (the acceptance list asks for
+posterior and inferior views, and the scene offers neither).
+
 ## 4. Left for the clinical reviewer
 
 These are judgement calls about what a picture teaches. An engineering review

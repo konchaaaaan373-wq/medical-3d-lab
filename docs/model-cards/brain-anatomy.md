@@ -136,6 +136,19 @@ view; otherwise they would form a second enclosing shell and conceal the nuclei
 the view is meant to teach. Named bundles such as the corpus callosum and fornix
 remain visible.
 
+**A medial view shows the midline block, and that is a display decision, not a
+dissection.** The contralateral hemisphere is hidden and the near hemisphere's
+midline face — the corpus callosum, the fornix, the thalamus and hypothalamus,
+and the white matter behind them — is present at full opacity, because that is
+what a medial view of a hemisphere is a view *of*. Before this, the layer slider
+held all of it at zero until depth was asked for, and a medial view at rest was
+a cortical shell with a hole where the callosum belongs. Two things this does
+not do: it does not cut anything (no plane, no clipping, no mesh moved — the
+model is the same one the lateral views show, seen from the other side), and it
+does not fill the ventricles, which are cavities rather than surfaces and stay
+on the slider in every view. Dragging the layer in from a medial view ghosts the
+enclosing white matter back out, so depth still means depth.
+
 ## 7. What it must never be used for
 
 Diagnosis, measurement, lesion localisation, stereotactic coordinates,
