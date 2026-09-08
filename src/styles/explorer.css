@@ -741,3 +741,112 @@ a.explorer-scene:focus-visible {
   background: #e2f4f2;
   color: var(--explorer-accent-strong);
 }
+
+
+/* B1 public anatomy route --------------------------------------------------
+   The beta has one product, so the public route shows that product instead of
+   search, filters and a one-card catalogue. Lab keeps the catalogue above. */
+
+.public-models {
+  width: min(1180px, 100%);
+}
+
+.public-models-header {
+  padding-right: clamp(24px, 8vw, 110px);
+}
+
+.public-models-header .title {
+  max-width: 880px;
+}
+
+.public-models-header .subtitle {
+  max-width: 52em;
+}
+
+.public-models-focus {
+  min-width: 0;
+}
+
+.public-models-focus .landing-demo {
+  border-color: rgba(8, 115, 131, 0.28);
+  box-shadow: 0 32px 80px rgba(16, 47, 59, 0.18);
+}
+
+.public-models-empty {
+  padding: clamp(28px, 5vw, 52px);
+}
+
+.public-models-empty p {
+  max-width: 44em;
+  margin: 0 0 18px;
+  color: var(--explorer-muted);
+  line-height: 1.7;
+}
+
+.public-models-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px;
+}
+
+.public-model-link {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid var(--explorer-rule-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--explorer-accent-strong);
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.public-model-link:hover,
+.public-model-link:focus-visible {
+  border-color: var(--explorer-accent);
+  background: #eef8f9;
+}
+
+.public-models-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+}
+
+.public-models-footer p {
+  margin: 0;
+}
+
+.public-models-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .public-models-header {
+    padding-right: 18px;
+  }
+
+  .public-models-focus .landing-demo-stage {
+    min-height: 345px;
+    height: 345px;
+  }
+
+  .public-models-focus .landing-demo-footer {
+    display: block;
+    padding: 12px 14px;
+  }
+
+  .public-models-focus .landing-demo-link {
+    margin-top: 5px;
+  }
+
+  .public-models-footer {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
