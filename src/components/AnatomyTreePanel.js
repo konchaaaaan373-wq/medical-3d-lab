@@ -135,6 +135,35 @@ export function createAnatomyTreePanel(scene) {
   const row = (node, parent = null) =>
     node.structureId !== undefined ? leafRow(node, parent) : groupRow(node, parent);
 
+  /**
+   * The branches to open so that the first thing a reader sees is a part name.
+   *
+   * Opening only the top level left a list of arrows: someone who came to see
+   * what is there had to guess twice before any structure appeared. Opening
+   * everything is the other failure — four hundred rows, and the shape of the
+   * atlas lost.
+   *
+   * So: every branch at the top level, plus the chain down the first of them
+   * until a structure shows. One path, and it stops as soon as it has done its
+   * job. It also chooses nothing — an expanded branch is an invitation, and
+   * selecting a structure on the reader's behalf would be an answer to a
+   * question they have not asked.
+   *
+   * @param {Array<object>} nodes the tree's root nodes
+   */
+  function firstPathToAStructure(nodes) {
+    const open = nodes.filter((node) => node.structureId === undefined).map((node) => node.nodeId);
+    let level = nodes;
+    // Walk down the first branch until one of its children is a structure.
+    while (level.length && !level.some((node) => node.structureId !== undefined)) {
+      const next = level.find((node) => node.structureId === undefined);
+      if (!next) break;
+      open.push(next.nodeId);
+      level = next.children;
+    }
+    return open;
+  }
+
   /** The one writer of expansion: the set, the DOM, and what is announced. */
   function setExpanded(nodeId, open) {
     const entry = branches.get(nodeId);
@@ -149,10 +178,8 @@ export function createAnatomyTreePanel(scene) {
   function render() {
     const tree = scene.getAnatomyTree();
     // Which branches the reader had open is theirs to keep across a rebuild;
-    // the first render opens the top level so the panel is not a row of arrows.
-    if (openGroups === null) {
-      openGroups = new Set(tree.filter((node) => node.structureId === undefined).map((node) => node.nodeId));
-    }
+    // the first render opens enough of the first branch to show a part name.
+    if (openGroups === null) openGroups = new Set(firstPathToAStructure(tree));
     rows.clear();
     branches.clear();
     parentOf.clear();

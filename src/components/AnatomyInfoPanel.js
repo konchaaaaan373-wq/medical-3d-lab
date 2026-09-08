@@ -25,8 +25,8 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
-  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Point to preview · click or tap to select' });
-  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: '触れて確認・クリック／タップで選択' });
+  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Select a structure on the model or in the list.' });
+  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: 'モデルまたは一覧から部位を選択してください。' });
   const bodyEn = el('p', {
     class: 'anatomy-copy lang-en',
     text: 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.',
@@ -80,8 +80,8 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
     if (!selection) {
       titleEn.textContent = 'Select a structure';
       titleJa.textContent = '部位を選択してください';
-      locationEn.textContent = 'Point to preview · click or tap to select';
-      locationJa.textContent = '触れて確認・クリック／タップで選択';
+      locationEn.textContent = 'Select a structure on the model or in the list.';
+      locationJa.textContent = 'モデルまたは一覧から部位を選択してください。';
       bodyEn.textContent = 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.';
       bodyJa.textContent = '自由に回転・拡大できます。解剖レイヤーで本来の位置にある深部構造を表示します。';
       noteEn.hidden = true;
@@ -109,8 +109,8 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
       return;
     }
     if (status.state === 'ready') {
-      countEn.textContent = `${status.selectableCount} selectable structures · hover previews, click pins`;
-      countJa.textContent = `${status.selectableCount}部位・触れて確認、クリックで固定`;
+      countEn.textContent = `${status.selectableCount} selectable structures`;
+      countJa.textContent = `${status.selectableCount}部位`;
       return;
     }
     countEn.textContent = 'Loading atlas…';

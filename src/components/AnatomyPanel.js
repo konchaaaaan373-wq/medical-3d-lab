@@ -1,5 +1,7 @@
 import { el } from '../utils/dom.js';
-import '../styles/anatomy-panel.css';
+// The stylesheet is imported by `src/main.js`, with the rest of the app's CSS.
+// Importing it from a component is how a component stops being testable under
+// `node --test`, which is where this panel's behaviour is checked.
 
 /**
  * The anatomy side panel: one selection, three ways of working with it.
@@ -108,8 +110,18 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
   // --- body: the tabs, and the one region that scrolls ----------------------
 
   const body = el('div', { class: 'anatomy-panel-body' });
+  /** Where each tab was left, so coming back is coming back. */
+  const scrollByTab = new Map(TABS.map((tab) => [tab.id, 0]));
   const tabButtons = new Map();
-  const tabList = el('div', { class: 'anatomy-panel-tabs', role: 'tablist', 'aria-label': 'Panel section / パネルの内容' },
+  /** The tab the Tab key lands on. Follows focus; the open tab is the default. */
+  let ringTab = TABS[0].id;
+
+  const tabList = el('div', {
+    class: 'anatomy-panel-tabs',
+    role: 'tablist',
+    'aria-label': 'Panel section / パネルの内容',
+    on: { keydown: onTabKeydown },
+  },
     TABS.map((tab) => {
       const button = el('button', {
         class: 'anatomy-panel-tab',
@@ -128,6 +140,64 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       return button;
     })
   );
+
+  /** Exactly one tab is in the tab ring, so Tab enters the list once. */
+  function setRingTab(id) {
+    ringTab = id;
+    for (const [tabId, button] of tabButtons) button.setAttribute('tabindex', tabId === id ? '0' : '-1');
+  }
+
+  function focusTab(id) {
+    setRingTab(id);
+    tabButtons.get(id)?.focus?.();
+  }
+
+  /**
+   * The tab list's own keyboard, which it did not have.
+   *
+   * Every tab but the open one had `tabindex="-1"` and nothing moved between
+   * them, so a keyboard reader could reach the list and then go no further: the
+   * two tabs they had not chosen were unreachable without a mouse.
+   *
+   * Arrows move focus and open nothing. That is the manual-activation pattern,
+   * and it is the right one here: the Display tab rebuilds a panel of controls
+   * and Detail swaps the whole body, so arrowing past them to reach the third
+   * would flash two surfaces the reader never asked for. Enter or Space opens.
+   */
+  function onTabKeydown(event) {
+    const ids = TABS.map((tab) => tab.id);
+    const current = [...tabButtons].find(([, button]) => button === event.target)?.[0] ?? ringTab;
+    const at = ids.indexOf(current);
+    let handled = true;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        focusTab(ids[(at + 1) % ids.length]);
+        break;
+      case 'ArrowLeft':
+        focusTab(ids[(at - 1 + ids.length) % ids.length]);
+        break;
+      case 'Home':
+        focusTab(ids[0]);
+        break;
+      case 'End':
+        focusTab(ids[ids.length - 1]);
+        break;
+      case 'Enter':
+      case ' ':
+        setTab(current);
+        focusTab(current);
+        break;
+      default:
+        handled = false;
+    }
+
+    if (!handled) return;
+    event.preventDefault();
+    // The scene binds arrows to seeking and Space to play/pause on `window`.
+    // Without this, choosing a tab scrubs the model behind the panel.
+    event.stopPropagation();
+  }
   body.id = 'anatomy-panel-body';
   body.setAttribute('role', 'tabpanel');
 
@@ -140,16 +210,25 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
 
   // The close control lives in the sheet's header, above the scrolling body, so
   // it is reachable from anywhere in a four-hundred-row list.
-  const sheet = el('div', { class: 'anatomy-panel-sheet' }, [
-    el('div', { class: 'anatomy-panel-sheet-head' }, [tabList, closeButton]),
-    body,
-  ]);
+  const sheetHead = el('div', { class: 'anatomy-panel-sheet-head' }, [tabList, closeButton]);
+  const sheet = el('div', { class: 'anatomy-panel-sheet' }, [sheetHead, body]);
+
+  /**
+   * Where the summary lives when the sheet is shut.
+   *
+   * It moves — the same element, never a copy — into the dialog when the sheet
+   * opens, because the selected structure and what you can do to it are part of
+   * the modal, not something behind it. Copying it instead would mean two
+   * summaries holding one selection, which is the duplicate state this panel
+   * exists to avoid.
+   */
+  const dock = el('div', { class: 'anatomy-panel-dock' }, [summary]);
 
   const element = el('section', {
     class: 'panel anatomy-panel',
     'aria-label': 'Anatomy / 解剖',
     dataset: { sheet: 'closed', layout: 'docked' },
-  }, [summary, sheet]);
+  }, [dock, sheet]);
 
   /**
    * Where the body lives: beside the model, or over it.
@@ -180,28 +259,49 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
   }
   sheetMedia?.addEventListener?.('change', applyLayout);
 
+  /**
+   * Show a tab.
+   *
+   * Two things this deliberately does not do. It does not rebuild when the tab
+   * asked for is the one already showing — `openSheet('parts')` calls this every
+   * time the Parts button is pressed, and rebuilding threw away the list
+   * position on every open. And it does not scroll to the top: each tab
+   * remembers where it was left, so leaving Parts for Display and coming back
+   * comes back, rather than starting the reader over at the top of four hundred
+   * structures.
+   */
   function setTab(id) {
     if (!TABS.some((tab) => tab.id === id)) return false;
+    if (id === activeTab && body.children?.length) {
+      setRingTab(id);
+      return true;
+    }
+
+    // Remember where the tab being left was, before its content goes away.
+    if (body.children?.length) scrollByTab.set(activeTab, body.scrollTop ?? 0);
+
     activeTab = id;
     for (const [tabId, button] of tabButtons) {
       const on = tabId === id;
       button.setAttribute('aria-selected', String(on));
-      button.tabIndex = on ? 0 : -1;
       button.classList.toggle('is-active', on);
     }
+    setRingTab(id);
     const tab = TABS.find((entry) => entry.id === id);
     body.setAttribute('aria-labelledby', `anatomy-tab-${id}`);
     body.dataset.tab = id;
     body.replaceChildren(tab.content);
-    // Each tab keeps its own scroll position; switching to a tab should show
-    // its top rather than wherever the previous one happened to be.
-    body.scrollTop = 0;
+    body.scrollTop = scrollByTab.get(id) ?? 0;
     return true;
   }
 
   // --- the sheet, on a phone or a short window -------------------------------
 
   const onKeydown = (event) => {
+    if (event.key === 'Tab') {
+      trapTab(event);
+      return;
+    }
     if (event.key !== 'Escape') return;
     event.stopPropagation();
     closeSheet();
@@ -212,41 +312,110 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     // Docked, the body is already on screen; there is nothing to open.
     if (sheetOpen || element.dataset.layout !== 'sheet') return;
     sheetOpen = true;
-    opener = document.activeElement instanceof HTMLElement ? document.activeElement : partsButton;
+    opener = partsButton;
     element.dataset.sheet = 'open';
     partsButton.setAttribute('aria-expanded', 'true');
+    // Inside the dialog it is redundant with the close control, and it would be
+    // a second way to do what the close button does.
+    partsButton.hidden = true;
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-modal', 'true');
     sheet.setAttribute('aria-label', 'Parts / 部位');
-    // Everything behind the sheet stops being reachable — by pointer, by Tab
-    // and to a screen reader — which is what makes this a modal rather than a
-    // panel that happens to be on top.
-    for (const sibling of backdropTargets()) sibling.inert = true;
+    // The summary joins the dialog. Non-scrolling, above the body, so the
+    // structure a reader picked stays named while the list moves under it.
+    sheet.replaceChildren(summary, sheetHead, body);
+    makeBackgroundInert();
     document.addEventListener('keydown', onKeydown, true);
-    tabButtons.get(activeTab)?.focus();
+    focusTab(activeTab);
+    // Last, and only now that the sheet is on screen. A hidden element has no
+    // scroll position, so the browser reset this to 0 the moment the sheet was
+    // closed — which no headless test could see, because a fake element's
+    // `scrollTop` is just a number that stays where it is put.
+    body.scrollTop = scrollByTab.get(activeTab) ?? 0;
   }
 
   function closeSheet() {
     if (!sheetOpen) return;
+    // First, while the sheet is still on screen. Setting `data-sheet` below
+    // hides it, and a hidden element's scroll position is already 0 by the time
+    // anything else runs — which is exactly how this was got wrong the first
+    // time, in code that looked like it was saving the value.
+    scrollByTab.set(activeTab, body.scrollTop ?? 0);
     sheetOpen = false;
     element.dataset.sheet = 'closed';
+    partsButton.hidden = false;
     partsButton.setAttribute('aria-expanded', 'false');
     sheet.removeAttribute('role');
     sheet.removeAttribute('aria-modal');
     sheet.removeAttribute('aria-label');
-    for (const sibling of backdropTargets()) sibling.inert = false;
+    sheet.replaceChildren(sheetHead, body);
+    dock.replaceChildren(summary);
+    restoreBackground();
     document.removeEventListener('keydown', onKeydown, true);
     // Back to the control that opened it, so the reader is where they were and
     // not at the top of the document.
-    (opener?.isConnected ? opener : partsButton).focus?.();
+    (opener ?? partsButton).focus?.();
     opener = null;
   }
 
-  /** Everything the sheet covers: the whole UI except this panel. */
-  function backdropTargets() {
-    const root = element.closest('#ui') ?? element.parentElement;
-    if (!root) return [];
-    return [...root.children].filter((child) => !child.contains(element));
+  /**
+   * Everything the dialog is not.
+   *
+   * Walking up from the panel and marking every *sibling* at each level — not
+   * just the children of `#ui`. The first attempt excused the whole branch that
+   * contained the panel, which meant the rail holding it was left live: the
+   * language toggle and the feedback button sat behind an open modal, reachable
+   * by Tab and by pointer.
+   *
+   * What each node's `inert` was is remembered, because a region that was
+   * already inert for its own reasons must not be turned back on by closing
+   * this.
+   */
+  const inertBefore = new Map();
+
+  function makeBackgroundInert() {
+    const root = element.closest?.('#ui') ?? element.parentElement;
+    for (let node = element; node && node !== root; node = node.parentElement) {
+      for (const sibling of node.parentElement?.children ?? []) {
+        if (sibling === node || !sibling || typeof sibling !== 'object') continue;
+        if (!inertBefore.has(sibling)) inertBefore.set(sibling, Boolean(sibling.inert));
+        sibling.inert = true;
+      }
+    }
+  }
+
+  function restoreBackground() {
+    for (const [node, was] of inertBefore) node.inert = was;
+    inertBefore.clear();
+  }
+
+  /**
+   * Keep Tab inside the dialog.
+   *
+   * `inert` stops the background taking focus, but the ring still runs off the
+   * end of the document and back to the browser chrome, which on a phone is how
+   * a reader loses the sheet without closing it. Wrapping at both ends is the
+   * whole of a focus trap when everything else is already inert.
+   */
+  const FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
+    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+
+  function trapTab(event) {
+    const stops = [...(sheet.querySelectorAll?.(FOCUSABLE) ?? [])].filter(
+      (node) => !node.hidden && node.offsetParent !== null
+    );
+    if (!stops.length) return;
+    const first = stops[0];
+    const last = stops[stops.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !sheet.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   // --- selection, isolation, and the rule about hover ------------------------
@@ -273,10 +442,14 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       whereJa.textContent = value.breadcrumbJa ?? '';
       if (value.color) swatch.style.setProperty('--anatomy-color', value.color);
     } else {
-      nameEn.textContent = 'Select a structure';
-      nameJa.textContent = '部位を選択してください';
-      whereEn.textContent = 'Point to preview · click or tap to select';
-      whereJa.textContent = '触れて確認・クリック／タップで選択';
+      // One sentence, and it assumes neither a mouse nor a finger. It used to
+      // be two — a name slot saying "Select a structure" and a line under it
+      // saying "Point to preview", which is an instruction a touch device
+      // cannot follow and a second copy of the same request.
+      nameEn.textContent = 'Select a structure on the model or in the list.';
+      nameJa.textContent = 'モデルまたは一覧から部位を選択してください。';
+      whereEn.textContent = '';
+      whereJa.textContent = '';
       swatch.style.removeProperty('--anatomy-color');
     }
     element.dataset.pinned = selection ? 'yes' : 'no';
@@ -326,6 +499,10 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     },
     dispose() {
       closeSheet();
+      // Belt and braces: a panel torn down mid-open must not leave the rest of
+      // the app frozen behind a dialog that no longer exists.
+      restoreBackground();
+      document.removeEventListener('keydown', onKeydown, true);
       sheetMedia?.removeEventListener?.('change', applyLayout);
       unsubscribeSelection?.();
       unsubscribeHover?.();

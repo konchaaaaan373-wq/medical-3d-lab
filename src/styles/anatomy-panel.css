@@ -20,6 +20,18 @@
 
 /* ---------- summary: cannot be scrolled away, because it is not in the scroller */
 
+/* Its home while the sheet is shut. When the sheet opens the summary moves
+   into the dialog — the same element, so there is one of it and one selection
+   state — and this is left empty. */
+.anatomy-panel-dock {
+  flex: none;
+  min-height: 0;
+}
+
+.anatomy-panel-dock:empty {
+  display: none;
+}
+
 .anatomy-panel-summary {
   flex: none;
   display: flex;
@@ -114,6 +126,13 @@
 .anatomy-panel[data-layout='docked'] .anatomy-panel-open,
 .anatomy-panel[data-layout='docked'] .anatomy-panel-close {
   display: none;
+}
+
+/* Inside the dialog the summary is the dialog's own header: it keeps its row,
+   above the tabs, and the body below it is the only thing that moves. */
+.anatomy-panel[data-sheet='open'] .anatomy-panel-sheet > .anatomy-panel-summary {
+  flex: none;
+  padding-bottom: 10px;
 }
 
 /* ---------- body: the one region that scrolls */

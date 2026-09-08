@@ -36,9 +36,18 @@ isolateStructure(id)  / clearIsolation() / getAnatomyIsolation() / onAnatomyIsol
 - 表示タブは既存 `InspectionPanel` と既存 legend をそのまま入れています（`embedded: true`
   で閉じるボタンだけ外す）。**同じパネルを二重生成していません**
 - 高さ 520px 未満でツリーを消す応急処置は**撤去**
-- スマホ・低い画面（`max-width:820px` または `max-height:560px`）では本文がシート化。
-  背景 inert／Esc／フォーカス移動と復帰／閉じるボタンは本文の外。開閉・回転で
-  選択 ID・展開状態・スクロール位置は保持（DOM を作り直しません）
+- スマホ・低い画面（`max-width:820px` または `max-height:560px`）では本文がシート化し、
+  **選択概要は同じ DOM のまま dialog 内へ移動**します（複製しないので選択状態は 1 つ）。
+  閉じるとドックへ戻ります。背景は**祖先をたどって兄弟をすべて** inert にし、元の
+  inert 状態を記録して復元。Esc／閉じるボタン／Tab・Shift+Tab のラップ／
+  フォーカス復帰つき。リサイズ・dispose でも背景を固まったままにしません
+- **タブ自体のキーボード**: 左右で移動、Home/End、Enter・Space で開く。
+  フォーカス移動は開きません（Display は操作パネル、Detail は本文ごと差し替わるので、
+  通り過ぎるだけで 2 面が点滅するのを避けるため）。扱うキーは `stopPropagation`
+- **スクロール位置はタブごとに記憶**。同じタブの再指定では作り直しません。
+  閉じる直前に（＝隠す前に）読み取り、開いた直後に戻します——隠れた要素の
+  `scrollTop` はすでに 0 で、隠したあとに読む実装は「保存しているように見えて
+  保存していない」コードになります
 - **コンソールの「観察」ボタンは解剖シーンでは出しません** — 表示コントロールは
   パネルのタブが入口で、入口は 1 つ。病態シーンのコンソールは無変更
 
@@ -64,16 +73,19 @@ production ビルドで再確認済み。現在 revision **6** / digest `584cdfe
 
 ## 検証（Chromium 141.0.7390.37 / production ビルド）
 
-`npm test` **1656 pass / 0 fail**、build、`verify:site`、`revisions:check`、`cards:check`、
-`budget`、`verify:ui`（6 viewport、全緑）、`verify:anatomy`（拡張：hover 分離・キーボード・
-`aria-expanded` 一致・シートの開閉と状態保持）すべて緑。
+`npm test` **1663 pass / 0 fail**、build、`verify:site`、`revisions:check`、`cards:check`、
+`budget`、**`verify:ui`（Chromium のみ・6 viewport 全緑。Firefox / WebKit は CI 側）**、
+`verify:anatomy`（hover 分離・ツリーとタブのキーボード・`aria-expanded` 一致・
+モーダルの境界とフォーカストラップ・スクロール位置の保持）すべて緑。
+
+`verify:anatomy` は**壊して確かめて**あります: inert の走査を panel の兄弟だけに戻すと
+「the sheet is open and 16 control(s) outside it are still live」と名指しで落ちます。
+途中で止まった場合も、それまでに見つけた指摘を捨てずに報告します。
 
 画像は 1280×720 / 375×667 / 844×390 / 320×568。対象 SHA・ブラウザ・状態は PR 本文に記載。
 
 ## 残る課題
 
-- **F-34（P2）** 初期表示で leaf が 1 件も見えない（最上位 group だけ開く）
-- **F-35（P3）** 未選択時の案内が hover 前提の文言
 - **F-32（P2・B3）** ツリー最上位が atlas の命名で不揃い
 - **未実施**: 実機タッチ・回転・スクリーンリーダー（`role="tree"` と `aria-expanded` は
   マークアップと挙動として検証済みで、VoiceOver で読めることの確認ではありません）

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { BrainAnatomyScene } from '../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js';
 import { createAnatomyTreePanel } from '../src/components/AnatomyTreePanel.js';
 import { createAnatomyInfoPanel } from '../src/components/AnatomyInfoPanel.js';
+import { createAnatomyPanel } from '../src/components/AnatomyPanel.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 import {
   ANATOMY_CONTRACT_METHODS,
@@ -600,5 +601,358 @@ test('anatomy panels: a re-attached atlas leaves nothing of the old one in the D
     tree.dispose();
     scene.dispose();
     restore();
+  }
+});
+
+/**
+ * The panel, mounted against a real scene.
+ *
+ * `createAnatomyPanel` reaches for `window.matchMedia` and for `document`, so
+ * both are stood up here. The media query is switchable, because half of what
+ * this component promises is about the layout it is in.
+ */
+function mountPanel({ sheet = false } = {}) {
+  const scene = buildScene();
+  const restoreDocument = installFakeDocument();
+  document.documentElement = new FakeElement('html');
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  document.activeElement = null;
+
+  const previousWindow = globalThis.window;
+  const listeners = new Set();
+  const media = {
+    matches: sheet,
+    addEventListener: (_type, fn) => listeners.add(fn),
+    removeEventListener: (_type, fn) => listeners.delete(fn),
+  };
+  globalThis.window = {
+    matchMedia: () => media,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+
+  const tree = createAnatomyTreePanel(scene);
+  const info = createAnatomyInfoPanel(scene, { heading: false });
+  const display = new FakeElement('section');
+  display.className = 'panel inspection-panel';
+  const panel = createAnatomyPanel({ scene, tree, display, legend: null, detail: info.element });
+
+  return {
+    scene,
+    tree,
+    panel,
+    /** Flip the media query the way a rotation would. */
+    setSheet(next) {
+      media.matches = next;
+      for (const fn of listeners) fn(media);
+    },
+    restore() {
+      panel.dispose();
+      tree.dispose();
+      info.dispose();
+      scene.dispose();
+      restoreDocument();
+      if (previousWindow === undefined) delete globalThis.window;
+      else globalThis.window = previousWindow;
+    },
+  };
+}
+
+/** The panel's scrolling region, as the component built it. */
+const bodyOf = (panel) => findByClass(panel.element, 'anatomy-panel-body')[0];
+const tabOf = (panel, id) =>
+  findByClass(panel.element, 'anatomy-panel-tab').find((button) => button.getAttribute('id') === `anatomy-tab-${id}`);
+
+test('anatomy panel: the list keeps its place across closing and across tabs', () => {
+  const mounted = mountPanel({ sheet: true });
+  const { panel } = mounted;
+  try {
+    panel.openSheet('parts');
+    const body = bodyOf(panel);
+
+    // Scroll somewhere a reader would actually be. The assertion that this is
+    // non-zero comes first on purpose: comparing 0 to 0 afterwards would call
+    // a panel that resets on every switch "preserved".
+    body.scrollHeight = 4000;
+    body.clientHeight = 300;
+    body.scrollTop = 1800;
+    assert.ok(body.scrollTop > 0, 'the list is genuinely scrolled before anything is compared');
+    const parked = body.scrollTop;
+
+    // Close, reopen: the same place. The zeroing in between is what a browser
+    // actually does — a hidden element has no scroll position — and without it
+    // this test passes against a panel that restores nothing. It also has to
+    // happen *after* `closeSheet`, because that is when the browser does it:
+    // reading the position inside `closeSheet` after hiding the sheet reads 0,
+    // and looks from here exactly like code that saves it.
+    panel.closeSheet();
+    bodyOf(panel).scrollTop = 0;
+    panel.openSheet('parts');
+    assert.equal(bodyOf(panel).scrollTop, parked, 'reopening the parts sheet lost the list position');
+
+    // Parts → Display → Parts: the same place.
+    panel.setTab('display');
+    panel.setTab('parts');
+    assert.equal(bodyOf(panel).scrollTop, parked, 'going away to Display and back lost the list position');
+
+    // Asking for the tab that is already showing changes nothing.
+    panel.setTab('parts');
+    assert.equal(bodyOf(panel).scrollTop, parked, 're-selecting the open tab reset it');
+
+    // Each tab keeps its own place rather than sharing one.
+    panel.setTab('display');
+    bodyOf(panel).scrollTop = 120;
+    panel.setTab('parts');
+    assert.equal(bodyOf(panel).scrollTop, parked);
+    panel.setTab('display');
+    assert.equal(bodyOf(panel).scrollTop, 120, 'the Display tab lost its own position');
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: the selection and the open branches survive the sheet closing', () => {
+  const mounted = mountPanel({ sheet: true });
+  const { panel, tree, scene } = mounted;
+  try {
+    panel.openSheet('parts');
+    scene.selectStructure(325);
+    const branches = findByClass(tree.element, 'anatomy-tree-branch');
+    const openBefore = branches.filter((b) => b.getAttribute('aria-expanded') === 'true').length;
+    assert.ok(openBefore > 0);
+
+    panel.closeSheet();
+    panel.openSheet('parts');
+
+    assert.equal(scene.getAnatomySelection()?.id, 325);
+    assert.equal(
+      findByClass(tree.element, 'anatomy-tree-branch').filter((b) => b.getAttribute('aria-expanded') === 'true').length,
+      openBefore
+    );
+    assert.equal(
+      findByClass(tree.element, 'anatomy-tree-leaf').filter((r) => r.getAttribute('aria-selected') === 'true').length,
+      1
+    );
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: the tabs answer the keyboard, with no mouse anywhere', () => {
+  const mounted = mountPanel();
+  const { panel } = mounted;
+  try {
+    const tabs = findByClass(panel.element, 'anatomy-panel-tab');
+    assert.equal(tabs.length, 3);
+    const tabList = findByClass(panel.element, 'anatomy-panel-tabs')[0];
+
+    // One stop in the tab ring, on the tab that is open.
+    const inRing = () => tabs.filter((tab) => tab.getAttribute('tabindex') === '0');
+    assert.equal(inRing().length, 1);
+    assert.equal(inRing()[0], tabOf(panel, 'parts'));
+
+    let focused = tabOf(panel, 'parts');
+    const key = (name) => {
+      let stopped = false;
+      tabList.dispatchEvent({
+        type: 'keydown',
+        key: name,
+        target: focused,
+        preventDefault() {},
+        stopPropagation() { stopped = true; },
+      });
+      focused = inRing()[0];
+      return stopped;
+    };
+    const openTab = () => tabs.find((tab) => tab.getAttribute('aria-selected') === 'true');
+
+    // Parts → Display → Detail → Parts, by keyboard alone.
+    assert.equal(key('ArrowRight'), true, 'the tab list stops the key reaching the scene');
+    assert.equal(focused, tabOf(panel, 'display'), 'ArrowRight moved focus');
+    assert.equal(openTab(), tabOf(panel, 'parts'), 'and did not open it: moving focus is not choosing');
+    key('Enter');
+    assert.equal(openTab(), tabOf(panel, 'display'), 'Enter opened the focused tab');
+    assert.equal(bodyOf(panel).getAttribute('aria-labelledby'), 'anatomy-tab-display');
+
+    key('ArrowRight');
+    key(' ');
+    assert.equal(openTab(), tabOf(panel, 'detail'), 'Space opens it too');
+
+    key('ArrowRight');
+    assert.equal(focused, tabOf(panel, 'parts'), 'the ends wrap');
+    key('Enter');
+    assert.equal(openTab(), tabOf(panel, 'parts'));
+
+    key('End');
+    assert.equal(focused, tabOf(panel, 'detail'));
+    key('Home');
+    assert.equal(focused, tabOf(panel, 'parts'));
+    key('ArrowLeft');
+    assert.equal(focused, tabOf(panel, 'detail'), 'and wrap the other way');
+
+    // Whatever is focused, exactly one tab is in the ring and the three states
+    // agree: what is announced, what is reachable, and what the body shows.
+    assert.equal(inRing().length, 1);
+    key('Enter');
+    for (const tab of tabs) {
+      const open = tab === openTab();
+      assert.equal(tab.getAttribute('aria-selected'), String(open), tab.getAttribute('id'));
+    }
+    assert.equal(bodyOf(panel).getAttribute('aria-labelledby'), `${openTab().getAttribute('id')}`);
+
+    // A key the tabs do not handle is left for the scene.
+    focused = tabOf(panel, 'parts');
+    assert.equal(key('r'), false, 'r is the scene reset');
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: the open sheet is the whole modal, summary included', () => {
+  const mounted = mountPanel({ sheet: true });
+  const { panel } = mounted;
+  try {
+    const summary = findByClass(panel.element, 'anatomy-panel-summary')[0];
+    const sheet = findByClass(panel.element, 'anatomy-panel-sheet')[0];
+    const dock = findByClass(panel.element, 'anatomy-panel-dock')[0];
+    assert.ok(dock, 'there is a docked home for the summary');
+    assert.ok(dock.children.includes(summary), 'and it starts there');
+
+    panel.openSheet('parts');
+    // The selected structure and what you can do to it are inside the dialog,
+    // not behind it — and it is the same element, so there is one of it.
+    assert.ok(sheet.children.includes(summary), 'the summary did not move into the dialog');
+    assert.equal(dock.children.includes(summary), false);
+    assert.equal(findByClass(panel.element, 'anatomy-panel-summary').length, 1, 'the summary was duplicated');
+    // Non-scrolling: the summary and the tabs are siblings of the body, not in it.
+    assert.equal(bodyOf(panel).children.includes(summary), false);
+    assert.equal(sheet.children.includes(findByClass(panel.element, 'anatomy-panel-close')[0]), false);
+    const head = findByClass(panel.element, 'anatomy-panel-sheet-head')[0];
+    assert.ok(head.children.includes(findByClass(panel.element, 'anatomy-panel-close')[0]));
+
+    panel.closeSheet();
+    assert.ok(dock.children.includes(summary), 'closing did not put the summary back');
+    assert.equal(findByClass(panel.element, 'anatomy-panel-summary').length, 1);
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: nothing outside the dialog stays reachable, and it all comes back', () => {
+  const mounted = mountPanel({ sheet: true });
+  const { panel } = mounted;
+
+  // The rail the panel lives in, with a control of its own beside it — the case
+  // the first attempt missed by excusing the whole branch that contained the
+  // panel, leaving the rail's own buttons live behind the modal.
+  const rail = new FakeElement('div');
+  rail.className = 'rail';
+  const railButtons = new FakeElement('div');
+  railButtons.className = 'rail-buttons';
+  const stage = new FakeElement('div');
+  stage.className = 'stage';
+  // A region already inert for its own reasons has to come back as it was.
+  const legal = new FakeElement('div');
+  legal.className = 'legal-overlay';
+  legal.inert = true;
+  const ui = new FakeElement('div');
+  ui.id = 'ui';
+  ui.append(stage, legal, rail);
+  rail.append(panel.element, railButtons);
+
+  try {
+    panel.openSheet('parts');
+    assert.equal(railButtons.inert, true, 'a control in the same rail is still reachable behind the modal');
+    assert.equal(stage.inert, true, 'the model behind the sheet is still reachable');
+    assert.equal(panel.element.inert ?? false, false, 'the panel itself must stay live');
+    assert.equal(rail.inert ?? false, false, 'the branch holding the dialog must stay live');
+
+    panel.closeSheet();
+    assert.equal(railButtons.inert, false, 'closing left the rail inert');
+    assert.equal(stage.inert, false, 'closing left the model inert');
+    assert.equal(legal.inert, true, 'a region that was inert before must stay inert');
+
+    // Rotating to a docked layout while open, and disposal, both have to leave
+    // the background operable rather than frozen.
+    panel.openSheet('parts');
+    assert.equal(railButtons.inert, true);
+    mounted.setSheet(false);
+    assert.equal(railButtons.inert, false, 'rotating out of the sheet layout left the background inert');
+
+    mounted.setSheet(true);
+    panel.openSheet('parts');
+    assert.equal(railButtons.inert, true);
+    panel.dispose();
+    assert.equal(railButtons.inert, false, 'disposing while open left the background inert');
+    assert.equal(stage.inert, false);
+    assert.equal(legal.inert, true);
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: the first open shows a structure, without choosing one', () => {
+  const mounted = mountPanel({ sheet: true });
+  const { panel, tree, scene } = mounted;
+  try {
+    // Only groups at the top level is a list of arrows: a reader who came to
+    // see what is there has to guess twice before a part name appears.
+    const visibleLeaves = () => {
+      const reachable = (row) => {
+        let node = row;
+        while (node) {
+          const parent = findByClass(tree.element, 'anatomy-tree-children').find((group) => group.children.includes(node));
+          if (!parent) return true;
+          if (parent.hidden) return false;
+          node = findByClass(tree.element, 'anatomy-tree-branch').find((branch) => branch.children.includes(parent));
+        }
+        return true;
+      };
+      return findByClass(tree.element, 'anatomy-tree-leaf').filter(reachable);
+    };
+    assert.ok(visibleLeaves().length > 0, 'no structure is visible when the panel is first opened');
+
+    // Opening a branch is not choosing a structure.
+    assert.equal(scene.getAnatomySelection(), null);
+
+    // Nor is it a licence to keep re-opening what the reader closed.
+    const branches = findByClass(tree.element, 'anatomy-tree-branch');
+    for (const branch of branches) {
+      if (branch.getAttribute('aria-expanded') === 'true') branch.children[0].click();
+    }
+    const closed = branches.filter((b) => b.getAttribute('aria-expanded') === 'true').length;
+    assert.equal(closed, 0);
+    panel.closeSheet();
+    panel.openSheet('parts');
+    assert.equal(
+      findByClass(tree.element, 'anatomy-tree-branch').filter((b) => b.getAttribute('aria-expanded') === 'true').length,
+      0,
+      'reopening re-expanded branches the reader had closed'
+    );
+  } finally {
+    mounted.restore();
+  }
+});
+
+test('anatomy panel: the prompt does not assume a mouse, and is said once', () => {
+  const mounted = mountPanel();
+  const { panel } = mounted;
+  try {
+    const text = (node, out = []) => {
+      if (node.textContent) out.push(node.textContent);
+      for (const child of node.children ?? []) text(child, out);
+      return out;
+    };
+    const said = text(panel.element);
+    assert.ok(said.includes('モデルまたは一覧から部位を選択してください。'));
+    assert.ok(said.includes('Select a structure on the model or in the list.'));
+    for (const line of ['モデルまたは一覧から部位を選択してください。', 'Select a structure on the model or in the list.']) {
+      assert.equal(said.filter((item) => item === line).length, 1, `"${line}" is on the screen twice`);
+    }
+    // "Point to preview" is a mouse instruction on a device that cannot hover.
+    assert.equal(said.some((line) => /Point to preview|触れて確認/.test(line)), false);
+  } finally {
+    mounted.restore();
   }
 });

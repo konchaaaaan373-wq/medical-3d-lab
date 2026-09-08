@@ -233,7 +233,7 @@ try {
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.waitForTimeout(250);
   };
-  const EMPTY = 'Select a structure';
+  const EMPTY = 'Select a structure on the model or in the list.';
   const clickAt = async (fx, fy) => {
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
     await page.waitForTimeout(350);
@@ -466,6 +466,37 @@ try {
   } else {
     problems.push('the scene offers no named viewpoints');
   }
+  // 6b. The tabs are reachable and operable without a mouse.
+  await tab('部位').click();
+  await page.waitForTimeout(200);
+  await page.locator('.anatomy-panel-tab[aria-selected="true"]').focus();
+  const openTabId = () => page.evaluate(() =>
+    document.querySelector('.anatomy-panel-tab[aria-selected="true"]')?.id ?? null
+  );
+  const focusedTabId = () => page.evaluate(() => document.activeElement?.id ?? null);
+  if ((await focusedTabId()) !== 'anatomy-tab-parts') problems.push('the open tab is not the one the tab ring lands on');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(120);
+  if ((await focusedTabId()) !== 'anatomy-tab-display') problems.push('ArrowRight did not move focus along the tabs');
+  if ((await openTabId()) !== 'anatomy-tab-parts') problems.push('moving focus along the tabs opened one');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  if ((await openTabId()) !== 'anatomy-tab-display') problems.push('Enter did not open the focused tab');
+  await page.keyboard.press('End');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  if ((await openTabId()) !== 'anatomy-tab-detail') problems.push('End then Enter did not reach the last tab');
+  await page.keyboard.press('Home');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(200);
+  if ((await openTabId()) !== 'anatomy-tab-parts') problems.push('Home then Enter did not return to the first tab');
+  // And Tab from the tab list reaches the body it controls.
+  await page.keyboard.press('Tab');
+  await page.waitForTimeout(150);
+  if (!(await page.evaluate(() => document.querySelector('.anatomy-panel-body').contains(document.activeElement)))) {
+    problems.push('Tab from the tab list did not reach the panel body');
+  }
+
   // 7. On a phone the body is a sheet, and a sheet has obligations.
   await page.setViewportSize({ width: 375, height: 667 });
   await page.waitForTimeout(400);
@@ -480,6 +511,28 @@ try {
     await openButton.focus();
     await openButton.click();
     await page.waitForTimeout(400);
+
+    // Whether anything outside the dialog is still live, asked *first*. It is
+    // the check most likely to be the reason a later step cannot click what it
+    // means to: a background left reachable is a background still on top, and a
+    // timeout is a worse way to learn that than a sentence.
+    const outsideReachable = await page.evaluate(() => {
+      const sheet = document.querySelector('.anatomy-panel-sheet');
+      const live = (node) => {
+        for (let at = node; at; at = at.parentElement) if (at.inert) return false;
+        return true;
+      };
+      return [...document.querySelectorAll('button, a[href], input, select, textarea')]
+        .filter((node) => !sheet.contains(node) && node.getClientRects().length > 0 && live(node))
+        .map((node) => `${node.tagName.toLowerCase()}.${node.className}`.slice(0, 60));
+    });
+    if (outsideReachable.length) {
+      problems.push(
+        `the sheet is open and ${outsideReachable.length} control(s) outside it are still live: ` +
+          outsideReachable.slice(0, 4).join('; ')
+      );
+    }
+
     // The sheet opens on whichever tab was last shown; the parts are what this
     // section is about.
     await tab('部位').click();
@@ -488,28 +541,75 @@ try {
     const opened = await page.evaluate(() => {
       const panel = document.querySelector('.anatomy-panel');
       const sheet = document.querySelector('.anatomy-panel-sheet');
-      const root = panel.closest('#ui');
+      const summary = document.querySelector('.anatomy-panel-summary');
+      const body = document.querySelector('.anatomy-panel-body');
+      const close = document.querySelector('.anatomy-panel-close');
+      /** Whether a point on an element is actually that element. */
+      const usable = (node) => {
+        const box = node.getBoundingClientRect();
+        if (box.width < 1 || box.height < 1) return false;
+        if (box.top < 0 || box.bottom > window.innerHeight) return false;
+        const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+        return Boolean(hit && (node === hit || node.contains(hit)));
+      };
       return {
         open: panel.dataset.sheet,
         modal: sheet.getAttribute('aria-modal'),
         focusInside: sheet.contains(document.activeElement),
-        // Everything behind it is out of reach — by pointer, by Tab and to a
-        // screen reader — which is what makes this a modal and not a panel on top.
-        backgroundInert: [...root.children]
-          .filter((child) => !child.contains(panel))
-          .every((child) => child.inert),
+        // The summary is part of the dialog, not something left behind it.
+        summaryInDialog: sheet.contains(summary),
+        summaryOutsideBody: !body.contains(summary),
+        // Both the summary and the isolate control are on screen and are what
+        // is painted where they are — the check the previous version computed
+        // and then did not use.
+        summaryUsable: usable(summary),
+        isolateUsable: [...document.querySelectorAll('.anatomy-panel-action')]
+          .filter((node) => !node.hidden)
+          .every(usable),
         // The close control is above the scrolling body, so a reader four
         // hundred rows down does not have to scroll back to leave.
-        closeAboveBody:
-          document.querySelector('.anatomy-panel-close').getBoundingClientRect().bottom <=
-          document.querySelector('.anatomy-panel-body').getBoundingClientRect().top + 1,
+        closeAboveBody: close.getBoundingClientRect().bottom <= body.getBoundingClientRect().top + 1,
       };
     });
     if (opened.open !== 'open') problems.push('the Parts button did not open the sheet');
     if (opened.modal !== 'true') problems.push('the sheet does not announce itself as a modal');
     if (!opened.focusInside) problems.push('opening the sheet left focus outside it');
-    if (!opened.backgroundInert) problems.push('the sheet is open and the background behind it is still reachable');
+    if (!opened.summaryInDialog) problems.push('the selection summary is outside the dialog it belongs to');
+    if (!opened.summaryOutsideBody) problems.push('the selection summary is inside the scrolling body');
+    if (!opened.summaryUsable) problems.push('the selection summary is off screen or covered while the sheet is open');
+    if (!opened.isolateUsable) problems.push('a main action is off screen or covered while the sheet is open');
     if (!opened.closeAboveBody) problems.push('the close control is inside the scrolling list rather than above it');
+
+    // And the ring does not run off the end. Tab from the last stop and
+    // Shift+Tab from the first both have to come back inside.
+    //
+    // Note what this can and cannot separate: with the background fully inert
+    // there is nothing else in the document for focus to land on, so this
+    // passes whether the wrap comes from the trap or from there being nowhere
+    // else to go. It checks the outcome a reader gets, not which mechanism
+    // produced it — the trap stays because inert is not the only thing between
+    // a reader and the browser's own chrome.
+    const inDialog = () => page.evaluate(() =>
+      document.querySelector('.anatomy-panel-sheet').contains(document.activeElement)
+    );
+    await page.evaluate(() => {
+      const sheet = document.querySelector('.anatomy-panel-sheet');
+      const stops = [...sheet.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])')]
+        .filter((node) => !node.hidden && node.getClientRects().length > 0);
+      stops[stops.length - 1]?.focus();
+    });
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(120);
+    if (!(await inDialog())) problems.push('Tab from the last control left the dialog');
+    await page.evaluate(() => {
+      const sheet = document.querySelector('.anatomy-panel-sheet');
+      const stops = [...sheet.querySelectorAll('button, a[href], [tabindex]:not([tabindex="-1"])')]
+        .filter((node) => !node.hidden && node.getClientRects().length > 0);
+      stops[0]?.focus();
+    });
+    await page.keyboard.press('Shift+Tab');
+    await page.waitForTimeout(120);
+    if (!(await inDialog())) problems.push('Shift+Tab from the first control left the dialog');
 
     // Select from the list while it is open, scrolled well down — the case
     // F-31 was about: the answer must not be somewhere the reader cannot see.
@@ -521,14 +621,23 @@ try {
     await deep.click();
     await page.waitForTimeout(300);
 
+    // The point of the whole layout: the answer stays visible and usable while
+    // the list is scrolled. Both halves are asserted — on screen, and what is
+    // actually painted there.
     const summaryReadable = await page.evaluate(() => {
       const summary = document.querySelector('.anatomy-panel-summary');
       const box = summary.getBoundingClientRect();
       const point = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      return { onScreen: box.top >= 0 && box.bottom <= window.innerHeight, own: summary.contains(point) };
+      return {
+        onScreen: box.top >= 0 && box.bottom <= window.innerHeight,
+        own: Boolean(point && (summary === point || summary.contains(point))),
+      };
     });
     if (!summaryReadable.onScreen) {
       problems.push('after selecting a row well down the list, the summary is off screen');
+    }
+    if (!summaryReadable.own) {
+      problems.push('after selecting a row well down the list, something else is painted over the summary');
     }
 
     // What the reader is holding, before it is put away.
@@ -542,18 +651,37 @@ try {
     await page.waitForTimeout(400);
     const closed = await page.evaluate(() => {
       const panel = document.querySelector('.anatomy-panel');
-      const root = panel.closest('#ui');
+      const summary = panel.querySelector('.anatomy-panel-summary');
+      const anyInert = [...document.querySelectorAll('#ui *')].some((node) => node.inert);
       return {
         open: panel.dataset.sheet,
         focusReturned: document.activeElement?.classList.contains('anatomy-panel-open') ?? false,
-        backgroundLive: [...root.children].filter((child) => !child.contains(panel)).every((child) => !child.inert),
-        summaryVisible: panel.querySelector('.anatomy-panel-summary').getBoundingClientRect().height > 0,
+        backgroundLive: !anyInert,
+        // Back in its dock, and still one of it.
+        summaryVisible: summary.getBoundingClientRect().height > 0,
+        summaryDocked: Boolean(summary.closest('.anatomy-panel-dock')),
+        summaryCount: document.querySelectorAll('.anatomy-panel-summary').length,
       };
     });
     if (closed.open !== 'closed') problems.push('Escape did not close the sheet');
     if (!closed.focusReturned) problems.push('closing the sheet did not return focus to the button that opened it');
     if (!closed.backgroundLive) problems.push('closing the sheet left the background inert');
     if (!closed.summaryVisible) problems.push('the summary is not on screen once the sheet is closed');
+    if (!closed.summaryDocked) problems.push('closing the sheet did not put the summary back in the panel');
+    if (closed.summaryCount !== 1) problems.push(`there are ${closed.summaryCount} selection summaries on the page`);
+
+    // And the background genuinely works again: a control outside the panel
+    // takes focus, which `inert` would refuse.
+    const backgroundWorks = await page.evaluate(() => {
+      const outside = [...document.querySelectorAll('button')].find(
+        (node) => !node.closest('.anatomy-panel') && node.getClientRects().length > 0
+      );
+      if (!outside) return null;
+      outside.focus();
+      return document.activeElement === outside;
+    });
+    if (backgroundWorks === false) problems.push('after closing, a control outside the panel still cannot take focus');
+    if (backgroundWorks === null) notes.push('no control outside the panel was on screen to re-test the background with.');
 
     // The selection made in the sheet survives closing it, and the summary says so.
     const afterClose = await read();
@@ -585,6 +713,12 @@ try {
     await page.waitForTimeout(300);
     await shot('brain-phone');
   }
+} catch (error) {
+  // A step that cannot complete is a finding, not a reason to throw away the
+  // findings collected before it. Breaking the modal boundary made a later
+  // click time out, and the timeout discarded the sentence that said why — so
+  // the run reported a stack trace where it had already worked out the cause.
+  problems.push(`the drive stopped: ${error.message.split('\n')[0]}`);
 } finally {
   await browser.close();
   server.close();

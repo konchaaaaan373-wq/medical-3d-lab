@@ -69,6 +69,7 @@ export class FakeElement {
     this.style = new FakeStyle();
     this.hidden = false;
     this.textContent = '';
+    this.parentElement = null;
   }
 
   setAttribute(name, value) {
@@ -91,13 +92,74 @@ export class FakeElement {
     return this.attributes.get(name) ?? null;
   }
 
+  removeAttribute(name) {
+    this.attributes.delete(name);
+    if (name === 'class') this.className = '';
+  }
+
   append(...children) {
-    this.children.push(...children);
+    for (const child of children) {
+      if (child instanceof FakeElement) {
+        child.parentElement?.children.splice(child.parentElement.children.indexOf(child), 1);
+        child.parentElement = this;
+      }
+      this.children.push(child);
+    }
   }
 
   replaceChildren(...children) {
-    this.children = [...children];
+    for (const child of this.children) {
+      if (child instanceof FakeElement && child.parentElement === this) child.parentElement = null;
+    }
+    this.children = [];
     this.textContent = '';
+    this.append(...children);
+  }
+
+  /** Detach from wherever this is, the way `Element.remove()` does. */
+  remove() {
+    const siblings = this.parentElement?.children;
+    if (!siblings) return;
+    const at = siblings.indexOf(this);
+    if (at >= 0) siblings.splice(at, 1);
+    this.parentElement = null;
+  }
+
+  /**
+   * The nearest ancestor (or self) matching a simple selector.
+   *
+   * `#id` and `.class` only — which is all the product's components ask for,
+   * and pretending to support more would invite a test that passes here and
+   * fails in a browser.
+   */
+  closest(selector) {
+    const matches = (node) =>
+      selector.startsWith('#')
+        ? node.id === selector.slice(1)
+        : selector.startsWith('.')
+          ? node.classList.contains(selector.slice(1))
+          : node.tagName === selector.toUpperCase();
+    for (let node = this; node; node = node.parentElement) {
+      if (matches(node)) return node;
+    }
+    return null;
+  }
+
+  /** This element, or anything under it. */
+  contains(node) {
+    if (node === this) return true;
+    return this.children.some((child) => child instanceof FakeElement && child.contains(node));
+  }
+
+  /**
+   * Take focus.
+   *
+   * `document.activeElement` is what a component reads to decide where to send
+   * focus back to, so the fake document has to have one for that to be testable
+   * at all.
+   */
+  focus() {
+    if (globalThis.document) globalThis.document.activeElement = this;
   }
 
   addEventListener(type, listener) {
