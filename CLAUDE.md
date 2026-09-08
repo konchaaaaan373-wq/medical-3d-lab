@@ -126,21 +126,37 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 `src/` に死んだコードとして残さないでください——git が版を持っており、
 `git log --follow <path>` で読めます。
 
-### いま公開しているのは脳と心臓だけ（β）
+### いま公開しているのは脳と心臓の「解剖」だけ（β）
 
-現在は **β 公開中**で、開いているのは**脳と心臓の、prototype でないシーン**
-だけです（現在 5 件）。それ以外はルートもカタログのカードも
-「TO BE UPDATED / 準備中」で止めています。`prototype` は定義上
-「形は概略、動きは仮」なので公開しません。判定は `src/catalog/release.js` の
-1 か所だけが持ちます——**公開シーンの一覧をどこかに書き写さないでください。**
+現在は **β 公開中**で、公開しているのは**脳と心臓の 3D 解剖モデル**だけです。
+病態・生理のモデルは開発を続けますが、β には出しません。
+それ以外はルートもカタログのカードも「TO BE UPDATED / 準備中」で止めています。
+
+**心臓の解剖シーン（`heart-anatomy`）はまだ存在しません。**
+だからといって心臓の病態シーンを代わりに公開しません——
+病態モデルはラベルを変えた解剖モデルではないからです。
+心臓が公開に入るのは `heart-anatomy` が下のゲートを通った日で、
+そのとき hero もカタログもクロール面も編集不要です。現在の公開は 1 件。
+
+判定は `src/catalog/release.js` の 1 か所だけが持ちます。
+名前が候補一覧にあることは公開ではなく、`betaPublicationProblems()` が空
+——登録済み・解剖の主張のみ（model profile の mechanism level が `none`）・
+asset release gate 通過・レビュー記録が stale でない・**その asset の hash に
+結びついた公開判断記録がある**——のときだけ開きます。
+**公開シーンの一覧をどこかに書き写さないでください。**
+UI が読む公開一覧は [`src/catalog/publicManifest.js`](src/catalog/publicManifest.js)
+の 1 本で、`ready: false` のような仮データは作りません。
 
 開発は止まりません。`npm run dev` は無条件で全部見えますし、
-デプロイ済みビルドは `?preview=1` を 1 回開けばその端末でアンロックされます
-（`?preview=0` で解除）。詳細と β の終わらせ方は
-[`docs/beta-release.md`](docs/beta-release.md)。
+`VITE_ALLOW_PREVIEW=1 npm run build` で作ったビルドは `?preview=1` で
+アンロックできます（`?preview=0` で解除）。
+**production ビルドはアンロックできません**——`?preview=1` も保存済みの値も
+効かず、非公開シーンのコードはそもそもバンドルに入りません。
+詳細と β の終わらせ方は [`docs/beta-release.md`](docs/beta-release.md)。
 
-トップページの hero は臓器を 1 つ実表示し、**日替わりで入れ替わります**
-（初日は脳、翌日は心臓）。順序と対応するシーンは `src/data/landingHero.js`。
+トップページの hero は臓器を 1 つ実表示し、公開臓器が 2 つ以上あれば
+**日替わりで入れ替わります**。順序と対応するシーンは `src/data/landingHero.js`
+（`HERO_ORGANS` が目標、`HERO_ROTATION` が実際に見せる分）。
 
 ### Scene status
 

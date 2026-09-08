@@ -1,72 +1,277 @@
 /**
  * What the current release actually opens.
  *
- * The catalogue says which scenes *exist*; this file says which of them are
- * finished enough to be handed to somebody who arrived from a social post.
- * Everything else stays in the repository, stays buildable, stays testable and
- * keeps being developed — it is simply answered with "to be updated" instead of
- * being opened.
+ * The catalogue says which scenes *exist*; this file says which of them the
+ * public beta hands to somebody who arrived from a social post. Everything else
+ * stays in the repository, stays buildable, stays testable and keeps being
+ * developed — it is simply answered with "to be updated" instead of being
+ * opened.
  *
- * ## Two organs, and nothing schematic
+ * ## Anatomy, and only anatomy
  *
- * The beta opens the brain and the heart, and only at `alpha` or better.
+ * The beta is the **3D anatomy of the brain and the heart**, and nothing else.
+ * Looking at an organ and being able to name what you are looking at is the
+ * product being published; the disease and physiology models keep being built
+ * behind it.
  *
- * Those are the two organs this project has actually invested in, and the bar
- * is the one the catalogue already enforces: a `prototype` is "形は概略、動きは
- * 仮" by its own definition, so a beta made of prototypes would be handing a
- * first-time visitor the least-finished half of the work while the models that
- * have a model layer, an evidence dossier and a model card stayed hidden. Two
- * finished organs say more about what this is than twenty sketches.
- *
- * Note what this is *not*: it is not "anatomy only". There is no anatomy-grade
- * heart scene in the catalogue — every heart scene is about a disease — so
+ * This replaces the earlier rule, which opened every non-prototype scene under
+ * the two organs. That rule reasoned: the heart has no anatomy-grade scene, so
  * opening the heart means opening heart failure, low cardiac output and
- * myocardial ischaemia, numbers included. Those three carry their own scope
- * panels and their review state is shown on every card and on `#/trust`, which
- * is where a claim about a number is answered.
+ * myocardial ischaemia, numbers included. The decision now is the other way
+ * round — **an unfinished heart anatomy is not published as a disease model
+ * instead.** If `heart-anatomy` is not registered, or is registered and does
+ * not pass, the beta opens one organ and says so. It never substitutes.
  *
- * ## This is a curtain, not a lock
+ * ## Naming a scene is not opening it
  *
- * The gate runs in the browser and the scene modules are still in the build.
- * It exists so that a visitor is not shown work that is not ready, not to
- * protect a secret. Do not put anything behind it that would matter if it were
- * read — and do not add a second "is this really locked" check on the server
- * for the same reason.
+ * `BETA_ANATOMY_CANDIDATES` is a list of *candidates*. Matching a string there
+ * grants nothing. A candidate opens only when every one of
+ * `betaPublicationProblems()` is empty:
+ *
+ *  1. it is registered in the catalogue, with a status the taxonomy knows;
+ *  2. it makes an anatomy claim and no pathophysiological or clinical one —
+ *     read off the model profile, not off the scene's name;
+ *  3. every asset its profile names passes the asset release gate (licence,
+ *     obligations, hashes, QA);
+ *  4. no clinical-review record it has is `stale`, so a sign-off that has been
+ *     overtaken is never shown as current;
+ *  5. a publication decision exists that names this scene *and* the exact asset
+ *     revisions it was taken against.
+ *
+ * A status nobody has defined, a missing model profile, an asset whose licence
+ * is unknown, a decision taken against a file that has since changed: each of
+ * those closes the gate rather than opening it. That is deliberate — the whole
+ * point of a list this short is that adding to it has to be an edit here, with
+ * a record attached, rather than a side effect of adding a scene.
+ *
+ * ## The preview unlock is a build-time capability, not a URL
+ *
+ * `?preview=1` opens the locked work, but only in a build that was made to
+ * allow it (`npm run dev`, or a build with `VITE_ALLOW_PREVIEW=1`). In a
+ * production build the parameter and the remembered answer do nothing, and a
+ * remembered answer left over from a preview build served on the same origin is
+ * actively forgotten. See `src/app/releaseGate.js` for the browser half.
+ *
+ * A production build goes further than not offering the locked work: it does
+ * not ship it. `scripts/scene-loaders-plugin.js` drops the dynamic import for
+ * every scene this file does not open, so no chunk is emitted for it, and
+ * `npm run verify:site` walks `dist/` to prove it.
+ *
+ * None of that is secrecy. **The repository is public**: anybody may read,
+ * build and run the whole catalogue. This decides what the product offers and
+ * delivers, not what a reader can find — see `docs/beta-release.md`.
  */
 import { SCENES, sceneById } from './index.js';
+import { STATUS_IDS } from './taxonomy.js';
+import { assetById, assetReleaseProblems } from './assetManifest.js';
+import { clinicalReviewForScene } from './clinicalReview.js';
+import {
+  CLINICAL_INTENDED_USES,
+  MECHANISM_LEVEL,
+  PATIENT_SPECIFIC_PERSONALIZATION,
+  modelProfileForScene,
+} from './modelProfiles.js';
 
 /** Bump to `'public'` — one line — when the whole catalogue is ready to open. */
 export const RELEASE_CHANNEL = 'beta';
 
-/** The organs the beta is being spread with. */
+/**
+ * The organs the beta is aiming at.
+ *
+ * Descriptive, and deliberately not what decides anything: this used to be the
+ * release rule — `organ ∈ BETA_ORGANS && status !== 'prototype'` — which is how
+ * three heart disease models came to be published as "the heart". It is kept
+ * because `tests/beta-release.test.js` runs that old rule against the gate, so
+ * that restoring it fails loudly rather than quietly.
+ */
 export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
+
+/**
+ * The scenes the beta would open **if they pass**.
+ *
+ * `heart-anatomy` is listed and does not exist yet. That is the shape this list
+ * is meant to have: the target is written down, the gate below answers "no"
+ * until the scene is built and its record filed, and nothing is quietly
+ * substituted for it in the meantime.
+ */
+export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-anatomy']);
 
 /**
  * Maturity a scene needs before the beta will open it.
  *
- * `prototype` is excluded by name rather than by listing the three that are
+ * `prototype` is excluded by name rather than by listing the ones that are
  * allowed, so that a status added later fails closed at the test rather than
  * silently joining the release.
  */
 export const BETA_EXCLUDED_STATUS = 'prototype';
 
 /**
- * An organ model: anatomy, or the normal motion of one organ. No disease, no
- * clinical read-out.
+ * The publication decisions this release rests on.
  *
- * Kept because the Explorer prints it on every card, and because it is the
- * honest name for the difference between the two kinds of scene. It is no
- * longer what decides the release — see above.
+ * One record per scene the beta opens, bound to the asset revisions it was
+ * taken against. It is **not** a clinical sign-off and must never be presented
+ * as one — the clinical-review registry owns that question and currently
+ * answers "pending" for the brain atlas. What this records is the separate
+ * decision the beta needs: that the structures this scene names have been
+ * checked against the file that is actually being served, on a stated date, by
+ * a stated kind of reviewer.
  *
- * @param {{disease?: string|null}|null} scene
+ * `assetRevisions` has to match `output.sha256` in the asset manifest exactly.
+ * Re-export the mesh and this decision stops applying, which is the point: a
+ * decision about a file is not a decision about a different file.
  */
-export const isOrganModel = (scene) => Boolean(scene) && !scene.disease;
+export const BETA_PUBLICATION_DECISIONS = Object.freeze([
+  Object.freeze({
+    sceneId: 'brain-anatomy',
+    decidedAt: '2026-09-08',
+    /** engineering | anatomy-expert | clinical — what kind of check this was. */
+    decidedBy: 'engineering',
+    record: 'docs/beta-release.md',
+    assetRevisions: Object.freeze({
+      'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
+    }),
+    note:
+      'The named structures, their labels and the selection behaviour were checked against the vendored atlas at ' +
+      'this hash, with the licence obligations discharged in public/assets/brain/ATTRIBUTION.md. This is an ' +
+      'engineering acceptance of what the scene shows, not an anatomy-expert or clinical sign-off: the review ' +
+      'registry still records brain-anatomy as pending and the UI says so.',
+  }),
+]);
+
+/**
+ * A scene whose model profile claims structure and nothing more.
+ *
+ * This is what "anatomy" means to the gate. It is read off the profile — the
+ * registry that already says what kind of claim each scene makes — rather than
+ * off the scene's id or its organ, because a name is not a claim.
+ *
+ * @param {object|null} scene a catalogue entry
+ * @param {{profiles?: object[]}} [options]
+ * @returns {string[]} the reasons it is not an anatomy-only scene
+ */
+export function anatomyClaimProblems(scene, { profiles } = {}) {
+  const problems = [];
+  if (scene?.disease) problems.push(`is about "${scene.disease}", and the beta opens anatomy only`);
+
+  const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
+  if (!profile) {
+    problems.push('has no model profile, so what it claims is not written down anywhere a test can read');
+    return problems;
+  }
+  if (profile.mechanismLevel !== MECHANISM_LEVEL.NONE) {
+    problems.push(`claims mechanism level "${profile.mechanismLevel}"; anatomy claims "${MECHANISM_LEVEL.NONE}"`);
+  }
+  if (PATIENT_SPECIFIC_PERSONALIZATION.includes(profile.personalization)) {
+    problems.push(`is personalised (${profile.personalization}); the beta publishes representative models only`);
+  }
+  for (const use of profile.intendedUses ?? []) {
+    if (CLINICAL_INTENDED_USES.includes(use)) problems.push(`declares the clinical use "${use}"`);
+  }
+  return problems;
+}
+
+/**
+ * Everything standing between a scene and the beta, as readable lines.
+ *
+ * Returned rather than thrown so the tests, the handoff and a dev-mode console
+ * check all read the same answer. Empty means open.
+ *
+ * Every record it consults is injectable. That is not generality for its own
+ * sake: a gate whose failure paths cannot be exercised is a gate nobody knows
+ * the shape of, and the cases that matter here — an unknown status, a missing
+ * profile, an asset whose licence is not settled, a decision taken against a
+ * file that has since been re-exported — are all conditions the real registries
+ * do not currently contain and must never silently start opening.
+ *
+ * @param {object|string|null} candidate a catalogue entry or a scene id
+ * @param {{fileExists?: (path:string) => boolean, profiles?: object[],
+ *   resolveScene?: (id:string) => object|null,
+ *   resolveAsset?: (id:string) => object|null,
+ *   resolveReview?: (scene:object) => object|null,
+ *   decisions?: ReadonlyArray<object>}} [options] `fileExists` is injected so
+ *   the catalogue layer stays free of `node:fs`; without it a recorded path is
+ *   taken at its word, which is all a browser can do.
+ * @returns {string[]}
+ */
+export function betaPublicationProblems(candidate, {
+  fileExists,
+  profiles,
+  resolveScene = sceneById,
+  resolveAsset = assetById,
+  resolveReview = clinicalReviewForScene,
+  decisions = BETA_PUBLICATION_DECISIONS,
+} = {}) {
+  const id = typeof candidate === 'string' ? candidate : candidate?.id;
+  const problems = [];
+
+  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
+    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
+  }
+
+  const scene = resolveScene(id);
+  if (!scene) return [`"${id}" is not registered in the catalogue`];
+
+  if (!STATUS_IDS.includes(scene.status)) {
+    problems.push(`status "${scene.status}" is not a status the taxonomy defines`);
+  } else if (scene.status === BETA_EXCLUDED_STATUS) {
+    problems.push("is a Prototype, whose shape and motion are provisional by definition");
+  }
+
+  problems.push(...anatomyClaimProblems(scene, { profiles }));
+
+  const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
+  const assetIds = profile?.assets ?? [];
+  for (const assetId of assetIds) {
+    const asset = resolveAsset(assetId);
+    if (!asset) {
+      problems.push(`names asset "${assetId}", which is not in the asset manifest`);
+      continue;
+    }
+    problems.push(
+      ...assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists })
+    );
+  }
+
+  // A sign-off that has been overtaken by the files it covered must never be
+  // shown as current. `pending` is allowed: the beta does not claim a clinical
+  // review, and the surfaces say "pending" where it is.
+  const review = resolveReview(scene);
+  if (review?.reviewStatus === 'stale') {
+    problems.push('its clinical review is stale, so its sign-off cannot be presented as current');
+  }
+
+  const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
+  if (!decision) {
+    problems.push('has no publication decision on file for this release');
+  } else {
+    const recorded = decision.assetRevisions ?? {};
+    for (const assetId of assetIds) {
+      const asset = resolveAsset(assetId);
+      const current = asset?.output?.sha256;
+      if (!(assetId in recorded)) {
+        problems.push(`the publication decision does not cover asset "${assetId}"`);
+      } else if (!current || recorded[assetId] !== current) {
+        problems.push(
+          `the publication decision was taken against ${assetId}@${recorded[assetId]}, and the manifest now ` +
+            `records ${current ?? 'no hash'}`
+        );
+      }
+    }
+    for (const assetId of Object.keys(recorded)) {
+      if (!assetIds.includes(assetId)) {
+        problems.push(`the publication decision names asset "${assetId}", which the scene no longer uses`);
+      }
+    }
+  }
+
+  return problems;
+}
 
 /** Whether this scene is open in the current release channel. */
 export const isSceneReleased = (scene) => {
   if (!scene) return false;
-  if (RELEASE_CHANNEL !== 'beta') return true;
-  return BETA_ORGANS.includes(scene.organ) && scene.status !== BETA_EXCLUDED_STATUS;
+  if (RELEASE_CHANNEL !== 'beta') return scene.status !== BETA_EXCLUDED_STATUS;
+  return betaPublicationProblems(scene).length === 0;
 };
 
 /** The models the beta ships, in catalogue order. */
@@ -74,6 +279,19 @@ export const RELEASED_SCENES = SCENES.filter(isSceneReleased);
 
 /** Declared, built, and deliberately not open yet. */
 export const LOCKED_SCENES = SCENES.filter((scene) => !isSceneReleased(scene));
+
+/**
+ * Candidates that are named but not open, with the reason for each.
+ *
+ * Exported so that "the heart is not open yet" is a fact the handoff, the tests
+ * and a developer's console all read from one place instead of three people
+ * each deducing it.
+ */
+export const BETA_CANDIDATE_STATUS = Object.freeze(
+  BETA_ANATOMY_CANDIDATES.map((id) =>
+    Object.freeze({ sceneId: id, open: isSceneReleased(sceneById(id)), problems: Object.freeze(betaPublicationProblems(id)) })
+  )
+);
 
 /**
  * What a crawler is allowed to see: a scene has to be **both** open and public.
@@ -86,11 +304,9 @@ export const LOCKED_SCENES = SCENES.filter((scene) => !isSceneReleased(scene));
  * - **Prototype** — its shape and motion are provisional by definition, and a
  *   search result is exactly where that caveat gets stripped off.
  *
- * Taking `RELEASED_SCENES` alone was wrong and would not have shown until the
- * beta ended: `isSceneReleased` returns true for everything once the channel
- * changes, so the day this opens is the day fourteen prototypes are published
- * to the crawlable surface. Taking `PUBLIC_SCENES` alone was the state before
- * the beta, and it published nine models nobody could open.
+ * Taking `RELEASED_SCENES` alone would not have shown until the beta ended:
+ * once the channel changes, everything non-prototype opens, and the crawlable
+ * set has to stay the public catalogue rather than becoming it by accident.
  */
 export const CRAWLABLE_SCENES = SCENES.filter(
   (scene) => isSceneReleased(scene) && scene.status !== BETA_EXCLUDED_STATUS
@@ -101,13 +317,19 @@ export const CRAWLABLE_SCENES = SCENES.filter(
  *
  * The landing page and the catalogue are how a visitor reaches a model at all.
  * The legal documents are open because a person may need them on a device that
- * cannot start WebGL, and `#/trust` because saying which models are reviewed —
- * and which are not — is more honest with the locked ones listed than with the
- * page hidden.
+ * cannot start WebGL, `#/trust` because saying which models are reviewed — and
+ * which are not — is more honest with the locked ones listed than with the page
+ * hidden.
  *
- * `lab` is not here: it is the experimental surface, and every scene on it is
- * a prototype the beta is holding back. It stays reachable to a developer
- * through the unlock below.
+ * Account management is not a route: it is the header control the landing page
+ * and the Explorer both mount, and both of those stay open. A person who is
+ * already paying reaches their subscription, their invoices and the cancel path
+ * whatever the learning surface is publishing — closing models must never close
+ * the door on somebody's own account.
+ *
+ * `lab` is not here: it is the experimental surface, and every scene on it is a
+ * prototype the beta is holding back. It stays reachable to a developer through
+ * the unlock below.
  */
 const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'trust', 'legal']);
 
@@ -129,20 +351,36 @@ export const DEV_UNLOCK_STORAGE_KEY = 'm3l.beta-preview';
 const OFF_VALUES = new Set(['', '0', 'false', 'off', 'no']);
 
 /**
- * Resolve the developer unlock from the three things that can say so.
+ * Resolve the developer unlock from the things that can say so.
  *
  * Pure, so the whole rule is testable: the browser wiring in
  * `src/app/releaseGate.js` is the only part that touches `window`.
  *
- * @param {{search?:string, stored?:string|null, devBuild?:boolean}} [input]
+ * The decision that matters here is `previewBuild`. A production build ignores
+ * the query parameter and the remembered answer outright — the unlock is a
+ * capability the build either has or does not have, decided at build time from
+ * an environment variable, never from a URL, a hostname string or a value in
+ * somebody's browser. And a production build served from the origin a preview
+ * build was served from *forgets* the remembered answer rather than leaving it
+ * to be picked up by the next preview deploy.
+ *
+ * @param {{search?:string, stored?:string|null, devBuild?:boolean, previewBuild?:boolean}} [input]
  * @returns {{unlocked:boolean, persist:boolean|null}} `persist` is what the
  *   caller should write to storage: `true` to remember, `false` to forget,
  *   `null` to leave whatever is there alone.
  */
-export function resolveDevUnlock({ search = '', stored = null, devBuild = false } = {}) {
+export function resolveDevUnlock({
+  search = '',
+  stored = null,
+  devBuild = false,
+  previewBuild = false,
+} = {}) {
   // `npm run dev` is a developer, by definition. Never make them type a query
   // parameter to see the work they are in the middle of.
   if (devBuild) return { unlocked: true, persist: null };
+
+  // Production. Nothing a visitor can type or has stored opens the locked work.
+  if (!previewBuild) return { unlocked: false, persist: stored == null ? null : false };
 
   const requested = new URLSearchParams(search).get(DEV_UNLOCK_PARAM);
   if (requested != null) {

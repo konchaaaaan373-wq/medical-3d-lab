@@ -12,25 +12,33 @@
  * link is a support question, not a feature.
  *
  * Labels come from `catalog/taxonomy.js`. Only the order, the line of copy and
- * which model the hero opens live here.
+ * which model the hero opens live here — and whether an organ is offered at all
+ * comes from `catalog/publicManifest.js`, never from this file.
  */
+import { publicModelById } from '../catalog/publicManifest.js';
 
 /**
- * The rotation, brain first.
+ * The rotation the beta is aiming at, brain first.
  *
- * Two organs, because two organs are what the beta opens.
+ * Two organs, because the anatomy of two organs is what the beta is for.
  *
  * - `sceneId` is the model the hero's link opens.
  * - `upgradeSceneId` is the scene whose geometry replaces the lightweight
  *   builder once it has loaded (`landingOrganViewport.js`). It is the organ's
  *   real anatomy model; the builder is what stands in until it arrives.
  *
- * The heart has no anatomy scene of its own — every heart scene in the
- * catalogue is about a disease — so its link opens heart failure, the model
- * this project treats as its reference implementation, while the geometry that
- * replaces the builder is the coronary anatomy, which is the most accurate
- * heart in the repository. That the heart has no anatomy model of its own is a
- * recorded gap, not a decision: see `src/catalog/anatomy.js`.
+ * **This is the declared rotation, not the shown one.** `HERO_ROTATION` below
+ * is what the hero actually turns through, and it is this list filtered by what
+ * the release opens. The heart entry names `heart-anatomy`, which does not
+ * exist yet, so today the hero shows the brain and offers no way to "see the
+ * heart" — because there is no heart anatomy to see.
+ *
+ * It used to point at `heart-failure` with the coronary anatomy loaded behind
+ * it, on the reasoning that the heart had no anatomy scene of its own. That is
+ * exactly the substitution this release does not make: a disease model is not
+ * an anatomy model with a different label. The gap is recorded in
+ * `src/catalog/anatomy.js`, and the heart returns to the rotation the day
+ * `heart-anatomy` passes `betaPublicationProblems()` — with no edit here.
  */
 export const HERO_ORGANS = Object.freeze([
   Object.freeze({
@@ -44,19 +52,33 @@ export const HERO_ORGANS = Object.freeze([
   }),
   Object.freeze({
     organ: 'heart',
-    sceneId: 'heart-failure',
-    upgradeSceneId: 'myocardial-ischemia',
-    kickerEn: 'CORONARY ANATOMY',
-    kickerJa: '冠動脈解剖',
-    lineEn: 'The chambers, the great vessels, and the arteries that feed the muscle.',
-    lineJa: '心房・心室と大血管、そして心筋を養う冠動脈。',
+    sceneId: 'heart-anatomy',
+    upgradeSceneId: 'heart-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'The chambers, the valves, the great vessels and the arteries that feed the muscle.',
+    lineJa: '心房・心室、弁、大血管、そして心筋を養う冠動脈。',
   }),
 ]);
 
 /**
+ * What the hero actually rotates through: the declared entries whose model is
+ * open today.
+ *
+ * Derived rather than maintained, so the one list of organs stays the target
+ * and the release stays the only thing that decides whether an organ is
+ * offered. An entry naming a scene that is not open is simply not shown —
+ * never shown as a card that apologises, and never quietly repointed at a
+ * neighbouring model.
+ */
+export const HERO_ROTATION = Object.freeze(
+  HERO_ORGANS.filter((entry) => publicModelById(entry.sceneId) !== null)
+);
+
+/**
  * Day zero of the rotation. Chosen as the beta release date so the first day
  * shows the brain, which is what the hero is being introduced with. With two
- * organs the hero alternates day by day.
+ * organs the hero alternates day by day; with one, every day is the brain.
  */
 export const HERO_ROTATION_EPOCH_UTC = Date.UTC(2026, 8, 6);
 
@@ -79,7 +101,7 @@ export function heroRotationDay(date = new Date()) {
  * @param {Date} [date]
  * @param {ReadonlyArray<typeof HERO_ORGANS[number]>} [rotation]
  */
-export function featuredHeroOrgan(date = new Date(), rotation = HERO_ORGANS) {
+export function featuredHeroOrgan(date = new Date(), rotation = HERO_ROTATION) {
   const length = rotation.length;
   if (!length) return null;
   const day = heroRotationDay(date);
@@ -88,4 +110,4 @@ export function featuredHeroOrgan(date = new Date(), rotation = HERO_ORGANS) {
 
 /** @param {string} organId */
 export const heroOrganById = (organId) =>
-  HERO_ORGANS.find((entry) => entry.organ === organId) ?? null;
+  HERO_ROTATION.find((entry) => entry.organ === organId) ?? null;

@@ -11,13 +11,14 @@ import {
   LAB_SCENES,
   LANDING_ROUTE,
   PUBLIC_SCENES,
-  SCENES,
+  organById,
   sceneById,
   sceneRoute,
   statusById,
   systemsWithOrgans,
 } from '../catalog/index.js';
-import { isSceneReleased } from '../catalog/release.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { activeUsesForScene, productBadgesForScene } from '../access/features.js';
@@ -47,19 +48,23 @@ import {
  */
 export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const isLab = scope === 'lab';
-  // During the beta the public catalogue is the *whole* catalogue: the models
-  // the release opens, and the rest listed as "to be updated" rather than
-  // hidden. Hiding them would make the page shorter and the roadmap invisible,
-  // and a reader who arrives from a link about COPD would find no trace of it.
-  // `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
+  // During the beta the public catalogue is what the release opens, and nothing
+  // else. It used to be the *whole* catalogue with the unopened models listed
+  // as "to be updated", so that the roadmap stayed visible — but the roadmap
+  // then outnumbered the product twenty-six to one, and an index that is mostly
+  // things you cannot have is not an index. The unopened work keeps being
+  // built, stays in the repository, and is visible to a developer through the
+  // preview unlock; `#/trust` still lists every model's review state, opened or
+  // not. `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
   const beta = !isLab && !betaUnlocked();
-  const scopedScenes = isLab ? LAB_SCENES : beta ? SCENES : PUBLIC_SCENES;
-  const lockedFor = (scene) => beta && !isSceneReleased(scene);
+  const scopedScenes = isLab ? LAB_SCENES : beta ? RELEASED_SCENES : PUBLIC_SCENES;
   // Favourites and recents are shortcuts, so they only ever hold models this
-  // reader can open. A locked model in the shelf would be a link into the
-  // "to be updated" page, offered as if it were somewhere they had been.
+  // reader can open. A model the release is holding back would be a link into
+  // the "to be updated" page, offered as if it were somewhere they had been.
+  // In the public scope that is already true of `scopedScenes`; the check stays
+  // because Lab is scoped by status rather than by the release.
   const scopedIds = new Set(
-    scopedScenes.filter((scene) => !lockedFor(scene)).map((scene) => scene.id)
+    scopedScenes.filter((scene) => isLab || isSceneReleased(scene)).map((scene) => scene.id)
   );
   const systems = systemsWithOrgans(scopedScenes, {
     includePlanned: isLab,
@@ -161,14 +166,17 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   /**
    * One model in the catalogue.
    *
-   * A model the current release has not opened is rendered as a `span`, not a
-   * link: it keeps its title, its description and its place under its organ, so
-   * the catalogue still says what is being built, but it does not offer a click
-   * that ends in an apology. Its favourite toggle and clinical-review details
-   * come off too — neither means anything for something you cannot open yet.
+   * Every card here is openable. During the beta the public scope is the
+   * released set, and Lab's scope is the prototypes it exists to hold, so
+   * there is no third state for this to render.
+   *
+   * There used to be one: a model the release had not opened kept its card as
+   * a `span` rather than an anchor, so that the catalogue still said what was
+   * being built. That was the roadmap-in-the-index design, and it went with
+   * the anatomy beta — twenty-six dashed cards ahead of one real one is not an
+   * index. `#/trust` still lists every model's review state, opened or not.
    */
   const sceneCard = (scene, system, organ) => {
-    const locked = lockedFor(scene);
     const body = [
       el('span', { class: 'explorer-scene-kicker' }, [
         bilingual(
@@ -189,24 +197,16 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
         el('span', { class: 'lang-en', text: scene.description }),
         el('span', { class: 'lang-ja', text: scene.descriptionJa }),
       ]),
-      locked
-        ? el('span', { class: 'explorer-scene-footer' }, [
-            bilingual('To be updated', '準備中', 'explorer-scene-locked'),
-          ])
-        : el('span', { class: 'explorer-scene-footer' }, [
-            useBadges(scene),
-            bilingual('Open model', 'モデルを開く', 'explorer-scene-open'),
-          ]),
-      locked
-        ? null
-        : el('span', { class: 'explorer-scene-trust' }, [productBadges(scene), reviewBadge(scene)]),
+      el('span', { class: 'explorer-scene-footer' }, [
+        useBadges(scene),
+        bilingual('Open model', 'モデルを開く', 'explorer-scene-open'),
+      ]),
+      el('span', { class: 'explorer-scene-trust' }, [productBadges(scene), reviewBadge(scene)]),
     ].filter(Boolean);
 
-    const card = locked
-      ? el('span', { class: 'explorer-scene is-locked' }, body)
-      : el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, body);
-    const children = locked ? [card] : [card, favoriteButtonFor(scene)];
-    if (!isLab && !locked) children.push(createClinicalReviewDetails(scene));
+    const card = el('a', { class: 'explorer-scene', href: sceneRoute(scene) }, body);
+    const children = [card, favoriteButtonFor(scene)];
+    if (!isLab) children.push(createClinicalReviewDetails(scene));
     const element = el('div', { class: 'explorer-scene-shell' }, children);
     return { scene, system, organ, element };
   };
@@ -404,6 +404,16 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   });
   searchControls = search;
 
+  // The organs there is actually something to open, named from the manifest.
+  // "brain and heart" printed over one brain model is the claim this avoids.
+  const betaOrganLabels = PUBLIC_MANIFEST.organs.map((organId) => organById(organId));
+  const betaOrgansEn = betaOrganLabels
+    .map((organ, index) => organ?.label?.toLowerCase() ?? PUBLIC_MANIFEST.organs[index])
+    .join(' and ');
+  const betaOrgansJa = betaOrganLabels
+    .map((organ, index) => organ?.labelJa ?? PUBLIC_MANIFEST.organs[index])
+    .join('と');
+
   const headerTitle = isLab
     ? ['Experimental Lab', '実験モデル']
     : ['Organ explorer', '臓器エクスプローラ'];
@@ -414,8 +424,8 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
       ]
     : beta
       ? [
-          'Beta: the brain and the heart are open — free, no account. Every other model is listed as "to be updated" and is not yet opened; the ones still marked Prototype are schematic in shape or motion and are deliberately not shown.',
-          'β版：脳と心臓のモデルを公開しています（無料・登録不要）。ほかのモデルは「準備中」として一覧にのみ掲載します。Prototype のモデルは形や動きがまだ模式的なため、意図的に公開していません。',
+          `Beta: 3D anatomy — free, no account. Open now: the ${betaOrgansEn}. The beta is aiming at the brain and the heart, and it publishes each one when its anatomy is finished, never a disease model in its place. The disease and physiology models are still being built and are not listed here.`,
+          `β版：3D解剖モデルです（無料・登録不要）。いま公開しているのは${betaOrgansJa}。目標は脳と心臓の2つで、解剖が仕上がったものから公開します——代わりに病態モデルを出すことはしません。病態・生理のモデルは開発中で、ここには載せていません。`,
         ]
       : [
           'Explore anatomy and pathophysiology with model maturity and clinical-review status shown separately. Work in progress lives in the Lab.',
@@ -425,12 +435,12 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   const productKey = beta
     ? el('div', { class: 'explorer-product-key is-beta' }, [
         el('span', { class: 'explorer-access-badge is-free' }, [
-          el('span', { class: 'lang-en', text: 'Beta — brain and heart open' }),
-          el('span', { class: 'lang-ja', text: 'β版 — 脳と心臓を公開中' }),
+          el('span', { class: 'lang-en', text: `Beta — ${betaOrgansEn} anatomy` }),
+          el('span', { class: 'lang-ja', text: `β版 — ${betaOrgansJa}の解剖を公開中` }),
         ]),
         bilingual(
-          'An open model has a model layer, an evidence dossier and a model card behind it. A model whose shape or motion is still schematic carries a Prototype badge and is not opened.',
-          '公開しているモデルは、モデル層・根拠資料・モデルカードを備えたものです。形や動きが模式的なモデルには Prototype バッジが付き、公開しません。',
+          'An open model has its mesh, its licence and its sources on the record, and a publication decision tied to the exact file being served. Model maturity and clinical review are shown separately on every card, because they are different claims.',
+          '公開しているモデルは、メッシュの出典とライセンスを記録し、実際に配信しているファイルに結びつけた公開判断を持つものです。実装の成熟度と医学レビューの状態は、別々の主張なのでカードに別々に表示します。',
           'explorer-product-note'
         ),
       ])
@@ -519,7 +529,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           text: isLab
             ? 'Lab is intentionally experimental. Prototype scenes may use stylised anatomy or placeholder motion and must not be read as reviewed medical models.'
             : beta
-              ? 'Educational conceptual models. Model maturity and versioned clinical review are different trust signals and are shown separately on every open card. Prototype work — an outline shape and provisional motion — is listed but not opened.'
+              ? 'Educational conceptual models. Model maturity and versioned clinical review are different trust signals and are shown separately on every open card. The models still being built are not listed here; Sources & review records the state of every one of them, opened or not.'
               : 'Educational conceptual models. Clinical-review attestation is shown separately from product/model maturity; Prototype work is kept in the Experimental Lab.',
         }),
         el('span', {
@@ -527,7 +537,7 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
           text: isLab
             ? 'Labは意図的に実験段階です。Prototypeには簡略化された解剖や仮の動きが含まれ、レビュー済み医学モデルとして解釈しないでください。'
             : beta
-              ? '教育目的の概念モデルです。モデルの成熟度と、版を固定した医学レビューは別のTrust指標として各カードに表示します。Prototype（形は概略・動きは仮）は一覧に載せますが公開しません。'
+              ? '教育目的の概念モデルです。モデルの成熟度と、版を固定した医学レビューは別のTrust指標として各カードに表示します。開発中のモデルはここには載せていません。公開・未公開を問わず、全モデルのレビュー状態は「根拠・レビュー」で確認できます。'
               : '教育目的の概念モデルです。医学レビューの状態はモデル成熟度とは別に表示し、PrototypeはExperimental Labに分離しています。',
         }),
       ]),

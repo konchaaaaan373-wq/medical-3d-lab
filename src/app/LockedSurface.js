@@ -81,16 +81,19 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
         el('span', {
           class: 'lang-en',
           text:
-            'Medical 3D Lab is in beta. The brain and the heart are open; the rest of the catalogue '
-            + 'is still being finished. A model is opened once it has a model layer, an evidence '
-            + 'dossier and a model card behind it — not before, because everything on screen is a claim.',
+            'Medical 3D Lab is in beta, and the beta is the 3D anatomy of the brain and the heart. '
+            + 'The disease and physiology models — this one included — are still being built and are '
+            + 'not published yet. A model is opened once its geometry, its sources and its licence are '
+            + 'on the record and a publication decision names the exact file being served — not '
+            + 'before, because everything on screen is a claim.',
         }),
         el('span', {
           class: 'lang-ja',
           text:
-            'Medical 3D Lab は現在β版です。公開しているのは脳と心臓のモデルで、'
-            + 'ほかは準備中です。モデル層・根拠資料・モデルカードが揃ってから公開します。'
-            + '画面に出るものはすべて主張だからです。',
+            'Medical 3D Lab は現在β版で、公開しているのは脳と心臓の3D解剖モデルです。'
+            + 'このモデルを含む病態・生理のモデルは開発中で、まだ公開していません。'
+            + 'ジオメトリの出典とライセンスを記録し、実際に配信しているファイルに結びつけた'
+            + '公開判断が揃ってから公開します。画面に出るものはすべて主張だからです。',
         }),
       ]),
       el('div', { class: 'locked-actions' }, [

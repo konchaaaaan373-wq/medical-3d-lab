@@ -9,12 +9,28 @@
  *
  * - `npm run dev` is unlocked outright. Nobody should have to opt in to see
  *   the scene they are working on.
- * - On a built site, `?preview=1` unlocks and is remembered for that browser,
- *   so an internal reviewer follows one link and then navigates normally.
- *   `?preview=0` forgets it again.
+ * - A build made with `VITE_ALLOW_PREVIEW=1` accepts `?preview=1`, remembers it
+ *   for that browser, and forgets it again on `?preview=0` — so an internal
+ *   reviewer follows one link to a preview deploy and then navigates normally.
  *
  * The parameter is stripped from the address bar afterwards: a reviewer who
  * copies the URL out of it should be sharing the model, not their unlock.
+ *
+ * ## And closing production
+ *
+ * A production build has no unlock at all. `?preview=1`, `?preview=yes`, a
+ * remembered `m3l.beta-preview`: none of them opens anything, because the
+ * capability is decided when the bundle is built and is simply absent from it.
+ *
+ * The two things this deliberately does not do:
+ *
+ * - **Sniff the hostname.** "Is this localhost" is a string comparison against
+ *   something the visitor controls in more ways than is comfortable, and it
+ *   makes every preview host a configuration nobody wrote down.
+ * - **Leave a stored unlock alone.** Preview and production deployments can
+ *   share an origin, and `localStorage` outlives a deploy. A production build
+ *   that finds a remembered unlock clears it, so the answer cannot be carried
+ *   across from a build that allowed it.
  */
 import {
   DEV_UNLOCK_PARAM,
@@ -28,6 +44,22 @@ import {
 const devBuild = () => {
   try {
     return Boolean(import.meta.env?.DEV);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Whether this bundle was built to allow the preview unlock at all.
+ *
+ * `VITE_ALLOW_PREVIEW=1 npm run build` produces a reviewable build; a plain
+ * `npm run build` does not, and no URL can change that after the fact. Vite
+ * inlines the value, so the production bundle contains the literal `false` and
+ * the branch below is dead code in it.
+ */
+const previewBuild = () => {
+  try {
+    return String(import.meta.env?.VITE_ALLOW_PREVIEW ?? '') === '1';
   } catch {
     return false;
   }
@@ -75,6 +107,7 @@ export function betaUnlocked() {
     search: window.location?.search ?? '',
     stored: readStored(),
     devBuild: devBuild(),
+    previewBuild: previewBuild(),
   });
   writeStored(persist);
   if (persist != null) stripParam();

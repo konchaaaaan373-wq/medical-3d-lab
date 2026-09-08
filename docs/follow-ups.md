@@ -1,6 +1,6 @@
 # Follow-ups — 残課題台帳
 
-Last updated: 2026-09-06
+Last updated: 2026-09-08
 
 マージ済みの変更が**まだ確かめていないこと・決めていないこと・先送りしたこと**を、
 別のセッションや別の人がそのまま拾えるように 1 か所に置く台帳です。
@@ -307,11 +307,56 @@ playwright` の後、期待する headless shell が無かったので
 同時に見直すものがあります。
 
 - **`npm run cards` の再実行が必須**。カード集合が広がり、サイトカードの
-  「公開モデル N 件」も変わるため、`cards:check` は実行するまで落ちます
-- Explorer は β の間だけ全カタログを描き、それ以外では `PUBLIC_SCENES` に戻ります
+  「公開モデル N 件」も変わるため、`cards:check` は実行するまで落ちます。
+  2026-09-08 の解剖β化で非公開分の PNG（amyloid-beta / circulation /
+  heart-failure / myocardial-ischemia）は削除済みなので、**再生成が必要です**
+- Explorer は β の間だけ公開集合を描き、それ以外では `PUBLIC_SCENES` に戻ります
 - Lab へのリンクは β の間だけ隠されています（`SceneSwitcher` / Landing / fallback）
+- production ビルドのチャンク絞り込み（`scripts/scene-loaders-plugin.js`）は
+  `RELEASED_SCENES` を読むので、チャンネル変更で自動的に全シーンが戻ります
 - 完了の定義: チャンネル変更後に `npm test` / `verify:site` / `cards:check` /
   `verify:live` がすべて緑
+
+### F-27 解剖β：1 モデルだけの索引をどう読ませるか — P1（B0 / UI は B1）
+
+公開が `brain-anatomy` 1 件になったので、Landing の「3D モデル一覧」も
+Explorer（`#/organs`）も**カード 1 枚**になります。B0 は公開判定と情報設計の
+境界（未公開モデルを準備中として大量に並べない）だけを変えました。
+1 枚の索引が製品として読めるかは**未確認で、UI 担当 B1 の担当範囲**です。
+
+- どう決めるか: 実ブラウザで `#/` と `#/organs` を 320〜1280 px で開き、
+  1 枚のグリッド・セクション見出し・hero の臓器チューザー非表示が
+  破綻していないか見る。必要なら B1 がレイアウトを変える
+- 触ってよいファイル: `src/app/Landing.js`、`src/app/Explorer.js`、
+  `src/styles/landing.css`、`src/styles/explorer.css`、コピー
+- 触らないもの: `src/catalog/release.js`、`src/catalog/publicManifest.js`、
+  `vite.config.js`、`scripts/`、課金
+- 完了の定義: 6 viewport で `npm run verify:ui` が緑、スクリーンショットあり
+
+### F-28 poster が「モデルの写真」ではない — P2（B0）
+
+`publicManifest.js` の `posterPath` が指すのは `npm run cards` が
+**カタログの文字から描いた 1200x630 のカード**で、モデルの 3D レンダリングでは
+ありません。`posterKind: 'link-preview-card'` でそう明示していますが、
+「同じ asset から作った poster」——実際にそのメッシュを描いた静止画——は
+まだありません。
+
+- どう決めるか: hero の viewport から 1 枚書き出す工程を作るか、
+  OG カードに実レンダリングを合成するか。B3（脳の解剖品質）で
+  実レンダリングを触るときに一緒に決めるのが自然
+- 完了の定義: `posterKind` に 2 つ目の種類が入り、UI がそれを区別して使う
+
+### F-29 preview デプロイのアクセス保護は未設定 — P2（B0）
+
+production ビルドはアンロックできなくなりました（`VITE_ALLOW_PREVIEW`）。
+一方、**`VITE_ALLOW_PREVIEW=1` で作ったビルドを誰でも見られる URL に置けば、
+非公開モデルは誰でも見られます。** それを防ぐのはホスト側の保護機能であって、
+アプリのコードではありません。
+
+- どう決めるか: Netlify の password protection / role-based access を使う。
+  自作のパスワード保存やフロントだけの認証は作らない
+- **設定権限が無いあいだ「保護済み」と報告しない。** 現在は未設定
+- 完了の定義: preview 用サイトに保護がかかっていることをホストの設定画面で確認
 
 ### F-17 grand-design §3 の数値の自動化 — P3
 
@@ -355,6 +400,11 @@ PR 本文の「`npm test` — 1390/1390」は初版時点の数値です（最�
 
 （解決した項目を `F-xx — 日付 — 何で閉じたか` の 1 行で移す）
 
+- F-30 — 2026-09-08 — 「公開βは脳・心臓の非 prototype シーン（5 件）」という
+  旧方針。心臓解剖が無いことを理由に病態モデルを公開していた判定を、解剖のみの
+  公開判定（`betaPublicationProblems()` の 5 条件）に置き換え、
+  [ADR](architecture/adr-2026-09-08-anatomy-only-beta.md) に何を上書きし何を
+  維持したかを記録。`tests/beta-release.test.js` が旧ルールの復活で落ちます。
 - F-24 — 2026-09-06 — WebKit 固有でも読み込み失敗でもなく、**ページ遷移で中断された
   fetch の報告漏れ**でした。Chromium で再現（`TypeError: Failed to fetch`、WebKit の
   `Load failed` と同一事象）。`BrainAnatomyScene` の抑制ガードが `disposed`

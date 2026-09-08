@@ -12,7 +12,7 @@ import {
   landingFlowConfig,
 } from '../src/app/landingFlowField.js';
 import { SCENES, organById, sceneById } from '../src/catalog/index.js';
-import { LOCKED_SCENES, RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
+import { RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
 import { hasOrganModel } from '../src/app/organModels.js';
 import { createLanguageToggle } from '../src/components/LanguageToggle.js';
 import {
@@ -20,10 +20,18 @@ import {
   orderLandingScenes,
   validateLandingPresentation,
 } from '../src/data/landing.js';
-import { HERO_ORGANS, featuredHeroOrgan, heroRotationDay } from '../src/data/landingHero.js';
+import { HERO_ORGANS, HERO_ROTATION, featuredHeroOrgan, heroRotationDay } from '../src/data/landingHero.js';
+import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+
+/** Every text node under an element, in order. */
+function collectText(node, out = []) {
+  if (node.textContent) out.push(node.textContent);
+  for (const child of node.children ?? []) collectText(child, out);
+  return out;
+}
 
 test('landing: every listed model has one curated question and stays reachable', () => {
   assert.deepEqual(validateLandingPresentation(SCENES), []);
@@ -56,10 +64,12 @@ test('landing hero: the featured organ is a pure function of the date, and start
     featuredHeroOrgan(new Date(Date.UTC(2026, 8, 8, 21, 47))).organ
   );
 
-  // One full turn covers every organ exactly once, then repeats.
-  const cycle = HERO_ORGANS.map((_, offset) => featuredHeroOrgan(day(offset)).organ);
-  assert.deepEqual(new Set(cycle).size, HERO_ORGANS.length);
-  assert.equal(featuredHeroOrgan(day(HERO_ORGANS.length)).organ, cycle[0]);
+  // One full turn covers every organ in the rotation exactly once, then
+  // repeats. The rotation is the declared organs filtered by what is open, so
+  // with one open model every day is that model.
+  const cycle = HERO_ROTATION.map((_, offset) => featuredHeroOrgan(day(offset)).organ);
+  assert.deepEqual(new Set(cycle).size, HERO_ROTATION.length);
+  assert.equal(featuredHeroOrgan(day(HERO_ROTATION.length)).organ, cycle[0]);
 
   // A clock set before the epoch still lands on a real organ rather than
   // indexing off the front of the rotation.
@@ -68,7 +78,22 @@ test('landing hero: the featured organ is a pure function of the date, and start
 
 test('landing hero: every rotation entry is a real organ that opens a released model', () => {
   assert.equal(HERO_ORGANS[0].organ, 'brain');
-  for (const entry of HERO_ORGANS) {
+
+  // The declared list is the target, the rotation is what is shown, and the
+  // difference between them is exactly what is not finished. An entry naming a
+  // scene the release does not open is dropped, never repointed at a
+  // neighbouring model — which is how the heart came to link to heart failure.
+  assert.deepEqual(
+    HERO_ROTATION.map((entry) => entry.organ),
+    HERO_ORGANS.filter((entry) => isSceneReleased(sceneById(entry.sceneId))).map((entry) => entry.organ)
+  );
+  assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
+  const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
+  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene, built or not');
+  assert.equal(sceneById(heart.sceneId), null);
+  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until that scene exists');
+
+  for (const entry of HERO_ROTATION) {
     // The detailed model that replaces the builder has to be a scene the
     // release actually opens, or the hero would be showing geometry from
     // something a visitor is told is not ready.
@@ -205,7 +230,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(main, /onRendererFailure:[\s\S]*captureRendererFailure\(error/);
   assert.match(landing, /clinicalReviewPresentation/);
   assert.match(landing, /scenes\.map\(sceneCard\)/);
-  assert.match(landing, /解剖・病態生理の3Dモデル/);
+  assert.match(landing, /PUBLIC_MANIFEST/, 'the page reads the open set from the manifest');
   assert.doesNotMatch(css, /overflow:\s*hidden/);
   assert.doesNotMatch(css, /touch-action:\s*none/);
   assert.match(css, /touch-action:\s*pan-y pinch-zoom/);
@@ -220,10 +245,9 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   );
   assert.match(css, /\.landing-demo-state\.is-selected/);
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
-  assert.match(css, /\.landing-locked-row/);
 });
 
-test('landing: the index shows the open models as cards and the rest as lines', () => {
+test('landing: the index shows the open models, and nothing it cannot open', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -232,41 +256,45 @@ test('landing: the index shows the open models as cards and the rest as lines', 
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui });
     const cards = findByClass(mounted.element, 'landing-scene-card');
-    const lockedRows = findByClass(mounted.element, 'landing-locked-row');
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
 
-    // Every card is an openable model, and every model is accounted for.
+    // Every card is an openable model, and the page lists no others. The index
+    // used to end with every unopened scene as a "to be updated" line; the
+    // roadmap is not the product and no longer outnumbers it on the page.
     assert.equal(cards.length, RELEASED_SCENES.length);
-    assert.equal(lockedRows.length, LOCKED_SCENES.length);
-    assert.equal(cards.length + lockedRows.length, SCENES.length);
     assert.ok(RELEASED_SCENES.length > 0);
+    assert.equal(findByClass(mounted.element, 'landing-locked-row').length, 0);
 
     for (const card of cards) {
       assert.equal(card.tagName, 'A', card.dataset.scene);
       assert.equal(isSceneReleased(sceneById(card.dataset.scene)), true, card.dataset.scene);
     }
-    // A locked model gets a line, and a line is not a link.
-    for (const row of lockedRows) {
-      assert.equal(row.tagName, 'LI', row.dataset.scene);
-      assert.equal(isSceneReleased(sceneById(row.dataset.scene)), false, row.dataset.scene);
-    }
+
+    // And the count printed in the header is the count the manifest publishes.
+    const facts = collectText(mounted.element).join(' ');
+    assert.match(facts, new RegExp(`\\b${PUBLIC_MANIFEST.count}\\b`));
 
     assert.equal(viewports.length, 1);
     assert.equal(viewports[0].getAttribute('role'), 'region');
     assert.equal(viewports[0].getAttribute('tabindex'), '0');
     assert.equal(viewports[0].getAttribute('aria-describedby'), 'landing-demo-viewport-instructions');
 
-    assert.equal(controls.length, HERO_ORGANS.length);
-    const featured = featuredHeroOrgan();
-    const featuredIndex = HERO_ORGANS.indexOf(featured);
-    assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'true');
+    // One organ, no chooser: a single button labelled "choose an organ" is not
+    // a choice, and a second button would be offering a model that is not
+    // finished. With two or more open models the chooser comes back.
+    assert.equal(controls.length, HERO_ROTATION.length > 1 ? HERO_ROTATION.length : 0);
+    if (HERO_ROTATION.length > 1) {
+      const featuredIndex = HERO_ROTATION.indexOf(featuredHeroOrgan());
+      assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'true');
 
-    const other = (featuredIndex + 1) % HERO_ORGANS.length;
-    controls[other].click();
-    assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'false');
-    assert.equal(controls[other].getAttribute('aria-pressed'), 'true');
-    assert.equal(mounted.organHero.organ, HERO_ORGANS[other].organ);
+      const other = (featuredIndex + 1) % HERO_ROTATION.length;
+      controls[other].click();
+      assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'false');
+      assert.equal(controls[other].getAttribute('aria-pressed'), 'true');
+      assert.equal(mounted.organHero.organ, HERO_ROTATION[other].organ);
+    }
+    assert.equal(mounted.organHero.organ, featuredHeroOrgan().organ);
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -288,10 +316,11 @@ test('landing hero: the open link and the day badge follow the organ on screen',
     assert.equal(badge.hidden, false, "the day's own organ is marked as such");
     assert.equal(link.getAttribute('href'), '#/brain-anatomy');
 
+    // An organ that is not in the rotation cannot be selected into view: the
+    // hero has nothing to show for it and must not fall back to a neighbour.
     void hero.setOrgan('heart');
-    assert.equal(hero.organ, 'heart');
-    assert.equal(badge.hidden, true, 'a hand-picked organ is not today’s model');
-    assert.equal(link.getAttribute('href'), '#/heart-failure');
+    assert.equal(hero.organ, 'brain');
+    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;

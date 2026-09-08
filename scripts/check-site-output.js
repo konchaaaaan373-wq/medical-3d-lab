@@ -8,8 +8,21 @@
  *
  *   node scripts/check-site-output.js [dist-dir] [--origin <url>]
  *
- * Exits non-zero on a missing page, a missing robots.txt, or a Prototype scene
- * that has been published to the crawlable surface.
+ * Exits non-zero on a missing page, a missing robots.txt, a Prototype scene
+ * that has been published to the crawlable surface, or anything in `dist/` that
+ * belongs to a model the release does not open.
+ *
+ * That last one is the check `public/` needs. Everything under `public/` is
+ * copied into `dist/` wholesale, so a link-preview card, a mesh or a stale page
+ * for a withheld model ships with the site unless somebody notices — and
+ * "nobody noticed" is not a delivery boundary. The scene chunks are checked for
+ * the same reason: a dynamic import that is code-split is still downloadable,
+ * so `scripts/scene-loaders-plugin.js` keeps the locked ones out of the bundle
+ * and this proves it worked.
+ *
+ * Run it against a **production** build. A preview build (`VITE_ALLOW_PREVIEW=1`)
+ * deliberately keeps every scene, so it fails here — which is the right answer:
+ * a preview build is not what gets deployed.
  *
  * `--origin` is the address the build was *meant* for, stated independently of
  * the environment it was built in. Without it this script can only prove the
@@ -18,11 +31,12 @@
  * together. Passing the intended origin is what turns that from invisible into
  * a failure, which is why the domain-change checklist passes it.
  */
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 
 import { SCENES } from '../src/catalog/index.js';
-import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
+import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
+import { CRAWLABLE_SCENES, RELEASED_SCENES } from '../src/catalog/release.js';
 import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
 
@@ -97,6 +111,74 @@ for (const scene of SCENES) {
 
 if (!existsSync(join(distDir, 'robots.txt'))) problems.push('robots.txt was not emitted');
 
+/** Every file under `dist/`, as paths relative to it, with `/` separators. */
+function walk(dir, base = dir) {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...walk(full, base));
+    else out.push(relative(base, full).split(sep).join('/'));
+  }
+  return out;
+}
+
+const emitted = walk(distDir);
+
+/**
+ * The chunk basename Rollup derives for a scene's module.
+ *
+ * `src/scenes/nervous/scenes/brainAnatomy/index.js` becomes
+ * `brainAnatomy-<hash>.js`, because Rollup names an `index` chunk after the
+ * directory holding it. Read from the manifest's own loader source so it stays
+ * true when a scene moves.
+ */
+const chunkBaseFor = (scene) => {
+  const specifier = String(scene.load).match(/import\('([^']+)'\)/)?.[1] ?? '';
+  const parts = specifier.split('/').filter(Boolean);
+  const leaf = parts.at(-1) === 'index.js' ? parts.at(-2) : parts.at(-1)?.replace(/\.js$/, '');
+  return leaf ?? null;
+};
+
+const releasedChunkBases = new Set(RELEASED_SCENES.map(chunkBaseFor).filter(Boolean));
+
+for (const scene of SCENES) {
+  if (RELEASED_SCENES.includes(scene)) continue;
+
+  // A card is an advertisement for a page. No page, no card.
+  const card = `social/${scene.slug}.png`;
+  if (emitted.includes(card)) {
+    problems.push(`${scene.id}: the release does not open it, but ${card} shipped`);
+  }
+
+  // And its code is not in the bundle at all. Skipped when another scene that
+  // *is* open compiles to the same chunk name, which would make this ambiguous
+  // rather than wrong.
+  const base = chunkBaseFor(scene);
+  if (!base || releasedChunkBases.has(base)) continue;
+  const shipped = emitted.filter((file) => file.startsWith(`assets/${base}-`) && file.endsWith('.js'));
+  if (shipped.length) {
+    problems.push(`${scene.id}: the release does not open it, but its code shipped as ${shipped.join(', ')}`);
+  }
+}
+
+// Source maps name every original file and inline their contents; a service
+// worker keeps serving what a previous deploy cached, which is how a withheld
+// page comes back after it was withdrawn. Neither is configured here, so
+// finding one means something changed upstream of this check.
+for (const file of emitted) {
+  if (file.endsWith('.map')) problems.push(`a source map shipped: ${file}`);
+  if (/^(sw|service-worker|workbox-[^/]*)\.js$/.test(file)) problems.push(`a service worker shipped: ${file}`);
+}
+
+// The number a visitor reads and the number the build emits are the same
+// number, or one of the two surfaces is lying about the size of the product.
+const emittedPages = emitted.filter((file) => file.startsWith('s/') && file.endsWith('/index.html')).length;
+if (PUBLIC_MANIFEST.count !== emittedPages) {
+  problems.push(
+    `the public manifest publishes ${PUBLIC_MANIFEST.count} model(s) and the build emitted ${emittedPages} page(s)`
+  );
+}
+
 const sitemapPath = join(distDir, 'sitemap.xml');
 if (existsSync(sitemapPath)) {
   const xml = readFileSync(sitemapPath, 'utf8');
@@ -145,7 +227,8 @@ if (existsSync(sitemapPath)) {
 }
 
 console.log(
-  `Crawlable surface — ${CRAWLABLE_SCENES.length} of ${SCENES.length} scene pages checked in ${distDir}`
+  `Crawlable surface — ${CRAWLABLE_SCENES.length} of ${SCENES.length} scene pages checked in ${distDir}; ` +
+    `public manifest ${PUBLIC_MANIFEST.revision} publishes ${PUBLIC_MANIFEST.count}`
 );
 for (const note of notes) console.log(`  note: ${note}`);
 
@@ -154,4 +237,4 @@ if (problems.length) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('  ok    every crawlable scene has a page, and nothing else does');
+console.log('  ok    every crawlable scene has a page, and nothing withheld reached the build');

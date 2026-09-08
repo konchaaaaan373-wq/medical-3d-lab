@@ -9,10 +9,11 @@
 /**
  * The order the landing lists models in.
  *
- * The models the beta opens come first — the brain and the heart — because
- * they are what a visitor arriving from a link can actually open. Everything
- * else follows, listed as "to be updated" rather than hidden: what is being
- * built is part of what the page is saying.
+ * The models the beta opens come first — its anatomy models — because they are
+ * what a visitor arriving from a link can actually open. The rest keeps its
+ * place in the order for when the release widens; the page no longer draws it.
+ * This is a stable ordering of the whole catalogue, not a publication decision:
+ * `catalog/release.js` makes that one, and `Landing.js` filters on it.
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',

@@ -117,6 +117,12 @@ architecture decision, and it has no path into this product.
 
 ## Next, in this order
 
+The public beta is the **anatomy of the brain and the heart**, so the heart is
+no longer only a technical pilot: it is what the beta is missing. That changes
+the urgency of item 1, not its gates. Nothing below is relaxed to get a heart
+out — an asset that does not clear every stage does not reach the public scene,
+and the beta opens one organ instead. See `beta-release.md`.
+
 1. **HRA normal heart — the Phase 1 technical proof of this pipeline.** One
    normal heart from the HRA 3D Reference Object Library, through stages
    1–10, compared in **Lab** (or a development harness) against the existing
@@ -125,6 +131,10 @@ architecture decision, and it has no path into this product.
    semantic parts, units and axes usable by the existing scenes; does it hold
    the frame budget on a low-end phone; can it coexist with the dynamic
    chambers as a hybrid. If no measured gain, it is not adopted.
+   **What has changed:** whatever this pilot concludes, `heart-anatomy` — a
+   scene of its own, not a re-labelled disease scene — is what the beta needs,
+   and it may be built on a procedural heart if the asset route does not clear
+   the gates. The pilot decides the geometry, not whether the scene happens.
 2. **Lung — the first production-facing anatomy upgrade.** The organ whose
    disease scenes are waiting on named structures (`anatomy-specs.md` §1:
    A2 plus the pulled A3), taken through the same stages with the pipeline
