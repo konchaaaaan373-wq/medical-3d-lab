@@ -127,8 +127,18 @@ export function buildAorticRoot({ centre, radius, color = '#c88f86', radial = 48
   const spanAbove = P.stub;
   const total = spanBelow + spanAbove;
 
-  const positions = new Float32Array((rings + 1) * (radial + 1) * 3);
-  const uvs = new Float32Array((rings + 1) * (radial + 1) * 2);
+  const wallCount = (rings + 1) * (radial + 1);
+  /**
+   * The root is a cut length of a vessel, so it ends on two discs.
+   *
+   * Without them the top was an open pipe: the ischaemia scene draws no arch
+   * above it, so a reader looking down at the heart saw the background through
+   * the aorta. The rims get their own vertices rather than sharing the wall's,
+   * so the edge stays an edge instead of rounding off into a lip.
+   */
+  const capStart = wallCount;
+  const positions = new Float32Array((wallCount + 2 * (radial + 2)) * 3);
+  const uvs = new Float32Array((wallCount + 2 * (radial + 2)) * 2);
   const indices = [];
 
   for (let i = 0; i <= rings; i++) {
@@ -153,8 +163,45 @@ export function buildAorticRoot({ centre, radius, color = '#c88f86', radial = 48
       if (i < rings && k < radial) {
         const a = i * (radial + 1) + k;
         const b = (i + 1) * (radial + 1) + k;
-        indices.push(a, b, a + 1, b, b + 1, a + 1);
+        // Outward, like `TubeSurface`: the other order faces the surface into
+        // its own lumen, and with a front-side material that draws the far
+        // wall of the root with its normal pointing back at the camera. The
+        // three sinuses are the one shape here whose roundness is the point.
+        indices.push(a, a + 1, b, b, a + 1, b + 1);
       }
+    }
+  }
+
+  {
+    const annulusRing = capStart;
+    const annulusCentre = annulusRing + radial + 1;
+    const stubRing = annulusCentre + 1;
+    const stubCentre = stubRing + radial + 1;
+    for (const [ring, centreIndex, i, v] of [
+      [annulusRing, annulusCentre, 0, 0],
+      [stubRing, stubCentre, rings, 1],
+    ]) {
+      let x = 0;
+      let z = 0;
+      for (let k = 0; k <= radial; k++) {
+        const from = (i * (radial + 1) + k) * 3;
+        positions[(ring + k) * 3] = positions[from];
+        positions[(ring + k) * 3 + 1] = positions[from + 1];
+        positions[(ring + k) * 3 + 2] = positions[from + 2];
+        uvs[(ring + k) * 2] = k / radial;
+        uvs[(ring + k) * 2 + 1] = v;
+        if (k < radial) { x += positions[from]; z += positions[from + 2]; }
+      }
+      positions[centreIndex * 3] = x / radial;
+      positions[centreIndex * 3 + 1] = positions[(ring * 3) + 1];
+      positions[centreIndex * 3 + 2] = z / radial;
+      uvs[centreIndex * 2] = 0.5;
+      uvs[centreIndex * 2 + 1] = v;
+    }
+    // The annulus faces down and the stub faces up, so they wind opposite ways.
+    for (let k = 0; k < radial; k++) {
+      indices.push(annulusCentre, annulusRing + k, annulusRing + k + 1);
+      indices.push(stubCentre, stubRing + k + 1, stubRing + k);
     }
   }
 

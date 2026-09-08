@@ -20,20 +20,44 @@ export class TubeSurface {
    * @param {{ radius?: (u: number) => number, steps?: number, radial?: number,
    *           arc?: number, arcStart?: number }} [options]
    */
-  constructor(curve, { radius = () => 0.3, steps = 96, radial = 18, arc = Math.PI * 2, arcStart = 0 } = {}) {
+  constructor(curve, {
+    radius = () => 0.3,
+    steps = 96,
+    radial = 18,
+    arc = Math.PI * 2,
+    arcStart = 0,
+    caps = true,
+  } = {}) {
     this.curve = curve;
     this.steps = steps;
     this.radial = radial;
     this.arc = arc;
     this.arcStart = arcStart;
     this.baseRadius = radius;
+    /**
+     * A tube that goes all the way round is a solid, and a solid has ends.
+     *
+     * An arc is not: a tube drawn as part of a circle is a cut-away, and the
+     * opening is the point of it. So capping is asked of full circles only,
+     * however loudly the caller asks.
+     */
+    this.caps = caps && arc >= Math.PI * 2 - 1e-6;
 
     this.points = curve.getSpacedPoints(steps);
     const frames = curve.computeFrenetFrames(steps, false);
     this.normals = frames.normals;
     this.binormals = frames.binormals;
 
-    const vertexCount = (steps + 1) * (radial + 1);
+    const wallCount = (steps + 1) * (radial + 1);
+    /**
+     * Each cap is its own ring of vertices plus a centre, rather than a fan
+     * over the wall's rim. Sharing the rim would average the cap's normal into
+     * the wall's and round the end off into a lip; duplicated, the crease
+     * between them stays a crease.
+     */
+    this.capStart = wallCount;
+    const capCount = this.caps ? 2 * (radial + 2) : 0;
+    const vertexCount = wallCount + capCount;
     this.geometry = new THREE.BufferGeometry();
     this.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertexCount * 3), 3));
     this.geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(vertexCount * 3), 3));
@@ -47,10 +71,37 @@ export class TubeSurface {
         if (i < steps && j < radial) {
           const a = i * (radial + 1) + j;
           const b = (i + 1) * (radial + 1) + j;
-          indices.push(a, b, a + 1, b, b + 1, a + 1);
+          // `a, a + 1, b` and not `a, b, a + 1`: wound the other way every tube
+          // in the product faced inwards. Measured, not read — the silhouette
+          // of a tube is the same either way, so nothing looked wrong. What it
+          // cost was the shading: under a front-side material the near wall was
+          // culled and the far one drawn, with its normal pointing back at the
+          // camera, so a vessel was lit as a flat ribbon rather than a round
+          // one, and sat a diameter too far away in the depth buffer.
+          indices.push(a, a + 1, b, b, a + 1, b + 1);
         }
       }
     }
+
+    if (this.caps) {
+      const startRing = this.capStart;
+      const startCentre = startRing + radial + 1;
+      const endRing = startCentre + 1;
+      const endCentre = endRing + radial + 1;
+      for (let j = 0; j <= radial; j++) {
+        uv.setXY(startRing + j, j / radial, 0);
+        uv.setXY(endRing + j, j / radial, 1);
+      }
+      uv.setXY(startCentre, 0.5, 0);
+      uv.setXY(endCentre, 0.5, 1);
+      // The two caps wind opposite ways because they face opposite ways: the
+      // first looks back down the tangent, the last looks along it.
+      for (let j = 0; j < radial; j++) {
+        indices.push(startCentre, startRing + j + 1, startRing + j);
+        indices.push(endCentre, endRing + j, endRing + j + 1);
+      }
+    }
+
     this.geometry.setIndex(indices);
     this.refresh();
   }
@@ -90,6 +141,24 @@ export class TubeSurface {
         position.setXYZ(i * (radial + 1) + j, point.x, point.y, point.z);
       }
     }
+    // The caps are written from the same radius the rim just used, so a tube
+    // that narrows on a frame closes at its new calibre rather than leaving a
+    // disc the width it used to be.
+    if (this.caps) {
+      const startRing = this.capStart;
+      const startCentre = startRing + radial + 1;
+      const endRing = startCentre + 1;
+      const endCentre = endRing + radial + 1;
+      for (const [ring, centreIndex, i] of [[startRing, startCentre, 0], [endRing, endCentre, steps]]) {
+        for (let j = 0; j <= radial; j++) {
+          const from = i * (radial + 1) + j;
+          position.setXYZ(ring + j, position.getX(from), position.getY(from), position.getZ(from));
+        }
+        const centre = this.points[i];
+        position.setXYZ(centreIndex, centre.x, centre.y, centre.z);
+      }
+    }
+
     position.needsUpdate = true;
     this.geometry.computeVertexNormals();
     this.geometry.computeBoundingSphere();
