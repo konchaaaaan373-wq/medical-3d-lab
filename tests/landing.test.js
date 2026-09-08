@@ -52,28 +52,15 @@ test('landing: every listed model has one curated question and stays reachable',
   assert.ok(firstLocked > lastOpen, 'released models must not be interleaved with locked ones');
 });
 
-test('landing hero: the featured organ is a pure function of the date, and starts on the brain', () => {
-  const day = (offset) => new Date(Date.UTC(2026, 8, 6 + offset));
+test('landing hero: the initial model is fixed and does not change with the date', () => {
+  const rotation = [HERO_ORGANS[0], HERO_ORGANS[1]];
+  const first = featuredHeroOrgan(new Date(Date.UTC(2026, 8, 6)), rotation);
+  const later = featuredHeroOrgan(new Date(Date.UTC(2027, 0, 14)), rotation);
 
-  assert.equal(heroRotationDay(day(0)), 0);
-  assert.equal(featuredHeroOrgan(day(0)).organ, 'brain', 'the rotation opens on the brain');
-
-  // Same date, same organ — twice, and from a different clock time on that day.
-  assert.equal(
-    featuredHeroOrgan(new Date(Date.UTC(2026, 8, 8, 3, 14))).organ,
-    featuredHeroOrgan(new Date(Date.UTC(2026, 8, 8, 21, 47))).organ
-  );
-
-  // One full turn covers every organ in the rotation exactly once, then
-  // repeats. The rotation is the declared organs filtered by what is open, so
-  // with one open model every day is that model.
-  const cycle = HERO_ROTATION.map((_, offset) => featuredHeroOrgan(day(offset)).organ);
-  assert.deepEqual(new Set(cycle).size, HERO_ROTATION.length);
-  assert.equal(featuredHeroOrgan(day(HERO_ROTATION.length)).organ, cycle[0]);
-
-  // A clock set before the epoch still lands on a real organ rather than
-  // indexing off the front of the rotation.
-  assert.ok(featuredHeroOrgan(day(-3))?.organ);
+  assert.equal(heroRotationDay(new Date(Date.UTC(2026, 8, 6))), 0);
+  assert.equal(heroRotationDay(new Date(Date.UTC(2027, 0, 14))), 0);
+  assert.equal(first.organ, 'brain');
+  assert.equal(later.organ, 'brain');
 });
 
 test('landing hero: every rotation entry is a real organ that opens a released model', () => {
@@ -228,9 +215,9 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(viewport, /'ArrowLeft'[\s\S]*'ArrowRight'[\s\S]*'Home'/);
   assert.match(viewport, /style\.touchAction = 'pan-y pinch-zoom'/);
   assert.match(main, /onRendererFailure:[\s\S]*captureRendererFailure\(error/);
-  assert.match(landing, /clinicalReviewPresentation/);
-  assert.match(landing, /scenes\.map\(sceneCard\)/);
   assert.match(landing, /PUBLIC_MANIFEST/, 'the page reads the open set from the manifest');
+  assert.match(landing, /heroOrgansForModels/);
+  assert.doesNotMatch(landing, /posterPath|posterKind/);
   assert.doesNotMatch(css, /overflow:\s*hidden/);
   assert.doesNotMatch(css, /touch-action:\s*none/);
   assert.match(css, /touch-action:\s*pan-y pinch-zoom/);
@@ -247,7 +234,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: the index shows the open models, and nothing it cannot open', () => {
+test('landing: one public model is the live brain, not a one-card index', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -255,46 +242,16 @@ test('landing: the index shows the open models, and nothing it cannot open', () 
   try {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui });
-    const cards = findByClass(mounted.element, 'landing-scene-card');
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
+    const links = findByClass(mounted.element, 'landing-cta');
 
-    // Every card is an openable model, and the page lists no others. The index
-    // used to end with every unopened scene as a "to be updated" line; the
-    // roadmap is not the product and no longer outnumbers it on the page.
-    assert.equal(cards.length, RELEASED_SCENES.length);
-    assert.ok(RELEASED_SCENES.length > 0);
-    assert.equal(findByClass(mounted.element, 'landing-locked-row').length, 0);
-
-    for (const card of cards) {
-      assert.equal(card.tagName, 'A', card.dataset.scene);
-      assert.equal(isSceneReleased(sceneById(card.dataset.scene)), true, card.dataset.scene);
-    }
-
-    // And the count printed in the header is the count the manifest publishes.
-    const facts = collectText(mounted.element).join(' ');
-    assert.match(facts, new RegExp(`\\b${PUBLIC_MANIFEST.count}\\b`));
-
+    assert.equal(PUBLIC_MANIFEST.count, 1);
+    assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1);
-    assert.equal(viewports[0].getAttribute('role'), 'region');
-    assert.equal(viewports[0].getAttribute('tabindex'), '0');
-    assert.equal(viewports[0].getAttribute('aria-describedby'), 'landing-demo-viewport-instructions');
-
-    // One organ, no chooser: a single button labelled "choose an organ" is not
-    // a choice, and a second button would be offering a model that is not
-    // finished. With two or more open models the chooser comes back.
-    assert.equal(controls.length, HERO_ROTATION.length > 1 ? HERO_ROTATION.length : 0);
-    if (HERO_ROTATION.length > 1) {
-      const featuredIndex = HERO_ROTATION.indexOf(featuredHeroOrgan());
-      assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'true');
-
-      const other = (featuredIndex + 1) % HERO_ROTATION.length;
-      controls[other].click();
-      assert.equal(controls[featuredIndex].getAttribute('aria-pressed'), 'false');
-      assert.equal(controls[other].getAttribute('aria-pressed'), 'true');
-      assert.equal(mounted.organHero.organ, HERO_ROTATION[other].organ);
-    }
-    assert.equal(mounted.organHero.organ, featuredHeroOrgan().organ);
+    assert.equal(controls.length, 0);
+    assert.ok(links.some((link) => link.getAttribute('href') === '#/brain-anatomy'));
+    assert.equal(mounted.organHero.organ, 'brain');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
