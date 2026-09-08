@@ -3,11 +3,12 @@
     "sceneId": "brain-anatomy",
     "card": "docs/model-cards/brain-anatomy.md",
     "modelSources": [
-      "src/data/brainAnatomy.js"
+      "src/data/brainAnatomy.js",
+      "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "f42ed7d9027aece6",
-    "cardUpdatedAt": "2026-09-03"
+    "cardRevision": 4,
+    "modelDigest": "a4e246e1208c5785",
+    "cardUpdatedAt": "2026-09-08"
   },
   {
     "sceneId": "circulation",

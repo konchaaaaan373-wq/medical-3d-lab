@@ -34,7 +34,7 @@ node -e "import('./src/catalog/release.js').then(m=>console.log(
 | 2 | 解剖の主張だけをする（`disease` が無く、mechanism level が `none`、個別化なし、臨床用途の宣言なし） | `modelProfiles.js` |
 | 3 | profile が挙げる asset がすべて asset release gate を通る（ライセンス・obligation・hash・QA） | `assetManifest.js` |
 | 4 | 医学レビュー記録が `stale` でない | `clinicalReview.js` |
-| 5 | この scene と **その asset revision に結びついた公開判断記録**がある | `BETA_PUBLICATION_DECISIONS` |
+| 5 | **完全な公開判断記録**（誰が・どの役割で・いつ・どの記録に対して・どの範囲を）があり、**その asset revision と scene revision の両方に結びついて**いる | `BETA_PUBLICATION_DECISIONS` |
 
 未知の status、profile の欠落、ライセンス不明、hash が変わったあとの古い判断——
 どれも**閉じる**側に倒れます。`tests/beta-release.test.js` がその 1 つ 1 つを
@@ -43,13 +43,40 @@ node -e "import('./src/catalog/release.js').then(m=>console.log(
 ### 公開判断記録は医学レビューではない
 
 `BETA_PUBLICATION_DECISIONS` は「この scene が指す構造を、実際に配信している
-ファイル（hash 指定）に対して確認した」という記録です。
-**医学レビューの sign-off ではありません**——それは
-[`clinical-reviews/registry.json`](clinical-reviews/registry.json) が所有し、
-`brain-anatomy` については現在 `pending` です。UI もそう表示します。
+ものに対して確認した」という記録です。**医学レビューの sign-off ではありません**
+——それは [`clinical-reviews/registry.json`](clinical-reviews/registry.json) が
+所有し、`brain-anatomy` については現在 `pending` です。UI もそう表示します。
+記録が `role: 'clinical'` を名乗っても、レビュー登録簿に現行のレビューが
+無ければゲートは閉じます。**記録が自分を sign-off に昇格させることはできません。**
 
-メッシュを再エクスポートすれば hash が変わり、その判断は自動的に効かなくなります。
-あるファイルについての判断は、別のファイルについての判断ではありません。
+記録には次が必須で、欠ければ閉じます。誰が（`decidedBy.name`）・どの役割で
+（`decidedBy.role` ∈ engineering / anatomy-expert / clinical）・いつ
+（`decidedAt`）・どの記録文書に対して（`record`）・何を確認したか
+（`scope.structures` / `views` / `interactions`）・証跡はどこか（`evidence`）・
+**何を確認していないか**（`unverified`）。`record` と `evidence` の実在は
+build / CI（`npm run verify:site`）が確認します——ブラウザで動く判定に
+`node:fs` は入れません。
+実例は [`beta-publication/brain-anatomy.md`](beta-publication/brain-anatomy.md)。
+
+### 2 つの revision に結びつける
+
+モデルは 2 通りに変わります。
+
+- **メッシュ** — 再エクスポートすれば `output.sha256` が変わり、判断は効かなくなる
+- **部位対応・選択挙動** — GLB が 1 バイトも変わらないまま、どのメッシュが何と
+  呼ばれるか・クリックで何が選ばれるかが変わりうる
+
+後者を捕まえるのが `sceneRevision` で、既存の
+[`model-cards/revisions.json`](model-cards/revisions.json) の
+`cardRevision` と `modelDigest` をそのまま指します（新しい台帳は作りません）。
+`brain-anatomy` の対象は `src/data/brainAnatomy.js` と
+`BrainAnatomyScene.js`。どちらかを変えると `npm run revisions:check` が落ち、
+カードを直して `revisions:adopt` すると revision が動き、公開が閉じます。
+
+この紐づけは**scene 単位でスコープされています**。対象はモデルの中身を決める
+ファイルだけで、文書・コピー・スタイルは含みません。ある scene の変更が
+別の scene の記録を失効させることもありません——無関係な文言修正で全レビューが
+飛ぶ設計にはしません。
 
 ### 未完成の心臓解剖を、病態モデルで代用しない
 
@@ -113,8 +140,18 @@ production ビルドは保存済みのアンロック値を**消します**。
 **公開しないシーンの dynamic import を落とします**。チャンクが出ない＝
 コードが配信されない、ということです（preview ビルドは全部残します——
 レビュワーが作業中のものを開けなければ意味がないので）。
+
 `npm run verify:site` が dist を歩いて、非公開シーンのチャンク・カード・
 静的ページ・source map・service worker が残っていないかを確かめます。
+**asset も同じように検査します**（`scripts/asset-delivery.js`）——
+`public/` は丸ごとコピーされるので、非公開モデルのメッシュやテクスチャは
+放っておけば配信されます。判定は Asset Manifest から導きます：公開モデルの
+model profile が挙げる asset は在るべき、それ以外の登録済み asset は無いべき、
+asset ディレクトリに居るのに**どの manifest エントリも主張していないファイル**は
+出典もライセンスも記録されていないので失格。ライセンス通知は manifest の
+`license.decisionRecord` から、共有 decoder は理由つきの declared list から
+区別します。**ファイル名に病名が入っているか、では判定しません。**
+失敗テストと対照テストは `tests/asset-delivery.test.js`。
 
 ### これで「秘匿」できるわけではありません
 
@@ -150,10 +187,22 @@ import { PUBLIC_MANIFEST, organIsPublished } from '../catalog/publicManifest.js'
 
 ## 4. β を終わらせるとき
 
-`src/catalog/release.js` の `RELEASE_CHANNEL` を `'beta'` から変えると、
-`isSceneReleased()` は候補リストを見なくなり、prototype 以外の全シーンに
-`true` を返します。そのとき同時に見直すもの:
+**`RELEASE_CHANNEL` を書き換えても何も開きません。** 以前は
+`RELEASE_CHANNEL !== 'beta'` が「prototype 以外は全部公開」に落ちていて、
+1 行の編集——あるいはタイプミス——で病態モデル 12 件が、数値ごと、
+下のゲートを全部素通りして公開される状態でした。廃止しました。
 
+channel は policy の**名前**であって policy ではありません。
+`RELEASE_POLICIES` に登録されている channel だけが公開でき、いまあるのは
+`beta` の 1 つだけです。登録の無い channel（`public`、綴り違い、
+`constructor` のような継承プロパティ名を含む）は**何も開きません**。
+
+β を終わらせるとは、**一般公開用の policy を書いて登録すること**です。
+その policy は独自のゲートとテストを持ちます。今回は実装していません。
+書くときに同時に見直すもの:
+
+- prototype をクロール面に出さない条件（`CRAWLABLE_SCENES` の 2 つ目の条件）は
+  policy が変わっても残す必要があります
 - `PUBLIC_SCENES` / `LAB_SCENES` の投影は β の間も意味を保っています
 - Landing の hero は臓器モデルのローテーションのままで構いません
   （[`../src/data/landingHero.js`](../src/data/landingHero.js)）

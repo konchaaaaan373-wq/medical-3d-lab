@@ -35,8 +35,10 @@
  *     obligations, hashes, QA);
  *  4. no clinical-review record it has is `stale`, so a sign-off that has been
  *     overtaken is never shown as current;
- *  5. a publication decision exists that names this scene *and* the exact asset
- *     revisions it was taken against.
+ *  5. a publication decision exists that is complete — who decided, in what
+ *     role, on what date, against what record, over what scope — and that is
+ *     pinned to the exact asset revisions **and** the exact scene revision it
+ *     was taken against.
  *
  * A status nobody has defined, a missing model profile, an asset whose licence
  * is unknown, a decision taken against a file that has since changed: each of
@@ -63,8 +65,9 @@
  */
 import { SCENES, sceneById } from './index.js';
 import { STATUS_IDS } from './taxonomy.js';
-import { assetById, assetReleaseProblems } from './assetManifest.js';
-import { clinicalReviewForScene } from './clinicalReview.js';
+import { assetById, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
+import { clinicalReviewForScene, hasCurrentClinicalReview } from './clinicalReview.js';
+import { sceneRevisionPin } from './modelRevisions.js';
 import {
   CLINICAL_INTENDED_USES,
   MECHANISM_LEVEL,
@@ -72,7 +75,20 @@ import {
   modelProfileForScene,
 } from './modelProfiles.js';
 
-/** Bump to `'public'` — one line — when the whole catalogue is ready to open. */
+/**
+ * The release channel this build is on.
+ *
+ * **Changing this string does not open anything.** It used to: the gate read
+ * `RELEASE_CHANNEL !== 'beta'` and fell through to "everything that is not a
+ * prototype", so one edit here would have published twelve disease models —
+ * with their numbers — past every check below, and a typo would have done it
+ * silently. A channel is a name for a policy, not a policy.
+ *
+ * `RELEASE_POLICIES` holds the policies. `beta` is the only one that exists.
+ * Ending the beta means writing the general-release policy and registering it
+ * here, deliberately, with its own gates and its own tests — see
+ * `docs/beta-release.md` §4.
+ */
 export const RELEASE_CHANNEL = 'beta';
 
 /**
@@ -106,37 +122,170 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-an
 export const BETA_EXCLUDED_STATUS = 'prototype';
 
 /**
+ * What kind of check a publication decision was.
+ *
+ * Three separate things, and the reason they are a closed list is that the
+ * weakest of them is the one this release actually has. An engineering
+ * acceptance says the software names what it says it names; it does not say an
+ * anatomist agreed with the labels, and it certainly does not say a clinician
+ * signed the model. A record claiming `clinical` is checked against the review
+ * registry below rather than believed.
+ */
+export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'clinical']);
+
+/**
  * The publication decisions this release rests on.
  *
- * One record per scene the beta opens, bound to the asset revisions it was
- * taken against. It is **not** a clinical sign-off and must never be presented
- * as one — the clinical-review registry owns that question and currently
- * answers "pending" for the brain atlas. What this records is the separate
- * decision the beta needs: that the structures this scene names have been
- * checked against the file that is actually being served, on a stated date, by
- * a stated kind of reviewer.
+ * One record per scene the beta opens. It is **not** a clinical sign-off and
+ * must never be presented as one — the clinical-review registry owns that
+ * question and currently answers "pending" for the brain atlas. What this
+ * records is the separate decision the beta needs: that the structures this
+ * scene names were checked against what is actually being served, by somebody
+ * identified, in a stated role, on a stated date, over a stated scope, with the
+ * evidence and the gaps written down.
  *
- * `assetRevisions` has to match `output.sha256` in the asset manifest exactly.
- * Re-export the mesh and this decision stops applying, which is the point: a
- * decision about a file is not a decision about a different file.
+ * ## Pinned to two revisions, because there are two ways to change the model
+ *
+ * `assetRevisions` has to match `output.sha256` in the asset manifest: re-export
+ * the mesh and the decision stops applying. But the mesh is only half of what a
+ * reader is told. Which mesh is called what, and what a click selects, live in
+ * the scene's own sources — so `sceneRevision` pins the model-card revision and
+ * digest that `docs/model-cards/revisions.json` records for those sources.
+ * Change the part correspondence with the same GLB and `revisions:check` fails,
+ * the card is revised, the revision moves, and this decision closes.
+ *
+ * That pin is deliberately **scoped and per scene**. It covers the files that
+ * decide what the model is, not the documentation, the copy or the stylesheet,
+ * and a change to the brain says nothing about any other scene: a wording fix
+ * somewhere in the repository must not expire a record it has nothing to do
+ * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
     decidedAt: '2026-09-08',
-    /** engineering | anatomy-expert | clinical — what kind of check this was. */
-    decidedBy: 'engineering',
-    record: 'docs/beta-release.md',
+    /** Who, and in what capacity. A role is a claim, and it is checked. */
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B0 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    note:
-      'The named structures, their labels and the selection behaviour were checked against the vendored atlas at ' +
-      'this hash, with the licence obligations discharged in public/assets/brain/ATTRIBUTION.md. This is an ' +
-      'engineering acceptance of what the scene shows, not an anatomy-expert or clinical sign-off: the review ' +
-      'registry still records brain-anatomy as pending and the UI says so.',
+    sceneRevision: Object.freeze({ cardRevision: 4, modelDigest: 'a4e246e1208c5785' }),
+    /** What was actually exercised. Not a plan — a list of what was done. */
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Opercular part of inferior frontal gyrus',
+        'Supramarginal gyrus',
+        'Middle temporal gyrus',
+        'Superior temporal sulcus',
+      ]),
+      views: Object.freeze(['left-lateral (applied)', 'six named viewpoints offered']),
+      interactions: Object.freeze([
+        'click pins a structure and the panel names it in both languages',
+        'click on empty space clears, and a structure can be selected again',
+        'a drag that ends over another structure does not reselect',
+        'switching colour mode does not change the selection',
+        'applying a named viewpoint does not change the selection',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'tests/brain-anatomy.test.js',
+      'tests/anatomy-colour-ui.test.js',
+      'docs/asset-qa/brain-atlas-glb.md',
+      'public/assets/brain/ATTRIBUTION.md',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      '393 of the 397 selectable structures were not individually opened',
+      'no label was checked against a reference atlas — that is an anatomist\'s judgement',
+      'deep structures behind the anatomical-layer slider were not exercised',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'no clinical review — the registry records this scene as pending',
+      'the anatomy/CG quality bar for the beta (B3) has not been measured',
+    ]),
   }),
 ]);
+
+const nonEmptyString = (value) => typeof value === 'string' && value.trim().length > 0;
+const nonEmptyStrings = (value) => Array.isArray(value) && value.length > 0 && value.every(nonEmptyString);
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Everything missing or unsupportable in a publication decision.
+ *
+ * A record that says only "this scene, this hash" is not a decision anybody can
+ * audit: it does not say who looked, what they looked at, or what they did not
+ * look at. Each field below closes one of those, and the role check closes the
+ * one that matters most — a record cannot promote itself to a clinical sign-off
+ * that the review registry does not have.
+ *
+ * @param {object|null} decision
+ * @param {object} scene
+ * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean}} [options]
+ * @returns {string[]}
+ */
+export function publicationDecisionProblems(decision, scene, { fileExists, hasReview = hasCurrentClinicalReview } = {}) {
+  const problems = [];
+  if (!decision) return ['has no publication decision on file for this release'];
+
+  const exists = (path) => (fileExists ? fileExists(path) : true);
+
+  if (!ISO_DATE.test(decision.decidedAt ?? '')) {
+    problems.push(`the publication decision has no decision date (got "${decision.decidedAt}")`);
+  }
+
+  const by = decision.decidedBy;
+  if (!by || typeof by !== 'object') {
+    problems.push('the publication decision does not say who took it, or in what role');
+  } else {
+    if (!nonEmptyString(by.name)) problems.push('the publication decision does not name who took it');
+    if (!DECISION_ROLES.includes(by.role)) {
+      problems.push(`the publication decision claims the role "${by.role}", which is not one of ${DECISION_ROLES.join(', ')}`);
+    }
+    // The one claim a record must not be able to make about itself.
+    if (by.role === 'clinical' && !hasReview(scene)) {
+      problems.push(
+        'the publication decision claims a clinical role, and the review registry has no current clinical review ' +
+          'for this scene. A decision cannot promote itself to a sign-off.'
+      );
+    }
+  }
+
+  if (!isRepositoryPath(decision.record ?? '')) {
+    problems.push('the publication decision names no record document');
+  } else if (!exists(decision.record)) {
+    problems.push(`the publication decision names the record "${decision.record}", which does not exist`);
+  }
+
+  const scope = decision.scope;
+  if (!scope || typeof scope !== 'object') {
+    problems.push('the publication decision records no scope — what was checked is not written down');
+  } else {
+    for (const key of ['structures', 'views', 'interactions']) {
+      if (!nonEmptyStrings(scope[key])) {
+        problems.push(`the publication decision's scope does not say what ${key} were checked`);
+      }
+    }
+  }
+
+  if (!nonEmptyStrings(decision.evidence)) {
+    problems.push('the publication decision cites no evidence');
+  } else {
+    for (const path of decision.evidence) {
+      if (!isRepositoryPath(path)) problems.push(`the publication decision cites "${path}", which is not a repository path`);
+      else if (!exists(path)) problems.push(`the publication decision cites "${path}", which does not exist`);
+    }
+  }
+
+  // Present, and allowed to be empty only by saying so — an absent field reads
+  // as "nothing was left unchecked", which is a claim nobody made.
+  if (!Array.isArray(decision.unverified) || decision.unverified.some((line) => !nonEmptyString(line))) {
+    problems.push('the publication decision does not state what it did not check');
+  }
+
+  return problems;
+}
 
 /**
  * A scene whose model profile claims structure and nothing more.
@@ -188,6 +337,8 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
  *   resolveScene?: (id:string) => object|null,
  *   resolveAsset?: (id:string) => object|null,
  *   resolveReview?: (scene:object) => object|null,
+ *   resolveRevision?: (scene:object) => {cardRevision:number, modelDigest:string}|null,
+ *   hasReview?: (scene:object) => boolean,
  *   decisions?: ReadonlyArray<object>}} [options] `fileExists` is injected so
  *   the catalogue layer stays free of `node:fs`; without it a recorded path is
  *   taken at its word, which is all a browser can do.
@@ -199,6 +350,8 @@ export function betaPublicationProblems(candidate, {
   resolveScene = sceneById,
   resolveAsset = assetById,
   resolveReview = clinicalReviewForScene,
+  resolveRevision = sceneRevisionPin,
+  hasReview = hasCurrentClinicalReview,
   decisions = BETA_PUBLICATION_DECISIONS,
 } = {}) {
   const id = typeof candidate === 'string' ? candidate : candidate?.id;
@@ -241,9 +394,8 @@ export function betaPublicationProblems(candidate, {
   }
 
   const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
-  if (!decision) {
-    problems.push('has no publication decision on file for this release');
-  } else {
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
+  if (decision) {
     const recorded = decision.assetRevisions ?? {};
     for (const assetId of assetIds) {
       const asset = resolveAsset(assetId);
@@ -262,17 +414,74 @@ export function betaPublicationProblems(candidate, {
         problems.push(`the publication decision names asset "${assetId}", which the scene no longer uses`);
       }
     }
+
+    // The other half of "which model was this decided about". The mesh can stay
+    // byte-identical while the part correspondence or the selection behaviour
+    // changes underneath it, and a reader would be told something nobody
+    // checked. `revisions.json` already notices that change; this makes the
+    // release notice it too.
+    const pin = decision.sceneRevision;
+    const current = resolveRevision(scene);
+    if (!pin || typeof pin !== 'object') {
+      problems.push('the publication decision is not pinned to a scene revision');
+    } else if (!current) {
+      problems.push('the scene has no entry in the model-card revision registry to pin a decision to');
+    } else if (pin.cardRevision !== current.cardRevision || pin.modelDigest !== current.modelDigest) {
+      problems.push(
+        `the publication decision was taken against scene revision ${pin.cardRevision}@${pin.modelDigest}, and the ` +
+          `registry now records ${current.cardRevision}@${current.modelDigest} — the part correspondence or the ` +
+          'selection behaviour changed after the decision'
+      );
+    }
   }
 
   return problems;
 }
 
+/**
+ * The publication policy for each channel that has one.
+ *
+ * A channel with no entry here opens nothing. That is the whole design: a
+ * policy has to be written and registered before a channel can publish, so a
+ * new channel name — a typo, a half-finished branch, a `'public'` somebody
+ * flipped early — fails closed instead of publishing the catalogue.
+ *
+ * @type {Readonly<Record<string, (scene: object, options: object) => string[]>>}
+ */
+export const RELEASE_POLICIES = Object.freeze({
+  beta: betaPublicationProblems,
+});
+
+/**
+ * Why this scene is not open, for a given channel. Empty means open.
+ *
+ * Kept separate from `isSceneReleased` rather than being an optional second
+ * argument to it, because `isSceneReleased` is passed straight to
+ * `Array.prototype.filter` in several places and filter's second argument is
+ * the index. A gate whose behaviour depends on where in an array a scene sits
+ * is exactly the kind of thing this file exists to prevent.
+ *
+ * @param {object|string|null} scene
+ * @param {{channel?: string}} [options] everything else is forwarded to the
+ *   channel's policy.
+ * @returns {string[]}
+ */
+export function sceneReleaseProblems(scene, { channel = RELEASE_CHANNEL, ...options } = {}) {
+  if (!scene) return ['no scene'];
+  const policy = Object.prototype.hasOwnProperty.call(RELEASE_POLICIES, channel)
+    ? RELEASE_POLICIES[channel]
+    : null;
+  if (!policy) {
+    return [
+      `release channel "${channel}" has no publication policy, so nothing is open on it. ` +
+        'Register one in RELEASE_POLICIES — renaming the channel is not a release decision.',
+    ];
+  }
+  return policy(scene, options);
+}
+
 /** Whether this scene is open in the current release channel. */
-export const isSceneReleased = (scene) => {
-  if (!scene) return false;
-  if (RELEASE_CHANNEL !== 'beta') return scene.status !== BETA_EXCLUDED_STATUS;
-  return betaPublicationProblems(scene).length === 0;
-};
+export const isSceneReleased = (scene) => Boolean(scene) && sceneReleaseProblems(scene).length === 0;
 
 /** The models the beta ships, in catalogue order. */
 export const RELEASED_SCENES = SCENES.filter(isSceneReleased);
@@ -304,9 +513,11 @@ export const BETA_CANDIDATE_STATUS = Object.freeze(
  * - **Prototype** — its shape and motion are provisional by definition, and a
  *   search result is exactly where that caveat gets stripped off.
  *
- * Taking `RELEASED_SCENES` alone would not have shown until the beta ended:
- * once the channel changes, everything non-prototype opens, and the crawlable
- * set has to stay the public catalogue rather than becoming it by accident.
+ * The second condition is redundant under the beta policy, which already
+ * excludes prototypes, and it stays because the next policy is not written yet.
+ * Whatever that policy turns out to allow, a Prototype must not reach a search
+ * result, and stating it here means the future policy inherits the rule rather
+ * than having to remember it.
  */
 export const CRAWLABLE_SCENES = SCENES.filter(
   (scene) => isSceneReleased(scene) && scene.status !== BETA_EXCLUDED_STATUS

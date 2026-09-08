@@ -4,7 +4,7 @@ Last updated: 2026-09-08。現状だけを書きます。長い検証資料は�
 
 ```text
 Base SHA:  bc2c09bab79956e7aebeacc3e4b4c97b6f63155e (main)
-HEAD SHA:  1a02bd0dd34d1238cfca65c15a72d2e29aa5e6a8（契約固定点。以降のコミットがあれば PR の HEAD）
+HEAD SHA:  下の「契約固定 SHA」。1a02bd0 は旧契約点で、そこから新規開始しないこと
 Branch:    claude/medical-3d-lab-b0-dv85dl
 PR:        Draft（マージ・本番公開はしていません）
 担当バッチ: B0 — 公開βの境界修正、旧方針との整合、回帰テスト、UI 契約の固定
@@ -28,6 +28,12 @@ PR:        Draft（マージ・本番公開はしていません）
 が理由つきで答えます。
 
 ## 次担当が使う契約・export 名
+
+`publicManifest.js` の export と行の形は **1a02bd0 から後方互換**です
+（追加のみ、改名・削除なし）。`release.js` は
+`isSceneReleased` / `RELEASED_SCENES` / `CRAWLABLE_SCENES` / `BETA_CANDIDATE_STATUS`
+が同じ意味のまま、`sceneReleaseProblems` / `RELEASE_POLICIES` /
+`publicationDecisionProblems` / `DECISION_ROLES` が増えました。
 
 **UI が読むのはこれだけです。公開判定を再実装しないでください。**
 
@@ -108,7 +114,9 @@ src/styles/landing.css  src/styles/explorer.css
 | `npm run cards:check` | 緑 |
 | `npm run budget` | 緑（最大チャンク 166.2/260 kB、code 385.3/700 kB） |
 | `npm run verify:ui`（Chromium 実ブラウザ・6 viewport × 10 surface） | 「Every declared viewport and surface met the declared rules」 |
-| 実ブラウザのスクリーンショット | `#/`・`#/organs`（1280 / 375）・`#/copd` を確認。console error なし |
+| `npm run verify:anatomy`（新規・実ブラウザ） | 緑。397 部位、クリック＝命名 / ドラッグ≠クリック / 配色・視点で選択が動かない |
+| `npm run revisions:check` | 緑（brain-anatomy は card revision 4） |
+| 実ブラウザのスクリーンショット | `#/`・`#/organs`（1280 / 375）・`#/copd`・脳の部位選択。console error なし |
 | production バンドルの実測 | `previewBuild()` / `devBuild()` が `false` にインライン化され、アンロック経路が死んでいる |
 
 ## 未実行の検証
@@ -147,9 +155,27 @@ src/styles/landing.css  src/styles/explorer.css
 | 公開シーンページ | 5 | 1 |
 | リンクプレビューカード | 6 | 2 |
 
+## レビュー指摘 4 点（PR #48 / 207fb39）への対応
+
+1. **channel 迂回** — `RELEASE_CHANNEL !== 'beta'` の分岐を廃止。`RELEASE_POLICIES`
+   に登録された channel だけが公開でき、未登録・未知・継承プロパティ名は
+   fail-closed。一般公開 policy は未定義のまま（自動開放は実装しない）
+2. **公開判断記録の有効性** — 誰が / 役割 / 日付 / 記録 / 確認範囲 / 証跡 /
+   未確認事項を必須化。`role: 'clinical'` はレビュー登録簿に現行レビューが
+   無ければ拒否。`record` と `evidence` の実在は build/CI で確認（ブラウザに
+   `node:fs` は入れない）。GLB hash に加えて **scene revision**
+   （既存 `model-cards/revisions.json` の cardRevision + modelDigest、
+   scene 単位スコープ）に紐づけ。記録は `docs/beta-publication/brain-anatomy.md`
+3. **配信検査に asset** — `scripts/asset-delivery.js` が Asset Manifest から
+   必要 asset を導き、未登録ファイル / 非公開 asset の混入を検出。共有 decoder・
+   ライセンス通知・サイト画像は役割で区別（名前判定はしない）
+4. **製品方針** — 解剖層は単独の製品層、病態層はその上の別層、と ADR / CLAUDE.md /
+   grand-design を整合。「anatomy atlas は目的でない」は「中身のない網羅をしない」に
+   限定し、解剖の品質改善を後回しにする読み方を残さない
+
 ## 次の 1 手
 
-1. **B1（UI）** — この PR の HEAD SHA を起点に別ブランチ。`02` の範囲だけ。
+1. **B1（UI）** — **下の契約固定 SHA**を起点に別ブランチ。`02` の範囲だけ。
    上の「触ってよい」ファイルと F-27 から。新しい Controller 契約（B2）は未固定なので、
    トップと既存 UI の改善を先行し、架空の API を前提にしたパネルを作らないこと
 2. **B2（Claude）** — 選択・表示・断面・ロードの共通基盤。この PR の契約固定 SHA から積む
@@ -158,10 +184,11 @@ src/styles/landing.css  src/styles/explorer.css
 ## 契約固定 SHA
 
 ```
-1a02bd0dd34d1238cfca65c15a72d2e29aa5e6a8
+CONTRACT_SHA_PLACEHOLDER   ← 現行。ここから始めてください
+1a02bd0dd34d1238cfca65c15a72d2e29aa5e6a8   ← 旧（レビュー前）。新規開始しないこと
 ```
 
-この SHA で `src/catalog/publicManifest.js` と `src/catalog/release.js` の
-export・型・consumer が固定されています。B1 / B2 はここを起点に別ブランチを切って
-ください。`main` にマージせずとも、このブランチを base にして検証できます。
-（このファイル自体の SHA 追記は次のコミットに入りますが、契約点は上の SHA です。）
+現行 SHA で `publicManifest.js` と `release.js` の export・型・consumer が
+固定されています。**すでに 1a02bd0 から切ったブランチがある場合は、その差分を
+捨てずに現行 SHA へ rebase / merge して取り込んでください。**
+`main` にマージせずとも、このブランチを base にして検証できます。

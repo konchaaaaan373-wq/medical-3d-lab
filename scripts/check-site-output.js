@@ -20,6 +20,16 @@
  * so `scripts/scene-loaders-plugin.js` keeps the locked ones out of the bundle
  * and this proves it worked.
  *
+ * The assets are checked the same way and for the same reason: `public/` is
+ * copied wholesale, so a mesh or a texture belonging to a withheld model ships
+ * unless something looks. `scripts/asset-delivery.js` derives what is allowed
+ * from the asset manifest rather than from filenames.
+ *
+ * This is also where the publication decisions are checked against the disk.
+ * The release gate runs in the browser and takes a recorded path at its word,
+ * because it has no filesystem; here there is one, so a decision citing a
+ * record or a piece of evidence that does not exist fails the build.
+ *
  * Run it against a **production** build. A preview build (`VITE_ALLOW_PREVIEW=1`)
  * deliberately keeps every scene, so it fails here — which is the right answer:
  * a preview build is not what gets deployed.
@@ -35,8 +45,11 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { SCENES } from '../src/catalog/index.js';
+import { ASSET_MANIFEST } from '../src/catalog/assetManifest.js';
+import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
-import { CRAWLABLE_SCENES, RELEASED_SCENES } from '../src/catalog/release.js';
+import { CRAWLABLE_SCENES, RELEASED_SCENES, betaPublicationProblems } from '../src/catalog/release.js';
+import { assetDeliveryProblems, requiredAssetIdsFor } from './asset-delivery.js';
 import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
 
@@ -170,6 +183,24 @@ for (const file of emitted) {
   if (/^(sw|service-worker|workbox-[^/]*)\.js$/.test(file)) problems.push(`a service worker shipped: ${file}`);
 }
 
+// Everything `public/` copied into the build, judged against the asset manifest.
+problems.push(
+  ...assetDeliveryProblems({
+    emitted,
+    assets: ASSET_MANIFEST,
+    requiredAssetIds: requiredAssetIdsFor(RELEASED_SCENES, modelProfileForScene),
+  })
+);
+
+// The gate again, this time with a filesystem. In the browser a recorded path
+// is taken at its word; here a publication decision that cites a record or a
+// piece of evidence which does not exist is a build failure.
+for (const scene of RELEASED_SCENES) {
+  for (const problem of betaPublicationProblems(scene, { fileExists: existsSync })) {
+    problems.push(`${scene.id}: ${problem}`);
+  }
+}
+
 // The number a visitor reads and the number the build emits are the same
 // number, or one of the two surfaces is lying about the size of the product.
 const emittedPages = emitted.filter((file) => file.startsWith('s/') && file.endsWith('/index.html')).length;
@@ -237,4 +268,7 @@ if (problems.length) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('  ok    every crawlable scene has a page, and nothing withheld reached the build');
+console.log(
+  '  ok    every crawlable scene has a page; no withheld page, card, chunk or asset reached the build; ' +
+    'every publication decision cites records that exist'
+);

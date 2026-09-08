@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Interactive 3D for understanding dynamic physiology and disease \u2014 one medical model, driving the geometry, the numbers and the graphs alike.",
+  "description": "Interactive 3D for understanding dynamic physiology and disease — one medical model, driving the geometry, the numbers and the graphs alike.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,7 +17,8 @@
     "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
     "verify:ui": "node scripts/check-viewports.mjs",
     "cards": "node scripts/render-social-cards.mjs",
-    "cards:check": "node scripts/check-social-cards.js"
+    "cards:check": "node scripts/check-social-cards.js",
+    "verify:anatomy": "node scripts/check-anatomy-interaction.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"
