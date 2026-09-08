@@ -8,13 +8,11 @@ const dual = (en, ja, className = '') => [
 ];
 
 /**
- * The landing hero: one organ model, live, changing by the day.
+ * The landing hero: one live organ model with a stable initial selection.
  *
- * The beta ships the organ models, so the first thing on the page is one of
- * them rather than a description of the product. Which one is decided by the
- * date (`data/landingHero.js`), and the visitor can switch between the ones
- * that are open — the rotation is there so the page is not the same page every
- * week, not to withhold the others.
+ * The first published model is always the initial model. When the manifest
+ * grows, the visitor changes models explicitly; the calendar never changes
+ * the page underneath them.
  *
  * The rotation is `HERO_ROTATION`, which is the declared organs filtered by
  * what the release actually opens. A chooser is drawn only when there is more
@@ -47,7 +45,6 @@ export function createLandingOrganHero({
   let mountPromise = null;
   let destroyed = false;
 
-  const todayBadge = el('span', { class: 'landing-demo-case' });
   const kicker = el('p', { class: 'landing-demo-kicker' });
   const title = el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' });
   const explanation = el('p', { class: 'landing-demo-explanation' });
@@ -117,7 +114,7 @@ export function createLandingOrganHero({
           kicker,
           title,
         ]),
-        todayBadge,
+        el('span', { class: 'landing-demo-case' }, dual('3D MODEL', '3Dモデル')),
       ]),
       dragHint,
     ]),
@@ -136,8 +133,8 @@ export function createLandingOrganHero({
       }, [explanation]),
       el('footer', { class: 'landing-demo-footer' }, [
         el('span', { class: 'landing-demo-boundary' }, dual(
-          'Educational conceptual model — not patient-specific diagnosis or treatment.',
-          '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。'
+          'Representative educational model — not for individual diagnosis or treatment decisions.',
+          '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
         )),
         openLink,
       ]),
@@ -152,22 +149,14 @@ export function createLandingOrganHero({
     const nameJa = organ?.labelJa ?? selected.organ;
 
     element.dataset.organ = selected.organ;
-    kicker.replaceChildren(...dual(
-      `LIVE 3D  /  ${selected.kickerEn}`,
-      `LIVE 3D  /  ${selected.kickerJa}`
-    ));
+    kicker.replaceChildren(...dual(selected.kickerEn, selected.kickerJa));
     title.replaceChildren(...dual(nameEn, nameJa));
     explanation.replaceChildren(...dual(selected.lineEn, selected.lineJa));
 
-    // Only while the day's own organ is showing. Once a visitor picks another
-    // one the badge would be describing the wrong model.
-    todayBadge.hidden = selected !== featured;
-    todayBadge.replaceChildren(...dual("TODAY'S MODEL", '本日のモデル'));
-
-    openLink.setAttribute('href', scene ? sceneRoute(scene) : '#/organs');
+    openLink.setAttribute('href', selected.route ?? (scene ? sceneRoute(scene) : '#/organs'));
     openLink.replaceChildren(...dual(
-      `Open the ${nameEn.toLowerCase()} model ↗`,
-      `${nameJa}のモデルを開く ↗`
+      `View the ${nameEn.toLowerCase()} ↗`,
+      `${nameJa}を見る ↗`
     ));
 
     for (const [organId, button] of buttons) {
