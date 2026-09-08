@@ -659,6 +659,9 @@ test('beta release: the crawlable surface and the in-scene navigator read the ga
   // judged against the asset manifest, and the decisions judged against disk.
   assert.match(siteCheck, /assetDeliveryProblems\(\{/);
   assert.match(siteCheck, /requiredAssetIdsFor\(RELEASED_SCENES, modelProfileForScene\)/);
+  // The subject is the public tree, not the files near a registered asset.
+  assert.match(siteCheck, /publicFiles,/);
+  assert.match(siteCheck, /const publicFiles = existsSync\(publicDir\)/);
   assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync \}\)/);
 
   const cardCheck = read('scripts/check-social-cards.js');

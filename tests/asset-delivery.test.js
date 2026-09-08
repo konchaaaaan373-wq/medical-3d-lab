@@ -4,7 +4,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import {
-  SHARED_RUNTIME_PATHS,
+  MODEL_ASSET_EXTENSIONS,
+  SHARED_RUNTIME_FILES,
+  SITE_SURFACE_PATHS,
   assetDeliveryProblems,
   deliveryPathOf,
   requiredAssetIdsFor,
@@ -18,24 +20,45 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 /** The asset ids the beta actually needs, derived the way the build derives them. */
 const required = requiredAssetIdsFor(RELEASED_SCENES, modelProfileForScene);
 
-/** A build that ships exactly what it should: the brain mesh, its notice, the decoder. */
-const CORRECT_BUILD = [
-  'index.html',
-  'robots.txt',
+/**
+ * What `public/` holds in a correct tree, as the build delivers it.
+ *
+ * This is the set the check is really about: everything here is copied into
+ * `dist/` verbatim, so it is the set that has to be accounted for. Vite's own
+ * output is the *other* set, and the two are kept apart on purpose — a hashed
+ * chunk in `assets/` is not a medical asset that somebody forgot to register.
+ */
+const CORRECT_PUBLIC = [
+  '.gitkeep',
   '_headers',
-  'assets/index-abc123.js',
-  'assets/brainAnatomy-def456.js',
   'assets/brain/brain.glb',
   'assets/brain/ATTRIBUTION.md',
   'assets/brain/draco/draco_decoder.wasm',
   'assets/brain/draco/draco_wasm_wrapper.js',
   'social/brain-anatomy.png',
   'social/site.png',
+  'social/cards.json',
+];
+
+/** A build that ships exactly what it should: `public/` plus Vite's own output. */
+const CORRECT_BUILD = [
+  ...CORRECT_PUBLIC,
+  'index.html',
+  'robots.txt',
+  'assets/index-abc123.js',
+  'assets/brainAnatomy-def456.js',
+  'assets/index-apGb.css',
   's/brain-anatomy/index.html',
 ];
 
 const problemsFor = (emitted, options = {}) =>
-  assetDeliveryProblems({ emitted, assets: ASSET_MANIFEST, requiredAssetIds: required, ...options });
+  assetDeliveryProblems({
+    emitted,
+    publicFiles: CORRECT_PUBLIC,
+    assets: ASSET_MANIFEST,
+    requiredAssetIds: required,
+    ...options,
+  });
 
 test('asset delivery: the control — a correct build passes, shared files included', () => {
   assert.deepEqual(problemsFor(CORRECT_BUILD), []);
@@ -45,10 +68,14 @@ test('asset delivery: the control — a correct build passes, shared files inclu
   // stops the check being tightened into something that fails on the decoder.
   for (const file of [
     'assets/brain/ATTRIBUTION.md', // the licence notice the manifest points at
-    'assets/brain/draco/draco_decoder.wasm', // a declared shared runtime dependency
-    'social/site.png', // a site image, outside every asset directory
+    'assets/brain/draco/draco_decoder.wasm', // a declared shared runtime file
+    'assets/brain/draco/draco_wasm_wrapper.js', // and its wrapper, declared too
+    'social/site.png', // a link-preview card, owned by check-social-cards.js
+    'social/cards.json', // the record those cards are checked against
     '_headers', // deploy configuration
+    '.gitkeep', // the placeholder that keeps public/ in git — declared, with a reason
     'assets/index-abc123.js', // the build's own chunks live in assets/ too
+    'assets/index-apGb.css', // and so do its stylesheets
   ]) {
     assert.ok(CORRECT_BUILD.includes(file));
     assert.deepEqual(problemsFor(CORRECT_BUILD).filter((line) => line.includes(file)), [], file);
@@ -64,11 +91,73 @@ test('asset delivery: an unregistered mesh or texture that shipped is caught', (
     'assets/brain/notes.txt',
     'assets/brain/textures/skin.png',
   ]) {
-    const problems = problemsFor([...CORRECT_BUILD, intruder]);
-    assert.equal(problems.length, 1, `${intruder}: ${JSON.stringify(problems)}`);
-    assert.match(problems[0], new RegExp(`^${intruder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}: `));
-    assert.match(problems[0], /is in no manifest entry/);
+    const problems = problemsFor([...CORRECT_BUILD, intruder], {
+      publicFiles: [...CORRECT_PUBLIC, intruder],
+    });
+    assert.ok(problems.length >= 1, `${intruder}: nothing reported`);
+    assert.ok(problems.every((line) => line.startsWith(`${intruder}: `)), JSON.stringify(problems));
+    assert.ok(problems.some((line) => /is in no manifest entry|is a model file/.test(line)), JSON.stringify(problems));
   }
+});
+
+test('asset delivery: an unregistered model in a folder of its own is caught', () => {
+  // The hole the first version had. It only looked inside directories a
+  // *registered* asset already delivered into, so the way past it was not to
+  // hide a mesh among the accounted files — it was to put it anywhere else.
+  // `public/models/heart.glb` was invisible to the check and shipped.
+  for (const intruder of [
+    'models/heart.glb',
+    'meshes/liver/liver.glb',
+    'assets/heart/heart.gltf',
+    'downloads/atlas.usdz',
+    'social/lung.glb',
+  ]) {
+    const problems = problemsFor([...CORRECT_BUILD, intruder], {
+      publicFiles: [...CORRECT_PUBLIC, intruder],
+    });
+    assert.ok(problems.length >= 1, `${intruder}: nothing reported`);
+    assert.ok(problems.every((line) => line.startsWith(`${intruder}: `)), JSON.stringify(problems));
+    assert.ok(
+      problems.some((line) => /is a model file/.test(line)),
+      `${intruder}: ${JSON.stringify(problems)}`
+    );
+  }
+});
+
+test('asset delivery: the shared decoder folder is a list of files, not a licence to ship', () => {
+  // The second hole: the decoder was allowed by directory prefix, so anything
+  // put beside it inherited that permission. A mesh is not a decoder.
+  for (const intruder of [
+    'assets/brain/draco/heart.glb',
+    'assets/brain/draco/extra.bin',
+    'assets/brain/draco/draco_decoder_next.wasm',
+  ]) {
+    const problems = problemsFor([...CORRECT_BUILD, intruder], {
+      publicFiles: [...CORRECT_PUBLIC, intruder],
+    });
+    assert.ok(problems.length >= 1, `${intruder}: nothing reported`);
+    assert.ok(problems.every((line) => line.startsWith(`${intruder}: `)), JSON.stringify(problems));
+  }
+
+  // And the decoder itself is declared file by file, so a version bump has to
+  // be an edit somebody makes rather than a folder that keeps letting things in.
+  for (const entry of SHARED_RUNTIME_FILES) {
+    assert.doesNotMatch(entry.path, /\/$/, `${entry.path} is a directory, and a directory is not a list`);
+    assert.ok(CORRECT_PUBLIC.includes(entry.path), `${entry.path} is not in public/`);
+  }
+});
+
+test('asset delivery: Vite output is not judged as a forgotten medical asset', () => {
+  // Hashed chunks live in `assets/` too. Reading them as unregistered assets
+  // would make the check fail on every build, which is how a check gets muted.
+  const problems = problemsFor(CORRECT_BUILD);
+  assert.deepEqual(problems, []);
+
+  // A build output that *is* a model file is still worth saying, because a mesh
+  // imported through the bundler has the same provenance question as one in
+  // `public/` — and no manifest entry.
+  const bundled = problemsFor([...CORRECT_BUILD, 'assets/atlas-9f8e7d.glb']);
+  assert.ok(bundled.some((line) => /^assets\/atlas-9f8e7d\.glb: .*is a model file/.test(line)), JSON.stringify(bundled));
 });
 
 test('asset delivery: a registered asset no published model uses must not ship', () => {
@@ -92,14 +181,37 @@ test('asset delivery: a registered asset no published model uses must not ship',
 });
 
 test('asset delivery: a declared shared dependency that stopped shipping is caught', () => {
-  const problems = problemsFor(CORRECT_BUILD.filter((file) => !file.startsWith('assets/brain/draco/')));
-  assert.ok(problems.some((line) => /shared runtime "assets\/brain\/draco\/" is declared but did not ship/.test(line)));
+  const without = CORRECT_BUILD.filter((file) => !file.startsWith('assets/brain/draco/'));
+  const problems = problemsFor(without, {
+    publicFiles: CORRECT_PUBLIC.filter((file) => !file.startsWith('assets/brain/draco/')),
+  });
+  assert.ok(
+    problems.some((line) => /shared runtime "assets\/brain\/draco\/draco_decoder\.wasm" is declared but did not ship/.test(line)),
+    JSON.stringify(problems)
+  );
 
-  // And every declared shared path says why it is allowed, because the next
-  // person to read the list has to be able to decide whether it still applies.
-  for (const entry of SHARED_RUNTIME_PATHS) {
+  // Every declared exception says why it is allowed, because the next person to
+  // read the list has to be able to decide whether it still applies.
+  for (const entry of [...SHARED_RUNTIME_FILES, ...SITE_SURFACE_PATHS]) {
     assert.ok(entry.reason?.trim().length > 20, `${entry.path} is declared without a reason`);
   }
+});
+
+test('asset delivery: a public file nobody accounted for is caught wherever it is', () => {
+  // Not a model file, not a card, not a notice, not a decoder: just a file that
+  // ships to everyone and that no part of the repository explains.
+  for (const stray of ['secrets.env', 'notes/todo.md', 'assets/readme.txt']) {
+    const problems = problemsFor([...CORRECT_BUILD, stray], { publicFiles: [...CORRECT_PUBLIC, stray] });
+    assert.ok(
+      problems.some((line) => line.startsWith(`${stray}: `) && /is in no manifest entry/.test(line)),
+      `${stray}: ${JSON.stringify(problems)}`
+    );
+  }
+
+  // And a public file that did not reach the build is a build problem, not a
+  // silent one.
+  const missing = problemsFor(CORRECT_BUILD.filter((file) => file !== 'social/site.png'));
+  assert.ok(missing.some((line) => /social\/site\.png: is in public\/ and did not reach the build/.test(line)), JSON.stringify(missing));
 });
 
 test('asset delivery: nothing is judged by what it is called', () => {
@@ -122,11 +234,17 @@ test('asset delivery: the real build agrees, when there is one', (t) => {
     t.skip('no build present — `npm run build` then `npm run verify:site` covers this');
     return;
   }
-  const root = dist.pathname;
-  const walk = (dir) =>
-    readdirSync(dir).flatMap((entry) => {
-      const full = join(dir, entry);
-      return statSync(full).isDirectory() ? walk(full) : [relative(root, full).split(sep).join('/')];
-    });
-  assert.deepEqual(problemsFor(walk(root)), []);
+  const walkFrom = (root) => {
+    const walk = (dir) =>
+      readdirSync(dir).flatMap((entry) => {
+        const full = join(dir, entry);
+        return statSync(full).isDirectory() ? walk(full) : [relative(root, full).split(sep).join('/')];
+      });
+    return walk(root);
+  };
+  const publicRoot = new URL('../public', import.meta.url).pathname;
+  assert.deepEqual(
+    problemsFor(walkFrom(dist.pathname), { publicFiles: walkFrom(publicRoot) }),
+    []
+  );
 });
