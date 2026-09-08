@@ -105,3 +105,57 @@ jobs:
           path: viewport-evidence/
           if-no-files-found: warn
           retention-days: 7
+
+  # Temporary, bounded B1 diagnostic. It uses the existing viewport runner and
+  # records the exact desktop Landing-to-Explorer lifecycle plus a fresh-context
+  # Explorer control. The regular three-engine matrix above remains unchanged.
+  webkit-lifecycle-diagnostic:
+    name: WebKit B1 lifecycle diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps webkit
+      - name: Reproduce desktop argues Landing to Explorer and direct Explorer
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set +e
+          for attempt in 1 2 3; do
+            sequence_dir="webkit-lifecycle/sequence-${attempt}"
+            direct_dir="webkit-lifecycle/direct-${attempt}"
+            mkdir -p "${sequence_dir}" "${direct_dir}"
+
+            npm run verify:ui -- \
+              --engine webkit \
+              --viewport desktop-1280 \
+              --surface landing \
+              --surface explorer \
+              --json "${sequence_dir}/report.json" \
+              --diagnostics-dir "${sequence_dir}"
+            echo "$?" > "${sequence_dir}/exit-code.txt"
+
+            npm run verify:ui -- \
+              --engine webkit \
+              --viewport desktop-1280 \
+              --surface explorer \
+              --json "${direct_dir}/report.json" \
+              --diagnostics-dir "${direct_dir}" \
+              --diagnostics-wait-detail
+            echo "$?" > "${direct_dir}/exit-code.txt"
+          done
+          exit 0
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-b1-lifecycle-diagnostic-attempt-${{ github.run_attempt }}
+          path: webkit-lifecycle/
+          if-no-files-found: warn
+          retention-days: 7
