@@ -41,7 +41,10 @@ own category, side, region, source and anatomical label in glTF metadata, and a
 **A structure and a mesh are not the same thing.** 124 of these structures
 arrive as more than one mesh — the middle temporal gyrus is two — and every
 piece carries the structure's id. Selecting, hovering and isolating act on the
-structure, so clicking any piece of a gyrus highlights the gyrus. Until
+structure, so clicking any piece of a gyrus highlights the gyrus. Replacing the
+atlas clears the selection, the hover and any isolation **and says so**, so a
+surface that repaints on an event does not go on naming a structure from a
+model that has been thrown away. Until
 2026-09-08 the scene keyed one mesh per id, so the second piece replaced the
 first and clicking the piece that lost highlighted the piece that won; the
 count shown to a reader was 397, which was a count of meshes wearing the word

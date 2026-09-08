@@ -115,6 +115,21 @@ export class FakeElement {
       listener({ type: 'click', target: this, currentTarget: this });
     }
   }
+
+  /**
+   * Deliver an event to this element's own listeners.
+   *
+   * No capture and no bubbling: a component that binds one handler on its root
+   * and reads `event.target` is testable with this, and one that relies on the
+   * event travelling is relying on something this cannot promise — better that
+   * it says so by not working than by half-working.
+   */
+  dispatchEvent(event) {
+    for (const listener of this.listeners.get(event.type) ?? []) {
+      listener({ currentTarget: this, target: this, ...event });
+    }
+    return true;
+  }
 }
 
 export function installFakeDocument() {

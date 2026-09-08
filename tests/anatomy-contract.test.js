@@ -4,6 +4,9 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { BrainAnatomyScene } from '../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js';
+import { createAnatomyTreePanel } from '../src/components/AnatomyTreePanel.js';
+import { createAnatomyInfoPanel } from '../src/components/AnatomyInfoPanel.js';
+import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 import {
   ANATOMY_CONTRACT_METHODS,
   ANATOMY_CONTRACT_VERSION,
@@ -395,4 +398,207 @@ test('anatomy contract: the tree builder nests on the hierarchy it is given', ()
   // A structure with no hierarchy is still reachable rather than dropped.
   const flat = buildAnatomyTree([{ id: 9, name: 'Loose', nameJa: '単独', hierarchy: [], hierarchyJa: [] }]);
   assert.deepEqual(treeLeaves(flat).map((leaf) => leaf.structureId), [9]);
+});
+
+
+/**
+ * The panels, mounted against a real scene in a fake document.
+ *
+ * These are the claims a screenshot cannot make and the browser check can only
+ * make one viewport at a time: what the DOM says, after each transition.
+ */
+function mountTree(scene) {
+  const restore = installFakeDocument();
+  document.documentElement = new FakeElement('html');
+  const panel = createAnatomyTreePanel(scene);
+  return { panel, restore };
+}
+
+test('anatomy tree: what is drawn, what is held and what is announced are one answer', () => {
+  const scene = buildScene();
+  const { panel, restore } = mountTree(scene);
+  try {
+    const branches = findByClass(panel.element, 'anatomy-tree-branch');
+    assert.ok(branches.length > 0, 'the tree groups');
+
+    // The bug this test exists for: `aria-expanded` was updated on the toggle
+    // and left `false` on the treeitem, so assistive technology read every
+    // branch as collapsed however the tree looked.
+    const agree = (branch) => {
+      const toggle = branch.children[0];
+      const children = branch.children[1];
+      return (
+        branch.getAttribute('aria-expanded') === toggle.getAttribute('aria-expanded') &&
+        branch.getAttribute('aria-expanded') === String(!children.hidden)
+      );
+    };
+    for (const branch of branches) assert.ok(agree(branch), branch.getAttribute('aria-label'));
+
+    // Toggling by click, and by the branch being revealed for a 3D selection,
+    // both go through the one writer.
+    const top = branches[0];
+    top.children[0].click();
+    assert.ok(agree(top), 'after clicking the toggle');
+    top.children[0].click();
+    assert.ok(agree(top), 'after clicking it back');
+
+    // A structure selected from the model opens the branch holding it, and that
+    // branch has to announce what it now looks like.
+    for (const branch of branches) {
+      if (branch.getAttribute('aria-expanded') === 'true') branch.children[0].click();
+    }
+    scene.selectStructure(325);
+    for (const branch of branches) assert.ok(agree(branch), 'after a selection revealed a branch');
+    const selected = findByClass(panel.element, 'anatomy-tree-leaf').filter(
+      (row) => row.getAttribute('aria-selected') === 'true'
+    );
+    assert.equal(selected.length, 1);
+    assert.equal(selected[0].dataset.structure, '325');
+  } finally {
+    panel.dispose();
+    scene.dispose();
+    restore();
+  }
+});
+
+test('anatomy tree: one entry point, and focus is not selection', () => {
+  const scene = buildScene();
+  const { panel, restore } = mountTree(scene);
+  try {
+    const rows = () => [
+      ...findByClass(panel.element, 'anatomy-tree-group'),
+      ...findByClass(panel.element, 'anatomy-tree-leaf'),
+    ];
+    const tabbable = () => rows().filter((row) => row.getAttribute('tabindex') === '0');
+    assert.equal(tabbable().length, 1, 'a tree is one stop in the tab ring, not four hundred');
+
+    const first = tabbable()[0];
+    const key = (name, target = tabbable()[0]) => {
+      let stopped = false;
+      panel.element.dispatchEvent({
+        type: 'keydown',
+        key: name,
+        target,
+        preventDefault() {},
+        stopPropagation() { stopped = true; },
+      });
+      return stopped;
+    };
+
+    // Arrowing moves focus and commits nothing.
+    assert.equal(key('ArrowDown'), true, 'the tree stops the key reaching the scene');
+    assert.equal(tabbable().length, 1);
+    assert.notEqual(tabbable()[0], first, 'focus moved');
+    assert.equal(scene.getAnatomySelection(), null, 'and selected nothing');
+
+    key('End');
+    const last = tabbable()[0];
+    key('Home');
+    assert.notEqual(tabbable()[0], last, 'Home and End are different places');
+
+    // Enter is what commits, and only on a structure. Open every branch first,
+    // because a row inside a collapsed one is not somewhere the keyboard is.
+    for (let pass = 0; pass < 6; pass += 1) {
+      const closed = findByClass(panel.element, 'anatomy-tree-group').filter(
+        (group) => group.getAttribute('aria-expanded') === 'false'
+      );
+      if (!closed.length) break;
+      for (const group of closed) group.click();
+    }
+    const leaf = findByClass(panel.element, 'anatomy-tree-leaf')[0];
+    key('Enter', leaf);
+    assert.equal(scene.getAnatomySelection()?.id, Number(leaf.dataset.structure));
+
+    // Every key the tree handles is stopped, so the scene's own shortcuts —
+    // arrows seek, Space plays — do not fire underneath it.
+    for (const name of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter', ' ']) {
+      assert.equal(key(name), true, name);
+    }
+    // And a key it does not handle is left alone.
+    assert.equal(key('r'), false, 'r is the scene reset, and the tree does not eat it');
+  } finally {
+    panel.dispose();
+    scene.dispose();
+    restore();
+  }
+});
+
+test('anatomy detail: a pinned structure is not rewritten by a hover', () => {
+  const scene = buildScene();
+  const restore = installFakeDocument();
+  document.documentElement = new FakeElement('html');
+  const info = createAnatomyInfoPanel(scene, { heading: true });
+  try {
+    const name = () => findByClass(info.element, 'anatomy-name')[0].textContent;
+    const pieces = (id) => scene.meshesByAtlasId.get(id);
+
+    scene.selectStructure(212);
+    const pinned = name();
+    assert.equal(pinned, scene.getAnatomySelection().name);
+
+    // A pointer crossing the model previews nothing while something is pinned.
+    scene._setHovered(pieces(208)[0]);
+    assert.equal(name(), pinned, 'hovering another structure rewrote the pinned card');
+    scene._setHovered(null);
+    assert.equal(name(), pinned);
+
+    // Clicking that structure is what changes it.
+    scene.selectStructure(208);
+    assert.equal(name(), scene.getAnatomySelection().name);
+    assert.notEqual(name(), pinned);
+
+    // With nothing pinned, hover is a preview again — that guidance stays.
+    scene.clearSelection();
+    scene._setHovered(pieces(325)[0]);
+    assert.equal(name(), scene.getAnatomyHover().name);
+  } finally {
+    info.dispose();
+    scene.dispose();
+    restore();
+  }
+});
+
+test('anatomy panels: a re-attached atlas leaves nothing of the old one in the DOM', () => {
+  const scene = buildScene();
+  const restore = installFakeDocument();
+  document.documentElement = new FakeElement('html');
+  const info = createAnatomyInfoPanel(scene, { heading: true });
+  const tree = createAnatomyTreePanel(scene);
+  try {
+    scene.selectStructure(212);
+    scene.isolateStructure(212);
+    const pinnedName = findByClass(info.element, 'anatomy-name')[0].textContent;
+    assert.equal(pinnedName, scene.getAnatomySelection().name);
+
+    // The getters are not the whole story: a panel that only repaints on an
+    // event keeps showing a structure from a model that has been thrown away.
+    scene.attachAtlas(atlas());
+
+    assert.equal(scene.getAnatomySelection(), null);
+    assert.equal(
+      findByClass(info.element, 'anatomy-name')[0].textContent,
+      'Select a structure',
+      'the card still names a structure from the discarded atlas'
+    );
+    assert.equal(
+      findByClass(tree.element, 'anatomy-tree-leaf').filter((row) => row.getAttribute('aria-selected') === 'true').length,
+      0,
+      'a row from the discarded atlas is still marked selected'
+    );
+    assert.equal(
+      findByClass(tree.element, 'anatomy-tree-leaf').filter((row) => row.classList.contains('is-isolated')).length,
+      0,
+      'a row from the discarded atlas is still marked isolated'
+    );
+    assert.equal(findByClass(tree.element, 'anatomy-tree-leaf').length, FIXTURE.length, 'and the list is not doubled');
+
+    // The new model is live.
+    scene.selectStructure(212);
+    assert.equal(findByClass(info.element, 'anatomy-name')[0].textContent, scene.getAnatomySelection().name);
+  } finally {
+    info.dispose();
+    tree.dispose();
+    scene.dispose();
+    restore();
+  }
 });

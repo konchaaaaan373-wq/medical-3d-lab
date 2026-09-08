@@ -229,7 +229,13 @@ export class BrainAnatomyScene {
     // and `setAnatomyColorMode` reaches into a disposed material. Clearing here
     // — before the new meshes exist — is what makes "attach again" a
     // transition rather than an accumulation.
-    this._resetInteractionState();
+    //
+    // And it has to be announced. Clearing silently fixed the getters and left
+    // the panels showing what they had last been told: the card kept naming a
+    // structure from the discarded atlas, and a row in the tree stayed marked
+    // selected. A surface that only repaints on an event is not wrong to do so
+    // — the event is what was missing.
+    this._resetInteractionState({ notify: true });
 
     this.atlasRoot.clear();
     this.selectables.length = 0;
@@ -482,14 +488,27 @@ export class BrainAnatomyScene {
     for (const listener of this.listeners) listener(null);
   }
 
-  /** Drop every pointer into the current meshes, without notifying. */
-  _resetInteractionState() {
+  /**
+   * Drop every pointer into the current meshes.
+   *
+   * `notify` tells the surfaces. It is off in `dispose()`, where the listeners
+   * have already been let go and there is nobody left to tell, and on for a
+   * re-attach, where there very much is.
+   *
+   * @param {{notify?: boolean}} [options]
+   */
+  _resetInteractionState({ notify = false } = {}) {
+    const had = Boolean(this.selection) || this.hoveredMeshes.length > 0 || this.isolatedId != null;
     for (const mesh of this.selectedMeshes) mesh.userData.selected = false;
     for (const mesh of this.hoveredMeshes) mesh.userData.hovered = false;
     this.selectedMeshes = [];
     this.hoveredMeshes = [];
     this.selection = null;
     this.isolatedId = null;
+    if (!notify || !had) return;
+    for (const listener of this.listeners) listener(null);
+    for (const listener of this.hoverListeners) listener(null);
+    this._emitIsolation();
   }
 
   getAnatomySelection() { return this.selection; }

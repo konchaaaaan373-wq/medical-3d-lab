@@ -170,7 +170,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 5, modelDigest: '30ef4c5381b41f55' }),
+    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: '584cdfefac8a7464' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -188,11 +188,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'applying a named viewpoint does not change the selection',
         'the part tree lists 271 structures, and selection agrees in both directions',
         'isolate shows one structure, hidden structures are not clickable, and Show all restores the model',
+        'a pointer crossing the model does not rewrite the pinned summary or its controls',
+        'the tree answers the keyboard: one tab stop, arrows move focus, Enter commits, and the keys do not reach the scene',
+        'every branch announces the expanded state it is drawn in, including one opened by a 3D selection',
+        'on a 375x667 phone the parts sheet opens, takes focus, closes on Escape, returns focus, and keeps the selection, the open branches and the scroll position',
+        'replacing the atlas clears the panels rather than leaving the old model named in them',
       ]),
     }),
     evidence: Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
       'src/app/anatomyContract.js',
+      'src/components/AnatomyPanel.js',
       'tests/anatomy-contract.test.js',
       'tests/brain-anatomy.test.js',
       'tests/anatomy-colour-ui.test.js',

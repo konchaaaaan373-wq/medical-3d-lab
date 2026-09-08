@@ -100,7 +100,15 @@ test('the panel exposes view, background, labels and reset as display-only callb
 test('the app mounts inspection for every scene without a path into medical setters', () => {
   const source = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8');
   assert.match(source, /inspectionPanel = createInspectionPanel\(\{/);
-  assert.match(source, /onInspectionToggle: \(enabled\) => setInspectionOpen\(enabled\)/);
+  // One display surface, reached one way per kind of scene. A pathology scene
+  // opens it from the console, as it always has; an anatomy scene shows the
+  // same component as a tab of its own panel, so a console control would be a
+  // second way in to a surface the reader can already see.
+  assert.match(
+    source,
+    /onInspectionToggle: isAnatomyScene \? undefined : \(enabled\) => setInspectionOpen\(enabled\)/
+  );
+  assert.match(source, /embedded: isAnatomyScene/);
 
   const start = source.indexOf('function inspectionPoseFor');
   const end = source.indexOf('function resetMedicalState', start);
@@ -156,8 +164,22 @@ test('the display panel yields the rail instead of evicting the read-outs it cha
   assert.match(panel, /flex:\s*0 1 auto/, 'so it is the rail item that shrinks');
   assert.match(
     controls,
-    /\.rail > \*:not\(\.inspection-panel\):not\(\.anatomy-info\)\s*\{\s*flex:\s*0 0 auto/,
+    /\.rail > \*:not\(\.inspection-panel\):not\(\.anatomy-info\):not\(\.anatomy-panel\)\s*\{\s*flex:\s*0 0 auto/,
     'every model read-out in the rail keeps its size'
+  );
+  // The anatomy panel is exempt because it is not a read-out: it is the whole
+  // rail on that scene and manages its own height. Left in the rule it was
+  // pinned at its content height, which on a 320 px phone meant a summary
+  // rendering outside its own box and a button nothing could reach.
+  assert.match(
+    controls,
+    /\.rail\.is-anatomy\.is-anatomy-docked > \.anatomy-panel\s*\{\s*flex:\s*1 1 auto/,
+    'docked, the panel takes the rail and its body is the scroller'
+  );
+  assert.match(
+    controls,
+    /\.rail\.is-anatomy:not\(\.is-anatomy-docked\) > \.anatomy-panel\s*\{\s*flex:\s*0 0 auto/,
+    'as a sheet it is only a summary, and a summary has nothing to give up'
   );
 
   // The legend is the read-out the colour modes rewrite, so it must keep its
@@ -166,7 +188,7 @@ test('the display panel yields the rail instead of evicting the read-outs it cha
   // whole deficit and Background fell off the bottom of an ordinary desktop.
   const card = controls.slice(
     controls.indexOf('.rail > .anatomy-info {'),
-    controls.indexOf('.rail > *:not(.inspection-panel)')
+    controls.indexOf('.rail > *:not(.inspection-panel):not(.anatomy-info):not(.anatomy-panel)')
   );
   assert.ok(card.length, 'the selection card has a rail rule of its own');
   assert.match(card, /flex:\s*0 \d+ auto/, 'it yields ahead of the panel');

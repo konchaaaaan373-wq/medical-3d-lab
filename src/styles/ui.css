@@ -108,6 +108,39 @@
   scrollbar-color: var(--border) transparent;
 }
 
+/* An anatomy scene puts one panel here, and that panel owns its own height:
+   docked, its body is the scroller, so the rail must not be one too. A scroller
+   inside a scroller leaves rows straddling the outer clip edge — readable, and
+   not clickable — which is the defect this whole arrangement replaces.
+
+   As a sheet the body is `position: fixed` and out of the rail altogether, so
+   the rail keeps the scrolling it has on every other scene. It has to: with the
+   consent question on screen a 320 px phone leaves the rail 92 px for 112 px of
+   content, and `overflow: hidden` there does not shorten anything — it hides
+   the Parts button behind the buttons below it, reachable by nothing. */
+.rail.is-anatomy.is-anatomy-docked {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.rail.is-anatomy.is-anatomy-docked > .anatomy-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.rail.is-anatomy > .rail-buttons {
+  flex: none;
+}
+
+/* As a sheet the panel is just its summary, and a summary has nothing to give
+   up: left free to shrink it was squeezed to 16 px in a 92 px rail while its
+   own buttons carried on rendering outside it, landing the Parts button under
+   the row below. A flex item that overflows its box is not a smaller item, it
+   is a broken one — so it keeps its height and the rail scrolls. */
+.rail.is-anatomy:not(.is-anatomy-docked) > .anatomy-panel {
+  flex: 0 0 auto;
+}
+
 /* Everything else in the rail states a model read-out, so it keeps its size
    and the panel above shrinks first. */
 /* The selection card is prose — a heading, how to work the model, and where the
@@ -126,7 +159,7 @@
   scrollbar-color: var(--border) transparent;
 }
 
-.rail > *:not(.inspection-panel):not(.anatomy-info) {
+.rail > *:not(.inspection-panel):not(.anatomy-info):not(.anatomy-panel) {
   flex: 0 0 auto;
 }
 

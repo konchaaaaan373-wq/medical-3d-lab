@@ -42,6 +42,17 @@
  * Once the decision is recorded, the production build carries the scene again
  * and the check runs against it with no flag, which is the run that matters.
  *
+ * ## What it checks that `verify:ui` cannot
+ *
+ * The viewport matrix measures a surface at rest. This drives the states a
+ * reader puts it into: the parts sheet open on a phone, the keyboard walking a
+ * tree, a pointer crossing the model while a structure is pinned. A modal is
+ * the clearest case — with the sheet open the background is deliberately inert
+ * and covered, which a check with no concept of a modal can only read as a
+ * defect, so the modal's own obligations (focus in, Escape, focus back, the
+ * background unreachable, a close control that does not need scrolling to) are
+ * checked here instead.
+ *
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
@@ -193,32 +204,40 @@ try {
     );
   }
 
-  await page.waitForFunction(
-    () => /selectable structures/.test(document.querySelector('.anatomy-count.lang-en')?.textContent ?? ''),
-    { timeout: 90000 }
-  );
-  const status = (await page.locator('.anatomy-count.lang-en').textContent()).trim();
-  observed.selectableCount = Number(status.match(/^(\d+)/)?.[1] ?? 0);
-  if (!observed.selectableCount) problems.push(`the scene reports no selectable structures ("${status}")`);
+  // Ready when the part tree has rows. It is the surface that only exists once
+  // the atlas has loaded and been read, so waiting on it waits for both.
+  await page.waitForFunction(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0, {
+    timeout: 90000,
+  });
+  observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
+  if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
 
   const canvas = page.locator('canvas').first();
   const box = await canvas.boundingBox();
   if (!box) die('the scene rendered no canvas');
 
-  /** The pinned selection, read after moving the pointer off the model. */
-  const read = async () => {
+  /**
+   * The panel's summary, read without moving the pointer off the model.
+   *
+   * It used to move the pointer away first, because the card showed whatever
+   * was under it. The summary is about the *pinned* structure now, so not
+   * moving is the point: if a hover could rewrite it, this would catch it.
+   */
+  const read = async () => ({
+    en: (await page.locator('.anatomy-panel-name.lang-en').textContent()).trim(),
+    ja: (await page.locator('.anatomy-panel-name.lang-ja').textContent()).trim(),
+    where: (await page.locator('.anatomy-panel-where.lang-en').textContent()).trim(),
+  });
+  /** Park the pointer off the model, for the checks that are about a click. */
+  const restPointer = async () => {
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.waitForTimeout(250);
-    return {
-      en: (await page.locator('.anatomy-name.lang-en').textContent()).trim(),
-      ja: (await page.locator('.anatomy-name.lang-ja').textContent()).trim(),
-      where: (await page.locator('.anatomy-location.lang-en').textContent()).trim(),
-    };
   };
   const EMPTY = 'Select a structure';
   const clickAt = async (fx, fy) => {
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
     await page.waitForTimeout(350);
+    await restPointer();
     return read();
   };
 
@@ -243,6 +262,7 @@ try {
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5, { steps: 20 });
   await page.mouse.up();
+  await restPointer();
   const afterDrag = await read();
   if (afterDrag.en !== pinned.en) {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
@@ -253,8 +273,20 @@ try {
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
   await page.waitForTimeout(350);
+  await restPointer();
   const reselected = await read();
   if (reselected.en === EMPTY) problems.push('a structure could not be selected again after clearing');
+
+  // 3b. A pinned structure is not rewritten by a pointer crossing the model.
+  //     This is what `hovered ?? selected` got wrong: moving the mouse replaced
+  //     the name — and the controls beside it — with whatever it passed over.
+  await page.mouse.move(box.x + box.width * 0.40, box.y + box.height * 0.34);
+  await page.waitForTimeout(400);
+  const whileHovering = await read();
+  if (whileHovering.en !== reselected.en) {
+    problems.push(`hovering rewrote the pinned summary from "${reselected.en}" to "${whileHovering.en}"`);
+  }
+  await restPointer();
 
   // 4. The part tree and the model are two readings of one selection.
   const leaves = page.locator('.anatomy-tree-leaf');
@@ -292,7 +324,7 @@ try {
     await shot('brain-tree');
 
     // 5. Isolate shows one structure, and Show all puts the model back.
-    const isolate = page.locator('.anatomy-tree-isolate');
+    const isolate = page.locator('.anatomy-panel-action').first();
     await isolate.click();
     await page.waitForTimeout(500);
     if ((await isolate.getAttribute('aria-pressed')) !== 'true') problems.push('isolating did not take');
@@ -309,9 +341,9 @@ try {
     }
     await shot('brain-isolated');
 
-    await page.locator('.anatomy-tree-showall').click();
+    await page.locator('.anatomy-panel-action.is-restore').click();
     await page.waitForTimeout(600);
-    if ((await page.locator('.anatomy-tree-isolate').getAttribute('aria-pressed')) !== 'false') {
+    if ((await isolate.getAttribute('aria-pressed')) !== 'false') {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
@@ -324,8 +356,70 @@ try {
     }
   }
 
-  // The shared inspection surface holds the viewpoints and the colour modes.
-  await page.locator('[aria-controls="spatial-inspection-panel"]').click();
+  // 6. The tree is a tree to the keyboard, not a list of buttons.
+  const treeState = async () => page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.anatomy-tree-group, .anatomy-tree-leaf')];
+    const branches = [...document.querySelectorAll('.anatomy-tree-branch')];
+    return {
+      tabbable: rows.filter((row) => row.tabIndex === 0).length,
+      focused: document.activeElement?.className ?? null,
+      focusedText: document.activeElement?.textContent?.trim().slice(0, 40) ?? null,
+      selected: document.querySelectorAll('.anatomy-tree-leaf[aria-selected="true"]').length,
+      // The state a reader sees, the state the component holds and the state it
+      // announces have to be one answer.
+      mismatched: branches.filter((branch) => {
+        const toggle = branch.firstElementChild;
+        const children = branch.lastElementChild;
+        const announced = branch.getAttribute('aria-expanded');
+        return announced !== toggle.getAttribute('aria-expanded') || announced !== String(!children.hidden);
+      }).length,
+    };
+  });
+
+  const before = await treeState();
+  if (before.tabbable !== 1) {
+    problems.push(`${before.tabbable} tree rows are in the tab ring; a tree has one entry point`);
+  }
+  if (before.mismatched) {
+    problems.push(`${before.mismatched} branch(es) announce an expanded state that does not match what is drawn`);
+  }
+
+  await page.locator('.anatomy-tree-group, .anatomy-tree-leaf').first().focus();
+  const walk = async (key) => {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(120);
+    return treeState();
+  };
+
+  const down = await walk('ArrowDown');
+  if (down.focusedText === before.focusedText) problems.push('ArrowDown did not move focus in the tree');
+  // Moving focus is not selecting: arrowing through four hundred structures
+  // while each one repaints the model would make the keyboard unusable.
+  if (down.selected !== before.selected) problems.push('moving focus with the keyboard changed the selection');
+  const seekedAway = await page.evaluate(() => document.querySelector('.stage-name')?.textContent ?? '');
+
+  const right = await walk('ArrowRight');
+  if (right.mismatched) problems.push('ArrowRight left a branch announcing the wrong expanded state');
+  const left = await walk('ArrowLeft');
+  if (left.mismatched) problems.push('ArrowLeft left a branch announcing the wrong expanded state');
+  const end = await walk('End');
+  if (end.focusedText === left.focusedText) problems.push('End did not move focus to the last visible row');
+  const home = await walk('Home');
+  if (home.focusedText === end.focusedText) problems.push('Home did not move focus to the first row');
+
+  // Enter commits, and only then.
+  await page.keyboard.press('ArrowDown');
+  await page.waitForTimeout(120);
+  const committed = await walk('Enter');
+  if (committed.mismatched) problems.push('Enter left a branch announcing the wrong expanded state');
+  if (await page.evaluate(() => document.querySelector('.stage-name')?.textContent ?? '') !== seekedAway) {
+    problems.push('the tree keys reached the scene: the model was seeked while arrowing through the list');
+  }
+  if ((await treeState()).tabbable !== 1) problems.push('the tab ring lost its single entry point after keyboard use');
+
+  // The display controls live in the panel's own Display tab.
+  const tab = (ja) => page.locator('.anatomy-panel-tab', { hasText: ja });
+  await tab('表示').click();
   await page.waitForTimeout(400);
 
   // 4. Recolouring is a display choice: it must not change what is selected.
@@ -341,10 +435,15 @@ try {
     if (afterMode.en !== beforeMode.en) {
       problems.push(`switching colour mode changed the selection from "${beforeMode.en}" to "${afterMode.en}"`);
     }
+    // Back to Parts to see what the tree says about it.
+    await tab('部位').click();
+    await page.waitForTimeout(300);
     const stillOne = await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count();
     if (observed.treeRows && stillOne !== 1) {
       problems.push(`recolouring left ${stillOne} rows marked selected in the tree`);
     }
+    await tab('表示').click();
+    await page.waitForTimeout(300);
     settled = afterMode;
     await shot('brain-colour-mode');
   } else {
@@ -366,6 +465,125 @@ try {
     await shot('brain-view');
   } else {
     problems.push('the scene offers no named viewpoints');
+  }
+  // 7. On a phone the body is a sheet, and a sheet has obligations.
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.waitForTimeout(400);
+  const layout = await page.getAttribute('.anatomy-panel', 'data-layout');
+  if (layout !== 'sheet') {
+    problems.push(`at 375x667 the panel is "${layout}"; the body should become a sheet`);
+  } else {
+    const pinnedBefore = await read();
+    const openButton = page.locator('.anatomy-panel-open');
+    if (!(await openButton.isVisible())) problems.push('there is no Parts button to open the sheet with');
+
+    await openButton.focus();
+    await openButton.click();
+    await page.waitForTimeout(400);
+    // The sheet opens on whichever tab was last shown; the parts are what this
+    // section is about.
+    await tab('部位').click();
+    await page.waitForTimeout(300);
+
+    const opened = await page.evaluate(() => {
+      const panel = document.querySelector('.anatomy-panel');
+      const sheet = document.querySelector('.anatomy-panel-sheet');
+      const root = panel.closest('#ui');
+      return {
+        open: panel.dataset.sheet,
+        modal: sheet.getAttribute('aria-modal'),
+        focusInside: sheet.contains(document.activeElement),
+        // Everything behind it is out of reach — by pointer, by Tab and to a
+        // screen reader — which is what makes this a modal and not a panel on top.
+        backgroundInert: [...root.children]
+          .filter((child) => !child.contains(panel))
+          .every((child) => child.inert),
+        // The close control is above the scrolling body, so a reader four
+        // hundred rows down does not have to scroll back to leave.
+        closeAboveBody:
+          document.querySelector('.anatomy-panel-close').getBoundingClientRect().bottom <=
+          document.querySelector('.anatomy-panel-body').getBoundingClientRect().top + 1,
+      };
+    });
+    if (opened.open !== 'open') problems.push('the Parts button did not open the sheet');
+    if (opened.modal !== 'true') problems.push('the sheet does not announce itself as a modal');
+    if (!opened.focusInside) problems.push('opening the sheet left focus outside it');
+    if (!opened.backgroundInert) problems.push('the sheet is open and the background behind it is still reachable');
+    if (!opened.closeAboveBody) problems.push('the close control is inside the scrolling list rather than above it');
+
+    // Select from the list while it is open, scrolled well down — the case
+    // F-31 was about: the answer must not be somewhere the reader cannot see.
+    const rows = page.locator('.anatomy-tree-leaf:visible');
+    const count = await rows.count();
+    const deep = rows.nth(Math.min(20, count - 1));
+    await deep.scrollIntoViewIfNeeded();
+    const deepName = (await deep.locator('.lang-en').first().textContent()).trim();
+    await deep.click();
+    await page.waitForTimeout(300);
+
+    const summaryReadable = await page.evaluate(() => {
+      const summary = document.querySelector('.anatomy-panel-summary');
+      const box = summary.getBoundingClientRect();
+      const point = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return { onScreen: box.top >= 0 && box.bottom <= window.innerHeight, own: summary.contains(point) };
+    });
+    if (!summaryReadable.onScreen) {
+      problems.push('after selecting a row well down the list, the summary is off screen');
+    }
+
+    // What the reader is holding, before it is put away.
+    const remembered = await page.evaluate(() => ({
+      expanded: document.querySelectorAll('.anatomy-tree-branch[aria-expanded="true"]').length,
+      scroll: document.querySelector('.anatomy-panel-body').scrollTop,
+    }));
+
+    // Escape closes, and focus comes back to the control that opened it.
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+    const closed = await page.evaluate(() => {
+      const panel = document.querySelector('.anatomy-panel');
+      const root = panel.closest('#ui');
+      return {
+        open: panel.dataset.sheet,
+        focusReturned: document.activeElement?.classList.contains('anatomy-panel-open') ?? false,
+        backgroundLive: [...root.children].filter((child) => !child.contains(panel)).every((child) => !child.inert),
+        summaryVisible: panel.querySelector('.anatomy-panel-summary').getBoundingClientRect().height > 0,
+      };
+    });
+    if (closed.open !== 'closed') problems.push('Escape did not close the sheet');
+    if (!closed.focusReturned) problems.push('closing the sheet did not return focus to the button that opened it');
+    if (!closed.backgroundLive) problems.push('closing the sheet left the background inert');
+    if (!closed.summaryVisible) problems.push('the summary is not on screen once the sheet is closed');
+
+    // The selection made in the sheet survives closing it, and the summary says so.
+    const afterClose = await read();
+    if (afterClose.en !== deepName) {
+      problems.push(`the summary says "${afterClose.en}" after selecting "${deepName}" in the sheet`);
+    }
+    if (afterClose.en === pinnedBefore.en) {
+      notes.push('the deep row happened to be the structure already selected, so the change was not observed.');
+    }
+
+    // Reopening keeps where the reader was: same tab, same expanded branches,
+    // same scroll position. Rebuilding the list would lose all three.
+    await page.locator('.anatomy-panel-open').click();
+    await page.waitForTimeout(400);
+    const reopened = await page.evaluate(() => ({
+      expanded: document.querySelectorAll('.anatomy-tree-branch[aria-expanded="true"]').length,
+      scroll: document.querySelector('.anatomy-panel-body').scrollTop,
+      selected: document.querySelectorAll('.anatomy-tree-leaf[aria-selected="true"]').length,
+    }));
+    if (reopened.expanded !== remembered.expanded) {
+      problems.push(`reopening the sheet changed the expanded branches (${remembered.expanded} → ${reopened.expanded})`);
+    }
+    if (Math.abs(reopened.scroll - remembered.scroll) > 2) {
+      problems.push(`reopening the sheet moved the list (${remembered.scroll} → ${reopened.scroll})`);
+    }
+    if (reopened.selected !== 1) problems.push('reopening the sheet lost the selection');
+    await shot('brain-sheet');
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(300);
+    await shot('brain-phone');
   }
 } finally {
   await browser.close();

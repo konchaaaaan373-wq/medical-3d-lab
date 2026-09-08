@@ -13,7 +13,7 @@ It is also not the anatomy/CG quality pass (B3), which has not happened.
 | **Decided by** | Claude Opus 5, acting as B0 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **5**, source digest `30ef4c5381b41f55` |
+| **Scene revision** | model card revision **6**, source digest `584cdfefac8a7464` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -24,15 +24,20 @@ card revision. Either one closes the beta until this record is taken again —
 which is the point: a decision about one version of a model is not a decision
 about a different one.
 
-## Why this was re-taken
+## Why this was re-taken, twice
 
-The first decision was pinned to scene revision 4. B2-1 changed what a click
-selects — a structure drawn from several meshes is now one structure rather than
-whichever piece the atlas registered last — and added a part tree and an isolate
-control. That moved the revision to 5, the gate closed, and the production build
-stopped shipping the scene until this record was taken again. That is the
-mechanism working: the earlier decision was about a model that behaved
-differently, and it was not carried forward.
+**Revision 4 → 5.** B2-1 changed what a click selects — a structure drawn from
+several meshes is now one structure rather than whichever piece the atlas
+registered last — and added a part tree and an isolate control.
+
+**Revision 5 → 6.** Replacing the atlas cleared the scene's selection silently.
+The getters were right and the panels were not: the card went on naming a
+structure from the discarded model and a row stayed marked selected, because a
+surface that repaints on an event was never sent one. The reset is announced now.
+
+Each time the gate closed and the production build stopped shipping the scene
+until this record was taken again — the mechanism working. An earlier decision
+was about a model that behaved differently, and it is not carried forward.
 
 ## What was checked
 
@@ -63,6 +68,18 @@ medial / Right lateral / Right medial / Anterior / Superior.
 **Interactions**
 
 - A click on the model pins a structure and the panel names it.
+- **A pointer crossing the model does not rewrite the pinned summary** or the
+  controls beside it; hover previews only while nothing is pinned.
+- The tree answers the keyboard: one tab stop, arrows move focus without
+  selecting, Enter commits, Home/End reach the ends, and none of those keys
+  reaches the scene's own shortcuts underneath.
+- Every branch announces the expanded state it is drawn in, including one opened
+  because a structure was selected in 3D.
+- On a 375×667 phone the parts sheet opens from the summary, takes focus, makes
+  the background inert, closes on Escape, returns focus to the button that
+  opened it, and keeps the selection, the open branches and the scroll position.
+- Replacing the atlas clears the panels rather than leaving the old model named
+  in them.
 - A click on empty space clears the selection rather than leaving a stale card,
   and a structure can be selected again afterwards.
 - **A drag is not a click**: orbiting from one structure and releasing over
@@ -106,6 +123,10 @@ and the asset release gate passes against the file on disk.
 - **No clinical review.** The registry records this scene as `pending` and the
   UI shows "医学レビュー：未完了".
 - The anatomy/CG quality bar for the beta (B3) has not been measured.
-- The part tree is hidden on windows shorter than 520 px, so a landscape phone
-  gets the model and the card without it. That is a deliberate trade recorded
-  here, not something that was checked and found acceptable on real hardware.
+- Real hardware. One engine, desktop, synthetic viewports: no touch, no
+  rotation, no software keyboard, and no screen reader actually reading the
+  tree — `aria-expanded`, `role="tree"` and the roving tab stop are checked as
+  markup and behaviour, which is not the same as being usable with VoiceOver.
+- The part tree's top level mixes axes ("Left cerebral hemisphere" beside
+  "Left side of brainstem") because it follows the atlas's own hierarchy. F-32,
+  and an anatomy question rather than a layout one.

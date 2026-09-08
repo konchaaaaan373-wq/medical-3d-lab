@@ -3,81 +3,86 @@
 Last updated: 2026-09-08。詳細はリンク先。
 
 ```text
-Branch: claude/medical-3d-lab-b2-1-viewer   base: fdf7d3f（B0 契約固定点を含む PR #48 の HEAD）
+Branch: claude/medical-3d-lab-b2-1-viewer   base: PR #48（claude/medical-3d-lab-b0-dv85dl）
 ```
 
-B0 の PR #48 はまだ Draft です。このブランチはその上に積んでいます。
+#48 は未マージなので、この PR の base も `main` ではなく #48 のブランチです。
 
-## 何を固定したか
+## 固定した契約
 
-**[`src/app/anatomyContract.js`](../../src/app/anatomyContract.js)** — 解剖シーンと
-それを読む UI の契約。`anatomyContractProblems(scene)` が実際のシーンを検査し、
+**[`src/app/anatomyContract.js`](../../src/app/anatomyContract.js)** —
+`anatomyContractProblems(scene)` が実シーンを検査し、
 [`tests/anatomy-contract.test.js`](../../tests/anatomy-contract.test.js) が脳で回します。
 
 ```js
-// 必須。UI はこれ以外からシーンの状態を推測しない
 getAnatomySelection() / onAnatomySelection(fn) / selectStructure(id) / clearSelection()
 getAnatomyStatus()    / onAnatomyStatus(fn)
-getAnatomyTree()      // 部位ツリー。leaf.structureId が上の id と同じ値
+getAnatomyTree()      // leaf.structureId は上の id と同じ値
 isolateStructure(id)  / clearIsolation() / getAnatomyIsolation() / onAnatomyIsolation(fn)
-// 任意（あれば形を検査する）
-getAnatomyHover / onAnatomyHover / getAnatomyViews / setAnatomyView
-getAnatomyColorModes / setAnatomyColorMode
 ```
 
-- **部位 ID は 1 種類。** シーンの atlas が付けた値（脳は `bx_id`）で、外部は
-  解釈も生成もしません。group node は `group:` 前置で、`selectStructure` に
-  渡すと**近い何かを選ばずに false を返します**
-- **表示と同一性を分ける。** 配色・視点・解剖レイヤー・単独表示はすべて表示で、
-  選択中の ID を動かしません
-- `SELECTION_FIELDS` = `id, name, nameJa, breadcrumb, breadcrumbJa`
+**部位 ID は 1 種類**（脳は atlas の `bx_id`）。group node は `group:` 前置で、
+`selectStructure` に渡すと近い何かを選ばず false。**表示（配色・視点・解剖レイヤー・
+単独表示）は選択 ID を動かしません。**
 
-## 受入条件の実測（Chromium・production ビルド）
+## 画面構成（F-31 の答え）
 
-`npm run verify:anatomy`（新規スクリプト。`--preview` で未公開シーンも駆動）
+`AnatomyPanel` が 1 枚。上部＝**選択概要**（固定選択の部位名／所属／この部位だけ／
+全体に戻す）で、これは本文の flex 兄弟であってオーバーレイではありません。
+本文＝**部位／表示／詳細**のタブで、**縦スクロールするのは表示中の本文 1 領域だけ**。
 
-| 条件 | 結果 |
-| --- | --- |
-| 3D 選択・部位ツリー・詳細表示が同じ部位 ID | 271 行のツリーと 3D が双方向で一致 |
-| 非表示の部位を 3D クリックで拾わない | 単独表示中の誤選択なし。解剖レイヤーでも同様（unit） |
-| ドラッグ終了をクリック選択と誤認しない | 別部位の上で離しても選択は動かない |
-| 単独表示から全体表示へ戻せる | レイヤー・視点ごと元に戻る（unit で opacity 全一致） |
-| 標準色／色分けで選択 ID が変わらない | 両モード・6 視点で不変 |
-| 遷移後にイベント・選択状態が重複しない | 再 attach で選択も isolation も残らない。dispose で listener 0 |
+- sticky も二重スクローラも使っていません。**どちらも試して却下**：sticky は一覧への
+  被り、二重スクローラはクリップ境界跨ぎ（どちらも `verify:ui` が検出）
+- 表示タブは既存 `InspectionPanel` と既存 legend をそのまま入れています（`embedded: true`
+  で閉じるボタンだけ外す）。**同じパネルを二重生成していません**
+- 高さ 520px 未満でツリーを消す応急処置は**撤去**
+- スマホ・低い画面（`max-width:820px` または `max-height:560px`）では本文がシート化。
+  背景 inert／Esc／フォーカス移動と復帰／閉じるボタンは本文の外。開閉・回転で
+  選択 ID・展開状態・スクロール位置は保持（DOM を作り直しません）
+- **コンソールの「観察」ボタンは解剖シーンでは出しません** — 表示コントロールは
+  パネルのタブが入口で、入口は 1 つ。病態シーンのコンソールは無変更
 
-## 直した既存バグ（F-33）
+## 直した既存バグ
 
-**脳の `bx_id` は mesh 一意ではありません。** 271 構造が 397 mesh に分かれており
-（124 構造が複数 mesh）、`meshByAtlasId` が 1:1 の Map だったため後勝ちし、
-**分割された構造の片方をクリックするともう片方がハイライトされて**いました。
-構造 = ID、mesh = その描かれ方に改めました。読者に見せる部位数も 397 → **271**
-（model card が元から書いていた数）。
+- **hover が固定選択を書き換えていた**（`hovered ?? selected`）。固定があるとき概要と
+  主要操作は selected 対象。未選択時の hover 案内は残しています
+- **ツリーの `aria-expanded` が treeitem 側で false のまま**だった。開閉は 1 か所
+  （`setExpanded`）が DOM・内部状態・announce を同時に書きます
+- **再 attach 時にシーンが通知せず**、カードとツリーに旧モデルの部位が残っていた。
+  リセットを通知するようにし、DOM まで検査するテストを追加
+- ツリーのキー操作: 1 tab stop（roving tabindex）／上下で移動／左右で開閉・親子移動／
+  Home・End／Enter で確定。**フォーカス移動は選択しません**。扱うキーは
+  `stopPropagation` するので、モデルの seek / 再生ショートカットが誤作動しません
 
-## モデル / 公開判断への影響
+## モデル / 公開判断
 
-`BrainAnatomyScene.js` は model card revision の対象なので、**この変更で公開判断が
-失効し、production ビルドから脳シーンが消えました**（設計どおり）。
-card revision 4 → **5**（digest `30ef4c5381b41f55`）、
-公開判断を [`docs/beta-publication/brain-anatomy.md`](../beta-publication/brain-anatomy.md) で
-取り直し、production ビルドで再度緑を確認済みです。
+`BrainAnatomyScene.js` は model card revision の対象なので、**この PR で 2 回失効**しました
+（構造 ID の分離で 4→5、再 attach 通知で 5→6）。いずれも card を直して
+`revisions:adopt`、[公開判断](../beta-publication/brain-anatomy.md)を取り直し、
+production ビルドで再確認済み。現在 revision **6** / digest `584cdfefac8a7464`。
+医学モデル・形状・配色の設計は変更していません。
 
-## 検証
+## 検証（Chromium 141.0.7390.37 / production ビルド）
 
-`npm test` **1648 pass / 0 fail**、build、`verify:site`、`revisions:check`、
-`cards:check`、`budget`、`verify:ui`（実ブラウザ 6 viewport）、`verify:anatomy` すべて緑。
+`npm test` **1656 pass / 0 fail**、build、`verify:site`、`revisions:check`、`cards:check`、
+`budget`、`verify:ui`（6 viewport、全緑）、`verify:anatomy`（拡張：hover 分離・キーボード・
+`aria-expanded` 一致・シートの開閉と状態保持）すべて緑。
 
-## 残る P1
+画像は 1280×720 / 375×667 / 844×390 / 320×568。対象 SHA・ブラウザ・状態は PR 本文に記載。
 
-- **F-31** rail が満杯で、ツリーをスクロールすると選択カードが画面外に出ます。
-  sticky と二重スクローラは試して却下（どちらも occlusion / クリップ跨ぎを作る）。
-  情報設計の判断が要ります。高さ 520px 未満ではツリーを非表示にする応急処置つき
-- **F-32** ツリーの最上位が atlas の命名で不揃い（B3・解剖側）
+## 残る課題
 
-## やっていないこと
+- **F-34（P2）** 初期表示で leaf が 1 件も見えない（最上位 group だけ開く）
+- **F-35（P3）** 未選択時の案内が hover 前提の文言
+- **F-32（P2・B3）** ツリー最上位が atlas の命名で不揃い
+- **未実施**: 実機タッチ・回転・スクリーンリーダー（`role="tree"` と `aria-expanded` は
+  マークアップと挙動として検証済みで、VoiceOver で読めることの確認ではありません）
 
-汎用断面エンジン、心臓制作、病態改変、UI 担当所有ファイル
-（`Landing.js` / `Explorer.js` / `landingOrganHero.js` / `landingHero.js` /
-`landing.js` / `landing.css` / `explorer.css`）の編集。B3・B4 の作業。
+## 触っていないもの
+
+UI 担当所有（`Landing.js` / `Explorer.js` / `landingOrganHero.js` / `landingHero.js` /
+`landing.js` / `landing.css` / `explorer.css`）、`scripts/check-viewports.mjs`、
+`.github/workflows/ci.yml`、課金・顧客管理導線、病態シーンのレイアウト。
 
 ## 使用量
 
