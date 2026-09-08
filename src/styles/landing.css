@@ -1261,3 +1261,131 @@ html[data-route='landing'] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+
+/* B1 anatomy beta: the model is the public surface, not a one-card catalogue. */
+.landing-hero-heading {
+  grid-template-columns: minmax(0, 920px);
+  align-items: start;
+  margin-bottom: clamp(28px, 4vw, 46px);
+}
+
+.landing-hero-copy {
+  max-width: 920px;
+}
+
+.landing-hero-summary {
+  max-width: 38em;
+  margin: 22px 0 0;
+  color: var(--ink-dim);
+  font-size: clamp(16px, 1.7vw, 21px);
+  line-height: 1.75;
+}
+
+.landing-empty-state {
+  max-width: 42em;
+  margin: 22px 0 0;
+  padding: 16px 18px;
+  border-left: 2px solid var(--landing-cyan);
+  background: rgba(7, 11, 19, 0.72);
+  color: var(--ink-dim);
+  line-height: 1.65;
+}
+
+.landing-model-switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.landing-model-switch {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 680;
+  text-decoration: none;
+}
+
+.landing-model-switch:hover,
+.landing-model-switch:focus-visible {
+  border-bottom-color: var(--landing-cyan);
+  color: var(--ink);
+}
+
+.landing-method-copy {
+  max-width: 46em;
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.landing-method-heading h2 {
+  white-space: normal;
+}
+
+.landing-contact {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.55fr) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  margin-top: clamp(52px, 6vw, 80px);
+  padding: 30px 8px;
+  border-top: 1px solid var(--landing-line);
+  border-bottom: 1px solid var(--landing-line);
+}
+
+.landing-contact h2,
+.landing-contact p {
+  margin: 0;
+}
+
+.landing-contact h2 {
+  color: var(--ink);
+  font-size: 24px;
+}
+
+.landing-contact p {
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 720px) {
+  .landing-hero {
+    padding-top: 36px;
+  }
+
+  .landing-title {
+    font-size: clamp(39px, 11.7vw, 54px);
+    letter-spacing: -0.045em;
+  }
+
+  .landing-hero-summary {
+    margin-top: 17px;
+    font-size: 16px;
+    line-height: 1.7;
+  }
+
+  .landing-model-switches {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .landing-model-switch {
+    justify-content: center;
+    border: 1px solid var(--landing-line);
+    border-radius: 4px;
+  }
+
+  .landing-contact {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-block: 26px;
+  }
+}
