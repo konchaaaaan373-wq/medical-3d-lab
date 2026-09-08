@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp, damp, smoothstep } from '../../../../utils/math.js';
@@ -118,10 +119,22 @@ export class BrainAnatomyScene {
     this.cortical = [];
     this.deep = [];
     this.hemispheres = { left: [], right: [] };
-    this.meshByAtlasId = new Map();
+    /**
+     * Structure id → the meshes that make it up.
+     *
+     * A list, not a mesh, because the atlas splits several named structures
+     * across more than one mesh — the middle temporal gyrus arrives as two —
+     * while giving every piece the same `bx_id`. Keyed one-to-one, the second
+     * piece overwrote the first, and clicking the piece that lost highlighted
+     * the piece that won: the reader clicked one part of a gyrus and a
+     * different part lit up. The id is the *structure*; the meshes are how it
+     * is drawn.
+     */
+    this.meshesByAtlasId = new Map();
     this.listeners = new Set();
     this.hoverListeners = new Set();
     this.statusListeners = new Set();
+    this.isolationListeners = new Set();
 
     // A page can stop mattering in two ways, and only one of them is a
     // disposal. `pagehide` is the other: the reader followed a link, the
@@ -139,8 +152,10 @@ export class BrainAnatomyScene {
     this.progress = 0;
     this.displayProgress = 0;
     this.selection = null;
-    this.selectedMesh = null;
-    this.hoveredMesh = null;
+    this.selectedMeshes = [];
+    this.hoveredMeshes = [];
+    /** The one structure on screen, or null for the whole model. */
+    this.isolatedId = null;
     this.built = false;
     this.disposed = false;
     this.ready = Promise.resolve();
@@ -208,13 +223,21 @@ export class BrainAnatomyScene {
     const model = atlas.scene ?? atlas;
     if (!model?.isObject3D) throw new TypeError('brain atlas must contain a THREE.Object3D scene');
 
+    // A second atlas replaces the first, and everything that pointed into the
+    // old one is now pointing at meshes that have been thrown away. Left alone,
+    // `getAnatomySelection()` keeps answering with a structure nobody can see
+    // and `setAnatomyColorMode` reaches into a disposed material. Clearing here
+    // — before the new meshes exist — is what makes "attach again" a
+    // transition rather than an accumulation.
+    this._resetInteractionState();
+
     this.atlasRoot.clear();
     this.selectables.length = 0;
     this.cortical.length = 0;
     this.deep.length = 0;
     this.hemispheres.left.length = 0;
     this.hemispheres.right.length = 0;
-    this.meshByAtlasId.clear();
+    this.meshesByAtlasId.clear();
 
     model.updateMatrixWorld(true);
     const coreBox = new THREE.Box3();
@@ -253,7 +276,11 @@ export class BrainAnatomyScene {
     this._applyProgress(1 / 60, true);
     this._setStatus({
       state: 'ready',
-      selectableCount: this.selectables.length,
+      // What a reader can select is a structure, and several of them are drawn
+      // from more than one mesh. Counting meshes overstated the atlas by the
+      // number of structures that happen to be split.
+      selectableCount: this.meshesByAtlasId.size,
+      meshCount: this.selectables.length,
       atlasCount,
     });
   }
@@ -289,7 +316,9 @@ export class BrainAnatomyScene {
       hovered: false,
     };
     this.selectables.push(mesh);
-    this.meshByAtlasId.set(id, mesh);
+    const pieces = this.meshesByAtlasId.get(id);
+    if (pieces) pieces.push(mesh);
+    else this.meshesByAtlasId.set(id, [mesh]);
     if (metadata.bx_cat === 'cortex') this.cortical.push(mesh);
     if (DEEP_CATEGORIES.has(metadata.bx_cat)) this.deep.push(mesh);
     if (metadata.bx_side === 'left') this.hemispheres.left.push(mesh);
@@ -340,24 +369,37 @@ export class BrainAnatomyScene {
       -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     this.raycaster.setFromCamera(this.pointer, this.viewer.camera);
+    // Visibility is not a hint here, it is the rule: a ray does not know a mesh
+    // is hidden, so a structure faded out by the anatomical layer — or by
+    // isolation — must be taken out of the candidates rather than merely being
+    // hard to hit. Picking something the reader cannot see is the one selection
+    // failure they have no way to understand.
     const candidates = this.selectables.filter(
       (mesh) => mesh.visible && mesh.userData.currentOpacity > 0.14
     );
     return this.raycaster.intersectObjects(candidates, false)[0] ?? null;
   }
 
+  /**
+   * Preview a structure. Every mesh it is drawn from lights up, so hovering one
+   * piece of a split gyrus shows the reader the gyrus rather than the piece.
+   *
+   * @param {import('three').Mesh|null} mesh the mesh under the pointer
+   */
   _setHovered(mesh) {
-    if (mesh === this.hoveredMesh) return;
-    if (this.hoveredMesh) {
-      this.hoveredMesh.userData.hovered = false;
-      this._refreshHighlight(this.hoveredMesh);
+    const meshes = mesh ? this._meshesFor(mesh.userData.atlasId) : [];
+    if (meshes[0] === this.hoveredMeshes[0] && meshes.length === this.hoveredMeshes.length) return;
+    for (const previous of this.hoveredMeshes) {
+      if (meshes.includes(previous)) continue;
+      previous.userData.hovered = false;
+      this._refreshHighlight(previous);
     }
-    this.hoveredMesh = mesh;
-    if (mesh) {
-      mesh.userData.hovered = true;
-      this._refreshHighlight(mesh);
+    this.hoveredMeshes = meshes;
+    for (const next of meshes) {
+      next.userData.hovered = true;
+      this._refreshHighlight(next);
     }
-    const hovered = mesh ? this._structureInfo(mesh) : null;
+    const hovered = meshes.length ? this._structureInfo(meshes[0]) : null;
     for (const listener of this.hoverListeners) listener(hovered);
   }
 
@@ -372,19 +414,40 @@ export class BrainAnatomyScene {
         : mesh.userData.idleEmissiveIntensity;
   }
 
+  /**
+   * Select a structure by its atlas id — every mesh it is drawn from.
+   *
+   * @param {number|string} id
+   */
   selectStructure(id) {
-    const mesh = this.meshByAtlasId.get(Number(id));
-    if (!mesh) return false;
-    if (this.selectedMesh && this.selectedMesh !== mesh) {
-      this.selectedMesh.userData.selected = false;
-      this._refreshHighlight(this.selectedMesh);
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    for (const mesh of this.selectedMeshes) {
+      if (meshes.includes(mesh)) continue;
+      mesh.userData.selected = false;
+      this._refreshHighlight(mesh);
     }
-    this.selectedMesh = mesh;
-    mesh.userData.selected = true;
-    this._refreshHighlight(mesh);
-    this.selection = this._structureInfo(mesh);
+    this.selectedMeshes = meshes;
+    for (const mesh of meshes) {
+      mesh.userData.selected = true;
+      this._refreshHighlight(mesh);
+    }
+    this.selection = this._structureInfo(meshes[0]);
     for (const listener of this.listeners) listener(this.selection);
     return true;
+  }
+
+  /**
+   * The meshes for an id, or an empty list.
+   *
+   * `Number(id)` is what makes a group node fail rather than resolve to
+   * something approximate: `Number('group:Left cerebral hemisphere')` is `NaN`,
+   * which is a key nothing is stored under.
+   *
+   * @param {number|string} id
+   */
+  _meshesFor(id) {
+    return this.meshesByAtlasId.get(Number(id)) ?? [];
   }
 
   _structureInfo(mesh) {
@@ -409,20 +472,92 @@ export class BrainAnatomyScene {
   }
 
   clearSelection() {
-    if (!this.selectedMesh && !this.selection) return;
-    if (this.selectedMesh) {
-      this.selectedMesh.userData.selected = false;
-      this._refreshHighlight(this.selectedMesh);
+    if (!this.selectedMeshes.length && !this.selection) return;
+    for (const mesh of this.selectedMeshes) {
+      mesh.userData.selected = false;
+      this._refreshHighlight(mesh);
     }
-    this.selectedMesh = null;
+    this.selectedMeshes = [];
     this.selection = null;
     for (const listener of this.listeners) listener(null);
   }
 
+  /** Drop every pointer into the current meshes, without notifying. */
+  _resetInteractionState() {
+    for (const mesh of this.selectedMeshes) mesh.userData.selected = false;
+    for (const mesh of this.hoveredMeshes) mesh.userData.hovered = false;
+    this.selectedMeshes = [];
+    this.hoveredMeshes = [];
+    this.selection = null;
+    this.isolatedId = null;
+  }
+
   getAnatomySelection() { return this.selection; }
 
+  /**
+   * The atlas as a tree of named parts, leaves carrying the same structure ids
+   * `selectStructure()` takes and `getAnatomySelection()` reports.
+   *
+   * Built from each structure's own hierarchy rather than from a hand-written
+   * outline, so the tree cannot come to disagree with the model about where a
+   * part sits. Rebuilt on demand, which is cheap next to the atlas itself and
+   * means a re-attached model never leaves a stale tree behind.
+   */
+  getAnatomyTree() {
+    // One leaf per *structure*, in the order the atlas declares it. A structure
+    // drawn from several meshes is one part of the anatomy and one row here;
+    // mapping over `selectables` would list it once per piece, with the same id
+    // on each — a tree that says there are two middle temporal gyri.
+    return buildAnatomyTree(
+      [...this.meshesByAtlasId.values()].map((meshes) =>
+        brainStructureInfo(meshes[0].userData.atlasMetadata)
+      )
+    );
+  }
+
+  /**
+   * Show one structure alone.
+   *
+   * Isolation is a display state, not a selection: it does not change what is
+   * selected, and what is selected does not have to be what is isolated. The
+   * opacity it forces goes through the same path as the anatomical-layer
+   * slider, so `clearIsolation()` restores exactly the model the reader had —
+   * the current layer, the current view's medial side, all of it — rather than
+   * a remembered snapshot that can drift out of date.
+   *
+   * @param {number|string} id a structure id from the tree or a selection
+   */
+  isolateStructure(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    this.isolatedId = meshes[0].userData.atlasId;
+    this._applyProgress(1 / 60, true);
+    this._emitIsolation();
+    return true;
+  }
+
+  /** Back to the whole model, at whatever layer and view it was already on. */
+  clearIsolation() {
+    if (this.isolatedId == null) return false;
+    this.isolatedId = null;
+    this._applyProgress(1 / 60, true);
+    this._emitIsolation();
+    return true;
+  }
+
+  getAnatomyIsolation() { return this.isolatedId; }
+
+  onAnatomyIsolation(listener) {
+    this.isolationListeners.add(listener);
+    return () => this.isolationListeners.delete(listener);
+  }
+
+  _emitIsolation() {
+    for (const listener of this.isolationListeners) listener(this.isolatedId);
+  }
+
   getAnatomyHover() {
-    return this.hoveredMesh ? this._structureInfo(this.hoveredMesh) : null;
+    return this.hoveredMeshes.length ? this._structureInfo(this.hoveredMeshes[0]) : null;
   }
 
   onAnatomySelection(listener) {
@@ -506,12 +641,12 @@ export class BrainAnatomyScene {
       mesh.material.roughness = materialStyle.roughness;
       this._refreshHighlight(mesh);
     }
-    if (this.selectedMesh) {
-      this.selection = this._structureInfo(this.selectedMesh);
+    if (this.selectedMeshes.length) {
+      this.selection = this._structureInfo(this.selectedMeshes[0]);
       for (const listener of this.listeners) listener(this.selection);
     }
-    if (this.hoveredMesh) {
-      const hovered = this._structureInfo(this.hoveredMesh);
+    if (this.hoveredMeshes.length) {
+      const hovered = this._structureInfo(this.hoveredMeshes[0]);
       for (const listener of this.hoverListeners) listener(hovered);
     }
     return true;
@@ -531,12 +666,14 @@ export class BrainAnatomyScene {
     const oneHemisphere = smoothstep(0.18, 0.42, this.displayProgress);
     const deepReveal = smoothstep(0.55, 0.78, this.displayProgress);
     for (const mesh of this.selectables) {
-      const target = targetOpacity(
-        mesh.userData.atlasMetadata,
-        oneHemisphere,
-        deepReveal,
-        this.medialSide
-      );
+      const target = this.isolatedId != null
+        ? (mesh.userData.atlasId === this.isolatedId ? 1 : 0)
+        : targetOpacity(
+            mesh.userData.atlasMetadata,
+            oneHemisphere,
+            deepReveal,
+            this.medialSide
+          );
       const opacity = snap ? target : damp(mesh.userData.currentOpacity, target, 10, dt);
       mesh.userData.currentOpacity = opacity;
       mesh.material.opacity = opacity;
@@ -576,6 +713,8 @@ export class BrainAnatomyScene {
     this.listeners.clear();
     this.hoverListeners.clear();
     this.statusListeners.clear();
+    this.isolationListeners.clear();
+    this._resetInteractionState();
     disposeObject(this.root);
   }
 }

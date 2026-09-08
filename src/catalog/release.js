@@ -170,7 +170,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 4, modelDigest: 'a4e246e1208c5785' }),
+    sceneRevision: Object.freeze({ cardRevision: 5, modelDigest: '30ef4c5381b41f55' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -186,10 +186,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'a drag that ends over another structure does not reselect',
         'switching colour mode does not change the selection',
         'applying a named viewpoint does not change the selection',
+        'the part tree lists 271 structures, and selection agrees in both directions',
+        'isolate shows one structure, hidden structures are not clickable, and Show all restores the model',
       ]),
     }),
     evidence: Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
+      'src/app/anatomyContract.js',
+      'tests/anatomy-contract.test.js',
       'tests/brain-anatomy.test.js',
       'tests/anatomy-colour-ui.test.js',
       'docs/asset-qa/brain-atlas-glb.md',
@@ -197,7 +201,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     ]),
     /** Stated, not implied. An empty list here would itself be a claim. */
     unverified: Object.freeze([
-      '393 of the 397 selectable structures were not individually opened',
+      '267 of the 271 selectable structures were not individually opened',
       'no label was checked against a reference atlas — that is an anatomist\'s judgement',
       'deep structures behind the anatomical-layer slider were not exercised',
       'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',

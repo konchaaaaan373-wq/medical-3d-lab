@@ -38,6 +38,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { createAnatomyTreePanel } from '../components/AnatomyTreePanel.js';
 import { createInspectionPanel } from '../components/InspectionPanel.js';
 import { emitAppEvent } from './appEvents.js';
 
@@ -513,6 +514,12 @@ export async function createApp({ stage, ui }) {
       })
     : null;
 
+  // The part tree and the card are two readings of one selection, not two
+  // states: both bind to `onAnatomySelection`, and neither holds an opinion the
+  // scene has not been told about. `src/app/anatomyContract.js` is the rule they
+  // share, and `tests/anatomy-contract.test.js` is what holds the scene to it.
+  const anatomyTree = scene.getAnatomyTree ? createAnatomyTreePanel(scene) : null;
+
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
     ? createModelControls({
@@ -625,6 +632,7 @@ export async function createApp({ stage, ui }) {
   const rail = el('div', { class: 'rail' }, [
     inspectionPanel.element,
     anatomyInfo?.element,
+    anatomyTree?.element,
     legend.element,
     metricsPanel?.element,
     el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),

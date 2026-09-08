@@ -15,6 +15,11 @@
  * behaviour the beta's publication decision is about — so the evidence for that
  * decision is this, runnable, rather than an image somebody once looked at.
  *
+ * It also checks the part tree against the model, which is the pair this
+ * product most needs to agree: selecting a row must select the same structure
+ * in 3D, and selecting in 3D must highlight the same row. Two surfaces naming
+ * one thing is the claim; a browser is the only place it can be observed.
+ *
  * ## What it does not check
  *
  * It drives one engine on a desktop machine, clicks a handful of points, and
@@ -23,10 +28,25 @@
  * recorded separately — only that the pipeline from mesh to panel is coherent
  * and stable under interaction.
  *
+ * ## Driving a scene the release has not opened
+ *
+ * A production build does not contain a scene the release is holding back, so
+ * there is nothing here to drive. That is the case every time this check is
+ * used as evidence for a *new* publication decision — the decision has not been
+ * taken yet, so the gate is closed, so the scene is not in the build. Build a
+ * preview and pass `--preview`:
+ *
+ *   VITE_ALLOW_PREVIEW=1 npm run build
+ *   npm run verify:anatomy -- --preview
+ *
+ * Once the decision is recorded, the production build carries the scene again
+ * and the check runs against it with no flag, which is the run that matters.
+ *
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
  *   --shots <dir>   write screenshots here
+ *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
  */
 import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
@@ -110,7 +130,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 const problems = [];
 const notes = [];
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null };
+const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null };
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -156,9 +176,22 @@ const shot = async (name) => {
 };
 
 try {
-  await page.goto(`${base}#/${sceneSlug}`, { waitUntil: 'networkidle' });
+  const url = flag('--preview') ? `${base}?preview=1#/${sceneSlug}` : `${base}#/${sceneSlug}`;
+  await page.goto(url, { waitUntil: 'networkidle' });
   // The consent question is a one-time overlay and would sit over the canvas.
   await page.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
+
+  // A locked route answers with the plain "to be updated" page, which has no
+  // canvas and never will. Saying so beats a thirty-second timeout that reads
+  // like the scene is broken when the release simply has not opened it.
+  if (await page.locator('.locked-copy').count()) {
+    die(
+      `The build does not open ${sceneSlug}: it answered with the "to be updated" page.\n\n` +
+        '  VITE_ALLOW_PREVIEW=1 npm run build\n  npm run verify:anatomy -- --preview\n\n' +
+        'That is the expected state while a publication decision is being taken — the gate is ' +
+        'closed until it is recorded, so the scene is not in a production build.'
+    );
+  }
 
   await page.waitForFunction(
     () => /selectable structures/.test(document.querySelector('.anatomy-count.lang-en')?.textContent ?? ''),
@@ -223,6 +256,74 @@ try {
   const reselected = await read();
   if (reselected.en === EMPTY) problems.push('a structure could not be selected again after clearing');
 
+  // 4. The part tree and the model are two readings of one selection.
+  const leaves = page.locator('.anatomy-tree-leaf');
+  observed.treeRows = await leaves.count();
+  if (!observed.treeRows) {
+    problems.push('the part tree rendered no structures');
+  } else {
+    // Selecting in 3D highlights the matching row — including opening the
+    // branch it sits in, or the panel silently disagrees with the model.
+    const selectedRows = page.locator('.anatomy-tree-leaf[aria-selected="true"]');
+    if ((await selectedRows.count()) !== 1) {
+      problems.push(`${await selectedRows.count()} tree rows are marked selected after a 3D click; expected 1`);
+    } else {
+      const rowName = (await selectedRows.first().locator('.lang-en').first().textContent()).trim();
+      if (rowName !== reselected.en) {
+        problems.push(`the model says "${reselected.en}" and the tree highlights "${rowName}"`);
+      }
+      if (!(await selectedRows.first().isVisible())) {
+        problems.push('the selected row is inside a collapsed branch, so the tree does not show the selection');
+      }
+    }
+
+    // And the other direction: selecting a row selects that structure.
+    const row = leaves.nth(Math.min(2, observed.treeRows - 1));
+    const rowName = (await row.locator('.lang-en').first().textContent()).trim();
+    await row.click();
+    await page.waitForTimeout(350);
+    const fromTree = await read();
+    if (fromTree.en !== rowName) {
+      problems.push(`clicking the tree row "${rowName}" put "${fromTree.en}" on the card`);
+    }
+    if ((await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count()) !== 1) {
+      problems.push('selecting from the tree left more than one row marked selected');
+    }
+    await shot('brain-tree');
+
+    // 5. Isolate shows one structure, and Show all puts the model back.
+    const isolate = page.locator('.anatomy-tree-isolate');
+    await isolate.click();
+    await page.waitForTimeout(500);
+    if ((await isolate.getAttribute('aria-pressed')) !== 'true') problems.push('isolating did not take');
+    const whileIsolated = await read();
+    if (whileIsolated.en !== fromTree.en) {
+      problems.push(`isolating changed the selection from "${fromTree.en}" to "${whileIsolated.en}"`);
+    }
+    // Nothing else is clickable while one structure is isolated.
+    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
+    await page.waitForTimeout(350);
+    const afterStrayClick = await read();
+    if (afterStrayClick.en !== EMPTY && afterStrayClick.en !== fromTree.en) {
+      problems.push(`a click on a hidden structure selected "${afterStrayClick.en}" while isolated`);
+    }
+    await shot('brain-isolated');
+
+    await page.locator('.anatomy-tree-showall').click();
+    await page.waitForTimeout(600);
+    if ((await page.locator('.anatomy-tree-isolate').getAttribute('aria-pressed')) !== 'false') {
+      problems.push('Show all did not clear the isolation');
+    }
+    // Back to a whole model: the structures that were on screen before are
+    // clickable again.
+    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
+    await page.waitForTimeout(400);
+    const afterRestore = await read();
+    if (afterRestore.en === EMPTY) {
+      problems.push('after Show all, clicking the model selected nothing — it did not come back');
+    }
+  }
+
   // The shared inspection surface holds the viewpoints and the colour modes.
   await page.locator('[aria-controls="spatial-inspection-panel"]').click();
   await page.waitForTimeout(400);
@@ -231,13 +332,20 @@ try {
   observed.colorModes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map((t) =>
     t.replace(/\s+/g, ' ').trim()
   );
+  let settled = null;
   if (observed.colorModes.length > 1) {
+    const beforeMode = await read();
     await page.locator('.inspection-choice.inspection-mode').nth(1).click();
     await page.waitForTimeout(600);
     const afterMode = await read();
-    if (afterMode.en !== reselected.en) {
-      problems.push(`switching colour mode changed the selection from "${reselected.en}" to "${afterMode.en}"`);
+    if (afterMode.en !== beforeMode.en) {
+      problems.push(`switching colour mode changed the selection from "${beforeMode.en}" to "${afterMode.en}"`);
     }
+    const stillOne = await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count();
+    if (observed.treeRows && stillOne !== 1) {
+      problems.push(`recolouring left ${stillOne} rows marked selected in the tree`);
+    }
+    settled = afterMode;
     await shot('brain-colour-mode');
   } else {
     notes.push('only one colour mode was offered, so the recolouring check did not run.');
@@ -248,11 +356,12 @@ try {
     t.replace(/\s+/g, ' ').trim()
   );
   if (observed.views.length) {
+    const beforeView = settled ?? (await read());
     await page.locator('.inspection-choice.inspection-view').first().click();
     await page.waitForTimeout(900);
     const afterView = await read();
-    if (afterView.en !== reselected.en) {
-      problems.push(`applying a viewpoint changed the selection from "${reselected.en}" to "${afterView.en}"`);
+    if (afterView.en !== beforeView.en) {
+      problems.push(`applying a viewpoint changed the selection from "${beforeView.en}" to "${afterView.en}"`);
     }
     await shot('brain-view');
   } else {
@@ -267,6 +376,7 @@ console.log(`Anatomy interaction — ${sceneSlug}, ${observed.selectableCount} s
 console.log(`  structures named by click: ${observed.structures.map((s) => `${s.en} / ${s.ja}`).join('; ') || 'none'}`);
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
+console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (problems.length) {
@@ -274,4 +384,7 @@ if (problems.length) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('  ok    click names a structure, drag does not, and display choices do not move the selection');
+console.log(
+  '  ok    the model and the tree name one structure; drag is not click; isolate hides and restores; ' +
+    'display choices do not move the selection'
+);

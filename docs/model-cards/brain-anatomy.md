@@ -21,7 +21,10 @@ brain, and what is it called in English and Japanese?**
 **Two files, not one, are what this card describes** — and that is why both are
 in the revision registry. The metadata adapter decides which mesh is which
 named structure and what it is called; the scene decides what a click selects,
-what an isolated view hides and what a colour mode changes. A reader who is
+what an isolated view hides and what a colour mode changes. The shape both are
+held to is [`src/app/anatomyContract.js`](../../src/app/anatomyContract.js),
+checked by [`tests/anatomy-contract.test.js`](../../tests/anatomy-contract.test.js)
+and driven in a browser by `npm run verify:anatomy`. A reader who is
 told "this is the left insula" is being told it by the pair. Change either and
 the correspondence a reviewer checked may no longer hold, so
 `npm run revisions:check` fails until this card has been looked at again — and
@@ -29,10 +32,20 @@ the beta's publication decision, which is pinned to this revision, closes with
 it (see [`../beta-publication/brain-anatomy.md`](../beta-publication/brain-anatomy.md)).
 
 An interactive gross-anatomy atlas made from a Draco-compressed GLB containing
-437 separately named meshes. This scene exposes the 271 meshes in the cortex,
-deep grey matter, diencephalon, white matter, ventricular system, cerebellum
-and brainstem. Every selectable mesh carries its own stable id, category, side,
-region, source and anatomical label in glTF metadata.
+437 separately named meshes. This scene exposes the cortex, deep grey matter,
+diencephalon, white matter, ventricular system, cerebellum and brainstem as
+**271 selectable structures**, drawn from 397 meshes. Every mesh carries its
+own category, side, region, source and anatomical label in glTF metadata, and a
+`bx_id` that identifies the *structure* rather than the mesh.
+
+**A structure and a mesh are not the same thing.** 124 of these structures
+arrive as more than one mesh — the middle temporal gyrus is two — and every
+piece carries the structure's id. Selecting, hovering and isolating act on the
+structure, so clicking any piece of a gyrus highlights the gyrus. Until
+2026-09-08 the scene keyed one mesh per id, so the second piece replaced the
+first and clicking the piece that lost highlighted the piece that won; the
+count shown to a reader was 397, which was a count of meshes wearing the word
+"structures".
 
 The default **Colour map** gives every named structure a distinct teaching
 colour inside a recognisable lobe colour family. A one-click **Natural anatomy**
