@@ -18,7 +18,7 @@ import {
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
-import { createPublicModelsExplorer } from './PublicModels.js';
+import { createPublicModelsExplorer } from './Landing.js';
 import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';

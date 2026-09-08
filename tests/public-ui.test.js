@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createLanding } from '../src/app/Landing.js';
-import { createPublicModelsExplorer } from '../src/app/PublicModels.js';
+import { createPublicModelsExplorer } from '../src/app/Landing.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
 import {
   HERO_ORGANS,
