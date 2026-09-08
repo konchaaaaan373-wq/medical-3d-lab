@@ -87,8 +87,21 @@ const VIEW_SPECS = [
     position: new THREE.Vector3(0.25, 0.23, -5.35), target: new THREE.Vector3(0, -0.35, 0),
   },
   {
+    id: 'posterior', label: 'Posterior', labelJa: '後面',
+    position: new THREE.Vector3(-0.25, 0.23, 5.35), target: new THREE.Vector3(0, -0.35, 0),
+  },
+  {
     id: 'superior', label: 'Superior', labelJa: '上面',
     position: new THREE.Vector3(2.8, 5.45, 1.2), target: new THREE.Vector3(0, 0.08, 0),
+  },
+  // Looking up at the base. Straight below would put the view direction along
+  // the camera's own up vector, where there is no roll to derive and the model
+  // lands at whatever angle the arithmetic falls out at; tilted forward instead,
+  // in the midline plane, the up vector still resolves and the midline stays
+  // vertical on screen — which is what makes left and right readable here.
+  {
+    id: 'inferior', label: 'Inferior', labelJa: '下面',
+    position: new THREE.Vector3(0, -5.05, -2.05), target: new THREE.Vector3(0, -0.45, 0),
   },
 ];
 
@@ -726,13 +739,14 @@ export class BrainAnatomyScene {
         return metadata.bx_label === spec.label && metadata.bx_side === spec.side;
       });
       if (!mesh) continue;
-      const box = new THREE.Box3().setFromObject(mesh);
-      if (!box.isEmpty()) box.getCenter(this.annotationAnchors[anchor]);
       // The label names a structure, so it is tied to that structure's id and
       // to every mesh the structure is drawn from — not to a coordinate that
       // happens to be near it.
       const id = mesh.userData.atlasId;
-      this.annotationTargets[anchor] = { id, meshes: this._meshesFor(id) };
+      const meshes = this._meshesFor(id);
+      this.annotationTargets[anchor] = { id, meshes };
+      const point = outwardSurfacePoint(meshes, this.atlasRoot);
+      if (point) this.annotationAnchors[anchor].copy(point);
     }
   }
 
@@ -870,6 +884,58 @@ function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {
   if (category === 'ventricles') return 0.78 * deepReveal;
   if (category === 'deep_grey' || category === 'diencephalon') return midlineSolid ? 1 : deepReveal;
   return 0;
+}
+
+/**
+ * A point on the outside of a structure, in world space.
+ *
+ * The bounding-box centre is the obvious anchor and is wrong for anything
+ * folded. A sulcus is a thin sheet running down into the brain, and the centre
+ * of the box around it is at the bottom of the sulcus — inside the gyri on
+ * either side. A label pinned there is pinned to a point the reader cannot see,
+ * and before the occlusion test existed it was simply drawn on top of the gyrus
+ * in front, which is a label naming the wrong structure.
+ *
+ * So the anchor is the structure's own outermost vertex: of every vertex in
+ * every mesh the structure is drawn from, the one furthest along the direction
+ * from the model's centre out to the structure. That is a point *on* the
+ * structure, chosen from its geometry and fixed at load — not a position moved
+ * to suit the screen, and not a landmark the source provides. It carries no
+ * anatomical claim beyond "this is on the outside of this mesh".
+ *
+ * @param {import('three').Mesh[]} meshes every mesh the structure is drawn from
+ * @param {import('three').Object3D} root the model, for its centre
+ */
+function outwardSurfacePoint(meshes, root) {
+  if (!meshes?.length) return null;
+  const box = new THREE.Box3();
+  for (const mesh of meshes) box.expandByObject(mesh);
+  if (box.isEmpty()) return null;
+  const centre = box.getCenter(new THREE.Vector3());
+  const modelCentre = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  const outward = centre.clone().sub(modelCentre);
+  // A structure sitting on the midline has no outward direction of its own;
+  // its own box centre is as good an anchor as exists.
+  if (outward.lengthSq() < 1e-8) return centre;
+  outward.normalize();
+
+  const vertex = new THREE.Vector3();
+  let best = null;
+  let bestReach = -Infinity;
+  for (const mesh of meshes) {
+    const position = mesh.geometry?.getAttribute?.('position');
+    if (!position) continue;
+    mesh.updateWorldMatrix(true, false);
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      const reach = vertex.dot(outward);
+      if (reach > bestReach) {
+        bestReach = reach;
+        best = vertex.clone();
+      }
+    }
+  }
+  return best ?? centre;
 }
 
 function atlasMetadata(mesh, stopAt) {

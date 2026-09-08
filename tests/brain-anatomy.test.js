@@ -133,7 +133,8 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   const positions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
   assert.deepEqual(
     scene.getAnatomyViews().map((view) => view.id),
-    ['left-lateral', 'left-medial', 'right-lateral', 'right-medial', 'anterior', 'superior']
+    ['left-lateral', 'left-medial', 'right-lateral', 'right-medial',
+      'anterior', 'posterior', 'superior', 'inferior']
   );
 
   scene.setAnatomyView('left-medial');
@@ -245,6 +246,32 @@ test('an annotation hides when its own structure is behind something opaque', ()
   settle(scene);
   assert.equal(insula.isVisible(behindOperculum), true, 'the layer takes the operculum away');
 
+  scene.dispose();
+});
+
+test('an annotation is anchored on the outside of the structure, not in the middle of it', () => {
+  const scene = buildScene();
+  settle(scene);
+  const sulcus = find(scene, 'Central sulcus', 'left');
+  const point = scene.annotationAnchors.centralSulcus;
+  const box = new THREE.Box3().setFromObject(sulcus);
+  const modelCentre = new THREE.Box3().setFromObject(scene.atlasRoot).getCenter(new THREE.Vector3());
+
+  // On the structure — an anchor off it would be a label naming a neighbour.
+  assert.ok(box.distanceToPoint(point) < 1e-6, 'the anchor is a point of this structure');
+  // And on its *outside*. The bounding-box centre of a sulcus is at the bottom
+  // of the sulcus, inside the gyri either side of it, where nothing can see it.
+  assert.ok(
+    point.distanceTo(modelCentre) > box.getCenter(new THREE.Vector3()).distanceTo(modelCentre),
+    'and further out than the middle of it'
+  );
+
+  // Which is the point: from outside, that anchor can be seen.
+  const camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 100);
+  camera.position.copy(point).addScaledVector(point.clone().sub(modelCentre).normalize(), 5);
+  camera.lookAt(point);
+  camera.updateMatrixWorld(true);
+  assert.equal(annotationFor(scene, 'centralSulcus').isVisible(camera), true);
   scene.dispose();
 });
 

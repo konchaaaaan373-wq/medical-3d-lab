@@ -125,9 +125,13 @@ identity or geometry.
 
 The atlas opts into the shared **Neutral studio** renderer preset so sulcal
 relief and the low-saturation anatomical mode remain legible on a pale field.
-Its six lateral, medial, anterior and superior viewpoints are authored
-anatomical views in the common inspection panel, rather than directions inferred
-by the app. Background, viewpoint, label visibility and colour mode are user
+Its eight viewpoints — left and right lateral, left and right medial, anterior,
+posterior, superior and inferior — are authored anatomical views in the common
+inspection panel, rather than directions inferred by the app. The inferior view
+is tilted forward in the midline plane rather than placed directly below,
+because a camera looking along its own up vector has no roll to derive and the
+midline would land at an arbitrary angle; tilted, the midline stays vertical,
+which is what makes left and right readable in that view. Background, viewpoint, label visibility and colour mode are user
 inspection state only; resetting them does not change the layer progression or
 any anatomical metadata.
 
@@ -159,11 +163,18 @@ and never moved somewhere emptier. The rule is about what is on screen, not
 about which side a name says — so it agrees with the anatomical layer, a medial
 view, isolation and transparency without knowing about any of them. **Label
 visibility is not selection**: a pinned structure keeps its id, its summary and
-its highlight when the view turns away from it. One consequence is recorded
-rather than hidden: the central sulcus's anchor is the centre of its bounding
-box, which lies at the bottom of the sulcus, so its label is now hidden on the
-lateral view where it used to sit — on the precentral gyrus — and re-anchoring
-it is F-40.
+its highlight when the view turns away from it. **An anchor is a point on the outside of the
+structure it names**, not the centre of its bounding box: for a sulcus that
+centre is at the bottom of the sulcus, inside the gyri on either side, where
+nothing can see it — which is why the central sulcus label used to be drawn over
+the precentral gyrus instead. Each anchor is the outermost vertex of the
+structure's own meshes along the direction from the model's centre out to it: a
+point chosen from that geometry and fixed at load, carrying no anatomical claim
+beyond "this is on the outside of this mesh", and never moved to suit the
+screen. It is not enough for a sulcus: the surface of a fold lies under the
+gyri on either side of it, so the central sulcus's label is absent from the
+lateral view rather than misplaced on it. That is recorded as F-40 with what
+was tried, not papered over.
 
 ## 7. What it must never be used for
 

@@ -16,7 +16,7 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **8**, source digest `eac964301e16e62b` |
+| **Scene revision** | model card revision **9**, source digest `66d609ae45aeab5d` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -83,10 +83,11 @@ the same name under the same branch. Selecting in 3D highlights the matching
 row and opens the branch holding it; clicking a row puts that structure on the
 card. Both directions were driven.
 
-**Viewpoints** — six are offered and one was applied by the drive: Left lateral
-/ Left medial / Right lateral / Right medial / Anterior / Superior. All six were
-also **rendered** in both colour modes, at one camera per viewpoint, before and
-after the B3-1 change — [`docs/screenshots/b3-1/`](../screenshots/b3-1/), and the
+**Viewpoints** — eight are offered and one was applied by the drive: Left
+lateral / Left medial / Right lateral / Right medial / Anterior / Posterior /
+Superior / Inferior. The six that existed before this work were also **rendered**
+in both colour modes, at one camera per viewpoint, before and after the B3-1
+change — [`docs/screenshots/b3-1/`](../screenshots/b3-1/), and the
 reading of them is [`docs/anatomy-review.md`](../anatomy-review.md) §3.1. That is
 a rendering check, not an anatomical one.
 
@@ -147,14 +148,13 @@ and the asset release gate passes against the file on disk.
   drive stays at layer 0, the cortical surface. What a medial view now shows at
   the midline was rendered and looked at; it was not clicked through structure by
   structure.
-- **The posterior and inferior views the acceptance list asks for do not exist**
-  (F-39), so nothing was checked on them.
+- The posterior and inferior viewpoints were added here, rendered, and read by
+  an engineer. **No anatomist has confirmed what they show.**
 - Whether the cerebellum should show folia is unsettled — a question about the
   source mesh rather than about this renderer (F-38).
-- **The central sulcus annotation is now hidden on the lateral view**, because
-  its anchor is the centre of its bounding box and that lies at the bottom of
-  the sulcus. Hiding it is right — before this, its dot sat on the precentral
-  gyrus — but the anchor it needs was not built (F-40).
+- Annotation anchors are now the outermost vertex of the structure's own mesh.
+  That is a geometric choice, not a landmark from a source: **no anatomist has
+  confirmed that it is where the name should point.**
 - Touch, Safari and Firefox were not driven; one engine, on a desktop.
 - No screen-reader pass over the selection card.
 - **No clinical review.** The registry records this scene as `pending` and the
