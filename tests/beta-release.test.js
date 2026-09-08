@@ -15,14 +15,19 @@ import {
   LOCKED_SCENES,
   RELEASED_SCENES,
   RELEASE_CHANNEL,
+  DECISION_ROLES,
+  RELEASE_POLICIES,
   anatomyClaimProblems,
   betaPublicationProblems,
+  publicationDecisionProblems,
+  sceneReleaseProblems,
   isRouteReleased,
   isSceneReleased,
   resolveDevUnlock,
 } from '../src/catalog/release.js';
 import { PUBLIC_MANIFEST, publicManifestProblems } from '../src/catalog/publicManifest.js';
 import { assetById } from '../src/catalog/assetManifest.js';
+import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { createLockedSurface } from '../src/app/LockedSurface.js';
 import { createSceneFailureFallback } from '../src/app/SceneFailureFallback.js';
@@ -174,6 +179,106 @@ test('beta release: naming a scene does not open it — every failure closes the
   assert.ok(fileExists(decision.record), 'the publication decision names a record that exists');
 });
 
+test('publication decision: an incomplete record is not a decision', () => {
+  const scene = sceneById('brain-anatomy');
+  const decision = BETA_PUBLICATION_DECISIONS.find((entry) => entry.sceneId === 'brain-anatomy');
+  assert.deepEqual(publicationDecisionProblems(decision, scene, { fileExists }), []);
+
+  const without = (path, value) => {
+    const next = structuredClone({ ...decision });
+    const keys = path.split('.');
+    const last = keys.pop();
+    let target = next;
+    for (const key of keys) target = target[key];
+    if (value === undefined) delete target[last];
+    else target[last] = value;
+    return publicationDecisionProblems(next, scene, { fileExists });
+  };
+
+  const cases = [
+    ['decidedAt', undefined, /no decision date/],
+    ['decidedAt', '8 September 2026', /no decision date/],
+    ['decidedBy', undefined, /does not say who took it/],
+    ['decidedBy.name', '  ', /does not name who took it/],
+    ['decidedBy.role', 'reviewer', /is not one of/],
+    ['decidedBy.role', undefined, /is not one of/],
+    ['record', undefined, /names no record document/],
+    ['record', 'docs/beta-publication/does-not-exist.md', /which does not exist/],
+    ['scope', undefined, /records no scope/],
+    ['scope.structures', [], /does not say what structures were checked/],
+    ['scope.views', undefined, /does not say what views were checked/],
+    ['scope.interactions', [''], /does not say what interactions were checked/],
+    ['evidence', [], /cites no evidence/],
+    ['evidence', ['https://example.org/proof'], /is not a repository path/],
+    ['evidence', ['tests/nothing-here.test.js'], /which does not exist/],
+    ['unverified', undefined, /does not state what it did not check/],
+    ['unverified', ['', 'something'], /does not state what it did not check/],
+  ];
+  for (const [path, value, pattern] of cases) {
+    const problems = without(path, value);
+    assert.ok(problems.some((line) => pattern.test(line)), `${path}=${JSON.stringify(value)}: ${JSON.stringify(problems)}`);
+  }
+
+  // The one claim a record must never be able to make about itself. The brain
+  // atlas's clinical review is pending, so a record calling itself clinical is
+  // rejected — and would be accepted only once the registry actually has one.
+  assert.equal(DECISION_ROLES.includes('clinical'), true);
+  const claimsClinical = { ...decision, decidedBy: { ...decision.decidedBy, role: 'clinical' } };
+  assert.ok(
+    publicationDecisionProblems(claimsClinical, scene, { fileExists })
+      .some((line) => /cannot promote itself to a sign-off/.test(line))
+  );
+  assert.deepEqual(
+    publicationDecisionProblems(claimsClinical, scene, { fileExists, hasReview: () => true }),
+    [],
+    'and it is fine once the review registry actually holds one'
+  );
+
+  // The record itself says it is engineering, and says what it did not check.
+  assert.equal(decision.decidedBy.role, 'engineering');
+  assert.ok(decision.unverified.some((line) => /clinical review/i.test(line)));
+  assert.ok(decision.unverified.some((line) => /not individually opened/.test(line)));
+});
+
+test('publication decision: the same mesh with a different part correspondence closes the beta', () => {
+  // The failure the asset hash cannot see. The GLB is byte-identical; what
+  // changed is which mesh is called what, or what a click selects — and a
+  // reader would be told something nobody checked.
+  const scene = sceneById('brain-anatomy');
+  const pin = sceneRevisionPin(scene);
+  assert.ok(pin, 'the scene is in the model-card revision registry');
+
+  const decision = BETA_PUBLICATION_DECISIONS.find((entry) => entry.sceneId === 'brain-anatomy');
+  assert.deepEqual(decision.sceneRevision, pin, 'the decision is pinned to the revision on file');
+
+  const withRevision = (next) =>
+    betaPublicationProblems('brain-anatomy', { fileExists, resolveRevision: () => next });
+
+  // Sources edited, digest moved, card revised: the decision no longer applies.
+  const edited = { cardRevision: pin.cardRevision + 1, modelDigest: 'ffffffffffffffff' };
+  assert.ok(
+    withRevision(edited).some((line) => /the part correspondence or the selection behaviour changed/.test(line)),
+    JSON.stringify(withRevision(edited))
+  );
+  // Digest moved without the card being revised is caught too, and so is the
+  // reverse — a bumped revision over unchanged sources.
+  assert.ok(withRevision({ ...pin, modelDigest: 'ffffffffffffffff' }).length > 0);
+  assert.ok(withRevision({ ...pin, cardRevision: pin.cardRevision + 1 }).length > 0);
+  assert.ok(withRevision(null).some((line) => /no entry in the model-card revision registry/.test(line)));
+
+  // And the asset hash still does its own half of the job.
+  const brainAsset = assetById('brain-atlas-glb');
+  assert.equal(decision.assetRevisions['brain-atlas-glb'], brainAsset.output.sha256);
+
+  // The pin is scoped: it covers the files that decide what the model is, and
+  // the registry entry names them. A wording fix elsewhere is not in scope.
+  const entry = read('docs/model-cards/revisions.json');
+  assert.match(entry, /src\/data\/brainAnatomy\.js/);
+  assert.match(entry, /BrainAnatomyScene\.js/);
+  // Per scene, never registry-wide: changing one model must not expire another.
+  assert.notEqual(sceneRevisionPin(sceneById('copd-hyperinflation'))?.modelDigest, pin.modelDigest);
+});
+
 test('beta release: the asset behind an open model passes the release gate against the real files', () => {
   for (const scene of RELEASED_SCENES) {
     assert.deepEqual(
@@ -205,6 +310,44 @@ test('beta release: the public manifest is the projection of the gate, not a sec
     const source = read(path);
     assert.doesNotMatch(source, /'heart-failure'|'myocardial-ischemia'|'circulation'|'amyloid-beta'/, path);
   }
+});
+
+test('release channel: a channel is a name for a policy, and a name alone opens nothing', () => {
+  // The bypass this replaces: `RELEASE_CHANNEL !== 'beta'` fell through to
+  // "anything that is not a prototype", so editing one string would have
+  // published twelve disease models — with their numbers — past every check.
+  assert.deepEqual(Object.keys(RELEASE_POLICIES), ['beta']);
+
+  const brain = sceneById('brain-anatomy');
+  const disease = sceneById('heart-failure');
+
+  // `beta` is the policy that exists, and it is the gate, not a shortcut.
+  assert.deepEqual(sceneReleaseProblems(brain, { channel: 'beta' }), []);
+  assert.ok(sceneReleaseProblems(disease, { channel: 'beta' }).length > 0);
+
+  // `public` is the channel somebody would flip to end the beta. There is no
+  // general-release policy yet, so it opens nothing — including the scene that
+  // *is* open on beta, because a channel with no policy is not a release.
+  for (const scene of [brain, disease, sceneById('copd-hyperinflation')]) {
+    for (const channel of ['public', '', 'Beta', 'beta ', 'production', 'undefined']) {
+      const problems = sceneReleaseProblems(scene, { channel });
+      assert.ok(problems.length > 0, `${scene.id} opened on channel "${channel}"`);
+      assert.match(problems[0], /has no publication policy/);
+    }
+  }
+
+  // An inherited property is not a policy either: `constructor` and `toString`
+  // exist on every object and must not resolve to one.
+  for (const channel of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+    assert.match(sceneReleaseProblems(brain, { channel })[0], /has no publication policy/, channel);
+  }
+
+  // And the source no longer contains the fall-through in any form.
+  const code = read('src/catalog/release.js')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  assert.doesNotMatch(code, /RELEASE_CHANNEL\s*!==\s*'beta'/);
+  assert.doesNotMatch(code, /RELEASE_CHANNEL\s*===\s*'beta'/);
 });
 
 test('beta release: the product shell stays open and the experimental surface does not', () => {
@@ -512,6 +655,11 @@ test('beta release: the crawlable surface and the in-scene navigator read the ga
   assert.match(siteCheck, /a source map shipped/);
   assert.match(siteCheck, /a service worker shipped/);
   assert.match(siteCheck, /PUBLIC_MANIFEST\.count !== emittedPages/);
+  // And the two checks a file list alone cannot make: what `public/` delivered,
+  // judged against the asset manifest, and the decisions judged against disk.
+  assert.match(siteCheck, /assetDeliveryProblems\(\{/);
+  assert.match(siteCheck, /requiredAssetIdsFor\(RELEASED_SCENES, modelProfileForScene\)/);
+  assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync \}\)/);
 
   const cardCheck = read('scripts/check-social-cards.js');
   assert.match(cardCheck, /CRAWLABLE_SCENES/);

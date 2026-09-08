@@ -19,8 +19,17 @@ Status: Accepted（実装済み・B0）
 
 ## Decision
 
-**公開βの中心を「脳・心臓の 3D 解剖モデル」に置きます。解剖閲覧そのものを
-独立した製品価値とし、病態モデルは開発を続けたうえで、このβには出しません。**
+**解剖モデルは、単独で利用価値と品質基準を持つ製品層です。病態モデルは、
+その解剖基盤を利用する別の製品層として発展させます。**
+公開βはそのうち解剖層だけを公開します。
+
+これは公開順序だけの変更ではありません。**製品の構造の変更です。**
+これまでは解剖が病態の土台としてだけ位置づけられ、その帰結として
+「病態が要求しない解剖の改善」に優先順位がありませんでした。
+2 層に分けたので、解剖層は**自分の基準で**評価され、自分の理由で改善されます
+——名前で指せること、境界が実レンダリングで見分けられること、操作が一貫して
+いること。病態層の基準（時間変化・因果・複数変数の連動）を解剖層に当てて
+改善を却下しない、という規則が両方向に効きます。
 
 1. **未完成の解剖を病態で代用しない。** `heart-anatomy` が存在しない／
    合格していないあいだ、βは合格済みの 1 本だけを開き、存在しない
@@ -43,6 +52,10 @@ Status: Accepted（実装済み・B0）
    大量に残すのをやめ、Landing と Explorer は公開中のモデルだけを並べます。
 6. **UI 契約を固定する。** 公開一覧は `src/catalog/publicManifest.js` の 1 本。
    `ready: false` の仮データを作らず、UI は公開判定を再実装しません。
+7. **channel 名では公開しない。** `RELEASE_CHANNEL` を書き換えるだけで
+   公開範囲が広がる分岐を廃止しました。channel は policy の名前であって
+   policy ではなく、policy が登録されていない channel は何も開きません。
+   一般公開用 policy は未定義で、今回は実装しません。
 
 ## What this overrides
 
@@ -54,6 +67,8 @@ Status: Accepted（実装済み・B0）
 | hero の心臓が `heart-failure` を開き、冠動脈ジオメトリを載せる | `src/data/landingHero.js` |
 | `DEFAULT_SCENE_ID = 'amyloid-beta'`（誤タイプの着地先が非公開モデルになる） | `src/catalog/index.js` |
 | 「`?preview=1` は deployed build を無条件でアンロックする」 | `release.js`、`releaseGate.js`、`beta-release.md` §2 |
+| 「`RELEASE_CHANNEL` を `'beta'` から変えれば prototype 以外が一斉に開く」 | `release.js` の `isSceneReleased`、`beta-release.md` §3 |
+| 「A3 の pull 型ルールが A2 の品質改善にもかかる」と読める書き方 | `grand-design.md` §4.5 |
 | HRA 心臓は「production に接続しない技術検証」だけで良い | `asset-pipeline.md`「Next, in this order」 |
 
 ## What this deliberately keeps
@@ -65,14 +80,29 @@ Status: Accepted（実装済み・B0）
   `disease-candidates.md`、既存の病態シーンのコードは残ります。削除していません
 - **「全身を扱う」「全臓器が A2 水準の解剖モデルを持つ」という製品要件**
   （`grand-design.md` §4.5）。βの範囲はその一部であって、置き換えではありません
-- **「眺めるだけの anatomy atlas を作ること自体が目的ではない」**（`CLAUDE.md`）。
-  解剖は病態が指す先としての土台であり続けます。今回変えたのは
-  「土台を、それ自体として先に公開する」という**公開順序**であって、
-  製品の North star ではありません
+- **North star**（"Make invisible physiology visible, interactive, and
+  understandable."）。2 層に分けても目的地は変わりません
+- **「中身のない網羅を作らない」という規律。** `CLAUDE.md` の
+  「眺めるだけの anatomy atlas を作ること自体が目的ではない」は、
+  **出典も、名前で指せる分離も、到達度の記録も無い臓器ビューを量産しない**
+  という意味に書き直しました。「解剖の改善は病態が要求するまで待つ」という
+  読み方ができる形では残しません——それが今回いちばん直したかった一文です。
+  A3 以上の装飾は引き続き pull 型（`grand-design.md` §4.5）で、
+  A2 の品質そのものに pull は要りません
 - **`prototype` を公開しないこと**、`reviewed` / `production` の昇格条件、
   臨床レビューの要求
 - **既存顧客のアカウント管理導線。** 課金ゲート・webhook・照合・監査ログ・
   Supabase RLS には触れていません
+
+## Consequences from the product-layer split
+
+- 解剖層の改善（分離・視認性・操作の一貫性）は、病態シーンが要求しなくても
+  それ自体で正当な作業です。B2-1 以降の共通 viewer 作業がこれにあたります
+- 病態層は消えません。`grand-design.md` §5 の depth ladder と
+  pathology coverage、`disease-candidates.md`、既存の病態シーンのコードは
+  そのままです。**上に載る層であって、置き換えられた層ではありません**
+- 2 つの層は別々の品質基準で評価します。解剖層に「時間とともに何が変わるのか」
+  を要求しない、病態層に「全臓器ぶん作れ」を要求しない
 
 ## Consequences
 
@@ -84,6 +114,8 @@ Status: Accepted（実装済み・B0）
 - production バンドルの JS チャンクは 85 本から 39 本になりました
 - `heart-anatomy` は B4 の成果物です。ID は `release.js` と
   `landingHero.js` に予約済みで、合格すれば**どちらも編集せずに**公開に入ります
+- 公開判断記録は scene revision にも紐づくので、部位対応や選択挙動を変えると
+  ——GLB が同一でも——公開が閉じ、記録の取り直しが要ります
 
 ## Not decided here
 
