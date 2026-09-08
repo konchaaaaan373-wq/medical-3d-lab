@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createLanding } from '../src/app/Landing.js';
-import { createExplorer } from '../src/app/Explorer.js';
+import { createPublicModelsExplorer } from '../src/app/PublicModels.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
 import {
   HERO_ORGANS,
@@ -118,7 +118,7 @@ test('public UI: two-model fixture uses an explicit chooser and keeps one live v
 test('public model route: one model has no search, filters, category jumps or placeholder cards', () => {
   withDom(() => {
     const ui = new FakeElement('div');
-    const mounted = createExplorer({ ui, publicManifest: manifest([BRAIN]) });
+    const mounted = createPublicModelsExplorer({ ui, manifest: manifest([BRAIN]) });
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
     assert.match(textOf(mounted.element), /人体の3D解剖モデル/);
@@ -131,7 +131,7 @@ test('public model route: one model has no search, filters, category jumps or pl
 });
 
 test('public UI does not consume a link-preview card as model imagery', () => {
-  for (const source of [read('src/app/Landing.js'), read('src/app/Explorer.js')]) {
+  for (const source of [read('src/app/Landing.js'), read('src/app/PublicModels.js')]) {
     assert.doesNotMatch(source, /posterPath|posterKind/);
   }
 });
