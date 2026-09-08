@@ -149,6 +149,22 @@ does not fill the ventricles, which are cavities rather than surfaces and stay
 on the slider in every view. Dragging the layer in from a medial view ghosts the
 enclosing white matter back out, so depth still means depth.
 
+**An annotation is shown only when the structure it names can be seen.** The
+labels are HTML over the canvas, so nothing about them is depth-tested: a label
+for a left-hemisphere structure was drawn on the right hemisphere's surface in
+the right lateral view, which reads as a claim about where that structure is.
+The scene is now asked, with the same ray a click uses, whether the anchor is
+the first drawn thing along it; if it is not, the label is hidden where it is
+and never moved somewhere emptier. The rule is about what is on screen, not
+about which side a name says — so it agrees with the anatomical layer, a medial
+view, isolation and transparency without knowing about any of them. **Label
+visibility is not selection**: a pinned structure keeps its id, its summary and
+its highlight when the view turns away from it. One consequence is recorded
+rather than hidden: the central sulcus's anchor is the centre of its bounding
+box, which lies at the bottom of the sulcus, so its label is now hidden on the
+lateral view where it used to sit — on the precentral gyrus — and re-anchoring
+it is F-40.
+
 ## 7. What it must never be used for
 
 Diagnosis, measurement, lesion localisation, stereotactic coordinates,

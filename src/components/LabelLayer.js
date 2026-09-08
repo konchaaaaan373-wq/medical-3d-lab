@@ -149,8 +149,16 @@ export function createLabelLayer({ viewer, annotations }) {
         projected.copy(item.annotation.position).project(viewer.camera);
         // z > 1 means the anchor is behind the camera.
         const offscreen = projected.z > 1 || Math.abs(projected.x) > 1.15 || Math.abs(projected.y) > 1.15;
-        item.node.style.visibility = offscreen ? 'hidden' : 'visible';
-        if (offscreen) continue;
+        // Nothing here is depth-tested — these are HTML boxes over the canvas —
+        // so a scene that knows what is in front of its own anchors is asked.
+        // A label for a structure the reader cannot see is a label pointing at
+        // whatever happens to be drawn there instead, which for a left/right
+        // pair is a mistake with a name attached. It is hidden **where it is**:
+        // it must not be pushed to a clearer part of the screen, because a
+        // leader line to a place the structure is not says the same thing.
+        const unseen = item.annotation.isVisible?.(viewer.camera) === false;
+        item.node.style.visibility = offscreen || unseen ? 'hidden' : 'visible';
+        if (offscreen || unseen) continue;
         const top = compact ? 150 : 34;
         const ax = (projected.x * 0.5 + 0.5) * width;
         const ay = (-projected.y * 0.5 + 0.5) * height;

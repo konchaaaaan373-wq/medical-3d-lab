@@ -181,11 +181,13 @@ What is *not* right is where those labels are drawn — see F-37 below.
 
 **Also seen, and not fixed here.** These are recorded rather than settled:
 F-36 (the model sits high in the frame, with the lower third of the canvas
-empty), F-37 (annotation labels are not depth-tested, so a left-hemisphere label
-is drawn over the right hemisphere in the right lateral view), F-38 (the
-cerebellum reads as smooth lobules with no folia, which is a question about the
-source mesh, not about this renderer) and F-39 (the acceptance list asks for
-posterior and inferior views, and the scene offers neither).
+empty), F-38 (the cerebellum reads as smooth lobules with no folia, which is a
+question about the source mesh, not about this renderer) and F-39 (the
+acceptance list asks for posterior and inferior views, and the scene offers
+neither). **F-37 — annotation labels drawn over the opposite hemisphere — is
+fixed**, in its own commit and with its own before/after pair in
+[`docs/screenshots/f37/`](screenshots/f37/); what it left behind is F-40, the
+anchor of a sulcus sitting below the surface.
 
 ## 4. Left for the clinical reviewer
 

@@ -90,6 +90,16 @@ to the source meshes.
 | **Assumption** | Presence, not accuracy: this decides which of the atlas's meshes are drawn for a view, and makes no claim about their boundaries. The registration caveats for the deep nuclei (recorded in the asset manifest: MNI-space atlases at roughly 7 mm, approximate) apply to what is now visible. |
 | **Validation** | `a medial view closes the midline instead of showing through a hollow shell`; the before/after pair at one camera in [`docs/screenshots/b3-1/`](../screenshots/b3-1/); the audit in [`docs/anatomy-review.md`](../anatomy-review.md) §3.1. |
 
+### 7. A label is shown only where its structure can be seen
+
+| | |
+| --- | --- |
+| **Claim** | An annotation is drawn only when the structure it names is the first thing drawn along the ray to its anchor. |
+| **Source** | Not a biological source: a correctness requirement. An overlay that ignores depth places a left-hemisphere name on the right hemisphere. |
+| **Implementation** | `isAnnotationVisible()` casts the same ray the picker casts, against the same "is this mesh actually drawn" rule (`DRAWN_OPACITY`, one constant, checked by `tests/anatomy-contract.test.js` to be the only one). `getAnnotations()` publishes each label's `structureId` alongside its anchor. `LabelLayer` hides an unseen label in place rather than relocating it. |
+| **Assumption** | The anchor is the structure's bounding-box centre, which for a sulcus lies below the surface; such a label hides on views where the structure is nonetheless partly visible (F-40). The test is of visibility, not of anatomical correctness of the anchor. |
+| **Validation** | `an annotation hides when its own structure is behind something opaque` — hidden by an occluder, visible again from the same place once the occluder is isolated away, and following the layer for the operculum/insula pair; `hiding a label does not touch the selection it names`. Rendered pairs in [`docs/screenshots/f37/`](../screenshots/f37/). |
+
 ## Deliberate boundary
 
 An exact touch target for ACC cannot be completed by copy, colour or camera

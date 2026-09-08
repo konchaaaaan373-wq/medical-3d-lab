@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-08 (re-taken after B3-1 changed what a medial view draws) |
+| **Decided at** | 2026-09-08 (re-taken after B3-1 changed what a medial view draws and when an annotation is drawn) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **7**, source digest `077b33cb293c8730` |
+| **Scene revision** | model card revision **8**, source digest `eac964301e16e62b` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -27,7 +27,7 @@ card revision. Either one closes the beta until this record is taken again —
 which is the point: a decision about one version of a model is not a decision
 about a different one.
 
-## Why this was re-taken, three times
+## Why this was re-taken, four times
 
 **Revision 4 → 5.** B2-1 changed what a click selects — a structure drawn from
 several meshes is now one structure rather than whichever piece the atlas
@@ -47,6 +47,14 @@ block is present for a medial view now, and ghosts back out as depth is asked
 for. Nothing moved, nothing was recoloured, no structure id changed — but what
 the reader is shown for two of the six viewpoints did, so this record is taken
 again against the new revision.
+
+**Revision 7 → 8.** F-37: the annotation labels are HTML over the canvas and
+were not depth-tested, so a left-hemisphere name was drawn on the right
+hemisphere's surface in the right lateral view. A label is now shown only when
+the structure it names is the first thing drawn along the ray to its anchor —
+the same ray a click uses — so it agrees with the layer, the medial views and
+isolation without a rule about sides. Label visibility is not selection: a
+pinned structure keeps its id and its summary either way.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
@@ -123,6 +131,7 @@ and the asset release gate passes against the file on disk.
 - [`docs/asset-qa/brain-atlas-glb.md`](../asset-qa/brain-atlas-glb.md) — format and semantic QA of the mesh
 - [`docs/anatomy-review.md`](../anatomy-review.md) — the engineering anatomy review, including its open judgement calls
 - [`docs/screenshots/b3-1/README.md`](../screenshots/b3-1/README.md) — the fixed-view renders, before and after, and how to reproduce them
+- [`docs/screenshots/f37/README.md`](../screenshots/f37/README.md) — the annotation-label pair, labels on, at the view that showed the defect and at the control
 - [`public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md)
 
 ## Not checked
@@ -142,6 +151,10 @@ and the asset release gate passes against the file on disk.
   (F-39), so nothing was checked on them.
 - Whether the cerebellum should show folia is unsettled — a question about the
   source mesh rather than about this renderer (F-38).
+- **The central sulcus annotation is now hidden on the lateral view**, because
+  its anchor is the centre of its bounding box and that lies at the bottom of
+  the sulcus. Hiding it is right — before this, its dot sat on the precentral
+  gyrus — but the anchor it needs was not built (F-40).
 - Touch, Safari and Firefox were not driven; one engine, on a desktop.
 - No screen-reader pass over the selection card.
 - **No clinical review.** The registry records this scene as `pending` and the

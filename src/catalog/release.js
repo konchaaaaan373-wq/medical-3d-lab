@@ -170,7 +170,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: '077b33cb293c8730' }),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'eac964301e16e62b' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -197,6 +197,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'on a 375x667 phone the parts sheet opens, takes focus, closes on Escape, returns focus, and keeps the selection, the open branches and the scroll position',
         'replacing the atlas clears the panels rather than leaving the old model named in them',
         'a medial view draws the midline block rather than a hollow shell, and the layer slider still ghosts the enclosing white matter as depth is asked for',
+        'an annotation is drawn only where the structure it names is the first thing on the ray, and hiding one leaves the selection it names untouched',
       ]),
     }),
     evidence: Object.freeze([
@@ -209,6 +210,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'docs/asset-qa/brain-atlas-glb.md',
       'public/assets/brain/ATTRIBUTION.md',
       'docs/screenshots/b3-1/README.md',
+      'docs/screenshots/f37/README.md',
       'docs/anatomy-review.md',
     ]),
     /** Stated, not implied. An empty list here would itself be a claim. */
@@ -221,6 +223,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
       'the posterior and inferior views the acceptance list asks for do not exist yet (F-39), so nothing was checked on them',
       'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
+      'the central sulcus annotation is now hidden on the lateral view because its anchor sits below the surface; re-anchoring it is F-40 and was not done',
     ]),
   }),
 ]);

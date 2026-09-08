@@ -168,7 +168,7 @@ try {
   const hideUi = () => page.locator('.ui-toggle[title^="Hide interface"]').click({ noWaitAfter: true });
 
   /**
-   * Shoot until the frame stops changing, then keep that frame.
+   * Shoot until the frame stops changing, and stop either way.
    *
    * A fixed wait is not good enough for a comparison. The camera eases towards
    * a viewpoint and the layer opacities ease with it, and headless frames are
@@ -176,19 +176,31 @@ try {
    * delay catch the ease at slightly different points — enough, measured here,
    * to move a fifth of the pixels of a medial view. A before and an after taken
    * that way differ by the change *and* by where the ease happened to be, which
-   * is exactly what the pair is supposed to rule out. Waiting for two identical
-   * consecutive frames waits for the thing that actually matters.
+   * is exactly what the pair is supposed to rule out.
    *
-   * It also catches the other headless failure: a frame handed back unpainted,
-   * the model gone and only the DOM annotations left. That is a capture
-   * failure, not a render failure — a frame of a model compresses to hundreds
-   * of kilobytes and an empty one to a few — so it is retried, not reported.
+   * Two frames are kept only when they are identical **and** painted. Headless
+   * WebGL sometimes hands back a frame with nothing drawn — the model gone and
+   * only the DOM annotations over the background — and two of those in a row
+   * are identical and worthless. A frame of this model compresses to hundreds
+   * of kilobytes and an empty one to under twenty, so the floor separates them;
+   * it is a coarse test and it is the only one available from outside the
+   * canvas, so it is a floor rather than a judgement of the picture.
+   *
+   * Both limits are hard: at most `ATTEMPTS` shots and at most `PATIENCE`
+   * milliseconds. Whatever has not settled by then is reported as not settled
+   * and the run fails. It never keeps shooting until something looks right, and
+   * it never picks the frame it likes out of the ones it took: the frame it
+   * writes is the one that repeated.
    */
+  const ATTEMPTS = 20;
+  const PATIENCE = 60000;
+  const PAINTED_BYTES = 40000;
   const captureSettled = async (path) => {
+    const deadline = Date.now() + PATIENCE;
     let previous = null;
-    for (let attempt = 0; attempt < 30; attempt += 1) {
+    for (let attempt = 0; attempt < ATTEMPTS && Date.now() < deadline; attempt += 1) {
       const bytes = await page.screenshot({ clip: box });
-      if (bytes.length > 40000 && previous?.equals(bytes)) {
+      if (bytes.length > PAINTED_BYTES && previous?.equals(bytes)) {
         writeFileSync(path, bytes);
         return attempt;
       }
@@ -211,7 +223,7 @@ try {
       const name = `${view}--${mode}`;
       const frames = await captureSettled(join(outDir, `${name}.png`));
       if (frames == null) {
-        console.error(`  ${name}: never settled`);
+        console.error(`  ${name}: no painted frame repeated within ${ATTEMPTS} shots / ${PATIENCE} ms`);
         unsettled += 1;
       } else {
         console.log(`  ${name}.png (settled after ${frames} frame(s))`);

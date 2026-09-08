@@ -19,6 +19,8 @@ const BASE_URL = import.meta.env?.BASE_URL ?? './';
 const ATLAS_URL = `${BASE_URL}assets/brain/brain.glb`;
 const DRACO_URL = `${BASE_URL}assets/brain/draco/`;
 const TARGET_RADIUS = 2.08;
+/** Below this a mesh is a ghost the reader is looking *through*, not at. */
+const DRAWN_OPACITY = 0.14;
 const HIGHLIGHT_COLOR = new THREE.Color('#ffffff');
 
 const COLOUR_MATERIAL = {
@@ -166,6 +168,12 @@ export class BrainAnatomyScene {
       insula: new THREE.Vector3(1.1, -0.03, 0.08),
       putamen: new THREE.Vector3(0.45, 0, 0),
     };
+    /** anchor → the structure it names and the meshes that draw it. */
+    this.annotationTargets = {};
+    this._annotationRay = new THREE.Raycaster();
+    this._annotationDirection = new THREE.Vector3();
+    /** Last answer per anchor, and the state it was computed for. */
+    this._annotationSight = new Map();
   }
 
   build() {
@@ -375,15 +383,22 @@ export class BrainAnatomyScene {
       -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     this.raycaster.setFromCamera(this.pointer, this.viewer.camera);
-    // Visibility is not a hint here, it is the rule: a ray does not know a mesh
-    // is hidden, so a structure faded out by the anatomical layer — or by
-    // isolation — must be taken out of the candidates rather than merely being
-    // hard to hit. Picking something the reader cannot see is the one selection
-    // failure they have no way to understand.
-    const candidates = this.selectables.filter(
-      (mesh) => mesh.visible && mesh.userData.currentOpacity > 0.14
-    );
-    return this.raycaster.intersectObjects(candidates, false)[0] ?? null;
+    return this.raycaster.intersectObjects(this._drawnMeshes(), false)[0] ?? null;
+  }
+
+  /**
+   * The meshes a ray is allowed to see.
+   *
+   * Visibility is not a hint here, it is the rule: a ray does not know a mesh
+   * is hidden, so a structure faded out by the anatomical layer — or by
+   * isolation, or by being the far hemisphere of a medial view — must be taken
+   * out of the candidates rather than merely being hard to hit. Picking
+   * something the reader cannot see is the one selection failure they have no
+   * way to understand, and pointing a *label* at it is the same mistake with
+   * the answer written on it.
+   */
+  _drawnMeshes() {
+    return this.selectables.filter((mesh) => mesh.visible && mesh.userData.currentOpacity > DRAWN_OPACITY);
   }
 
   /**
@@ -703,6 +718,8 @@ export class BrainAnatomyScene {
 
   _updateAnnotationAnchors() {
     this.root.updateMatrixWorld(true);
+    this.annotationTargets = {};
+    this._annotationSight.clear();
     for (const [anchor, spec] of Object.entries(ANCHOR_SPECS)) {
       const mesh = this.selectables.find((candidate) => {
         const metadata = candidate.userData.atlasMetadata;
@@ -711,13 +728,73 @@ export class BrainAnatomyScene {
       if (!mesh) continue;
       const box = new THREE.Box3().setFromObject(mesh);
       if (!box.isEmpty()) box.getCenter(this.annotationAnchors[anchor]);
+      // The label names a structure, so it is tied to that structure's id and
+      // to every mesh the structure is drawn from — not to a coordinate that
+      // happens to be near it.
+      const id = mesh.userData.atlasId;
+      this.annotationTargets[anchor] = { id, meshes: this._meshesFor(id) };
     }
+  }
+
+  /**
+   * Can the reader actually see the thing this label is pointing at?
+   *
+   * The labels are HTML over the canvas, so nothing about them is depth-tested:
+   * a label for a left-hemisphere structure was drawn on the right hemisphere's
+   * surface in the right lateral view, which reads as "this is where the
+   * central sulcus is" and is a left/right error the product cannot afford.
+   *
+   * The question is answered the way a click is answered — cast the ray and see
+   * what is in front — so a label agrees with the picker by construction, and
+   * with everything that decides what is drawn: the anatomical layer, a medial
+   * view's far hemisphere, isolation, any of it. It is deliberately **not** a
+   * rule about which side the structure's name says it is on; a left structure
+   * seen through a hemisphere that has been faded out is visible, and a left
+   * structure behind an opaque one is not.
+   *
+   * A label that cannot be seen is hidden where it is, never moved somewhere
+   * emptier: a leader line to a place the structure is not is the same lie.
+   *
+   * @param {string} anchor
+   * @param {import('three').Camera} camera
+   */
+  isAnnotationVisible(anchor, camera) {
+    const target = this.annotationTargets[anchor];
+    if (!target || !camera) return false;
+    const point = this.annotationAnchors[anchor];
+    if (!point) return false;
+
+    // Recomputing a raycast per label per frame is wasted while nothing moves,
+    // and everything that can change the answer is in this key.
+    camera.updateMatrixWorld();
+    const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
+      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}`;
+    const cached = this._annotationSight.get(anchor);
+    if (cached?.key === key) return cached.visible;
+
+    this._annotationDirection.copy(point).sub(camera.position);
+    const distance = this._annotationDirection.length();
+    let visible = false;
+    if (distance > 0) {
+      this._annotationRay.set(camera.position, this._annotationDirection.divideScalar(distance));
+      const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+      // Its own structure has to be the first thing on the ray. Nothing there
+      // at all means the structure is not being drawn — behind a medial view's
+      // midline, under the cortex at layer 0, isolated away — which is also a
+      // label with nothing to point at.
+      visible = Boolean(first) && target.meshes.includes(first.object);
+    }
+    this._annotationSight.set(anchor, { key, visible });
+    return visible;
   }
 
   getAnnotations() {
     return BRAIN_ANATOMY_META.annotations.map((item) => ({
       ...item,
       position: this.annotationAnchors[item.anchor],
+      /** The structure this label names, for anything that has to agree with it. */
+      structureId: this.annotationTargets[item.anchor]?.id ?? null,
+      isVisible: (camera) => this.isAnnotationVisible(item.anchor, camera),
     }));
   }
 

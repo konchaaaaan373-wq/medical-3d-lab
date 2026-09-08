@@ -6,8 +6,8 @@
       "src/data/brainAnatomy.js",
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "077b33cb293c8730",
+    "cardRevision": 8,
+    "modelDigest": "eac964301e16e62b",
     "cardUpdatedAt": "2026-09-08"
   },
   {

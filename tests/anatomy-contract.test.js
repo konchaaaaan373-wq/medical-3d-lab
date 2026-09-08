@@ -202,9 +202,13 @@ test('anatomy contract: a hidden structure is not clickable', () => {
     assert.ok(scene.selectables.every((mesh) => mesh.userData.atlasId === 325 || !mesh.visible));
 
     // The rule the picker uses is the rule the renderer uses. Reading opacity
-    // from anywhere else is how these two come apart.
+    // from anywhere else is how these two come apart — and there is now a third
+    // reader, the annotation-occlusion ray, so the threshold is a named
+    // constant and this checks that it stays the only one.
     const source = read('src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js');
-    assert.match(source, /mesh\.visible && mesh\.userData\.currentOpacity > 0\.14/);
+    assert.match(source, /const DRAWN_OPACITY = 0\.14;/);
+    assert.match(source, /mesh\.visible && mesh\.userData\.currentOpacity > DRAWN_OPACITY/);
+    assert.equal(source.match(/currentOpacity > /g).length, 1, 'one drawn-or-not rule, in one place');
     assert.match(source, /mesh\.visible = opacity > 0\.012/);
   } finally {
     scene.dispose();

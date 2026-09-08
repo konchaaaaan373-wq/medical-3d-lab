@@ -197,6 +197,75 @@ test('a medial view closes the midline instead of showing through a hollow shell
   scene.dispose();
 });
 
+test('an annotation hides when its own structure is behind something opaque', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = annotationFor(scene, 'temporal');
+  const putamen = annotationFor(scene, 'putamen');
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+
+  assert.equal(temporal.structureId, left.userData.atlasId,
+    'the label points at the structure id it names, not at a coordinate');
+
+  // This fixture is a handful of boxes rather than two hemispheres, so the two
+  // vantages are placed on the line the homologues actually lie on: from one
+  // the left gyrus is in front, from the other the right one is between.
+  const near = vantage(scene, left, right);
+  const far = vantage(scene, right, left);
+
+  assert.equal(temporal.isVisible(near), true, 'seen from its own side');
+  // Drawn from the other side anyway, a label for a left structure sat on the
+  // right hemisphere's surface — a left/right error with a name attached.
+  assert.equal(temporal.isVisible(far), false, 'and not through its homologue');
+
+  // Hidden *because something is in front of it*, not because the check gives
+  // up and hides everything: take the occluder away and the same anchor, from
+  // the same place, is visible again.
+  scene.isolateStructure(temporal.structureId);
+  settle(scene);
+  assert.equal(temporal.isVisible(far), true, 'nothing in front of it now');
+  scene.clearIsolation();
+  settle(scene);
+  assert.equal(temporal.isVisible(far), false);
+
+  // The rule follows the anatomical layer for the same reason, and again with
+  // no reference to a side. The insula is under the operculum at layer 0 and
+  // the layer fades the operculum away; the putamen is not drawn at all until
+  // the deep view, and a label with nothing to point at is not drawn either.
+  const insula = annotationFor(scene, 'insula');
+  const behindOperculum = vantage(
+    scene,
+    find(scene, 'Opercular part of inferior frontal gyrus', 'left'),
+    find(scene, 'Insula (Subcentral gyrus and ant. and post. sulci)', 'left')
+  );
+  assert.equal(insula.isVisible(behindOperculum), false, 'the operculum covers the insula');
+  assert.equal(putamen.isVisible(near), false, 'and the putamen is not drawn at layer 0 at all');
+  scene.setProgress(1);
+  settle(scene);
+  assert.equal(insula.isVisible(behindOperculum), true, 'the layer takes the operculum away');
+
+  scene.dispose();
+});
+
+test('hiding a label does not touch the selection it names', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = annotationFor(scene, 'temporal');
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+  assert.equal(scene.selectStructure(temporal.structureId), true);
+  const pinned = scene.getAnatomySelection();
+  assert.equal(pinned.name, 'Middle temporal gyrus');
+
+  // Turning to somewhere the structure cannot be seen from hides its label. A
+  // label is not a selection: the id, the summary and the highlight stay.
+  assert.equal(temporal.isVisible(vantage(scene, right, left)), false);
+  assert.deepEqual(scene.getAnatomySelection(), pinned);
+  assert.equal(scene.selectables.filter((mesh) => mesh.userData.selected).length, 1);
+  scene.dispose();
+});
+
 test('the layer sequence hides rather than separates anatomy and exposes the insula', () => {
   const scene = buildScene();
   const originalPositions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
@@ -437,6 +506,28 @@ function buildScene() {
   const scene = new BrainAnatomyScene({ atlas });
   scene.build();
   return scene;
+}
+
+/** The annotation the scene publishes for one of its anchors. */
+function annotationFor(scene, anchor) {
+  const annotation = scene.getAnnotations().find((item) => item.anchor === anchor);
+  assert.ok(annotation, `${anchor} is an anchor of this scene`);
+  return annotation;
+}
+
+/**
+ * A camera beyond `behind`, on the line through it and `target`, so that
+ * `behind` sits between the camera and `target`.
+ */
+function vantage(scene, behind, target) {
+  scene.root.updateMatrixWorld(true);
+  const a = behind.getWorldPosition(new THREE.Vector3());
+  const b = target.getWorldPosition(new THREE.Vector3());
+  const camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 100);
+  camera.position.copy(a).addScaledVector(a.clone().sub(b).normalize(), 5);
+  camera.lookAt(b);
+  camera.updateMatrixWorld(true);
+  return camera;
 }
 
 function find(scene, label, side) {
