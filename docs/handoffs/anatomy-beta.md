@@ -3,7 +3,7 @@
 Last updated: 2026-09-08。現状だけ。詳細はリンク先。
 
 ```text
-契約固定 SHA:  e36278f8abae140e22f754e38481ede4886e24c3        ← 現行。ここから始めてください
+契約固定 SHA:  eecd21ba661ee4a7cdaa4018bce681b26b276005        ← 現行。ここから始めてください
 旧契約点:      1a02bd0             ← レビュー前。ここから新規開始しないこと
 Base SHA:      bc2c09b (main)   Branch: claude/medical-3d-lab-b0-dv85dl   PR: #48 (Draft)
 ```
