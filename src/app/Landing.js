@@ -16,8 +16,6 @@ import { createLandingFlowField } from './landingFlowField.js';
 import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
 
-const SUPPORT_ROUTE = '#/support';
-
 const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-en`.trim(), text: en }),
   el('span', { class: `${className} lang-ja`.trim(), text: ja }),
@@ -184,7 +182,7 @@ export function createLanding({
         'Send questions or report a problem with the model.',
         'モデルに関するご質問や不具合をご連絡ください。'
       )),
-      shellLink(SUPPORT_ROUTE, 'Contact us', '問い合わせる', 'landing-inline-link'),
+      shellLink('#/support', 'Contact us', '問い合わせる', 'landing-inline-link'),
     ]),
 
     el('footer', { class: 'landing-footer' }, [
@@ -197,7 +195,7 @@ export function createLanding({
         el('a', { class: 'landing-footer-link', href: '#/terms' }, dual('Terms', '利用規約')),
         el('a', { class: 'landing-footer-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
         el('a', { class: 'landing-footer-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
-        el('a', { class: 'landing-footer-link', href: SUPPORT_ROUTE }, dual('Support', 'サポート')),
+        el('a', { class: 'landing-footer-link', href: '#/support' }, dual('Support', 'サポート')),
         shellLink(MODEL_INFO_ROUTE, 'Model information', 'モデル情報', 'landing-footer-link'),
       ]),
     ]),
