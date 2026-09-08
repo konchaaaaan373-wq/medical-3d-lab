@@ -555,10 +555,22 @@ export class BrainAnatomyScene {
     // drawn from several meshes is one part of the anatomy and one row here;
     // mapping over `selectables` would list it once per piece, with the same id
     // on each — a tree that says there are two middle temporal gyri.
-    return buildAnatomyTree(
-      [...this.meshesByAtlasId.values()].map((meshes) =>
-        brainStructureInfo(meshes[0].userData.atlasMetadata)
-      )
+    return buildAnatomyTree(this.getAnatomyInventory());
+  }
+
+  /**
+   * Every structure the atlas offers, as the adapter reads it.
+   *
+   * The same records the part tree is built from, handed over flat: one entry
+   * per *structure*, carrying its id, both names, its side and the hierarchy
+   * above it. It is what a search index is built over, and it exists so that
+   * nothing outside this scene has to re-derive a structure's identity from a
+   * label it read off a row — a name is how a reader finds a structure, and an
+   * id is what the model is asked about.
+   */
+  getAnatomyInventory() {
+    return [...this.meshesByAtlasId.values()].map((meshes) =>
+      brainStructureInfo(meshes[0].userData.atlasMetadata)
     );
   }
 

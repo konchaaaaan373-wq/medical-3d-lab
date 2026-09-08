@@ -186,6 +186,19 @@ gyri on either side of it, so the central sulcus's label is absent from the
 lateral view rather than misplaced on it. That is recorded as F-40 with what
 was tried, not papered over.
 
+**A structure can be found by name.** The scene publishes its inventory — one
+record per structure, both names, its side and the hierarchy above it — and the
+Parts tab indexes that and nothing else. There is no medical dictionary behind
+the search box, no generated synonyms and no inference from a symptom to a
+region: a name the atlas does not carry finds nothing, and says so. The query is
+folded (NFKC, so full-width Latin and half-width kana are the same words; case
+and spacing collapsed) while ids are carried through untouched. A whole name
+outranks a partial one, and a name from a level above — a lobe, a hemisphere —
+finds the structures under it without that level pretending to be selectable.
+Left and right are two structures with two ids and stay two results. Searching
+covers the tree rather than replacing it, so clearing returns the branches the
+reader had open and the place they had scrolled to.
+
 ## 7. What it must never be used for
 
 Diagnosis, measurement, lesion localisation, stereotactic coordinates,

@@ -960,3 +960,85 @@ test('anatomy panel: the prompt does not assume a mouse, and is said once', () =
     mounted.restore();
   }
 });
+
+test('anatomy contract: searching finds a structure by either name and gives the tree back', () => {
+  const { panel, scene, restore } = mountPanel();
+  try {
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    assert.ok(input, 'the parts tab offers a search box');
+    const rows = () => findByClass(panel.element, 'anatomy-search-hit');
+    const tree = findByClass(panel.element, 'anatomy-tree')[0]
+      ?? findByClass(panel.element, 'anatomy-tree-leaf')[0]?.parentNode;
+
+    // Where the reader had scrolled the tree to, before searching.
+    const body = findByClass(panel.element, 'anatomy-panel-body')[0];
+    body.scrollTop = 320;
+
+    // English and Japanese reach the same pair of structures, and the pair stays
+    // a pair: left and right are two rows with two ids.
+    for (const query of ['Middle temporal gyrus', '中側頭回']) {
+      input.value = query;
+      input.dispatchEvent({ type: 'input' });
+      assert.equal(rows().length, 2, `"${query}" finds both sides`);
+      const ids = rows().map((row) => row.dataset.structureId);
+      assert.equal(new Set(ids).size, 2, 'as two structures, not one');
+    }
+
+    // Choosing one selects that structure through the scene, by id.
+    rows()[0].dispatchEvent({ type: 'click' });
+    assert.equal(scene.getAnatomySelection()?.name, 'Middle temporal gyrus');
+
+    // A name nothing carries says so, rather than falling back to everything.
+    input.value = 'ventricle of the moon';
+    input.dispatchEvent({ type: 'input' });
+    assert.equal(rows().length, 0);
+    assert.equal(findByClass(panel.element, 'anatomy-search-empty')[0].hidden, false);
+
+    // Clearing gives the tree back where it was left.
+    input.value = '';
+    input.dispatchEvent({ type: 'input' });
+    assert.equal(findByClass(panel.element, 'anatomy-search-empty')[0].hidden, true);
+    assert.equal(body.scrollTop, 320, 'and the list is where the reader left it');
+    if (tree) assert.equal(tree.hidden ?? false, false, 'the tree is showing again');
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: the IME\'s Enter does not select, and Escape clears only the search', () => {
+  const { panel, scene, restore } = mountPanel();
+  try {
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    input.value = '被殻';
+    input.dispatchEvent({ type: 'input' });
+
+    // Committing 「ひかく」 to 「被殻」 is the input method's Enter, not the list's.
+    let prevented = false;
+    input.dispatchEvent({
+      type: 'keydown', key: 'Enter', isComposing: true,
+      preventDefault: () => { prevented = true; }, stopPropagation: () => {},
+    });
+    assert.equal(scene.getAnatomySelection(), null, 'nothing was selected while still typing');
+    assert.equal(prevented, false, 'and the keystroke was left to the input method');
+
+    // The reader's own Enter commits the first result.
+    input.dispatchEvent({
+      type: 'keydown', key: 'Enter', isComposing: false,
+      preventDefault: () => {}, stopPropagation: () => {},
+    });
+    assert.equal(scene.getAnatomySelection()?.name, 'Putamen');
+
+    // Escape clears the search and stops there: the same key closes the sheet,
+    // and one press must not throw away both.
+    let stopped = false;
+    input.dispatchEvent({
+      type: 'keydown', key: 'Escape', isComposing: false,
+      preventDefault: () => {}, stopPropagation: () => { stopped = true; },
+    });
+    assert.equal(input.value, '');
+    assert.equal(stopped, true, 'the sheet never hears this Escape');
+    assert.equal(scene.getAnatomySelection()?.name, 'Putamen', 'and the selection is untouched');
+  } finally {
+    restore();
+  }
+});

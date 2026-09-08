@@ -338,3 +338,72 @@
 @media (prefers-reduced-motion: reduce) {
   .anatomy-tree-chevron { transition: none; }
 }
+
+/* --- finding a structure by name ---------------------------------------- */
+
+.anatomy-search-row {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  /* The body is the one scrolling region, so this rides at the top of it
+     rather than being a second scroller or a second panel. */
+  padding: 2px 0 6px;
+  background: var(--panel-sheet, #fff);
+}
+
+.anatomy-search-input {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  color: inherit;
+  font: inherit;
+}
+
+.anatomy-search-input:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.anatomy-search-count,
+.anatomy-search-empty {
+  margin: 0 0 4px;
+  padding: 0 2px;
+  opacity: 0.7;
+  font-size: 0.82em;
+}
+
+.anatomy-search-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.anatomy-search-hit {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  /* Same floor as a tree row: a result is something a thumb has to hit. */
+  min-height: 36px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.anatomy-search-hit:hover,
+.anatomy-search-hit:focus-visible {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+}
+
+.anatomy-search-where {
+  opacity: 0.62;
+  font-size: 0.8em;
+}

@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
 // The stylesheet is imported by `src/main.js`, with the rest of the app's CSS.
 // Importing it from a component is how a component stops being testable under
 // `node --test`, which is where this panel's behaviour is checked.
@@ -56,8 +57,27 @@ import { el } from '../utils/dom.js';
  *   layout the panel is in, so the app shell can lay the rail out around it.
  */
 export function createAnatomyPanel({ scene, tree, display, legend = null, detail, onLayout }) {
+  /**
+   * The Parts tab is the tree with a way into it.
+   *
+   * The finder is given the tree element rather than a copy of its data: a
+   * search covers the tree and clearing uncovers it, with the branches the
+   * reader opened still open. It reads and writes the body's scroll through
+   * this panel, because the body is the one region that scrolls and this panel
+   * is what owns it.
+   */
+  const finder = scene.getAnatomyInventory
+    ? createAnatomyPartsFinder({
+        treeElement: tree.element,
+        inventory: () => scene.getAnatomyInventory(),
+        onSelect: (id) => scene.selectStructure(id),
+        readScroll: () => body.scrollTop ?? 0,
+        writeScroll: (top) => { body.scrollTop = top; },
+      })
+    : null;
+
   const TABS = [
-    { id: 'parts', en: 'Parts', ja: '部位', content: tree.element },
+    { id: 'parts', en: 'Parts', ja: '部位', content: finder ? finder.element : tree.element },
     { id: 'display', en: 'Display', ja: '表示', content: el('div', { class: 'anatomy-panel-display' }, [display, legend]) },
     { id: 'detail', en: 'Detail', ja: '詳細', content: detail },
   ];
