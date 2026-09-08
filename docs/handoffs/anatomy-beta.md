@@ -4,7 +4,7 @@ Last updated: 2026-09-08。現状だけを書きます。長い検証資料は�
 
 ```text
 Base SHA:  bc2c09bab79956e7aebeacc3e4b4c97b6f63155e (main)
-HEAD SHA:  下の「契約固定 SHA」を参照（このファイルは PR に含まれます）
+HEAD SHA:  1a02bd0dd34d1238cfca65c15a72d2e29aa5e6a8（契約固定点。以降のコミットがあれば PR の HEAD）
 Branch:    claude/medical-3d-lab-b0-dv85dl
 PR:        Draft（マージ・本番公開はしていません）
 担当バッチ: B0 — 公開βの境界修正、旧方針との整合、回帰テスト、UI 契約の固定
@@ -157,5 +157,11 @@ src/styles/landing.css  src/styles/explorer.css
 
 ## 契約固定 SHA
 
-このファイルを含むコミットの SHA が契約固定点です。PR の HEAD をそのまま使ってください。
-`main` にマージせずとも、このブランチを base にして検証できます。
+```
+1a02bd0dd34d1238cfca65c15a72d2e29aa5e6a8
+```
+
+この SHA で `src/catalog/publicManifest.js` と `src/catalog/release.js` の
+export・型・consumer が固定されています。B1 / B2 はここを起点に別ブランチを切って
+ください。`main` にマージせずとも、このブランチを base にして検証できます。
+（このファイル自体の SHA 追記は次のコミットに入りますが、契約点は上の SHA です。）
