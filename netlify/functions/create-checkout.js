@@ -36,6 +36,16 @@ export default async (request, context) => {
     const user = await authenticatedUser(request);
     if (!user) return json(401, { error: 'Please sign in first.' });
 
+    const deletionRows = await supabaseAdmin(
+      `billing_account_deletions?user_id=eq.${encodeURIComponent(user.id)}&select=user_id&limit=1`
+    );
+    if (deletionRows?.length) {
+      return json(409, {
+        error: 'Account deletion is already in progress. Complete or retry deletion before starting Checkout.',
+        accountDeletionPending: true,
+      });
+    }
+
     const body = await request.json().catch(() => ({}));
     const plan = body.plan;
 

@@ -47,6 +47,29 @@ test('billing configuration: rejects test keys in production and live keys in pr
   );
 });
 
+test('billing configuration: new production sales require a restricted Stripe key', () => {
+  const unrestricted = configured({
+    CONTEXT: 'production',
+    STRIPE_SECRET_KEY: 'sk_live_example',
+  });
+  assert.deepEqual(billingConfiguration(unrestricted).issues, [
+    'unrestricted_stripe_key_in_production',
+  ]);
+
+  // Existing customers must still be able to cancel, and incoming events must
+  // still revoke access, while the operator rotates an overly broad key.
+  assert.equal(billingPortalConfiguration(unrestricted).configured, true);
+  assert.equal(billingReconciliationConfiguration(unrestricted).configured, true);
+  assert.equal(billingWebhookConfiguration(unrestricted).configured, true);
+});
+
+test('billing configuration: a bare Stripe key prefix is not a credential', () => {
+  assert.deepEqual(
+    billingConfiguration(configured({ STRIPE_SECRET_KEY: 'rk_test_' })).issues,
+    ['invalid_stripe_key']
+  );
+});
+
 test('billing configuration: requires distinct, well-formed Stripe prices and webhook secret', () => {
   const result = billingConfiguration(
     configured({

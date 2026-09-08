@@ -36,6 +36,10 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql` — rejects billing writes that omit their Stripe namespace.
 - `supabase/migrations/20260904020833_billing_ordered_access_events.sql` — makes payment, refund and dispute updates monotonic and independent.
 - `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql` — binds each Checkout idempotency key to one exact request identity.
+- `supabase/migrations/20260906043135_billing_account_deletion_lock.sql` — serialises account deletion against new or reacquired Checkout attempts.
+- `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql` — prevents a concurrent first Customer from retaining account identity after deletion starts.
+- `supabase/migrations/20260906045116_billing_account_transaction_lock.sql` — orders deletion and billing writes on one per-user transaction lock while allowing reconciliation bookkeeping.
+- `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql` — records the immutable Stripe account that owns each Customer before missing objects can be accepted as deleted.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
 
 ### Failure policy
@@ -79,6 +83,10 @@ Do not put patient names, IDs, dates of birth, diagnoses or other patient-identi
    - `supabase/migrations/20260904020527_billing_require_explicit_stripe_mode.sql`
    - `supabase/migrations/20260904020833_billing_ordered_access_events.sql`
    - `supabase/migrations/20260904033210_billing_checkout_request_fingerprint.sql`
+   - `supabase/migrations/20260906043135_billing_account_deletion_lock.sql`
+   - `supabase/migrations/20260906043927_billing_customer_deletion_lock.sql`
+   - `supabase/migrations/20260906045116_billing_account_transaction_lock.sql`
+   - `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql`
 4. Configure:
    - Project URL → `VITE_SUPABASE_URL` and `SUPABASE_URL`
    - publishable key → `VITE_SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_PUBLISHABLE_KEY`
@@ -92,7 +100,7 @@ All billing tables have RLS enabled and no browser policies, and browser roles h
 
 The client-only session is stored in browser local storage, matching Supabase's normal client-side session model. Access tokens are short-lived and the refresh token is rotated when the session is refreshed.
 
-Account deletion is accepted only by the Production function, requires the current password again, closes the mode-matched Stripe Customer before deleting Supabase Auth, and is rate-limited. OAuth-only accounts are not currently offered by this app.
+Account deletion is available from the signed-in account panel, is accepted only by the Production function, requires the current password again, and writes a server-only deletion marker. Deletion and Checkout contend on the same per-user database transaction lock, closing the uncommitted-marker race; reconciliation bookkeeping remains available while a failed deletion waits for retry. Every stored sandbox/live Stripe Customer is deleted with a mode-matched server key before Supabase Auth is removed. The key's immutable Stripe `acct_*` identity must match stored provenance; a legacy row is backfilled only after that exact Customer is retrieved and its app user identity plus `livemode` match. Mode metadata is also checked when present, while Customers created before mode scoping remain supported. A same-mode key from another account can therefore never turn `resource_missing` into a false success. The browser session is cleared only after server confirmation, and the endpoint is rate-limited. A free account with no billing identity remains deletable when Stripe is unavailable or not configured. When both Stripe modes have stored Customers, configure the mode-specific server-only `STRIPE_TEST_SECRET_KEY_FOR_DELETION` or `STRIPE_LIVE_SECRET_KEY_FOR_DELETION`; missing or mismatched access fails closed rather than orphaning provider data. OAuth-only accounts are not currently offered by this app.
 
 ## Stripe setup
 
@@ -119,7 +127,7 @@ Checkout writes `supabase_user_id` into metadata so an initial Stripe event can 
 
 If a subscription event arrives with a Price ID that is not one of the configured prices, the webhook marks an existing local row `unsupported_price`; the previous paid entitlement is not allowed to remain active.
 
-All server-to-Stripe requests pin `Stripe-Version: 2026-08-26.dahlia`. Checkout also sends an opaque eight-letter `integration_identifier`; it contains no account or user identity.
+All server-to-Stripe requests pin `Stripe-Version: 2026-08-26.dahlia`. Production Checkout additionally requires an `rk_live_` restricted key and refuses an unrestricted `sk_live_` key; webhook processing, reconciliation and Billing Portal remain available during key rotation so an existing customer is never trapped. Checkout also sends an opaque eight-letter `integration_identifier`; it contains no account or user identity. Recurring Prices must have a positive base amount; a mistakenly configured zero-price plan fails readiness rather than granting paid access for no consideration.
 
 ### Customer Portal configuration
 
@@ -206,7 +214,7 @@ Set the values from `.env.example` in Netlify Project configuration. Secret valu
 
 **As of this writing, Production holds no Stripe configuration.** `STRIPE_SECRET_KEY`, the three price IDs, `STRIPE_WEBHOOK_SECRET` and `SUPABASE_SECRET_KEY` carry values for Deploy Previews only, which is how [`deploy-preview-billing-test.md`](deploy-preview-billing-test.md) exercises billing with test keys. Production therefore reports `billingConfigured: false` and sells nothing; accounts and free models work, which is the documented degradation. Enabling paid access in production is a separate change: live keys, a live-mode webhook endpoint and its own signing secret. The key modes are enforced, not advisory — `stripeDeploymentSafety` rejects a test key in production and a live key outside it, so preview values cannot simply be copied across.
 
-The Functions directory does not need a custom `netlify.toml`; Netlify's default is `netlify/functions`.
+The functions directory is not configured anywhere: Netlify's default is already `netlify/functions`. What [`../netlify.toml`](../netlify.toml) does hold is the published origin and the hourly reconciliation schedule — everything else about the build stays in the Netlify site configuration, so the file cannot override a setting nobody meant to change there.
 
 ## Billing lifecycle
 

@@ -122,6 +122,17 @@ export class BrainAnatomyScene {
     this.listeners = new Set();
     this.hoverListeners = new Set();
     this.statusListeners = new Set();
+
+    // A page can stop mattering in two ways, and only one of them is a
+    // disposal. `pagehide` is the other: the reader followed a link, the
+    // document is being torn down, and the atlas fetch it started dies with
+    // it. Nothing here is left to consume the model — the same fact `disposed`
+    // records for a scene the application closed itself.
+    this.pageLeaving = false;
+    this._pageHide = () => {
+      this.pageLeaving = true;
+    };
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', this._pageHide);
     this.colorMode = 'detail';
     this.activeView = VIEW_SPECS[0].id;
     this.medialSide = null;
@@ -174,7 +185,14 @@ export class BrainAnatomyScene {
       // first. Left in, it is worse than noise: leaving the landing page while
       // the hero is fetching printed a console error onto the *next* page,
       // because the rejection is delivered as the old document goes away.
-      if (this.disposed) return this.root;
+      //
+      // Disposal was only half of it. A hash route change disposes the scene
+      // and this guard held; following a link to a different document does
+      // not, and the cancelled fetch was reported as a failure of the atlas —
+      // `TypeError: Failed to fetch` in Chromium, `Load failed` in WebKit,
+      // which is also why it read as a WebKit defect when it is neither
+      // WebKit's nor a defect. `pageLeaving` closes that half.
+      if (this.disposed || this.pageLeaving) return this.root;
       console.error('[brain-anatomy] atlas load failed', error);
       this._setStatus({ state: 'error', selectableCount: 0, atlasCount: 0, error });
     }
@@ -549,6 +567,7 @@ export class BrainAnatomyScene {
 
   dispose() {
     this.disposed = true;
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', this._pageHide);
     const canvas = this.viewer?.renderer?.domElement;
     canvas?.removeEventListener('pointerdown', this._pointerDown);
     canvas?.removeEventListener('pointermove', this._pointerMove);

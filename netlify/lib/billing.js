@@ -263,13 +263,13 @@ export async function billingCustomerFor(
   // two Stripe Customers: Stripe's one-subscription guard only works reliably
   // when both sessions use the same Customer. The deterministic key makes the
   // customer creation retry/concurrency safe.
+  // Create the provider object without personal data first. The database write
+  // below is protected by the account-deletion trigger. If deletion wins the
+  // race, the rejected write can leave only an inert anonymous Customer at
+  // Stripe — never an email address or app identity detached from Auth.
   const customer = await post(
     'customers',
-    {
-      email: user.email,
-      'metadata[supabase_user_id]': user.id,
-      'metadata[stripe_mode]': mode,
-    },
+    {},
     { idempotencyKey: `medical3dlab:customer:${mode}:${billingIdentityHash(user.id)}` }
   );
   await admin('billing_customers?on_conflict=user_id,stripe_mode', {
@@ -283,6 +283,11 @@ export async function billingCustomerFor(
         email: user.email ?? null,
       },
     ],
+  });
+  await post(`customers/${encodeURIComponent(customer.id)}`, {
+    email: user.email,
+    'metadata[supabase_user_id]': user.id,
+    'metadata[stripe_mode]': mode,
   });
   return customer.id;
 }

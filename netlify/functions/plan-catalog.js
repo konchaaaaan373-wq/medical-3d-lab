@@ -26,7 +26,13 @@ const safePrice = (price) => ({
 });
 
 const priceIsUsable = (price) =>
-  Boolean(price?.active && price?.recurring && Number.isFinite(price?.unitAmount) && price?.currency);
+  Boolean(
+    price?.active &&
+      price?.recurring &&
+      Number.isFinite(price?.unitAmount) &&
+      price.unitAmount > 0 &&
+      price?.currency
+  );
 
 /**
  * Public price catalogue for rendering the purchase surface.
