@@ -836,13 +836,29 @@ a.explorer-scene:focus-visible {
     height: 345px;
   }
 
-  .public-models-focus .landing-demo-footer {
+  .public-models-focus .landing-demo-workbench {
     display: block;
-    padding: 12px 14px;
+    min-height: 60px;
+  }
+
+  .public-models-focus .landing-demo-readout,
+  .public-models-focus .landing-demo-boundary {
+    display: none;
+  }
+
+  .public-models-focus .landing-demo-footer {
+    display: flex;
+    min-height: 60px;
+    padding: 8px 14px;
   }
 
   .public-models-focus .landing-demo-link {
-    margin-top: 5px;
+    width: 100%;
+    justify-content: center;
+    margin: 0;
+    border: 1px solid rgba(56, 225, 239, 0.44);
+    border-radius: 6px;
+    background: rgba(56, 225, 239, 0.08);
   }
 
   .public-models-footer {
