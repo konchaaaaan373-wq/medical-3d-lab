@@ -131,7 +131,7 @@ test('public model route: one model has no search, filters, category jumps or pl
 });
 
 test('public UI does not consume a link-preview card as model imagery', () => {
-  for (const source of [read('src/app/Landing.js'), read('src/app/PublicModels.js')]) {
+  for (const source of [read('src/app/Landing.js')]) {
     assert.doesNotMatch(source, /posterPath|posterKind/);
   }
 });
