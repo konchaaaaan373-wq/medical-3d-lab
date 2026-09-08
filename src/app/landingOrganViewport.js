@@ -550,7 +550,14 @@ export function mountLandingOrganViewport(container, {
  */
 function fitDistance(root, target, direction, camera) {
   if (!root) return null;
-  const box = new THREE.Box3().setFromObject(root);
+  // The anatomy scene keeps non-anatomical atlas meshes hidden. Including those
+  // hidden meshes in the fit makes the visible brain occupy only a small part
+  // of the hero, so frame only geometry that can actually be drawn.
+  const box = new THREE.Box3();
+  root.updateWorldMatrix(true, true);
+  root.traverseVisible((object) => {
+    if (object.isMesh) box.expandByObject(object, true);
+  });
   if (box.isEmpty()) return null;
 
   const back = direction.clone().normalize();
