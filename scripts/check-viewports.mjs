@@ -31,6 +31,8 @@
  *   --surface <id>   check one surface (repeatable)
  *   --headed         show the browser
  *   --evidence-dir <dir>  save B1 Chromium screenshots and capture metadata
+ *   --diagnostics-dir <dir>  record lifecycle/network events for a targeted run
+ *   --diagnostics-wait-detail  wait for Explorer detail to settle in a direct-open control
  */
 import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -65,6 +67,8 @@ const onlyViewports = values('--viewport');
 const onlySurfaces = values('--surface');
 const headed = flag('--headed');
 const evidenceDir = value('--evidence-dir', process.env.VIEWPORT_EVIDENCE_DIR || null);
+const diagnosticsDir = value('--diagnostics-dir', process.env.VIEWPORT_DIAGNOSTICS_DIR || null);
+const diagnosticsWaitDetail = flag('--diagnostics-wait-detail');
 const ENGINES = ['chromium', 'firefox', 'webkit'];
 const engineName = value('--engine', 'chromium');
 
@@ -704,6 +708,136 @@ async function captureB1Evidence(browser) {
   );
 }
 
+/**
+ * Targeted lifecycle trace for the WebKit atlas-load investigation.
+ *
+ * It records only navigation and the brain/Draco delivery chain. Console
+ * failures keep their original text and get an immediate screenshot plus the
+ * URL/detail state at the time they were observed.
+ */
+function createLifecycleTrace(page, viewport) {
+  if (!diagnosticsDir) return null;
+  const outputDir = resolve(diagnosticsDir);
+  mkdirSync(outputDir, { recursive: true });
+  const events = [];
+  const pending = [];
+  let phase = 'context-created';
+  let failureIndex = 0;
+  const started = Date.now();
+  const relevant = (url) => /\/assets\/brain\/(?:brain\.glb|draco\/)/.test(url);
+  const record = (type, details = {}) => {
+    events.push({
+      elapsedMs: Date.now() - started,
+      at: new Date().toISOString(),
+      phase,
+      type,
+      pageUrl: page.url(),
+      ...details,
+    });
+  };
+  const snapshot = async (label) => {
+    const state = await page.evaluate(() => ({
+      url: location.href,
+      detail: document.querySelector('.landing-demo-viewport')?.dataset.detail ?? null,
+      organ: document.querySelector('.landing-demo-viewport')?.dataset.organ ?? null,
+      activeElement: document.activeElement
+        ? {
+            tag: document.activeElement.tagName,
+            id: document.activeElement.id || null,
+            className: typeof document.activeElement.className === 'string'
+              ? document.activeElement.className
+              : null,
+          }
+        : null,
+    })).catch((error) => ({ snapshotError: error?.message ?? String(error) }));
+    record('page-state', { label, state });
+    return state;
+  };
+  const onRequest = (request) => {
+    if (relevant(request.url())) record('request', {
+      url: request.url(),
+      method: request.method(),
+      resourceType: request.resourceType(),
+    });
+  };
+  const onResponse = (response) => {
+    if (!relevant(response.url())) return;
+    record('response', { url: response.url(), status: response.status(), ok: response.ok() });
+    if (/\/brain\.glb(?:\?|$)/.test(response.url())) {
+      const body = response.body()
+        .then((buffer) => record('response-body', { url: response.url(), bytes: buffer.length }))
+        .catch((error) => record('response-body-failed', {
+          url: response.url(),
+          error: error?.message ?? String(error),
+        }));
+      pending.push(body);
+    }
+  };
+  const onRequestFinished = (request) => {
+    if (relevant(request.url())) record('requestfinished', { url: request.url() });
+  };
+  const onRequestFailed = (request) => {
+    if (relevant(request.url())) record('requestfailed', {
+      url: request.url(),
+      error: request.failure()?.errorText ?? 'unknown request failure',
+    });
+  };
+  const onFrameNavigated = (frame) => {
+    if (frame === page.mainFrame()) record('navigation-committed', { url: frame.url() });
+  };
+  const onConsole = (message) => {
+    if (message.type() !== 'error') return;
+    record('console-error', { text: message.text() });
+    const index = ++failureIndex;
+    pending.push(snapshot(`console-error-${index}`));
+    pending.push(
+      page.screenshot({
+        path: resolve(outputDir, `failure-${viewport.id}-${index}.png`),
+        fullPage: false,
+      }).catch((error) => record('failure-screenshot-error', {
+        error: error?.message ?? String(error),
+      })),
+    );
+  };
+  page.on('request', onRequest);
+  page.on('response', onResponse);
+  page.on('requestfinished', onRequestFinished);
+  page.on('requestfailed', onRequestFailed);
+  page.on('framenavigated', onFrameNavigated);
+  page.on('console', onConsole);
+  record('trace-started');
+
+  return {
+    setPhase(next) {
+      phase = next;
+      record('phase');
+    },
+    record,
+    snapshot,
+    async finish() {
+      await Promise.allSettled(pending);
+      await snapshot('trace-finished');
+      writeFileSync(
+        resolve(outputDir, `trace-${viewport.id}.json`),
+        `${JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          engine,
+          viewport,
+          prHeadSha: process.env.PR_HEAD_SHA ?? null,
+          checkedOutSha: process.env.GITHUB_SHA ?? null,
+          events,
+        }, null, 2)}\n`,
+      );
+      page.off('request', onRequest);
+      page.off('response', onResponse);
+      page.off('requestfinished', onRequestFinished);
+      page.off('requestfailed', onRequestFailed);
+      page.off('framenavigated', onFrameNavigated);
+      page.off('console', onConsole);
+    },
+  };
+}
+
 // --- the run ---------------------------------------------------------------
 
 const exemptionSelectors = TARGET_EXEMPTIONS.map((exemption) => exemption.selector);
@@ -863,6 +997,7 @@ try {
       reducedMotion: 'reduce',
     });
     const page = await context.newPage();
+    const lifecycleTrace = createLifecycleTrace(page, viewport);
     const fullTabWalk = viewport.width === narrowest || viewport.width === widest;
     // The build asks Google for a webfont. CI has no reason to reach the
     // internet to answer a layout question, and the fallback stack is what a
@@ -911,8 +1046,14 @@ try {
       try {
         // A full load per surface, not a hash change: a defect that only
         // appears on a cold start is exactly the one a user meets first.
+        lifecycleTrace?.setPhase(`${surface.id}:about-blank`);
+        lifecycleTrace?.record('navigation-start', { to: 'about:blank' });
         await page.goto('about:blank');
+        lifecycleTrace?.record('navigation-end', { to: 'about:blank' });
+        lifecycleTrace?.setPhase(`${surface.id}:route`);
+        lifecycleTrace?.record('navigation-start', { to: `${base}${surface.route}` });
         await page.goto(`${base}${surface.route}`, { waitUntil: 'load', timeout: 30_000 });
+        lifecycleTrace?.record('navigation-end', { to: page.url() });
         // `attached`, not the default `visible`: the first child of `#ui` is
         // the skip link, which is deliberately invisible until it is focused.
         // Waiting for it to be seen waits forever.
@@ -925,6 +1066,19 @@ try {
             .catch(() => notes.push(`${where}: the loading veil never cleared`));
         }
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
+        await lifecycleTrace?.snapshot('surface-ready-for-measurement');
+
+        if (lifecycleTrace && diagnosticsWaitDetail && surface.id === 'explorer') {
+          await page.waitForFunction(() => {
+            const detail = document.querySelector('.landing-demo-viewport')?.dataset.detail;
+            return detail === 'ready' || detail === 'unavailable';
+          }, null, { timeout: 30_000 }).catch((error) => {
+            lifecycleTrace.record('detail-settle-timeout', {
+              error: error?.message ?? String(error),
+            });
+          });
+          await lifecycleTrace.snapshot('direct-explorer-detail-settled');
+        }
 
         const measuredSkip = await page.evaluate(() => {
           const target = document.querySelector('[data-skip-target]');
@@ -1160,6 +1314,7 @@ try {
         page.off('pageerror', onError);
       }
     }
+    await lifecycleTrace?.finish();
     await context.close();
   }
   await captureB1Evidence(browser);
