@@ -18,6 +18,8 @@ import {
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { HERO_ORGANS, heroOrgansForModels } from '../data/landingHero.js';
+import { createLandingOrganHero } from './landingOrganHero.js';
 import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
@@ -28,6 +30,136 @@ import {
   plannedMatchesExplorerFilters,
   sceneMatchesExplorerFilters,
 } from './explorerSearch.js';
+
+const publicDual = (en, ja, className = '') => [
+  el('span', { class: `${className} lang-en`.trim(), text: en }),
+  el('span', { class: `${className} lang-ja`.trim(), text: ja }),
+];
+
+function publicModelAction(model) {
+  return {
+    en: model.organId === 'brain' ? 'View the brain' : model.organId === 'heart' ? 'View the heart' : `View ${model.titleEn}`,
+    ja: model.organLabelJa ? `${model.organLabelJa}を見る` : `${model.titleJa}を見る`,
+  };
+}
+
+/**
+ * Focused public surface for the anatomy beta.
+ *
+ * It intentionally has no search, filter, empty organ categories or prepared
+ * cards. With one published model the real model is the catalogue; when the
+ * manifest grows, its rows become explicit choices.
+ */
+function createPublicModelsExplorer({
+  ui,
+  accountButton,
+  manifest,
+  heroCandidates = HERO_ORGANS,
+}) {
+  const models = [...(manifest?.models ?? [])];
+  const heroModels = heroOrgansForModels(models, heroCandidates);
+  const organHero = heroModels.length
+    ? createLandingOrganHero({ organs: heroModels })
+    : null;
+  const languageToggle = createLanguageToggle((mode) => {
+    ui.dataset.lang = mode;
+  });
+
+  const actions = models.map((model) => {
+    const label = publicModelAction(model);
+    return el('a', {
+      class: 'public-model-link',
+      href: model.route,
+      dataset: { scene: model.sceneId },
+    }, publicDual(label.en, label.ja));
+  });
+
+  const summary = models.length === 0
+    ? [
+        'No 3D anatomy model is available at the moment.',
+        '現在利用できる3D解剖モデルはありません。',
+      ]
+    : models.length === 1 && models[0].organId === 'brain'
+      ? [
+          'Rotate and zoom the brain to inspect the spatial relationship between its colour-coded structures.',
+          '脳を回転・拡大し、色分けされた部位の位置関係を確認できます。',
+        ]
+      : [
+          'Choose a published organ, then rotate and zoom it to inspect the spatial relationship between its structures.',
+          '公開中の臓器を選び、回転・拡大して部位ごとの位置関係を確認できます。',
+        ];
+
+  const element = el('main', { class: 'explorer public-models' }, [
+    el('header', {
+      class: 'panel explorer-header public-models-header',
+      id: 'content',
+      tabindex: '-1',
+      'data-skip-target': '',
+    }, [
+      el('p', { class: 'eyebrow' }, publicDual('3D ANATOMY', '3D解剖')),
+      el('h1', { class: 'title' }, publicDual(
+        '3D anatomical models of the human body',
+        '人体の3D解剖モデル'
+      )),
+      el('p', { class: 'subtitle' }, publicDual(summary[0], summary[1])),
+      el('div', { class: 'explorer-header-actions' }, [
+        el('a', { class: 'explorer-shell-link', href: LANDING_ROUTE }, publicDual('Home', 'ホーム')),
+        el('a', { class: 'explorer-shell-link', href: '#/trust' }, publicDual('Model information', 'モデル情報')),
+        accountButton,
+        languageToggle.element,
+      ]),
+    ]),
+    organHero
+      ? el('section', {
+          class: 'public-models-focus',
+          'aria-label': 'Published anatomy model / 公開中の解剖モデル',
+        }, [organHero.element])
+      : el('section', {
+          class: 'panel public-models-empty',
+          role: 'status',
+        }, [
+          el('p', {}, publicDual(
+            'There is no model button until a model appears in the public manifest.',
+            '公開マニフェストにモデルが追加されるまで、存在しないモデルへのボタンは表示しません。'
+          )),
+          el('a', { class: 'explorer-shell-link', href: '#/trust' }, publicDual(
+            'View model information',
+            'モデル情報を見る'
+          )),
+        ]),
+    models.length > 1
+      ? el('nav', {
+          class: 'panel public-models-choices',
+          'aria-label': 'Published models / 公開中のモデル',
+        }, actions)
+      : null,
+    el('footer', { class: 'panel explorer-footer public-models-footer' }, [
+      el('p', {}, publicDual(
+        'Representative educational models — not for individual diagnosis or treatment decisions.',
+        '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
+      )),
+      el('nav', { class: 'public-models-footer-links' }, [
+        el('a', { class: 'explorer-shell-link', href: '#/trust' }, publicDual('Model information', 'モデル情報')),
+        el('a', { class: 'explorer-shell-link', href: '#/support' }, publicDual('Contact', 'お問い合わせ')),
+      ]),
+    ]),
+  ].filter(Boolean));
+
+  ui.append(skipLink(), element);
+  languageToggle.init();
+  void organHero?.mount();
+  document.title = 'Medical 3D Lab — 人体の3D解剖モデル';
+
+  return {
+    element,
+    organHero,
+    destroy() {
+      organHero?.destroy();
+      languageToggle.element.remove();
+      element.remove();
+    },
+  };
+}
 
 /**
  * Catalogue surface shared by the public Organ Explorer and Experimental Lab.
@@ -46,8 +178,21 @@ import {
  *
  * @param {{ui:HTMLElement, accountButton?:HTMLElement, scope?:'public'|'lab'}} mounts
  */
-export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
+export function createExplorer({
+  ui,
+  accountButton = null,
+  scope = 'public',
+  publicManifest = PUBLIC_MANIFEST,
+} = {}) {
   const isLab = scope === 'lab';
+  const beta = !isLab && !betaUnlocked();
+  if (beta) {
+    return createPublicModelsExplorer({
+      ui,
+      accountButton,
+      manifest: publicManifest,
+    });
+  }
   // During the beta the public catalogue is what the release opens, and nothing
   // else. It used to be the *whole* catalogue with the unopened models listed
   // as "to be updated", so that the roadmap stayed visible — but the roadmap
@@ -56,7 +201,6 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   // built, stays in the repository, and is visible to a developer through the
   // preview unlock; `#/trust` still lists every model's review state, opened or
   // not. `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
-  const beta = !isLab && !betaUnlocked();
   const scopedScenes = isLab ? LAB_SCENES : beta ? RELEASED_SCENES : PUBLIC_SCENES;
   // Favourites and recents are shortcuts, so they only ever hold models this
   // reader can open. A model the release is holding back would be a link into
