@@ -802,6 +802,34 @@ export class BrainAnatomyScene {
     return visible;
   }
 
+  /**
+   * The box around what is actually on screen, for whatever is framing it.
+   *
+   * The subject is not the model: at layer 0 the deep structures are not drawn,
+   * on a medial view half the cortex is not, and while one structure is
+   * isolated the subject is that structure. Framing to the whole atlas would
+   * pull the camera back for meshes nobody can see — and framing to a bounding
+   * sphere would waste a fifth of the frame on the corners of a shape that is
+   * not a sphere, which is why this is a box and its corners.
+   *
+   * Returns `null` when nothing is drawn yet, which a caller must treat as "do
+   * not move the camera" rather than as an empty box at the origin.
+   */
+  getSubjectBounds() {
+    const drawn = this._drawnMeshes();
+    if (!drawn.length) return null;
+    const box = new THREE.Box3();
+    for (const mesh of drawn) box.expandByObject(mesh);
+    if (box.isEmpty()) return null;
+    const corners = [];
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      }
+    }
+    return { centre: box.getCenter(new THREE.Vector3()), corners };
+  }
+
   getAnnotations() {
     return BRAIN_ANATOMY_META.annotations.map((item) => ({
       ...item,

@@ -8,7 +8,7 @@ import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect } from './framing.js';
+import { framePose, distanceScaleForAspect, fitPoseToSafeArea } from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -173,9 +173,57 @@ export async function createApp({ stage, ui }) {
    */
   let userZoom = 1;
 
+  /**
+   * What each edge of the frame is covered by, as a fraction of it.
+   *
+   * Measured from the elements themselves, because they move: the console grows
+   * with its copy, the anatomy panel is docked on a wide window and a sheet on a
+   * narrow one, and the header is there throughout. Only the bands that run the
+   * whole way across an edge are counted — the scene card sits in the top-left
+   * corner and taking it as a full-height inset would shove the model right for
+   * something it clears anyway.
+   */
+  const safeAreaInsets = () => {
+    const width = viewer.container.clientWidth;
+    const height = viewer.container.clientHeight;
+    if (!width || !height) return null;
+    /**
+     * An element only counts as an edge band when it crosses the middle of the
+     * frame, because that is where the subject is. The anatomy panel docked
+     * down a wide window does cross it and genuinely takes the right-hand third;
+     * the same panel on a phone is a summary in the top corner, and counting it
+     * as a right-hand band shoved the model into the left edge and shrank it to
+     * a third of the height for something it was never behind.
+     */
+    const band = (selector, crosses, read) => {
+      const element = ui.querySelector(selector);
+      if (!element) return 0;
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height || !crosses(rect)) return 0;
+      return Math.min(0.5, Math.max(0, read(rect)));
+    };
+    const spansWidth = (rect) => rect.left < width / 2 && rect.right > width / 2;
+    const spansHeight = (rect) => rect.top < height / 2 && rect.bottom > height / 2;
+    // The same panel is a different band on a different window. Docked down a
+    // wide window it takes the right; collapsed to a summary on a phone it sits
+    // across the top, so there it is part of the top band instead — which is
+    // why this asks where the element actually is rather than which one it is.
+    const railAcrossTop = (rect) =>
+      spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
+    return {
+      top: Math.max(
+        band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
+        band('.rail', railAcrossTop, (rect) => rect.bottom / height)
+      ),
+      bottom: band('.console', spansWidth, (rect) => (height - rect.top) / height),
+      right: band('.rail', spansHeight, (rect) => (width - rect.left) / width),
+      left: 0,
+    };
+  };
+
   /** The scene's authored framing for the current view and window, before zoom. */
-  const framedPose = (pose) =>
-    framePose(
+  const framedPose = (pose) => {
+    const framed = framePose(
       pose,
       viewer.camera.aspect,
       dataView ? 'data' : 'learning',
@@ -183,6 +231,19 @@ export async function createApp({ stage, ui }) {
       bottomInset(),
       SceneClass.framing
     );
+    // An anatomy scene knows what it is currently drawing, so its viewpoints can
+    // be fitted to the band the panels leave rather than to the whole canvas.
+    // Every other scene keeps the framing it has: this is opt-in on a capability
+    // the scene either offers or does not.
+    const bounds = scene.getSubjectBounds?.();
+    const insets = bounds ? safeAreaInsets() : null;
+    return insets ? fitPoseToSafeArea(framed, {
+      bounds,
+      aspect: viewer.camera.aspect,
+      fovDegrees: viewer.camera.fov,
+      insets,
+    }) : framed;
+  };
 
   const setShot = (pose) => {
     shotSource = pose;

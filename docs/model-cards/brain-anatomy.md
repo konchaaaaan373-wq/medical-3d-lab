@@ -123,6 +123,16 @@ range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry.
 
+**A viewpoint is fitted to the band nothing is covering.** The scene reports the
+box around what it is currently drawing — not the whole atlas, since at layer 0
+the deep structures are not drawn and on a medial view half the cortex is not —
+and the app measures what the header, the console and the docked panel actually
+cover. The camera then looks at that subject's own centre, sits at the distance
+that fills the band, and pans so the band's centre is where the subject is.
+The direction it looks and the angle on the anatomy are untouched: this changes
+the composition, never the view. A band with no room left in it is left alone
+rather than framed to an invented composition.
+
 The atlas opts into the shared **Neutral studio** renderer preset so sulcal
 relief and the low-saturation anatomical mode remain legible on a pale field.
 Its eight viewpoints — left and right lateral, left and right medial, anterior,

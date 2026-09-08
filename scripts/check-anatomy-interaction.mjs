@@ -241,8 +241,45 @@ try {
     return read();
   };
 
+  /**
+   * Where the model actually is, asked rather than assumed.
+   *
+   * This used to click four fixed fractions of the canvas, which is a check on
+   * the composition wearing the clothes of a check on the picking: the framing
+   * changed, the model moved, and two of the four points landed on the
+   * background — reported as "the picking may be broken". The scene already
+   * says what is under the pointer, by setting the cursor, so the points are
+   * found by moving over a grid and keeping the ones the scene answers for.
+   * Nothing is selected while looking.
+   */
+  const overModel = async (fx, fy) => {
+    await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy);
+    await page.waitForTimeout(90);
+    return (await canvas.evaluate((element) => element.style.cursor)) === 'pointer';
+  };
+  const modelPoints = [];
+  const emptyPoints = [];
+  for (const fy of [0.30, 0.40, 0.50, 0.60, 0.20]) {
+    for (const fx of [0.30, 0.42, 0.54, 0.66, 0.20]) {
+      if (modelPoints.length >= 6 && emptyPoints.length >= 1) break;
+      const hit = await overModel(fx, fy);
+      if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
+      if (!hit && emptyPoints.length < 1) emptyPoints.push([fx, fy]);
+    }
+  }
+  await restPointer();
+  if (modelPoints.length < 4) {
+    die(
+      `only ${modelPoints.length} of the sampled points are over the model. Either the model is not ` +
+        'drawn, or it no longer covers the middle of the frame — both are findings, and neither is ' +
+        'something to click around.'
+    );
+  }
+  const atModel = (index) => modelPoints[index % modelPoints.length];
+  const emptyPoint = emptyPoints[0] ?? [0.04, 0.94];
+
   // 1. A click on the model names a structure, in both languages, with a path.
-  for (const [fx, fy] of [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]]) {
+  for (const [fx, fy] of modelPoints.slice(0, 4)) {
     const hit = await clickAt(fx, fy);
     if (hit.en === EMPTY) continue;
     observed.structures.push(hit);
@@ -258,9 +295,11 @@ try {
 
   // 2. A drag is not a click. Orbiting away from the pinned structure and
   //    releasing over another one must not reselect.
-  await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.55);
+  const [dragFromX, dragFromY] = atModel(0);
+  const [dragToX, dragToY] = atModel(2);
+  await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5, { steps: 20 });
+  await page.mouse.move(box.x + box.width * dragToX, box.y + box.height * dragToY, { steps: 20 });
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
@@ -269,9 +308,9 @@ try {
   }
 
   // 3. Clicking the background clears rather than keeping a stale card.
-  const afterEmpty = await clickAt(0.04, 0.94);
+  const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
+  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
   await page.waitForTimeout(350);
   await restPointer();
   const reselected = await read();
@@ -280,7 +319,7 @@ try {
   // 3b. A pinned structure is not rewritten by a pointer crossing the model.
   //     This is what `hovered ?? selected` got wrong: moving the mouse replaced
   //     the name — and the controls beside it — with whatever it passed over.
-  await page.mouse.move(box.x + box.width * 0.40, box.y + box.height * 0.34);
+  await page.mouse.move(box.x + box.width * atModel(3)[0], box.y + box.height * atModel(3)[1]);
   await page.waitForTimeout(400);
   const whileHovering = await read();
   if (whileHovering.en !== reselected.en) {
@@ -333,7 +372,7 @@ try {
       problems.push(`isolating changed the selection from "${fromTree.en}" to "${whileIsolated.en}"`);
     }
     // Nothing else is clickable while one structure is isolated.
-    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
+    await page.mouse.click(box.x + box.width * atModel(4)[0], box.y + box.height * atModel(4)[1]);
     await page.waitForTimeout(350);
     const afterStrayClick = await read();
     if (afterStrayClick.en !== EMPTY && afterStrayClick.en !== fromTree.en) {
@@ -348,7 +387,7 @@ try {
     }
     // Back to a whole model: the structures that were on screen before are
     // clickable again.
-    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
+    await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
