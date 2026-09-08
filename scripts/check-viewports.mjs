@@ -30,8 +30,9 @@
  *   --viewport <id>  check one viewport (repeatable)
  *   --surface <id>   check one surface (repeatable)
  *   --headed         show the browser
+ *   --evidence-dir <dir>  save B1 Chromium screenshots and capture metadata
  */
-import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -63,6 +64,7 @@ const jsonOut = value('--json');
 const onlyViewports = values('--viewport');
 const onlySurfaces = values('--surface');
 const headed = flag('--headed');
+const evidenceDir = value('--evidence-dir', process.env.VIEWPORT_EVIDENCE_DIR || null);
 const ENGINES = ['chromium', 'firefox', 'webkit'];
 const engineName = value('--engine', 'chromium');
 
@@ -507,6 +509,196 @@ async function walkTabOrder(page, { steps }) {
   }
   if (stops >= steps) stuck = true;
   return { stops, closed, stuck };
+}
+
+
+const B1_EVIDENCE_CASES = [
+  { id: 'landing-1280x720', route: '#/', width: 1280, height: 720 },
+  { id: 'landing-375x667', route: '#/', width: 375, height: 667 },
+  { id: 'organs-1280x720', route: '#/organs', width: 1280, height: 720 },
+  { id: 'organs-375x667', route: '#/organs', width: 375, height: 667 },
+];
+
+/**
+ * Capture the B1 evidence after the detailed brain atlas—not the procedural
+ * first stage—has loaded, decoded and replaced the first stage.
+ *
+ * This is intentionally separate from the viewport matrix. It adds evidence;
+ * it does not change any matrix size, surface, threshold or engine coverage.
+ */
+async function captureB1Evidence(browser) {
+  if (!evidenceDir || engineName !== 'chromium') return;
+
+  const outputDir = resolve(evidenceDir);
+  mkdirSync(outputDir, { recursive: true });
+  const captures = [];
+
+  for (const evidence of B1_EVIDENCE_CASES) {
+    const context = await browser.newContext({
+      viewport: { width: evidence.width, height: evidence.height },
+      deviceScaleFactor: 1,
+      reducedMotion: 'reduce',
+      locale: 'ja-JP',
+    });
+    const page = await context.newPage();
+    const consoleErrors = [];
+    const requestFailures = [];
+    const glbResponses = [];
+
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    page.on('requestfailed', (request) => {
+      requestFailures.push({
+        url: request.url(),
+        error: request.failure()?.errorText ?? 'unknown request failure',
+      });
+    });
+    page.on('response', (response) => {
+      if (/\/assets\/brain\/brain\.glb(?:\?|$)/.test(response.url())) {
+        glbResponses.push({
+          url: response.url(),
+          status: response.status(),
+          ok: response.ok(),
+        });
+      }
+    });
+    await page.route(
+      (url) => (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== '127.0.0.1',
+      (route) => route.abort(),
+    );
+
+    const imagePath = resolve(outputDir, `${evidence.id}.png`);
+    const failurePath = resolve(outputDir, `${evidence.id}-failure.png`);
+    try {
+      await page.goto(`${base}${evidence.route}`, { waitUntil: 'load', timeout: 30_000 });
+      await page.waitForSelector('#ui > *', { state: 'attached', timeout: 20_000 });
+
+      const consentButton = page.locator('.consent-banner button').first();
+      if (await consentButton.isVisible().catch(() => false)) {
+        await consentButton.click();
+        await page.waitForFunction(() => !document.querySelector('.consent-banner'), null, {
+          timeout: 5_000,
+        });
+      }
+
+      await page.waitForFunction(
+        () => {
+          const viewport = document.querySelector('.landing-demo-viewport');
+          return (
+            document.documentElement.lang === 'ja' &&
+            document.querySelector('#ui')?.dataset.lang === 'ja' &&
+            viewport?.dataset.organ === 'brain' &&
+            viewport?.dataset.detail === 'ready' &&
+            Boolean(viewport.querySelector('canvas'))
+          );
+        },
+        null,
+        { timeout: 45_000 },
+      );
+
+      const fontStatus = await page.evaluate(async () => {
+        if (!document.fonts) return 'unsupported';
+        await document.fonts.ready;
+        return document.fonts.status;
+      });
+      if (fontStatus !== 'loaded' && fontStatus !== 'unsupported') {
+        throw new Error(`document fonts did not settle: ${fontStatus}`);
+      }
+
+      const detailResponse = glbResponses.find((response) => response.ok);
+      if (!detailResponse) {
+        throw new Error('brain.glb did not return a successful response');
+      }
+
+      const viewport = page.locator('.landing-demo-viewport');
+      await viewport.press('Home');
+      await page.evaluate(() => new Promise((done) => {
+        requestAnimationFrame(() => requestAnimationFrame(done));
+      }));
+
+      const state = await page.evaluate(() => {
+        const viewport = document.querySelector('.landing-demo-viewport');
+        const canvas = viewport?.querySelector('canvas');
+        const visibleJapaneseCta = [...document.querySelectorAll('.landing-cta .lang-ja')]
+          .find((element) => {
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+          });
+        const canvasRect = canvas?.getBoundingClientRect();
+        return {
+          lang: document.documentElement.lang,
+          uiLang: document.querySelector('#ui')?.dataset.lang ?? null,
+          detail: viewport?.dataset.detail ?? null,
+          organ: viewport?.dataset.organ ?? null,
+          cta: visibleJapaneseCta?.textContent?.trim() ?? null,
+          loadingVisible: Boolean(document.querySelector('.landing-demo-loading:not([aria-hidden="true"])')),
+          canvas: canvas && canvasRect
+            ? {
+                cssWidth: Math.round(canvasRect.width),
+                cssHeight: Math.round(canvasRect.height),
+                pixelWidth: canvas.width,
+                pixelHeight: canvas.height,
+              }
+            : null,
+        };
+      });
+
+      if (!state.canvas || state.canvas.pixelWidth < 2 || state.canvas.pixelHeight < 2) {
+        throw new Error('the detailed model canvas has no drawable buffer');
+      }
+      if (!state.cta?.includes('脳を見る')) {
+        throw new Error('the Japanese brain action is not visible');
+      }
+      if (state.loadingVisible) {
+        throw new Error('the loading state is still visible');
+      }
+
+      await page.screenshot({ path: imagePath, fullPage: false });
+      captures.push({
+        ...evidence,
+        status: 'captured',
+        file: `${evidence.id}.png`,
+        fontStatus,
+        glbResponses,
+        state,
+        consoleErrors,
+        requestFailures,
+      });
+    } catch (error) {
+      await page.screenshot({ path: failurePath, fullPage: false }).catch(() => {});
+      const record = {
+        ...evidence,
+        status: 'failed',
+        file: `${evidence.id}-failure.png`,
+        error: error?.message ?? String(error),
+        glbResponses,
+        consoleErrors,
+        requestFailures,
+      };
+      captures.push(record);
+      writeFileSync(
+        resolve(outputDir, `${evidence.id}-failure.json`),
+        `${JSON.stringify(record, null, 2)}\n`,
+      );
+      problems.push(`B1 evidence ${evidence.id}: ${record.error}`);
+    } finally {
+      await context.close();
+    }
+  }
+
+  writeFileSync(
+    resolve(outputDir, 'evidence.json'),
+    `${JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      engine,
+      build: 'npm run build (production capability; preview unlock disabled)',
+      prHeadSha: process.env.PR_HEAD_SHA ?? null,
+      checkedOutSha: process.env.GITHUB_SHA ?? null,
+      captures,
+    }, null, 2)}\n`,
+  );
 }
 
 // --- the run ---------------------------------------------------------------
@@ -967,6 +1159,7 @@ try {
     }
     await context.close();
   }
+  await captureB1Evidence(browser);
 } finally {
   await browser.close();
   server.close();
