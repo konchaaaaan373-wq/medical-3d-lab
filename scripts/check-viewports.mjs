@@ -523,6 +523,95 @@ const B1_EVIDENCE_CASES = [
   { id: 'organs-375x667', route: '#/organs', width: 375, height: 667 },
 ];
 
+async function measureEvidenceFrame(page) {
+  return page.evaluate(() => {
+    const rectOf = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left * 10) / 10,
+        top: Math.round(rect.top * 10) / 10,
+        right: Math.round(rect.right * 10) / 10,
+        bottom: Math.round(rect.bottom * 10) / 10,
+        width: Math.round(rect.width * 10) / 10,
+        height: Math.round(rect.height * 10) / 10,
+      };
+    };
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' &&
+        style.pointerEvents !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const cta = [...document.querySelectorAll('a.landing-cta')]
+      .find((element) => isVisible(element) && element.textContent?.includes('脳を見る')) ?? null;
+    const canvas = document.querySelector('.landing-demo-viewport canvas');
+    const header = document.querySelector('.landing-nav, .explorer-header');
+    const h1 = document.querySelector('h1');
+    const feedback = document.querySelector('.feedback-trigger.is-floating');
+    const ctaRect = rectOf(cta);
+    const feedbackRect = rectOf(feedback);
+    const overlaps = (a, b) => Boolean(
+      a && b &&
+      Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+      Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+    );
+    const hit = ctaRect
+      ? document.elementFromPoint(
+          Math.max(0, Math.min(innerWidth - 1, (ctaRect.left + ctaRect.right) / 2)),
+          Math.max(0, Math.min(innerHeight - 1, (ctaRect.top + ctaRect.bottom) / 2)),
+        )
+      : null;
+    return {
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      viewport: { width: innerWidth, height: innerHeight },
+      activeElement: document.activeElement
+        ? {
+            tag: document.activeElement.tagName,
+            id: document.activeElement.id || null,
+            className: typeof document.activeElement.className === 'string'
+              ? document.activeElement.className
+              : null,
+          }
+        : null,
+      rects: {
+        header: rectOf(header),
+        h1: rectOf(h1),
+        cta: ctaRect,
+        canvas: rectOf(canvas),
+        feedback: feedbackRect,
+      },
+      ctaFullyInViewport: Boolean(
+        ctaRect && ctaRect.left >= 0 && ctaRect.top >= 0 &&
+        ctaRect.right <= innerWidth && ctaRect.bottom <= innerHeight
+      ),
+      ctaHitTest: Boolean(cta && hit && (cta === hit || cta.contains(hit) || hit.contains(cta))),
+      ctaFeedbackOverlap: overlaps(ctaRect, feedbackRect),
+      headerH1Overlap: overlaps(rectOf(header), rectOf(h1)),
+    };
+  });
+}
+
+async function settleEvidencePageTop(page) {
+  await page.evaluate(async () => {
+    window.scrollTo(0, 0);
+    let stableFrames = 0;
+    const deadline = performance.now() + 2_000;
+    while (performance.now() < deadline) {
+      await new Promise((done) => requestAnimationFrame(done));
+      if (window.scrollX === 0 && window.scrollY === 0) stableFrames += 1;
+      else {
+        stableFrames = 0;
+        window.scrollTo(0, 0);
+      }
+      if (stableFrames >= 3) return;
+    }
+    throw new Error(`page did not settle at the top: ${window.scrollX},${window.scrollY}`);
+  });
+}
+
 /**
  * Capture the B1 evidence after the detailed brain atlas—not the procedural
  * first stage—has loaded, decoded and replaced the first stage.
@@ -616,10 +705,16 @@ async function captureB1Evidence(browser) {
       }
 
       const viewport = page.locator('.landing-demo-viewport');
+      const beforeHome = await measureEvidenceFrame(page);
       await viewport.press('Home');
-      await page.evaluate(() => new Promise((done) => {
-        requestAnimationFrame(() => requestAnimationFrame(done));
-      }));
+      const afterHome = await measureEvidenceFrame(page);
+      await settleEvidencePageTop(page);
+      const afterTopReset = await measureEvidenceFrame(page);
+
+      const primaryCta = page.locator('a.landing-cta').filter({ hasText: '脳を見る' }).first();
+      await primaryCta.click({ trial: true, timeout: 5_000 });
+      await settleEvidencePageTop(page);
+      const beforeScreenshot = await measureEvidenceFrame(page);
 
       const state = await page.evaluate(() => {
         const viewport = document.querySelector('.landing-demo-viewport');
@@ -648,12 +743,25 @@ async function captureB1Evidence(browser) {
             : null,
         };
       });
+      state.position = { beforeHome, afterHome, afterTopReset, beforeScreenshot };
+      state.homeMovedPage = beforeHome.scrollX !== afterHome.scrollX || beforeHome.scrollY !== afterHome.scrollY;
+      state.ctaTrialPassed = true;
 
       if (!state.canvas || state.canvas.pixelWidth < 2 || state.canvas.pixelHeight < 2) {
         throw new Error('the detailed model canvas has no drawable buffer');
       }
       if (!state.cta?.includes('脳を見る')) {
         throw new Error('the Japanese brain action is not visible');
+      }
+      if (state.position.beforeScreenshot.scrollX !== 0 || state.position.beforeScreenshot.scrollY !== 0) {
+        throw new Error('the evidence page is not at its initial scroll position');
+      }
+      if (!state.position.beforeScreenshot.ctaFullyInViewport ||
+          !state.position.beforeScreenshot.ctaHitTest) {
+        throw new Error('the primary brain action is not fully visible and actionable');
+      }
+      if (state.position.beforeScreenshot.ctaFeedbackOverlap) {
+        throw new Error('the feedback trigger overlaps the primary brain action');
       }
       if (state.loadingVisible) {
         throw new Error('the loading state is still visible');
