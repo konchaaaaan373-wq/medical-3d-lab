@@ -32,7 +32,9 @@
  *  2. it makes an anatomy claim and no pathophysiological or clinical one —
  *     read off the model profile, not off the scene's name;
  *  3. every asset its profile names passes the asset release gate (licence,
- *     obligations, hashes, QA);
+ *     obligations, hashes, QA), and it rests on no *candidate* asset — a file
+ *     still under examination has no licence decision, no discharged
+ *     obligations and no QA, so naming one closes the gate by itself;
  *  4. no clinical-review record it has is `stale`, so a sign-off that has been
  *     overtaken is never shown as current;
  *  5. a publication decision exists that is complete — who decided, in what
@@ -73,6 +75,7 @@ import {
   MECHANISM_LEVEL,
   PATIENT_SPECIFIC_PERSONALIZATION,
   modelProfileForScene,
+  profileCandidateAssets,
 } from './modelProfiles.js';
 
 /**
@@ -403,6 +406,17 @@ export function betaPublicationProblems(candidate, {
 
   const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
   const assetIds = profile?.assets ?? [];
+
+  // A candidate is a file being examined (`src/catalog/devAssets.js`): pinned
+  // and hash-verified, but not in the asset manifest, not licence-assessed, not
+  // QA'd and not even committed. There is nothing here for the asset release
+  // gate to read, so the answer is no — stated as its own line rather than as a
+  // silent consequence of the manifest lookup failing.
+  for (const candidateId of profileCandidateAssets(profile)) {
+    problems.push(
+      `rests on candidate asset "${candidateId}", which is under examination and has passed no asset release gate`
+    );
+  }
   for (const assetId of assetIds) {
     const asset = resolveAsset(assetId);
     if (!asset) {

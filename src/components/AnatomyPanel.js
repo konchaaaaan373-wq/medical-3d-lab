@@ -565,7 +565,14 @@ export function createAnatomyPanel({
 
     const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
     const selectionHidden = Boolean(selection) && hidden.includes(selection.id);
-    const canSee = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
+    const drawn = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
+    // Two ways a reader cannot see a structure: the settings are not drawing it,
+    // or it is drawn and something else is in front of it. The second only has
+    // an answer in a scene that can measure it — a heart where a papillary
+    // muscle sits inside a ventricle — so it is asked as an optional capability
+    // and defaults to "no".
+    const obscured = selection ? scene.isStructureObscured?.(selection.id) ?? false : false;
+    const canSee = drawn && !obscured;
 
     focusButton.hidden = !selection || !onFocusStructure;
     // Offered when the structure is not on screen — which is the only time the
@@ -584,6 +591,7 @@ export function createAnatomyPanel({
     finder?.syncSelection();
     element.dataset.selectionHidden = selectionHidden ? 'yes' : 'no';
     element.dataset.selectionOffscreen = selection && !canSee ? 'yes' : 'no';
+    element.dataset.selectionObscured = selection && obscured ? 'yes' : 'no';
   }
 
   function focusSelection() {

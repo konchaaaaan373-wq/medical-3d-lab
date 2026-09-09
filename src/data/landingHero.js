@@ -29,9 +29,10 @@ import { publicModelById } from '../catalog/publicManifest.js';
  *
  * **This is the declared rotation, not the shown one.** `HERO_ROTATION` below
  * is what the hero actually turns through, and it is this list filtered by what
- * the release opens. The heart entry names `heart-anatomy`, which does not
- * exist yet, so today the hero shows the brain and offers no way to "see the
- * heart" — because there is no heart anatomy to see.
+ * the release opens. The heart entry names `heart-anatomy`, which now exists as
+ * a scene and which the release does not open — it is built on a candidate
+ * asset and its great vessels are missing — so today the hero still shows the
+ * brain and offers no way to "see the heart".
  *
  * It used to point at `heart-failure` with the coronary anatomy loaded behind
  * it, on the reasoning that the heart had no anatomy scene of its own. That is

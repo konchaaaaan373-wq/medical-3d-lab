@@ -11,6 +11,17 @@
     "cardUpdatedAt": "2026-09-09"
   },
   {
+    "sceneId": "heart-anatomy",
+    "card": "docs/model-cards/heart-anatomy.md",
+    "modelSources": [
+      "src/data/heartAnatomy.js",
+      "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "d1b4b9c664fdefcc",
+    "cardUpdatedAt": "2026-09-09"
+  },
+  {
     "sceneId": "circulation",
     "card": "docs/model-cards/circulation.md",
     "modelSources": [

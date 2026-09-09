@@ -1,0 +1,912 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
+import { createStudioLights } from '../../../shared/lighting.js';
+import { disposeObject } from '../../../../utils/dispose.js';
+import { damp } from '../../../../utils/math.js';
+import { devAssetUrl } from '../../../../catalog/devAssets.js';
+import {
+  HEART_ANATOMY_META,
+  HEART_AXES,
+  HEART_COLOR_MODES,
+  HEART_MISSING,
+  HEART_PALETTE,
+  HEART_PARTS,
+  heartColor,
+  heartPartById,
+  heartStructureInfo,
+} from '../../../../data/heartAnatomy.js';
+
+const BASE_URL = import.meta.env?.BASE_URL ?? './';
+/** A candidate, fetched by `npm run assets:dev` and served in dev and preview only. */
+const HEART_URL = devAssetUrl('hubmap-vh-m-heart', BASE_URL);
+/**
+ * The radius the model is scaled to.
+ *
+ * Chosen against the camera rather than picked: the viewer's vertical FOV is
+ * 42°, so a sphere of radius r needs r/sin(21°) ≈ 2.8r of distance to fit, and
+ * the viewpoints below stand at 5.4. That leaves room for the side panel to
+ * take part of the frame — which is what the safe-area fit uses once the model
+ * has loaded and there are bounds to fit.
+ */
+const TARGET_RADIUS = 1.35;
+const HIGHLIGHT_COLOR = new THREE.Color('#ffffff');
+/** Below this a mesh is not being drawn — the one rule picking and labels share. */
+const DRAWN_OPACITY = 0.14;
+
+/**
+ * Where to look from, in this model's own axes.
+ *
+ * `heartAnatomy.js` records those axes and how they were measured — +x is the
+ * patient's left, +y superior, +z anterior — so these are derived rather than
+ * guessed, which is the difference between a viewpoint called "anterior" and a
+ * viewpoint that *is* anterior. The base and apex views look along the long
+ * axis, tilted enough that the up vector still resolves.
+ */
+const VIEW_SPECS = [
+  view('anterior', 'Anterior', '前面', [0, 0.1, 5.4]),
+  view('posterior', 'Posterior', '後面', [0, 0.1, -5.4]),
+  view('left-lateral', 'Left lateral', '左側面', [5.4, 0.1, 0]),
+  view('right-lateral', 'Right lateral', '右側面', [-5.4, 0.1, 0]),
+  view('base', 'From the base', '心基部側', [0, 5.1, 1.9]),
+  view('apex', 'From the apex', '心尖側', [0, -5.1, 1.9]),
+];
+
+function view(id, label, labelJa, position) {
+  return { id, label, labelJa, position: new THREE.Vector3(...position), target: new THREE.Vector3(0, 0, 0) };
+}
+
+/**
+ * A still, normal heart from a sourced reference model.
+ *
+ * Fourteen parts, each one a mesh the source named and gave an ontology id, and
+ * nothing else: no beat, no pressure, no flow, no ejection fraction. This is the
+ * anatomy layer, and the disease layer is a different thing that would sit on
+ * top of it.
+ *
+ * ## What it does not offer, and why
+ *
+ * **There is no interior view.** The chambers in this file are closed surfaces
+ * around the chambers' own spaces — measured, 122 mL for the left ventricle —
+ * and there is no myocardial free wall between them. A "cut through the heart"
+ * would therefore be a cut through nothing, and the inside of a chamber's
+ * surface is not an interior: it is the back of a shell. What the scene offers
+ * instead is honest and is what the file supports — hide the chambers and the
+ * valves and papillary muscles that sit inside them are there to be seen.
+ *
+ * **It cannot be published.** The great vessels the beta requires are not in
+ * this file at all (`HEART_MISSING`), and no note in a corner is a substitute
+ * for them. The scene exists so the code is real and testable while the vessels
+ * are sourced; the release gate stays shut.
+ *
+ * ## The transform is one transform
+ *
+ * The model arrives in whole-body coordinates, sitting where a heart sits in a
+ * body rather than about its own origin. It is centred and scaled here by a
+ * single transform on one root — so that when the vasculature from the same
+ * release is added, the two can be placed under that same root and keep the
+ * relative positions the source gave them. Centring each of them separately
+ * would destroy exactly the thing that makes them combinable.
+ */
+export class HeartAnatomyScene {
+  static meta = HEART_ANATOMY_META;
+
+  static cameraPose = { position: VIEW_SPECS[0].position.clone(), target: VIEW_SPECS[0].target.clone() };
+
+  static allowAutoRotate = false;
+
+  constructor({ viewer, model, modelLoader } = {}) {
+    this.viewer = viewer;
+    this.modelSource = model;
+    this.modelLoader = modelLoader ?? loadHeart;
+    this.root = new THREE.Group();
+    this.root.name = 'heart-anatomy';
+    /**
+     * The one transform every sourced model goes under.
+     *
+     * Whatever is added later — the great vessels from the same release — goes
+     * in here beside the heart, unmoved relative to it.
+     */
+    this.modelRoot = new THREE.Group();
+    this.modelRoot.name = 'heart-model';
+    this.root.add(this.modelRoot);
+
+    this.selectables = [];
+    /** Structure id → the meshes it is drawn from. One each here, but the shape is the contract's. */
+    this.meshesById = new Map();
+    this.listeners = new Set();
+    this.hoverListeners = new Set();
+    this.statusListeners = new Set();
+    this.isolationListeners = new Set();
+    this.visibilityListeners = new Set();
+
+    this.pageLeaving = false;
+    this._pageHide = () => { this.pageLeaving = true; };
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', this._pageHide);
+
+    this.colorMode = 'parts';
+    this.activeView = VIEW_SPECS[0].id;
+    this.selection = null;
+    this.selectedMeshes = [];
+    this.hoveredMeshes = [];
+    this.isolatedId = null;
+    this.manualHidden = new Set();
+    this.hiddenVersion = 0;
+    this.displayBeforeReveal = null;
+    this.built = false;
+    this.disposed = false;
+    this.ready = Promise.resolve();
+    this.status = { state: 'idle', selectableCount: 0 };
+    this.structureAnchors = new Map();
+    this._annotationRay = new THREE.Raycaster();
+    this._annotationDirection = new THREE.Vector3();
+    this._annotationSight = new Map();
+  }
+
+  build() {
+    if (this.built) return this.root;
+    this.built = true;
+    this.root.add(createStudioLights({ key: 30, fill: 0.85, rim: 12 }));
+    this._bindPicking();
+    if (this.modelSource) {
+      this.attachModel(this.modelSource);
+      this.ready = Promise.resolve(this.root);
+    } else if (this.viewer?.renderer?.domElement) {
+      this.ready = this._loadModel();
+    }
+    return this.root;
+  }
+
+  async _loadModel() {
+    this._setStatus({ state: 'loading', selectableCount: 0 });
+    try {
+      const model = await this.modelLoader();
+      if (this.disposed) {
+        disposeObject(model.scene ?? model);
+        return this.root;
+      }
+      this.attachModel(model);
+    } catch (error) {
+      // A fetch the browser abandoned is not a failure of the model — the same
+      // distinction the brain scene had to learn. What is different here is that
+      // a *missing* candidate is an ordinary state: this asset is not committed,
+      // so a checkout that has not run `npm run assets:dev` simply does not have
+      // it, and saying so beats reporting a broken scene.
+      if (this.disposed || this.pageLeaving) return this.root;
+      this._setStatus({
+        state: 'error',
+        selectableCount: 0,
+        error,
+        hint: 'This model is a candidate asset that is not committed. Run `npm run assets:dev`.',
+      });
+    }
+    return this.root;
+  }
+
+  /**
+   * Adopt a loaded model. Public so a test can hand in a small fixture and
+   * exercise the same metadata and material path the real file takes.
+   */
+  attachModel(model) {
+    if (this.disposed) return;
+    const scene = model.scene ?? model;
+    if (!scene?.isObject3D) throw new TypeError('the heart model must contain a THREE.Object3D scene');
+
+    this._resetInteractionState({ notify: true });
+    this.modelRoot.clear();
+    this.selectables.length = 0;
+    this.meshesById.clear();
+    this.structureAnchors.clear();
+    this._annotationSight.clear();
+
+    scene.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(scene);
+    const centre = box.getCenter(new THREE.Vector3());
+    const radius = box.getBoundingSphere(new THREE.Sphere()).radius || 1;
+
+    // One transform, on the root, so anything added beside this keeps its
+    // position relative to it.
+    this.modelRoot.add(scene);
+    this.modelRoot.position.set(0, 0, 0);
+    this.modelRoot.scale.setScalar(TARGET_RADIUS / radius);
+    scene.position.sub(centre);
+    this.root.updateMatrixWorld(true);
+
+    let unknown = 0;
+    scene.traverse((object) => {
+      if (!object.isMesh) return;
+      const entry = heartPartById(object.name);
+      if (!entry) {
+        // A mesh the part table does not know is not given a made-up identity:
+        // it is left out of the selectable set and counted, so the count is a
+        // check on the table rather than a silent difference.
+        object.visible = false;
+        unknown += 1;
+        return;
+      }
+      this._registerMesh(object, entry);
+    });
+
+    this._applyVisibility(1 / 60, true);
+    this._setStatus({
+      state: 'ready',
+      selectableCount: this.meshesById.size,
+      meshCount: this.selectables.length,
+      unknownMeshes: unknown,
+      missing: HEART_MISSING.length,
+    });
+  }
+
+  _registerMesh(mesh, entry) {
+    const color = new THREE.Color(heartColor(entry.id, this.colorMode));
+    mesh.material = new THREE.MeshStandardMaterial({
+      color,
+      roughness: 0.62,
+      metalness: 0,
+      emissive: color,
+      emissiveIntensity: 0.02,
+      transparent: true,
+      opacity: 1,
+      depthWrite: true,
+      // Several of these parts are open surfaces in the source, and a
+      // front-side-only material makes an open surface vanish from one side.
+      // Drawing both sides is how an open surface reads as a surface; it is not
+      // a claim that it is closed, and `heartStructureInfo` says which are which.
+      side: THREE.DoubleSide,
+    });
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.userData = {
+      ...mesh.userData,
+      structureId: entry.id,
+      ontologyId: entry.ontologyId,
+      group: entry.group,
+      baseColor: color.clone(),
+      idleEmissiveIntensity: 0.02,
+      currentOpacity: 1,
+      selected: false,
+      hovered: false,
+    };
+    this.selectables.push(mesh);
+    const existing = this.meshesById.get(entry.id);
+    if (existing) existing.push(mesh);
+    else this.meshesById.set(entry.id, [mesh]);
+  }
+
+  // --- picking -------------------------------------------------------------
+
+  _bindPicking() {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return;
+    this.raycaster = new THREE.Raycaster();
+    this.pointer = new THREE.Vector2();
+    let down = null;
+
+    this._pointerDown = (event) => {
+      down = [event.clientX, event.clientY];
+      this._setHovered(null);
+    };
+    this._pointerMove = (event) => {
+      if (event.buttons) return;
+      const hit = this._pick(event);
+      this._setHovered(hit?.object ?? null);
+      canvas.style.cursor = hit ? 'pointer' : 'grab';
+    };
+    this._pointerUp = (event) => {
+      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
+        down = null;
+        return;
+      }
+      down = null;
+      const hit = this._pick(event);
+      if (hit) this.selectStructure(hit.object.userData.structureId);
+      else this.clearSelection();
+    };
+    this._pointerLeave = () => this._setHovered(null);
+    canvas.addEventListener('pointerdown', this._pointerDown);
+    canvas.addEventListener('pointermove', this._pointerMove);
+    canvas.addEventListener('pointerup', this._pointerUp);
+    canvas.addEventListener('pointerleave', this._pointerLeave);
+    canvas.style.cursor = 'grab';
+  }
+
+  _pick(event) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas || !this.selectables.length) return null;
+    const rect = canvas.getBoundingClientRect();
+    this.pointer.set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    this.raycaster.setFromCamera(this.pointer, this.viewer.camera);
+    return this.raycaster.intersectObjects(this._drawnMeshes(), false)[0] ?? null;
+  }
+
+  /** The meshes a ray may see: what is drawn, by the one rule everything reads. */
+  _drawnMeshes() {
+    return this.selectables.filter((mesh) => mesh.visible && mesh.userData.currentOpacity > DRAWN_OPACITY);
+  }
+
+  // --- selection and hover -------------------------------------------------
+
+  _meshesFor(id) {
+    return this.meshesById.get(id) ?? [];
+  }
+
+  _setHovered(mesh) {
+    const meshes = mesh ? this._meshesFor(mesh.userData.structureId) : [];
+    if (meshes[0] === this.hoveredMeshes[0] && meshes.length === this.hoveredMeshes.length) return;
+    for (const previous of this.hoveredMeshes) {
+      if (meshes.includes(previous)) continue;
+      previous.userData.hovered = false;
+      this._refreshHighlight(previous);
+    }
+    this.hoveredMeshes = meshes;
+    for (const next of meshes) {
+      next.userData.hovered = true;
+      this._refreshHighlight(next);
+    }
+    const hovered = meshes.length ? this._structureInfo(meshes[0]) : null;
+    for (const listener of this.hoverListeners) listener(hovered);
+  }
+
+  _refreshHighlight(mesh) {
+    const { selected, hovered, baseColor, idleEmissiveIntensity } = mesh.userData;
+    mesh.material.emissive.copy(selected || hovered ? HIGHLIGHT_COLOR : baseColor);
+    mesh.material.emissiveIntensity = selected ? 0.3 : hovered ? 0.15 : idleEmissiveIntensity;
+  }
+
+  selectStructure(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    for (const mesh of this.selectedMeshes) {
+      if (meshes.includes(mesh)) continue;
+      mesh.userData.selected = false;
+      this._refreshHighlight(mesh);
+    }
+    this.selectedMeshes = meshes;
+    for (const mesh of meshes) {
+      mesh.userData.selected = true;
+      this._refreshHighlight(mesh);
+    }
+    this.selection = this._structureInfo(meshes[0]);
+    for (const listener of this.listeners) listener(this.selection);
+    return true;
+  }
+
+  _structureInfo(mesh) {
+    return {
+      ...heartStructureInfo(mesh.userData.structureId),
+      color: `#${mesh.material.color.getHexString()}`,
+      colorMode: this.colorMode,
+    };
+  }
+
+  clearSelection() {
+    if (!this.selectedMeshes.length && !this.selection) return;
+    for (const mesh of this.selectedMeshes) {
+      mesh.userData.selected = false;
+      this._refreshHighlight(mesh);
+    }
+    this.selectedMeshes = [];
+    this.selection = null;
+    for (const listener of this.listeners) listener(null);
+  }
+
+  _resetInteractionState({ notify = false } = {}) {
+    const had = Boolean(this.selection) || this.hoveredMeshes.length > 0 || this.isolatedId != null;
+    const hadHidden = this.manualHidden.size > 0;
+    for (const mesh of this.selectedMeshes) mesh.userData.selected = false;
+    for (const mesh of this.hoveredMeshes) mesh.userData.hovered = false;
+    this.selectedMeshes = [];
+    this.hoveredMeshes = [];
+    this.selection = null;
+    this.isolatedId = null;
+    this.manualHidden.clear();
+    this.hiddenVersion += 1;
+    this.displayBeforeReveal = null;
+    if (!notify || !(had || hadHidden)) return;
+    for (const listener of this.listeners) listener(null);
+    for (const listener of this.hoverListeners) listener(null);
+    this._emitIsolation();
+    this._emitVisibility();
+  }
+
+  getAnatomySelection() { return this.selection; }
+  getAnatomyHover() {
+    return this.hoveredMeshes.length ? this._structureInfo(this.hoveredMeshes[0]) : null;
+  }
+
+  onAnatomySelection(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  onAnatomyHover(listener) {
+    this.hoverListeners.add(listener);
+    return () => this.hoverListeners.delete(listener);
+  }
+
+  // --- the parts, as a list and as an inventory ----------------------------
+
+  getAnatomyInventory() {
+    return [...this.meshesById.keys()].map((id) => heartStructureInfo(id));
+  }
+
+  getAnatomyTree() {
+    return buildAnatomyTree(this.getAnatomyInventory());
+  }
+
+  /** What the beta requires and this model does not contain. */
+  getMissingStructures() {
+    return HEART_MISSING.map((entry) => ({ ...entry }));
+  }
+
+  // --- display state -------------------------------------------------------
+
+  isolateStructure(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    this.isolatedId = meshes[0].userData.structureId;
+    this._applyVisibility(1 / 60, true);
+    this._emitIsolation();
+    return true;
+  }
+
+  clearIsolation() {
+    if (this.isolatedId == null) return false;
+    this.isolatedId = null;
+    this._applyVisibility(1 / 60, true);
+    this._emitIsolation();
+    return true;
+  }
+
+  getAnatomyIsolation() { return this.isolatedId; }
+
+  onAnatomyIsolation(listener) {
+    this.isolationListeners.add(listener);
+    return () => this.isolationListeners.delete(listener);
+  }
+
+  _emitIsolation() {
+    for (const listener of this.isolationListeners) listener(this.isolatedId);
+  }
+
+  setStructureHidden(id, hidden) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    const key = meshes[0].userData.structureId;
+    if (this.manualHidden.has(key) === Boolean(hidden)) return false;
+    if (hidden) {
+      if (this.isolatedId === key) this.isolatedId = null;
+      this.manualHidden.add(key);
+    } else {
+      this.manualHidden.delete(key);
+    }
+    this.hiddenVersion += 1;
+    this._applyVisibility(1 / 60, true);
+    this._emitVisibility();
+    return true;
+  }
+
+  showAllHiddenStructures() {
+    if (!this.manualHidden.size) return false;
+    this.manualHidden.clear();
+    this.hiddenVersion += 1;
+    this._applyVisibility(1 / 60, true);
+    this._emitVisibility();
+    return true;
+  }
+
+  getAnatomyVisibility() { return { hidden: [...this.manualHidden] }; }
+
+  onAnatomyVisibility(listener) {
+    this.visibilityListeners.add(listener);
+    return () => this.visibilityListeners.delete(listener);
+  }
+
+  _emitVisibility() {
+    const state = this.getAnatomyVisibility();
+    for (const listener of this.visibilityListeners) listener({ hidden: [...state.hidden] });
+  }
+
+  isStructureVisible(id) {
+    return this._meshesFor(id).some((mesh) => this._targetOpacityFor(mesh) > DRAWN_OPACITY);
+  }
+
+  /**
+   * Bring a structure into view.
+   *
+   * Everything here is on the surface of the model or just inside it, so the
+   * recipe is short: un-hide it if it was hidden, drop an isolation that is
+   * hiding it, and turn to the side it is on. A part that is inside a chamber is
+   * reported as needing that chamber out of the way rather than being revealed
+   * by a cut the file cannot support.
+   */
+  revealStructure(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return { ok: false, reason: 'unknown-structure' };
+    const key = meshes[0].userData.structureId;
+    const before = this._displaySnapshot();
+    const changed = [];
+    if (this.manualHidden.delete(key)) {
+      this.hiddenVersion += 1;
+      changed.push('hidden');
+    }
+    if (this.isolatedId != null && this.isolatedId !== key) {
+      this.isolatedId = null;
+      changed.push('isolation');
+    }
+    const centre = this.getStructureBounds(key)?.centre;
+    if (centre) {
+      // Which face of the heart it is nearest, in this model's own axes.
+      const nearest = Math.abs(centre.z) >= Math.abs(centre.x)
+        ? (centre.z >= 0 ? 'anterior' : 'posterior')
+        : (centre.x >= 0 ? 'left-lateral' : 'right-lateral');
+      if (nearest !== this.activeView && this.setAnatomyView(nearest)) changed.push('view');
+    }
+    this._applyVisibility(1 / 60, true);
+
+    // Turning is not always enough. A papillary muscle is inside a ventricle,
+    // and no viewpoint sees through a surface — so what is in the way is taken
+    // out of the way, one blocker at a time, measured by the ray rather than
+    // assumed from a table of what is usually inside what.
+    //
+    // This is the one move the file actually supports. It is not a cut: the
+    // chambers are closed surfaces around their own spaces, so hiding one shows
+    // what was inside it and invents nothing. `restoreDisplay` puts every
+    // blocker back, which is why the snapshot above is taken first.
+    const hid = this._clearTheWayTo(key, this.activeView);
+    if (hid.length) changed.push('hidden');
+
+    if (changed.length) {
+      this.displayBeforeReveal = before;
+      if (changed.includes('hidden')) this._emitVisibility();
+      this._emitIsolation();
+    }
+    // Asked of the viewpoint this reveal is *going to*, not of wherever the
+    // camera happens to be standing: the caller applies the view after this
+    // returns, so an answer about the old camera would describe a frame nobody
+    // is about to see.
+    const seen = this._seenFromView(key, this.activeView);
+    return { ok: true, changed, view: this.activeView, layer: null, occluded: !seen, hid };
+  }
+
+  /**
+   * Whether a structure would actually be seen from one of the named
+   * viewpoints — measured by a ray, not assumed from the settings.
+   *
+   * `isStructureVisible` answers a different question: whether the display
+   * settings say this part is drawn. Both are needed, and they disagree exactly
+   * where it matters here — a papillary muscle is drawn, and the ventricle
+   * around it is drawn in front of it.
+   */
+  _seenFromView(id, viewId) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    if (!meshes.some((mesh) => this._targetOpacityFor(mesh) > DRAWN_OPACITY)) return false;
+    const spec = VIEW_SPECS.find((candidate) => candidate.id === viewId);
+    const point = this._anchorFor(`structure:${id}`, id, meshes)?.sight;
+    // Without a viewpoint or an anchor there is nothing measured to report, and
+    // guessing "hidden" would offer a cut the file cannot support.
+    if (!spec || !point) return true;
+    const direction = point.clone().sub(spec.position);
+    const distance = direction.length();
+    if (!distance) return true;
+    this._annotationRay.set(spec.position, direction.divideScalar(distance));
+    const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+    return Boolean(first) && meshes.includes(first.object);
+  }
+
+  /**
+   * Hide whatever stands between a viewpoint and a structure, and say what was
+   * hidden.
+   *
+   * Bounded: at most one blocker per surrounding structure, and the structure
+   * being revealed is never hidden. An empty list means nothing was in the way.
+   */
+  _clearTheWayTo(id, viewId, limit = 6) {
+    const hid = [];
+    for (let step = 0; step < limit; step += 1) {
+      if (this._seenFromView(id, viewId)) break;
+      const blocker = this._firstBlocker(id, viewId);
+      if (!blocker || blocker === id) break;
+      this.manualHidden.add(blocker);
+      this.hiddenVersion += 1;
+      hid.push(blocker);
+      this._applyVisibility(1 / 60, true);
+    }
+    return hid;
+  }
+
+  /** The structure the ray meets first on its way to `id`, or null. */
+  _firstBlocker(id, viewId) {
+    const meshes = this._meshesFor(id);
+    const spec = VIEW_SPECS.find((candidate) => candidate.id === viewId);
+    const point = this._anchorFor(`structure:${id}`, id, meshes)?.sight;
+    if (!spec || !point) return null;
+    const direction = point.clone().sub(spec.position);
+    const distance = direction.length();
+    if (!distance) return null;
+    this._annotationRay.set(spec.position, direction.divideScalar(distance));
+    const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+    if (!first || meshes.includes(first.object)) return null;
+    return first.object.userData.structureId;
+  }
+
+  /**
+   * Drawn, and still not visible — because something else is in front of it.
+   *
+   * The panel needs this to decide whether to offer "show it": asking only
+   * whether the settings draw a structure would answer "you can already see it"
+   * about a muscle inside a ventricle. Optional in the contract, because a scene
+   * whose structures are all on the surface has nothing to answer.
+   */
+  isStructureObscured(id) {
+    if (!this.isStructureVisible(id)) return false;
+    return !this._seenFromView(id, this.activeView);
+  }
+
+  canRestoreDisplay() { return this.displayBeforeReveal != null; }
+
+  restoreDisplay() {
+    const before = this.displayBeforeReveal;
+    if (!before) return { ok: false };
+    this.displayBeforeReveal = null;
+    this.isolatedId = before.isolatedId;
+    this.manualHidden = new Set(before.hidden);
+    this.hiddenVersion += 1;
+    this.setAnatomyView(before.view);
+    this._applyVisibility(1 / 60, true);
+    this._emitVisibility();
+    this._emitIsolation();
+    return { ok: true, layer: null };
+  }
+
+  _displaySnapshot() {
+    return { view: this.activeView, isolatedId: this.isolatedId, hidden: [...this.manualHidden] };
+  }
+
+  /**
+   * The same order the brain scene uses, for the same reasons: isolation is a
+   * temporary override that writes nothing down, a hand-hidden structure stays
+   * hidden, and everything else is drawn.
+   */
+  _targetOpacityFor(mesh) {
+    const id = mesh.userData.structureId;
+    if (this.isolatedId != null) return id === this.isolatedId ? 1 : 0;
+    if (this.manualHidden.has(id)) return 0;
+    return 1;
+  }
+
+  _applyVisibility(dt, snap) {
+    for (const mesh of this.selectables) {
+      const target = this._targetOpacityFor(mesh);
+      const opacity = snap ? target : damp(mesh.userData.currentOpacity, target, 10, dt);
+      mesh.userData.currentOpacity = opacity;
+      mesh.material.opacity = opacity;
+      mesh.material.depthWrite = opacity > 0.94;
+      mesh.visible = opacity > 0.012;
+    }
+  }
+
+  setProgress() { /* No progression: this is a still model. */ }
+
+  update(dt) {
+    if (!this.selectables.length) return;
+    this._applyVisibility(dt, false);
+  }
+
+  // --- viewpoints and colour ------------------------------------------------
+
+  getAnatomyViews() {
+    return VIEW_SPECS.map(({ id, label, labelJa }) => ({ id, label, labelJa }));
+  }
+
+  getInspectionViews() { return this.getAnatomyViews(); }
+
+  getAnatomyView(id) {
+    const found = VIEW_SPECS.find((candidate) => candidate.id === id);
+    return found ? { position: found.position.clone(), target: found.target.clone() } : null;
+  }
+
+  getInspectionView(id) { return this.getAnatomyView(id); }
+
+  setAnatomyView(id) {
+    if (!VIEW_SPECS.some((candidate) => candidate.id === id)) return false;
+    this.activeView = id;
+    return true;
+  }
+
+  setInspectionView(id) { return this.setAnatomyView(id); }
+
+  getAnatomyColorModes() { return HEART_COLOR_MODES.map((mode) => ({ ...mode })); }
+  getInspectionModes() { return this.getAnatomyColorModes(); }
+  getAnatomyColorMode() { return this.colorMode; }
+  getInspectionMode() { return this.getAnatomyColorMode(); }
+  getAnatomyLegendPalette() { return { ...HEART_PALETTE }; }
+  getInspectionLegendPalette() { return this.getAnatomyLegendPalette(); }
+
+  setAnatomyColorMode(id) {
+    if (!HEART_COLOR_MODES.some((mode) => mode.id === id) || id === this.colorMode) return false;
+    this.colorMode = id;
+    for (const mesh of this.selectables) {
+      const color = new THREE.Color(heartColor(mesh.userData.structureId, id));
+      mesh.userData.baseColor.copy(color);
+      mesh.material.color.copy(color);
+      this._refreshHighlight(mesh);
+    }
+    if (this.selectedMeshes.length) {
+      this.selection = this._structureInfo(this.selectedMeshes[0]);
+      for (const listener of this.listeners) listener(this.selection);
+    }
+    if (this.hoveredMeshes.length) {
+      const hovered = this._structureInfo(this.hoveredMeshes[0]);
+      for (const listener of this.hoverListeners) listener(hovered);
+    }
+    return true;
+  }
+
+  setInspectionMode(id) { return this.setAnatomyColorMode(id); }
+
+  // --- bounds and labels ----------------------------------------------------
+
+  getSubjectBounds() { return boundsOf(this._drawnMeshes()); }
+
+  getStructureBounds(id) { return boundsOf(this._meshesFor(id)); }
+
+  /**
+   * A label for a part, anchored on its outside and hidden when it cannot be
+   * seen — the same rule the brain uses, for the same reason: a name drawn over
+   * whatever is in front of it is a name attached to the wrong thing.
+   */
+  getStructureAnnotation(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return null;
+    const key = `structure:${id}`;
+    const anchor = this._anchorFor(key, id, meshes);
+    if (!anchor) return null;
+    const info = heartStructureInfo(id);
+    return {
+      id: key,
+      structureId: id,
+      text: info.name,
+      sub: info.nameJa,
+      position: anchor.point,
+      isVisible: (camera) => this._pointVisible(key, anchor.sight, meshes, camera),
+    };
+  }
+
+  /**
+   * Where a structure's label sits, and where a sight test aims.
+   *
+   * They are deliberately two points. The label sits on the outermost vertex,
+   * which is what puts a name on the outside of the thing it names. A ray aimed
+   * at that exact vertex is a ray aimed at the shared corner of two triangles,
+   * and it misses as often as it hits — so the sight test aims a little way
+   * inside the same surface, where the answer is about geometry rather than
+   * about floating point.
+   */
+  _anchorFor(key, id, meshes) {
+    const cached = this.structureAnchors.get(key);
+    if (cached) return cached;
+    const point = outwardSurfacePoint(meshes, this.modelRoot);
+    if (!point) return null;
+    const centre = boundsOf(meshes)?.centre ?? point;
+    const anchor = { point, sight: point.clone().lerp(centre, 0.04) };
+    this.structureAnchors.set(key, anchor);
+    return anchor;
+  }
+
+  _pointVisible(cacheKey, point, meshes, camera) {
+    if (!point || !camera || !meshes?.length) return false;
+    camera.updateMatrixWorld();
+    const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
+      `${this.isolatedId}|${this.hiddenVersion}`;
+    const cached = this._annotationSight.get(cacheKey);
+    if (cached?.key === key) return cached.visible;
+    this._annotationDirection.copy(point).sub(camera.position);
+    const distance = this._annotationDirection.length();
+    let visible = false;
+    if (distance > 0) {
+      this._annotationRay.set(camera.position, this._annotationDirection.divideScalar(distance));
+      const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+      visible = Boolean(first) && meshes.includes(first.object);
+    }
+    this._annotationSight.set(cacheKey, { key, visible });
+    return visible;
+  }
+
+  getAnnotations() { return []; }
+
+  /** This model's own anatomical axes — declared, not inferred. */
+  getAnatomyAxes() {
+    return {
+      left: new THREE.Vector3(...HEART_AXES.left),
+      superior: new THREE.Vector3(...HEART_AXES.superior),
+      anterior: new THREE.Vector3(...HEART_AXES.anterior),
+    };
+  }
+
+  // --- status ---------------------------------------------------------------
+
+  getAnatomyStatus() { return { ...this.status }; }
+
+  onAnatomyStatus(listener) {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  _setStatus(status) {
+    this.status = status;
+    for (const listener of this.statusListeners) listener({ ...status });
+  }
+
+  dispose() {
+    this.disposed = true;
+    if (typeof window !== 'undefined') window.removeEventListener('pagehide', this._pageHide);
+    const canvas = this.viewer?.renderer?.domElement;
+    canvas?.removeEventListener('pointerdown', this._pointerDown);
+    canvas?.removeEventListener('pointermove', this._pointerMove);
+    canvas?.removeEventListener('pointerup', this._pointerUp);
+    canvas?.removeEventListener('pointerleave', this._pointerLeave);
+    this.listeners.clear();
+    this.hoverListeners.clear();
+    this.statusListeners.clear();
+    this.isolationListeners.clear();
+    this.visibilityListeners.clear();
+    this._resetInteractionState();
+    disposeObject(this.root);
+  }
+}
+
+function boundsOf(meshes) {
+  if (!meshes?.length) return null;
+  const box = new THREE.Box3();
+  for (const mesh of meshes) box.expandByObject(mesh);
+  if (box.isEmpty()) return null;
+  const corners = [];
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+    }
+  }
+  return { centre: box.getCenter(new THREE.Vector3()), corners };
+}
+
+/** The outermost vertex of a structure, so a label sits on it rather than in it. */
+function outwardSurfacePoint(meshes, root) {
+  const box = new THREE.Box3();
+  for (const mesh of meshes) box.expandByObject(mesh);
+  if (box.isEmpty()) return null;
+  const centre = box.getCenter(new THREE.Vector3());
+  const modelCentre = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
+  const outward = centre.clone().sub(modelCentre);
+  if (outward.lengthSq() < 1e-8) return centre;
+  outward.normalize();
+  const vertex = new THREE.Vector3();
+  let best = null;
+  let bestReach = -Infinity;
+  for (const mesh of meshes) {
+    const position = mesh.geometry?.getAttribute?.('position');
+    if (!position) continue;
+    mesh.updateWorldMatrix(true, false);
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+      const reach = vertex.dot(outward);
+      if (reach > bestReach) {
+        bestReach = reach;
+        best = vertex.clone();
+      }
+    }
+  }
+  return best ?? centre;
+}
+
+async function loadHeart() {
+  if (!HEART_URL) throw new Error('no candidate heart asset is registered');
+  const loader = new GLTFLoader();
+  return loader.loadAsync(HEART_URL);
+}
+
+export default HeartAnatomyScene;
