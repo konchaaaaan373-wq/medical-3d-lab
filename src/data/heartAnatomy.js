@@ -350,24 +350,24 @@ const OPEN_SURFACE = Object.freeze({
  */
 const DESCRIPTION = Object.freeze({
   greatVessel: Object.freeze({
-    en: 'A great vessel at the heart, from the same release\'s whole-body vasculature file, in that file\'s own position. It is a surface model of the vessel as the source recorded it; whether it represents the lumen or the vessel wall has not been checked.',
-    ja: '心臓につながる大血管です。同じリリースの全身血管ファイルから、その位置のまま置いています。出典に収録された血管の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。',
+    en: 'A great vessel at the heart, from the same release\'s whole-body vasculature file, in that file\'s own position. Measured here: a single surface with no modelled wall thickness. Whether that surface traces the lumen or the outside of the vessel is not something the geometry settles, and is not claimed.',
+    ja: '心臓につながる大血管です。同じリリースの全身血管ファイルから、その位置のまま置いています。実測では、壁の厚みを持たない 1 枚の面です。その面が内腔をなぞっているのか血管の外表面なのかは、形状からは決まらないため、主張しません。',
   }),
   coronary: Object.freeze({
-    en: 'A coronary artery on the surface of the heart, from the same release\'s vasculature file. A surface model as the source recorded it; whether it represents the lumen or the vessel wall has not been checked. No stenosis, no flow and no territory is modelled.',
-    ja: '心表面の冠動脈です。同じリリースの血管ファイル由来の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。狭窄・血流・支配領域はモデル化していません。',
+    en: 'A coronary artery on the surface of the heart, from the same release\'s vasculature file. Measured here: a single surface with no modelled wall thickness; whether it traces the lumen or the outside is not settled by the geometry and is not claimed. No stenosis, no flow and no territory is modelled.',
+    ja: '心表面の冠動脈です。実測では、壁の厚みを持たない 1 枚の面です。内腔をなぞっているのか外表面なのかは形状からは決まらないため、主張しません。狭窄・血流・支配領域はモデル化していません。',
   }),
   cardiacVein: Object.freeze({
-    en: 'A vein draining the heart wall, from the same release\'s vasculature file. A surface model as the source recorded it; lumen or wall has not been checked.',
-    ja: '心臓の壁から血液を集める静脈です。同じリリースの血管ファイル由来の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。',
+    en: 'A vein draining the heart wall, from the same release\'s vasculature file. Measured here: a single surface with no modelled wall thickness; lumen or outside is not settled by the geometry.',
+    ja: '心臓の壁から血液を集める静脈です。実測では、壁の厚みを持たない 1 枚の面です。内腔か外表面かは形状からは決まりません。',
   }),
   archBranch: Object.freeze({
-    en: 'An arterial branch of the aortic arch, present in the source and reaching well beyond the chest. Hidden by default so the frame stays a heart. Lumen or wall has not been checked.',
-    ja: '大動脈弓から分かれる動脈です。出典に収録されており、胸郭の外まで伸びるため、既定では非表示にしています。内腔と血管壁のどちらを表すかは未確認です。',
+    en: 'An arterial branch of the aortic arch, present in the source and reaching well beyond the chest. Hidden by default so the frame stays a heart. A single surface with no modelled wall thickness; lumen or outside is not settled by the geometry.',
+    ja: '大動脈弓から分かれる動脈です。出典に収録されており、胸郭の外まで伸びるため、既定では非表示にしています。壁の厚みを持たない 1 枚の面で、内腔か外表面かは形状からは決まりません。',
   }),
   cavalTributary: Object.freeze({
-    en: 'A brachiocephalic vein. The left and right brachiocephalic veins unite to form the superior vena cava — they are not branches of the aortic arch, which they run beside. Reaches beyond the chest, so it is hidden by default. Lumen or wall has not been checked.',
-    ja: '腕頭静脈です。左右の腕頭静脈が合流して上大静脈になります——大動脈弓の分枝ではなく、その傍らを走る別系統です。胸郭の外まで伸びるため既定では非表示にしています。内腔と血管壁のどちらを表すかは未確認です。',
+    en: 'A brachiocephalic vein. The left and right brachiocephalic veins unite to form the superior vena cava — they are not branches of the aortic arch, which they run beside. Reaches beyond the chest, so it is hidden by default. A single surface with no modelled wall thickness; lumen or outside is not settled by the geometry.',
+    ja: '腕頭静脈です。左右の腕頭静脈が合流して上大静脈になります——大動脈弓の分枝ではなく、その傍らを走る別系統です。胸郭の外まで伸びるため既定では非表示にしています。壁の厚みを持たない 1 枚の面で、内腔か外表面かは形状からは決まりません。',
   }),
   chamber: Object.freeze({
     en: 'A surface enclosing the space of this chamber. The source file contains no separate myocardial free wall, so this is the chamber, not the muscle around it. Whether this particular surface is closed is recorded on the structure itself.',

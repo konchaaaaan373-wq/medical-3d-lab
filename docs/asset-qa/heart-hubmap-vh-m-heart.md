@@ -92,6 +92,43 @@ Checked by reading every node, not inferred from the name of the file:
   each is a wall shell or a cavity surface is a question about the geometry that
   reading the node list cannot answer and that has not been answered here.
 
+## Format validation — **failed**, in one mesh
+
+Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), run 2026-09-09 against
+sha256 `b1237e7e…`. Raw output:
+[`measurements/gltf-validator.txt`](measurements/gltf-validator.txt);
+`npm run assets:validate` re-runs it.
+
+**408 errors, 0 warnings, 3 hints.** Every error is
+`ACCESSOR_VECTOR3_NON_UNIT` — a degenerate vertex normal — and **all 408 are in
+`VH_M_right_cardiac_atrium`**, 408 of that mesh's 24,068 vertices (1.7%). No
+other mesh in the file is flagged. The hints are `BUFFER_VIEW_TARGET_MISSING`.
+
+This is a **fail**, not a pending. It is the publisher's data and is not
+corrected here; it is a reason the asset release gate cannot record
+`formatValidation: passed`.
+
+## Re-measured surfaces, and a correction
+
+Measured 2026-09-09 with `npm run assets:measure`;
+[`measurements/surfaces-heart.tsv`](measurements/surfaces-heart.tsv).
+
+The enclosed volumes recorded earlier are reproduced exactly: left ventricle
+121.60 mL, right ventricle 73.99, left atrium 31.35, right atrium 27.71,
+interventricular septum 28.09, aortic valve 16.29.
+
+**The boundary-edge count for the right atrium was wrong.** It was recorded as
+3; measured now with vertices welded at 1 µm it is **286**, and at 10 µm it is
+**39**. The count depends on the weld tolerance; that the mesh is open does not.
+The other four open meshes are stable at every tolerance and match what was
+recorded: aortic valve 72, anterior papillary 42, medial papillary 26, posterior
+papillary 21.
+
+The ray-crossing test that was applied to the vessels was applied here too. The
+chambers give a mode of 2 — one surface, no wall thickness — which agrees with
+the enclosed volumes: a left ventricle enclosing 121.6 mL is a cavity cast, and
+that remains the reason no interior view is offered.
+
 ## What this inspection did not do
 
 - **No render.** The file has not been drawn; nothing is known here about seams,

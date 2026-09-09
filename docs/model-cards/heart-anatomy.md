@@ -119,6 +119,20 @@ What was measured in this repository, and is therefore a fact about the files:
   ours. **That is evidence the frames agree; it is not a claim of
   sub-millimetre registration, and no distance between a vessel's cut end and a
   chamber is measured or asserted anywhere.**
+* **The two files touch where they should.** Nearest-point distance between
+  each vessel and the heart part it meets, with neither file moved: ascending
+  aorta to aortic valve **0.00 mm**, pulmonary trunk to pulmonary valve 0.08,
+  both venae cavae to the right atrium 0.05–0.09, all four pulmonary veins to
+  the left atrium 0.05–0.07, both coronary ostia to the aortic valve 0.11–0.14,
+  coronary sinus to the right atrium 0.16. Twelve of thirteen under 0.2 mm.
+  **This is a diagnostic**: it says the two files agree with each other, not
+  that either agrees with a heart, and **no millimetre-level anatomical
+  accuracy is claimed from it**.
+* **Both files fail glTF validation, and by a known amount.** 408 errors in the
+  heart file — all degenerate vertex normals, all in the right atrium's mesh,
+  1.7% of its vertices — and 33 in the vasculature file, in the superior vena
+  cava and the left coronary artery. The publisher's data; not corrected here;
+  recorded as a failed gate rather than an unrun one.
 * **One display transform, applied once to the pair.** The offset and uniform
   scale live on the single model root, so they cannot separate the two files.
   The scale is taken from the heart, because the vessel subtree is half a metre
@@ -137,11 +151,28 @@ What was measured in this repository, and is therefore a fact about the files:
 
 * **Fourteen meshes, fourteen distinct ontology ids.** Every part the adapter
   names is present under the node name it is keyed by.
-* **Nine of fourteen surfaces are closed**; five are open (aortic valve 72
-  boundary edges, anterior papillary 42, medial papillary 26, posterior
-  papillary 21, right atrium 3). The adapter records which, the information card
-  says so, and the material draws both sides so an open surface does not vanish
-  from one side.
+* **Nine of fourteen surfaces are closed**; five are open. Boundary edges,
+  counted with vertices welded at 1 µm and again at 10 µm: aortic valve 72/72,
+  anterior papillary 42/42, medial papillary 26/26, posterior papillary 21/21,
+  right atrium 286/39. **The right atrium's count is tolerance-dependent and an
+  earlier record of "3" was not reproducible** — it is open at every tolerance
+  measured, and how open depends on how near-coincident vertices are welded.
+  The adapter records which parts are open, the information card says so, and
+  the material draws both sides so an open surface does not vanish from one
+  side.
+* **The vessels are single surfaces with no modelled wall thickness.** Measured
+  by counting how many times a ray crosses each mesh on its way through the
+  middle of it — 128 directions per structure, over all 37 vessels: the mode is
+  two crossings (in and out of one surface) or zero/one (rays leaving through an
+  open end), and **no vessel has a mode of four**, which is what a wall with an
+  inner and an outer surface would give. Whether that single surface traces the
+  lumen or the outside of the vessel is **not settled by the geometry**, and is
+  not claimed anywhere.
+* **The source caps some cut vessels.** The pulmonary arteries, all four
+  pulmonary veins, both brachiocephalic veins and the small cardiac vein have no
+  boundary edges at all, so their cut ends are closed by the source. That is the
+  file's own choice, recorded rather than made here, and nothing in this scene
+  caps a vessel.
 * **The axes.** +x is the patient's left (the left atrium is left of the right
   atrium), +y superior (the apex is below the valve plane), +z anterior (the
   right ventricle is in front of the left atrium). Three relationships that

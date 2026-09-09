@@ -309,7 +309,13 @@ export async function createApp({ stage, ui }) {
   // panel has no way to know: it has no camera and no canvas. Telling it is the
   // owner's job, and all it does with it is drop a report about a viewpoint the
   // reader has left.
-  viewer.controls?.addEventListener?.('change', () => anatomyPanel?.noteDisplayChanged?.());
+  //
+  // `start`, not `change`. `change` fires for every camera move including the
+  // ones this app makes — applying a viewpoint tweens the camera, which fired
+  // `change`, which cleared the very report the viewpoint had just been applied
+  // to produce. `start` fires when the **reader** begins a drag, a pinch or a
+  // wheel, which is the event this is actually about.
+  viewer.controls?.addEventListener?.('start', () => anatomyPanel?.noteDisplayChanged?.());
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false, resumeAutoRotate: true };

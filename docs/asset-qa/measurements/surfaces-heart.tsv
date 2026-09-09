@@ -1,0 +1,16 @@
+# dev-assets/heart/VH_M_Heart.glb
+name	triangles	openEdges@1µm/10µm/100µm	enclosedMl	crossings(mode)	histogram
+VH_M_mitral_valve	6468	0/0/4	3.14	0	0x67 2x61
+VH_M_tricuspid_valve	12490	0/0/37	4.24	0	0x84 2x44
+VH_M_aortic_valve	2680	72/72/72	16.29	2	2x99 0x25 1x4
+VH_M_pulmonary_valve	13288	0/0/127	1.24	0	0x59 4x42 2x27
+VH_M_papillary_muscle_of_heart_anterior	638	42/42/42	3.36	1	1x120 0x8
+VH_M_papillary_muscle_of_heart_anterolateral	518	0/0/0	1.13	1	1x128
+VH_M_papillary_muscle_of_heart_medial	152	26/26/26	3.19	1	1x88 0x40
+VH_M_papillary_muscle_of_heart_posterior	131	21/21/21	3.65	1	1x92 0x36
+VH_M_papillary_muscle_of_heart_posteromedial	576	0/0/0	1.19	1	1x128
+VH_M_left_cardiac_atrium	33946	0/0/39	31.35	2	2x106 0x17 4x5
+VH_M_right_cardiac_atrium	48186	286/39/79	27.71	2	2x95 0x24 4x9
+VH_M_heart_right_ventricle	27622	0/0/82	73.99	2	2x100 4x15 0x11 6x2
+VH_M_interventricular_septum	8074	0/0/4	28.09	1	1x120 3x8
+VH_M_heart_left_ventricle	9350	0/0/0	121.60	2	2x121 0x7

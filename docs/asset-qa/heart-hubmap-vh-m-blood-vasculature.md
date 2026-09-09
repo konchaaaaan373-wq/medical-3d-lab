@@ -130,20 +130,121 @@ heart file.
 - **Two meshes share FMA:3860** (the diagonal branches). That is a vocabulary
   term applied twice, not a duplicate: they stay two structures.
 
+## Format validation — **failed**, and by how much
+
+Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), run 2026-09-09 against
+sha256 `a31ebed6…`. Raw output:
+[`measurements/gltf-validator.txt`](measurements/gltf-validator.txt); re-runnable
+with `npm run assets:validate`.
+
+| | |
+| --- | --- |
+| Errors | **33** — all `ACCESSOR_VECTOR3_NON_UNIT` |
+| Warnings | 0 |
+| Hints | 3 — `BUFFER_VIEW_TARGET_MISSING` |
+| Triangles / vertices | 359,598 / 182,788 across 104 draw calls |
+| Extensions | none (no Draco) |
+
+Every error is a **degenerate vertex normal** — a normal of zero or near-zero
+length — and they are confined to two meshes: 21 of the superior vena cava's
+5,636 vertices and 12 of the left coronary artery's 6,306. Nothing else in the
+file is flagged.
+
+**This is a fail, not a pending.** It is the publisher's data and is not
+corrected here. What it means in practice is that a handful of vertices have no
+usable shading normal, which a renderer resolves however it resolves it; it is
+not a reason the file cannot be looked at, and it is a reason the asset release
+gate cannot record `formatValidation: passed`.
+
+## Surface measurements — what these meshes are
+
+Measured 2026-09-09 with `npm run assets:measure`; raw table in
+[`measurements/surfaces-vasculature.tsv`](measurements/surfaces-vasculature.tsv).
+Per mesh: triangle count, boundary edges at three weld tolerances, the volume
+the surface encloses by the divergence theorem, and the number of times a ray
+crosses the surface on its way out of the mesh's own centroid, over 128
+directions.
+
+### Lumen or wall: **no vessel has a modelled wall thickness**
+
+The ray-crossing count is the discriminator. A surface with a thickness — an
+outer wall and an inner wall — gives **four** crossings for a ray through the
+middle of it. A single surface gives **two**, or zero and one where the ray
+leaves through an open end.
+
+Across all 37 vessels the modal crossing count is 2 (17 meshes), 0 (15) or 1
+(5). **Not one has a mode of 4.** Two individual rays out of 4,736 recorded four
+crossings, at tangents.
+
+So: each vessel is **one surface, with no wall thickness modelled**. That
+settles half the question the earlier record left open. It does **not** settle
+whether that surface traces the lumen or the outside of the vessel — the
+geometry cannot tell those apart, a calibre comparison would be inside specimen
+variation, and the publisher's segmentation intent is not recorded in the file.
+**That half stays unanswered, and the scene says so where a reader reads it.**
+
+### The source caps some cut vessels
+
+Eight meshes have no boundary edges at any tolerance: both pulmonary arteries,
+all four pulmonary veins, both brachiocephalic veins and the small cardiac vein.
+A tube with no boundary is a tube whose cut ends have been closed. **The source
+did that**; this scene does not cap anything, and a capped end is recorded here
+rather than presented as the vessel's natural shape.
+
+### One mesh is notably ragged
+
+`VH_M_left_coronary_artery` has **2,609 boundary edges** over 12,240 triangles —
+two orders of magnitude more than any other vessel — and is also one of the two
+meshes carrying degenerate normals. Recorded as observed. It is the publisher's
+data and is not repaired here.
+
+### Where the two files meet — measured, and a diagnostic only
+
+Nearest-point distance between each vessel and the heart part it should meet, in
+the source's own frame, with neither file moved.
+[`measurements/junctions.tsv`](measurements/junctions.tsv);
+`npm run assets:measure junctions`.
+
+| Vessel | Heart part | Gap |
+| --- | --- | --- |
+| Ascending aorta | Aortic valve | **0.00 mm** |
+| Pulmonary trunk | Pulmonary valve | 0.08 mm |
+| Pulmonary trunk | Right ventricle | 0.17 mm |
+| Superior vena cava | Right atrium | 0.09 mm |
+| Inferior vena cava (proximal) | Right atrium | 0.05 mm |
+| Left superior pulmonary vein | Left atrium | 0.07 mm |
+| Left inferior pulmonary vein | Left atrium | 0.05 mm |
+| Right superior pulmonary vein | Left atrium | 0.06 mm |
+| Right inferior pulmonary vein | Left atrium | 0.06 mm |
+| Left coronary artery | Aortic valve | 0.11 mm |
+| Right coronary artery | Aortic valve | 0.14 mm |
+| Coronary sinus | Right atrium | 0.16 mm |
+| Ascending aorta | Left ventricle | 12.57 mm |
+
+Twelve of the thirteen are under 0.2 mm and one is exactly zero — two
+independently segmented files, neither moved by us, touching where they should
+touch. **That is a strong corroboration that the two files share a frame**, on
+top of the qualitative relationships recorded above.
+
+The 12.57 mm is not a defect: the ascending aorta meets the **aortic valve**,
+not the left ventricle's cavity surface, and the pair is in the table to show
+what a genuine separation looks like beside the ones that touch.
+
+**What this does not establish.** It is a distance between two surfaces, not a
+judgement that either surface is in the right place. It says the files agree
+with each other; it says nothing about whether they agree with a heart. **No
+millimetre-level anatomical accuracy is claimed from these numbers**, here or
+anywhere in the product.
+
 ## What this inspection did not do
 
-- **No glTF Validator run.** Format validation is a gate this candidate has not
-  been through.
 - **No anatomical judgement.** The labels are the publisher's. Whether these
   vessels are a good representation of a normal heart's vasculature is an
   anatomist's call and has not been made.
-- **No check of lumen versus wall.** These are surfaces; whether each is a lumen
-  cast or a wall shell has not been measured. The scene describes them as lumen
-  surfaces because that is what the heart file's chambers turned out to be, and
-  says so as a description rather than a measurement.
-- **No junction measurement.** The vessels meet the heart where the two files
-  put them; no distance between a vessel's cut end and a chamber's surface has
-  been measured, and no millimetre accuracy is claimed anywhere.
+- **Lumen versus outside is still open** (above). What was ruled out is a
+  modelled wall thickness.
+- **The junctions are measured now** (below) — as a diagnostic. No millimetre
+  accuracy is claimed anywhere on the strength of them.
 - **No decision about the Visible Human terms**, and no legal reading.
 
 ## What this means for the beta

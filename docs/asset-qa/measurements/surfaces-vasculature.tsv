@@ -1,0 +1,39 @@
+# dev-assets/heart/VH_M_Blood_Vasculature.glb (VH_M_blood_vasculature_of_heart)
+name	triangles	openEdges@1µm/10µm/100µm	enclosedMl	crossings(mode)	histogram
+VH_M_aortic_arch	3076	130/130/130	60.82	1	1x117 0x5 2x4 3x2
+VH_M_ascending_aorta	1600	80/80/80	0.73	1	1x105 0x23
+VH_M_brachiocephalic_artery_b	2964	40/40/40	3.58	2	2x124 0x3 1x1
+VH_M_brachiocephalic_artery_a	446	40/40/40	8.73	1	1x112 0x16
+VH_M_left_common_carotid_artery_a	630	42/42/42	5.26	1	1x122 0x6
+VH_M_left_common_carotid_artery_b	3067	21/21/21	2.91	0	0x102 2x26
+VH_M_left_subclavian_artery_a	589	47/47/47	10.17	1	1x118 0x10
+VH_M_left_subclavian_artery_b	2317	69/69/68	2.13	2	2x126 0x1 1x1
+VH_M_descending_aorta_a	4984	56/56/56	18.71	1	1x128
+VH_M_descending_aorta_b	7666	180/180/180	1.11	1	1x120 0x8
+VH_M_left_anterior_descending_artery	8940	42/42/72	0.18	0	0x126 2x2
+VH_M_right_marginal_artery	2120	20/20/40	0.06	0	0x99 2x29
+VH_M_right_posterior_descending_artery	5028	20/20/48	0.10	0	0x109 2x19
+VH_M_diagonal_branch_of_anterior_descending_branch_of_left_coronary_artery	2010	20/20/54	0.00	1	1x127 3x1
+VH_M_left_coronary_artery	12240	2609/1382/201	0.59	0	0x72 2x38 1x12 3x4
+VH_M_right_coronary_artery	11570	40/40/105	0.52	0	0x125 2x3
+VH_M_diagonal_branch_of_left_anterior_descending_artery	3307	45/45/82	0.51	0	0x126 2x2
+VH_M_left_marginal_branch	1948	18/18/44	0.10	0	0x111 2x17
+VH_M_pulmonary_artery_L	6132	0/0/2	1.66	2	2x116 0x12
+VH_M_pulmonary_artery_R	3178	0/0/0	0.87	2	2x106 0x22
+VH_M_pulmonary_trunk	3126	0/0/0	1.69	2	2x106 0x21 4x1
+VH_M_great_cardiac_vein	556	6/6/6	0.40	0	0x125 2x3
+VH_M_middle_cardiac_vein	642	10/10/14	0.82	0	0x98 2x30
+VH_M_oblique_vein_of_left_atrium	92	8/8/8	0.22	1	1x128
+VH_M_anterior_cardiac_vein	375	21/21/21	0.10	0	0x124 2x4
+VH_M_coronary_sinus	1334	42/42/42	3.76	0	0x111 2x16 3x1
+VH_M_posterior_vein_of_left_ventricle	608	10/10/10	0.32	0	0x114 2x13 1x1
+VH_M_small_cardiac_vein	1802	0/0/0	0.11	0	0x118 2x10
+VH_M_pulmonary_vein_R_inf	4078	0/0/2	0.29	2	2x64 0x64
+VH_M_pulmonary_vein_R_sup	1868	0/0/0	0.24	2	2x81 0x47
+VH_M_pulmonary_vein_L_inf	2026	0/0/0	0.41	2	2x86 0x42
+VH_M_pulmonary_vein_L_sup	1834	0/0/0	0.26	2	2x92 0x36
+VH_M_brachiocephalic_vein_L	15662	0/0/0	2.02	2	2x123 0x4 4x1
+VH_M_brachiocephalic_vein_R	7466	0/0/0	1.35	2	2x114 0x14
+VH_M_superior_vena_cava	11222	64/13/7	5.27	2	2x106 0x22
+VH_M_inferior_vena_cava_b	11122	136/136/136	12.56	2	2x123 1x4 0x1
+VH_M_inferior_vena_cava_a	5880	56/56/56	6.96	2	2x93 0x35

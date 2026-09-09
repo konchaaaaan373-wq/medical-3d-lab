@@ -109,8 +109,10 @@ test('heart: an ontology id is a cross-reference, never the key a structure is f
 });
 
 test('heart: an open surface says it is open, and a closed one says nothing', () => {
-  // The five open surfaces were counted in the file by boundary edges: aortic
-  // valve 72, anterior papillary 42, medial 26, posterior 21, right atrium 3.
+  // The five open surfaces were counted in the file by boundary edges, with
+  // vertices welded at 1 µm and again at 10 µm: aortic valve 72/72, anterior
+  // papillary 42/42, medial 26/26, posterior 21/21, right atrium 286/39. The
+  // right atrium's count depends on the weld; that it is open does not.
   const open = HEART_PARTS.filter((entry) => !entry.closed).map((entry) => entry.id);
   assert.deepEqual(open.sort(), [
     'VH_M_aortic_valve',
@@ -204,18 +206,20 @@ test('heart: a description never contradicts the surface state of the row it des
   assert.match(atrium.note, /open surface/);
 });
 
-test('heart: the vessels are not described as lumens, because that was never measured', () => {
-  // B4-R2. `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` records
-  // lumen-versus-wall as unchecked. The chambers were measured; carrying that
-  // answer across to the other file is extrapolation, not measurement.
+test('heart: the vessels say what was measured about them and no more', () => {
+  // B4-R2. They used to be described as lumen surfaces, which nobody had
+  // measured. What has since been measured — 128 ray directions through each of
+  // the 37 vessels, in `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` —
+  // is that each is a single surface with no modelled wall thickness. That is
+  // not the same as knowing which side of the vessel it traces, and the
+  // descriptions stop exactly where the measurement does.
   for (const entry of HEART_VESSELS) {
     const info = heartStructureInfo(entry.id);
-    assert.match(
-      info.description,
-      /whether it represents the lumen or the vessel wall has not been checked|lumen or wall has not been checked/i,
-      `${entry.id}: says what has not been checked`
-    );
-    assert.match(info.descriptionJa, /内腔と血管壁のどちらを表すかは未確認/, entry.id);
+    assert.match(info.description, /single surface with no modelled wall thickness/i, entry.id);
+    assert.match(info.description, /lumen or (the )?outside is not settled by the geometry|not something the geometry settles/i, entry.id);
+    assert.match(info.descriptionJa, /壁の厚みを持たない 1 枚の面/, entry.id);
+    assert.match(info.descriptionJa, /内腔|外表面/, entry.id);
+    // The two claims that were never measured.
     assert.doesNotMatch(info.description, /It is a lumen surface/);
     assert.doesNotMatch(info.descriptionJa, /壁の厚みではなく内腔の面です/);
   }
@@ -991,4 +995,23 @@ test('the label layer draws a scene\'s mark and nothing when there is none', () 
   const source = readFileSync(new URL('../src/components/LabelLayer.js', import.meta.url), 'utf8');
   assert.match(source, /annotation\.flag \|\| annotation\.flagJa/);
   assert.match(source, /class: 'label-flag'/);
+});
+
+test('the recipe report is cleared by the reader moving the view, not by the app applying one', () => {
+  // Applying a viewpoint tweens the camera, and OrbitControls fires `change`
+  // for that as well as for a drag — so listening on `change` cleared the very
+  // report that applying the recipe's own viewpoint had just produced. `start`
+  // fires when the reader begins a drag, a pinch or a wheel, which is the event
+  // this rule is actually about.
+  const app = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8');
+  assert.match(app, /addEventListener\?\.\('start', \(\) => anatomyPanel\?\.noteDisplayChanged\?\.\(\)\)/);
+  assert.doesNotMatch(app, /addEventListener\?\.\('change', \(\) => anatomyPanel\?\.noteDisplayChanged/);
+
+  // And a resize counts too: the bands the frame is fitted to have moved.
+  assert.match(app, /anatomyPanel\?\.noteDisplayChanged\?\.\(\);\n  \}\);/);
+
+  const panel = readFileSync(new URL('../src/components/AnatomyPanel.js', import.meta.url), 'utf8');
+  // Any repaint clears it, with one repaint's grace for the run that wrote it.
+  assert.match(panel, /if \(recipeList\) clearRecipeStatus\(\);/);
+  assert.match(panel, /recipeLatch = true;/);
 });

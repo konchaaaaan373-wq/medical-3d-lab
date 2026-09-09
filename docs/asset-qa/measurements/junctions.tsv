@@ -1,0 +1,16 @@
+# nearest-point gap between a vessel and the heart part it meets, in the source's own frame
+# diagnostic only: no accuracy is claimed from these numbers
+vessel	part	gapMm
+VH_M_ascending_aorta	VH_M_aortic_valve	0.00
+VH_M_ascending_aorta	VH_M_heart_left_ventricle	12.57
+VH_M_pulmonary_trunk	VH_M_pulmonary_valve	0.08
+VH_M_pulmonary_trunk	VH_M_heart_right_ventricle	0.17
+VH_M_superior_vena_cava	VH_M_right_cardiac_atrium	0.09
+VH_M_inferior_vena_cava_a	VH_M_right_cardiac_atrium	0.05
+VH_M_pulmonary_vein_L_sup	VH_M_left_cardiac_atrium	0.07
+VH_M_pulmonary_vein_L_inf	VH_M_left_cardiac_atrium	0.05
+VH_M_pulmonary_vein_R_sup	VH_M_left_cardiac_atrium	0.06
+VH_M_pulmonary_vein_R_inf	VH_M_left_cardiac_atrium	0.06
+VH_M_left_coronary_artery	VH_M_aortic_valve	0.11
+VH_M_right_coronary_artery	VH_M_aortic_valve	0.14
+VH_M_coronary_sinus	VH_M_right_cardiac_atrium	0.16

@@ -135,8 +135,13 @@ first draft under time pressure. **It is not on any surface.**
 1. An `assetManifest.js` record each, with the licence decision, component-level
    obligations and their `satisfiedBy` surfaces, hashes, coordinates, units,
    semantic parts, and the five QA gates.
-2. `formatValidation` — the Khronos glTF Validator at a pinned version, on both
-   files. Not run.
+2. `formatValidation` — **run, and failed.** The Khronos glTF Validator at
+   2.0.0-dev.3.10 reports 408 errors in the heart file and 33 in the
+   vasculature file, all of them degenerate vertex normals, confined to three
+   meshes in total. Recorded in each file's QA document. A failed gate is a
+   decision somebody has to take about the publisher's data — repair it, accept
+   it as a known defect, or use a different source — and none of those has been
+   taken.
 3. The attribution surface above, actually served beside the assets and linked
    from the model card and the Trust page.
 4. An anatomist's judgement of the geometry and the labels, and a clinical
