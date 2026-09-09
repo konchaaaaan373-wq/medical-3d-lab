@@ -480,6 +480,58 @@ export const HEART_ANATOMY_META = Object.freeze({
 });
 
 /**
+ * Fixed ways of looking, each one made only of things the scene can already do.
+ *
+ * A recipe hides whole structures and turns the model. **It never cuts, thins,
+ * sections or opens anything** — the file supports none of those, and a recipe
+ * that faked one would be the "shell's back face standing in for an interior"
+ * this scene refuses. What each one shows is structures the source actually
+ * contains, listed by name so a reader can check the claim against the model.
+ *
+ * One to begin with, because one that is honest is worth more than four that
+ * gesture. `restoreDisplay` puts back whatever a recipe changed.
+ */
+export const HEART_RECIPES = Object.freeze([
+  Object.freeze({
+    id: 'inside-the-chambers',
+    label: 'Inside the chambers',
+    labelJa: '心腔の中を見る',
+    summary:
+      'Hides the four chamber surfaces and looks from the front. What is left is what the source puts inside them: '
+      + 'the four valves, the five papillary muscles and the interventricular septum.',
+    summaryJa:
+      '四腔の面を非表示にして前から見ます。残るのは出典がその内側に収録しているもの——4 つの弁、'
+      + '5 つの乳頭筋、心室中隔です。',
+    hide: Object.freeze([
+      'VH_M_heart_left_ventricle',
+      'VH_M_heart_right_ventricle',
+      'VH_M_left_cardiac_atrium',
+      'VH_M_right_cardiac_atrium',
+    ]),
+    /** What the reader is being shown, named so the claim is checkable. */
+    shows: Object.freeze([
+      'VH_M_mitral_valve',
+      'VH_M_tricuspid_valve',
+      'VH_M_aortic_valve',
+      'VH_M_pulmonary_valve',
+      'VH_M_interventricular_septum',
+      'VH_M_papillary_muscle_of_heart_anterior',
+      'VH_M_papillary_muscle_of_heart_anterolateral',
+      'VH_M_papillary_muscle_of_heart_medial',
+      'VH_M_papillary_muscle_of_heart_posterior',
+      'VH_M_papillary_muscle_of_heart_posteromedial',
+    ]),
+    view: 'anterior',
+    note:
+      'This is not a section. The chambers are closed surfaces around the chambers\' spaces and there is no '
+      + 'myocardial wall to cut; hiding them is what the file supports, and it is all that happens here.',
+    noteJa:
+      '断面ではありません。心腔は心腔の空間を囲む閉じた面で、切るべき心筋壁はありません。'
+      + 'ファイルが支えるのは「非表示にすること」だけで、ここで起きているのもそれだけです。',
+  }),
+]);
+
+/**
  * What is still not in the model, and what standing each absence has.
  *
  * Kept as data rather than prose so the scene can show it and a test can hold

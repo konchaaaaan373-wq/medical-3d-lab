@@ -57,7 +57,7 @@ import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
  *   layout the panel is in, so the app shell can lay the rail out around it.
  */
 export function createAnatomyPanel({
-  scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange,
+  scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange, onViewChange,
 }) {
   /**
    * The Parts tab is the tree with a way into it.
@@ -80,11 +80,75 @@ export function createAnatomyPanel({
       })
     : null;
 
+  /**
+   * Fixed ways of looking, when the scene offers any.
+   *
+   * A recipe is the scene's own list of hides and a viewpoint — it can do
+   * nothing this panel's own buttons cannot, which is the point: a reader who
+   * wants "inside the chambers" should not have to know which four structures to
+   * hide. Scenes that offer none get nothing here.
+   */
+  const recipes = scene.getDisplayRecipes?.() ?? [];
+  const recipeStatus = el('p', { class: 'anatomy-recipe-status', role: 'status', hidden: true });
+  const recipeList = recipes.length
+    ? el('div', { class: 'anatomy-recipes' }, [
+        el('h4', { class: 'anatomy-recipes-title' }, [
+          el('span', { class: 'lang-en', text: 'Fixed views' }),
+          el('span', { class: 'lang-ja', text: '決まった見せ方' }),
+        ]),
+        ...recipes.map((recipe) =>
+          el('button', {
+            class: 'anatomy-recipe',
+            type: 'button',
+            dataset: { action: 'recipe', recipe: String(recipe.id) },
+            on: { click: () => applyRecipe(recipe) },
+          }, [
+            el('span', { class: 'anatomy-recipe-name' }, [
+              el('span', { class: 'lang-en', text: recipe.label }),
+              el('span', { class: 'lang-ja', text: recipe.labelJa }),
+            ]),
+            el('span', { class: 'anatomy-recipe-summary' }, [
+              el('span', { class: 'lang-en', text: recipe.summary }),
+              el('span', { class: 'lang-ja', text: recipe.summaryJa }),
+            ]),
+          ])
+        ),
+        recipeStatus,
+      ])
+    : null;
+
   const TABS = [
     { id: 'parts', en: 'Parts', ja: '部位', content: finder ? finder.element : tree.element },
-    { id: 'display', en: 'Display', ja: '表示', content: el('div', { class: 'anatomy-panel-display' }, [display, legend]) },
+    {
+      id: 'display',
+      en: 'Display',
+      ja: '表示',
+      content: el('div', { class: 'anatomy-panel-display' }, [display, recipeList, legend].filter(Boolean)),
+    },
     { id: 'detail', en: 'Detail', ja: '詳細', content: detail },
   ];
+
+  /**
+   * Run one, then say what it actually produced.
+   *
+   * The scene reports which of the structures the recipe names are visible from
+   * the viewpoint it turned to, and the status line reads that back rather than
+   * repeating the recipe's own promise. A recipe that hides nothing because
+   * everything was already hidden says so.
+   */
+  function applyRecipe(recipe) {
+    const result = scene.applyDisplayRecipe?.(recipe.id);
+    if (!result?.ok) return;
+    if (result.view) onViewChange?.(result.view);
+    const shown = result.shown?.length ?? 0;
+    const total = recipe.shows?.length ?? 0;
+    recipeStatus.hidden = false;
+    recipeStatus.replaceChildren(
+      el('span', { class: 'lang-en', text: `${shown} of ${total} named structures are visible; ${result.hid.length} hidden.` }),
+      el('span', { class: 'lang-ja', text: `対象 ${total} のうち ${shown} が見えています。${result.hid.length} 件を非表示にしました。` })
+    );
+    paint();
+  }
   let activeTab = 'parts';
   let sheetOpen = false;
   let opener = null;
@@ -606,16 +670,21 @@ export function createAnatomyPanel({
     // A scene that cannot bring this structure into view says so, and the offer
     // becomes the one that always works rather than a button that lies.
     if (result && result.ok === false) scene.isolateStructure(selection.id);
-    // The anatomical layer belongs to the console's slider. The scene reports
-    // what the structure needs; the control that owns the value sets it, so the
-    // model and the slider never disagree about how deep the reader is.
-    else if (result?.layer != null) onLayerChange?.(result.layer);
+    else {
+      // The anatomical layer belongs to the console's slider and the viewpoint
+      // belongs to the inspection panel. The scene reports what the structure
+      // needs; the controls that own those values set them, so the model, the
+      // slider and the pressed viewpoint never disagree.
+      if (result?.layer != null) onLayerChange?.(result.layer);
+      if (result?.view) onViewChange?.(result.view);
+    }
     paint();
   }
 
   function restorePreviousDisplay() {
     const result = scene.restoreDisplay?.();
     if (result?.layer != null) onLayerChange?.(result.layer);
+    if (result?.view) onViewChange?.(result.view);
     paint();
   }
 

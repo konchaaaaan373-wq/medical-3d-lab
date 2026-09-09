@@ -177,6 +177,15 @@ the Japanese names are deliberate but unreviewed.
   inside the same surface rather than at the vertex itself, because a ray aimed
   at the shared corner of two triangles misses as often as it hits, and a label
   that flickers is worse than one that is simply placed.
+* **One fixed way of looking, and it is made of the same moves the reader has.**
+  "Inside the chambers" hides the four chamber surfaces and turns to the front,
+  leaving the four valves, the five papillary muscles and the septum. **It is
+  not a section**: the chambers are closed surfaces around the chambers' spaces
+  and there is no myocardial wall to cut, so hiding them is all that happens.
+  Before it runs, it reports which structures it will hide and which it means to
+  show; after it runs, the panel reports how many of those are actually visible
+  from the viewpoint it turned to — measured, not promised — and "Back to how it
+  was" undoes it.
 * The panel asks two different questions before it offers "Show it": whether the
   settings are drawing a structure, and whether anything is in front of it.
   A papillary muscle inside a ventricle is drawn and cannot be seen, and only

@@ -665,6 +665,10 @@ export async function createApp({ stage, ui }) {
         // Through the control that owns the value, so the slider, the stage
         // readout and the model all move together.
         onLayerChange: (value) => seek(value),
+        // Same rule for the viewpoint: the inspection panel owns which one is
+        // current, so a scene that reports a new one is applied through it
+        // rather than moving the camera behind the control's back.
+        onViewChange: (id) => applyInspectionView(id),
         // Docked, the panel's body is the one scroller and the rail must not be
         // a second one around it. As a sheet the body is `position: fixed` and
         // out of the rail entirely, so the rail goes back to scrolling like it

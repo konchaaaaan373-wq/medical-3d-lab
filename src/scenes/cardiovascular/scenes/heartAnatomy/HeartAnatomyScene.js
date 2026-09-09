@@ -12,6 +12,7 @@ import {
   HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PALETTE,
+  HEART_RECIPES,
   heartColor,
   heartMeshOwner,
   heartPartById,
@@ -723,6 +724,48 @@ export class HeartAnatomyScene {
     return !this._seenFromView(id, this.activeView);
   }
 
+  /** The fixed ways of looking this scene offers. Data, so the panel can list them. */
+  getDisplayRecipes() {
+    // `hide` and `shows` are both reported, because "what will this do to my
+    // model" is a fair question to be able to answer before pressing it.
+    return HEART_RECIPES.map(({ id, label, labelJa, summary, summaryJa, note, noteJa, shows, hide, view }) => ({
+      id, label, labelJa, summary, summaryJa, note, noteJa, view, shows: [...shows], hide: [...hide],
+    }));
+  }
+
+  /**
+   * Apply one, and report exactly what it did.
+   *
+   * Hides and a viewpoint. Nothing else is available to it — there is no cut in
+   * this scene for a recipe to reach for — and what it hid goes into the same
+   * snapshot "Back to how it was" reads, so a reader is never stuck inside a
+   * view they did not choose to keep.
+   */
+  applyDisplayRecipe(id) {
+    const recipe = HEART_RECIPES.find((candidate) => candidate.id === id);
+    if (!recipe) return { ok: false, reason: 'unknown-recipe' };
+    const before = this._displaySnapshot();
+    const hid = [];
+    for (const structureId of recipe.hide) {
+      if (!this.meshesById.has(structureId) || this.manualHidden.has(structureId)) continue;
+      this.manualHidden.add(structureId);
+      hid.push(structureId);
+    }
+    if (this.isolatedId != null) this.isolatedId = null;
+    if (hid.length) this.hiddenVersion += 1;
+    const turned = recipe.view && recipe.view !== this.activeView && this.setAnatomyView(recipe.view);
+    this._applyVisibility(1 / 60, true);
+    if (hid.length || turned) this.displayBeforeReveal = before;
+    this._emitVisibility();
+    this._emitIsolation();
+
+    // What the reader can actually see now, measured from the viewpoint the
+    // recipe turned to — so the list the panel shows is a list of what is
+    // visible rather than a list of what was intended.
+    const shown = recipe.shows.filter((structureId) => this._seenFromView(structureId, this.activeView));
+    return { ok: true, hid, view: this.activeView, shown, missing: recipe.shows.filter((s) => !shown.includes(s)) };
+  }
+
   canRestoreDisplay() { return this.displayBeforeReveal != null; }
 
   restoreDisplay() {
@@ -736,7 +779,7 @@ export class HeartAnatomyScene {
     this._applyVisibility(1 / 60, true);
     this._emitVisibility();
     this._emitIsolation();
-    return { ok: true, layer: null };
+    return { ok: true, layer: null, view: this.activeView };
   }
 
   _displaySnapshot() {

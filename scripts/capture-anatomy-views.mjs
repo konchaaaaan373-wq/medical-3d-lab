@@ -39,6 +39,7 @@
  *   --headed         show the browser
  */
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { chromiumExecutable } from './lib/browser.mjs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -122,7 +123,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 // --- the render ------------------------------------------------------------
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
+  executablePath: chromiumExecutable(chromium),
   headless: !flag('--headed'),
 });
 const page = await browser.newPage({ viewport: { width, height } });

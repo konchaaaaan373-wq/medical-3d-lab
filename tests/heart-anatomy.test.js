@@ -623,3 +623,58 @@ test('heart: every vessel is named, grouped and described in both languages', ()
     assert.equal(info.side, 'Vessels', 'the card says which file it came from');
   }
 });
+
+test('heart: the fixed view hides and turns, and never cuts', () => {
+  const built = pair();
+  const [recipe] = built.getDisplayRecipes();
+  assert.equal(recipe.id, 'inside-the-chambers');
+  assert.ok(recipe.label?.trim() && recipe.labelJa?.trim());
+  assert.ok(recipe.summary?.trim() && recipe.summaryJa?.trim());
+  assert.match(recipe.note, /not a section/);
+  assert.ok(recipe.noteJa?.trim());
+
+  const before = built.getAnatomyVisibility().hidden.length;
+  const result = built.applyDisplayRecipe('inside-the-chambers');
+  assert.equal(result.ok, true);
+  assert.equal(result.view, 'anterior');
+
+  // The four chambers are hidden, and nothing else the recipe did not name.
+  const hidden = new Set(built.getAnatomyVisibility().hidden);
+  for (const id of [
+    'VH_M_heart_left_ventricle',
+    'VH_M_heart_right_ventricle',
+    'VH_M_left_cardiac_atrium',
+    'VH_M_right_cardiac_atrium',
+  ]) {
+    assert.ok(hidden.has(id), `${id} is out of the way`);
+  }
+  assert.equal(hidden.size, before + result.hid.length);
+
+  // What it says it shows, it shows — checked by the same ray the labels use,
+  // not by trusting the recipe's own list.
+  assert.ok(result.shown.length > 0, 'something is actually visible');
+  for (const id of result.shown) {
+    assert.ok(recipe.shows.includes(id));
+    assert.equal(built.isStructureVisible(id), true);
+  }
+  assert.deepEqual(
+    [...result.shown, ...result.missing].sort(),
+    [...recipe.shows].sort(),
+    'every structure it names is reported as seen or as not seen'
+  );
+
+  // Nothing was cut, thinned or sectioned: the only change is hides and a view.
+  built.restoreDisplay();
+  assert.equal(built.getAnatomyVisibility().hidden.length, before);
+  for (const id of recipe.hide) assert.equal(built.isStructureVisible(id), true);
+  built.dispose();
+});
+
+test('heart: an unknown recipe changes nothing', () => {
+  const built = pair();
+  const before = built.getAnatomyVisibility().hidden.length;
+  assert.deepEqual(built.applyDisplayRecipe('no-such-recipe'), { ok: false, reason: 'unknown-recipe' });
+  assert.equal(built.getAnatomyVisibility().hidden.length, before);
+  assert.equal(built.canRestoreDisplay(), false);
+  built.dispose();
+});

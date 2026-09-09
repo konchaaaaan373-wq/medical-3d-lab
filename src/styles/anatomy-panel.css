@@ -222,6 +222,61 @@
   gap: 12px;
 }
 
+/* ---------- fixed ways of looking
+
+   A recipe does nothing the buttons above cannot; it is a shortcut, and it is
+   styled as one — a stack of quiet cards, not a second control surface. */
+
+.anatomy-recipes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.anatomy-recipes-title {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ui-muted, #6b7280);
+}
+
+.anatomy-recipe {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-line, rgba(15, 23, 42, 0.12));
+  border-radius: 8px;
+  background: var(--ui-surface, #fff);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.anatomy-recipe:hover,
+.anatomy-recipe:focus-visible {
+  border-color: var(--ui-accent, #0e7490);
+}
+
+.anatomy-recipe-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anatomy-recipe-summary,
+.anatomy-recipe-status {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ui-muted, #6b7280);
+}
+
+.anatomy-recipe-status {
+  margin: 2px 0 0;
+}
+
 /* ---------- the tree */
 
 .anatomy-tree-list {

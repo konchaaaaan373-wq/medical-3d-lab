@@ -61,6 +61,7 @@
  *   --headed        show the browser
  */
 import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { chromiumExecutable } from './lib/browser.mjs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -144,7 +145,7 @@ const notes = [];
 const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
+  executablePath: chromiumExecutable(chromium),
   headless: !flag('--headed'),
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
