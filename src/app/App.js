@@ -296,6 +296,9 @@ export async function createApp({ stage, ui }) {
 
   // Re-frame on rotate/resize: a portrait phone needs a lot more distance than a laptop.
   window.addEventListener('resize', () => {
+    // Before the shot, because the shot is fitted to the bands the panels leave
+    // and those bands are what this changes.
+    syncCompactLayout();
     setShot(shotSource);
     pvPanel?.resize();
     wavePanel?.resize();
@@ -315,6 +318,42 @@ export async function createApp({ stage, ui }) {
   /** Set below, when the rail is assembled; the panel toggles a class on it. */
   let railElement = null;
   const isAnatomyScene = Boolean(scene.getAnatomyTree && scene.getAnatomySelection);
+  // The dense-console treatment is about what an anatomy scene's controls are,
+  // not about which organ it is. It began keyed on `data-scene='brain-anatomy'`
+  // and stayed there while the brain was the only one; the heart wants exactly
+  // the same frame, and a second scene id in twenty-four selectors is how a
+  // rule stops being a rule.
+  if (isAnatomyScene) ui.dataset.anatomy = 'yes';
+
+
+  /**
+   * A short, wide frame is a different problem from a small one.
+   *
+   * A phone on its side gives 390 px of height and 844 of width. The header,
+   * the title card, the console and the consent card are each a sensible height
+   * on their own and together they leave the model a strip. The answer is not a
+   * smaller model — it is a smaller *control area*: the title card's heading
+   * duplicates the one already in the header, and the console's stage heading
+   * duplicates the one in the panel. In this frame both go, and nothing that
+   * does something goes with them.
+   *
+   * **Anatomy scenes only.** A disease scene's console carries the progression
+   * it exists for, and compressing that would be removing the scene. The flag
+   * is an attribute so the whole rule lives in one CSS block that cannot reach
+   * any other scene.
+   */
+  const COMPACT_MAX_HEIGHT = 460;
+  const COMPACT_MIN_ASPECT = 1.6;
+  const syncCompactLayout = () => {
+    const short = window.innerHeight <= COMPACT_MAX_HEIGHT;
+    const wide = window.innerWidth / Math.max(1, window.innerHeight) >= COMPACT_MIN_ASPECT;
+    const compact = isAnatomyScene && short && wide;
+    if (compact) ui.dataset.anatomyCompact = 'landscape';
+    else delete ui.dataset.anatomyCompact;
+    return compact;
+  };
+  syncCompactLayout();
+
 
   /**
    * The viewer's own vantage during the guided sequence.
