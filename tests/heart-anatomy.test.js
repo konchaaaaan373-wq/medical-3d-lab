@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import { HeartAnatomyScene } from '../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js';
@@ -677,4 +678,42 @@ test('heart: an unknown recipe changes nothing', () => {
   assert.equal(built.getAnatomyVisibility().hidden.length, before);
   assert.equal(built.canRestoreDisplay(), false);
   built.dispose();
+});
+
+test('heart: a label knows the difference between "behind something" and "not drawn"', () => {
+  const built = pair();
+  const id = 'VH_M_left_cardiac_atrium';
+  const label = built.getStructureAnnotation(id);
+  assert.equal(label.isDrawn(), true);
+
+  // Hidden by the reader: not drawn, and the layer must not wait.
+  built.setStructureHidden(id, true);
+  assert.equal(label.isDrawn(), false);
+  built.setStructureHidden(id, false);
+  assert.equal(label.isDrawn(), true);
+
+  // Isolated away: same answer, different route.
+  built.isolateStructure('VH_M_heart_left_ventricle');
+  assert.equal(label.isDrawn(), false);
+  built.clearIsolation();
+  assert.equal(label.isDrawn(), true);
+
+  // Taken out of the way by the fixed view: still the same answer.
+  built.applyDisplayRecipe('inside-the-chambers');
+  assert.equal(label.isDrawn(), false);
+  built.restoreDisplay();
+  assert.equal(label.isDrawn(), true);
+  built.dispose();
+});
+
+test('the label layer waits out occlusion and never waits out a hide', () => {
+  // Source-text, because the thing being fixed is an ordering in one function
+  // and a behavioural test of a 140 ms timer is a test of a timer.
+  const source = readFileSync(new URL('../src/components/LabelLayer.js', import.meta.url), 'utf8');
+  assert.match(source, /const undrawn = item\.annotation\.isDrawn\?\.\(\) === false;/);
+  // The grace timestamp is reset rather than refreshed when a structure is not
+  // drawn, so nothing can be inside the window on the frame it comes back.
+  assert.match(source, /if \(undrawn\) item\.seenAt = 0;/);
+  // And `undrawn` is part of the hide decision, not merely computed.
+  assert.match(source, /const hide = offscreen \|\| undrawn \|\| unseen \|\| never \|\| over;/);
 });

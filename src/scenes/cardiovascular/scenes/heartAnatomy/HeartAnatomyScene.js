@@ -906,6 +906,8 @@ export class HeartAnatomyScene {
       sub: info.nameJa,
       position: anchor.point,
       isVisible: (camera) => this._pointVisible(key, anchor.sight, meshes, camera),
+      /** Whether the settings draw it at all — see the brain scene for why both. */
+      isDrawn: () => this.isStructureVisible(id),
     };
   }
 

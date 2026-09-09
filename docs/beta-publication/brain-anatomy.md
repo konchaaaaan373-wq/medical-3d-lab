@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-08 (re-taken after B3-1 changed what a medial view draws and when an annotation is drawn) |
+| **Decided at** | 2026-09-09 (re-taken after the label layer stopped waiting out a hide) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **13**, source digest `2460fc9a193ad6cf` |
+| **Scene revision** | model card revision **14**, source digest `3c3175a6da4b6944` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -27,7 +27,7 @@ card revision. Either one closes the beta until this record is taken again —
 which is the point: a decision about one version of a model is not a decision
 about a different one.
 
-## Why this was re-taken, four times
+## Why this was re-taken
 
 **Revision 4 → 5.** B2-1 changed what a click selects — a structure drawn from
 several meshes is now one structure rather than whichever piece the atlas
@@ -55,6 +55,24 @@ the structure it names is the first thing drawn along the ray to its anchor —
 the same ray a click uses — so it agrees with the layer, the medial views and
 isolation without a rule about sides. Label visibility is not selection: a
 pinned structure keeps its id and its summary either way.
+
+**Revisions 8 → 13** were taken during B3-1 and X1–X2 and are not itemised here;
+what they changed is in the "What was checked" list below, which is the list
+that was actually exercised rather than a summary of it.
+
+**Revision 13 → 14.** The label layer waits a moment before a label disappears,
+so that a name does not blink along an occlusion edge as the model turns. That
+wait was being applied to a structure the reader had *hidden* as well, which is
+a different thing: a hide does not flicker, and a name held over a structure
+that is no longer drawn is a name over whatever is behind it. The scene now
+answers two questions instead of one — "can this be seen from here" and "is it
+drawn at all" — and only the first is worth waiting out.
+
+**What that means for this record.** Nothing a reader selects, sees named or can
+find changed; what changed is how quickly one label goes when they take its
+structure off the screen. It still closes the gate, because the pin is not a
+judgement of how big a change is — it is a statement that this decision was
+taken about *this* version.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
@@ -118,6 +136,16 @@ a rendering check, not an anatomical one.
   to be does not select it; **Show all** restores the model and the structures
   that were on screen before are clickable again.
 - No uncaught errors and no unexpected failed requests during the run.
+- **A hidden structure's label goes with it.** Selecting a structure draws its
+  name on the model; hiding it removes the name, and unhiding brings it back.
+  `tests/brain-anatomy.test.js` fixes the scene's half of this — a hidden or
+  isolated-away structure answers "not drawn" — and a source-text assertion in
+  `tests/heart-anatomy.test.js` fixes the layer's half, that "not drawn" is part
+  of the hide decision and resets the grace timer rather than refreshing it.
+  **The browser run cannot time this**: the headless renderer here paints at
+  roughly one frame a second, which is longer than the 140 ms grace, so what it
+  confirms is that the label goes — not that it goes *sooner* than it did
+  before. That distinction is established by the tests, not by the render.
 
 **Rights** — the licence obligations for the mesh are recorded as discharged in
 [`../../public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md),

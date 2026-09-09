@@ -1134,6 +1134,16 @@ export class BrainAnatomyScene {
       sub: info.nameJa,
       position: point,
       isVisible: (camera) => this._pointVisible(key, point, meshes, camera),
+      /**
+       * Whether the settings draw this structure at all.
+       *
+       * A different question from `isVisible`, and the label layer needs both.
+       * "Behind something" flickers along an edge as the model turns and is
+       * worth waiting out; "hidden" and "isolated away" do not flicker, and a
+       * label that waits after one of those is a name left over a structure the
+       * reader has just taken off the screen.
+       */
+      isDrawn: () => this.isStructureVisible(structureId),
     };
   }
 

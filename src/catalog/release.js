@@ -166,14 +166,14 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-08',
+    decidedAt: '2026-09-09',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B3-1 implementer', role: 'engineering' }),
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '2460fc9a193ad6cf' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '3c3175a6da4b6944' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -209,6 +209,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'the pinned structure is named on the model as well as in the panel, under the same occlusion rule and a per-frame limit',
         'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
         'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
+        'a hidden structure\'s own label goes with it rather than being held over what is behind it',
       ]),
     }),
     evidence: Object.freeze([

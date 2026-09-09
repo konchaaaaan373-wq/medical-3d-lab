@@ -824,3 +824,28 @@ test('a hidden structure leaves the picker and stops occluding a label', () => {
   assert.equal(scene._drawnMeshes().includes(right), false, 'nor can it be clicked');
   scene.dispose();
 });
+
+test('brain: a structure the settings are not drawing has no label to wait for', () => {
+  // The occlusion grace in the label layer is for an edge that flickers as the
+  // model turns. Hiding and isolating do not flicker, and a name left over a
+  // structure the reader has just taken off the screen names whatever is behind
+  // it — so the scene answers "is it drawn at all" separately from "can it be
+  // seen from here".
+  const scene = buildScene();
+  const id = scene.getAnatomyInventory()[0].id;
+  const label = scene.getStructureAnnotation(id);
+  assert.equal(typeof label.isDrawn, 'function');
+  assert.equal(label.isDrawn(), true);
+
+  scene.setStructureHidden(id, true);
+  assert.equal(label.isDrawn(), false, 'hidden by the reader');
+  scene.setStructureHidden(id, false);
+  assert.equal(label.isDrawn(), true);
+
+  const other = scene.getAnatomyInventory().find((entry) => entry.id !== id);
+  scene.isolateStructure(other.id);
+  assert.equal(label.isDrawn(), false, 'isolated away');
+  scene.clearIsolation();
+  assert.equal(label.isDrawn(), true);
+  scene.dispose();
+});

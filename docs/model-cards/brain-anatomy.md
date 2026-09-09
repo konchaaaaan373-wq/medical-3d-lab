@@ -228,8 +228,12 @@ carry — six on a wide screen, three on a narrow one — the ones that give way
 the ones the reader did not ask for: selection outranks hover, hover outranks
 the landmarks, and nothing is stacked into a spare corner to make it fit.
 Appearing is immediate; disappearing waits a moment, so a label does not blink
-along an occlusion edge as the model turns. Hiding a label never changes what
-the panel says is pinned.
+along an occlusion edge as the model turns. **That wait is for occlusion and for
+nothing else**: a structure the settings are not drawing — hidden by the reader,
+isolated away — is not an edge flickering, it is a thing that is not there, and
+its label goes on the same frame. A name left over it for even a moment is a
+name over whatever is behind it. Hiding a label never changes what the panel
+says is pinned.
 
 **Searching answers with every match.** The count is the number that matched,
 not the number drawn, and there is no quiet cap that would leave the rest

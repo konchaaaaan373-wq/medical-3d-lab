@@ -88,6 +88,9 @@ export function createLabelLayer({ viewer, annotations }) {
    * that blinks with it is unreadable. Appearing is immediate; disappearing
    * waits this long, which is short enough that a label never lingers over
    * something it is not on.
+   *
+   * **It applies to occlusion only.** A structure the settings are not drawing
+   * is not flickering, and its label goes at once — see `isDrawn` below.
    */
   const OCCLUSION_GRACE_MS = 140;
 
@@ -221,12 +224,22 @@ export function createLabelLayer({ viewer, annotations }) {
         // Seen means seen now; unseen has to hold for a moment before the
         // label goes, or it blinks along every occlusion edge the model turns
         // through.
-        if (item.annotation.isVisible?.(viewer.camera) !== false) item.seenAt = now;
+        //
+        // **The grace is for occlusion and for nothing else.** A structure the
+        // settings are not drawing — hidden by the reader, isolated away, taken
+        // out of the way by a display recipe — is gone now, not in 140 ms: that
+        // is not an edge flickering, it is a thing that is not there, and a name
+        // left over it for even a moment names whatever is behind it. Scenes
+        // that cannot answer the question are unchanged.
+        const undrawn = item.annotation.isDrawn?.() === false;
+        if (undrawn) item.seenAt = 0;
+        else if (item.annotation.isVisible?.(viewer.camera) !== false) item.seenAt = now;
         const unseen = item.seenAt > 0 && now - item.seenAt > OCCLUSION_GRACE_MS;
         const never = item.seenAt === 0 && item.annotation.isVisible?.(viewer.camera) === false;
         const over = drawn >= LABEL_LIMIT;
-        item.node.style.visibility = offscreen || unseen || never || over ? 'hidden' : 'visible';
-        if (offscreen || unseen || never || over) continue;
+        const hide = offscreen || undrawn || unseen || never || over;
+        item.node.style.visibility = hide ? 'hidden' : 'visible';
+        if (hide) continue;
         drawn += 1;
         const top = compact ? 150 : 34;
         const ax = (projected.x * 0.5 + 0.5) * width;

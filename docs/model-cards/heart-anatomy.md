@@ -176,7 +176,10 @@ the Japanese names are deliberate but unreviewed.
   name attached to the wrong thing. The ray aims at a second point a little way
   inside the same surface rather than at the vertex itself, because a ray aimed
   at the shared corner of two triangles misses as often as it hits, and a label
-  that flickers is worse than one that is simply placed.
+  that flickers is worse than one that is simply placed. A label whose structure
+  is hidden, isolated away or taken out of the way by the fixed view goes on the
+  same frame: the short wait that stops labels blinking along an occlusion edge
+  is for occlusion and does not apply to a structure that is not being drawn.
 * **One fixed way of looking, and it is made of the same moves the reader has.**
   "Inside the chambers" hides the four chamber surfaces and turns to the front,
   leaving the four valves, the five papillary muscles and the septum. **It is

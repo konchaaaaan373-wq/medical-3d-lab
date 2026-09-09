@@ -6,8 +6,8 @@
       "src/data/brainAnatomy.js",
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js"
     ],
-    "cardRevision": 13,
-    "modelDigest": "2460fc9a193ad6cf",
+    "cardRevision": 14,
+    "modelDigest": "3c3175a6da4b6944",
     "cardUpdatedAt": "2026-09-09"
   },
   {
@@ -17,8 +17,8 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "67f097dfd3e6afa4",
+    "cardRevision": 8,
+    "modelDigest": "853ad8e954b5ad6b",
     "cardUpdatedAt": "2026-09-09"
   },
   {
