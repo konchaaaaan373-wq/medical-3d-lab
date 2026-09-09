@@ -481,11 +481,15 @@ node 名は冠動脈、label と id は肺動脈の枝を指しています。
 実装と実レンダリングは済んでいますが、**asset として通していないもの**が残ります。
 
 - glTF Validator を回していない（formatValidation 未実施）
-- ライセンス判断が engineering の読みすらまだ: HuBMAP の CC BY 4.0 と NLM
-  Visible Human の Terms を**別々に**記録し、attribution 面・
-  `Courtesy of the U.S. National Library of Medicine`・改変内容（範囲抽出と
-  共通変換のみ）・推薦の誤認防止・固定版である旨を表示義務へ落とす必要があります。
-  一次資料は pack の `SOURCES.md`
+- ライセンスは**記録まで進めました**（判断はしていません）:
+  [`asset-provenance/heart-candidates.md`](asset-provenance/heart-candidates.md)。
+  HuBMAP の CC BY 4.0 と NLM Visible Human の Terms を別々に、義務ごとに
+  satisfied/pending で表にし、`Courtesy of the U.S. National Library of Medicine`、
+  改変内容（範囲抽出と共通変換と材質置換のみ／形状は無改変）、推薦の誤認防止、
+  固定版である旨を含む**表示文の草案**を置いてあります。**どこにも表示していません**
+- data.gov の machine-readable license 欄が ODbL を指す件は、適用範囲未確定として
+  そのまま保持しています。提供元への確認はしていませんし、この記録が承認もしません
+- 残るのは legal 判断・attribution 面の実装・validator・解剖/臨床レビュー
 - 血管の面が内腔か壁かを測っていない（心腔は測って cavity と分かっています）
 - 血管と心腔の接続部の距離を測っていない。mm 精度の主張はどこにもしていません
 - 解剖専門家・臨床レビューはどちらも未実施

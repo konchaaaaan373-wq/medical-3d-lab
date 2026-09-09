@@ -90,9 +90,11 @@ The geometry is `VH_M_Heart.glb` and `VH_M_Blood_Vasculature.glb` from the
 HuBMAP Human Reference Atlas CCF release v1.2, both pinned at commit
 `b036a91aaf7234f462b1249d4a5f4fb0e982f412`, both segmented from the **Visible
 Human Male** dataset of the U.S. National Library of Medicine. The upstream
-release states CC BY 4.0 (heart DOI `10.48539/HBM699.GKGT.564` per the release's
-own reference documents; vasculature DOI `10.48539/HBM686.LBDQ.998`); the NLM
-Visible Human data carry their own terms.
+release states CC BY 4.0. The DOIs the release's own reference documents record
+are `10.48539/HBM373.VSTV.568` for the heart and `10.48539/HBM686.LBDQ.998` for
+the vasculature; the NLM Visible Human data carry their own terms. What each
+source says, what it obliges, and what is still unresolved is
+[`docs/asset-provenance/heart-candidates.md`](../asset-provenance/heart-candidates.md).
 
 **Neither licence has been discharged here, and neither has been read by a
 lawyer.** The file is recorded in `devAssets.js` as a candidate under
