@@ -37,15 +37,30 @@ export const HEART_AXES = Object.freeze({
   anterior: Object.freeze([0, 0, 1]),
 });
 
-/** How a structure is grouped, for the tree and for the display recipes. */
+/**
+ * How a structure is grouped, for the tree, the legend and the colour bands.
+ *
+ * **A group is a place to look, not a statement about what a structure is.**
+ * The interventricular septum is filed under the chambers because that is where
+ * a reader looks for it; it is not a chamber, and its own description says so.
+ * The two are kept apart deliberately: a group shared for navigation used to
+ * carry the chambers' description onto the septum, which was a real error made
+ * by a convenience.
+ *
+ * The brachiocephalic veins are their own group for the opposite reason. They
+ * were filed with the aortic arch's branches — the two are together only in
+ * being long and out of the chest — and inherited a description saying they
+ * join the arch. They do not: they unite to form the superior vena cava.
+ */
 export const HEART_GROUPS = Object.freeze({
-  chamber: Object.freeze(['Cardiac chambers', '心腔']),
+  chamber: Object.freeze(['Chambers and septum', '心腔・心室中隔']),
   valve: Object.freeze(['Heart valves', '心臓弁']),
   papillary: Object.freeze(['Papillary muscles', '乳頭筋']),
   greatVessel: Object.freeze(['Great vessels', '大血管']),
   coronary: Object.freeze(['Coronary arteries', '冠動脈']),
   cardiacVein: Object.freeze(['Cardiac veins', '心臓静脈']),
   archBranch: Object.freeze(['Branches of the aortic arch', '大動脈弓の分枝']),
+  cavalTributary: Object.freeze(['Tributaries of the superior vena cava', '上大静脈へ合流する静脈']),
 });
 
 /**
@@ -63,7 +78,9 @@ export const HEART_PARTS = Object.freeze([
   part('VH_M_heart_right_ventricle', 'Right ventricle', '右心室', 'UBERON:0002080', 'chamber', 74.0, true),
   part('VH_M_left_cardiac_atrium', 'Left atrium', '左心房', 'UBERON:0002079', 'chamber', 31.3, true),
   part('VH_M_right_cardiac_atrium', 'Right atrium', '右心房', 'UBERON:0002078', 'chamber', 27.7, false),
-  part('VH_M_interventricular_septum', 'Interventricular septum', '心室中隔', 'UBERON:0002094', 'chamber', 28.1, true),
+  // Filed with the chambers because that is where it is looked for; described
+  // as what it is, which is a wall. See HEART_GROUPS.
+  part('VH_M_interventricular_septum', 'Interventricular septum', '心室中隔', 'UBERON:0002094', 'chamber', 28.1, true, { descriptionKey: 'septum' }),
   part('VH_M_mitral_valve', 'Mitral valve', '僧帽弁', 'UBERON:0002135', 'valve', 3.1, true),
   part('VH_M_tricuspid_valve', 'Tricuspid valve', '三尖弁', 'UBERON:0002134', 'valve', 4.2, true),
   part('VH_M_aortic_valve', 'Aortic valve', '大動脈弁', 'UBERON:0002137', 'valve', 16.3, false),
@@ -75,8 +92,11 @@ export const HEART_PARTS = Object.freeze([
   part('VH_M_papillary_muscle_of_heart_posteromedial', 'Posteromedial head of the posterior papillary muscle of the left ventricle', '左室後乳頭筋・後内側頭', 'FMA:7267', 'papillary', 1.2, true),
 ]);
 
-function part(node, name, nameJa, ontologyId, group, enclosedMl, closed) {
-  return Object.freeze({ id: node, node, name, nameJa, ontologyId, group, enclosedMl, closed });
+function part(node, name, nameJa, ontologyId, group, enclosedMl, closed, extra = {}) {
+  return Object.freeze({
+    id: node, node, name, nameJa, ontologyId, group, enclosedMl, closed,
+    descriptionKey: extra.descriptionKey ?? null,
+  });
 }
 
 /**
@@ -139,6 +159,7 @@ export const HEART_VESSELS = Object.freeze([
     'artery',
     'Anterior descending branch of left pulmonary artery',
     {
+      identityConflict: true,
       note:
         'The source file disagrees with itself about this mesh: its node name calls it the left anterior descending ' +
         'artery, and the label and ontology id on the same node say "anterior descending branch of left pulmonary ' +
@@ -168,8 +189,8 @@ export const HEART_VESSELS = Object.freeze([
   vessel('VH_M_brachiocephalic_artery', ['VH_M_brachiocephalic_artery_a', 'VH_M_brachiocephalic_artery_b'], 'Brachiocephalic artery', '腕頭動脈', 'UBERON:0001529', 'archBranch', 'artery', 'brachiocephalic artery', { distal: true }),
   vessel('VH_M_left_common_carotid_artery', ['VH_M_left_common_carotid_artery_a', 'VH_M_left_common_carotid_artery_b'], 'Left common carotid artery and its branches', '左総頸動脈とその分枝', 'UBERON:0001536', 'archBranch', 'artery', 'left common carotid artery plus branches', { distal: true }),
   vessel('VH_M_left_subclavian_artery', ['VH_M_left_subclavian_artery_a', 'VH_M_left_subclavian_artery_b'], 'Left subclavian artery', '左鎖骨下動脈', 'UBERON:0001584', 'archBranch', 'artery', 'left subclavian artery', { distal: true }),
-  vessel('VH_M_brachiocephalic_vein_L', ['VH_M_brachiocephalic_vein_L'], 'Left brachiocephalic vein', '左腕頭静脈', 'FMA:4761', 'archBranch', 'vein', 'Left brachiocephalic vein', { distal: true }),
-  vessel('VH_M_brachiocephalic_vein_R', ['VH_M_brachiocephalic_vein_R'], 'Right brachiocephalic vein', '右腕頭静脈', 'FMA:4751', 'archBranch', 'vein', 'Right brachiocephalic vein', { distal: true }),
+  vessel('VH_M_brachiocephalic_vein_L', ['VH_M_brachiocephalic_vein_L'], 'Left brachiocephalic vein', '左腕頭静脈', 'FMA:4761', 'cavalTributary', 'vein', 'Left brachiocephalic vein', { distal: true }),
+  vessel('VH_M_brachiocephalic_vein_R', ['VH_M_brachiocephalic_vein_R'], 'Right brachiocephalic vein', '右腕頭静脈', 'FMA:4751', 'cavalTributary', 'vein', 'Right brachiocephalic vein', { distal: true }),
 ]);
 
 function vessel(id, meshNames, name, nameJa, ontologyId, group, vesselType, sourceLabel, extra = {}) {
@@ -183,6 +204,15 @@ function vessel(id, meshNames, name, nameJa, ontologyId, group, vesselType, sour
     vesselType,
     sourceLabel,
     distal: Boolean(extra.distal),
+    descriptionKey: extra.descriptionKey ?? null,
+    /**
+     * The source's own records for this mesh do not agree with each other.
+     *
+     * Not a doubt of ours and not an anatomical opinion: the file's node name
+     * and its label/ontology id name different vessels. Surfaced wherever the
+     * structure is named so a reader does not take the name as settled.
+     */
+    identityConflict: Boolean(extra.identityConflict),
     note: extra.note ?? null,
     noteJa: extra.noteJa ?? null,
     enclosedMl: null,
@@ -248,8 +278,8 @@ export function heartStructureInfo(id) {
     hierarchyJa: ['心臓', groupJa, entry.nameJa],
     breadcrumb: ['Heart', groupEn].join(' › '),
     breadcrumbJa: ['心臓', groupJa].join(' › '),
-    description: DESCRIPTION[entry.group].en,
-    descriptionJa: DESCRIPTION[entry.group].ja,
+    description: describe(entry).en,
+    descriptionJa: describe(entry).ja,
     // Three different notes, and only one of them can apply: a per-structure
     // note the table wrote by hand (today, the one mesh whose source record
     // disagrees with itself), or the open-surface note, or nothing.
@@ -257,7 +287,34 @@ export function heartStructureInfo(id) {
     noteJa: entry.noteJa ?? (entry.closed === false ? OPEN_SURFACE.ja : null),
     sourceLabel: entry.sourceLabel ?? null,
     vesselType: entry.vesselType ?? null,
+    /**
+     * `'source-conflict'` when the source file's own records for this mesh name
+     * different things, and null otherwise.
+     *
+     * Deliberately a state rather than a corrected name: the original node
+     * name, `sourceLabel` and `ontologyId` are all still here untouched, and
+     * nothing in this repository decides which of them is right. The surfaces
+     * read this to mark the name as unsettled where it is shown.
+     */
+    identity: entry.identityConflict ? 'source-conflict' : null,
+    identityNote: entry.identityConflict ? IDENTITY_UNSETTLED.en : null,
+    identityNoteJa: entry.identityConflict ? IDENTITY_UNSETTLED.ja : null,
   };
+}
+
+/** The short form, for a heading or a row where a paragraph will not fit. */
+const IDENTITY_UNSETTLED = Object.freeze({ en: 'name unverified', ja: '名称要確認' });
+
+/**
+ * The description a structure gets: its own key if it has one, else its group's.
+ *
+ * The default is the group because most structures are ordinary members of
+ * theirs. The exception is the point: a structure that is filed somewhere for
+ * navigation and is not that thing says what it is here rather than inheriting
+ * a sentence written about its neighbours.
+ */
+function describe(entry) {
+  return DESCRIPTION[entry.descriptionKey ?? entry.group];
 }
 
 const OPEN_SURFACE = Object.freeze({
@@ -272,26 +329,53 @@ const OPEN_SURFACE = Object.freeze({
  * inferred from the word "chamber" — and the wording says that rather than
  * implying a myocardial wall the file does not contain.
  */
+/**
+ * What each kind of structure is, said at the level the files support.
+ *
+ * Keyed by `descriptionKey`, which defaults to the group but does not have to
+ * be it — see `HEART_GROUPS`. Three rules this table has to keep:
+ *
+ * 1. **It does not assert what has not been measured.** The chambers were
+ *    measured and are cavity casts. The vessels were **not**: whether each
+ *    vessel surface is a lumen or a wall is recorded as unchecked in
+ *    `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md`, and carrying the
+ *    heart file's answer across to the vessel file would be extrapolation
+ *    wearing the clothes of a measurement.
+ * 2. **It does not contradict the row it describes.** Nine of the fourteen
+ *    heart parts are closed surfaces and five are not; a description that says
+ *    "closed" and a note that says "open" cannot both be about the same mesh.
+ *    So the description says what the surface encloses and the `closed` flag
+ *    says whether it is closed.
+ * 3. **A shared group is not a shared meaning.** See `HEART_GROUPS`.
+ */
 const DESCRIPTION = Object.freeze({
   greatVessel: Object.freeze({
-    en: 'A great vessel at the heart, from the same release\'s whole-body vasculature file, in that file\'s own position. It is a lumen surface, not a wall with a thickness.',
-    ja: '心臓につながる大血管です。同じリリースの全身血管ファイルから、その位置のまま置いています。壁の厚みではなく内腔の面です。',
+    en: 'A great vessel at the heart, from the same release\'s whole-body vasculature file, in that file\'s own position. It is a surface model of the vessel as the source recorded it; whether it represents the lumen or the vessel wall has not been checked.',
+    ja: '心臓につながる大血管です。同じリリースの全身血管ファイルから、その位置のまま置いています。出典に収録された血管の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。',
   }),
   coronary: Object.freeze({
-    en: 'A coronary artery on the surface of the heart, from the same release\'s vasculature file. A lumen surface; no stenosis, no flow and no territory is modelled.',
-    ja: '心表面の冠動脈です。同じリリースの血管ファイル由来で、内腔の面です。狭窄・血流・支配領域はモデル化していません。',
+    en: 'A coronary artery on the surface of the heart, from the same release\'s vasculature file. A surface model as the source recorded it; whether it represents the lumen or the vessel wall has not been checked. No stenosis, no flow and no territory is modelled.',
+    ja: '心表面の冠動脈です。同じリリースの血管ファイル由来の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。狭窄・血流・支配領域はモデル化していません。',
   }),
   cardiacVein: Object.freeze({
-    en: 'A vein draining the heart wall, from the same release\'s vasculature file.',
-    ja: '心臓の壁から血液を集める静脈です。同じリリースの血管ファイル由来です。',
+    en: 'A vein draining the heart wall, from the same release\'s vasculature file. A surface model as the source recorded it; lumen or wall has not been checked.',
+    ja: '心臓の壁から血液を集める静脈です。同じリリースの血管ファイル由来の表面モデルで、内腔と血管壁のどちらを表すかは未確認です。',
   }),
   archBranch: Object.freeze({
-    en: 'A branch of the aortic arch or a vein joining it, present in the source and reaching well beyond the chest. Hidden by default so the frame stays a heart.',
-    ja: '大動脈弓の分枝、またはそこへ合流する静脈です。出典に収録されており、胸郭の外まで伸びるため、既定では非表示にしています。',
+    en: 'An arterial branch of the aortic arch, present in the source and reaching well beyond the chest. Hidden by default so the frame stays a heart. Lumen or wall has not been checked.',
+    ja: '大動脈弓から分かれる動脈です。出典に収録されており、胸郭の外まで伸びるため、既定では非表示にしています。内腔と血管壁のどちらを表すかは未確認です。',
+  }),
+  cavalTributary: Object.freeze({
+    en: 'A brachiocephalic vein. The left and right brachiocephalic veins unite to form the superior vena cava — they are not branches of the aortic arch, which they run beside. Reaches beyond the chest, so it is hidden by default. Lumen or wall has not been checked.',
+    ja: '腕頭静脈です。左右の腕頭静脈が合流して上大静脈になります——大動脈弓の分枝ではなく、その傍らを走る別系統です。胸郭の外まで伸びるため既定では非表示にしています。内腔と血管壁のどちらを表すかは未確認です。',
   }),
   chamber: Object.freeze({
-    en: 'A closed surface enclosing the space of this chamber. The source file contains no separate myocardial free wall, so this is the chamber, not the muscle around it.',
-    ja: 'この心腔の空間を囲む閉じた面です。出典ファイルには心筋の自由壁が別部位として収録されていないため、これは心腔であって周囲の筋ではありません。',
+    en: 'A surface enclosing the space of this chamber. The source file contains no separate myocardial free wall, so this is the chamber, not the muscle around it. Whether this particular surface is closed is recorded on the structure itself.',
+    ja: 'この心腔の空間を囲む面です。出典ファイルには心筋の自由壁が別部位として収録されていないため、これは心腔であって周囲の筋ではありません。この面が閉じているかどうかは部位ごとに記録しています。',
+  }),
+  septum: Object.freeze({
+    en: 'The muscular wall between the two ventricles, and the one part of the heart file that is a wall rather than a chamber cavity: it arrives as a separate closed solid enclosing 28.1 mL. It is listed with the chambers because that is where a reader looks for it, not because it is one.',
+    ja: '左右の心室を隔てる筋性の壁です。心臓ファイルの中で唯一、心腔の空間ではなく壁そのもので、28.1 mL を囲む独立した閉じた立体として収録されています。一覧で心腔と同じ場所にあるのは探しやすさのためで、心腔だからではありません。',
   }),
   valve: Object.freeze({
     en: 'A valve surface at the boundary between two chambers, or between a chamber and its outflow.',
@@ -335,6 +419,7 @@ const GROUP_HUE = Object.freeze({
   coronary: Object.freeze([340, 372]),
   cardiacVein: Object.freeze([232, 268]),
   archBranch: Object.freeze([70, 104]),
+  cavalTributary: Object.freeze([196, 226]),
 });
 
 /**
@@ -451,6 +536,7 @@ export const HEART_ANATOMY_META = Object.freeze({
     Object.freeze({ key: 'coronary', label: 'Coronary arteries', labelJa: '冠動脈' }),
     Object.freeze({ key: 'cardiacVein', label: 'Cardiac veins', labelJa: '心臓静脈' }),
     Object.freeze({ key: 'archBranch', label: 'Arch branches', labelJa: '弓部分枝' }),
+    Object.freeze({ key: 'cavalTributary', label: 'Brachiocephalic veins', labelJa: '腕頭静脈' }),
   ]),
   stages: Object.freeze([
     Object.freeze({

@@ -221,7 +221,15 @@ export function createAnatomyPartsFinder({
         role: 'option',
         id: `anatomy-search-hit-${at}`,
         'aria-selected': 'false',
-        dataset: { structureId: String(structure.id), active: 'no' },
+        // `identity` is the scene's own word for "the source's records for this
+        // structure disagree with each other". A row carries it so the name in
+        // a result list is not read as settled; the row is otherwise unchanged
+        // and searching by the source's own name still finds it.
+        dataset: {
+          structureId: String(structure.id),
+          active: 'no',
+          ...(structure.identity ? { identity: String(structure.identity) } : {}),
+        },
         // The scene's own id, not the string the element had to carry.
         on: { click: () => { setActive(at); onSelect(structure.id); } },
       },

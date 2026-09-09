@@ -89,6 +89,15 @@ export function createAnatomyPanel({
    * hide. Scenes that offer none get nothing here.
    */
   const recipes = scene.getDisplayRecipes?.() ?? [];
+  /**
+   * Set for exactly one repaint after a recipe runs.
+   *
+   * `applyRecipe` writes the line and then calls `paint()`, and `paint()` is
+   * also what every change event calls — so without this the line would clear
+   * itself on the way in. One repaint's grace, then any further change clears
+   * it.
+   */
+  let recipeLatch = false;
   const recipeStatus = el('p', { class: 'anatomy-recipe-status', role: 'status', hidden: true });
   const recipeList = recipes.length
     ? el('div', { class: 'anatomy-recipes' }, [
@@ -140,14 +149,55 @@ export function createAnatomyPanel({
     const result = scene.applyDisplayRecipe?.(recipe.id);
     if (!result?.ok) return;
     if (result.view) onViewChange?.(result.view);
-    const shown = result.shown?.length ?? 0;
+
+    // **Say what was measured, in the words of what was measured.**
+    //
+    // The scene casts one ray per structure, at one anchor point each, from the
+    // viewpoint the recipe is turning to. That is not "you can see it": the
+    // camera has not arrived yet, one anchor does not speak for a whole
+    // structure, and nothing knows the frustum or what a panel is covering. The
+    // line used to read "8 of 10 are visible", which claimed all three.
+    //
+    // Anything the ray could not answer is reported separately and is never
+    // added to the successes.
+    const clear = result.anchorsClear?.length ?? 0;
+    const unmeasured = result.anchorsUnmeasured?.length ?? 0;
     const total = recipe.shows?.length ?? 0;
-    recipeStatus.hidden = false;
-    recipeStatus.replaceChildren(
-      el('span', { class: 'lang-en', text: `${shown} of ${total} named structures are visible; ${result.hid.length} hidden.` }),
-      el('span', { class: 'lang-ja', text: `対象 ${total} のうち ${shown} が見えています。${result.hid.length} 件を非表示にしました。` })
+    const view = recipe.view ?? result.view;
+    const label = (scene.getAnatomyViews?.() ?? []).find((entry) => entry.id === view) ?? null;
+    const tailEn = unmeasured ? ` ${unmeasured} could not be measured.` : '';
+    const tailJa = unmeasured ? `うち ${unmeasured} 件は判定できませんでした。` : '';
+    setRecipeStatus(
+      `Hid ${result.hid.length}. From the ${label?.label ?? view} viewpoint, ${clear} of ${total} named structures have an unobstructed anchor.${tailEn}`,
+      `${result.hid.length} 件を非表示にしました。${label?.labelJa ?? view}の視点では、対象 ${total} のうち ${clear} 件のアンカーが遮られていません。${tailJa}`
     );
     paint();
+  }
+
+  /**
+   * The one line under the recipes, and the rule that it describes **now**.
+   *
+   * It is a report about one moment: the recipe ran, from that viewpoint, with
+   * that display. Orbit, zoom, resize, a hide or another action and it is a
+   * statement about a frame that no longer exists — so any of those clears it
+   * rather than leaving an old number sitting there looking current.
+   */
+  function setRecipeStatus(en, ja) {
+    recipeLatch = true;
+    recipeStatus.hidden = false;
+    recipeStatus.replaceChildren(
+      el('span', { class: 'lang-en', text: en }),
+      el('span', { class: 'lang-ja', text: ja })
+    );
+  }
+
+  function clearRecipeStatus() {
+    if (recipeLatch) {
+      recipeLatch = false;
+      return;
+    }
+    recipeStatus.hidden = true;
+    recipeStatus.replaceChildren();
   }
   let activeTab = 'parts';
   let sheetOpen = false;
@@ -593,6 +643,9 @@ export function createAnatomyPanel({
   const subject = () => scene.getAnatomySelection() ?? scene.getAnatomyHover?.() ?? null;
 
   function paint() {
+    // Any repaint at all means something moved, and the recipe line describes a
+    // moment that has passed. `recipeLatch` lets the run that wrote it through.
+    if (recipeList) clearRecipeStatus();
     const value = subject();
     const selection = scene.getAnatomySelection();
     const isolated = scene.getAnatomyIsolation();
@@ -656,6 +709,10 @@ export function createAnatomyPanel({
     element.dataset.selectionHidden = selectionHidden ? 'yes' : 'no';
     element.dataset.selectionOffscreen = selection && !canSee ? 'yes' : 'no';
     element.dataset.selectionObscured = selection && obscured ? 'yes' : 'no';
+    // The source file's own records for this structure disagree about what it
+    // is. That belongs beside the name, not three taps away in the detail tab,
+    // because the name is the thing a reader would otherwise take as settled.
+    element.dataset.selectionIdentity = selection?.identity ?? 'settled';
   }
 
   function focusSelection() {
@@ -741,6 +798,19 @@ export function createAnatomyPanel({
     setTab,
     openSheet,
     closeSheet,
+    /**
+     * The camera moved, or the frame did.
+     *
+     * The panel cannot see either — it has no camera and no canvas — so the
+     * owner tells it. All it does is drop the recipe's report, which describes
+     * a viewpoint and a display the reader has now left. Nothing else repaints,
+     * because nothing else went stale.
+     */
+    noteDisplayChanged() {
+      if (!recipeList) return;
+      recipeLatch = false;
+      clearRecipeStatus();
+    },
     /** Exposed so the console's display control can bring its tab forward. */
     showDisplay() {
       setTab('display');

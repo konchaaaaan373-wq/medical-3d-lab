@@ -60,9 +60,9 @@ is one.
 | --- | --- |
 | **Claim** | Each chamber mesh is a closed surface around the chamber's space; the file contains no myocardial free wall, so the scene offers no cut and no interior. |
 | **Source** | Enclosed volume by the divergence theorem over each closed mesh: left ventricle 121.6 mL, right ventricle 74.0, left atrium 31.3, right atrium 27.7, interventricular septum 28.1 as a separate solid. A wall-plus-cavity mesh would not enclose a chamber-sized volume with no second surface. |
-| **Implementation** | No cutaway, no section plane and no "inside" viewpoint exists in `VIEW_SPECS`. Hiding a chamber is what exposes the valves and papillary muscles inside it, and `revealStructure` reports `occluded` rather than pretending to cut. |
+| **Implementation** | No cutaway, no section plane and no "inside" viewpoint exists in `VIEW_SPECS`. Hiding a chamber is what exposes the valves and papillary muscles inside it: `revealStructure` casts a ray from the viewpoint it is turning to, hides whichever whole structure is in the way, and lists what it hid so the display can be put back. Nothing is cut, thinned or sectioned. |
 | **Assumption** | The volumes are properties of one fixed specimen and are recorded for this decision only. They are **not** clinical chamber volumes and are never displayed as any. |
-| **Validation** | `tests/heart-anatomy.test.js` — no viewpoint claims an interior, and `revealStructure` on a part enclosed by a fixture chamber reports it as occluded instead of returning success. |
+| **Validation** | `tests/heart-anatomy.test.js` — no viewpoint claims an interior; a part enclosed by a fixture chamber is reported obscured, and revealing it hides the enclosing chamber by name and restores it. |
 
 ### 5. Five of the fourteen surfaces are open, and the scene says so
 
@@ -101,9 +101,11 @@ is one.
 * The licences (HuBMAP CC BY 4.0; NLM Visible Human terms) are recorded and
   **not** discharged: no attribution surface, no acknowledgment text, no legal
   reading. The file is a candidate, not an adopted asset.
-* Whether each vessel surface is a lumen cast or a wall shell has not been
-  measured. The chambers were measured and are cavity casts; the vessels are
-  described the same way as a description, not as a measurement.
+* **Whether each vessel surface is a lumen or a vessel wall has not been
+  measured, and the scene no longer says either.** The chambers were measured
+  and are cavity casts; carrying that answer across to the vessel file would be
+  extrapolation dressed as a measurement, so every vessel's description says
+  the question is unchecked. (B4-R2.)
 * No junction between a vessel and a chamber has been measured. The vessels meet
   the heart where the two files put them.
 * No mesh in the file is named "circumflex", and this repository does not decide
@@ -148,3 +150,33 @@ is one.
 | **Implementation** | `VESSEL_HUE` in the adapter, softened in saturation and lightness so the two are readable beside the tissue colours. Parts mode is a separate identity map with a hue band per group and no red in the chamber band. |
 | **Assumption** | Reporting the source's assignment is not endorsing red-equals-oxygenated. The model contains the counterexample and the card names it. |
 | **Validation** | `tests/heart-anatomy.test.js` — the pulmonary trunk is red and the pulmonary veins blue, and the card is required to say what that does and does not mean. |
+
+### 12. A shared group is not a shared meaning
+
+| | |
+| --- | --- |
+| **Claim** | Where a structure is filed for navigation says nothing about what it is, and the description is what says what it is. |
+| **Source** | The interventricular septum arrives as a separate closed solid enclosing 28.1 mL — the one part of the heart file that is a wall rather than a chamber cavity. The left and right brachiocephalic veins unite to form the superior vena cava; they run beside the aortic arch and are not its branches. |
+| **Implementation** | `descriptionKey` on a row overrides its group's description. The septum keeps the chamber group (that is where a reader looks) and carries its own text. The brachiocephalic veins moved out of `archBranch` into `cavalTributary`, which has its own name, its own colour band and its own description. The chamber description no longer opens with "a closed surface", because five of the fourteen heart parts are open and the row's own `closed` flag is what answers that. |
+| **Assumption** | That the septum is a wall and that the brachiocephalic veins form the superior vena cava are ordinary gross anatomy, not findings of ours; the geometry (a separate closed solid; two veins converging superior to the heart) is consistent with both, and no measurement here establishes either. |
+| **Validation** | `tests/heart-anatomy.test.js` — the septum does not carry the chambers' sentence, the veins do not carry the arch's, and no structure's description contradicts its own `closed` flag. (B4-R1.) |
+
+### 13. "Visible" is three answers, and one of them is "could not tell"
+
+| | |
+| --- | --- |
+| **Claim** | What the scene reports is whether **one anchor point** is unobstructed along a ray from a **stated eye position** — and it distinguishes a prediction about a named viewpoint from an answer about the camera as it stands. |
+| **Source** | Not a source claim; a statement about what the code measures. |
+| **Implementation** | `_anchorClearFrom(id, eye)` returns `true`, `false` or `null`. `_anchorClearFromView` asks it from a named viewpoint — a prediction, because the caller applies the view afterwards. `isAnchorClearNow` asks it from the live camera. `isStructureObscured` prefers the live camera and treats an unmeasurable answer as *not* an obstruction, so a button is never offered on a non-answer. `applyDisplayRecipe` returns `anchorsClear`, `anchorsBlocked` and `anchorsUnmeasured` as three separate lists. |
+| **Assumption** | **One anchor does not speak for a whole structure** — the brain has the same limit recorded as F-40 — and nothing here knows the view frustum, the zoom, or which part of the canvas a panel covers. So this is never "the structure is visible on screen". |
+| **Validation** | `tests/heart-anatomy.test.js` — an unknown viewpoint answers `null` rather than `true`; the live-camera answer and the viewpoint prediction are taken separately and neither rewrites the other; the recipe's three lists partition the structures it names. The panel's wording is checked against the same terms. (B4-R4.) |
+
+### 14. A name the source is not consistent about is marked where it is shown
+
+| | |
+| --- | --- |
+| **Claim** | For `VH_M_left_anterior_descending_artery`, the reader is told at the point of naming that the source's own records disagree. |
+| **Source** | The node's own `extras`, unchanged: node name vs `label` + `ontologyid`. |
+| **Implementation** | `identity: 'source-conflict'` travels with the structure. The panel marks the pinned heading, a search result row carries it, and the 3D label gets a short second line — "name unverified" / 「名称要確認」 — never the paragraph, which stays in the detail tab. The node name, `sourceLabel` and `ontologyId` are untouched and searching by the source's own wording still finds it. |
+| **Assumption** | **Nothing here decides which record is right.** The mark says the question is open; it does not answer it. |
+| **Validation** | `tests/heart-anatomy.test.js` — the original three fields are unchanged, the mark is present and short, every other structure is explicitly settled, and the label carries the mark rather than the explanation. (B4-R5.) |

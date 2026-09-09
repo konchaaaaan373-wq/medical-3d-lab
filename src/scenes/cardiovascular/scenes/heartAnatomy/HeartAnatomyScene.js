@@ -645,34 +645,77 @@ export class HeartAnatomyScene {
     // camera happens to be standing: the caller applies the view after this
     // returns, so an answer about the old camera would describe a frame nobody
     // is about to see.
-    const seen = this._seenFromView(key, this.activeView);
-    return { ok: true, changed, view: this.activeView, layer: null, occluded: !seen, hid };
+    const anchorClear = this._anchorClearFromView(key, this.activeView);
+    return {
+      ok: true,
+      changed,
+      view: this.activeView,
+      layer: null,
+      /** Tri-state: true clear, false blocked, null not measurable. */
+      anchorClear,
+      /** Blocked, as observed. A non-answer is not reported as an obstruction. */
+      occluded: anchorClear === false,
+      hid,
+    };
   }
 
   /**
-   * Whether a structure would actually be seen from one of the named
-   * viewpoints — measured by a ray, not assumed from the settings.
+   * Is this structure's **anchor point** unobstructed along the ray from a
+   * given eye position? `true`, `false`, or `null` when it cannot be measured.
    *
-   * `isStructureVisible` answers a different question: whether the display
-   * settings say this part is drawn. Both are needed, and they disagree exactly
-   * where it matters here — a papillary muscle is drawn, and the ventricle
-   * around it is drawn in front of it.
+   * ## Three things this is not
+   *
+   * It is not "the structure is visible". One anchor decides for a whole
+   * structure, and a mesh can have its anchor clear while most of it is behind
+   * something — the brain scene has the same limit recorded as F-40.
+   *
+   * It is not "the structure is on screen". Nothing here knows the frustum, the
+   * zoom, or which part of the canvas a panel is sitting over.
+   *
+   * And **it is not the settings**. `isStructureVisible` answers whether the
+   * display draws this part at all; both are needed and they disagree exactly
+   * where it matters — a papillary muscle is drawn, and the ventricle around it
+   * is drawn in front of it.
+   *
+   * ## Why `null` rather than `true`
+   *
+   * It used to return `true` when there was no viewpoint or no anchor to aim
+   * at, which quietly counted "could not measure" as "yes". A caller that adds
+   * these up was then reporting successes it had not observed. Unmeasurable is
+   * its own answer and every caller decides what to do with it.
    */
-  _seenFromView(id, viewId) {
+  _anchorClearFrom(id, eye) {
     const meshes = this._meshesFor(id);
     if (!meshes.length) return false;
     if (!meshes.some((mesh) => this._targetOpacityFor(mesh) > DRAWN_OPACITY)) return false;
-    const spec = VIEW_SPECS.find((candidate) => candidate.id === viewId);
     const point = this._anchorFor(`structure:${id}`, id, meshes)?.sight;
-    // Without a viewpoint or an anchor there is nothing measured to report, and
-    // guessing "hidden" would offer a cut the file cannot support.
-    if (!spec || !point) return true;
-    const direction = point.clone().sub(spec.position);
+    if (!eye || !point) return null;
+    const direction = point.clone().sub(eye);
     const distance = direction.length();
-    if (!distance) return true;
-    this._annotationRay.set(spec.position, direction.divideScalar(distance));
+    if (!distance) return null;
+    this._annotationRay.set(eye, direction.divideScalar(distance));
     const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
     return Boolean(first) && meshes.includes(first.object);
+  }
+
+  /** From one of the named viewpoints — a **prediction** about where the camera is going. */
+  _anchorClearFromView(id, viewId) {
+    const spec = VIEW_SPECS.find((candidate) => candidate.id === viewId);
+    return this._anchorClearFrom(id, spec?.position ?? null);
+  }
+
+  /**
+   * From where the camera is standing **now** — a statement about this frame.
+   *
+   * Kept apart from the viewpoint prediction on purpose: the reader may have
+   * orbited, zoomed or turned since, and an answer about a viewpoint they have
+   * left is not an answer about what is in front of them.
+   */
+  isAnchorClearNow(id) {
+    const camera = this.viewer?.camera;
+    if (!camera) return null;
+    camera.updateMatrixWorld();
+    return this._anchorClearFrom(id, camera.position);
   }
 
   /**
@@ -685,7 +728,9 @@ export class HeartAnatomyScene {
   _clearTheWayTo(id, viewId, limit = 6) {
     const hid = [];
     for (let step = 0; step < limit; step += 1) {
-      if (this._seenFromView(id, viewId)) break;
+      // `true` means clear. `null` means it cannot be measured, and there is
+      // nothing to move out of the way on the strength of a non-answer.
+      if (this._anchorClearFromView(id, viewId) !== false) break;
       const blocker = this._firstBlocker(id, viewId);
       if (!blocker || blocker === id) break;
       this.manualHidden.add(blocker);
@@ -721,7 +766,14 @@ export class HeartAnatomyScene {
    */
   isStructureObscured(id) {
     if (!this.isStructureVisible(id)) return false;
-    return !this._seenFromView(id, this.activeView);
+    // The reader is looking at the current frame, so ask about the current
+    // frame; the named viewpoint is the fallback for a scene with no camera
+    // yet (a test, a headless build). An unmeasurable answer is **not** an
+    // obstruction: offering "show it" on a non-answer is a button that may do
+    // nothing.
+    const now = this.isAnchorClearNow(id);
+    const answer = now === null ? this._anchorClearFromView(id, this.activeView) : now;
+    return answer === false;
   }
 
   /** The fixed ways of looking this scene offers. Data, so the panel can list them. */
@@ -751,19 +803,50 @@ export class HeartAnatomyScene {
       this.manualHidden.add(structureId);
       hid.push(structureId);
     }
-    if (this.isolatedId != null) this.isolatedId = null;
+    // Dropping an isolation **is** a change to the display, and forgetting that
+    // is how "Back to how it was" became unavailable on a real path: everything
+    // this recipe hides was already hidden by hand, the viewpoint is already the
+    // one it wants, and the only thing it does is end an isolation — which is
+    // exactly the state a reader would want back.
+    const released = this.isolatedId != null;
+    if (released) this.isolatedId = null;
     if (hid.length) this.hiddenVersion += 1;
     const turned = recipe.view && recipe.view !== this.activeView && this.setAnatomyView(recipe.view);
     this._applyVisibility(1 / 60, true);
-    if (hid.length || turned) this.displayBeforeReveal = before;
+    const changed = hid.length > 0 || turned || released;
+    // Only when something changed, so running the same recipe twice does not
+    // overwrite the snapshot with the state the first run produced.
+    if (changed) this.displayBeforeReveal = before;
     this._emitVisibility();
     this._emitIsolation();
 
-    // What the reader can actually see now, measured from the viewpoint the
-    // recipe turned to — so the list the panel shows is a list of what is
-    // visible rather than a list of what was intended.
-    const shown = recipe.shows.filter((structureId) => this._seenFromView(structureId, this.activeView));
-    return { ok: true, hid, view: this.activeView, shown, missing: recipe.shows.filter((s) => !shown.includes(s)) };
+    // What was observed, split three ways rather than two.
+    //
+    // This is a **prediction about the viewpoint the recipe turned to**, made
+    // by casting one ray per structure at one anchor point each. It is not a
+    // count of what is on screen: the camera has not moved yet when this
+    // returns, one anchor does not speak for a whole structure, and nothing
+    // here knows the frustum or which part of the canvas a panel covers. The
+    // caller has to describe it in those terms — see `AnatomyPanel`.
+    const clear = [];
+    const blocked = [];
+    const unmeasured = [];
+    for (const structureId of recipe.shows) {
+      const answer = this._anchorClearFromView(structureId, this.activeView);
+      if (answer === true) clear.push(structureId);
+      else if (answer === false) blocked.push(structureId);
+      else unmeasured.push(structureId);
+    }
+    return {
+      ok: true,
+      hid,
+      view: this.activeView,
+      /** Anchors observed unobstructed from `view`. Not "seen on screen". */
+      anchorsClear: clear,
+      anchorsBlocked: blocked,
+      /** Neither — no anchor, or no such viewpoint. Never counted as a success. */
+      anchorsUnmeasured: unmeasured,
+    };
   }
 
   canRestoreDisplay() { return this.displayBeforeReveal != null; }
@@ -904,6 +987,14 @@ export class HeartAnatomyScene {
       structureId: id,
       text: info.name,
       sub: info.nameJa,
+      /**
+       * A short mark when the source's own records for this structure name
+       * different things — never the paragraph, which is in the detail tab.
+       * A label is two words on a 3D view; a warning that fills it would push
+       * out the thing it is warning about.
+       */
+      flag: info.identityNote,
+      flagJa: info.identityNoteJa,
       position: anchor.point,
       isVisible: (camera) => this._pointVisible(key, anchor.sight, meshes, camera),
       /** Whether the settings draw it at all — see the brain scene for why both. */

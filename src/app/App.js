@@ -302,7 +302,14 @@ export async function createApp({ stage, ui }) {
     setShot(shotSource);
     pvPanel?.resize();
     wavePanel?.resize();
+    anatomyPanel?.noteDisplayChanged?.();
   });
+
+  // Orbiting and zooming change what the reader is looking at, and the anatomy
+  // panel has no way to know: it has no camera and no canvas. Telling it is the
+  // owner's job, and all it does with it is drop a report about a viewpoint the
+  // reader has left.
+  viewer.controls?.addEventListener?.('change', () => anatomyPanel?.noteDisplayChanged?.());
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false, resumeAutoRotate: true };

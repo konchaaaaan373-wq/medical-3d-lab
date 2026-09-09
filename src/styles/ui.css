@@ -2391,6 +2391,17 @@
   color: var(--label-ink-faint, var(--ink-faint));
 }
 
+/* A name the source itself is not consistent about. Smaller than the name and
+   in the same faint ink: enough that "this is not settled" is on the label, not
+   so much that the label becomes the warning. */
+.label-flag {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  color: var(--label-ink-faint, var(--ink-faint));
+}
+
 /* ---------- bottom console ---------- */
 .console {
   pointer-events: auto;

@@ -105,9 +105,18 @@ export function createLabelLayer({ viewer, annotations }) {
       lead[1] *= 0.55;
     }
     const leader = lead ? el('span', { class: 'label-leader' }) : null;
+    // A scene may mark a name as unsettled — the source's own records for the
+    // structure disagreeing with each other, say. It is a few words appended to
+    // the name, in both languages, and nothing when there is nothing to say.
     const body = el('span', { class: 'label-body' }, [
       el('span', { class: 'label-en lang-en', text: annotation.text }),
       el('span', { class: 'label-ja lang-ja', text: annotation.sub }),
+      ...(annotation.flag || annotation.flagJa
+        ? [el('span', { class: 'label-flag' }, [
+            el('span', { class: 'lang-en', text: annotation.flag ?? '' }),
+            el('span', { class: 'lang-ja', text: annotation.flagJa ?? '' }),
+          ])]
+        : []),
     ]);
     const node = el('div', { class: lead ? 'label3d label3d-led' : 'label3d' }, [
       el('span', { class: 'label-dot' }),

@@ -156,22 +156,23 @@ the Japanese names are deliberate but unreviewed.
 
 * **Parts** colours give each group its own hue band — chambers teal, valves
   amber, papillary muscles violet, great vessels ochre, coronary arteries red,
-  cardiac veins indigo, arch branches green — spread evenly inside the band by
-  position so that all forty-six are distinct. Reds are deliberately left out of
+  cardiac veins indigo, arch branches green, brachiocephalic veins cyan —
+  spread evenly inside the band by position so that all forty-six are distinct. Reds are deliberately left out of
   the chamber band: a red chamber beside a blue one is an oxygenation map, and
   this mode does not draw one.
-* **Natural** reports the sources' own materials. The heart file ships one
-  tissue red; the vasculature file ships `artery_mat7` (pure red) and
-  `vein_mat8` (pure blue) and assigns every vessel to one. This mode uses that
-  assignment, softened to be readable. **It is a vessel-type map and not an
-  oxygenation map, and the model carries the counterexample**: the pulmonary
-  arteries are red and carry deoxygenated blood, the pulmonary veins are blue
-  and carry oxygenated blood. Nothing here encodes pressure or flow.
-* One transform, on one root, centres and scales the model. The file arrives in
-  whole-body coordinates; keeping the transform in one place is what will let
-  the vasculature from the same release be placed beside it without either being
-  re-centred, which would destroy the relative position that makes them
-  combinable.
+* **Natural** reproduces **the sources' own materials**, and that is all the
+  word claims. The heart file ships one tissue red; the vasculature file ships
+  `artery_mat7` (pure red) and `vein_mat8` (pure blue) and assigns every vessel
+  to one. This mode uses that assignment, softened to be readable. **It is not a
+  claim about the colour of living tissue** — nobody measured that, and a fixed
+  cadaveric specimen would not settle it — and **it is not an oxygenation map**:
+  the model carries the counterexample, since the pulmonary arteries are red and
+  carry deoxygenated blood while the pulmonary veins are blue and carry
+  oxygenated blood. Nothing here encodes pressure or flow.
+* One transform, on one root, centres and scales **both** files together. They
+  arrive in whole-body coordinates; keeping the transform in one place is what
+  lets the vasculature sit beside the heart without either being re-centred,
+  which would destroy the relative position that makes them combinable.
 * Labels are anchored on a part's outermost vertex and drawn only when that
   point is the first drawn thing along the ray — the same occlusion rule as the
   brain, for the same reason: a name drawn over whatever is in front of it is a
@@ -191,6 +192,20 @@ the Japanese names are deliberate but unreviewed.
   show; after it runs, the panel reports how many of those are actually visible
   from the viewpoint it turned to — measured, not promised — and "Back to how it
   was" undoes it.
+* **"Visible" is never claimed loosely.** What the scene can measure is whether
+  **one anchor point** on a structure is unobstructed along a ray from a stated
+  eye position, and it keeps two of those apart: a prediction from a named
+  viewpoint (used before the camera has moved there) and an answer from the
+  camera as it stands. A check it cannot make answers "unknown" and is never
+  counted as a success. One anchor does not speak for a whole structure, and
+  nothing here knows the frustum, the zoom, or what a panel is covering — so
+  the fixed view's report says how many anchors are unobstructed from that
+  viewpoint, not how much of the model is on screen, and it is cleared as soon
+  as the reader orbits, zooms, resizes or changes the display.
+* **A name the source is not consistent about says so where it is named** — in
+  the pinned heading, in a search result and on the 3D label, as two words. The
+  explanation stays in the detail tab. The source's node name, label and
+  ontology id are all kept unchanged, and nothing here decides which is right.
 * The panel asks two different questions before it offers "Show it": whether the
   settings are drawing a structure, and whether anything is in front of it.
   A papillary muscle inside a ventricle is drawn and cannot be seen, and only
@@ -201,8 +216,11 @@ the Japanese names are deliberate but unreviewed.
 ## 7. What it must never be used for
 
 Diagnosis, treatment selection, dose selection, prognosis, or procedure
-planning. It is a still teaching model of one specimen with its great vessels
-missing; it is not a patient's heart and not a surgical reference.
+planning. It is a still teaching model of one fixed cadaveric specimen. It has
+no chordae tendineae, no pericardium, no conduction system and no myocardial
+free wall; whether its vessel surfaces are lumens or walls has not been
+measured, and no junction between a vessel and a chamber has been measured
+either. It is not a patient's heart and not a surgical reference.
 
 ## 8. Review status
 

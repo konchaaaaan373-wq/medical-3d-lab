@@ -489,6 +489,29 @@
 }
 
 
+/* The source file's own records for this structure name different things.
+   Marked where the name is, quietly: a reader who reads only the heading has to
+   learn that the heading is not settled, and a reader who is doing something
+   else must not be shouted at. The detail tab carries the whole story. */
+.anatomy-panel[data-selection-identity='source-conflict'] .anatomy-panel-where::after {
+  content: ' · 名称要確認（出典内で不一致）';
+  opacity: 0.85;
+}
+
+.anatomy-panel[data-selection-identity='source-conflict'] .anatomy-panel-where.lang-en::after {
+  content: ' · name unverified (the source disagrees with itself)';
+}
+
+/* Same mark, same reason, in a search result. */
+.anatomy-search-hit[data-identity='source-conflict'] .anatomy-search-where::after {
+  content: ' · 名称要確認';
+  opacity: 0.85;
+}
+
+.anatomy-search-hit[data-identity='source-conflict'] .anatomy-search-where .lang-en::after {
+  content: ' · name unverified';
+}
+
 /* Where the keyboard is, which is not what is selected: arrowing through the
    results must not repaint the model, so the two states look different. */
 .anatomy-search-hit[data-active='yes'] {

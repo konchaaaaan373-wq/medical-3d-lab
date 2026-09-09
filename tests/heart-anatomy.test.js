@@ -132,14 +132,93 @@ test('heart: an open surface says it is open, and a closed one says nothing', ()
 });
 
 test('heart: a chamber is described as the space it encloses, not as muscle', () => {
-  for (const entry of HEART_PARTS.filter((part) => part.group === 'chamber')) {
+  const chambers = HEART_PARTS.filter(
+    (part) => part.group === 'chamber' && part.id !== 'VH_M_interventricular_septum'
+  );
+  assert.equal(chambers.length, 4);
+  for (const entry of chambers) {
     const info = heartStructureInfo(entry.id);
-    assert.match(info.description, /closed surface enclosing the space/);
+    assert.match(info.description, /surface enclosing the space/);
     assert.match(info.description, /no separate myocardial free wall/);
   }
   // And the volumes that settled it are recorded rather than remembered.
   assert.equal(heartPartById('VH_M_heart_left_ventricle').enclosedMl, 121.6);
   assert.equal(heartPartById('VH_M_heart_right_ventricle').enclosedMl, 74.0);
+});
+
+test('heart: sharing a group does not share a meaning', () => {
+  // B4-R1. The septum is filed with the chambers so a reader can find it, and
+  // it is not a chamber: it is the one part of the heart file that is a wall.
+  // A group is a place to look; the description is what a thing is.
+  const septum = heartStructureInfo('VH_M_interventricular_septum');
+  assert.equal(heartPartById('VH_M_interventricular_septum').group, 'chamber', 'still grouped for navigation');
+  assert.match(septum.description, /wall between the two ventricles/);
+  assert.doesNotMatch(
+    septum.description,
+    /this is the chamber, not the muscle/,
+    'the chambers\' sentence must not be applied to the septum'
+  );
+  assert.match(septum.descriptionJa, /筋性の壁/);
+  assert.doesNotMatch(septum.descriptionJa, /これは心腔であって/);
+
+  // And the group's own name no longer says "chambers" about a set that
+  // contains something else.
+  assert.match(septum.region, /septum/i);
+  assert.match(septum.regionJa, /中隔/);
+});
+
+test('heart: the brachiocephalic veins are not branches of the aortic arch', () => {
+  // B4-R1. They were grouped with the arch's branches — the two are alike only
+  // in being long and out of the chest — and inherited a description saying
+  // they join the arch. The left and right brachiocephalic veins unite to form
+  // the superior vena cava.
+  for (const id of ['VH_M_brachiocephalic_vein_L', 'VH_M_brachiocephalic_vein_R']) {
+    const info = heartStructureInfo(id);
+    assert.equal(info.category, 'cavalTributary', id);
+    assert.match(info.description, /unite to form the superior vena cava/);
+    assert.match(info.description, /not branches of the aortic arch/);
+    assert.match(info.descriptionJa, /上大静脈になります/);
+    assert.doesNotMatch(info.description, /A branch of the aortic arch/);
+  }
+  // The arch's arterial branches keep their own description and say nothing
+  // about veins.
+  const carotid = heartStructureInfo('VH_M_left_common_carotid_artery');
+  assert.equal(carotid.category, 'archBranch');
+  assert.match(carotid.description, /arterial branch of the aortic arch/);
+  assert.doesNotMatch(carotid.description, /vein/i);
+});
+
+test('heart: a description never contradicts the surface state of the row it describes', () => {
+  // B4-R1. The right atrium is an open surface in the source, and its
+  // description used to open with "A closed surface".
+  for (const entry of HEART_PARTS) {
+    const info = heartStructureInfo(entry.id);
+    if (entry.closed === false) {
+      assert.doesNotMatch(info.description, /\bclosed surface\b/, `${entry.id}: says closed, note says open`);
+      assert.doesNotMatch(info.descriptionJa, /閉じた面/, entry.id);
+      assert.match(info.note, /open surface/);
+    }
+  }
+  const atrium = heartStructureInfo('VH_M_right_cardiac_atrium');
+  assert.equal(heartPartById('VH_M_right_cardiac_atrium').closed, false);
+  assert.match(atrium.note, /open surface/);
+});
+
+test('heart: the vessels are not described as lumens, because that was never measured', () => {
+  // B4-R2. `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` records
+  // lumen-versus-wall as unchecked. The chambers were measured; carrying that
+  // answer across to the other file is extrapolation, not measurement.
+  for (const entry of HEART_VESSELS) {
+    const info = heartStructureInfo(entry.id);
+    assert.match(
+      info.description,
+      /whether it represents the lumen or the vessel wall has not been checked|lumen or wall has not been checked/i,
+      `${entry.id}: says what has not been checked`
+    );
+    assert.match(info.descriptionJa, /内腔と血管壁のどちらを表すかは未確認/, entry.id);
+    assert.doesNotMatch(info.description, /It is a lumen surface/);
+    assert.doesNotMatch(info.descriptionJa, /壁の厚みではなく内腔の面です/);
+  }
 });
 
 test('heart: every part carries the fields the panels read, in both languages', () => {
@@ -451,6 +530,8 @@ function vesselFixture() {
     VH_M_inferior_vena_cava_a: [-0.95, -0.25, 0.15],
     VH_M_inferior_vena_cava_b: [-0.95, -0.75, 0.15],
     VH_M_left_coronary_artery: [-0.3, 0.3, 0.3],
+    // The one mesh whose source records disagree with each other.
+    VH_M_left_anterior_descending_artery: [-0.95, 0.05, 0.4],
     VH_M_descending_aorta_a: [-0.55, -0.6, -0.1],
     VH_M_descending_aorta_b: [-0.55, -1.4, -0.1],
     VH_M_brachiocephalic_vein_L: [-0.2, 0.9, 0.2],
@@ -651,17 +732,24 @@ test('heart: the fixed view hides and turns, and never cuts', () => {
   }
   assert.equal(hidden.size, before + result.hid.length);
 
-  // What it says it shows, it shows — checked by the same ray the labels use,
-  // not by trusting the recipe's own list.
-  assert.ok(result.shown.length > 0, 'something is actually visible');
-  for (const id of result.shown) {
+  // What it observed, split three ways. `anchorsClear` is a prediction about
+  // one anchor point from one viewpoint — not a count of what is on screen —
+  // and anything the ray could not answer is its own bucket rather than a
+  // success.
+  assert.ok(result.anchorsClear.length > 0, 'something is actually unobstructed');
+  for (const id of result.anchorsClear) {
     assert.ok(recipe.shows.includes(id));
     assert.equal(built.isStructureVisible(id), true);
   }
   assert.deepEqual(
-    [...result.shown, ...result.missing].sort(),
+    [...result.anchorsClear, ...result.anchorsBlocked, ...result.anchorsUnmeasured].sort(),
     [...recipe.shows].sort(),
-    'every structure it names is reported as seen or as not seen'
+    'every structure it names lands in exactly one bucket'
+  );
+  assert.equal(
+    new Set([...result.anchorsClear, ...result.anchorsBlocked, ...result.anchorsUnmeasured]).size,
+    recipe.shows.length,
+    'and in only one'
   );
 
   // Nothing was cut, thinned or sectioned: the only change is hides and a view.
@@ -716,4 +804,191 @@ test('the label layer waits out occlusion and never waits out a hide', () => {
   assert.match(source, /if \(undrawn\) item\.seenAt = 0;/);
   // And `undrawn` is part of the hide decision, not merely computed.
   assert.match(source, /const hide = offscreen \|\| undrawn \|\| unseen \|\| never \|\| over;/);
+});
+
+// ---------------------------------------------------------------------------
+// B4-R3 — the way back is available on every path that changed the display
+
+test('heart: a recipe that only ends an isolation is still undoable', () => {
+  // The exact sequence the review named: the four chambers already hidden by
+  // hand, the viewpoint already the one the recipe wants, one structure
+  // isolated. The recipe then hides nothing and turns nothing — and ends the
+  // isolation, which is a change to the display like any other.
+  const built = pair();
+  for (const id of [
+    'VH_M_heart_left_ventricle',
+    'VH_M_heart_right_ventricle',
+    'VH_M_left_cardiac_atrium',
+    'VH_M_right_cardiac_atrium',
+  ]) built.setStructureHidden(id, true);
+  built.setAnatomyView('anterior');
+  built.isolateStructure('VH_M_mitral_valve');
+  assert.equal(built.canRestoreDisplay(), false, 'nothing to undo yet');
+
+  const result = built.applyDisplayRecipe('inside-the-chambers');
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.hid, [], 'it hid nothing — everything was already hidden');
+  assert.equal(result.view, 'anterior', 'and it turned nothing');
+  assert.equal(built.getAnatomyIsolation(), null, 'but it ended the isolation');
+  assert.equal(built.canRestoreDisplay(), true, 'so there is a way back');
+
+  built.restoreDisplay();
+  assert.equal(built.getAnatomyIsolation(), 'VH_M_mitral_valve', 'and it goes back');
+  built.dispose();
+});
+
+test('heart: a recipe that changes nothing at all leaves the previous way back alone', () => {
+  const built = pair();
+  // One reveal to put a snapshot on the stack.
+  built.setStructureHidden('VH_M_left_cardiac_atrium', true);
+  built.revealStructure('VH_M_left_cardiac_atrium');
+  assert.equal(built.canRestoreDisplay(), true);
+
+  // Then the recipe, twice. The first run changes things; the second cannot,
+  // and must not overwrite the snapshot with the state the first one produced.
+  built.applyDisplayRecipe('inside-the-chambers');
+  const afterFirst = built.getAnatomyVisibility().hidden.slice().sort();
+  const second = built.applyDisplayRecipe('inside-the-chambers');
+  assert.deepEqual(second.hid, [], 'the second run has nothing left to hide');
+  assert.deepEqual(built.getAnatomyVisibility().hidden.slice().sort(), afterFirst, 'and changes nothing');
+
+  built.restoreDisplay();
+  assert.ok(
+    !built.getAnatomyVisibility().hidden.includes('VH_M_heart_left_ventricle'),
+    'the way back is to before the first run, not to between the two'
+  );
+  built.dispose();
+});
+
+test('heart: every path that changes the display records the way back', () => {
+  const paths = [
+    ['a hide the recipe adds', (scene) => { scene.setAnatomyView('anterior'); }],
+    ['a turn the recipe makes', (scene) => {
+      scene.setAnatomyView('posterior');
+      for (const id of ['VH_M_heart_left_ventricle', 'VH_M_heart_right_ventricle', 'VH_M_left_cardiac_atrium', 'VH_M_right_cardiac_atrium']) {
+        scene.setStructureHidden(id, true);
+      }
+    }],
+    ['an isolation the recipe ends', (scene) => {
+      scene.setAnatomyView('anterior');
+      for (const id of ['VH_M_heart_left_ventricle', 'VH_M_heart_right_ventricle', 'VH_M_left_cardiac_atrium', 'VH_M_right_cardiac_atrium']) {
+        scene.setStructureHidden(id, true);
+      }
+      scene.isolateStructure('VH_M_aortic_valve');
+    }],
+  ];
+  for (const [what, arrange] of paths) {
+    const built = pair();
+    arrange(built);
+    assert.equal(built.canRestoreDisplay(), false, `${what}: nothing recorded before the recipe`);
+    built.applyDisplayRecipe('inside-the-chambers');
+    assert.equal(built.canRestoreDisplay(), true, `${what}: the way back is recorded`);
+    built.dispose();
+  }
+});
+
+// ---------------------------------------------------------------------------
+// B4-R4 — "visible" says what was measured, and unmeasurable is not a success
+
+test('heart: an anchor check that cannot be made is not counted as a success', () => {
+  const built = pair();
+  const id = 'VH_M_aortic_valve';
+  assert.equal(built._anchorClearFromView(id, 'anterior'), true, 'a real viewpoint answers');
+  assert.equal(built._anchorClearFromView(id, 'no-such-viewpoint'), null, 'and an unknown one does not');
+  assert.notEqual(built._anchorClearFromView(id, 'no-such-viewpoint'), true, 'never "yes" by default');
+
+  // A structure that is not drawn at all is a plain no, not a non-answer.
+  built.setStructureHidden(id, true);
+  assert.equal(built._anchorClearFromView(id, 'anterior'), false);
+  built.dispose();
+});
+
+test('heart: the prediction from a viewpoint and the answer from the camera are two questions', () => {
+  const built = pair();
+  const id = 'VH_M_left_cardiac_atrium';
+
+  // No camera in this harness, so "now" cannot be answered — and says so rather
+  // than borrowing the viewpoint's answer.
+  assert.equal(built.isAnchorClearNow(id), null);
+
+  built.viewer = { camera: new THREE.PerspectiveCamera(45, 1, 0.1, 100) };
+  const anchor = built.getStructureAnnotation(id).position;
+  built.viewer.camera.position.copy(anchor).multiplyScalar(3);
+  built.viewer.camera.lookAt(0, 0, 0);
+  assert.equal(built.isAnchorClearNow(id), true, 'from in front of it');
+
+  built.viewer.camera.position.copy(anchor).multiplyScalar(-3);
+  built.viewer.camera.lookAt(0, 0, 0);
+  assert.equal(built.isAnchorClearNow(id), false, 'and from behind the heart');
+
+  // The viewpoint prediction is unaffected by where the camera went: they are
+  // answers to different questions and neither is rewritten by the other.
+  assert.equal(built._anchorClearFromView(id, 'posterior'), built._anchorClearFromView(id, 'posterior'));
+  built.dispose();
+});
+
+test('heart: "show it" is offered from what is in front of the reader now', () => {
+  const built = pair();
+  const id = 'VH_M_papillary_muscle_of_heart_anterolateral';
+  built.viewer = { camera: new THREE.PerspectiveCamera(45, 1, 0.1, 100) };
+  const anchor = built.getStructureAnnotation(id).position;
+  built.viewer.camera.position.copy(anchor).multiplyScalar(4);
+  built.viewer.camera.lookAt(0, 0, 0);
+  assert.equal(built.isStructureObscured(id), true, 'the ventricle is in the way from here');
+
+  // Hidden is a different state and a different button; obscured is about
+  // something being in front, not about being switched off.
+  built.setStructureHidden(id, true);
+  assert.equal(built.isStructureObscured(id), false);
+  built.dispose();
+});
+
+// ---------------------------------------------------------------------------
+// B4-R5 — a name the source is not consistent about says so where it is shown
+
+test('heart: an unsettled name is marked wherever the structure is named', () => {
+  const info = heartStructureInfo('VH_M_left_anterior_descending_artery');
+
+  // The source's own records are kept exactly as they are. Nothing here decides
+  // which of them is right.
+  assert.equal(info.atlasName ?? 'VH_M_left_anterior_descending_artery', 'VH_M_left_anterior_descending_artery');
+  assert.equal(info.sourceLabel, 'Anterior descending branch of left pulmonary artery');
+  assert.equal(info.ontologyId, 'FMA:8636');
+
+  // And the state travels with the structure, in both languages and short
+  // enough for a heading, a result row or a label.
+  assert.equal(info.identity, 'source-conflict');
+  assert.equal(info.identityNote, 'name unverified');
+  assert.equal(info.identityNoteJa, '名称要確認');
+  assert.ok(info.identityNote.length < 24 && info.identityNoteJa.length < 12, 'short enough to sit beside a name');
+  assert.match(info.note, /neither is corrected/);
+
+  // It is the only one, and every other structure is explicitly settled rather
+  // than merely missing the field.
+  for (const entry of HEART_STRUCTURES) {
+    const other = heartStructureInfo(entry.id);
+    if (entry.id === 'VH_M_left_anterior_descending_artery') continue;
+    assert.equal(other.identity, null, entry.id);
+    assert.equal(other.identityNote, null, entry.id);
+  }
+});
+
+test('heart: the label for an unsettled name carries the mark, not the paragraph', () => {
+  const built = pair();
+  const label = built.getStructureAnnotation('VH_M_left_anterior_descending_artery');
+  assert.equal(label.text, 'Left anterior descending artery');
+  assert.equal(label.flag, 'name unverified');
+  assert.equal(label.flagJa, '名称要確認');
+  assert.ok(!label.flag.includes('ontology'), 'the whole story stays in the detail tab');
+
+  const settled = built.getStructureAnnotation('VH_M_ascending_aorta');
+  assert.equal(settled.flag, null);
+  assert.equal(settled.flagJa, null);
+  built.dispose();
+});
+
+test('the label layer draws a scene\'s mark and nothing when there is none', () => {
+  const source = readFileSync(new URL('../src/components/LabelLayer.js', import.meta.url), 'utf8');
+  assert.match(source, /annotation\.flag \|\| annotation\.flagJa/);
+  assert.match(source, /class: 'label-flag'/);
 });
