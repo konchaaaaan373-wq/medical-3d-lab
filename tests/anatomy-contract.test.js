@@ -52,6 +52,13 @@ const FIXTURE = [
   [28, 'Anterior quadrangular lobule', 'left', 'cerebellum', 'Cerebellum', [0.45, -0.65, -0.6]],
 ];
 
+/** A scene with no atlas yet — what the panel is built against before it loads. */
+function emptyScene() {
+  const scene = new BrainAnatomyScene({ atlas: new THREE.Group() });
+  scene.build();
+  return scene;
+}
+
 function atlas(structures = FIXTURE) {
   const group = new THREE.Group();
   group.name = 'fixture-atlas';
@@ -615,11 +622,15 @@ test('anatomy panels: a re-attached atlas leaves nothing of the old one in the D
  * both are stood up here. The media query is switchable, because half of what
  * this component promises is about the layout it is in.
  */
-function mountPanel({ sheet = false, onFocusStructure, onLayerChange } = {}) {
-  const scene = buildScene();
+function mountPanel({ sheet = false, empty = false, onFocusStructure, onLayerChange } = {}) {
+  const scene = empty ? emptyScene() : buildScene();
   const restoreDocument = installFakeDocument();
   document.documentElement = new FakeElement('html');
-  document.addEventListener = () => {};
+  // The sheet registers its key handler on the document in the capture phase.
+  // Keeping it lets a test drive that phase, which is where the Escape ordering
+  // between the sheet and the search box actually happens.
+  let documentKeydown = () => {};
+  document.addEventListener = (type, fn) => { if (type === 'keydown') documentKeydown = fn; };
   document.removeEventListener = () => {};
   document.activeElement = null;
 
@@ -643,11 +654,11 @@ function mountPanel({ sheet = false, onFocusStructure, onLayerChange } = {}) {
   const panel = createAnatomyPanel({
     scene, tree, display, legend: null, detail: info.element, onFocusStructure, onLayerChange,
   });
-
   return {
     scene,
     tree,
     panel,
+    sheetKeydown: (event) => documentKeydown(event),
     /** Flip the media query the way a rotation would. */
     setSheet(next) {
       media.matches = next;
@@ -1096,6 +1107,143 @@ test('anatomy contract: the panel offers going to it, showing it and hiding it, 
     assert.equal(panel.element.dataset.selectionHidden, 'yes', 'and the panel says so');
     assert.ok(labels().includes('非表示を解除'));
     assert.ok(labels().includes('再表示'));
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: on a phone the first Escape clears the search and the second closes the sheet', () => {
+  const { panel, restore, sheetKeydown } = mountPanel({ sheet: true });
+  try {
+    const parts = findByClass(panel.element, 'anatomy-panel-open')[0];
+    parts.dispatchEvent({ type: 'click' });
+    assert.equal(panel.element.dataset.sheet, 'open');
+
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    input.value = '海馬';
+    input.dispatchEvent({ type: 'input' });
+
+    // The sheet listens on the document in the capture phase, so it sees this
+    // keystroke *before* the input does. A child calling stopPropagation cannot
+    // undo what the parent has already done — the sheet has to know the search
+    // is holding this key.
+    const escape = (target) => {
+      const event = {
+        type: 'keydown', key: 'Escape', target, isComposing: false,
+        preventDefault: () => {}, stopPropagation: () => {},
+      };
+      sheetKeydown(event);
+      target.dispatchEvent(event);
+      return event;
+    };
+
+    escape(input);
+    assert.equal(input.value, '', 'the first Escape clears the search');
+    assert.equal(panel.element.dataset.sheet, 'open', 'and leaves the sheet open');
+
+    escape(input);
+    assert.equal(panel.element.dataset.sheet, 'closed', 'the second Escape closes it');
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: search results answer the keyboard and say which one is selected', () => {
+  const { panel, scene, restore } = mountPanel();
+  try {
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    const rows = () => findByClass(panel.element, 'anatomy-search-hit');
+    input.value = 'gyrus';
+    input.dispatchEvent({ type: 'input' });
+    assert.ok(rows().length >= 3, 'several structures match');
+
+    const key = (name) => {
+      const event = {
+        type: 'keydown', key: name, isComposing: false,
+        preventDefault: () => {}, stopPropagation: () => {},
+      };
+      input.dispatchEvent(event);
+      return event;
+    };
+    // Moving through the results does not select: four hundred structures
+    // repainting the model under the arrow keys is what makes a list unusable.
+    key('ArrowDown');
+    assert.equal(scene.getAnatomySelection(), null, 'moving is not choosing');
+    const active = () => rows().findIndex((row) => row.dataset.active === 'yes');
+    assert.equal(active(), 1, 'the second result is where the keyboard is');
+    key('ArrowUp');
+    assert.equal(active(), 0);
+    key('End');
+    assert.equal(active(), rows().length - 1, 'End reaches the last one');
+    key('Home');
+    assert.equal(active(), 0);
+
+    // Enter commits the one the keyboard is on, and the row says it is selected.
+    key('Enter');
+    const chosen = scene.getAnatomySelection();
+    assert.ok(chosen, 'Enter chooses');
+    const selectedRows = rows().filter((row) => row.getAttribute('aria-selected') === 'true');
+    assert.equal(selectedRows.length, 1, 'exactly one result is marked selected');
+    assert.equal(selectedRows[0].dataset.structureId, String(chosen.id));
+
+    // A selection made elsewhere shows up here too — one selection, two readings.
+    scene.selectStructure(208);
+    const nowSelected = rows().filter((row) => row.getAttribute('aria-selected') === 'true');
+    assert.equal(nowSelected.length, 1);
+    assert.equal(nowSelected[0].dataset.structureId, '208');
+
+    // And a selection that is not in the results marks nothing, rather than
+    // leaving the first row looking chosen.
+    input.value = 'putamen';
+    input.dispatchEvent({ type: 'input' });
+    assert.equal(rows().filter((row) => row.getAttribute('aria-selected') === 'true').length, 0);
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: the count is the number of matches, not the number shown', () => {
+  const { panel, restore } = mountPanel();
+  try {
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    // Every structure in this fixture is under a hemisphere or the telencephalon,
+    // so a hierarchy word matches all of them: whatever the list does, the count
+    // must be the number that matched.
+    input.value = 'gyrus';
+    input.dispatchEvent({ type: 'input' });
+    const shown = findByClass(panel.element, 'anatomy-search-hit').length;
+    const count = findByClass(panel.element, 'anatomy-search-count')[0];
+    const spoken = Number(findByClass(count, 'lang-ja')[0].textContent.replace(/\D+/g, ''));
+    assert.equal(spoken, shown, 'the count says how many matched, and they are all reachable');
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: the search index follows the atlas, and ids keep their type', () => {
+  const { panel, scene, restore } = mountPanel({ empty: true });
+  try {
+    const input = findByClass(panel.element, 'anatomy-search-input')[0];
+    const rows = () => findByClass(panel.element, 'anatomy-search-hit');
+
+    // Searching before the atlas arrives finds nothing, which is true — and
+    // must not be remembered as the answer.
+    input.value = 'putamen';
+    input.dispatchEvent({ type: 'input' });
+    assert.equal(rows().length, 0);
+
+    // The atlas arrives.
+    scene.attachAtlas(atlas());
+    input.dispatchEvent({ type: 'input' });
+    assert.equal(rows().length, 1, 'the index followed the atlas');
+
+    // The id reaches the scene as the scene's own value, not as the string the
+    // DOM had to store it as.
+    const seen = [];
+    const realSelect = scene.selectStructure.bind(scene);
+    scene.selectStructure = (id) => { seen.push(id); return realSelect(id); };
+    rows()[0].dispatchEvent({ type: 'click' });
+    assert.deepEqual(seen, [325], 'a number stays a number');
   } finally {
     restore();
   }

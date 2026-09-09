@@ -102,12 +102,17 @@ export function buildSearchIndex(structures = []) {
  * everything for an empty box would be a list that looks like a result, and the
  * caller cannot tell the difference between "no query" and "no match" any more.
  *
+ * Every match is returned. A quiet cap answers a different question than the
+ * one asked — "the first sixty" rather than "the ones that match" — and leaves
+ * the rest unreachable while the count says sixty. At this scale (a few hundred
+ * structures) there is nothing to save by truncating, and the caller can decide
+ * what to render.
+ *
  * @param {ReturnType<typeof buildSearchIndex>} index
  * @param {string} query
- * @param {{limit?: number}} [options]
  * @returns {Array<{id: any, structure: object, rank: number}>}
  */
-export function searchStructures(index = [], query = '', { limit = 60 } = {}) {
+export function searchStructures(index = [], query = '') {
   const needle = normalizeSearchText(query);
   if (!needle) return [];
 
@@ -135,5 +140,5 @@ export function searchStructures(index = [], query = '', { limit = 60 } = {}) {
     return String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0;
   });
 
-  return hits.slice(0, limit).map(({ id, structure, rank }) => ({ id, structure, rank }));
+  return hits.map(({ id, structure, rank }) => ({ id, structure, rank }));
 }

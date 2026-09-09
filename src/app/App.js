@@ -858,6 +858,24 @@ export async function createApp({ stage, ui }) {
     labels.element
   );
 
+  /**
+   * The structure a reader picked gets a label on the model, not only a card.
+   *
+   * Both of these go through the same layer the authored landmarks do, so they
+   * take the same occlusion test and the same cap: a selection outranks a hover,
+   * a hover outranks a landmark, and when there is not room the landmarks are
+   * the ones that step back. A structure the display is not drawing has no
+   * label — and none of this touches the panel, which goes on naming what is
+   * pinned whether or not the model can show it.
+   */
+  if (isAnatomyScene && scene.getStructureAnnotation) {
+    const label = (kind) => (structure) => {
+      labels.setStructureLabel(kind, structure ? scene.getStructureAnnotation(structure.id) : null);
+    };
+    scene.onAnatomySelection(label('selection'));
+    scene.onAnatomyHover?.(label('hover'));
+  }
+
   // --- state flow -----------------------------------------------------------
   playback.onChange = (value, playing) => {
     scene.setProgress(value);

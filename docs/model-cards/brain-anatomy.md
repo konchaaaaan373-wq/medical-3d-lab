@@ -219,6 +219,30 @@ The anatomical layer stays owned by the console's slider: the scene reports the
 layer a structure needs and the control that owns the value sets it, so the
 model and the slider never give two answers.
 
+**The structure a reader picks is named on the model, not only in the panel.**
+The selection and the hover get a label on the same terms as the four authored
+landmarks: the structure's own names, an anchor on its own outside, and the same
+occlusion test, so a label disappears when its structure does rather than
+floating over whatever is in front. When more labels apply than a frame can
+carry — six on a wide screen, three on a narrow one — the ones that give way are
+the ones the reader did not ask for: selection outranks hover, hover outranks
+the landmarks, and nothing is stacked into a spare corner to make it fit.
+Appearing is immediate; disappearing waits a moment, so a label does not blink
+along an occlusion edge as the model turns. Hiding a label never changes what
+the panel says is pinned.
+
+**Searching answers with every match.** The count is the number that matched,
+not the number drawn, and there is no quiet cap that would leave the rest
+unreachable. The results are a listbox and behave like one: arrows, Home and End
+move the keyboard through them without selecting, Enter or Space commits, and
+the row marked selected is whichever result *is* the pinned structure — asked of
+the scene each time it paints, so clicking the model marks the matching row and
+a selection outside the results marks nothing rather than leaving the first row
+looking chosen. The index follows the atlas: one built while the model was still
+loading is rebuilt when it arrives, and the reader's query is answered again
+rather than thrown away. Structure ids reach the scene in the scene's own type;
+the string on the element is how the DOM had to store it.
+
 ## 7. What it must never be used for
 
 Diagnosis, measurement, lesion localisation, stereotactic coordinates,

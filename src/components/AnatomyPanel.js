@@ -73,6 +73,8 @@ export function createAnatomyPanel({
         treeElement: tree.element,
         inventory: () => scene.getAnatomyInventory(),
         onSelect: (id) => scene.selectStructure(id),
+        // Asked, not remembered: one selection, however the reader made it.
+        selectedId: () => scene.getAnatomySelection()?.id ?? null,
         readScroll: () => body.scrollTop ?? 0,
         writeScroll: (top) => { body.scrollTop = top; },
       })
@@ -394,6 +396,11 @@ export function createAnatomyPanel({
       return;
     }
     if (event.key !== 'Escape') return;
+    // The search box is a step inside the sheet, and Escape steps back one at a
+    // time. This handler runs on the document in the capture phase, so it sees
+    // the key first — the input calling stopPropagation later cannot undo a
+    // sheet that has already closed. The order has to be decided here.
+    if (finder?.isSearching() && event.target === finder.input) return;
     event.stopPropagation();
     closeSheet();
   };
@@ -574,6 +581,7 @@ export function createAnatomyPanel({
 
     // A pinned structure that is off screen still has a card; it says so rather
     // than looking like a structure the reader is failing to find.
+    finder?.syncSelection();
     element.dataset.selectionHidden = selectionHidden ? 'yes' : 'no';
     element.dataset.selectionOffscreen = selection && !canSee ? 'yes' : 'no';
   }
@@ -622,6 +630,16 @@ export function createAnatomyPanel({
   const unsubscribeHover = scene.onAnatomyHover?.(paint);
   const unsubscribeIsolation = scene.onAnatomyIsolation(paint);
   const unsubscribeVisibility = scene.onAnatomyVisibility?.(paint);
+  /**
+   * A new atlas means a new inventory, and a search index built over the old one
+   * — or over no atlas at all, if the reader typed while it was still loading —
+   * is a list that answers with yesterday's model.
+   */
+  const unsubscribeStatus = finder
+    ? scene.onAnatomyStatus?.((status) => {
+        if (status.state === 'ready') finder.refresh();
+      })
+    : undefined;
 
   setTab('parts');
   applyLayout();
@@ -662,6 +680,7 @@ export function createAnatomyPanel({
       unsubscribeHover?.();
       unsubscribeIsolation?.();
       unsubscribeVisibility?.();
+      unsubscribeStatus?.();
       element.remove();
     },
   };

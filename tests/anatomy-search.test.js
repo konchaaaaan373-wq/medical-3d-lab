@@ -122,3 +122,22 @@ test('anatomy search: a structure with no usable names is simply not in the inde
   assert.equal(index.length, 1, 'the one with an id is kept');
   assert.deepEqual(searchStructures(index, 'no id here'), []);
 });
+
+test('anatomy search: every match comes back, and the count is the number that matched', () => {
+  // The atlas has 271 structures; a word from the hierarchy matches well over a
+  // hundred of them. A quiet cap at sixty answers a different question than the
+  // one asked, and leaves the rest with no way to be reached.
+  const many = Array.from({ length: 125 }, (_, index) => ({
+    id: 1000 + index,
+    name: `Left structure ${index}`,
+    nameJa: `左の構造${index}`,
+    hierarchy: ['Left cerebral hemisphere'],
+    hierarchyJa: ['左大脳半球'],
+  }));
+  const index = buildSearchIndex(many);
+  assert.equal(searchStructures(index, 'left structure').length, 125);
+  assert.equal(searchStructures(index, '左大脳半球').length, 125, 'including matches from a level above');
+  // The order is still stable and still ranked.
+  const hits = searchStructures(index, 'left structure 1');
+  assert.ok(hits.every((hit) => hit.rank >= MATCH_RANK.PREFIX));
+});

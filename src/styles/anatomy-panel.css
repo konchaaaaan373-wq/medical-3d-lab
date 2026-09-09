@@ -432,3 +432,17 @@
 .anatomy-panel[data-selection-hidden='no'][data-selection-offscreen='yes'] .anatomy-panel-name.lang-en::after {
   content: ' — not shown in this view';
 }
+
+
+/* Where the keyboard is, which is not what is selected: arrowing through the
+   results must not repaint the model, so the two states look different. */
+.anatomy-search-hit[data-active='yes'] {
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  outline: 2px solid color-mix(in srgb, currentColor 45%, transparent);
+  outline-offset: -2px;
+}
+
+.anatomy-search-hit[aria-selected='true'] {
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-weight: 600;
+}

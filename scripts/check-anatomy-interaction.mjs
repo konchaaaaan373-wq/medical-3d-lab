@@ -141,7 +141,7 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 const problems = [];
 const notes = [];
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null };
+const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -463,6 +463,58 @@ try {
   await tab('表示').click();
   await page.waitForTimeout(400);
 
+  // 3c. The structure a reader pinned is named on the model, not only in the
+  //     panel — and that label obeys the same occlusion rule as the authored
+  //     ones, so turning away from the structure takes it with it while the
+  //     card goes on naming it.
+  const labelTexts = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.label3d')]
+        .filter((node) => node.style.visibility !== 'hidden' && node.style.opacity !== '0')
+        .map((node) => node.querySelector('.label-ja')?.textContent?.trim())
+        .filter(Boolean)
+    );
+  const pinnedName = async () =>
+    (await page.locator('.anatomy-panel-name.lang-ja').first().textContent()).trim();
+
+  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  await page.waitForTimeout(500);
+  const pinnedForLabel = await pinnedName();
+  const labelled = await labelTexts();
+  observed.labels = labelled;
+  if (labelled.length > 6) {
+    problems.push(`${labelled.length} labels are on screen at once; the cap is 6`);
+  }
+  if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
+    // Not every anchor can be seen from every angle — a fold's outward point can
+    // sit behind the gyrus beside it, which is F-40 — so this is reported with
+    // the structure named rather than asserted blindly.
+    notes.push(
+      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle ` +
+        '(F-40: one anchor point decides for the whole structure).'
+    );
+  } else if (pinnedForLabel) {
+    // It is there. Now turn to the other side: it must go, and the card must not.
+    const otherSide = page.locator('.inspection-choice.inspection-view').filter({ hasText: '右外側' }).first();
+    if (await otherSide.count()) {
+      await page.locator('#anatomy-tab-display').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(300);
+      await otherSide.click({ noWaitAfter: true });
+      await page.waitForTimeout(2500);
+      const afterTurn = await labelTexts();
+      if (afterTurn.includes(pinnedForLabel)) {
+        problems.push(`"${pinnedForLabel}" is still labelled after turning to the other side of the head`);
+      }
+      if ((await pinnedName()) !== pinnedForLabel) {
+        problems.push('hiding a label changed what the panel says is pinned');
+      }
+      await page.locator('.inspection-choice.inspection-view').first().click({ noWaitAfter: true });
+      await page.waitForTimeout(2000);
+      await page.locator('#anatomy-tab-parts').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+  }
+
   // 4. Recolouring is a display choice: it must not change what is selected.
   observed.colorModes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map((t) =>
     t.replace(/\s+/g, ' ').trim()
@@ -769,6 +821,7 @@ console.log(`Anatomy interaction — ${sceneSlug}, ${observed.selectableCount} s
 console.log(`  structures named by click: ${observed.structures.map((s) => `${s.en} / ${s.ja}`).join('; ') || 'none'}`);
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
+console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
 console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
 for (const note of notes) console.log(`  note: ${note}`);
 

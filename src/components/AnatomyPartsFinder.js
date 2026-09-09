@@ -39,12 +39,22 @@ export function createAnatomyPartsFinder({
   treeElement,
   inventory,
   onSelect,
+  selectedId = () => null,
   readScroll = () => 0,
   writeScroll = () => {},
 }) {
   let index = null;
-  /** The result buttons currently shown, in order — Enter commits the first. */
+  /** The results currently shown, in order. */
   let hits = [];
+  /** The result rows, in the same order, so state is a lookup. */
+  let rowNodes = [];
+  /**
+   * Where the keyboard is in the list — not what is selected.
+   *
+   * Two different things, and a list that conflates them repaints the model on
+   * every arrow key. Moving is free; Enter and Space are what commit.
+   */
+  let activeIndex = -1;
   /** Where the tree was left, so clearing the search is coming back. */
   let treeScroll = 0;
   let searching = false;
@@ -111,10 +121,54 @@ export function createAnatomyPartsFinder({
       clear();
       return;
     }
-    if (event.key === 'Enter') {
+    if (!hits.length) return;
+    const move = (next) => {
       event.preventDefault();
-      if (hits.length) onSelect(String(hits[0].structure.id));
+      setActive(Math.min(hits.length - 1, Math.max(0, next)));
+    };
+    if (event.key === 'ArrowDown') return move(activeIndex + 1);
+    if (event.key === 'ArrowUp') return move(activeIndex - 1);
+    if (event.key === 'Home') return move(0);
+    if (event.key === 'End') return move(hits.length - 1);
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      const hit = hits[Math.max(0, activeIndex)];
+      // The scene's own id, in the scene's own type. The string on the element
+      // is how the DOM had to store it, not what the model is asked with.
+      if (hit) onSelect(hit.structure.id);
     }
+  }
+
+  /** Where the keyboard is. Moving does not select. */
+  function setActive(next) {
+    activeIndex = next;
+    rowNodes.forEach((node, at) => {
+      node.dataset.active = at === activeIndex ? 'yes' : 'no';
+    });
+    const node = rowNodes[activeIndex];
+    if (node) {
+      input.setAttribute('aria-activedescendant', node.id);
+      node.scrollIntoView?.({ block: 'nearest' });
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  /**
+   * Which result is the pinned selection — asked of the scene, not remembered.
+   *
+   * A result list that keeps its own idea of what is selected is a second
+   * source of truth, and it drifts the moment the reader clicks the model
+   * instead. So this reads the scene every time it paints, and marks nothing at
+   * all when the pinned structure is not among the results — rather than
+   * leaving the first row looking chosen.
+   */
+  function paintSelection() {
+    const current = selectedId();
+    rowNodes.forEach((node, at) => {
+      const same = current != null && String(current) === String(hits[at]?.structure.id);
+      node.setAttribute('aria-selected', String(same));
+    });
   }
 
   /** Build the index the first time it is needed, from the scene's inventory. */
@@ -133,7 +187,11 @@ export function createAnatomyPartsFinder({
     // every keystroke, which would record the search's own scroll position.
     if (searching && !wasSearching) treeScroll = readScroll();
 
+    rowNodes = [];
     results.replaceChildren(...hits.map(row));
+    activeIndex = hits.length ? 0 : -1;
+    setActive(activeIndex);
+    paintSelection();
     results.hidden = !searching || hits.length === 0;
     empty.hidden = !searching || hits.length > 0;
     count.hidden = !searching;
@@ -147,7 +205,7 @@ export function createAnatomyPartsFinder({
   }
 
   /** One structure. The id is the scene's; nothing here parses it. */
-  function row(hit) {
+  function row(hit, at) {
     const structure = hit.structure;
     const where = [structure.sideJa, (structure.hierarchyJa ?? []).slice(-2, -1)[0]]
       .filter(Boolean)
@@ -155,17 +213,18 @@ export function createAnatomyPartsFinder({
     const whereEn = [structure.side, (structure.hierarchy ?? []).slice(-2, -1)[0]]
       .filter(Boolean)
       .join(' · ');
-    return el('li', { class: 'anatomy-search-row-item', role: 'presentation' }, [
-      el(
-        'button',
-        {
-          class: 'anatomy-search-hit',
-          type: 'button',
-          role: 'option',
-          'aria-selected': 'false',
-          dataset: { structureId: String(structure.id) },
-          on: { click: () => onSelect(String(structure.id)) },
-        },
+    const button = el(
+      'button',
+      {
+        class: 'anatomy-search-hit',
+        type: 'button',
+        role: 'option',
+        id: `anatomy-search-hit-${at}`,
+        'aria-selected': 'false',
+        dataset: { structureId: String(structure.id), active: 'no' },
+        // The scene's own id, not the string the element had to carry.
+        on: { click: () => { setActive(at); onSelect(structure.id); } },
+      },
         [
           el('span', { class: 'anatomy-search-name' }, [
             el('span', { class: 'lang-en', text: structure.name ?? '' }),
@@ -175,9 +234,10 @@ export function createAnatomyPartsFinder({
             el('span', { class: 'lang-en', text: whereEn }),
             el('span', { class: 'lang-ja', text: where }),
           ]),
-        ]
-      ),
-    ]);
+      ]
+    );
+    rowNodes[at] = button;
+    return el('li', { class: 'anatomy-search-row-item', role: 'presentation' }, [button]);
   }
 
   function clear() {
@@ -192,10 +252,20 @@ export function createAnatomyPartsFinder({
     /** True while results are covering the tree. */
     isSearching: () => searching,
     clear,
-    /** The inventory changed — a new atlas — so the index has to be rebuilt. */
-    reset() {
+    /**
+     * The atlas changed, so the index is stale.
+     *
+     * Rebuilt rather than cleared: a reader who searched while the model was
+     * still loading typed a real question, and answering it once the structures
+     * exist is better than making them type it again. The one thing that must
+     * not survive is the *answer* — an index built over an empty inventory said
+     * "no such structure" and went on saying it.
+     */
+    refresh() {
       index = null;
-      clear();
+      if (searching) run(input.value);
     },
+    /** The pinned selection moved; the rows say which one it is. */
+    syncSelection: paintSelection,
   };
 }

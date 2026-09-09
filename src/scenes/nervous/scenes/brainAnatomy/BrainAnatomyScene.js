@@ -210,6 +210,8 @@ export class BrainAnatomyScene {
     this._annotationDirection = new THREE.Vector3();
     /** Last answer per anchor, and the state it was computed for. */
     this._annotationSight = new Map();
+    /** Anchor points for structures that are not authored landmarks. */
+    this.structureAnchors = new Map();
   }
 
   build() {
@@ -1016,6 +1018,7 @@ export class BrainAnatomyScene {
     this.root.updateMatrixWorld(true);
     this.annotationTargets = {};
     this._annotationSight.clear();
+    this.structureAnchors.clear();
     for (const [anchor, spec] of Object.entries(ANCHOR_SPECS)) {
       const mesh = this.selectables.find((candidate) => {
         const metadata = candidate.userData.atlasMetadata;
@@ -1057,16 +1060,27 @@ export class BrainAnatomyScene {
    */
   isAnnotationVisible(anchor, camera) {
     const target = this.annotationTargets[anchor];
-    if (!target || !camera) return false;
-    const point = this.annotationAnchors[anchor];
-    if (!point) return false;
+    if (!target) return false;
+    return this._pointVisible(anchor, this.annotationAnchors[anchor], target.meshes, camera);
+  }
+
+  /**
+   * Is this point on this structure the first thing along the ray to it?
+   *
+   * @param {string} cacheKey anything stable that identifies the point
+   * @param {import('three').Vector3} point
+   * @param {import('three').Mesh[]} meshes the structure the point belongs to
+   * @param {import('three').Camera} camera
+   */
+  _pointVisible(cacheKey, point, meshes, camera) {
+    if (!point || !camera || !meshes?.length) return false;
 
     // Recomputing a raycast per label per frame is wasted while nothing moves,
     // and everything that can change the answer is in this key.
     camera.updateMatrixWorld();
     const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
       `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
-    const cached = this._annotationSight.get(anchor);
+    const cached = this._annotationSight.get(cacheKey);
     if (cached?.key === key) return cached.visible;
 
     this._annotationDirection.copy(point).sub(camera.position);
@@ -1079,10 +1093,48 @@ export class BrainAnatomyScene {
       // at all means the structure is not being drawn — behind a medial view's
       // midline, under the cortex at layer 0, isolated away — which is also a
       // label with nothing to point at.
-      visible = Boolean(first) && target.meshes.includes(first.object);
+      visible = Boolean(first) && meshes.includes(first.object);
     }
-    this._annotationSight.set(anchor, { key, visible });
+    this._annotationSight.set(cacheKey, { key, visible });
     return visible;
+  }
+
+  /**
+   * A label for any structure, on demand.
+   *
+   * The authored annotations name four landmarks. What a reader has actually
+   * chosen is not one of them, and until now the only place the model said so
+   * was a highlight — the name lived in the panel, off to one side of the thing
+   * it names. This gives the selection and the hover a label of their own, on
+   * the same terms as the landmarks: the structure's own names, an anchor on
+   * its own outside, and the same occlusion test, so it disappears when the
+   * structure does rather than floating over whatever is in front.
+   *
+   * The anchor is computed once per structure and kept, because it is a
+   * property of the geometry rather than of the moment.
+   *
+   * @param {number|string} id
+   */
+  getStructureAnnotation(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return null;
+    const structureId = meshes[0].userData.atlasId;
+    const key = `structure:${structureId}`;
+    let point = this.structureAnchors.get(key);
+    if (!point) {
+      point = outwardSurfacePoint(meshes, this.atlasRoot);
+      if (!point) return null;
+      this.structureAnchors.set(key, point);
+    }
+    const info = brainStructureInfo(meshes[0].userData.atlasMetadata);
+    return {
+      id: key,
+      structureId,
+      text: info.name,
+      sub: info.nameJa,
+      position: point,
+      isVisible: (camera) => this._pointVisible(key, point, meshes, camera),
+    };
   }
 
   /**
