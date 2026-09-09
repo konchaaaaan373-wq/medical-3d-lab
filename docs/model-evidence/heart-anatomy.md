@@ -14,8 +14,10 @@ is one.
 * HuBMAP Human Reference Atlas, CCF release v1.2,
   `models/VH_M_Heart.glb`, at commit `b036a91aaf7234f462b1249d4a5f4fb0e982f412`.
   Node names, labels and ontology ids are read from the file's own `extras`.
-* The same release's `VH_M_Blood_Vasculature.glb`, fetched and hash-verified,
-  being examined for the great vessels this file lacks. Not yet used.
+* The same release's `VH_M_Blood_Vasculature.glb`, at the same commit, fetched
+  and hash-verified. The subtree the source groups as
+  `VH_M_blood_vasculature_of_heart` — 37 meshes of 104 — is used;
+  `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` records the inspection.
 * U.S. National Library of Medicine, Visible Human Project — the imaging the
   reference organ was segmented from. Terms recorded, not discharged.
 * Measurements made here: `docs/asset-qa/heart-hubmap-vh-m-heart.md`.
@@ -99,5 +101,50 @@ is one.
 * The licences (HuBMAP CC BY 4.0; NLM Visible Human terms) are recorded and
   **not** discharged: no attribution surface, no acknowledgment text, no legal
   reading. The file is a candidate, not an adopted asset.
-* The great vessels are absent from the file. Nothing here is evidence about
-  them.
+* Whether each vessel surface is a lumen cast or a wall shell has not been
+  measured. The chambers were measured and are cavity casts; the vessels are
+  described the same way as a description, not as a measurement.
+* No junction between a vessel and a chamber has been measured. The vessels meet
+  the heart where the two files put them.
+* No mesh in the file is named "circumflex", and this repository does not decide
+  which of the named left-coronary meshes carries that course.
+
+### 8. The two files are combined without either being moved
+
+| | |
+| --- | --- |
+| **Claim** | The heart and the vessels keep the relative positions the source gave them, and one display transform is applied to the pair. |
+| **Source** | Both files are in the same whole-body frame: measured relationships in `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` — ascending aorta 20 mm above the aortic valve at the same depth; pulmonary trunk above the pulmonary valve; superior vena cava above and lateral to the right atrium, inferior vena cava below it; the four pulmonary veins behind the left atrium with the left pair on the +x side. |
+| **Implementation** | Both scenes go under one `modelRoot`. The vessel subtree is reparented with its world matrix applied, so its position in the body survives rather than its position under a node that is not kept. The offset and uniform scale are set on `modelRoot` itself and nowhere else. |
+| **Assumption** | The frames agree because those relationships come out of the files unaltered. **This is not a claim of sub-millimetre registration**, and no distance between a vessel's cut end and a chamber is measured or asserted. Neither file is warped, non-uniformly scaled or bent to fit the other. |
+| **Validation** | `tests/heart-anatomy.test.js` — adding the vessels does not move the heart; the ascending aorta is above the aortic valve and the inferior vena cava below the right atrium after the shared transform; the transform is uniform and its scale is the one the heart alone would get. |
+
+### 9. Only the subtree the source calls the vessels of the heart is taken
+
+| | |
+| --- | --- |
+| **Claim** | 37 meshes of the vasculature file's 104 are adopted, chosen by the source's own grouping rather than by a box round the heart. |
+| **Source** | The file's node hierarchy: `VH_M_blood_vasculature_of_heart` with `VH_M_arteries_of_heart` and `VH_M_veins_of_heart` under it. |
+| **Implementation** | `VESSEL_SUBTREE` in the scene names that node; nothing outside it is reparented, and the count left behind is reported in the status (`vesselsNotTaken`). |
+| **Assumption** | The publisher's grouping is trusted as the answer to "which vessels belong to the heart". A different reading of that boundary would be an anatomical judgement, and none is made here. |
+| **Validation** | `tests/heart-anatomy.test.js` — a fixture with a mesh outside the subtree is not adopted and is counted. |
+
+### 10. Where the source contradicts itself, both readings are kept
+
+| | |
+| --- | --- |
+| **Claim** | `VH_M_left_anterior_descending_artery` carries a node name and a label/ontology id that disagree, and the scene reports the disagreement instead of choosing. |
+| **Source** | The node's own `extras`: `label: "Anterior descending branch of left pulmonary artery"`, `ontologyid: FMA:8636`, under `VH_M_arteries_of_heart/VH_M_cardiac_artery`. |
+| **Implementation** | The structure's card shows the node-derived name, keeps `sourceLabel` and `ontologyId` beside it, and carries a note in both languages stating the conflict and where the mesh sits. |
+| **Assumption** | None resolved. Where the mesh is — anterior ventricular surface, below the valve plane — is reported as a position, not as a ruling on which record is right. |
+| **Validation** | `tests/heart-anatomy.test.js` — the note is present, says "neither is corrected", and is the only such note in the table. |
+
+### 11. Vessel colour reports the source, and says what it is not
+
+| | |
+| --- | --- |
+| **Claim** | Natural mode uses the source's own artery/vein material assignment, and that is a vessel-type map rather than an oxygenation map. |
+| **Source** | The vasculature file ships `artery_mat7` (pure red, 39 meshes + 9 on `phong7`) and `vein_mat8` (pure blue, 56 meshes) and assigns every mesh to one. |
+| **Implementation** | `VESSEL_HUE` in the adapter, softened in saturation and lightness so the two are readable beside the tissue colours. Parts mode is a separate identity map with a hue band per group and no red in the chamber band. |
+| **Assumption** | Reporting the source's assignment is not endorsing red-equals-oxygenated. The model contains the counterexample and the card names it. |
+| **Validation** | `tests/heart-anatomy.test.js` — the pulmonary trunk is red and the pulmonary veins blue, and the card is required to say what that does and does not mean. |

@@ -390,7 +390,7 @@ F-37 の遮蔽判定を入れてから、既定の 2 つの注釈のうち「中
 - 完了の定義: `BrainAnatomyScene` でも判定点が面の内側に取られ、
   `tests/brain-anatomy.test.js` の遮蔽テストが判定点で通ること
 
-### F-41 心臓：素材は読めた。大血管が入っていない — P1（B4 / X3）
+### F-41 心臓：大血管は同じリリースの 2 本目のファイルにあった — 解決（B4 / X3）
 
 **入手の関門は解けました。** レビューが渡した固定候補（HuBMAP `ccf-releases`
 @ `b036a91…` の `v1.2/models/VH_M_Heart.glb`）は許可された経路
@@ -403,20 +403,58 @@ F-37 の遮蔽判定を入れてから、既定の 2 つの注釈のうち「中
 揃っています**が、**大動脈・肺動脈幹・上下大静脈・肺静脈が 1 つも入っていません**。
 これらは pack 05 §2 が β 必須に挙げているものです。冠動脈もありません。
 
-- **やらないこと**: 無い血管を作って「収録されている」ことにする
-- **方針は (a) に決まりました**（2026-09-09、レビュー指示）: 大血管は出典付きの
-  別 asset で足す。収録範囲の注意書きで公開βの必須部位を置き換える (b) は採りません
-- **14 部位の scene は先に作りました**（血管を待たずに）。`heart-anatomy` として
-  カタログに登録済み・**非公開**で、検索・選択・寄る・表示・非表示・復帰は
-  脳と同じ contract で動きます。実画面は
-  [`screenshots/heart/`](screenshots/heart/)、記録は
-  [`../docs/model-cards/heart-anatomy.md`](model-cards/heart-anatomy.md)
-- **公開ゲートは二重に閉じています**: 候補 asset（`devAssets.js`。asset manifest では
-  ない）に乗っていること自体が `betaPublicationProblems()` の不合格理由で、
-  公開判断も存在しません。asset manifest への登録・`public/` への配置は、
-  大血管とライセンスの扱いが決まってからです
-- まだ確認していないこと: 実レンダリング（継ぎ目・裏返り・穴）、腔と壁の区別、
-  Visible Human 由来データ自体の利用条件、解剖専門家の判断
+- **やらないこと**: 無い血管を作って「収録されている」ことにする。これは
+  最後までしていません
+- **方針は (a)**（2026-09-09、レビュー指示）。同じリリース・同じ commit の
+  `VH_M_Blood_Vasculature.glb` を取得し、**出典自身が
+  `VH_M_blood_vasculature_of_heart` としてまとめている 37 mesh**（全 104 中）を
+  採りました。box crop ではなく出典の意味づけです。記録は
+  [`asset-qa/heart-hubmap-vh-m-blood-vasculature.md`](asset-qa/heart-hubmap-vh-m-blood-vasculature.md)
+- **必須の 5 つは揃いました**: 上行大動脈・大動脈弓・下行大動脈、肺動脈幹と左右
+  肺動脈、上大静脈、下大静脈、肺静脈 4 本。加えて冠動脈（optional だった分）と
+  心臓静脈も入っています。合計 46 構造 / 51 mesh
+- **座標は壊していません**。どちらのファイルも中央移動していません。上行大動脈が
+  大動脈弁の 20 mm 上・同じ深さ、肺動脈幹が肺動脈弁の上、上大静脈が右房の上外側、
+  下大静脈がその下、肺静脈 4 本が左房の後ろ——これらは**変換なしで出てくる関係**で、
+  それが frame が一致している根拠です。**mm 精度の位置合わせは主張しません**
+- **公開ゲートは閉じたままです**。必須部位が揃ったことは合格理由ではありません:
+  2 ファイルとも候補 asset（`devAssets.js`。asset manifest ではない）で、
+  asset pipeline を 1 つも通っておらず、公開判断も存在しません。
+  `betaPublicationProblems('heart-anatomy')` が候補 asset を名指しで返します
+- **残っているもの**: 腱索・心膜・刺激伝導系・心筋自由壁、そして「回旋枝」という
+  名の mesh。`HEART_MISSING` が理由つきで持っています
+
+### F-44 出典の 1 mesh で node 名と label/ontology id が食い違う — P2（B4 / 心臓）
+
+`VH_M_left_anterior_descending_artery` の label は
+`Anterior descending branch of left pulmonary artery`、ontology id は `FMA:8636` です。
+node 名は冠動脈、label と id は肺動脈の枝を指しています。
+
+- **こちらでは直していません。** 両方をそのまま記録し、構造カードに日英で
+  「出典の記載が一致していない」と出しています
+- 実測できたのは位置だけです: (0.043, 0.466, 0.055)——弁の高さより下、心室の前面。
+  出典自身の group も `VH_M_arteries_of_heart/VH_M_cardiac_artery`。
+  これは**位置の報告であって、どちらの記載が正しいかの判定ではありません**
+- 決めるのは解剖側。engineering では決められません
+- 併せて: 「回旋枝」という名の mesh はありません（左冠動脈・前下行枝・対角枝 2 本・
+  左縁枝はあります）。どれが回旋枝の走行かも、こちらでは判断しません
+
+### F-45 心臓の候補 asset は pipeline を 1 つも通っていない — P1（B4 / asset）
+
+2 ファイルとも `devAssets.js` の候補で、`assetManifest.js` にはありません。
+実装と実レンダリングは済んでいますが、**asset として通していないもの**が残ります。
+
+- glTF Validator を回していない（formatValidation 未実施）
+- ライセンス判断が engineering の読みすらまだ: HuBMAP の CC BY 4.0 と NLM
+  Visible Human の Terms を**別々に**記録し、attribution 面・
+  `Courtesy of the U.S. National Library of Medicine`・改変内容（範囲抽出と
+  共通変換のみ）・推薦の誤認防止・固定版である旨を表示義務へ落とす必要があります。
+  一次資料は pack の `SOURCES.md`
+- 血管の面が内腔か壁かを測っていない（心腔は測って cavity と分かっています）
+- 血管と心腔の接続部の距離を測っていない。mm 精度の主張はどこにもしていません
+- 解剖専門家・臨床レビューはどちらも未実施
+- これらが済むまで公開ゲートは閉じたままです。`public/` への配置も
+  asset manifest への登録もしていません
 
 ### F-38 小脳が滑らかで小葉の襞（folia）が無い — P2（B3 / asset）
 

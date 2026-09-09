@@ -5,9 +5,13 @@ import * as THREE from 'three';
 import { HeartAnatomyScene } from '../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js';
 import {
   HEART_AXES,
+  HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PARTS,
+  HEART_STRUCTURES,
+  HEART_VESSELS,
   heartColor,
+  heartMeshOwner,
   heartPartById,
   heartStructureInfo,
 } from '../src/data/heartAnatomy.js';
@@ -383,22 +387,22 @@ test('heart: labels are anchored on the outside and hidden behind what covers th
 // ---------------------------------------------------------------------------
 // What is missing, and what that means for the release
 
-test('heart: the great vessels are recorded as absent, not implied to be present', () => {
+test('heart: what is still absent is listed, and nothing absent is selectable', () => {
   const built = scene();
   const missing = built.getMissingStructures();
   assert.deepEqual(missing.map((entry) => entry.id), HEART_MISSING.map((entry) => entry.id));
 
-  const required = missing.filter((entry) => entry.standing === 'required').map((entry) => entry.id);
-  assert.deepEqual(required.sort(), [
-    'aorta',
-    'inferior-vena-cava',
-    'pulmonary-trunk',
-    'pulmonary-veins',
-    'superior-vena-cava',
-  ]);
+  // The five the beta asked for are drawn now, from the vasculature file of the
+  // same release. Nothing is `required` any more — and the release gate does not
+  // read this list, so that is not what opens it.
+  assert.deepEqual(missing.filter((entry) => entry.standing === 'required'), []);
   for (const entry of missing) {
     assert.ok(entry.name?.trim() && entry.nameJa?.trim(), `${entry.id} is named in both languages`);
     assert.equal(built.selectStructure(entry.id), false, 'and naming it does not make it selectable');
+  }
+  // An absence with a reason keeps the reason in both languages or in neither.
+  for (const entry of missing) {
+    assert.equal(Boolean(entry.why), Boolean(entry.whyJa), `${entry.id}`);
   }
   built.dispose();
 });
@@ -413,4 +417,209 @@ test('heart: the file it draws is a candidate, and the release gate is shut on i
   const problems = betaPublicationProblems('heart-anatomy');
   assert.ok(problems.length > 0);
   assert.ok(problems.some((line) => /candidate asset "hubmap-vh-m-heart"/.test(line)));
+});
+
+// ---------------------------------------------------------------------------
+// The second file: the vessels
+
+/**
+ * The vessel subtree, as the source ships it — one node named
+ * `VH_M_blood_vasculature_of_heart`, with the meshes under it, plus a mesh from
+ * elsewhere in the body to prove the subtree is what is taken.
+ */
+function vesselFixture() {
+  const file = new THREE.Group();
+  file.name = 'fixture-vasculature-file';
+
+  const elsewhere = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshBasicMaterial());
+  elsewhere.name = 'VH_M_superior_ophthalmic_vein_L';
+  elsewhere.position.set(0.02, 6, 0.07);
+  file.add(elsewhere);
+
+  const subtree = new THREE.Group();
+  subtree.name = 'VH_M_blood_vasculature_of_heart';
+  // A translation on the subtree node itself, so reparenting has something to
+  // preserve: a naive `add()` that dropped it would move every vessel.
+  subtree.position.set(0.5, 0.25, -0.125);
+  file.add(subtree);
+
+  const at = {
+    VH_M_ascending_aorta: [-0.5, 0.35, 0.25],
+    VH_M_pulmonary_trunk: [-0.35, 0.4, 0.3],
+    VH_M_superior_vena_cava: [-0.95, 0.45, 0.25],
+    VH_M_inferior_vena_cava_a: [-0.95, -0.25, 0.15],
+    VH_M_inferior_vena_cava_b: [-0.95, -0.75, 0.15],
+    VH_M_left_coronary_artery: [-0.3, 0.3, 0.3],
+    VH_M_descending_aorta_a: [-0.55, -0.6, -0.1],
+    VH_M_descending_aorta_b: [-0.55, -1.4, -0.1],
+    VH_M_brachiocephalic_vein_L: [-0.2, 0.9, 0.2],
+  };
+  for (const [name, place] of Object.entries(at)) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.12), new THREE.MeshBasicMaterial());
+    mesh.name = name;
+    mesh.position.fromArray(place);
+    subtree.add(mesh);
+  }
+  return file;
+}
+
+const pair = () => {
+  const built = new HeartAnatomyScene({ model: fixture(), vessels: vesselFixture(), vesselLoader: null });
+  built.build();
+  return built;
+};
+
+test('heart: the vessel table bundles split meshes and keeps distinct vessels distinct', () => {
+  assert.equal(HEART_STRUCTURES.length, HEART_PARTS.length + HEART_VESSELS.length);
+  assert.equal(new Set(HEART_STRUCTURES.map((entry) => entry.id)).size, HEART_STRUCTURES.length);
+
+  // One structure, two meshes — the same shape the brain's split gyri have.
+  const cava = HEART_VESSELS.find((entry) => entry.id === 'VH_M_inferior_vena_cava');
+  assert.deepEqual([...cava.meshNames], ['VH_M_inferior_vena_cava_a', 'VH_M_inferior_vena_cava_b']);
+  assert.equal(heartMeshOwner('VH_M_inferior_vena_cava_a'), 'VH_M_inferior_vena_cava');
+  assert.equal(heartMeshOwner('VH_M_inferior_vena_cava_b'), 'VH_M_inferior_vena_cava');
+
+  // Two meshes carrying the same ontology term stay two structures, because a
+  // term is a vocabulary and not an identifier.
+  const diagonals = HEART_VESSELS.filter((entry) => entry.ontologyId === 'FMA:3860');
+  assert.equal(diagonals.length, 2);
+  assert.notEqual(diagonals[0].id, diagonals[1].id);
+
+  // Every mesh a structure claims is claimed by exactly one structure.
+  const claims = HEART_STRUCTURES.flatMap((entry) => entry.meshNames ?? [entry.id]);
+  assert.equal(new Set(claims).size, claims.length);
+  assert.equal(heartMeshOwner('VH_M_superior_ophthalmic_vein_L'), null, 'the rest of the body is not claimed');
+});
+
+test('heart: the five great vessels the beta asked for are in the model', () => {
+  const built = pair();
+  const ids = new Set(built.getAnatomyInventory().map((entry) => entry.id));
+  for (const id of [
+    'VH_M_ascending_aorta',
+    'VH_M_pulmonary_trunk',
+    'VH_M_superior_vena_cava',
+    'VH_M_inferior_vena_cava',
+  ]) {
+    assert.ok(ids.has(id), `${id} is drawn`);
+  }
+  assert.equal(built.getAnatomyStatus().vessels, 'loaded');
+  built.dispose();
+});
+
+test('heart: the two files keep the positions the source gave them', () => {
+  const alone = scene();
+  const both = pair();
+
+  // The heart is in the same place either way: adding the vessels moved nothing.
+  const heartAlone = centreOf(alone, 'VH_M_heart_left_ventricle');
+  const heartWith = centreOf(both, 'VH_M_heart_left_ventricle');
+  for (const axis of ['x', 'y', 'z']) {
+    assert.ok(Math.abs(heartAlone[axis] - heartWith[axis]) < 1e-9, `the heart did not move on ${axis}`);
+  }
+
+  // And the vessels arrive where the source put them, through the subtree node's
+  // own transform. In fixture coordinates the ascending aorta sits at
+  // (0.5, 0.25, -0.125) + (-0.5, 0.35, 0.25) = (0, 0.6, 0.125): above the aortic
+  // valve at (0.1, 0.2, 0.0) and near the midline, which is where an ascending
+  // aorta belongs. Compared after the shared transform, in the same space.
+  const superior = new THREE.Vector3(...HEART_AXES.superior);
+  const aorta = centreOf(both, 'VH_M_ascending_aorta');
+  const valve = centreOf(both, 'VH_M_aortic_valve');
+  assert.ok(aorta.dot(superior) > valve.dot(superior), 'the ascending aorta is above the aortic valve');
+
+  const cava = centreOf(both, 'VH_M_inferior_vena_cava');
+  const atrium = centreOf(both, 'VH_M_right_cardiac_atrium');
+  assert.ok(cava.dot(superior) < atrium.dot(superior), 'the inferior vena cava is below the right atrium');
+
+  // One transform on one root, uniform, and that is the only thing applied.
+  assert.equal(both.modelRoot.scale.x, both.modelRoot.scale.y);
+  assert.equal(both.modelRoot.scale.y, both.modelRoot.scale.z);
+  assert.equal(both.modelRoot.scale.x, alone.modelRoot.scale.x, 'the scale comes from the heart, not from the pair');
+  alone.dispose();
+  both.dispose();
+});
+
+test('heart: only the subtree the source calls the vessels of the heart is taken', () => {
+  const built = pair();
+  const drawnNames = built.selectables.map((mesh) => mesh.name);
+  assert.ok(!drawnNames.includes('VH_M_superior_ophthalmic_vein_L'), 'the rest of the body is not adopted');
+  const status = built.getAnatomyStatus();
+  assert.ok(status.vesselMeshes > 0, 'the subtree is taken');
+  assert.equal(status.vesselsNotTaken, 1, 'and what is left behind is counted, not silently dropped');
+  assert.equal(status.vesselsInFile, status.vesselMeshes + status.vesselsNotTaken);
+  built.dispose();
+});
+
+test('heart: the far-reaching vessels start hidden, and unhiding shows them', () => {
+  const built = pair();
+  const hidden = built.getAnatomyVisibility().hidden;
+  for (const id of ['VH_M_descending_aorta', 'VH_M_brachiocephalic_vein_L']) {
+    assert.ok(HEART_DEFAULT_HIDDEN.includes(id));
+    assert.ok(hidden.includes(id), `${id} starts out of the way`);
+    assert.equal(built.isStructureVisible(id), false);
+  }
+  // Nothing near the heart is hidden by default.
+  assert.ok(!hidden.includes('VH_M_ascending_aorta'));
+  assert.ok(!hidden.includes('VH_M_heart_left_ventricle'));
+
+  built.showAllHiddenStructures();
+  assert.deepEqual(built.getAnatomyVisibility().hidden, []);
+  assert.equal(built.isStructureVisible('VH_M_descending_aorta'), true);
+  built.dispose();
+});
+
+test('heart: a structure drawn from two meshes acts as one structure', () => {
+  const built = pair();
+  assert.equal(built.selectStructure('VH_M_inferior_vena_cava'), true);
+  assert.equal(built.getAnatomySelection().id, 'VH_M_inferior_vena_cava');
+  assert.equal(built._meshesFor('VH_M_inferior_vena_cava').length, 2, 'two meshes, one structure');
+
+  built.isolateStructure('VH_M_inferior_vena_cava');
+  const drawn = built._drawnMeshes();
+  assert.equal(drawn.length, 2, 'isolating it draws both of its meshes and nothing else');
+  assert.ok(drawn.every((mesh) => mesh.userData.structureId === 'VH_M_inferior_vena_cava'));
+  built.dispose();
+});
+
+test('heart: the mesh whose source record disagrees with itself says so', () => {
+  const info = heartStructureInfo('VH_M_left_anterior_descending_artery');
+  assert.equal(info.ontologyId, 'FMA:8636', 'the id the file carries is kept, not replaced');
+  assert.equal(info.sourceLabel, 'Anterior descending branch of left pulmonary artery');
+  assert.match(info.note, /disagrees with itself/);
+  assert.match(info.note, /neither is corrected/);
+  assert.ok(info.noteJa?.trim());
+
+  // And it is the only one: every other structure's name and source label agree
+  // on what kind of thing it is, or carry no note at all.
+  const flagged = HEART_VESSELS.filter((entry) => entry.note);
+  assert.deepEqual(flagged.map((entry) => entry.id), ['VH_M_left_anterior_descending_artery']);
+});
+
+test('heart: natural colour reports the source\'s artery/vein assignment and says it is not oxygenation', () => {
+  // The source ships two materials, pure red for arteries and pure blue for
+  // veins, and assigns every vessel mesh to one. Reporting that is not the same
+  // as claiming an oxygenation map — and the model carries the counterexample.
+  const artery = heartColor('VH_M_pulmonary_trunk', 'natural');
+  const vein = heartColor('VH_M_pulmonary_vein_L_sup', 'natural');
+  const redness = (hex) => parseInt(hex.slice(1, 3), 16) - parseInt(hex.slice(5, 7), 16);
+  assert.ok(redness(artery) > 0, 'the pulmonary trunk is red, and carries deoxygenated blood');
+  assert.ok(redness(vein) < 0, 'the pulmonary veins are blue, and carry oxygenated blood');
+
+  // Parts mode stays an identity map: every one of the 46 is its own colour.
+  const all = HEART_STRUCTURES.map((entry) => heartColor(entry.id, 'parts'));
+  assert.equal(new Set(all).size, HEART_STRUCTURES.length);
+});
+
+test('heart: every vessel is named, grouped and described in both languages', () => {
+  for (const entry of HEART_VESSELS) {
+    const info = heartStructureInfo(entry.id);
+    assert.ok(info, entry.id);
+    for (const field of ['name', 'nameJa', 'breadcrumb', 'breadcrumbJa', 'description', 'descriptionJa']) {
+      assert.ok(String(info[field]).trim(), `${entry.id}: ${field}`);
+    }
+    assert.notEqual(info.name, info.nameJa, `${entry.id} needs a deliberate Japanese name`);
+    assert.match(info.ontologyId, /^(UBERON|FMA):\d+$/);
+    assert.ok(['artery', 'vein'].includes(entry.vesselType), `${entry.id}: vessel type`);
+    assert.equal(info.side, 'Vessels', 'the card says which file it came from');
+  }
 });

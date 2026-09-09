@@ -3,27 +3,35 @@
 | | |
 | --- | --- |
 | **Scene** | `heart-anatomy` |
-| **Geometry** | `dev-assets/heart/VH_M_Heart.glb` — a **candidate**, pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js), fetched by `npm run assets:dev`, **not committed and not shipped** |
+| **Geometry** | `dev-assets/heart/VH_M_Heart.glb` and `dev-assets/heart/VH_M_Blood_Vasculature.glb` — **candidates**, pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js), fetched by `npm run assets:dev`, **not committed and not shipped** |
 | **Metadata adapter** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js) |
 | **Selection behaviour** | [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js) |
 | **Evidence** | [`docs/model-evidence/heart-anatomy.md`](../model-evidence/heart-anatomy.md) |
-| **Asset inspection** | [`docs/asset-qa/heart-hubmap-vh-m-heart.md`](../asset-qa/heart-hubmap-vh-m-heart.md) |
+| **Asset inspection** | [`docs/asset-qa/heart-hubmap-vh-m-heart.md`](../asset-qa/heart-hubmap-vh-m-heart.md), [`docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md`](../asset-qa/heart-hubmap-vh-m-blood-vasculature.md) |
+| **Real renders** | [`docs/screenshots/heart/`](../screenshots/heart/) |
 
 ## 1. What question this model answers
 
 **Where is a named part of the heart — a chamber, the septum, a valve, a
-papillary muscle — relative to the rest of the heart, and what is it called in
-English and Japanese?**
+papillary muscle, a great vessel, a coronary artery, a cardiac vein — relative
+to the rest of the heart, and what is it called in English and Japanese?**
 
 ## 2. What it is
 
-Fourteen meshes from one sourced reference organ, each of them a part the source
-named and gave an ontology id (UBERON or FMA). The scene exposes all fourteen as
-selectable structures: four chambers, the interventricular septum, four valves
-and five papillary-muscle bodies. There is one mesh per structure in this file,
-but the scene keys on structure ids rather than meshes, so a later file that
-splits one part into several does not silently become several structures.
+**Forty-six structures from fifty-one meshes, out of two files of one reference
+release.** Fourteen are the heart itself: four chambers, the interventricular
+septum, four valves and five papillary-muscle bodies. Thirty-two are vessels:
+the great vessels, the coronary arteries, the cardiac veins and the branches of
+the aortic arch. Every one is a mesh the source named and gave an ontology id
+(UBERON or FMA).
+
+**A structure is not a mesh.** Five vessels arrive split in two — the descending
+aorta, the inferior vena cava, the brachiocephalic artery, the left common
+carotid and the left subclavian — and each is one structure drawn from two
+meshes, so selecting either piece selects the vessel. Two different diagonal
+branches carry the same FMA term and stay two structures, because a term is a
+vocabulary and not an identifier.
 
 Two files decide what a reader is told, as in the brain scene: the adapter
 decides which mesh is which named part and what it is called, and the scene
@@ -44,12 +52,19 @@ flow, no ejection fraction, no conduction. The heart-failure and ischaemia
 scenes are the pathophysiology layer and are separate scenes with separate
 models.
 
-**It has no great vessels.** The aorta, the pulmonary trunk, the venae cavae and
-the pulmonary veins are absent from this file entirely
-(`HEART_MISSING` in the adapter lists them, and the scene can show that list).
-A heart that ends at the valve plane is not a complete gross anatomy of the
-heart, and no note in a corner is offered as a substitute for the vessels: the
-vessels are being sourced separately.
+**It is not a complete gross anatomy of the heart.** What is still absent, and
+why, is `HEART_MISSING` in the adapter, which the scene can show: no chordae
+tendineae, no pericardium, no conduction system, no myocardial free wall, and no
+mesh named "circumflex" in the left coronary system. Nothing on that list is
+invented to fill the gap.
+
+**The vessels are a second file, not a second opinion.** They come from
+`VH_M_Blood_Vasculature.glb` of the same release, and specifically from the
+subtree the source itself groups as `VH_M_blood_vasculature_of_heart` — 37
+meshes of that file's 104. That is the source's own answer to "which vessels
+belong to the heart", not a box drawn round the heart here. The other 67 meshes
+are the eye, the abdomen and the pelvis; the scene counts them and leaves them
+in the file.
 
 **There is no interior view, and the chambers are not walls.** Each chamber mesh
 is a closed surface around the chamber's *space* — the left ventricle encloses
@@ -71,11 +86,13 @@ muscle. They are not end-diastolic volumes and are not shown as any.
 
 ## 4. Sources and licence
 
-The geometry is `VH_M_Heart.glb` from the HuBMAP Human Reference Atlas CCF
-release v1.2, pinned at commit `b036a91aaf7234f462b1249d4a5f4fb0e982f412`,
-segmented from the **Visible Human Male** dataset of the U.S. National Library
-of Medicine. The upstream release states CC BY 4.0; the NLM Visible Human data
-carry their own terms.
+The geometry is `VH_M_Heart.glb` and `VH_M_Blood_Vasculature.glb` from the
+HuBMAP Human Reference Atlas CCF release v1.2, both pinned at commit
+`b036a91aaf7234f462b1249d4a5f4fb0e982f412`, both segmented from the **Visible
+Human Male** dataset of the U.S. National Library of Medicine. The upstream
+release states CC BY 4.0 (heart DOI `10.48539/HBM699.GKGT.564` per the release's
+own reference documents; vasculature DOI `10.48539/HBM686.LBDQ.998`); the NLM
+Visible Human data carry their own terms.
 
 **Neither licence has been discharged here, and neither has been read by a
 lawyer.** The file is recorded in `devAssets.js` as a candidate under
@@ -88,7 +105,33 @@ unit record and the five QA gates — none of which exists yet.
 
 ## 5. Accuracy and uncertainty
 
-What was measured in this repository, and is therefore a fact about the file:
+What was measured in this repository, and is therefore a fact about the files:
+
+* **The two files share a frame, and that was checked rather than assumed.**
+  Neither is re-centred. In the source's own metres the ascending aorta sits
+  20 mm above the aortic valve at the same depth; the pulmonary trunk above the
+  pulmonary valve; the superior vena cava above and lateral to the right atrium
+  and the inferior vena cava below it; the left pulmonary veins on the +x side
+  of the left atrium and the right pair on the −x side. Those are the
+  relationships a normal heart has, and none was produced by a transform of
+  ours. **That is evidence the frames agree; it is not a claim of
+  sub-millimetre registration, and no distance between a vessel's cut end and a
+  chamber is measured or asserted anywhere.**
+* **One display transform, applied once to the pair.** The offset and uniform
+  scale live on the single model root, so they cannot separate the two files.
+  The scale is taken from the heart, because the vessel subtree is half a metre
+  tall against the heart's ten centimetres and fitting the pair would put the
+  heart in a fifth of the frame. The far-reaching vessels — the descending
+  aorta, the arch branches, the brachiocephalic veins — start hidden for the
+  same reason, through the same hidden set the reader's own "Hide" writes to, so
+  "Unhide all" brings them back and nothing is removed.
+* **The source disagrees with itself about one mesh.**
+  `VH_M_left_anterior_descending_artery` is labelled "anterior descending branch
+  of left pulmonary artery" with FMA:8636 on the same node. Both are kept, the
+  structure's card states the disagreement in both languages, and neither is
+  corrected here. Where the mesh actually sits — anterior ventricular surface,
+  below the valve plane, in the file's own "arteries of the heart" group — is
+  reported as a position, not as a ruling.
 
 * **Fourteen meshes, fourteen distinct ontology ids.** Every part the adapter
   names is present under the node name it is keyed by.
@@ -109,12 +152,19 @@ the Japanese names are deliberate but unreviewed.
 
 ## 6. Presentation choices
 
-* **Parts** colours give each group its own hue family, varied by a stable hash
-  of the part id so adjacent parts stay apart and the same part is the same
-  colour every run. **Natural** uses the source's own single material varied
-  only in lightness. **Neither encodes anything functional** — not oxygenation,
-  not pressure, not flow. Colouring chambers by the blood they would carry would
-  be a physiological claim made in a colour, and it is not made.
+* **Parts** colours give each group its own hue band — chambers teal, valves
+  amber, papillary muscles violet, great vessels ochre, coronary arteries red,
+  cardiac veins indigo, arch branches green — spread evenly inside the band by
+  position so that all forty-six are distinct. Reds are deliberately left out of
+  the chamber band: a red chamber beside a blue one is an oxygenation map, and
+  this mode does not draw one.
+* **Natural** reports the sources' own materials. The heart file ships one
+  tissue red; the vasculature file ships `artery_mat7` (pure red) and
+  `vein_mat8` (pure blue) and assigns every vessel to one. This mode uses that
+  assignment, softened to be readable. **It is a vessel-type map and not an
+  oxygenation map, and the model carries the counterexample**: the pulmonary
+  arteries are red and carry deoxygenated blood, the pulmonary veins are blue
+  and carry oxygenated blood. Nothing here encodes pressure or flow.
 * One transform, on one root, centres and scales the model. The file arrives in
   whole-body coordinates; keeping the transform in one place is what will let
   the vasculature from the same release be placed beside it without either being
@@ -144,8 +194,10 @@ missing; it is not a patient's heart and not a surgical reference.
 
 **Catalog status:** `alpha`
 
-**Publication:** closed, and closed twice over. The scene rests on a candidate
-asset that has passed no asset release gate, and the great vessels the beta
-requires are not in the file. `betaPublicationProblems('heart-anatomy')` reports
-both. No clinical review, no anatomist review and no publication decision
-exists, and none is implied by this card.
+**Publication:** closed. The great vessels the beta's list asks for are now in
+the model, and **that is not what opens the gate**: the scene rests on candidate
+assets that have been through no asset pipeline — no manifest record, no licence
+decision, no discharged obligations, none of the five QA gates — and no
+publication decision exists. `betaPublicationProblems('heart-anatomy')` reports
+the candidate by name. No clinical review and no anatomist review exists, and
+none is implied by this card.

@@ -9,17 +9,28 @@ import {
   HEART_ANATOMY_META,
   HEART_AXES,
   HEART_COLOR_MODES,
+  HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PALETTE,
-  HEART_PARTS,
   heartColor,
+  heartMeshOwner,
   heartPartById,
   heartStructureInfo,
 } from '../../../../data/heartAnatomy.js';
 
 const BASE_URL = import.meta.env?.BASE_URL ?? './';
-/** A candidate, fetched by `npm run assets:dev` and served in dev and preview only. */
+/** Candidates, fetched by `npm run assets:dev` and served in dev and preview only. */
 const HEART_URL = devAssetUrl('hubmap-vh-m-heart', BASE_URL);
+const VESSEL_URL = devAssetUrl('hubmap-vh-m-blood-vasculature', BASE_URL);
+
+/**
+ * The subtree of the vasculature file this scene takes.
+ *
+ * The source's own grouping, not a box drawn round the heart: everything under
+ * `VH_M_blood_vasculature_of_heart` and nothing else. The rest of the file is
+ * the head, the abdomen and the pelvis, and it is left in the file.
+ */
+const VESSEL_SUBTREE = 'VH_M_blood_vasculature_of_heart';
 /**
  * The radius the model is scaled to.
  *
@@ -95,10 +106,13 @@ export class HeartAnatomyScene {
 
   static allowAutoRotate = false;
 
-  constructor({ viewer, model, modelLoader } = {}) {
+  constructor({ viewer, model, vessels, modelLoader, vesselLoader } = {}) {
     this.viewer = viewer;
     this.modelSource = model;
+    this.vesselSource = vessels ?? null;
     this.modelLoader = modelLoader ?? loadHeart;
+    this.vesselLoader = vesselLoader === undefined ? loadVessels : vesselLoader;
+    this.vesselError = null;
     this.root = new THREE.Group();
     this.root.name = 'heart-anatomy';
     /**
@@ -149,7 +163,7 @@ export class HeartAnatomyScene {
     this.root.add(createStudioLights({ key: 30, fill: 0.85, rim: 12 }));
     this._bindPicking();
     if (this.modelSource) {
-      this.attachModel(this.modelSource);
+      this.attachModel(this.modelSource, this.vesselSource);
       this.ready = Promise.resolve(this.root);
     } else if (this.viewer?.renderer?.domElement) {
       this.ready = this._loadModel();
@@ -165,7 +179,22 @@ export class HeartAnatomyScene {
         disposeObject(model.scene ?? model);
         return this.root;
       }
-      this.attachModel(model);
+      // The vessels are a second file and a second question. The heart is shown
+      // either way: a checkout that fetched one candidate and not the other gets
+      // a heart with its vessels missing and a status that says so, rather than
+      // an error page.
+      let vessels = null;
+      try {
+        vessels = await this.vesselLoader?.();
+      } catch (error) {
+        if (!this.disposed && !this.pageLeaving) this.vesselError = error;
+      }
+      if (this.disposed) {
+        disposeObject(model.scene ?? model);
+        if (vessels) disposeObject(vessels.scene ?? vessels);
+        return this.root;
+      }
+      this.attachModel(model, vessels);
     } catch (error) {
       // A fetch the browser abandoned is not a failure of the model — the same
       // distinction the brain scene had to learn. What is different here is that
@@ -187,7 +216,7 @@ export class HeartAnatomyScene {
    * Adopt a loaded model. Public so a test can hand in a small fixture and
    * exercise the same metadata and material path the real file takes.
    */
-  attachModel(model) {
+  attachModel(model, vessels = null) {
     if (this.disposed) return;
     const scene = model.scene ?? model;
     if (!scene?.isObject3D) throw new TypeError('the heart model must contain a THREE.Object3D scene');
@@ -199,33 +228,75 @@ export class HeartAnatomyScene {
     this.structureAnchors.clear();
     this._annotationSight.clear();
 
+    /**
+     * **Neither file is moved relative to the other.**
+     *
+     * Both arrive in the same whole-body frame — the heart sits where a heart
+     * sits in a body, and the vessels reach it from where they reach it. Both
+     * are added to `modelRoot` untouched, and the one display transform (an
+     * offset and a uniform scale) is applied to `modelRoot` itself, so it
+     * cannot separate them. Centring or normalising either one on its own is
+     * the move that destroys exactly the thing that makes them combinable, and
+     * it is not made here.
+     *
+     * The scale is taken from the **heart**, not from the pair. The vessel
+     * subtree is half a metre tall against the heart's ten centimetres, so
+     * fitting the pair would put the heart in a fifth of the frame; the
+     * far-reaching vessels start hidden instead, and are one click away.
+     */
+    this.modelRoot.add(scene);
+    const vesselScene = vessels ? (vessels.scene ?? vessels) : null;
+    const vesselRoot = vesselScene ? findByName(vesselScene, VESSEL_SUBTREE) : null;
+    // How much of that file is deliberately not taken. Counted rather than left
+    // implicit: "we take the subtree the source calls the vessels of the heart"
+    // is a claim about a number, and this is the number.
+    const vesselsInFile = vesselScene ? countMeshes(vesselScene) : 0;
+    const vesselsTaken = vesselRoot ? countMeshes(vesselRoot) : 0;
+    if (vesselRoot) {
+      // Detached from its own file's root and reparented **with its world
+      // matrix applied**, so its position in the body is what survives rather
+      // than its position under a node we are not keeping.
+      vesselRoot.updateMatrixWorld(true);
+      const matrix = vesselRoot.matrixWorld.clone();
+      this.modelRoot.add(vesselRoot);
+      matrix.decompose(vesselRoot.position, vesselRoot.quaternion, vesselRoot.scale);
+    }
+    this.modelRoot.updateMatrixWorld(true);
+
     scene.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(scene);
     const centre = box.getCenter(new THREE.Vector3());
     const radius = box.getBoundingSphere(new THREE.Sphere()).radius || 1;
-
-    // One transform, on the root, so anything added beside this keeps its
-    // position relative to it.
-    this.modelRoot.add(scene);
-    this.modelRoot.position.set(0, 0, 0);
-    this.modelRoot.scale.setScalar(TARGET_RADIUS / radius);
-    scene.position.sub(centre);
+    const scale = TARGET_RADIUS / radius;
+    this.modelRoot.position.copy(centre).multiplyScalar(-scale);
+    this.modelRoot.scale.setScalar(scale);
     this.root.updateMatrixWorld(true);
 
     let unknown = 0;
-    scene.traverse((object) => {
+    let vesselMeshes = 0;
+    this.modelRoot.traverse((object) => {
       if (!object.isMesh) return;
-      const entry = heartPartById(object.name);
+      const id = heartMeshOwner(object.name);
+      const entry = id ? heartPartById(id) : null;
       if (!entry) {
-        // A mesh the part table does not know is not given a made-up identity:
-        // it is left out of the selectable set and counted, so the count is a
-        // check on the table rather than a silent difference.
+        // A mesh the table does not know is not given a made-up identity: it is
+        // left out of the selectable set and counted, so the count is a check on
+        // the table rather than a silent difference. Most of these are the rest
+        // of the body in the vasculature file, which is why it is not an error.
         object.visible = false;
         unknown += 1;
         return;
       }
+      if (entry.meshNames) vesselMeshes += 1;
       this._registerMesh(object, entry);
     });
+
+    // The far-reaching vessels start out of the way. Seeded through the same
+    // hidden set a reader's own "hide" writes to, so "Unhide all" brings them
+    // back and nothing needs a second mechanism to explain.
+    for (const id of HEART_DEFAULT_HIDDEN) {
+      if (this.meshesById.has(id)) this.manualHidden.add(id);
+    }
 
     this._applyVisibility(1 / 60, true);
     this._setStatus({
@@ -233,8 +304,13 @@ export class HeartAnatomyScene {
       selectableCount: this.meshesById.size,
       meshCount: this.selectables.length,
       unknownMeshes: unknown,
+      vesselMeshes,
+      vesselsInFile,
+      vesselsNotTaken: vesselsInFile - vesselsTaken,
+      vessels: vesselRoot ? 'loaded' : (this.vesselError ? 'failed' : 'absent'),
       missing: HEART_MISSING.length,
     });
+    this._emitVisibility();
   }
 
   _registerMesh(mesh, entry) {
@@ -751,7 +827,20 @@ export class HeartAnatomyScene {
 
   // --- bounds and labels ----------------------------------------------------
 
-  getSubjectBounds() { return boundsOf(this._drawnMeshes()); }
+  /**
+   * What the camera frames: **the heart**, not everything drawn.
+   *
+   * The vessels reach far past the chest — the inferior vena cava alone runs to
+   * the renal level — so framing every drawn mesh would answer "show me the
+   * heart" with a heart a fifth of the frame high and a long tube beside it.
+   * The subject of this scene is the organ; the vessels arrive at it and run out
+   * of shot, which is what they do in a body. A reader who wants one of them
+   * framed asks for it by name, and `getStructureBounds` answers that.
+   */
+  getSubjectBounds() {
+    const heart = this._drawnMeshes().filter((mesh) => !heartPartById(mesh.userData.structureId)?.meshNames);
+    return boundsOf(heart.length ? heart : this._drawnMeshes());
+  }
 
   getStructureBounds(id) { return boundsOf(this._meshesFor(id)); }
 
@@ -907,6 +996,28 @@ async function loadHeart() {
   if (!HEART_URL) throw new Error('no candidate heart asset is registered');
   const loader = new GLTFLoader();
   return loader.loadAsync(HEART_URL);
+}
+
+async function loadVessels() {
+  if (!VESSEL_URL) throw new Error('no candidate vasculature asset is registered');
+  const loader = new GLTFLoader();
+  return loader.loadAsync(VESSEL_URL);
+}
+
+/** How many meshes are under an object, itself included. */
+function countMeshes(root) {
+  let count = 0;
+  root.traverse((object) => { if (object.isMesh) count += 1; });
+  return count;
+}
+
+/** The first descendant with this name, or null. */
+function findByName(root, name) {
+  let found = null;
+  root.traverse((object) => {
+    if (!found && object.name === name) found = object;
+  });
+  return found;
 }
 
 export default HeartAnatomyScene;
