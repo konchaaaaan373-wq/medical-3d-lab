@@ -692,3 +692,135 @@ test('an atlas that genuinely fails is still reported', async () => {
     console.error = wasError;
   }
 });
+
+test('hiding is by structure, outlasts a colour change, and is not isolation', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = find(scene, 'Middle temporal gyrus', 'left');
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  const id = temporal.userData.atlasId;
+
+  let announced = null;
+  scene.onAnatomyVisibility((state) => { announced = state; });
+
+  // A structure stays selected when it is hidden: what is on the card and what
+  // is on screen are two questions.
+  scene.selectStructure(id);
+  assert.equal(scene.setStructureHidden(id, true), true);
+  settle(scene);
+  assert.equal(temporal.visible, false);
+  assert.equal(frontal.visible, true, 'and only that structure went');
+  assert.deepEqual(announced, { hidden: [id] }, 'the surfaces are told');
+  assert.equal(scene.getAnatomySelection()?.id, id, 'the selection is untouched');
+
+  // Recolouring, re-viewing and re-layering are display choices and none of
+  // them is "bring it back".
+  scene.setAnatomyColorMode('anatomical');
+  scene.setAnatomyView('right-lateral');
+  scene.setProgress(0.5);
+  settle(scene);
+  assert.equal(temporal.visible, false, 'still hidden after a colour, a view and a layer change');
+
+  assert.equal(scene.showAllHiddenStructures(), true);
+  settle(scene);
+  assert.equal(temporal.visible, true);
+  assert.deepEqual(scene.getAnatomyVisibility(), { hidden: [] });
+  scene.dispose();
+});
+
+test('isolation overrides hiding without overwriting it', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = find(scene, 'Middle temporal gyrus', 'left');
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  scene.setStructureHidden(temporal.userData.atlasId, true);
+  settle(scene);
+
+  // Isolating something else is a temporary "only this", and it does not
+  // forget what the reader hid.
+  scene.isolateStructure(frontal.userData.atlasId);
+  settle(scene);
+  assert.equal(frontal.visible, true);
+  assert.equal(temporal.visible, false);
+  assert.deepEqual(scene.getAnatomyVisibility().hidden, [temporal.userData.atlasId]);
+
+  scene.clearIsolation();
+  settle(scene);
+  assert.equal(frontal.visible, true, 'the model comes back');
+  assert.equal(temporal.visible, false, 'except what the reader had hidden');
+
+  // "Only this one" and "not this one" cannot both hold: hiding the isolated
+  // structure ends the isolation rather than emptying the screen.
+  scene.isolateStructure(frontal.userData.atlasId);
+  settle(scene);
+  scene.setStructureHidden(frontal.userData.atlasId, true);
+  settle(scene);
+  assert.equal(scene.getAnatomyIsolation(), null);
+  assert.equal(frontal.visible, false);
+  assert.ok(scene.selectables.some((mesh) => mesh.visible), 'the model is not blank');
+  scene.dispose();
+});
+
+test('reveal changes the display, never the anatomy, and says when it cannot', () => {
+  const scene = buildScene();
+  settle(scene);
+  const putamen = find(scene, 'Putamen', 'left');
+  const positions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
+  assert.equal(putamen.visible, false, 'a deep structure starts under the cortex');
+
+  const result = scene.revealStructure(putamen.userData.atlasId);
+  assert.equal(result.ok, true);
+  assert.ok(result.changed.includes('layer'), 'the layer is what was in the way');
+  // The layer is *reported*, not set: the console's slider owns that value, and
+  // a scene that wrote it too would leave the model deep and the slider at 0 %.
+  assert.equal(result.layer, 1);
+  assert.equal(putamen.visible, false, 'so nothing has happened until the owner applies it');
+  scene.setProgress(result.layer);
+  settle(scene);
+  assert.equal(putamen.visible, true);
+  for (const [mesh, position] of positions) {
+    assert.ok(mesh.position.equals(position), 'and nothing moved to achieve it');
+  }
+
+  // Going back is going back: the layer, the view and the hidden set together.
+  assert.equal(scene.canRestoreDisplay(), true);
+  const back = scene.restoreDisplay();
+  assert.equal(back.ok, true);
+  assert.equal(back.layer, 0, 'and the layer comes back the same way it went');
+  scene.setProgress(back.layer);
+  settle(scene);
+  assert.equal(putamen.visible, false);
+  assert.equal(scene.canRestoreDisplay(), false, 'and there is nothing left to restore');
+
+  // A structure the reader hid is revealed by un-hiding it.
+  scene.setStructureHidden(putamen.userData.atlasId, true);
+  const second = scene.revealStructure(putamen.userData.atlasId);
+  if (second.layer != null) scene.setProgress(second.layer);
+  settle(scene);
+  assert.equal(second.ok, true);
+  assert.ok(second.changed.includes('hidden'));
+  assert.equal(putamen.visible, true);
+
+  assert.deepEqual(scene.revealStructure('group:Left cerebral hemisphere'),
+    { ok: false, reason: 'unknown-structure' },
+    'a group is not a structure and reveal does not pretend otherwise');
+  scene.dispose();
+});
+
+test('a hidden structure leaves the picker and stops occluding a label', () => {
+  const scene = buildScene();
+  settle(scene);
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+  const temporal = annotationFor(scene, 'temporal');
+  const far = vantage(scene, right, left);
+
+  assert.equal(temporal.isVisible(far), false, 'the right gyrus is in the way');
+  // Hiding the thing in front is not a special case for labels or for picking:
+  // both read the same "is it drawn" rule.
+  scene.setStructureHidden(right.userData.atlasId, true);
+  settle(scene);
+  assert.equal(temporal.isVisible(far), true, 'and now it is not');
+  assert.equal(scene._drawnMeshes().includes(right), false, 'nor can it be clicked');
+  scene.dispose();
+});

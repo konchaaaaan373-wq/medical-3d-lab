@@ -56,7 +56,9 @@ import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
  * @param {(layout: 'docked'|'sheet') => void} [options.onLayout] told which
  *   layout the panel is in, so the app shell can lay the rail out around it.
  */
-export function createAnatomyPanel({ scene, tree, display, legend = null, detail, onLayout }) {
+export function createAnatomyPanel({
+  scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange,
+}) {
   /**
    * The Parts tab is the tree with a way into it.
    *
@@ -98,17 +100,83 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     type: 'button',
     'aria-pressed': 'false',
     hidden: true,
+    dataset: { action: 'isolate' },
     on: { click: toggleIsolation },
   });
   const showAllButton = el('button', {
     class: 'anatomy-panel-action is-restore',
     type: 'button',
     hidden: true,
+    // Named, because three different buttons on this row restore three
+    // different things and a shared class cannot tell them apart.
+    dataset: { action: 'show-all' },
     on: { click: () => scene.clearIsolation() },
   }, [
     el('span', { class: 'lang-en', text: 'Show all' }),
     el('span', { class: 'lang-ja', text: '全体に戻す' }),
   ]);
+  /**
+   * The three things a reader can ask about the structure they have picked, and
+   * they are three because they are not the same request.
+   *
+   * **Go to it** moves the camera and changes no display state. **Show it**
+   * changes the display — the layer, the view, a hide the reader had set — and
+   * moves no anatomy. **Hide it** takes it off screen and leaves it selected.
+   * Collapsing any two of these into one button is how "take me there" starts
+   * silently rearranging the model, or how "show me" quietly means "and throw
+   * away the view you set up".
+   *
+   * They appear when they apply, rather than sitting greyed out: a disabled
+   * control that is painted, named and skipped by Tab is the worst of both.
+   */
+  const focusButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'focus' },
+    on: { click: focusSelection },
+  }, [
+    el('span', { class: 'lang-en', text: 'Go to it' }),
+    el('span', { class: 'lang-ja', text: '寄る' }),
+  ]);
+  const revealButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'reveal' },
+    on: { click: revealSelection },
+  }, [
+    el('span', { class: 'lang-en', text: 'Show it' }),
+    el('span', { class: 'lang-ja', text: '見える位置に表示' }),
+  ]);
+  const restoreDisplayButton = el('button', {
+    class: 'anatomy-panel-action is-restore',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'restore-display' },
+    on: { click: restorePreviousDisplay },
+  }, [
+    el('span', { class: 'lang-en', text: 'Back to how it was' }),
+    el('span', { class: 'lang-ja', text: '元の表示へ' }),
+  ]);
+  const hideButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'hide' },
+    on: { click: toggleHidden },
+  });
+  const showHiddenButton = el('button', {
+    class: 'anatomy-panel-action is-restore',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'unhide-all' },
+    on: { click: () => { scene.showAllHiddenStructures?.(); paint(); } },
+  }, [
+    el('span', { class: 'lang-en', text: 'Unhide all' }),
+    el('span', { class: 'lang-ja', text: '非表示を解除' }),
+  ]);
+
   const partsButton = el('button', {
     class: 'anatomy-panel-open',
     type: 'button',
@@ -124,7 +192,10 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       swatch,
       el('div', { class: 'anatomy-panel-names' }, [nameEn, nameJa, whereEn, whereJa]),
     ]),
-    el('div', { class: 'anatomy-panel-actions' }, [isolateButton, showAllButton, partsButton]),
+    el('div', { class: 'anatomy-panel-actions' }, [
+      focusButton, revealButton, isolateButton, hideButton,
+      showAllButton, restoreDisplayButton, showHiddenButton, partsButton,
+    ]),
   ]);
 
   // --- body: the tabs, and the one region that scrolls ----------------------
@@ -484,6 +555,60 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       el('span', { class: 'lang-ja', text: isolatingSelection ? '元の位置で表示' : 'この部位だけ' })
     );
     showAllButton.hidden = isolated == null;
+
+    const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
+    const selectionHidden = Boolean(selection) && hidden.includes(selection.id);
+    const canSee = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
+
+    focusButton.hidden = !selection || !onFocusStructure;
+    // Offered when the structure is not on screen — which is the only time the
+    // question "where is it?" cannot be answered by looking.
+    revealButton.hidden = !selection || canSee;
+    hideButton.hidden = !selection;
+    hideButton.replaceChildren(
+      el('span', { class: 'lang-en', text: selectionHidden ? 'Unhide' : 'Hide' }),
+      el('span', { class: 'lang-ja', text: selectionHidden ? '再表示' : '非表示' })
+    );
+    showHiddenButton.hidden = hidden.length === 0;
+    restoreDisplayButton.hidden = !(scene.canRestoreDisplay?.() ?? false);
+
+    // A pinned structure that is off screen still has a card; it says so rather
+    // than looking like a structure the reader is failing to find.
+    element.dataset.selectionHidden = selectionHidden ? 'yes' : 'no';
+    element.dataset.selectionOffscreen = selection && !canSee ? 'yes' : 'no';
+  }
+
+  function focusSelection() {
+    const selection = scene.getAnatomySelection();
+    if (selection) onFocusStructure?.(selection.id);
+  }
+
+  function revealSelection() {
+    const selection = scene.getAnatomySelection();
+    if (!selection) return;
+    const result = scene.revealStructure?.(selection.id);
+    // A scene that cannot bring this structure into view says so, and the offer
+    // becomes the one that always works rather than a button that lies.
+    if (result && result.ok === false) scene.isolateStructure(selection.id);
+    // The anatomical layer belongs to the console's slider. The scene reports
+    // what the structure needs; the control that owns the value sets it, so the
+    // model and the slider never disagree about how deep the reader is.
+    else if (result?.layer != null) onLayerChange?.(result.layer);
+    paint();
+  }
+
+  function restorePreviousDisplay() {
+    const result = scene.restoreDisplay?.();
+    if (result?.layer != null) onLayerChange?.(result.layer);
+    paint();
+  }
+
+  function toggleHidden() {
+    const selection = scene.getAnatomySelection();
+    if (!selection) return;
+    const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
+    scene.setStructureHidden?.(selection.id, !hidden.includes(selection.id));
+    paint();
   }
 
   function toggleIsolation() {
@@ -496,6 +621,7 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
   const unsubscribeSelection = scene.onAnatomySelection(paint);
   const unsubscribeHover = scene.onAnatomyHover?.(paint);
   const unsubscribeIsolation = scene.onAnatomyIsolation(paint);
+  const unsubscribeVisibility = scene.onAnatomyVisibility?.(paint);
 
   setTab('parts');
   applyLayout();
@@ -503,6 +629,14 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
 
   return {
     element,
+    /**
+     * Repaint the actions.
+     *
+     * Which of them apply depends on the anatomical layer, and that value is
+     * owned by the console rather than by the scene — so when the reader moves
+     * the slider themselves, nothing here hears about it unless the app says so.
+     */
+    refresh: paint,
     get activeTab() {
       return activeTab;
     },
@@ -527,6 +661,7 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       unsubscribeSelection?.();
       unsubscribeHover?.();
       unsubscribeIsolation?.();
+      unsubscribeVisibility?.();
       element.remove();
     },
   };

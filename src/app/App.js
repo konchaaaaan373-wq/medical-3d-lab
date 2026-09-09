@@ -618,6 +618,42 @@ export async function createApp({ stage, ui }) {
   // share, and `tests/anatomy-contract.test.js` is what holds the scene to it.
   const anatomyTree = scene.getAnatomyTree ? createAnatomyTreePanel(scene) : null;
 
+  /**
+   * Take the camera to one structure, at the angle it is already being seen from.
+   *
+   * The same fit the whole model gets, given a smaller subject: the band the
+   * panels leave, the distance that fills it, the pan that centres it. The
+   * direction is left alone — a reader who asked to go *closer* to something did
+   * not ask to be turned around, and a viewpoint they chose is not undone by it.
+   *
+   * A structure the scene cannot bound is not a failure to report loudly: the
+   * caller offers this only for structures it got from the scene, so `false`
+   * here means the model is not loaded yet.
+   */
+  const focusOnStructure = (id) => {
+    const bounds = scene.getStructureBounds?.(id);
+    if (!bounds) return false;
+    const pose = { position: viewer.camera.position.clone(), target: viewer.controls.target.clone() };
+    const insets = safeAreaInsets();
+    const fitted = insets
+      ? fitPoseToSafeArea(pose, {
+          bounds,
+          aspect: viewer.camera.aspect,
+          fovDegrees: viewer.camera.fov,
+          insets,
+          // Closer than the whole model sits, because the subject is one part
+          // of it and the point of asking was to see it larger.
+          coverage: 0.5,
+        })
+      : pose;
+    userZoom = 1;
+    shot.target.copy(fitted.target);
+    shot.position.copy(fitted.position);
+    view.active = true;
+    viewer.controls.autoRotate = false;
+    return true;
+  };
+
   anatomyPanel = isAnatomyScene
     ? createAnatomyPanel({
         scene,
@@ -625,6 +661,10 @@ export async function createApp({ stage, ui }) {
         display: inspectionPanel.element,
         legend: legend.element,
         detail: anatomyInfo.element,
+        onFocusStructure: focusOnStructure,
+        // Through the control that owns the value, so the slider, the stage
+        // readout and the model all move together.
+        onLayerChange: (value) => seek(value),
         // Docked, the panel's body is the one scroller and the rail must not be
         // a second one around it. As a sheet the body is `position: fixed` and
         // out of the rail entirely, so the rail goes back to scrolling like it
@@ -827,6 +867,10 @@ export async function createApp({ stage, ui }) {
     controlPanel.update(value, playing);
     refreshModelReadouts();
     applyLabelFocus();
+    // Which actions the anatomy panel offers depends on this value — a deep
+    // structure the layer has just brought into view no longer needs a way to
+    // be brought into view.
+    anatomyPanel?.refresh?.();
 
   };
 

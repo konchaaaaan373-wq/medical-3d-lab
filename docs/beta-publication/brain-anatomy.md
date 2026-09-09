@@ -16,7 +16,7 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **11**, source digest `9b2c04b44093784a` |
+| **Scene revision** | model card revision **12**, source digest `952def05f14594af` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in

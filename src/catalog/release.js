@@ -170,7 +170,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 11, modelDigest: '9b2c04b44093784a' }),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: '952def05f14594af' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -201,6 +201,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'each annotation is anchored on the outside of its own structure rather than at the centre of its bounding box',
         'a viewpoint is fitted to the band the header, console and docked panel leave, against the bounds of what is actually drawn',
         'a structure can be found by either of its names and selected from the result, by the same id the tree and the model use',
+        'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
+        'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
       ]),
     }),
     evidence: Object.freeze([

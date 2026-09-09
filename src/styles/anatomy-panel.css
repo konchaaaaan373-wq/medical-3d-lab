@@ -407,3 +407,28 @@
   opacity: 0.62;
   font-size: 0.8em;
 }
+
+/* A pinned structure that is off screen still has a card. It says which of the
+   two it is, so a reader is not left hunting for something the display is
+   deliberately not drawing. */
+.anatomy-panel[data-selection-hidden='yes'] .anatomy-panel-name::after {
+  content: ' — 非表示';
+  opacity: 0.6;
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.anatomy-panel[data-selection-hidden='no'][data-selection-offscreen='yes'] .anatomy-panel-name::after {
+  content: ' — この表示では見えません';
+  opacity: 0.6;
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.anatomy-panel[data-selection-hidden='yes'] .anatomy-panel-name.lang-en::after {
+  content: ' — hidden';
+}
+
+.anatomy-panel[data-selection-hidden='no'][data-selection-offscreen='yes'] .anatomy-panel-name.lang-en::after {
+  content: ' — not shown in this view';
+}

@@ -199,6 +199,26 @@ Left and right are two structures with two ids and stay two results. Searching
 covers the tree rather than replacing it, so clearing returns the branches the
 reader had open and the place they had scrolled to.
 
+**Going to a structure, bringing it into view and hiding it are three actions,
+because they are three requests.** *Go to it* moves the camera and changes no
+display state. *Show it* changes the display — the anatomical layer, the
+viewpoint, a hide the reader had set — and moves no anatomy; the recipe is read
+off the structure's own category, region, side and preferred view, and where the
+metadata says nothing the scene answers `{ok: false}` rather than a camera move
+that pretends to have worked. *Hide it* takes one structure off screen and
+leaves it selected, with the panel saying so.
+
+Visibility has one order, in one place: isolation is a temporary override that
+writes nothing down, a structure the reader hid stays hidden over what the layer
+would otherwise show, and otherwise the layer and the medial side decide.
+Clearing an isolation therefore returns the model the reader had — their hidden
+structures and their layer — rather than a remembered snapshot that can be
+wrong. A hidden structure leaves the picker and stops occluding a label by the
+same rule, and hiding one survives a colour change, a viewpoint and a resize.
+The anatomical layer stays owned by the console's slider: the scene reports the
+layer a structure needs and the control that owns the value sets it, so the
+model and the slider never give two answers.
+
 ## 7. What it must never be used for
 
 Diagnosis, measurement, lesion localisation, stereotactic coordinates,

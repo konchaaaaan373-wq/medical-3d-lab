@@ -615,7 +615,7 @@ test('anatomy panels: a re-attached atlas leaves nothing of the old one in the D
  * both are stood up here. The media query is switchable, because half of what
  * this component promises is about the layout it is in.
  */
-function mountPanel({ sheet = false } = {}) {
+function mountPanel({ sheet = false, onFocusStructure, onLayerChange } = {}) {
   const scene = buildScene();
   const restoreDocument = installFakeDocument();
   document.documentElement = new FakeElement('html');
@@ -640,7 +640,9 @@ function mountPanel({ sheet = false } = {}) {
   const info = createAnatomyInfoPanel(scene, { heading: false });
   const display = new FakeElement('section');
   display.className = 'panel inspection-panel';
-  const panel = createAnatomyPanel({ scene, tree, display, legend: null, detail: info.element });
+  const panel = createAnatomyPanel({
+    scene, tree, display, legend: null, detail: info.element, onFocusStructure, onLayerChange,
+  });
 
   return {
     scene,
@@ -1038,6 +1040,62 @@ test('anatomy contract: the IME\'s Enter does not select, and Escape clears only
     assert.equal(input.value, '');
     assert.equal(stopped, true, 'the sheet never hears this Escape');
     assert.equal(scene.getAnatomySelection()?.name, 'Putamen', 'and the selection is untouched');
+  } finally {
+    restore();
+  }
+});
+
+test('anatomy contract: the panel offers going to it, showing it and hiding it, and they are three things', () => {
+  const focused = [];
+  const layers = [];
+  const { panel, scene, restore } = mountPanel({
+    onFocusStructure: (id) => focused.push(id),
+    // The app wires this to the control that owns the layer; here it stands in
+    // for the console's slider so the panel can be checked without one.
+    onLayerChange: (value) => { layers.push(value); scene.setProgress(value); for (let i = 0; i < 240; i += 1) scene.update(1 / 60); },
+  });
+  try {
+    const labels = () => findByClass(panel.element, 'anatomy-panel-action')
+      .filter((button) => !button.hidden)
+      .map((button) => findByClass(button, 'lang-ja')[0]?.textContent);
+
+    // Nothing pinned: nothing to act on.
+    assert.deepEqual(labels(), []);
+
+    // A structure on the surface: it can be gone to, isolated or hidden — but
+    // "show it" is not offered, because it is already there.
+    scene.selectStructure(212);
+    assert.ok(labels().includes('寄る'));
+    findByClass(panel.element, 'anatomy-panel-action')
+      .find((button) => findByClass(button, 'lang-ja')[0]?.textContent === '寄る')
+      .dispatchEvent({ type: 'click' });
+    assert.deepEqual(focused, [212], 'going to it asks the app for a camera move, by id');
+    assert.equal(scene.isStructureVisible(212), true, 'and changes nothing about the display');
+    assert.ok(labels().includes('この部位だけ'));
+    assert.ok(labels().includes('非表示'));
+    assert.equal(labels().includes('見える位置に表示'), false, 'it is already visible');
+
+    // A deep structure under the cortex: now "show it" is the offer.
+    scene.selectStructure(325);
+    assert.ok(labels().includes('見える位置に表示'), 'the putamen is not on screen');
+
+    // Showing it changes the display and offers the way back.
+    findByClass(panel.element, 'anatomy-panel-action')
+      .find((button) => findByClass(button, 'lang-ja')[0]?.textContent === '見える位置に表示')
+      .dispatchEvent({ type: 'click' });
+    assert.deepEqual(layers, [1], 'the layer went through the control that owns it');
+    assert.equal(scene.isStructureVisible(325), true);
+    assert.ok(labels().includes('元の表示へ'));
+    assert.equal(labels().includes('見える位置に表示'), false, 'and stops offering what it just did');
+
+    // Hiding leaves the structure selected and offers the way back for that too.
+    const hide = findByClass(panel.element, 'anatomy-panel-action')
+      .find((button) => findByClass(button, 'lang-ja')[0]?.textContent === '非表示');
+    hide.dispatchEvent({ type: 'click' });
+    assert.equal(scene.getAnatomySelection()?.id, 325, 'a hidden structure is still the pinned one');
+    assert.equal(panel.element.dataset.selectionHidden, 'yes', 'and the panel says so');
+    assert.ok(labels().includes('非表示を解除'));
+    assert.ok(labels().includes('再表示'));
   } finally {
     restore();
   }

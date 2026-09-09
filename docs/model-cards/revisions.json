@@ -6,9 +6,9 @@
       "src/data/brainAnatomy.js",
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js"
     ],
-    "cardRevision": 11,
-    "modelDigest": "9b2c04b44093784a",
-    "cardUpdatedAt": "2026-09-08"
+    "cardRevision": 12,
+    "modelDigest": "952def05f14594af",
+    "cardUpdatedAt": "2026-09-09"
   },
   {
     "sceneId": "circulation",

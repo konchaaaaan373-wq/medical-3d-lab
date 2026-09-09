@@ -363,7 +363,9 @@ try {
     await shot('brain-tree');
 
     // 5. Isolate shows one structure, and Show all puts the model back.
-    const isolate = page.locator('.anatomy-panel-action').first();
+    // By name, not by position: the actions row grew and "the first one" is a
+    // different button than it was.
+    const isolate = page.locator('.anatomy-panel-action[data-action="isolate"]');
     await isolate.click();
     await page.waitForTimeout(500);
     if ((await isolate.getAttribute('aria-pressed')) !== 'true') problems.push('isolating did not take');
@@ -380,7 +382,7 @@ try {
     }
     await shot('brain-isolated');
 
-    await page.locator('.anatomy-panel-action.is-restore').click();
+    await page.locator('.anatomy-panel-action[data-action="show-all"]').click();
     await page.waitForTimeout(600);
     if ((await isolate.getAttribute('aria-pressed')) !== 'false') {
       problems.push('Show all did not clear the isolation');

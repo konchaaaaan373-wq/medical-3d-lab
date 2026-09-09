@@ -171,6 +171,29 @@ export class BrainAnatomyScene {
     this.hoveredMeshes = [];
     /** The one structure on screen, or null for the whole model. */
     this.isolatedId = null;
+    /**
+     * Structures the reader has hidden by hand.
+     *
+     * A different thing from the anatomical layer and from isolation, and kept
+     * separately for that reason: the layer says what this depth of the model
+     * shows, isolation is a temporary "only this", and this is the reader
+     * saying "not that one" and expecting it to stay said through a colour
+     * change, a resize and a trip to another tab.
+     */
+    this.manualHidden = new Set();
+    /**
+     * Bumped whenever the hidden set changes.
+     *
+     * The label-occlusion answer is cached against everything that can change
+     * it — where the camera is, the layer, the medial side, what is isolated.
+     * Hiding a structure changes what is drawn without touching any of those,
+     * so without this a label stayed hidden behind something that was no longer
+     * on screen.
+     */
+    this.hiddenVersion = 0;
+    this.visibilityListeners = new Set();
+    /** The display state a reveal moved away from, so it can be moved back. */
+    this.displayBeforeReveal = null;
     this.built = false;
     this.disposed = false;
     this.ready = Promise.resolve();
@@ -533,7 +556,12 @@ export class BrainAnatomyScene {
     this.hoveredMeshes = [];
     this.selection = null;
     this.isolatedId = null;
-    if (!notify || !had) return;
+    const hadHidden = this.manualHidden.size > 0;
+    this.manualHidden.clear();
+    this.hiddenVersion += 1;
+    this.displayBeforeReveal = null;
+    if (!notify || !(had || hadHidden)) return;
+    if (hadHidden) this._emitVisibility();
     for (const listener of this.listeners) listener(null);
     for (const listener of this.hoverListeners) listener(null);
     this._emitIsolation();
@@ -605,6 +633,220 @@ export class BrainAnatomyScene {
   }
 
   getAnatomyIsolation() { return this.isolatedId; }
+
+  /**
+   * Hide, or bring back, one structure — every mesh it is drawn from.
+   *
+   * Structure-wide because a structure is what a reader means: hiding the piece
+   * they happened to click and leaving the other half of the same gyrus on
+   * screen is the split-structure bug wearing a different hat.
+   *
+   * Hiding the structure that is currently isolated ends the isolation first.
+   * "Only this one" and "not this one" cannot both be true, and leaving the
+   * isolation on would show an empty model with no way to read why.
+   *
+   * @param {number|string} id
+   * @param {boolean} hidden
+   */
+  setStructureHidden(id, hidden) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return false;
+    const key = meshes[0].userData.atlasId;
+    const had = this.manualHidden.has(key);
+    if (had === Boolean(hidden)) return false;
+    if (hidden) {
+      if (this.isolatedId === key) this.isolatedId = null;
+      this.manualHidden.add(key);
+    } else {
+      this.manualHidden.delete(key);
+    }
+    this.hiddenVersion += 1;
+    this._applyProgress(1 / 60, true);
+    this._emitVisibility();
+    return true;
+  }
+
+  /**
+   * Bring back everything hidden by hand.
+   *
+   * The camera is not touched. "Show the ones I hid" and "look at the whole
+   * model again" are two requests, and answering both when one was asked is how
+   * a reader loses the view they had set up.
+   */
+  showAllHiddenStructures() {
+    if (!this.manualHidden.size) return false;
+    this.manualHidden.clear();
+    this.hiddenVersion += 1;
+    this._applyProgress(1 / 60, true);
+    this._emitVisibility();
+    return true;
+  }
+
+  /** The structures currently hidden by hand, as ids. */
+  getAnatomyVisibility() {
+    return { hidden: [...this.manualHidden] };
+  }
+
+  onAnatomyVisibility(listener) {
+    this.visibilityListeners.add(listener);
+    return () => this.visibilityListeners.delete(listener);
+  }
+
+  _emitVisibility() {
+    const state = this.getAnatomyVisibility();
+    for (const listener of this.visibilityListeners) listener({ hidden: [...state.hidden] });
+  }
+
+  /**
+   * Whether the display, as it is currently *set*, shows this structure.
+   *
+   * Deliberately about the settings and not about the frame. Opacities ease
+   * over about half a second, so a check on what is painted right now answers
+   * "has the fade finished" — and a panel that asked that offered to reveal a
+   * structure it had just revealed, then stopped offering it a moment later
+   * with nothing to repaint it. What a reader is asking when they look at that
+   * button is whether this structure is part of what the display is showing,
+   * which is a question about the layer, the medial side, isolation and what
+   * they hid, all of which are settled the instant they change.
+   *
+   * Hit-testing and label occlusion ask the other question — what is on screen
+   * *now* — and use `_drawnMeshes()` for it. Both read the same threshold and
+   * the same priority order.
+   *
+   * @param {number|string} id
+   */
+  isStructureVisible(id) {
+    return this._meshesFor(id).some(
+      (mesh) => this._targetOpacityFor(mesh, this.progress) > DRAWN_OPACITY
+    );
+  }
+
+  /**
+   * The box around one structure, for a camera that has been asked to go to it.
+   *
+   * Its own meshes only, drawn or not: "take me to it" is asked about
+   * structures the reader cannot currently see at least as often as about ones
+   * they can, and a camera that refuses to move because the subject is behind
+   * something is not helping.
+   *
+   * @param {number|string} id
+   */
+  getStructureBounds(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return null;
+    const box = new THREE.Box3();
+    for (const mesh of meshes) box.expandByObject(mesh);
+    if (box.isEmpty()) return null;
+    const corners = [];
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      }
+    }
+    return { centre: box.getCenter(new THREE.Vector3()), corners };
+  }
+
+  /**
+   * Put the display into the state this structure can be seen in.
+   *
+   * Moving the camera to a structure buried under the cortex shows the reader
+   * the cortex. What has to change is the *display*: the anatomical layer that
+   * fades the shell, the medial view that turns the midline towards them, the
+   * hand-hidden flag they set earlier and forgot. So this changes those, and
+   * moves no anatomy whatsoever.
+   *
+   * The recipe is read off the structure's own metadata — the category the
+   * atlas gave it, the region, the side, the preferred view the adapter already
+   * publishes — not invented per structure and not guessed from a name. Where
+   * the metadata says nothing, this says so: `{ok: false, reason}` rather than a
+   * camera move that pretends to have worked, so a caller can offer isolation
+   * instead of implying the reader is looking at something they are not.
+   *
+   * The display state from just before is kept, once, so `restoreDisplay()` can
+   * put it back. Anything the reader changes afterwards drops it, because
+   * "return to what you had" must not undo what they did next.
+   *
+   * **The anatomical layer is reported, not set.** The console's slider owns
+   * that value and pushes it here; writing it from this side as well left the
+   * model deep and the slider still reading 0 %, which is two answers to one
+   * question. The `layer` in the result is what the caller must apply through
+   * the control that owns it — `null` when the current layer already suffices.
+   *
+   * @param {number|string} id
+   * @returns {{ok: boolean, reason?: string, changed?: string[], view?: string|null, layer?: number|null}}
+   */
+  revealStructure(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.length) return { ok: false, reason: 'unknown-structure' };
+    const metadata = meshes[0].userData.atlasMetadata ?? {};
+    const key = meshes[0].userData.atlasId;
+    const recipe = revealRecipe(metadata);
+    if (!recipe && !this.manualHidden.has(key)) {
+      return this.isStructureVisible(key)
+        ? { ok: true, changed: [], view: this.activeView, layer: null }
+        : { ok: false, reason: 'no-recipe' };
+    }
+
+    const before = this._displaySnapshot();
+    const changed = [];
+    if (this.manualHidden.delete(key)) {
+      this.hiddenVersion += 1;
+      changed.push('hidden');
+    }
+    let layer = null;
+    if (recipe?.progress != null && this.progress < recipe.progress) {
+      layer = recipe.progress;
+      changed.push('layer');
+    }
+    const view = recipe?.view ?? (metadata.bx_side === 'right' ? 'right-lateral' : 'left-lateral');
+    if (view && view !== this.activeView && this.setAnatomyView(view)) changed.push('view');
+    // Isolation would hide the very context this is trying to show it in.
+    if (this.isolatedId != null && this.isolatedId !== key) {
+      this.isolatedId = null;
+      changed.push('isolation');
+    }
+    this._applyProgress(1 / 60, true);
+    if (changed.length) {
+      this.displayBeforeReveal = before;
+      if (changed.includes('hidden')) this._emitVisibility();
+      this._emitIsolation();
+    }
+    return { ok: true, changed, view: this.activeView, layer };
+  }
+
+  /** Whether there is a display state to go back to. */
+  canRestoreDisplay() { return this.displayBeforeReveal != null; }
+
+  /**
+   * Back to the display the last reveal moved away from.
+   *
+   * The layer comes back the same way it went: reported, for the control that
+   * owns it to apply.
+   *
+   * @returns {{ok: boolean, layer?: number}}
+   */
+  restoreDisplay() {
+    const before = this.displayBeforeReveal;
+    if (!before) return { ok: false };
+    this.displayBeforeReveal = null;
+    this.isolatedId = before.isolatedId;
+    this.manualHidden = new Set(before.hidden);
+    this.hiddenVersion += 1;
+    this.setAnatomyView(before.view);
+    this._applyProgress(1 / 60, true);
+    this._emitVisibility();
+    this._emitIsolation();
+    return { ok: true, layer: before.progress };
+  }
+
+  _displaySnapshot() {
+    return {
+      progress: this.progress,
+      view: this.activeView,
+      isolatedId: this.isolatedId,
+      hidden: [...this.manualHidden],
+    };
+  }
 
   onAnatomyIsolation(listener) {
     this.isolationListeners.add(listener);
@@ -721,24 +963,53 @@ export class BrainAnatomyScene {
     this._applyProgress(dt, false);
   }
 
+  /**
+   * How opaque each mesh should be, in one place and in one order.
+   *
+   * The order is the whole of it, and it is why these three ideas can coexist:
+   *
+   *  1. **Isolation wins**, and is a temporary override — it shows the target's
+   *     every mesh and hides the rest *without writing anything down*. Clearing
+   *     it returns the model the reader had, hidden structures and layer
+   *     included, rather than a model it remembered separately and could get
+   *     wrong.
+   *  2. **A structure the reader hid stays hidden**, over whatever the layer
+   *     would otherwise show. They said not that one.
+   *  3. **Otherwise the layer, the medial side and the rest decide**, exactly
+   *     as they did before any of this existed.
+   *
+   * Selection and hover only ever add emphasis to a mesh that is being drawn,
+   * which falls out of this rather than being another rule: `_refreshHighlight`
+   * changes emissive, never opacity.
+   */
   _applyProgress(dt, snap) {
-    const oneHemisphere = smoothstep(0.18, 0.42, this.displayProgress);
-    const deepReveal = smoothstep(0.55, 0.78, this.displayProgress);
     for (const mesh of this.selectables) {
-      const target = this.isolatedId != null
-        ? (mesh.userData.atlasId === this.isolatedId ? 1 : 0)
-        : targetOpacity(
-            mesh.userData.atlasMetadata,
-            oneHemisphere,
-            deepReveal,
-            this.medialSide
-          );
+      const target = this._targetOpacityFor(mesh, this.displayProgress);
       const opacity = snap ? target : damp(mesh.userData.currentOpacity, target, 10, dt);
       mesh.userData.currentOpacity = opacity;
       mesh.material.opacity = opacity;
       mesh.material.depthWrite = opacity > 0.94;
       mesh.visible = opacity > 0.012;
     }
+  }
+
+  /**
+   * What one mesh's opacity should be at a given layer — the priority order
+   * above, in one function, so nothing has to restate it.
+   *
+   * @param {import('three').Mesh} mesh
+   * @param {number} progress the anatomical layer to answer for
+   */
+  _targetOpacityFor(mesh, progress) {
+    const id = mesh.userData.atlasId;
+    if (this.isolatedId != null) return id === this.isolatedId ? 1 : 0;
+    if (this.manualHidden.has(id)) return 0;
+    return targetOpacity(
+      mesh.userData.atlasMetadata,
+      smoothstep(0.18, 0.42, progress),
+      smoothstep(0.55, 0.78, progress),
+      this.medialSide
+    );
   }
 
   _updateAnnotationAnchors() {
@@ -794,7 +1065,7 @@ export class BrainAnatomyScene {
     // and everything that can change the answer is in this key.
     camera.updateMatrixWorld();
     const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
-      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}`;
+      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
     const cached = this._annotationSight.get(anchor);
     if (cached?.key === key) return cached.visible;
 
@@ -864,9 +1135,45 @@ export class BrainAnatomyScene {
     this.hoverListeners.clear();
     this.statusListeners.clear();
     this.isolationListeners.clear();
+    this.visibilityListeners.clear();
     this._resetInteractionState();
     disposeObject(this.root);
   }
+}
+
+/**
+ * What the display has to be for a structure of this kind to be visible.
+ *
+ * Read off the metadata the atlas already carries and the rules
+ * `targetOpacity` already applies — the layer thresholds are the same numbers,
+ * not a second set that can drift from them. `null` means "nothing here knows",
+ * which the caller reports rather than papers over.
+ *
+ * @param {object} metadata
+ * @returns {{progress?: number, view?: string|null}|null}
+ */
+function revealRecipe(metadata) {
+  const category = metadata.bx_cat;
+  const side = metadata.bx_side;
+  // The adapter already decides that a cingulate structure is a medial-surface
+  // one; this uses that answer rather than making a second one.
+  const preferred = brainStructureInfo(metadata).preferredView;
+  if (preferred) return { progress: 0, view: preferred };
+  if (DEEP_CATEGORIES.has(category)) {
+    // Past the deep-reveal threshold `targetOpacity` uses, with room to spare.
+    return { progress: 1, view: side === 'right' ? 'right-lateral' : 'left-lateral' };
+  }
+  if (category === 'cortex') {
+    if (metadata.bx_label === 'Hippocampus' || metadata.bx_region === 'Insula') {
+      return { progress: 1, view: side === 'right' ? 'right-lateral' : 'left-lateral' };
+    }
+    // A surface gyrus is visible at rest; it only needs the side turned to it.
+    return { progress: 0, view: side === 'right' ? 'right-lateral' : 'left-lateral' };
+  }
+  if (category === 'cerebellum' || category === 'brainstem') {
+    return { progress: 0, view: side === 'right' ? 'right-lateral' : 'left-lateral' };
+  }
+  return null;
 }
 
 function anatomyMaterialStyle(metadata, mode) {
