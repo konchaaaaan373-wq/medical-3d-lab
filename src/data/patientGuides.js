@@ -8,6 +8,21 @@
  * A guide's `progress` must mean exactly what that scene's progression means.
  * Patient copy is not allowed to silently reinterpret a demand axis as disease
  * severity just because the resulting animation looks convenient.
+ *
+ * ## The three parts of a step
+ *
+ * `title` says **what changes**, `body` says **what happens because of it**,
+ * and `look`/`lookJa` say **where on the screen to see it**. The third is the
+ * one that was missing, and it is the one a person sitting in front of the
+ * model actually needs: an explanation that does not say where to look is a
+ * paragraph next to a moving picture, and the reader watches the wrong part of
+ * it. It names what the product itself renders — a read-out's own label, or
+ * something visible in the 3D — so the words and the screen cannot drift.
+ *
+ * Each of these is paired with a specialist walk-through on the same scene:
+ * the scene's `getCausalStory()`, whose steps carry `watch` (which read-outs)
+ * and `chart`. The two registers describe one model at one set of states, and
+ * `tests/disease-explanations.test.js` holds them to that.
  */
 
 export const PATIENT_GUIDES = Object.freeze({
@@ -59,10 +74,10 @@ export const PATIENT_GUIDES = Object.freeze({
     title: 'Why air can remain in the lungs',
     titleJa: '肺に空気が残りやすくなる仕組み',
     steps: Object.freeze([
-      { progress: 0, title: 'At rest there is more time to breathe out', titleJa: '安静時は息を吐く時間が比較的長い', body: 'This model is already showing an obstructed lung. At rest, expiration is given relatively more time, so much of the air can still leave before the next breath.', bodyJa: 'この画面は最初から、空気が出にくくなった肺を示しています。安静時は呼気の時間が比較的長いため、次の吸気までに多くの空気を外へ出せます。' },
-      { progress: 0.38, title: 'Breathing speeds up with exertion', titleJa: '動くと呼吸が速くなる', body: 'As the body asks for more ventilation, breaths come closer together and the time available to breathe out becomes shorter.', bodyJa: '体がより多くの換気を必要とすると呼吸が速くなり、1回ごとに息を吐ける時間が短くなります。' },
-      { progress: 0.72, title: 'Some air is left behind', titleJa: '吐ききれない空気が残る', body: 'Because the obstructed lung empties slowly, the next breath can begin before the previous one has fully emptied.', bodyJa: '空気が出にくい肺では吐くのに時間がかかるため、吐ききる前に次の吸気が始まることがあります。' },
-      { progress: 1, title: 'Breathing starts from a fuller lung', titleJa: '肺が膨らんだ位置から次の呼吸が始まる', body: 'Air left behind raises the volume from which the next breath starts, leaving less room to breathe in.', bodyJa: '残った空気によって肺がより膨らんだ状態から次の呼吸を始めることになり、さらに吸える余裕が小さくなります。' },
+      { progress: 0, title: 'At rest there is more time to breathe out', titleJa: '安静時は息を吐く時間が比較的長い', body: 'This model is already showing an obstructed lung. At rest, expiration is given relatively more time, so much of the air can still leave before the next breath.', bodyJa: 'この画面は最初から、空気が出にくくなった肺を示しています。安静時は呼気の時間が比較的長いため、次の吸気までに多くの空気を外へ出せます。', look: 'Watch the volume trace along the bottom: each breath comes back down to the same low point.', lookJa: '画面下の肺気量の波形を見てください。1回ごとの呼吸が同じ低さまで戻っています。' },
+      { progress: 0.38, title: 'Breathing speeds up with exertion', titleJa: '動くと呼吸が速くなる', body: 'As the body asks for more ventilation, breaths come closer together and the time available to breathe out becomes shorter.', bodyJa: '体がより多くの換気を必要とすると呼吸が速くなり、1回ごとに息を吐ける時間が短くなります。', look: 'Watch the read-out marked Expiratory time. It gets shorter as the breathing speeds up.', lookJa: '「呼気時間」の数値を見てください。呼吸が速くなるにつれて短くなります。' },
+      { progress: 0.72, title: 'Some air is left behind', titleJa: '吐ききれない空気が残る', body: 'Because the obstructed lung empties slowly, the next breath can begin before the previous one has fully emptied.', bodyJa: '空気が出にくい肺では吐くのに時間がかかるため、吐ききる前に次の吸気が始まることがあります。', look: 'Watch the low point of the trace: it stops coming all the way back down.', lookJa: '波形の一番低いところを見てください。もとの低さまで戻らなくなります。' },
+      { progress: 1, title: 'Breathing starts from a fuller lung', titleJa: '肺が膨らんだ位置から次の呼吸が始まる', body: 'Air left behind raises the volume from which the next breath starts, leaving less room to breathe in.', bodyJa: '残った空気によって肺がより膨らんだ状態から次の呼吸を始めることになり、さらに吸える余裕が小さくなります。', look: 'Watch the read-out marked Inspiratory capacity, and the lungs themselves sitting fuller.', lookJa: '「最大吸気量（IC）」の数値と、膨らんだままの肺そのものを見てください。' },
     ]),
   }),
   'asthma-heterogeneity': Object.freeze({
@@ -79,10 +94,54 @@ export const PATIENT_GUIDES = Object.freeze({
     title: 'Why pressure rises before the liver',
     titleJa: '肝臓の手前で圧が上がる仕組み',
     steps: Object.freeze([
-      { progress: 0, title: 'Blood flows through the liver', titleJa: '血液が肝臓を通る', body: 'Blood from the digestive organs normally flows through the portal vein and then through the liver.', bodyJa: '消化管などから戻った血液は、通常は門脈を通って肝臓の中を流れます。' },
-      { progress: 0.42, title: 'The liver becomes harder to flow through', titleJa: '肝臓の中を通りにくくなる', body: 'Cirrhosis changes the liver structure and increases resistance to that flow.', bodyJa: '肝硬変では肝臓の構造が変化し、血液が通るときの抵抗が大きくなります。' },
-      { progress: 0.72, title: 'Portal pressure rises', titleJa: '門脈の圧が上がる', body: 'More pressure is then needed to drive blood across the liver.', bodyJa: 'そのため、肝臓へ血液を通すために、より高い圧が必要になります。' },
-      { progress: 1, title: 'Blood can take detours', titleJa: '血液が迂回路へ流れる', body: 'Alternative veins can carry part of the blood around the liver, but the underlying resistance in the liver remains.', bodyJa: '血液の一部は別の静脈を迂回するようになりますが、肝臓の中の通りにくさ自体がなくなるわけではありません。' },
+      { progress: 0, title: 'Blood flows through the liver', titleJa: '血液が肝臓を通る', body: 'Blood from the digestive organs normally flows through the portal vein and then through the liver.', bodyJa: '消化管などから戻った血液は、通常は門脈を通って肝臓の中を流れます。', look: 'Watch the blood moving through the liver, and the read-out marked Portal pressure.', lookJa: '肝臓の中を通っていく血流と、「門脈圧」の数値を見てください。' },
+      { progress: 0.42, title: 'The liver becomes harder to flow through', titleJa: '肝臓の中を通りにくくなる', body: 'Cirrhosis changes the liver structure and increases resistance to that flow.', bodyJa: '肝硬変では肝臓の構造が変化し、血液が通るときの抵抗が大きくなります。', look: 'Watch the read-out marked Intrahepatic resistance climbing.', lookJa: '「肝内血管抵抗」の数値が上がっていくのを見てください。' },
+      { progress: 0.72, title: 'Portal pressure rises', titleJa: '門脈の圧が上がる', body: 'More pressure is then needed to drive blood across the liver.', bodyJa: 'そのため、肝臓へ血液を通すために、より高い圧が必要になります。', look: 'Watch the read-out marked Portal pressure rising while the flow through the liver does not.', lookJa: '「門脈圧」が上がる一方で、「肝臓を通る門脈血」が増えないことを見てください。' },
+      { progress: 1, title: 'Blood can take detours', titleJa: '血液が迂回路へ流れる', body: 'Alternative veins can carry part of the blood around the liver, but the underlying resistance in the liver remains.', bodyJa: '血液の一部は別の静脈を迂回するようになりますが、肝臓の中の通りにくさ自体がなくなるわけではありません。', look: 'Watch the vessels that fill up beside the liver, and the read-out marked Bypassing liver tissue.', lookJa: '肝臓の脇で満たされていく血管と、「肝組織を迂回する割合」の数値を見てください。' },
+    ]),
+  }),
+  /**
+   * The third of the first wave's representative diseases.
+   *
+   * **Authored, and not reachable yet.** Patient mode is an entitlement, and a
+   * scene only advertises it once it is `reviewed` or `production` with a
+   * current clinical review; `renal-filtration` is `alpha`. The copy is here so
+   * that the three representative diseases are explained to the same standard
+   * and in the same shape, and so the surface has something to show the day the
+   * scene is promoted. Nothing about billing or the gate is changed by its
+   * being written down.
+   */
+  'renal-filtration': Object.freeze({
+    title: 'Why the kidney can keep its numbers normal for a while',
+    titleJa: '腎臓がしばらくのあいだ数値を保てる仕組み',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        title: 'Filtering happens in many small units',
+        titleJa: 'ろ過はたくさんの小さな単位で行われている',
+        body: 'Each kidney filters blood through a very large number of small filtering units. Together they set how much is filtered each minute.',
+        bodyJa: '腎臓は非常に多数の小さなろ過装置で血液をろ過しています。その合計が、1分あたりのろ過量を決めています。',
+        look: 'Watch the read-out marked GFR — the amount filtered each minute — while the model is intact.',
+        lookJa: '健常な状態での「GFR」（1分あたりのろ過量）の数値を見てください。',
+      },
+      {
+        progress: 0.5,
+        title: 'The remaining units take on more each',
+        titleJa: '残った単位が1つあたりの仕事を増やす',
+        body: 'If some units are lost, the ones that remain can each filter more. The total can then stay close to where it was, which is why the usual blood test can look unchanged at this stage.',
+        bodyJa: '一部の単位が失われても、残った単位が1つあたりのろ過量を増やすことができます。そのため合計は以前に近い値のまま保たれ、この段階では通常の血液検査に変化が出にくくなります。',
+        look: 'Watch the read-out marked Single-nephron GFR going up while GFR itself barely moves.',
+        lookJa: '「1 ネフロンあたり GFR」が上がる一方で、「GFR」自体はほとんど動かないことを見てください。',
+      },
+      {
+        progress: 1,
+        title: 'There is a limit to that',
+        titleJa: 'その仕組みには限界がある',
+        body: 'Once enough units are gone, the ones that remain cannot make up the difference, and the total filtered each minute falls. This model shows that relationship; it does not tell any one person how much filtering they have or will have.',
+        bodyJa: '失われた単位が一定以上になると、残った単位では補いきれなくなり、1分あたりのろ過量そのものが下がります。このモデルはその関係を示すもので、特定の個人のろ過量やその見通しを示すものではありません。',
+        look: 'Watch the read-out marked GFR falling, and Plasma creatinine rising as it does.',
+        lookJa: '「GFR」が下がり、それにつれて「血清 Cr」が上がっていくのを見てください。',
+      },
     ]),
   }),
 });

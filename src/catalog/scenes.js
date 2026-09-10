@@ -121,6 +121,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '5つの肺葉、18本の区域気管支とそれに伴走する区域動脈、そして区域の「間」を走る静脈を、すべて名前で選択できます。',
     tags: ['anatomy', 'interactive', 'segments'],
+    relatedScenes: ['copd-hyperinflation'],
     load: () => import('../scenes/respiratory/scenes/lungAnatomy/index.js'),
   },
   {
@@ -143,6 +144,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '固有の時定数をもつ 12 単位の肺モデル。呼気が時間内に終わらず動的過膨張が生じる理由と、呼気流量制限に達すると呼気努力を強めても流量を増やせなくなる理由を示します。',
     tags: ['respiratory-mechanics', 'flow-limitation', 'learning-module'],
+    relatedScenes: ['lung-anatomy'],
     load: () => import('../scenes/respiratory/scenes/copd/index.js'),
   },
   {
@@ -284,6 +286,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '胃底部・噴門部・胃体部・前庭部・幽門管を5つの別々の壁として表示し、出口の括約筋リングと開口先の十二指腸も示します。',
     tags: ['anatomy', 'interactive', 'upper-gi'],
+    relatedScenes: ['upper-gi-peristalsis'],
     load: () => import('../scenes/gastrointestinal/scenes/stomachAnatomy/index.js'),
   },
   {
@@ -299,6 +302,7 @@ export const SCENE_MANIFEST = [
     description: 'A constriction wave travelling down the esophagus and around the gastric body.',
     descriptionJa: '食道を下行し、胃体部を回る収縮波（蠕動）を示します。',
     tags: ['peristalsis', 'wave'],
+    relatedScenes: ['stomach-anatomy'],
     load: () => import('../scenes/gastrointestinal/scenes/upperGi/index.js'),
   },
   {
@@ -319,6 +323,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '盲腸・上行・横行・下行・S状結腸を別々の部位として表示し、その間の2つの結腸曲と、枠の内側を満たす小腸も示します。',
     tags: ['anatomy', 'interactive', 'lower-gi'],
+    relatedScenes: ['intestinal-transit'],
     load: () => import('../scenes/gastrointestinal/scenes/intestineAnatomy/index.js'),
   },
   {
@@ -334,6 +339,7 @@ export const SCENE_MANIFEST = [
     description: 'Segmentation giving way to propulsive peristalsis along the small bowel and colon.',
     descriptionJa: '小腸の分節運動から、大腸へ向かう推進性蠕動へと移る動きを示します。',
     tags: ['peristalsis', 'transit'],
+    relatedScenes: ['intestine-anatomy'],
     load: () => import('../scenes/gastrointestinal/scenes/intestinalTransit/index.js'),
   },
   {
@@ -354,6 +360,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '9つのCouinaud区域、区域の「間」を走る肝静脈、区域の「内部」を走る門脈枝。区域切除が成り立つ理由となる違いを示します。',
     tags: ['anatomy', 'interactive', 'segments'],
+    relatedScenes: ['portal-hypertension'],
     load: () => import('../scenes/hepatobiliary/scenes/liverAnatomy/index.js'),
   },
   {
@@ -376,6 +383,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '流量保存が成り立つネットワークとして門脈循環を表現し、側副血行路へ血流が再分配されても門脈圧亢進が持続し得る理由と、HVPG が門脈圧較差そのものではない理由を示します。',
     tags: ['haemodynamics', 'portal-hypertension', 'learning-module'],
+    relatedScenes: ['liver-anatomy'],
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
@@ -417,6 +425,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '1枚のシェルとしての皮質、7つの髄質錐体とそのあいだの腎柱、各腎乳頭を包む小腎杯から腎盂・尿管へ至る集合系を表示します。',
     tags: ['anatomy', 'interactive', 'collecting-system'],
+    relatedScenes: ['renal-filtration'],
     load: () => import('../scenes/renal/scenes/kidneyAnatomy/index.js'),
   },
   {
@@ -440,6 +449,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '1 本の糸球体毛細血管の Starling 平衡と、その下流の尿細管の物質収支を同時に解きます。FENa・BUN/Cr 比・尿中 Na・尿浸透圧は覚えるべき 4 つの事実ではなく、同じ解の 4 つの読み方です。機序を 1 つ動かして、どれが逆転するのかを確かめられます。',
     tags: ['mass-balance', 'filtration', 'learning-module'],
+    relatedScenes: ['kidney-anatomy'],
     load: () => import('../scenes/renal/scenes/renalFiltration/index.js'),
   },
   {
@@ -475,6 +485,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '膵頭部・頸部・体部・尾部を別々の部位として表示し、全長を貫く主膵管と、外分泌組織の中に散在する内分泌組織を示します。',
     tags: ['anatomy', 'interactive', 'endocrine'],
+    relatedScenes: ['pancreatic-secretion'],
     load: () => import('../scenes/hepatobiliary/scenes/pancreasAnatomy/index.js'),
   },
   {
@@ -489,6 +500,7 @@ export const SCENE_MANIFEST = [
     description: 'The two outputs of one gland: enzymes into the duct, insulin into the blood.',
     descriptionJa: '1 つの臓器がもつ 2 つの分泌 — 膵管への外分泌と、血中への内分泌を示します。',
     tags: ['secretion', 'endocrine', 'exocrine'],
+    relatedScenes: ['pancreas-anatomy'],
     load: () => import('../scenes/hepatobiliary/scenes/pancreaticSecretion/index.js'),
   },
   {

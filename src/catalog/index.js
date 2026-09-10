@@ -29,6 +29,20 @@ export const SCENES = SCENE_MANIFEST.map((entry) => ({
   // separate from `access`, which describes paid feature availability and can
   // fail closed when a clinical review becomes stale.
   uses: entry.uses ?? ['education'],
+  /**
+   * Scenes a reader would go to next from this one, by id.
+   *
+   * The catalogue already knows which scenes share an organ, and the Explorer
+   * uses that. This is narrower and is the pairing itself: *this* anatomy and
+   * *that* disease of it, so a reader looking at a lung can open the one
+   * respiratory scene that shows what goes wrong with it and come back.
+   *
+   * Declared on both ends and checked for it, because a link a reader cannot
+   * retrace is a trapdoor. What the relation *is* need not be declared — one
+   * end has a disease and the other does not, which is what a surface labels
+   * them by.
+   */
+  relatedScenes: entry.relatedScenes ?? [],
 }));
 
 /** Public product and experimental work are two views over one registry. */
@@ -36,6 +50,22 @@ export const PUBLIC_SCENES = SCENES.filter((scene) => scene.status !== 'prototyp
 export const LAB_SCENES = SCENES.filter((scene) => scene.status === 'prototype');
 
 export { PLANNED_SCENES, SYSTEMS, ORGANS, STATUS_IDS, statusById, systemById, organById };
+
+/**
+ * The scenes paired with this one, resolved and in declaration order.
+ *
+ * A surface can tell which is which without being told: the one with a
+ * `disease` is what goes wrong, the one without it is the anatomy that goes
+ * wrong. Unknown ids cannot survive `validateCatalog`, so this never returns a
+ * hole.
+ *
+ * @param {string} id
+ */
+export function relatedScenesFor(id) {
+  const scene = SCENES.find((candidate) => candidate.id === id);
+  if (!scene) return [];
+  return scene.relatedScenes.map((other) => SCENES.find((candidate) => candidate.id === other)).filter(Boolean);
+}
 
 /** The route for a scene, as written in an href. */
 export const sceneRoute = (scene) => `#/${scene.slug}`;
@@ -262,6 +292,21 @@ export function validateCatalog(scenes = SCENES) {
         }
         if (!['reviewed', 'production'].includes(scene.status)) {
           problems.push(`${where}: paid access requires reviewed or production status`);
+        }
+      }
+    }
+
+    if (!Array.isArray(scene.relatedScenes)) {
+      problems.push(`${where}: relatedScenes must be an array`);
+    } else {
+      for (const id of scene.relatedScenes) {
+        const other = scenes.find((candidate) => candidate.id === id);
+        if (id === scene.id) problems.push(`${where}: relatedScenes points at itself`);
+        else if (!other) problems.push(`${where}: relatedScenes names unknown scene "${id}"`);
+        else if (!(other.relatedScenes ?? []).includes(scene.id)) {
+          problems.push(`${where}: "${id}" does not point back, so the reader cannot return`);
+        } else if (other.system !== scene.system) {
+          problems.push(`${where}: "${id}" is in another system, which is not a pairing`);
         }
       }
     }
