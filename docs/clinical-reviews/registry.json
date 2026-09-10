@@ -386,5 +386,73 @@
       "The ureter's calibre and course are illustrative and its three normal narrowings are not modelled.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning biopsy, nephrostomy, stone localisation or stenting."
     ]
+  },
+  {
+    "sceneId": "stomach-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gastric regions, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/stomach-anatomy.md",
+      "docs/model-evidence/stomach-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The regions are drawn as rings of one tube: the cardia becomes a collar all the way round, and the incisura angularis is present only as the narrowing that goes with it.",
+      "No wall layers, rugae, gastric glands or volumes are modelled, and no gastric emptying occurs in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning endoscopy, biopsy or resection."
+    ]
+  },
+  {
+    "sceneId": "intestine-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built colonic parts, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/intestine-anatomy.md",
+      "docs/model-evidence/intestine-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths, loop counts and positions are illustrative; no dimension can be read from this model.",
+      "Jejunum and ileum are one structure because no boundary between them is modelled, and where the caecum ends is schematic because no ileum is drawn arriving.",
+      "No appendix, ileocaecal valve, rectum, anal canal, mesentery, taenia coli or wall layer is modelled.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning colonoscopy, resection or stoma siting."
+    ]
+  },
+  {
+    "sceneId": "pancreas-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built pancreatic parts, duct and islets, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pancreas-anatomy.md",
+      "docs/model-evidence/pancreas-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Islet number and size are illustrative and stand for an arrangement, not a count: they must not be read as a quantity of endocrine tissue.",
+      "No uncinate process, accessory duct, common bile duct, ampulla or papilla is modelled, and no vessel is drawn.",
+      "Nothing is secreted or solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning ERCP, biopsy, resection or staging."
+    ]
   }
 ]

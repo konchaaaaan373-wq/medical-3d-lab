@@ -171,5 +171,44 @@
     "cardRevision": 3,
     "modelDigest": "b547ee7ebef59743",
     "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "stomach-anatomy",
+    "card": "docs/model-cards/stomach-anatomy.md",
+    "modelSources": [
+      "src/data/stomachAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/stomachParts.js",
+      "src/scenes/gastrointestinal/scenes/stomachAnatomy/StomachAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "e6012f2e15c43749",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "intestine-anatomy",
+    "card": "docs/model-cards/intestine-anatomy.md",
+    "modelSources": [
+      "src/data/intestineAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/colonParts.js",
+      "src/scenes/gastrointestinal/scenes/intestineAnatomy/IntestineAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "9eab75c8e3c60a5f",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "pancreas-anatomy",
+    "card": "docs/model-cards/pancreas-anatomy.md",
+    "modelSources": [
+      "src/data/pancreasAnatomyScene.js",
+      "src/scenes/hepatobiliary/organs/pancreasParts.js",
+      "src/scenes/hepatobiliary/scenes/pancreasAnatomy/PancreasAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "8a55872c8fc13140",
+    "cardUpdatedAt": "2026-09-10"
   }
 ]

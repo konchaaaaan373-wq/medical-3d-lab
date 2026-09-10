@@ -258,6 +258,56 @@ export const MODEL_PROFILES = Object.freeze([
       'rather than two, and no renal artery is drawn. No state and no mechanism.',
   },
   {
+    profileId: 'stomach-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one procedural tube — the stomach\u2019s own path along the greater curvature and the '+
+      'calibre profile that already names fundus, body, incisura, antrum and pyloric canal \u2014 into those named lengths, '+
+      'with the cardia found from where the oesophagus ends. No state and no mechanism. The parts are rings of the tube, '+
+      'so the cardia is drawn as a collar and the incisura angularis only as the narrowing that goes with it; there are no '+
+      'wall layers, no rugae and no volumes.',
+  },
+  {
+    profileId: 'intestine-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the colon\u2019s own frame at its own corners, measured along the path rather than assumed '+
+      'from control-point spacing. No state and no mechanism. Lengths, loop counts and positions are illustrative; the '+
+      'small bowel is one structure because nothing in the model marks where jejunum becomes ileum; and there is no '+
+      'appendix, rectum, anal canal, mesentery, taenia coli or wall layer.',
+  },
+  {
+    profileId: 'pancreas-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the pancreas\u2019s own axis, at the calibre profile that names head, neck, body and tail, '+
+      'into those four, with the main duct along the same axis. No state and no mechanism. The islets are placed '+
+      'pseudo-randomly from a fixed seed and claim only that endocrine tissue is scattered through the exocrine \u2014 '+
+      'neither their number nor their size is a measurement. No uncinate process, accessory duct, bile duct or papilla '+
+      'is modelled.',
+  },
+  {
     profileId: 'amyloid-beta-aggregation-illustration',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

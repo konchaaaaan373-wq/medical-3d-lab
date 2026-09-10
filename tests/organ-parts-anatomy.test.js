@@ -1,0 +1,248 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+
+import { buildStomachParts } from '../src/scenes/gastrointestinal/organs/stomachParts.js';
+import { buildStomach, buildEsophagus } from '../src/scenes/gastrointestinal/organs/stomach.js';
+import { buildColonParts } from '../src/scenes/gastrointestinal/organs/colonParts.js';
+import { buildColon } from '../src/scenes/gastrointestinal/organs/intestine.js';
+import { buildPancreasParts } from '../src/scenes/hepatobiliary/organs/pancreasParts.js';
+import { buildDuodenum } from '../src/scenes/gastrointestinal/organs/intestine.js';
+
+/**
+ * The three organs that were one tube each, now cut into named parts.
+ *
+ * What is checked here is what makes a division a division rather than a
+ * label: that the parts run in the order the names do, that between them they
+ * cover the organ once, that each one is where its name says it is, and that
+ * the cut organ is still the organ that was there before.
+ *
+ * Frontal view throughout, so screen-right (`+x`) is the patient's **left**.
+ * Every side assertion below goes through `patientSide` rather than reading a
+ * sign, because that is the rule the whole repository shares and guessing at it
+ * is how a mirrored organ passes a test.
+ */
+const patientSide = (point) => (point.x > 0 ? 'left' : 'right');
+
+/** The parts cover the organ once: contiguous, in order, from end to end. */
+function assertPartition(parts, label) {
+  assert.ok(parts.length > 1, `${label}: more than one part`);
+  assert.equal(parts[0].from, 0, `${label}: the first part starts at the beginning`);
+  assert.equal(parts.at(-1).to, 1, `${label}: the last part ends at the end`);
+  for (const [index, part] of parts.entries()) {
+    assert.ok(part.to > part.from, `${label}/${part.id} covers something`);
+    if (index === 0) continue;
+    assert.ok(
+      Math.abs(part.from - parts[index - 1].to) < 1e-9,
+      `${label}: ${parts[index - 1].id} and ${part.id} leave a gap or overlap`
+    );
+  }
+}
+
+const centre = (mesh) => new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+
+// --- stomach ---------------------------------------------------------------
+
+test('the stomach is cut into its named regions, in order, covering it once', () => {
+  const stomach = buildStomachParts();
+  assert.deepEqual(
+    stomach.parts.map((part) => part.id),
+    ['fundus', 'cardia', 'body', 'antrum', 'pyloric-canal']
+  );
+  assertPartition(stomach.parts, 'stomach');
+});
+
+test('the fundus is the dome above the opening, and the pylorus is on the right', () => {
+  const stomach = buildStomachParts();
+  const at = (id) => centre(stomach.part(id).mesh);
+  assert.ok(at('fundus').y > at('cardia').y, 'the fundus is above the cardia');
+  assert.ok(at('cardia').y > at('body').y, 'and the cardia above the body');
+  assert.ok(at('body').y > at('antrum').y, 'and the body above the antrum');
+  // The stomach runs from the patient's left across to the right, which is why
+  // an inhaled meal leaves towards the midline rather than back the way it came.
+  assert.equal(patientSide(at('fundus')), 'left', 'the fundus');
+  assert.equal(patientSide(at('pyloric-canal')), 'right', 'the pyloric canal');
+});
+
+test('the cardia is where the oesophagus actually ends, not a number beside it', () => {
+  const stomach = buildStomachParts();
+  const oesophagus = buildEsophagus();
+  const end = oesophagus.curve.getPointAt(1);
+
+  const cardia = stomach.part('cardia');
+  assert.ok(
+    cardia.from <= stomach.cardiaAt && stomach.cardiaAt <= cardia.to,
+    'the junction falls inside the part named for it'
+  );
+  // And the part is actually there: its box contains the point the oesophagus
+  // stops at, which is the claim the derivation exists to make.
+  const box = new THREE.Box3().setFromObject(cardia.mesh);
+  assert.ok(box.distanceToPoint(end) < 0.08, `the cardia is ${box.distanceToPoint(end).toFixed(3)} from the junction`);
+  oesophagus.dispose();
+});
+
+test('cutting the stomach up leaves the same stomach', () => {
+  const whole = buildStomach();
+  const parts = buildStomachParts();
+  const wholeBox = new THREE.Box3().setFromObject(whole.object);
+  const partsBox = new THREE.Box3();
+  for (const part of parts.parts) partsBox.expandByObject(part.mesh);
+  // The parts are the wall, so they sit inside the whole stomach's extent (the
+  // whole includes the sphincter ring) and reach nearly all of it.
+  for (const axis of ['x', 'y', 'z']) {
+    assert.ok(
+      partsBox.min[axis] >= wholeBox.min[axis] - 0.02 && partsBox.max[axis] <= wholeBox.max[axis] + 0.02,
+      `the cut stomach stays inside the whole one on ${axis}`
+    );
+    const wholeSpan = wholeBox.max[axis] - wholeBox.min[axis];
+    const partSpan = partsBox.max[axis] - partsBox.min[axis];
+    assert.ok(partSpan > wholeSpan * 0.85, `and still spans it on ${axis}`);
+  }
+  whole.dispose();
+});
+
+// --- colon -----------------------------------------------------------------
+
+test('the colon is cut into its named parts, in order, covering it once', () => {
+  const colon = buildColonParts();
+  assert.deepEqual(
+    colon.parts.map((part) => part.id),
+    [
+      'caecum',
+      'ascending-colon',
+      'right-colic-flexure',
+      'transverse-colon',
+      'left-colic-flexure',
+      'descending-colon',
+      'sigmoid-colon',
+    ]
+  );
+  assertPartition(colon.parts, 'colon');
+});
+
+test('each part of the colon is on the side and at the height its name says', () => {
+  const colon = buildColonParts();
+  const at = (id) => centre(colon.part(id).mesh);
+
+  assert.equal(patientSide(at('caecum')), 'right', 'the caecum');
+  assert.equal(patientSide(at('ascending-colon')), 'right', 'the ascending colon');
+  assert.equal(patientSide(at('right-colic-flexure')), 'right', 'the hepatic flexure');
+  assert.equal(patientSide(at('left-colic-flexure')), 'left', 'the splenic flexure');
+  assert.equal(patientSide(at('descending-colon')), 'left', 'the descending colon');
+
+  assert.ok(at('ascending-colon').y > at('caecum').y, 'the ascending colon is above the caecum');
+  assert.ok(at('right-colic-flexure').y > at('ascending-colon').y, 'and the flexure above that');
+  assert.ok(at('sigmoid-colon').y < at('descending-colon').y, 'the sigmoid is below the descending colon');
+});
+
+test('the splenic flexure is the higher of the two', () => {
+  // The relation, and it was the wrong way round: the spleen sits higher than
+  // the liver's inferior surface, so the colon turns down from further up on
+  // the left than it turned across on the right. It is why the splenic flexure
+  // is the more acute of the two and the harder one to get an endoscope round.
+  const colon = buildColonParts();
+  const left = centre(colon.part('left-colic-flexure').mesh);
+  const right = centre(colon.part('right-colic-flexure').mesh);
+  assert.ok(left.y > right.y, `splenic ${left.y.toFixed(2)} is not above hepatic ${right.y.toFixed(2)}`);
+});
+
+test('the transverse colon is the part that crosses, and it sags between the flexures', () => {
+  const colon = buildColonParts();
+  // Its *width*, not its length. This frame is a schematic one and the model
+  // card says the lengths are illustrative — a real transverse colon is twice
+  // the descending and this one is not, because the descending has a whole
+  // abdomen to fall down and the transverse only has one to cross. What the
+  // model does claim is the direction each part runs in.
+  const width = (id) => new THREE.Box3().setFromObject(colon.part(id).mesh).getSize(new THREE.Vector3()).x;
+  for (const id of ['ascending-colon', 'descending-colon', 'sigmoid-colon', 'caecum']) {
+    assert.ok(width('transverse-colon') > width(id), `the transverse colon crosses further than the ${id}`);
+  }
+  const mid = colon.curve.getPointAt((colon.landmarksAt.transverse + colon.landmarksAt.leftColicFlexure) / 2);
+  const left = centre(colon.part('left-colic-flexure').mesh);
+  assert.ok(mid.y < left.y, 'the middle of the transverse colon hangs below the splenic flexure');
+});
+
+test('the offset moves the parts and the curve together', () => {
+  const colon = buildColonParts({ offset: [0, 0, -0.55] });
+  const plain = buildColonParts();
+  const moved = centre(colon.part('caecum').mesh);
+  const still = centre(plain.part('caecum').mesh);
+  assert.ok(Math.abs(moved.z - (still.z - 0.55)) < 1e-6, 'the mesh moved');
+  assert.ok(Math.abs(colon.curve.getPointAt(0).z - (plain.curve.getPointAt(0).z - 0.55)) < 1e-6, 'and so did the curve');
+});
+
+// --- pancreas --------------------------------------------------------------
+
+test('the pancreas is cut into head, neck, body and tail, covering it once', () => {
+  const pancreas = buildPancreasParts();
+  assert.deepEqual(pancreas.parts.map((part) => part.id), ['head', 'neck', 'body', 'tail']);
+  assertPartition(pancreas.parts, 'pancreas');
+});
+
+test('the head is the bulkiest part and the neck the narrowest', () => {
+  const pancreas = buildPancreasParts();
+  const thickness = (id) => {
+    const size = new THREE.Box3().setFromObject(pancreas.part(id).mesh).getSize(new THREE.Vector3());
+    // Across the axis, not along it: the body is the longest part and that says
+    // nothing about how thick it is.
+    return Math.min(size.y, size.z);
+  };
+  assert.ok(thickness('head') > thickness('neck'), 'the head is thicker than the neck');
+  assert.ok(thickness('head') > thickness('body'), 'and than the body');
+  assert.ok(thickness('body') > thickness('tail'), 'and the tail is the thinnest');
+});
+
+test('the pancreas runs from a head on the right to a tail on the left', () => {
+  const pancreas = buildPancreasParts();
+  const at = (id) => centre(pancreas.part(id).mesh);
+  assert.equal(patientSide(at('head')), 'right', 'the head');
+  assert.equal(patientSide(at('tail')), 'left', 'the tail');
+  assert.ok(at('head').x < at('neck').x, 'head, neck, body and tail run in that order');
+  assert.ok(at('neck').x < at('body').x);
+  assert.ok(at('body').x < at('tail').x);
+});
+
+test('the pancreatic head sits inside the duodenal C', () => {
+  // The relationship most of the head's position means: a mass here obstructs
+  // the bile duct and the duodenum before it does anything else.
+  const pancreas = buildPancreasParts();
+  const duodenum = buildDuodenum();
+  const head = centre(pancreas.part('head').mesh);
+
+  let nearest = Infinity;
+  let furthest = 0;
+  const probe = new THREE.Vector3();
+  for (let i = 0; i <= 60; i += 1) {
+    duodenum.curve.getPointAt(i / 60, probe);
+    const distance = probe.distanceTo(head);
+    nearest = Math.min(nearest, distance);
+    furthest = Math.max(furthest, distance);
+  }
+  // Inside the C rather than beside it: some of the loop is close on one side,
+  // and the loop wraps far enough round that the far side is well away.
+  assert.ok(nearest < 0.75, `the duodenum comes within ${nearest.toFixed(2)} of the head`);
+  assert.ok(furthest > 1.2, 'and reaches round it');
+  duodenum.dispose();
+});
+
+test('the duct runs the whole length of the gland, inside it', () => {
+  const pancreas = buildPancreasParts();
+  const duct = new THREE.Box3().setFromObject(pancreas.duct);
+  const gland = new THREE.Box3();
+  for (const part of pancreas.parts) gland.expandByObject(part.mesh);
+
+  assert.ok(duct.min.x >= gland.min.x - 1e-6 && duct.max.x <= gland.max.x + 1e-6, 'the duct stays within the gland');
+  const ductSpan = duct.max.x - duct.min.x;
+  const glandSpan = gland.max.x - gland.min.x;
+  assert.ok(ductSpan > glandSpan * 0.9, 'and runs nearly all of it');
+});
+
+test('the islets are scattered along the gland rather than gathered in one part', () => {
+  const pancreas = buildPancreasParts();
+  const xs = pancreas.islets.children.map((islet) => islet.position.x);
+  assert.ok(xs.length >= 10, 'there are enough of them to say "scattered"');
+  const spread = Math.max(...xs) - Math.min(...xs);
+  const gland = new THREE.Box3();
+  for (const part of pancreas.parts) gland.expandByObject(part.mesh);
+  assert.ok(spread > (gland.max.x - gland.min.x) * 0.5, 'and they reach across the gland');
+});

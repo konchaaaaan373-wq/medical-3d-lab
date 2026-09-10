@@ -62,10 +62,16 @@ export const COLON_PATH = Object.freeze([
   [-1.75, -2.05, 0.35], // caecum
   [-1.95, -1.2, 0.25],
   [-1.98, 0.35, 0.1], // ascending
-  [-1.6, 1.35, 0.05], // right colic (hepatic) flexure
-  [-0.4, 1.62, -0.05], // transverse
-  [1.0, 1.5, -0.05],
-  [1.85, 0.9, 0.05], // left colic (splenic) flexure
+  [-1.74, 1.3, 0.05], // right colic (hepatic) flexure
+  // The transverse colon sags between the two flexures. It is the mobile part,
+  // slung on a mesentery of its own, and drawn level it read as a shelf.
+  [-0.45, 1.02, -0.05], // transverse
+  [0.85, 1.26, -0.05],
+  // **Higher than the hepatic flexure, and sharper.** It was drawn 0.45 lower,
+  // which is the relation the wrong way round: the spleen sits higher than the
+  // liver's inferior surface, so the colon turns down at a more acute angle and
+  // from further up on the left than it turned across on the right.
+  [1.86, 1.72, 0.05], // left colic (splenic) flexure
   [1.95, -0.6, 0.15], // descending
   [1.5, -1.7, 0.25],
   [0.5, -2.1, 0.3], // sigmoid

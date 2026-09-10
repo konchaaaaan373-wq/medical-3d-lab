@@ -20,6 +20,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'lung-anatomy',
   'liver-anatomy',
   'kidney-anatomy',
+  'stomach-anatomy',
+  'intestine-anatomy',
+  'pancreas-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -153,6 +156,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '前負荷・後負荷・収縮性を変え、PVループと肺うっ血を確認。',
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
+  ),
+  'stomach-anatomy': presentation(
+    'Pick the antrum, then fade the wall to the sphincter it empties through.',
+    '前庭部を選び、壁を透かして、その先の幽門括約筋を見る。',
+    ['FUNDUS', 'BODY', 'PYLORUS'],
+    ['胃底部', '胃体部', '幽門']
+  ),
+  'intestine-anatomy': presentation(
+    'Fade the small bowel and the colon is left as the frame it is.',
+    '小腸を薄くすると、結腸が枠として残る。',
+    ['CAECUM', 'FLEXURES', 'SIGMOID'],
+    ['盲腸', '結腸曲', 'S状結腸']
+  ),
+  'pancreas-anatomy': presentation(
+    'Head, neck, body, tail — then one duct running the length of all four.',
+    '頭部・頸部・体部・尾部、そして4つを貫く1本の膵管。',
+    ['PARTS', 'DUCT', 'ISLETS'],
+    ['部位', '膵管', '膵島']
   ),
   'lung-anatomy': presentation(
     'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',

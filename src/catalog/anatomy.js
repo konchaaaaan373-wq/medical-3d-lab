@@ -98,15 +98,17 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'stomach',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — fundus on the left running to a pylorus on the right, wall transmittance measured',
-    next: 'A2: cardia, fundus, body, antrum and pylorus as named parts, with the wall layers the mucosa needs',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/stomachAnatomy — fundus, cardia, body, antrum and pyloric canal as separate walls, selectable by name, with the sphincter as its own ring; tests/organ-parts-anatomy.test.js measures the order, the partition and the cardia derived from where the oesophagus ends; tests/organ-anatomy.test.js — fundus on the left running to a pylorus on the right, wall transmittance measured',
+    next: 'A3: the wall layers the mucosa needs, the rugae, and the lesser/greater curvature asymmetry the ring-shaped parts cannot show (the cardia is a collar here, and the incisura only the narrowing that goes with it)',
   },
   {
     organ: 'colon',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — ascending on the right and descending on the left',
-    next: 'A2: caecum, the four colonic parts, sigmoid and rectum as named parts',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/intestineAnatomy — caecum, ascending, transverse, descending and sigmoid as separate parts with both colic flexures between them, selectable by name; tests/organ-parts-anatomy.test.js measures the partition, each part’s side and height, and the splenic flexure above the hepatic; tests/organ-anatomy.test.js — ascending on the right and descending on the left',
+    next: 'A3: the rectum and anal canal, the appendix and ileocaecal valve, the taenia coli, and the mesentery that makes the transverse and sigmoid the mobile parts. Lengths remain illustrative: the transverse colon is not twice the descending here, as it is in life',
   },
   {
     organ: 'spleen',
@@ -149,8 +151,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'pancreas',
-    level: 'A0',
-    next: 'A1: head in the duodenal C, tail at the splenic hilum, the neck crossing the mesenteric vessels. Then A2: head, uncinate, neck, body, tail and the two ducts',
+    level: 'A2',
+    evidence:
+      'scenes/hepatobiliary/scenes/pancreasAnatomy — head, neck, body and tail as separate parts with the main duct running their whole length, selectable by name; tests/organ-parts-anatomy.test.js measures the partition, the head as the bulkiest part, the head inside the duodenal C, and the duct inside the gland end to end',
+    next: 'A3: the uncinate process, the accessory duct, the common bile duct through the head and the papilla it opens at, and the splenic and mesenteric vessels the neck and body lie against. The islets stay an arrangement rather than a count',
   },
   {
     organ: 'ureter',
