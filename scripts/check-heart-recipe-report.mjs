@@ -314,6 +314,17 @@ async function runViewport({ width, height, label }) {
       stuck.cannotRun = true;
       throw stuck;
     }
+
+    // `ready` is the scene's answer, not the shell's. `.loading` — the veil the
+    // shell paints between navigation and the first frame — is removed half a
+    // second after `createApp` resolves, and the scene reports ready before
+    // that finishes. On a slow machine the veil was still covering the whole
+    // viewport when the check went looking for a point on the canvas, so the
+    // drag step reported that nothing on screen was the canvas. It was right:
+    // the veil was.
+    await page
+      .waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 30000 })
+      .catch(() => {});
   };
 
   /**
