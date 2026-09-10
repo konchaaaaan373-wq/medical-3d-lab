@@ -489,6 +489,28 @@
   color: var(--ink-faint);
 }
 
+/* How sure the field is, said where the claim is rather than in a footnote.
+   The two that are not settled are coloured like the other cautions in this
+   product; the two that are read as ordinary supporting text. */
+.patient-guide-certainty[hidden] {
+  display: none;
+}
+
+.patient-guide-certainty {
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.patient-guide-certainty[data-certainty='associated'],
+.patient-guide-certainty[data-certainty='hypothesised'],
+.patient-guide-certainty[data-certainty='uncertain'] {
+  color: rgba(255, 205, 160, 0.9);
+}
+
 /* Said every time the step is shown, not once in a footnote. */
 .patient-guide-educational[hidden] {
   display: none;

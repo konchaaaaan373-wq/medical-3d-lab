@@ -5,6 +5,7 @@ import { PATIENT_GUIDES } from '../src/data/patientGuides.js';
 import { guideProblems, guideStepProblems } from '../src/data/guideContract.js';
 import { STAGES as HEART_FAILURE_STAGES } from '../src/data/heartFailure.js';
 import { STAGES as ISCHEMIA_STAGES } from '../src/data/myocardialIschemia.js';
+import { STAGES as AMYLOID_STAGES } from '../src/data/amyloidBeta.js';
 import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 import { MyocardialIschemiaScene } from '../src/scenes/cardiovascular/scenes/myocardialIschemia/MyocardialIschemiaScene.js';
 
@@ -27,6 +28,7 @@ const GUIDES = [
     stages: ISCHEMIA_STAGES,
     framings: Object.keys(new MyocardialIschemiaScene({}).getGuideFramings()),
   },
+  { id: 'amyloid-beta', stages: AMYLOID_STAGES, framings: [] },
 ];
 
 for (const { id, stages, framings } of GUIDES) {
@@ -36,13 +38,21 @@ for (const { id, stages, framings } of GUIDES) {
   });
 
   test(`guide contract: ${id} marks what the model does not produce`, () => {
-    // Every guide ends somewhere the model does not go — what a person feels.
-    // A reader cannot tell that from looking, so it is marked, and only there.
+    // Every guide ends somewhere the model does not go. A reader cannot tell
+    // that from looking, so it is marked — and the marked steps are the last
+    // ones, so the walk through the model is not interrupted by them.
     const steps = PATIENT_GUIDES[id].steps;
     const marked = steps.filter((step) => step.educationalOnly);
-    assert.equal(marked.length, 1, `${id}: exactly one general-explanation step`);
-    assert.equal(marked[0], steps[steps.length - 1], `${id}: and it is the last one`);
-    assert.match(marked[0].lookJa, /新しく描かれるものはありません/);
+    assert.ok(marked.length >= 1, `${id}: at least one general-explanation step`);
+    assert.deepEqual(marked, steps.slice(steps.length - marked.length), `${id}: and they are the last ones`);
+    for (const step of marked) {
+      // Its "where to look" line has to say what the screen is *not* showing.
+      // Wording differs — one says nothing new is drawn, another says the
+      // picture cannot tell you this — but every one of them is a denial, and a
+      // step that quietly pointed at something would be the failure.
+      assert.match(step.lookJa, /ありません/, `${step.stage}: ${step.lookJa}`);
+      assert.equal(step.frame, marked[0].frame, `${step.stage}: shows nothing the step before it did not`);
+    }
   });
 }
 
@@ -90,4 +100,61 @@ test('guide contract: a guide that skips a stage or walks backwards is rejected'
     guideProblems({ steps: [step('a', 0), step('b', 0.5), step('b', 0.5)] }, { stages }),
     []
   );
+});
+
+test('guide contract: a guide may not mark some steps and leave others bare', () => {
+  // An unmarked step among marked ones is read as the safest of them.
+  const stages = [{ id: 'a', at: 0 }, { id: 'b', at: 1 }];
+  const step = (stage, progress, extra = {}) => ({
+    stage, progress, title: 'A', titleJa: 'あ', body: 'B', bodyJa: 'い', look: 'C', lookJa: 'う', ...extra,
+  });
+  const problems = guideProblems(
+    { steps: [step('a', 0, { certainty: 'established' }), step('b', 1)] },
+    { stages }
+  );
+  assert.ok(problems.some((problem) => /some steps say how sure the field is/.test(problem)), problems.join('; '));
+
+  // All marked is fine, and so is none marked.
+  assert.deepEqual(
+    guideProblems({ steps: [step('a', 0, { certainty: 'established' }), step('b', 1, { certainty: 'uncertain' })] }, { stages }),
+    []
+  );
+  assert.deepEqual(guideProblems({ steps: [step('a', 0), step('b', 1)] }, { stages }), []);
+
+  // And a word nobody defined is not a certainty.
+  assert.ok(
+    guideStepProblems(step('a', 0, { certainty: 'probably' }), { stages })
+      .some((problem) => /is not one of/.test(problem))
+  );
+});
+
+test('guide contract: the amyloid guide does not close the causal chain', () => {
+  // This is the one guide whose subject is contested, and the marking is the
+  // content rather than a hedge. Four things have to stay true of it.
+  const steps = PATIENT_GUIDES['amyloid-beta'].steps;
+
+  // 1. Every step says how sure the field is.
+  for (const step of steps) assert.ok(step.certainty, `${step.stage}: unmarked`);
+
+  // 2. The oligomer step is "seen together", never a cause.
+  const oligomer = steps.find((step) => step.stage === 'oligomer');
+  assert.equal(oligomer.certainty, 'associated');
+  assert.doesNotMatch(oligomer.bodyJa, /引き起こ|原因|によって/);
+  assert.match(oligomer.bodyJa, /並んで|一緒|報告/);
+
+  // 3. It ends by saying the amount says nothing about a person, and that the
+  //    causal claim is a proposal — not as a footnote, as steps.
+  const uncertain = steps.filter((step) => step.certainty === 'uncertain');
+  const hypothesised = steps.filter((step) => step.certainty === 'hypothesised');
+  assert.equal(uncertain.length, 1);
+  assert.equal(hypothesised.length, 1);
+  assert.match(uncertain[0].bodyJa, /記憶の問題がない人|測ったものではありません/);
+  assert.match(hypothesised[0].bodyJa, /決着はついていません|説明の一つ/);
+
+  // 4. No step anywhere states the cascade as fact.
+  for (const step of steps) {
+    for (const text of [step.titleJa, step.bodyJa, step.lookJa]) {
+      assert.doesNotMatch(text, /アルツハイマー病を引き起こ|認知症になります|原因です/, text);
+    }
+  }
 });

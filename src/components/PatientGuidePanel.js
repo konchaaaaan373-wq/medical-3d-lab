@@ -20,6 +20,32 @@ import { el } from '../utils/dom.js';
  *   onPresentationChange?:(enabled:boolean)=>void,
  * }} options
  */
+/**
+ * What each certainty mark says on screen, in the reader's own words.
+ *
+ * Not the field's vocabulary — "associated" is a word a researcher reads as a
+ * warning and a patient reads as a synonym for "causes". So each one says what
+ * it means, and the two that are not settled say that they are not settled.
+ */
+const CERTAINTY_COPY = Object.freeze({
+  established: Object.freeze({
+    en: 'Established — the field agrees this happens.',
+    ja: '確立していること — この点は広く一致しています。',
+  }),
+  associated: Object.freeze({
+    en: 'Seen together — this is found alongside the change above. That is not the same as causing it.',
+    ja: '一緒に見られること — 上の変化と並んで見つかります。原因であるという意味ではありません。',
+  }),
+  hypothesised: Object.freeze({
+    en: 'A proposal — this is one explanation researchers have put forward, and it is not settled.',
+    ja: '提案されている説明 — 研究者が挙げている説明の一つで、決着はついていません。',
+  }),
+  uncertain: Object.freeze({
+    en: 'Not known — the evidence does not settle this, and studies disagree.',
+    ja: '分かっていないこと — 研究のあいだで結果が分かれており、決着していません。',
+  }),
+});
+
 export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit, onPresentationChange }) {
   let index = 0;
   let presenting = false;
@@ -111,8 +137,19 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
     el('span', { class: 'lang-ja', text: '一般的な説明です。この部分は画面のモデルが計算したものではありません。' }),
   ]);
 
+  /**
+   * How sure the field is about this step, where the guide says so.
+   *
+   * Steps in a row read as a chain whether or not one exists. Where a guide
+   * marks its steps — the amyloid one does — this says which of them the field
+   * agrees on, which are things seen together, and which are proposals nobody
+   * has settled. A guide that marks nothing draws nothing here.
+   */
+  const certainty = el('p', { class: 'patient-guide-certainty' });
+
   const copy = el('div', { class: 'patient-guide-step', 'aria-live': 'polite', 'aria-atomic': 'true' }, [
     heading,
+    certainty,
     body,
     look,
     educational,
@@ -290,6 +327,16 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
     body.replaceChildren(
       el('span', { class: 'lang-en', text: step.body }),
       el('span', { class: 'lang-ja', text: step.bodyJa })
+    );
+    certainty.hidden = !step.certainty;
+    certainty.dataset.certainty = step.certainty ?? '';
+    certainty.replaceChildren(
+      ...(step.certainty
+        ? [
+            el('span', { class: 'lang-en', text: CERTAINTY_COPY[step.certainty].en }),
+            el('span', { class: 'lang-ja', text: CERTAINTY_COPY[step.certainty].ja }),
+          ]
+        : [])
     );
     educational.hidden = !step.educationalOnly;
     look.hidden = !step.look;

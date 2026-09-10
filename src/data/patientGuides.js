@@ -11,40 +11,113 @@
  */
 
 export const PATIENT_GUIDES = Object.freeze({
+  /**
+   * Amyloid-β, told without a causal chain it does not have.
+   *
+   * Every other guide in this file walks one mechanism, because the mechanism
+   * is established. This one cannot. What is established here is that Aβ is
+   * produced and cleared normally, and that plaques are extracellular deposits
+   * and a neuropathological hallmark of Alzheimer's disease. What is
+   * *associated* is soluble oligomers with synaptic dysfunction. What is
+   * **hypothesised and contested** is that this sequence is what causes a
+   * person's symptoms — and told as six steps in a row, that is exactly what it
+   * would read as.
+   *
+   * So every step says how sure the field is (`certainty`), and the last two
+   * exist specifically to stop the chain closing: the amount of deposit does
+   * not tell you about the person, and the causal question is open. Neither is
+   * a hedge appended to a story — they are the content.
+   *
+   * `educationalOnly` still means "the model does not produce this". The model
+   * here is an aggregation-state illustration: it produces species and their
+   * coexistence, and nothing about a person at all.
+   */
   'amyloid-beta': Object.freeze({
-    title: 'How amyloid-β can gather into larger structures',
-    titleJa: 'アミロイドβが集まって大きな構造になる仕組み',
+    title: 'What amyloid-β is, and what is and is not known about it',
+    titleJa: 'アミロイドβとは何か、何が分かっていて何が分かっていないか',
     steps: Object.freeze([
       {
         progress: 0,
-        title: 'Small molecules are separate',
-        titleJa: '小さな分子がばらばらに存在する',
-        body: 'Amyloid-β is a small protein fragment. This model begins with many individual molecules rather than a plaque.',
-        bodyJa: 'アミロイドβは小さなタンパク質断片です。このモデルは、プラークではなく多数の分子が別々に存在する状態から始まります。',
+        stage: 'normal',
+        certainty: 'established',
+        title: 'It is there in a healthy brain',
+        titleJa: '健康な脳にもあります',
+        body: 'Amyloid-β is a small protein fragment the brain makes and clears all the time. Having some of it is normal.',
+        bodyJa: 'アミロイドβは、脳が日常的に作っては取り除いている小さなタンパク質の断片です。あること自体は正常です。',
+        look: 'The small separate specks are the individual molecules, spread through the space between cells.',
+        lookJa: '小さくばらばらに散っている粒が、細胞のあいだにある分子ひとつひとつです。',
       },
       {
-        progress: 0.32,
-        title: 'Small clusters can form',
-        titleJa: '小さな集まりができる',
-        body: 'Some molecules can associate into small clusters called oligomers before larger fibres appear.',
-        bodyJa: '分子の一部は、より大きな線維ができる前に、オリゴマーと呼ばれる小さな集まりをつくることがあります。',
+        progress: 0.16,
+        stage: 'monomer',
+        certainty: 'established',
+        title: 'What matters is the balance',
+        titleJa: '大事なのは差し引きです',
+        body: 'If more is made than is cleared away, the amount in that space goes up. The question is never simply whether it is present.',
+        bodyJa: '作られる量が取り除かれる量を上回ると、その場所にたまっていきます。「あるかないか」だけの問題ではありません。',
+        look: 'The same specks, more of them. Nothing has changed shape yet.',
+        lookJa: '同じ粒が増えています。形はまだ変わっていません。',
       },
       {
-        progress: 0.66,
-        title: 'Clusters can assemble into fibres',
-        titleJa: '集まりが線維状に並ぶ',
-        body: 'With further aggregation, amyloid-β can assemble into longer fibrillar structures.',
-        bodyJa: '凝集がさらに進むと、アミロイドβはより長い線維状の構造へ組み上がっていきます。',
+        progress: 0.4,
+        stage: 'oligomer',
+        certainty: 'associated',
+        title: 'Some of it clumps into small groups',
+        titleJa: '一部が小さなかたまりになります',
+        body: 'Molecules can join into small clusters. These clusters are found alongside damage to the connections between nerve cells, in tissue and in laboratory work.',
+        bodyJa: '分子どうしが集まって小さなかたまりを作ることがあります。このかたまりは、神経細胞どうしのつなぎ目の傷みと並んで見つかることが報告されています。',
+        look: 'Watch specks pair up and travel together — those small groups are what this step is about.',
+        lookJa: '粒どうしがくっついて一緒に動くのを見てください。その小さなかたまりが、この段階の話です。',
       },
       {
-        progress: 1,
-        title: 'Larger deposits become visible',
-        titleJa: 'より大きな沈着として見える',
-        body: 'Fibrillar material can accumulate into larger deposits. The amount shown here does not tell us how much memory difficulty one individual will have.',
-        bodyJa: '線維状の物質が集まると、より大きな沈着として見えるようになります。ただし、この画面の沈着量から個人の記憶症状の程度を判断することはできません。',
+        progress: 0.62,
+        stage: 'fibril',
+        certainty: 'established',
+        title: 'Some clusters line up into threads',
+        titleJa: '一部が糸のように並びます',
+        body: 'Some of the clusters extend into long ordered threads, which grow by adding more at their ends. Not everything becomes a thread.',
+        bodyJa: 'かたまりの一部は、規則的に並んだ長い糸へと伸びていきます。端に付け足しながら伸びますが、すべてが糸になるわけではありません。',
+        look: 'The elongated shapes are the threads. The loose specks and small groups are still there beside them.',
+        lookJa: '細長い形が糸です。そのそばには、ばらばらの粒や小さなかたまりも残っています。',
+      },
+      {
+        progress: 0.84,
+        stage: 'plaque',
+        certainty: 'established',
+        title: 'Threads pack into deposits outside the cells',
+        titleJa: '糸が集まって、細胞の外に沈着します',
+        body: 'Threads gather into dense deposits in the space between cells. These deposits are one of the findings that define this disease under a microscope.',
+        bodyJa: '糸が密に集まり、細胞と細胞のあいだに沈着します。この沈着は、顕微鏡でこの病気と判断するときの所見のひとつです。',
+        look: 'The dense clumps outside the cell bodies are the deposits. Note that the earlier forms have not disappeared.',
+        lookJa: '細胞の外にある濃いかたまりが沈着です。前の段階のものが消えていないことにも注目してください。',
+      },
+      {
+        progress: 0.84,
+        stage: 'plaque',
+        certainty: 'uncertain',
+        educationalOnly: true,
+        title: 'How much is here does not tell you about the person',
+        titleJa: '量から、その人のことは分かりません',
+        body: 'People with a great deal of this deposit can have no memory difficulty, and people with little can have a lot. This picture is not a measure of anyone.',
+        bodyJa: '沈着が多くても記憶の問題がない人もいれば、少なくても困っている人もいます。この画面は、誰かの状態を測ったものではありません。',
+        look: 'Nothing new is drawn for this step: it is about what the picture cannot tell you.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵から分からないことについての説明です。',
+      },
+      {
+        progress: 0.84,
+        stage: 'plaque',
+        certainty: 'hypothesised',
+        educationalOnly: true,
+        title: 'Whether this sequence is the cause is still argued',
+        titleJa: 'この流れが原因かどうかは、まだ議論されています',
+        body: 'That this build-up is what brings on the symptoms is one explanation researchers have put forward. Others disagree, and the question is open.',
+        bodyJa: 'この蓄積が症状を引き起こすという考えは、研究者が挙げている説明の一つです。異なる立場もあり、決着はついていません。',
+        look: 'The screen shows one sequence of shapes. It does not show why anyone became unwell.',
+        lookJa: 'この画面が示すのは形の移り変わりだけです。誰かが不調になった理由を示すものではありません。',
       },
     ]),
   }),
+
   /**
    * Heart failure, said twice: once for a clinician and once for the person the
    * heart belongs to.

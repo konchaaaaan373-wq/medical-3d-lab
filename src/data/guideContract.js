@@ -32,6 +32,27 @@
  * keeping them apart is what lets two steps be different pictures of one state.
  */
 
+/**
+ * How sure the field is about what a step says — where a guide needs to say it.
+ *
+ * Some diseases can be walked through as one mechanism because the mechanism is
+ * established. Others cannot: the amyloid scene shows deposits that are a
+ * neuropathological hallmark of Alzheimer's disease, soluble species that are
+ * *associated* with synaptic dysfunction, and a causal chain to a person's
+ * symptoms that is **hypothesised and contested**. Told as one story, six steps
+ * in a row read as "and therefore", and the reader has no way to see where the
+ * evidence stopped.
+ *
+ * So a guide may mark each step, and if it marks one it must mark them all —
+ * an unmarked step among marked ones reads as the safest of them.
+ *
+ * - `established`  — the field agrees this is so
+ * - `associated`   — seen together; **not** a claim that one causes the other
+ * - `hypothesised` — proposed, and the proposal is not settled
+ * - `uncertain`    — genuinely open, including where the evidence conflicts
+ */
+export const GUIDE_CERTAINTY = Object.freeze(['established', 'associated', 'hypothesised', 'uncertain']);
+
 /** Copy every step carries, in the order a reader meets it. */
 export const GUIDE_STEP_COPY = Object.freeze(['title', 'body', 'look']);
 
@@ -97,6 +118,9 @@ export function guideStepProblems(step, { stages, framings = [] }) {
     }
   }
 
+  if (step?.certainty && !GUIDE_CERTAINTY.includes(step.certainty)) {
+    problems.push(`${where}: certainty "${step.certainty}" is not one of ${GUIDE_CERTAINTY.join(', ')}`);
+  }
   if (step?.frame && !framings.includes(step.frame)) {
     problems.push(`${where}: asks for framing "${step.frame}", which the scene does not declare`);
   }
@@ -132,6 +156,14 @@ export function guideProblems(guide, { stages, framings = [] }) {
   const positions = steps.map((step) => step.progress);
   for (let at = 1; at < positions.length; at += 1) {
     if (positions[at] < positions[at - 1]) problems.push(`step ${at + 1} goes backwards along the axis`);
+  }
+
+  // All marked or none. One unmarked step among marked ones is read as the
+  // safest of them, which is the mistake the marking exists to prevent.
+  const marked = steps.filter((step) => step.certainty);
+  if (marked.length && marked.length !== steps.length) {
+    const missing = steps.filter((step) => !step.certainty).map((step) => step.stage ?? step.title);
+    problems.push(`some steps say how sure the field is and these do not: ${missing.join(', ')}`);
   }
 
   return problems;

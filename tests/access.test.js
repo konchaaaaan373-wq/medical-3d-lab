@@ -265,10 +265,20 @@ test('patient mode: COPD copy does not reinterpret demand as disease progression
 });
 
 test('patient mode: amyloid guide separates aggregation from individual cognition', () => {
+  // The claim, not a sentence: somewhere in this guide it has to say that how
+  // much deposit is on screen tells you nothing about the person looking at it,
+  // and it has to say so as a step of its own rather than in passing.
   const guide = patientGuideFor('amyloid-beta');
-  const allCopy = guide.steps.map((step) => `${step.title} ${step.body} ${step.titleJa} ${step.bodyJa}`).join(' ');
-  assert.match(allCopy, /does not .*tell us how much memory difficulty/i);
-  assert.match(allCopy, /判断することはできません/);
+  const separates = guide.steps.filter(
+    (step) => /memory|person/i.test(`${step.title} ${step.body}`) && /記憶|その人|誰か/.test(`${step.titleJa} ${step.bodyJa}`)
+  );
+  assert.ok(separates.length >= 1, 'no step separates the picture from the person');
+  const step = separates[0];
+  assert.match(step.bodyJa, /ありません|できません/);
+  // And it is marked as something the field has not settled, so it cannot be
+  // read as the reassuring end of a chain that was otherwise established.
+  assert.ok(['uncertain', 'hypothesised'].includes(step.certainty), `marked "${step.certainty}"`);
+  assert.equal(step.educationalOnly, true, 'and as something the model does not produce');
 });
 
 test('education mode: guides use ordered model states and end by teaching scope', () => {
