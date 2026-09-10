@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { bump, ripple, shapedSphere, smoothstep } from '../../shared/geometry/shapes.js';
-import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
+import { TubeSurface, smoothCurve, smoothProfile } from '../../shared/geometry/tube.js';
 import {
   carveInside,
   carvePart,
@@ -16,10 +16,13 @@ import { createRandom } from '../../../utils/math.js';
 import {
   CORTEX_THICKNESS_FRACTION,
   LOBES,
+  MAJOR_CALYCES,
   SINUS_CENTRE,
   anatomicalFrame,
   fanDirection,
+  majorCalyxAt,
   medullaryParts,
+  minorCalyxPath,
   papillaAt,
 } from './kidneyAnatomy.js';
 
@@ -70,17 +73,17 @@ export function buildKidney({
   opacity = 0.82,
   parts = false,
   /**
-   * How finely each part is tessellated. The cut faces are what this is for,
-   * not the curved ones: every vertex takes whichever comes first, the surface
-   * or an interlobar plane, so the rim between them zigzags at the
-   * tessellation's spacing.
+   * How finely each part is tessellated — the curved faces now, not the cuts.
    *
-   * Eighteen, measured on the render rather than on the arithmetic: the
-   * cortex is a shell with no cut faces at all and looks right from ten, but
-   * the pyramids inside it show their rims through it, and those stop
-   * zigzagging around eighteen. It costs about 1.2 s to build and is cached.
+   * It was eighteen, and eighteen was not enough. Every vertex took whichever
+   * came first, the surface or an interlobar plane, so the rim between them
+   * zigzagged at the tessellation's spacing and the pyramids showed a feathered
+   * edge through the cortex at any resolution worth shipping. `carvePart` cuts
+   * the mesh along that rim now, so the cut faces are exact and no longer the
+   * thing setting this number: twelve is cleaner than eighteen used to be, at
+   * a little over half the triangles.
    */
-  detail = 18,
+  detail = 12,
   referenceSamples = 14000,
 } = {}) {
   const palette = parts ? KIDNEY_PALETTE.lobed : KIDNEY_PALETTE.landmark;
@@ -374,30 +377,56 @@ function buildLobedKidney({
   const pelvisCentre = frame.toLocal([-0.30, -0.04, 0]);
   const calyces = [];
 
-  for (const lobe of LOBES) {
-    const papilla = frame.toLocal(papillaAt(lobe));
-    const calyx = new THREE.Mesh(
-      shapedSphere({ detail: 3, scale: [0.062, 0.062, 0.062] }),
-      mucosaMaterial({ color: '#8fd6c4', opacity: 0.92 })
-    );
-    calyx.position.copy(papilla);
-    calyx.name = `minor-calyx-${lobe.id}`;
-    collecting.add(calyx);
-    disposables.push(calyx.geometry, calyx.material);
+  const urothelium = () => mucosaMaterial({ color: '#8fd6c4', opacity: 0.9 });
 
-    const infundibulum = new TubeSurface(
-      smoothCurve([
-        [papilla.x, papilla.y, papilla.z],
-        [(papilla.x + pelvisCentre.x) / 2, (papilla.y + pelvisCentre.y) / 2, (papilla.z + pelvisCentre.z) / 2],
+  /** One length of the collecting system, as the cast of its lumen. */
+  const duct = (name, points, profile) => {
+    const surface = new TubeSurface(smoothCurve(points), { radius: profile, steps: 24, radial: 12 });
+    const mesh = new THREE.Mesh(surface.geometry, urothelium());
+    mesh.name = name;
+    collecting.add(mesh);
+    disposables.push(surface, mesh.material);
+    return mesh;
+  };
+
+  // A minor calyx flares at the papilla and narrows into its major calyx, so
+  // the papilla is received rather than merely marked. It was a sphere centred
+  // on the papilla — which swallows it — and the seven of them then ran
+  // straight to one coordinate at the middle of the sinus. Neither is what a
+  // collecting system does, and the second is the reason the sinus read as a
+  // spider rather than a tree.
+  for (const calyx of MAJOR_CALYCES) {
+    const gather = frame.toLocal(majorCalyxAt(calyx));
+    for (const id of calyx.lobes) {
+      const lobe = LOBES.find((entry) => entry.id === id);
+      const path = minorCalyxPath(lobe, calyx).map((point) => frame.toLocal(point));
+      const papilla = frame.toLocal(papillaAt(lobe));
+      const mesh = duct(
+        `minor-calyx-${lobe.id}`,
+        path.map((point) => [point.x, point.y, point.z]),
+        smoothProfile([[0, 0.050], [0.55, 0.025], [1, 0.020]])
+      );
+      calyces.push({
+        lobe: lobe.id,
+        major: calyx.id,
+        papilla: papilla.clone(),
+        path: path.map((point) => point.clone()),
+        mesh,
+      });
+    }
+
+    // The trunk the group drains through. Anatomically this *is* the
+    // infundibulum — the two words name one thing — so there is one per group
+    // rather than one per papilla.
+    duct(
+      `major-calyx-${calyx.id}`,
+      [
+        [gather.x, gather.y, gather.z],
+        [(gather.x + pelvisCentre.x) / 2, (gather.y + pelvisCentre.y) / 2, (gather.z + pelvisCentre.z) / 2],
         [pelvisCentre.x, pelvisCentre.y, pelvisCentre.z],
-      ]),
-      { radius: () => 0.028, steps: 20, radial: 8 }
+      ],
+      smoothProfile([[0, 0.026], [1, 0.040]])
     );
-    const tube = new THREE.Mesh(infundibulum.geometry, mucosaMaterial({ color: '#8fd6c4', opacity: 0.9 }));
-    tube.name = `infundibulum-${lobe.id}`;
-    collecting.add(tube);
-    disposables.push(infundibulum, tube.material);
-    calyces.push({ lobe: lobe.id, papilla: papilla.clone(), mesh: calyx });
   }
 
   // Sized to the sinus it sits in, not to the organ. The landmark build's
@@ -407,7 +436,7 @@ function buildLobedKidney({
   // out between the pyramids, which is the render saying the parts are now
   // real and a stand-in for them is not.
   const pelvis = new THREE.Mesh(
-    shapedSphere({ detail: 5, scale: [0.1, 0.13, 0.08] }),
+    shapedSphere({ detail: 5, scale: [0.062, 0.088, 0.052] }),
     mucosaMaterial({ color: '#8fd6c4', opacity: 0.9 })
   );
   pelvis.position.copy(pelvisCentre);

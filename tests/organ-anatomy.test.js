@@ -25,6 +25,7 @@ import { buildGallbladder, buildLiver } from '../src/scenes/hepatobiliary/organs
 import { buildPancreas } from '../src/scenes/hepatobiliary/organs/pancreas.js';
 import { buildSpleen } from '../src/scenes/hematologic/organs/spleen.js';
 import { buildBladder, buildKidney } from '../src/scenes/renal/organs/kidney.js';
+import { buildNephron } from '../src/scenes/renal/organs/nephron.js';
 import { buildEsophagus, buildStomach } from '../src/scenes/gastrointestinal/organs/stomach.js';
 import { buildColon, buildDuodenum, buildSmallIntestine } from '../src/scenes/gastrointestinal/organs/intestine.js';
 import { buildThyroid } from '../src/scenes/endocrine/organs/thyroid.js';
@@ -33,6 +34,9 @@ import { buildBone } from '../src/scenes/musculoskeletal/organs/bone.js';
 import { buildMuscle } from '../src/scenes/musculoskeletal/organs/muscle.js';
 import { buildUterus } from '../src/scenes/reproductive/organs/uterus.js';
 import { buildProstate } from '../src/scenes/reproductive/organs/prostate.js';
+import { buildAorticRoot } from '../src/scenes/cardiovascular/organs/aorticRoot.js';
+import { TubeSurface } from '../src/scenes/shared/geometry/tube.js';
+import { meshQuality, qualityOfEach } from './mesh-quality.js';
 
 /**
  * The organ layer, checked for anatomical meaning rather than for numbers.
@@ -620,4 +624,229 @@ test('each aortic sinus faces the way its name says', () => {
   assert.ok(left.dot(ANATOMICAL_AXES.anterior) < 0, 'and a little behind it');
   assert.ok(none.dot(ANATOMICAL_AXES.posterior) > 0.5, 'the non-coronary sinus is posterior');
   assert.ok(none.dot(ANATOMICAL_AXES.right) > 0.5, 'and to the patient’s right');
+});
+
+// ---------------------------------------------------------------------------
+// Are the parts actually solids?
+//
+// A2 says "separate **closed** meshes", and until this section nothing measured
+// the word. What that cost, found by measuring rather than by reading:
+//
+//   - every tube in the product — 42 of them — was open at both ends, so a
+//     vessel that stopped anywhere a reader could see stopped as a pipe;
+//   - and every one was wound inside out, along with the aortic root, which
+//     builds its own indices the same way. Under a front-side material that
+//     draws the *far* wall with its normal pointing back at the camera: the
+//     silhouette of a tube is identical either way, so a coronary artery had
+//     been reading as a flat ribbon rather than a round vessel.
+//
+// Neither is visible in a silhouette, which is why a review never caught them
+// and why these are assertions and not a paragraph in a document.
+// ---------------------------------------------------------------------------
+
+/**
+ * The builders whose parts claim to be solids.
+ *
+ * `buildVentricleGeometry` is deliberately not here: it is a cut-away with a
+ * wedge taken out and its own caps on the cut planes, so "closed" is not a
+ * claim it makes. A model that is open on purpose has to say so somewhere, and
+ * this list is where.
+ */
+const SOLID_BUILDERS = [
+  ['heart', () => buildHeart()],
+  ['brain', () => buildBrain()],
+  ['kidney (landmark)', () => buildKidney()],
+  ['kidney (lobed)', () => buildKidney({ parts: true, detail: 12 })],
+  ['bladder', () => buildBladder()],
+  ['lungs', () => buildLungs({ parts: true, detail: 6 })],
+  ['airway', () => buildAirway()],
+  ['liver', () => buildLiver({ parts: true })],
+  ['gallbladder', () => buildGallbladder()],
+  ['pancreas', () => buildPancreas()],
+  ['spleen', () => buildSpleen()],
+  ['thyroid', () => buildThyroid()],
+  ['adrenal', () => buildAdrenal()],
+  ['stomach', () => buildStomach()],
+  ['esophagus', () => buildEsophagus()],
+  ['duodenum', () => buildDuodenum()],
+  ['small intestine', () => buildSmallIntestine()],
+  ['colon', () => buildColon()],
+  ['bone', () => buildBone()],
+  ['muscle', () => buildMuscle()],
+  ['uterus', () => buildUterus()],
+  ['prostate', () => buildProstate()],
+];
+
+/**
+ * The parts that are open because being open is what they are for.
+ *
+ * A cut-away is not a defective solid, and the difference has to be written
+ * down somewhere or the assertion below is either useless or wrong. Every row
+ * says which cut and why. The test matches this set *exactly*, so closing one
+ * of these fails too — that way the record cannot quietly go stale.
+ */
+const OPEN_BY_DESIGN = new Map([
+  ['bone · cortex', 'a half lathe: the shaft is cut down its length so the marrow inside is visible'],
+  ['bone · marrow', 'the same cut, one surface further in'],
+  ['muscle · (unnamed)', 'the tendons are open-ended cylinders running into the bone they pull on'],
+  ['uterus · myometrium', 'a half lathe: a whole uterus would hide the cavity, which is the subject'],
+  ['uterus · endometrium', 'the same cut, lining the same cavity'],
+]);
+
+test('every named organ part is a closed mesh, or is open for a reason on the record', () => {
+  const open = [];
+  for (const [organ, build] of SOLID_BUILDERS) {
+    const built = build();
+    for (const [name, quality] of qualityOfEach(built.object ?? built)) {
+      if (quality.closed) continue;
+      open.push(`${organ} · ${name}`);
+    }
+    built.dispose?.();
+  }
+  const unexplained = open.filter((part) => !OPEN_BY_DESIGN.has(part));
+  assert.deepEqual(unexplained, [], 'a part with a hole in it is not a part you can point at');
+
+  const closedAfterAll = [...OPEN_BY_DESIGN.keys()].filter((part) => !open.includes(part));
+  assert.deepEqual(closedAfterAll, [], 'these are closed now — take them off the list above');
+});
+
+test('every closed organ part is wound outwards, not into itself', () => {
+  // Closed only: for an open surface the signed volume is the volume of the
+  // cone it makes with the origin, which is not an orientation. The cut-away
+  // parts are all double-sided, where the renderer flips the normal per face
+  // and the question does not arise.
+  const inverted = [];
+  for (const [organ, build] of SOLID_BUILDERS) {
+    const built = build();
+    for (const [name, quality] of qualityOfEach(built.object ?? built)) {
+      if (!quality.closed || quality.signedVolume > 0) continue;
+      inverted.push(`${organ} · ${name}: signed volume ${quality.signedVolume.toExponential(2)}`);
+    }
+    built.dispose?.();
+  }
+  assert.deepEqual(inverted, [], 'an inside-out surface keeps its silhouette and loses its shading');
+});
+
+test('the aortic root is a solid vessel, closed at the annulus and at the stub', () => {
+  // Its own test rather than a row above, because it is the one part of the
+  // heart a reader looks straight down into: the ischaemia scene draws no arch
+  // above it, so an open top showed the background through the aorta.
+  const root = buildAorticRoot({ centre: new THREE.Vector3(0, 0.7, 0), radius: 0.28 });
+  const rows = qualityOfEach(root.object ?? root);
+  assert.equal(rows.length, 1);
+  const [, quality] = rows[0];
+  assert.equal(quality.boundaryEdges, 0, 'the root ends on two discs, not on two openings');
+  assert.ok(quality.signedVolume > 0, 'and it faces outwards');
+  root.dispose?.();
+});
+
+test('a tube drawn as an arc is left open, because the opening is the point', () => {
+  // The rule the caps are given: a full circle is a solid and gets ends; an arc
+  // is a cut-away and must not. Nothing in the product asks for an arc today,
+  // which is exactly why the rule needs a test rather than a convention.
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, 2, 0),
+  ]);
+  const whole = new TubeSurface(curve, { radius: () => 0.3, steps: 8, radial: 8 });
+  assert.equal(meshQuality(whole.geometry).boundaryEdges, 0, 'a full circle is capped');
+
+  const half = new TubeSurface(curve, { radius: () => 0.3, steps: 8, radial: 8, arc: Math.PI });
+  assert.ok(meshQuality(half.geometry).boundaryEdges > 0, 'an arc is not');
+  assert.equal(half.caps, false, 'and it says so, however it was asked');
+
+  const refused = new TubeSurface(curve, {
+    radius: () => 0.3, steps: 8, radial: 8, arc: Math.PI, caps: true,
+  });
+  assert.equal(refused.caps, false, 'asking for caps on an arc does not get them');
+  whole.dispose();
+  half.dispose();
+  refused.dispose();
+});
+
+test('a tube that changes calibre closes at the calibre it ends on', () => {
+  // The caps are rewritten every `refresh`, because the tubes here are not
+  // static: peristalsis, a filling ureter and a dilating vessel all move the
+  // rim, and a cap left at the old radius is a disc hanging in the lumen.
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0, 1, 0),
+    new THREE.Vector3(0, 2, 0),
+  ]);
+  const tube = new TubeSurface(curve, { radius: () => 0.3, steps: 8, radial: 8 });
+  tube.refresh((u, base) => base * 0.25);
+  assert.equal(meshQuality(tube.geometry).boundaryEdges, 0, 'still closed after narrowing');
+
+  const position = tube.geometry.getAttribute('position');
+  const rimIndex = 0;
+  const capRimIndex = tube.capStart;
+  for (const axis of ['getX', 'getY', 'getZ']) {
+    assert.ok(
+      Math.abs(position[axis](rimIndex) - position[axis](capRimIndex)) < 1e-9,
+      'the cap rim sits exactly on the wall rim it closes'
+    );
+  }
+  tube.dispose();
+});
+
+// ---------------------------------------------------------------------------
+// Walls you are meant to see through.
+//
+// Two models draw something moving *inside* a tube — the nephron's filtrate,
+// and circulation's blood and the oxygen it carries. Both were opaque, and the
+// flow was visible only because the tube was wound inside out and the near wall
+// was being culled. Correcting the winding hid the subject of both scenes.
+//
+// So the wall says what it is instead of inheriting it. The nephron is the
+// sharper case: it already animated `material.opacity` with flow, and that had
+// never done anything, because `tissueMaterial` gives an opaque material
+// `transparent: false`, and turning that on at runtime left `depthWrite: true`
+// behind — a see-through wall that still rejected everything behind it.
+// ---------------------------------------------------------------------------
+
+test('an organ whose comment says you can see inside it, you can see inside', () => {
+  // The pancreas states it in its own header: "The gland is drawn translucent
+  // so the duct and the islets inside it are visible". It was 0.84, which lets
+  // 16% of the duct through — a number that only ever worked because the tube
+  // was wound inside out and the gland's near wall was culled, so nothing stood
+  // between the viewer and the duct at all. Correcting the winding put the wall
+  // back and the duct disappeared. The claim is the test now.
+  const pancreas = buildPancreas();
+  const gland = [];
+  pancreas.object.traverse((node) => { if (node.isMesh && node.name === 'gland') gland.push(node); });
+  assert.equal(gland.length, 1, 'the gland is one mesh');
+  const material = gland[0].material;
+  assert.equal(material.transparent, true);
+  const layers = material.side === THREE.DoubleSide ? 2 : 1;
+  const throughput = (1 - material.opacity) ** layers;
+  assert.ok(
+    throughput > 0.4,
+    `the gland lets ${(100 * throughput).toFixed(0)}% of the duct through — not enough to call it translucent`
+  );
+});
+
+test('the tubule wall stays see-through at every filtration rate', () => {
+  const nephron = buildNephron();
+  const walls = () =>
+    nephron.flowOrder.map((name) => nephron.segments?.[name]?.material)
+      .filter(Boolean);
+
+  for (const material of walls()) {
+    assert.equal(material.transparent, true, 'a wall with filtrate behind it is transparent');
+    assert.equal(material.depthWrite, false, 'and does not reject what is behind it by depth');
+  }
+
+  // Across the whole range the scene drives, including past the top of it.
+  for (const fraction of [0, 0.5, 1, 1.4]) {
+    nephron.setFiltrateVolume(fraction);
+    for (const material of walls()) {
+      assert.ok(
+        material.opacity < 0.85,
+        `at filtration ${fraction} the wall is ${material.opacity} — the lumen has to stay readable`
+      );
+      assert.ok(material.opacity > 0.2, 'and the wall has to stay a wall');
+    }
+  }
+  nephron.dispose?.();
 });

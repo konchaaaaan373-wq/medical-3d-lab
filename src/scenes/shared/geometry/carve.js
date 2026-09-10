@@ -258,17 +258,19 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0, c
         planes.map((p) => `${p.normal.x},${p.normal.y},${p.normal.z},${p.constant}`).join(';');
   if (key !== null && carved.has(key)) return carved.get(key).clone();
 
-  const geometry = new THREE.IcosahedronGeometry(1, detail);
-  const position = geometry.attributes.position;
-  const direction = new THREE.Vector3();
-  const probe = new THREE.Vector3();
   const offset = centre.clone().sub(field.centre);
+  const probe = new THREE.Vector3();
 
-  for (let i = 0; i < position.count; i++) {
-    direction.fromBufferAttribute(position, i).normalize();
-
-    // Where the organ's own surface is, along this ray from this part's centre.
-    //
+  /**
+   * How far this part reaches along one ray, and **what stopped it**.
+   *
+   * `winner` is the index of the plane that cut the ray, or `SURFACE` when the
+   * organ's own surface did. It is the second half that matters: the radius is
+   * the minimum of several smooth functions, so it is continuous but creased,
+   * and the crease is where the winner changes. Knowing which one won is what
+   * lets the mesh be cut along that line instead of across it.
+   */
+  const solve = (direction) => {
     // Bisected on "how far outside the surface is this point", which is
     // negative inside and positive outside. The field is anchored at the
     // organ's centre and this ray starts somewhere else, so the two do not
@@ -288,46 +290,142 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0, c
 
     // Where the nearest cut comes, if any comes at all.
     let cut = Infinity;
-    for (const plane of planes) {
+    let cutBy = SURFACE;
+    for (let index = 0; index < planes.length; index++) {
+      const plane = planes[index];
       const denominator = plane.normal.dot(direction);
       if (denominator <= 1e-9) continue; // this ray never reaches that plane
       const distance = (plane.constant - inset - plane.normal.dot(centre)) / denominator;
-      if (distance > 0 && distance < cut) cut = distance;
+      if (distance > 0 && distance < cut) {
+        cut = distance;
+        cutBy = index;
+      }
     }
 
-    let t;
     if (cut < Infinity && outside(cut) < 0) {
       // The cut comes while the ray is still inside the organ, so the cut is
       // the answer and where the surface lies beyond it does not matter. One
       // field lookup instead of the thirty-two below — and for a lobe most rays
       // land here, which is most of the cost of carving one.
-      t = cut;
-    } else {
-      let low = 0;
-      let high = Math.max(1e-6, field.radiusAt(direction) + offset.length()) * 2;
-      // The centre has to be inside for the bracket to be a bracket.
-      // `carveInside` says whether it is, and the builders check rather than
-      // assume.
-      for (let grow = 0; grow < 8 && outside(high) < 0; grow++) high *= 1.6;
-      // Twenty-four halvings take the bracket to a millionth of the organ,
-      // which is two orders finer than the field it is searching and therefore
-      // as far as it is worth going.
-      for (let step = 0; step < 24; step++) {
-        const mid = (low + high) / 2;
-        if (outside(mid) < 0) low = mid;
-        else high = mid;
-      }
-      t = Math.min((low + high) / 2, cut);
+      return { t: cut, winner: cutBy };
     }
 
-    position.setXYZ(i, centre.x + direction.x * t, centre.y + direction.y * t, centre.z + direction.z * t);
+    let low = 0;
+    let high = Math.max(1e-6, field.radiusAt(direction) + offset.length()) * 2;
+    // The centre has to be inside for the bracket to be a bracket.
+    // `carveInside` says whether it is, and the builders check rather than
+    // assume.
+    for (let grow = 0; grow < 8 && outside(high) < 0; grow++) high *= 1.6;
+    // Twenty-four halvings take the bracket to a millionth of the organ,
+    // which is two orders finer than the field it is searching and therefore
+    // as far as it is worth going.
+    for (let step = 0; step < 24; step++) {
+      const mid = (low + high) / 2;
+      if (outside(mid) < 0) low = mid;
+      else high = mid;
+    }
+    const surface = (low + high) / 2;
+    return cut < surface ? { t: cut, winner: cutBy } : { t: surface, winner: SURFACE };
+  };
+
+  const sphere = new THREE.IcosahedronGeometry(1, detail);
+  const source = sphere.attributes.position;
+
+  const positions = [];
+  const classes = [];
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+
+  /** The point this ray lands on, as a flat triple. */
+  const pointAt = (direction, t) => [
+    centre.x + direction.x * t,
+    centre.y + direction.y * t,
+    centre.z + direction.z * t,
+  ];
+
+  const emit = (p0, p1, p2, winner) => {
+    positions.push(...p0, ...p1, ...p2);
+    // Every vertex of a sub-triangle carries its own side of the crease, so the
+    // weld below cannot join the two sides and the normals cannot be averaged
+    // across them. A cut face shades as a cut face and the capsule as a
+    // capsule, with an edge between: that edge is the anatomy.
+    classes.push(winner, winner, winner);
+  };
+
+  for (let i = 0; i < source.count; i += 3) {
+    a.fromBufferAttribute(source, i).normalize();
+    b.fromBufferAttribute(source, i + 1).normalize();
+    c.fromBufferAttribute(source, i + 2).normalize();
+    const solved = [solve(a), solve(b), solve(c)];
+    const corners = [a, b, c];
+    const winners = solved.map((entry) => entry.winner);
+
+    if (winners[0] === winners[1] && winners[1] === winners[2]) {
+      emit(
+        pointAt(a, solved[0].t),
+        pointAt(b, solved[1].t),
+        pointAt(c, solved[2].t),
+        winners[0]
+      );
+      continue;
+    }
+
+    // An edge is split exactly when its two ends disagree, and that decision is
+    // made from the endpoints alone — so the triangle on the other side of the
+    // edge reaches the same decision and the two meet. Splitting some of a
+    // triangle's disagreeing edges and not the others is what leaves a T on the
+    // seam, and a T is a crack: the first version of this split two edges of a
+    // three-way triangle and opened 6 to 24 of them per part.
+    if (winners[0] !== winners[1] && winners[1] !== winners[2] && winners[0] !== winners[2]) {
+      // Three surfaces meeting inside one triangle — the sinus end of a
+      // pyramid, where two interlobar planes and the capsule all arrive. Every
+      // edge is split and the middle is left over; it is the smallest piece on
+      // the organ and it takes the lowest class so that both this triangle and
+      // its neighbours agree on what it is.
+      const cross = [
+        creasePoint(corners[0], corners[1], solve, centre),
+        creasePoint(corners[1], corners[2], solve, centre),
+        creasePoint(corners[2], corners[0], solve, centre),
+      ];
+      const corner = corners.map((direction, index) => pointAt(direction, solved[index].t));
+      emit(corner[0], cross[0].point, cross[2].point, winners[0]);
+      emit(corner[1], cross[1].point, cross[0].point, winners[1]);
+      emit(corner[2], cross[2].point, cross[1].point, winners[2]);
+      emit(cross[0].point, cross[1].point, cross[2].point, Math.min(...winners));
+      continue;
+    }
+
+    // Two sides meeting inside this triangle: one corner is alone and the
+    // crease runs from one of its edges to the other.
+    const odd = [0, 1, 2].find(
+      (index) => winners[index] !== winners[(index + 1) % 3] && winners[index] !== winners[(index + 2) % 3]
+    );
+
+    const next = (odd + 1) % 3;
+    const far = (odd + 2) % 3;
+    const crossNext = creasePoint(corners[odd], corners[next], solve, centre);
+    const crossFar = creasePoint(corners[odd], corners[far], solve, centre);
+
+    // The lone corner keeps its own class; the quadrilateral left over is the
+    // other one, split into two triangles the same way from either side.
+    emit(pointAt(corners[odd], solved[odd].t), crossNext.point, crossFar.point, winners[odd]);
+    emit(crossNext.point, pointAt(corners[next], solved[next].t), pointAt(corners[far], solved[far].t), winners[next]);
+    emit(crossNext.point, pointAt(corners[far], solved[far].t), crossFar.point, winners[next]);
   }
 
-  position.needsUpdate = true;
+  sphere.dispose();
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+  geometry.setAttribute(CREASE_ATTRIBUTE, new THREE.BufferAttribute(new Float32Array(classes), 1));
   // Welded before the normals are computed, so a cut face shades as one flat
-  // face rather than as a fan of facets radiating from the part's centre.
-  const welded = mergeVertices(geometry, 1e-4);
+  // face rather than as a fan of facets radiating from the part's centre —
+  // and, because the crease class is one of the attributes hashed, without
+  // joining the two sides of a crease into one smoothed band.
+  const welded = mergeVertices(geometry, WELD_TOLERANCE);
   welded.computeVertexNormals();
+  welded.deleteAttribute(CREASE_ATTRIBUTE);
   welded.computeBoundingBox();
   welded.computeBoundingSphere();
   geometry.dispose();
@@ -338,6 +436,78 @@ export function carvePart({ field, centre, planes = [], detail = 5, inset = 0, c
   return welded.clone();
 }
 
+/** The winner when nothing cut the ray short of the organ's own surface. */
+const SURFACE = -1;
+
+/**
+ * What counts as the same point when the carve is welded.
+ *
+ * Tight, because it does not need to be loose: two triangles sharing a corner
+ * read the same stored direction and run the same arithmetic, and two sharing
+ * an edge walk it from the same end, so corresponding vertices come out
+ * bit-identical rather than merely close. A loose tolerance is not free —
+ * `medial-margin` is 0.003 across at its narrowest and 1e-4 was collapsing
+ * neighbouring vertices there into degenerate triangles, which is a pinhole in
+ * a part that is supposed to be closed.
+ */
+const WELD_TOLERANCE = 1e-6;
+
+/**
+ * How near an end of an edge the crease is allowed to land.
+ *
+ * A crease that crosses an edge at one of its ends leaves a triangle with no
+ * area, the weld collapses it, and what is left is an edge shared by three
+ * faces. Dropping those instead opens holes, because the sliver's neighbours
+ * still expect it. Keeping the crossing off the ends is the version with
+ * neither failure: the crease moves by a few per cent of one edge, which is
+ * far below what the tessellation resolves anyway, and both triangles sharing
+ * the edge clamp to the same place because they walk it in the same order.
+ */
+const CREASE_EDGE_MARGIN = 0.02;
+
+/** Named so it can be hashed by the weld and then dropped. */
+const CREASE_ATTRIBUTE = 'carveCrease';
+
+/**
+ * Where the crease crosses the edge between two directions.
+ *
+ * **Canonically ordered before anything is computed.** The same edge is walked
+ * once from each of the two triangles sharing it, and if the two walks start
+ * from opposite ends they can land a floating-point step apart — which is a
+ * crack, and a crack is worse than the zigzag this exists to remove. Ordering
+ * the endpoints makes both walks the same arithmetic in the same sequence.
+ */
+function creasePoint(from, to, solve, centre) {
+  const [low, high] = ordered(from, to);
+  const lowWinner = solve(low).winner;
+  const direction = new THREE.Vector3();
+  let a = 0;
+  let b = 1;
+  for (let step = 0; step < 20; step++) {
+    const mid = (a + b) / 2;
+    direction.copy(low).lerp(high, mid).normalize();
+    if (solve(direction).winner === lowWinner) a = mid;
+    else b = mid;
+  }
+  const at = Math.min(1 - CREASE_EDGE_MARGIN, Math.max(CREASE_EDGE_MARGIN, (a + b) / 2));
+  direction.copy(low).lerp(high, at).normalize();
+  const { t } = solve(direction);
+  // `centre` and not the origin: every other point in the part is measured
+  // from the part's own centre, and a crease point that forgets it lands the
+  // whole seam one centre-offset away — which is a part that reaches outside
+  // the organ, and two halves that sum to 105% of what they were cut from.
+  return {
+    point: [centre.x + direction.x * t, centre.y + direction.y * t, centre.z + direction.z * t],
+    direction: direction.clone(),
+  };
+}
+
+/** The same two vectors, always in the same order. */
+function ordered(one, other) {
+  if (one.x !== other.x) return one.x < other.x ? [one, other] : [other, one];
+  if (one.y !== other.y) return one.y < other.y ? [one, other] : [other, one];
+  return one.z <= other.z ? [one, other] : [other, one];
+}
 
 /**
  * The same organ, shrunk towards its own centre.
