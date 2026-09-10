@@ -176,6 +176,9 @@ export const PROHIBITED_USE_IDS = values(PROHIBITED_USE);
  * @property {string[]} intendedUses non-empty, from INTENDED_USE
  * @property {string[]} prohibitedUses non-empty, from PROHIBITED_USE, always including CORE_PROHIBITED_USES
  * @property {string[]} assets asset ids from `assetManifest.js`
+ * @property {string[]} [candidateAssets] ids from `devAssets.js` — files a scene under development
+ *   loads that have **not** been through the asset pipeline. A record of what is being examined, never
+ *   a release: a profile that names one cannot pass the release gate, and `production` refuses it.
  * @property {string[]} validationRecords repository-relative paths of the records that back any claim in
  *   `profileNeedsEvidence`. Each must exist in the repository. Never invented; today every profile has none.
  * @property {string} basis one sentence on why this classification, pointing at the card or dossier
@@ -226,6 +229,23 @@ export const MODEL_PROFILES = Object.freeze([
       'A deterministic teaching layout of particle states, not a kinetic or molecular-dynamics model; the card says ' +
       'particle counts, scale and thresholds are illustrative. Particles are drawn procedurally, not from PDB data, ' +
       'so the geometry basis is procedural rather than molecular.',
+  },
+  {
+    profileId: 'heart-anatomy-reference-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    candidateAssets: ['hubmap-vh-m-heart'],
+    validationRecords: [],
+    basis:
+      'A gross-anatomy reference organ (HuBMAP CCF VH_M_Heart, segmented from the Visible Human Male) shown ' +
+      'unchanged: fourteen named parts, no state and no mechanism. The file is a candidate under examination, ' +
+      'not a shipped asset — it is recorded in devAssets.js rather than the asset manifest, and the release ' +
+      'gate refuses the scene for that reason alone, before the missing great vessels are even counted.',
   },
   {
     profileId: 'heart-failure-elastance-loop',
@@ -470,7 +490,7 @@ function checkList(problems, where, name, value, allowed) {
  *
  * @param {readonly ModelProfile[]} profiles
  */
-export function validateModelProfiles(profiles = MODEL_PROFILES) {
+export function validateModelProfiles(profiles = MODEL_PROFILES, { candidateAssetById = null } = {}) {
   const problems = [];
   const seen = new Set();
   if (!Array.isArray(profiles)) return ['the profile registry is not an array'];
@@ -514,8 +534,29 @@ export function validateModelProfiles(profiles = MODEL_PROFILES) {
     } else {
       problems.push(`${where}: cannot confirm the required prohibitions without a prohibitedUses list`);
     }
+    const candidates = profile.candidateAssets;
+    let candidateCount = 0;
+    if (candidates !== undefined) {
+      if (checkList(problems, where, 'candidateAssets', candidates)) {
+        candidateCount = candidates.length;
+        // Resolved through an injected lookup rather than by importing the
+        // candidate registry: `release.js` pulls this module into the eager
+        // browser chunk, and a list of development-only download URLs has no
+        // business being shipped. The test suite passes `devAssetById`.
+        if (candidateAssetById) {
+          for (const candidateId of candidates) {
+            if (!candidateAssetById(candidateId)) {
+              problems.push(`${where}: candidate asset "${candidateId}" is not registered in devAssets.js`);
+            }
+          }
+        }
+      }
+    }
     if (checkList(problems, where, 'assets', profile.assets)) {
-      if (ASSET_BACKED_GEOMETRY.includes(profile.geometryBasis) && profile.assets.length === 0) {
+      // A candidate satisfies "this geometry comes from a file", because it does
+      // — what it does not satisfy is the release gate, and that is checked
+      // where release is decided rather than by pretending the file is absent.
+      if (ASSET_BACKED_GEOMETRY.includes(profile.geometryBasis) && profile.assets.length + candidateCount === 0) {
         problems.push(`${where}: ${profile.geometryBasis} geometry must name at least one asset`);
       }
     }
@@ -558,6 +599,21 @@ export function assetOrganProblems(scene, asset) {
     if (!sceneOrgans.has(organ)) problems.push(`asset "${asset.assetId}" covers "${organ}", which scene "${scene?.id}" does not draw`);
   }
   return problems;
+}
+
+/**
+ * The candidate assets a profile names — files under examination, not shipped.
+ *
+ * Exported because two different callers need the same answer and neither
+ * should re-derive it: the release gate refuses a scene that rests on one, and
+ * the profile cross-checks refuse `production` for the same reason. An empty
+ * list is the ordinary case.
+ *
+ * @param {ModelProfile|null|undefined} profile
+ * @returns {string[]}
+ */
+export function profileCandidateAssets(profile) {
+  return list(profile?.candidateAssets);
 }
 
 /**
@@ -683,6 +739,17 @@ export function modelProfileProblems({
     // look at.
     if (scene.access?.patient === true && !intendedUses.includes(INTENDED_USE.PATIENT_EXPLANATION)) {
       problems.push(`${where}: has a patient capability but its profile does not declare "patient-explanation"`);
+    }
+
+    // A candidate asset has not been through the asset pipeline: no licence
+    // decision, no obligations discharged, no QA gates. A scene may rest on one
+    // while it is being built, and may not call itself finished on one.
+    const candidateAssets = profileCandidateAssets(profile);
+    if (candidateAssets.length && scene.status === 'production') {
+      problems.push(
+        `${where}: a production scene cannot rest on candidate assets (${candidateAssets.join(', ')}); ` +
+          'they are not in the asset manifest and have passed no release gate'
+      );
     }
 
     if (assetById) {

@@ -379,7 +379,10 @@
 }
 
 @media (max-width: 720px) {
-  .inspection-panel {
+  /* Also `.rail >`: this width is about the rail that holds it, as the comment
+     says. Embedded in the Display tab the panel should fill the tab, and
+     pinning it to 74vw there just made it narrower than everything beside it. */
+  .rail > .inspection-panel {
     /* The rail is narrower than this on a phone and clips its overflow, so a
        panel sized to the viewport hangs off the rail's left edge: the clipped
        half still paints but stops hit-testing, which left most of the controls
@@ -618,33 +621,37 @@
   .anatomy-grade { display: none; }
 }
 
-/* The brain atlas has its own dense selection card and no charts. Give the
-   specimen the frame instead of spending a third of the height on controls. */
-#ui[data-scene='brain-anatomy'] .title-card {
+/* An anatomy scene has its own dense selection card and no charts. Give the
+   specimen the frame instead of spending a third of the height on controls.
+
+   Keyed on the capability rather than on an organ: any scene that answers the
+   anatomy contract gets this, which is what "the brain is the standard the
+   others are held to" has to mean in the stylesheet as well. */
+#ui[data-anatomy] .title-card {
   padding: 11px 15px 12px;
 }
 
-#ui[data-scene='brain-anatomy'] .console {
+#ui[data-anatomy] .console {
   width: min(850px, 100%);
   padding: 9px 14px 10px;
   gap: 7px;
 }
 
-#ui[data-scene='brain-anatomy'] .stage-track {
+#ui[data-anatomy] .stage-track {
   margin-bottom: 0;
   padding-top: 1px;
 }
 
-#ui[data-scene='brain-anatomy'] .stage-name {
+#ui[data-anatomy] .stage-name {
   font-size: clamp(15px, 1.8vw, 19px);
 }
 
-#ui[data-scene='brain-anatomy'] .stage-name-ja {
+#ui[data-anatomy] .stage-name-ja {
   font-size: 11px;
 }
 
-#ui[data-scene='brain-anatomy'] .stage-summary,
-#ui[data-scene='brain-anatomy'] .stage-summary-ja {
+#ui[data-anatomy] .stage-summary,
+#ui[data-anatomy] .stage-summary-ja {
   font-size: 10.5px;
   line-height: 1.35;
   display: -webkit-box;
@@ -653,38 +660,38 @@
   overflow: hidden;
 }
 
-#ui[data-scene='brain-anatomy'][data-lang='both'] .stage-summary {
+#ui[data-anatomy][data-lang='both'] .stage-summary {
   display: none;
 }
 
-#ui[data-scene='brain-anatomy'] .slider-row {
+#ui[data-anatomy] .slider-row {
   gap: 8px;
 }
 
-#ui[data-scene='brain-anatomy'] .button-row {
+#ui[data-anatomy] .button-row {
   flex-wrap: nowrap;
   gap: 6px;
   overflow-x: auto;
   scrollbar-width: none;
 }
 
-#ui[data-scene='brain-anatomy'] .button-row::-webkit-scrollbar {
+#ui[data-anatomy] .button-row::-webkit-scrollbar {
   display: none;
 }
 
-#ui[data-scene='brain-anatomy'] .btn.utility {
+#ui[data-anatomy] .btn.utility {
   padding: 6px 9px;
 }
 
-#ui[data-scene='brain-anatomy'] .disclaimer-full {
+#ui[data-anatomy] .disclaimer-full {
   display: none;
 }
 
-#ui[data-scene='brain-anatomy'] .disclaimer-short {
+#ui[data-anatomy] .disclaimer-short {
   display: block;
 }
 
-#ui[data-scene='brain-anatomy'] .legend {
+#ui[data-anatomy] .legend {
   width: min(326px, 43vw);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -692,28 +699,76 @@
   padding: 10px 12px;
 }
 
-#ui[data-scene='brain-anatomy'] .legend-en {
+#ui[data-anatomy] .legend-en {
   font-size: 10.5px;
 }
 
-#ui[data-scene='brain-anatomy'] .legend-ja {
+#ui[data-anatomy] .legend-ja {
   font-size: 9px;
 }
 
-#ui[data-scene='brain-anatomy'] .slider::-webkit-slider-runnable-track {
+#ui[data-anatomy] .slider::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
 }
 
-#ui[data-scene='brain-anatomy'] .slider::-moz-range-track {
+#ui[data-anatomy] .slider::-moz-range-track {
   background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 42%, var(--ink-faint)), var(--accent));
+}
+
+/* ---------- a phone on its side
+
+   844x390 leaves the model a strip: the header, the title card, the console and
+   the consent card are each a sensible height and together they are the whole
+   viewport. The answer is a smaller *control area*, never a smaller model.
+
+   What goes: the title card's heading, which repeats the one already in the
+   header above it, and the console's stage heading, which repeats the one in
+   the panel. What stays: every control that does something, at its full size,
+   with its own name on it — no unlabelled icon row, and the parts sheet, the
+   keyboard path and text scaling are untouched.
+
+   `data-anatomy-compact` is set by App from the window's own height and aspect
+   (see `syncCompactLayout`), so this cannot reach a scene that is not an
+   anatomy scene. */
+#ui[data-anatomy-compact='landscape'] .title-card {
+  padding: 7px 12px 8px;
+}
+
+#ui[data-anatomy-compact='landscape'] .title-card .eyebrow,
+#ui[data-anatomy-compact='landscape'] .title-card .title-en,
+#ui[data-anatomy-compact='landscape'] .title-card .title-ja {
+  display: none;
+}
+
+/* The badges are the one thing in that card the header does not carry, and
+   they are the one thing a reader must not lose: this model is alpha and its
+   medical review is not complete. */
+#ui[data-anatomy-compact='landscape'] .title-trust-badges {
+  margin: 0;
+}
+
+#ui[data-anatomy-compact='landscape'] .console {
+  padding: 6px 12px 7px;
+  gap: 4px;
+}
+
+#ui[data-anatomy-compact='landscape'] .stage-readout .stage-heading {
+  display: none;
+}
+
+/* The long description belongs to the Detail tab, which is a tap away and can
+   be read at whatever size the reader has chosen. */
+#ui[data-anatomy-compact='landscape'] .stage-summary,
+#ui[data-anatomy-compact='landscape'] .stage-summary-ja {
+  display: none;
 }
 
 @media (max-width: 720px) {
-  #ui[data-scene='brain-anatomy'] .legend { display: none; }
-  #ui[data-scene='brain-anatomy'] .console { padding: 8px 10px 9px; }
-  #ui[data-scene='brain-anatomy'] .stage-summary,
-  #ui[data-scene='brain-anatomy'] .stage-summary-ja,
-  #ui[data-scene='brain-anatomy'] .disclaimer { display: none; }
+  #ui[data-anatomy] .legend { display: none; }
+  #ui[data-anatomy] .console { padding: 8px 10px 9px; }
+  #ui[data-anatomy] .stage-summary,
+  #ui[data-anatomy] .stage-summary-ja,
+  #ui[data-anatomy] .disclaimer { display: none; }
 }
 
 .legend-item {
@@ -2339,6 +2394,17 @@
   color: var(--label-ink-faint, var(--ink-faint));
 }
 
+/* A name the source itself is not consistent about. Smaller than the name and
+   in the same faint ink: enough that "this is not settled" is on the label, not
+   so much that the label becomes the warning. */
+.label-flag {
+  display: block;
+  font-size: 8.5px;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  color: var(--label-ink-faint, var(--ink-faint));
+}
+
 /* ---------- bottom console ---------- */
 .console {
   pointer-events: auto;
@@ -3161,7 +3227,11 @@
    Collapsed by default. A scene without the Prototype badge is asking to be
    believed, and the boundary of that claim belongs on the same screen. */
 .model-scope {
-  width: 236px;
+  /* 236px where the column has room, and never wider than the column.
+     `.top-left` is 146px on a 375px phone and clips its overflow-x, so a fixed
+     236px panel had most of its toggle cut away: painted, and not reachable.
+     Found by driving the reader's path to "Model scope & sources" at 375x667. */
+  width: min(236px, 100%);
   padding: 0;
   overflow: hidden;
 }
@@ -3462,7 +3532,18 @@
    phone spends it all on the navigation, the cards and the console — so the
    panel stays in the rail there, scrolling, which is the documented fallback. */
 @media (max-width: 560px) and (min-height: 640px) {
-  .inspection-panel:not([hidden]) {
+  /*
+   * `.rail >`, because this only makes sense for the panel that sits in the
+   * rail on its own.
+   *
+   * An anatomy scene hands the same element to the anatomy panel, where it is a
+   * block inside the Display tab. `position: fixed` took it out of that tab's
+   * flow while the tab still reserved its height, so at 375x667 the panel
+   * floated over the fixed views that follow it and `.inspection-footer`
+   * covered the "Inside the chambers" button: painted, and not pressable. Found
+   * by driving the reader's own path at that size.
+   */
+  .rail > .inspection-panel:not([hidden]) {
     position: fixed;
     left: max(14px, env(safe-area-inset-left));
     right: max(14px, env(safe-area-inset-right));

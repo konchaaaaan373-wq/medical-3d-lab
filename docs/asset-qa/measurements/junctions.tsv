@@ -1,0 +1,18 @@
+# smallest distance between a SAMPLED VERTEX of a vessel and one of a heart part
+# in the source's own frame, neither file moved. Vertices de-duplicated at 10 µm.
+# NOT a surface distance and NOT a proof of connection: 0.00 means two sampled
+# vertices coincide to that tolerance, nothing more.
+vessel	part	nearestSampledVertexMm	weldMm	sampledVessel	sampledPart
+VH_M_ascending_aorta	VH_M_aortic_valve	0.00	0.010	840	1372
+VH_M_ascending_aorta	VH_M_heart_left_ventricle	12.57	0.010	840	4677
+VH_M_pulmonary_trunk	VH_M_pulmonary_valve	0.08	0.010	1561	6644
+VH_M_pulmonary_trunk	VH_M_heart_right_ventricle	0.17	0.010	1561	13761
+VH_M_superior_vena_cava	VH_M_right_cardiac_atrium	0.09	0.010	5552	22903
+VH_M_inferior_vena_cava_a	VH_M_right_cardiac_atrium	0.05	0.010	2960	22903
+VH_M_pulmonary_vein_L_sup	VH_M_left_cardiac_atrium	0.07	0.010	915	16967
+VH_M_pulmonary_vein_L_inf	VH_M_left_cardiac_atrium	0.05	0.010	1011	16967
+VH_M_pulmonary_vein_R_sup	VH_M_left_cardiac_atrium	0.06	0.010	932	16967
+VH_M_pulmonary_vein_R_inf	VH_M_left_cardiac_atrium	0.06	0.010	2037	16967
+VH_M_left_coronary_artery	VH_M_aortic_valve	0.11	0.010	1416	1372
+VH_M_right_coronary_artery	VH_M_aortic_valve	0.14	0.010	5805	1372
+VH_M_coronary_sinus	VH_M_right_cardiac_atrium	0.16	0.010	685	22903

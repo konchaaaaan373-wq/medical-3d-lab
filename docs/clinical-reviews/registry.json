@@ -21,6 +21,30 @@
     ]
   },
   {
+    "sceneId": "heart-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "candidate-asset gross anatomy: fourteen named parts of one reference heart, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/heart-anatomy.md",
+      "docs/model-evidence/heart-anatomy.md",
+      "docs/asset-qa/heart-hubmap-vh-m-heart.md",
+      "tests/heart-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "No anatomist and no clinician has reviewed this geometry, its labels or the Japanese terminology.",
+      "The great vessels — aorta, pulmonary trunk, superior and inferior vena cava, pulmonary veins — are absent from the source file, so this is not a complete gross anatomy of the heart.",
+      "The chamber meshes enclose the chambers' spaces; the file contains no myocardial free wall, so no wall thickness, no endocardial surface and no interior view is offered or implied.",
+      "The enclosed volumes recorded in the adapter are properties of one fixed cadaveric specimen and are not chamber volumes, end-diastolic volumes or any other clinical measurement.",
+      "The source file is a candidate under examination: its licences (HuBMAP CC BY 4.0; NLM Visible Human terms) are recorded and not discharged, and it has passed no asset release gate.",
+      "The scene must not be used for diagnosis, treatment selection, dose selection, prognosis or procedure planning."
+    ]
+  },
+  {
     "sceneId": "circulation",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

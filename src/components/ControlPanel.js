@@ -309,7 +309,18 @@ function button(iconName, labels, onClick, variant = '') {
   const labelJa = el('span', { class: 'btn-label lang-ja', text: labels[1] });
   const element = el(
     'button',
-    { class: `btn ${variant}`.trim(), type: 'button', title: labels[0], on: { click: onClick } },
+    {
+      class: `btn ${variant}`.trim(),
+      type: 'button',
+      title: labels[0],
+      // A stable name for the control, which neither the label nor the title
+      // is: a scene may retitle "Zoom in" to "Zoom in — fill the frame with the
+      // chamber (+)", and the row's order changes with which controls a scene
+      // asks for. A browser check that addresses this button by its prose or by
+      // its position is one that can silently press something else.
+      dataset: { control: iconName },
+      on: { click: onClick },
+    },
     [iconSpan, labelEn, labelJa]
   );
   return {

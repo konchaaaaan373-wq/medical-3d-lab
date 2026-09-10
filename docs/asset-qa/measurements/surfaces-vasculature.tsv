@@ -1,0 +1,40 @@
+# dev-assets/heart/VH_M_Blood_Vasculature.glb (VH_M_blood_vasculature_of_heart)
+# every number below comes from scripts/lib/mesh-metrics.mjs, checked in tests/mesh-metrics.test.js
+name	triangles	components	boundary@1µm	boundary@10µm	nonManifold@1µm	degenerateTris	closedManifold	genus	signedVolumeMl	volumePrecondition	transversalMode	transversalHistogram
+VH_M_aortic_arch	3076	1	130	130	0	0	no	-	60.82	not met — open, non-manifold or several pieces	2	2x109 1x12 3x6 4x1
+VH_M_ascending_aorta	1600	1	80	80	0	0	no	-	-0.73	not met — open, non-manifold or several pieces	2	2x96 1x19 0x13
+VH_M_brachiocephalic_artery_b	2964	1	40	40	0	0	no	-	3.58	not met — open, non-manifold or several pieces	4	4x125 1x1 2x1 3x1
+VH_M_brachiocephalic_artery_a	446	1	40	40	0	0	no	-	8.73	not met — open, non-manifold or several pieces	2	2x104 1x16 0x8
+VH_M_left_common_carotid_artery_a	630	1	42	42	0	0	no	-	5.26	not met — open, non-manifold or several pieces	2	2x114 1x12 0x2
+VH_M_left_common_carotid_artery_b	3067	1	21	21	0	0	no	-	2.91	not met — open, non-manifold or several pieces	2	2x73 0x55
+VH_M_left_subclavian_artery_a	589	1	47	47	0	0	no	-	10.17	not met — open, non-manifold or several pieces	2	2x108 1x16 0x4
+VH_M_left_subclavian_artery_b	2317	1	69	69	0	0	no	-	2.13	not met — open, non-manifold or several pieces	4	4x125 3x2 2x1
+VH_M_descending_aorta_a	4984	1	56	56	0	0	no	-	18.71	not met — open, non-manifold or several pieces	2	2x128
+VH_M_descending_aorta_b	7666	1	180	180	0	0	no	-	1.11	not met — open, non-manifold or several pieces	2	2x106 1x22
+VH_M_left_anterior_descending_artery	8940	1	42	42	0	0	no	-	0.18	not met — open, non-manifold or several pieces	0	0x123 2x5
+VH_M_right_marginal_artery	2120	1	20	20	0	0	no	-	-0.06	not met — open, non-manifold or several pieces	0	0x74 2x53 4x1
+VH_M_right_posterior_descending_artery	5028	1	20	20	0	0	no	-	-0.10	not met — open, non-manifold or several pieces	0	0x89 2x39
+VH_M_diagonal_branch_of_anterior_descending_branch_of_left_coronary_artery	2010	1	20	20	0	0	no	-	-0.00	not met — open, non-manifold or several pieces	2	2x127 6x1
+VH_M_left_coronary_artery	12240	6	285	138	84	2924	no	-	0.59	not met — open, non-manifold or several pieces	2	2x127 4x1
+VH_M_right_coronary_artery	11570	1	40	40	0	0	no	-	0.52	not met — open, non-manifold or several pieces	0	0x125 2x3
+VH_M_diagonal_branch_of_left_anterior_descending_artery	3307	1	45	45	0	0	no	-	-0.51	not met — open, non-manifold or several pieces	0	0x117 2x11
+VH_M_left_marginal_branch	1948	1	18	18	0	0	no	-	0.10	not met — open, non-manifold or several pieces	0	0x92 2x36
+VH_M_pulmonary_artery_L	6132	1	0	0	0	0	yes	6	1.66	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x98 2x28 6x1 0x1
+VH_M_pulmonary_artery_R	3178	1	0	0	0	0	yes	2	0.87	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x99 0x16 2x13
+VH_M_pulmonary_trunk	3126	1	0	0	0	0	yes	2	1.69	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x91 2x29 0x8
+VH_M_great_cardiac_vein	556	1	6	6	0	0	no	-	0.40	not met — open, non-manifold or several pieces	0	0x120 2x8
+VH_M_middle_cardiac_vein	642	1	10	10	0	0	no	-	-0.82	not met — open, non-manifold or several pieces	0	0x73 2x55
+VH_M_oblique_vein_of_left_atrium	92	1	8	8	0	0	no	-	0.22	not met — open, non-manifold or several pieces	2	2x127 4x1
+VH_M_anterior_cardiac_vein	375	3	21	21	0	0	no	-	-0.10	not met — open, non-manifold or several pieces	0	0x115 2x13
+VH_M_coronary_sinus	1334	1	42	42	0	0	no	-	3.76	not met — open, non-manifold or several pieces	0	0x93 2x29 4x5 6x1
+VH_M_posterior_vein_of_left_ventricle	608	1	10	10	0	0	no	-	-0.32	not met — open, non-manifold or several pieces	0	0x95 2x32 3x1
+VH_M_small_cardiac_vein	1802	1	0	0	0	0	yes	0	0.11	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	0	0x100 2x28
+VH_M_pulmonary_vein_R_inf	4078	1	0	0	0	0	yes	2	0.29	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	0	0x55 4x51 2x22
+VH_M_pulmonary_vein_R_sup	1868	1	0	0	0	0	yes	2	0.24	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x64 0x35 2x29
+VH_M_pulmonary_vein_L_inf	2026	1	0	0	0	0	yes	2	0.41	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x61 2x51 0x16
+VH_M_pulmonary_vein_L_sup	1834	1	0	0	0	0	yes	2	0.26	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x66 2x49 0x13
+VH_M_brachiocephalic_vein_L	15662	1	0	0	0	0	yes	5	2.02	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x119 2x6 6x2 0x1
+VH_M_brachiocephalic_vein_R	7466	1	0	0	0	0	yes	3	1.35	partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked	4	4x104 2x19 0x5
+VH_M_superior_vena_cava	11222	3	13	0	15	89	no	-	5.27	not met — open, non-manifold or several pieces	4	4x86 2x40 0x2
+VH_M_inferior_vena_cava_b	11122	1	136	136	0	0	no	-	12.56	not met — open, non-manifold or several pieces	4	4x118 3x8 2x2
+VH_M_inferior_vena_cava_a	5880	1	56	56	0	0	no	-	6.96	not met — open, non-manifold or several pieces	4	4x66 2x54 0x6 1x1

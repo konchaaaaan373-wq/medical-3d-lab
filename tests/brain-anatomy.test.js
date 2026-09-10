@@ -133,7 +133,8 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   const positions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
   assert.deepEqual(
     scene.getAnatomyViews().map((view) => view.id),
-    ['left-lateral', 'left-medial', 'right-lateral', 'right-medial', 'anterior', 'superior']
+    ['left-lateral', 'left-medial', 'right-lateral', 'right-medial',
+      'anterior', 'posterior', 'superior', 'inferior']
   );
 
   scene.setAnatomyView('left-medial');
@@ -146,6 +147,149 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   assert.equal(left.material.opacity, 1);
   assert.equal(right.material.opacity, 1, 'leaving a medial view restores the contralateral hemisphere');
   for (const [mesh, position] of positions) assert.ok(mesh.position.equals(position));
+  scene.dispose();
+});
+
+test('a medial view closes the midline instead of showing through a hollow shell', () => {
+  const scene = buildScene();
+  const callosum = find(scene, 'Corpus callosum', 'median');
+  const enclosingWhiteMatter = find(scene, 'White matter of telencephalon', 'left');
+  const thalamus = find(scene, 'Mediodorsal nucleus', 'left');
+  const keptCortex = find(scene, 'Middle frontal gyrus', 'left');
+  const ventricle = find(scene, 'Lateral ventricle', 'left');
+
+  // At rest on a lateral view the midline block is depth the reader has not
+  // asked for, and stays hidden. That part is unchanged.
+  settle(scene);
+  assert.equal(callosum.material.opacity, 0, 'a lateral view still starts at the cortical surface');
+  assert.equal(thalamus.material.opacity, 0);
+  assert.equal(enclosingWhiteMatter.material.opacity, 0);
+
+  // On a medial view it is not depth: it *is* the surface being looked at. The
+  // corpus callosum, the thalamus and the white matter behind them are what a
+  // reader sees at the midline, and without them the medial view was a hollow
+  // cortical shell — a hole where the callosum belongs, and the background
+  // visible through the far wall because the material is front-side only.
+  scene.setAnatomyView('left-medial');
+  settle(scene);
+  assert.equal(keptCortex.material.opacity, 1, 'the kept hemisphere\'s cortical shell is unchanged');
+  assert.ok(callosum.material.opacity > 0.94, 'the corpus callosum closes the midline');
+  assert.ok(thalamus.material.opacity > 0.94, 'the thalamus closes the midline');
+  assert.ok(enclosingWhiteMatter.material.opacity > 0.94, 'the hemisphere is solid behind it');
+  assert.ok(callosum.material.depthWrite, 'and writes depth, so nothing shows through it');
+  assert.equal(ventricle.material.opacity, 0, 'a cavity is not a surface and stays on the slider');
+
+  // Depth still means depth. Dragging the layer up on a medial view has to
+  // ghost the enclosing mass again, or it simply replaces the cortical shell
+  // with a white one and hides the basal ganglia — the failure the ghost was
+  // introduced for.
+  scene.setProgress(1);
+  settle(scene);
+  assert.ok(enclosingWhiteMatter.material.opacity < 0.1, 'the enclosing mass ghosts as depth is asked for');
+  assert.ok(thalamus.material.opacity > 0.94, 'and the deep structures stay');
+
+  // Leaving the medial view puts the midline back where it was.
+  scene.setProgress(0);
+  scene.setAnatomyView('left-lateral');
+  settle(scene);
+  for (const mesh of [callosum, thalamus, enclosingWhiteMatter]) {
+    assert.equal(mesh.visible, false, `${mesh.userData.bx_label} is back under the surface`);
+  }
+  scene.dispose();
+});
+
+test('an annotation hides when its own structure is behind something opaque', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = annotationFor(scene, 'temporal');
+  const putamen = annotationFor(scene, 'putamen');
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+
+  assert.equal(temporal.structureId, left.userData.atlasId,
+    'the label points at the structure id it names, not at a coordinate');
+
+  // This fixture is a handful of boxes rather than two hemispheres, so the two
+  // vantages are placed on the line the homologues actually lie on: from one
+  // the left gyrus is in front, from the other the right one is between.
+  const near = vantage(scene, left, right);
+  const far = vantage(scene, right, left);
+
+  assert.equal(temporal.isVisible(near), true, 'seen from its own side');
+  // Drawn from the other side anyway, a label for a left structure sat on the
+  // right hemisphere's surface — a left/right error with a name attached.
+  assert.equal(temporal.isVisible(far), false, 'and not through its homologue');
+
+  // Hidden *because something is in front of it*, not because the check gives
+  // up and hides everything: take the occluder away and the same anchor, from
+  // the same place, is visible again.
+  scene.isolateStructure(temporal.structureId);
+  settle(scene);
+  assert.equal(temporal.isVisible(far), true, 'nothing in front of it now');
+  scene.clearIsolation();
+  settle(scene);
+  assert.equal(temporal.isVisible(far), false);
+
+  // The rule follows the anatomical layer for the same reason, and again with
+  // no reference to a side. The insula is under the operculum at layer 0 and
+  // the layer fades the operculum away; the putamen is not drawn at all until
+  // the deep view, and a label with nothing to point at is not drawn either.
+  const insula = annotationFor(scene, 'insula');
+  const behindOperculum = vantage(
+    scene,
+    find(scene, 'Opercular part of inferior frontal gyrus', 'left'),
+    find(scene, 'Insula (Subcentral gyrus and ant. and post. sulci)', 'left')
+  );
+  assert.equal(insula.isVisible(behindOperculum), false, 'the operculum covers the insula');
+  assert.equal(putamen.isVisible(near), false, 'and the putamen is not drawn at layer 0 at all');
+  scene.setProgress(1);
+  settle(scene);
+  assert.equal(insula.isVisible(behindOperculum), true, 'the layer takes the operculum away');
+
+  scene.dispose();
+});
+
+test('an annotation is anchored on the outside of the structure, not in the middle of it', () => {
+  const scene = buildScene();
+  settle(scene);
+  const sulcus = find(scene, 'Central sulcus', 'left');
+  const point = scene.annotationAnchors.centralSulcus;
+  const box = new THREE.Box3().setFromObject(sulcus);
+  const modelCentre = new THREE.Box3().setFromObject(scene.atlasRoot).getCenter(new THREE.Vector3());
+
+  // On the structure — an anchor off it would be a label naming a neighbour.
+  assert.ok(box.distanceToPoint(point) < 1e-6, 'the anchor is a point of this structure');
+  // And on its *outside*. The bounding-box centre of a sulcus is at the bottom
+  // of the sulcus, inside the gyri either side of it, where nothing can see it.
+  assert.ok(
+    point.distanceTo(modelCentre) > box.getCenter(new THREE.Vector3()).distanceTo(modelCentre),
+    'and further out than the middle of it'
+  );
+
+  // Which is the point: from outside, that anchor can be seen.
+  const camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 100);
+  camera.position.copy(point).addScaledVector(point.clone().sub(modelCentre).normalize(), 5);
+  camera.lookAt(point);
+  camera.updateMatrixWorld(true);
+  assert.equal(annotationFor(scene, 'centralSulcus').isVisible(camera), true);
+  scene.dispose();
+});
+
+test('hiding a label does not touch the selection it names', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = annotationFor(scene, 'temporal');
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+  assert.equal(scene.selectStructure(temporal.structureId), true);
+  const pinned = scene.getAnatomySelection();
+  assert.equal(pinned.name, 'Middle temporal gyrus');
+
+  // Turning to somewhere the structure cannot be seen from hides its label. A
+  // label is not a selection: the id, the summary and the highlight stay.
+  assert.equal(temporal.isVisible(vantage(scene, right, left)), false);
+  assert.deepEqual(scene.getAnatomySelection(), pinned);
+  assert.equal(scene.selectables.filter((mesh) => mesh.userData.selected).length, 1);
   scene.dispose();
 });
 
@@ -356,6 +500,7 @@ const FIXTURE_STRUCTURES = [
   structure(173, 'Lateral ventricle', 'left', 'ventricles', 'Telencephalon', [0.22, 0.18, 0]),
   structure(74, 'Corpus callosum', 'median', 'white_matter', 'Telencephalon', [0, 0.28, 0]),
   structure(433, 'White matter of telencephalon', 'left', 'white_matter', 'Telencephalon', [0.45, 0.1, 0]),
+  structure(281, 'Mediodorsal nucleus', 'left', 'diencephalon', 'Diencephalon', [0.28, 0.05, -0.1]),
   structure(312, 'Pons', 'left', 'brainstem', 'Brainstem', [0, -0.65, -0.15]),
   structure(28, 'Anterior quadrangular lobule', 'left', 'cerebellum', 'Cerebellum', [0.45, -0.65, -0.6]),
 ];
@@ -388,6 +533,28 @@ function buildScene() {
   const scene = new BrainAnatomyScene({ atlas });
   scene.build();
   return scene;
+}
+
+/** The annotation the scene publishes for one of its anchors. */
+function annotationFor(scene, anchor) {
+  const annotation = scene.getAnnotations().find((item) => item.anchor === anchor);
+  assert.ok(annotation, `${anchor} is an anchor of this scene`);
+  return annotation;
+}
+
+/**
+ * A camera beyond `behind`, on the line through it and `target`, so that
+ * `behind` sits between the camera and `target`.
+ */
+function vantage(scene, behind, target) {
+  scene.root.updateMatrixWorld(true);
+  const a = behind.getWorldPosition(new THREE.Vector3());
+  const b = target.getWorldPosition(new THREE.Vector3());
+  const camera = new THREE.PerspectiveCamera(45, 16 / 9, 0.1, 100);
+  camera.position.copy(a).addScaledVector(a.clone().sub(b).normalize(), 5);
+  camera.lookAt(b);
+  camera.updateMatrixWorld(true);
+  return camera;
 }
 
 function find(scene, label, side) {
@@ -524,4 +691,161 @@ test('an atlas that genuinely fails is still reported', async () => {
   } finally {
     console.error = wasError;
   }
+});
+
+test('hiding is by structure, outlasts a colour change, and is not isolation', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = find(scene, 'Middle temporal gyrus', 'left');
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  const id = temporal.userData.atlasId;
+
+  let announced = null;
+  scene.onAnatomyVisibility((state) => { announced = state; });
+
+  // A structure stays selected when it is hidden: what is on the card and what
+  // is on screen are two questions.
+  scene.selectStructure(id);
+  assert.equal(scene.setStructureHidden(id, true), true);
+  settle(scene);
+  assert.equal(temporal.visible, false);
+  assert.equal(frontal.visible, true, 'and only that structure went');
+  assert.deepEqual(announced, { hidden: [id] }, 'the surfaces are told');
+  assert.equal(scene.getAnatomySelection()?.id, id, 'the selection is untouched');
+
+  // Recolouring, re-viewing and re-layering are display choices and none of
+  // them is "bring it back".
+  scene.setAnatomyColorMode('anatomical');
+  scene.setAnatomyView('right-lateral');
+  scene.setProgress(0.5);
+  settle(scene);
+  assert.equal(temporal.visible, false, 'still hidden after a colour, a view and a layer change');
+
+  assert.equal(scene.showAllHiddenStructures(), true);
+  settle(scene);
+  assert.equal(temporal.visible, true);
+  assert.deepEqual(scene.getAnatomyVisibility(), { hidden: [] });
+  scene.dispose();
+});
+
+test('isolation overrides hiding without overwriting it', () => {
+  const scene = buildScene();
+  settle(scene);
+  const temporal = find(scene, 'Middle temporal gyrus', 'left');
+  const frontal = find(scene, 'Middle frontal gyrus', 'left');
+  scene.setStructureHidden(temporal.userData.atlasId, true);
+  settle(scene);
+
+  // Isolating something else is a temporary "only this", and it does not
+  // forget what the reader hid.
+  scene.isolateStructure(frontal.userData.atlasId);
+  settle(scene);
+  assert.equal(frontal.visible, true);
+  assert.equal(temporal.visible, false);
+  assert.deepEqual(scene.getAnatomyVisibility().hidden, [temporal.userData.atlasId]);
+
+  scene.clearIsolation();
+  settle(scene);
+  assert.equal(frontal.visible, true, 'the model comes back');
+  assert.equal(temporal.visible, false, 'except what the reader had hidden');
+
+  // "Only this one" and "not this one" cannot both hold: hiding the isolated
+  // structure ends the isolation rather than emptying the screen.
+  scene.isolateStructure(frontal.userData.atlasId);
+  settle(scene);
+  scene.setStructureHidden(frontal.userData.atlasId, true);
+  settle(scene);
+  assert.equal(scene.getAnatomyIsolation(), null);
+  assert.equal(frontal.visible, false);
+  assert.ok(scene.selectables.some((mesh) => mesh.visible), 'the model is not blank');
+  scene.dispose();
+});
+
+test('reveal changes the display, never the anatomy, and says when it cannot', () => {
+  const scene = buildScene();
+  settle(scene);
+  const putamen = find(scene, 'Putamen', 'left');
+  const positions = new Map(scene.selectables.map((mesh) => [mesh, mesh.position.clone()]));
+  assert.equal(putamen.visible, false, 'a deep structure starts under the cortex');
+
+  const result = scene.revealStructure(putamen.userData.atlasId);
+  assert.equal(result.ok, true);
+  assert.ok(result.changed.includes('layer'), 'the layer is what was in the way');
+  // The layer is *reported*, not set: the console's slider owns that value, and
+  // a scene that wrote it too would leave the model deep and the slider at 0 %.
+  assert.equal(result.layer, 1);
+  assert.equal(putamen.visible, false, 'so nothing has happened until the owner applies it');
+  scene.setProgress(result.layer);
+  settle(scene);
+  assert.equal(putamen.visible, true);
+  for (const [mesh, position] of positions) {
+    assert.ok(mesh.position.equals(position), 'and nothing moved to achieve it');
+  }
+
+  // Going back is going back: the layer, the view and the hidden set together.
+  assert.equal(scene.canRestoreDisplay(), true);
+  const back = scene.restoreDisplay();
+  assert.equal(back.ok, true);
+  assert.equal(back.layer, 0, 'and the layer comes back the same way it went');
+  scene.setProgress(back.layer);
+  settle(scene);
+  assert.equal(putamen.visible, false);
+  assert.equal(scene.canRestoreDisplay(), false, 'and there is nothing left to restore');
+
+  // A structure the reader hid is revealed by un-hiding it.
+  scene.setStructureHidden(putamen.userData.atlasId, true);
+  const second = scene.revealStructure(putamen.userData.atlasId);
+  if (second.layer != null) scene.setProgress(second.layer);
+  settle(scene);
+  assert.equal(second.ok, true);
+  assert.ok(second.changed.includes('hidden'));
+  assert.equal(putamen.visible, true);
+
+  assert.deepEqual(scene.revealStructure('group:Left cerebral hemisphere'),
+    { ok: false, reason: 'unknown-structure' },
+    'a group is not a structure and reveal does not pretend otherwise');
+  scene.dispose();
+});
+
+test('a hidden structure leaves the picker and stops occluding a label', () => {
+  const scene = buildScene();
+  settle(scene);
+  const left = find(scene, 'Middle temporal gyrus', 'left');
+  const right = find(scene, 'Middle temporal gyrus', 'right');
+  const temporal = annotationFor(scene, 'temporal');
+  const far = vantage(scene, right, left);
+
+  assert.equal(temporal.isVisible(far), false, 'the right gyrus is in the way');
+  // Hiding the thing in front is not a special case for labels or for picking:
+  // both read the same "is it drawn" rule.
+  scene.setStructureHidden(right.userData.atlasId, true);
+  settle(scene);
+  assert.equal(temporal.isVisible(far), true, 'and now it is not');
+  assert.equal(scene._drawnMeshes().includes(right), false, 'nor can it be clicked');
+  scene.dispose();
+});
+
+test('brain: a structure the settings are not drawing has no label to wait for', () => {
+  // The occlusion grace in the label layer is for an edge that flickers as the
+  // model turns. Hiding and isolating do not flicker, and a name left over a
+  // structure the reader has just taken off the screen names whatever is behind
+  // it — so the scene answers "is it drawn at all" separately from "can it be
+  // seen from here".
+  const scene = buildScene();
+  const id = scene.getAnatomyInventory()[0].id;
+  const label = scene.getStructureAnnotation(id);
+  assert.equal(typeof label.isDrawn, 'function');
+  assert.equal(label.isDrawn(), true);
+
+  scene.setStructureHidden(id, true);
+  assert.equal(label.isDrawn(), false, 'hidden by the reader');
+  scene.setStructureHidden(id, false);
+  assert.equal(label.isDrawn(), true);
+
+  const other = scene.getAnatomyInventory().find((entry) => entry.id !== id);
+  scene.isolateStructure(other.id);
+  assert.equal(label.isDrawn(), false, 'isolated away');
+  scene.clearIsolation();
+  assert.equal(label.isDrawn(), true);
+  scene.dispose();
 });

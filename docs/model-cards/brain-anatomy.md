@@ -123,11 +123,25 @@ range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry.
 
+**A viewpoint is fitted to the band nothing is covering.** The scene reports the
+box around what it is currently drawing — not the whole atlas, since at layer 0
+the deep structures are not drawn and on a medial view half the cortex is not —
+and the app measures what the header, the console and the docked panel actually
+cover. The camera then looks at that subject's own centre, sits at the distance
+that fills the band, and pans so the band's centre is where the subject is.
+The direction it looks and the angle on the anatomy are untouched: this changes
+the composition, never the view. A band with no room left in it is left alone
+rather than framed to an invented composition.
+
 The atlas opts into the shared **Neutral studio** renderer preset so sulcal
 relief and the low-saturation anatomical mode remain legible on a pale field.
-Its six lateral, medial, anterior and superior viewpoints are authored
-anatomical views in the common inspection panel, rather than directions inferred
-by the app. Background, viewpoint, label visibility and colour mode are user
+Its eight viewpoints — left and right lateral, left and right medial, anterior,
+posterior, superior and inferior — are authored anatomical views in the common
+inspection panel, rather than directions inferred by the app. The inferior view
+is tilted forward in the midline plane rather than placed directly below,
+because a camera looking along its own up vector has no roll to derive and the
+midline would land at an arbitrary angle; tilted, the midline stays vertical,
+which is what makes left and right readable in that view. Background, viewpoint, label visibility and colour mode are user
 inspection state only; resetting them does not change the layer progression or
 any anatomical metadata.
 
@@ -135,6 +149,103 @@ The full hemispheric white-matter masses remain almost transparent in the deep
 view; otherwise they would form a second enclosing shell and conceal the nuclei
 the view is meant to teach. Named bundles such as the corpus callosum and fornix
 remain visible.
+
+**A medial view shows the midline block, and that is a display decision, not a
+dissection.** The contralateral hemisphere is hidden and the near hemisphere's
+midline face — the corpus callosum, the fornix, the thalamus and hypothalamus,
+and the white matter behind them — is present at full opacity, because that is
+what a medial view of a hemisphere is a view *of*. Before this, the layer slider
+held all of it at zero until depth was asked for, and a medial view at rest was
+a cortical shell with a hole where the callosum belongs. Two things this does
+not do: it does not cut anything (no plane, no clipping, no mesh moved — the
+model is the same one the lateral views show, seen from the other side), and it
+does not fill the ventricles, which are cavities rather than surfaces and stay
+on the slider in every view. Dragging the layer in from a medial view ghosts the
+enclosing white matter back out, so depth still means depth.
+
+**An annotation is shown only when the structure it names can be seen.** The
+labels are HTML over the canvas, so nothing about them is depth-tested: a label
+for a left-hemisphere structure was drawn on the right hemisphere's surface in
+the right lateral view, which reads as a claim about where that structure is.
+The scene is now asked, with the same ray a click uses, whether the anchor is
+the first drawn thing along it; if it is not, the label is hidden where it is
+and never moved somewhere emptier. The rule is about what is on screen, not
+about which side a name says — so it agrees with the anatomical layer, a medial
+view, isolation and transparency without knowing about any of them. **Label
+visibility is not selection**: a pinned structure keeps its id, its summary and
+its highlight when the view turns away from it. **An anchor is a point on the outside of the
+structure it names**, not the centre of its bounding box: for a sulcus that
+centre is at the bottom of the sulcus, inside the gyri on either side, where
+nothing can see it — which is why the central sulcus label used to be drawn over
+the precentral gyrus instead. Each anchor is the outermost vertex of the
+structure's own meshes along the direction from the model's centre out to it: a
+point chosen from that geometry and fixed at load, carrying no anatomical claim
+beyond "this is on the outside of this mesh", and never moved to suit the
+screen. It is not enough for a sulcus: the surface of a fold lies under the
+gyri on either side of it, so the central sulcus's label is absent from the
+lateral view rather than misplaced on it. That is recorded as F-40 with what
+was tried, not papered over.
+
+**A structure can be found by name.** The scene publishes its inventory — one
+record per structure, both names, its side and the hierarchy above it — and the
+Parts tab indexes that and nothing else. There is no medical dictionary behind
+the search box, no generated synonyms and no inference from a symptom to a
+region: a name the atlas does not carry finds nothing, and says so. The query is
+folded (NFKC, so full-width Latin and half-width kana are the same words; case
+and spacing collapsed) while ids are carried through untouched. A whole name
+outranks a partial one, and a name from a level above — a lobe, a hemisphere —
+finds the structures under it without that level pretending to be selectable.
+Left and right are two structures with two ids and stay two results. Searching
+covers the tree rather than replacing it, so clearing returns the branches the
+reader had open and the place they had scrolled to.
+
+**Going to a structure, bringing it into view and hiding it are three actions,
+because they are three requests.** *Go to it* moves the camera and changes no
+display state. *Show it* changes the display — the anatomical layer, the
+viewpoint, a hide the reader had set — and moves no anatomy; the recipe is read
+off the structure's own category, region, side and preferred view, and where the
+metadata says nothing the scene answers `{ok: false}` rather than a camera move
+that pretends to have worked. *Hide it* takes one structure off screen and
+leaves it selected, with the panel saying so.
+
+Visibility has one order, in one place: isolation is a temporary override that
+writes nothing down, a structure the reader hid stays hidden over what the layer
+would otherwise show, and otherwise the layer and the medial side decide.
+Clearing an isolation therefore returns the model the reader had — their hidden
+structures and their layer — rather than a remembered snapshot that can be
+wrong. A hidden structure leaves the picker and stops occluding a label by the
+same rule, and hiding one survives a colour change, a viewpoint and a resize.
+The anatomical layer stays owned by the console's slider: the scene reports the
+layer a structure needs and the control that owns the value sets it, so the
+model and the slider never give two answers.
+
+**The structure a reader picks is named on the model, not only in the panel.**
+The selection and the hover get a label on the same terms as the four authored
+landmarks: the structure's own names, an anchor on its own outside, and the same
+occlusion test, so a label disappears when its structure does rather than
+floating over whatever is in front. When more labels apply than a frame can
+carry — six on a wide screen, three on a narrow one — the ones that give way are
+the ones the reader did not ask for: selection outranks hover, hover outranks
+the landmarks, and nothing is stacked into a spare corner to make it fit.
+Appearing is immediate; disappearing waits a moment, so a label does not blink
+along an occlusion edge as the model turns. **That wait is for occlusion and for
+nothing else**: a structure the settings are not drawing — hidden by the reader,
+isolated away — is not an edge flickering, it is a thing that is not there, and
+its label goes on the same frame. A name left over it for even a moment is a
+name over whatever is behind it. Hiding a label never changes what the panel
+says is pinned.
+
+**Searching answers with every match.** The count is the number that matched,
+not the number drawn, and there is no quiet cap that would leave the rest
+unreachable. The results are a listbox and behave like one: arrows, Home and End
+move the keyboard through them without selecting, Enter or Space commits, and
+the row marked selected is whichever result *is* the pinned structure — asked of
+the scene each time it paints, so clicking the model marks the matching row and
+a selection outside the results marks nothing rather than leaving the first row
+looking chosen. The index follows the atlas: one built while the model was still
+loading is rebuilt when it arrives, and the reader's query is answered again
+rather than thrown away. Structure ids reach the scene in the scene's own type;
+the string on the element is how the DOM had to store it.
 
 ## 7. What it must never be used for
 

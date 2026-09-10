@@ -32,7 +32,9 @@
  *  2. it makes an anatomy claim and no pathophysiological or clinical one —
  *     read off the model profile, not off the scene's name;
  *  3. every asset its profile names passes the asset release gate (licence,
- *     obligations, hashes, QA);
+ *     obligations, hashes, QA), and it rests on no *candidate* asset — a file
+ *     still under examination has no licence decision, no discharged
+ *     obligations and no QA, so naming one closes the gate by itself;
  *  4. no clinical-review record it has is `stale`, so a sign-off that has been
  *     overtaken is never shown as current;
  *  5. a publication decision exists that is complete — who decided, in what
@@ -73,6 +75,7 @@ import {
   MECHANISM_LEVEL,
   PATIENT_SPECIFIC_PERSONALIZATION,
   modelProfileForScene,
+  profileCandidateAssets,
 } from './modelProfiles.js';
 
 /**
@@ -163,14 +166,14 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-08',
+    decidedAt: '2026-09-09',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B0 implementer', role: 'engineering' }),
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: '584cdfefac8a7464' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '3c3175a6da4b6944' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -179,7 +182,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'Middle temporal gyrus',
         'Superior temporal sulcus',
       ]),
-      views: Object.freeze(['left-lateral (applied)', 'six named viewpoints offered']),
+      views: Object.freeze([
+        'left-lateral (applied by the interaction drive)',
+        'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
+      ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
         'click on empty space clears, and a structure can be selected again',
@@ -193,6 +199,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'every branch announces the expanded state it is drawn in, including one opened by a 3D selection',
         'on a 375x667 phone the parts sheet opens, takes focus, closes on Escape, returns focus, and keeps the selection, the open branches and the scroll position',
         'replacing the atlas clears the panels rather than leaving the old model named in them',
+        'a medial view draws the midline block rather than a hollow shell, and the layer slider still ghosts the enclosing white matter as depth is asked for',
+        'an annotation is drawn only where the structure it names is the first thing on the ray, and hiding one leaves the selection it names untouched',
+        'each annotation is anchored on the outside of its own structure rather than at the centre of its bounding box',
+        'a viewpoint is fitted to the band the header, console and docked panel leave, against the bounds of what is actually drawn',
+        'a structure can be found by either of its names and selected from the result, by the same id the tree and the model use',
+        'the search returns every match and says how many matched; the results answer the keyboard and mark the pinned structure',
+        'the search index is rebuilt when the atlas arrives or is replaced, and on a phone the first Escape clears the search rather than closing the sheet',
+        'the pinned structure is named on the model as well as in the panel, under the same occlusion rule and a per-frame limit',
+        'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
+        'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
+        'a hidden structure\'s own label goes with it rather than being held over what is behind it',
       ]),
     }),
     evidence: Object.freeze([
@@ -204,6 +221,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'tests/anatomy-colour-ui.test.js',
       'docs/asset-qa/brain-atlas-glb.md',
       'public/assets/brain/ATTRIBUTION.md',
+      'docs/screenshots/b3-1/README.md',
+      'docs/screenshots/f37/README.md',
+      'docs/screenshots/x1/README.md',
+      'docs/anatomy-review.md',
     ]),
     /** Stated, not implied. An empty list here would itself be a claim. */
     unverified: Object.freeze([
@@ -212,7 +233,9 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'deep structures behind the anatomical-layer slider were not exercised',
       'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
       'no clinical review — the registry records this scene as pending',
-      'the anatomy/CG quality bar for the beta (B3) has not been measured',
+      'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
+      'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
+      'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
     ]),
   }),
 ]);
@@ -384,6 +407,17 @@ export function betaPublicationProblems(candidate, {
 
   const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
   const assetIds = profile?.assets ?? [];
+
+  // A candidate is a file being examined (`src/catalog/devAssets.js`): pinned
+  // and hash-verified, but not in the asset manifest, not licence-assessed, not
+  // QA'd and not even committed. There is nothing here for the asset release
+  // gate to read, so the answer is no — stated as its own line rather than as a
+  // silent consequence of the manifest lookup failing.
+  for (const candidateId of profileCandidateAssets(profile)) {
+    problems.push(
+      `rests on candidate asset "${candidateId}", which is under examination and has passed no asset release gate`
+    );
+  }
   for (const assetId of assetIds) {
     const asset = resolveAsset(assetId);
     if (!asset) {
