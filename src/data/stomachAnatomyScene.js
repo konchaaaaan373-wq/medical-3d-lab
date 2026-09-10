@@ -11,12 +11,20 @@
  * stronger reading.
  */
 
+/**
+ * The regions, as steps along one stomach rather than as five separate things.
+ *
+ * They were far enough apart that the cardia read as a coloured collar strapped
+ * around the organ. A reader has to be able to tell the parts apart *and* see
+ * one stomach; these are ordered fundus → pylorus so the run reads as a
+ * gradient with boundaries in it.
+ */
 export const STOMACH_SCENE_COLORS = Object.freeze({
-  fundus: '#dba393',
-  cardia: '#c98f9e',
-  body: '#d08a86',
-  antrum: '#bf7b78',
-  'pyloric-canal': '#a96f6f',
+  fundus: '#dfa898',
+  cardia: '#d69a92',
+  body: '#cf8f88',
+  antrum: '#c2807c',
+  'pyloric-canal': '#b0716f',
   sphincter: '#f0b9ae',
   esophagus: '#c9a2a6',
   duodenum: '#d99a7c',

@@ -30,7 +30,7 @@ import {
  * changed, so a shared model is a shared model and not a shared state.
  */
 const SCENES = [
-  { id: 'lung-anatomy', Scene: LungAnatomyScene, minimum: 40 },
+  { id: 'lung-anatomy', Scene: LungAnatomyScene, minimum: 60 },
   { id: 'liver-anatomy', Scene: LiverAnatomyScene, minimum: 20 },
   { id: 'kidney-anatomy', Scene: KidneyAnatomyScene, minimum: 25 },
   { id: 'stomach-anatomy', Scene: StomachAnatomyScene, minimum: 7 },
@@ -240,6 +240,35 @@ test('every viewpoint names a real pose, and the first one is the pose the scene
     );
     scene.setAnatomyView(views[0].id);
   }
+});
+
+test('a lung segment and the bronchus that ventilates it are two structures', () => {
+  const scene = sceneFor(SCENES[0]);
+  // The failure this guards: offering the segmental bronchus and calling it the
+  // segment. A reader who asks for S3 is asking for lung, not for a tube.
+  const parenchyma = scene.structures.filter((structure) => structure.id.startsWith('segment:'));
+  const bronchi = scene.structures.filter((structure) => /segmental-bronchus$/.test(structure.id));
+  assert.equal(parenchyma.length, 18, 'eighteen segments');
+  assert.equal(bronchi.length, 18, 'and eighteen segmental bronchi');
+
+  for (const segment of parenchyma) {
+    const id = segment.id.slice('segment:'.length);
+    const bronchus = bronchi.find((entry) => entry.id === `airway:${id}-segmental-bronchus`);
+    assert.ok(bronchus, `${id} has a bronchus of its own`);
+    assert.notEqual(segment.name, bronchus.name, `${id}: the segment and its bronchus are named apart`);
+    assert.ok(segment.meshes[0] !== bronchus.meshes[0], `${id}: and they are different meshes`);
+    assert.ok(
+      segment.hierarchy.includes('Bronchopulmonary segments'),
+      `${id}: the parenchyma is filed as a segment`
+    );
+    assert.ok(bronchus.hierarchy[0] === 'Airways', `${id}: the bronchus is filed as an airway`);
+  }
+
+  // And they are on different layers, so the two never compete for one click.
+  settle(scene, 0.45);
+  assert.ok(parenchyma[0].currentOpacity > 0.8, 'the segments are what the middle of the slider shows');
+  assert.ok(bronchi[0].currentOpacity < 0.05, 'and the bronchi are not there yet');
+  settle(scene, 0);
 });
 
 test('the kidney names parts only on the side it actually partitioned', () => {

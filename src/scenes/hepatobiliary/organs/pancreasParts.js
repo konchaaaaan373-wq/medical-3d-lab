@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TubeSurface } from '../../shared/geometry/tube.js';
+import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
 import { mucosaMaterial, tissueMaterial } from '../../shared/materials.js';
 import { shapedSphere } from '../../shared/geometry/shapes.js';
 import { createRandom } from '../../../utils/math.js';
@@ -78,12 +78,25 @@ export function buildPancreasParts({
   const built = tubeParts(curve, radiusAt, regions, {
     radial: 22,
     steps: 150,
+    // The two free ends close as domes rather than as cut discs.
+    roundEnds: 0.05,
     material: (part) => tissueMaterial({ color: colors[part.id], roughness: 0.6, opacity }),
   });
   for (const part of built.parts) object.add(part.mesh);
 
   // The main duct, running the length of the gland to the head.
-  const ductSurface = new TubeSurface(curve, { radius: () => 0.055, steps: 130, radial: 12 });
+  //
+  // Stopped just short of both ends, because the gland's ends are domes: a duct
+  // drawn over the full path emerges from the tip of the tail, which is a duct
+  // outside the organ it drains.
+  const DUCT_FROM = 0.03;
+  const DUCT_TO = 0.97;
+  const ductPoints = [];
+  for (let i = 0; i <= 40; i += 1) {
+    const point = curve.getPointAt(DUCT_FROM + (DUCT_TO - DUCT_FROM) * (i / 40));
+    ductPoints.push([point.x, point.y, point.z]);
+  }
+  const ductSurface = new TubeSurface(smoothCurve(ductPoints), { radius: () => 0.055, steps: 130, radial: 12 });
   const duct = new THREE.Mesh(ductSurface.geometry, mucosaMaterial({ color: colors.duct }));
   duct.name = 'pancreatic-duct';
   object.add(duct);

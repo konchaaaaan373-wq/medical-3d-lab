@@ -37,6 +37,7 @@ export const LUNG_SCENE_PALETTE = Object.freeze({
   airway: '#b7ada0',
   artery: '#6f8fc4',
   vein: '#c4566d',
+  segments: '#cba86e',
 });
 
 /** One tissue colour per system, for reading form rather than divisions. */
@@ -45,6 +46,28 @@ export const LUNG_NATURAL_PALETTE = Object.freeze({
   airway: '#c3c8cf',
   artery: '#9aa8bd',
   vein: '#bb8b90',
+});
+
+/**
+ * One colour per bronchopulmonary segment, inside its lobe's family.
+ *
+ * Eighteen colours nobody can group is eighteen colours nobody can use, so
+ * each segment is a step within the colour its lobe already has: a reader can
+ * see at a glance that five of them are right lower lobe and still tell which
+ * of the five they are pointing at. Presentation values — a colour is not a
+ * claim about tissue.
+ */
+export const LUNG_SEGMENT_COLORS = Object.freeze({
+  // Right upper lobe — peach
+  RS1: '#f0c4ad', RS2: '#dfa287', RS3: '#e9b49c',
+  // Right middle lobe — sand
+  RS4: '#e0c194', RS5: '#cba86e',
+  // Right lower lobe — mulberry
+  RS6: '#c98498', RS7: '#a45f72', RS8: '#b87285', RS9: '#96536a', RS10: '#d193a4',
+  // Left upper lobe — terracotta
+  'LS1+2': '#ecab9f', LS3: '#dd9088', LS4: '#d68c80', LS5: '#ca7a72',
+  // Left lower lobe — plum
+  LS6: '#ae7f97', LS8: '#9a6a86', LS9: '#85597a', LS10: '#775070',
 });
 
 export const LUNG_COLOR_MODES = Object.freeze([
@@ -212,6 +235,26 @@ export function lungStructureCopy() {
   for (const segment of SEGMENTS) {
     const lobe = lobeById(segment.lobe);
     const full = `${segment.label} segment (${segment.number})`;
+
+    // The parenchyma itself, which is a different thing from the bronchus that
+    // ventilates it. Both are selectable and they are named apart, because
+    // "the S3 bronchus" and "S3" are not the same structure and a reader who
+    // asked for one should not be handed the other.
+    entries.set(`segment:${segment.id}`, {
+      name: full,
+      nameJa: `${segment.labelJa}（${segment.number}）`,
+      hierarchy: [SIDE_WORDS[segment.side].en, 'Bronchopulmonary segments', lobe.label, 'Segment'],
+      hierarchyJa: [SIDE_WORDS[segment.side].ja, '肺区域', lobe.labelJa, '区域'],
+      description: `The part of the ${lobe.label.toLowerCase()} that the ${segment.label.toLowerCase()} segmental bronchus (${segment.number}) ventilates. A segment has its own bronchus and its own artery, which is what lets it be removed without cutting into its neighbours.`,
+      descriptionJa: `${lobe.labelJa}のうち、${segment.labelJa}の区域気管支（${segment.number}）が換気する部分です。固有の区域気管支と区域動脈を持つことが、隣接区域を切らずに切除できる理由です。`,
+      note: 'A surface, not a solid: the part of the lobe’s outer surface and fissure faces that belongs to this segment. Nothing here measures a segment’s volume, and the seam between two of them follows the mesh.',
+      noteJa:
+        '立体ではなく面です。葉の外表面と葉間裂面のうち、この区域に属する部分を示します。区域の体積は表しておらず、区域どうしの境目はメッシュの分割に沿います。',
+      paletteKey: null,
+      segmentColor: segment.id,
+      naturalKey: 'parenchyma',
+      tags: [segment.side, 'parenchyma', 'segment'],
+    });
     entries.set(`airway:${segment.id}-segmental-bronchus`, {
       name: `${full} bronchus`,
       nameJa: `${segment.labelJa}（${segment.number}）の区域気管支`,
@@ -255,6 +298,7 @@ export const LUNG_ANATOMY_META = Object.freeze({
     { key: 'rightLower', label: 'Right lower lobe', labelJa: '右下葉' },
     { key: 'leftUpper', label: 'Left upper lobe', labelJa: '左上葉' },
     { key: 'leftLower', label: 'Left lower lobe', labelJa: '左下葉' },
+    { key: 'segments', label: 'Bronchopulmonary segments', labelJa: '肺区域', activeFrom: 0.25 },
     { key: 'airway', label: 'Airways', labelJa: '気道', activeFrom: 0.4 },
     { key: 'artery', label: 'Pulmonary arteries', labelJa: '肺動脈', activeFrom: 0.4 },
     { key: 'vein', label: 'Pulmonary veins', labelJa: '肺静脈', activeFrom: 0.4 },
@@ -278,6 +322,14 @@ export const LUNG_ANATOMY_META = Object.freeze({
     },
     {
       id: 'segments',
+      name: 'Bronchopulmonary segments',
+      nameJa: '肺区域',
+      at: 0.45,
+      summary: 'The lobes give way to the eighteen segments themselves — the lung each segmental bronchus ventilates, selectable as parenchyma rather than as a bronchus.',
+      summaryJa: '葉に代わって18の肺区域そのものが現れます。区域気管支ではなく実質として選択できます。',
+    },
+    {
+      id: 'trees',
       name: 'Segmental bronchi and arteries',
       nameJa: '区域気管支と区域動脈',
       at: 1,
@@ -285,7 +337,7 @@ export const LUNG_ANATOMY_META = Object.freeze({
       summaryJa: '18本の区域気管支と、それぞれに伴走する区域動脈。静脈は区域の「間」を走ります。',
     },
   ],
-  range: { start: 'Lobes', startJa: '肺葉', end: 'Segmental level', endJa: '区域レベル' },
+  range: { start: 'Lobes', startJa: '肺葉', end: 'Bronchi and vessels', endJa: '気管支・血管' },
   progressLabel: { label: 'Anatomical layers', labelJa: '解剖レイヤー' },
   disclaimer:
     'EDUCATIONAL GROSS-ANATOMY MODEL — Airway calibres and branching are drawn to read clearly, not measured, and no dimension here is suitable for planning or measurement.',

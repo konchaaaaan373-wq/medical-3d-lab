@@ -13,10 +13,13 @@
  */
 
 export const PANCREAS_SCENE_COLORS = Object.freeze({
-  head: '#e6b184',
-  neck: '#cf9b74',
-  body: '#e5bc95',
-  tail: '#d3a276',
+  // Four steps a reader can actually tell apart. The first set was four creams
+  // within a few percent of each other: rendered, the gland looked like one
+  // undivided sausage with faint seams on it.
+  head: '#e8ad76',
+  neck: '#c68f63',
+  body: '#efc79b',
+  tail: '#d09a68',
   duct: '#57bda4',
   islets: '#5f96e8',
   duodenum: '#d99a7c',

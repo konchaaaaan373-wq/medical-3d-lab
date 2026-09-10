@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 import { OrganAnatomyScene } from '../../../shared/anatomy/OrganAnatomyScene.js';
 import { buildLungs } from '../../organs/lungs.js';
+import { buildLungSegmentSurfaces } from '../../organs/lungSegments.js';
+import { tissueMaterial } from '../../../shared/materials.js';
 import {
   LUNG_ANATOMY_META,
   LUNG_COLOR_MODES,
   LUNG_NATURAL_PALETTE,
   LUNG_SCENE_PALETTE,
+  LUNG_SEGMENT_COLORS,
   lungStructureCopy,
 } from '../../../../data/lungAnatomyScene.js';
 
@@ -109,7 +112,11 @@ export class LungAnatomyScene extends OrganAnatomyScene {
     // `excursion: 0` because nothing here breathes: this is anatomy, and a lung
     // that inflates while a reader is trying to point at a segmental bronchus
     // is moving the target.
-    const lungs = buildLungs({ bronchi: true, vessels: true, excursion: 0, detail: 12 });
+    // Detail 14 rather than the builder's 12. The segment surfaces are assigned a
+    // triangle at a time, so the seam between two of them is as fine as the mesh
+    // is — at 12 the boundary between S3 and S5 reads as a saw-tooth. It costs
+    // 80 ms, which is the cheapest legibility in this scene.
+    const lungs = buildLungs({ bronchi: true, vessels: true, excursion: 0, detail: 14 });
     const copy = lungStructureCopy();
     const structures = [];
 
@@ -132,22 +139,39 @@ export class LungAnatomyScene extends OrganAnatomyScene {
         descriptionJa: entry.descriptionJa,
         tags: entry.tags,
         colors: {
-          lobes: LUNG_SCENE_PALETTE[entry.paletteKey],
+          lobes: entry.segmentColor
+            ? LUNG_SEGMENT_COLORS[entry.segmentColor]
+            : LUNG_SCENE_PALETTE[entry.paletteKey],
           natural: LUNG_NATURAL_PALETTE[entry.naturalKey],
         },
-        legendKey: entry.paletteKey,
+        legendKey: entry.segmentColor ? 'segments' : entry.paletteKey,
         meshes: present,
         ...extra,
       });
     };
 
+    // The lobes are what a reader sees first, and what gives way to the
+    // segments the moment they ask for more than five parts.
     for (const lobe of lungs.lobes) {
-      declare(`lobe:${lobe.id}`, [lobe.mesh], {
-        baseOpacity: 1,
-        // The parenchyma is what you see first and what has to get out of the
-        // way second. Nothing else in this scene fades.
-        ghostAt: 0.5,
-        ghostOpacity: 0.085,
+      declare(`lobe:${lobe.id}`, [lobe.mesh], { baseOpacity: 1, ghostAt: 0.25, ghostOpacity: 0.06 });
+    }
+
+    // The segments as parenchyma. `buildLungs` already decides which part of a
+    // lobe belongs to which segment — it paints every vertex with it — and
+    // this is that same decision given a surface, so a reader can point at S3
+    // rather than only at the bronchus that ventilates it.
+    //
+    // Their layer sits between the lobes and the trees, so the slider reads
+    // lobes → segments → bronchi and vessels: three ways of dividing one lung,
+    // each giving way to the next rather than piling on top of it.
+    const surfaces = buildLungSegmentSurfaces(lungs, (segment) =>
+      tissueMaterial({ color: LUNG_SEGMENT_COLORS[segment.id], roughness: 0.62, emissiveIntensity: 0.05 })
+    );
+    for (const surface of surfaces.parts) {
+      declare(`segment:${surface.id}`, [surface.mesh], {
+        revealAt: 0.25,
+        ghostAt: 0.68,
+        ghostOpacity: 0.07,
       });
     }
 
@@ -169,8 +193,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
 
     // Inside the lung: revealed as the parenchyma fades, so the two happen
     // together rather than one leaving a gap.
-    const inner = { revealAt: 0.5 };
-    const segmental = { revealAt: 0.78 };
+    const inner = { revealAt: 0.68 };
+    const segmental = { revealAt: 0.84 };
 
     for (const lobe of lungs.lobes) {
       declare(`airway:${lobe.id}-lobar-bronchus`, [bronchi.get(`${lobe.id}-lobar-bronchus`)], inner);
@@ -191,7 +215,14 @@ export class LungAnatomyScene extends OrganAnatomyScene {
     }
 
 
-    return { object: lungs.object, structures, dispose: () => lungs.dispose() };
+    return {
+      object: lungs.object,
+      structures,
+      dispose: () => {
+        surfaces.dispose();
+        lungs.dispose();
+      },
+    };
   }
 
 }

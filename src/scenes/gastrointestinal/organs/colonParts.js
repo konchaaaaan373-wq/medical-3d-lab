@@ -110,6 +110,8 @@ export function buildColonParts({
   const built = tubeParts(curve, radiusAt, regions, {
     radial: 18,
     steps: 340,
+    // The two free ends close as domes rather than as cut discs.
+    roundEnds: 0.05,
     material: (part) => wallMaterial({ color: colors[part.id], opacity }),
   });
   for (const part of built.parts) object.add(part.mesh);

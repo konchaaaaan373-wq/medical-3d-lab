@@ -209,19 +209,28 @@ test('the pancreatic head sits inside the duodenal C', () => {
   const duodenum = buildDuodenum();
   const head = centre(pancreas.part('head').mesh);
 
-  let nearest = Infinity;
-  let furthest = 0;
+  // "Inside the C" is about *wrapping*, not about distance: the loop has to come
+  // round the head rather than lie beside it. Measured as the angle the loop
+  // covers about the head in the coronal plane — a distance threshold says the
+  // same thing only for one particular size of head, and stopped being true
+  // when the head's free end was rounded off.
   const probe = new THREE.Vector3();
-  for (let i = 0; i <= 60; i += 1) {
-    duodenum.curve.getPointAt(i / 60, probe);
-    const distance = probe.distanceTo(head);
-    nearest = Math.min(nearest, distance);
-    furthest = Math.max(furthest, distance);
+  const angles = [];
+  let nearest = Infinity;
+  for (let i = 0; i <= 90; i += 1) {
+    duodenum.curve.getPointAt(i / 90, probe);
+    nearest = Math.min(nearest, probe.distanceTo(head));
+    angles.push(Math.atan2(probe.y - head.y, probe.x - head.x));
   }
-  // Inside the C rather than beside it: some of the loop is close on one side,
-  // and the loop wraps far enough round that the far side is well away.
-  assert.ok(nearest < 0.75, `the duodenum comes within ${nearest.toFixed(2)} of the head`);
-  assert.ok(furthest > 1.2, 'and reaches round it');
+  angles.sort((a, b) => a - b);
+  // The widest gap between neighbouring directions, wrapped: what the loop does
+  // *not* cover. A C is open on one side, so a gap is expected — but a small one.
+  let gap = angles[0] + 2 * Math.PI - angles.at(-1);
+  for (let i = 1; i < angles.length; i += 1) gap = Math.max(gap, angles[i] - angles[i - 1]);
+  const covered = ((2 * Math.PI - gap) * 180) / Math.PI;
+
+  assert.ok(nearest < 0.9, `the duodenum comes within ${nearest.toFixed(2)} of the head`);
+  assert.ok(covered > 180, `the loop only comes ${covered.toFixed(0)}° round the head`);
   duodenum.dispose();
 });
 
@@ -234,7 +243,10 @@ test('the duct runs the whole length of the gland, inside it', () => {
   assert.ok(duct.min.x >= gland.min.x - 1e-6 && duct.max.x <= gland.max.x + 1e-6, 'the duct stays within the gland');
   const ductSpan = duct.max.x - duct.min.x;
   const glandSpan = gland.max.x - gland.min.x;
-  assert.ok(ductSpan > glandSpan * 0.9, 'and runs nearly all of it');
+  // Not quite all of it: the gland's two ends are domes, and a duct drawn to
+  // the very tip of the tail comes out of the organ. What has to be true is
+  // that it runs the gland rather than a stretch of it.
+  assert.ok(ductSpan > glandSpan * 0.85, `the duct covers ${((ductSpan / glandSpan) * 100).toFixed(0)}% of the gland`);
 });
 
 test('the islets are scattered along the gland rather than gathered in one part', () => {

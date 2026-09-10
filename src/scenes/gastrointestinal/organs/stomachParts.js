@@ -69,7 +69,11 @@ export function buildStomachParts({ colors = STOMACH_PART_COLORS, opacity = 0.94
   // Where the oesophagus arrives, in the stomach's own frame.
   const junction = esophagus.curve.getPointAt(1);
   const cardiaAt = nearestU(curve, junction);
-  const cardia = { from: Math.max(0.02, cardiaAt - 0.05), to: Math.min(0.5, cardiaAt + 0.06) };
+  // Short, because the cardia is short. Given a wide span it renders as a
+  // collar around the whole stomach — a band of a different colour cutting the
+  // organ in two — and what a reader should see is one stomach with a zone in
+  // it, not three tubes stacked.
+  const cardia = { from: Math.max(0.02, cardiaAt - 0.025), to: Math.min(0.4, cardiaAt + 0.03) };
 
   const regions = [
     // The dome above the opening. It stops where the cardia starts, which is
@@ -86,6 +90,8 @@ export function buildStomachParts({ colors = STOMACH_PART_COLORS, opacity = 0.94
   const built = tubeParts(curve, radiusAt, regions, {
     radial: 26,
     steps: 200,
+    // The two free ends close as domes rather than as cut discs.
+    roundEnds: 0.05,
     material: (part) => wallMaterial({ color: colors[part.id], opacity }),
   });
   for (const part of built.parts) object.add(part.mesh);

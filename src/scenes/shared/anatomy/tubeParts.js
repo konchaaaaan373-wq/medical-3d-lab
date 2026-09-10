@@ -23,12 +23,31 @@ import { TubeSurface, smoothCurve } from '../geometry/tube.js';
  * @param {THREE.Curve<THREE.Vector3>} curve the organ's path
  * @param {(u: number) => number} radiusAt its calibre, 0..1 along that path
  * @param {Array<{id: string, from: number, to: number}>} parts in path order
- * @param {{radial?: number, steps?: number, material: (part: object) => THREE.Material}} options
+ * @param {{radial?: number, steps?: number, material: (part: object) => THREE.Material,
+ *          roundEnds?: number}} options `roundEnds` is the fraction of the whole
+ *          run over which the two free ends are rounded off; 0 leaves them flat.
  * @returns {{parts: Array<object>, dispose: () => void}}
  */
-export function tubeParts(curve, radiusAt, parts, { radial = 24, steps = 180, material }) {
+export function tubeParts(curve, radiusAt, parts, { radial = 24, steps = 180, material, roundEnds = 0 }) {
   const built = [];
   const disposables = [];
+
+  /**
+   * Roll the calibre off to nothing at the organ's two free ends.
+   *
+   * A tube is capped with a flat disc, and a flat disc at the end of an organ
+   * reads as a cut pipe — the pancreatic head came out as a cylinder with a
+   * lid on it, and a caecum is a *blind pouch*, which is the one thing a flat
+   * cap cannot be. A quarter-circle falloff closes the end as a dome instead.
+   *
+   * Only the outermost ends: the boundary between two parts is a division of
+   * the organ and has to stay full width, or the parts read as beads.
+   */
+  const cap = (t) => (t >= 1 ? 1 : Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))));
+  const rounded = (u) => {
+    if (roundEnds <= 0) return radiusAt(u);
+    return radiusAt(u) * cap(u / roundEnds) * cap((1 - u) / roundEnds);
+  };
 
   for (const part of parts) {
     const span = part.to - part.from;
@@ -43,7 +62,7 @@ export function tubeParts(curve, radiusAt, parts, { radial = 24, steps = 180, ma
       points.push([point.x, point.y, point.z]);
     }
     const surface = new TubeSurface(smoothCurve(points), {
-      radius: (u) => radiusAt(part.from + span * u),
+      radius: (u) => rounded(part.from + span * u),
       steps: count,
       radial,
     });

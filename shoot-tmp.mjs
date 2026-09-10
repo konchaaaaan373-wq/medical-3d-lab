@@ -47,7 +47,10 @@ for (const viewport of VIEWPORTS) {
     await page.waitForTimeout(400);
 
     const slider = page.locator('input.slider[type="range"]').first();
-    for (const [name, value] of [['layer-0', '0'], ['layer-mid', '600'], ['layer-1', '1000']]) {
+    const layers = (process.env.LAYERS ?? '0:layer-0,600:layer-mid,1000:layer-1')
+      .split(',')
+      .map((pair) => pair.split(':').reverse());
+    for (const [name, value] of layers) {
       if (await slider.count()) {
         await slider.evaluate((el, v) => {
           el.value = v;
