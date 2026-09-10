@@ -75,6 +75,21 @@
 button の既定動作（Enter / Space）は生きています。panel の Escape は
 `document` の capture listener なので guard より先に走ります。
 
+### `src/main.js` — 読み込みヴェールの申し送り（Work 判断）
+
+**こちらでは直していません。** `src/main.js` は Work のファイルで、読み込みの見せ方も
+Work の担当だからです。
+
+`.loading`（「building model」）の除去が **`observe()` と `reportSceneStart()` の解決後**
+＋500ms になっています。そのため **telemetry の endpoint が遅い/届かない環境では、
+すでに読み込み済みのモデルの上にヴェールが残り続けます**。この環境（`/.netlify/functions/*`
+が無い static server）で実測しました：scene が `ready` を返した 1.5 秒後、
+375×667 で**サンプルした 50 点すべてが `DIV.loading`** でした。
+
+**`ready` は scene の答えであって shell の答えではありません。** 検証 driver 側は
+ヴェールの消失を待つようにしましたが、利用者から見た「いつ触れるようになるか」は
+Work の設計です。
+
 ### `src/components/ControlPanel.js`
 
 | 識別子 | 何をするか | Work が触るとき |

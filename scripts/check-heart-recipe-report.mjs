@@ -549,6 +549,26 @@ async function runViewport({ width, height, label }) {
    * been counted while landing on something else entirely. This asks the page
    * what is topmost and only returns a point that is the canvas.
    */
+  /**
+   * The same point, but waited for.
+   *
+   * Sampling once, immediately after the sheet is asked to close, catches the
+   * panel still being painted over the canvas by Work's transition — and then
+   * reports "no point where the canvas is topmost", which is true at that
+   * instant and false a moment later. Measured in a settled state, the canvas
+   * is the topmost element at 30 of 50 sampled points at 375x667, so this is
+   * the check racing the animation rather than a model a reader cannot drag.
+   */
+  const canvasPointWhenClear = async (timeout = 12000) => {
+    const deadline = Date.now() + timeout;
+    for (;;) {
+      const at = await canvasPoint();
+      if (at) return at;
+      if (Date.now() >= deadline) return null;
+      await page.waitForTimeout(200);
+    }
+  };
+
   const canvasPoint = () => page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     if (!canvas) return null;
@@ -675,7 +695,7 @@ async function runViewport({ width, height, label }) {
   //    one of these that does not go through App's own functions.
   await retiredBy('a drag on the canvas', async () => {
     await closePanelBody();
-    const at = await canvasPoint();
+    const at = await canvasPointWhenClear();
     if (!at) throw new Error('no point on this viewport where the canvas is the topmost element');
     await page.mouse.move(at.x, at.y);
     await page.mouse.down();
