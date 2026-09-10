@@ -611,6 +611,20 @@ export class CopdScene {
     for (const control of MODEL_CONTROLS) {
       this.model.setControl(control.id, DEFAULT_CONTROLS[control.id]);
     }
+    // The controls are not the whole state. Dynamic hyperinflation lives in the
+    // volume the lung is sitting at, and putting the sliders back leaves that
+    // volume where the reader drove it: pressed after a run at the ceiling,
+    // Reset used to hand back a lung still trapping three quarters of its
+    // breath, then several breaths of *negative* tidal volume while it emptied
+    // — a read-out a lung cannot produce and a reader has no way to interpret.
+    //
+    // `reset()` puts the volumes, the flows and the breath phase back and
+    // settles under the restored controls, which is what the button says it
+    // does. It is the model's own entry point, so the resting state Reset gives
+    // is the same one the scene opened at rather than a second definition of
+    // rest kept here.
+    this.model.reset();
+    this.applyModelToScene();
   }
 
   /**
