@@ -331,11 +331,29 @@ async function runViewport({ width, height, label }) {
       const banner = page.locator('.consent-banner');
       if (!(await banner.count())) return;
       const button = banner.locator('.consent-button').first();
-      if (await button.isVisible().catch(() => false)) {
-        await button.click({ noWaitAfter: true });
+      if (!(await button.isVisible().catch(() => false))) {
         await page.waitForTimeout(400);
-        if (!(await page.locator('.consent-banner').count())) return;
+        continue;
       }
+      // **Only if a reader could actually hit it.** `isVisible()` is true for a
+      // button that is CSS-visible and completely covered, and with the parts
+      // sheet open the card sits behind that modal — so this spent thirty
+      // seconds clicking at something underneath the panel. The card is
+      // answered at the start, when nothing is over it; anywhere else this is
+      // a defensive call and skipping is the right answer, not a failure.
+      const reachable = await button.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        if (!box.width || !box.height) return false;
+        const top = document.elementFromPoint(
+          Math.round(box.left + box.width / 2),
+          Math.round(box.top + box.height / 2)
+        );
+        return Boolean(top && (top === node || node.contains(top) || top.contains(node)));
+      }).catch(() => false);
+      if (!reachable) return;
+      await button.click({ noWaitAfter: true });
+      await page.waitForTimeout(400);
+      if (!(await page.locator('.consent-banner').count())) return;
       await page.waitForTimeout(600);
     }
   };
