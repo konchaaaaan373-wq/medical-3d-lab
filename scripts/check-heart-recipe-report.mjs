@@ -327,6 +327,46 @@ async function runViewport({ width, height, label }) {
    * something similar — or reaching past the DOM with a programmatic click — is
    * how a path gets reported as exercised without ever being pressed.
    */
+  /**
+   * Click a located element once it is genuinely the topmost thing at its own
+   * centre — the same question for every control, however it was located.
+   *
+   * `press` names a control by selector; this takes a locator, so the ones
+   * reached by position (`nth(1)`) or by being first go through the same gate.
+   * They used to call `.click()` directly, and those were the clicks that timed
+   * out when Work's sheet transition was still painting over them.
+   */
+  async function pressLocator(what, locator) {
+    if (!(await locator.isVisible())) throw new Error(`${what}: not visible`);
+    await locator.scrollIntoViewIfNeeded().catch(() => {});
+    const reachable = async () => locator.evaluate((node) => {
+      const box = node.getBoundingClientRect();
+      if (!box.width || !box.height) return false;
+      const top = document.elementFromPoint(
+        Math.round(box.left + box.width / 2),
+        Math.round(box.top + box.height / 2)
+      );
+      return Boolean(top && (top === node || node.contains(top) || top.contains(node)));
+    });
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      if (await reachable()) break;
+      await page.waitForTimeout(150);
+    }
+    if (!(await reachable())) {
+      const covering = await locator.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        const top = document.elementFromPoint(
+          Math.round(box.left + box.width / 2),
+          Math.round(box.top + box.height / 2)
+        );
+        return top ? `${top.tagName}.${top.className}`.slice(0, 70) : 'nothing — its centre is outside the viewport';
+      });
+      throw new Error(`${what}: stayed covered by ${covering}`);
+    }
+    await locator.click({ noWaitAfter: true });
+  }
+
   async function press(what, selector) {
     const found = page.locator(selector);
     const count = await found.count();
@@ -399,7 +439,7 @@ async function runViewport({ width, height, label }) {
     if ((await layout()) !== 'sheet') return 'docked';
     const open = page.locator('.anatomy-panel[data-sheet="closed"] .anatomy-panel-open');
     if (await open.count()) {
-      await open.first().click({ noWaitAfter: true });
+      await pressLocator('the Parts button', open.first());
       await page.waitForFunction(
         () => document.querySelector('.anatomy-panel')?.dataset.sheet === 'open',
         null,
@@ -417,7 +457,7 @@ async function runViewport({ width, height, label }) {
   async function closePanelBody() {
     if ((await layout()) !== 'sheet') return;
     const close = page.locator('.anatomy-panel-sheet-head button.anatomy-panel-close');
-    if (await close.count()) await close.first().click({ noWaitAfter: true });
+    if (await close.count()) await pressLocator('the sheet close button', close.first());
     else await page.keyboard.press('Escape');
     // Wait for the sheet to actually be shut rather than for a fixed number of
     // milliseconds. Work's presentation adapter transitions it, so a fixed
@@ -574,7 +614,7 @@ async function runViewport({ width, height, label }) {
     const views = page.locator('.inspection-view:visible');
     const count = await views.count();
     if (count < 2) throw new Error(`a viewpoint button: expected at least two visible, found ${count}`);
-    await views.nth(1).click({ noWaitAfter: true });
+    await pressLocator('a viewpoint button', views.nth(1));
   });
 
   // 5. A real drag on the canvas — the OrbitControls `start` path, and the only
@@ -609,7 +649,7 @@ async function runViewport({ width, height, label }) {
   const leaf = page.locator('.anatomy-tree-leaf:visible').first();
   const leafCount = await leaf.count();
   if (!leafCount) throw new Error('no selectable structure is reachable in the parts list');
-  await leaf.click({ noWaitAfter: true });
+  await pressLocator('a row in the parts list', leaf);
   await page.waitForTimeout(600);
   const selection = await page.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
   say('exploring: picking a row in the list selects a structure', Boolean(selection), selection ?? 'nothing selected');
@@ -632,14 +672,14 @@ async function runViewport({ width, height, label }) {
     const reachable = await scopeToggle.isVisible();
     say('information: and a reader can reach it at this size', reachable, reachable ? 'visible' : 'present but not visible');
     if (reachable) {
-      await scopeToggle.click({ noWaitAfter: true });
+      await pressLocator('the model scope toggle', scopeToggle);
       await page.waitForTimeout(300);
       const opened = await page.evaluate(() => {
         const body = document.querySelector('.model-scope .scope-body');
         return { open: body ? !body.hidden : false, text: (body?.textContent ?? '').replace(/\s+/g, ' ').trim().length };
       });
       say('information: it opens with content', opened.open && opened.text > 40, `${opened.text} characters`);
-      await scopeToggle.click({ noWaitAfter: true });
+      await pressLocator('the model scope toggle again', scopeToggle);
       await page.waitForTimeout(300);
       const closed = await page.evaluate(() => document.querySelector('.model-scope .scope-body')?.hidden === true);
       say('back: it closes again', closed, closed ? 'closed' : 'still open');
