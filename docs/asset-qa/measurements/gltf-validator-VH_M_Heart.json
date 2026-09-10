@@ -3,12 +3,12 @@
  "sha256": "b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70",
  "bytes": 4071500,
  "validatorVersion": "2.0.0-dev.3.10",
- "validatedAt": "2026-09-10T03:57:53.053Z",
+ "validatedAt": "2026-09-10T10:04:33.196Z",
  "report": {
   "uri": "dev-assets/heart/VH_M_Heart.glb",
   "mimeType": "model/gltf-binary",
   "validatorVersion": "2.0.0-dev.3.10",
-  "validatedAt": "2026-09-10T03:57:53.053Z",
+  "validatedAt": "2026-09-10T10:04:33.196Z",
   "issues": {
    "numErrors": 408,
    "numWarnings": 0,

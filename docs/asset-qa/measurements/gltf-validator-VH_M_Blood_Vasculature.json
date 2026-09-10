@@ -3,12 +3,12 @@
  "sha256": "a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d",
  "bytes": 7436204,
  "validatorVersion": "2.0.0-dev.3.10",
- "validatedAt": "2026-09-10T03:57:53.270Z",
+ "validatedAt": "2026-09-10T10:04:33.569Z",
  "report": {
   "uri": "dev-assets/heart/VH_M_Blood_Vasculature.glb",
   "mimeType": "model/gltf-binary",
   "validatorVersion": "2.0.0-dev.3.10",
-  "validatedAt": "2026-09-10T03:57:53.270Z",
+  "validatedAt": "2026-09-10T10:04:33.569Z",
   "issues": {
    "numErrors": 33,
    "numWarnings": 0,
