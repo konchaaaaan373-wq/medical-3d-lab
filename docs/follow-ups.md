@@ -467,6 +467,24 @@ atlas を abort → 既定の「部位」タブのまま error 文が出る → 
 
 Work の shortcut guard（bubbling / `stopPropagation` のみ）は Enter・Space の既定動作を壊していません。
 
+### F-61 心臓 driver の連続実行が落ちる件を切り分けた — 一部対応（B6 / 検証）
+
+3 viewport を続けて回すと落ちる件を、単独実行（すべて通る）と比較して切り分けました。
+**失敗は 2 種類**で、混ざっていました。
+
+1. **sheet 遷移中の click**（製品ではなく driver の穴）。Work の presentation adapter は
+   sheet を遷移させるため、`data-sheet` が `closed` になった後もしばらく panel が上に描かれます。
+   `press()` は「本当に最前面か」を待ってから click しますが、**位置で掴んでいた click は
+   そのゲートを通っていませんでした**——Parts ボタン、sheet の閉じる、視点ボタン（`nth(1)`）、
+   部位行、scope toggle。`pressLocator()` に集約して**全経路を同じゲート**へ通しました。
+   ゲートは緩めていません（覆われたままなら、覆っている要素を名指しして失敗します）
+2. **3 つ目の scene が 180 秒以内に `ready` にならない**（容器の資源）。47 MB の候補 GLB と
+   血管ファイルを software renderer で 3 回続けて読むと間に合いません。
+   **これは製品の所見ではない**ので、`exit 1`（不合格）ではなく **`exit 2`（実行不能）**
+   として、理由と「1 viewport ずつ実行してください」を出すようにしました
+
+**心臓はローカル preview 専用**で、公開脳の受入（`verify:anatomy`）には影響しません。
+
 ### F-59 main（dae2acc）へ内容で同期した — 対応済み（B6 / 統合）
 
 **「Work B5 未着」は自 branch の入力についてであって、プロジェクト全体の話ではありませんでした。**

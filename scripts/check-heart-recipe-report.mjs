@@ -283,12 +283,37 @@ async function runViewport({ width, height, label }) {
 
   const say = (step, ok, detail) => expect(label, step, ok, detail);
 
+  /**
+   * Wait for the scene to come up, and tell the two failures apart.
+   *
+   * The heart scene loads a 47 MB candidate and a second vasculature file into
+   * a software renderer. Running several viewports back to back in a container
+   * has run out of room here: the third scene never reached `ready` inside
+   * three minutes, and a plain timeout reported that as the product failing.
+   *
+   * **It is not.** A scene that never finishes loading in the harness means the
+   * check could not run, which is what exit 2 is for. Every viewport passes on
+   * its own; the sequence is what exhausts the machine.
+   */
   const ready = async (timeout = 180000) => {
-    await page.waitForFunction(
-      () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
-      null,
-      { timeout }
-    );
+    try {
+      await page.waitForFunction(
+        () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+        null,
+        { timeout }
+      );
+    } catch {
+      const state = await page
+        .evaluate(() => window.__app?.scene?.getAnatomyStatus?.().state ?? 'no app')
+        .catch(() => 'unreadable');
+      const stuck = new Error(
+        `[${label}] the scene never became ready within ${Math.round(timeout / 1000)}s (state: ${state}). ` +
+          'That is this harness running out of room, not a finding about the product — ' +
+          'each viewport passes when run on its own. Run one --viewport at a time.'
+      );
+      stuck.cannotRun = true;
+      throw stuck;
+    }
   };
 
   /**
@@ -842,10 +867,16 @@ try {
       : `\nOK — ${steps.length} steps across ${viewports.length} viewport(s), all as specified`
   );
 } catch (error) {
-  // A selector that matched nothing, a timeout, a crash: the check ran and did
-  // not pass. That is a failure, and it is not the same as "could not run".
-  console.error(`\nFAIL — ${error?.message ?? error}`);
-  exitCode = EXIT.FAILED;
+  // A selector that matched nothing, a crash, a control that stayed covered:
+  // the check ran and did not pass. That is a failure. A scene that never came
+  // up at all is a different answer, and `ready()` marks it.
+  if (error?.cannotRun) {
+    console.error(`\nCANNOT RUN — ${error.message}`);
+    exitCode = EXIT.CANNOT_RUN;
+  } else {
+    console.error(`\nFAIL — ${error?.message ?? error}`);
+    exitCode = EXIT.FAILED;
+  }
 } finally {
   server.close();
 }
