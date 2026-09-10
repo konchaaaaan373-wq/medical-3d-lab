@@ -244,17 +244,46 @@ the Japanese names are deliberate but unreviewed.
   is hidden, isolated away or taken out of the way by the fixed view goes on the
   same frame: the short wait that stops labels blinking along an occlusion edge
   is for occlusion and does not apply to a structure that is not being drawn.
-* **One fixed way of looking, and it is made of the same moves the reader has.**
-  "Inside the chambers" hides the four chamber surfaces and turns to the front,
-  leaving the four valves, the five papillary muscles and the septum. **It is
-  not a section**: it hides the four chamber parts whole, and nothing in it cuts
-  a surface or builds a wall. That is a statement about what the code does, not
-  a claim that the source has no wall to cut — which is exactly what is still
-  being checked.
-  Before it runs, it reports which structures it will hide and which it means to
-  show; after it runs, the panel reports how many of those are actually visible
-  from the viewpoint it turned to — measured, not promised — and "Back to how it
-  was" undoes it.
+* **Four fixed ways of looking, each made of the same moves the reader has.**
+  Nothing in them cuts, thins or builds anything; each is a set of hides and a
+  viewpoint, and a reader could reach any of them by hand.
+
+  | | What it does |
+  | --- | --- |
+  | **The whole heart** | Everything the scene draws, from the front. This is the display the scene opens with and the one "back to the whole heart" returns to. |
+  | **The great vessels** | Takes the coronary vessels off the surface so the trunks read clearly. The chambers stay: the vessels are shown where they meet the heart. |
+  | **The coronary vessels** | Takes the great vessels out of the front so the arteries and veins on the heart's own surface can be followed. |
+  | **Inside the chambers** | Hides the four chamber surfaces, leaving the four valves, the five papillary muscles and the septum. |
+
+  **Each is a destination, not a further step.** Choosing one starts from the
+  scene's own display rather than adding to whatever was hidden before, so
+  pressing "the coronary vessels" after "inside the chambers" gives the coronary
+  view and not the union of the two. A structure the reader had hidden by hand
+  is therefore shown again by a view that says it shows it — and "Back to how it
+  was" still returns them to their own hide.
+
+  **"Inside the chambers" is not a section.** It hides the four chamber parts
+  whole. That is a statement about what the code does, not a claim that the
+  source has no wall to cut — which is exactly what is still being checked.
+
+  Before one runs it reports which structures it will hide and which it means to
+  show; after it runs, the panel reports how many of those are actually
+  unobstructed from the viewpoint it turned to — measured, not promised.
+
+  **Every structure named by a view is one the source contains and this scene
+  draws.** No view invents a vessel or a wall to make itself tidier, and
+  `tests/heart-anatomy.test.js` holds all four to the part table.
+* **What the camera frames is the organ, and it is a composition.** The scene
+  reports the fourteen parts of the heart file as its subject, not everything it
+  draws: the vessels reach past the chest — the inferior vena cava runs to the
+  renal level — and framing all of it answers "show me the heart" with a heart a
+  fifth of the frame high. The organ is then given a fixed share of the part of
+  the frame no panel is covering, chosen from the pictures so that the roots of
+  the great vessels have room to read as roots before they leave. **None of this
+  is anatomy.** It changes no size, no position and no relation; it decides how
+  far away the camera stands, and a reader can leave it at any time by orbiting
+  or zooming. The share is measured at one window size and is expected to be
+  re-measured when the organ or the vessel subtree changes.
 * **"Visible" is never claimed loosely.** What the scene can measure is whether
   **one anchor point** on a structure is unobstructed along a ray from a stated
   eye position, and it keeps two of those apart: a prediction from a named

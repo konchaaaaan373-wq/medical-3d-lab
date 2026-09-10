@@ -204,6 +204,45 @@ export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {
   return { position, target };
 }
 
+/**
+ * How close and how far the camera may go, for a scene that can say what it is
+ * drawing.
+ *
+ * The shared orbit controls hold a floor of five world units, and
+ * `OrbitControls.update()` enforces it every frame — so the floor is not only a
+ * limit on dragging, it is the last word on where the camera ends up after the
+ * framing above has run. That number was set for a scene whose ventricle is
+ * about that size. An atlas is not: the heart's own parts stand about 1.5 units
+ * tall, so `fitPoseToSafeArea` asks for a camera around 2.5 units out and the
+ * floor pushed it back to five. The heart opened a fifth of the frame high and
+ * "take me to this artery" stopped short of the artery — both had worked out
+ * the right distance and both were overruled.
+ *
+ * So the limits are measured from the subject instead. The floor is a tenth of
+ * its radius: nearer than any framing this app produces — the whole subject
+ * wants roughly two radii, one named structure a fraction of one — and still
+ * short of the centre. The ceiling is far enough back to hold the subject
+ * whatever the aspect. Neither is ever tightened: a scene whose subject is
+ * larger than the shared limits keeps the shared limits.
+ *
+ * @param {{centre: any, corners: any[]}|null|undefined} bounds subject, world space
+ * @param {{minDistance: number, maxDistance: number}} limits the shared limits
+ * @returns {{minDistance: number, maxDistance: number}}
+ */
+export function orbitLimitsForSubject(bounds, { minDistance, maxDistance }) {
+  const unchanged = { minDistance, maxDistance };
+  if (!bounds?.centre || !bounds.corners?.length) return unchanged;
+  let radius = 0;
+  for (const corner of bounds.corners) {
+    radius = Math.max(radius, corner.distanceTo(bounds.centre));
+  }
+  if (!(radius > 0)) return unchanged;
+  return {
+    minDistance: Math.min(minDistance, radius * 0.1),
+    maxDistance: Math.max(maxDistance, radius * 12),
+  };
+}
+
 const clamp01 = (value) => (Number.isFinite(value) ? Math.min(0.9, Math.max(0, value)) : 0);
 
 /**

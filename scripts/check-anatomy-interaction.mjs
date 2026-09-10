@@ -142,6 +142,16 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 const problems = [];
 const notes = [];
+/**
+ * What the drive is doing right now.
+ *
+ * A step that cannot complete reports a Playwright timeout and nothing else,
+ * and one timeout looks like every other one — the run that motivated this said
+ * only "locator.click: Timeout 30000ms exceeded" about a drive with a dozen
+ * clicks in it. The cost of knowing which is one assignment per step.
+ */
+let step = 'opening the scene';
+const at = (what) => { step = what; };
 const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
 
 const browser = await chromium.launch({
@@ -350,8 +360,19 @@ try {
     }
 
     // And the other direction: selecting a row selects that structure.
-    const row = leaves.nth(Math.min(2, observed.treeRows - 1));
+    // A row a reader could actually click. `leaves` counts every structure in
+    // the tree, and most of them are inside collapsed branches at any moment —
+    // which branch is open depends on what was selected, so picking the third
+    // row by position picked a hidden one as soon as the camera framed the
+    // model differently and a different gyrus came under the pointer. The
+    // claim being checked is "selecting a row selects that structure", and that
+    // needs a row on screen, not the third row in the document.
+    const visibleLeaves = page.locator('.anatomy-tree-leaf:visible');
+    const visibleCount = await visibleLeaves.count();
+    if (!visibleCount) problems.push('every row in the part tree is inside a collapsed branch');
+    const row = visibleLeaves.nth(Math.min(2, Math.max(0, visibleCount - 1)));
     const rowName = (await row.locator('.lang-en').first().textContent()).trim();
+    at('selecting a structure from the part tree');
     await row.click();
     await page.waitForTimeout(350);
     const fromTree = await read();
@@ -367,6 +388,7 @@ try {
     // By name, not by position: the actions row grew and "the first one" is a
     // different button than it was.
     const isolate = page.locator('.anatomy-panel-action[data-action="isolate"]');
+    at('isolating one structure');
     await isolate.click();
     await page.waitForTimeout(500);
     if ((await isolate.getAttribute('aria-pressed')) !== 'true') problems.push('isolating did not take');
@@ -383,6 +405,7 @@ try {
     }
     await shot('brain-isolated');
 
+    at('showing everything again');
     await page.locator('.anatomy-panel-action[data-action="show-all"]').click();
     await page.waitForTimeout(600);
     if ((await isolate.getAttribute('aria-pressed')) !== 'false') {
@@ -461,6 +484,7 @@ try {
 
   // The display controls live in the panel's own Display tab.
   const tab = (ja) => page.locator('.anatomy-panel-tab', { hasText: ja });
+  at('opening the Display tab');
   await tab('表示').click();
   await page.waitForTimeout(400);
 
@@ -500,6 +524,7 @@ try {
     if (await otherSide.count()) {
       await page.locator('#anatomy-tab-display').click({ noWaitAfter: true }).catch(() => {});
       await page.waitForTimeout(300);
+    at('turning to the other side of the head');
       await otherSide.click({ noWaitAfter: true });
       await page.waitForTimeout(2500);
       const afterTurn = await labelTexts();
@@ -515,6 +540,17 @@ try {
       await page.waitForTimeout(200);
     }
   }
+
+  // The display controls are read next, and the step above may or may not have
+  // left the panel on the tab that holds them: whether it turns the head at all
+  // depends on whether the structure the pointer happened to land on carries a
+  // visible label from that angle. That is a fact about the model, not about
+  // the panel, and it must not decide whether this check can see the viewpoints
+  // — which is exactly what it did: one run reported "the scene offers no named
+  // viewpoints" about a scene with eight of them, because the panel was sitting
+  // on Parts. So the tab is opened here rather than assumed.
+  await tab('表示').click();
+  await page.waitForTimeout(300);
 
   // 4. Recolouring is a display choice: it must not change what is selected.
   observed.colorModes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map((t) =>
@@ -985,7 +1021,11 @@ try {
   // findings collected before it. Breaking the modal boundary made a later
   // click time out, and the timeout discarded the sentence that said why — so
   // the run reported a stack trace where it had already worked out the cause.
-  problems.push(`the drive stopped: ${error.message.split('\n')[0]}`);
+  problems.push(`the drive stopped while ${step}: ${error.message.split('\n')[0]}`);
+  // The first line says a click timed out; the rest says what it was waiting
+  // for — covered, out of view, still moving — and that is the part somebody
+  // reading this needs.
+  console.error(`\nwhile ${step}:\n${error.message}`);
 } finally {
   await browser.close();
   server.close();

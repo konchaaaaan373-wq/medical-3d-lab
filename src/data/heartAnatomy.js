@@ -676,11 +676,148 @@ export const HEART_ANATOMY_META = Object.freeze({
  * One to begin with, because one that is honest is worth more than four that
  * gesture. `restoreDisplay` puts back whatever a recipe changed.
  */
+/**
+ * Ways of looking at this heart, in the order a reader works through it.
+ *
+ * Whole → pick something → clear what is in front of it → look inside → back to
+ * whole. Each one is a **destination, not a further step**: `resets: true` puts
+ * the display back to how the scene opens before the recipe's own hides go on,
+ * so pressing one after another gives the one that was pressed rather than the
+ * union of both.
+ *
+ * **Every id below is a structure the source actually contains and this scene
+ * actually draws** — `tests/heart-anatomy.test.js` holds them to the part
+ * table. Nothing here invents a vessel or a wall to make a view look tidier,
+ * and no recipe shows a structure the file does not have.
+ */
 export const HEART_RECIPES = Object.freeze([
+  Object.freeze({
+    id: 'whole-heart',
+    label: 'The whole heart',
+    labelJa: '心臓全体',
+    summary:
+      'Everything the scene draws, from the front: the chambers and septum, the valves and papillary '
+      + 'muscles, the great vessels and the coronary vessels. The arch branches and the brachiocephalic '
+      + 'veins stay out of the way, as they do when the scene opens — they reach far beyond the chest.',
+    summaryJa:
+      'このシーンが描くものすべてを前から見ます——心腔と心室中隔、弁と乳頭筋、大血管、冠血管。'
+      + '大動脈弓の分枝と腕頭静脈は、シーンを開いたときと同じく出したままにしません（胸郭の外まで伸びるためです）。',
+    resets: true,
+    hide: Object.freeze([]),
+    shows: Object.freeze([
+      'VH_M_heart_left_ventricle',
+      'VH_M_heart_right_ventricle',
+      'VH_M_left_cardiac_atrium',
+      'VH_M_right_cardiac_atrium',
+      'VH_M_ascending_aorta',
+      'VH_M_pulmonary_trunk',
+    ]),
+    view: 'anterior',
+    note:
+      'This is where the scene starts, and where "back to the whole heart" returns to. It shows every '
+      + 'structure again; it does not move or rebuild anything.',
+    noteJa:
+      'シーンの初期表示であり、「心臓全体へ戻る」の戻り先です。非表示をすべて解除するだけで、'
+      + '形を動かしたり作り直したりはしません。',
+  }),
+  Object.freeze({
+    id: 'great-vessels',
+    label: 'The great vessels',
+    labelJa: '大血管を見る',
+    summary:
+      'The vessels entering and leaving the heart, with the coronary vessels on the surface taken out of '
+      + 'the way so the trunks read clearly: aorta and arch, pulmonary trunk and both pulmonary arteries, '
+      + 'both venae cavae and the four pulmonary veins.',
+    summaryJa:
+      '心臓に出入りする血管です。手前の冠血管を非表示にして、幹がはっきり見えるようにします——'
+      + '上行大動脈・大動脈弓、肺動脈幹と左右肺動脈、上下大静脈、4 本の肺静脈。',
+    resets: true,
+    hide: Object.freeze([
+      'VH_M_left_coronary_artery',
+      'VH_M_left_anterior_descending_artery',
+      'VH_M_diagonal_branch_of_anterior_descending_branch_of_left_coronary_artery',
+      'VH_M_diagonal_branch_of_left_anterior_descending_artery',
+      'VH_M_left_marginal_branch',
+      'VH_M_right_coronary_artery',
+      'VH_M_right_marginal_artery',
+      'VH_M_right_posterior_descending_artery',
+      'VH_M_coronary_sinus',
+      'VH_M_great_cardiac_vein',
+      'VH_M_middle_cardiac_vein',
+      'VH_M_small_cardiac_vein',
+      'VH_M_anterior_cardiac_vein',
+      'VH_M_oblique_vein_of_left_atrium',
+      'VH_M_posterior_vein_of_left_ventricle',
+    ]),
+    shows: Object.freeze([
+      'VH_M_ascending_aorta',
+      'VH_M_aortic_arch',
+      'VH_M_pulmonary_trunk',
+      'VH_M_pulmonary_artery_L',
+      'VH_M_pulmonary_artery_R',
+      'VH_M_superior_vena_cava',
+      'VH_M_inferior_vena_cava',
+      'VH_M_pulmonary_vein_L_sup',
+      'VH_M_pulmonary_vein_L_inf',
+      'VH_M_pulmonary_vein_R_sup',
+      'VH_M_pulmonary_vein_R_inf',
+    ]),
+    view: 'anterior',
+    note:
+      'The chambers stay: these vessels are being shown where they meet the heart, not on their own. '
+      + 'Whether a vessel surface is a lumen or a wall is still being checked.',
+    noteJa:
+      '心腔は残します。血管だけを取り出すのではなく、心臓と接する位置で見るためです。'
+      + '血管の面が内腔と壁のどちらを表すかは確認中です。',
+  }),
+  Object.freeze({
+    id: 'coronary-vessels',
+    label: 'The coronary vessels',
+    labelJa: '冠血管を見る',
+    summary:
+      'The arteries and veins on the heart\'s own surface, with the great vessels that stand in front of '
+      + 'them taken out of the way. Eight coronary arteries and seven cardiac veins, as the source names '
+      + 'them.',
+    summaryJa:
+      '心臓自身の表面を走る動脈と静脈です。手前に立つ大血管を非表示にします。'
+      + '出典の名づけで冠動脈 8 本、心臓静脈 7 本。',
+    resets: true,
+    hide: Object.freeze([
+      'VH_M_ascending_aorta',
+      'VH_M_aortic_arch',
+      'VH_M_pulmonary_trunk',
+      'VH_M_pulmonary_artery_L',
+      'VH_M_pulmonary_artery_R',
+      'VH_M_superior_vena_cava',
+      'VH_M_pulmonary_vein_L_sup',
+      'VH_M_pulmonary_vein_L_inf',
+      'VH_M_pulmonary_vein_R_sup',
+      'VH_M_pulmonary_vein_R_inf',
+    ]),
+    shows: Object.freeze([
+      'VH_M_left_coronary_artery',
+      'VH_M_left_anterior_descending_artery',
+      'VH_M_left_marginal_branch',
+      'VH_M_right_coronary_artery',
+      'VH_M_right_marginal_artery',
+      'VH_M_right_posterior_descending_artery',
+      'VH_M_coronary_sinus',
+      'VH_M_great_cardiac_vein',
+      'VH_M_middle_cardiac_vein',
+    ]),
+    view: 'anterior',
+    note:
+      'One of these carries a name the source itself disagrees on, and it is marked where it is shown '
+      + 'rather than resolved here. No mesh in the file is named "circumflex".',
+    noteJa:
+      'このうち 1 本は出典内で名称が一致しておらず、表示側に留保を出しています（こちらでは決めません）。'
+      + 'ファイルに「回旋枝」という名の mesh はありません。',
+  }),
   Object.freeze({
     id: 'inside-the-chambers',
     label: 'Inside the chambers',
     labelJa: '心腔の中を見る',
+    resets: true,
     summary:
       'Hides the four chamber surfaces and looks from the front. What is left is what the source puts inside them: '
       + 'the four valves, the five papillary muscles and the interventricular septum.',

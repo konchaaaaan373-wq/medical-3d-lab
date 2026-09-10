@@ -12,12 +12,34 @@ import {
   HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PALETTE,
+  HEART_PARTS,
   HEART_RECIPES,
   heartColor,
   heartMeshOwner,
   heartPartById,
   heartStructureInfo,
 } from '../../../../data/heartAnatomy.js';
+
+/**
+ * How much of the usable band the organ itself should take.
+ *
+ * Lower than the shared default, and the reason is the vessels. The subject is
+ * the organ — see `getSubjectBounds` — but the vessels are drawn, they leave it
+ * in every direction, and at the shared 0.78 they were cut off flush with the
+ * frame: the ascending aorta ran into the header and the venae cavae into the
+ * bottom edge, so the first thing on screen was an organ pressed against four
+ * edges rather than an organ in a chest.
+ *
+ * Measured from the pictures at 1280x720 with the panel docked: the organ still
+ * carries the frame, and the roots of the great vessels have room to read as
+ * roots before they leave. Re-measure it if the organ or the vessel subtree
+ * changes — it is a composition, not a constant of the anatomy, and nothing
+ * medical is derived from it.
+ */
+const HEART_SUBJECT_COVERAGE = 0.62;
+
+/** The organ itself: what "show me the heart" frames. Vessels arrive at it and run out of shot. */
+const HEART_PART_IDS = new Set(HEART_PARTS.map((part) => part.id));
 
 const BASE_URL = import.meta.env?.BASE_URL ?? './';
 /** Candidates, fetched by `npm run assets:dev` and served in dev and preview only. */
@@ -797,12 +819,28 @@ export class HeartAnatomyScene {
     const recipe = HEART_RECIPES.find((candidate) => candidate.id === id);
     if (!recipe) return { ok: false, reason: 'unknown-recipe' };
     const before = this._displaySnapshot();
-    const hid = [];
-    for (const structureId of recipe.hide) {
-      if (!this.meshesById.has(structureId) || this.manualHidden.has(structureId)) continue;
-      this.manualHidden.add(structureId);
-      hid.push(structureId);
+
+    /**
+     * A named way of looking is a destination, not a further step.
+     *
+     * `resets` puts the display back to how the scene opens — every hand-hidden
+     * structure shown again, the far-reaching vessels back out of the way —
+     * before this recipe's own hides go on. Without it the recipes compose:
+     * pressing "coronary vessels" after "inside the chambers" would leave the
+     * chambers hidden too, and the reader would be looking at the union of two
+     * requests rather than the one they made.
+     *
+     * "Back to the whole heart" is this step and nothing else.
+     */
+    const wasHidden = new Set(this.manualHidden);
+    if (recipe.resets) {
+      this.manualHidden = new Set(HEART_DEFAULT_HIDDEN.filter((known) => this.meshesById.has(known)));
     }
+
+    for (const structureId of recipe.hide) {
+      if (this.meshesById.has(structureId)) this.manualHidden.add(structureId);
+    }
+
     // Dropping an isolation **is** a change to the display, and forgetting that
     // is how "Back to how it was" became unavailable on a real path: everything
     // this recipe hides was already hidden by hand, the viewpoint is already the
@@ -810,12 +848,24 @@ export class HeartAnatomyScene {
     // exactly the state a reader would want back.
     const released = this.isolatedId != null;
     if (released) this.isolatedId = null;
-    if (hid.length) this.hiddenVersion += 1;
     const turned = recipe.view && recipe.view !== this.activeView && this.setAnatomyView(recipe.view);
+
+    /**
+     * What the reader ends up with, against what they had — not what this
+     * function did on the way there.
+     *
+     * With `resets` the work is "show everything, then hide these", so a naive
+     * count reports hiding four chambers every single time the interior view is
+     * pressed, and reports a change when the display in fact ended where it
+     * started. Both matter: `hid` is what the panel tells the reader it took
+     * away, and `changed` decides whether "Back to how it was" is rewritten.
+     * Pressing the same view twice must not overwrite the way back.
+     */
+    const hid = [...this.manualHidden].filter((structureId) => !wasHidden.has(structureId));
+    const shown = [...wasHidden].filter((structureId) => !this.manualHidden.has(structureId));
+    if (hid.length || shown.length) this.hiddenVersion += 1;
     this._applyVisibility(1 / 60, true);
-    const changed = hid.length > 0 || turned || released;
-    // Only when something changed, so running the same recipe twice does not
-    // overwrite the snapshot with the state the first run produced.
+    const changed = hid.length > 0 || shown.length > 0 || turned || released;
     if (changed) this.displayBeforeReveal = before;
     this._emitVisibility();
     this._emitIsolation();
@@ -964,8 +1014,17 @@ export class HeartAnatomyScene {
    * framed asks for it by name, and `getStructureBounds` answers that.
    */
   getSubjectBounds() {
-    const heart = this._drawnMeshes().filter((mesh) => !heartPartById(mesh.userData.structureId)?.meshNames);
-    return boundsOf(heart.length ? heart : this._drawnMeshes());
+    // **The fourteen parts of the heart file, and nothing else.**
+    //
+    // This used to ask whether a structure had `meshNames`, which marks only
+    // the five vessels the source splits in two — so thirty-two vessels
+    // counted as "the heart", and the camera framed a 51 cm subtree to show a
+    // 10 cm organ. The heart came out small with the inferior vena cava
+    // running off the bottom of the frame, which is exactly what this method
+    // exists to prevent.
+    const heart = this._drawnMeshes().filter((mesh) => HEART_PART_IDS.has(mesh.userData.structureId));
+    const bounds = boundsOf(heart.length ? heart : this._drawnMeshes());
+    return bounds && { ...bounds, coverage: HEART_SUBJECT_COVERAGE };
   }
 
   getStructureBounds(id) { return boundsOf(this._meshesFor(id)); }

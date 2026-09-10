@@ -8,7 +8,7 @@ import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect, fitPoseToSafeArea } from './framing.js';
+import { framePose, distanceScaleForAspect, fitPoseToSafeArea, orbitLimitsForSubject } from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -152,6 +152,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     return Math.min(0.45, Math.max(0, (height - rect.top) / height));
   };
 
+  // The shared orbit floor is the last word on where the camera ends up — it is
+  // re-applied on every `controls.update()`, after the framing has run — and it
+  // was set for a scene an atlas is not the size of. A scene that can say what
+  // it is drawing gets limits measured from that instead. See
+  // `orbitLimitsForSubject`.
+  Object.assign(viewer.controls, orbitLimitsForSubject(scene.getSubjectBounds?.(), viewer.controls));
+
   const shot = framePose(
     SceneClass.cameraPose,
     viewer.camera.aspect,
@@ -252,6 +259,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       aspect: viewer.camera.aspect,
       fovDegrees: viewer.camera.fov,
       insets,
+      // A scene may also say how much of that band its subject should take. The
+      // brain is the whole of what is drawn and fills it; the heart is an organ
+      // with vessels leaving it in every direction, and filling the band cut
+      // every one of them off flush with an edge. It is a composition, so the
+      // scene that knows what it is drawing owns it.
+      ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
     }) : framed;
   };
 
@@ -1321,6 +1334,78 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   viewer.controls.target.copy(shot.target);
   viewer.controls.update();
   view.active = false;
+
+  /**
+   * Re-frame when the bands move, not only when the window does.
+   *
+   * The camera is fitted to the part of the frame no panel is covering, and
+   * those panels are measured from the elements. The elements are not finished
+   * when the app is: the shell marks `#ui` after `createApp` returns, and the
+   * stylesheet keyed on that mark releases the lower console from a full-width
+   * card to a small one in the corner. The band the console had been taking —
+   * a fifth of the frame height, measured — disappears, and nothing told the
+   * camera. It stayed framed for a band that no longer existed: the heart
+   * opened at 4.37 world units where the settled layout asks for 3.44, and it
+   * stayed there until the reader pressed a fixed view, which re-framed and
+   * jumped. A reader who never pressed one never saw the framing the scene
+   * meant.
+   *
+   * So the bands are watched rather than assumed, and — this is the part that
+   * makes it safe — a re-frame happens only when they have actually changed.
+   * The panels' contents change constantly, and re-framing on any of that would
+   * pull the camera back from wherever the reader had orbited to. Same call the
+   * resize listener makes, for the same reason.
+   */
+  if (typeof ResizeObserver === 'function' && typeof MutationObserver === 'function') {
+    const measure = () => JSON.stringify(safeAreaInsets());
+    let applied = measure();
+    let pending = false;
+    const bandsMayHaveMoved = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        const now = measure();
+        if (now === applied) return;
+        applied = now;
+        // Whether the reader has taken the camera since the last framing. If
+        // they have not, the camera is exactly where the framing left it and
+        // should follow the framing to the new band. If they have, it is theirs:
+        // the new framing still applies to the next viewpoint they choose, but
+        // nothing pulls them out of the view they are in.
+        const untouched =
+          viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
+          viewer.controls.target.distanceToSquared(shot.target) < 1e-6;
+        setShot(shotSource);
+        if (!untouched) return;
+        viewer.camera.position.copy(shot.position);
+        viewer.controls.target.copy(shot.target);
+        viewer.controls.update();
+      });
+    };
+
+    const sizes = new ResizeObserver(bandsMayHaveMoved);
+    for (const element of [railElement, consoleElement]) {
+      if (element) sizes.observe(element);
+    }
+    // The console does not resize itself: it is restyled by an attribute the
+    // shell writes on `#ui`, which no `ResizeObserver` sees as a cause.
+    const marks = new MutationObserver(bandsMayHaveMoved);
+    marks.observe(ui, { attributes: true, childList: true });
+
+    const stopWatching = () => {
+      sizes.disconnect();
+      marks.disconnect();
+    };
+    // Only until the reader arrives. This exists to correct a framing computed
+    // before the shell had finished marking itself; once someone has taken the
+    // camera, the window's own resize listener is what the framing follows, as
+    // it always was. Watching past that point would be one more thing moving
+    // the camera while a reader is using it.
+    viewer.controls.addEventListener('start', stopWatching, { once: true });
+    window.addEventListener('pagehide', stopWatching, { once: true });
+  }
+
   // The canvases have no size until they are in the document.
   pvPanel?.resize();
   wavePanel?.resize();

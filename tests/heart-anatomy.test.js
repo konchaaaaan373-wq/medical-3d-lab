@@ -18,6 +18,7 @@ import {
   heartStructureInfo,
 } from '../src/data/heartAnatomy.js';
 import { ANATOMY_CONTRACT_METHODS, treeLeaves } from '../src/app/anatomyContract.js';
+import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js';
 import { devAssetById } from '../src/catalog/devAssets.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { betaPublicationProblems } from '../src/catalog/release.js';
@@ -768,8 +769,10 @@ test('heart: every vessel is named, grouped and described in both languages', ()
 
 test('heart: the fixed view hides and turns, and never cuts', () => {
   const built = pair();
-  const [recipe] = built.getDisplayRecipes();
-  assert.equal(recipe.id, 'inside-the-chambers');
+  // By id, not by position: this scene offers several ways of looking now, and
+  // which one is first is a presentation order rather than a fact to assert.
+  const recipe = built.getDisplayRecipes().find((entry) => entry.id === 'inside-the-chambers');
+  assert.ok(recipe, 'the scene still offers the interior view');
   assert.ok(recipe.label?.trim() && recipe.labelJa?.trim());
   assert.ok(recipe.summary?.trim() && recipe.summaryJa?.trim());
   assert.match(recipe.note, /not a section/);
@@ -1126,4 +1129,209 @@ test('the junction figures are described as the sampled-vertex distance they are
   const script = readFileSync(new URL('../scripts/measure-candidate-surfaces.mjs', import.meta.url), 'utf8');
   assert.match(script, /nearestSampledVertexMm/);
   assert.match(script, /NOT a surface distance/);
+});
+
+test('heart: the ways of looking are destinations, and every one of them names real structures', () => {
+  // The reader's path is: the whole heart, pick something, clear what is in
+  // front of it, look inside, come back. Each recipe is a place to arrive at,
+  // not a step that composes with the last one — otherwise "coronary vessels"
+  // after "inside the chambers" would leave the chambers hidden and show the
+  // union of two requests instead of the one that was made.
+  const known = new Set(HEART_STRUCTURES.map((entry) => entry.id));
+  assert.deepEqual(
+    HEART_RECIPES.map((recipe) => recipe.id),
+    ['whole-heart', 'great-vessels', 'coronary-vessels', 'inside-the-chambers']
+  );
+
+  for (const recipe of HEART_RECIPES) {
+    assert.equal(recipe.resets, true, `${recipe.id}: starts from the scene's own display`);
+    assert.ok(recipe.label && recipe.labelJa, `${recipe.id}: named in both languages`);
+    assert.ok(recipe.summary && recipe.summaryJa, `${recipe.id}: described in both languages`);
+    assert.ok(recipe.view, `${recipe.id}: arrives somewhere`);
+
+    // **Nothing is invented to make a view tidy.** Every structure a recipe
+    // hides or claims to show has to be one the source contains and this scene
+    // draws, or the view is a promise about geometry that is not there.
+    for (const id of [...recipe.hide, ...recipe.shows]) {
+      assert.ok(known.has(id), `${recipe.id}: "${id}" is not a structure in this model`);
+    }
+    // And a recipe must not claim to show something it just hid.
+    for (const id of recipe.shows) {
+      assert.ok(!recipe.hide.includes(id), `${recipe.id}: "${id}" is both hidden and shown`);
+    }
+  }
+
+  // The two "clear what is in front" views are complements: what one hides to
+  // reveal the surface vessels is what the other shows, and the other way
+  // round. If that stops being true, one of them is hiding something for a
+  // reason that is no longer the stated one.
+  const great = HEART_RECIPES.find((r) => r.id === 'great-vessels');
+  const coronary = HEART_RECIPES.find((r) => r.id === 'coronary-vessels');
+  for (const id of coronary.shows) {
+    assert.ok(great.hide.includes(id), `great-vessels should clear "${id}" away`);
+  }
+  for (const id of great.shows.filter((v) => coronary.hide.includes(v))) {
+    assert.ok(!coronary.shows.includes(id), `coronary-vessels hides "${id}", so it cannot show it`);
+  }
+
+  // The whole-heart view hides nothing: it is the way back.
+  const whole = HEART_RECIPES.find((r) => r.id === 'whole-heart');
+  assert.deepEqual([...whole.hide], [], 'the way back hides nothing');
+  assert.ok(whole.shows.length > 0, 'and it still says what a reader should then see');
+});
+
+test('heart: the reader can walk the whole path and come back to where they started', () => {
+  // Whole → pick → clear what is in front → look inside → back to whole.
+  // This is the path the scene is for, run end to end against the model.
+  const built = pair();
+  const opening = built.getAnatomyVisibility().hidden.slice().sort();
+
+  // 1. The whole heart. Everything the scene draws, from the front.
+  const whole = built.applyDisplayRecipe('whole-heart');
+  assert.equal(whole.ok, true);
+  assert.deepEqual(built.getAnatomyVisibility().hidden.slice().sort(), opening,
+    'the whole view is the display the scene opens with');
+
+  // 2. Pick a major structure. The selection is the reader's, and every later
+  //    step has to leave it alone.
+  built.selectStructure('VH_M_left_coronary_artery');
+  assert.equal(built.getAnatomySelection()?.id, 'VH_M_left_coronary_artery');
+
+  // 3. Clear what is in front of it. The great vessels stand over the coronary
+  //    arteries from the front, so this view takes them away.
+  const coronary = built.applyDisplayRecipe('coronary-vessels');
+  assert.equal(coronary.ok, true);
+  const afterCoronary = new Set(built.getAnatomyVisibility().hidden);
+  assert.ok(afterCoronary.has('VH_M_ascending_aorta'), 'the aorta is out of the way');
+  assert.ok(!afterCoronary.has('VH_M_left_coronary_artery'), 'and what was picked is still drawn');
+  assert.equal(built.getAnatomySelection()?.id, 'VH_M_left_coronary_artery',
+    'a way of looking does not change what is selected');
+
+  // 4. Look inside. This is a destination, not a step on top of the last one:
+  //    the great vessels the previous view hid come back, and only the chambers
+  //    go away.
+  const inside = built.applyDisplayRecipe('inside-the-chambers');
+  assert.equal(inside.ok, true);
+  const afterInside = new Set(built.getAnatomyVisibility().hidden);
+  assert.ok(afterInside.has('VH_M_heart_left_ventricle'), 'the chambers are open');
+  assert.ok(!afterInside.has('VH_M_ascending_aorta'),
+    'and the previous view is not still in force underneath this one');
+
+  // 5. Back to the whole heart, which is exactly where step 1 was.
+  built.applyDisplayRecipe('whole-heart');
+  assert.deepEqual(built.getAnatomyVisibility().hidden.slice().sort(), opening,
+    'the way back returns to the opening display');
+  assert.equal(built.getAnatomySelection()?.id, 'VH_M_left_coronary_artery',
+    'and still without disturbing the selection');
+
+  built.dispose();
+});
+
+test('heart: a hand-hidden structure is cleared by choosing a way of looking', () => {
+  // The reader hides something themselves, then asks for a named view. The view
+  // is a destination, so it decides what is on screen — otherwise the hide
+  // silently outlives the request and the view is wrong in a way nothing says.
+  const built = pair();
+  built.setStructureHidden('VH_M_mitral_valve', true);
+  assert.ok(built.getAnatomyVisibility().hidden.includes('VH_M_mitral_valve'));
+
+  const result = built.applyDisplayRecipe('inside-the-chambers');
+  assert.ok(!built.getAnatomyVisibility().hidden.includes('VH_M_mitral_valve'),
+    'the interior view shows the valves, including one the reader had hidden');
+  assert.ok(result.shown?.includes?.('VH_M_mitral_valve') ?? true);
+
+  // And the way back still goes back to before the view was chosen.
+  assert.equal(built.canRestoreDisplay(), true);
+  built.restoreDisplay();
+  assert.ok(built.getAnatomyVisibility().hidden.includes('VH_M_mitral_valve'),
+    'restoring returns the reader to their own hide');
+  built.dispose();
+});
+
+test('heart: the camera frames the organ, not the vessels running out of shot', () => {
+  // `getSubjectBounds` decides what "show me the heart" means. It used to test
+  // for `meshNames`, which marks only the five vessels the source splits in two
+  // — so the other thirty-two counted as heart, and the frame was fitted to a
+  // 51 cm vascular subtree to show a 10 cm organ.
+  const built = pair();
+  const span = (bounds) => {
+    const ys = bounds.corners.map((corner) => corner.y);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  const subject = built.getSubjectBounds();
+  assert.ok(subject?.corners?.length, 'the scene says what it is framing');
+
+  // Everything drawn, including the vessels that leave the chest.
+  const everything = new THREE.Box3();
+  for (const mesh of built.selectables.filter((mesh) => mesh.visible)) everything.expandByObject(mesh);
+  const drawnSpan = everything.max.y - everything.min.y;
+
+  assert.ok(
+    span(subject) < drawnSpan,
+    `the framed subject (${span(subject).toFixed(3)}) is smaller than everything drawn (${drawnSpan.toFixed(3)})`
+  );
+
+  // And it really is the organ: each chamber sits inside the framed box.
+  const ys = subject.corners.map((corner) => corner.y);
+  const [low, high] = [Math.min(...ys), Math.max(...ys)];
+  for (const id of ['VH_M_heart_left_ventricle', 'VH_M_right_cardiac_atrium']) {
+    const box = built.getStructureBounds(id);
+    const partYs = box.corners.map((corner) => corner.y);
+    assert.ok(
+      Math.min(...partYs) >= low - 1e-6 && Math.max(...partYs) <= high + 1e-6,
+      `${id} is inside what the camera frames`
+    );
+  }
+  built.dispose();
+});
+
+test('heart: the shared orbit floor stood between the framing and the camera', () => {
+  // The framing works out where the camera should be; `OrbitControls.update()`
+  // decides whether it may be there, every frame, after the fact. The shared
+  // floor is five world units, set for a scene whose ventricle is about that
+  // size — and this heart is not. Both numbers below are measured from the
+  // built scene, so if the model is rebuilt at a different scale this test says
+  // so rather than going quietly stale.
+  const built = pair();
+  const bounds = built.getSubjectBounds();
+  const aspect = 1280 / 720;
+  const fovDegrees = 42;
+  // A wide window with the panel docked right and the console along the bottom.
+  const insets = { right: 0.27, top: 0.09, bottom: 0.29 };
+  const anterior = {
+    position: new THREE.Vector3(0, 0.1, 5.4),
+    target: new THREE.Vector3(0, 0, 0),
+  };
+
+  const fitted = fitPoseToSafeArea(anterior, { bounds, aspect, fovDegrees, insets });
+  const wanted = fitted.position.distanceTo(fitted.target);
+  assert.ok(
+    wanted < 5,
+    `the fit asks for a camera nearer than the shared floor (${wanted.toFixed(2)} < 5)`
+  );
+
+  // Which is the whole defect: with the shared limits the camera sits at five
+  // whatever the framing said, and the organ opens a fraction of the frame high.
+  const shared = { minDistance: 5, maxDistance: 55 };
+  assert.equal(Math.max(shared.minDistance, wanted), 5, 'the shared floor overrules it');
+
+  // Measured from the subject instead, the floor is out of the way — of the
+  // whole organ, and of one named structure, which is nearer still.
+  const limits = orbitLimitsForSubject(bounds, shared);
+  assert.ok(limits.minDistance < wanted, `${limits.minDistance.toFixed(2)} < ${wanted.toFixed(2)}`);
+
+  const artery = built.getStructureBounds('VH_M_left_coronary_artery');
+  const closeUp = fitPoseToSafeArea(anterior, { bounds: artery, aspect, fovDegrees, insets, coverage: 0.5 });
+  const near = closeUp.position.distanceTo(closeUp.target);
+  assert.ok(
+    limits.minDistance < near,
+    `and out of the way of one structure too (${limits.minDistance.toFixed(2)} < ${near.toFixed(2)})`
+  );
+
+  // It is a floor, not an invitation: the camera can never reach the centre.
+  assert.ok(limits.minDistance > 0, 'the floor is still a floor');
+  // Nothing is ever tightened — a scene with a larger subject keeps the shared
+  // limits it had.
+  assert.ok(limits.minDistance <= shared.minDistance && limits.maxDistance >= shared.maxDistance);
+  built.dispose();
 });

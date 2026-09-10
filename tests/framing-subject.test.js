@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { PerspectiveCamera, Vector3 } from 'three';
-import { fitPoseToSafeArea, framePose, verticalOffsetForView } from '../src/app/framing.js';
+import { fitPoseToSafeArea, framePose, orbitLimitsForSubject, verticalOffsetForView } from '../src/app/framing.js';
 
 /**
  * The scene's authored framing, and the extremes of what it has to hold.
@@ -153,4 +153,45 @@ test('framing: a scene that cannot say what it is drawing is not re-framed', () 
     bounds: null, aspect: BRAIN_ASPECT, fovDegrees: BRAIN_FOV, insets: { right: 0.27 },
   });
   assert.ok(fitted.position.equals(BRAIN_LATERAL.position));
+});
+
+// --- the limits the camera runs between ----------------------------------
+
+/** What `src/controls/createControls.js` hands every scene. */
+const SHARED_LIMITS = { minDistance: 5, maxDistance: 55 };
+
+test('limits: a scene that cannot say what it is drawing keeps the shared limits', () => {
+  assert.deepEqual(orbitLimitsForSubject(null, SHARED_LIMITS), SHARED_LIMITS);
+  assert.deepEqual(orbitLimitsForSubject({ centre: new Vector3(), corners: [] }, SHARED_LIMITS), SHARED_LIMITS);
+  // A subject with no size is not a subject.
+  const flat = { centre: new Vector3(), corners: [new Vector3()] };
+  assert.deepEqual(orbitLimitsForSubject(flat, SHARED_LIMITS), SHARED_LIMITS);
+});
+
+test('limits: the limits only ever widen, never tighten', () => {
+  // A subject larger than the shared limits were written for keeps them: this
+  // is here to stop a scene from being fenced in by its own size.
+  const huge = (() => {
+    const corners = [];
+    for (const x of [-40, 40]) for (const y of [-40, 40]) for (const z of [-40, 40]) corners.push(new Vector3(x, y, z));
+    return { centre: new Vector3(), corners };
+  })();
+  const limits = orbitLimitsForSubject(huge, SHARED_LIMITS);
+  assert.equal(limits.minDistance, SHARED_LIMITS.minDistance, 'the floor is not raised');
+  assert.ok(limits.maxDistance > SHARED_LIMITS.maxDistance, 'the ceiling follows the subject up');
+});
+
+test('limits: the floor clears the framing the same subject asks for', () => {
+  // The two have to agree, or the framing is worked out and then overruled —
+  // which is exactly what a fixed floor did to the heart.
+  const insets = { right: 0.27, top: 0.09, bottom: 0.29 };
+  const fitted = fitPoseToSafeArea(BRAIN_LATERAL, {
+    bounds: BRAIN_SUBJECT, aspect: BRAIN_ASPECT, fovDegrees: BRAIN_FOV, insets,
+  });
+  const wanted = fitted.position.distanceTo(fitted.target);
+  const limits = orbitLimitsForSubject(BRAIN_SUBJECT, SHARED_LIMITS);
+  assert.ok(limits.minDistance < wanted, `${limits.minDistance.toFixed(2)} < ${wanted.toFixed(2)}`);
+  // And it clears the closest the app itself ever goes: the zoom-in end of the
+  // range the buttons offer, applied to that framing.
+  assert.ok(limits.minDistance < wanted * 0.5, 'the zoom buttons can reach their own end of the range');
 });

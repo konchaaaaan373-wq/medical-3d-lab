@@ -40,6 +40,7 @@
  */
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -99,10 +100,20 @@ const MIME = {
   '.md': 'text/markdown; charset=utf-8',
 };
 const root = resolve(distDir);
+const repoRoot = resolve('.');
+/**
+ * The candidate GLBs are not copied into a build and must never be, so the
+ * scene asks for them at `/dev-assets/` and the dev server answers from the
+ * repository root. Without the same rule here this could not shoot the heart at
+ * all: every frame came back as "Atlas could not be loaded", which is a picture
+ * of a 404 rather than of the model. Same addition, same reason, as
+ * `check-heart-recipe-report.mjs`.
+ */
 function fileFor(urlPath) {
   const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
+  const base = decoded.startsWith(`/${DEV_ASSET_ROOT}/`) ? repoRoot : root;
+  const candidate = resolve(base, `.${normalize(decoded)}`);
+  if (candidate !== base && !candidate.startsWith(base + sep)) return null;
   if (existsSync(candidate) && statSync(candidate).isDirectory()) {
     const index = join(candidate, 'index.html');
     return existsSync(index) ? index : null;
