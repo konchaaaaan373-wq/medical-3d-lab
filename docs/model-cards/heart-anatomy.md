@@ -52,9 +52,12 @@ flow, no ejection fraction, no conduction. The heart-failure and ischaemia
 scenes are the pathophysiology layer and are separate scenes with separate
 models.
 
-The scope panel now says so on screen and offers the way there: under **What is
+The scope panel says so on screen and offers the way there: under **What is
 shown elsewhere** it links to `heart-failure` and `myocardial-ischemia`, each
-with one line on what that scene shows. **The sentence beside those links is
+with one line on what that scene shows, and both of those scenes link back here.
+The list is declared once on the scene's own metadata (`meta.related`) and
+filtered by the release gate before any surface sees it, so the panel and any
+shallower entry point in the shell cannot disagree. **The sentence beside those links is
 part of the claim**, not decoration — neither scene is this heart at a later
 date. Each is a separate schematic model with its own geometry, built to show a
 mechanism rather than a specimen; nothing is deformed, cut or joined to make one

@@ -8,83 +8,20 @@ import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFail
 import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
- * The clinician's explanation and the patient's explanation have to be about
- * the same solved state.
+ * Heart failure's own guide, and the panel it is read in.
  *
- * Two sets of words over one model is the whole idea; two sets of words over
- * two different states is a way of quietly saying something the model never
- * showed. So each patient step names the scene stage it stands beside, and the
- * position it moves the model to is read from that stage rather than typed in
- * again. Re-tune the trajectory and these move with it or this fails.
+ * The promises every guide makes — a stage each step stands beside, the
+ * position read from that stage, three beats, nothing said that the model
+ * cannot show one person — live in `src/data/guideContract.js` and are checked
+ * for both diseases in `tests/guide-contract.test.js`. What stays here is what
+ * is true of *this* guide and of the panel: that its words do not contradict
+ * the clinician's, that the chain reaches the lungs by pointing at something
+ * this scene draws, and that opening the explanation is not a change to the
+ * model.
  */
 
 const guide = PATIENT_GUIDES['heart-failure'];
 const stageById = new Map(STAGES.map((stage) => [stage.id, stage]));
-
-test('patient guide: every heart-failure step stands beside a stage the scene has', () => {
-  assert.ok(guide?.steps?.length, 'the guide is there');
-  for (const step of guide.steps) {
-    assert.ok(step.stage, `"${step.title}" names the stage it pairs with`);
-    assert.ok(stageById.has(step.stage), `"${step.stage}" is a stage this scene has`);
-  }
-  // Every stage of the model is spoken for. A stage with no patient words is a
-  // state the person in the room is walked through and never told about.
-  const paired = new Set(guide.steps.map((step) => step.stage));
-  for (const stage of STAGES) {
-    assert.ok(paired.has(stage.id), `the patient guide covers "${stage.id}"`);
-  }
-});
-
-test('patient guide: it moves the model to where that stage actually is', () => {
-  for (const step of guide.steps) {
-    const stage = stageById.get(step.stage);
-    assert.equal(
-      step.progress,
-      stage.at,
-      `"${step.title}" moves to ${stage.at} — where "${stage.id}" is — rather than to ${step.progress}`
-    );
-  }
-  // Forward, never back: the reader is walked along the physiology. Steps may
-  // share a position — the chain turns from the heart to the lungs without the
-  // model moving — so this is non-decreasing rather than strictly increasing.
-  const positions = guide.steps.map((step) => step.progress);
-  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
-});
-
-test('patient guide: three short beats per step, in this order', () => {
-  // What changes, what follows, where to look. The third is the one a person
-  // standing beside a monitor actually needs and the one that was missing.
-  for (const step of guide.steps) {
-    for (const key of ['title', 'titleJa', 'body', 'bodyJa', 'look', 'lookJa']) {
-      assert.ok(step[key]?.trim().length, `"${step.stage}" carries ${key}`);
-    }
-    // A limit, not a style note: this copy is read aloud in a room, and the
-    // longest of these fits on a phone without scrolling.
-    assert.ok(step.body.length <= 190, `"${step.stage}" body is short (${step.body.length})`);
-    assert.ok(step.bodyJa.length <= 110, `"${step.stage}" bodyJa is short (${step.bodyJa.length})`);
-    assert.ok(step.look.length <= 150, `"${step.stage}" look is short (${step.look.length})`);
-    assert.ok(step.lookJa.length <= 90, `"${step.stage}" lookJa is short (${step.lookJa.length})`);
-  }
-});
-
-test('patient guide: it says nothing the model cannot show one person', () => {
-  // No dose, no drug, no diagnosis, no prognosis, no number pretending to be a
-  // measurement of the person in the room.
-  const forbidden = [
-    /\b\d+\s*(mg|ml|mmHg|%)/i,
-    /\bdiagnos/i, /\bprognos/i, /\btreat(ment|ed)?\b/i, /\bdrug\b/i, /\bmedicat/i,
-    /\byour\b/i, /\byou (have|will|are likely)/i,
-    /診断/, /予後/, /治療/, /薬/, /投与/, /余命/,
-    /あなたの(心臓|病気|状態)/,
-  ];
-  for (const step of guide.steps) {
-    for (const text of [step.title, step.titleJa, step.body, step.bodyJa, step.look, step.lookJa]) {
-      for (const pattern of forbidden) {
-        assert.doesNotMatch(text, pattern, `"${step.stage}": ${pattern} in "${text}"`);
-      }
-    }
-  }
-});
 
 test('patient guide: the patient words do not contradict the clinician words', () => {
   // Not a prose comparison — a check on the one thing that is easy to get
@@ -226,23 +163,6 @@ test('patient guide: building the panel does not move the model', () => {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
-  }
-});
-
-test('patient guide: a step the model does not produce says so', () => {
-  // The chain ends somewhere the model does not go. It solves pressures and
-  // volumes; it does not solve breathlessness. A reader cannot tell those apart
-  // by looking, so the step that is a general explanation is marked, and every
-  // other step must not be.
-  const educational = guide.steps.filter((step) => step.educationalOnly);
-  assert.equal(educational.length, 1, 'exactly one step is a general explanation');
-  assert.match(educational[0].titleJa, /息|呼吸/);
-  // It points at nothing new, and says that rather than inventing something.
-  assert.match(educational[0].lookJa, /新しく描かれるものはありません/);
-
-  // And it is still held to the same limits as the rest.
-  for (const text of [educational[0].body, educational[0].bodyJa]) {
-    assert.doesNotMatch(text, /診断|予後|治療|prognos|diagnos/i);
   }
 });
 

@@ -20,28 +20,29 @@ import { el } from '../utils/dom.js';
  *   excludes: [{ text, textJa }],   // what it does not represent at all
  *   cautions: [{ text, textJa }],   // where it will mislead if pushed
  *   sources:  [{ text, textJa, kind }],
- *   next:     [{ slug, label, labelJa, why, whyJa }],  // where the rest is shown
- *   nextNote, nextNoteJa,                              // and what that is not
  *   evidence: 'docs/model-evidence/<id>.md' }
  * ```
  *
- * `next` is the other half of "what it does not represent". Saying an anatomy
- * atlas carries no physiology is true and unhelpful on its own; the reader's
- * next question is where the physiology *is*, and the answer is another scene
- * in this app. It is a list of routes rather than prose so the panel can drop a
- * scene the release has not opened instead of offering a dead link — which is
- * what `isOpen` is for.
+ * ### Where the rest is shown
  *
- * `nextNote` is the sentence that has to travel with those links: a
- * pathophysiology scene is **a different model**, built from different
- * geometry, not this specimen changing. Without it, two scenes reached from one
- * panel read as two states of one thing.
+ * `related` is the other half of "what it does not represent". Saying an
+ * anatomy atlas carries no physiology is true and unhelpful on its own; the
+ * reader's next question is where the physiology *is*, and the answer is
+ * another scene in this app. It is declared on the scene's own meta
+ * (`meta.related`), filtered by the release gate before it gets here, and
+ * handed to this panel and to the app's API from that one place — so a shallow
+ * entry point elsewhere in the shell cannot drift from what this panel says.
+ *
+ * `related.note` is the sentence that has to travel with those links: an
+ * anatomy atlas and a pathophysiology scene are **different models**, built
+ * from different geometry, and neither is the other one later. Without it, two
+ * scenes reached from one panel read as two states of one thing.
  *
  * @param {object} scope
- * @param {{ isOpen?: (slug: string) => boolean }} [options]
+ * @param {{ related?: {scenes?: object[], note?: string, noteJa?: string} }} [options]
  */
-export function createModelScopePanel(scope, { isOpen = () => true } = {}) {
-  const next = (scope.next ?? []).filter((entry) => entry?.slug && isOpen(entry.slug));
+export function createModelScopePanel(scope, { related = {} } = {}) {
+  const next = related.scenes ?? [];
   const body = el('div', { class: 'scope-body' }, [
     section('What this model is for', 'このモデルが答えること', [
       el('p', { class: 'scope-question' }, [
@@ -65,10 +66,10 @@ export function createModelScopePanel(scope, { isOpen = () => true } = {}) {
               ]),
             ])
           )),
-          scope.nextNote
+          related.note
             ? el('p', { class: 'scope-next-note' }, [
-                el('span', { class: 'lang-en' }, emphasised(scope.nextNote)),
-                el('span', { class: 'lang-ja' }, emphasised(scope.nextNoteJa)),
+                el('span', { class: 'lang-en' }, emphasised(related.note)),
+                el('span', { class: 'lang-ja' }, emphasised(related.noteJa)),
               ])
             : null,
         ])

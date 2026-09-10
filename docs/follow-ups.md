@@ -738,6 +738,55 @@ dev server はリポジトリ直下から返しますが、**撮影スクリプ�
 
 **テスト権限での UI 確認と、実サーバの認証・課金連携の確認は別です。** 後者は未実施です。
 
+### F-75 心筋虚血を、心不全と同じ形の完成した病態体験にした — 対応済み（B10 / 病態）
+
+**作り直していません。** 既存の supply/demand solver・支配域マップ・ステージ・注釈を
+そのまま使い、足りなかった接続だけを実装しました。
+
+- **患者説明 6 段**（`PATIENT_GUIDES['myocardial-ischemia']`）。4 stage に対応し、
+  3・4 段目は同じ `burden`、5・6 段目は同じ `reperfusion` で、**カメラとラベルだけ**が動きます
+- **`getGuideFramings()`** に `wall` を 1 つ。**境目が入る距離**に引いてあります——
+  3 段のうち 3 つが「この血管の筋肉は変わり、隣は変わらない」という**比較**の話なので、
+  片方の壁で画面を埋める framing はその比較を切り落とします
+- **モデルが出していないものを出していません。** このシーンの scope は
+  「心電図・胸痛・トロポニン・予後は扱わない」と自分で宣言しています。
+  6 段目（胸の症状）は `educationalOnly` で、画面に毎回その旨が出ます。
+  **梗塞は一切ありません**——壊死も瘢痕もモデルにありません
+- 実ブラウザで通しました（1280×720）：開く → いまの状態から患者表示 →
+  0 → 0.22 → 0.45 → 0.45 → 0.80 → 0.80 → 専門家表示へ戻ると **0.80 のまま**
+- レビュー用一覧：[`docs/clinical-reviews/myocardial-ischemia-patient-6-steps.md`](clinical-reviews/myocardial-ischemia-patient-6-steps.md)
+
+### F-76 共通化は最小限だけ — 対応済み（B10 / 共通）
+
+**2 病態で実際に重複していたものだけ**を `src/data/guideContract.js` に出しました。
+新しい framework・workflow engine・state machine・DSL は作っていません。
+
+- `guideStepProblems` / `guideProblems` が、stage 対応・3 拍・文字数上限・
+  患者向け禁止表現・framing の実在・stage の網羅・順序を**まとめて返します**
+- 心不全のテストからは重複した 5 件を削除し、**その病態に固有のもの**（文言が臨床側と
+  矛盾しないか、肺の段がこのシーンの描くものを指しているか、パネルの挙動）だけ残しました
+- 3 つ目の病態は `tests/guide-contract.test.js` の `GUIDES` に **1 行**足すだけです
+- **契約が実際に落ちること**も負例で確認しています（存在しない stage・位置ずれ・
+  文字数超過・禁止表現・未宣言 framing・stage 抜け・逆行）
+
+**preview で見られる条件を「書かれているか」に変えました。** `access.patient` は
+product claim で、カタログの規則どおり `alpha` では宣言できません。しかし preview で
+知りたいのは「患者説明が**書かれているか**」なので、`authoredFeaturesForScene` は
+manifest ではなく **guide 自体**に尋ねます。production の判定は無変更です。
+
+### F-77 解剖 ⇄ 病態を双方向にした — 対応済み（B10 / 接続）
+
+**行き先の正本を 1 つに寄せました。** `meta.related = { scenes, note, noteJa }` が唯一の宣言で、
+App が公開ゲートで絞って **scope パネルと `app.related` の両方へ同じもの**を渡します
+（以前は `modelScope.next` に置いていて、scope パネルを持たない心不全からは宣言できませんでした）。
+
+- `heart-anatomy` → 心不全・心筋虚血
+- `heart-failure` → 解剖・心筋虚血
+- `myocardial-ischemia` → 解剖・心不全
+
+**別モデルであることを言う一文は 3 つとも必須で持っています**——固定標本と、解いた心室と、
+支配域を描いた心筋は、互いの「その後」ではありません。
+
 ### F-59 main（dae2acc）へ内容で同期した — 対応済み（B6 / 統合）
 
 **「Work B5 未着」は自 branch の入力についてであって、プロジェクト全体の話ではありませんでした。**

@@ -602,6 +602,10 @@ export const HEART_MODEL_SCOPE = Object.freeze({
       kind: 'limitation',
     },
   ],
+  evidence: 'docs/model-evidence/heart-anatomy.md',
+});
+
+export const HEART_RELATED = Object.freeze({
   /**
    * Where the physiology is, given that this model has none.
    *
@@ -616,7 +620,7 @@ export const HEART_MODEL_SCOPE = Object.freeze({
    * document. Keeping that sentence attached is the whole reason these live
    * here and not in a generic "related scenes" list.
    */
-  next: [
+  scenes: [
     {
       slug: 'heart-failure',
       label: 'Heart failure — what a ventricle under load becomes',
@@ -632,15 +636,14 @@ export const HEART_MODEL_SCOPE = Object.freeze({
       whyJa: 'ここで名前を確かめられる冠動脈が、下流のどの領域を養っているか。**別のモデル**であって、この標本ではありません。',
     },
   ],
-  nextNote:
+  note:
     '**Neither is this heart at a later date.** Each is a separate schematic model with its own '
     + 'geometry, built to show a mechanism rather than a specimen. Nothing here is deformed, cut or '
     + 'joined to make one look like the other, and no measurement crosses between them.',
-  nextNoteJa:
+  noteJa:
     '**どちらも「この心臓のその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、'
     + '標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合は'
     + 'していませんし、計測値がまたいで使われることもありません。',
-  evidence: 'docs/model-evidence/heart-anatomy.md',
 });
 
 export const HEART_ANATOMY_META = Object.freeze({
@@ -656,6 +659,7 @@ export const HEART_ANATOMY_META = Object.freeze({
    * evidence dossier and model card; this scene had the other three.
    */
   modelScope: HEART_MODEL_SCOPE,
+  related: HEART_RELATED,
   /**
    * **Nothing moves, and the console says so.** `enabled: false` removes the
    * progression slider and the play button rather than leaving a control that

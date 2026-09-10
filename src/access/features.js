@@ -1,5 +1,7 @@
 import { SCENE_MANIFEST } from '../catalog/scenes.js';
 import { clinicalReviewForScene } from '../catalog/clinicalReview.js';
+import { patientGuideFor } from '../data/patientGuides.js';
+import { educationGuideFor } from '../data/educationGuides.js';
 
 /**
  * Product capabilities are declared on the scene manifest itself, but the
@@ -93,7 +95,20 @@ export function featuresForScene(sceneOrId) {
  * @param {string|{id?:string,status?:string,access?:object}} sceneOrId
  */
 export function authoredFeaturesForScene(sceneOrId) {
-  return featureSet(sceneFor(sceneOrId), { requireClinicalReview: false });
+  const scene = sceneFor(sceneOrId);
+  if (!scene) return FREE_ONLY;
+  // Asked of the writing rather than of the manifest.
+  //
+  // `access.patient` is a product claim, and the catalogue's own rules say an
+  // `alpha` scene may not make one — rightly: an alpha model is still moving.
+  // But the question here is not "does this scene offer a patient mode", it is
+  // "is there a patient explanation written for it that somebody could read".
+  // The guides answer that themselves, so nothing has to be declared on an
+  // unfinished scene to let a reviewer see its copy.
+  const patient = Boolean(patientGuideFor(scene.id));
+  const education = Boolean(educationGuideFor(scene.id));
+  if (!patient && !education) return FREE_ONLY;
+  return Object.freeze({ core: 'free', basicExplanation: 'free', patient, education });
 }
 
 /**

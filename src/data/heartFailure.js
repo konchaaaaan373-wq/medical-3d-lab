@@ -83,6 +83,46 @@ export const STAGES = [
   },
 ];
 
+/**
+ * Where else this heart is shown.
+ *
+ * Both directions matter. A reader who has watched a ventricle dilate should be
+ * able to go and find out what the parts are called; a reader who has just
+ * named them should be able to see what happens to them. The atlas declares the
+ * outward journey, this declares the way back, and the app filters both through
+ * the same release gate.
+ *
+ * **The note is not decoration.** This scene's ventricle is built from what the
+ * model solved; the atlas is a fixed cadaveric specimen. Neither is the other
+ * one later, and two scenes reached from one panel read as two states of one
+ * thing unless something says otherwise.
+ */
+export const RELATED = Object.freeze({
+  scenes: [
+    {
+      slug: 'heart-anatomy',
+      label: 'Heart anatomy — what the parts are called',
+      labelJa: '心臓の解剖 — 部位の名前を確かめる',
+      why: 'Every chamber, valve and vessel this scene moves, named and selectable. **A different model**: a fixed specimen, not this one at any stage.',
+      whyJa: 'このシーンが動かす心腔・弁・血管を、名前で選んで確かめられます。**別のモデル**で、固定標本であってこのシーンのどの段階でもありません。',
+    },
+    {
+      slug: 'myocardial-ischemia',
+      label: 'Myocardial ischaemia — when one artery falls short',
+      labelJa: '心筋虚血 — 1 本の血管が足りなくなるとき',
+      why: 'The other way a ventricle loses contraction: not the whole muscle over years, but one region within an episode.',
+      whyJa: '心室が収縮を失うもう一つの経路。年単位の全体ではなく、1 回の経過のなかの 1 領域です。',
+    },
+  ],
+  note:
+    '**These are separate models.** The atlas is a fixed cadaveric specimen; this scene builds its '
+    + 'ventricle from what the model solved. Nothing is deformed or carried across between them, and no '
+    + 'measurement is shared.',
+  noteJa:
+    '**それぞれ別のモデルです。** 解剖アトラスは固定標本で、このシーンの心室はモデルが解いた値から '
+    + '作られます。両者のあいだで形を変形して持ち込むことも、計測値を共有することもありません。',
+});
+
 export const LEGEND = [
   { key: 'myocardium', label: 'Myocardium', labelJa: '心筋', activeFrom: 0 },
   { key: 'flow', label: 'Ejected blood', labelJa: '駆出される血液', activeFrom: 0 },

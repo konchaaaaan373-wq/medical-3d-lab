@@ -669,17 +669,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * entry point reads this rather than writing the routes out again: two copies
    * of a link list is how one of them comes to offer a scene the gate closed.
    */
+  // A scene the release is holding back is not in this build, so a link to it
+  // would be a link to "TO BE UPDATED". They are dropped here, once, and the
+  // gate — not the panel and not the shell — decides which.
   const isSceneSlugOpen = (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug });
-  const relatedScenes = Object.freeze(
-    (meta.modelScope?.next ?? []).filter((entry) => entry?.slug && isSceneSlugOpen(entry.slug)).map(Object.freeze)
-  );
+  const related = Object.freeze({
+    scenes: Object.freeze(
+      (meta.related?.scenes ?? []).filter((entry) => entry?.slug && isSceneSlugOpen(entry.slug)).map(Object.freeze)
+    ),
+    note: meta.related?.note ?? null,
+    noteJa: meta.related?.noteJa ?? null,
+  });
   const scopePanel = meta.modelScope
-    ? createModelScopePanel(meta.modelScope, {
-        // A scene the release is holding back is not in this build, so a link to
-        // it would be a link to "TO BE UPDATED". The panel drops those rather
-        // than offering them, and the gate — not this file — decides which.
-        isOpen: isSceneSlugOpen,
-      })
+    ? createModelScopePanel(meta.modelScope, { related })
     : null;
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
 
@@ -1525,11 +1527,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       apply: applyGuideFraming,
       framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
     },
-    related: {
-      scenes: relatedScenes,
-      note: meta.modelScope?.nextNote ?? null,
-      noteJa: meta.modelScope?.nextNoteJa ?? null,
-    },
+    related,
     inspection: {
       panel: inspectionPanel,
       setOpen: setInspectionOpen,

@@ -165,6 +165,99 @@ export const PATIENT_GUIDES = Object.freeze({
       },
     ]),
   }),
+  /**
+   * Myocardial ischaemia, said twice — the second scene to use the shape the
+   * heart-failure guide worked out.
+   *
+   * Same rules, held by the same contract (`src/data/guideContract.js`): each
+   * step names the scene stage it stands beside and sits at that stage's own
+   * position, three beats per step, and anything the model does not produce is
+   * marked. Two steps share the `burden` stage: the muscle showing it, and what
+   * that costs the whole ventricle. Same solved state, different picture.
+   *
+   * **What this model refuses is on the record and is respected here.** Its own
+   * scope says ECG, chest pain, troponin and prognosis are not modelled, and
+   * there is no infarction in it — no necrosis, no scar. So the step about what
+   * a person feels carries `educationalOnly`, and no step calls this a heart
+   * attack.
+   */
+  'myocardial-ischemia': Object.freeze({
+    title: 'Why a narrowed artery makes part of the heart stop working',
+    titleJa: '細くなった血管が、心臓の一部を動かなくする仕組み',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'baseline',
+        focus: ['lad'],
+        title: 'Each artery feeds its own region',
+        titleJa: '血管はそれぞれ、担当する場所を養う',
+        body: 'The arteries on the surface of the heart each carry blood to one region of muscle. At rest every region receives more oxygen than it uses.',
+        bodyJa: '心臓の表面を走る血管は、それぞれ決まった場所の筋肉へ血液を運びます。安静時はどの場所も、使う量より多くの酸素を受け取っています。',
+        look: 'Follow one artery down the front of the heart, then look at the muscle below it — that is the region it feeds.',
+        lookJa: '心臓の前面を下る血管を目で追い、その下の筋肉を見てください。そこがその血管の担当する場所です。',
+      },
+      {
+        progress: 0.22,
+        stage: 'onset',
+        focus: ['lad'],
+        title: 'The flow through it falls',
+        titleJa: 'そこを通る血流が減る',
+        body: 'When that artery narrows, less blood reaches the region beyond it. For a while nothing on screen changes: the muscle is running short, but the shortage has to add up before it shows.',
+        bodyJa: 'その血管が細くなると、先の場所へ届く血液が減ります。しばらく画面は変わりません——足りていないぶんが積み重なるまで、現れないからです。',
+        look: 'Watch the artery, not the muscle. What has changed so far is how much is getting through it.',
+        lookJa: '筋肉ではなく血管を見てください。いま変わったのは、そこを通る量です。',
+      },
+      {
+        progress: 0.45,
+        stage: 'burden',
+        frame: 'wall',
+        focus: ['anterior-wall', 'inferior-wall'],
+        title: 'The muscle it feeds shows it',
+        titleJa: '養われている筋肉に現れる',
+        body: 'The shortage has added up, and the region that artery feeds changes colour. The muscle fed by a different artery, right beside it, does not.',
+        bodyJa: '不足が積み重なり、その血管が養う場所の色が変わります。すぐ隣にある、別の血管が養う筋肉は変わりません。',
+        look: 'What changed is the muscle, not the artery — and the border between the two regions is where one artery ends and the next begins.',
+        lookJa: '変わったのは血管ではなく筋肉です。二つの場所の境目が、担当する血管の切り替わるところです。',
+      },
+      {
+        progress: 0.45,
+        stage: 'burden',
+        frame: 'wall',
+        focus: ['anterior-wall'],
+        title: 'That region stops pulling its weight',
+        titleJa: 'その場所が縮まなくなる',
+        body: 'Muscle short of oxygen contracts less. The rest of the heart carries on, so the whole heart sends out less with each beat than it would have.',
+        bodyJa: '酸素の足りない筋肉は、縮む力が落ちます。他の部分は働き続けるので、心臓全体としては 1 回に送り出す量が減ります。',
+        look: 'Watch that region move against the muscle beside it: one is still squeezing in, the other is barely moving.',
+        lookJa: 'その場所と隣の筋肉の動きを見比べてください。片方は縮み、もう片方はほとんど動きません。',
+      },
+      {
+        progress: 0.8,
+        stage: 'reperfusion',
+        frame: 'wall',
+        focus: ['anterior-wall'],
+        title: 'The flow comes back before the movement does',
+        titleJa: '血流が戻っても、動きはすぐ戻らない',
+        body: 'Open the artery and the blood returns almost at once. The muscle does not: it goes on moving poorly long after it is being supplied again.',
+        bodyJa: '血管が開けば血液はほぼすぐに戻ります。筋肉は戻りません——また十分に養われるようになっても、しばらく動きは悪いままです。',
+        look: 'The colour of the region recovers first. Keep watching how it moves — that is the part still lagging.',
+        lookJa: 'まず色が戻ります。そのあとも動きを見ていてください。遅れているのはそちらです。',
+      },
+      {
+        progress: 0.8,
+        stage: 'reperfusion',
+        frame: 'wall',
+        focus: ['anterior-wall'],
+        educationalOnly: true,
+        title: 'Why it can be felt in the chest',
+        titleJa: '胸に感じられることがある理由',
+        body: 'Muscle working with too little oxygen can be felt — often as pressure or tightness across the chest, sometimes reaching the arm, jaw or back, and often brought on by exertion.',
+        bodyJa: '酸素が足りないまま働いている筋肉は、感覚として現れることがあります。胸の圧迫感や締めつけとして、腕・あご・背中に広がることもあり、体を動かしたときに出やすいことが知られています。',
+        look: 'Nothing new is drawn for this step: it says what the shortage on screen can mean for a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面の不足が、人にとってどういうことかの説明です。',
+      },
+    ]),
+  }),
   'copd-hyperinflation': Object.freeze({
     title: 'Why air can remain in the lungs',
     titleJa: '肺に空気が残りやすくなる仕組み',

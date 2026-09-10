@@ -43,6 +43,7 @@ import {
   ventricleShape,
 } from '../../../../models/cardiacMechanics.js';
 import {
+  RELATED,
   STAGES,
   LEGEND,
   RANGE,
@@ -121,6 +122,7 @@ export class HeartFailureScene {
     subtitle: 'Illustrative LV remodeling in HFrEF · simplified 3D model',
     subtitleJa: '左室リモデリング',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
