@@ -72,22 +72,22 @@ export const ORGAN_ANATOMY = Object.freeze([
   {
     organ: 'lungs',
     level: 'A2',
-    evidence: 'tests/lung-anatomy.test.js — five lobes and eighteen segments as closed meshes that partition the parenchyma',
+    evidence: 'scenes/respiratory/scenes/lungAnatomy — five lobes selectable by name; tests/lung-anatomy.test.js — five lobes and eighteen segments as closed meshes that partition the parenchyma',
   },
   {
     organ: 'airway',
     level: 'A2',
-    evidence: 'tests/lung-anatomy.test.js — trachea, main, lobar and segmental bronchi, the right main steeper and shorter, RALS at the hilum',
+    evidence: 'scenes/respiratory/scenes/lungAnatomy — the trachea, both main bronchi, five lobar and eighteen segmental bronchi selectable by name; tests/lung-anatomy.test.js — trachea, main, lobar and segmental bronchi, the right main steeper and shorter, RALS at the hilum',
   },
   {
     organ: 'liver',
     level: 'A2',
-    evidence: 'tests/liver-anatomy.test.js — nine Couinaud segments and five sectors partitioning the parenchyma, Cantlie’s line held apart from the falciform ligament',
+    evidence: 'scenes/hepatobiliary/scenes/liverAnatomy — nine segments and both vascular trees selectable by name; tests/liver-anatomy.test.js — nine Couinaud segments and five sectors partitioning the parenchyma, Cantlie’s line held apart from the falciform ligament',
   },
   {
     organ: 'kidney',
     level: 'A2',
-    evidence: 'tests/kidney-anatomy.test.js — the cortex as one shell between the capsule and the corticomedullary junction, seven medullary pyramids and the cortical columns between them partitioning what is inside it, a minor calyx cupping each papilla and draining through three major calyces to the pelvis, and a nephron placed across the three scales (glomerulus in the cortex, loop of Henle in the medulla)',
+    evidence: 'scenes/renal/scenes/kidneyAnatomy — cortex, pyramids, columns and the collecting system selectable by name; tests/kidney-anatomy.test.js — the cortex as one shell between the capsule and the corticomedullary junction, seven medullary pyramids and the cortical columns between them partitioning what is inside it, a minor calyx cupping each papilla and draining through three major calyces to the pelvis, and a nephron placed across the three scales (glomerulus in the cortex, loop of Henle in the medulla)',
     next: 'A3: the segmental arteries and the interlobar/arcuate hierarchy, which renovascular hypertension and prerenal AKI point at. Also still schematic: the sinus is not carved out, the seven pyramids are one coronal row rather than an anterior and a posterior one, and the junction is the capsule scaled rather than a surface of its own.',
   },
   {

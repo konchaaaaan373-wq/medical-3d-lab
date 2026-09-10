@@ -135,5 +135,41 @@
     "cardRevision": 2,
     "modelDigest": "cf008ab5bb6d5cfa",
     "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "lung-anatomy",
+    "card": "docs/model-cards/lung-anatomy.md",
+    "modelSources": [
+      "src/data/lungAnatomyScene.js",
+      "src/scenes/respiratory/scenes/lungAnatomy/LungAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "73d1641eb069ae8c",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "liver-anatomy",
+    "card": "docs/model-cards/liver-anatomy.md",
+    "modelSources": [
+      "src/data/liverAnatomyScene.js",
+      "src/scenes/hepatobiliary/scenes/liverAnatomy/LiverAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "3a96c9292b23e9c3",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "kidney-anatomy",
+    "card": "docs/model-cards/kidney-anatomy.md",
+    "modelSources": [
+      "src/data/kidneyAnatomyScene.js",
+      "src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "279d1be7ee9a7458",
+    "cardUpdatedAt": "2026-09-10"
   }
 ]

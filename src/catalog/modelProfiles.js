@@ -209,6 +209,55 @@ export const MODEL_PROFILES = Object.freeze([
       'The review registry forbids diagnosis, lesion localisation, operative planning and navigation.',
   },
   {
+    profileId: 'lung-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code from a declared division scheme — two pleural surfaces carved by the oblique and horizontal '+
+      'fissures, the eighteen bronchopulmonary segments as the lung nearest each segmental bronchus — not traced from a '+
+      'specimen and not registered to an atlas. It has no state and no mechanism. Calibres, branch angles and the '+
+      'right-to-left main bronchus ratio are drawn to read clearly rather than measured, so the ordering is the claim '+
+      'and the magnitudes are not; operative and procedural planning are prohibited for that reason.',
+  },
+  {
+    profileId: 'liver-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one procedurally shaped liver on the planes Couinaud’s scheme names, with the hepatic '+
+      'veins drawn on those same planes and the portal pedicles inside the parts. The divisions are the claim; the outer '+
+      'form is a warped ellipsoid with a liver’s proportions and carries no porta hepatis notch, no bare area and no bile '+
+      'ducts. No state and no mechanism, and no resection or donor planning of any kind.',
+  },
+  {
+    profileId: 'kidney-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: the cortex as one shell between the capsule and a scaled corticomedullary junction, the inside '+
+      'partitioned into seven pyramids and the cortical columns between them, and a collecting system drawn out from each '+
+      'papilla. Schematic where the model card says so — the sinus is not carved out, the pyramids are one coronal row '+
+      'rather than two, and no renal artery is drawn. No state and no mechanism.',
+  },
+  {
     profileId: 'amyloid-beta-aggregation-illustration',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

@@ -143,6 +143,12 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
   const levels = Object.fromEntries(NON_PROTOTYPE.map((scene) => [scene.id, modelProfileForScene(scene).mechanismLevel]));
   assert.deepEqual(levels, {
     'brain-anatomy': MECHANISM_LEVEL.NONE,
+    // Three organs whose anatomy is built in code rather than loaded from an
+    // atlas. Same claim shape as the brain's — structure, no state — and the
+    // geometry basis below is where the difference is recorded.
+    'lung-anatomy': MECHANISM_LEVEL.NONE,
+    'liver-anatomy': MECHANISM_LEVEL.NONE,
+    'kidney-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,

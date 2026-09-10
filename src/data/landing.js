@@ -17,6 +17,9 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
+  'lung-anatomy',
+  'liver-anatomy',
+  'kidney-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -150,6 +153,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '前負荷・後負荷・収縮性を変え、PVループと肺うっ血を確認。',
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
+  ),
+  'lung-anatomy': presentation(
+    'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',
+    '肺葉を選び、実質を薄くして、その区域を換気する区域気管支を選ぶ。',
+    ['LOBES', 'SEGMENTS', 'VESSELS'],
+    ['肺葉', '肺区域', '血管']
+  ),
+  'liver-anatomy': presentation(
+    'Nine Couinaud segments: the veins run between them, the portal branches inside them.',
+    '9つのCouinaud区域。肝静脈は区域の「間」を、門脈枝は「内部」を走る。',
+    ['SEGMENTS', 'OUTFLOW', 'INFLOW']  ,
+    ['区域', '流出', '流入']
+  ),
+  'kidney-anatomy': presentation(
+    'Fade the cortex to the pyramids, then follow one papilla out to the ureter.',
+    '皮質を薄くして錐体を見て、1つの腎乳頭から尿管までをたどる。',
+    ['CORTEX', 'PYRAMIDS', 'CALYCES'],
+    ['皮質', '錐体', '腎杯']
   ),
   'brain-anatomy': presentation(
     'Select gyri and sulci, then reveal the insula and deep nuclei in place.',

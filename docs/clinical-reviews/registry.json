@@ -315,5 +315,76 @@
       "The model contains no changing cardiac output, vasoactive response, vascular recruitment, RV geometry, RV-pulmonary artery coupling, oxygenation, carbon dioxide, infarction or treatment.",
       "The underperfused-ventilation and relative-resistance outputs are model indices, not VD/VT, measured PVR, pulmonary artery pressure, RV function, clinical category or risk score."
     ]
+  },
+  {
+    "sceneId": "lung-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gross anatomy, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/lung-anatomy.md",
+      "docs/model-evidence/lung-anatomy.md",
+      "tests/lung-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js",
+      "docs/medical-notes.md"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Airway calibres, lengths and branching angles are drawn to read clearly and are not measured; the right-to-left main bronchus difference is understated.",
+      "Bronchopulmonary segment boundaries are the definition applied (the lung nearest one segmental bronchus) rather than a specimen traced, so they are smooth where real ones are not.",
+      "No pleura, lymphatics, bronchial circulation or alveoli are modelled, and nothing in the scene is solved.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning bronchoscopy, biopsy, resection or localisation."
+    ]
+  },
+  {
+    "sceneId": "liver-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built Couinaud segmentation, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/liver-anatomy.md",
+      "docs/model-evidence/liver-anatomy.md",
+      "tests/liver-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The outer form is a warped ellipsoid with a liver's proportions: no porta hepatis notch, no bare area, no ligamentous attachments.",
+      "No biliary duct system and no hepatic artery are drawn, and the gallbladder carries no volume.",
+      "Segment volume shares are reference proportions used to check the partition, not a measurement of any individual liver.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning resection, donor evaluation, ablation or volumetry."
+    ]
+  },
+  {
+    "sceneId": "kidney-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built renal parenchyma and collecting system, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/kidney-anatomy.md",
+      "docs/model-evidence/kidney-anatomy.md",
+      "tests/kidney-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No renal artery or vein is drawn at any level, so nothing vascular can be read from this scene.",
+      "Schematic where the model card says so: the renal sinus is not carved out, the seven pyramids are one coronal row rather than an anterior and a posterior one, and the corticomedullary junction is the capsule scaled rather than a surface of its own.",
+      "Only one kidney is partitioned; the other is a landmark shape declared as a single unpartitioned structure.",
+      "The ureter's calibre and course are illustrative and its three normal narrowings are not modelled.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning biopsy, nephrostomy, stone localisation or stenting."
+    ]
   }
 ]
