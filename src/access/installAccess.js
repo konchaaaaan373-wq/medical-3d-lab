@@ -176,6 +176,17 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
         app.playback.pause();
         app.playback.set(value);
       },
+      /**
+       * Where the explanation is looking, which is not what it is explaining.
+       *
+       * A step that turns attention from the ventricle to the vessels behind it
+       * needs a different picture of the same solved state — the pulmonary
+       * veins run away from the opening view and were pressed against the top
+       * edge. The camera and the labels move; the model does not, which is why
+       * this is separate from `setProgress` and why `movedByGuide` is untouched
+       * by it.
+       */
+      setFraming: (framing, focus) => app.guideView?.apply?.(framing ?? null, { focus }),
       onExit: closeGuide,
       onPresentationChange: (enabled) => {
         ui.classList.toggle('is-patient-presentation', enabled && open);
@@ -236,6 +247,9 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     sessionSnapshot = null;
     restoreGuideSession(snapshot, app.playback, { movedByGuide });
     movedByGuide = false;
+    // The explanation's camera goes back with it. The state it walked to stays;
+    // where it was looking from does not, because that was the explanation's.
+    app.guideView?.apply?.(null);
     // The detail comes back either way. Hiding the numbers is how the patient
     // view reads; it is not a change to the model, and the clinician gets the
     // read-out for whatever state they are now looking at.

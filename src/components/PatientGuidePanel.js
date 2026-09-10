@@ -15,11 +15,12 @@ import { el } from '../utils/dom.js';
  * @param {{
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
+ *   setFraming?:(framing:string|null, focus:string[]|null)=>void,
  *   onExit:()=>void,
  *   onPresentationChange?:(enabled:boolean)=>void,
  * }} options
  */
-export function createPatientGuidePanel({ guide, setProgress, onExit, onPresentationChange }) {
+export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit, onPresentationChange }) {
   let index = 0;
   let presenting = false;
   let ownsFullscreen = false;
@@ -130,9 +131,19 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     el('div', { class: 'patient-guide-head' }, [title, presentation, fullscreen, handoutButton, counter, close]),
     dots,
     copy,
+    /**
+     * Two sentences, and the second one is the one a walk-through needs.
+     *
+     * Six steps in a fixed order read as "this is what happens next", and the
+     * model behind them is explicitly not making that claim: its own evidence
+     * dossier calls the sequence one authored teaching path and not a
+     * natural-history claim (`illustrative-remodelling-axis`). The scene says so
+     * under the console; the person being walked through it is looking at this
+     * panel, so it says so here too.
+     */
     el('p', { class: 'patient-guide-boundary' }, [
-      el('span', { class: 'lang-en', text: 'General explanation only — not a diagnosis or a prediction for an individual.' }),
-      el('span', { class: 'lang-ja', text: '一般的な病態説明です。個別の診断・予後予測を行うものではありません。' }),
+      el('span', { class: 'lang-en', text: 'General explanation only — not a diagnosis or a prediction for an individual. It is one teaching path through the changes, and not everyone goes through them in this order.' }),
+      el('span', { class: 'lang-ja', text: '一般的な病態説明です。個別の診断・予後予測を行うものではありません。この教材が説明する変化と観察の順序であって、すべての人が同じ順に進むわけではありません。' }),
     ]),
     el('div', { class: 'patient-guide-actions' }, [previous, next]),
     handout,
@@ -188,7 +199,20 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
     const step = guide.steps[index];
     setProgress(step.progress ?? 0);
+    pointAt(step);
     render();
+  }
+
+  /**
+   * Point the camera and the labels at what this step is about.
+   *
+   * A step that names no framing gets the scene's own, so walking back from the
+   * pulmonary step returns to the view the heart steps are read from. Kept
+   * apart from `setProgress` because it changes nothing about the model — a
+   * step can move the camera, the model, both or neither.
+   */
+  function pointAt(step) {
+    setFraming?.(step?.frame ?? null, step?.focus ?? null);
   }
 
   function setPresentation(enabled) {
@@ -341,6 +365,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       // the reader is somewhere between two steps and the explanation should
       // describe where they are, not snap them to the nearest caption.
       index = at;
+      pointAt(guide.steps[index]);
       render();
     },
     focus() {
@@ -401,6 +426,11 @@ function buildPatientHandout(guide) {
       el('strong', { class: 'lang-ja', text: '重要' }),
       el('span', { class: 'lang-en', text: 'This handout is general education only. It does not diagnose, predict prognosis, or select treatment for an individual.' }),
       el('span', { class: 'lang-ja', text: 'この資料は一般的な教育目的の説明です。個別の診断・予後予測・治療選択を行うものではありません。' }),
+      // The printed sheet leaves the room, so the sentence about order goes
+      // with it: a numbered list on paper reads as a course of events even more
+      // readily than the panel does.
+      el('span', { class: 'lang-en', text: 'The steps are one teaching path through the changes; not everyone goes through them in this order.' }),
+      el('span', { class: 'lang-ja', text: '各段階はこの教材が説明する変化と観察の順序であり、すべての人が同じ順に進むわけではありません。' }),
     ]),
   ]);
 }

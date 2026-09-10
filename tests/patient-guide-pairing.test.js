@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { PATIENT_GUIDES } from '../src/data/patientGuides.js';
 import { STAGES } from '../src/data/heartFailure.js';
 import { createPatientGuidePanel } from '../src/components/PatientGuidePanel.js';
+import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
 import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
@@ -256,4 +257,98 @@ test('patient guide: the lung step is about something this scene actually draws'
   const failing = guide.steps.find((step) => step.stage === 'systolic-dysfunction' && step !== lung);
   assert.equal(lung.progress, failing.progress, 'it is the same solved state, seen differently');
   assert.match(lung.lookJa, /肺|血管/);
+});
+
+test('patient guide: the steps that turn to the lungs name a framing the scene has', () => {
+  // A framing the scene does not declare is a step that says "look here" and
+  // points at nothing. The scene owns where the pulmonary veins are.
+  const framings = new HeartFailureScene({}).getGuideFramings();
+  for (const step of guide.steps) {
+    if (!step.frame) continue;
+    assert.ok(framings[step.frame], `"${step.frame}" is a framing this scene offers`);
+    const framing = framings[step.frame];
+    assert.ok(framing.target && framing.direction && framing.distance > 0);
+  }
+  // And the two that turn away from the heart are the last two, so the reader
+  // is not moved about while the heart itself is being explained.
+  const framed = guide.steps.filter((step) => step.frame);
+  assert.equal(framed.length, 2);
+  assert.deepEqual(framed, guide.steps.slice(-2));
+});
+
+test('patient guide: a framing is presentation, so it never carries a position', () => {
+  // The whole point of keeping these apart: a step may move the camera, the
+  // model, both or neither, and the camera half must not smuggle in a state.
+  for (const step of guide.steps) {
+    if (!step.frame) continue;
+    const heartStep = guide.steps.find((other) => other.stage === step.stage && !other.frame);
+    assert.equal(step.progress, heartStep.progress, 'the framed steps are the same solved state');
+  }
+});
+
+test('patient guide: walking the steps asks for the framings in order, and moves the model only when it changes', () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { print: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document.fullscreenEnabled = false;
+  globalThis.document.addEventListener = () => {};
+  globalThis.document.removeEventListener = () => {};
+  const framings = [];
+  const moves = [];
+  try {
+    const panel = createPatientGuidePanel({
+      guide,
+      setProgress: (value) => moves.push(value),
+      setFraming: (frame, focus) => framings.push({ frame, focus }),
+      onExit: () => {},
+    });
+    framings.length = 0;
+    moves.length = 0;
+
+    panel.reset({ progress: 0 });
+    // Opening asks for the first step's framing (none) without moving anything.
+    assert.deepEqual(moves, []);
+    assert.deepEqual(framings, [{ frame: null, focus: null }]);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('patient guide: it says the order is a teaching path, not what happens next', () => {
+  // Six numbered steps read as a course of events. The model behind them is
+  // explicitly not claiming one — its own dossier calls the sequence an
+  // authored teaching path and not a natural-history claim — so the panel the
+  // person is looking at says so, and so does the sheet that leaves the room.
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { print: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document.fullscreenEnabled = false;
+  globalThis.document.addEventListener = () => {};
+  globalThis.document.removeEventListener = () => {};
+  try {
+    const panel = createPatientGuidePanel({ guide, setProgress: () => {}, onExit: () => {} });
+    const readAll = (root) => {
+      const out = [];
+      const walk = (node) => {
+        if (typeof node?.textContent === 'string' && node.textContent) out.push(node.textContent);
+        for (const child of node?.children ?? []) walk(child);
+      };
+      walk(root);
+      return out.join(' ');
+    };
+    const boundary = findByClass(panel.element, 'patient-guide-boundary');
+    assert.equal(boundary.length, 1);
+    assert.match(readAll(boundary[0]), /同じ順に進むわけではありません/);
+    assert.match(readAll(boundary[0]), /診断・予後予測/);
+
+    const handout = findByClass(panel.element, 'patient-handout-boundary');
+    assert.equal(handout.length, 1);
+    assert.match(readAll(handout[0]), /同じ順に進むわけではありません/);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
 });

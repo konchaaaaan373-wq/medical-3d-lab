@@ -1052,6 +1052,56 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     return SceneClass.cameraPose;
   }
 
+  /**
+   * Take the camera somewhere a guided explanation names, and point the labels
+   * at what that step is about.
+   *
+   * **Presentation only.** It moves the camera and narrows the label layer; it
+   * sets no progression, runs no solve and changes nothing the model is in. A
+   * step that turns the reader's attention from the ventricle to the vessels
+   * behind it is a different picture of the same solved state, and this is what
+   * makes that possible without the step also being a state change.
+   *
+   * It is an *explicit* operation — the reader pressed Next — so it is allowed
+   * to move a camera the reader had orbited, exactly as choosing a named
+   * viewpoint is. That is a different thing from the automatic re-framing that
+   * follows a panel resize, which stops as soon as anyone touches the camera.
+   *
+   * The framings themselves belong to the scene (`getGuideFramings`), because
+   * where the pulmonary veins lie is a fact about the anatomy on screen.
+   *
+   * @param {string|null} id a framing the scene declares, or null for its own
+   * @param {{focus?: string[]|null}} [options] annotation ids to point at
+   * @returns {boolean} whether the id was one the scene offers
+   */
+  function applyGuideFraming(id, { focus = null } = {}) {
+    if (sequenceOwnsCamera()) return false;
+    storyFocus = focus ?? null;
+    const framing = id ? scene.getGuideFramings?.()[id] : null;
+    if (id && !framing) {
+      applyLabelFocus();
+      return false;
+    }
+    userZoom = 1;
+    storyView.orbit.identity();
+    if (framing) {
+      const target = framing.target.clone();
+      setShot({
+        target,
+        position: target.clone().addScaledVector(framing.direction.clone().normalize(), framing.distance),
+      });
+    } else {
+      setShot(comparisonOrStageShot());
+    }
+    applyLabelFocus();
+    view.active = true;
+    view.resumeAutoRotate = false;
+    viewer.controls.autoRotate = false;
+    inspectionPanel?.clearView();
+    syncZoomLimits();
+    return true;
+  }
+
   function seek(value) {
     playback.pause();
     playback.set(value);
@@ -1467,6 +1517,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
      * with them. Empty when the model declares none or the gate closed them
      * all; never a route to a placeholder page.
      */
+    /**
+     * A guided explanation's camera. `apply(null)` returns the scene's own
+     * framing. Nothing here changes what the model is set to.
+     */
+    guideView: {
+      apply: applyGuideFraming,
+      framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
+    },
     related: {
       scenes: relatedScenes,
       note: meta.modelScope?.nextNote ?? null,

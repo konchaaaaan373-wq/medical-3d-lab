@@ -132,6 +132,13 @@ export const PATIENT_GUIDES = Object.freeze({
         // is drawn from that pressure. Nothing is borrowed from another model.
         progress: 0.64,
         stage: 'systolic-dysfunction',
+        // The camera rises above the heart for these last two steps. From the
+        // opening view the pulmonary veins recede almost straight into the
+        // screen, so "watch the vessels running to the lungs" pointed at
+        // something pressed against the top edge of the frame. The framing is
+        // the scene's own (`getGuideFramings`), and it moves nothing else.
+        frame: 'pulmonary',
+        focus: ['pressure', 'pulmonary-bed'],
         title: 'The pressure reaches the lungs',
         titleJa: '圧は肺のほうへ伝わる',
         body: 'Blood that cannot move forward backs up behind the heart, and the vessels between the heart and the lungs carry that raised pressure.',
@@ -144,6 +151,10 @@ export const PATIENT_GUIDES = Object.freeze({
         // not solve breathlessness, and this step says so on screen.
         progress: 0.64,
         stage: 'systolic-dysfunction',
+        // Same picture as the step before: this one explains what that spread
+        // means for a person rather than showing anything new.
+        frame: 'pulmonary',
+        focus: ['pressure', 'pulmonary-bed'],
         educationalOnly: true,
         title: 'Why breathing can feel harder',
         titleJa: '息が苦しく感じられる理由',

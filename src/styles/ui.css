@@ -2316,7 +2316,13 @@
    the panel takes the higher layer. Nothing moves and nothing is hidden —
    only the stacking changes. */
 #ui.is-learning .console,
-#ui.is-story-stepping .console {
+#ui.is-story-stepping .console,
+/* The patient explanation is the same case and was missing from this list: on a
+   390 px-tall landscape phone the model's own labels were drawn across the
+   copy somebody is reading aloud. A label belongs over the model, not over the
+   sentence about it. */
+#ui.is-patient-guide .console,
+#ui.is-education-guide .console {
   position: relative;
   z-index: 6;
 }

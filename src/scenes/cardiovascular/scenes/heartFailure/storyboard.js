@@ -83,6 +83,29 @@ const DEFAULT_VIEW = new THREE.Vector3(0.4, 0.24, 0.88).normalize();
  */
 const PULMONARY_VIEW = new THREE.Vector3(-0.05, 0.62, 0.78).normalize();
 
+/**
+ * Framings a guided explanation may ask for **by name**.
+ *
+ * The patient explanation walks the same axis the guided sequence does, and one
+ * of its steps turns the reader's attention from the ventricle to the vessels
+ * behind it. At the scene's opening view those vessels recede almost straight
+ * into the screen — the reason this file already keeps `PULMONARY_VIEW` — so a
+ * step that says "watch the vessels running to the lungs" pointed at something
+ * pressed against the top edge of the frame.
+ *
+ * These are the same numbers the sequence's own transmission beat uses, kept in
+ * one place rather than typed a second time next to the patient copy. **They
+ * move the camera and nothing else**: no progression, no solve, no reveal.
+ *
+ * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+ */
+export const GUIDE_FRAMINGS = Object.freeze({
+  pulmonary: Object.freeze({
+    ...on('leftAtrium', 27.5, { x: 0.25, y: -1.46, z: 0.45 }),
+    direction: PULMONARY_VIEW.clone(),
+  }),
+});
+
 export const STORY_DURATION = 42;
 
 /**
