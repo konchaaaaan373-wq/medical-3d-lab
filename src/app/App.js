@@ -659,12 +659,26 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // Optional: what the model answers, what it does not, and where it came from.
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
+  /**
+   * Where this model says the rest is shown, filtered to what this build opens.
+   *
+   * One list, decided once. The scope panel renders it at the bottom of "what
+   * this model does not represent", which is the right place for the detail and
+   * the wrong place to *find* it — so the same list is handed out on the app's
+   * API for a shallower entry point elsewhere in the shell. Whoever adds that
+   * entry point reads this rather than writing the routes out again: two copies
+   * of a link list is how one of them comes to offer a scene the gate closed.
+   */
+  const isSceneSlugOpen = (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug });
+  const relatedScenes = Object.freeze(
+    (meta.modelScope?.next ?? []).filter((entry) => entry?.slug && isSceneSlugOpen(entry.slug)).map(Object.freeze)
+  );
   const scopePanel = meta.modelScope
     ? createModelScopePanel(meta.modelScope, {
         // A scene the release is holding back is not in this build, so a link to
         // it would be a link to "TO BE UPDATED". The panel drops those rather
         // than offering them, and the gate — not this file — decides which.
-        isOpen: (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug }),
+        isOpen: isSceneSlugOpen,
       })
     : null;
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
@@ -1448,6 +1462,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     causalStory: causalStory
       ? { panel: causalStory, set: setCausalStory, isActive: () => storyStepping }
       : null,
+    /**
+     * The onward scenes this build opens, and the sentence that has to travel
+     * with them. Empty when the model declares none or the gate closed them
+     * all; never a route to a placeholder page.
+     */
+    related: {
+      scenes: relatedScenes,
+      note: meta.modelScope?.nextNote ?? null,
+      noteJa: meta.modelScope?.nextNoteJa ?? null,
+    },
     inspection: {
       panel: inspectionPanel,
       setOpen: setInspectionOpen,
