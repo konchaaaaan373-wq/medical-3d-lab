@@ -108,28 +108,50 @@ This is a **fail**, not a pending. It is the publisher's data and is not
 corrected here; it is a reason the asset release gate cannot record
 `formatValidation: passed`.
 
-## Re-measured surfaces, and a correction
+## Re-measured surfaces, and two corrections
 
-Measured 2026-09-09 with `npm run assets:measure`;
+Re-measured 2026-09-10 with `npm run assets:measure heart`, using
+[`scripts/lib/mesh-metrics.mjs`](../../scripts/lib/mesh-metrics.mjs) — pure, and
+run against shapes with known answers in
+[`tests/mesh-metrics.test.js`](../../tests/mesh-metrics.test.js) before it is
+pointed at a GLB. Raw table:
 [`measurements/surfaces-heart.tsv`](measurements/surfaces-heart.tsv).
 
-The enclosed volumes recorded earlier are reproduced exactly: left ventricle
-121.60 mL, right ventricle 73.99, left atrium 31.35, right atrium 27.71,
-interventricular septum 28.09, aortic valve 16.29.
+**The enclosed volumes are reproduced exactly** and now come with the
+preconditions that make them volumes: left ventricle 121.60 mL, right ventricle
+73.99, left atrium 31.35, interventricular septum 28.09 — each from a surface
+that is closed, manifold and one piece.
 
-**The boundary-edge count for the right atrium was wrong.** It was recorded as
-3; measured now with vertices welded at 1 µm it is **286**, and at 10 µm it is
-**39**. The count depends on the weld tolerance; that the mesh is open does not.
-The other four open meshes are stable at every tolerance and match what was
-recorded: aortic valve 72, anterior papillary 42, medial papillary 26, posterior
-papillary 21.
+### Correction 1: the right atrium's edge counts, twice over
 
-The ray-crossing test that was applied to the vessels was applied here too, and
-**the conclusion drawn from it is withdrawn** — see the vasculature document for
-why the test cannot tell a solid from a shell. What still holds for the chambers
-is the volume: a closed surface enclosing 121.6 mL is a chamber-sized cavity and
-not a wall's worth of muscle, and that — not the ray count — remains the reason
-no interior view is offered.
+This document has printed three different numbers for the same thing. The
+original record said **3**. A re-measurement said **286 at a 1 µm weld, 39 at
+10 µm**, and called the original not reproducible. Both re-measured figures were
+artefacts of a metric that counted every edge whose use-count was not two — so
+boundary edges, non-manifold edges and the edges of degenerate triangles, added
+together and labelled "boundary edges".
+
+Separated, the mesh reads: **3 boundary edges** (at 1 µm and at 10 µm alike),
+**134 non-manifold edges**, **1,554 degenerate triangles** of 48,186, and **3
+connected components**. So **the original 3 was right**, and the correction to
+286 was wrong. What the earlier numbers were pointing at is real and is worse
+than an open rim: this mesh is non-manifold and in three pieces.
+
+### Correction 2: the withdrawn wall-thickness reading
+
+The ray count that produced it is withdrawn — see the vasculature document. What
+replaces it for the chambers is stronger, not weaker: the left ventricle's
+surface is **closed, manifold, one component and genus 0**, enclosing 121.60 mL.
+Genus 0 means no through-hole, so it is a solid volume and not an annular wall,
+and 121.6 mL is chamber-sized rather than a wall's worth of muscle. **That** is
+why no interior view is offered.
+
+The other chambers are not so tidy. The left atrium is closed and manifold at
+genus 4, and the right ventricle at genus **26** — dozens of through-holes,
+which for a trabeculated cavity cast is unsurprising and is recorded rather than
+explained. Nine of the fourteen parts are closed and manifold; the aortic valve
+(72 boundary edges), three papillary muscles (42, 26, 21) and the right atrium
+are not.
 
 ## What this inspection did not do
 

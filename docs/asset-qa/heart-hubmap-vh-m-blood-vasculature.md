@@ -156,89 +156,111 @@ usable shading normal, which a renderer resolves however it resolves it; it is
 not a reason the file cannot be looked at, and it is a reason the asset release
 gate cannot record `formatValidation: passed`.
 
-## Surface measurements — what these meshes are
+## Surface measurements — with an instrument that was checked first
 
-Measured 2026-09-09 with `npm run assets:measure`; raw table in
+Re-measured 2026-09-10 with `npm run assets:measure`. Every number comes from
+[`scripts/lib/mesh-metrics.mjs`](../../scripts/lib/mesh-metrics.mjs), which is
+pure and is run against shapes with known answers — a cube, a hollow shell, a
+solid rod, a walled pipe, an open sheet, a non-manifold tetrahedron — in
+[`tests/mesh-metrics.test.js`](../../tests/mesh-metrics.test.js), **before** it
+is pointed at a GLB. Raw table:
 [`measurements/surfaces-vasculature.tsv`](measurements/surfaces-vasculature.tsv).
-Per mesh: triangle count, boundary edges at three weld tolerances, the volume
-the surface encloses by the divergence theorem, and the number of times a ray
-crosses the surface on its way out of the mesh's own centroid, over 128
-directions.
 
-### Lumen or wall — **withdrawn: the earlier conclusion was not supported**
+### Lumen or wall — **still undetermined, and the earlier answer is withdrawn**
 
 An earlier version of this document concluded that no vessel has a modelled wall
-thickness. **That conclusion is withdrawn.** The measurement it rested on cannot
-support it.
+thickness. **Withdrawn.** The rule applied was "a single surface gives two
+crossings, a wall gives four", which is the count for a ray crossing the whole
+shape **from outside**; the script cast its ray from a point **inside** the
+mesh, outward, where a solid gives one and a shell gives two. On synthetic
+shapes: a closed cube gives 1 from inside and 2 from outside; a hollow shell of
+outer half-width 1 and inner 0.6 gives 2 from inside and 4 from outside. The
+observation distinguished nothing. A modal count over finitely many directions
+could not have proved the absence of an inner surface anywhere on a shape
+either.
 
-The rule applied was "a single surface gives two crossings, a wall with an inner
-and an outer surface gives four". That is the count for a ray crossing the whole
-shape **from outside**. The script cast its ray **from a point inside the mesh,
-outward**, where the counts are one and two — so "a mode of two, never four" is
-exactly what a thick shell gives, and the observation distinguishes nothing. On
-synthetic shapes: a closed cube gives 1 from inside and 2 from outside; a hollow
-shell of outer half-width 1 and inner 0.6 gives 2 from inside and 4 from
-outside.
+What answers the question for a *closed* surface is its **genus**: a solid rod is
+a ball (genus 0); a tube with a wall thickness is an annulus swept along a path,
+which is a solid torus (genus 1). Both are checked in the test file. What the 37
+vessels give:
 
-A modal count over finitely many directions also cannot prove the *absence* of
-an inner surface anywhere on a shape.
+| | Count | What it settles |
+| --- | --- | --- |
+| Open surfaces (boundary edges > 0) | **26** | **Nothing.** Genus is undefined for an open surface; the question stays open for these. |
+| Non-manifold or several components | **2** (left coronary artery, superior vena cava) | Nothing — the mesh is broken before topology can speak. |
+| Closed, manifold, one piece, **genus ≥ 2** | **8** (pulmonary trunk, both pulmonary arteries, all four pulmonary veins, both brachiocephalic veins) | There **are** through-holes — 2 to 6 of them. A wall would produce one per unbranched segment; so would a loop, a self-touch, or a defect. **Not settled.** |
+| Closed, manifold, one piece, **genus 0** | **1** (small cardiac vein) | **No through-hole**: that one vessel is a solid, so it has no annular wall. |
 
-**Neither reading is asserted now.** The vessels are not described as lumens
-(the claim before that, also withdrawn) and not described as having no wall. The
-scene says the question is being checked. What is measured instead is below.
+So the honest position is: **one vessel is established to have no wall
+thickness, and for the other thirty-six the question is open.** The scene says
+the question is being checked, in the words a reader sees, and does not claim
+either answer.
 
-### The source caps some cut vessels
+Nothing here says which side of a vessel a surface traces. A calibre comparison
+would sit inside specimen variation, and the file records no segmentation
+intent.
 
-Eight meshes have no boundary edges at any tolerance: both pulmonary arteries,
-all four pulmonary veins, both brachiocephalic veins and the small cardiac vein.
-A tube with no boundary is a tube whose cut ends have been closed. **The source
-did that**; this scene does not cap anything, and a capped end is recorded here
-rather than presented as the vessel's natural shape.
+### Corrected numbers
 
-### One mesh is notably ragged
+Separating boundary edges from non-manifold edges and excluding degenerate
+triangles changed several figures this document previously printed. The
+corrections, not the old numbers, are what the raw table now holds.
 
-`VH_M_left_coronary_artery` has **2,609 boundary edges** over 12,240 triangles —
-two orders of magnitude more than any other vessel — and is also one of the two
-meshes carrying degenerate normals. Recorded as observed. It is the publisher's
-data and is not repaired here.
+- **`VH_M_left_coronary_artery` is broken, and worse than recorded.** Not "2,609
+  boundary edges": **6 components**, 285 boundary edges at a 1 µm weld (138 at
+  10 µm), 84 non-manifold edges and **2,924 degenerate triangles** out of 12,240.
+  It is also one of the two meshes the validator flags for degenerate normals.
+- **`VH_M_superior_vena_cava`**: 3 components, 13 boundary edges at 1 µm (0 at
+  10 µm), 15 non-manifold edges, 89 degenerate triangles.
+- **Ten vessels are closed**, not eight: the pulmonary trunk, both pulmonary
+  arteries, all four pulmonary veins, both brachiocephalic veins and the small
+  cardiac vein. A tube with no boundary is a tube whose cut ends the source has
+  closed. **The source did that**; this scene caps nothing.
+- **Signed volume is reported as a signed volume.** For the 26 open meshes it is
+  not an enclosed volume and is marked `volumeMeaningful: no`; several are
+  negative, which is inconsistent winding rather than negative space. The
+  standing counter-example is in the test file: one open triangle sums to 0 at
+  the origin and to 1/6 of a cubic unit a unit away.
 
-### Where the two files meet — measured, and a diagnostic only
+### Where the two files meet — a **sampled-vertex** distance, and a diagnostic
 
-Nearest-point distance between each vessel and the heart part it should meet, in
-the source's own frame, with neither file moved.
+Smallest distance between a de-duplicated **vertex** of a vessel and a vertex of
+the heart part it meets, in the source's own frame, with neither file moved.
+Vertices de-duplicated at 10 µm.
 [`measurements/junctions.tsv`](measurements/junctions.tsv);
 `npm run assets:measure junctions`.
 
-| Vessel | Heart part | Gap |
+| Vessel | Heart part | Nearest sampled vertex |
 | --- | --- | --- |
 | Ascending aorta | Aortic valve | **0.00 mm** |
-| Pulmonary trunk | Pulmonary valve | 0.08 mm |
-| Pulmonary trunk | Right ventricle | 0.17 mm |
-| Superior vena cava | Right atrium | 0.09 mm |
 | Inferior vena cava (proximal) | Right atrium | 0.05 mm |
-| Left superior pulmonary vein | Left atrium | 0.07 mm |
 | Left inferior pulmonary vein | Left atrium | 0.05 mm |
 | Right superior pulmonary vein | Left atrium | 0.06 mm |
 | Right inferior pulmonary vein | Left atrium | 0.06 mm |
+| Left superior pulmonary vein | Left atrium | 0.07 mm |
+| Pulmonary trunk | Pulmonary valve | 0.08 mm |
+| Superior vena cava | Right atrium | 0.09 mm |
 | Left coronary artery | Aortic valve | 0.11 mm |
 | Right coronary artery | Aortic valve | 0.14 mm |
 | Coronary sinus | Right atrium | 0.16 mm |
+| Pulmonary trunk | Right ventricle | 0.17 mm |
 | Ascending aorta | Left ventricle | 12.57 mm |
 
-Twelve of the thirteen are under 0.2 mm and one is exactly zero — two
-independently segmented files, neither moved by us, touching where they should
-touch. **That is a strong corroboration that the two files share a frame**, on
-top of the qualitative relationships recorded above.
+**This is not a distance between surfaces.** Two meshes can interpenetrate
+without sharing a vertex, and two surfaces meeting along a face can have their
+nearest vertices far apart — the test file measures a small box nested inside a
+large one and gets 6.7, not 0. So **0.00 mm means two sampled vertices coincide
+to 10 µm**, and not that the surfaces are joined, continuous or watertight.
 
-The 12.57 mm is not a defect: the ascending aorta meets the **aortic valve**,
-not the left ventricle's cavity surface, and the pair is in the table to show
-what a genuine separation looks like beside the ones that touch.
+Twelve of thirteen under 0.2 mm, across two independently segmented files
+neither of which was moved, is a **corroboration that the two files share a
+frame**, alongside the qualitative relationships above. The 12.57 mm is in the
+table on purpose: the ascending aorta meets the aortic valve, not the left
+ventricle's surface, and it shows what a genuine separation reads like beside
+the ones that nearly touch.
 
-**What this does not establish.** It is a distance between two surfaces, not a
-judgement that either surface is in the right place. It says the files agree
-with each other; it says nothing about whether they agree with a heart. **No
-millimetre-level anatomical accuracy is claimed from these numbers**, here or
-anywhere in the product.
+**It says nothing about whether either file agrees with a heart, and no
+millimetre-level anatomical accuracy is claimed from it anywhere.**
 
 ## What this inspection did not do
 

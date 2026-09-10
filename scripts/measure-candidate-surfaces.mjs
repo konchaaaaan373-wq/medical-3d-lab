@@ -1,21 +1,49 @@
 #!/usr/bin/env node
 /**
- * Measure what the candidate surfaces actually are.
+ * Measure the candidate meshes, with metrics that were checked first.
  *
  *   npm run assets:dev
- *   node scripts/measure-candidate-surfaces.mjs vessels
- *   node scripts/measure-candidate-surfaces.mjs heart
+ *   npm run assets:measure            # the vessels of the heart
+ *   npm run assets:measure heart      # the heart file
+ *   npm run assets:measure junctions  # where the two files meet
  *
- * The open question the model card records is lumen versus wall. It is settled
- * by counting how many times a ray crosses the surface on its way through the
- * middle of a vessel: a single-surface tube gives two crossings, a wall with a
- * modelled thickness gives four (outer, inner, inner, outer). Enclosed volume
- * and boundary-edge counts are recorded beside it, because a wall shell encloses
- * only its own material and a lumen cast encloses the channel.
+ * This script reads GLBs and prints numbers. **Every number comes from
+ * `scripts/lib/mesh-metrics.mjs`**, which is pure and is exercised against
+ * shapes with known answers in `tests/mesh-metrics.test.js` — a cube, a hollow
+ * shell, a solid rod, a walled pipe, an open sheet and a few deliberate
+ * defects. That separation exists because the previous version of this file
+ * concluded, from a rule it had never checked, that no candidate vessel has a
+ * modelled wall thickness: the rule belonged to a ray crossing a shape from
+ * outside, and the code cast its ray from inside, where a solid gives one
+ * crossing and a shell gives two. The conclusion was withdrawn.
+ *
+ * The columns are named for what they are:
+ *
+ *   boundary / nonManifold  edges used once / three or more times. Different
+ *                           defects, never summed into "open edges".
+ *   signedVolume            the divergence-theorem sum. An enclosed volume only
+ *                           where the mesh is closed, manifold and one piece —
+ *                           `volumeMeaningful` says whether it is.
+ *   genus                   from V − E + F, and only for a closed, manifold,
+ *                           single-component surface. 0 means no through-hole
+ *                           (a solid); 1 or more means a through-hole, which in
+ *                           an unbranched tube is what a wall thickness looks
+ *                           like and in a branched network can be a loop.
+ *   transversal             crossings along a complete line through the shape,
+ *                           from outside. Read with the genus, never alone.
  *
  * Reads the GLB directly. No three, no DOM, no loader.
  */
 import { readFileSync } from 'node:fs';
+import {
+  directions,
+  eulerCharacteristic,
+  isClosedManifold,
+  nearestSampledVertexDistance,
+  signedVolume,
+  surfaceCentroid,
+  transversalCrossings,
+} from './lib/mesh-metrics.mjs';
 
 const COMPONENT = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
 const COUNT = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT4: 16 };
@@ -100,88 +128,22 @@ function meshes(file, subtreeName = null) {
   return out;
 }
 
-/** Boundary edges over vertices welded at a stated tolerance (metres). */
-function boundaryEdges(tris, weld = 1e-6) {
-  const q = 1 / weld;
-  const key = (p) => `${Math.round(p[0]*q)},${Math.round(p[1]*q)},${Math.round(p[2]*q)}`;
-  const edges = new Map();
-  for (const t of tris) {
-    const k = t.map(key);
-    for (const [a, b] of [[k[0],k[1]],[k[1],k[2]],[k[2],k[0]]]) {
-      const e = a < b ? `${a}|${b}` : `${b}|${a}`;
-      edges.set(e, (edges.get(e) ?? 0) + 1);
-    }
-  }
-  let open = 0;
-  for (const n of edges.values()) if (n !== 2) open += 1;
-  return open;
-}
-
-/** Signed volume by the divergence theorem, in millilitres (source metres). */
-function enclosedMl(tris) {
-  let v = 0;
-  for (const [a, b, c] of tris) {
-    v += (a[0]*(b[1]*c[2]-b[2]*c[1]) - a[1]*(b[0]*c[2]-b[2]*c[0]) + a[2]*(b[0]*c[1]-b[1]*c[0])) / 6;
-  }
-  return Math.abs(v) * 1e6;
-}
-
-const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]];
-const cross = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]];
-const dot = (a, b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-
-/** Möller–Trumbore, counting every crossing (no culling, no early exit). */
-function crossings(tris, origin, dir) {
-  let n = 0;
-  for (const [a, b, c] of tris) {
-    const e1 = sub(b, a), e2 = sub(c, a);
-    const h = cross(dir, e2), det = dot(e1, h);
-    if (Math.abs(det) < 1e-14) continue;
-    const f = 1 / det, s = sub(origin, a);
-    const u = f * dot(s, h);
-    if (u < 0 || u > 1) continue;
-    const q = cross(s, e1);
-    const v = f * dot(dir, q);
-    if (v < 0 || u + v > 1) continue;
-    const t = f * dot(e2, q);
-    if (t > 1e-9) n += 1;
-  }
-  return n;
-}
-
-/** A deterministic spread of directions on the sphere. */
-function directions(count) {
-  const out = [];
-  for (let i = 0; i < count; i += 1) {
-    const y = 1 - (2 * i + 1) / count;
-    const r = Math.sqrt(Math.max(0, 1 - y * y));
-    const a = i * Math.PI * (3 - Math.sqrt(5));
-    out.push([Math.cos(a) * r, y, Math.sin(a) * r]);
-  }
-  return out;
-}
-
-const centroid = (tris) => {
-  const c = [0, 0, 0];
-  for (const t of tris) for (const p of t) { c[0] += p[0]; c[1] += p[1]; c[2] += p[2]; }
-  const n = tris.length * 3;
-  return [c[0]/n, c[1]/n, c[2]/n];
-};
-
-const RAYS = 128;
-const dirs = directions(RAYS);
-
 const [, , which] = process.argv;
+const dirs = directions(128);
 
 /**
- * How far each vessel's nearest point is from the heart part it should meet.
+ * Pairs whose nearest **sampled vertices** are compared.
  *
- * **A diagnostic, not an accuracy claim.** Both files are in the same
- * whole-body frame and neither is moved, so this is a property of the source
- * segmentation and of nothing done here. A gap of a few millimetres between two
- * independently segmented surfaces is ordinary; it is recorded so that nobody
- * has to guess at it, and no millimetre-level correctness is asserted anywhere
- * on the strength of it.
+ * **A diagnostic, not an accuracy claim, and not a surface distance.** What is
+ * computed is the smallest distance between a de-duplicated vertex of one mesh
+ * and one of the other — see `nearestSampledVertexDistance`. Two meshes can
+ * interpenetrate without sharing a vertex, and two surfaces that meet along a
+ * face can have their nearest vertices far apart, so a 0 mm reading means two
+ * sampled vertices coincide and **not** that the surfaces are joined,
+ * continuous or watertight.
+ *
+ * Both files are in the same whole-body frame and neither is moved, so these
+ * are properties of the source segmentation and of nothing done here.
  */
 const JUNCTIONS = [
   ['VH_M_ascending_aorta', 'VH_M_aortic_valve'],
@@ -204,32 +166,17 @@ if (which === 'junctions') {
     meshes(glb('dev-assets/heart/VH_M_Blood_Vasculature.glb'), 'VH_M_blood_vasculature_of_heart').map((m) => [m.name, m])
   );
   const parts = new Map(meshes(glb('dev-assets/heart/VH_M_Heart.glb'), null).map((m) => [m.name, m]));
-  const points = (m) => {
-    const seen = new Set();
-    const out = [];
-    for (const t of m.tris) for (const p of t) {
-      const k = `${Math.round(p[0] * 1e5)},${Math.round(p[1] * 1e5)},${Math.round(p[2] * 1e5)}`;
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(p);
-    }
-    return out;
-  };
-  console.log('# nearest-point gap between a vessel and the heart part it meets, in the source\'s own frame');
-  console.log('# diagnostic only: no accuracy is claimed from these numbers');
-  console.log('vessel\tpart\tgapMm');
+  console.log("# smallest distance between a SAMPLED VERTEX of a vessel and one of a heart part");
+  console.log('# in the source\'s own frame, neither file moved. Vertices de-duplicated at 10 µm.');
+  console.log('# NOT a surface distance and NOT a proof of connection: 0.00 means two sampled');
+  console.log('# vertices coincide to that tolerance, nothing more.');
+  console.log(['vessel', 'part', 'nearestSampledVertexMm', 'weldMm', 'sampledVessel', 'sampledPart'].join('\t'));
   for (const [a, b] of JUNCTIONS) {
     const va = vessels.get(a);
     const vb = parts.get(b);
     if (!va || !vb) { console.log(`${a}\t${b}\t(absent)`); continue; }
-    const pa = points(va);
-    const pb = points(vb);
-    let best = Infinity;
-    for (const p of pa) for (const q of pb) {
-      const d = (p[0]-q[0])**2 + (p[1]-q[1])**2 + (p[2]-q[2])**2;
-      if (d < best) best = d;
-    }
-    console.log(`${a}\t${b}\t${(Math.sqrt(best) * 1000).toFixed(2)}`);
+    const r = nearestSampledVertexDistance(va.tris, vb.tris, 1e-5);
+    console.log([a, b, (r.distance * 1000).toFixed(2), (r.weld * 1000).toFixed(3), r.sampledA, r.sampledB].join('\t'));
   }
   process.exit(0);
 }
@@ -240,23 +187,43 @@ const targets = which === 'heart'
 
 for (const [path, subtree] of targets) {
   console.log(`# ${path}${subtree ? ` (${subtree})` : ''}`);
-  console.log('name\ttriangles\topenEdges@1µm/10µm/100µm\tenclosedMl\tcrossings(mode)\thistogram');
+  console.log('# every number below comes from scripts/lib/mesh-metrics.mjs, checked in tests/mesh-metrics.test.js');
+  console.log([
+    'name', 'triangles', 'components',
+    'boundary@1µm', 'boundary@10µm', 'nonManifold@1µm', 'degenerateTris',
+    'closedManifold', 'genus', 'signedVolumeMl', 'volumeMeaningful',
+    'transversalMode', 'transversalHistogram',
+  ].join('\t'));
   for (const m of meshes(glb(path), subtree)) {
-    const c = centroid(m.tris);
+    const fine = eulerCharacteristic(m.tris, 1e-6);
+    const coarse = eulerCharacteristic(m.tris, 1e-5);
+    const closed = isClosedManifold(fine) && fine.components === 1;
+
+    // A complete transversal through the area-weighted surface centroid. Read
+    // with the genus: four crossings can be a wall, a bend, or two pieces.
+    const through = surfaceCentroid(m.tris);
     const hist = new Map();
     for (const d of dirs) {
-      const n = crossings(m.tris, c, d);
+      const n = transversalCrossings(m.tris, through, d);
       hist.set(n, (hist.get(n) ?? 0) + 1);
     }
     const sorted = [...hist.entries()].sort((a, b) => b[1] - a[1]);
-    const summary = sorted.slice(0, 4).map(([n, k]) => `${n}x${k}`).join(' ');
+
     console.log([
       m.name,
-      m.tris.length,
-      [1e-6, 1e-5, 1e-4].map((w) => boundaryEdges(m.tris, w)).join('/'),
-      enclosedMl(m.tris).toFixed(2),
+      fine.triangles,
+      fine.components,
+      fine.boundary,
+      coarse.boundary,
+      fine.nonManifold,
+      fine.degenerateTriangles,
+      closed ? 'yes' : 'no',
+      // Withheld rather than guessed wherever the surface cannot carry it.
+      fine.genus === null ? '-' : fine.genus,
+      (signedVolume(m.tris) * 1e6).toFixed(2),
+      closed ? 'yes' : 'no — open, non-manifold or several pieces',
       sorted[0][0],
-      summary,
+      sorted.slice(0, 4).map(([n, k]) => `${n}x${k}`).join(' '),
     ].join('\t'));
   }
 }

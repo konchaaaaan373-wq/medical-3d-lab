@@ -151,15 +151,15 @@ What was measured in this repository, and is therefore a fact about the files:
 
 * **Fourteen meshes, fourteen distinct ontology ids.** Every part the adapter
   names is present under the node name it is keyed by.
-* **Nine of fourteen surfaces are closed**; five are open. Boundary edges,
-  counted with vertices welded at 1 µm and again at 10 µm: aortic valve 72/72,
-  anterior papillary 42/42, medial papillary 26/26, posterior papillary 21/21,
-  right atrium 286/39. **The right atrium's count is tolerance-dependent and an
-  earlier record of "3" was not reproducible** — it is open at every tolerance
-  measured, and how open depends on how near-coincident vertices are welded.
-  The adapter records which parts are open, the information card says so, and
-  the material draws both sides so an open surface does not vanish from one
-  side.
+* **Nine of the fourteen surfaces are closed and manifold**; five are not. The
+  aortic valve has 72 boundary edges, three papillary muscles 42, 26 and 21, and
+  the right atrium is a different problem — 3 boundary edges but **134
+  non-manifold edges, 1,554 degenerate triangles and three components**. An
+  earlier note in this card gave the right atrium 286/39 boundary edges; that
+  was a metric adding boundary edges, non-manifold edges and the edges of
+  degenerate triangles together, and it is corrected. The adapter records which
+  parts are open, the information card says so, and the material draws both
+  sides so an open surface does not vanish from one side.
 * **What the vessel surfaces are is still open, and two answers have been
   withdrawn.** They were first described as lumen surfaces, which nobody had
   measured. They were then described as single surfaces with no modelled wall
@@ -169,11 +169,18 @@ What was measured in this repository, and is therefore a fact about the files:
   a thick shell gives as well. **Both claims are withdrawn**, and the scene says
   the question is being checked rather than answering it. What has replaced the
   ray count is in §5 below.
-* **The source caps some cut vessels.** The pulmonary arteries, all four
-  pulmonary veins, both brachiocephalic veins and the small cardiac vein have no
-  boundary edges at all, so their cut ends are closed by the source. That is the
-  file's own choice, recorded rather than made here, and nothing in this scene
-  caps a vessel.
+* **The source caps ten of the vessels.** The pulmonary trunk, both pulmonary
+  arteries, all four pulmonary veins, both brachiocephalic veins and the small
+  cardiac vein have no boundary edges, so their cut ends are closed by the
+  source. That is the file's own choice, recorded rather than made here, and
+  nothing in this scene caps a vessel.
+* **The left ventricle's cavity reading is now properly supported.** Its surface
+  is closed, manifold, a single component and **genus 0** — no through-hole, so a
+  solid volume rather than an annular wall — enclosing 121.60 mL. That is what
+  makes it a chamber cavity rather than a wall's worth of muscle, and it is why
+  no interior view is offered. The left atrium reads genus 4 and the right
+  ventricle genus 26, which for trabeculated cavity casts is recorded rather
+  than explained.
 * **The axes.** +x is the patient's left (the left atrium is left of the right
   atrium), +y superior (the apex is below the valve plane), +z anterior (the
   right ventricle is in front of the left atrium). Three relationships that
