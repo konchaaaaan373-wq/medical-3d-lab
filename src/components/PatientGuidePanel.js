@@ -85,9 +85,21 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     on: { click: closePanel },
   });
 
+  /**
+   * Where to look, kept apart from what is happening.
+   *
+   * A person beside a monitor is being shown a rotating model and told a
+   * mechanism, and the two are not the same sentence: one says what changes,
+   * the other says which part of the picture shows it. Running them together
+   * produced a paragraph that did neither. It is its own line, and a step that
+   * has nothing to point at simply does not draw it.
+   */
+  const look = el('p', { class: 'patient-guide-look' });
+
   const copy = el('div', { class: 'patient-guide-step', 'aria-live': 'polite', 'aria-atomic': 'true' }, [
     heading,
     body,
+    look,
   ]);
 
   // Screen-hidden, print-only companion to the interactive guide. It contains
@@ -240,6 +252,17 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       el('span', { class: 'lang-en', text: step.body }),
       el('span', { class: 'lang-ja', text: step.bodyJa })
     );
+    look.hidden = !step.look;
+    look.replaceChildren(
+      ...(step.look
+        ? [
+            el('span', { class: 'patient-guide-look-label lang-en', text: 'Where to look' }),
+            el('span', { class: 'patient-guide-look-label lang-ja', text: '画面のどこを見るか' }),
+            el('span', { class: 'patient-guide-look-text lang-en', text: step.look }),
+            el('span', { class: 'patient-guide-look-text lang-ja', text: step.lookJa ?? step.look }),
+          ]
+        : [])
+    );
     dots.replaceChildren(
       ...guide.steps.map((_, dotIndex) =>
         el('button', {
@@ -304,7 +327,16 @@ function buildPatientHandout(guide) {
             el('span', { class: 'lang-en', text: step.body }),
             el('span', { class: 'lang-ja', text: step.bodyJa }),
           ]),
-        ])
+          // The printed sheet is read away from the screen, so "where to look"
+          // becomes "what you were shown". Same words either way — the handout
+          // never says something the panel did not.
+          step.look
+            ? el('p', { class: 'patient-handout-look' }, [
+                el('span', { class: 'lang-en', text: step.look }),
+                el('span', { class: 'lang-ja', text: step.lookJa ?? step.look }),
+              ])
+            : null,
+        ].filter(Boolean))
       )
     ),
     el('footer', { class: 'patient-handout-boundary' }, [

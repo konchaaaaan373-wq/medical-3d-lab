@@ -3,7 +3,7 @@ import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
-import { betaUnlocked } from './releaseGate.js';
+import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
@@ -659,7 +659,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // Optional: what the model answers, what it does not, and where it came from.
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
-  const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  const scopePanel = meta.modelScope
+    ? createModelScopePanel(meta.modelScope, {
+        // A scene the release is holding back is not in this build, so a link to
+        // it would be a link to "TO BE UPDATED". The panel drops those rather
+        // than offering them, and the gate — not this file — decides which.
+        isOpen: (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug }),
+      })
+    : null;
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
 
   inspectionPanel = createInspectionPanel({

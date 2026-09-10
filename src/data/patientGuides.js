@@ -45,14 +45,73 @@ export const PATIENT_GUIDES = Object.freeze({
       },
     ]),
   }),
+  /**
+   * Heart failure, said twice: once for a clinician and once for the person the
+   * heart belongs to.
+   *
+   * **The pair is the point.** `stage` names the scene stage each step stands
+   * beside, and `tests/patient-guide-pairing.test.js` holds `progress` to that
+   * stage's own position on the scene's axis. The two explanations therefore
+   * describe the same solved state by construction: patient copy cannot drift
+   * onto a state the clinician's copy never describes, and re-tuning the model
+   * moves both or fails the build.
+   *
+   * **Three beats, in this order, and no more per step.** What changes, what
+   * follows from it, and where to look for it on screen. The last one is the
+   * one that was missing: a person standing beside a monitor is being shown a
+   * rotating 3D model and told a mechanism, and nothing was telling them which
+   * part of it to watch. `look` is that sentence, and it points at what the
+   * scene is actually drawing at this step — the annotations named in the
+   * stage's own `focus` — rather than at anything invented here.
+   *
+   * What is deliberately absent: numbers, a rate, a cause for this person, a
+   * treatment, a prognosis. The model has none of those for an individual, and
+   * short copy is exactly where they would be easiest to smuggle in.
+   */
   'heart-failure': Object.freeze({
     title: 'Why the heart can become less efficient',
     titleJa: '心臓の働きが弱くなる仕組み',
     steps: Object.freeze([
-      { progress: 0, title: 'A healthy pump', titleJa: '正常なポンプ', body: 'The heart fills with blood and squeezes it forward with each beat.', bodyJa: '心臓は血液を受け取り、1回ごとの拍動で前へ送り出します。' },
-      { progress: 0.32, title: 'The wall adapts', titleJa: '心筋が適応する', body: 'When the heart works against a higher load for a long time, the muscle can become thicker.', bodyJa: '長く負担がかかると、心筋は厚くなって対応しようとします。' },
-      { progress: 0.68, title: 'The chamber enlarges', titleJa: '心室が拡がる', body: 'If the process continues, the main pumping chamber can enlarge and the squeeze becomes less effective.', bodyJa: 'さらに進むと、主なポンプである心室が拡がり、収縮の効率が落ちていきます。' },
-      { progress: 1, title: 'Pressure backs up', titleJa: '圧がうしろへ伝わる', body: 'When the heart cannot move blood forward efficiently, pressure can build up behind it, including toward the lungs.', bodyJa: '血液を十分に前へ送れなくなると、心臓の手前側にも圧がたまり、肺の方向へ影響することがあります。' },
+      {
+        progress: 0,
+        stage: 'normal',
+        title: 'A healthy pump',
+        titleJa: '正常なポンプ',
+        body: 'The heart fills with blood, then squeezes it forward with each beat.',
+        bodyJa: '心臓は血液を受け取り、1 回ごとの拍動で前へ送り出します。',
+        look: 'Watch the chamber in the middle: it widens as it fills, then narrows as it empties.',
+        lookJa: '中央の部屋を見てください。血液がたまると広がり、送り出すと縮みます。',
+      },
+      {
+        progress: 0.18,
+        stage: 'concentric-hypertrophy',
+        title: 'The wall thickens',
+        titleJa: '壁が厚くなる',
+        body: 'Working against a higher load for a long time, the muscle can grow thicker. The room inside stays about the same.',
+        bodyJa: '高い負担が長く続くと、筋肉は厚くなることがあります。中の広さはあまり変わりません。',
+        look: 'Watch the muscle around the chamber, not the space inside it — the wall is what is changing here.',
+        lookJa: '部屋の中ではなく、そのまわりの筋肉を見てください。ここで変わっているのは壁の厚さです。',
+      },
+      {
+        progress: 0.42,
+        stage: 'dilation',
+        title: 'The chamber widens',
+        titleJa: '部屋が広がる',
+        body: 'Later the chamber itself can enlarge and become rounder, and the wall is thin for a room that size.',
+        bodyJa: 'その後、部屋そのものが広がって丸みを帯び、その大きさに対して壁は薄くなります。',
+        look: 'Watch the outline of the chamber: it is wider and rounder than it was at the start.',
+        lookJa: '部屋の輪郭を見てください。最初より広く、丸くなっています。',
+      },
+      {
+        progress: 0.64,
+        stage: 'systolic-dysfunction',
+        title: 'Less leaves with each beat',
+        titleJa: '1 回に送り出せる量が減る',
+        body: 'A wider chamber that squeezes less firmly empties less completely, so some blood stays behind and pressure can build up behind the heart.',
+        bodyJa: '広がった部屋は縮む力も弱いため、完全には空になりません。血液が残り、心臓の手前側に圧がたまることがあります。',
+        look: 'Watch what is still inside at the end of a squeeze — that is the blood that did not leave.',
+        lookJa: '縮み終わったときに中に残っているものを見てください。それが送り出せなかった血液です。',
+      },
     ]),
   }),
   'copd-hyperinflation': Object.freeze({

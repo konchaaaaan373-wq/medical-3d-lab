@@ -207,6 +207,16 @@ export function installFakeDocument() {
   const previous = globalThis.document;
   globalThis.document = {
     createElement: (tagName) => new FakeElement(tagName),
+    /**
+     * A text node, as far as anything here needs one.
+     *
+     * `ModelScopePanel` builds `**emphasis**` out of `<strong>` elements and
+     * text nodes rather than assigning HTML, so a fake document without this
+     * cannot render the one panel whose whole job is careful wording. It is a
+     * plain object, not a `FakeElement`: `findByClass` walks elements and must
+     * not be handed something claiming to be one.
+     */
+    createTextNode: (text) => ({ nodeType: 3, text: String(text), textContent: String(text) }),
     activeElement: null,
   };
   return () => {

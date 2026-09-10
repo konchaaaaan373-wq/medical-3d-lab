@@ -602,6 +602,44 @@ export const HEART_MODEL_SCOPE = Object.freeze({
       kind: 'limitation',
     },
   ],
+  /**
+   * Where the physiology is, given that this model has none.
+   *
+   * "No beat, no flow, no pressure" is true and leaves the reader nowhere. The
+   * next question after "what is this part called" is "what happens to it", and
+   * the answer is two other scenes in this app — so the panel that says what is
+   * missing also says where it is shown.
+   *
+   * **They are not this heart later.** Both are schematic models built from
+   * their own geometry and their own solved state; nothing there is this
+   * specimen changing, and `nextNote` says so beside the links rather than in a
+   * document. Keeping that sentence attached is the whole reason these live
+   * here and not in a generic "related scenes" list.
+   */
+  next: [
+    {
+      slug: 'heart-failure',
+      label: 'Heart failure — what a ventricle under load becomes',
+      labelJa: '心不全 — 負荷のかかった心室がどう変わるか',
+      why: 'Wall thickness, cavity size and what one beat manages, changing over a course. **A different model**, not this specimen.',
+      whyJa: '壁の厚さ、内腔の大きさ、1 拍で送れる量が、経過とともに変わります。**別のモデル**であって、この標本ではありません。',
+    },
+    {
+      slug: 'myocardial-ischemia',
+      label: 'Myocardial ischaemia — which muscle a narrowed artery starves',
+      labelJa: '心筋虚血 — 細くなった血管がどの筋肉を飢えさせるか',
+      why: 'The coronary arteries you can name here, supplying territories downstream. **A different model**, not this specimen.',
+      whyJa: 'ここで名前を確かめられる冠動脈が、下流のどの領域を養っているか。**別のモデル**であって、この標本ではありません。',
+    },
+  ],
+  nextNote:
+    '**Neither is this heart at a later date.** Each is a separate schematic model with its own '
+    + 'geometry, built to show a mechanism rather than a specimen. Nothing here is deformed, cut or '
+    + 'joined to make one look like the other, and no measurement crosses between them.',
+  nextNoteJa:
+    '**どちらも「この心臓のその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、'
+    + '標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合は'
+    + 'していませんし、計測値がまたいで使われることもありません。',
   evidence: 'docs/model-evidence/heart-anatomy.md',
 });
 

@@ -20,12 +20,28 @@ import { el } from '../utils/dom.js';
  *   excludes: [{ text, textJa }],   // what it does not represent at all
  *   cautions: [{ text, textJa }],   // where it will mislead if pushed
  *   sources:  [{ text, textJa, kind }],
+ *   next:     [{ slug, label, labelJa, why, whyJa }],  // where the rest is shown
+ *   nextNote, nextNoteJa,                              // and what that is not
  *   evidence: 'docs/model-evidence/<id>.md' }
  * ```
  *
+ * `next` is the other half of "what it does not represent". Saying an anatomy
+ * atlas carries no physiology is true and unhelpful on its own; the reader's
+ * next question is where the physiology *is*, and the answer is another scene
+ * in this app. It is a list of routes rather than prose so the panel can drop a
+ * scene the release has not opened instead of offering a dead link — which is
+ * what `isOpen` is for.
+ *
+ * `nextNote` is the sentence that has to travel with those links: a
+ * pathophysiology scene is **a different model**, built from different
+ * geometry, not this specimen changing. Without it, two scenes reached from one
+ * panel read as two states of one thing.
+ *
  * @param {object} scope
+ * @param {{ isOpen?: (slug: string) => boolean }} [options]
  */
-export function createModelScopePanel(scope) {
+export function createModelScopePanel(scope, { isOpen = () => true } = {}) {
+  const next = (scope.next ?? []).filter((entry) => entry?.slug && isOpen(entry.slug));
   const body = el('div', { class: 'scope-body' }, [
     section('What this model is for', 'このモデルが答えること', [
       el('p', { class: 'scope-question' }, [
@@ -35,6 +51,28 @@ export function createModelScopePanel(scope) {
       list(scope.answers, 'scope-answers'),
     ]),
     section('What it does not represent', '表現していないこと', [list(scope.excludes, 'scope-excludes')]),
+    next.length
+      ? section('What is shown elsewhere', 'この先はどこで見られるか', [
+          el('ul', { class: 'scope-list scope-next' }, next.map((entry) =>
+            el('li', { class: 'scope-item' }, [
+              el('a', { class: 'scope-next-link', href: `#/${entry.slug}` }, [
+                el('span', { class: 'lang-en', text: entry.label }),
+                el('span', { class: 'lang-ja', text: entry.labelJa }),
+              ]),
+              el('span', { class: 'scope-next-why' }, [
+                el('span', { class: 'lang-en' }, emphasised(entry.why)),
+                el('span', { class: 'lang-ja' }, emphasised(entry.whyJa)),
+              ]),
+            ])
+          )),
+          scope.nextNote
+            ? el('p', { class: 'scope-next-note' }, [
+                el('span', { class: 'lang-en' }, emphasised(scope.nextNote)),
+                el('span', { class: 'lang-ja' }, emphasised(scope.nextNoteJa)),
+              ])
+            : null,
+        ])
+      : null,
     scope.cautions?.length
       ? section('Where it will mislead', '誤解しやすいところ', [list(scope.cautions, 'scope-cautions')])
       : null,

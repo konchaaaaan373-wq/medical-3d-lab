@@ -3322,6 +3322,45 @@
   color: rgba(255, 205, 160, 0.85);
 }
 
+/* The way on. An arrow rather than a bullet, because these are the only items
+   in the panel a reader is meant to act on. */
+.scope-next .scope-item::before {
+  content: '\2192';
+  font-size: 9px;
+  top: 1px;
+}
+
+.scope-next .scope-item {
+  padding-bottom: 6px;
+}
+
+.scope-next-link {
+  display: block;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.scope-next-link:hover,
+.scope-next-link:focus-visible {
+  border-bottom-color: currentColor;
+}
+
+.scope-next-why {
+  display: block;
+  color: var(--ink-dim);
+}
+
+/* The sentence that has to stay next to the links: those scenes are other
+   models, not this one later. */
+.scope-next-note {
+  margin: 4px 0 0;
+  font-size: 9px;
+  line-height: 1.5;
+  color: rgba(255, 205, 160, 0.85);
+}
+
 .scope-evidence {
   margin: 5px 0 0;
   font-size: 9px;

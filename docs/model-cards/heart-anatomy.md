@@ -52,6 +52,16 @@ flow, no ejection fraction, no conduction. The heart-failure and ischaemia
 scenes are the pathophysiology layer and are separate scenes with separate
 models.
 
+The scope panel now says so on screen and offers the way there: under **What is
+shown elsewhere** it links to `heart-failure` and `myocardial-ischemia`, each
+with one line on what that scene shows. **The sentence beside those links is
+part of the claim**, not decoration — neither scene is this heart at a later
+date. Each is a separate schematic model with its own geometry, built to show a
+mechanism rather than a specimen; nothing is deformed, cut or joined to make one
+resemble the other, and no measurement crosses between them. A scene the release
+has not opened is dropped from the list rather than linked to a placeholder, so
+what a reader is offered depends on the gate and not on this card.
+
 **It is not a complete gross anatomy of the heart.** What is still absent, and
 why, is `HEART_MISSING` in the adapter, which the scene can show: no chordae
 tendineae, no pericardium, no conduction system, no myocardial free wall, and no
