@@ -132,10 +132,14 @@ heart file.
 
 ## Format validation — **failed**, and by how much
 
-Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), run 2026-09-09 against
-sha256 `a31ebed6…`. Raw output:
-[`measurements/gltf-validator.txt`](measurements/gltf-validator.txt); re-runnable
-with `npm run assets:validate`.
+Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), re-run 2026-09-10
+against sha256 `a31ebed6…`. The full report as the validator returned it:
+[`measurements/gltf-validator-VH_M_Blood_Vasculature.json`](measurements/gltf-validator-VH_M_Blood_Vasculature.json).
+
+`npm run assets:validate` re-runs it and **exits 1 while this file has errors** —
+0 for a clean run, 1 for validator errors, 2 when it could not run at all.
+Warnings do not change the exit code. The source GLB is opened read-only; this
+repository does not repair the publisher's data.
 
 | | |
 | --- | --- |

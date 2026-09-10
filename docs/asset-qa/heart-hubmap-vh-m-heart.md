@@ -94,10 +94,13 @@ Checked by reading every node, not inferred from the name of the file:
 
 ## Format validation — **failed**, in one mesh
 
-Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), run 2026-09-09 against
-sha256 `b1237e7e…`. Raw output:
-[`measurements/gltf-validator.txt`](measurements/gltf-validator.txt);
-`npm run assets:validate` re-runs it.
+Khronos glTF Validator (`gltf-validator` 2.0.0-dev.3.10), re-run 2026-09-10
+against sha256 `b1237e7e…`. The full report as the validator returned it:
+[`measurements/gltf-validator-VH_M_Heart.json`](measurements/gltf-validator-VH_M_Heart.json).
+
+`npm run assets:validate` re-runs it and **exits 1 while this file has errors**
+(0 clean, 1 validator errors, 2 could not run). Warnings do not change the exit
+code. The source GLB is opened read-only.
 
 **408 errors, 0 warnings, 3 hints.** Every error is
 `ACCESSOR_VECTOR3_NON_UNIT` — a degenerate vertex normal — and **all 408 are in
