@@ -96,10 +96,25 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
    */
   const look = el('p', { class: 'patient-guide-look' });
 
+  /**
+   * The line that says this step is not the model talking.
+   *
+   * Every other step points at something the scene draws from its own solved
+   * state. A step about what a person feels does not — the model solves
+   * pressures and volumes, not symptoms — and a reader has no way to tell those
+   * apart by looking. So the step that is a general explanation says so, in the
+   * same place, every time it is shown.
+   */
+  const educational = el('p', { class: 'patient-guide-educational' }, [
+    el('span', { class: 'lang-en', text: 'General explanation — this part is not drawn from the model on screen.' }),
+    el('span', { class: 'lang-ja', text: '一般的な説明です。この部分は画面のモデルが計算したものではありません。' }),
+  ]);
+
   const copy = el('div', { class: 'patient-guide-step', 'aria-live': 'polite', 'aria-atomic': 'true' }, [
     heading,
     body,
     look,
+    educational,
   ]);
 
   // Screen-hidden, print-only companion to the interactive guide. It contains
@@ -252,6 +267,7 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
       el('span', { class: 'lang-en', text: step.body }),
       el('span', { class: 'lang-ja', text: step.bodyJa })
     );
+    educational.hidden = !step.educationalOnly;
     look.hidden = !step.look;
     look.replaceChildren(
       ...(step.look
@@ -283,14 +299,49 @@ export function createPatientGuidePanel({ guide, setProgress, onExit, onPresenta
     renderFullscreenButton();
   }
 
-  setIndex(0);
+  // Draw the first step, and **do not move the model to it**. Building the
+  // panel is not opening it: the panel is constructed the first time the button
+  // is pressed, so a `setIndex` here set the progression to zero before anyone
+  // had decided to explain anything — and the position that `reset` then opened
+  // at was the one this had just overwritten. Rendering is enough; `reset` puts
+  // the reader on the right step.
+  index = 0;
+  render();
 
   return {
     element,
     handout,
-    reset() {
+    /**
+     * Open the explanation without moving the model.
+     *
+     * `reset()` used to mean "go to step one", and step one sets the model to
+     * the start of the progression — so opening the patient view on a dilated
+     * ventricle silently put it back to a normal one. Switching how something
+     * is explained is not a change to what is being explained.
+     *
+     * Given where the model already is, this opens at the step that describes
+     * it: the last step at or before that position. The reader can still step
+     * forward and back from there, and every one of those *is* a change,
+     * because they asked for it.
+     *
+     * @param {{ progress?: number }} [where] the model's current position
+     */
+    reset(where = {}) {
       setPresentation(false);
-      setIndex(0);
+      const progress = where.progress;
+      if (!Number.isFinite(progress)) {
+        setIndex(0);
+        return;
+      }
+      let at = 0;
+      for (const [index, step] of guide.steps.entries()) {
+        if ((step.progress ?? 0) <= progress + 1e-6) at = index;
+      }
+      // Show that step without driving the model back to its exact position:
+      // the reader is somewhere between two steps and the explanation should
+      // describe where they are, not snap them to the nearest caption.
+      index = at;
+      render();
     },
     focus() {
       element.focus({ preventScroll: true });
@@ -330,6 +381,12 @@ function buildPatientHandout(guide) {
           // The printed sheet is read away from the screen, so "where to look"
           // becomes "what you were shown". Same words either way — the handout
           // never says something the panel did not.
+          step.educationalOnly
+            ? el('p', { class: 'patient-handout-educational' }, [
+                el('span', { class: 'lang-en', text: 'General explanation — not drawn from the model.' }),
+                el('span', { class: 'lang-ja', text: '一般的な説明です。モデルの計算ではありません。' }),
+              ])
+            : null,
           step.look
             ? el('p', { class: 'patient-handout-look' }, [
                 el('span', { class: 'lang-en', text: step.look }),

@@ -67,6 +67,18 @@ export const PATIENT_GUIDES = Object.freeze({
    * What is deliberately absent: numbers, a rate, a cause for this person, a
    * treatment, a prognosis. The model has none of those for an individual, and
    * short copy is exactly where they would be easiest to smuggle in.
+   *
+   * **Three steps share the last stage, and the third of them is marked.** The
+   * chain does not stop at the heart: the same solved state raises the pressure
+   * in the vessels between the heart and the lungs, and the scene draws that —
+   * `meanPulmonaryVenousPressure` comes out of the same closed-loop solve, and
+   * the congestion overlay is drawn from it. So "the pressure reaches the lungs"
+   * points at something this model actually produces.
+   *
+   * "Why breathing can feel harder" does not. The model solves pressures and
+   * volumes; it does not solve symptoms. That step carries `educationalOnly`,
+   * the panel says so on screen, and `tests/patient-guide-pairing.test.js` holds
+   * every step without the flag to something the scene draws.
    */
   'heart-failure': Object.freeze({
     title: 'Why the heart can become less efficient',
@@ -107,10 +119,38 @@ export const PATIENT_GUIDES = Object.freeze({
         stage: 'systolic-dysfunction',
         title: 'Less leaves with each beat',
         titleJa: '1 回に送り出せる量が減る',
-        body: 'A wider chamber that squeezes less firmly empties less completely, so some blood stays behind and pressure can build up behind the heart.',
-        bodyJa: '広がった部屋は縮む力も弱いため、完全には空になりません。血液が残り、心臓の手前側に圧がたまることがあります。',
+        body: 'A wider chamber that squeezes less firmly empties less completely, so some blood stays behind.',
+        bodyJa: '広がった部屋は縮む力も弱いため、完全には空になりません。血液が残ります。',
         look: 'Watch what is still inside at the end of a squeeze — that is the blood that did not leave.',
         lookJa: '縮み終わったときに中に残っているものを見てください。それが送り出せなかった血液です。',
+      },
+      {
+        // Same state, same position on the axis: this step turns the reader's
+        // attention from the heart to what the same solved state does behind it.
+        // The pressure it is about is `meanPulmonaryVenousPressure`, which the
+        // scene's own closed-loop solve produces, and the overlay it points at
+        // is drawn from that pressure. Nothing is borrowed from another model.
+        progress: 0.64,
+        stage: 'systolic-dysfunction',
+        title: 'The pressure reaches the lungs',
+        titleJa: '圧は肺のほうへ伝わる',
+        body: 'Blood that cannot move forward backs up behind the heart, and the vessels between the heart and the lungs carry that raised pressure.',
+        bodyJa: '前へ進めなかった血液は心臓の手前にたまり、心臓と肺のあいだの血管がその高い圧を受けます。',
+        look: 'Watch above the heart, around the vessels running to the lungs: the haze that spreads there is how far the pressure has reached.',
+        lookJa: '心臓の上、肺へ向かう血管のまわりを見てください。にじむように広がっているのが、圧が届いている範囲です。',
+      },
+      {
+        // Not a model output. The model solves pressures and volumes; it does
+        // not solve breathlessness, and this step says so on screen.
+        progress: 0.64,
+        stage: 'systolic-dysfunction',
+        educationalOnly: true,
+        title: 'Why breathing can feel harder',
+        titleJa: '息が苦しく感じられる理由',
+        body: 'When that pressure is high, fluid can move into the spaces around the small airways, and breathing takes more effort — often more so when lying flat.',
+        bodyJa: 'その圧が高いと、細い気道のまわりの隙間に水分が移りやすくなり、呼吸に力が要るようになります。横になったときに強く感じられることもあります。',
+        look: 'Nothing new is drawn for this step: it explains what the spread on screen tends to mean for a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面に出ている広がりが、人にとってどういうことかの説明です。',
       },
     ]),
   }),

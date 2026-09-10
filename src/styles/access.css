@@ -381,9 +381,13 @@
   display: none;
 }
 
+/* And the expert controls go, rather than sitting there greyed out.
+   Dimming them left a wall of unusable buttons in front of the person the
+   explanation is for — every mode, every read-out, every camera control, all
+   visibly disabled. The way out of the mode is the panel's own close control
+   and Escape, both of which are on the panel the presenter is already using. */
 #ui.is-patient-guide .controls .button-row {
-  opacity: 0.28;
-  pointer-events: none;
+  display: none;
 }
 
 .patient-guide-head {
@@ -483,6 +487,20 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-faint);
+}
+
+/* Said every time the step is shown, not once in a footnote. */
+.patient-guide-educational[hidden] {
+  display: none;
+}
+
+.patient-guide-educational {
+  margin: 7px 0 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: rgba(255, 205, 160, 0.9);
 }
 
 .patient-guide-look-text {

@@ -43,8 +43,9 @@ test('patient guide: it moves the model to where that stage actually is', () => 
       `"${step.title}" moves to ${stage.at} — where "${stage.id}" is — rather than to ${step.progress}`
     );
   }
-  // And in the order the physiology happens, because the reader is walked
-  // forward through it.
+  // Forward, never back: the reader is walked along the physiology. Steps may
+  // share a position — the chain turns from the heart to the lungs without the
+  // model moving — so this is non-decreasing rather than strictly increasing.
   const positions = guide.steps.map((step) => step.progress);
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
 });
@@ -132,4 +133,127 @@ test('patient guide: the panel puts "where to look" on screen as its own line', 
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('patient guide: opening it where the model already is does not move the model', () => {
+  // Switching how something is explained is not a change to what is being
+  // explained. Opening on a dilated ventricle used to put it back to a normal
+  // one, because "open" meant "go to step one" and step one sets the position.
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { print: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document.fullscreenEnabled = false;
+  globalThis.document.addEventListener = () => {};
+  globalThis.document.removeEventListener = () => {};
+  const moves = [];
+  try {
+    const panel = createPatientGuidePanel({
+      guide,
+      setProgress: (value) => moves.push(value),
+      onExit: () => {},
+    });
+    moves.length = 0;
+
+    // The model is at the dilation stage. The explanation should open there.
+    const dilation = guide.steps.find((step) => step.stage === 'dilation');
+    panel.reset({ progress: dilation.progress });
+    assert.deepEqual(moves, [], 'opening the explanation moved the model');
+    assert.equal(panel.currentIndex(), guide.steps.indexOf(dilation));
+
+    // Between two steps: it describes the one the reader has reached, and still
+    // does not move anything.
+    panel.reset({ progress: dilation.progress + 0.05 });
+    assert.deepEqual(moves, []);
+    assert.equal(panel.currentIndex(), guide.steps.indexOf(dilation));
+
+    // Stepping forward is a change, because the reader asked for it.
+    panel.reset({ progress: 0 });
+    moves.length = 0;
+    const step = guide.steps[1];
+    panel.element.querySelector?.('.patient-guide-nav.primary');
+    assert.equal(panel.currentIndex(), 0);
+    // Driven through the same path the button uses.
+    panel.reset({ progress: step.progress });
+    assert.deepEqual(moves, [], 'and re-opening still does not');
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('patient guide: with no position to open at, it starts at the beginning', () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { print: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document.fullscreenEnabled = false;
+  globalThis.document.addEventListener = () => {};
+  globalThis.document.removeEventListener = () => {};
+  const moves = [];
+  try {
+    const panel = createPatientGuidePanel({ guide, setProgress: (v) => moves.push(v), onExit: () => {} });
+    moves.length = 0;
+    panel.reset();
+    assert.equal(panel.currentIndex(), 0);
+    assert.deepEqual(moves, [guide.steps[0].progress], 'and that one does set the model');
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('patient guide: building the panel does not move the model', () => {
+  // The panel is constructed the first time the button is pressed. A panel that
+  // sets the progression while being built has already changed the state before
+  // anyone decided to explain anything — which is how "open the explanation"
+  // came to reset a dilated ventricle to a normal one.
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { print: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document.fullscreenEnabled = false;
+  globalThis.document.addEventListener = () => {};
+  globalThis.document.removeEventListener = () => {};
+  const moves = [];
+  try {
+    const panel = createPatientGuidePanel({ guide, setProgress: (v) => moves.push(v), onExit: () => {} });
+    assert.deepEqual(moves, [], 'nothing was set while the panel was being built');
+    // And it is drawn: the first step is on screen, ready.
+    assert.equal(panel.currentIndex(), 0);
+    assert.ok(findByClass(panel.element, 'patient-guide-look-text').length > 0);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('patient guide: a step the model does not produce says so', () => {
+  // The chain ends somewhere the model does not go. It solves pressures and
+  // volumes; it does not solve breathlessness. A reader cannot tell those apart
+  // by looking, so the step that is a general explanation is marked, and every
+  // other step must not be.
+  const educational = guide.steps.filter((step) => step.educationalOnly);
+  assert.equal(educational.length, 1, 'exactly one step is a general explanation');
+  assert.match(educational[0].titleJa, /息|呼吸/);
+  // It points at nothing new, and says that rather than inventing something.
+  assert.match(educational[0].lookJa, /新しく描かれるものはありません/);
+
+  // And it is still held to the same limits as the rest.
+  for (const text of [educational[0].body, educational[0].bodyJa]) {
+    assert.doesNotMatch(text, /診断|予後|治療|prognos|diagnos/i);
+  }
+});
+
+test('patient guide: the lung step is about something this scene actually draws', () => {
+  // Not a splice of the pulmonary-oedema model. The pressure it is about comes
+  // out of the heart-failure scene's own closed-loop solve, and the overlay it
+  // points at is drawn from that pressure — so this step and the heart steps
+  // are the same model, at the same position on its axis.
+  const lung = guide.steps.find((step) => /肺/.test(step.titleJa) && !step.educationalOnly);
+  assert.ok(lung, 'the chain reaches the lungs');
+  assert.equal(lung.educationalOnly, undefined, 'and it is not marked as a general explanation');
+  const failing = guide.steps.find((step) => step.stage === 'systolic-dysfunction' && step !== lung);
+  assert.equal(lung.progress, failing.progress, 'it is the same solved state, seen differently');
+  assert.match(lung.lookJa, /肺|血管/);
 });
