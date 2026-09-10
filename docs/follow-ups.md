@@ -439,6 +439,44 @@ node 名は冠動脈、label と id は肺動脈の枝を指しています。
 - 併せて: 「回旋枝」という名の mesh はありません（左冠動脈・前下行枝・対角枝 2 本・
   左縁枝はあります）。どれが回旋枝の走行かも、こちらでは判断しません
 
+### F-51 納品のチェックサムが自分自身を含んでいた — 対応済み（B4-N4 / 納品手順）
+
+前回の `SHA256SUMS.txt` は 67 項目のうち 1 項目が**自分自身**でした。ハッシュを書き込むと
+ファイルが変わるので、この 1 行は原理的に一致しません。加えて
+`full.bundle (parts 00+01 を結合したもの)` という**説明文をファイル名欄に**書いており、
+機械照合できませんでした。受領側に `cat` と目視比較も頼んでいました。
+
+[`scripts/pack-handoff.mjs`](../scripts/pack-handoff.mjs) が次回から生成します。
+
+- `SHA256SUMS.txt` は**自分自身を除く全ファイル**を、`sha256sum -c` がそのまま読める
+  相対パス形式で列挙。ファイル名欄に説明文を入れません
+- 容量超過時のみ分割し、**分割片も同じ一覧に普通のファイルとして**載ります
+- `restore.sh` が 1 コマンドで：一覧照合 → 結合 → 結合後 hash 照合 →
+  `git bundle verify` → clone → branch checkout → **HEAD 一致確認**。
+  どこかで食い違えば非 0 終了。**受領側の手作業はありません**
+- `MANIFEST.json` に HEAD・branch・分割片の順序・結合後 hash を機械可読で
+
+**まだ実行していません**（下記の制約）。生成物の検証は次の作業単位です。
+
+### F-50 レポートの失効が、読者のカメラ操作 3 経路から漏れていた — 対応済み（B4-N2 / 共有 App）
+
+`change` ではなく `start` を見るようにした方向は維持しつつ、**ズームボタン・`+`/`-` キー・
+「寄る」**が漏れていました。いずれも controls を経由せず camera を直接動かすためです。
+レビュー側が限定ハーネスで再現し、こちらで実アプリでも確認しました。
+
+- 通知点を**読者の操作入口**へ足しました：`zoomBy`（ボタンとキーの共通経路）、
+  `focusOnStructure`（寄る）、`resetView`（View）、`applyInspectionView`（視点ボタン）
+- **recipe 自身の視点適用では消えません**。`applyInspectionView(id, { byReader: false })` を
+  panel の `applyRecipe` から渡します。無条件の `change` リスナーへは戻していません
+- 新しい camera store は作っていません。既存の `noteDisplayChanged()` だけです
+- 回帰テストは**振る舞い**で固定しました（[`tests/anatomy-recipe-report.test.js`](../tests/anatomy-recipe-report.test.js)）。
+  実 `createAnatomyPanel` を偽 DOM で動かし、recipe→表示、変化→消去、
+  `noteDisplayChanged()`→消去、再実行→再測定を確認。App 側は**関数ごとに**
+  呼び出しの有無を検査します（`start` の文字列を探すだけのテストでは、
+  今回の 3 経路が漏れたまま合格していました）
+- **実アプリ（実 GLB・1280×800）で確認**：recipe 直後は表示、ズームボタン・`+` キー・
+  「寄る」・視点ボタン・ドラッグのそれぞれで消去、再実行で復帰。console error 0
+
 ### F-49 測定器を先に検証してから測り直した — 対応済み（B4-N1 / 心臓）
 
 **撤回**：「37 血管すべて壁厚なし」。使った ray 判定が「外から貫く」ときの数え方で、
@@ -540,8 +578,10 @@ ray の数ではなくこれです。左房 genus 4、右室 genus 26 は、肉�
 2 ファイルとも `devAssets.js` の候補で、`assetManifest.js` にはありません。
 実装と実レンダリングは済んでいますが、**asset として通していないもの**が残ります。
 
-- ~~glTF Validator を回していない~~ → **実施済み、そして不合格**。
-  `npm run assets:validate`。心臓 408 errors（すべて `ACCESSOR_VECTOR3_NON_UNIT`＝
+- ~~glTF Validator を回していない~~ → **実施済み、そして不合格。CLI も落ちるようにしました**（B4-N3）。
+  `npm run assets:validate` は error が 1 件でもあれば **exit 1**（clean は 0、実行不能は 2）。
+  warning は終了コードを変えません。生の JSON レポート・入力 hash・validator version を保存し、
+  出典 GLB は読み取り専用で開きます（自動修理はしません）。心臓 408 errors（すべて `ACCESSOR_VECTOR3_NON_UNIT`＝
   法線の縮退、全部 `VH_M_right_cardiac_atrium` の 24,068 頂点中 408 = 1.7%）、
   血管 33 errors（上大静脈 21・左冠動脈 12）。**出典側のデータで、こちらでは直していません。**
   「未実施」ではなく「不合格」として記録。修理するか、既知欠陥として受容するか、
