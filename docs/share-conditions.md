@@ -21,14 +21,16 @@ PR の作成・更新、main へのマージ、Actions の起動・再実行、�
 | 確認日 | 対象 | 読んだもの | 言えること |
 | --- | --- | --- | --- |
 | 2026-09-10 | GitHub Actions | `.github/workflows/` の 4 本すべての `on:` | `ci.yml` は `pull_request` と `push: branches: [main]` のみ。他の 3 本は `workflow_dispatch`（`verify-live.yml` は加えて毎日 22:20 UTC の `schedule`——push とは無関係）。**PR の付かないブランチへの push では 1 本も起動しません** |
-| 2026-09-10 | 外部自動デプロイ | 直近 PR #52（head `a511302`）の commit status と check run | status は **0 件**、check run は自リポジトリの `test-and-build` **1 件のみ**。Netlify を含む**第三者 App の status も check も 1 件もありません**。Deploy Preview が有効なら PR に出るはずのものが出ていないので、**この GitHub リポジトリのイベントで動く外部ビルドは無い**と読めます |
+| 2026-09-10 | 同上（実測） | push 後の `list_workflow_runs` | `claude/heart-anatomy-b7` への push 2 回で **新しい run は 0 件**。最新 run は当日 06:47 の main への push のまま |
+| 2026-09-10 | 外部ビルドの反応（GitHub 上） | 直近 PR #52（head `a511302`）の commit status と check run | status は **0 件**、check run は自リポジトリの `test-and-build` **1 件のみ**。Netlify を含む**第三者 App の status も check も 1 件もありません**。**言えるのはここまで**——GitHub 上で外部ビルドの反応を観測していない、というだけです。Netlify 側の設定は下の「確認できていないこと」を参照 |
 | 2026-09-10 | PR 連動 | `list_pull_requests`（state=all, 直近 5 件） | `claude/medical-3d-lab-b0-dv85dl` は **closed PR #48 の head**、`claude/medical-3d-lab-b2-1-viewer` は **closed PR #50 の head**。**どちらも共有先に使いません。** 新しいブランチを切ります |
 
 ## 確認できていないこと
 
-- **Netlify 側の site 設定そのもの**は読んでいません。この環境に Netlify の接続・API・
-  管理画面はありません（利用できる connector は Canva / Figma / Gmail / Google Calendar /
-  Google Drive / Slack / GitHub のみ）。上の 2 行目は「**GitHub から見て外部ビルドの反応が
-  無い**」という観測であって、Netlify の設定画面を読んだ記録ではありません。
-  branch deploy の設定を直接確認できる人がいれば、その日付とともにこの表へ足してください
+- **Netlify 側の site 設定そのもの、および外部公開の有無は未確認です。** 上の 2 行目は
+  「**GitHub 上では外部ビルドの反応を観測していない**」という観測にとどまります。
+  **これだけを「自動デプロイが起きない」の確認済み条件としては扱いません。**
+  この環境に Netlify の接続・API・管理画面はありません（利用できる connector は
+  Canva / Figma / Gmail / Google Calendar / Google Drive / Slack / GitHub のみ）。
+  読み取れる接続ができたときに、対象サイト・branch 設定・確認日をここへ 1 度だけ足してください
 - **設定は何も変更していません。**
