@@ -1,7 +1,7 @@
 {
   "scope": "implementer's own verification in a real browser; not a third party's, and not a medical review",
-  "head": "b835d0e032fe1ce3efdf6af6c5b2ac27d4723d00",
-  "dirty": true,
+  "head": "3d0c89740f6d2e1bd06153bc00128311f1284b30",
+  "dirty": false,
   "route": "/?preview=1#/heart-anatomy",
   "build": "VITE_ALLOW_PREVIEW=1 npm run build — the heart scene is not published, so it is only in a preview build",
   "viewports": [
@@ -540,5 +540,5 @@
     ],
     "note": "requests the local static server had no file for; the shell's own optional fetches, not assertions"
   },
-  "ranAt": "2026-09-10T07:14:17.184Z"
+  "ranAt": "2026-09-10T07:25:20.992Z"
 }
