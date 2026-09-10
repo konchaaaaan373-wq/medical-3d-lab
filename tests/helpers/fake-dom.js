@@ -75,6 +75,8 @@ export class FakeElement {
     const stringValue = String(value);
     this.attributes.set(name, stringValue);
     if (name === 'class') this.className = stringValue;
+    if (name === 'hidden') this.hidden = true;
+    if (name === 'disabled') this.disabled = true;
     if (name === 'style') {
       for (const declaration of stringValue.split(';')) {
         const separator = declaration.indexOf(':');
@@ -89,6 +91,12 @@ export class FakeElement {
 
   getAttribute(name) {
     return this.attributes.get(name) ?? null;
+  }
+
+  removeAttribute(name) {
+    this.attributes.delete(name);
+    if (name === 'hidden') this.hidden = false;
+    if (name === 'disabled') this.disabled = false;
   }
 
   append(...children) {

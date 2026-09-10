@@ -335,19 +335,66 @@ test('landing: a failed 3D hero exposes its fallback message', async () => {
     const viewport = findByClass(hero.element, 'landing-demo-viewport')[0];
     const dragHint = findByClass(hero.element, 'landing-demo-drag-hint')[0];
 
-    assert.equal(loading.getAttribute('aria-hidden'), 'false');
     assert.equal(loading.getAttribute('role'), 'status');
     assert.equal(loading.getAttribute('aria-live'), 'polite');
-    assert.match(loading.children.map((node) => node.textContent).join(' '), /3Dプレビュー/);
+    assert.match(collectText(loading).join(' '), /この環境では脳の3Dモデル/);
+    assert.equal(hero.element.dataset.viewport, 'unavailable');
     assert.equal(viewport.getAttribute('tabindex'), '-1');
     assert.equal(viewport.getAttribute('role'), 'presentation');
     assert.equal(viewport.getAttribute('aria-hidden'), 'true');
     assert.equal(viewport.getAttribute('aria-label'), '');
     assert.equal(viewport.getAttribute('aria-describedby'), '');
     assert.equal(dragHint.getAttribute('hidden'), '');
+    assert.equal(hero.element.getAttribute('aria-busy'), 'false');
     assert.equal(reportedError, rendererError);
   } finally {
     console.error = previousError;
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing: a deferred real model has one explicit load action', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+  let retryCount = 0;
+
+  try {
+    const hero = createLandingOrganHero({
+      compact: true,
+      showOpenLink: false,
+      loadViewport: async () => ({
+        mountLandingOrganViewport(_container, options) {
+          return {
+            async setOrgan() {
+              options.onStateChange('deferred', {});
+            },
+            async retryDetail() {
+              retryCount += 1;
+              options.onStateChange('loading', {});
+            },
+            destroy() {},
+          };
+        },
+      }),
+    });
+    await hero.mount();
+
+    const retry = findByClass(hero.element, 'landing-demo-retry')[0];
+    assert.equal(hero.element.dataset.viewport, 'deferred');
+    assert.equal(retry.hidden, false);
+    assert.match(collectText(retry).join(' '), /3Dモデルを読み込む/);
+
+    retry.click();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(retryCount, 1);
+    assert.equal(hero.element.dataset.viewport, 'loading');
+    assert.equal(hero.element.getAttribute('aria-busy'), 'true');
+    assert.equal(retry.hidden, true, 'a running attempt cannot be started again');
+    hero.destroy();
+  } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
@@ -403,7 +450,8 @@ function createFakeViewerClass() {
         removeEventListener() {},
         update() {},
       };
-      this.composer = { render() {} };
+      this.renderCount = 0;
+      this.composer = { render: () => { this.renderCount += 1; } };
     }
 
     onResize() { return () => {}; }
@@ -535,7 +583,7 @@ test('landing hero: the detailed model is not sent down a metered or crawling co
   assert.equal(shouldLoadDetail({ effectiveType: 'slow-2g' }), false);
 });
 
-test('landing hero viewport: the detailed model replaces the builder, and a failure keeps it', async () => {
+test('landing hero viewport: only a rendered published scene becomes ready', async () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   const previousError = console.error;
@@ -581,15 +629,18 @@ test('landing hero viewport: the detailed model replaces the builder, and a fail
       ViewerClass: FakeViewer,
       builders: cubeBuilders,
       loadSceneClass: async () => Detailed,
+      detailTimeoutMs: 100,
     });
 
     await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
     const names = () => FakeViewer.instance.scene.children.map((child) => child.name);
 
-    // The builder is on screen and the scene is built but not yet shown, so the
-    // frame is never empty while the atlas is being fetched.
-    assert.ok(names().includes('brain-hero'), 'the builder holds the frame while stage 2 loads');
+    const builder = FakeViewer.instance.scene.children.find((child) => child.name === 'brain-hero');
+    assert.ok(builder, 'the existing builder remains available to this consumer');
+    assert.equal(builder.visible, false, 'the builder is not presented as the published model');
     assert.equal(container.dataset.detail, 'loading');
+    assert.equal(container.dataset.ready, undefined);
     const staged = FakeViewer.instance.scene.children.find((c) => c.name === 'detailed-brain');
     assert.ok(staged);
     assert.equal(staged.visible, false, 'stage 2 stays hidden until it is ready');
@@ -601,11 +652,13 @@ test('landing hero viewport: the detailed model replaces the builder, and a fail
     assert.equal(staged.visible, true);
     assert.ok(!names().includes('brain-hero'), 'the builder comes down once it has been replaced');
     assert.equal(mounted.detailScene, 'brain-anatomy');
+    assert.ok(FakeViewer.instance.renderCount > 0, 'ready follows a real render call');
     // The scene brought its own lighting rig, so the hero's comes off.
     assert.ok(!names().includes('organ-lights'));
 
     // A metered connection is never sent the detailed model at all.
-    const cheap = mountLandingOrganViewport(new FakeElement('div'), {
+    const deferredContainer = new FakeElement('div');
+    const cheap = mountLandingOrganViewport(deferredContainer, {
       ViewerClass: FakeViewer,
       builders: cubeBuilders,
       loadSceneClass: async () => { throw new Error('must not be reached'); },
@@ -613,23 +666,40 @@ test('landing hero viewport: the detailed model replaces the builder, and a fail
     });
     await cheap.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
     assert.equal(cheap.detailScene, null);
+    assert.equal(cheap.state, 'deferred');
+    assert.equal(deferredContainer.dataset.ready, undefined);
     cheap.destroy();
 
-    // And a failed load leaves the builder exactly where it was, silently.
+    // A failed load is explicit and the lightweight builder stays hidden.
     const failingContainer = new FakeElement('div');
+    let failingAttempt = 0;
     const failing = mountLandingOrganViewport(failingContainer, {
       ViewerClass: FakeViewer,
       builders: cubeBuilders,
-      loadSceneClass: async () => { throw new Error('atlas gone'); },
+      detailTimeoutMs: 100,
+      loadSceneClass: async () => {
+        failingAttempt += 1;
+        if (failingAttempt === 1) throw new Error('atlas gone');
+        return Detailed;
+      },
     });
     await failing.setOrgan('heart', { upgradeSceneId: 'brain-anatomy' });
     await new Promise((resolve) => setImmediate(resolve));
     assert.equal(failing.detailScene, null);
-    assert.equal(failingContainer.dataset.detail, 'unavailable');
-    assert.ok(
-      FakeViewer.instance.scene.children.some((child) => child.name === 'heart-hero'),
-      'a failed upgrade is invisible: the builder is still the model on screen'
+    assert.equal(failingContainer.dataset.detail, 'error');
+    assert.equal(failing.state, 'error');
+    assert.equal(
+      FakeViewer.instance.scene.children.find((child) => child.name === 'heart-hero')?.visible,
+      false
     );
+
+    const retry = failing.retryDetail();
+    await new Promise((resolve) => setImmediate(resolve));
+    Detailed.settle();
+    await retry;
+    assert.equal(failingAttempt, 2, 'one click starts one new attempt');
+    assert.equal(failing.state, 'ready');
+    assert.equal(failing.detailScene, 'brain-anatomy');
     failing.destroy();
     mounted.destroy();
   } finally {
@@ -637,6 +707,175 @@ test('landing hero viewport: the detailed model replaces the builder, and a fail
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
+  }
+});
+
+test('landing hero viewport: a scene that resolves ready with an error status still fails', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  const previousError = console.error;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  console.error = () => {};
+
+  class HandledFailure {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    constructor() {
+      this.root = new THREE.Group();
+      this.status = { state: 'error', error: new Error('decoded scene unavailable') };
+      this.ready = Promise.resolve(this.root);
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+
+  try {
+    const mounted = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: createFakeViewerClass(),
+      builders: cubeBuilders,
+      loadSceneClass: async () => HandledFailure,
+      detailTimeoutMs: 100,
+    });
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.state, 'error');
+    assert.equal(mounted.detailScene, null);
+    mounted.destroy();
+  } finally {
+    console.error = previousError;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    restoreDocument();
+  }
+});
+
+test('landing hero viewport: a timed-out late result cannot overwrite the error state', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  const previousError = console.error;
+  console.error = () => {};
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  let finish;
+  class LateScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    constructor() {
+      this.root = new THREE.Group();
+      this.ready = new Promise((resolve) => { finish = resolve; });
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+
+  try {
+    const container = new FakeElement('div');
+    const states = [];
+    const mounted = mountLandingOrganViewport(container, {
+      ViewerClass: createFakeViewerClass(),
+      builders: cubeBuilders,
+      loadSceneClass: async () => LateScene,
+      detailDelayMs: 2,
+      detailTimeoutMs: 8,
+      onStateChange: (state, detail) => states.push([state, Boolean(detail.delayed)]),
+    });
+
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(mounted.state, 'error');
+    assert.ok(states.some(([state, delayed]) => state === 'loading' && delayed));
+
+    finish();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.state, 'error', 'a result after the bounded attempt stays stale');
+    assert.equal(mounted.detailScene, null);
+    mounted.destroy();
+  } finally {
+    console.error = previousError;
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    restoreDocument();
+  }
+});
+
+test('landing hero viewport: an older model result cannot overwrite the selected model', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  let finishBrain;
+  class BrainScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    constructor() {
+      this.root = new THREE.Group();
+      this.ready = new Promise((resolve) => { finishBrain = resolve; });
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+  class HeartScene {
+    static cameraPose = BrainScene.cameraPose;
+    static framing = BrainScene.framing;
+    constructor() {
+      this.root = new THREE.Group();
+      this.ready = Promise.resolve();
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+
+  try {
+    const mounted = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: createFakeViewerClass(),
+      builders: cubeBuilders,
+      loadSceneClass: async (sceneId) => (
+        sceneId === 'brain-anatomy' ? BrainScene : HeartScene
+      ),
+      detailTimeoutMs: 200,
+    });
+
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    await mounted.setOrgan('heart', { upgradeSceneId: 'heart-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.organ, 'heart');
+    assert.equal(mounted.detailScene, 'heart-anatomy');
+    assert.equal(mounted.state, 'ready');
+
+    finishBrain();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.detailScene, 'heart-anatomy');
+    assert.equal(mounted.state, 'ready');
+    mounted.destroy();
+  } finally {
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+    restoreDocument();
   }
 });
 
@@ -705,6 +944,7 @@ test('landing hero viewport: leaving the page ends an upgrade that is still load
       loadSceneClass: async () => Loading,
     });
     await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
 
     const pageHidden = listeners.get('pagehide');
     assert.ok(pageHidden, 'the hero listens for the page going away');
