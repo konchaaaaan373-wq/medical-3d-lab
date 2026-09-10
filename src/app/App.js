@@ -285,6 +285,11 @@ export async function createApp({ stage, ui }) {
     // arrives at the distance the viewer chose rather than undoing it.
     setShot(shotSource);
     syncZoomLimits();
+    // The reader changed what they are looking at. `start` on the controls
+    // catches a drag, a pinch and a wheel; it does not catch this, because the
+    // camera is moved here directly — and both zoom buttons and the +/- keys
+    // arrive through this one function.
+    anatomyPanel?.noteDisplayChanged?.();
   }
 
   function syncZoomLimits() {
@@ -466,7 +471,14 @@ export async function createApp({ stage, ui }) {
     return standardInspectionViews(comparisonOrStageShot()).find((candidate) => candidate.id === id) ?? null;
   }
 
-  function applyInspectionView(id) {
+  /**
+   * @param {string} id
+   * @param {{byReader?: boolean}} [options] `byReader: false` when the app is
+   *   applying a viewpoint on the reader's behalf — a display recipe turning to
+   *   the view it is defined at. Such a move must not invalidate the report the
+   *   recipe is about to write; a viewpoint the reader presses must.
+   */
+  function applyInspectionView(id, { byReader = true } = {}) {
     if (!inspectionViews.some((candidate) => candidate.id === id)) return false;
     // A guided sequence and a recording own the camera outright and rewrite the
     // shot every frame. Accepting a viewpoint here would leave the panel
@@ -484,6 +496,7 @@ export async function createApp({ stage, ui }) {
     viewer.controls.autoRotate = false;
     syncZoomLimits();
     inspectionPanel?.setView(id);
+    if (byReader) anatomyPanel?.noteDisplayChanged?.();
     return true;
   }
 
@@ -703,6 +716,9 @@ export async function createApp({ stage, ui }) {
     shot.position.copy(fitted.position);
     view.active = true;
     viewer.controls.autoRotate = false;
+    // "Go to it" moves the camera without touching the controls, so nothing
+    // else would notice.
+    anatomyPanel?.noteDisplayChanged?.();
     return true;
   };
 
@@ -720,7 +736,7 @@ export async function createApp({ stage, ui }) {
         // Same rule for the viewpoint: the inspection panel owns which one is
         // current, so a scene that reports a new one is applied through it
         // rather than moving the camera behind the control's back.
-        onViewChange: (id) => applyInspectionView(id),
+        onViewChange: (id, options) => applyInspectionView(id, options),
         // Docked, the panel's body is the one scroller and the rail must not be
         // a second one around it. As a sheet the body is `position: fixed` and
         // out of the rail entirely, so the rail goes back to scrolling like it
@@ -1007,6 +1023,8 @@ export async function createApp({ stage, ui }) {
     view.active = true;
     view.resumeAutoRotate = true;
     if (initialInspectionView) inspectionPanel?.setView(initialInspectionView);
+    // "View" is the reader asking for the authored framing back.
+    anatomyPanel?.noteDisplayChanged?.();
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
     viewer.controls.autoRotate = false;

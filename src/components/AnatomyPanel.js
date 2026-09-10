@@ -148,7 +148,10 @@ export function createAnatomyPanel({
   function applyRecipe(recipe) {
     const result = scene.applyDisplayRecipe?.(recipe.id);
     if (!result?.ok) return;
-    if (result.view) onViewChange?.(result.view);
+    // Applied on the reader's behalf, not by the reader. The owner moves the
+    // camera either way; the difference is that this move must not invalidate
+    // the report this function is about to write about it.
+    if (result.view) onViewChange?.(result.view, { byReader: false });
 
     // **Say what was measured, in the words of what was measured.**
     //
