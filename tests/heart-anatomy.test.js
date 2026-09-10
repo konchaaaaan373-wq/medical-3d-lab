@@ -206,22 +206,32 @@ test('heart: a description never contradicts the surface state of the row it des
   assert.match(atrium.note, /open surface/);
 });
 
-test('heart: the vessels say what was measured about them and no more', () => {
-  // B4-R2. They used to be described as lumen surfaces, which nobody had
-  // measured. What has since been measured — 128 ray directions through each of
-  // the 37 vessels, in `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` —
-  // is that each is a single surface with no modelled wall thickness. That is
-  // not the same as knowing which side of the vessel it traces, and the
-  // descriptions stop exactly where the measurement does.
+test('heart: the vessels claim neither a lumen nor an absent wall (B4-R2, B4-N1)', () => {
+  // Two withdrawn claims, and this test exists so neither comes back.
+  //
+  // First they were "lumen surfaces", which nobody had measured. Then they were
+  // "single surfaces with no modelled wall thickness", which had been measured
+  // with an instrument that cannot tell those apart: a ray cast outward from
+  // inside a shape crosses one surface if the shape is solid and two if it is a
+  // shell, so "two, not four" is what a thick shell gives too.
+  //
+  // What is left is the confidence the evidence supports. When the instrument
+  // in `scripts/lib/mesh-metrics.mjs` establishes something, this test is where
+  // the stronger wording has to be argued for.
   for (const entry of HEART_VESSELS) {
     const info = heartStructureInfo(entry.id);
-    assert.match(info.description, /single surface with no modelled wall thickness/i, entry.id);
-    assert.match(info.description, /lumen or (the )?outside is not settled by the geometry|not something the geometry settles/i, entry.id);
-    assert.match(info.descriptionJa, /壁の厚みを持たない 1 枚の面/, entry.id);
-    assert.match(info.descriptionJa, /内腔|外表面/, entry.id);
-    // The two claims that were never measured.
-    assert.doesNotMatch(info.description, /It is a lumen surface/);
-    assert.doesNotMatch(info.descriptionJa, /壁の厚みではなく内腔の面です/);
+    assert.match(info.description, /still being checked/i, `${entry.id}: says the question is open`);
+    assert.match(info.descriptionJa, /確認中/, entry.id);
+
+    // The lumen claim.
+    assert.doesNotMatch(info.description, /It is a lumen surface|is a lumen\b/i, entry.id);
+    assert.doesNotMatch(info.descriptionJa, /内腔の面です/, entry.id);
+    // The absent-wall claim, in every form it has taken.
+    assert.doesNotMatch(info.description, /no modelled wall thickness|single surface with no/i, entry.id);
+    assert.doesNotMatch(info.descriptionJa, /壁の厚みを持たない/, entry.id);
+    // And no "measured"/"実測" anywhere near either of them.
+    assert.doesNotMatch(info.description, /Measured here/i, entry.id);
+    assert.doesNotMatch(info.descriptionJa, /実測では/, entry.id);
   }
 });
 

@@ -160,14 +160,15 @@ What was measured in this repository, and is therefore a fact about the files:
   The adapter records which parts are open, the information card says so, and
   the material draws both sides so an open surface does not vanish from one
   side.
-* **The vessels are single surfaces with no modelled wall thickness.** Measured
-  by counting how many times a ray crosses each mesh on its way through the
-  middle of it — 128 directions per structure, over all 37 vessels: the mode is
-  two crossings (in and out of one surface) or zero/one (rays leaving through an
-  open end), and **no vessel has a mode of four**, which is what a wall with an
-  inner and an outer surface would give. Whether that single surface traces the
-  lumen or the outside of the vessel is **not settled by the geometry**, and is
-  not claimed anywhere.
+* **What the vessel surfaces are is still open, and two answers have been
+  withdrawn.** They were first described as lumen surfaces, which nobody had
+  measured. They were then described as single surfaces with no modelled wall
+  thickness — measured, but with an instrument that cannot tell those apart: a
+  ray cast outward from *inside* a shape crosses one surface if the shape is
+  solid and two if it is a shell, so "a mode of two, never four" is exactly what
+  a thick shell gives as well. **Both claims are withdrawn**, and the scene says
+  the question is being checked rather than answering it. What has replaced the
+  ray count is in §5 below.
 * **The source caps some cut vessels.** The pulmonary arteries, all four
   pulmonary veins, both brachiocephalic veins and the small cardiac vein have no
   boundary edges at all, so their cut ends are closed by the source. That is the

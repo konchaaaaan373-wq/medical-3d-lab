@@ -165,23 +165,27 @@ the surface encloses by the divergence theorem, and the number of times a ray
 crosses the surface on its way out of the mesh's own centroid, over 128
 directions.
 
-### Lumen or wall: **no vessel has a modelled wall thickness**
+### Lumen or wall — **withdrawn: the earlier conclusion was not supported**
 
-The ray-crossing count is the discriminator. A surface with a thickness — an
-outer wall and an inner wall — gives **four** crossings for a ray through the
-middle of it. A single surface gives **two**, or zero and one where the ray
-leaves through an open end.
+An earlier version of this document concluded that no vessel has a modelled wall
+thickness. **That conclusion is withdrawn.** The measurement it rested on cannot
+support it.
 
-Across all 37 vessels the modal crossing count is 2 (17 meshes), 0 (15) or 1
-(5). **Not one has a mode of 4.** Two individual rays out of 4,736 recorded four
-crossings, at tangents.
+The rule applied was "a single surface gives two crossings, a wall with an inner
+and an outer surface gives four". That is the count for a ray crossing the whole
+shape **from outside**. The script cast its ray **from a point inside the mesh,
+outward**, where the counts are one and two — so "a mode of two, never four" is
+exactly what a thick shell gives, and the observation distinguishes nothing. On
+synthetic shapes: a closed cube gives 1 from inside and 2 from outside; a hollow
+shell of outer half-width 1 and inner 0.6 gives 2 from inside and 4 from
+outside.
 
-So: each vessel is **one surface, with no wall thickness modelled**. That
-settles half the question the earlier record left open. It does **not** settle
-whether that surface traces the lumen or the outside of the vessel — the
-geometry cannot tell those apart, a calibre comparison would be inside specimen
-variation, and the publisher's segmentation intent is not recorded in the file.
-**That half stays unanswered, and the scene says so where a reader reads it.**
+A modal count over finitely many directions also cannot prove the *absence* of
+an inner surface anywhere on a shape.
+
+**Neither reading is asserted now.** The vessels are not described as lumens
+(the claim before that, also withdrawn) and not described as having no wall. The
+scene says the question is being checked. What is measured instead is below.
 
 ### The source caps some cut vessels
 
@@ -241,8 +245,9 @@ anywhere in the product.
 - **No anatomical judgement.** The labels are the publisher's. Whether these
   vessels are a good representation of a normal heart's vasculature is an
   anatomist's call and has not been made.
-- **Lumen versus outside is still open** (above). What was ruled out is a
-  modelled wall thickness.
+- **What these surfaces are is still open** (above): neither lumen-versus-
+  outside nor the presence of a wall thickness has been established, and the
+  earlier conclusion on the second was withdrawn.
 - **The junctions are measured now** (below) — as a diagnostic. No millimetre
   accuracy is claimed anywhere on the strength of them.
 - **No decision about the Visible Human terms**, and no legal reading.

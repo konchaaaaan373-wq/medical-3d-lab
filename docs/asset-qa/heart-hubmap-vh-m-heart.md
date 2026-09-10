@@ -124,10 +124,12 @@ The other four open meshes are stable at every tolerance and match what was
 recorded: aortic valve 72, anterior papillary 42, medial papillary 26, posterior
 papillary 21.
 
-The ray-crossing test that was applied to the vessels was applied here too. The
-chambers give a mode of 2 — one surface, no wall thickness — which agrees with
-the enclosed volumes: a left ventricle enclosing 121.6 mL is a cavity cast, and
-that remains the reason no interior view is offered.
+The ray-crossing test that was applied to the vessels was applied here too, and
+**the conclusion drawn from it is withdrawn** — see the vasculature document for
+why the test cannot tell a solid from a shell. What still holds for the chambers
+is the volume: a closed surface enclosing 121.6 mL is a chamber-sized cavity and
+not a wall's worth of muscle, and that — not the ray count — remains the reason
+no interior view is offered.
 
 ## What this inspection did not do
 
