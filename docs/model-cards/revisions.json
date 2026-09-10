@@ -144,8 +144,8 @@
       "src/scenes/respiratory/scenes/lungAnatomy/LungAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "e901aaf8d5469320",
+    "cardRevision": 4,
+    "modelDigest": "516ee335d18ad64a",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -156,8 +156,8 @@
       "src/scenes/hepatobiliary/scenes/liverAnatomy/LiverAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "5090759cf882a5a4",
+    "cardRevision": 4,
+    "modelDigest": "6dd275035ab47bad",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -168,8 +168,8 @@
       "src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "b547ee7ebef59743",
+    "cardRevision": 4,
+    "modelDigest": "79343f4602ea5ddd",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -181,8 +181,8 @@
       "src/scenes/gastrointestinal/scenes/stomachAnatomy/StomachAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "e6012f2e15c43749",
+    "cardRevision": 3,
+    "modelDigest": "7ea304b9a3e90571",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -194,8 +194,8 @@
       "src/scenes/gastrointestinal/scenes/intestineAnatomy/IntestineAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "9eab75c8e3c60a5f",
+    "cardRevision": 3,
+    "modelDigest": "d9a62e586b5401b8",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -207,8 +207,8 @@
       "src/scenes/hepatobiliary/scenes/pancreasAnatomy/PancreasAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "8a55872c8fc13140",
+    "cardRevision": 3,
+    "modelDigest": "c8702f48fee04d85",
     "cardUpdatedAt": "2026-09-10"
   }
 ]
