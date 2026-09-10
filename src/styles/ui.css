@@ -379,7 +379,10 @@
 }
 
 @media (max-width: 720px) {
-  .inspection-panel {
+  /* Also `.rail >`: this width is about the rail that holds it, as the comment
+     says. Embedded in the Display tab the panel should fill the tab, and
+     pinning it to 74vw there just made it narrower than everything beside it. */
+  .rail > .inspection-panel {
     /* The rail is narrower than this on a phone and clips its overflow, so a
        panel sized to the viewport hangs off the rail's left edge: the clipped
        half still paints but stops hit-testing, which left most of the controls
@@ -3224,7 +3227,11 @@
    Collapsed by default. A scene without the Prototype badge is asking to be
    believed, and the boundary of that claim belongs on the same screen. */
 .model-scope {
-  width: 236px;
+  /* 236px where the column has room, and never wider than the column.
+     `.top-left` is 146px on a 375px phone and clips its overflow-x, so a fixed
+     236px panel had most of its toggle cut away: painted, and not reachable.
+     Found by driving the reader's path to "Model scope & sources" at 375x667. */
+  width: min(236px, 100%);
   padding: 0;
   overflow: hidden;
 }
@@ -3525,7 +3532,18 @@
    phone spends it all on the navigation, the cards and the console — so the
    panel stays in the rail there, scrolling, which is the documented fallback. */
 @media (max-width: 560px) and (min-height: 640px) {
-  .inspection-panel:not([hidden]) {
+  /*
+   * `.rail >`, because this only makes sense for the panel that sits in the
+   * rail on its own.
+   *
+   * An anatomy scene hands the same element to the anatomy panel, where it is a
+   * block inside the Display tab. `position: fixed` took it out of that tab's
+   * flow while the tab still reserved its height, so at 375x667 the panel
+   * floated over the fixed views that follow it and `.inspection-footer`
+   * covered the "Inside the chambers" button: painted, and not pressable. Found
+   * by driving the reader's own path at that size.
+   */
+  .rail > .inspection-panel:not([hidden]) {
     position: fixed;
     left: max(14px, env(safe-area-inset-left));
     right: max(14px, env(safe-area-inset-right));

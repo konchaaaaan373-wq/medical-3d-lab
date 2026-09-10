@@ -96,6 +96,7 @@ function mount({ recipeResult } = {}) {
     panel,
     views,
     status: () => findByClass(panel.element, 'anatomy-recipe-status')[0],
+    loadStatus: () => findByClass(panel.element, 'anatomy-panel-status')[0],
     press: () => findByClass(panel.element, 'anatomy-recipe')[0].click(),
     restore() {
       panel.dispose();
@@ -269,4 +270,33 @@ test('recipe report: every camera path a reader can take invalidates it', () => 
   // viewpoint on the reader's behalf.
   assert.match(app, /applyInspectionView\(id, \{ byReader = true \} = \{\}\)/);
   assert.match(app, /if \(byReader\) anatomyPanel\?\.noteDisplayChanged\?\.\(\)/);
+});
+
+test('a failed load is said in the summary, which is always mounted', () => {
+  // The words already existed, in the Detail tab's footer — and the tab body
+  // holds only the open tab's content (`body.replaceChildren(tab.content)`), so
+  // with Parts open, which is the default, they were not in the document at
+  // all. A model that failed to load therefore said nothing anywhere the reader
+  // was looking. Driving the real app with the candidate GLB blocked is what
+  // found it.
+  const harness = mount();
+  try {
+    const line = harness.loadStatus();
+    assert.ok(line, 'the summary carries a load-status line');
+    assert.equal(line.hidden, true, 'and it stays out of the way while the model is ready');
+
+    harness.scene.notify('status', { state: 'error', selectableCount: 0 });
+    assert.equal(harness.loadStatus().hidden, false, 'a failure is shown');
+    assert.match(allText(harness.loadStatus()), /could not be loaded/);
+    assert.match(allText(harness.loadStatus()), /読み込めませんでした/);
+    assert.equal(harness.loadStatus().dataset.state, 'error');
+
+    harness.scene.notify('status', { state: 'loading' });
+    assert.equal(harness.loadStatus().hidden, false, 'so is a load still in progress');
+
+    harness.scene.notify('status', { state: 'ready', selectableCount: 46 });
+    assert.equal(harness.loadStatus().hidden, true, 'and a healthy scene looks exactly as it did');
+  } finally {
+    harness.restore();
+  }
 });

@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { anatomyStatusText } from './AnatomyInfoPanel.js';
 import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
 // The stylesheet is imported by `src/main.js`, with the rest of the app's CSS.
 // Importing it from a component is how a component stops being testable under
@@ -306,16 +307,46 @@ export function createAnatomyPanel({
     el('span', { class: 'lang-ja', text: '部位' }),
   ]);
 
+  /**
+   * The load state, where it can actually be seen.
+   *
+   * The same words appear in the Detail tab's footer, and that was the only
+   * place they appeared. On an anatomy scene the tab body holds **only the open
+   * tab's content** — `body.replaceChildren(tab.content)` — so with Parts open,
+   * which is the default, the footer is not merely hidden, it is not in the
+   * document. A model that failed to load therefore said nothing anywhere: the
+   * reader got the ordinary scene chrome around an empty canvas.
+   *
+   * This line lives in the summary, which is always on screen in both layouts.
+   * It appears **only when the state is not `ready`**, so a scene that loads
+   * normally looks exactly as it did.
+   */
+  const statusEn = el('span', { class: 'lang-en' });
+  const statusJa = el('span', { class: 'lang-ja' });
+  const statusLine = el('p', { class: 'anatomy-panel-status', role: 'status' }, [statusEn, statusJa]);
+  statusLine.hidden = true;
+
+  const paintStatus = (status) => {
+    const { en, ja, ready } = anatomyStatusText(status);
+    statusEn.textContent = en;
+    statusJa.textContent = ja;
+    statusLine.hidden = ready;
+    statusLine.dataset.state = status?.state ?? 'loading';
+  };
+
   const summary = el('div', { class: 'anatomy-panel-summary' }, [
     el('div', { class: 'anatomy-panel-heading' }, [
       swatch,
       el('div', { class: 'anatomy-panel-names' }, [nameEn, nameJa, whereEn, whereJa]),
     ]),
+    statusLine,
     el('div', { class: 'anatomy-panel-actions' }, [
       focusButton, revealButton, isolateButton, hideButton,
       showAllButton, restoreDisplayButton, showHiddenButton, partsButton,
     ]),
   ]);
+  paintStatus(scene.getAnatomyStatus?.() ?? { state: 'ready', selectableCount: 0 });
+  const unsubscribeSummaryStatus = scene.onAnatomyStatus?.(paintStatus);
 
   // --- body: the tabs, and the one region that scrolls ----------------------
 
@@ -831,6 +862,7 @@ export function createAnatomyPanel({
       unsubscribeIsolation?.();
       unsubscribeVisibility?.();
       unsubscribeStatus?.();
+      unsubscribeSummaryStatus?.();
       element.remove();
     },
   };

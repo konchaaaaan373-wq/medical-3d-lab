@@ -41,13 +41,29 @@
  *   1  a step did not
  *   2  it could not run at all — no build, no Playwright, no candidate assets
  *
+ * ## Viewports, and pressing what a reader can actually press
+ *
+ * `--viewport` takes one or more `WxH`. Below the panel's own breakpoint
+ * (`max-width: 820px` or `max-height: 560px`) the tabbed body stops being
+ * docked and becomes a sheet behind a **Parts** button, so the same reader
+ * gesture is a different sequence of real clicks. The check follows that
+ * sequence rather than reaching past it: a control that is off screen or
+ * covered is a control the reader cannot use, and clicking it programmatically
+ * would report a path as working when it is not reachable.
+ *
+ * For the same reason the canvas drag does not use fixed coordinates. It asks
+ * the page which element is topmost at a candidate point and only drags where
+ * that is the canvas, so a drag can never land on a panel and be counted.
+ *
  * Options:
- *   --dist <dir>    built site to serve (default: dist)
- *   --shots <dir>   also write screenshots here (default: none)
- *   --log <file>    machine-readable result (default: docs/screenshots/b4-next/recipe-report-run.json)
- *   --headed        show the browser
+ *   --dist <dir>       built site to serve (default: dist)
+ *   --viewport <WxH>   repeatable; default 1280x800
+ *   --shots <dir>      also write screenshots here (default: none)
+ *   --log <file>       machine-readable result (default: docs/screenshots/b4-next/recipe-report-run.json)
+ *   --headed           show the browser
  */
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep, dirname } from 'node:path';
 import { chromiumExecutable } from './lib/browser.mjs';
@@ -66,6 +82,19 @@ const distDir = value('--dist', 'dist');
 const shotsDir = value('--shots');
 const logFile = value('--log', 'docs/screenshots/b4-next/recipe-report-run.json');
 
+/** Every `--viewport WxH`, in order. Defaults to the desktop size alone. */
+const viewports = argv
+  .flatMap((arg, at) => (arg === '--viewport' && argv[at + 1] ? [argv[at + 1]] : []))
+  .map((spec) => {
+    const match = /^(\d+)x(\d+)$/.exec(spec);
+    if (!match) {
+      console.error(`--viewport wants WxH, got "${spec}"`);
+      process.exit(2);
+    }
+    return { width: Number(match[1]), height: Number(match[2]), label: spec };
+  });
+if (!viewports.length) viewports.push({ width: 1280, height: 800, label: '1280x800' });
+
 const cannotRun = (message) => {
   console.error(`CANNOT RUN — ${message}`);
   process.exit(EXIT.CANNOT_RUN);
@@ -73,6 +102,25 @@ const cannotRun = (message) => {
 
 if (!existsSync(join(distDir, 'index.html'))) {
   cannotRun(`no build at "${distDir}". Run: VITE_ALLOW_PREVIEW=1 npm run build`);
+}
+
+/**
+ * A production build does not contain the heart scene, and must not.
+ *
+ * The gate is shut, so `npm run build` leaves the scene's chunk out entirely —
+ * which is the behaviour `verify:site` exists to confirm. Driving that build
+ * gives a page that never becomes ready, and without this check the run spent
+ * three minutes timing out and called it a failure. **It is not a failure, it
+ * is the wrong build**, and running `npm run build` between two runs of this
+ * check is an easy way to get there.
+ */
+const builtScenes = readdirSync(join(distDir, 'assets')).join(' ');
+if (!/heartAnatomy/.test(builtScenes)) {
+  cannotRun(
+    `the build at "${distDir}" has no heart scene in it, which is what a production build should look like ` +
+      'while the publication gate is shut.\n' +
+      '  VITE_ALLOW_PREVIEW=1 npm run build'
+  );
 }
 
 // The heart scene is not published, so it is only in a preview build, and it
@@ -118,6 +166,28 @@ const MIME = {
   '.wasm': 'application/wasm',
 };
 
+/**
+ * What the run was against, recorded so a log cannot be read as being about a
+ * different tree later. `dirty` matters as much as the SHA: a run over a
+ * modified working tree is not a run of that commit.
+ */
+const gitOrNull = (...args) => {
+  try {
+    return execFileSync('git', args, { encoding: 'utf8' }).trim();
+  } catch {
+    return null;
+  }
+};
+const headSha = gitOrNull('rev-parse', 'HEAD');
+const worktreeDirty = gitOrNull('status', '--porcelain') !== '';
+/** The pinned identity of each candidate asset, quoted rather than re-derived. */
+const assetPins = DEV_ASSETS.map((asset) => ({
+  id: asset.id,
+  file: asset.file,
+  bytes: asset.bytes ?? null,
+  sha256: asset.sha256 ?? null,
+}));
+
 const distRoot = resolve(distDir);
 const repoRoot = resolve('.');
 
@@ -152,12 +222,15 @@ const origin = `http://127.0.0.1:${server.address().port}`;
 
 const steps = [];
 const failures = [];
+/** Blocked URL substrings, used to make a load fail on purpose. */
+const blocked = new Set();
 
 /** An assertion that is recorded whether it holds or not. */
-function expect(step, ok, detail) {
-  steps.push({ step, ok: Boolean(ok), detail });
-  if (!ok) failures.push(`${step}: ${detail}`);
-  console.log(`${ok ? 'ok  ' : 'FAIL'}  ${step}${detail ? ` — ${detail}` : ''}`);
+function expect(viewport, step, ok, detail) {
+  const label = `[${viewport}] ${step}`;
+  steps.push({ viewport, step, ok: Boolean(ok), detail });
+  if (!ok) failures.push(`${label}: ${detail}`);
+  console.log(`${ok ? 'ok  ' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`);
 }
 
 const browser = await chromium.launch({
@@ -165,44 +238,117 @@ const browser = await chromium.launch({
   headless: !flag('--headed'),
 });
 let exitCode = EXIT.OK;
+const pageErrors = [];
+const consoleErrors = [];
 
-try {
-  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
-  const pageErrors = [];
-  const consoleErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(String(error)));
-  page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+/**
+ * One page, one viewport, driven through the whole set.
+ *
+ * A fresh context per viewport rather than a resize: the panel picks its layout
+ * from a media query at construction and on change, and the point of running at
+ * 844x390 and 375x667 is to exercise the layout a reader on that device
+ * actually gets, from load.
+ */
+async function runViewport({ width, height, label }) {
+  const context = await browser.newContext({ viewport: { width, height } });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => pageErrors.push(`[${label}] ${error}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(`[${label}] ${message.text()}`);
+  });
+  // Used by the failure phase to make one request fail on purpose.
+  await page.route('**/*', (route) => {
+    const url = route.request().url();
+    if ([...blocked].some((fragment) => url.includes(fragment))) return route.abort('failed');
+    return route.continue();
+  });
 
-  await page.goto(`${origin}/?preview=1#/heart-anatomy`, { waitUntil: 'load' });
-  await page.waitForFunction(
-    () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
-    null,
-    { timeout: 180000 }
-  );
+  const say = (step, ok, detail) => expect(label, step, ok, detail);
 
-  // The consent card, if this build shows one, sits over the console.
-  const consent = page.locator('.consent-button').first();
-  if (await consent.isVisible().catch(() => false)) {
-    await consent.click({ noWaitAfter: true });
-    await page.waitForTimeout(500);
-  }
+  const ready = async (timeout = 180000) => {
+    await page.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+      null,
+      { timeout }
+    );
+  };
 
   /**
-   * Click exactly one visible element, or fail.
+   * Answer the usage-data card, the way a reader has to before anything else.
    *
-   * The point of the whole check is which reader paths reach the invalidation,
-   * so a selector that matches nothing has to stop the run. Falling through to
-   * "something like it" is how a path gets reported as exercised without ever
-   * being pressed.
+   * It is a declared transient overlay (`TRANSIENT_OVERLAYS` in
+   * `src/app/viewports.js`): it removes itself once answered, and until then it
+   * legitimately covers things. It is also mounted *after* the scene reports
+   * ready, so answering once at load missed it on the slower small-viewport
+   * runs and it then intercepted a click later on. Answered whenever it is
+   * there, and never worked around.
+   */
+  const dismissConsent = async () => {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const banner = page.locator('.consent-banner');
+      if (!(await banner.count())) return;
+      const button = banner.locator('.consent-button').first();
+      if (await button.isVisible().catch(() => false)) {
+        await button.click({ noWaitAfter: true });
+        await page.waitForTimeout(400);
+        if (!(await page.locator('.consent-banner').count())) return;
+      }
+      await page.waitForTimeout(600);
+    }
+  };
+
+  await page.goto(`${origin}/?preview=1#/heart-anatomy`, { waitUntil: 'load' });
+  await ready();
+  await dismissConsent();
+
+  /**
+   * Click exactly one element that a reader could click, or fail.
+   *
+   * `count !== 1` and "not visible" both stop the run. The point of the check
+   * is which reader paths reach the invalidation, so falling through to
+   * something similar — or reaching past the DOM with a programmatic click — is
+   * how a path gets reported as exercised without ever being pressed.
    */
   async function press(what, selector) {
     const found = page.locator(selector);
     const count = await found.count();
-    if (count !== 1) {
-      throw new Error(`${what}: expected exactly one "${selector}", found ${count}`);
-    }
+    if (count !== 1) throw new Error(`${what}: expected exactly one "${selector}", found ${count}`);
     if (!(await found.isVisible())) throw new Error(`${what}: "${selector}" is not visible`);
     await found.click({ noWaitAfter: true });
+  }
+
+  /** Which layout the panel decided on, read from the panel itself. */
+  const layout = () => page.evaluate(
+    () => document.querySelector('.anatomy-panel')?.dataset.layout ?? 'unknown'
+  );
+
+  /**
+   * Open the panel body the way a reader on this device has to.
+   *
+   * Docked, it is already there. As a sheet it is behind the Parts button, and
+   * that button is the only way in — so the check presses it rather than
+   * showing the sheet itself, which would pass whether or not the button works.
+   */
+  async function openPanelBody() {
+    if ((await layout()) !== 'sheet') return 'docked';
+    const open = page.locator('.anatomy-panel[data-sheet="closed"] .anatomy-panel-open');
+    if (await open.count()) {
+      await open.first().click({ noWaitAfter: true });
+      await page.waitForTimeout(400);
+    }
+    const state = await page.evaluate(
+      () => document.querySelector('.anatomy-panel')?.dataset.sheet ?? 'unknown'
+    );
+    if (state !== 'open') throw new Error(`the Parts button did not open the sheet (data-sheet=${state})`);
+    return 'sheet';
+  }
+
+  async function closePanelBody() {
+    if ((await layout()) !== 'sheet') return;
+    const close = page.locator('.anatomy-panel-sheet-head button.anatomy-panel-close');
+    if (await close.count()) await close.first().click({ noWaitAfter: true });
+    else await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
   }
 
   const reportState = () => page.evaluate(() => {
@@ -221,16 +367,46 @@ try {
   const moved = (a, b) => a.some((n, i) => Math.abs(n - b[i]) > 1e-3);
 
   /**
+   * A point where the canvas is really the top element.
+   *
+   * The old driver dragged at a fixed (430, 420). At 375x667 that is inside the
+   * console, and at 844x390 it can be under the panel — so the drag would have
+   * been counted while landing on something else entirely. This asks the page
+   * what is topmost and only returns a point that is the canvas.
+   */
+  const canvasPoint = () => page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    if (!canvas) return null;
+    const box = canvas.getBoundingClientRect();
+    for (const fy of [0.5, 0.35, 0.65, 0.25, 0.75]) {
+      for (const fx of [0.5, 0.35, 0.65, 0.25, 0.75]) {
+        const x = Math.round(box.left + box.width * fx);
+        const y = Math.round(box.top + box.height * fy);
+        if (x < 2 || y < 2 || x > window.innerWidth - 2 || y > window.innerHeight - 2) continue;
+        const top = document.elementFromPoint(x, y);
+        if (top === canvas) return { x, y };
+      }
+    }
+    return null;
+  });
+
+  /**
    * Run the recipe from the same starting display every time.
    *
    * Without the reset, the second run finds the chambers already hidden and
-   * reports "Hid 0", so the measurements would differ for a reason that has
-   * nothing to do with what is being tested. This is setup, not the path under
-   * test, so it goes through the scene rather than through the UI.
+   * reports "Hid 0", so measurements would differ for a reason unrelated to
+   * what is being tested. That reset is setup, so it goes through the scene;
+   * everything the check is actually about goes through the UI.
    */
   const runRecipe = async () => {
+    // A reader answers the usage-data card before they get to do anything, and
+    // it is mounted after the scene reports ready — so answering it here rather
+    // than only at load keeps the run faithful, and keeps it out of any
+    // screenshot taken afterwards.
+    await dismissConsent();
     await page.evaluate(() => window.__app.scene.showAllHiddenStructures?.());
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(300);
+    await openPanelBody();
     await press('open the Display tab', '#anatomy-tab-display');
     await page.waitForTimeout(300);
     await press('run the recipe', '.anatomy-recipe[data-recipe="inside-the-chambers"]');
@@ -239,19 +415,21 @@ try {
 
   /**
    * One reader gesture: run the recipe, confirm the report is there, do the
-   * thing, confirm it is gone. Written as a pair because "it is gone" only
-   * means something if it was there first.
+   * thing, confirm it is gone. A pair, because "it is gone" means nothing
+   * unless it was there first.
    */
   async function retiredBy(name, act) {
     await runRecipe();
     const before = await reportState();
-    expect(`${name}: the report is present first`, before.shown, before.text.slice(0, 90));
+    say(`${name}: the report is present first`, before.shown, before.text.slice(0, 80));
     await act();
     await page.waitForTimeout(900);
     const after = await reportState();
-    expect(`${name}: retires the report`, !after.shown, after.shown ? `still shows "${after.text}"` : 'cleared');
+    say(`${name}: retires the report`, !after.shown, after.shown ? `still shows "${after.text}"` : 'cleared');
     return before;
   }
+
+  say('the panel chose a layout for this viewport', ['docked', 'sheet'].includes(await layout()), await layout());
 
   // --- the half that must NOT retire ---------------------------------------
   // The recipe turns to the viewpoint it is about to measure from. If its own
@@ -260,27 +438,26 @@ try {
   await runRecipe();
   const afterRecipe = await reportState();
   const posed = await camera();
-  expect('the recipe writes a report', afterRecipe.shown, afterRecipe.text.slice(0, 110));
-  expect('the recipe moves the camera', moved(parked, posed), `${JSON.stringify(parked)} -> ${JSON.stringify(posed)}`);
-  expect(
-    "the recipe's own camera move does not retire it",
-    afterRecipe.shown,
-    'still shown after the tween it started'
-  );
+  say('the recipe writes a report', afterRecipe.shown, afterRecipe.text.slice(0, 100));
+  say('the recipe moves the camera', moved(parked, posed), `${JSON.stringify(parked)} -> ${JSON.stringify(posed)}`);
+  say("the recipe's own camera move does not retire it", afterRecipe.shown, 'still shown after the tween it started');
   const firstMeasurement = afterRecipe.text;
   if (shotsDir) {
     mkdirSync(shotsDir, { recursive: true });
-    await page.screenshot({ path: join(shotsDir, '01-report-after-recipe-1280.png') });
+    await page.screenshot({ path: join(shotsDir, `report-after-recipe-${label}.png`) });
   }
 
   // --- the half that must retire -------------------------------------------
 
-  // 1. The zoom-in button, addressed by `data-control` rather than by its
-  //    label, its title or its position in the row — a scene retitles these
-  //    ("Zoom in — fill the frame with the chamber (+)") and the row's order
-  //    depends on which controls the scene asked for.
-  await retiredBy('the zoom-in button', () => press('zoom in', 'button.btn[data-control="zoomIn"]'));
-  if (shotsDir) await page.screenshot({ path: join(shotsDir, '02-report-cleared-by-zoom-1280.png') });
+  // 1. The zoom-in button, addressed by `data-control` rather than by its label,
+  //    its title or its position — a scene retitles these ("Zoom in — fill the
+  //    frame with the chamber (+)") and the row's order depends on which
+  //    controls the scene asked for.
+  await retiredBy('the zoom-in button', async () => {
+    await closePanelBody();
+    await press('zoom in', 'button.btn[data-control="zoomIn"]');
+  });
+  if (shotsDir) await page.screenshot({ path: join(shotsDir, `report-cleared-by-zoom-${label}.png`) });
 
   // 2. The '+' key, which shares zoomBy with the button but arrives by a
   //    different route and was missed by the same omission.
@@ -288,38 +465,46 @@ try {
   //    Deliberately no click on the canvas first: a pointer press on the canvas
   //    is itself an OrbitControls `start`, which retires the report — so a
   //    check that clicked to take focus would pass whether or not the key path
-  //    works. Blurring is enough to get the key to the window handler.
+  //    works. Blurring is enough to reach the window handler.
   await retiredBy('the "+" key', async () => {
+    await closePanelBody();
     await page.evaluate(() => document.activeElement?.blur?.());
     await page.keyboard.press('+');
   });
 
-  // 3. "Go to it". The structure is selected BEFORE the recipe runs, so that
-  //    the selection's own repaint is not what clears the report and the focus
-  //    path is the thing being measured. An earlier run had these the other way
-  //    round and proved nothing about focus.
+  // 3. "Go to it". The structure is selected BEFORE the recipe runs, so the
+  //    selection's own repaint is not what clears the report and the focus path
+  //    is the thing being measured. An earlier run had these the other way round
+  //    and proved nothing about focus.
   await page.evaluate(() => window.__app.scene.selectStructure('VH_M_aortic_valve'));
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(500);
   const beforeFocus = await camera();
-  await retiredBy('"Go to it"', () => press('go to it', '.anatomy-panel-action[data-action="focus"]:visible'));
+  await retiredBy('"Go to it"', async () => {
+    await openPanelBody();
+    await press('go to it', '.anatomy-panel-action[data-action="focus"]:visible');
+  });
   const afterFocus = await camera();
-  expect('"Go to it" moved the camera', moved(beforeFocus, afterFocus), `${JSON.stringify(beforeFocus)} -> ${JSON.stringify(afterFocus)}`);
+  say('"Go to it" moved the camera', moved(beforeFocus, afterFocus), `${JSON.stringify(beforeFocus)} -> ${JSON.stringify(afterFocus)}`);
 
   // 4. A named viewpoint the reader presses. `byReader` defaults true here,
   //    which is the difference from the recipe applying the same view itself.
   await retiredBy('a viewpoint button', async () => {
-    const views = page.locator('.inspection-view');
+    await openPanelBody();
+    const views = page.locator('.inspection-view:visible');
     const count = await views.count();
-    if (count < 2) throw new Error(`a viewpoint button: expected at least two, found ${count}`);
+    if (count < 2) throw new Error(`a viewpoint button: expected at least two visible, found ${count}`);
     await views.nth(1).click({ noWaitAfter: true });
   });
 
-  // 5. A real drag on the canvas — the OrbitControls `start` path, which is the
-  //    only one of these that does not go through App's own functions.
+  // 5. A real drag on the canvas — the OrbitControls `start` path, and the only
+  //    one of these that does not go through App's own functions.
   await retiredBy('a drag on the canvas', async () => {
-    await page.mouse.move(430, 420);
+    await closePanelBody();
+    const at = await canvasPoint();
+    if (!at) throw new Error('no point on this viewport where the canvas is the topmost element');
+    await page.mouse.move(at.x, at.y);
     await page.mouse.down();
-    await page.mouse.move(520, 450, { steps: 8 });
+    await page.mouse.move(at.x + 60, at.y + 30, { steps: 8 });
     await page.mouse.up();
   });
 
@@ -327,30 +512,179 @@ try {
   //    the retirement a retirement rather than a one-way switch.
   await runRecipe();
   const again = await reportState();
-  expect('re-running restores the report', again.shown, again.text.slice(0, 110));
-  expect(
+  say('re-running restores the report', again.shown, again.text.slice(0, 100));
+  say(
     're-running measures the same thing',
     again.text === firstMeasurement,
     again.text === firstMeasurement ? 'identical' : `"${firstMeasurement}" -> "${again.text}"`
   );
 
-  expect('no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | ') || 'none');
+  // --- the journey: open, explore, read about it, come back ----------------
 
-  const notServed = requested.filter((r) => !r.served).map((r) => r.url);
+  await closePanelBody();
+  await openPanelBody();
+  await press('open the Parts tab', '#anatomy-tab-parts');
+  await page.waitForTimeout(300);
+  const leaf = page.locator('.anatomy-tree-leaf:visible').first();
+  const leafCount = await leaf.count();
+  if (!leafCount) throw new Error('no selectable structure is reachable in the parts list');
+  await leaf.click({ noWaitAfter: true });
+  await page.waitForTimeout(600);
+  const selection = await page.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
+  say('exploring: picking a row in the list selects a structure', Boolean(selection), selection ?? 'nothing selected');
+
+  // "Model scope & sources" is the information surface: what the model answers,
+  // what it does not represent, where the numbers came from.
+  //
+  // **The parts sheet has to be shut first, and that is the product being
+  // right.** As a sheet the panel is a modal over the whole screen, so a reader
+  // cannot reach anything behind it — including this panel — until they close
+  // it. An earlier version of this check reached for the toggle with the sheet
+  // still open and timed out with the canvas intercepting the click, which was
+  // this script skipping a step of the reader's path, not a defect in the app.
+  await closePanelBody();
+  await dismissConsent();
+  const scopeToggle = page.locator('.scope-toggle');
+  const hasScope = (await scopeToggle.count()) === 1;
+  say('information: the model scope panel is present', hasScope, hasScope ? 'one toggle' : 'not found');
+  if (hasScope) {
+    const reachable = await scopeToggle.isVisible();
+    say('information: and a reader can reach it at this size', reachable, reachable ? 'visible' : 'present but not visible');
+    if (reachable) {
+      await scopeToggle.click({ noWaitAfter: true });
+      await page.waitForTimeout(300);
+      const opened = await page.evaluate(() => {
+        const body = document.querySelector('.model-scope .scope-body');
+        return { open: body ? !body.hidden : false, text: (body?.textContent ?? '').replace(/\s+/g, ' ').trim().length };
+      });
+      say('information: it opens with content', opened.open && opened.text > 40, `${opened.text} characters`);
+      await scopeToggle.click({ noWaitAfter: true });
+      await page.waitForTimeout(300);
+      const closed = await page.evaluate(() => document.querySelector('.model-scope .scope-body')?.hidden === true);
+      say('back: it closes again', closed, closed ? 'closed' : 'still open');
+    }
+  }
+
+  // Coming back must leave the observation as it was: the same structure still
+  // selected, and the model still on screen.
+  const stillSelected = await page.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
+  say('back: the selection survived the detour', stillSelected === selection, `${selection} -> ${stillSelected}`);
+  const stillReady = await page.evaluate(() => window.__app.scene.getAnatomyStatus().state);
+  say('back: the model is still loaded', stillReady === 'ready', stillReady);
+
+  // And the reader can still work: the recipe runs again after all of that.
+  await runRecipe();
+  const afterJourney = await reportState();
+  say('back: the fixed view still runs and measures', afterJourney.shown, afterJourney.text.slice(0, 100));
+
+  await context.close();
+}
+
+/**
+ * The failure path, and what recovering from it actually takes today.
+ *
+ * The heart's candidate GLB is aborted, so the scene takes the branch it has
+ * for a candidate that is not fetched. This is driven rather than assumed,
+ * because what the product does here is a question about the product, not about
+ * this script.
+ */
+async function runFailureAndRetry({ width, height, label }) {
+  const context = await browser.newContext({ viewport: { width, height } });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => pageErrors.push(`[${label} failure] ${error}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(`[${label} failure] ${message.text()}`);
+  });
+  await page.route('**/*', (route) => {
+    const url = route.request().url();
+    if ([...blocked].some((fragment) => url.includes(fragment))) return route.abort('failed');
+    return route.continue();
+  });
+  const say = (step, ok, detail) => expect(`${label} failure`, step, ok, detail);
+
+  blocked.add('VH_M_Heart.glb');
+  await page.goto(`${origin}/?preview=1#/heart-anatomy`, { waitUntil: 'load' });
+  await page.waitForFunction(
+    () => window.__app?.scene?.getAnatomyStatus?.().state === 'error',
+    null,
+    { timeout: 120000 }
+  ).catch(() => {});
+  const consent = page.locator('.consent-button').first();
+  if (await consent.isVisible().catch(() => false)) await consent.click({ noWaitAfter: true });
+  await page.waitForTimeout(800);
+
+  const failed = await page.evaluate(() => window.__app?.scene?.getAnatomyStatus?.() ?? null);
+  say('a missing model reports an error state', failed?.state === 'error', failed?.state ?? 'no status');
+  say('and it says what to do about it', Boolean(failed?.hint), failed?.hint ?? 'no hint');
+
+  const shown = await page.evaluate(() => {
+    const text = document.body.innerText.replace(/\s+/g, ' ');
+    return {
+      saysSo: /could not be loaded|読み込めませんでした/.test(text),
+      retryControls: document.querySelectorAll('.scene-fallback-retry, [data-action="retry"]').length,
+    };
+  });
+  say('the screen says so, not just the object', shown.saysSo, shown.saysSo ? 'the failure is on screen' : 'nothing on screen says it failed');
+  // Recorded, not asserted either way: whether an in-product retry control
+  // exists for this state is Work's failure/retry design, and this run is what
+  // establishes the current answer rather than guessing at it.
+  steps.push({
+    viewport: `${label} failure`,
+    step: 'in-product retry control for this state',
+    ok: true,
+    detail: shown.retryControls === 0
+      ? 'none today — recovery is a page reload; the retry button belongs to the WebGL fallback, which this path does not take'
+      : `${shown.retryControls} present`,
+  });
+  console.log(`note  [${label} failure] in-product retry control: ${shown.retryControls === 0 ? 'none today' : shown.retryControls}`);
+
+  // Manual retry: the reader fixes the condition and loads again.
+  blocked.delete('VH_M_Heart.glb');
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForFunction(
+    () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+    null,
+    { timeout: 180000 }
+  );
+  const recovered = await page.evaluate(() => window.__app.scene.getAnatomyStatus());
+  say('a manual retry recovers the model', recovered.state === 'ready', `${recovered.selectableCount} selectable structures`);
+  if (shotsDir) {
+    mkdirSync(shotsDir, { recursive: true });
+    await page.screenshot({ path: join(shotsDir, `recovered-after-retry-${label}.png`) });
+  }
+  await context.close();
+}
+
+try {
+  for (const viewport of viewports) {
+    console.log(`\n--- ${viewport.label} ---`);
+    await runViewport(viewport);
+  }
+  console.log(`\n--- ${viewports[0].label}: failure and manual retry ---`);
+  await runFailureAndRetry(viewports[0]);
+
+  expect('all', 'no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | ') || 'none');
+
+  const notServed = [...new Set(requested.filter((r) => !r.served).map((r) => r.url))];
   const result = {
-    scope: 'implementer\'s own verification of B4-N2 in a real browser; not a third party\'s, and not a medical review',
+    scope: "implementer's own verification in a real browser; not a third party's, and not a medical review",
+    head: headSha,
+    dirty: worktreeDirty,
     route: '/?preview=1#/heart-anatomy',
-    viewport: { width: 1280, height: 800 },
+    build: 'VITE_ALLOW_PREVIEW=1 npm run build — the heart scene is not published, so it is only in a preview build',
+    viewports: viewports.map((v) => v.label),
     origin: 'ephemeral local static server over the local build; no production, preview deploy or verify:live',
+    candidateAssets: assetPins,
     steps,
     failures,
+    // Two different things, kept apart: a pageerror is an uncaught exception in
+    // the page, a console error is anything logged at error level.
     pageErrors,
-    // Reported in full and classified rather than filtered away.
     consoleErrors: {
       total: consoleErrors.length,
       messages: consoleErrors,
       unservedRequests: notServed,
-      note: 'requests the local static server had no file for are listed above; they are the shell\'s own optional fetches, not assertions',
+      note: "requests the local static server had no file for; the shell's own optional fetches, not assertions",
     },
     ranAt: new Date().toISOString(),
   };
@@ -362,7 +696,7 @@ try {
   console.log(
     failures.length
       ? `\nFAIL — ${failures.length} of ${steps.length} steps did not behave`
-      : `\nOK — ${steps.length} steps, all as specified`
+      : `\nOK — ${steps.length} steps across ${viewports.length} viewport(s), all as specified`
   );
 } catch (error) {
   // A selector that matched nothing, a timeout, a crash: the check ran and did

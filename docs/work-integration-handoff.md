@@ -32,6 +32,28 @@
 | `applyInspectionView(id, { byReader = true })` | **第 2 引数が新設です。** 読者が視点ボタンを押した＝`byReader: true`（既定）で失効。アプリが読者の代わりに視点を当てる＝`byReader: false` で失効しません | 視点を当てる新 UI は既定のままでよい |
 | `viewer.controls.addEventListener('start', …)` | 変更なし。**`change` へは戻さないでください**——アプリ自身の tween でも発火し、当の recipe のレポートを消します | — |
 
+### `src/components/AnatomyPanel.js` — 読み込み状態（新規）
+
+| 識別子 | 何をするか | Work が触るとき |
+| --- | --- | --- |
+| `.anatomy-panel-status`（summary 内） | `scene.onAnatomyStatus` を購読し、**`ready` 以外のときだけ**表示します。文言は `anatomyStatusText()`（`AnatomyInfoPanel.js` が export）1 か所が持ちます | **失敗表示のデザインは Work の担当です。** ここは「どこにも出ない」を「常に載っている場所に出る」へ直した最小実装で、見た目を確定させる意図はありません。作り直す場合、**詳細タブの footer だけに戻さないでください**——タブ本体は開いているタブの内容しか DOM に入りません |
+
+**この状態向けの製品内 retry ボタンはまだありません。** 現状の復帰手段はページ再読み込みです
+（`SceneFailureFallback` の「3Dを再試行」は WebGL 自体が失敗した別経路）。
+**失敗→再試行の見せ方は Work の設計待ち**で、こちらでは足していません。
+
+### `src/styles/ui.css` — 埋め込み時の inspection panel
+
+| 規則 | 変更 |
+| --- | --- |
+| `@media (max-width: 560px) and (min-height: 640px)` の fixed シート | `.inspection-panel` → **`.rail > .inspection-panel`** |
+| `@media (max-width: 720px)` の `width: min(74vw, 292px)` | 同上 |
+
+どちらも「rail に単独で載っている panel」の話で、規則自身のコメントもそう書いてあります。
+解剖シーンでは**同じ要素が解剖パネルの表示タブに埋め込まれる**ため、限定しないと flow から浮いて
+「決まった見せ方」のボタンを覆いました（375×667 で実測）。
+**埋め込み側の panel を fixed にしないでください。**
+
 ### `src/components/ControlPanel.js`
 
 | 識別子 | 何をするか | Work が触るとき |
@@ -54,7 +76,7 @@
 | `measure-candidate-surfaces.mjs` | 上を使って固定 GLB を計測。`npm run assets:measure [heart\|junctions]` |
 | `validate-candidate-gltf.mjs` | glTF Validator。**error があれば exit 1**、実行不能は 2。`npm run assets:validate` |
 | `pack-handoff.mjs` | 納品ディレクトリ生成（自己参照しない hash 一覧＋`restore.sh`＋`ASSETS.md`）。**復元は非破壊**：既存 target は削除せず停止し、`--force` はありません。`tests/pack-handoff.test.js` が人工 repo で 7 ケースを固定 |
-| `check-heart-recipe-report.mjs` | B4-N2 の実ブラウザ検査。`npm run verify:recipe-report`。**17 assert / exit 0-1-2**（2 = 実行不能）。ローカル build のみで、本番・deploy preview・`verify:live` は使いません |
+| `check-heart-recipe-report.mjs` | B4-N2 の実ブラウザ検査。`npm run verify:recipe-report [-- --viewport WxH ...]`。**exit 0-1-2**（2 = 実行不能。build 不在・playwright 不在・候補 asset 不在・**心臓が入っていない production build**）。canvas の実位置と重なりから操作点を選び、押せないボタンを迂回しません。ローカル build のみで、本番・deploy preview・`verify:live` は使いません |
 
 ---
 
@@ -80,10 +102,13 @@
 **Work からの部品・接続差分案はこの時点でも未着です。統合済みの箇所はありません。**
 
 1. 統一 UI 仕様の横向きレイアウト（`#ui[data-anatomy-compact='landscape']` は暫定）
-2. 読み込み・失敗・再試行・非同期破棄の見せ方。scene 側は
+2. 読み込み・失敗・再試行・非同期破棄の**見せ方**。scene 側は
    `getAnatomyStatus()` に `{state, selectableCount, meshCount, unknownMeshes,
    vesselMeshes, vesselsInFile, vesselsNotTaken, vessels, missing}` を出し、
-   候補 asset が無ければ `state:'error'` と `hint` を返します
+   候補 asset が無ければ `state:'error'` と `hint` を返します。
+   **今回、失敗が画面のどこにも出ていなかったので summary に 1 行だけ足しました**
+   （§1 の `.anatomy-panel-status`）。これは最小の修正で、**デザインは Work 待ちのままです。**
+   **この状態向けの retry ボタンは依然ありません**
 3. Neco 導線・公開画面・Landing の見た目
 4. 心臓の公開（ゲートは閉じたまま）
 

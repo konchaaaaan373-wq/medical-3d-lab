@@ -18,6 +18,37 @@ import { el } from '../utils/dom.js';
  *
  * @param {object} scene
  * @param {{onPreferredView?: (id:string) => void, heading?: boolean}} [options]
+ */
+
+/**
+ * How a load state reads, in both languages.
+ *
+ * Exported because two surfaces say it and they must not drift apart: this
+ * panel's footer, and the anatomy panel's summary, which is the one that is
+ * always on screen. The footer alone was not enough — on an anatomy scene it
+ * lives in the Detail tab, and only the open tab's content is in the DOM, so a
+ * failed load announced nothing at all to a reader who had not gone looking.
+ *
+ * @param {{state?: string, selectableCount?: number}} status
+ * @returns {{en: string, ja: string, ready: boolean}}
+ */
+export function anatomyStatusText(status) {
+  if (status?.state === 'error') {
+    return { en: 'Atlas could not be loaded', ja: 'アトラスを読み込めませんでした', ready: false };
+  }
+  if (status?.state === 'ready') {
+    return {
+      en: `${status.selectableCount} selectable structures`,
+      ja: `${status.selectableCount}部位`,
+      ready: true,
+    };
+  }
+  return { en: 'Loading atlas…', ja: 'アトラスを読み込み中…', ready: false };
+}
+
+/**
+ * @param {object} scene
+ * @param {{onPreferredView?: (id:string) => void, heading?: boolean}} [options]
  *   `heading` renders the name and breadcrumb here as well; the anatomy panel
  *   turns it off because its summary already carries them.
  */
@@ -103,18 +134,9 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
   };
 
   const updateStatus = (status) => {
-    if (status.state === 'error') {
-      countEn.textContent = 'Atlas could not be loaded';
-      countJa.textContent = 'アトラスを読み込めませんでした';
-      return;
-    }
-    if (status.state === 'ready') {
-      countEn.textContent = `${status.selectableCount} selectable structures`;
-      countJa.textContent = `${status.selectableCount}部位`;
-      return;
-    }
-    countEn.textContent = 'Loading atlas…';
-    countJa.textContent = 'アトラスを読み込み中…';
+    const { en, ja } = anatomyStatusText(status);
+    countEn.textContent = en;
+    countJa.textContent = ja;
   };
 
   let selected = scene.getAnatomySelection();

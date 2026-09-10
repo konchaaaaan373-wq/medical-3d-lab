@@ -41,6 +41,26 @@
   border-bottom: 1px solid var(--border);
 }
 
+/*
+ * The load state, in the summary rather than only in the Detail tab's footer.
+ *
+ * Hidden while the model is ready, so a scene that loads normally is unchanged.
+ * It is the same words the footer uses; the difference is that the summary is
+ * always in the document, and only the open tab's content is.
+ */
+.anatomy-panel-status {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-faint, #6b7c95);
+}
+
+/* The same red the account surface already uses for a failure on this ground. */
+.anatomy-panel-status[data-state='error'] {
+  color: #ffb0b0;
+  font-weight: 600;
+}
+
 .anatomy-panel-heading {
   display: flex;
   align-items: flex-start;

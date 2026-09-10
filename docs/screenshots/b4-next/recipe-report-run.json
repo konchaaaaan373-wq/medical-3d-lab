@@ -1,93 +1,512 @@
 {
-  "scope": "implementer's own verification of B4-N2 in a real browser; not a third party's, and not a medical review",
+  "scope": "implementer's own verification in a real browser; not a third party's, and not a medical review",
+  "head": "b835d0e032fe1ce3efdf6af6c5b2ac27d4723d00",
+  "dirty": true,
   "route": "/?preview=1#/heart-anatomy",
-  "viewport": {
-    "width": 1280,
-    "height": 800
-  },
+  "build": "VITE_ALLOW_PREVIEW=1 npm run build — the heart scene is not published, so it is only in a preview build",
+  "viewports": [
+    "1280x800",
+    "844x390",
+    "375x667"
+  ],
   "origin": "ephemeral local static server over the local build; no production, preview deploy or verify:live",
+  "candidateAssets": [
+    {
+      "id": "hubmap-vh-m-heart",
+      "file": "heart/VH_M_Heart.glb",
+      "bytes": 4071500,
+      "sha256": "b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70"
+    },
+    {
+      "id": "hubmap-vh-m-blood-vasculature",
+      "file": "heart/VH_M_Blood_Vasculature.glb",
+      "bytes": 7436204,
+      "sha256": "a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d"
+    }
+  ],
   "steps": [
     {
+      "viewport": "1280x800",
+      "step": "the panel chose a layout for this viewport",
+      "ok": true,
+      "detail": "docked"
+    },
+    {
+      "viewport": "1280x800",
       "step": "the recipe writes a report",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしました。前面の視点では、"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
     },
     {
+      "viewport": "1280x800",
       "step": "the recipe moves the camera",
       "ok": true,
-      "detail": "[0.5669,-0.0337,5.0015] -> [0.4975,-0.0497,5.0436]"
+      "detail": "[0.5667,-0.0337,5.0015] -> [0.4915,-0.0511,5.0473]"
     },
     {
+      "viewport": "1280x800",
       "step": "the recipe's own camera move does not retire it",
       "ok": true,
       "detail": "still shown after the tween it started"
     },
     {
+      "viewport": "1280x800",
       "step": "the zoom-in button: the report is present first",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
     },
     {
+      "viewport": "1280x800",
       "step": "the zoom-in button: retires the report",
       "ok": true,
       "detail": "cleared"
     },
     {
+      "viewport": "1280x800",
       "step": "the \"+\" key: the report is present first",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
     },
     {
+      "viewport": "1280x800",
       "step": "the \"+\" key: retires the report",
       "ok": true,
       "detail": "cleared"
     },
     {
+      "viewport": "1280x800",
       "step": "\"Go to it\": the report is present first",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
     },
     {
+      "viewport": "1280x800",
       "step": "\"Go to it\": retires the report",
       "ok": true,
       "detail": "cleared"
     },
     {
+      "viewport": "1280x800",
       "step": "\"Go to it\" moved the camera",
       "ok": true,
       "detail": "[0.4915,-0.0511,5.0473] -> [0.1072,0.2832,3.4247]"
     },
     {
+      "viewport": "1280x800",
       "step": "a viewpoint button: the report is present first",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
     },
     {
+      "viewport": "1280x800",
       "step": "a viewpoint button: retires the report",
       "ok": true,
       "detail": "cleared"
     },
     {
+      "viewport": "1280x800",
       "step": "a drag on the canvas: the report is present first",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
     },
     {
+      "viewport": "1280x800",
       "step": "a drag on the canvas: retires the report",
       "ok": true,
       "detail": "cleared"
     },
     {
+      "viewport": "1280x800",
       "step": "re-running restores the report",
       "ok": true,
-      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしました。前面の視点では、"
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
     },
     {
+      "viewport": "1280x800",
       "step": "re-running measures the same thing",
       "ok": true,
       "detail": "identical"
     },
     {
+      "viewport": "1280x800",
+      "step": "exploring: picking a row in the list selects a structure",
+      "ok": true,
+      "detail": "VH_M_mitral_valve"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "information: the model scope panel is present",
+      "ok": true,
+      "detail": "one toggle"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "information: and a reader can reach it at this size",
+      "ok": true,
+      "detail": "visible"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "information: it opens with content",
+      "ok": true,
+      "detail": "2575 characters"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "back: it closes again",
+      "ok": true,
+      "detail": "closed"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "back: the selection survived the detour",
+      "ok": true,
+      "detail": "VH_M_mitral_valve -> VH_M_mitral_valve"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "back: the model is still loaded",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "viewport": "1280x800",
+      "step": "back: the fixed view still runs and measures",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the panel chose a layout for this viewport",
+      "ok": true,
+      "detail": "sheet"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the recipe writes a report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the recipe moves the camera",
+      "ok": true,
+      "detail": "[-0.0009,-0.0033,5.0009] -> [-0.012,-0.0242,5.0468]"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the recipe's own camera move does not retire it",
+      "ok": true,
+      "detail": "still shown after the tween it started"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the zoom-in button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the zoom-in button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the \"+\" key: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "844x390",
+      "step": "the \"+\" key: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "844x390",
+      "step": "\"Go to it\": the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "844x390",
+      "step": "\"Go to it\": retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "844x390",
+      "step": "\"Go to it\" moved the camera",
+      "ok": true,
+      "detail": "[-0.0119,-0.0242,5.0468] -> [-0.1611,0.3409,3.5071]"
+    },
+    {
+      "viewport": "844x390",
+      "step": "a viewpoint button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "844x390",
+      "step": "a viewpoint button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "844x390",
+      "step": "a drag on the canvas: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "844x390",
+      "step": "a drag on the canvas: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "844x390",
+      "step": "re-running restores the report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "844x390",
+      "step": "re-running measures the same thing",
+      "ok": true,
+      "detail": "identical"
+    },
+    {
+      "viewport": "844x390",
+      "step": "exploring: picking a row in the list selects a structure",
+      "ok": true,
+      "detail": "VH_M_mitral_valve"
+    },
+    {
+      "viewport": "844x390",
+      "step": "information: the model scope panel is present",
+      "ok": true,
+      "detail": "one toggle"
+    },
+    {
+      "viewport": "844x390",
+      "step": "information: and a reader can reach it at this size",
+      "ok": true,
+      "detail": "visible"
+    },
+    {
+      "viewport": "844x390",
+      "step": "information: it opens with content",
+      "ok": true,
+      "detail": "2575 characters"
+    },
+    {
+      "viewport": "844x390",
+      "step": "back: it closes again",
+      "ok": true,
+      "detail": "closed"
+    },
+    {
+      "viewport": "844x390",
+      "step": "back: the selection survived the detour",
+      "ok": true,
+      "detail": "VH_M_mitral_valve -> VH_M_mitral_valve"
+    },
+    {
+      "viewport": "844x390",
+      "step": "back: the model is still loaded",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "viewport": "844x390",
+      "step": "back: the fixed view still runs and measures",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the panel chose a layout for this viewport",
+      "ok": true,
+      "detail": "sheet"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the recipe writes a report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the recipe moves the camera",
+      "ok": true,
+      "detail": "[-0.0009,0.372,4.994] -> [-0.0119,-0.0315,5.047]"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the recipe's own camera move does not retire it",
+      "ok": true,
+      "detail": "still shown after the tween it started"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the zoom-in button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the zoom-in button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the \"+\" key: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "375x667",
+      "step": "the \"+\" key: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "375x667",
+      "step": "\"Go to it\": the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "375x667",
+      "step": "\"Go to it\": retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "375x667",
+      "step": "\"Go to it\" moved the camera",
+      "ok": true,
+      "detail": "[-0.0119,-0.0315,5.047] -> [-0.1581,0.3242,3.3688]"
+    },
+    {
+      "viewport": "375x667",
+      "step": "a viewpoint button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "375x667",
+      "step": "a viewpoint button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "375x667",
+      "step": "a drag on the canvas: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructe"
+    },
+    {
+      "viewport": "375x667",
+      "step": "a drag on the canvas: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "viewport": "375x667",
+      "step": "re-running restores the report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "375x667",
+      "step": "re-running measures the same thing",
+      "ok": true,
+      "detail": "identical"
+    },
+    {
+      "viewport": "375x667",
+      "step": "exploring: picking a row in the list selects a structure",
+      "ok": true,
+      "detail": "VH_M_mitral_valve"
+    },
+    {
+      "viewport": "375x667",
+      "step": "information: the model scope panel is present",
+      "ok": true,
+      "detail": "one toggle"
+    },
+    {
+      "viewport": "375x667",
+      "step": "information: and a reader can reach it at this size",
+      "ok": true,
+      "detail": "visible"
+    },
+    {
+      "viewport": "375x667",
+      "step": "information: it opens with content",
+      "ok": true,
+      "detail": "2575 characters"
+    },
+    {
+      "viewport": "375x667",
+      "step": "back: it closes again",
+      "ok": true,
+      "detail": "closed"
+    },
+    {
+      "viewport": "375x667",
+      "step": "back: the selection survived the detour",
+      "ok": true,
+      "detail": "VH_M_mitral_valve -> VH_M_mitral_valve"
+    },
+    {
+      "viewport": "375x667",
+      "step": "back: the model is still loaded",
+      "ok": true,
+      "detail": "ready"
+    },
+    {
+      "viewport": "375x667",
+      "step": "back: the fixed view still runs and measures",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしまし"
+    },
+    {
+      "viewport": "1280x800 failure",
+      "step": "a missing model reports an error state",
+      "ok": true,
+      "detail": "error"
+    },
+    {
+      "viewport": "1280x800 failure",
+      "step": "and it says what to do about it",
+      "ok": true,
+      "detail": "This model is a candidate asset that is not committed. Run `npm run assets:dev`."
+    },
+    {
+      "viewport": "1280x800 failure",
+      "step": "the screen says so, not just the object",
+      "ok": true,
+      "detail": "the failure is on screen"
+    },
+    {
+      "viewport": "1280x800 failure",
+      "step": "in-product retry control for this state",
+      "ok": true,
+      "detail": "none today — recovery is a page reload; the retry button belongs to the WebGL fallback, which this path does not take"
+    },
+    {
+      "viewport": "1280x800 failure",
+      "step": "a manual retry recovers the model",
+      "ok": true,
+      "detail": "46 selectable structures"
+    },
+    {
+      "viewport": "all",
       "step": "no uncaught page errors",
       "ok": true,
       "detail": "none"
@@ -96,17 +515,30 @@
   "failures": [],
   "pageErrors": [],
   "consoleErrors": {
-    "total": 3,
+    "total": 16,
     "messages": [
-      "Failed to load resource: net::ERR_CONNECTION_RESET",
-      "Failed to load resource: the server responded with a status of 404 (Not Found)",
-      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      "[1280x800] Failed to load resource: net::ERR_CONNECTION_RESET",
+      "[1280x800] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[1280x800] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[844x390] Failed to load resource: net::ERR_CONNECTION_RESET",
+      "[844x390] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[844x390] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[375x667] Failed to load resource: net::ERR_CONNECTION_RESET",
+      "[375x667] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[375x667] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[1280x800 failure] Failed to load resource: net::ERR_CONNECTION_RESET",
+      "[1280x800 failure] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[1280x800 failure] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[1280x800 failure] Failed to load resource: net::ERR_FAILED",
+      "[1280x800 failure] Failed to load resource: net::ERR_CONNECTION_RESET",
+      "[1280x800 failure] Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "[1280x800 failure] Failed to load resource: the server responded with a status of 404 (Not Found)"
     ],
     "unservedRequests": [
       "/.netlify/functions/billing-status",
       "/.netlify/functions/plan-catalog"
     ],
-    "note": "requests the local static server had no file for are listed above; they are the shell's own optional fetches, not assertions"
+    "note": "requests the local static server had no file for; the shell's own optional fetches, not assertions"
   },
-  "ranAt": "2026-09-10T05:21:01.265Z"
+  "ranAt": "2026-09-10T07:14:17.184Z"
 }

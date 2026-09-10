@@ -66,12 +66,16 @@ export const HEART_GROUPS = Object.freeze({
 /**
  * The fourteen parts.
  *
- * `enclosedMl` is the volume of each closed surface, measured from the mesh. It
- * is recorded because it is what settles what a "chamber" mesh *is* — a left
- * ventricle enclosing 122 mL is a chamber cavity, not a cavity plus its
- * myocardium — and for no other purpose. **It is not a clinical measurement**:
- * one fixed cadaveric specimen, at whatever state it was fixed in, is not an
- * end-diastolic volume and must never be shown as one.
+ * `enclosedMl` is the volume of each closed surface, measured from the mesh, and
+ * it is recorded as that and nothing more. This comment used to add that it is
+ * "what settles what a chamber mesh *is* — a left ventricle enclosing 122 mL is
+ * a chamber cavity, not a cavity plus its myocardium". **That is withdrawn**
+ * (B4-G1): a normal left ventricular myocardial volume is of the same order as
+ * a normal cavity volume, so the figure does not choose between them.
+ *
+ * **It is not a clinical measurement** either: one fixed cadaveric specimen, at
+ * whatever state it was fixed in, is not an end-diastolic volume and must never
+ * be shown as one.
  */
 export const HEART_PARTS = Object.freeze([
   part('VH_M_heart_left_ventricle', 'Left ventricle', '左心室', 'UBERON:0002084', 'chamber', 121.6, true),
@@ -522,6 +526,85 @@ function hslToHex(h, s, l) {
  * The public name is simply "heart"; what is and is not in the model belongs in
  * the model information, not in the title.
  */
+/**
+ * What this model answers, what it does not represent, and where it came from.
+ *
+ * Every line here is taken from `docs/model-cards/heart-anatomy.md` and
+ * `docs/model-evidence/heart-anatomy.md` as they now stand. **Nothing is
+ * asserted here that is not already established there** — in particular the two
+ * things this scene is repeatedly tempted to say and cannot: what a chamber
+ * surface represents, and whether a vessel meets a chamber.
+ *
+ * An anatomy scene at `alpha` is required to carry a scope panel alongside its
+ * model layer, evidence dossier and model card (`CLAUDE.md`). This one had the
+ * other three; the panel was missing, which a browser run of the reader's own
+ * path is what surfaced.
+ */
+export const HEART_MODEL_SCOPE = Object.freeze({
+  question: 'Which named parts of one specimen\'s heart and its great vessels are these, and where is each one?',
+  questionJa: 'ある 1 体の心臓と大血管について、収録されている部位はどれで、それぞれどこにあるのか。',
+  answers: [
+    {
+      text: 'Forty-six structures from two files of one release, each selectable and named in English and Japanese.',
+      textJa: '同じリリースの 2 ファイルから 46 構造。1 つずつ選べて、英語と日本語の名前が付いています。',
+    },
+    {
+      text: 'Where each part sits relative to the others, in the source\'s own whole-body frame with neither file moved.',
+      textJa: '各部位が互いにどの位置関係にあるか。出典の全身座標のまま、どちらのファイルも動かしていません。',
+    },
+  ],
+  excludes: [
+    {
+      text: 'Any physiology: no beat, no flow, no pressure, no conduction, and no change over time.',
+      textJa: '生理は一切扱いません。拍動・血流・圧・興奮伝導・時間変化のいずれもありません。',
+    },
+    {
+      text: 'Chordae tendineae, pericardium, conduction system, and any separately identified myocardial free wall — none is in the source.',
+      textJa: '腱索・心膜・刺激伝導系、および独立に同定された心筋自由壁。いずれも出典にありません。',
+    },
+    {
+      text: 'One fixed cadaveric specimen. Not a patient, not an average, and not a range of normal variation.',
+      textJa: '固定された 1 体の標本です。患者でも平均でもなく、正常変異の幅でもありません。',
+    },
+  ],
+  cautions: [
+    {
+      text: '**What a chamber surface represents is still being checked** — the space, or the wall around it. Two attempts to settle it, from a ray count and from the surface genus, were both withdrawn.',
+      textJa: '**心腔の面が「空間」と「周りの壁」のどちらを表すかは確認中です。** ray の数と genus による判定を 2 度試み、どちらも撤回しました。',
+    },
+    {
+      text: 'The same question is open for every one of the thirty-seven vessel surfaces: lumen or wall is not established.',
+      textJa: '同じ問いが血管 37 本すべてで未確定です。内腔か壁かは決まっていません。',
+    },
+    {
+      text: 'The figures across the two files are a **sampled-vertex** distance and a frame diagnostic. They do not establish that a vessel and a chamber are joined, continuous or watertight.',
+      textJa: '2 ファイル間の数値は**採用頂点間の距離**で、座標系が一致していることの診断です。血管と心腔が接合・連続・水密であることは示しません。',
+    },
+    {
+      text: 'One structure carries a name the source itself disagrees on, and is marked as unverified rather than resolved here.',
+      textJa: '出典内で名称が一致しない部位が 1 つあり、こちらで決めずに「名称要確認」と表示しています。',
+    },
+  ],
+  sources: [
+    {
+      text: 'HuBMAP Human Reference Atlas CCF release v1.2 — VH_M_Heart.glb and VH_M_Blood_Vasculature.glb, pinned by commit, byte count and hash. Candidate assets: recorded, not adopted.',
+      textJa: 'HuBMAP Human Reference Atlas CCF v1.2 の VH_M_Heart.glb と VH_M_Blood_Vasculature.glb。commit・バイト数・hash で固定。候補 asset であって採用済みではありません。',
+      kind: 'dataset',
+    },
+    {
+      text: 'Both files fail glTF validation by a recorded amount (408 errors and 33), which is kept as a failed gate rather than an unrun one.',
+      textJa: '両ファイルとも glTF 検証に不合格で、その件数（408 と 33）を記録しています。未実施ではなく不合格として保持しています。',
+      kind: 'qa',
+    },
+    {
+      text: 'No anatomist and no clinician has reviewed this geometry or these labels, and the licences are recorded rather than discharged.',
+      textJa: '解剖学者・臨床家によるレビューは受けていません。ライセンスは記録のみで、義務の履行は済んでいません。',
+      kind: 'limitation',
+    },
+  ],
+  evidence: 'docs/model-evidence/heart-anatomy.md',
+});
+
 export const HEART_ANATOMY_META = Object.freeze({
   id: 'heart-anatomy',
   status: 'alpha',
@@ -530,6 +613,11 @@ export const HEART_ANATOMY_META = Object.freeze({
   subtitle: 'Point to identify; click or tap to pin any named part',
   subtitleJa: '触れて部位を確認・クリック／タップで固定',
   inspection: Object.freeze({ background: 'studio' }),
+  /**
+   * The scope panel. An `alpha` scene owes one alongside its model layer,
+   * evidence dossier and model card; this scene had the other three.
+   */
+  modelScope: HEART_MODEL_SCOPE,
   /**
    * **Nothing moves, and the console says so.** `enabled: false` removes the
    * progression slider and the play button rather than leaving a control that
