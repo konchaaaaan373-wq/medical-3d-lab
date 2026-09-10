@@ -15,30 +15,45 @@ import { travellingWave } from '../../shared/motion/rhythm.js';
  * Frontal view, so screen-right is the patient's left: the fundus sits high on
  * the right of the screen and the pylorus points to the left.
  */
+/**
+ * The stomach's path: fundus apex → body → incisura → antrum → pylorus.
+ *
+ * Exported because a second builder cuts this same stomach into its named
+ * parts, and the two must be one stomach rather than two that agree by
+ * coincidence. `stomachParts.js` reads the path and the calibre from here.
+ */
+export const STOMACH_PATH = Object.freeze([
+  [1.02, 1.62, 0],
+  [1.24, 0.86, 0.02],
+  [1.05, 0.06, 0.04],
+  [0.55, -0.56, 0.04],
+  [-0.16, -0.78, 0.02],
+  [-0.78, -0.52, 0],
+  [-1.12, -0.28, 0],
+]);
+
+/** Calibre along the stomach; the antrum is a genuinely narrower tube. */
+export const STOMACH_CALIBRE = Object.freeze([
+  [0, 0.5], // fundus
+  [0.14, 0.62],
+  [0.42, 0.54], // body
+  [0.62, 0.38], // incisura
+  [0.82, 0.24], // antrum
+  [1, 0.11], // pyloric canal
+]);
+
+/** Where the pyloric sphincter ring sits along the path. */
+export const PYLORIC_SPHINCTER_AT = 0.97;
+
+export const stomachPath = () => smoothCurve(STOMACH_PATH.map((point) => [...point]));
+export const stomachCalibre = () => smoothProfile(STOMACH_CALIBRE.map((point) => [...point]));
+
 export function buildStomach({ color = '#d08a86', pylorusColor = '#f0b9ae' } = {}) {
   const object = new THREE.Group();
   object.name = 'stomach';
 
-  // Fundus apex → body → incisura → antrum → pylorus.
-  const curve = smoothCurve([
-    [1.02, 1.62, 0],
-    [1.24, 0.86, 0.02],
-    [1.05, 0.06, 0.04],
-    [0.55, -0.56, 0.04],
-    [-0.16, -0.78, 0.02],
-    [-0.78, -0.52, 0],
-    [-1.12, -0.28, 0],
-  ]);
-
-  /** Calibre along the stomach; the antrum is a genuinely narrower tube. */
-  const baseRadius = smoothProfile([
-    [0, 0.5], // fundus
-    [0.14, 0.62],
-    [0.42, 0.54], // body
-    [0.62, 0.38], // incisura
-    [0.82, 0.24], // antrum
-    [1, 0.11], // pyloric canal
-  ]);
+  const curve = stomachPath();
+  const baseRadius = stomachCalibre();
 
   const surface = new TubeSurface(curve, { radius: baseRadius, steps: 132, radial: 26 });
   // Translucent enough to see what is inside it: a stomach whose contents are
@@ -52,9 +67,9 @@ export function buildStomach({ color = '#d08a86', pylorusColor = '#f0b9ae' } = {
     new THREE.TorusGeometry(0.15, 0.055, 10, 24),
     wallMaterial({ color: pylorusColor, opacity: 1 })
   );
-  const pylorusPoint = curve.getPointAt(0.97);
+  const pylorusPoint = curve.getPointAt(PYLORIC_SPHINCTER_AT);
   pylorus.position.copy(pylorusPoint);
-  pylorus.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curve.getTangentAt(0.97).normalize());
+  pylorus.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), curve.getTangentAt(PYLORIC_SPHINCTER_AT).normalize());
   pylorus.name = 'pylorus';
 
   object.add(body, pylorus);

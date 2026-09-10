@@ -50,29 +50,63 @@ export function buildSmallIntestine({ color = '#d99a7c', seed = 12, radius = 0.2
   };
 }
 
+/**
+ * The colon's frame, from the caecum round to the sigmoid.
+ *
+ * Exported with the corners named, because a second builder cuts this same
+ * colon into those named lengths and the two have to be one colon. The comment
+ * beside each point is what that point *is*, and `colonParts.js` finds its
+ * boundaries from these rather than from numbers of its own.
+ */
+export const COLON_PATH = Object.freeze([
+  [-1.75, -2.05, 0.35], // caecum
+  [-1.95, -1.2, 0.25],
+  [-1.98, 0.35, 0.1], // ascending
+  [-1.6, 1.35, 0.05], // right colic (hepatic) flexure
+  [-0.4, 1.62, -0.05], // transverse
+  [1.0, 1.5, -0.05],
+  [1.85, 0.9, 0.05], // left colic (splenic) flexure
+  [1.95, -0.6, 0.15], // descending
+  [1.5, -1.7, 0.25],
+  [0.5, -2.1, 0.3], // sigmoid
+  [0.05, -2.65, 0.15],
+]);
+
+/** Which control point each named part is centred on, by index into the path. */
+export const COLON_LANDMARKS = Object.freeze({
+  caecum: 0,
+  ascending: 2,
+  rightColicFlexure: 3,
+  transverse: 4,
+  leftColicFlexure: 6,
+  descending: 7,
+  sigmoid: 9,
+});
+
+/** @param {[number, number, number]} [offset] */
+export const colonPath = (offset = [0, 0, 0]) =>
+  smoothCurve(COLON_PATH.map(([x, y, z]) => [x + offset[0], y + offset[1], z + offset[2]]));
+
+/**
+ * Calibre along the colon: it narrows towards the sigmoid, and the haustra are
+ * a periodic rise and fall on top of that.
+ *
+ * @param {number} sacculations
+ */
+export const colonCalibre = (sacculations = 22) => (u) =>
+  (0.34 - 0.12 * Math.pow(u, 1.6)) * (1 + 0.15 * Math.cos(u * sacculations * Math.PI * 2));
+
 export function buildColon({ color = '#c58a72', sacculations = 22, offset = [0, 0, 0] } = {}) {
   // `offset` moves the colon *and* its curve and anchors together, so a scene
   // that sets it back behind the small bowel does not have to remember to
   // apply the same shift to everything that reads them.
   const [ox, oy, oz] = offset;
-  const curve = smoothCurve([
-    [-1.75, -2.05, 0.35], // caecum
-    [-1.95, -1.2, 0.25],
-    [-1.98, 0.35, 0.1], // ascending
-    [-1.6, 1.35, 0.05],
-    [-0.4, 1.62, -0.05], // transverse
-    [1.0, 1.5, -0.05],
-    [1.85, 0.9, 0.05],
-    [1.95, -0.6, 0.15], // descending
-    [1.5, -1.7, 0.25],
-    [0.5, -2.1, 0.3], // sigmoid
-    [0.05, -2.65, 0.15],
-  ].map(([x, y, z]) => [x + ox, y + oy, z + oz]));
+  const curve = colonPath(offset);
 
   // Haustra: the calibre rises and falls along the tube, which is what gives
   // the colon its segmented outline at a glance.
   const surface = new TubeSurface(curve, {
-    radius: (u) => (0.34 - 0.12 * Math.pow(u, 1.6)) * (1 + 0.15 * Math.cos(u * sacculations * Math.PI * 2)),
+    radius: colonCalibre(sacculations),
     steps: 320,
     radial: 16,
   });
