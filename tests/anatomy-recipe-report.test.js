@@ -63,7 +63,7 @@ function fakeScene({ recipeResult } = {}) {
   };
 }
 
-function mount({ recipeResult } = {}) {
+function mount({ recipeResult, onRetryModel } = {}) {
   const scene = fakeScene({ recipeResult });
   const restoreDocument = installFakeDocument();
   document.documentElement = new FakeElement('html');
@@ -80,6 +80,7 @@ function mount({ recipeResult } = {}) {
 
   const views = [];
   const tree = { element: new FakeElement('div'), refresh: () => {}, dispose: () => {} };
+  const retries = [];
   const panel = createAnatomyPanel({
     scene,
     tree,
@@ -87,6 +88,7 @@ function mount({ recipeResult } = {}) {
     legend: null,
     detail: new FakeElement('div'),
     onViewChange: (id, options) => views.push({ id, options }),
+    ...(onRetryModel === undefined ? {} : { onRetryModel: onRetryModel ?? (() => retries.push('pressed')) }),
   });
   // Only the open tab's content is mounted, and the fixed views live in the
   // Display tab — the same tab the console's display control opens.
@@ -96,6 +98,8 @@ function mount({ recipeResult } = {}) {
     panel,
     views,
     status: () => findByClass(panel.element, 'anatomy-recipe-status')[0],
+    retries,
+    retry: () => findByClass(panel.element, 'anatomy-panel-retry')[0],
     loadStatus: () => findByClass(panel.element, 'anatomy-panel-status')[0],
     press: () => findByClass(panel.element, 'anatomy-recipe')[0].click(),
     restore() {
@@ -296,6 +300,80 @@ test('a failed load is said in the summary, which is always mounted', () => {
 
     harness.scene.notify('status', { state: 'ready', selectableCount: 46 });
     assert.equal(harness.loadStatus().hidden, true, 'and a healthy scene looks exactly as it did');
+  } finally {
+    harness.restore();
+  }
+});
+
+test('a failed load offers a way out, and only when something answers it', () => {
+  // 01-RECOVERY-CONTRACT. The message alone left the reader with an empty
+  // canvas and nothing to do about it. The button is rendered by the panel and
+  // answered by the shell, so the panel decides *when* to offer recovery and
+  // the shell decides what recovery is.
+  const harness = mount({ onRetryModel: null });
+  try {
+    assert.equal(harness.retry().hidden, true, 'nothing to press while the model is fine');
+
+    harness.scene.notify('status', { state: 'error', selectableCount: 0 });
+    const button = harness.retry();
+    assert.ok(button, 'a failure offers a way out');
+    assert.equal(button.hidden, false);
+    assert.equal(button.tagName, 'BUTTON', 'a real button, so Enter and Space work without our help');
+    assert.equal(button.dataset.action, 'retry');
+    assert.match(allText(button), /Reload and try again/);
+    assert.match(allText(button), /再読み込みして再試行/, 'and it says what it does, in both languages');
+
+    // Pressed once. A reload never resolves, so the button must not invite a
+    // second press while the first is in flight.
+    button.click();
+    assert.deepEqual(harness.retries, ['pressed']);
+    assert.equal(button.disabled, true);
+    button.click();
+    assert.deepEqual(harness.retries, ['pressed'], 'a second press does nothing');
+
+    // Recovery clears the offer completely: a model that loaded carries no
+    // trace of the one that failed.
+    harness.scene.notify('status', { state: 'ready', selectableCount: 46 });
+    assert.equal(harness.retry().hidden, true);
+    assert.equal(harness.retry().disabled, false);
+    assert.match(allText(harness.retry()), /Reload and try again/, 'and it is pressable again if it fails later');
+  } finally {
+    harness.restore();
+  }
+});
+
+test('with no callback injected there is no button to press', () => {
+  // An enabled control that answers to nothing is worse than the plain message.
+  const harness = mount();
+  try {
+    harness.scene.notify('status', { state: 'error', selectableCount: 0 });
+    assert.equal(harness.retry(), undefined, 'the message stands alone');
+    assert.equal(harness.loadStatus().hidden, false, 'and the failure is still said');
+  } finally {
+    harness.restore();
+  }
+});
+
+test('a callback that throws does not leave the button stuck', () => {
+  // The one way a reader gets trapped: press, the reload never happens, and the
+  // button sits on "Reloading…" for ever.
+  const harness = mount({ onRetryModel: () => { throw new Error('no'); } });
+  try {
+    harness.scene.notify('status', { state: 'error', selectableCount: 0 });
+    harness.retry().click();
+    assert.equal(harness.retry().disabled, false, 'pressable again');
+    assert.match(allText(harness.retry()), /Reload and try again/);
+  } finally {
+    harness.restore();
+  }
+});
+
+test('loading is not a failure and offers no retry', () => {
+  const harness = mount({ onRetryModel: null });
+  try {
+    harness.scene.notify('status', { state: 'loading' });
+    assert.equal(harness.loadStatus().hidden, false, 'it says it is loading');
+    assert.equal(harness.retry()?.hidden, true, 'and offers nothing to press');
   } finally {
     harness.restore();
   }

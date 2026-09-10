@@ -807,6 +807,179 @@ try {
     await page.waitForTimeout(300);
     await shot('brain-phone');
   }
+  // ---------------------------------------------------------------------
+  // 12. A failed load, and the way out of it.
+  //
+  // The atlas is aborted, so the scene takes its real load-failure branch —
+  // the same one a reader gets when the asset does not arrive. What is being
+  // checked is that the reader can get back **by pressing the button the
+  // product shows them**. This deliberately does not call `page.reload()` to
+  // help: a check that reloads on the product's behalf passes whether or not
+  // the button works, which is the whole thing worth knowing here.
+  //
+  // Each press gets its own page, because a working retry navigates.
+  const atlas = 'assets/brain/brain.glb';
+  const recoveryRuns = [
+    ['click', async (button) => { await button.click(); }],
+    ['Enter', async (button) => { await button.focus(); await button.press('Enter'); }],
+    ['Space', async (button) => { await button.focus(); await button.press(' '); }],
+  ];
+
+  for (const [how, press] of recoveryRuns) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const failing = await context.newPage();
+    let blockAtlas = true;
+    await failing.route(`**/${atlas}`, (route) => (blockAtlas ? route.abort('failed') : route.continue()));
+    await failing.goto(url, { waitUntil: 'domcontentloaded' });
+    await failing.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
+    await failing.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'error',
+      null,
+      { timeout: 60000 }
+    ).catch(() => {});
+
+    const failed = await failing.evaluate(() => ({
+      state: window.__app?.scene?.getAnatomyStatus?.().state ?? null,
+      tab: document.querySelector('.anatomy-panel-body')?.dataset.tab ?? null,
+      said: /could not be loaded|読み込めませんでした/.test(document.body.innerText),
+      // What a reader must never be handed.
+      leaks: /npm run|Error:|TypeError/.test(document.body.innerText),
+    }));
+    if (failed.state !== 'error') problems.push(`[retry ${how}] a blocked atlas did not report an error state (${failed.state})`);
+    if (failed.tab !== 'parts') problems.push(`[retry ${how}] the default tab was not Parts (${failed.tab})`);
+    if (!failed.said) problems.push(`[retry ${how}] the failure is not said on screen without opening a tab`);
+    if (failed.leaks) problems.push(`[retry ${how}] a developer hint or raw error reached the reader`);
+
+    // `.loading` is the veil between navigation and the first frame, and
+    // covering everything is its job (`TRANSIENT_OVERLAYS`). It is removed
+    // half a second after the app resolves, so a reader sees the failure
+    // uncovered — but a check that measures inside that window reports the
+    // veil as an obstruction. Wait it out, and say so if it never goes.
+    const veilGone = await failing
+      .waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!veilGone) problems.push(`[retry ${how}] the loading veil never went away over a failed load`);
+
+    const button = failing.locator('.anatomy-panel-retry');
+    if ((await button.count()) !== 1) {
+      problems.push(`[retry ${how}] expected exactly one retry button, found ${await button.count()}`);
+      await context.close();
+      continue;
+    }
+    if (!(await button.isVisible())) {
+      problems.push(`[retry ${how}] the retry button is present but not visible`);
+      await context.close();
+      continue;
+    }
+    // Nothing is covering it: a button a reader cannot hit is not a way out.
+    const box = await button.boundingBox();
+    const covering = await failing.evaluate(
+      ({ x, y }) => {
+        const top = document.elementFromPoint(x, y);
+        return top?.closest('.anatomy-panel-retry') ? null : `${top?.tagName}.${top?.className}`;
+      },
+      { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
+    );
+    if (covering) problems.push(`[retry ${how}] the retry button is covered by ${covering}`);
+
+    // Let the atlas through, then press what the reader would press.
+    blockAtlas = false;
+    await press(button);
+    const recovered = await failing
+      .waitForFunction(
+        () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+        null,
+        { timeout: 90000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!recovered) {
+      problems.push(`[retry ${how}] pressing the retry button did not bring the model back`);
+      await context.close();
+      continue;
+    }
+
+    // Back to a usable model: the failure is gone and a structure can be picked.
+    const after = await failing.evaluate(() => ({
+      retryGone: document.querySelector('.anatomy-panel-retry')?.hidden !== false,
+      statusGone: document.querySelector('.anatomy-panel-status')?.hidden !== false,
+      count: window.__app.scene.getAnatomyStatus().selectableCount,
+    }));
+    if (!after.retryGone) problems.push(`[retry ${how}] the retry button is still offered after recovery`);
+    if (!after.statusGone) problems.push(`[retry ${how}] the failure line survived recovery`);
+    if (!after.count) problems.push(`[retry ${how}] recovered with no selectable structures`);
+
+    await failing.locator('.consent-banner button').last().click({ timeout: 3000 }).catch(() => {});
+    const row = failing.locator('.anatomy-tree-leaf').first();
+    await row.click({ timeout: 15000 }).catch(() => {});
+    const picked = await failing.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
+    if (!picked) problems.push(`[retry ${how}] no structure could be selected after recovering`);
+    else notes.push(`retry by ${how}: recovered to ${after.count} structures, then selected ${picked}`);
+    if (shotsDir && how === 'click') await failing.screenshot({ path: join(shotsDir, 'brain-recovered.png') });
+    await context.close();
+  }
+
+  // 13. The same button, at the sizes where the panel is a sheet rather than
+  //     docked. The summary carries it in both layouts, so it should be on
+  //     screen without opening anything — but "should" is what this checks.
+  //     The consent card is a declared transient overlay, so the overlap it
+  //     causes is recorded rather than counted as a defect.
+  for (const [width, height] of [[844, 390], [375, 667]]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    const small = await context.newPage();
+    await small.route(`**/${atlas}`, (route) => route.abort('failed'));
+    await small.goto(url, { waitUntil: 'domcontentloaded' });
+    await small.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'error',
+      null,
+      { timeout: 60000 }
+    ).catch(() => {});
+    const smallVeilGone = await small
+      .waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!smallVeilGone) problems.push(`[${width}x${height}] the loading veil never went away over a failed load`);
+    await small.waitForTimeout(400);
+
+    const size = `${width}x${height}`;
+    const at = async () => small.evaluate(() => {
+      const button = document.querySelector('.anatomy-panel-retry');
+      if (!button) return { present: false };
+      const box = button.getBoundingClientRect();
+      if (!box.width || !box.height) return { present: true, drawn: false };
+      const x = Math.round(box.left + box.width / 2);
+      const y = Math.round(box.top + box.height / 2);
+      const top = document.elementFromPoint(x, y);
+      const onScreen = box.top >= 0 && box.bottom <= window.innerHeight
+        && box.left >= 0 && box.right <= window.innerWidth;
+      return {
+        present: true,
+        drawn: true,
+        onScreen,
+        covering: top?.closest('.anatomy-panel-retry') ? null : `${top?.tagName}.${top?.className}`.slice(0, 60),
+      };
+    });
+
+    // Before the consent card is answered.
+    const before = await at();
+    if (before.covering) {
+      notes.push(`${size}: before the usage-data card is answered, the retry button is under ${before.covering} (a declared transient overlay)`);
+    }
+
+    await small.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
+    await small.waitForTimeout(400);
+    const after = await at();
+    if (!after.present) problems.push(`[${size}] a failed load offered no retry button`);
+    else if (!after.drawn) problems.push(`[${size}] the retry button has no box`);
+    else {
+      if (!after.onScreen) problems.push(`[${size}] the retry button is outside the viewport`);
+      if (after.covering) problems.push(`[${size}] the retry button is covered by ${after.covering}`);
+      if (!after.covering && after.onScreen) notes.push(`${size}: the retry button is on screen and uncovered without opening the sheet`);
+    }
+    if (shotsDir) await small.screenshot({ path: join(shotsDir, `brain-retry-${size}.png`) });
+    await context.close();
+  }
 } catch (error) {
   // A step that cannot complete is a finding, not a reason to throw away the
   // findings collected before it. Breaking the modal boundary made a later

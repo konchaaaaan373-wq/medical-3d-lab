@@ -56,9 +56,16 @@ import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
  * @param {HTMLElement} options.detail the selection's description
  * @param {(layout: 'docked'|'sheet') => void} [options.onLayout] told which
  *   layout the panel is in, so the app shell can lay the rail out around it.
+ * @param {() => void} [options.onRetryModel] what "Reload and try again" does
+ *   when the model failed to load. Injected by the app shell, which owns how
+ *   recovery works; **with no callback the button is not rendered at all**,
+ *   because an enabled control that answers to nothing is worse than the plain
+ *   message. It takes no arguments on purpose: a raw `Error` or a developer
+ *   hint (`npm run assets:dev`) is not something to hand a reader.
  */
 export function createAnatomyPanel({
   scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange, onViewChange,
+  onRetryModel = null,
 }) {
   /**
    * The Parts tab is the tree with a way into it.
@@ -326,12 +333,74 @@ export function createAnatomyPanel({
   const statusLine = el('p', { class: 'anatomy-panel-status', role: 'status' }, [statusEn, statusJa]);
   statusLine.hidden = true;
 
+  /**
+   * The way out of a failed load, in the place that says it failed.
+   *
+   * **It exists only when something is there to answer it.** `onRetryModel` is
+   * injected by the app shell; with no callback there is no button, because a
+   * control that looks live and does nothing is worse than the plain message.
+   *
+   * The name says what pressing it does rather than "Retry", because it
+   * reloads the page: the reader is told they will lose nothing they can see
+   * except the view they had. A button is used — not a link, not a div — so
+   * Enter and Space work without this file implementing keyboard handling, and
+   * so the shell's own shortcut guard, which stops model shortcuts leaking out
+   * of controls, cannot swallow its default action.
+   */
+  const retryEn = el('span', { class: 'lang-en', text: 'Reload and try again' });
+  const retryJa = el('span', { class: 'lang-ja', text: '再読み込みして再試行' });
+  const retryButton = onRetryModel
+    ? el('button', {
+        class: 'anatomy-panel-retry',
+        type: 'button',
+        dataset: { action: 'retry' },
+        on: { click: () => runRetry() },
+      }, [retryEn, retryJa])
+    : null;
+  if (retryButton) retryButton.hidden = true;
+
+  let retryPending = false;
+  /**
+   * Press once, and say so.
+   *
+   * A reload does not resolve — the page goes away — so nothing here waits for
+   * the callback to finish. What it must not do is latch: if the callback
+   * throws, the button goes back to being pressable rather than sitting on
+   * "reloading…" for a page that is never going to reload.
+   */
+  function runRetry() {
+    if (retryPending || !onRetryModel || !retryButton) return;
+    retryPending = true;
+    retryEn.textContent = 'Reloading…';
+    retryJa.textContent = '再読み込みしています…';
+    retryButton.disabled = true;
+    try {
+      onRetryModel();
+    } catch {
+      retryPending = false;
+      retryEn.textContent = 'Reload and try again';
+      retryJa.textContent = '再読み込みして再試行';
+      retryButton.disabled = false;
+    }
+  }
+
   const paintStatus = (status) => {
     const { en, ja, ready } = anatomyStatusText(status);
     statusEn.textContent = en;
     statusJa.textContent = ja;
     statusLine.hidden = ready;
     statusLine.dataset.state = status?.state ?? 'loading';
+    // Only a failure offers a way out. Loading is not a failure, and `ready`
+    // must clear the offer so a recovered model carries no trace of the one
+    // that failed before it.
+    if (!retryButton) return;
+    retryButton.hidden = status?.state !== 'error';
+    if (status?.state === 'ready' || status?.state === 'loading') {
+      retryPending = false;
+      retryButton.disabled = false;
+      retryEn.textContent = 'Reload and try again';
+      retryJa.textContent = '再読み込みして再試行';
+    }
   };
 
   const summary = el('div', { class: 'anatomy-panel-summary' }, [
@@ -340,6 +409,7 @@ export function createAnatomyPanel({
       el('div', { class: 'anatomy-panel-names' }, [nameEn, nameJa, whereEn, whereJa]),
     ]),
     statusLine,
+    retryButton,
     el('div', { class: 'anatomy-panel-actions' }, [
       focusButton, revealButton, isolateButton, hideButton,
       showAllButton, restoreDisplayButton, showHiddenButton, partsButton,

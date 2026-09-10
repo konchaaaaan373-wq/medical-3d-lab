@@ -17,6 +17,7 @@
 | 「血管は壁厚を持たない 1 枚の面」 | **撤回しました**（B4-N1）。測定法が solid と shell を区別できていませんでした |
 | 「小心臓静脈 1 本は壁厚なしと確定、残り 36 本が未確定」 | **これも撤回しました**（B4-G1）。genus では壁厚は決まりません——壁のあるカップは genus 0、壁の無い中実の輪は genus 1 です。**37 本すべて未確定**で、壁厚を測る手段はリポジトリにありません |
 | 「左室は genus 0 なので環状の壁ではなく心腔」 | **撤回**（B4-G1）。あわせて「121.6 mL は心腔サイズ」も撤回——正常左室の心筋容積は心腔容積と同じ桁です |
+| 「Work B5 は未着」 | **プロジェクト全体の話としては誤りでした。** main `dae2acc` には Work B5 の presentation mount・shortcut guard・public diagnostic copy control が接続済みです。未着だったのは**この branch の入力**で、その区別を書いていませんでした |
 
 ---
 
@@ -53,6 +54,26 @@
 解剖シーンでは**同じ要素が解剖パネルの表示タブに埋め込まれる**ため、限定しないと flow から浮いて
 「決まった見せ方」のボタンを覆いました（375×667 で実測）。
 **埋め込み側の panel を fixed にしないでください。**
+
+### `src/app/App.js` / `src/components/AnatomyPanel.js` — 失敗からの復帰（新規・要注入）
+
+| 識別子 | 何をするか | 担当 |
+| --- | --- | --- |
+| `createApp({ stage, ui, onRetryModel })` | 任意 callback。**引数を取りません**——raw Error も `npm run assets:dev` のような開発者向け hint も読者に渡さないためです | Claude が受け口、**Work が注入** |
+| `.anatomy-panel-retry`（`data-action="retry"`） | summary 内。**`state === 'error'` かつ callback がある**ときだけ表示。無ければ**要素ごと作りません** | Claude |
+| `src/main.js` の `onRetryModel` | 現在は `window.location.reload()`。既存 fallback の「3Dを再試行」と同じ挙動です | **Work のファイルです。** 置き換えて構いません——panel 側は無改修で追随します |
+
+- 押下中は disabled、**callback が throw したら押せる状態へ戻します**（「再読み込みしています…」で固着させない）
+- `ready` / `loading` で消えます。**復帰後に前の失敗の痕跡を残しません**
+- 単純 reload なので **route（hash）と言語（localStorage）は保持**されますが、
+  **観察していた視点は復元しません**。そう主張もしていません
+- `npm run verify:anatomy` が公開脳の production build で
+  **click / Enter / Space の 3 経路と 844×390 / 375×667 の到達性**を assert します。
+  注入を外すと 5 件落ちることを確認済みです（＝ボタンに依存した検査です）
+
+**shortcut guard は壊していません。** bubbling で `stopPropagation` するだけなので、
+button の既定動作（Enter / Space）は生きています。panel の Escape は
+`document` の capture listener なので guard より先に走ります。
 
 ### `src/components/ControlPanel.js`
 

@@ -161,7 +161,25 @@ async function boot() {
       import('./access/installAccess.js'),
       import('./app/sceneRegistry.js'),
     ]);
-    const app = await createApp({ stage, ui });
+    const app = await createApp({
+      stage,
+      ui,
+      /**
+       * How a reader recovers from a model that failed to load.
+       *
+       * The shell owns this (01-RECOVERY-CONTRACT), and it does the same thing
+       * the WebGL fallback's own "Retry 3D" already does: reload the page. The
+       * route is in the hash and the language choice is in `localStorage`, so
+       * the reader comes back to the same model in the same language. It does
+       * **not** restore the view they had orbited to, and nothing here claims
+       * otherwise.
+       *
+       * The anatomy panel renders its button only because this exists; without
+       * it there is no button. Work owns this file and may replace this with a
+       * finer recovery, and the panel needs no change if it does.
+       */
+      onRetryModel: () => window.location.reload(),
+    });
     installAccess({ app, access, ui, sceneId: resolveSceneId() });
     void accessReady;
 

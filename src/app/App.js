@@ -52,7 +52,17 @@ import { emitAppEvent } from './appEvents.js';
  *
  * @param {{ stage: HTMLElement, ui: HTMLElement }} mounts
  */
-export async function createApp({ stage, ui }) {
+/**
+ * @param {object} options
+ * @param {HTMLElement} options.stage where the renderer draws
+ * @param {HTMLElement} options.ui the shell the panels are appended to
+ * @param {() => void} [options.onRetryModel] how a reader recovers from a model
+ *   that failed to load. Passed through to the anatomy panel, which renders the
+ *   button only if this is here. The shell owns what recovery means — today
+ *   `src/main.js` reloads the page, the same thing the WebGL fallback's own
+ *   retry does — so this file neither reloads nor reconstructs anything.
+ */
+export async function createApp({ stage, ui, onRetryModel = null }) {
   const viewer = new Viewer(stage);
 
   const SceneClass = await loadScene(resolveSceneId());
@@ -729,6 +739,9 @@ export async function createApp({ stage, ui }) {
         display: inspectionPanel.element,
         legend: legend.element,
         detail: anatomyInfo.element,
+        // Handed straight through. The panel decides when to offer it — only on
+        // a failed load — and the shell decides what it does.
+        onRetryModel,
         onFocusStructure: focusOnStructure,
         // Through the control that owns the value, so the slider, the stage
         // readout and the model all move together.

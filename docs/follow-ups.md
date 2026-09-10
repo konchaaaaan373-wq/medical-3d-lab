@@ -439,6 +439,55 @@ node 名は冠動脈、label と id は肺動脈の枝を指しています。
 - 併せて: 「回旋枝」という名の mesh はありません（左冠動脈・前下行枝・対角枝 2 本・
   左縁枝はあります）。どれが回旋枝の走行かも、こちらでは判断しません
 
+### F-60 読み込み失敗から、画面内のボタンで復帰できるようにした — 対応済み（B6 / 共有 App）
+
+F-58 で「失敗が画面に出る」ところまで直しましたが、**復帰手段は依然としてページ再読み込みだけ**でした。
+`01-RECOVERY-CONTRACT.md` に沿って、**画面内の実ボタン**を接続しました。
+
+| 担当 | 何を |
+| --- | --- |
+| Claude | `createApp({ onRetryModel })` の任意 callback、AnatomyPanel の summary 内ボタン（`data-action="retry"`） |
+| Work（`src/main.js`） | callback の注入。既存 fallback と同じ `window.location.reload()` |
+
+- **注入が無ければボタンは描画されません。** 「有効に見えて何も起きない」を作らないためです
+- 名前は「再読み込みして再試行 / Reload and try again」。**実際の挙動を名乗ります**
+- 押下中は disabled。ただし **callback が throw したら戻します**——「再読み込みしています…」で固着させません
+- `ready` / `loading` で失効。**復帰後に前の失敗の痕跡を残しません**
+- callback は**引数を取りません**。raw Error も `npm run assets:dev` のような開発者向け hint も読者に渡しません
+- 単純 reload が最初の完成形です。route は hash、言語は `localStorage` なので**同じモデル・同じ言語**に戻ります。
+  **観察していた視点は復元しません**し、そう主張もしません
+
+**受入は公開脳の production build で実施しました**（`npm run verify:anatomy`）：
+atlas を abort → 既定の「部位」タブのまま error 文が出る → **click / Enter / Space それぞれで実ボタンを操作** →
+271 構造へ復帰 → 部位を選択、まで。844×390 と 375×667 でも**ボタンが覆われず画面内**にあることを確認
+（同意カード応答前の重なりは note として別記録）。
+
+**検査がボタンに依存していることを確認しました**：`main.js` の注入を外して build し直すと
+5 件が落ちて exit 1、戻して全通過。`page.reload()` で製品を助けていません。
+
+Work の shortcut guard（bubbling / `stopPropagation` のみ）は Enter・Space の既定動作を壊していません。
+
+### F-59 main（dae2acc）へ内容で同期した — 対応済み（B6 / 統合）
+
+**「Work B5 未着」は自 branch の入力についてであって、プロジェクト全体の話ではありませんでした。**
+main を読んで確認したところ、`src/main.js` に presentation mount・shortcut guard・
+public diagnostic copy control が接続済みでした。前回報告の書き方を訂正します。
+
+main は squash merge なので**共通祖先に旧 SHA が残りません**（merge-base は `837505a`、
+main 側 31 / 自 branch 側 39 コミット）。**15 件の conflict をすべて内容で判断**しました。
+
+- **`src/main.js` は main と 1 バイトも違いません。** Work のファイルには触っていません
+  （今回の `onRetryModel` 注入を除く。契約上 Work の担当なので、置き換え可能な最小形として入れました）
+- **`tests/helpers/fake-dom.js` は union。** main の `removeAttribute`（hidden/disabled）と
+  **guard 付き detach を採用**しました——自 branch の 1 行版は `indexOf` が −1 のとき
+  最後の子を削ってしまいます
+- main のファイルが同じ作業の**古い形**だったもの（AnatomyPanel・BrainAnatomyScene・App・
+  anatomy-panel.css・check-anatomy-interaction）は、**main 側にしか無い行が無いことを 1 行ずつ確認**してから
+  superset を採用しました
+- 公開判断は**新しい方**（2026-09-09 / card revision 14）を採用し、心臓の revision 行を追加
+
+`npm test` は **1817 pass / 0 fail**（main の 33 件と自 branch のものが 1 つのツリーで）。
+
 ### F-58 小さな画面で実際に押せるかを見て、3 件見つけて直した — 対応済み（B4-integration / 共有 App）
 
 driver を 1280×800 固定から `--viewport` 受け取りに変え、canvas の実位置と重なりから

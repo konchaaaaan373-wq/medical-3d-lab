@@ -233,10 +233,27 @@ function expect(viewport, step, ok, detail) {
   console.log(`${ok ? 'ok  ' : 'FAIL'}  ${label}${detail ? ` — ${detail}` : ''}`);
 }
 
-const browser = await chromium.launch({
-  executablePath: chromiumExecutable(chromium),
-  headless: !flag('--headed'),
-});
+/**
+ * One browser per viewport, not one browser for the run.
+ *
+ * Three WebGL contexts and three copies of a 47 MB model in one Chromium, in a
+ * container, made the later viewports slow enough that the panel was still
+ * being painted over the console when the next click went out — the check
+ * reported an occlusion that a solo run of the same viewport never sees. That
+ * is the harness running out of room, not the product misbehaving, so each
+ * viewport gets a fresh process and the run stops measuring its own pressure.
+ */
+const withBrowser = async (run) => {
+  const browser = await chromium.launch({
+    executablePath: chromiumExecutable(chromium),
+    headless: !flag('--headed'),
+  });
+  try {
+    return await run(browser);
+  } finally {
+    await browser.close();
+  }
+};
 let exitCode = EXIT.OK;
 const pageErrors = [];
 const consoleErrors = [];
@@ -250,6 +267,7 @@ const consoleErrors = [];
  * actually gets, from load.
  */
 async function runViewport({ width, height, label }) {
+  return withBrowser(async (browser) => {
   const context = await browser.newContext({ viewport: { width, height } });
   const page = await context.newPage();
   page.on('pageerror', (error) => pageErrors.push(`[${label}] ${error}`));
@@ -314,6 +332,54 @@ async function runViewport({ width, height, label }) {
     const count = await found.count();
     if (count !== 1) throw new Error(`${what}: expected exactly one "${selector}", found ${count}`);
     if (!(await found.isVisible())) throw new Error(`${what}: "${selector}" is not visible`);
+
+    // Bring it into view first, the way a reader scrolls to it and the way
+    // Playwright's own click does. `elementFromPoint` answers null for a point
+    // outside the viewport, so without this the check below reads "covered by
+    // nothing" for a control that is merely further down the sheet.
+    await found.scrollIntoViewIfNeeded().catch(() => {});
+
+    // Wait until the control is really the topmost thing at its own centre.
+    //
+    // Work's presentation adapter transitions the sheet, so `data-sheet` flips
+    // to "closed" while the panel is still painted over the console: a click
+    // sent then lands on the panel. Waiting for the *state* was not enough and
+    // waiting a fixed number of milliseconds was worse — it passed on an idle
+    // machine and failed on a busy one. This waits for the thing that actually
+    // matters, and it is the same question the check asks everywhere else: can
+    // a reader press this right now?
+    const clear = await page
+      .waitForFunction(
+        (css) => {
+          const target = document.querySelector(css);
+          if (!target) return false;
+          const box = target.getBoundingClientRect();
+          if (!box.width || !box.height) return false;
+          const top = document.elementFromPoint(
+            Math.round(box.left + box.width / 2),
+            Math.round(box.top + box.height / 2)
+          );
+          return Boolean(top && (top === target || target.contains(top) || top.contains(target)));
+        },
+        selector.replace(/:visible$/, ''),
+        { timeout: 15000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!clear) {
+      const covering = await page.evaluate((css) => {
+        const target = document.querySelector(css);
+        const box = target?.getBoundingClientRect();
+        if (!box) return 'nothing drawn';
+        const top = document.elementFromPoint(
+          Math.round(box.left + box.width / 2),
+          Math.round(box.top + box.height / 2)
+        );
+        if (!top) return 'nothing — its centre is outside the viewport';
+        return `${top.tagName}.${top.className}`.slice(0, 70);
+      }, selector.replace(/:visible$/, ''));
+      throw new Error(`${what}: "${selector}" stayed covered by ${covering}`);
+    }
     await found.click({ noWaitAfter: true });
   }
 
@@ -334,7 +400,12 @@ async function runViewport({ width, height, label }) {
     const open = page.locator('.anatomy-panel[data-sheet="closed"] .anatomy-panel-open');
     if (await open.count()) {
       await open.first().click({ noWaitAfter: true });
-      await page.waitForTimeout(400);
+      await page.waitForFunction(
+        () => document.querySelector('.anatomy-panel')?.dataset.sheet === 'open',
+        null,
+        { timeout: 15000 }
+      ).catch(() => {});
+      await page.waitForTimeout(200);
     }
     const state = await page.evaluate(
       () => document.querySelector('.anatomy-panel')?.dataset.sheet ?? 'unknown'
@@ -348,7 +419,17 @@ async function runViewport({ width, height, label }) {
     const close = page.locator('.anatomy-panel-sheet-head button.anatomy-panel-close');
     if (await close.count()) await close.first().click({ noWaitAfter: true });
     else await page.keyboard.press('Escape');
-    await page.waitForTimeout(400);
+    // Wait for the sheet to actually be shut rather than for a fixed number of
+    // milliseconds. Work's presentation adapter transitions it, so a fixed
+    // 400ms was long enough on an idle machine and not on a busy one — the
+    // panel was still over the console when the next click went out, and the
+    // check reported an occlusion that a reader would never see.
+    await page.waitForFunction(
+      () => document.querySelector('.anatomy-panel')?.dataset.sheet === 'closed',
+      null,
+      { timeout: 15000 }
+    );
+    await page.waitForTimeout(200);
   }
 
   const reportState = () => page.evaluate(() => {
@@ -578,6 +659,7 @@ async function runViewport({ width, height, label }) {
   say('back: the fixed view still runs and measures', afterJourney.shown, afterJourney.text.slice(0, 100));
 
   await context.close();
+  });
 }
 
 /**
@@ -589,6 +671,7 @@ async function runViewport({ width, height, label }) {
  * this script.
  */
 async function runFailureAndRetry({ width, height, label }) {
+  return withBrowser(async (browser) => {
   const context = await browser.newContext({ viewport: { width, height } });
   const page = await context.newPage();
   page.on('pageerror', (error) => pageErrors.push(`[${label} failure] ${error}`));
@@ -622,37 +705,57 @@ async function runFailureAndRetry({ width, height, label }) {
     return {
       saysSo: /could not be loaded|読み込めませんでした/.test(text),
       retryControls: document.querySelectorAll('.scene-fallback-retry, [data-action="retry"]').length,
+      // What a reader must never be handed.
+      leaks: /npm run|Error:|TypeError/.test(text),
     };
   });
   say('the screen says so, not just the object', shown.saysSo, shown.saysSo ? 'the failure is on screen' : 'nothing on screen says it failed');
-  // Recorded, not asserted either way: whether an in-product retry control
-  // exists for this state is Work's failure/retry design, and this run is what
-  // establishes the current answer rather than guessing at it.
-  steps.push({
-    viewport: `${label} failure`,
-    step: 'in-product retry control for this state',
-    ok: true,
-    detail: shown.retryControls === 0
-      ? 'none today — recovery is a page reload; the retry button belongs to the WebGL fallback, which this path does not take'
-      : `${shown.retryControls} present`,
-  });
-  console.log(`note  [${label} failure] in-product retry control: ${shown.retryControls === 0 ? 'none today' : shown.retryControls}`);
+  say(
+    'a developer hint never reaches the reader',
+    !shown.leaks,
+    shown.leaks ? 'an npm command or a raw Error is on screen' : 'no npm command, no raw Error'
+  );
 
-  // Manual retry: the reader fixes the condition and loads again.
+  // This used to be recorded as `ok: true` whatever it found, on the grounds
+  // that the failure UI was Work's design. That padded the assertion count with
+  // an observation that could not fail. There is a real button now, so this is
+  // an assertion — and the recovery below goes through it rather than through
+  // `page.reload()`, because a check that reloads on the product's behalf
+  // passes whether or not the button works.
+  const retry = page.locator('.anatomy-panel-retry');
+  const retryCount = await retry.count();
+  say('a failed load offers exactly one retry button', retryCount === 1, `${retryCount} found`);
+  if (retryCount === 1) {
+    say('and a reader can see it', await retry.isVisible(), 'visible');
+  }
+
+  // Let the file through, then press what the reader would press.
   blocked.delete('VH_M_Heart.glb');
-  await page.reload({ waitUntil: 'load' });
+  if (retryCount === 1) await retry.click();
+  else await page.reload({ waitUntil: 'load' });
   await page.waitForFunction(
     () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
     null,
     { timeout: 180000 }
   );
   const recovered = await page.evaluate(() => window.__app.scene.getAnatomyStatus());
-  say('a manual retry recovers the model', recovered.state === 'ready', `${recovered.selectableCount} selectable structures`);
+  say(
+    retryCount === 1 ? 'pressing it brings the model back' : 'a manual reload recovers the model',
+    recovered.state === 'ready',
+    `${recovered.selectableCount} selectable structures`
+  );
+  const cleared = await page.evaluate(() => ({
+    retry: document.querySelector('.anatomy-panel-retry')?.hidden !== false,
+    status: document.querySelector('.anatomy-panel-status')?.hidden !== false,
+  }));
+  say('and the failure leaves no trace behind it', cleared.retry && cleared.status,
+    `retry hidden ${cleared.retry}, status hidden ${cleared.status}`);
   if (shotsDir) {
     mkdirSync(shotsDir, { recursive: true });
     await page.screenshot({ path: join(shotsDir, `recovered-after-retry-${label}.png`) });
   }
   await context.close();
+  });
 }
 
 try {
@@ -704,7 +807,6 @@ try {
   console.error(`\nFAIL — ${error?.message ?? error}`);
   exitCode = EXIT.FAILED;
 } finally {
-  await browser.close();
   server.close();
 }
 
