@@ -1335,3 +1335,46 @@ test('heart: the shared orbit floor stood between the framing and the camera', (
   assert.ok(limits.minDistance <= shared.minDistance && limits.maxDistance >= shared.maxDistance);
   built.dispose();
 });
+
+test('heart: a portrait frame gets more of the band, because the organ is wider than it is tall', () => {
+  // Measured at 375x667: at the wide-frame share the organ sat across 74% of
+  // the width and 35% of the height, with empty bands above and below it — a
+  // phone has no side panel taking the width, so what ran out first was the
+  // subject's own shape. This holds the rule, not the numbers: a taller-than-
+  // wide frame asks for more of the band than a wider one, and the wide value
+  // is unchanged.
+  const built = pair();
+  const camera = { aspect: 1280 / 720 };
+  built.viewer = { camera };
+  const wide = built.getSubjectBounds().coverage;
+  camera.aspect = 375 / 667;
+  const portrait = built.getSubjectBounds().coverage;
+  camera.aspect = 844 / 390;
+  const landscapePhone = built.getSubjectBounds().coverage;
+
+  assert.ok(portrait > wide, `a portrait frame takes more of the band (${portrait} > ${wide})`);
+  assert.equal(landscapePhone, wide, 'a wide phone is a wide frame');
+  assert.ok(wide > 0 && portrait < 1, 'both are a share of the band, not a distance');
+
+  // A scene that has no viewer yet still answers, and answers the wide value:
+  // an unknown frame is not a portrait one.
+  built.viewer = null;
+  assert.equal(built.getSubjectBounds().coverage, wide);
+  built.dispose();
+});
+
+test('heart: the opening view does not call itself the whole heart', () => {
+  // It is not. This model has no myocardial free wall as a named part, no
+  // chordae, no pericardium and no conduction system, and the view keeps two
+  // vessel groups out of the way — so a name promising the whole organ is a
+  // claim the model cannot meet.
+  const opening = HEART_RECIPES.find((recipe) => recipe.id === 'whole-heart');
+  assert.ok(opening, 'the opening view is still there');
+  assert.doesNotMatch(opening.label, /whole heart/i);
+  assert.doesNotMatch(opening.labelJa, /心臓全体/);
+  for (const text of [opening.note, opening.noteJa]) {
+    assert.doesNotMatch(text, /whole heart|心臓全体/i, 'and nothing under it says it either');
+  }
+  // Still names what it shows, in both languages.
+  assert.ok(opening.label.length > 3 && opening.labelJa.length > 1);
+});

@@ -38,6 +38,30 @@ import {
  */
 const HEART_SUBJECT_COVERAGE = 0.62;
 
+/**
+ * The same share on a frame that is taller than it is wide.
+ *
+ * A phone has no panel down the side — the panel is a sheet, and it is not on
+ * screen while the reader is looking — so nothing is taking the width. What is
+ * taking it is the shape of the subject: this heart is wider than it is tall,
+ * so on a portrait frame the width runs out first and the organ was left a
+ * third of the frame high with empty bands above and below it. Measured at
+ * 375x667: 0.62 put the organ across 74% of the width and 35% of the height;
+ * this puts it across about 88% and 42%, which is as large as it can be without
+ * the organ itself reaching an edge.
+ *
+ * It is the same kind of value as the one above and carries the same warning:
+ * a composition measured from pictures, not a fact about the anatomy.
+ */
+const HEART_SUBJECT_COVERAGE_PORTRAIT = 0.74;
+
+/**
+ * Where "portrait" starts. The same threshold the shared framing already uses
+ * for the aspect it gives back (`distanceScaleForAspect`), so a scene and the
+ * framing around it do not disagree about what shape the window is.
+ */
+const PORTRAIT_ASPECT = 0.85;
+
 /** The organ itself: what "show me the heart" frames. Vessels arrive at it and run out of shot. */
 const HEART_PART_IDS = new Set(HEART_PARTS.map((part) => part.id));
 
@@ -1024,7 +1048,11 @@ export class HeartAnatomyScene {
     // exists to prevent.
     const heart = this._drawnMeshes().filter((mesh) => HEART_PART_IDS.has(mesh.userData.structureId));
     const bounds = boundsOf(heart.length ? heart : this._drawnMeshes());
-    return bounds && { ...bounds, coverage: HEART_SUBJECT_COVERAGE };
+    const aspect = this.viewer?.camera?.aspect;
+    const coverage = Number.isFinite(aspect) && aspect < PORTRAIT_ASPECT
+      ? HEART_SUBJECT_COVERAGE_PORTRAIT
+      : HEART_SUBJECT_COVERAGE;
+    return bounds && { ...bounds, coverage };
   }
 
   getStructureBounds(id) { return boundsOf(this._meshesFor(id)); }

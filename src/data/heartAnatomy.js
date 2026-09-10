@@ -693,8 +693,14 @@ export const HEART_ANATOMY_META = Object.freeze({
 export const HEART_RECIPES = Object.freeze([
   Object.freeze({
     id: 'whole-heart',
-    label: 'The whole heart',
-    labelJa: '心臓全体',
+    // **Not "the whole heart".** It was called that, and it overstated what a
+    // reader gets: this model has no myocardial free wall as a named part, no
+    // chordae, no pericardium and no conduction system (`HEART_MISSING`), and
+    // this view keeps the arch branches and the brachiocephalic veins out of
+    // the way. What it really is is the heart and the vessels on and around it,
+    // as the scene opens — so that is what it says.
+    label: 'The heart and its vessels',
+    labelJa: '心臓と血管',
     summary:
       'Everything the scene draws, from the front: the chambers and septum, the valves and papillary '
       + 'muscles, the great vessels and the coronary vessels. The arch branches and the brachiocephalic '
@@ -714,10 +720,10 @@ export const HEART_RECIPES = Object.freeze([
     ]),
     view: 'anterior',
     note:
-      'This is where the scene starts, and where "back to the whole heart" returns to. It shows every '
+      'This is where the scene starts, and where the way back returns to. It shows every '
       + 'structure again; it does not move or rebuild anything.',
     noteJa:
-      'シーンの初期表示であり、「心臓全体へ戻る」の戻り先です。非表示をすべて解除するだけで、'
+      'シーンの初期表示であり、戻り先です。非表示をすべて解除するだけで、'
       + '形を動かしたり作り直したりはしません。',
   }),
   Object.freeze({

@@ -250,7 +250,7 @@ the Japanese names are deliberate but unreviewed.
 
   | | What it does |
   | --- | --- |
-  | **The whole heart** | Everything the scene draws, from the front. This is the display the scene opens with and the one "back to the whole heart" returns to. |
+  | **The heart and its vessels** | Everything the scene draws, from the front. This is the display the scene opens with and the one the way back returns to. **It is not called "the whole heart"**, because it is not one: there is no myocardial free wall as a named part, no chordae, no pericardium and no conduction system (§3), and this view keeps the arch branches and the brachiocephalic veins out of the way. |
   | **The great vessels** | Takes the coronary vessels off the surface so the trunks read clearly. The chambers stay: the vessels are shown where they meet the heart. |
   | **The coronary vessels** | Takes the great vessels out of the front so the arteries and veins on the heart's own surface can be followed. |
   | **Inside the chambers** | Hides the four chamber surfaces, leaving the four valves, the five papillary muscles and the septum. |
@@ -282,8 +282,16 @@ the Japanese names are deliberate but unreviewed.
   the great vessels have room to read as roots before they leave. **None of this
   is anatomy.** It changes no size, no position and no relation; it decides how
   far away the camera stands, and a reader can leave it at any time by orbiting
-  or zooming. The share is measured at one window size and is expected to be
+  or zooming. The share is measured from pictures and is expected to be
   re-measured when the organ or the vessel subtree changes.
+
+  There are two of them, and the second one says why. On a frame taller than it
+  is wide there is no panel down the side, so what runs out first is the
+  subject's own shape — this heart is wider than it is tall. Measured at
+  375x667, the wide-frame share left the organ across 74% of the width and 35%
+  of the height, with empty bands above and below it; the portrait share puts it
+  across about 88% and 43%, with nothing cut. Neither number is anatomy, and
+  neither has been measured on a real handset.
 * **"Visible" is never claimed loosely.** What the scene can measure is whether
   **one anchor point** on a structure is unobstructed along a ray from a stated
   eye position, and it keeps two of those apart: a prediction from a named
