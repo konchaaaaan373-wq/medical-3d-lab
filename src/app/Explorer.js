@@ -18,6 +18,7 @@ import {
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { createPublicModelsExplorer } from './Landing.js';
 import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
@@ -46,8 +47,21 @@ import {
  *
  * @param {{ui:HTMLElement, accountButton?:HTMLElement, scope?:'public'|'lab'}} mounts
  */
-export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
+export function createExplorer({
+  ui,
+  accountButton = null,
+  scope = 'public',
+  publicManifest = PUBLIC_MANIFEST,
+} = {}) {
   const isLab = scope === 'lab';
+  const beta = !isLab && !betaUnlocked();
+  if (beta) {
+    return createPublicModelsExplorer({
+      ui,
+      accountButton,
+      manifest: publicManifest,
+    });
+  }
   // During the beta the public catalogue is what the release opens, and nothing
   // else. It used to be the *whole* catalogue with the unopened models listed
   // as "to be updated", so that the roadmap stayed visible — but the roadmap
@@ -56,7 +70,6 @@ export function createExplorer({ ui, accountButton = null, scope = 'public' }) {
   // built, stays in the repository, and is visible to a developer through the
   // preview unlock; `#/trust` still lists every model's review state, opened or
   // not. `PUBLIC_SCENES` keeps its own meaning for when the beta ends.
-  const beta = !isLab && !betaUnlocked();
   const scopedScenes = isLab ? LAB_SCENES : beta ? RELEASED_SCENES : PUBLIC_SCENES;
   // Favourites and recents are shortcuts, so they only ever hold models this
   // reader can open. A model the release is holding back would be a link into

@@ -87,10 +87,21 @@ jobs:
       # thing to make every contributor download to run the unit tests.
       - run: npm i --no-save playwright@1.62.1
       - run: npx playwright install --with-deps ${{ matrix.engine }}
-      - run: npm run verify:ui -- --engine ${{ matrix.engine }} --json viewport-report-${{ matrix.engine }}.json
+      - name: Verify viewport matrix
+        env:
+          VIEWPORT_EVIDENCE_DIR: ${{ matrix.engine == 'chromium' && 'viewport-evidence' || '' }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: npm run verify:ui -- --engine ${{ matrix.engine }} --json viewport-report-${{ matrix.engine }}.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: viewport-report-${{ matrix.engine }}
           path: viewport-report-${{ matrix.engine }}.json
           if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.engine == 'chromium'
+        with:
+          name: b1-ui-evidence-chromium-attempt-${{ github.run_attempt }}
+          path: viewport-evidence/
+          if-no-files-found: warn
+          retention-days: 7

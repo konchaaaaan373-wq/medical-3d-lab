@@ -30,8 +30,11 @@
  *   --viewport <id>  check one viewport (repeatable)
  *   --surface <id>   check one surface (repeatable)
  *   --headed         show the browser
+ *   --evidence-dir <dir>  save B1 Chromium screenshots and capture metadata
+ *   --diagnostics-dir <dir>  record lifecycle/network events for a targeted run
+ *   --diagnostics-wait-detail  wait for Explorer detail to settle in a direct-open control
  */
-import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -63,6 +66,9 @@ const jsonOut = value('--json');
 const onlyViewports = values('--viewport');
 const onlySurfaces = values('--surface');
 const headed = flag('--headed');
+const evidenceDir = value('--evidence-dir', process.env.VIEWPORT_EVIDENCE_DIR || null);
+const diagnosticsDir = value('--diagnostics-dir', process.env.VIEWPORT_DIAGNOSTICS_DIR || null);
+const diagnosticsWaitDetail = flag('--diagnostics-wait-detail');
 const ENGINES = ['chromium', 'firefox', 'webkit'];
 const engineName = value('--engine', 'chromium');
 
@@ -509,6 +515,437 @@ async function walkTabOrder(page, { steps }) {
   return { stops, closed, stuck };
 }
 
+
+const B1_EVIDENCE_CASES = [
+  { id: 'landing-1280x720', route: '#/', width: 1280, height: 720 },
+  { id: 'landing-375x667', route: '#/', width: 375, height: 667 },
+  { id: 'organs-1280x720', route: '#/organs', width: 1280, height: 720 },
+  { id: 'organs-375x667', route: '#/organs', width: 375, height: 667 },
+];
+
+async function measureEvidenceFrame(page) {
+  return page.evaluate(() => {
+    const rectOf = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left * 10) / 10,
+        top: Math.round(rect.top * 10) / 10,
+        right: Math.round(rect.right * 10) / 10,
+        bottom: Math.round(rect.bottom * 10) / 10,
+        width: Math.round(rect.width * 10) / 10,
+        height: Math.round(rect.height * 10) / 10,
+      };
+    };
+    const isVisible = (element) => {
+      if (!element) return false;
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== 'none' && style.visibility !== 'hidden' &&
+        style.pointerEvents !== 'none' && rect.width > 0 && rect.height > 0;
+    };
+    const cta = [...document.querySelectorAll('a.landing-cta')]
+      .find((element) => isVisible(element) && element.textContent?.includes('脳を見る')) ?? null;
+    const canvas = document.querySelector('.landing-demo-viewport canvas');
+    const header = document.querySelector('.landing-nav, .explorer-header');
+    const h1 = document.querySelector('h1');
+    const feedback = document.querySelector('.feedback-trigger.is-floating');
+    const ctaRect = rectOf(cta);
+    const feedbackRect = rectOf(feedback);
+    const overlaps = (a, b) => Boolean(
+      a && b &&
+      Math.min(a.right, b.right) > Math.max(a.left, b.left) &&
+      Math.min(a.bottom, b.bottom) > Math.max(a.top, b.top)
+    );
+    const hit = ctaRect
+      ? document.elementFromPoint(
+          Math.max(0, Math.min(innerWidth - 1, (ctaRect.left + ctaRect.right) / 2)),
+          Math.max(0, Math.min(innerHeight - 1, (ctaRect.top + ctaRect.bottom) / 2)),
+        )
+      : null;
+    return {
+      scrollX: window.scrollX,
+      scrollY: window.scrollY,
+      viewport: { width: innerWidth, height: innerHeight },
+      activeElement: document.activeElement
+        ? {
+            tag: document.activeElement.tagName,
+            id: document.activeElement.id || null,
+            className: typeof document.activeElement.className === 'string'
+              ? document.activeElement.className
+              : null,
+          }
+        : null,
+      rects: {
+        header: rectOf(header),
+        h1: rectOf(h1),
+        cta: ctaRect,
+        canvas: rectOf(canvas),
+        feedback: feedbackRect,
+      },
+      ctaFullyInViewport: Boolean(
+        ctaRect && ctaRect.left >= 0 && ctaRect.top >= 0 &&
+        ctaRect.right <= innerWidth && ctaRect.bottom <= innerHeight
+      ),
+      ctaHitTest: Boolean(cta && hit && (cta === hit || cta.contains(hit) || hit.contains(cta))),
+      ctaFeedbackOverlap: overlaps(ctaRect, feedbackRect),
+      headerH1Overlap: overlaps(rectOf(header), rectOf(h1)),
+    };
+  });
+}
+
+async function settleEvidencePageTop(page) {
+  await page.evaluate(async () => {
+    window.scrollTo(0, 0);
+    let stableFrames = 0;
+    const deadline = performance.now() + 2_000;
+    while (performance.now() < deadline) {
+      await new Promise((done) => requestAnimationFrame(done));
+      if (window.scrollX === 0 && window.scrollY === 0) stableFrames += 1;
+      else {
+        stableFrames = 0;
+        window.scrollTo(0, 0);
+      }
+      if (stableFrames >= 3) return;
+    }
+    throw new Error(`page did not settle at the top: ${window.scrollX},${window.scrollY}`);
+  });
+}
+
+/**
+ * Capture the B1 evidence after the detailed brain atlas—not the procedural
+ * first stage—has loaded, decoded and replaced the first stage.
+ *
+ * This is intentionally separate from the viewport matrix. It adds evidence;
+ * it does not change any matrix size, surface, threshold or engine coverage.
+ */
+async function captureB1Evidence(browser) {
+  if (!evidenceDir || engineName !== 'chromium') return;
+
+  const outputDir = resolve(evidenceDir);
+  mkdirSync(outputDir, { recursive: true });
+  const captures = [];
+
+  for (const evidence of B1_EVIDENCE_CASES) {
+    const context = await browser.newContext({
+      viewport: { width: evidence.width, height: evidence.height },
+      deviceScaleFactor: 1,
+      reducedMotion: 'reduce',
+      locale: 'ja-JP',
+    });
+    const page = await context.newPage();
+    const consoleErrors = [];
+    const requestFailures = [];
+    const glbResponses = [];
+
+    page.on('console', (message) => {
+      if (message.type() === 'error') consoleErrors.push(message.text());
+    });
+    page.on('requestfailed', (request) => {
+      requestFailures.push({
+        url: request.url(),
+        error: request.failure()?.errorText ?? 'unknown request failure',
+      });
+    });
+    page.on('response', (response) => {
+      if (/\/assets\/brain\/brain\.glb(?:\?|$)/.test(response.url())) {
+        glbResponses.push({
+          url: response.url(),
+          status: response.status(),
+          ok: response.ok(),
+        });
+      }
+    });
+    await page.route(
+      (url) => (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname !== '127.0.0.1',
+      (route) => route.abort(),
+    );
+
+    const imagePath = resolve(outputDir, `${evidence.id}.png`);
+    const failurePath = resolve(outputDir, `${evidence.id}-failure.png`);
+    try {
+      await page.goto(`${base}${evidence.route}`, { waitUntil: 'load', timeout: 30_000 });
+      await page.waitForSelector('#ui > *', { state: 'attached', timeout: 20_000 });
+
+      const consentBanner = page.locator('.consent-banner');
+      await consentBanner.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {});
+      const consentButton = consentBanner.locator('button').first();
+      if (await consentButton.isVisible().catch(() => false)) {
+        await consentButton.click();
+        await consentBanner.waitFor({ state: 'detached', timeout: 5_000 });
+      }
+
+      await page.waitForFunction(
+        () => {
+          const viewport = document.querySelector('.landing-demo-viewport');
+          return (
+            document.documentElement.lang === 'ja' &&
+            document.querySelector('#ui')?.dataset.lang === 'ja' &&
+            viewport?.dataset.organ === 'brain' &&
+            viewport?.dataset.detail === 'ready' &&
+            Boolean(viewport.querySelector('canvas'))
+          );
+        },
+        null,
+        { timeout: 45_000 },
+      );
+
+      const fontStatus = await page.evaluate(async () => {
+        if (!document.fonts) return 'unsupported';
+        await document.fonts.ready;
+        return document.fonts.status;
+      });
+      if (fontStatus !== 'loaded' && fontStatus !== 'unsupported') {
+        throw new Error(`document fonts did not settle: ${fontStatus}`);
+      }
+
+      const detailResponse = glbResponses.find((response) => response.ok);
+      if (!detailResponse) {
+        throw new Error('brain.glb did not return a successful response');
+      }
+
+      const viewport = page.locator('.landing-demo-viewport');
+      const beforeHome = await measureEvidenceFrame(page);
+      await viewport.press('Home');
+      const afterHome = await measureEvidenceFrame(page);
+      await settleEvidencePageTop(page);
+      const afterTopReset = await measureEvidenceFrame(page);
+
+      const primaryCta = page.locator('a.landing-cta').filter({ hasText: '脳を見る' }).first();
+      await primaryCta.click({ trial: true, timeout: 5_000 });
+      await settleEvidencePageTop(page);
+      const beforeScreenshot = await measureEvidenceFrame(page);
+
+      const state = await page.evaluate(() => {
+        const viewport = document.querySelector('.landing-demo-viewport');
+        const canvas = viewport?.querySelector('canvas');
+        const visibleJapaneseCta = [...document.querySelectorAll('.landing-cta .lang-ja')]
+          .find((element) => {
+            const style = getComputedStyle(element);
+            const rect = element.getBoundingClientRect();
+            return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+          });
+        const canvasRect = canvas?.getBoundingClientRect();
+        return {
+          lang: document.documentElement.lang,
+          uiLang: document.querySelector('#ui')?.dataset.lang ?? null,
+          detail: viewport?.dataset.detail ?? null,
+          organ: viewport?.dataset.organ ?? null,
+          cta: visibleJapaneseCta?.textContent?.trim() ?? null,
+          loadingVisible: Boolean(document.querySelector('.landing-demo-loading:not([aria-hidden="true"])')),
+          canvas: canvas && canvasRect
+            ? {
+                cssWidth: Math.round(canvasRect.width),
+                cssHeight: Math.round(canvasRect.height),
+                pixelWidth: canvas.width,
+                pixelHeight: canvas.height,
+              }
+            : null,
+        };
+      });
+      state.position = { beforeHome, afterHome, afterTopReset, beforeScreenshot };
+      state.homeMovedPage = beforeHome.scrollX !== afterHome.scrollX || beforeHome.scrollY !== afterHome.scrollY;
+      state.ctaTrialPassed = true;
+
+      if (!state.canvas || state.canvas.pixelWidth < 2 || state.canvas.pixelHeight < 2) {
+        throw new Error('the detailed model canvas has no drawable buffer');
+      }
+      if (!state.cta?.includes('脳を見る')) {
+        throw new Error('the Japanese brain action is not visible');
+      }
+      if (state.position.beforeScreenshot.scrollX !== 0 || state.position.beforeScreenshot.scrollY !== 0) {
+        throw new Error('the evidence page is not at its initial scroll position');
+      }
+      if (!state.position.beforeScreenshot.ctaFullyInViewport ||
+          !state.position.beforeScreenshot.ctaHitTest) {
+        throw new Error('the primary brain action is not fully visible and actionable');
+      }
+      if (state.position.beforeScreenshot.ctaFeedbackOverlap) {
+        throw new Error('the feedback trigger overlaps the primary brain action');
+      }
+      if (state.loadingVisible) {
+        throw new Error('the loading state is still visible');
+      }
+      if (await consentBanner.isVisible().catch(() => false)) {
+        throw new Error('the consent banner still obscures the evidence viewport');
+      }
+
+      await page.screenshot({ path: imagePath, fullPage: false });
+      captures.push({
+        ...evidence,
+        status: 'captured',
+        file: `${evidence.id}.png`,
+        fontStatus,
+        glbResponses,
+        state,
+        consoleErrors,
+        requestFailures,
+      });
+    } catch (error) {
+      await page.screenshot({ path: failurePath, fullPage: false }).catch(() => {});
+      const record = {
+        ...evidence,
+        status: 'failed',
+        file: `${evidence.id}-failure.png`,
+        error: error?.message ?? String(error),
+        glbResponses,
+        consoleErrors,
+        requestFailures,
+      };
+      captures.push(record);
+      writeFileSync(
+        resolve(outputDir, `${evidence.id}-failure.json`),
+        `${JSON.stringify(record, null, 2)}\n`,
+      );
+      problems.push(`B1 evidence ${evidence.id}: ${record.error}`);
+    } finally {
+      await context.close();
+    }
+  }
+
+  writeFileSync(
+    resolve(outputDir, 'evidence.json'),
+    `${JSON.stringify({
+      generatedAt: new Date().toISOString(),
+      engine,
+      build: 'npm run build (production capability; preview unlock disabled)',
+      prHeadSha: process.env.PR_HEAD_SHA ?? null,
+      checkedOutSha: process.env.GITHUB_SHA ?? null,
+      captures,
+    }, null, 2)}\n`,
+  );
+}
+
+/**
+ * Targeted lifecycle trace for the WebKit atlas-load investigation.
+ *
+ * It records only navigation and the brain/Draco delivery chain. Console
+ * failures keep their original text and get an immediate screenshot plus the
+ * URL/detail state at the time they were observed.
+ */
+function createLifecycleTrace(page, viewport) {
+  if (!diagnosticsDir) return null;
+  const outputDir = resolve(diagnosticsDir);
+  mkdirSync(outputDir, { recursive: true });
+  const events = [];
+  const pending = [];
+  let phase = 'context-created';
+  let failureIndex = 0;
+  const started = Date.now();
+  const relevant = (url) => /\/assets\/brain\/(?:brain\.glb|draco\/)/.test(url);
+  const record = (type, details = {}) => {
+    events.push({
+      elapsedMs: Date.now() - started,
+      at: new Date().toISOString(),
+      phase,
+      type,
+      pageUrl: page.url(),
+      ...details,
+    });
+  };
+  const snapshot = async (label) => {
+    const state = await page.evaluate(() => ({
+      url: location.href,
+      detail: document.querySelector('.landing-demo-viewport')?.dataset.detail ?? null,
+      organ: document.querySelector('.landing-demo-viewport')?.dataset.organ ?? null,
+      activeElement: document.activeElement
+        ? {
+            tag: document.activeElement.tagName,
+            id: document.activeElement.id || null,
+            className: typeof document.activeElement.className === 'string'
+              ? document.activeElement.className
+              : null,
+          }
+        : null,
+    })).catch((error) => ({ snapshotError: error?.message ?? String(error) }));
+    record('page-state', { label, state });
+    return state;
+  };
+  const onRequest = (request) => {
+    if (relevant(request.url())) record('request', {
+      url: request.url(),
+      method: request.method(),
+      resourceType: request.resourceType(),
+    });
+  };
+  const onResponse = (response) => {
+    if (!relevant(response.url())) return;
+    record('response', { url: response.url(), status: response.status(), ok: response.ok() });
+    if (/\/brain\.glb(?:\?|$)/.test(response.url())) {
+      const body = response.body()
+        .then((buffer) => record('response-body', { url: response.url(), bytes: buffer.length }))
+        .catch((error) => record('response-body-failed', {
+          url: response.url(),
+          error: error?.message ?? String(error),
+        }));
+      pending.push(body);
+    }
+  };
+  const onRequestFinished = (request) => {
+    if (relevant(request.url())) record('requestfinished', { url: request.url() });
+  };
+  const onRequestFailed = (request) => {
+    if (relevant(request.url())) record('requestfailed', {
+      url: request.url(),
+      error: request.failure()?.errorText ?? 'unknown request failure',
+    });
+  };
+  const onFrameNavigated = (frame) => {
+    if (frame === page.mainFrame()) record('navigation-committed', { url: frame.url() });
+  };
+  const onConsole = (message) => {
+    if (message.type() !== 'error') return;
+    record('console-error', { text: message.text() });
+    const index = ++failureIndex;
+    pending.push(snapshot(`console-error-${index}`));
+    pending.push(
+      page.screenshot({
+        path: resolve(outputDir, `failure-${viewport.id}-${index}.png`),
+        fullPage: false,
+      }).catch((error) => record('failure-screenshot-error', {
+        error: error?.message ?? String(error),
+      })),
+    );
+  };
+  page.on('request', onRequest);
+  page.on('response', onResponse);
+  page.on('requestfinished', onRequestFinished);
+  page.on('requestfailed', onRequestFailed);
+  page.on('framenavigated', onFrameNavigated);
+  page.on('console', onConsole);
+  record('trace-started');
+
+  return {
+    setPhase(next) {
+      phase = next;
+      record('phase');
+    },
+    record,
+    snapshot,
+    async finish() {
+      await Promise.allSettled(pending);
+      await snapshot('trace-finished');
+      writeFileSync(
+        resolve(outputDir, `trace-${viewport.id}.json`),
+        `${JSON.stringify({
+          generatedAt: new Date().toISOString(),
+          engine,
+          viewport,
+          prHeadSha: process.env.PR_HEAD_SHA ?? null,
+          checkedOutSha: process.env.GITHUB_SHA ?? null,
+          events,
+        }, null, 2)}\n`,
+      );
+      page.off('request', onRequest);
+      page.off('response', onResponse);
+      page.off('requestfinished', onRequestFinished);
+      page.off('requestfailed', onRequestFailed);
+      page.off('framenavigated', onFrameNavigated);
+      page.off('console', onConsole);
+    },
+  };
+}
+
 // --- the run ---------------------------------------------------------------
 
 const exemptionSelectors = TARGET_EXEMPTIONS.map((exemption) => exemption.selector);
@@ -668,6 +1105,7 @@ try {
       reducedMotion: 'reduce',
     });
     const page = await context.newPage();
+    const lifecycleTrace = createLifecycleTrace(page, viewport);
     const fullTabWalk = viewport.width === narrowest || viewport.width === widest;
     // The build asks Google for a webfont. CI has no reason to reach the
     // internet to answer a layout question, and the fallback stack is what a
@@ -716,8 +1154,14 @@ try {
       try {
         // A full load per surface, not a hash change: a defect that only
         // appears on a cold start is exactly the one a user meets first.
+        lifecycleTrace?.setPhase(`${surface.id}:about-blank`);
+        lifecycleTrace?.record('navigation-start', { to: 'about:blank' });
         await page.goto('about:blank');
+        lifecycleTrace?.record('navigation-end', { to: 'about:blank' });
+        lifecycleTrace?.setPhase(`${surface.id}:route`);
+        lifecycleTrace?.record('navigation-start', { to: `${base}${surface.route}` });
         await page.goto(`${base}${surface.route}`, { waitUntil: 'load', timeout: 30_000 });
+        lifecycleTrace?.record('navigation-end', { to: page.url() });
         // `attached`, not the default `visible`: the first child of `#ui` is
         // the skip link, which is deliberately invisible until it is focused.
         // Waiting for it to be seen waits forever.
@@ -730,6 +1174,19 @@ try {
             .catch(() => notes.push(`${where}: the loading veil never cleared`));
         }
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
+        await lifecycleTrace?.snapshot('surface-ready-for-measurement');
+
+        if (lifecycleTrace && diagnosticsWaitDetail && surface.id === 'explorer') {
+          await page.waitForFunction(() => {
+            const detail = document.querySelector('.landing-demo-viewport')?.dataset.detail;
+            return detail === 'ready' || detail === 'unavailable';
+          }, null, { timeout: 30_000 }).catch((error) => {
+            lifecycleTrace.record('detail-settle-timeout', {
+              error: error?.message ?? String(error),
+            });
+          });
+          await lifecycleTrace.snapshot('direct-explorer-detail-settled');
+        }
 
         const measuredSkip = await page.evaluate(() => {
           const target = document.querySelector('[data-skip-target]');
@@ -965,8 +1422,10 @@ try {
         page.off('pageerror', onError);
       }
     }
+    await lifecycleTrace?.finish();
     await context.close();
   }
+  await captureB1Evidence(browser);
 } finally {
   await browser.close();
   server.close();
