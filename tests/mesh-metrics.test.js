@@ -24,10 +24,15 @@ import {
  * and a shell gives two, so the observation could not tell them apart. The
  * conclusion was withdrawn.
  *
- * So: every metric is measured here on a cube, a shell, a pipe, an open sheet
- * and a few deliberate defects **before** any of it is pointed at a GLB. A
- * metric that cannot answer for a shape is required to say so rather than to
- * guess.
+ * The replacement then reached for the same conclusion through the genus, and
+ * that is withdrawn too — a cup has a wall and genus 0, a loop of solid rod has
+ * no wall and genus 1. Both shapes are measured below so the rule cannot come
+ * back a third time.
+ *
+ * So: every metric is measured here on a cube, a shell, a pipe, a cup, a loop,
+ * an open sheet and a few deliberate defects **before** any of it is pointed at
+ * a GLB. A metric that cannot answer for a shape is required to say so rather
+ * than to guess.
  */
 
 // ---------------------------------------------------------------------------
@@ -57,8 +62,9 @@ const hollowShell = () => [...box([0, 0, 0], [1, 1, 1]), ...box([0, 0, 0], [0.6,
 
 /**
  * A square pipe: an annular cross-section swept along z, capped at both ends by
- * annuli. A solid torus, so genus 1 — the shape a vessel modelled *with* a wall
- * thickness would be.
+ * annuli. Genus 1. Read as a vessel it is a wall around a lumen; read as a
+ * solid it is a washer with a hole through it. The mesh is the same either way,
+ * which is part of why the genus does not settle the wall question.
  */
 function squarePipe({ outer = 1, inner = 0.6, half = 2 } = {}) {
   const ring = (r) => [[-r, -r], [r, -r], [r, r], [-r, r]];
@@ -79,8 +85,55 @@ function squarePipe({ outer = 1, inner = 0.6, half = 2 } = {}) {
   return tris;
 }
 
-/** A solid square rod: the shape a vessel modelled *without* a wall thickness would be. */
+/** A solid square rod: a tube of material with no cavity in it at all. */
 const squareRod = ({ outer = 1, half = 2 } = {}) => box([0, 0, 0], [outer, outer, half]);
+
+/**
+ * A square cup: a block with a cavity sunk into it that reaches the outside
+ * through one mouth. It has a wall (1 unit) and a floor (0.5 units) and it is
+ * topologically a ball — the counter-example to reading "genus 0" as "no wall".
+ */
+function squareCup({ outer = 2, inner = 1, height = 4, floor = 0.5 } = {}) {
+  const ring = (r) => [[-r, -r], [r, -r], [r, r], [-r, r]];
+  const ob = ring(outer).map(([x, y]) => [x, y, 0]);
+  const ot = ring(outer).map(([x, y]) => [x, y, height]);
+  const it = ring(inner).map(([x, y]) => [x, y, height]);
+  const ifl = ring(inner).map(([x, y]) => [x, y, floor]);
+  const tris = [];
+  const quad = (a, b, c, d) => { tris.push([a, b, c], [a, c, d]); };
+  quad(ob[0], ob[3], ob[2], ob[1]); // the outside floor, facing down
+  for (let k = 0; k < 4; k += 1) {
+    const n = (k + 1) % 4;
+    quad(ob[k], ob[n], ot[n], ot[k]); // outer wall, facing out
+    quad(ot[k], ot[n], it[n], it[k]); // the annular rim around the mouth
+    quad(it[k], it[n], ifl[n], ifl[k]); // cavity wall, facing into the cavity
+  }
+  quad(ifl[0], ifl[1], ifl[2], ifl[3]); // the cavity floor, facing up
+  return tris;
+}
+
+/**
+ * A closed loop of solid rod: a square cross-section swept once around a
+ * circle, so it is solid material the whole way with no cavity anywhere — and
+ * genus 1. The counter-example to reading "genus 1" as "there is a wall".
+ * This is the shape of an anastomosis, or of any circuit in a vessel network.
+ */
+function solidLoop({ radius = 4, thick = 0.5, segments = 24 } = {}) {
+  const corners = [[-thick, -thick], [thick, -thick], [thick, thick], [-thick, thick]];
+  const at = (i, j) => {
+    const a = (2 * Math.PI * (i % segments)) / segments;
+    const [du, dz] = corners[j % 4];
+    return [(radius + du) * Math.cos(a), (radius + du) * Math.sin(a), dz];
+  };
+  const tris = [];
+  for (let i = 0; i < segments; i += 1) {
+    for (let j = 0; j < 4; j += 1) {
+      const [a, b, c, d] = [at(i, j), at(i, j + 1), at(i + 1, j + 1), at(i + 1, j)];
+      tris.push([a, b, c], [a, c, d]);
+    }
+  }
+  return tris;
+}
 
 /** One triangle. Open, and the standing counter-example for signed volume. */
 const openTriangle = (dz = 0) => [[[0, 0, dz], [1, 0, dz], [0, 1, dz]]];
@@ -171,32 +224,55 @@ test('metrics: a complete transversal gives the counts the rule is about', () =>
   assert.deepEqual(counts(hollowShell()), [4], 'shell: outer, inner, inner, outer');
 });
 
-test('metrics: four crossings do not prove a wall — genus is what answers it', () => {
-  const rod = squareRod();
+test('metrics: four crossings do not prove a wall', () => {
+  // A line across a pipe crosses it four times — and so does a line across two
+  // separate solids, which have no wall between them at all.
   const pipe = squarePipe();
-
-  const rodTopology = eulerCharacteristic(rod);
-  const pipeTopology = eulerCharacteristic(pipe);
-  assert.equal(isClosedManifold(rodTopology), true);
-  assert.equal(isClosedManifold(pipeTopology), true);
-  assert.equal(rodTopology.components, 1);
-  assert.equal(pipeTopology.components, 1);
-
-  // A solid rod is a ball: genus 0. A pipe with a wall is a solid torus:
-  // genus 1. That distinction is the one the ray count was reaching for.
-  assert.equal(rodTopology.genus, 0, 'no through-hole');
-  assert.equal(rodTopology.chi, 2);
-  assert.equal(pipeTopology.genus, 1, 'a through-hole: an annular cross-section');
-  assert.equal(pipeTopology.chi, 0);
-
-  // And the caution the genus reading needs: a line across the pipe crosses it
-  // four times, and so does a line across a *bent* solid — so four crossings on
-  // their own settle nothing.
-  const acrossPipe = transversalCrossings(pipe, [0, 0, 0], [1, 0, 0]);
-  assert.equal(acrossPipe, 4);
+  assert.equal(transversalCrossings(pipe, [0, 0, 0], [1, 0, 0]), 4);
   const twoSolids = [...squareRod({ outer: 0.4, half: 2 }), ...translate(squareRod({ outer: 0.4, half: 2 }), [2, 0, 0])];
   assert.equal(transversalCrossings(twoSolids, [1, 0, 0], [1, 0, 0]), 4, 'two solids on one line: also four');
   assert.equal(eulerCharacteristic(twoSolids).genus, null, 'and they are two components, so genus is withheld');
+});
+
+test('metrics: genus does not prove a wall either — the withdrawn second rule', () => {
+  // The first attempt read a ray count as a wall; the replacement read the
+  // genus as one. Both are withdrawn. Genus counts handles in the surface, and
+  // it is wrong in **both** directions about walls.
+
+  // Direction one — a wall, and genus 0. A cup: a cavity that reaches the
+  // outside through one mouth is topologically a ball. The wall is 1 unit
+  // thick and the floor 0.5, and every topological test passes cleanly.
+  const cup = eulerCharacteristic(squareCup());
+  assert.equal(isClosedManifold(cup), true, 'closed and manifold');
+  assert.equal(cup.components, 1);
+  assert.equal(cup.boundary, 0);
+  assert.equal(cup.nonManifold, 0);
+  assert.equal(cup.degenerateTriangles, 0);
+  assert.equal(cup.vertices, 16);
+  assert.equal(cup.edges, 42);
+  assert.equal(cup.faces, 28);
+  assert.equal(cup.chi, 2);
+  assert.equal(cup.genus, 0, 'a wall and a floor, and still genus 0');
+  // 4x4x4 outer, less a 2x2 cavity 3.5 deep: 64 − 14.
+  assert.ok(Math.abs(signedVolume(squareCup()) - 50) < 1e-9, 'and it encloses 50, not 64');
+
+  // Direction two — no wall anywhere, and genus 1. A closed loop of solid rod
+  // is solid material the whole way round; the hole is the middle of the ring,
+  // not a lumen. This is the shape of an anastomosis.
+  const loop = eulerCharacteristic(solidLoop());
+  assert.equal(isClosedManifold(loop), true);
+  assert.equal(loop.components, 1);
+  assert.equal(loop.chi, 0);
+  assert.equal(loop.genus, 1, 'solid throughout, and still genus 1');
+
+  // For contrast, the two shapes the earlier rule was built from. They do
+  // differ in genus — the rule was not arbitrary — but the cup and the loop
+  // above show the difference is about handles, not about walls.
+  assert.equal(eulerCharacteristic(squareRod()).genus, 0);
+  assert.equal(eulerCharacteristic(squarePipe()).genus, 1);
+
+  // Which leaves the actual question unanswered, and that is the finding: no
+  // metric in this module decides whether a mesh represents a wall.
 });
 
 test('metrics: a ray along a shared edge is one crossing, not two', () => {

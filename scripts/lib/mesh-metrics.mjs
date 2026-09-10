@@ -15,6 +15,12 @@
  * gives one and a shell gives two — so the observation could not tell them
  * apart, and the conclusion was withdrawn.
  *
+ * The replacement then reached for the same conclusion through the genus, and
+ * **that is withdrawn too**: a cup has a wall and genus 0, a loop of solid tube
+ * has no wall and genus 1. Wall thickness is not something this module
+ * measures. It is left undetermined, and said to be undetermined, rather than
+ * inferred from whichever metric happens to be at hand.
+ *
  * Every function below therefore states what it can and cannot conclude, and
  * `tests/mesh-metrics.test.js` runs each against shapes whose answers are known
  * before any of it is pointed at a real file.
@@ -117,23 +123,36 @@ export function edgeClasses(triangles, weld = 1e-6) {
 export const isClosedManifold = (classes) => classes.boundary === 0 && classes.nonManifold === 0;
 
 /**
- * Euler characteristic V − E + F, and the genus it implies.
+ * Euler characteristic V − E + F, and the genus that follows from it.
  *
  * **Only meaningful for a closed, manifold, connected surface**, so `genus` is
  * `null` unless the caller has established that. For such a surface
- * `genus = (2 − χ) / 2`, and the genus is what answers the question the ray
- * count could not:
+ * `genus = (2 − χ) / 2`: the number of handles, i.e. of independent
+ * through-holes in the surface.
  *
- *  - a solid tube (a lumen cast, or a vessel modelled as a solid rod) is
- *    topologically a ball — genus **0**;
- *  - a tube with a wall thickness is an annulus swept along a path, which is a
- *    solid torus — genus **1**.
+ * ## Genus does not answer the wall-thickness question either
  *
- * A branched tree of solid tubes is still genus 0; each extra independent loop
- * (an anastomosis, or a second concentric wall) adds one. So genus ≥ 1 means
- * "there is a through-hole", which is **evidence of** a wall thickness in an
- * unbranched segment and **not proof of one** in a network that may close a
- * loop for anatomical reasons. The caller has to say which case it is in.
+ * An earlier version of this comment said it did — that a solid tube is a ball
+ * (genus 0) and a tube with a wall is a solid torus (genus 1), so the genus
+ * settles what the ray count could not. **That is withdrawn.** Genus is a
+ * property of the surface, not of whether the shape has a cavity, and it fails
+ * in both directions:
+ *
+ *  - **Genus 0 with a wall.** A cup — a cavity that reaches the outside through
+ *    one mouth — is topologically a ball. `tests/mesh-metrics.test.js` measures
+ *    a square cup with a 1-unit side wall and a 0.5-unit floor: V 16, E 42,
+ *    F 28, χ 2, **genus 0**, closed, manifold, one component. A vessel modelled
+ *    as a wall whose ends are closed by caps that bridge the wall to *itself*
+ *    across the lumen is exactly this shape. So genus 0 is not "no wall".
+ *  - **Genus ≥ 1 with no wall.** A closed loop of solid tube — an anastomosis,
+ *    a ring, any circuit in a vascular network — is a solid torus with no
+ *    cavity anywhere. So genus ≥ 1 is not "there is a wall".
+ *
+ * The genus is therefore reported as what it is: a count of handles in the
+ * surface, useful for saying how complicated the surface is and for noticing
+ * that a mesh is not the simple sheet one assumed. **Whether a candidate vessel
+ * represents a wall with a thickness is not settled by any metric in this
+ * module**, and none of them should be quoted as settling it.
  */
 export function eulerCharacteristic(triangles, weld = 1e-6) {
   const classes = edgeClasses(triangles, weld);

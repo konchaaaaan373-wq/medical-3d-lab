@@ -183,22 +183,36 @@ observation distinguished nothing. A modal count over finitely many directions
 could not have proved the absence of an inner surface anywhere on a shape
 either.
 
-What answers the question for a *closed* surface is its **genus**: a solid rod is
-a ball (genus 0); a tube with a wall thickness is an annulus swept along a path,
-which is a solid torus (genus 1). Both are checked in the test file. What the 37
-vessels give:
+A second answer was then tried and **is also withdrawn**: that the **genus**
+settles it, a solid rod being a ball (genus 0) and a walled tube a solid torus
+(genus 1). It does not, and it fails in both directions:
 
-| | Count | What it settles |
+- **A wall, and genus 0.** A cup — a cavity reaching the outside through one
+  mouth — is topologically a ball. `tests/mesh-metrics.test.js` measures a
+  square cup whose side wall is 1 unit and whose floor is 0.5: V 16, E 42,
+  F 28, χ 2, **genus 0**, closed, manifold, one component, enclosing 50 of a
+  possible 64. A vessel whose ends are closed by caps bridging the wall across
+  the lumen is that shape.
+- **No wall, and genus 1.** A closed loop of solid rod is solid material the
+  whole way round, with the hole in the middle of the ring rather than in the
+  vessel. That is an anastomosis, and any circuit in a vascular network.
+
+So the genus describes how complicated a surface is, not whether it has a wall.
+What the 37 vessels give, restated as description rather than as a verdict:
+
+| | Count | What it is |
 | --- | --- | --- |
-| Open surfaces (boundary edges > 0) | **26** | **Nothing.** Genus is undefined for an open surface; the question stays open for these. |
-| Non-manifold or several components | **2** (left coronary artery, superior vena cava) | Nothing — the mesh is broken before topology can speak. |
-| Closed, manifold, one piece, **genus ≥ 2** | **8** (pulmonary trunk, both pulmonary arteries, all four pulmonary veins, both brachiocephalic veins) | There **are** through-holes — 2 to 6 of them. A wall would produce one per unbranched segment; so would a loop, a self-touch, or a defect. **Not settled.** |
-| Closed, manifold, one piece, **genus 0** | **1** (small cardiac vein) | **No through-hole**: that one vessel is a solid, so it has no annular wall. |
+| Open surfaces (boundary edges > 0) | **26** | Genus is undefined for an open surface. |
+| Non-manifold or several components | **2** (left coronary artery, superior vena cava) | The mesh is broken before topology can be computed. |
+| Closed, manifold, one piece, **genus ≥ 2** | **8** (pulmonary trunk, both pulmonary arteries, all four pulmonary veins, both brachiocephalic veins) | 2 to 6 handles in the surface. |
+| Closed, manifold, one piece, **genus 0** | **1** (small cardiac vein) | No handle in the surface. |
 
-So the honest position is: **one vessel is established to have no wall
-thickness, and for the other thirty-six the question is open.** The scene says
-the question is being checked, in the words a reader sees, and does not claim
-either answer.
+**The honest position is that the question is open for all thirty-seven.** The
+earlier line — "one vessel is established to have no wall thickness, and for the
+other thirty-six the question is open" — is withdrawn with the rule it rested
+on. Nothing in this repository measures wall thickness, and the scene says the
+question is being checked, in the words a reader sees, without claiming either
+answer.
 
 Nothing here says which side of a vessel a surface traces. A calibre comparison
 would sit inside specimen variation, and the file records no segmentation
@@ -272,8 +286,9 @@ millimetre-level anatomical accuracy is claimed from it anywhere.**
   vessels are a good representation of a normal heart's vasculature is an
   anatomist's call and has not been made.
 - **What these surfaces are is still open** (above): neither lumen-versus-
-  outside nor the presence of a wall thickness has been established, and the
-  earlier conclusion on the second was withdrawn.
+  outside nor the presence of a wall thickness has been established, for any of
+  the thirty-seven. Two successive conclusions on the second — first from a ray
+  count, then from the genus — were both withdrawn.
 - **The junctions are measured now** (below) — as a diagnostic. No millimetre
   accuracy is claimed anywhere on the strength of them.
 - **No decision about the Visible Human terms**, and no legal reading.

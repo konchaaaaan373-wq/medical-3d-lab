@@ -17,8 +17,8 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 11,
-    "modelDigest": "f4354ce362d1828c",
+    "cardRevision": 12,
+    "modelDigest": "765fad930526da3e",
     "cardUpdatedAt": "2026-09-10"
   },
   {

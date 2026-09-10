@@ -24,13 +24,19 @@
  *   signedVolume            the divergence-theorem sum. An enclosed volume only
  *                           where the mesh is closed, manifold and one piece —
  *                           `volumeMeaningful` says whether it is.
- *   genus                   from V − E + F, and only for a closed, manifold,
- *                           single-component surface. 0 means no through-hole
- *                           (a solid); 1 or more means a through-hole, which in
- *                           an unbranched tube is what a wall thickness looks
- *                           like and in a branched network can be a loop.
+ *   genus                   handles in the surface, from V − E + F, and only
+ *                           for a closed, manifold, single-component surface.
+ *                           It says how complicated the surface is. **It does
+ *                           not say whether there is a wall** — a cup has a
+ *                           wall and genus 0, a loop of solid rod has none and
+ *                           genus 1. Both are measured in the test file.
  *   transversal             crossings along a complete line through the shape,
- *                           from outside. Read with the genus, never alone.
+ *                           from outside. Four can be a wall, a bend, or two
+ *                           separate pieces, so it settles nothing alone.
+ *
+ * **Nothing here measures wall thickness.** Two attempts to infer it — from the
+ * ray count, then from the genus — were both withdrawn, and the question is
+ * left open rather than answered from whichever column is nearest.
  *
  * Reads the GLB directly. No three, no DOM, no loader.
  */
@@ -199,8 +205,9 @@ for (const [path, subtree] of targets) {
     const coarse = eulerCharacteristic(m.tris, 1e-5);
     const closed = isClosedManifold(fine) && fine.components === 1;
 
-    // A complete transversal through the area-weighted surface centroid. Read
-    // with the genus: four crossings can be a wall, a bend, or two pieces.
+    // A complete transversal through the area-weighted surface centroid. A
+    // description of the crossings, not a verdict: four can be a wall, a bend,
+    // or two pieces, and the genus does not disambiguate it either.
     const through = surfaceCentroid(m.tris);
     const hist = new Map();
     for (const d of dirs) {

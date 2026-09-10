@@ -160,27 +160,33 @@ What was measured in this repository, and is therefore a fact about the files:
   degenerate triangles together, and it is corrected. The adapter records which
   parts are open, the information card says so, and the material draws both
   sides so an open surface does not vanish from one side.
-* **What the vessel surfaces are is still open, and two answers have been
+* **What the vessel surfaces are is still open, and three answers have been
   withdrawn.** They were first described as lumen surfaces, which nobody had
   measured. They were then described as single surfaces with no modelled wall
   thickness — measured, but with an instrument that cannot tell those apart: a
   ray cast outward from *inside* a shape crosses one surface if the shape is
   solid and two if it is a shell, so "a mode of two, never four" is exactly what
-  a thick shell gives as well. **Both claims are withdrawn**, and the scene says
-  the question is being checked rather than answering it. What has replaced the
-  ray count is in §5 below.
+  a thick shell gives as well. The third was that the surface's **genus** settles
+  it, which fails in both directions: a cup has a wall and genus 0, a loop of
+  solid rod has no wall and genus 1. **All three are withdrawn.** The scene says
+  the question is being checked rather than answering it, and nothing in this
+  repository measures wall thickness. §5 records what the topology does say,
+  which is how complicated each surface is.
 * **The source caps ten of the vessels.** The pulmonary trunk, both pulmonary
   arteries, all four pulmonary veins, both brachiocephalic veins and the small
   cardiac vein have no boundary edges, so their cut ends are closed by the
   source. That is the file's own choice, recorded rather than made here, and
   nothing in this scene caps a vessel.
-* **The left ventricle's cavity reading is now properly supported.** Its surface
-  is closed, manifold, a single component and **genus 0** — no through-hole, so a
-  solid volume rather than an annular wall — enclosing 121.60 mL. That is what
-  makes it a chamber cavity rather than a wall's worth of muscle, and it is why
-  no interior view is offered. The left atrium reads genus 4 and the right
-  ventricle genus 26, which for trabeculated cavity casts is recorded rather
-  than explained.
+* **The left ventricle's surface is described, and not interpreted.** It is
+  closed, manifold, a single component and **genus 0**, enclosing 121.60 mL. The
+  left atrium reads genus 4 and the right ventricle genus 26. An earlier version
+  of this card read genus 0 as "a cavity rather than a wall's worth of muscle";
+  **that is withdrawn.** Genus counts handles in a surface, not walls — a cup
+  has a wall and genus 0 — and 121.6 mL is of the same order as both a normal
+  left ventricular cavity and a normal left ventricular myocardial volume, so it
+  does not choose between them either. **Whether these meshes are cavity casts,
+  walls, or something in between is not established here.** No interior view is
+  offered, because there is nothing measured to base one on.
 * **The axes.** +x is the patient's left (the left atrium is left of the right
   atrium), +y superior (the apex is below the valve plane), +z anterior (the
   right ventricle is in front of the left atrium). Three relationships that

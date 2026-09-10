@@ -140,21 +140,35 @@ connected components**. So **the original 3 was right**, and the correction to
 286 was wrong. What the earlier numbers were pointing at is real and is worse
 than an open rim: this mesh is non-manifold and in three pieces.
 
-### Correction 2: the withdrawn wall-thickness reading
+### Correction 2: the withdrawn wall-thickness reading, twice
 
-The ray count that produced it is withdrawn — see the vasculature document. What
-replaces it for the chambers is stronger, not weaker: the left ventricle's
-surface is **closed, manifold, one component and genus 0**, enclosing 121.60 mL.
-Genus 0 means no through-hole, so it is a solid volume and not an annular wall,
-and 121.6 mL is chamber-sized rather than a wall's worth of muscle. **That** is
-why no interior view is offered.
+The ray count that produced it is withdrawn — see the vasculature document. So
+is what replaced it. This document previously argued that the left ventricle's
+surface being **closed, manifold, one component and genus 0** meant "no
+through-hole, so a solid volume and not an annular wall". **That reasoning is
+withdrawn.** Genus counts handles in a surface, not walls: a cup has a 1-unit
+wall and genus 0, and a loop of solid rod has no wall and genus 1. Both are
+measured in `tests/mesh-metrics.test.js`.
 
-The other chambers are not so tidy. The left atrium is closed and manifold at
-genus 4, and the right ventricle at genus **26** — dozens of through-holes,
-which for a trabeculated cavity cast is unsurprising and is recorded rather than
-explained. Nine of the fourteen parts are closed and manifold; the aortic valve
-(72 boundary edges), three papillary muscles (42, 26, 21) and the right atrium
-are not.
+The supporting sentence went too far as well. 121.60 mL was called
+"chamber-sized rather than a wall's worth of muscle"; a normal left ventricular
+myocardial volume is of the same order as a normal cavity volume, so that figure
+does not choose between them either.
+
+What survives is the description, and it is worth having:
+
+| | |
+| --- | --- |
+| Left ventricle | closed, manifold, 1 component, genus 0, enclosing **121.60 mL** |
+| Left atrium | closed, manifold, genus 4 |
+| Right ventricle | closed, manifold, genus **26** |
+| Closed and manifold overall | 9 of the 14 parts |
+| Not closed or not manifold | aortic valve (72 boundary edges), three papillary muscles (42, 26, 21), right atrium (non-manifold, 3 pieces) |
+
+Genus 26 on a trabeculated cavity cast is unsurprising and is recorded rather
+than explained. **What these surfaces represent — cavity cast, wall, or
+something in between — is not established by any of it**, and no interior view
+is offered, because there is no measured basis for drawing one.
 
 ## What this inspection did not do
 

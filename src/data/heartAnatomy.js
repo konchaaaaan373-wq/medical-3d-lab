@@ -325,9 +325,12 @@ const OPEN_SURFACE = Object.freeze({
 /**
  * What each group *is*, said at the level the file supports.
  *
- * A chamber here is a closed surface around the chamber's space — measured, not
- * inferred from the word "chamber" — and the wording says that rather than
- * implying a myocardial wall the file does not contain.
+ * A chamber here is a surface the source named for that chamber. Nine of the
+ * fourteen parts are closed and manifold and five are not — measured, not
+ * inferred from the word "chamber". What such a surface *represents* — the
+ * cavity, the wall around it, or something between — is **not** established:
+ * see rule 1 below. The wording therefore describes the surface, and neither
+ * asserts a myocardial wall nor rules one out.
  */
 /**
  * What each kind of structure is, said at the level the files support.
@@ -336,15 +339,19 @@ const OPEN_SURFACE = Object.freeze({
  * be it — see `HEART_GROUPS`. Three rules this table has to keep:
  *
  * 1. **It does not assert what has not been measured**, and that has now caught
- *    this table out twice. The vessels were first described as lumen surfaces,
- *    which nobody had measured. They were then described as single surfaces
- *    with no wall thickness, which *had* been measured — with an instrument
- *    that could not tell the two apart. A ray cast outward from inside a shape
- *    crosses one surface if the shape is solid and two if it is a shell, and
- *    the rule that was applied ("two means one surface, four would mean a
- *    wall") is the count for a ray crossing the whole shape from outside. Both
- *    claims are withdrawn. What is written here now is the confidence the
- *    evidence actually supports: still being checked.
+ *    this table out twice, with a third attempt caught before it reached this
+ *    file. The vessels were first described as lumen surfaces, which nobody had
+ *    measured. They were then described as single surfaces with no wall
+ *    thickness, which *had* been measured — with an instrument that could not
+ *    tell the two apart. A ray cast outward from inside a shape crosses one
+ *    surface if the shape is solid and two if it is a shell, and the rule that
+ *    was applied ("two means one surface, four would mean a wall") is the count
+ *    for a ray crossing the whole shape from outside. The third attempt read
+ *    the surface's genus, which fails in both directions: a cup has a wall and
+ *    genus 0, a loop of solid rod has none and genus 1. **All three are
+ *    withdrawn, and nothing in this repository measures wall thickness.** What
+ *    is written here is the confidence the evidence actually supports: still
+ *    being checked.
  * 2. **It does not contradict the row it describes.** Nine of the fourteen
  *    heart parts are closed surfaces and five are not; a description that says
  *    "closed" and a note that says "open" cannot both be about the same mesh.
@@ -656,9 +663,11 @@ export const HEART_MISSING = Object.freeze([
     'Myocardial free wall',
     '心筋自由壁',
     'noted',
-    'The chamber meshes enclose the chambers\' spaces. There is no wall between them, so no wall thickness is ' +
-      'shown and no cut through one is offered.',
-    '心腔の mesh は心腔の空間を囲む面です。その間に壁はないため、壁厚も、壁を切った断面も出しません。'
+    'None of the fourteen parts in the source is named as myocardium or as a wall, so there is nothing here to ' +
+      'show as one. Whether the chamber surfaces themselves stand for the cavities or for walls around them is ' +
+      'still being checked, so no wall thickness is given and no cut through one is offered.',
+    '出典の 14 部位に心筋や壁として収録されたものはないため、壁として出せるものがありません。' +
+      '心腔の面が空間そのものを表すのか、その周りの壁を表すのかは確認中です。したがって壁厚も、壁を切った断面も出しません。'
   ),
   missing('chordae-tendineae', 'Chordae tendineae', '腱索', 'noted'),
   missing('pericardium', 'Pericardium', '心膜', 'noted'),
