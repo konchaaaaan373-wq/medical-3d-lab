@@ -123,17 +123,27 @@ What was measured in this repository, and is therefore a fact about the files:
   of the left atrium and the right pair on the −x side. Those are the
   relationships a normal heart has, and none was produced by a transform of
   ours. **That is evidence the frames agree; it is not a claim of
-  sub-millimetre registration, and no distance between a vessel's cut end and a
-  chamber is measured or asserted anywhere.**
-* **The two files touch where they should.** Nearest-point distance between
-  each vessel and the heart part it meets, with neither file moved: ascending
-  aorta to aortic valve **0.00 mm**, pulmonary trunk to pulmonary valve 0.08,
-  both venae cavae to the right atrium 0.05–0.09, all four pulmonary veins to
-  the left atrium 0.05–0.07, both coronary ostia to the aortic valve 0.11–0.14,
-  coronary sinus to the right atrium 0.16. Twelve of thirteen under 0.2 mm.
-  **This is a diagnostic**: it says the two files agree with each other, not
-  that either agrees with a heart, and **no millimetre-level anatomical
-  accuracy is claimed from it**.
+  sub-millimetre registration.**
+* **Where the vessels sit relative to the parts they meet, as a sampled-vertex
+  distance.** The quantity is `nearestSampledVertexMm`: the smallest distance
+  between a de-duplicated **vertex** of one mesh and a vertex of the other, with
+  neither file moved and vertices welded at 10 µm. Ascending aorta to aortic
+  valve **0.00 mm**, pulmonary trunk to pulmonary valve 0.08, both venae cavae
+  to the right atrium 0.05–0.09, all four pulmonary veins to the left atrium
+  0.05–0.07, both coronary ostia to the aortic valve 0.11–0.14, coronary sinus
+  to the right atrium 0.16. Twelve of thirteen under 0.2 mm.
+
+  **What that is, and what it is not.** It is a diagnostic that the two files
+  are in one frame: values this small do not arise between meshes that were
+  never in register. It is **not a distance between the surfaces** — two meshes
+  can interpenetrate without sharing a vertex, and two surfaces meeting along a
+  face can have their nearest vertices far apart — so **0.00 mm means two
+  sampled vertices coincide to the weld tolerance and nothing more.** Whether a
+  vessel and a chamber are joined, continuous or watertight is **not evaluated
+  anywhere**, and neither is whether any of it is anatomically where it should
+  be. An earlier version of this card put this bullet under "the two files touch
+  where they should" and called it a nearest-point distance; both are withdrawn,
+  because a vertex sample cannot establish either.
 * **Both files fail glTF validation, and by a known amount.** 408 errors in the
   heart file — all degenerate vertex normals, all in the right atrium's mesh,
   1.7% of its vertices — and 33 in the vasculature file, in the superior vena
@@ -270,10 +280,12 @@ the Japanese names are deliberate but unreviewed.
 
 Diagnosis, treatment selection, dose selection, prognosis, or procedure
 planning. It is a still teaching model of one fixed cadaveric specimen. It has
-no chordae tendineae, no pericardium, no conduction system and no myocardial
-free wall; whether its vessel surfaces are lumens or walls has not been
-measured, and no junction between a vessel and a chamber has been measured
-either. It is not a patient's heart and not a surgical reference.
+no chordae tendineae, no pericardium, no conduction system and no separately
+identified myocardial free wall; whether its vessel surfaces are lumens or walls
+has not been measured; and **no junction has been evaluated as a junction** —
+§5 reports a sampled-vertex distance, which is not a surface distance and settles
+nothing about whether a vessel and a chamber are joined, continuous or
+watertight. It is not a patient's heart and not a surgical reference.
 
 ## 8. Review status
 

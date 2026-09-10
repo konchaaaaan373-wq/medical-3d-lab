@@ -293,8 +293,10 @@ millimetre-level anatomical accuracy is claimed from it anywhere.**
   outside nor the presence of a wall thickness has been established, for any of
   the thirty-seven. Two successive conclusions on the second — first from a ray
   count, then from the genus — were both withdrawn.
-- **The junctions are measured now** (below) — as a diagnostic. No millimetre
-  accuracy is claimed anywhere on the strength of them.
+- **No junction is evaluated as a junction.** What is measured (below) is a
+  **sampled-vertex** distance, as a diagnostic that the two files share a frame.
+  Whether a vessel and a chamber are joined, continuous or watertight is not
+  evaluated, and no millimetre accuracy is claimed on the strength of it.
 - **No decision about the Visible Human terms**, and no legal reading.
 
 ## What this means for the beta

@@ -205,6 +205,16 @@ test('packer: an incremental restore stops when the base is missing, and changes
     const done = restore(out, [stranger]);
     assert.notEqual(done.status, 0);
     assert.match(done.stderr, /does not have the base commit/);
+    // `--since` takes any commit, and the bases this series actually uses are
+    // local hand-off HEADs that no remote has. Telling the recipient to fetch a
+    // remote was advice that could not work, so the message says what is really
+    // needed: a repository that already contains the base.
+    // The message wraps, so it is matched with whitespace normalised.
+    const said = done.stderr.replace(/\s+/g, ' ');
+    assert.doesNotMatch(said, /fetch origin/);
+    assert.doesNotMatch(said, /ancestor of the published default branch/);
+    assert.match(said, /repository that already contains that commit/);
+    assert.match(said, /does not fetch anything/);
     assert.equal(git(stranger, 'rev-parse', 'HEAD'), before, 'their HEAD did not move');
     assert.equal(readFileSync(join(stranger, 'mine.txt'), 'utf8'), 'mine\n');
   });

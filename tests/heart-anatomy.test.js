@@ -1071,3 +1071,59 @@ test('the recipe report is cleared by the reader moving the view, not by the app
   assert.match(panel, /if \(recipeList\) clearRecipeStatus\(\);/);
   assert.match(panel, /recipeLatch = true;/);
 });
+
+test('the junction figures are described as the sampled-vertex distance they are', () => {
+  // The measuring script computes `nearestSampledVertexMm`: the smallest
+  // distance between a de-duplicated *vertex* of one mesh and a vertex of the
+  // other. The documents around it had drifted into calling that a
+  // "nearest-point distance" between surfaces, and into saying the two files
+  // "touch where they should" — which a vertex sample cannot establish, since
+  // two meshes can interpenetrate with no shared vertex and two surfaces
+  // meeting along a face can have their nearest vertices far apart.
+  //
+  // Two documents also still said no junction had been measured at all, in the
+  // same breath as printing the figures. This test holds both halves apart:
+  // the quantity is named, and what it does not settle is stated.
+  const docs = {
+    card: readFileSync(new URL('../docs/model-cards/heart-anatomy.md', import.meta.url), 'utf8'),
+    dossier: readFileSync(new URL('../docs/model-evidence/heart-anatomy.md', import.meta.url), 'utf8'),
+    assetQa: readFileSync(
+      new URL('../docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md', import.meta.url),
+      'utf8'
+    ),
+  };
+
+  // Matched against whitespace-normalised text: these are wrapped prose files,
+  // and a phrase that happens to straddle a line break is the same phrase.
+  for (const [name, raw] of Object.entries(docs)) {
+    const text = raw.replace(/\s+/g, ' ');
+    assert.match(text, /sampled[- ]?vertex/i, `${name}: names the quantity that is actually computed`);
+    assert.match(
+      text,
+      /joined, continuous or watertight/,
+      `${name}: says what the number does not settle`
+    );
+    // The withdrawn readings. Allowed only where the text marks them as
+    // withdrawn, which is why the card is checked for the retraction sentence
+    // rather than for the absence of the phrase.
+    assert.doesNotMatch(text, /Nearest-point distance between/, `${name}`);
+    assert.doesNotMatch(
+      text,
+      /\*\*The two files touch where they should\.\*\*/,
+      `${name}: a vertex sample cannot establish touching`
+    );
+    // And no document may still claim the measurement was never taken while
+    // printing its results.
+    assert.doesNotMatch(
+      text,
+      /no (?:distance between a vessel's cut end and a chamber|junction between a vessel and a chamber) (?:is|has been) measured/,
+      `${name}: this contradicts the figures in the same document`
+    );
+  }
+
+  // The script's own header is the source of the definition, so the documents
+  // are describing something that exists.
+  const script = readFileSync(new URL('../scripts/measure-candidate-surfaces.mjs', import.meta.url), 'utf8');
+  assert.match(script, /nearestSampledVertexMm/);
+  assert.match(script, /NOT a surface distance/);
+});

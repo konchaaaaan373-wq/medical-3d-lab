@@ -61,9 +61,16 @@ const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest(
  * The cost is a **prerequisite**: the recipient's clone must already contain
  * that commit. So the ref is resolved here and recorded, and `restore.sh`
  * checks for it before touching anything and stops with a plain message if it
- * is missing. Pass a commit that is an ancestor of the published default
- * branch, so any ordinary clone has it; `git merge-base HEAD origin/main` is
- * the safe answer.
+ * is missing.
+ *
+ * **Choosing the base is the packer operator's judgement, and this script does
+ * not check it.** `--since` takes any commit. A commit that is an ancestor of
+ * the published default branch is in any ordinary clone; a commit that only
+ * exists in an earlier hand-off is only in a repository that received that
+ * hand-off. Those are different guarantees, and the generated `restore.sh`
+ * therefore says the recipient needs a repository containing the base — not
+ * that fetching a remote will produce it, which was untrue for the local HEADs
+ * this series has actually been based on. It never fetches anything.
  *
  * Without `--since` the bundle is `--all` and needs no prerequisite.
  */
@@ -187,8 +194,11 @@ const incrementalSteps = () => [
   '  exit 1',
   'fi',
   'if ! git -C "$TARGET" cat-file -e "$BASE^{commit}" 2>/dev/null; then',
-  '  echo "your clone does not have the base commit $BASE" >&2',
-  '  echo "it is an ancestor of the published default branch, so: git -C \\"$TARGET\\" fetch origin" >&2',
+  '  echo "your clone does not have the base commit $BASE, which this bundle builds on." >&2',
+  '  echo "this hand-off carries only the commits after it. to apply it you need a repository" >&2',
+  '  echo "that already contains that commit - usually an earlier hand-off from this series," >&2',
+  '  echo "either the whole-history bundle or the increment that introduced $BASE." >&2',
+  '  echo "this script does not fetch anything, and cannot tell you where that commit lives." >&2',
   '  exit 1',
   'fi',
   'git -C "$TARGET" bundle verify "$WORK/full.bundle"',

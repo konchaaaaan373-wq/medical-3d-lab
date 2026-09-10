@@ -1,9 +1,17 @@
 # B4 closeout — 3 点の修正と、その検証
 
-**base**: `4e806869609f9f6035516941e834f6e440acb65b`（レビュー側が保持している HEAD）
-**この納品の HEAD**: `MANIFEST.json` の `head` に完全 SHA で記録しています
+**base**: `4e806869609f9f6035516941e834f6e440acb65b`
+**HEAD・コミット数**: 同梱 `MANIFEST.json` の `head` と `bundle.commits` が正です
 **branch**: `claude/medical-3d-lab-b3-1-brain-view`
-**コミット数**: 3（`git log 4e80686..HEAD`）
+
+> **この 2 つをここに書き写さないのは、必ず古くなるからです。** 初版はここに
+> 「コミット数: 3」と書いてありましたが、この文書自身のコミットと、その後の
+> 修正コミットが後から乗るため、梱包時の実体は **5** でした（レビュー側の指摘、
+> 対象 `587d15f92703e632e5be02044041edb44df3d807`）。数を持つ場所は生成される
+> `MANIFEST.json` 1 か所に寄せてあります。
+>
+> 同じ理由で、**この文書に出てくる数値はすべて「どの SHA で測ったか」と対で
+> 読んでください。** 下の自己検証表は `587d15f` 時点の実測です。
 
 push・PR 操作・merge・本番/新規 preview 公開・課金変更は 0 件。
 **GitHub Actions の起動・再実行も 0 回**です。公開ゲートは閉じたままです。
@@ -93,7 +101,7 @@ title は scene が改題し（「Zoom in — fill the frame with the chamber (+
 
 | 何を | 結果 |
 | --- | --- |
-| `npm test` | **1782 pass / 0 fail** |
+| `npm test`（`587d15f`） | **1782 pass / 0 fail** |
 | `npm run build` → `npm run verify:site` | 通過。**heart-anatomy の chunk は production build に入りません** |
 | 公開ゲート | `RELEASED_SCENES` は `brain-anatomy` の 1 件。heart-anatomy は candidate asset と publication decision の 2 理由で拒否 |
 | `npm run assets:validate` | **exit 1**（心臓 408 errors / 血管 33 errors）。不合格のまま維持 |

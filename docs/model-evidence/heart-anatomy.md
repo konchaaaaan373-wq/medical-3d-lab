@@ -102,12 +102,20 @@ is one.
   **not** discharged: no attribution surface, no acknowledgment text, no legal
   reading. The file is a candidate, not an adopted asset.
 * **Whether each vessel surface is a lumen or a vessel wall has not been
-  measured, and the scene no longer says either.** The chambers were measured
-  and are cavity casts; carrying that answer across to the vessel file would be
-  extrapolation dressed as a measurement, so every vessel's description says
-  the question is unchecked. (B4-R2.)
-* No junction between a vessel and a chamber has been measured. The vessels meet
-  the heart where the two files put them.
+  measured, and the scene no longer says either.** (B4-R2.) This bullet used to
+  add that "the chambers were measured and are cavity casts", from which the
+  vessel file could not borrow an answer. **The chamber half is withdrawn too**
+  (B4-G1): nothing measured it. Genus does not settle it — a cup has a wall and
+  genus 0 — and the enclosed volume does not either, since a normal left
+  ventricular myocardial volume is of the same order as a normal cavity volume.
+  Space or wall is unchecked for the chambers as well as for the vessels.
+* **No junction has been evaluated as a junction.** What is measured is
+  `nearestSampledVertexMm`: the smallest distance between a de-duplicated vertex
+  of one mesh and a vertex of the other. That is a diagnostic that the two files
+  share a frame. It is **not** a distance between the surfaces, so it settles
+  nothing about whether a vessel and a chamber are joined, continuous or
+  watertight — two meshes can interpenetrate without sharing a vertex. The
+  vessels meet the heart where the two files put them.
 * No mesh in the file is named "circumflex", and this repository does not decide
   which of the named left-coronary meshes carries that course.
 
@@ -118,7 +126,7 @@ is one.
 | **Claim** | The heart and the vessels keep the relative positions the source gave them, and one display transform is applied to the pair. |
 | **Source** | Both files are in the same whole-body frame: measured relationships in `docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md` — ascending aorta 20 mm above the aortic valve at the same depth; pulmonary trunk above the pulmonary valve; superior vena cava above and lateral to the right atrium, inferior vena cava below it; the four pulmonary veins behind the left atrium with the left pair on the +x side. |
 | **Implementation** | Both scenes go under one `modelRoot`. The vessel subtree is reparented with its world matrix applied, so its position in the body survives rather than its position under a node that is not kept. The offset and uniform scale are set on `modelRoot` itself and nowhere else. |
-| **Assumption** | The frames agree because those relationships come out of the files unaltered. **This is not a claim of sub-millimetre registration**, and no distance between a vessel's cut end and a chamber is measured or asserted. Neither file is warped, non-uniformly scaled or bent to fit the other. |
+| **Assumption** | The frames agree because those relationships come out of the files unaltered. **This is not a claim of sub-millimetre registration.** The one figure taken across the two files is `nearestSampledVertexMm`, a sampled-vertex distance and a frame diagnostic; no surface-to-surface distance is computed, and nothing asserts that a vessel's cut end and a chamber are joined, continuous or watertight. Neither file is warped, non-uniformly scaled or bent to fit the other. |
 | **Validation** | `tests/heart-anatomy.test.js` — adding the vessels does not move the heart; the ascending aorta is above the aortic valve and the inferior vena cava below the right atrium after the shared transform; the transform is uniform and its scale is the one the heart alone would get. |
 
 ### 9. Only the subtree the source calls the vessels of the heart is taken
