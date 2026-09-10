@@ -55,7 +55,7 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   // organ this scene is named after too small to point at; "Urinary tract"
   // below is the view that pulls back to it.
   static cameraPose = {
-    position: new THREE.Vector3(0, 1.35, 5.9),
+    position: new THREE.Vector3(0, 1.35, 6.6),
     target: new THREE.Vector3(0, 1.3, 0),
   };
 
@@ -71,17 +71,22 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   static contextTags = ['tract'];
 
   /**
-   * Two kidneys side by side are nearly twice as wide as they are tall: at the
-   * authored distance the pair fills the frame's width at an aspect of 0.96.
-   * Measured on the subject, not on the tract — and not on `left-kidney` or
-   * `coronal-section`, which are close-ups that crop on purpose.
+   * Two kidneys side by side are nearly twice as wide as they are tall: the
+   * widest whole-organ view (posterior) fills the frame's width at an aspect of
+   * 0.96, the anterior pair at 0.86. Measured on the subject, not on the tract
+   * — and not on `left-kidney` or `coronal-section`, which are close-ups that
+   * crop on purpose.
+   *
+   * The distance above went 5.9 -> 6.6 at the same time. At 5.9 the pair ran
+   * edge to edge with the gap between them down the middle of the frame, which
+   * is the one arrangement where a viewer's first click lands on nothing.
    */
   static framing = { minHorizontalAspect: 1.0 };
 
   static colorModes = KIDNEY_COLOR_MODES;
 
   static views = [
-    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0, 1.35, 5.9], target: [0, 1.3, 0] },
+    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0, 1.35, 6.6], target: [0, 1.3, 0] },
     { id: 'overview', label: 'Urinary tract', labelJa: '尿路全体', position: [0.4, 0.3, 8.6], target: [0.4, -0.15, 0] },
     {
       id: 'left-kidney',

@@ -77,6 +77,10 @@ position of either kidney relative to the ribs or the vertebrae.
   framing is set on the two kidneys, not on the tract they drain into: a frame
   that fits the bladder makes the organ the scene is named after a third of the
   size. "Urinary tract" is the viewpoint that offers that trade deliberately.
+- **The opening view sits a little further back than the pair needs.** At the
+  distance that fitted them exactly, the two kidneys ran edge to edge with the
+  gap between them down the middle of the frame — the one arrangement in which
+  a first click lands on nothing.
 - **The layer slider works in three steps**: the cortex fades so the pyramids
   and columns show through it, then the parenchyma fades so the calyces and the
   pelvis show through that. Nothing moves.
