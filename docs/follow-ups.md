@@ -541,7 +541,7 @@ signed volume・boundary/非多様体/退化）はそのまま残し、**壁厚�
 | 旧 | 新 | 理由 |
 | --- | --- | --- |
 | openEdges | boundary / nonManifold / degenerateTris を分離 | 「出現回数 ≠ 2」を全部 boundary と呼んでいた。閉じた四面体＋重複面は boundary 0・非多様体 3 |
-| enclosedMl | signedVolumeMl ＋ volumeMeaningful | 開いた面では平行移動で値が変わる（三角形 1 枚：原点 0、+z へ 1 移動して 1/6） |
+| enclosedMl | signedVolumeMl ＋ volumePrecondition | 開いた面では平行移動で値が変わる（三角形 1 枚：原点 0、+z へ 1 移動して 1/6） |
 | 最小距離 | nearestSampledVertexMm ＋ weld ＋ 標本数 | 面どうしではなく**標本頂点間**。入れ子の箱では 0 ではなく 6.7 になる |
 
 **このとき壁厚の判定を genus へ置き換えましたが、それも撤回しました**（→ F-52）。

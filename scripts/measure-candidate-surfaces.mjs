@@ -21,9 +21,13 @@
  *
  *   boundary / nonManifold  edges used once / three or more times. Different
  *                           defects, never summed into "open edges".
- *   signedVolume            the divergence-theorem sum. An enclosed volume only
- *                           where the mesh is closed, manifold and one piece —
- *                           `volumeMeaningful` says whether it is.
+ *   signedVolume            the divergence-theorem sum. It is an enclosed
+ *                           volume only where the mesh is closed, manifold, one
+ *                           piece, **consistently oriented and not
+ *                           self-intersecting**. `volumePrecondition` reports
+ *                           the first three, which are the ones this script
+ *                           tests; the last two are not checked anywhere here,
+ *                           so the column never says the preconditions are met.
  *   genus                   handles in the surface, from V − E + F, and only
  *                           for a closed, manifold, single-component surface.
  *                           It says how complicated the surface is. **It does
@@ -197,7 +201,7 @@ for (const [path, subtree] of targets) {
   console.log([
     'name', 'triangles', 'components',
     'boundary@1µm', 'boundary@10µm', 'nonManifold@1µm', 'degenerateTris',
-    'closedManifold', 'genus', 'signedVolumeMl', 'volumeMeaningful',
+    'closedManifold', 'genus', 'signedVolumeMl', 'volumePrecondition',
     'transversalMode', 'transversalHistogram',
   ].join('\t'));
   for (const m of meshes(glb(path), subtree)) {
@@ -228,7 +232,13 @@ for (const [path, subtree] of targets) {
       // Withheld rather than guessed wherever the surface cannot carry it.
       fine.genus === null ? '-' : fine.genus,
       (signedVolume(m.tris) * 1e6).toFixed(2),
-      closed ? 'yes' : 'no — open, non-manifold or several pieces',
+      // Deliberately not "yes". Closed, manifold and one piece is the part of
+      // the precondition this script tests; consistent orientation and the
+      // absence of self-intersection are also required for the sum to be an
+      // enclosed volume, and neither is checked anywhere here.
+      closed
+        ? 'partly met — closed, manifold, 1 piece; orientation and self-intersection NOT checked'
+        : 'not met — open, non-manifold or several pieces',
       sorted[0][0],
       sorted.slice(0, 4).map(([n, k]) => `${n}x${k}`).join(' '),
     ].join('\t'));

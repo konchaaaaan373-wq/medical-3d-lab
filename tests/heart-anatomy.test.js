@@ -9,6 +9,7 @@ import {
   HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PARTS,
+  HEART_RECIPES,
   HEART_STRUCTURES,
   HEART_VESSELS,
   heartColor,
@@ -133,35 +134,80 @@ test('heart: an open surface says it is open, and a closed one says nothing', ()
   }
 });
 
-test('heart: a chamber is described as the space it encloses, not as muscle', () => {
+test('heart: a chamber is described as a named surface whose meaning is still open', () => {
+  // B4-G1. This test used to require the opposite: that each chamber is "the
+  // space it encloses, not the muscle around it". Nothing measured that. Genus
+  // does not settle it (a cup has a wall and genus 0), and the enclosed volume
+  // does not either, since a normal left ventricular myocardial volume is of
+  // the same order as a normal cavity volume. So the description says what the
+  // source recorded and leaves the meaning open — and this test holds it open.
   const chambers = HEART_PARTS.filter(
     (part) => part.group === 'chamber' && part.id !== 'VH_M_interventricular_septum'
   );
   assert.equal(chambers.length, 4);
   for (const entry of chambers) {
     const info = heartStructureInfo(entry.id);
-    assert.match(info.description, /surface enclosing the space/);
-    assert.match(info.description, /no separate myocardial free wall/);
+    assert.match(info.description, /the source recorded under this chamber's name/);
+    assert.match(info.description, /space or the wall around it is still being checked/);
+    assert.match(info.descriptionJa, /確認中/);
+    // The retracted claim, in both languages, in the string a reader is given.
+    assert.doesNotMatch(info.description, /not the muscle around it/);
+    assert.doesNotMatch(info.description, /no separate myocardial free wall/);
+    assert.doesNotMatch(info.descriptionJa, /これは心腔であって/);
   }
-  // And the volumes that settled it are recorded rather than remembered.
+  // The volumes stay: they are measurements. What they were said to settle is
+  // what was withdrawn, so nothing here reads a meaning off them.
   assert.equal(heartPartById('VH_M_heart_left_ventricle').enclosedMl, 121.6);
   assert.equal(heartPartById('VH_M_heart_right_ventricle').enclosedMl, 74.0);
 });
 
+test('heart: nothing in the scene settles the wall question somewhere else', () => {
+  // The retraction is only worth something if it holds everywhere a reader can
+  // reach, so this sweeps every string the scene hands out — descriptions in
+  // both languages, the recipe notes, and the absence notes.
+  const strings = [];
+  for (const part of HEART_PARTS) {
+    const info = heartStructureInfo(part.id);
+    strings.push(info.description, info.descriptionJa, info.note, info.noteJa);
+  }
+  for (const recipe of HEART_RECIPES) {
+    strings.push(recipe.summary, recipe.summaryJa, recipe.note, recipe.noteJa);
+  }
+  for (const gap of HEART_MISSING) strings.push(gap.why, gap.whyJa);
+
+  const retracted = [
+    /not the muscle around it/i,
+    /no myocardial wall to cut/i,
+    /no separate myocardial free wall/i,
+    /これは心腔であって/,
+    /切るべき心筋壁はありません/,
+    /心筋の自由壁が別部位として収録されていない/,
+  ];
+  for (const text of strings.filter(Boolean)) {
+    for (const pattern of retracted) {
+      assert.doesNotMatch(text, pattern, `a withdrawn claim survives in: ${text.slice(0, 80)}…`);
+    }
+  }
+});
+
 test('heart: sharing a group does not share a meaning', () => {
   // B4-R1. The septum is filed with the chambers so a reader can find it, and
-  // it is not a chamber: it is the one part of the heart file that is a wall.
-  // A group is a place to look; the description is what a thing is.
+  // it is not a chamber. A group is a place to look; the description is what a
+  // thing is. The septum keeps its ordinary anatomical description — it is the
+  // muscular wall between the ventricles — without that settling what any other
+  // surface in the file represents (B4-G1 removed the "the one part that is a
+  // wall" phrasing, which did settle it).
   const septum = heartStructureInfo('VH_M_interventricular_septum');
   assert.equal(heartPartById('VH_M_interventricular_septum').group, 'chamber', 'still grouped for navigation');
   assert.match(septum.description, /wall between the two ventricles/);
   assert.doesNotMatch(
     septum.description,
-    /this is the chamber, not the muscle/,
+    /the source recorded under this chamber's name/,
     'the chambers\' sentence must not be applied to the septum'
   );
+  assert.doesNotMatch(septum.description, /\bthe one part\b/, 'and it must not settle what the rest of the file is');
   assert.match(septum.descriptionJa, /筋性の壁/);
-  assert.doesNotMatch(septum.descriptionJa, /これは心腔であって/);
+  assert.doesNotMatch(septum.descriptionJa, /唯一/);
 
   // And the group's own name no longer says "chambers" about a set that
   // contains something else.

@@ -56,9 +56,14 @@ const length = (a) => Math.sqrt(dot(a, a));
  * same vertex.
  *
  * **The tolerance is part of every answer that uses it.** Edge counts move with
- * it — the candidate right atrium reports 286 boundary edges welded at 1 µm and
- * 39 at 10 µm — so callers report the tolerance beside the number, and a metric
- * derived from this is never quoted as though it were tolerance-free.
+ * it — the candidate left coronary artery reports 285 boundary edges welded at
+ * 1 µm and 138 at 10 µm — so callers report the tolerance beside the number, and
+ * a metric derived from this is never quoted as though it were tolerance-free.
+ *
+ * The example used to be "the right atrium, 286 at 1 µm and 39 at 10 µm". Those
+ * numbers were themselves withdrawn: 286 was boundary, non-manifold and
+ * degenerate added together, and the right atrium's boundary count is 3. The
+ * illustration is now a case that survived the separation.
  */
 export function weldKey(point, weld) {
   const q = 1 / weld;
@@ -274,7 +279,11 @@ export function rayHits(triangles, origin, direction, epsilon = 1e-9, merge = 1e
  * This is the count the "two versus four" rule is about, and casting from
  * inside — which is what the withdrawn measurement did — is why that rule was
  * misapplied. Even so, **four crossings do not prove a wall**: a line through a
- * bent solid tube crosses it four times as well. Read it with the genus.
+ * bent solid tube crosses it four times as well, and so does a line through two
+ * separate solids. It is a description of one line through one shape. **Nothing
+ * here, alone or combined with the genus, decides whether there is a wall** —
+ * the genus reading was withdrawn too, for the reasons under
+ * `eulerCharacteristic`.
  */
 export function transversalCrossings(triangles, through, direction) {
   const size = boundingRadius(triangles, through) * 4 + 1;

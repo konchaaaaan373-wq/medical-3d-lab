@@ -66,23 +66,29 @@ belong to the heart", not a box drawn round the heart here. The other 67 meshes
 are the eye, the abdomen and the pelvis; the scene counts them and leaves them
 in the file.
 
-**There is no interior view, and the chambers are not walls.** Each chamber mesh
-is a closed surface around the chamber's *space* — the left ventricle encloses
-121.6 mL, measured by the divergence theorem over the mesh — and the file
-contains no myocardial free wall between chambers. A "cut through the heart"
-would therefore cut through nothing, and the inside of a chamber's surface is
-the back of a shell rather than an endocardial surface. What the scene offers
-instead is what the file supports: hide a chamber and the valves and papillary
-muscles that sit within it are there to be seen. "Show it" does exactly that
-and nothing more — it casts a ray from the viewpoint it is turning to, hides
-whichever whole structure is in the way, and lists what it hid so "Back to how
-it was" can put every one of them back. It never opens, sections or thins a
-surface.
+**There is no interior view, and what a chamber mesh represents is still open.**
+Each chamber mesh is a surface the source recorded under that chamber's name;
+the left ventricle's is closed and encloses 121.6 mL, measured by the divergence
+theorem over the mesh. **Whether such a surface stands for the chamber's space
+or for the wall around it is not established** — see §5, where two attempts to
+settle it were withdrawn — and no part of the source is separately identified as
+the myocardial free wall, so there is nothing in the file to select as one.
+Sectioning is therefore not offered: not because there is provably nothing to
+cut, but because cutting would have to assert the very thing that is undecided.
+What the scene offers instead is what the file supports without deciding it:
+hide a chamber whole and the valves and papillary muscles inside it are there to
+be seen. "Show it" does exactly that and nothing more — it casts a ray from the
+viewpoint it is turning to, hides whichever whole structure is in the way, and
+lists what it hid so "Back to how it was" can put every one of them back. It
+never opens, sections or thins a surface.
 
 **The enclosed volumes are not clinical measurements.** They are properties of
-one fixed cadaveric specimen at whatever state it was fixed in, recorded because
-they are what settles whether a "chamber" mesh is a cavity or a cavity plus its
-muscle. They are not end-diastolic volumes and are not shown as any.
+one fixed cadaveric specimen at whatever state it was fixed in. They are
+recorded as measurements of the meshes and nothing more: an earlier version of
+this card said they settle whether a "chamber" mesh is a cavity or a cavity plus
+its muscle, and **that is withdrawn** — a normal left ventricular myocardial
+volume is of the same order as a normal cavity volume, so 121.6 mL does not
+choose between them. They are not end-diastolic volumes and are not shown as any.
 
 ## 4. Sources and licence
 
@@ -231,8 +237,10 @@ the Japanese names are deliberate but unreviewed.
 * **One fixed way of looking, and it is made of the same moves the reader has.**
   "Inside the chambers" hides the four chamber surfaces and turns to the front,
   leaving the four valves, the five papillary muscles and the septum. **It is
-  not a section**: the chambers are closed surfaces around the chambers' spaces
-  and there is no myocardial wall to cut, so hiding them is all that happens.
+  not a section**: it hides the four chamber parts whole, and nothing in it cuts
+  a surface or builds a wall. That is a statement about what the code does, not
+  a claim that the source has no wall to cut — which is exactly what is still
+  being checked.
   Before it runs, it reports which structures it will hide and which it means to
   show; after it runs, the panel reports how many of those are actually visible
   from the viewpoint it turned to — measured, not promised — and "Back to how it

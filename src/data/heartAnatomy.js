@@ -381,12 +381,12 @@ const DESCRIPTION = Object.freeze({
     ja: '腕頭静脈です。左右の腕頭静脈が合流して上大静脈になります——大動脈弓の分枝ではなく、その傍らを走る別系統です。胸郭の外まで伸びるため既定では非表示にしています。出典に収録された表面モデルで、壁厚の表現と、内腔・外表面のどちらに対応するかは確認中です。',
   }),
   chamber: Object.freeze({
-    en: 'A surface enclosing the space of this chamber. The source file contains no separate myocardial free wall, so this is the chamber, not the muscle around it. Whether this particular surface is closed is recorded on the structure itself.',
-    ja: 'この心腔の空間を囲む面です。出典ファイルには心筋の自由壁が別部位として収録されていないため、これは心腔であって周囲の筋ではありません。この面が閉じているかどうかは部位ごとに記録しています。',
+    en: 'A surface the source recorded under this chamber\'s name. Whether it represents the chamber\'s space or the wall around it is still being checked. Whether this particular surface is closed is recorded on the structure itself.',
+    ja: '出典がこの心腔の名前で収録した表面モデルです。心腔の空間と周囲の壁のどちらを表すかは確認中です。この面が閉じているかどうかは部位ごとに記録しています。',
   }),
   septum: Object.freeze({
-    en: 'The muscular wall between the two ventricles, and the one part of the heart file that is a wall rather than a chamber cavity: it arrives as a separate closed solid enclosing 28.1 mL. It is listed with the chambers because that is where a reader looks for it, not because it is one.',
-    ja: '左右の心室を隔てる筋性の壁です。心臓ファイルの中で唯一、心腔の空間ではなく壁そのもので、28.1 mL を囲む独立した閉じた立体として収録されています。一覧で心腔と同じ場所にあるのは探しやすさのためで、心腔だからではありません。',
+    en: 'The muscular wall between the two ventricles. The source records it as a separate closed surface enclosing 28.1 mL. It is listed with the chambers because that is where a reader looks for it, not because it is one.',
+    ja: '左右の心室を隔てる筋性の壁です。出典では 28.1 mL を囲む独立した閉じた面として収録されています。一覧で心腔と同じ場所にあるのは探しやすさのためで、心腔だからではありません。',
   }),
   valve: Object.freeze({
     en: 'A valve surface at the boundary between two chambers, or between a chamber and its outflow.',
@@ -620,11 +620,11 @@ export const HEART_RECIPES = Object.freeze([
     ]),
     view: 'anterior',
     note:
-      'This is not a section. The chambers are closed surfaces around the chambers\' spaces and there is no '
-      + 'myocardial wall to cut; hiding them is what the file supports, and it is all that happens here.',
+      'This is not a section. It hides the four chamber parts whole, so that the valves, papillary muscles '
+      + 'and interventricular septum are left in view. Nothing here cuts a surface or builds a wall.',
     noteJa:
-      '断面ではありません。心腔は心腔の空間を囲む閉じた面で、切るべき心筋壁はありません。'
-      + 'ファイルが支えるのは「非表示にすること」だけで、ここで起きているのもそれだけです。',
+      '断面ではありません。四腔の部位を丸ごと非表示にして、弁・乳頭筋・心室中隔を残して見ています。'
+      + 'ここで面を切ったり壁を作ったりする処理はしていません。',
   }),
 ]);
 
@@ -663,10 +663,12 @@ export const HEART_MISSING = Object.freeze([
     'Myocardial free wall',
     '心筋自由壁',
     'noted',
-    'None of the fourteen parts in the source is named as myocardium or as a wall, so there is nothing here to ' +
-      'show as one. Whether the chamber surfaces themselves stand for the cavities or for walls around them is ' +
+    'No part of the source is separately identified as the myocardial free wall — the interventricular septum ' +
+      'and the papillary muscles are named, the free wall around the chambers is not — so there is nothing here ' +
+      'to select as one. What the chamber surfaces themselves represent, the space or the wall around it, is ' +
       'still being checked, so no wall thickness is given and no cut through one is offered.',
-    '出典の 14 部位に心筋や壁として収録されたものはないため、壁として出せるものがありません。' +
+    '出典に、心筋自由壁として独立に同定された部位はありません（心室中隔と乳頭筋は名前が付いていますが、' +
+      '心腔の周りの自由壁には付いていません）。そのため、自由壁として選べるものがありません。' +
       '心腔の面が空間そのものを表すのか、その周りの壁を表すのかは確認中です。したがって壁厚も、壁を切った断面も出しません。'
   ),
   missing('chordae-tendineae', 'Chordae tendineae', '腱索', 'noted'),

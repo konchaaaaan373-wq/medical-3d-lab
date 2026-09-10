@@ -235,10 +235,14 @@ corrections, not the old numbers, are what the raw table now holds.
   cardiac vein. A tube with no boundary is a tube whose cut ends the source has
   closed. **The source did that**; this scene caps nothing.
 - **Signed volume is reported as a signed volume.** For the 26 open meshes it is
-  not an enclosed volume and is marked `volumeMeaningful: no`; several are
-  negative, which is inconsistent winding rather than negative space. The
+  not an enclosed volume and is marked `volumePrecondition: not met`; several
+  are negative, which is inconsistent winding rather than negative space. The
   standing counter-example is in the test file: one open triangle sums to 0 at
   the origin and to 1/6 of a cubic unit a unit away.
+  The column never reads "met", even for the closed meshes. Closed, manifold and
+  one piece is what the script checks; an enclosed volume also needs consistent
+  orientation and no self-intersection, and **neither is checked anywhere here**,
+  so those rows say `partly met` and name what was left unchecked.
 
 ### Where the two files meet — a **sampled-vertex** distance, and a diagnostic
 
