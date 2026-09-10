@@ -1,0 +1,340 @@
+/* Anatomy panel -----------------------------------------------------------
+   One selection, three ways of working with it. See the note at the top of
+   `src/components/AnatomyPanel.js` for why it is laid out rather than stacked.
+
+   The rule the whole file exists to keep: the summary is a flex sibling of the
+   body, and only the body scrolls. No sticky, no fixed overlay of the summary
+   onto the list, and no scroller inside a scroller — both were tried, and both
+   produce controls a reader can see and cannot use. */
+
+.anatomy-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  /* `min-height: 0` is what lets the body shrink and scroll instead of pushing
+     the summary out of the panel. Without it a flex item refuses to go below
+     its content height and the panel grows past the rail. */
+  min-height: 0;
+  width: min(340px, 46vw);
+}
+
+/* ---------- summary: cannot be scrolled away, because it is not in the scroller */
+
+/* Its home while the sheet is shut. When the sheet opens the summary moves
+   into the dialog — the same element, so there is one of it and one selection
+   state — and this is left empty. */
+.anatomy-panel-dock {
+  flex: none;
+  min-height: 0;
+}
+
+.anatomy-panel-dock:empty {
+  display: none;
+}
+
+.anatomy-panel-summary {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--border);
+}
+
+.anatomy-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.anatomy-panel-swatch {
+  flex: none;
+  width: 4px;
+  align-self: stretch;
+  min-height: 26px;
+  border-radius: 2px;
+  background: var(--anatomy-color, var(--border));
+}
+
+.anatomy-panel-names {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.anatomy-panel-name {
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.anatomy-panel-where {
+  color: var(--ink-faint, #8b8b8b);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.anatomy-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.anatomy-panel-action,
+.anatomy-panel-open {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  /* The product's own preference for in-scene chrome; the WCAG 2.5.8 floor is
+     24. Measured in a browser by `npm run verify:ui`. */
+  min-height: 32px;
+  padding: 4px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.anatomy-panel-action[aria-pressed='true'] {
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-weight: 700;
+}
+
+.anatomy-panel-action[hidden],
+.anatomy-panel-open[hidden] {
+  display: none;
+}
+
+.anatomy-panel-action:focus-visible,
+.anatomy-panel-open:focus-visible,
+.anatomy-panel-tab:focus-visible,
+.anatomy-panel-close:focus-visible,
+.anatomy-tree-group:focus-visible,
+.anatomy-tree-leaf:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+/* Docked, the body is already there and there is nothing to open. */
+.anatomy-panel[data-layout='docked'] .anatomy-panel-open,
+.anatomy-panel[data-layout='docked'] .anatomy-panel-close {
+  display: none;
+}
+
+/* Inside the dialog the summary is the dialog's own header: it keeps its row,
+   above the tabs, and the body below it is the only thing that moves. */
+.anatomy-panel[data-sheet='open'] .anatomy-panel-sheet > .anatomy-panel-summary {
+  flex: none;
+  padding-bottom: 10px;
+}
+
+/* ---------- body: the one region that scrolls */
+
+.anatomy-panel-sheet {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 8px;
+}
+
+.anatomy-panel-sheet-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.anatomy-panel-tabs {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+}
+
+.anatomy-panel-tab {
+  flex: 1 1 auto;
+  min-height: 32px;
+  padding: 4px 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-dim, #9a9a9a);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.anatomy-panel-tab.is-active {
+  border-bottom-color: currentColor;
+  color: inherit;
+  font-weight: 750;
+}
+
+.anatomy-panel-close {
+  flex: none;
+  width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.anatomy-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.anatomy-panel-body::-webkit-scrollbar { width: 5px; }
+.anatomy-panel-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* The shared inspection panel and the selection card are embedded here, so
+   their own scroll boxes and caps come off: the body is the scroller. */
+.anatomy-panel-body .inspection-panel,
+.anatomy-panel-body .anatomy-info {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.anatomy-panel-display {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- the tree */
+
+.anatomy-tree-list {
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+
+.anatomy-tree-group,
+.anatomy-tree-leaf {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 3px 6px 3px calc(6px + var(--depth, 0) * 11px);
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.anatomy-tree-group:hover,
+.anatomy-tree-leaf:hover {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.anatomy-tree-chevron {
+  flex: none;
+  width: 10px;
+  color: var(--ink-faint, #8b8b8b);
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 120ms ease;
+}
+
+.anatomy-tree-group[aria-expanded='true'] .anatomy-tree-chevron {
+  transform: rotate(90deg);
+}
+
+.anatomy-tree-group .anatomy-tree-label {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.anatomy-tree-label {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.28;
+}
+
+.anatomy-tree-leaf.is-selected {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  font-weight: 700;
+}
+
+/* Isolation is a display state, so it is marked differently from selection —
+   the two are independent and a reader has to be able to see which is which. */
+.anatomy-tree-leaf.is-isolated {
+  box-shadow: inset 2px 0 0 currentColor;
+}
+
+/* ---------- on a phone, and on a short window
+
+   The model keeps the screen; the summary and the Parts button stay with it,
+   and the body becomes a sheet over the model. `fixed` here covers the *model*,
+   which is what a modal is for — it is not the summary being stacked over the
+   list, which is the thing this design refuses to do. */
+
+.anatomy-panel[data-layout='sheet'] {
+  width: auto;
+}
+
+.anatomy-panel[data-layout='sheet'] .anatomy-panel-sheet {
+  position: fixed;
+  z-index: 40;
+  inset: 0 0 0 auto;
+  width: min(360px, 100vw);
+  padding: 12px 14px 14px;
+  gap: 10px;
+  /* The same opaque token the display sheet uses. Over a model a translucent
+     panel reads as a smear, and over the chrome behind it as a rendering
+     fault — and a wrong token name falls back to something the text cannot be
+     read against, which is exactly what the first attempt did. */
+  background: var(--panel-sheet);
+  color: var(--ink);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow, -18px 0 40px rgb(0 0 0 / 38%));
+}
+
+.anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-sheet {
+  display: none;
+}
+
+/* A phone in portrait has the width but not the height to spare, so the sheet
+   comes up from the bottom instead of in from the side. It stops above the
+   console, the way the display sheet does: covering the model's own controls
+   would leave a reader with a list and no way to work the thing it describes. */
+@media (max-width: 520px) {
+  .anatomy-panel[data-layout='sheet'] .anatomy-panel-sheet {
+    inset: auto 0 calc(var(--console-height, 0px) + 12px) 0;
+    width: auto;
+    max-height: min(56vh, calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 24px));
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 12px 12px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-tree-chevron { transition: none; }
+}

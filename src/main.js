@@ -1,6 +1,7 @@
 import './styles/base.css';
 import './styles/reading-surface.css';
 import './styles/ui.css';
+import './styles/anatomy-panel.css';
 import './styles/navigation.css';
 import './styles/scene-library.css';
 import './styles/access.css';

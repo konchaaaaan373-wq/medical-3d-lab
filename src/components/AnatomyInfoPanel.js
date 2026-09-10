@@ -1,16 +1,32 @@
 import { el } from '../utils/dom.js';
 
 /**
- * Selection card for atlas-style scenes. The scene owns anatomical identity;
- * this component only renders what is pointed at or pinned. Camera and display
- * choices live in the shared inspection surface used by every model.
+ * What the selected structure is: its description, the model's limits, and
+ * where the model came from.
+ *
+ * The scene owns anatomical identity; this renders it. Camera and display
+ * choices live in the shared inspection surface used by every model, and the
+ * structure's *name* now belongs to the panel summary above this — a name that
+ * scrolls away with the prose under it is a name a reader cannot use.
+ *
+ * ## A pinned selection wins over a hover
+ *
+ * This read `hovered ?? selected`, so moving the pointer across the model
+ * replaced the description of the structure the reader had deliberately pinned
+ * with whatever happened to be under the cursor on the way somewhere else.
+ * Hover is a preview and previews only while nothing is pinned.
+ *
+ * @param {object} scene
+ * @param {{onPreferredView?: (id:string) => void, heading?: boolean}} [options]
+ *   `heading` renders the name and breadcrumb here as well; the anatomy panel
+ *   turns it off because its summary already carries them.
  */
-export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
+export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true } = {}) {
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
-  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Point to preview · click or tap to select' });
-  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: '触れて確認・クリック／タップで選択' });
+  const locationEn = el('span', { class: 'anatomy-location lang-en', text: 'Select a structure on the model or in the list.' });
+  const locationJa = el('span', { class: 'anatomy-location lang-ja', text: 'モデルまたは一覧から部位を選択してください。' });
   const bodyEn = el('p', {
     class: 'anatomy-copy lang-en',
     text: 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.',
@@ -27,10 +43,12 @@ export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
   noteJa.hidden = true;
 
   const element = el('section', { class: 'panel anatomy-info', role: 'status', 'aria-live': 'polite' }, [
-    el('div', { class: 'anatomy-heading-row' }, [
-      swatch,
-      el('div', { class: 'anatomy-heading' }, [titleEn, titleJa, locationEn, locationJa]),
-    ]),
+    heading
+      ? el('div', { class: 'anatomy-heading-row' }, [
+          swatch,
+          el('div', { class: 'anatomy-heading' }, [titleEn, titleJa, locationEn, locationJa]),
+        ])
+      : null,
     bodyEn,
     bodyJa,
     noteEn,
@@ -62,8 +80,8 @@ export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
     if (!selection) {
       titleEn.textContent = 'Select a structure';
       titleJa.textContent = '部位を選択してください';
-      locationEn.textContent = 'Point to preview · click or tap to select';
-      locationJa.textContent = '触れて確認・クリック／タップで選択';
+      locationEn.textContent = 'Select a structure on the model or in the list.';
+      locationJa.textContent = 'モデルまたは一覧から部位を選択してください。';
       bodyEn.textContent = 'Rotate and zoom freely. Move the anatomical-layer slider to reveal structures in place.';
       bodyJa.textContent = '自由に回転・拡大できます。解剖レイヤーで本来の位置にある深部構造を表示します。';
       noteEn.hidden = true;
@@ -91,8 +109,8 @@ export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
       return;
     }
     if (status.state === 'ready') {
-      countEn.textContent = `${status.selectableCount} selectable structures · hover previews, click pins`;
-      countJa.textContent = `${status.selectableCount}部位・触れて確認、クリックで固定`;
+      countEn.textContent = `${status.selectableCount} selectable structures`;
+      countJa.textContent = `${status.selectableCount}部位`;
       return;
     }
     countEn.textContent = 'Loading atlas…';
@@ -101,7 +119,9 @@ export function createAnatomyInfoPanel(scene, { onPreferredView } = {}) {
 
   let selected = scene.getAnatomySelection();
   let hovered = scene.getAnatomyHover?.() ?? null;
-  const renderSelection = () => update(hovered ?? selected);
+  // Pinned first. See the note above: reading the hover first meant a pointer
+  // crossing the model rewrote the card the reader had pinned.
+  const renderSelection = () => update(selected ?? hovered);
   renderSelection();
   updateStatus(scene.getAnatomyStatus?.() ?? { state: 'ready', selectableCount: scene.selectables?.length ?? 0 });
   const unsubscribeSelection = scene.onAnatomySelection((value) => {

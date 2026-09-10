@@ -313,13 +313,25 @@ test('the volume a carve loses at its cuts is resolution, not a hole', () => {
     built.dispose();
     return report.shortfall;
   };
-  const coarse = measure(5);
-  const fine = measure(12);
-  assert.ok(coarse > 0, `a carve should lose volume at its cuts, not gain it (${coarse})`);
+  const coarse = Math.abs(measure(5));
+  const fine = Math.abs(measure(12));
+  // The magnitude, not the sign. The sign used to be positive because the cut
+  // rims zigzagged inward and the parts lost volume there; the mesh is cut
+  // along the crease now, so what is left is the parts sampling the curved
+  // surface from five centres against a reference that samples it from one,
+  // and they come out a little large instead of a little small. Which way the
+  // residue falls is a property of two approximations, and it changed when one
+  // of them got better. What distinguishes it from a wedge belonging to nobody
+  // is unchanged, and is the whole point: an approximation error shrinks as
+  // the mesh refines, and a hole does not.
   assert.ok(
-    fine < coarse * 0.7,
-    `refining the mesh should shrink the shortfall: ${(100 * coarse).toFixed(3)}% at detail 5, ` +
+    fine < coarse * 0.5,
+    `refining the mesh should shrink the residue: ${(100 * coarse).toFixed(3)}% at detail 5, ` +
       `${(100 * fine).toFixed(3)}% at detail 12`
+  );
+  assert.ok(
+    fine < 0.005,
+    `at detail 12 the parts and the whole should agree to within half a per cent, not ${(100 * fine).toFixed(3)}%`
   );
 });
 

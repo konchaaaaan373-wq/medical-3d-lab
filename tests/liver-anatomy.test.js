@@ -215,8 +215,24 @@ test('the segments partition the liver: they fill it, and they do not overlap', 
     report.multipleRate <= 0.001,
     `${report.multiple} of ${report.samples} points belong to more than one segment — ${report.worst}`
   );
+  // Two per cent, and the sign is now the other way round.
+  //
+  // `shortfall` compares two approximations of the same solid: the segments,
+  // and one uncut carve of the whole at the same resolution. It used to sit
+  // just under zero because two errors cancelled — the parts lost volume along
+  // their zigzagging cut rims, and gained it by sampling the curved surface
+  // from nine centres where the reference samples it from one. Cutting the
+  // mesh along the crease removed the first, so what is left is the second,
+  // and the parts now come out slightly *larger* than the single coarse carve
+  // they are measured against.
+  //
+  // It is not the parts leaving the organ: the fraction of part-surface points
+  // outside the liver is unchanged to two decimal places. And it converges —
+  // 3.7% at detail 5, 1.6% here, 0.8% at detail 12 — which a real gap would
+  // not. The assertions above are the ones that would catch a gap, and they
+  // are at a tenth of a per cent.
   assert.ok(
-    Math.abs(report.shortfall) <= 0.01,
+    Math.abs(report.shortfall) <= 0.02,
     `the segments sum to ${(100 * (1 - report.shortfall)).toFixed(2)}% of the liver they were cut from`
   );
   built.dispose();

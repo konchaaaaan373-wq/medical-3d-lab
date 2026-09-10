@@ -184,9 +184,18 @@ for (const file of emitted) {
 }
 
 // Everything `public/` copied into the build, judged against the asset manifest.
+// The subject is the public tree itself, not the files that happen to sit near
+// a registered asset: an unregistered mesh has never needed to hide among the
+// accounted files when it could simply be put in a directory of its own.
+const publicDir = 'public';
+const publicFiles = existsSync(publicDir) ? walk(publicDir) : [];
+if (!publicFiles.length) {
+  notes.push(`no ${publicDir}/ directory was found, so nothing was checked against the asset manifest.`);
+}
 problems.push(
   ...assetDeliveryProblems({
     emitted,
+    publicFiles,
     assets: ASSET_MANIFEST,
     requiredAssetIds: requiredAssetIdsFor(RELEASED_SCENES, modelProfileForScene),
   })
