@@ -41,7 +41,7 @@ const flag = (name, fallback = null) => {
 
 const out = flag('--out');
 if (!out) {
-  console.error('usage: node scripts/pack-handoff.mjs --out <dir> [--limit-mib 30]');
+  console.error('usage: node scripts/pack-handoff.mjs --out <dir> [--limit-mib 30] [--since <ref>]');
   process.exit(2);
 }
 const limitBytes = Number(flag('--limit-mib', '30')) * 1024 * 1024;
@@ -51,12 +51,41 @@ const head = git('rev-parse', 'HEAD');
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD');
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
+/**
+ * `--since <ref>` builds an **incremental** bundle: only the commits after that
+ * ref. It is dramatically smaller — a full bundle of this repository is 47 MB
+ * because of the screenshot history, while the 36 commits of one branch are
+ * 25 MB — which matters when the transport has a size limit and splitting the
+ * archive would put a manual join back in front of the recipient.
+ *
+ * The cost is a **prerequisite**: the recipient's clone must already contain
+ * that commit. So the ref is resolved here and recorded, and `restore.sh`
+ * checks for it before touching anything and stops with a plain message if it
+ * is missing. Pass a commit that is an ancestor of the published default
+ * branch, so any ordinary clone has it; `git merge-base HEAD origin/main` is
+ * the safe answer.
+ *
+ * Without `--since` the bundle is `--all` and needs no prerequisite.
+ */
+const since = flag('--since');
+const base = since ? git('rev-parse', `${since}^{commit}`) : null;
+const commits = base ? Number(git('rev-list', '--count', `${base}..HEAD`)) : null;
+if (base && commits === 0) {
+  console.error(`--since ${since} resolves to ${base}, which is HEAD: there is nothing to bundle`);
+  process.exit(2);
+}
+
 mkdirSync(out, { recursive: true });
 
 // --- the bundle ------------------------------------------------------------
-// `--all`, so it restores with no prerequisite commit.
 const bundlePath = join(out, 'full.bundle');
-execFileSync('git', ['bundle', 'create', bundlePath, '--all'], { stdio: 'ignore' });
+execFileSync(
+  'git',
+  base
+    ? ['bundle', 'create', bundlePath, `${base}..${branch}`]
+    : ['bundle', 'create', bundlePath, '--all'],
+  { stdio: 'ignore' }
+);
 const bundleHash = sha256(bundlePath);
 const bundleBytes = statSync(bundlePath).size;
 
@@ -77,24 +106,129 @@ const joinLine = parts.length
   ? `cat ${parts.join(' ')} > "$WORK/full.bundle"`
   : 'cp full.bundle "$WORK/full.bundle"';
 
+/**
+ * A whole-history bundle: verify it in a throwaway repository, then clone.
+ *
+ * `git bundle verify` refuses to run outside a repository — "need a repository
+ * to verify a bundle" — and the recipient will not be in one, which is how this
+ * failed for every recipient until it was actually executed. An empty scratch
+ * repository under $WORK satisfies it and is thrown away with $WORK.
+ */
+const cloneSteps = () => [
+  'echo "3/5  git bundle verify"',
+  'git init --quiet "$WORK/scratch"',
+  'git -C "$WORK/scratch" bundle verify "$WORK/full.bundle"',
+  '',
+  'echo "4/5  clone into $TARGET"',
+  'rm -rf "$TARGET"',
+  'git clone --quiet "$WORK/full.bundle" "$TARGET"',
+  `git -C "$TARGET" checkout --quiet ${branch}`,
+  '',
+  'echo "5/5  HEAD"',
+  'ACTUAL_HEAD=$(git -C "$TARGET" rev-parse HEAD)',
+  'if [ "$ACTUAL_HEAD" != "$EXPECTED_HEAD" ]; then',
+  '  echo "restored HEAD mismatch: $ACTUAL_HEAD != $EXPECTED_HEAD" >&2',
+  '  exit 1',
+  'fi',
+  '',
+  'echo',
+  `echo "OK  $TARGET is at $ACTUAL_HEAD on ${branch}"`,
+  'echo "    the third-party GLBs are not in the bundle - see ASSETS.md"',
+];
+
+/**
+ * An incremental bundle: fetch it into a clone that already has the base commit.
+ *
+ * Here the target is an existing repository rather than a directory to create,
+ * and `git bundle verify` runs inside it, because the bundle's prerequisite is
+ * exactly what that check is for.
+ *
+ * **Nothing here touches a working tree.** The commits arrive on
+ * `refs/handoff/<branch>` first; the local branch is created only if it does
+ * not exist, and moved only if the move is a fast-forward and the branch is not
+ * the one checked out. Anything else is left alone and printed as a command the
+ * reader can run when they choose. A hand-off has no business resetting
+ * somebody's work in progress.
+ */
+const incrementalSteps = () => [
+  'echo "3/5  git bundle verify (in your clone: this bundle has a prerequisite)"',
+  'if ! git -C "$TARGET" rev-parse --git-dir >/dev/null 2>&1; then',
+  '  echo "not a git repository: $TARGET" >&2',
+  '  echo "run this from inside your clone, or pass its path: sh restore.sh /path/to/clone" >&2',
+  '  exit 1',
+  'fi',
+  'if ! git -C "$TARGET" cat-file -e "$BASE^{commit}" 2>/dev/null; then',
+  '  echo "your clone does not have the base commit $BASE" >&2',
+  '  echo "it is an ancestor of the published default branch, so: git -C \\"$TARGET\\" fetch origin" >&2',
+  '  exit 1',
+  'fi',
+  'git -C "$TARGET" bundle verify "$WORK/full.bundle"',
+  '',
+  'echo "4/5  fetch into $TARGET"',
+  `git -C "$TARGET" fetch --quiet "$WORK/full.bundle" "refs/heads/${branch}:refs/handoff/${branch}"`,
+  '',
+  'echo "5/5  HEAD"',
+  `ACTUAL_HEAD=$(git -C "$TARGET" rev-parse refs/handoff/${branch})`,
+  'if [ "$ACTUAL_HEAD" != "$EXPECTED_HEAD" ]; then',
+  '  echo "fetched HEAD mismatch: $ACTUAL_HEAD != $EXPECTED_HEAD" >&2',
+  '  exit 1',
+  'fi',
+  '',
+  `CHECKED_OUT=$(git -C "$TARGET" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")`,
+  `if ! git -C "$TARGET" rev-parse --verify --quiet "refs/heads/${branch}" >/dev/null; then`,
+  `  git -C "$TARGET" branch ${branch} "$ACTUAL_HEAD"`,
+  '  PLACED="created"',
+  `elif [ "$(git -C "$TARGET" rev-parse "refs/heads/${branch}")" = "$ACTUAL_HEAD" ]; then`,
+  '  PLACED="already there"',
+  `elif [ "${branch}" != "$CHECKED_OUT" ] && git -C "$TARGET" merge-base --is-ancestor "refs/heads/${branch}" "$ACTUAL_HEAD"; then`,
+  `  git -C "$TARGET" branch --force ${branch} "$ACTUAL_HEAD"`,
+  '  PLACED="fast-forwarded"',
+  'else',
+  '  PLACED="left alone"',
+  'fi',
+  '',
+  'echo',
+  `echo "OK  $ACTUAL_HEAD is in $TARGET"`,
+  `echo "    refs/handoff/${branch} points at it; branch ${branch}: $PLACED"`,
+  'if [ "$PLACED" = "left alone" ]; then',
+  `  echo "    it already exists and this is not a fast-forward, so nothing was moved."`,
+  `  echo "    to look at the new work without disturbing yours:"`,
+  `  echo "      git -C \\"$TARGET\\" log refs/handoff/${branch}"`,
+  'fi',
+  'echo "    the third-party GLBs are not in the bundle - see ASSETS.md"',
+];
+
 const restore = [
   '#!/bin/sh',
   '# Verify and restore this hand-off. One command, no manual step.',
   '#',
-  '#   sh restore.sh [target-directory]',
+  base
+    ? '#   sh restore.sh [path-to-your-clone]     (defaults to the current directory)'
+    : '#   sh restore.sh [target-directory]       (defaults to ./restored beside this script)',
+  '#',
+  ...(base
+    ? [
+      '# This is an INCREMENTAL bundle: it carries only the commits after the base',
+      '# commit below, which your clone already has because it is an ancestor of the',
+      '# published default branch. That is what keeps it small enough to arrive in one',
+      '# piece. Nothing here touches your working tree, and nothing is force-moved.',
+    ]
+    : ['# This bundle carries the whole history and needs nothing beforehand.']),
   '#',
   '# Exits non-zero on any mismatch: a checksum that does not match, a bundle git',
   '# will not accept, or a restored HEAD that is not the one recorded.',
   'set -eu',
   '',
   'HERE=$(cd "$(dirname "$0")" && pwd)',
-  'TARGET=${1:-"$HERE/restored"}',
+  'WAS=$(pwd)',
+  base ? 'TARGET=${1:-"$WAS"}' : 'TARGET=${1:-"$HERE/restored"}',
   'WORK=$(mktemp -d)',
   "trap 'rm -rf \"$WORK\"' EXIT",
   'cd "$HERE"',
   '',
   `EXPECTED_HEAD=${head}`,
   `EXPECTED_BUNDLE=${bundleHash}`,
+  ...(base ? [`BASE=${base}`] : []),
   '',
   'sum() {',
   '  if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@";',
@@ -118,28 +252,7 @@ const restore = [
   '  exit 1',
   'fi',
   '',
-  'echo "3/5  git bundle verify"',
-  '# `git bundle verify` refuses to run outside a repository ("need a repository',
-  '# to verify a bundle"), and the recipient will not be in one. An empty scratch',
-  '# repository is enough for it, and it is thrown away with $WORK.',
-  'git init --quiet "$WORK/scratch"',
-  'git -C "$WORK/scratch" bundle verify "$WORK/full.bundle"',
-  '',
-  'echo "4/5  clone into $TARGET"',
-  'rm -rf "$TARGET"',
-  'git clone --quiet "$WORK/full.bundle" "$TARGET"',
-  `git -C "$TARGET" checkout --quiet ${branch}`,
-  '',
-  'echo "5/5  HEAD"',
-  'ACTUAL_HEAD=$(git -C "$TARGET" rev-parse HEAD)',
-  'if [ "$ACTUAL_HEAD" != "$EXPECTED_HEAD" ]; then',
-  '  echo "restored HEAD mismatch: $ACTUAL_HEAD != $EXPECTED_HEAD" >&2',
-  '  exit 1',
-  'fi',
-  '',
-  'echo',
-  `echo "OK  $TARGET is at $ACTUAL_HEAD on ${branch}"`,
-  'echo "    the third-party GLBs are not in the bundle - see ASSETS.md"',
+  ...(base ? incrementalSteps() : cloneSteps()),
   '',
 ].join('\n');
 writeFileSync(join(out, 'restore.sh'), restore);
@@ -176,8 +289,17 @@ writeFileSync(join(out, 'ASSETS.md'), [
 writeFileSync(join(out, 'MANIFEST.json'), `${JSON.stringify({
   head,
   branch,
-  bundle: { name: 'full.bundle', sha256: bundleHash, bytes: bundleBytes, split: parts.length > 0, parts },
-  restore: 'sh restore.sh [target-directory]',
+  bundle: {
+    name: 'full.bundle',
+    sha256: bundleHash,
+    bytes: bundleBytes,
+    split: parts.length > 0,
+    parts,
+    // An incremental bundle applies only to a clone that already has `base`.
+    incremental: Boolean(base),
+    ...(base ? { base, commits } : {}),
+  },
+  restore: base ? 'sh restore.sh [path-to-your-clone]' : 'sh restore.sh [target-directory]',
   checksums: 'SHA256SUMS.txt — every file in this directory except SHA256SUMS.txt itself',
   assets: 'ASSETS.md — the third-party GLBs are not in the bundle; how to fetch them',
 }, null, 2)}\n`);
@@ -204,4 +326,6 @@ writeFileSync(
 console.log(`packed ${out}`);
 console.log(`  HEAD    ${head} on ${branch}`);
 console.log(`  bundle  ${bundleBytes} bytes, sha256 ${bundleHash}${parts.length ? `, split into ${parts.length}` : ''}`);
+if (base) console.log(`  scope   incremental: ${commits} commits after ${base}, which the recipient's clone must already have`);
+else console.log('  scope   whole history, no prerequisite');
 console.log(`  listed  ${listed.length} files in ${MANIFEST_NAME} (itself excluded)`);
