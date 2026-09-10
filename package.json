@@ -22,7 +22,8 @@
     "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
     "assets:dev": "node scripts/fetch-dev-assets.mjs",
     "assets:measure": "node scripts/measure-candidate-surfaces.mjs",
-    "assets:validate": "node scripts/validate-candidate-gltf.mjs"
+    "assets:validate": "node scripts/validate-candidate-gltf.mjs",
+    "verify:recipe-report": "node scripts/check-heart-recipe-report.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

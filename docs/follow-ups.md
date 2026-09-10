@@ -439,6 +439,80 @@ node 名は冠動脈、label と id は肺動脈の枝を指しています。
 - 併せて: 「回旋枝」という名の mesh はありません（左冠動脈・前下行枝・対角枝 2 本・
   左縁枝はあります）。どれが回旋枝の走行かも、こちらでは判断しません
 
+### F-55 N2 の実ブラウザ検証を追跡対象にした — 対応済み（B4-closeout / 共有 App）
+
+`.n2-verify.mjs` は `.gitignore` の `.*.mjs` に一致し、**記録は残って、それを作った
+コードは残っていませんでした**。[`scripts/check-heart-recipe-report.mjs`](../scripts/check-heart-recipe-report.mjs)
+（`npm run verify:recipe-report`）へ移しました。ignore 全体は緩めていません。
+
+**単なる移設ではありません。** 旧版は観測を print するだけで、assert がありませんでした。
+
+- 全 17 手順が DOM と camera 状態を assert します。**撮影は既定で行いません**（`--shots`）
+- **selector が 0 件なら失敗**です。旧版は zoom ボタンの selector が外れると
+  「camera 行の 3 番目」へ黙って fallback していました——**押していない経路を
+  押したことにする**書き方です。実際に外れていました（`[data-control="zoomIn"]` は
+  当時存在せず、`[title="Zoom in"]` もシーンが改題するため一致しません）
+- 終了コードは 3 つ：0 合格 / 1 不合格 / **2 実行不能**（build 無し・playwright 無し・
+  候補 asset 無し）。実行不能を合格にしません
+- ローカル build を一時 static server で配信します。本番・deploy preview・
+  `verify:live` は使いません
+- `docs/screenshots/b4-next/recipe-report-run.json` に機械可読の結果を残します
+
+**検査が検査であることを確認しました**：`zoomBy()` 末尾の `noteDisplayChanged()` を
+1 か所だけ外して build し直すと、それを共有する 2 手順（ズームボタンと `+` キー）だけが
+落ちて exit 1、他は通りました。戻して 17/17 に復帰。
+
+`src/components/ControlPanel.js` のボタンに `data-control` を付けました（共有ファイル）。
+title は scene が改題し、行の順序は scene が要求した control で変わるため、
+**prose や位置で掴む検査は別のボタンを黙って押しうる**からです。
+
+console error 3 件はすべて `/.netlify/functions/*`（static server に function が無い）で、
+除外せず件数と内訳を log に記録しています。
+
+### F-54 全履歴 restore が既存ディレクトリを削除していた — 対応済み（B4-closeout / 納品手順）
+
+`pack-handoff.mjs` の `cloneSteps()` が clone 前に `rm -rf "$TARGET"` を実行していました。
+**今回納品した増分版にこの行はなく、そちらの復元は正常**でした。問題は同じ梱包器の
+全履歴モードです。レビュー側が人工 repo で、既存 canary の消失と再実行時の作業メモ消失を
+再現しています。こちらでも同梱の診断コードで修正前に再現しました
+（`observed_full_history_data_loss: true`）。
+
+- 全履歴 restore は**既存 target を検出したら停止**し、何も削除しません。
+  **`--force` は作りません**——消したいなら本人が消せばよく、そのとき初めて
+  「復元の副作用」ではなく「本人の削除」になります
+- 相対 target は**呼び出し元の cwd 基準**で解決します
+- 削除するのは `mktemp` で確保した `$WORK` だけです
+- **packer 自身も、空でない出力先を拒否**します。古いファイルは上書きされない代わりに
+  `SHA256SUMS.txt` に載って**この納品の一部として保証されて出て行く**ためです
+
+[`tests/pack-handoff.test.js`](../tests/pack-handoff.test.js) が人工 repo で 7 ケース
+（新規 target・既存 target・再実行・相対 path・破損 hash・増分 base 欠落・
+既存 dirty clone）を固定します。assert は「終了コードが非 0」ではなく
+**「そこにあったファイルがまだそこにある」**です。旧 packer に対して 4 件が落ち、
+新 packer で通ることを確認済みで、修正後の診断コードは
+`observed_full_history_data_loss: false` を返します。
+
+### F-53 G1 の撤回が、実際に返る説明へ届いていなかった — 対応済み（B4-closeout / 心臓）
+
+F-52 で撤回を書いたのは血管の説明と各文書で、**四腔の説明はそのままでした**。
+`heartStructureInfo()` は `this is the chamber, not the muscle around it` /
+「これは心腔であって周囲の筋ではありません」を返し続けていました。
+**利用者に渡る文字列が変わっていない撤回は、撤回ではありません。**
+
+| どこ | 直した内容 |
+| --- | --- |
+| `DESCRIPTION.chamber` | 「出典がこの心腔の名前で収録した表面モデル。心腔の空間と周囲の壁のどちらかは**確認中**」へ |
+| `DESCRIPTION.septum` | 一般的な解剖説明（心室中隔＝筋性の壁）と実測 28.1 mL は維持。**「ファイル中で唯一」を削除**——他の面の意味まで確定していました |
+| `HEART_RECIPES.note` | 「切るべき心筋壁はありません」→「四腔を丸ごと非表示にする。面を切ったり壁を作ったりしない」。**実装仕様であって、出典に壁が無いという主張ではありません** |
+| `HEART_MISSING` 心筋自由壁 | 「14 部位に心筋や壁として収録されたものはない」は**誤り**でした（中隔も乳頭筋も名前があります）。「**自由壁として独立に同定された部位が無い**」へ |
+| `docs/model-cards/heart-anatomy.md` §3 | 注記追加ではなく**現行本文を書き換え**。「容積が心腔か心筋込みかを確定する」も撤回（正常左室の心筋容積は心腔容積と同じ桁です） |
+| `tests/heart-anatomy.test.js` | 旧主張を要求するテストを、**新しい文言を要求し旧文言を拒否する**テストへ。加えて、scene が返す全文字列（説明・recipe note・欠落説明・日英）を掃く回帰テストを追加 |
+
+`volumeMeaningful` は `volumePrecondition` へ改名し、**"yes" とは言わなくなりました**。
+閉・多様体・1 成分はこのスクリプトが検査する部分ですが、囲む体積には
+**向きの整合性と自己交差の不在**も要り、どちらも検査していないためです。
+TSV は実 GLB から再生成し、**測定値は 1 つも変わっていません**（この列だけ）。
+
 ### F-52 genus でも壁厚は決まらなかった — 撤回（B4-G1 / 心臓）
 
 F-49 で ray 判定を撤回したあと、**代わりに genus で壁厚を判定しました。それも撤回します。**

@@ -1,0 +1,112 @@
+{
+  "scope": "implementer's own verification of B4-N2 in a real browser; not a third party's, and not a medical review",
+  "route": "/?preview=1#/heart-anatomy",
+  "viewport": {
+    "width": 1280,
+    "height": 800
+  },
+  "origin": "ephemeral local static server over the local build; no production, preview deploy or verify:live",
+  "steps": [
+    {
+      "step": "the recipe writes a report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしました。前面の視点では、"
+    },
+    {
+      "step": "the recipe moves the camera",
+      "ok": true,
+      "detail": "[0.5669,-0.0337,5.0015] -> [0.4975,-0.0497,5.0436]"
+    },
+    {
+      "step": "the recipe's own camera move does not retire it",
+      "ok": true,
+      "detail": "still shown after the tween it started"
+    },
+    {
+      "step": "the zoom-in button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+    },
+    {
+      "step": "the zoom-in button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "step": "the \"+\" key: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+    },
+    {
+      "step": "the \"+\" key: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "step": "\"Go to it\": the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+    },
+    {
+      "step": "\"Go to it\": retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "step": "\"Go to it\" moved the camera",
+      "ok": true,
+      "detail": "[0.4915,-0.0511,5.0473] -> [0.1072,0.2832,3.4247]"
+    },
+    {
+      "step": "a viewpoint button: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+    },
+    {
+      "step": "a viewpoint button: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "step": "a drag on the canvas: the report is present first",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4"
+    },
+    {
+      "step": "a drag on the canvas: retires the report",
+      "ok": true,
+      "detail": "cleared"
+    },
+    {
+      "step": "re-running restores the report",
+      "ok": true,
+      "detail": "Hid 4. From the Anterior viewpoint, 8 of 10 named structures have an unobstructed anchor.4 件を非表示にしました。前面の視点では、"
+    },
+    {
+      "step": "re-running measures the same thing",
+      "ok": true,
+      "detail": "identical"
+    },
+    {
+      "step": "no uncaught page errors",
+      "ok": true,
+      "detail": "none"
+    }
+  ],
+  "failures": [],
+  "pageErrors": [],
+  "consoleErrors": {
+    "total": 3,
+    "messages": [
+      "Failed to load resource: net::ERR_CONNECTION_RESET",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "unservedRequests": [
+      "/.netlify/functions/billing-status",
+      "/.netlify/functions/plan-catalog"
+    ],
+    "note": "requests the local static server had no file for are listed above; they are the shell's own optional fetches, not assertions"
+  },
+  "ranAt": "2026-09-10T05:21:01.265Z"
+}

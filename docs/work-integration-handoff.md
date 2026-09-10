@@ -32,6 +32,12 @@
 | `applyInspectionView(id, { byReader = true })` | **第 2 引数が新設です。** 読者が視点ボタンを押した＝`byReader: true`（既定）で失効。アプリが読者の代わりに視点を当てる＝`byReader: false` で失効しません | 視点を当てる新 UI は既定のままでよい |
 | `viewer.controls.addEventListener('start', …)` | 変更なし。**`change` へは戻さないでください**——アプリ自身の tween でも発火し、当の recipe のレポートを消します | — |
 
+### `src/components/ControlPanel.js`
+
+| 識別子 | 何をするか | Work が触るとき |
+| --- | --- | --- |
+| ボタンの `data-control` 属性 | `button()` が付けます（`zoomIn` / `zoomOut` / `reset` など、icon 名と同じ）。**title も label も安定しません**——scene は「Zoom in」を「Zoom in — fill the frame with the chamber (+)」へ改題しますし、行の順序は scene がどの control を要求したかで変わります。ブラウザ検査はこれで掴みます | **console のボタンを作り直すときは、この属性を残してください。** 消えると `npm run verify:recipe-report` が「0 件」で落ちます（黙って別のボタンを押すよりは良い状態です） |
+
 ### `src/components/AnatomyPanel.js`
 
 | 識別子 | 何をするか |
@@ -47,7 +53,8 @@
 | `lib/mesh-metrics.mjs` | 純粋な計測モジュール。`tests/mesh-metrics.test.js` が既知形状で検証します。**壁厚は測れません**——記述指標（閉・多様体・成分数・genus・signed volume・境界/非多様体/退化）だけです |
 | `measure-candidate-surfaces.mjs` | 上を使って固定 GLB を計測。`npm run assets:measure [heart\|junctions]` |
 | `validate-candidate-gltf.mjs` | glTF Validator。**error があれば exit 1**、実行不能は 2。`npm run assets:validate` |
-| `pack-handoff.mjs` | 納品ディレクトリ生成（自己参照しない hash 一覧＋`restore.sh`＋`ASSETS.md`）。**実行して検証済み**：`/tmp` からの復元 exit 0、復元 HEAD 一致、1 バイト改変で exit 1 |
+| `pack-handoff.mjs` | 納品ディレクトリ生成（自己参照しない hash 一覧＋`restore.sh`＋`ASSETS.md`）。**復元は非破壊**：既存 target は削除せず停止し、`--force` はありません。`tests/pack-handoff.test.js` が人工 repo で 7 ケースを固定 |
+| `check-heart-recipe-report.mjs` | B4-N2 の実ブラウザ検査。`npm run verify:recipe-report`。**17 assert / exit 0-1-2**（2 = 実行不能）。ローカル build のみで、本番・deploy preview・`verify:live` は使いません |
 
 ---
 
