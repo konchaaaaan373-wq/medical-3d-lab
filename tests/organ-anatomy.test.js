@@ -333,8 +333,16 @@ const LABELLED = [
     // nobody draws.
     () => buildLiver({ vessels: false }),
     // Measured, not guessed: the right lobe label hangs off segment VII, the
-    // left lobe's off II, the porta sits by V and the falciform by IVa.
-    { rightLobe: 'segment-VII', leftLobe: 'segment-II', porta: 'segment-V', falciform: 'segment-IVa' },
+    // left lobe's off III, the porta sits by V and the falciform by IVa.
+    //
+    // The left lobe's moved from II to III when the liver's outer shape was
+    // corrected in 2026-09 — the organ grew to its proper height and the label
+    // that had been level with the superior segment is now level with the
+    // inferior one. Which of the two a *label* is nearest is incidental: what
+    // this test is for is that a label points at the organ it names rather
+    // than floating beside it or sitting inside it, and re-measuring is what
+    // keeps that check honest when the geometry moves.
+    { rightLobe: 'segment-VII', leftLobe: 'segment-III', porta: 'segment-V', falciform: 'segment-IVa' },
   ],
   ['gallbladder', () => buildGallbladder(), { gallbladder: 'gallbladder' }],
   ['thyroid', () => buildThyroid(), { rightLobe: 'right-lobe', leftLobe: 'left-lobe', isthmus: 'isthmus' }],

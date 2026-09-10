@@ -26,6 +26,9 @@ function createModel() {
   const object = new THREE.Group();
   const liver = buildLiver({ color: LIVER_PORTAL_FLOW.palette.liver });
   const gallbladder = buildGallbladder();
+  // Hung from the fossa the liver reports rather than from the builder's own
+  // default position, which was written against a liver half this height.
+  gallbladder.object.position.copy(liver.anchors.gallbladderFossa).add(new THREE.Vector3(0, -0.2, 0));
   const duodenum = buildDuodenum();
   duodenum.object.position.set(0.35, -1.35, 0.15);
   duodenum.object.scale.setScalar(0.8);

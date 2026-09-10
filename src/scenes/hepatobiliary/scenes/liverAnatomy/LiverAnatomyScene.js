@@ -43,8 +43,8 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static meta = LIVER_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(0.55, 0.5, 5.8),
-    target: new THREE.Vector3(0.55, 0.2, 0),
+    position: new THREE.Vector3(0.15, -0.12, 6.1),
+    target: new THREE.Vector3(0.15, -0.17, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -52,18 +52,18 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static colorModes = LIVER_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.55, 0.5, 5.8], target: [0.55, 0.2, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.15, -0.12, 6.1], target: [0.15, -0.17, 0] },
     // The visceral surface is where the porta hepatis and the gallbladder are,
     // so it is a view and not merely a camera angle.
-    { id: 'inferior', label: 'Visceral (inferior) surface', labelJa: '臓側面（下面）', position: [0.2, -4.6, 2.6], target: [0, -0.2, 0.1] },
-    { id: 'superior', label: 'Diaphragmatic (superior) surface', labelJa: '横隔面（上面）', position: [0.2, 5.0, 1.6], target: [0, 0, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0, 0.9, -5.3], target: [0, -0.05, 0] },
+    { id: 'inferior', label: 'Visceral (inferior) surface', labelJa: '臓側面（下面）', position: [0.05, -5.6, 2.9], target: [0.05, -0.4, 0.1] },
+    { id: 'superior', label: 'Diaphragmatic (superior) surface', labelJa: '横隔面（上面）', position: [0.05, 6.0, 1.9], target: [0.05, 0, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.55, -0.12, -6.1], target: [-0.55, -0.17, 0] },
     {
       id: 'transverse-section',
       label: 'Transverse section',
       labelJa: '横断（切断）',
-      position: [0.2, 4.6, 2.4],
-      target: [0, -0.05, 0],
+      position: [0.1, 5.6, 2.7],
+      target: [0.1, -0.17, 0],
       // Keeps what is below the plane, so a reader looking down sees the cut
       // face rather than the dome.
       section: { normal: [0, -1, 0], constant: 0.1 },
@@ -73,16 +73,17 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   buildOrgan() {
     const liver = buildLiver({ vessels: true, opacity: 1, detail: 10 });
     const gallbladder = buildGallbladder();
-    // Scaled down where it hangs, not rebuilt. The builder's pear is sized for
-    // `liver-portal-flow`, where it is a target for a bile stream and has to
-    // stay legible; against a liver a reader is comparing segments on, the same
-    // pear reads as a second organ. This is presentation and it is local to
-    // this scene — the builder keeps the size the other scene needs.
-    gallbladder.object.scale.setScalar(0.62);
-    // Scaling happens about the pear's own centre, which drops its neck away
-    // from the fossa it hangs in. Raised by what the scaling took off the top,
-    // so it stays attached to the liver rather than floating under it.
-    gallbladder.object.position.y += 0.21;
+    // Full size, and no longer scaled down. It looked like a second organ here
+    // because the liver was drawn half its own height, not because the
+    // gallbladder was too big: at one unit to 5.5 cm the builder's pear is
+    // about 6 cm long, which is a gallbladder. Fixing the liver removed the
+    // reason for the correction, so the correction goes with it.
+    //
+    // It hangs from the fossa the liver reports, not from a coordinate of its
+    // own: the fossa moves with the organ's shape and the gallbladder has to
+    // move with it. Sunk a little into the floor so it reads as sitting in the
+    // fossa rather than resting under the liver.
+    gallbladder.object.position.copy(liver.anchors.gallbladderFossa).add(new THREE.Vector3(0, -0.2, 0));
     liver.object.add(gallbladder.object);
 
     const copy = liverStructureCopy();

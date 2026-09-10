@@ -28,7 +28,7 @@ import { HEPATIC_VEINS, SECTORS, SEGMENTS } from '../scenes/hepatobiliary/organs
 export const LIVER_SEGMENT_COLORS = Object.freeze({
   I: '#c8a24a',
   II: '#5f95c4',
-  III: '#7fb4d8',
+  III: '#93cfe0',
   IVa: '#6fb49c',
   IVb: '#8fc9b4',
   V: '#d08a6a',
