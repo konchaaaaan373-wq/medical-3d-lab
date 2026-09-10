@@ -33,6 +33,8 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | 各モデルが答える問い・答えない問い | [`model-cards/`](model-cards/) |
 | モデルカードの改訂とレビューの陳腐化検知 | [`model-cards/README.md`](model-cards/README.md) |
 | **いま何が公開されていて、何がロックされているか** | [`beta-release.md`](beta-release.md) |
+| 公開βを「解剖だけ」にした判断と、それが何を上書きし何を維持したか | [`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md) |
+| UI が読む「いま公開しているモデル」の一覧と契約 | [`../src/catalog/publicManifest.js`](../src/catalog/publicManifest.js)（コードが契約） |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | マージ済みだが未確認・未決定・先送りの個別事項（残課題台帳） | [`follow-ups.md`](follow-ups.md) |
 | リリース手順・ロールバック・障害対応 | [`release-runbook.md`](release-runbook.md) |
@@ -79,7 +81,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | --- | --- |
 | シーン数 | 27（production 2 / reviewed 3 / alpha 8 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
-| 公開モデル | 13（うち病態モデル 12）。呼吸器は喘息 / COPD / 肺水腫 / 肺炎 / 肺塞栓症の 5 病態、心臓は心不全 / 低心拍出量 / 心筋虚血 |
+| 公開モデル | **β 公開は 1 件（`brain-anatomy`）**。公開βは「脳と心臓の解剖」に限定し、病態モデルは開発を続けたうえで出していません（[ADR](architecture/adr-2026-09-08-anatomy-only-beta.md)）。カタログ上「公開可能な水準にある」のは 13 件（うち病態 12）で、これは公開状態とは別の軸です |
 | 医学モデル層（`src/models/`） | asthma / cardiacMechanics / circulation / copd / coronaryTerritories / hepatorenal / myocardialIschemia / pneumonia / portalHypertension / pulmonaryEdema / pulmonaryEmbolism / renalFiltration の 12 本 + 共通ユーティリティ |
 | 主張の種類（model profile） | 非 prototype のシーンすべてが `src/catalog/modelProfiles.js` に登録済み（`tests/model-profiles.test.js` が数を固定）。全シーンが representative で、診断・治療選択・用量選択を禁止用途に明示 |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |
@@ -268,8 +270,11 @@ pull はいま**順番**（どの臓器から着手するか、A2 の先へど�
    その先（病態が指す脈管・管腔・組織層）を足す理由は、
    [`disease-candidates.md`](disease-candidates.md) のどれかがその構造を
    **指す必要がある**こと。どの候補も指さない血管網は、どれほど正確でも
-   足しません。ここが「anatomy atlas を作らない」原則との両立点です:
-   **土台は全臓器ぶん作る。装飾は pull があるものだけ**
+   足しません。この pull 型は **A3 以上の装飾**にだけかかります:
+   **A2 は全臓器ぶん作る。その先の装飾は pull があるものだけ。**
+   A2 の品質（分離・視認性・操作性）の改善に pull は要りません——解剖層は
+   それ自体が製品層であり、病態が要求していないことは後回しの理由に
+   なりません（[ADR](architecture/adr-2026-09-08-anatomy-only-beta.md)）
 3. **測って固定する** — 解剖学的な主張は目視ではなくランドマークの実測で
    検証し、`tests/semantic-anatomy.test.js` に落とす。手本は心臓
    （[`anatomy-review.md`](anatomy-review.md) §1 の 11 関係）。受け入れた
@@ -442,6 +447,13 @@ treatment mechanism）を病態カテゴリに落とすと、現状は次のと�
 心臓・モデル駆動の心腔と比較し、production には接続しない。
 ② 肺 — 最初の production-facing anatomy upgrade。①で検証した工程で、
 review を含む全 gate を通す。この順を変えるときは理由を書き残す。
+
+**2026-09-08 の変更**: 公開βが「脳と心臓の解剖」になったので、①は技術検証
+であると同時に**βが欠いている臓器**になりました。順序は変えませんが、
+`heart-anatomy` は独立したシーンとして必要で、①の asset が gate を通らなければ
+procedural で作ります。①が決めるのはジオメトリの出どころであって、
+シーンを作るかどうかではありません。gate はどれも緩めません
+（[ADR](architecture/adr-2026-09-08-anatomy-only-beta.md)）。
 
 #### Tier A — 既存パターンの再利用で成立し、既存シーンと連結するもの
 

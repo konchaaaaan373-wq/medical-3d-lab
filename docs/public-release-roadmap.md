@@ -62,6 +62,19 @@ the model tests.
 
 ## Gate 1 — limited free beta
 
+**Scope, as of 2026-09-08: the beta is the 3D anatomy of the brain and the
+heart, and nothing else.** The disease and physiology models keep being built
+and are not published in it. An unfinished heart anatomy is never substituted
+for by a heart disease model — the beta opens the one organ that passed and
+says so. See [`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md)
+and [`beta-release.md`](beta-release.md). The items below are unchanged: none of
+the browser, accessibility, performance or review work is waived by publishing
+less.
+
+- [ ] Build `heart-anatomy` — an anatomy scene of its own, procedural or
+  asset-backed, through the gates in `beta-release.md` §1. Until it passes, the
+  beta opens the brain alone; nothing stands in for it.
+
 - [~] Test current Safari, Chrome and Firefox plus real iPhone and Android
   devices, including 320–430 px widths and landscape. The matrix is declared in
   `src/app/viewports.js` and measured in a real browser by `npm run verify:ui`:

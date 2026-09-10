@@ -1,29 +1,13 @@
 {
   "note": "Written by `npm run cards`. Checked by `npm run cards:check`, which needs no browser.",
   "cards": {
-    "amyloid-beta": {
-      "bodyChars": 82,
-      "html": "4afdb488948c0092"
-    },
     "brain-anatomy": {
       "bodyChars": 82,
       "html": "dc6473d8a13bada7"
     },
-    "circulation": {
-      "bodyChars": 46,
-      "html": "83a97b7d53244fad"
-    },
-    "heart-failure": {
-      "bodyChars": 82,
-      "html": "878478a7da7063fc"
-    },
-    "myocardial-ischemia": {
-      "bodyChars": 82,
-      "html": "7e4d4716b6c65c39"
-    },
     "site": {
       "bodyChars": 82,
-      "html": "373824fc659d2e17"
+      "html": "f56bfa5e1ce66935"
     }
   }
 }

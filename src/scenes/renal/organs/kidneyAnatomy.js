@@ -161,49 +161,6 @@ export const LOBES = Object.freeze([
 ].map(Object.freeze));
 
 /**
- * The three major calyces, and which papillae drain into each.
- *
- * Urine does not go from seven papillae to the pelvis in seven separate tubes
- * meeting at a point, which is what was drawn here: a minor calyx cups each
- * papilla, two or three minor calyces join a **major calyx**, and the two or
- * three major calyces open into the pelvis. Grouping them is the anatomy, and
- * it is also what stops the sinus being a spider of tubes converging on one
- * coordinate.
- *
- * Three is the common arrangement (superior, middle, inferior); two also
- * occurs and is not modelled. `angle` is the mean of the lobes it drains, so
- * the trunk leaves along the fan it collects from rather than along a
- * direction of its own.
- */
-export const MAJOR_CALYCES = Object.freeze(
-  [
-    { id: 'superior', lobes: ['superior', 'superolateral'], label: 'Superior major calyx', labelJa: '上腎杯' },
-    { id: 'middle', lobes: ['upper', 'lateral', 'lower'], label: 'Middle major calyx', labelJa: '中腎杯' },
-    { id: 'inferior', lobes: ['inferolateral', 'inferior'], label: 'Inferior major calyx', labelJa: '下腎杯' },
-  ].map((calyx) =>
-    Object.freeze({
-      ...calyx,
-      lobes: Object.freeze(calyx.lobes),
-      angle:
-        calyx.lobes.reduce((sum, id) => sum + LOBES.find((lobe) => lobe.id === id).angle, 0)
-        / calyx.lobes.length,
-    })
-  )
-);
-
-/**
- * Where a major calyx gathers its minor calyces, on the way to the pelvis.
- *
- * Closer to the sinus than a papilla and further out than the pelvis, so the
- * collecting system is a tree with a middle rather than a star. Anatomical
- * coordinates, like `papillaAt`.
- */
-export function majorCalyxAt(calyx, reach = 0.105) {
-  const direction = fanDirection(calyx.angle);
-  return SINUS_CENTRE.map((value, axis) => value + direction[axis] * reach);
-}
-
-/**
  * The six renal columns, one between each adjacent pair of lobes.
  *
  * A column is named for the two pyramids it separates, because that is what it
@@ -364,30 +321,7 @@ export function medullaryParts() {
  * This is the point a minor calyx cups, so it is also where the collecting
  * system starts. Returned in anatomical coordinates.
  */
-export const PAPILLA_REACH = 0.16;
-
-/**
- * How far a minor calyx reaches past its papilla, and how far short of it its
- * throat begins.
- *
- * The cup has to start outside the tip to look like it receives it and end
- * inside to look like it drains it, so the papilla sits between the two and
- * the duct is wide where it meets it. Here rather than in the builder because
- * it is a statement about where the collecting system starts, which is the
- * same kind of fact as where the papilla is.
- */
-export const CALYX_CUP_DEPTH = 0.038;
-
-/** The centre line of one minor calyx, papilla end first. Anatomical. */
-export function minorCalyxPath(lobe, calyx) {
-  return [
-    papillaAt(lobe, PAPILLA_REACH + CALYX_CUP_DEPTH),
-    papillaAt(lobe, PAPILLA_REACH - CALYX_CUP_DEPTH),
-    majorCalyxAt(calyx),
-  ];
-}
-
-export function papillaAt(lobe, reach = PAPILLA_REACH) {
+export function papillaAt(lobe, reach = 0.16) {
   const direction = fanDirection(lobe.angle);
   return SINUS_CENTRE.map((value, axis) => value + direction[axis] * reach);
 }

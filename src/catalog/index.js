@@ -66,8 +66,17 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
   ...LEGAL_SLUGS,
 ]);
 
-/** Named rather than positional: reordering the catalogue must not change legacy fallback behaviour. */
-export const DEFAULT_SCENE_ID = 'amyloid-beta';
+/**
+ * Where a hash that names nothing ends up.
+ *
+ * Named rather than positional: reordering the catalogue must not change legacy
+ * fallback behaviour. It has to be a scene the current release opens — a typo
+ * should land on a model rather than on an apology, and a fallback pointing at
+ * something the release is holding back turns every mistyped URL into a
+ * "to be updated" page that names an unreleased model.
+ * `tests/beta-release.test.js` holds it to that.
+ */
+export const DEFAULT_SCENE_ID = 'brain-anatomy';
 
 /** @param {string} id */
 export const sceneById = (id) => SCENES.find((scene) => scene.id === id) ?? null;

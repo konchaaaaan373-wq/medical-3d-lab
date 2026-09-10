@@ -733,32 +733,9 @@ a.explorer-scene:focus-visible {
 }
 
 /* Beta release ------------------------------------------------------------
-   A model the beta has not opened keeps its card, its title and its place
-   under its organ, and loses everything that suggests it can be opened. It is
-   rendered as a `span` rather than an anchor, so this is styling to match a
-   state the DOM already has — not a link disabled with CSS. */
-
-.explorer-scene.is-locked {
-  border-style: dashed;
-  background: transparent;
-  color: var(--explorer-muted);
-}
-
-.explorer-scene.is-locked .explorer-scene-title {
-  color: var(--explorer-muted);
-}
-
-.explorer-scene-locked {
-  display: inline-flex;
-  flex-direction: column;
-  margin-left: auto;
-  color: #8a6410;
-  font-size: 11px;
-  font-weight: 730;
-  line-height: 1.25;
-  letter-spacing: 0.04em;
-  text-align: right;
-}
+   Every card on this page is openable, so there is no "locked card" style any
+   more: the index lists what the release opens. `#/trust` is where a model
+   that is not open is still accounted for. */
 
 .explorer-product-key.is-beta .explorer-access-badge.is-free {
   background: #e2f4f2;

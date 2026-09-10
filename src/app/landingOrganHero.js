@@ -1,5 +1,5 @@
 import { organById, sceneById, sceneRoute } from '../catalog/index.js';
-import { HERO_ORGANS, featuredHeroOrgan } from '../data/landingHero.js';
+import { HERO_ROTATION, featuredHeroOrgan } from '../data/landingHero.js';
 import { el } from '../utils/dom.js';
 
 const dual = (en, ja, className = '') => [
@@ -12,9 +12,15 @@ const dual = (en, ja, className = '') => [
  *
  * The beta ships the organ models, so the first thing on the page is one of
  * them rather than a description of the product. Which one is decided by the
- * date (`data/landingHero.js`), and the visitor can switch — the rotation is
- * there so the page is not the same page every week, not to withhold the other
- * four.
+ * date (`data/landingHero.js`), and the visitor can switch between the ones
+ * that are open — the rotation is there so the page is not the same page every
+ * week, not to withhold the others.
+ *
+ * The rotation is `HERO_ROTATION`, which is the declared organs filtered by
+ * what the release actually opens. A chooser is drawn only when there is more
+ * than one thing to choose: a button offering an organ whose model is not
+ * finished is an offer the page cannot keep, and one button labelled "choose"
+ * is not a choice.
  *
  * Plain DOM. Nothing here imports Three.js or a scene; the viewport is a
  * dynamic import, so the page shell, the catalogue and the copy all render on
@@ -28,9 +34,12 @@ export function createLandingOrganHero({
   loadViewport = () => import('./landingOrganViewport.js'),
   onRendererFailure = () => {},
   now = () => new Date(),
-  organs = HERO_ORGANS,
+  organs = HERO_ROTATION,
 } = {}) {
-  const featured = featuredHeroOrgan(now(), organs) ?? organs[0];
+  const featured = featuredHeroOrgan(now(), organs) ?? organs[0] ?? null;
+  if (!featured) {
+    throw new Error('landing organ hero: no organ model is open — the caller must not mount it');
+  }
   const buttons = new Map();
 
   let selected = featured;
@@ -113,10 +122,12 @@ export function createLandingOrganHero({
       dragHint,
     ]),
     el('div', { class: 'landing-demo-workbench' }, [
-      el('fieldset', { class: 'landing-demo-controls' }, [
-        el('legend', {}, dual('Choose an organ', '臓器を選ぶ')),
-        el('div', { class: 'landing-demo-state-grid is-organs' }, organButtons),
-      ]),
+      organs.length > 1
+        ? el('fieldset', { class: 'landing-demo-controls' }, [
+            el('legend', {}, dual('Choose an organ', '臓器を選ぶ')),
+            el('div', { class: 'landing-demo-state-grid is-organs' }, organButtons),
+          ])
+        : null,
       el('div', {
         class: 'landing-demo-readout is-organ',
         role: 'status',

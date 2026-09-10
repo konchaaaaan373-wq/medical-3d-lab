@@ -61,11 +61,24 @@ npm run build      # vite build
 
 対象は心臓と脳だけではなく **人体全体** です。最終的に anatomy / physiology /
 pathology / disease progression / treatment mechanism を臓器横断的に扱います。
-中心はあくまで「疾患・病態を理解するための 3D visualization」で、
-**眺めるだけの anatomy atlas を作ること自体が目的ではありません**。
-ただしその土台として、**すべての臓器が解剖モデルを持ちます**——到達点は
-`brain-anatomy` と同じ A2 水準（名前で指せる部分に、閉じたメッシュとして
-分かれている）です。病態は解剖を指すので、指す先が無ければ何も主張できません。
+
+**製品は 2 つの層でできています。**
+
+1. **解剖層** — それ自体が利用価値と品質基準を持つ製品です。「名前で指せる」
+   ことが提供する価値であって、病態モデルの前座ではありません。到達点は
+   `brain-anatomy` と同じ A2 水準（名前で指せる部分に、閉じたメッシュとして
+   分かれている）で、**すべての臓器が持ちます**
+2. **病態層** — その解剖基盤の上に載る別の層。時間変化・因果・複数変数の連動を
+   扱います。病態は解剖を指すので、指す先が無ければ何も主張できません
+
+**この 2 層は独立して品質を上げます。** 解剖の精度・視認性・操作性の改善を
+「病態が要求していないから」という理由で後回しにしないでください。
+2026-09 の公開βは解剖層だけを公開しています
+（[ADR](docs/architecture/adr-2026-09-08-anatomy-only-beta.md)）。
+
+禁じているのは**中身のない網羅**です——出典も、名前で指せる分離も、
+到達度の記録も無いまま臓器ビューを量産すること。「名前で指せる」を満たさない
+「ただ回せるだけの臓器ビュー」は、解剖層の成果として数えません。
 どの臓器がいまどこにいるかは [`src/catalog/anatomy.js`](src/catalog/anatomy.js)
 が持ち、`tests/anatomy-ledger.test.js` が抜けを検出します。方針は
 [`docs/grand-design.md`](docs/grand-design.md) §4.5、臓器ごとの仕様は
@@ -80,9 +93,12 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 
 - **3D is a means, not the goal.** 2D の静止画より理解が明確に改善しないなら
   3D にしない。「回せると格好いい」は理由にならない
-- **Favor dynamic concepts.** 時間変化・因果・複数変数の連動があるものを選ぶ。
-  ただし**解剖モデルは全臓器ぶん作ります**——これは土台であって、
-  「ただ回せるだけの臓器ビュー」を各論として量産することではありません
+- **Two layers, two quality bars.** 解剖層は「名前で指せること」で、病態層は
+  「時間変化・因果・複数変数の連動」で評価します。**病態層の基準を解剖層に
+  当てて、解剖の改善を却下しないでください。** 逆も同じです
+- **Favor dynamic concepts（病態層の基準）.** 病態シーンは時間変化・因果・
+  複数変数の連動があるものを選ぶ。解剖モデルは全臓器ぶん作りますが、
+  それは「ただ回せるだけの臓器ビュー」を量産することではありません
 - **Accuracy you cannot see is not accuracy.** 名前で指せる部分に分けたなら、
   その境界が実レンダリングで見分けられるところまでが完了条件です
   （[`docs/organ-3d-playbook.md`](docs/organ-3d-playbook.md) 末尾のチェックリスト）
@@ -126,21 +142,37 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 `src/` に死んだコードとして残さないでください——git が版を持っており、
 `git log --follow <path>` で読めます。
 
-### いま公開しているのは脳と心臓だけ（β）
+### いま公開しているのは脳と心臓の「解剖」だけ（β）
 
-現在は **β 公開中**で、開いているのは**脳と心臓の、prototype でないシーン**
-だけです（現在 5 件）。それ以外はルートもカタログのカードも
-「TO BE UPDATED / 準備中」で止めています。`prototype` は定義上
-「形は概略、動きは仮」なので公開しません。判定は `src/catalog/release.js` の
-1 か所だけが持ちます——**公開シーンの一覧をどこかに書き写さないでください。**
+現在は **β 公開中**で、公開しているのは**脳と心臓の 3D 解剖モデル**だけです。
+病態・生理のモデルは開発を続けますが、β には出しません。
+それ以外はルートもカタログのカードも「TO BE UPDATED / 準備中」で止めています。
+
+**心臓の解剖シーン（`heart-anatomy`）はまだ存在しません。**
+だからといって心臓の病態シーンを代わりに公開しません——
+病態モデルはラベルを変えた解剖モデルではないからです。
+心臓が公開に入るのは `heart-anatomy` が下のゲートを通った日で、
+そのとき hero もカタログもクロール面も編集不要です。現在の公開は 1 件。
+
+判定は `src/catalog/release.js` の 1 か所だけが持ちます。
+名前が候補一覧にあることは公開ではなく、`betaPublicationProblems()` が空
+——登録済み・解剖の主張のみ（model profile の mechanism level が `none`）・
+asset release gate 通過・レビュー記録が stale でない・**その asset の hash に
+結びついた公開判断記録がある**——のときだけ開きます。
+**公開シーンの一覧をどこかに書き写さないでください。**
+UI が読む公開一覧は [`src/catalog/publicManifest.js`](src/catalog/publicManifest.js)
+の 1 本で、`ready: false` のような仮データは作りません。
 
 開発は止まりません。`npm run dev` は無条件で全部見えますし、
-デプロイ済みビルドは `?preview=1` を 1 回開けばその端末でアンロックされます
-（`?preview=0` で解除）。詳細と β の終わらせ方は
-[`docs/beta-release.md`](docs/beta-release.md)。
+`VITE_ALLOW_PREVIEW=1 npm run build` で作ったビルドは `?preview=1` で
+アンロックできます（`?preview=0` で解除）。
+**production ビルドはアンロックできません**——`?preview=1` も保存済みの値も
+効かず、非公開シーンのコードはそもそもバンドルに入りません。
+詳細と β の終わらせ方は [`docs/beta-release.md`](docs/beta-release.md)。
 
-トップページの hero は臓器を 1 つ実表示し、**日替わりで入れ替わります**
-（初日は脳、翌日は心臓）。順序と対応するシーンは `src/data/landingHero.js`。
+トップページの hero は臓器を 1 つ実表示し、公開臓器が 2 つ以上あれば
+**日替わりで入れ替わります**。順序と対応するシーンは `src/data/landingHero.js`
+（`HERO_ORGANS` が目標、`HERO_ROTATION` が実際に見せる分）。
 
 ### Scene status
 

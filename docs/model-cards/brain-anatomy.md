@@ -5,6 +5,7 @@
 | **Scene** | `brain-anatomy` |
 | **Geometry** | [`public/assets/brain/brain.glb`](../../public/assets/brain/brain.glb) |
 | **Metadata adapter** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js) |
+| **Selection behaviour** | [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 | **Tests** | [`tests/brain-anatomy.test.js`](../../tests/brain-anatomy.test.js), [`tests/anatomy-colour-ui.test.js`](../../tests/anatomy-colour-ui.test.js) |
 | **Evidence** | [`docs/model-evidence/brain-anatomy.md`](../model-evidence/brain-anatomy.md) |
 | **Asset notice** | [`public/assets/brain/ATTRIBUTION.md`](../../public/assets/brain/ATTRIBUTION.md) |
@@ -16,6 +17,16 @@
 brain, and what is it called in English and Japanese?**
 
 ## 2. What it is
+
+**Two files, not one, are what this card describes** — and that is why both are
+in the revision registry. The metadata adapter decides which mesh is which
+named structure and what it is called; the scene decides what a click selects,
+what an isolated view hides and what a colour mode changes. A reader who is
+told "this is the left insula" is being told it by the pair. Change either and
+the correspondence a reviewer checked may no longer hold, so
+`npm run revisions:check` fails until this card has been looked at again — and
+the beta's publication decision, which is pinned to this revision, closes with
+it (see [`../beta-publication/brain-anatomy.md`](../beta-publication/brain-anatomy.md)).
 
 An interactive gross-anatomy atlas made from a Draco-compressed GLB containing
 437 separately named meshes. This scene exposes the 271 meshes in the cortex,
