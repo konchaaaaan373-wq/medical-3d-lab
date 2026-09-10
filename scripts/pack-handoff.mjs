@@ -119,7 +119,11 @@ const restore = [
   'fi',
   '',
   'echo "3/5  git bundle verify"',
-  'git bundle verify "$WORK/full.bundle"',
+  '# `git bundle verify` refuses to run outside a repository ("need a repository',
+  '# to verify a bundle"), and the recipient will not be in one. An empty scratch',
+  '# repository is enough for it, and it is thrown away with $WORK.',
+  'git init --quiet "$WORK/scratch"',
+  'git -C "$WORK/scratch" bundle verify "$WORK/full.bundle"',
   '',
   'echo "4/5  clone into $TARGET"',
   'rm -rf "$TARGET"',
@@ -141,6 +145,33 @@ const restore = [
 writeFileSync(join(out, 'restore.sh'), restore);
 chmodSync(join(out, 'restore.sh'), 0o755);
 
+// --- ASSETS.md -------------------------------------------------------------
+// `restore.sh` points at this, so it has to exist. The third-party GLBs are
+// deliberately not in the bundle: they are git-ignored, they are not ours to
+// redistribute, and `src/catalog/devAssets.js` pins each one by URL, byte count
+// and hash so the fetch is verifiable rather than trusting.
+writeFileSync(join(out, 'ASSETS.md'), [
+  '# The candidate 3D assets are not in this bundle',
+  '',
+  'The third-party GLBs this branch measures are **not** included, on purpose:',
+  'they are git-ignored, they are not ours to redistribute, and they are large.',
+  '',
+  'After restoring, fetch them in the restored checkout:',
+  '',
+  '    npm install',
+  '    npm run assets:dev',
+  '',
+  'That reads `src/catalog/devAssets.js`, which pins every file by URL at a fixed',
+  'commit, byte count, git blob SHA-1 and SHA-256, and refuses anything that does',
+  'not match. Nothing it fetches is written into `public/`, and no production',
+  'build reads any of it.',
+  '',
+  'Without them the scenes that use them report `state: "error"` with a hint, and',
+  '`npm run assets:measure` and `npm run assets:validate` have nothing to read.',
+  'Every other test runs.',
+  '',
+].join('\n'));
+
 // --- MANIFEST.json ---------------------------------------------------------
 writeFileSync(join(out, 'MANIFEST.json'), `${JSON.stringify({
   head,
@@ -148,6 +179,7 @@ writeFileSync(join(out, 'MANIFEST.json'), `${JSON.stringify({
   bundle: { name: 'full.bundle', sha256: bundleHash, bytes: bundleBytes, split: parts.length > 0, parts },
   restore: 'sh restore.sh [target-directory]',
   checksums: 'SHA256SUMS.txt — every file in this directory except SHA256SUMS.txt itself',
+  assets: 'ASSETS.md — the third-party GLBs are not in the bundle; how to fetch them',
 }, null, 2)}\n`);
 
 // --- SHA256SUMS.txt --------------------------------------------------------
