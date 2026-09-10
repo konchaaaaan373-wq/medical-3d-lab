@@ -53,6 +53,12 @@ No dimension here is a measurement.
 
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs, and what it is about.** The
+  gland is the widest subject of the six relative to its height, and the
+  framing is set on the gland: the duodenum and spleen beside it are context
+  and may crop. "Head and duodenum" is the viewpoint that goes in close.
+- **The duodenum's two ends are closed as domes** rather than left as flat
+  discs, which read as cut pipe on either side of the pancreatic head.
 - **The gland is opaque at the start of the slider**, unlike the secretion
   scene's, where the duct is the subject from the first frame. Here the parts
   are the subject first and the duct and islets come up through them.

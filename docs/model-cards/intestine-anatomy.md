@@ -57,8 +57,23 @@ Lengths, loop counts and positions are illustrative. The colon's real length,
 the number of small-bowel loops and the height of either flexure are not
 claims this model makes.
 
+What the model *does* claim about length is the **order**, which
+`tests/organ-parts-anatomy.test.js` holds: transverse and sigmoid longest,
+then descending, then ascending, then caecum. The ratios are not the ones a
+textbook gives — the transverse colon is about 1.1 times the descending here
+rather than roughly 2 — because the abdominal frame is fixed and the
+descending colon has a whole abdomen to fall down while the transverse only
+has one to cross. **Do not read a length or a ratio off this model.**
+
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs.** The colon frame is nearly
+  square — the widest view fills the frame's width at an aspect of 0.81 — so a
+  narrow window pulls back rather than cropping the flexures.
+- **The duodenum's two ends are closed as domes.** Neither is a blind end —
+  one continues from the pylorus, one into the jejunum — but a flat disc there
+  read as a cut pipe. The dome is where the model stops, not where the bowel
+  does.
 - **The slider fades the small bowel**, which is what stands in front of the
   colon and hides most of it. Nothing is moved and nothing is removed.
 - **A viewpoint takes the small bowel away entirely**, which is different from

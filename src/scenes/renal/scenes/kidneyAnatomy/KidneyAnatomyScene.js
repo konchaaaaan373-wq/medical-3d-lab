@@ -55,16 +55,33 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   // organ this scene is named after too small to point at; "Urinary tract"
   // below is the view that pulls back to it.
   static cameraPose = {
-    position: new THREE.Vector3(0.5, 1.35, 5.9),
-    target: new THREE.Vector3(0.5, 1.3, 0),
+    position: new THREE.Vector3(0, 1.35, 5.9),
+    target: new THREE.Vector3(0, 1.3, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
+  /**
+   * The scene draws the whole tract; the subject is the two kidneys.
+   *
+   * A frame that fits the bladder makes the organ this scene is named after a
+   * third of the size, which is the trade the "Urinary tract" viewpoint exists
+   * to offer deliberately rather than by default.
+   */
+  static contextTags = ['tract'];
+
+  /**
+   * Two kidneys side by side are nearly twice as wide as they are tall: at the
+   * authored distance the pair fills the frame's width at an aspect of 0.96.
+   * Measured on the subject, not on the tract — and not on `left-kidney` or
+   * `coronal-section`, which are close-ups that crop on purpose.
+   */
+  static framing = { minHorizontalAspect: 1.0 };
+
   static colorModes = KIDNEY_COLOR_MODES;
 
   static views = [
-    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0.5, 1.35, 5.9], target: [0.5, 1.3, 0] },
+    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0, 1.35, 5.9], target: [0, 1.3, 0] },
     { id: 'overview', label: 'Urinary tract', labelJa: '尿路全体', position: [0.4, 0.3, 8.6], target: [0.4, -0.15, 0] },
     {
       id: 'left-kidney',

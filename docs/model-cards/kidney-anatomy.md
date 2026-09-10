@@ -73,6 +73,10 @@ position of either kidney relative to the ribs or the vertebrae.
 
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs, and what it is about.** The
+  framing is set on the two kidneys, not on the tract they drain into: a frame
+  that fits the bladder makes the organ the scene is named after a third of the
+  size. "Urinary tract" is the viewpoint that offers that trade deliberately.
 - **The layer slider works in three steps**: the cortex fades so the pyramids
   and columns show through it, then the parenchyma fades so the calyces and the
   pelvis show through that. Nothing moves.

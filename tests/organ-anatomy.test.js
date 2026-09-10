@@ -179,7 +179,7 @@ test('the thyroid’s lobes sit on the sides they are named for', () => {
 });
 
 test('the liver is bulky on the right and thins to an edge on the left', () => {
-  // The liver is nine Couinaud segments now, so its outer surface is their
+  // The liver is nine carved parts now, so its outer surface is their
   // union rather than one mesh. Measured over all of them, which is the same
   // surface it always was.
   const liver = buildLiver({ vessels: false, detail: 8 });

@@ -356,9 +356,9 @@ export const SCENE_MANIFEST = [
     modelCard: 'docs/model-cards/liver-anatomy.md',
     modelProfile: 'liver-anatomy-procedural-atlas',
     description:
-      'Nine Couinaud segments, the hepatic veins that run between them and the portal pedicles that run inside them — the difference a segmental resection depends on.',
+      'Couinaud’s eight segments — nine parts to point at, because IV is carried as IVa and IVb — with the hepatic veins that run between them and the portal pedicles that run inside them.',
     descriptionJa:
-      '9つのCouinaud区域、区域の「間」を走る肝静脈、区域の「内部」を走る門脈枝。区域切除が成り立つ理由となる違いを示します。',
+      'Couinaudの8区域を、IVをIVa・IVbに分けた9つの部分として選べます。区域の「間」を走る肝静脈と、「内部」を走る門脈枝の違いを示します。',
     tags: ['anatomy', 'interactive', 'segments'],
     relatedScenes: ['portal-hypertension'],
     load: () => import('../scenes/hepatobiliary/scenes/liverAnatomy/index.js'),

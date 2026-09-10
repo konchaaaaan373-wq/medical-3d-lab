@@ -82,7 +82,7 @@ export const ORGAN_ANATOMY = Object.freeze([
   {
     organ: 'liver',
     level: 'A2',
-    evidence: 'scenes/hepatobiliary/scenes/liverAnatomy — nine segments and both vascular trees selectable by name; tests/liver-anatomy.test.js — nine Couinaud segments and five sectors partitioning the parenchyma, Cantlie’s line held apart from the falciform ligament',
+    evidence: 'scenes/hepatobiliary/scenes/liverAnatomy — the eight Couinaud segments as nine selectable parts (IV as IVa and IVb) and both vascular trees selectable by name; tests/liver-anatomy.test.js — nine parts and five sectors partitioning the parenchyma, Cantlie’s line held apart from the falciform ligament',
   },
   {
     organ: 'kidney',
@@ -107,8 +107,8 @@ export const ORGAN_ANATOMY = Object.freeze([
     organ: 'colon',
     level: 'A2',
     evidence:
-      'scenes/gastrointestinal/scenes/intestineAnatomy — caecum, ascending, transverse, descending and sigmoid as separate parts with both colic flexures between them, selectable by name; tests/organ-parts-anatomy.test.js measures the partition, each part’s side and height, and the splenic flexure above the hepatic; tests/organ-anatomy.test.js — ascending on the right and descending on the left',
-    next: 'A3: the rectum and anal canal, the appendix and ileocaecal valve, the taenia coli, and the mesentery that makes the transverse and sigmoid the mobile parts. Lengths remain illustrative: the transverse colon is not twice the descending here, as it is in life',
+      'scenes/gastrointestinal/scenes/intestineAnatomy — caecum, ascending, transverse, descending and sigmoid as separate parts with both colic flexures between them, selectable by name; tests/organ-parts-anatomy.test.js measures the partition, each part’s side and height, and the splenic flexure above the hepatic; tests/organ-anatomy.test.js — ascending on the right and descending on the left; tests/organ-parts-anatomy.test.js also holds the parts in the order of length every description agrees on (transverse and sigmoid longest, then descending, then ascending, then caecum)',
+    next: 'A3: the rectum and anal canal, the appendix and ileocaecal valve, the taenia coli, and the mesentery that makes the transverse and sigmoid the mobile parts. The order of the lengths is right; the ratios are still schematic — the transverse is about 1.1 times the descending here rather than the roughly 2 of life, because the abdominal frame is fixed',
   },
   {
     organ: 'spleen',

@@ -85,13 +85,22 @@ export function buildColonParts({
    * sixth of the whole colon and left the transverse colon shorter than the
    * bend at the end of it.
    */
-  const FLEXURE_HALF = 0.045;
+  //
+  // Both this and `CAECUM_TO` below are fractions of the whole path, so they
+  // grow when the path does. When the transverse sag and the sigmoid loop were
+  // drawn, the colon got about a sixth longer and took the two bends with it —
+  // the ascending colon ended up exactly as long as the bend at the top of it.
+  // Re-set so a flexure is about three calibres of tube, which is what a bend
+  // in a tube this wide takes, rather than a share of an organ it is not part of.
+  const FLEXURE_HALF = 0.035;
   /**
    * Where the caecum ends. Schematic, and the one boundary here that is: the
    * caecum ends at the ileocaecal junction and no ileum is drawn arriving, so
-   * there is nothing in the geometry to measure it from.
+   * there is nothing in the geometry to measure it from. Kept short enough that
+   * the ascending colon above it is clearly the longer of the two, which is the
+   * relation every description of them agrees on.
    */
-  const CAECUM_TO = 0.1;
+  const CAECUM_TO = 0.07;
 
   const rf = at.rightColicFlexure;
   const lf = at.leftColicFlexure;

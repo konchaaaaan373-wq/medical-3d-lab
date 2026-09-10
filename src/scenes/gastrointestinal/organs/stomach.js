@@ -124,7 +124,16 @@ export function buildEsophagus({ color = '#c9a2a6', top = 2.9 } = {}) {
     [0.92, 1.24, -0.2],
     [1.05, 1.06, -0.26],
   ]);
-  const surface = new TubeSurface(curve, { radius: () => 0.17, steps: 90, radial: 18 });
+  // Closed at the top, full width at the bottom. The top is where the model
+  // stops, not where the oesophagus does, and a flat disc there reads as a cut
+  // pipe; the bottom opens into the stomach and has to stay full width or the
+  // two read as separate tubes that happen to touch.
+  const cap = (t) => (t >= 1 ? 1 : Math.sqrt(Math.max(0, 1 - (1 - t) * (1 - t))));
+  const surface = new TubeSurface(curve, {
+    radius: (u) => 0.17 * cap(u / 0.05),
+    steps: 90,
+    radial: 18,
+  });
   const mesh = new THREE.Mesh(surface.geometry, wallMaterial({ color, opacity: 0.9 }));
   mesh.name = 'esophagus';
 

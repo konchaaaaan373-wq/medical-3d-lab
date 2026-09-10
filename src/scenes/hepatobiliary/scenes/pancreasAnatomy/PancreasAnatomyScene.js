@@ -33,16 +33,27 @@ export class PancreasAnatomyScene extends OrganAnatomyScene {
   static meta = PANCREAS_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(0.55, 0.3, 4.9),
-    target: new THREE.Vector3(0.55, -0.02, 0),
+    position: new THREE.Vector3(-0.1, 0.28, 4.9),
+    target: new THREE.Vector3(-0.1, -0.02, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
+  /**
+   * The gland is long and shallow — the widest whole-gland view fills the frame
+   * at an aspect of 1.09, the highest of the six organs. Measured on the gland;
+   * the duodenum and spleen beside it want 1.29 and are allowed to crop, which
+   * is what makes them context rather than subject.
+   */
+  static framing = { minHorizontalAspect: 1.15 };
+
+  /** What is drawn for orientation rather than as the subject. */
+  static contextTags = ['neighbour'];
+
   static colorModes = PANCREAS_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.55, 0.3, 4.9], target: [0.55, -0.02, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.1, 0.28, 4.9], target: [-0.1, -0.02, 0] },
     { id: 'superior', label: 'From above', labelJa: '上面', position: [0.1, 4.2, 1.2], target: [0.1, 0.05, -0.1] },
     { id: 'head', label: 'Head and duodenum', labelJa: '膵頭部と十二指腸', position: [-1.3, 0.2, 3.0], target: [-1.3, -0.2, 0] },
     { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0.1, 0.6, -4.6], target: [0.1, 0.05, 0] },

@@ -65,6 +65,10 @@ ribs or the diaphragm, and any dimension in centimetres.
 
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs.** The widest whole-liver view
+  fills the frame's width at an aspect of 0.87, so a narrow window pulls the
+  camera back rather than cropping the organ. The number is measured from the
+  parenchyma, so it follows the shape rather than being retuned beside it.
 - **Nine distinguishable colours, not nine shades of liver.** The builder's own
   segment colours are what the organ looks like, and at that separation nobody
   can see where VII stops and VIII starts. A boundary nobody can see is not a

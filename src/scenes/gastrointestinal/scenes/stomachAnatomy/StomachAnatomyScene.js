@@ -45,6 +45,12 @@ export class StomachAnatomyScene extends OrganAnatomyScene {
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
+  /** A stomach is taller than it is wide: it fills the frame's width at 0.57. */
+  static framing = { minHorizontalAspect: 0.6 };
+
+  /** The duodenum is here so the stomach has somewhere to empty to. */
+  static contextTags = ['duodenum'];
+
   static colorModes = STOMACH_COLOR_MODES;
 
   static views = [

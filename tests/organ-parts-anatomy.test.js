@@ -146,13 +146,40 @@ test('the splenic flexure is the higher of the two', () => {
   assert.ok(left.y > right.y, `splenic ${left.y.toFixed(2)} is not above hepatic ${right.y.toFixed(2)}`);
 });
 
+test('the colon\'s parts come in the order of length every description agrees on', () => {
+  // The *order*, not the ratios. The abdomen this colon is drawn in is a fixed
+  // frame, so a transverse colon twice the descending — which is the figure
+  // texts give — is not reachable without stretching the frame; here it is
+  // about 1.1 times. What is reachable, and what was wrong, is the order: the
+  // transverse was drawn as a shallow bridge and the sigmoid as a short
+  // diagonal, which made them the two *shortest* named lengths instead of the
+  // two longest. Do not read these numbers as a claim about length.
+  const colon = buildColonParts();
+  const length = (id) => {
+    const part = colon.part(id);
+    let total = 0;
+    let previous = colon.curve.getPointAt(part.from);
+    for (let i = 1; i <= 200; i += 1) {
+      const point = colon.curve.getPointAt(part.from + (part.to - part.from) * (i / 200));
+      total += point.distanceTo(previous);
+      previous = point;
+    }
+    return total;
+  };
+  const order = ['transverse-colon', 'sigmoid-colon', 'descending-colon', 'ascending-colon', 'caecum'];
+  const measured = order.map(length);
+  for (let i = 1; i < order.length; i += 1) {
+    assert.ok(
+      measured[i - 1] > measured[i],
+      `${order[i - 1]} (${measured[i - 1].toFixed(2)}) should be longer than ${order[i]} (${measured[i].toFixed(2)})`
+    );
+  }
+});
+
 test('the transverse colon is the part that crosses, and it sags between the flexures', () => {
   const colon = buildColonParts();
-  // Its *width*, not its length. This frame is a schematic one and the model
-  // card says the lengths are illustrative — a real transverse colon is twice
-  // the descending and this one is not, because the descending has a whole
-  // abdomen to fall down and the transverse only has one to cross. What the
-  // model does claim is the direction each part runs in.
+  // Its *width*, not its length: what this one claims is the direction each
+  // part runs in. The lengths are the test above.
   const width = (id) => new THREE.Box3().setFromObject(colon.part(id).mesh).getSize(new THREE.Vector3()).x;
   for (const id of ['ascending-colon', 'descending-colon', 'sigmoid-colon', 'caecum']) {
     assert.ok(width('transverse-colon') > width(id), `the transverse colon crosses further than the ${id}`);

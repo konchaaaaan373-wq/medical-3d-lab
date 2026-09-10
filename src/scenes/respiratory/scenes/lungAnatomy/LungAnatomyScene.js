@@ -58,6 +58,13 @@ export class LungAnatomyScene extends OrganAnatomyScene {
 
   static lightRig = { key: 32, fill: 0.95, rim: 16 };
 
+  /**
+   * Both lungs together fill the frame's width at an aspect of 0.72, which a
+   * portrait phone frame just misses. The lateral views are narrower and do not
+   * set the reserve.
+   */
+  static framing = { minHorizontalAspect: 0.75 };
+
   static colorModes = LUNG_COLOR_MODES;
 
   static legendPalettes = {

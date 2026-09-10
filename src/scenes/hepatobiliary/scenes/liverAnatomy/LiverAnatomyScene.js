@@ -12,9 +12,10 @@ import {
 /**
  * The liver, as a thing you can point at.
  *
- * `buildLiver` already carves nine Couinaud parts out of one liver and, when
- * asked, draws the two vascular trees through them. This scene asks for both
- * and names every mesh, which is what turns a carved liver into an atlas.
+ * `buildLiver` already carves one liver into nine parts — Couinaud's eight
+ * segments, with IV carried as IVa and IVb the way a surgeon names it — and,
+ * when asked, draws the two vascular trees through them. This scene asks for
+ * both and names every mesh, which is what turns a carved liver into an atlas.
  *
  * ## The claim, and the shape of it
  *
@@ -43,16 +44,30 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static meta = LIVER_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(0.15, -0.12, 6.1),
-    target: new THREE.Vector3(0.15, -0.17, 0),
+    position: new THREE.Vector3(-0.2, -0.12, 6.1),
+    target: new THREE.Vector3(-0.2, -0.17, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
+  /**
+   * The frame shape the whole-liver views need, measured rather than chosen.
+   *
+   * At the authored distance the widest of them (posterior) fills the frame's
+   * width at an aspect of 0.87, so anything narrower crops the organ.
+   * `framePose()` already pulls the camera back a fixed amount on a narrow
+   * window, and that is where the margin comes from; this only says where the
+   * subject stops fitting. It is not a reserve for the parts panel — that
+   * overlaps the right of the canvas at every aspect, so it is not an aspect
+   * problem, and it is F-44 in docs/follow-ups.md rather than something each
+   * scene compensates for on its own.
+   */
+  static framing = { minHorizontalAspect: 0.9 };
+
   static colorModes = LIVER_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.15, -0.12, 6.1], target: [0.15, -0.17, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.2, -0.12, 6.1], target: [-0.2, -0.17, 0] },
     // The visceral surface is where the porta hepatis and the gallbladder are,
     // so it is a view and not merely a camera angle.
     { id: 'inferior', label: 'Visceral (inferior) surface', labelJa: '臓側面（下面）', position: [0.05, -5.6, 2.9], target: [0.05, -0.4, 0.1] },

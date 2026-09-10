@@ -286,6 +286,100 @@ test('the kidney names parts only on the side it actually partitioned', () => {
   );
 });
 
+test('a scene can say what it is about, which is not everything it draws', () => {
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    const subject = scene.getSubjectBounds();
+    assert.ok(!subject.isEmpty(), `${entry.id}: has a subject`);
+    const size = subject.getSize(new THREE.Vector3());
+    assert.ok(size.x > 0 && size.y > 0 && size.z > 0, `${entry.id}: with an extent`);
+
+    // Measured in world space, not in whatever local frame the meshes were
+    // built in: an organ placed away from the origin has to come back where it
+    // was put, and `Box3.expandByObject` does not refresh its parents.
+    const everything = scene.getSubjectBounds({ excludeTags: [] });
+    assert.ok(everything.containsBox(subject), `${entry.id}: the subject is part of the scene`);
+  }
+
+  // The kidney is the one that has to narrow: it draws the whole tract, and a
+  // frame that fits the bladder makes the organ it is named after too small.
+  const kidney = sceneFor(SCENES[2]);
+  const subject = kidney.getSubjectBounds().getSize(new THREE.Vector3());
+  const everything = kidney.getSubjectBounds({ excludeTags: [] }).getSize(new THREE.Vector3());
+  assert.ok(subject.y < everything.y * 0.6, 'the kidney subject is much shorter than the tract it drains into');
+});
+
+/**
+ * Viewpoints that are close-ups of one structure rather than views of the
+ * organ. They crop by design, so they are not what a whole-organ frame is
+ * measured against — `#/kidney-anatomy` opening on one hilum would be the
+ * scene failing, not the framing succeeding.
+ */
+const DETAIL_VIEWS = new Set([
+  'kidney-anatomy:left-kidney',
+  'kidney-anatomy:left-hilum',
+  'kidney-anatomy:coronal-section',
+  'stomach-anatomy:outlet',
+  'pancreas-anatomy:head',
+]);
+
+/**
+ * The aspect at which `view` fills the frame's width with `box`, at the
+ * distance the view itself authored. Above it the subject fits; below it the
+ * frame is cutting the organ off at the sides.
+ */
+function widthAspect(box, view, fovDegrees = 42) {
+  const eye = new THREE.Vector3().fromArray(view.position);
+  const target = new THREE.Vector3().fromArray(view.target);
+  const camera = new THREE.PerspectiveCamera(fovDegrees, 1.6, 0.1, 100);
+  camera.position.copy(eye);
+  camera.lookAt(target);
+  camera.updateMatrixWorld(true);
+  const toCamera = new THREE.Matrix4().copy(camera.matrixWorld).invert();
+  const corner = new THREE.Vector3();
+  let halfWidth = 0;
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        corner.set(x, y, z).applyMatrix4(toCamera);
+        halfWidth = Math.max(halfWidth, Math.abs(corner.x));
+      }
+    }
+  }
+  const tanVertical = Math.tan((fovDegrees * Math.PI) / 180 / 2);
+  return halfWidth / (eye.distanceTo(target) * tanVertical);
+}
+
+test('the width a scene reserves is the width its subject actually needs', () => {
+  // `minHorizontalAspect` is a measurement of the subject, not a hand-set
+  // number that happens to look right on one window — and not a stand-in for
+  // the parts panel, which covers the same slice of the canvas at every aspect.
+  // What is checked is that every whole-organ view still fits inside what the
+  // scene declares, and that the declaration is not inflated far past it.
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    const reserve = entry.Scene.framing?.minHorizontalAspect;
+    assert.ok(reserve, `${entry.id}: declares the frame shape it needs`);
+    const box = scene.getSubjectBounds();
+
+    // Close-ups crop on purpose; the reserve is measured against the views that
+    // are meant to show the whole organ, which are the ones the scene opens on.
+    const wide = (entry.Scene.views ?? []).filter((view) => view.position && !DETAIL_VIEWS.has(`${entry.id}:${view.id}`));
+    assert.ok(wide.length >= 2, `${entry.id}: has whole-organ views to measure`);
+    let widest = widthAspect(box, {
+      position: entry.Scene.cameraPose.position.toArray(),
+      target: entry.Scene.cameraPose.target.toArray(),
+    });
+    for (const view of wide) widest = Math.max(widest, widthAspect(box, view));
+
+    assert.ok(widest <= reserve, `${entry.id}: reserves at least what it needs (${widest.toFixed(2)} > ${reserve})`);
+    assert.ok(
+      reserve <= widest * 1.35,
+      `${entry.id}: and not far more than it needs (${reserve} vs ${widest.toFixed(2)})`
+    );
+  }
+});
+
 test('a scene lets go of its listeners and its geometry', () => {
   const scene = new LiverAnatomyScene({});
   scene.build();

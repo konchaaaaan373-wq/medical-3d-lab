@@ -39,31 +39,39 @@ export class IntestineAnatomyScene extends OrganAnatomyScene {
   static meta = INTESTINE_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(0.35, -0.33, 8.2),
-    target: new THREE.Vector3(0.35, -0.38, 0),
+    position: new THREE.Vector3(-0.04, -0.33, 8.8),
+    target: new THREE.Vector3(-0.04, -0.38, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
+  /**
+   * The colon frame is nearly square: `colon-only` fills the frame's width at
+   * an aspect of 0.81. The distances above were pulled back when the sigmoid
+   * loop was drawn — the colon got taller as well as longer, and the loop was
+   * ending up behind the console.
+   */
+  static framing = { minHorizontalAspect: 0.9 };
+
   static colorModes = INTESTINE_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.35, -0.33, 8.2], target: [0.35, -0.38, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.05, -0.33, -8.2], target: [-0.05, -0.38, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.04, -0.33, 8.8], target: [-0.04, -0.38, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.05, -0.33, -8.8], target: [-0.05, -0.38, 0] },
     {
       id: 'colon-only',
       label: 'Colon alone',
       labelJa: '結腸のみ',
-      position: [-0.4, -0.2, 8.2],
+      position: [-0.4, -0.2, 8.8],
       target: [-0.4, -0.25, 0],
       hideTags: ['small-bowel'],
     },
-    { id: 'right', label: 'From the patient’s right', labelJa: '右側から', position: [-8.4, 0.2, 2.0], target: [-0.4, -0.25, 0] },
+    { id: 'right', label: 'From the patient’s right', labelJa: '右側から', position: [-9.0, 0.2, 2.0], target: [-0.4, -0.25, 0] },
     {
       id: 'coronal-section',
       label: 'Coronal section',
       labelJa: '前額断（切断）',
-      position: [-0.4, -0.2, 8.6],
+      position: [-0.4, -0.2, 9.2],
       target: [-0.4, -0.25, 0],
       section: { normal: [0, 0, -1], constant: 0.1 },
     },

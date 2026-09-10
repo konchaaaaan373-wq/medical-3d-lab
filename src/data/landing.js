@@ -182,8 +182,8 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['肺葉', '肺区域', '血管']
   ),
   'liver-anatomy': presentation(
-    'Nine Couinaud segments: the veins run between them, the portal branches inside them.',
-    '9つのCouinaud区域。肝静脈は区域の「間」を、門脈枝は「内部」を走る。',
+    'Couinaud’s eight segments, IV split in two: the veins run between them, the portal branches inside them.',
+    'Couinaudの8区域（IVは2つに分割）。肝静脈は区域の「間」を、門脈枝は「内部」を走る。',
     ['SEGMENTS', 'OUTFLOW', 'INFLOW']  ,
     ['区域', '流出', '流入']
   ),

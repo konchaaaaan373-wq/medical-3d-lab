@@ -1,8 +1,9 @@
 /**
  * What the liver anatomy scene says, in both languages.
  *
- * The geometry is `src/scenes/hepatobiliary/organs/liver.js`, which carves the
- * nine Couinaud parts out of one liver and draws the two vascular trees through
+ * The geometry is `src/scenes/hepatobiliary/organs/liver.js`, which carves one
+ * liver into nine parts — Couinaud's eight segments, with IV carried as IVa and
+ * IVb the way a surgeon names it — and draws the two vascular trees through
  * them. This file names them.
  *
  * One distinction is worth stating here because the scene stands or falls on

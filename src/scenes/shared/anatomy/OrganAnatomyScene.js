@@ -9,8 +9,8 @@ import { clamp, damp, lerp, smoothstep } from '../../../utils/math.js';
  *
  * `BrainAnatomyScene` answers the anatomy contract for one atlas loaded from a
  * GLB. Every other organ in this repository is built in code instead, and the
- * parts are already there — five lobes carved out of a lung, nine Couinaud
- * segments carved out of a liver, seven pyramids and the cortex around them
+ * parts are already there — five lobes carved out of a lung, Couinaud's eight
+ * segments carved out of a liver as nine parts, seven pyramids and the cortex around them
  * carved out of a kidney. What was missing was not geometry: it was the surface
  * that lets a reader point at one of those meshes and be told its name.
  *
@@ -445,16 +445,34 @@ export class OrganAnatomyScene {
   // --- viewpoints -----------------------------------------------------------
 
   /**
-   * The named viewpoints.
+   * The bounds of what this scene is actually about, in world coordinates.
    *
-   * A note that applies to every organ scene's first pose: the part panel
-   * covers roughly the right quarter of the frame, and the shared framing
-   * compensates for the console at the bottom but not for that. A wide organ
-   * centred on the canvas therefore has its left end — the patient's right —
-   * behind the panel. Each scene's opening pose is biased towards the panel to
-   * put the whole organ in the band that is actually visible; that is framing,
-   * and it moves no anatomy.
+   * Framing needs the subject, and the subject is not the same thing as
+   * everything the scene draws: the kidney scene reaches from the upper poles
+   * to the bladder, and a frame that fits all of it makes the organ it is
+   * named after too small to point at. A scene can narrow this by tagging what
+   * is context; by default it is everything drawn.
+   *
+   * Offered because the shared framing works from an authored pose and an
+   * aspect ratio, and a bounds-aware framing needs this. It costs one pass
+   * over the meshes and is computed on demand.
+   *
+   * @param {{ excludeTags?: string[] }} [options]
    */
+  getSubjectBounds({ excludeTags = this.constructor.contextTags ?? [] } = {}) {
+    // `Box3.expandByObject` refreshes a mesh's own world matrix and not its
+    // parents', so a scene that has not rendered yet reports every organ at the
+    // origin: the kidney came back the right size in the wrong place, which is
+    // the kind of wrong that looks right in a number.
+    this.root.updateMatrixWorld(true);
+    const box = new THREE.Box3();
+    for (const structure of this.structures) {
+      if (structure.tags.some((tag) => excludeTags.includes(tag))) continue;
+      for (const mesh of structure.meshes) box.expandByObject(mesh);
+    }
+    return box.isEmpty() ? new THREE.Box3().setFromObject(this.root) : box;
+  }
+
   getAnatomyViews() {
     return (this.constructor.views ?? []).map(({ id, label, labelJa }) => ({ id, label, labelJa }));
   }

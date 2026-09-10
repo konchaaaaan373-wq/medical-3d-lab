@@ -61,6 +61,12 @@ clearly; this scene supports no measurement of any kind.
 
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs, and what it is about.** The
+  framing is set on the stomach; the duodenum beside it is context and may
+  crop on a narrow window.
+- **The top of the oesophagus is closed as a dome.** That is where the model
+  stops, not where the oesophagus does; the lower end stays full width because
+  it opens into the stomach.
 - **The layer slider is a wall transparency**, and is labelled as one. There is
   no second layer inside this stomach; what is behind the wall is the sphincter
   ring and the duodenum, and the slider lets a reader see them through it.

@@ -73,6 +73,9 @@ What is not held: any individual airway or vessel dimension.
 
 ## 6. Presentation choices
 
+- **The scene says what frame shape it needs.** Both lungs together fill the
+  frame's width at an aspect of 0.72, so a narrow window pulls the camera back
+  rather than cropping them.
 - **The anatomical-layer slider fades; it does not dissect.** At 0 the
   parenchyma is solid. Past the middle it drops to about 8% opacity and the
   trees inside come up *in place* — nothing is moved, because a bronchus lifted
