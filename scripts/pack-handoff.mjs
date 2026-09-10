@@ -30,7 +30,7 @@
  */
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -75,6 +75,22 @@ if (base && commits === 0) {
   process.exit(2);
 }
 
+/**
+ * The output directory has to be new, or at least empty.
+ *
+ * Reusing a non-empty one silently mixes an older hand-off into this one: the
+ * stale files are not overwritten, but `SHA256SUMS.txt` lists whatever is in
+ * the directory, so they are checksummed, shipped and vouched for. That is how
+ * something that was never meant to leave — an old bundle, a scratch file, a
+ * key someone happened to drop there — gets delivered under a manifest saying
+ * it belongs. Stopping is enough; nothing here deletes the directory.
+ */
+if (existsSync(out) && readdirSync(out).length > 0) {
+  console.error(`${out} already exists and is not empty.`);
+  console.error('This would ship whatever is already in it under this hand-off\'s checksums.');
+  console.error('Pass a new directory, or empty this one yourself first.');
+  process.exit(2);
+}
 mkdirSync(out, { recursive: true });
 
 // --- the bundle ------------------------------------------------------------
@@ -113,6 +129,14 @@ const joinLine = parts.length
  * to verify a bundle" — and the recipient will not be in one, which is how this
  * failed for every recipient until it was actually executed. An empty scratch
  * repository under $WORK satisfies it and is thrown away with $WORK.
+ *
+ * **The target must not already exist.** This step used to open with
+ * `rm -rf "$TARGET"`, which is how a restore came to delete whatever was at the
+ * path it was pointed at — including, on a second run, the notes someone had
+ * made in the tree the first run produced. A hand-off is not entitled to delete
+ * anything. It now stops instead, and there is deliberately no flag to make it
+ * overwrite: the reader can remove a directory themselves if that is what they
+ * mean, and then it is their deletion rather than a side effect of a restore.
  */
 const cloneSteps = () => [
   'echo "3/5  git bundle verify"',
@@ -120,7 +144,12 @@ const cloneSteps = () => [
   'git -C "$WORK/scratch" bundle verify "$WORK/full.bundle"',
   '',
   'echo "4/5  clone into $TARGET"',
-  'rm -rf "$TARGET"',
+  'if [ -e "$TARGET" ]; then',
+  '  echo "there is already something at $TARGET, and this restore never overwrites." >&2',
+  '  echo "it only ever creates a new directory - it does not delete, merge or update in place." >&2',
+  '  echo "give it a path that does not exist yet:  sh restore.sh /path/that/does/not/exist" >&2',
+  '  exit 1',
+  'fi',
   'git clone --quiet "$WORK/full.bundle" "$TARGET"',
   `git -C "$TARGET" checkout --quiet ${branch}`,
   '',
@@ -222,6 +251,15 @@ const restore = [
   'HERE=$(cd "$(dirname "$0")" && pwd)',
   'WAS=$(pwd)',
   base ? 'TARGET=${1:-"$WAS"}' : 'TARGET=${1:-"$HERE/restored"}',
+  '# A relative target means relative to where the reader ran this, not to where',
+  '# the script happens to live. Resolved before the `cd` below, and without',
+  '# requiring the path to exist yet.',
+  'case "$TARGET" in',
+  '  /*) ;;',
+  '  *) TARGET="$WAS/$TARGET" ;;',
+  'esac',
+  '# $WORK is the only thing this script creates that it also removes. Nothing',
+  '# outside it is ever deleted.',
   'WORK=$(mktemp -d)',
   "trap 'rm -rf \"$WORK\"' EXIT",
   'cd "$HERE"',
