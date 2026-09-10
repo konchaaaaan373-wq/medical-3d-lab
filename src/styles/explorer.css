@@ -722,6 +722,48 @@ a.explorer-scene:focus-visible {
   }
 }
 
+.public-models-actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 22px;
+}
+
+html[data-route='explorer'] .public-models-actions .landing-model-action {
+  min-width: 220px;
+  border-color: var(--explorer-accent);
+  background: var(--explorer-accent);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(8, 115, 131, 0.2);
+}
+
+@media (max-width: 720px) {
+  .public-models-header {
+    padding-block: 24px;
+  }
+
+  .public-models-header .title {
+    font-size: clamp(28px, 8.6vw, 36px);
+    line-height: 1.08;
+  }
+
+  .public-models-focus .landing-demo-stage {
+    height: clamp(280px, 46svh, 330px);
+    min-height: 280px;
+  }
+
+  .public-models-actions {
+    display: grid;
+    gap: 8px;
+    padding: 14px 72px 14px 14px;
+  }
+
+  .public-models-actions .landing-model-action {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .explorer-organ-preview::after {
     animation: none;
@@ -736,8 +778,444 @@ a.explorer-scene:focus-visible {
    Every card on this page is openable, so there is no "locked card" style any
    more: the index lists what the release opens. `#/trust` is where a model
    that is not open is still accounted for. */
-
 .explorer-product-key.is-beta .explorer-access-badge.is-free {
   background: #e2f4f2;
   color: var(--explorer-accent-strong);
+}
+
+
+/* B1 public anatomy route --------------------------------------------------
+   The beta has one product, so the public route shows that product instead of
+   search, filters and a one-card catalogue. Lab keeps the catalogue above. */
+
+.public-models {
+  width: min(1180px, 100%);
+  gap: 18px;
+  padding-top: 20px;
+}
+
+.public-models-header {
+  padding-block: 26px 22px;
+  padding-right: clamp(24px, 8vw, 110px);
+}
+
+.public-models-header .title {
+  max-width: 880px;
+  font-size: clamp(36px, 4vw, 52px);
+}
+
+.public-models-header .title .lang-ja {
+  color: inherit;
+  font-size: 1em;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+.public-models-header .subtitle {
+  max-width: 52em;
+  margin-top: 10px;
+}
+
+.public-models-focus {
+  min-width: 0;
+}
+
+.public-models-focus .landing-demo {
+  border-color: rgba(8, 115, 131, 0.28);
+  box-shadow: 0 32px 80px rgba(16, 47, 59, 0.18);
+}
+
+.public-models-focus .landing-demo-stage {
+  height: clamp(340px, 49svh, 390px);
+  min-height: 340px;
+}
+
+.public-models .explorer-shell-link {
+  min-width: 24px;
+  min-height: 32px;
+}
+
+@media (min-width: 900px) {
+  .public-models {
+    display: grid;
+    grid-template-columns: minmax(320px, 0.38fr) minmax(0, 0.62fr);
+    grid-template-rows: auto 1fr auto;
+    align-items: start;
+    gap: 18px 24px;
+  }
+
+  .public-models-header {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+    padding: 78px 28px 28px;
+  }
+
+  .public-models-header .title {
+    font-size: clamp(38px, 3.6vw, 52px);
+  }
+
+  .public-models-focus {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .public-models-focus .landing-demo.is-compact .landing-demo-stage {
+    height: clamp(440px, 68svh, 540px);
+    min-height: 440px;
+  }
+
+  .public-models-actions {
+    grid-column: 1;
+    grid-row: 2;
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 8px 22px 18px;
+  }
+
+  .public-models-footer {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+}
+
+.public-models-focus .landing-demo-workbench {
+  display: block;
+}
+
+.public-models-focus .landing-demo-readout {
+  display: none;
+}
+
+.public-models-empty {
+  padding: clamp(28px, 5vw, 52px);
+}
+
+.public-models-empty p {
+  max-width: 44em;
+  margin: 0 0 18px;
+  color: var(--explorer-muted);
+  line-height: 1.7;
+}
+
+.public-models-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 18px;
+}
+
+.public-model-link {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 16px;
+  border: 1px solid var(--explorer-rule-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--explorer-accent-strong);
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.public-model-link:hover,
+.public-model-link:focus-visible {
+  border-color: var(--explorer-accent);
+  background: #eef8f9;
+}
+
+.public-models-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+}
+
+.public-models-footer p {
+  margin: 0;
+}
+
+.public-models-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .public-models-header {
+    padding-right: 18px;
+  }
+
+  .public-models-focus .landing-demo-stage {
+    min-height: 345px;
+    height: 345px;
+  }
+
+  .public-models-focus .landing-demo-workbench {
+    display: block;
+    min-height: 60px;
+  }
+
+  .public-models-focus .landing-demo-readout,
+  .public-models-focus .landing-demo-boundary {
+    display: none;
+  }
+
+  .public-models-focus .landing-demo-footer {
+    display: flex;
+    min-height: 60px;
+    padding: 8px 14px;
+  }
+
+  .public-models-focus .landing-demo-link {
+    width: calc(100% - 58px);
+    justify-content: center;
+    margin: 0;
+    border: 1px solid rgba(56, 225, 239, 0.44);
+    border-radius: 6px;
+    background: rgba(56, 225, 239, 0.08);
+  }
+
+  .public-models-footer {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 720px) {
+  .public-models-header {
+    padding-block: 22px 18px;
+  }
+
+  .public-models-header .title {
+    font-size: clamp(28px, 8.6vw, 34px);
+    line-height: 1.08;
+  }
+
+  .public-models-focus .landing-demo-stage {
+    height: clamp(280px, 46svh, 330px);
+    min-height: 280px;
+  }
+}
+
+/* Public application shell -------------------------------------------------
+   This route is a way into the selected live model, not a second landing page. */
+.public-models {
+  width: min(1220px, 100%);
+  gap: 16px 28px;
+  padding: 20px 28px 54px;
+}
+
+.public-models-header {
+  overflow: visible;
+  padding: 8px 4px 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.public-models-header::before {
+  display: none;
+}
+
+.public-models-appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 52px;
+  margin-bottom: clamp(42px, 8vh, 72px);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--explorer-rule);
+}
+
+.public-models-brand {
+  flex: none;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--explorer-ink);
+  font-size: 14px;
+  font-weight: 740;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.public-models-brand:hover,
+.public-models-brand:focus-visible {
+  color: var(--explorer-accent-strong);
+}
+
+.public-models-appbar .explorer-header-actions {
+  position: static;
+  min-width: 0;
+  gap: 8px;
+}
+
+.public-models-appbar .explorer-shell-link {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.public-models-header .eyebrow {
+  margin-bottom: 10px;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+}
+
+.public-models-header .title {
+  max-width: 12em;
+  font-size: clamp(34px, 3.5vw, 48px);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+.public-models-header .subtitle {
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.public-models-focus .landing-demo {
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(16, 47, 59, 0.11);
+}
+
+.public-models-actions {
+  padding: 4px 4px 20px;
+}
+
+html[data-route='explorer'] .public-models-actions .landing-model-action {
+  min-height: 48px;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(8, 115, 131, 0.13);
+}
+
+.public-models-footer {
+  padding: 24px 4px 0;
+  border-top: 1px solid var(--explorer-rule);
+  background: transparent;
+  box-shadow: none;
+}
+
+.public-models-footer-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.public-models-operator {
+  min-height: 30px;
+  color: #86501f;
+  font-size: 12px;
+}
+
+.public-models-footer-links {
+  justify-content: flex-end;
+  gap: 4px 16px;
+}
+
+.public-models-footer-links .explorer-shell-link {
+  font-size: 12px;
+}
+
+.public-models a:focus-visible,
+.public-models button:focus-visible {
+  outline: 2px solid var(--explorer-accent);
+  outline-offset: 3px;
+}
+
+@media (min-width: 900px) {
+  .public-models {
+    grid-template-columns: minmax(300px, 0.35fr) minmax(0, 0.65fr);
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .public-models-header {
+    padding: 8px 4px 24px;
+  }
+
+  .public-models-focus .landing-demo.is-compact .landing-demo-stage {
+    height: clamp(470px, 71svh, 560px);
+    min-height: 470px;
+  }
+
+  .public-models-actions {
+    padding-inline: 4px;
+  }
+}
+
+@media (max-width: 720px) {
+  .public-models {
+    gap: 14px;
+    padding: 10px 12px 44px;
+  }
+
+  .public-models-header {
+    padding: 0 0 12px;
+  }
+
+  .public-models-appbar {
+    min-height: 50px;
+    margin-bottom: 24px;
+    padding: 0 2px 8px;
+  }
+
+  .public-models-appbar .explorer-header-actions {
+    position: static;
+    gap: 4px;
+  }
+
+  .public-models-appbar .explorer-shell-link {
+    min-height: 40px;
+    padding-inline: 6px;
+    font-size: 11px;
+  }
+
+  .public-models-appbar .account-trigger,
+  .public-models-appbar .ui-toggle {
+    min-height: 40px;
+    padding-inline: 7px;
+  }
+
+  .public-models-header .title {
+    max-width: 11em;
+    font-size: clamp(28px, 8.5vw, 34px);
+  }
+
+  .public-models-header .subtitle {
+    margin-top: 10px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .public-models-focus .landing-demo-stage,
+  .public-models-focus .landing-demo.is-compact .landing-demo-stage {
+    height: clamp(260px, 41svh, 310px);
+    min-height: 260px;
+  }
+
+  .public-models-actions {
+    gap: 6px;
+    padding: 2px 72px 12px 0;
+  }
+
+  .public-models-footer {
+    gap: 16px;
+    padding-top: 22px;
+  }
+
+  .public-models-footer-links {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 390px) {
+  .public-models-brand {
+    max-width: 4.8rem;
+    line-height: 1.1;
+  }
 }

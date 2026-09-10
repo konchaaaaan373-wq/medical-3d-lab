@@ -1,37 +1,23 @@
 name: CI
 
-on:
+"on":
   pull_request:
   push:
     branches: [main]
+
+# Validation runs only. Deployment and production monitoring use different
+# workflows/services and are intentionally outside this cancellation group.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  trust-contracts:
-    name: trust / ${{ matrix.test }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        test:
-          - clinical-review-presentation
-          - clinical-reviews
-          - professional-access-review
-          - commerce-readiness
-          - explorer-search
-          - access
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: node --test "tests/${{ matrix.test }}.test.js"
-
+  # Keep this job name stable: it may already be a required check.
+  # `npm test` runs tests/*.test.js, including the six former trust matrix
+  # entries, so those tests remain present without six extra installs/runners.
   test-and-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -47,50 +33,4 @@ jobs:
       - run: npm run build
       - run: npm run budget
       - run: npm run verify:site
-      # No browser: it compares what each committed card was asked to say,
-      # not the pixels, which depend on the fonts of whichever machine drew it.
       - run: npm run cards:check
-
-  # Chromium only, headless, on a runner — deliberately a separate job.
-  #
-  # It downloads a browser, so it must not sit in front of `npm test`: the
-  # normal feedback loop stays a plain `node --test` run. And it is honest
-  # about its own reach — the manual half of the device pass is listed in
-  # `docs/accessibility.md` and reprinted by the script itself.
-  viewport-matrix:
-    name: viewport matrix (${{ matrix.engine }})
-    runs-on: ubuntu-latest
-    # 54 combinations per engine, and Firefox and WebKit are slower to start
-    # than Chromium. A timeout here reads as a broken job rather than what it
-    # is, so there is room for the two new engines to be slow.
-    timeout-minutes: 30
-    strategy:
-      # One engine failing is a finding about that engine, not a reason to stop
-      # measuring the others.
-      fail-fast: false
-      matrix:
-        # WebKit is the engine Safari is built on. It is not Safari, and it is
-        # not iOS — what it catches is the layout and CSS half (dvh, env(),
-        # mask-image, :has()), which is where this product's own chrome lives.
-        # The rest of the device pass stays manual and is listed in
-        # `docs/accessibility.md`.
-        engine: [chromium, firefox, webkit]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build
-      # Not a devDependency on purpose: a browser automation stack is a large
-      # thing to make every contributor download to run the unit tests.
-      - run: npm i --no-save playwright@1.62.1
-      - run: npx playwright install --with-deps ${{ matrix.engine }}
-      - run: npm run verify:ui -- --engine ${{ matrix.engine }} --json viewport-report-${{ matrix.engine }}.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: viewport-report-${{ matrix.engine }}
-          path: viewport-report-${{ matrix.engine }}.json
-          if-no-files-found: ignore

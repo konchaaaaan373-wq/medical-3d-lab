@@ -8,13 +8,11 @@ const dual = (en, ja, className = '') => [
 ];
 
 /**
- * The landing hero: one organ model, live, changing by the day.
+ * The landing hero: one live organ model with a stable initial selection.
  *
- * The beta ships the organ models, so the first thing on the page is one of
- * them rather than a description of the product. Which one is decided by the
- * date (`data/landingHero.js`), and the visitor can switch between the ones
- * that are open — the rotation is there so the page is not the same page every
- * week, not to withhold the others.
+ * The first published model is always the initial model. When the manifest
+ * grows, the visitor changes models explicitly; the calendar never changes
+ * the page underneath them.
  *
  * The rotation is `HERO_ROTATION`, which is the declared organs filtered by
  * what the release actually opens. A chooser is drawn only when there is more
@@ -28,13 +26,18 @@ const dual = (en, ja, className = '') => [
  *
  * @param {{loadViewport?: () => Promise<any>,
  *          onRendererFailure?: (error:Error, context:{organ:string, sceneId:string|null}) => void,
- *          now?: () => Date, organs?: typeof HERO_ORGANS}} [options]
+ *          now?: () => Date, organs?: typeof HERO_ORGANS,
+ *          compact?: boolean, showOpenLink?: boolean,
+ *          showIdentity?: boolean}} [options]
  */
 export function createLandingOrganHero({
   loadViewport = () => import('./landingOrganViewport.js'),
   onRendererFailure = () => {},
   now = () => new Date(),
   organs = HERO_ROTATION,
+  compact = false,
+  showOpenLink = true,
+  showIdentity = true,
 } = {}) {
   const featured = featuredHeroOrgan(now(), organs) ?? organs[0] ?? null;
   if (!featured) {
@@ -47,17 +50,21 @@ export function createLandingOrganHero({
   let mountPromise = null;
   let destroyed = false;
 
-  const todayBadge = el('span', { class: 'landing-demo-case' });
   const kicker = el('p', { class: 'landing-demo-kicker' });
   const title = el('h2', { class: 'landing-demo-title', id: 'landing-demo-title' });
   const explanation = el('p', { class: 'landing-demo-explanation' });
-  const openLink = el('a', { class: 'landing-demo-link landing-cta', href: '#/' });
+  const openLink = el('a', {
+    class: showOpenLink
+      ? 'landing-demo-link landing-cta'
+      : 'landing-button primary landing-cta landing-model-action',
+    href: '#/',
+  });
 
   const dragHint = el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
     el('span', { text: '↔' }),
     ...dual(
-      'Drag / arrow keys to rotate · Scroll / +− to zoom',
-      'ドラッグ／矢印キーで回転・スクロール／+−で拡大'
+      'Drag to rotate · scroll or +− to zoom',
+      'ドラッグで回転・ピンチ／+−で拡大'
     ),
   ]);
 
@@ -74,19 +81,60 @@ export function createLandingOrganHero({
     )),
   ]);
 
-  const viewportLoading = el('div', { class: 'landing-demo-loading', 'aria-hidden': 'true' }, [
-    el('span'),
-    ...dual('Loading 3D model', '3Dモデルを読み込み中'),
+  const viewportStatusText = el('span', { class: 'landing-demo-loading-text' });
+  const viewportRetry = el('button', {
+    class: 'landing-demo-retry',
+    type: 'button',
+    hidden: 'hidden',
+    on: {
+      click: () => {
+        if (!mountedViewport || destroyed) return;
+        viewportRetry.setAttribute('disabled', '');
+        void mountedViewport.retryDetail?.();
+      },
+    },
+  }, dual('Reload 3D model', '3Dモデルを再読み込み'));
+  const viewportStatus = el('div', {
+    class: 'landing-demo-loading',
+    role: 'status',
+    'aria-live': 'polite',
+    'aria-atomic': 'true',
+  }, [
+    el('span', { class: 'landing-demo-loading-dot', 'aria-hidden': 'true' }),
+    viewportStatusText,
+    viewportRetry,
   ]);
 
-  // Stage 2 is arriving. Shown only while it is, driven from the viewport's own
-  // `data-detail` state by a sibling selector, so nothing has to be kept in
-  // sync from JavaScript. It never reports a failure: if the detailed model
-  // does not arrive, the builder on screen is still a real organ.
-  const detailNote = el('div', { class: 'landing-demo-detail', 'aria-hidden': 'true' }, [
-    el('span', { class: 'landing-demo-detail-dot' }),
-    ...dual('Loading the detailed model', '詳細モデルを読み込み中'),
-  ]);
+  function showViewportState(state, detail = {}) {
+    if (destroyed || state === 'disposed') return;
+    const organ = organById(selected.organ);
+    const nameEn = organ?.label ?? selected.organ;
+    const nameJa = organ?.labelJa ?? selected.organ;
+    const stateCopy = {
+      idle: [`The ${nameEn.toLowerCase()} model will load when it is visible.`, `表示領域に入ると${nameJa}の3Dモデルを読み込みます。`],
+      deferred: [`Loading the ${nameEn.toLowerCase()} model is paused to reduce data use.`, `データ使用を抑えるため${nameJa}の3Dモデルの読み込みを保留しています。`],
+      loading: [`Loading the ${nameEn.toLowerCase()} 3D model`, `${nameJa}の3Dモデルを読み込み中`],
+      delayed: [`The ${nameEn.toLowerCase()} 3D model is taking longer to load.`, `${nameJa}の3Dモデルの読み込みに時間がかかっています。`],
+      error: [`The ${nameEn.toLowerCase()} 3D model could not be loaded.`, `${nameJa}の3Dモデルを読み込めませんでした。`],
+      unavailable: [`This environment cannot display the ${nameEn.toLowerCase()} 3D model.`, `この環境では${nameJa}の3Dモデルを表示できません。`],
+    };
+    element.dataset.viewport = state;
+    const copy = stateCopy[detail.delayed ? 'delayed' : state] ?? stateCopy.loading;
+    viewportStatusText.replaceChildren(...dual(copy[0], copy[1]));
+    viewportStatus.setAttribute('aria-hidden', String(state === 'ready'));
+    const canRetry = state === 'error' || state === 'deferred';
+    if (canRetry) {
+      viewportRetry.replaceChildren(...dual(
+        state === 'deferred' ? 'Load 3D model' : 'Reload 3D model',
+        state === 'deferred' ? '3Dモデルを読み込む' : '3Dモデルを再読み込み'
+      ));
+    }
+    viewportRetry.hidden = !canRetry;
+    if (canRetry) viewportRetry.removeAttribute('disabled');
+    else viewportRetry.setAttribute('disabled', '');
+    dragHint.hidden = state !== 'ready';
+    element.setAttribute('aria-busy', String(state === 'loading' || Boolean(detail.delayed)));
+  }
 
   const organButtons = organs.map((entry, index) => {
     const organ = organById(entry.organ);
@@ -97,7 +145,9 @@ export function createLandingOrganHero({
       'aria-pressed': 'false',
       on: { click: () => void select(entry.organ) },
     }, [
-      el('span', { class: 'landing-demo-state-index', text: String(index + 1).padStart(2, '0') }),
+      compact
+        ? null
+        : el('span', { class: 'landing-demo-state-index', text: String(index + 1).padStart(2, '0') }),
       el('span', { class: 'landing-demo-state-label' }, dual(
         organ?.label ?? entry.organ,
         organ?.labelJa ?? entry.organ
@@ -107,42 +157,55 @@ export function createLandingOrganHero({
     return button;
   });
 
-  const element = el('article', { class: 'landing-demo is-organ', 'aria-labelledby': 'landing-demo-title' }, [
-    el('div', { class: 'landing-demo-stage' }, [
-      viewport,
-      detailNote,
-      viewportLoading,
-      el('header', { class: 'landing-demo-header' }, [
-        el('div', {}, [
-          kicker,
-          title,
-        ]),
-        todayBadge,
+  const stage = el('div', { class: 'landing-demo-stage' }, [
+    viewport,
+    viewportStatus,
+    compact && showIdentity ? el('header', { class: 'landing-demo-identity' }, [title]) : null,
+    compact ? null : el('header', { class: 'landing-demo-header' }, [
+      el('div', {}, [
+        kicker,
+        title,
       ]),
-      dragHint,
+      el('span', { class: 'landing-demo-case' }, dual('3D MODEL', '3Dモデル')),
     ]),
-    el('div', { class: 'landing-demo-workbench' }, [
-      organs.length > 1
-        ? el('fieldset', { class: 'landing-demo-controls' }, [
-            el('legend', {}, dual('Choose an organ', '臓器を選ぶ')),
-            el('div', { class: 'landing-demo-state-grid is-organs' }, organButtons),
-          ])
-        : null,
-      el('div', {
-        class: 'landing-demo-readout is-organ',
-        role: 'status',
-        'aria-live': 'polite',
-        'aria-atomic': 'true',
-      }, [explanation]),
-      el('footer', { class: 'landing-demo-footer' }, [
-        el('span', { class: 'landing-demo-boundary' }, dual(
-          'Educational conceptual model — not patient-specific diagnosis or treatment.',
-          '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。'
-        )),
-        openLink,
-      ]),
-    ]),
+    dragHint,
+  ].filter(Boolean));
+
+  const controls = organs.length > 1
+    ? el('fieldset', { class: 'landing-demo-controls' }, [
+        el('legend', {}, dual('Choose an organ', '臓器を選ぶ')),
+        el('div', { class: 'landing-demo-state-grid is-organs' }, organButtons),
+      ])
+    : null;
+
+  const workbench = compact
+    ? controls
+    : el('div', { class: 'landing-demo-workbench' }, [
+        controls,
+        el('div', {
+          class: 'landing-demo-readout is-organ',
+          role: 'status',
+          'aria-live': 'polite',
+          'aria-atomic': 'true',
+        }, [explanation]),
+        el('footer', { class: 'landing-demo-footer' }, [
+          el('span', { class: 'landing-demo-boundary' }, dual(
+            'Representative educational model — not for individual diagnosis or treatment decisions.',
+            '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
+          )),
+          showOpenLink ? openLink : null,
+        ].filter(Boolean)),
+      ].filter(Boolean));
+
+  const element = el('article', {
+    class: `landing-demo is-organ${compact ? ' is-compact' : ''}`,
+    'aria-labelledby': compact ? null : 'landing-demo-title',
+  }, [
+    stage,
+    workbench,
   ]);
+
+  showViewportState('idle');
 
   /** Repaint every label for the organ now on screen. */
   function render() {
@@ -152,22 +215,21 @@ export function createLandingOrganHero({
     const nameJa = organ?.labelJa ?? selected.organ;
 
     element.dataset.organ = selected.organ;
-    kicker.replaceChildren(...dual(
-      `LIVE 3D  /  ${selected.kickerEn}`,
-      `LIVE 3D  /  ${selected.kickerJa}`
+    kicker.replaceChildren(...dual(selected.kickerEn, selected.kickerJa));
+    title.replaceChildren(...dual(
+      compact ? `${nameEn} 3D model` : nameEn,
+      compact ? `${nameJa}の3Dモデル` : nameJa
     ));
-    title.replaceChildren(...dual(nameEn, nameJa));
     explanation.replaceChildren(...dual(selected.lineEn, selected.lineJa));
+    viewport.setAttribute(
+      'aria-label',
+      `Interactive ${nameEn.toLowerCase()} 3D model / 操作できる${nameJa}の3Dモデル`
+    );
 
-    // Only while the day's own organ is showing. Once a visitor picks another
-    // one the badge would be describing the wrong model.
-    todayBadge.hidden = selected !== featured;
-    todayBadge.replaceChildren(...dual("TODAY'S MODEL", '本日のモデル'));
-
-    openLink.setAttribute('href', scene ? sceneRoute(scene) : '#/organs');
+    openLink.setAttribute('href', selected.route ?? (scene ? sceneRoute(scene) : '#/organs'));
     openLink.replaceChildren(...dual(
-      `Open the ${nameEn.toLowerCase()} model ↗`,
-      `${nameJa}のモデルを開く ↗`
+      `View the ${nameEn.toLowerCase()}`,
+      `${nameJa}を見る`
     ));
 
     for (const [organId, button] of buttons) {
@@ -202,7 +264,19 @@ export function createLandingOrganHero({
     mountPromise = loadViewport()
       .then(async ({ mountLandingOrganViewport }) => {
         if (destroyed) return null;
-        const instance = mountLandingOrganViewport(viewport);
+        const instance = mountLandingOrganViewport(viewport, {
+          onStateChange: showViewportState,
+          onDetailError: (error) => {
+            try {
+              void Promise.resolve(onRendererFailure(error, {
+                organ: selected.organ,
+                sceneId: selected.upgradeSceneId ?? selected.sceneId ?? null,
+              })).catch(() => {});
+            } catch {
+              /* diagnostics must never prevent the status from rendering */
+            }
+          },
+        });
         if (destroyed) {
           instance.destroy();
           return null;
@@ -216,8 +290,6 @@ export function createLandingOrganHero({
           mountedViewport = null;
           return null;
         }
-        viewport.dataset.loading = 'false';
-        element.dataset.viewport = 'ready';
         return instance;
       })
       .catch((error) => {
@@ -246,13 +318,7 @@ export function createLandingOrganHero({
         viewport.setAttribute('aria-label', '');
         viewport.setAttribute('aria-describedby', '');
         dragHint.setAttribute('hidden', '');
-        viewportLoading.setAttribute('aria-hidden', 'false');
-        viewportLoading.setAttribute('role', 'status');
-        viewportLoading.setAttribute('aria-live', 'polite');
-        viewportLoading.replaceChildren(...dual(
-          '3D preview unavailable — open the model instead.',
-          '3Dプレビューを表示できません。モデル本体を開いてください。'
-        ));
+        showViewportState('unavailable');
         return null;
       });
     return mountPromise;
@@ -264,6 +330,7 @@ export function createLandingOrganHero({
     get organ() {
       return selected.organ;
     },
+    actionElement: openLink,
     setOrgan: select,
     mount,
     destroy() {

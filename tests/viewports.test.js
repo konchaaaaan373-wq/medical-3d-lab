@@ -274,7 +274,7 @@ test('validator: an overlay list that forbids nothing is caught', () => {
   assert.match(complain([{ selector: '.x', why: 'y'.repeat(40) }]), /declares no limit/);
 });
 
-test('the viewport check can drive more than one engine, and CI drives them all', () => {
+test('the viewport check supports every engine and the explicit final workflow drives them all', () => {
   const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
 
   // Chromium switches are Chromium's. Firefox rejects unknown arguments and
@@ -292,14 +292,20 @@ test('the viewport check can drive more than one engine, and CI drives them all'
   assert.match(check, /npx playwright install --with-deps \$\{engineName\}/);
 
   const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const final = readFileSync(
+    new URL('../.github/workflows/final-browser-validation.yml', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(ci, /playwright install/, 'ordinary PR pushes do not start full browsers');
+  assert.match(final, /workflow_dispatch:/, 'the full matrix requires an explicit candidate run');
   for (const engine of ['chromium', 'firefox', 'webkit']) {
-    assert.ok(ci.includes(engine), `CI installs and runs ${engine}`);
+    assert.ok(final.includes(engine), `the final workflow installs and runs ${engine}`);
   }
   // One engine failing is a finding about that engine, not a reason to stop
   // measuring the others.
-  assert.match(ci, /fail-fast: false/);
+  assert.match(final, /fail-fast: false/);
   // Each engine's report is its own artifact, or they overwrite each other.
-  assert.match(ci, /name: viewport-report-\$\{\{ matrix\.engine \}\}/);
+  assert.match(final, /name: viewport-report-\$\{\{ matrix\.engine \}\}/);
 });
 
 test('an engine that does not tab to links is told apart from a page that lost one', () => {

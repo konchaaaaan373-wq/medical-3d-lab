@@ -5,27 +5,19 @@ import { loadScene } from '../catalog/index.js';
 import { ORGAN_HERO_BUILDERS, createOrganLights } from './organModels.js';
 
 /**
- * The landing hero: one organ, shown in two stages.
+ * The landing hero loads the published scene without presenting the lightweight
+ * builder as if it were the published model.
  *
- * **Stage 1** is the shared organ builder — a few thousand vertices, already in
- * the bundle, on screen as soon as Three.js is. **Stage 2** is the organ's real
- * anatomy model, which is a whole scene and, for the brain, a 4.5 MB atlas. The
- * second replaces the first in place once it has finished loading.
- *
- * Why in two stages rather than one: the landing page is the entry point people
- * arrive at from a link, and the honest version of "show the real model" is not
- * "make everyone wait 4.5 MB for the first frame". It is "put something true on
- * screen immediately, then quietly replace it with something truer". If the
- * upgrade never arrives — a slow connection, data saver, a failed fetch — the
- * page keeps the model it already has and says nothing about it. A hero is not
- * the place to report a network error.
- *
- * The upgrade is skipped outright on a metered or very slow connection, and it
- * never starts while the hero is off screen.
+ * The builder remains available to existing consumers and for framing tests,
+ * but is hidden whenever a published scene is requested. The frame then shows a
+ * bounded loading/deferred/error state until that scene is ready and one real
+ * frame has been rendered.
  */
 
 /** Connections the detailed model is not worth spending. */
 const SLOW_CONNECTIONS = new Set(['slow-2g', '2g']);
+export const DETAIL_DELAY_MS = 8_000;
+export const DETAIL_TIMEOUT_MS = 30_000;
 
 /**
  * Whether this visitor should be sent the detailed model at all.
@@ -44,8 +36,13 @@ export function mountLandingOrganViewport(container, {
   builders = ORGAN_HERO_BUILDERS,
   loadSceneClass = loadScene,
   detailAllowed = shouldLoadDetail,
+  onStateChange = () => {},
+  onDetailError = () => {},
+  detailDelayMs = DETAIL_DELAY_MS,
+  detailTimeoutMs = DETAIL_TIMEOUT_MS,
 } = {}) {
   const cleanups = [];
+  const attemptTimers = new Set();
   let disposed = false;
   let viewer = null;
   let lights = null;
@@ -59,6 +56,8 @@ export function mountLandingOrganViewport(container, {
   let extent = new THREE.Vector3(1, 1, 1);
   let radius = 1;
   let generation = 0;
+  let lifecycle = 'idle';
+  let targetSceneId = null;
 
   /** Stage 2: the anatomy scene, once it has arrived. */
   let detail = null;
@@ -79,13 +78,30 @@ export function mountLandingOrganViewport(container, {
    */
   let loadingDetail = null;
 
+  const setLifecycle = (state, detail = {}) => {
+    if (disposed && state !== 'disposed') return;
+    lifecycle = state;
+    if (state === 'disposed') {
+      delete container.dataset.detail;
+      delete container.dataset.lifecycle;
+    } else {
+      container.dataset.lifecycle = state;
+      container.dataset.detail = state;
+    }
+    onStateChange(state, detail);
+  };
+
   const disposeAll = () => {
     if (disposed) return;
     disposed = true;
+    generation += 1;
     targetOrganId = null;
+    targetSceneId = null;
     releaseLoadingDetail();
     releaseDetail();
     releaseModel();
+    for (const timer of attemptTimers) clearTimeout(timer);
+    attemptTimers.clear();
     while (cleanups.length) {
       try {
         cleanups.pop()();
@@ -96,6 +112,9 @@ export function mountLandingOrganViewport(container, {
     delete container.dataset.ready;
     delete container.dataset.organ;
     delete container.dataset.detail;
+    delete container.dataset.lifecycle;
+    lifecycle = 'disposed';
+    onStateChange('disposed', {});
   };
 
   function releaseModel() {
@@ -132,7 +151,7 @@ export function mountLandingOrganViewport(container, {
     detail = null;
     detailRoot = null;
     scenePose = null;
-    if (!disposed) delete container.dataset.detail;
+    if (!disposed && lifecycle === 'ready') setLifecycle('idle');
   }
 
   try {
@@ -368,7 +387,7 @@ export function mountLandingOrganViewport(container, {
           if (inView && pendingUpgrade && pendingUpgrade.gen === generation) {
             const waiting = pendingUpgrade;
             pendingUpgrade = null;
-            void upgrade(waiting.gen, waiting.sceneId);
+            void upgrade(waiting.gen, waiting.sceneId, { force: waiting.force });
           }
         }, { threshold: 0.01 })
       : null;
@@ -376,25 +395,50 @@ export function mountLandingOrganViewport(container, {
     cleanups.push(() => visibilityObserver?.disconnect());
 
     /**
-     * Stage 2. Load the organ's anatomy scene and put it in place of the
-     * builder, or leave the builder alone and say nothing.
+     * Load one published anatomy scene. Each call belongs to a generation; a
+     * late result may clean up its own scene but cannot alter the current UI.
      */
-    async function upgrade(gen, sceneId) {
-      if (!sceneId || disposed || !detailAllowed()) return null;
+    async function upgrade(gen, sceneId, { force = false } = {}) {
+      if (disposed) return null;
+      if (!sceneId) {
+        if (gen === generation) setLifecycle('unavailable');
+        return null;
+      }
+      if (!force && !detailAllowed()) {
+        if (gen === generation) setLifecycle('deferred');
+        return null;
+      }
       // Off screen, this is several megabytes fetched for a frame nobody is
       // looking at. Held until the hero comes into view, which on this page is
       // usually immediately and on a deep link into the middle of it is not.
       if (!inView) {
-        pendingUpgrade = { gen, sceneId };
+        pendingUpgrade = { gen, sceneId, force };
+        if (gen === generation) setLifecycle('idle');
         return null;
       }
       pendingUpgrade = null;
-      container.dataset.detail = 'loading';
+      setLifecycle('loading');
 
       let scene = null;
       let root = null;
+      let delayTimer = null;
+      let timeoutTimer = null;
       try {
-        const SceneClass = await loadSceneClass(sceneId);
+        const timeout = new Promise((_, reject) => {
+          timeoutTimer = setTimeout(() => {
+            const error = new Error(`3D model load timed out after ${detailTimeoutMs}ms`);
+            error.code = 'LANDING_DETAIL_TIMEOUT';
+            reject(error);
+          }, detailTimeoutMs);
+          attemptTimers.add(timeoutTimer);
+        });
+        delayTimer = setTimeout(() => {
+          if (gen === generation && !disposed && lifecycle === 'loading') {
+            setLifecycle('loading', { delayed: true });
+          }
+        }, detailDelayMs);
+        attemptTimers.add(delayTimer);
+        const SceneClass = await Promise.race([loadSceneClass(sceneId), timeout]);
         if (gen !== generation || disposed) return null;
 
         scene = new SceneClass({ viewer });
@@ -404,8 +448,15 @@ export function mountLandingOrganViewport(container, {
         // fetches whatever it fetches, so the frame is never empty.
         root.visible = false;
         viewer.scene.add(root);
-        await scene.ready;
+        await Promise.race([Promise.resolve(scene.ready), timeout]);
         if (gen !== generation || disposed) throw new Error('superseded');
+        // Some scene loaders resolve their ready promise after recording a
+        // handled transport/decode failure in `status`. Respect that existing
+        // contract: a settled promise with an explicit scene error is not a
+        // drawable published model.
+        if (scene.status?.state === 'error') {
+          throw scene.status.error ?? new Error('3D model failed to load: ' + sceneId);
+        }
 
         releaseModel();
         viewer.scene.remove(lights);
@@ -419,13 +470,12 @@ export function mountLandingOrganViewport(container, {
         cleanups.push(() => detailFrame?.());
 
         applyOpeningPose();
-        container.dataset.detail = 'ready';
         renderOnce();
+        container.dataset.ready = 'true';
+        setLifecycle('ready');
         syncActivity();
         return sceneId;
       } catch (error) {
-        // Silent by design. The builder is still on screen and is still a real
-        // organ; a hero is not the place to report a failed fetch.
         root?.parent?.remove(root);
         if (loadingDetail === scene) loadingDetail = null;
         try {
@@ -435,10 +485,32 @@ export function mountLandingOrganViewport(container, {
         }
         if (gen === generation && !disposed) {
           viewer.scene.add(lights);
-          container.dataset.detail = 'unavailable';
+          delete container.dataset.ready;
+          setLifecycle('error', { error });
+          try {
+            onDetailError(error);
+          } catch {
+            /* reporting must not turn a handled model failure into rejection */
+          }
         }
-        if (String(error?.message) !== 'superseded') console.error('landing organ detail', error);
+        if (String(error?.message) !== 'superseded') {
+          if (gen === generation && !disposed) console.error('landing organ detail', error);
+          else console.info('landing organ detail ignored after lifecycle end', {
+            sceneId,
+            reason: disposed ? 'disposed' : 'superseded',
+            error: error?.message ?? String(error),
+          });
+        }
         return null;
+      } finally {
+        if (delayTimer !== null) {
+          clearTimeout(delayTimer);
+          attemptTimers.delete(delayTimer);
+        }
+        if (timeoutTimer !== null) {
+          clearTimeout(timeoutTimer);
+          attemptTimers.delete(timeoutTimer);
+        }
       }
     }
 
@@ -460,7 +532,9 @@ export function mountLandingOrganViewport(container, {
 
         const gen = ++generation;
         targetOrganId = organId;
+        targetSceneId = upgradeSceneId;
         container.dataset.loading = 'true';
+        delete container.dataset.ready;
         let result = null;
         try {
           result = await build(THREE);
@@ -487,6 +561,10 @@ export function mountLandingOrganViewport(container, {
         holder = new THREE.Group();
         holder.name = `${organId}-hero`;
         holder.add(result.object);
+        // A lightweight builder is not evidence that the published model
+        // loaded. Keep it available for non-upgraded consumers, but do not show
+        // it behind the public scene's loading or failure message.
+        holder.visible = !upgradeSceneId;
         built = result;
         builtOrganId = organId;
         // A three-quarter view: the front of the organ, turned enough that the
@@ -512,19 +590,35 @@ export function mountLandingOrganViewport(container, {
         applyOpeningPose();
         container.dataset.loading = 'false';
         container.dataset.organ = organId;
-        container.dataset.ready = 'true';
         renderOnce();
         syncActivity();
 
-        // Not awaited: stage 1 is on screen and the caller is finished.
-        void upgrade(gen, upgradeSceneId);
+        if (upgradeSceneId) {
+          // Not awaited: the shell is interactive while the bounded scene
+          // attempt owns its loading state.
+          void upgrade(gen, upgradeSceneId);
+        } else {
+          container.dataset.ready = 'true';
+          setLifecycle('ready');
+        }
         return organId;
       },
+      retryDetail() {
+        if (disposed || !targetOrganId || !targetSceneId || lifecycle === 'loading') return null;
+        const gen = ++generation;
+        releaseLoadingDetail();
+        releaseDetail();
+        delete container.dataset.ready;
+        return upgrade(gen, targetSceneId, { force: true });
+      },
       get organ() {
-        return builtOrganId;
+        return targetOrganId;
       },
       get detailScene() {
         return detail?.sceneId ?? null;
+      },
+      get state() {
+        return lifecycle;
       },
       destroy: disposeAll,
     };
@@ -550,7 +644,14 @@ export function mountLandingOrganViewport(container, {
  */
 function fitDistance(root, target, direction, camera) {
   if (!root) return null;
-  const box = new THREE.Box3().setFromObject(root);
+  // The anatomy scene keeps non-anatomical atlas meshes hidden. Including those
+  // hidden meshes in the fit makes the visible brain occupy only a small part
+  // of the hero, so frame only geometry that can actually be drawn.
+  const box = new THREE.Box3();
+  root.updateWorldMatrix(true, true);
+  root.traverseVisible((object) => {
+    if (object.isMesh) box.expandByObject(object, true);
+  });
   if (box.isEmpty()) return null;
 
   const back = direction.clone().normalize();
