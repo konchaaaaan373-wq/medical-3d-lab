@@ -15,16 +15,28 @@
  */
 import { LOBES, SEGMENTS, lobeById } from '../scenes/respiratory/organs/lungAnatomy.js';
 
-/** Muted enough to read as tissue, separable enough to tell five lobes apart. */
+/**
+ * Muted enough to read as tissue, separable enough to tell five lobes apart.
+ *
+ * The builder's own `LOBE_COLORS` are five shades of one pink, which is what a
+ * lung looks like and is the wrong answer here: rendered, the oblique fissure
+ * between the left upper and lower lobes was not visible at all, and a division
+ * nobody can see is not a division the scene has shown. These are presentation
+ * values — a colour is not a claim about tissue — and `natural` below is the
+ * other reading of the same meshes.
+ */
 export const LUNG_SCENE_PALETTE = Object.freeze({
-  rightUpper: '#d98d95',
-  rightMiddle: '#c9737f',
-  rightLower: '#b9636f',
-  leftUpper: '#dc9aa0',
-  leftLower: '#c26b78',
-  airway: '#9fb0c8',
-  artery: '#7f9fd6',
-  vein: '#c96a7a',
+  rightUpper: '#e2a48f',
+  rightMiddle: '#d9b47e',
+  rightLower: '#a86274',
+  leftUpper: '#cf8079',
+  leftLower: '#8e5f7e',
+  // Cartilage rather than a second blue: the airway has to stay separable from
+  // the pulmonary artery once the parenchyma has faded and those two are the
+  // only things left to tell apart.
+  airway: '#b7ada0',
+  artery: '#6f8fc4',
+  vein: '#c4566d',
 });
 
 /** One tissue colour per system, for reading form rather than divisions. */
@@ -253,7 +265,6 @@ export const LUNG_ANATOMY_META = Object.freeze({
       name: 'Lobes and fissures',
       nameJa: '肺葉と葉間裂',
       at: 0,
-      focus: ['right-lung', 'left-lung'],
       summary: 'Five lobes as five closed meshes. Pick one to read what separates it from its neighbours.',
       summaryJa: '5つの葉を、それぞれ閉じたメッシュとして表示します。葉を選ぶと、隣の葉との境界が何かを読めます。',
     },
@@ -262,7 +273,6 @@ export const LUNG_ANATOMY_META = Object.freeze({
       name: 'Hilum and lobar branches',
       nameJa: '肺門と葉レベルの分岐',
       at: 0.55,
-      focus: ['hilum'],
       summary: 'The parenchyma fades to a hint and the bronchial and vascular trees appear inside it, in place.',
       summaryJa: '肺実質を薄くし、その内側の気管支・血管を本来の位置のまま表示します。',
     },
@@ -271,11 +281,16 @@ export const LUNG_ANATOMY_META = Object.freeze({
       name: 'Segmental bronchi and arteries',
       nameJa: '区域気管支と区域動脈',
       at: 1,
-      focus: ['segments'],
       summary: 'Eighteen segmental bronchi, each with the artery that runs with it, and the veins that run between segments instead.',
       summaryJa: '18本の区域気管支と、それぞれに伴走する区域動脈。静脈は区域の「間」を走ります。',
     },
   ],
   range: { start: 'Lobes', startJa: '肺葉', end: 'Segmental level', endJa: '区域レベル' },
   progressLabel: { label: 'Anatomical layers', labelJa: '解剖レイヤー' },
+  disclaimer:
+    'EDUCATIONAL GROSS-ANATOMY MODEL — Airway calibres and branching are drawn to read clearly, not measured, and no dimension here is suitable for planning or measurement.',
+  disclaimerJa:
+    '教育用肉眼解剖モデル：気道の口径や分岐は見やすさのために描いたもので、実測値ではありません。計測や手技の計画には使用できません。',
+  disclaimerShort: 'Educational gross anatomy — not for clinical use',
+  disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });

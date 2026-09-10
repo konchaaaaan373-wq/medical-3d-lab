@@ -172,6 +172,22 @@ test('the layer slider fades the outer tissue and brings the inner structures up
   }
 });
 
+test('a cut shows what is inside without waiting for the layer slider', () => {
+  const scene = sceneFor(SCENES[2]);
+  const pyramid = scene.structures.find((structure) => structure.id.startsWith('pyramid-'));
+  settle(scene, 0);
+  assert.ok(pyramid.currentOpacity < 0.05, 'under an intact cortex the pyramids are not shown');
+
+  scene.setAnatomyView('coronal-section');
+  scene._applyLayers(1 / 60, true);
+  assert.ok(pyramid.currentOpacity > 0.9, 'cut open, they are there at the same slider value');
+
+  scene.setAnatomyView('kidneys');
+  scene._applyLayers(1 / 60, true);
+  assert.ok(pyramid.currentOpacity < 0.05, 'and go back when the cut does');
+  settle(scene, 0);
+});
+
 test('a viewpoint may hide a side or cut the organ, and both are undone by the next one', () => {
   const scene = sceneFor(SCENES[0]);
   const views = scene.getAnatomyViews().map((view) => view.id);
@@ -187,7 +203,10 @@ test('a viewpoint may hide a side or cut the organ, and both are undone by the n
   assert.ok(scene.sectionPlane instanceof THREE.Plane);
   for (const mesh of leftLung.meshes) {
     assert.deepEqual(mesh.material.clippingPlanes, [scene.sectionPlane]);
-    assert.equal(mesh.material.side, THREE.DoubleSide, 'the far wall of a cut mesh has to be drawn');
+    // Front faces only, deliberately: the inner surface of a carved shell is
+    // the same surface the parts inside it were cut against, and drawing both
+    // puts two coincident surfaces in the depth buffer.
+    assert.equal(mesh.material.side, THREE.FrontSide);
   }
 
   scene.setAnatomyView('anterior');

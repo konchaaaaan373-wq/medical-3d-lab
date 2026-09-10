@@ -43,8 +43,8 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static meta = LIVER_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(0.2, 1.1, 5.3),
-    target: new THREE.Vector3(0, -0.05, 0),
+    position: new THREE.Vector3(-0.15, 0.75, 7.2),
+    target: new THREE.Vector3(-0.15, -0.12, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -52,7 +52,7 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static colorModes = LIVER_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.2, 1.1, 5.3], target: [0, -0.05, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.15, 0.75, 7.2], target: [-0.15, -0.12, 0] },
     // The visceral surface is where the porta hepatis and the gallbladder are,
     // so it is a view and not merely a camera angle.
     { id: 'inferior', label: 'Visceral (inferior) surface', labelJa: '臓側面（下面）', position: [0.2, -4.6, 2.6], target: [0, -0.2, 0.1] },
@@ -73,6 +73,16 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   buildOrgan() {
     const liver = buildLiver({ vessels: true, opacity: 1, detail: 10 });
     const gallbladder = buildGallbladder();
+    // Scaled down where it hangs, not rebuilt. The builder's pear is sized for
+    // `liver-portal-flow`, where it is a target for a bile stream and has to
+    // stay legible; against a liver a reader is comparing segments on, the same
+    // pear reads as a second organ. This is presentation and it is local to
+    // this scene — the builder keeps the size the other scene needs.
+    gallbladder.object.scale.setScalar(0.62);
+    // Scaling happens about the pear's own centre, which drops its neck away
+    // from the fossa it hangs in. Raised by what the scaling took off the top,
+    // so it stays attached to the liver rather than floating under it.
+    gallbladder.object.position.y += 0.21;
     liver.object.add(gallbladder.object);
 
     const copy = liverStructureCopy();
@@ -136,12 +146,14 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
 
     declare('biliary:gallbladder', [gallbladder.object]);
 
+
     return {
       object: liver.object,
       structures,
       dispose: () => liver.dispose(),
     };
   }
+
 }
 
 /**

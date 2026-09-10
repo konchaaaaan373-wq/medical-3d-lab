@@ -162,9 +162,20 @@ export class OrganAnatomyScene {
         baseOpacity: 1,
         preferredView: null,
         tags: [],
+        /**
+         * Draw the far wall as well as the near one.
+         *
+         * For a shape with a concavity deep enough to fold — a kidney's hilum
+         * is one — front-face culling opens a hole straight through the organ
+         * to the background, and the reader is looking at a bean with a window
+         * in it. Off by default, because a closed solid does not need it and
+         * pays for it.
+         */
+        doubleSided: false,
         ...structure,
         meshes,
         currentOpacity: 1,
+        currentTransparent: true,
         selected: false,
         hovered: false,
         hidden: false,
@@ -173,6 +184,7 @@ export class OrganAnatomyScene {
       for (const mesh of meshes) {
         mesh.material = mesh.material.clone();
         mesh.material.transparent = true;
+        if (entry.doubleSided) mesh.material.side = THREE.DoubleSide;
         mesh.material.depthWrite = true;
         const baseColor = new THREE.Color(entry.colors?.[this.colorMode] ?? mesh.material.color.getHex());
         mesh.material.color.copy(baseColor);
@@ -471,21 +483,24 @@ export class OrganAnatomyScene {
    * Cut the organ on a plane.
    *
    * A cut is not a fade: the tissue in front of the plane is *gone*, and the
-   * inside of what is left is on show. That needs two things beyond a clipping
-   * plane — the far wall of a closed mesh has to be drawn, which is what the
-   * side flip is for, and the renderer has to be told local clipping is in
-   * play at all. Both are put back when the cut is dropped.
+   * inside of what is left is on show.
+   *
+   * Only the clipping plane, and the renderer flag that makes it work. Drawing
+   * the far wall as well — which is the obvious way to stop a cut solid looking
+   * hollow — is what this did first, and it was wrong twice over: the cortex
+   * shell's inner surface is *the same surface* the pyramids were carved
+   * against, so drawing it put two coincident surfaces in the depth buffer and
+   * the cut kidney showed its pyramids as a dotted stipple. Culled, the shell's
+   * inner face is not drawn, and what is behind it — the pyramids, the columns,
+   * the calyces — is what the reader sees through the cut. Which is the point
+   * of cutting it.
    */
   _setSection(section) {
     const renderer = this.viewer?.renderer;
     if (!section) {
       this.section = null;
       this.sectionPlane = null;
-      for (const mesh of this.selectables) {
-        mesh.material.clippingPlanes = null;
-        mesh.material.side = THREE.FrontSide;
-        mesh.material.needsUpdate = true;
-      }
+      for (const mesh of this.selectables) mesh.material.clippingPlanes = null;
       if (renderer && this._clippingWas !== undefined) {
         renderer.localClippingEnabled = this._clippingWas;
         this._clippingWas = undefined;
@@ -498,11 +513,7 @@ export class OrganAnatomyScene {
     }
     this.section = section;
     this.sectionPlane = new THREE.Plane(new THREE.Vector3(...section.normal).normalize(), section.constant ?? 0);
-    for (const mesh of this.selectables) {
-      mesh.material.clippingPlanes = [this.sectionPlane];
-      mesh.material.side = THREE.DoubleSide;
-      mesh.material.needsUpdate = true;
-    }
+    for (const mesh of this.selectables) mesh.material.clippingPlanes = [this.sectionPlane];
   }
 
   // --- colour ---------------------------------------------------------------
@@ -588,16 +599,42 @@ export class OrganAnatomyScene {
       if (structure.hidden) target = 0;
       else if (this.isolatedId === structure.id) target = structure.baseOpacity;
       else {
-        const reveal = structure.revealAt > 0 ? smoothstep(structure.revealAt - 0.14, structure.revealAt + 0.14, p) : 1;
+        // A cut has already taken the tissue in front away, so what is inside
+        // is *there* — gating it on the slider as well would leave the reader
+        // looking into an empty shell, which is what the coronal view of the
+        // kidney showed before this line existed. Fading still works on top: a
+        // cut organ whose cortex is also faded is a legitimate thing to ask
+        // for, and it is the slider that asks for it.
+        const reveal =
+          this.section || structure.revealAt <= 0
+            ? 1
+            : smoothstep(structure.revealAt - 0.14, structure.revealAt + 0.14, p);
         const ghost = structure.ghostAt == null ? 0 : smoothstep(structure.ghostAt - 0.14, structure.ghostAt + 0.14, p);
         target = lerp(structure.baseOpacity, structure.ghostOpacity, ghost) * reveal;
       }
 
       const opacity = snap ? target : damp(structure.currentOpacity, target, 10, dt);
       structure.currentOpacity = opacity;
+      // Solid tissue leaves the transparent pass entirely.
+      //
+      // A material with `transparent: true` is sorted back-to-front by its
+      // centroid whatever its opacity, and a cortex shell and the pyramids
+      // inside it share a centroid: the sort had no way to order them and the
+      // cut kidney showed its pyramids in dashes, through a shell that is not
+      // see-through. At opacity 1 there is nothing to blend, so it belongs in
+      // the opaque pass where the depth buffer decides.
+      const transparent = opacity < 0.999;
+      const changed = structure.currentTransparent !== transparent;
+      structure.currentTransparent = transparent;
       for (const mesh of structure.meshes) {
         mesh.material.opacity = opacity;
         mesh.material.depthWrite = opacity > 0.9;
+        if (changed) {
+          mesh.material.transparent = transparent;
+          // Only on a change: the flag is compiled into the material, and
+          // rewriting it every frame recompiles every material every frame.
+          mesh.material.needsUpdate = true;
+        }
         mesh.visible = opacity > 0.012;
       }
     }

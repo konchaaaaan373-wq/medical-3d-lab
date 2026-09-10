@@ -45,9 +45,12 @@ import {
 export class LungAnatomyScene extends OrganAnatomyScene {
   static meta = LUNG_ANATOMY_META;
 
+  // Close enough that the lungs fill the frame. At the distance this opened at
+  // first, the model sat in the middle third of the canvas and the fissures —
+  // the thing a reader is here to see — were a few pixels apart.
   static cameraPose = {
-    position: new THREE.Vector3(0, 0.6, 9.4),
-    target: new THREE.Vector3(0, 0.5, 0),
+    position: new THREE.Vector3(0, 0.75, 7.7),
+    target: new THREE.Vector3(0, 0.7, 0),
   };
 
   static lightRig = { key: 32, fill: 0.95, rim: 16 };
@@ -79,15 +82,15 @@ export class LungAnatomyScene extends OrganAnatomyScene {
    * which of the three they are looking at.
    */
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0, 0.6, 9.4], target: [0, 0.5, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0, 0.6, -9.4], target: [0, 0.5, 0] },
-    { id: 'right-lateral', label: 'Right lateral', labelJa: '右外側', position: [-9.4, 0.6, 0], target: [-1.24, 0.5, 0] },
-    { id: 'left-lateral', label: 'Left lateral', labelJa: '左外側', position: [9.4, 0.6, 0], target: [1.24, 0.5, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0, 0.75, 7.7], target: [0, 0.7, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0, 0.75, -7.7], target: [0, 0.7, 0] },
+    { id: 'right-lateral', label: 'Right lateral', labelJa: '右外側', position: [-7.0, 0.6, 0], target: [-1.24, 0.5, 0] },
+    { id: 'left-lateral', label: 'Left lateral', labelJa: '左外側', position: [7.0, 0.6, 0], target: [1.24, 0.5, 0] },
     {
       id: 'right-mediastinal',
       label: 'Right lung, mediastinal surface',
       labelJa: '右肺・縦隔面',
-      position: [8.8, 0.6, 0.4],
+      position: [6.6, 0.6, 0.4],
       target: [-1.24, 0.5, 0],
       hideTags: ['left'],
     },
@@ -95,8 +98,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
       id: 'coronal-section',
       label: 'Coronal section',
       labelJa: '前額断（切断）',
-      position: [0, 0.6, 9.4],
-      target: [0, 0.5, 0],
+      position: [0, 0.75, 7.7],
+      target: [0, 0.7, 0],
       section: { normal: [0, 0, -1], constant: 0.15 },
     },
   ];
@@ -187,19 +190,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
       declare(`artery:${segment.id}-segmental-artery`, [arteries.get(`${segment.id}-segmental-artery`)], segmental);
     }
 
+
     return { object: lungs.object, structures, dispose: () => lungs.dispose() };
   }
 
-  /** Landmarks the label layer can point at, in the lungs' own coordinates. */
-  getAnnotations() {
-    return [
-      {
-        id: 'carina',
-        anchor: 'carina',
-        label: 'Carina',
-        labelJa: '気管分岐部',
-        position: new THREE.Vector3(-0.15, 2.05, 0),
-      },
-    ];
-  }
 }

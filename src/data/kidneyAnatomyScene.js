@@ -253,7 +253,6 @@ export const KIDNEY_ANATOMY_META = Object.freeze({
       name: 'Whole kidneys and the tract',
       nameJa: '腎全体と尿路',
       at: 0,
-      focus: ['kidney'],
       summary: 'Two kidneys, two ureters and the bladder. The cortex is the shell you are looking at.',
       summaryJa: '左右の腎、2本の尿管、膀胱です。いま見えている外層が腎皮質です。',
     },
@@ -262,7 +261,6 @@ export const KIDNEY_ANATOMY_META = Object.freeze({
       name: 'Pyramids and columns',
       nameJa: '錐体と腎柱',
       at: 0.55,
-      focus: ['pyramids'],
       summary: 'The cortex fades to a hint: seven medullary pyramids, and the cortical columns reaching in between them.',
       summaryJa: '皮質を薄くすると、7つの髄質錐体と、そのあいだへ入り込む腎柱（皮質）が現れます。',
     },
@@ -271,11 +269,16 @@ export const KIDNEY_ANATOMY_META = Object.freeze({
       name: 'Calyces and pelvis',
       nameJa: '腎杯と腎盂',
       at: 1,
-      focus: ['pelvis'],
       summary: 'A minor calyx cups each papilla, three major calyces gather them, and the pelvis leaves at the hilum as the ureter.',
       summaryJa: '各腎乳頭を小腎杯が包み、3つの大腎杯がそれらをまとめ、腎盂が腎門から尿管として出ていきます。',
     },
   ],
   range: { start: 'Whole organ', startJa: '臓器全体', end: 'Collecting system', endJa: '集合系' },
   progressLabel: { label: 'Anatomical layers', labelJa: '解剖レイヤー' },
+  disclaimer:
+    'EDUCATIONAL GROSS-ANATOMY MODEL — No renal vessels are drawn, the sinus is not carved out, and only one kidney is partitioned. Not suitable for localisation or measurement.',
+  disclaimerJa:
+    '教育用肉眼解剖モデル：腎血管は描いておらず、腎洞も切り出していません。内部を分割しているのは片側のみで、部位同定や計測には使用できません。',
+  disclaimerShort: 'Educational gross anatomy — not for clinical use',
+  disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });

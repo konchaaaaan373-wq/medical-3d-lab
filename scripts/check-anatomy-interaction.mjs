@@ -56,6 +56,20 @@
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
+ *   --points <list> where to click, as "fx,fy fx,fy …" in canvas fractions.
+ *                   The default four are placed for a solid mass filling the
+ *                   frame. An organ with a real gap down the middle — two lungs
+ *                   with a mediastinum between them — needs its own four, and
+ *                   moving the model to satisfy a fixed grid would be the
+ *                   check deciding the anatomy.
+ *   --empty <fx,fy> a point that is background, for the check that a click on
+ *                   nothing clears the card. The default is at the left edge,
+ *                   clear of the title card above it and of the console along
+ *                   the bottom: the bottom-left corner this used to use is
+ *                   *behind* the console, so the click never reached the canvas
+ *                   and the check could only pass when the card was already
+ *                   empty — which it was, until a scene came along whose clicks
+ *                   all landed on something.
  *   --shots <dir>   write screenshots here
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
@@ -74,6 +88,30 @@ const value = (name, fallback = null) => {
 const distDir = value('--dist', 'dist');
 const sceneSlug = value('--scene', 'brain-anatomy');
 const shotsDir = value('--shots');
+const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
+const clickPoints = (() => {
+  const raw = value('--points');
+  if (!raw) return DEFAULT_POINTS;
+  const points = raw
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map(Number));
+  if (!points.length || points.some((point) => point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1)))) {
+    console.error('--points takes "fx,fy fx,fy …" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return points;
+})();
+const emptyPoint = (() => {
+  const raw = value('--empty');
+  if (!raw) return [0.03, 0.45];
+  const point = raw.split(',').map(Number);
+  if (point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1))) {
+    console.error('--empty takes "fx,fy" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return point;
+})();
 
 const die = (message) => {
   console.error(message);
@@ -242,7 +280,7 @@ try {
   };
 
   // 1. A click on the model names a structure, in both languages, with a path.
-  for (const [fx, fy] of [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]]) {
+  for (const [fx, fy] of clickPoints) {
     const hit = await clickAt(fx, fy);
     if (hit.en === EMPTY) continue;
     observed.structures.push(hit);
@@ -269,7 +307,7 @@ try {
   }
 
   // 3. Clicking the background clears rather than keeping a stale card.
-  const afterEmpty = await clickAt(0.04, 0.94);
+  const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
   await page.waitForTimeout(350);
@@ -310,7 +348,15 @@ try {
     }
 
     // And the other direction: selecting a row selects that structure.
-    const row = leaves.nth(Math.min(2, observed.treeRows - 1));
+    //
+    // A *visible* row. The tree opens the branch the selection is in and
+    // leaves the rest closed, so on an organ with more branches than the brain
+    // the third leaf in the DOM is inside a collapsed one — and clicking a row
+    // nobody can see is not the interaction being checked.
+    const openLeaves = page.locator('.anatomy-tree-leaf:visible');
+    const openCount = await openLeaves.count();
+    if (!openCount) problems.push('every row of the part tree is inside a collapsed branch');
+    const row = openLeaves.nth(Math.min(2, openCount - 1));
     const rowName = (await row.locator('.lang-en').first().textContent()).trim();
     await row.click();
     await page.waitForTimeout(350);

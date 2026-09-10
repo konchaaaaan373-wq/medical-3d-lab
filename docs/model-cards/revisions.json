@@ -144,8 +144,8 @@
       "src/scenes/respiratory/scenes/lungAnatomy/LungAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "73d1641eb069ae8c",
+    "cardRevision": 3,
+    "modelDigest": "e901aaf8d5469320",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -156,8 +156,8 @@
       "src/scenes/hepatobiliary/scenes/liverAnatomy/LiverAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "3a96c9292b23e9c3",
+    "cardRevision": 3,
+    "modelDigest": "5090759cf882a5a4",
     "cardUpdatedAt": "2026-09-10"
   },
   {
@@ -168,8 +168,8 @@
       "src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "279d1be7ee9a7458",
+    "cardRevision": 3,
+    "modelDigest": "b547ee7ebef59743",
     "cardUpdatedAt": "2026-09-10"
   }
 ]

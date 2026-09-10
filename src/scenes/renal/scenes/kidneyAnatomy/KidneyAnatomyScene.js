@@ -50,9 +50,13 @@ const BLADDER_AT = [0, -1.75, 0.15];
 export class KidneyAnatomyScene extends OrganAnatomyScene {
   static meta = KIDNEY_ANATOMY_META;
 
+  // Framed on the two kidneys rather than on the whole tract. The tract is
+  // three times as tall as a kidney, so a frame that fits the bladder makes the
+  // organ this scene is named after too small to point at; "Urinary tract"
+  // below is the view that pulls back to it.
   static cameraPose = {
-    position: new THREE.Vector3(3.1, 2.0, 6.4),
-    target: new THREE.Vector3(0.7, 0.6, 0),
+    position: new THREE.Vector3(0.2, 1.35, 5.9),
+    target: new THREE.Vector3(0.2, 1.3, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -60,12 +64,13 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   static colorModes = KIDNEY_COLOR_MODES;
 
   static views = [
-    { id: 'overview', label: 'Urinary tract', labelJa: '尿路全体', position: [3.1, 2.0, 6.4], target: [0.7, 0.6, 0] },
+    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0.2, 1.35, 5.9], target: [0.2, 1.3, 0] },
+    { id: 'overview', label: 'Urinary tract', labelJa: '尿路全体', position: [0.4, 0.3, 8.6], target: [0.4, -0.15, 0] },
     {
       id: 'left-kidney',
       label: 'Left kidney, anterior',
       labelJa: '左腎・前面',
-      position: [1.55, 1.5, 4.1],
+      position: [1.55, 1.5, 3.4],
       target: [1.55, 1.5, 0],
     },
     {
@@ -74,7 +79,7 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
       labelJa: '左腎・腎門側',
       // The hilum of the left kidney faces screen-left, so the camera has to be
       // on that side of it rather than in front.
-      position: [-1.6, 1.5, 2.6],
+      position: [-1.9, 1.5, 2.4],
       target: [1.55, 1.5, 0],
     },
     { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-2.2, 1.8, -6.4], target: [0.4, 0.4, 0] },
@@ -82,7 +87,7 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
       id: 'coronal-section',
       label: 'Coronal section',
       labelJa: '前額断（切断）',
-      position: [1.4, 1.5, 4.4],
+      position: [1.5, 1.5, 3.6],
       target: [1.55, 1.5, 0],
       // The cut every kidney diagram is drawn from: take the front half away
       // and the pyramids, the columns and the calyces are all on the face.
@@ -97,6 +102,13 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
     const detailed = buildKidney({ side: DETAILED_SIDE, parts: true, opacity: 1, detail: 11 });
     const other = DETAILED_SIDE === 'left' ? 'right' : 'left';
     const landmark = buildKidney({ side: other, opacity: 1 });
+    // The landmark build's pelvis stands for the whole collecting system on its
+    // own and is sized to say so. Beside a kidney that has its calyces drawn,
+    // it reads as a lump growing out of the hilum, so it is tucked back into
+    // the sinus here. Local presentation: the builder keeps the size the scenes
+    // that use it alone depend on.
+    const landmarkPelvis = landmark.object.children.find((child) => child.name === 'pelvis');
+    landmarkPelvis?.scale.setScalar(0.42);
     detailed.object.position.set(...KIDNEY_AT[DETAILED_SIDE]);
     landmark.object.position.set(...KIDNEY_AT[other]);
 
@@ -170,10 +182,15 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
     // The landmark side is one structure. Its three meshes are a shell, an
     // inner mass and a stand-in pelvis, and none of them is a part anybody
     // should be able to select by an anatomical name.
-    declare('whole-kidney', landmark.object.children.filter((child) => child.isMesh));
+    // Double-sided: the medial concavity is deep enough that front-face
+    // culling put a hole straight through this kidney to the background.
+    declare('whole-kidney', landmark.object.children.filter((child) => child.isMesh), {
+      doubleSided: true,
+    });
 
     for (const id of ['left', 'right']) declare(`ureter-${id}`, [ureters[id].object]);
     declare('bladder', bladder.object.children.filter((child) => child.isMesh));
+
 
     return {
       object,
@@ -187,6 +204,7 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
       },
     };
   }
+
 }
 
 /**

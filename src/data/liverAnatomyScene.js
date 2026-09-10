@@ -248,7 +248,6 @@ export const LIVER_ANATOMY_META = Object.freeze({
       name: 'Couinaud segments',
       nameJa: 'Couinaud区域',
       at: 0,
-      focus: ['liver'],
       summary: 'Nine parts whose union is the liver. Pick one to read where its boundaries come from.',
       summaryJa: '合わせて肝臓全体になる9つの部分です。区域を選ぶと、その境界が何で決まるかを読めます。',
     },
@@ -257,7 +256,6 @@ export const LIVER_ANATOMY_META = Object.freeze({
       name: 'Hepatic veins and the cava',
       nameJa: '肝静脈と下大静脈',
       at: 0.55,
-      focus: ['cava'],
       summary: 'The parenchyma fades and the three hepatic veins appear on the very planes that divide the segments.',
       summaryJa: '肝実質を薄くすると、区域を分ける面そのものを走る3本の肝静脈が現れます。',
     },
@@ -266,11 +264,16 @@ export const LIVER_ANATOMY_META = Object.freeze({
       name: 'Portal tree',
       nameJa: '門脈系',
       at: 1,
-      focus: ['porta'],
       summary: 'The portal vein divides at the porta hepatis and sends a pedicle into the middle of each segment — inside them, where the veins were between them.',
       summaryJa: '門脈は肝門部で分岐し、各区域の中心へ枝を送ります。肝静脈が区域の「間」を走るのに対し、門脈枝は区域の「内部」を走ります。',
     },
   ],
   range: { start: 'Segments', startJa: '区域', end: 'Portal tree', endJa: '門脈系' },
   progressLabel: { label: 'Anatomical layers', labelJa: '解剖レイヤー' },
+  disclaimer:
+    'EDUCATIONAL GROSS-ANATOMY MODEL — The outer form is procedural, no bile ducts or hepatic artery are drawn, and nothing here supports resection, donor or volumetric planning.',
+  disclaimerJa:
+    '教育用肉眼解剖モデル：外形は模式的で、胆管や肝動脈は描いていません。切除計画・ドナー評価・容積計算には使用できません。',
+  disclaimerShort: 'Educational gross anatomy — not for clinical use',
+  disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });
