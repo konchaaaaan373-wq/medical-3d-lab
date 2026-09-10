@@ -55,8 +55,8 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   // organ this scene is named after too small to point at; "Urinary tract"
   // below is the view that pulls back to it.
   static cameraPose = {
-    position: new THREE.Vector3(0.2, 1.35, 5.9),
-    target: new THREE.Vector3(0.2, 1.3, 0),
+    position: new THREE.Vector3(0.5, 1.35, 5.9),
+    target: new THREE.Vector3(0.5, 1.3, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -64,7 +64,7 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
   static colorModes = KIDNEY_COLOR_MODES;
 
   static views = [
-    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0.2, 1.35, 5.9], target: [0.2, 1.3, 0] },
+    { id: 'kidneys', label: 'Both kidneys', labelJa: '左右の腎', position: [0.5, 1.35, 5.9], target: [0.5, 1.3, 0] },
     { id: 'overview', label: 'Urinary tract', labelJa: '尿路全体', position: [0.4, 0.3, 8.6], target: [0.4, -0.15, 0] },
     {
       id: 'left-kidney',

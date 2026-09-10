@@ -49,8 +49,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
   // first, the model sat in the middle third of the canvas and the fissures —
   // the thing a reader is here to see — were a few pixels apart.
   static cameraPose = {
-    position: new THREE.Vector3(0, 0.75, 7.7),
-    target: new THREE.Vector3(0, 0.7, 0),
+    position: new THREE.Vector3(0, 1.05, 7.9),
+    target: new THREE.Vector3(0, 1.0, 0),
   };
 
   static lightRig = { key: 32, fill: 0.95, rim: 16 };
@@ -82,8 +82,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
    * which of the three they are looking at.
    */
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0, 0.75, 7.7], target: [0, 0.7, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0, 0.75, -7.7], target: [0, 0.7, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0, 1.05, 7.9], target: [0, 1.0, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [0, 1.05, -7.9], target: [0, 1.0, 0] },
     { id: 'right-lateral', label: 'Right lateral', labelJa: '右外側', position: [-7.0, 0.6, 0], target: [-1.24, 0.5, 0] },
     { id: 'left-lateral', label: 'Left lateral', labelJa: '左外側', position: [7.0, 0.6, 0], target: [1.24, 0.5, 0] },
     {
@@ -98,8 +98,8 @@ export class LungAnatomyScene extends OrganAnatomyScene {
       id: 'coronal-section',
       label: 'Coronal section',
       labelJa: '前額断（切断）',
-      position: [0, 0.75, 7.7],
-      target: [0, 0.7, 0],
+      position: [0, 1.05, 7.9],
+      target: [0, 1.0, 0],
       section: { normal: [0, 0, -1], constant: 0.15 },
     },
   ];

@@ -444,6 +444,17 @@ export class OrganAnatomyScene {
 
   // --- viewpoints -----------------------------------------------------------
 
+  /**
+   * The named viewpoints.
+   *
+   * A note that applies to every organ scene's first pose: the part panel
+   * covers roughly the right quarter of the frame, and the shared framing
+   * compensates for the console at the bottom but not for that. A wide organ
+   * centred on the canvas therefore has its left end — the patient's right —
+   * behind the panel. Each scene's opening pose is biased towards the panel to
+   * put the whole organ in the band that is actually visible; that is framing,
+   * and it moves no anatomy.
+   */
   getAnatomyViews() {
     return (this.constructor.views ?? []).map(({ id, label, labelJa }) => ({ id, label, labelJa }));
   }

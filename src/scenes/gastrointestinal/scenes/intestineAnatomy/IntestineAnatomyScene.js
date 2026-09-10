@@ -39,8 +39,8 @@ export class IntestineAnatomyScene extends OrganAnatomyScene {
   static meta = INTESTINE_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(-0.4, -0.2, 8.6),
-    target: new THREE.Vector3(-0.4, -0.25, 0),
+    position: new THREE.Vector3(0.35, -0.33, 8.2),
+    target: new THREE.Vector3(0.35, -0.38, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -48,8 +48,8 @@ export class IntestineAnatomyScene extends OrganAnatomyScene {
   static colorModes = INTESTINE_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.4, -0.2, 8.6], target: [-0.4, -0.25, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.4, -0.2, -8.6], target: [-0.4, -0.25, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.35, -0.33, 8.2], target: [0.35, -0.38, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.05, -0.33, -8.2], target: [-0.05, -0.38, 0] },
     {
       id: 'colon-only',
       label: 'Colon alone',

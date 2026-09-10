@@ -43,8 +43,8 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static meta = LIVER_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(-0.15, 0.75, 7.2),
-    target: new THREE.Vector3(-0.15, -0.12, 0),
+    position: new THREE.Vector3(0.55, 0.5, 5.8),
+    target: new THREE.Vector3(0.55, 0.2, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -52,7 +52,7 @@ export class LiverAnatomyScene extends OrganAnatomyScene {
   static colorModes = LIVER_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.15, 0.75, 7.2], target: [-0.15, -0.12, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [0.55, 0.5, 5.8], target: [0.55, 0.2, 0] },
     // The visceral surface is where the porta hepatis and the gallbladder are,
     // so it is a view and not merely a camera angle.
     { id: 'inferior', label: 'Visceral (inferior) surface', labelJa: '臓側面（下面）', position: [0.2, -4.6, 2.6], target: [0, -0.2, 0.1] },

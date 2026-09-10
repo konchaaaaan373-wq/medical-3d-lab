@@ -1,11 +1,35 @@
+#!/usr/bin/env node
 /**
- * Drives every disease scene through baseline → disease → reset, in a browser.
+ * Drives disease scenes through baseline → disease → reset, in a real browser.
  *
- * The claim being checked is the one a reader depends on and no unit test can
- * see: that moving the model off its baseline changes what is on screen, that
- * the numbers change with it, and that Reset puts both back. Values are read
- * out of the product's own panels, so what is compared is what a reader is
- * shown rather than a state written in from outside.
+ *   VITE_ALLOW_PREVIEW=1 npm run build
+ *   npm run verify:disease -- copd asthma pulmonary-edema
+ *
+ * ## What it checks, and why it is a script
+ *
+ * The promise a disease scene makes to a reader is that they can move the model
+ * off its baseline, see the difference, and put it back. Every part of that is
+ * invisible to `node --test`: the model's own tests check the physiology, and a
+ * scene test checks that the scene agrees with the model, but neither can see
+ * whether the console's Reset button actually returns the *scene* to where it
+ * started. It does not always. This found a COPD Reset that put the four
+ * sliders back and left the lung sitting where the reader had driven it,
+ * handing back several breaths of negative tidal volume while it emptied.
+ *
+ * Everything compared is read out of the product's own panels — the stage
+ * read-out, the metric figures, the control values — so what is checked is what
+ * a reader is shown rather than a state written in from outside.
+ *
+ * ## What it cannot check
+ *
+ * That the change is the *right* change. It knows that the numbers moved, not
+ * that they moved the way the disease does; that is the model's own tests and a
+ * clinical reviewer. And it drives every control to its maximum, which for a
+ * scene whose controls include a treatment is not the worst state — read the
+ * scene's own tests for the states that matter.
+ *
+ * Options: the scene slugs to drive, as arguments, after an optional output
+ * directory for the screenshots.
  */
 import { createReadStream, existsSync, mkdirSync } from 'node:fs';
 import { createServer } from 'node:http';

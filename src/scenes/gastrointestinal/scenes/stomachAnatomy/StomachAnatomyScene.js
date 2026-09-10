@@ -39,8 +39,8 @@ export class StomachAnatomyScene extends OrganAnatomyScene {
   static meta = STOMACH_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(-0.2, 0.55, 6.0),
-    target: new THREE.Vector3(-0.2, 0.5, 0),
+    position: new THREE.Vector3(-0.05, 0.28, 8.7),
+    target: new THREE.Vector3(-0.05, 0.23, 0),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -48,16 +48,16 @@ export class StomachAnatomyScene extends OrganAnatomyScene {
   static colorModes = STOMACH_COLOR_MODES;
 
   static views = [
-    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.2, 0.55, 6.0], target: [-0.2, 0.5, 0] },
-    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.2, 0.55, -6.0], target: [-0.2, 0.5, 0] },
-    { id: 'left', label: 'From the patient’s left', labelJa: '左側から', position: [5.6, 0.7, 1.6], target: [-0.2, 0.4, 0] },
+    { id: 'anterior', label: 'Anterior', labelJa: '前面', position: [-0.05, 0.28, 8.7], target: [-0.05, 0.23, 0] },
+    { id: 'posterior', label: 'Posterior', labelJa: '背面', position: [-0.05, 0.28, -8.7], target: [-0.05, 0.23, 0] },
+    { id: 'left', label: 'From the patient’s left', labelJa: '左側から', position: [8.0, 0.5, 1.8], target: [-0.05, 0.23, 0] },
     { id: 'outlet', label: 'Pylorus and duodenum', labelJa: '幽門と十二指腸', position: [-1.4, -0.35, 3.4], target: [-1.4, -0.35, 0] },
     {
       id: 'coronal-section',
       label: 'Coronal section',
       labelJa: '前額断（切断）',
-      position: [-0.2, 0.55, 6.0],
-      target: [-0.2, 0.5, 0],
+      position: [-0.05, 0.28, 8.7],
+      target: [-0.05, 0.23, 0],
       section: { normal: [0, 0, -1], constant: 0.02 },
     },
   ];
