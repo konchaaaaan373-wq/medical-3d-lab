@@ -75,7 +75,17 @@ export function buildNephron(colors = {}) {
    */
   function segment(name, curve, { radius, color = tubule, radial = 12, steps = 90 }) {
     const surface = new TubeSurface(curve, { radius, steps, radial });
-    const material = tissueMaterial({ color, roughness: 0.42, opacity: 1, emissiveIntensity: 0.05 });
+    // Translucent, and declared so here rather than switched on later.
+    //
+    // The wall has to be seen through: the filtrate moving inside it is what
+    // this model is about. Built opaque, `tissueMaterial` gives the material
+    // `transparent: false` and `depthWrite: true`, and `setFiltrateVolume`
+    // below could turn the first of those on but not the second — so the wall
+    // went see-through and went on rejecting everything behind it by depth.
+    // The flow was visible anyway, because every tube in the product was wound
+    // inside out and its near wall was being culled. Both are fixed, and this
+    // is the half that says what the material actually is.
+    const material = tissueMaterial({ color, roughness: 0.42, opacity: 0.55, emissiveIntensity: 0.05 });
     const mesh = new THREE.Mesh(surface.geometry, material);
     mesh.name = name;
     object.add(mesh);
@@ -259,8 +269,10 @@ export function buildNephron(colors = {}) {
     setFiltrateVolume(fraction) {
       const shown = Math.min(1.4, Math.max(0, fraction));
       for (const name of flowOrder) {
-        segments[name].material.opacity = 0.5 + 0.5 * Math.min(1, shown);
-        segments[name].material.transparent = true;
+        // Stops short of opaque: the top of this range used to be 1, which
+        // did nothing while the material was not transparent and would now
+        // close the lumen at exactly the moment there is most to see in it.
+        segments[name].material.opacity = 0.4 + 0.35 * Math.min(1, shown);
       }
       glomerulus.setFiltration(Math.min(1, shown));
     },

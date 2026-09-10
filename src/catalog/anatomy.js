@@ -87,8 +87,8 @@ export const ORGAN_ANATOMY = Object.freeze([
   {
     organ: 'kidney',
     level: 'A2',
-    evidence: 'tests/kidney-anatomy.test.js — the cortex as one shell between the capsule and the corticomedullary junction, seven medullary pyramids and the cortical columns between them partitioning what is inside it, the collecting system from papilla to pelvis, and a nephron placed across the three scales (glomerulus in the cortex, loop of Henle in the medulla)',
-    next: 'A3: the segmental arteries and the interlobar/arcuate hierarchy, which renovascular hypertension and prerenal AKI point at. Also still schematic: the papillae converge on one point rather than into separate calyces, and the junction is the capsule scaled rather than a surface of its own.',
+    evidence: 'tests/kidney-anatomy.test.js — the cortex as one shell between the capsule and the corticomedullary junction, seven medullary pyramids and the cortical columns between them partitioning what is inside it, a minor calyx cupping each papilla and draining through three major calyces to the pelvis, and a nephron placed across the three scales (glomerulus in the cortex, loop of Henle in the medulla)',
+    next: 'A3: the segmental arteries and the interlobar/arcuate hierarchy, which renovascular hypertension and prerenal AKI point at. Also still schematic: the sinus is not carved out, the seven pyramids are one coronal row rather than an anterior and a posterior one, and the junction is the capsule scaled rather than a surface of its own.',
   },
   {
     organ: 'thyroid',

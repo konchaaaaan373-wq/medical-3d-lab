@@ -47,7 +47,13 @@ export function buildPancreas({
   ]);
 
   const gland = new TubeSurface(curve, { radius, steps: 120, radial: 22 });
-  const glandMesh = new THREE.Mesh(gland.geometry, tissueMaterial({ color, roughness: 0.6, opacity: 0.84 }));
+  // 0.84 let 16% of the duct through, which is not translucent — it was a
+  // number calibrated against a bug. Every tube in the product used to be wound
+  // inside out, so under a front-side material the gland's near wall was culled
+  // and nothing stood between the viewer and the duct at all. Correcting the
+  // winding put a wall back, and at 0.84 the duct this organ exists to show
+  // disappeared. This is what the comment above has always claimed.
+  const glandMesh = new THREE.Mesh(gland.geometry, tissueMaterial({ color, roughness: 0.6, opacity: 0.42 }));
   glandMesh.name = 'gland';
 
   // Main duct: thin, central, draining towards the head.
