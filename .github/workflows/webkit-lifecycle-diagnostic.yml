@@ -1,0 +1,98 @@
+name: WebKit lifecycle diagnostic
+
+"on":
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact 40-character candidate commit or PR merge SHA
+        required: true
+        type: string
+      pr_head_sha:
+        description: PR head SHA when commit_sha is a PR merge SHA
+        required: false
+        type: string
+      pr_number:
+        description: PR number used to cancel an older diagnostic run
+        required: true
+        type: string
+
+concurrency:
+  group: webkit-diagnostic-pr-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  webkit-lifecycle-diagnostic:
+    name: WebKit B1 lifecycle diagnostic
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "${PR_HEAD_SHA}" || "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - id: revision
+        name: Record checked-out revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps webkit
+      - name: Compare Landing to Explorer with direct Explorer
+        env:
+          CHECKED_OUT_SHA: ${{ steps.revision.outputs.sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha || inputs.commit_sha }}
+        run: |
+          set +e
+          status=0
+          for attempt in 1 2 3; do
+            sequence_dir="webkit-lifecycle/sequence-${attempt}"
+            direct_dir="webkit-lifecycle/direct-${attempt}"
+            mkdir -p "${sequence_dir}" "${direct_dir}"
+
+            npm run verify:ui -- \
+              --engine webkit \
+              --viewport desktop-1280 \
+              --surface landing \
+              --surface explorer \
+              --json "${sequence_dir}/report.json" \
+              --diagnostics-dir "${sequence_dir}" \
+              --diagnostics-wait-detail
+            code=$?
+            echo "${code}" > "${sequence_dir}/exit-code.txt"
+            if [ "${code}" -ne 0 ]; then status=1; fi
+
+            npm run verify:ui -- \
+              --engine webkit \
+              --viewport desktop-1280 \
+              --surface explorer \
+              --json "${direct_dir}/report.json" \
+              --diagnostics-dir "${direct_dir}" \
+              --diagnostics-wait-detail
+            code=$?
+            echo "${code}" > "${direct_dir}/exit-code.txt"
+            if [ "${code}" -ne 0 ]; then status=1; fi
+          done
+          echo "${status}" > webkit-lifecycle/combined-exit-code.txt
+          exit "${status}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: webkit-b1-lifecycle-diagnostic-attempt-${{ github.run_attempt }}
+          path: webkit-lifecycle/
+          if-no-files-found: warn
+          retention-days: 3

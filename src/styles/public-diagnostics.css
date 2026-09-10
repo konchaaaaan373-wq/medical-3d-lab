@@ -1,0 +1,65 @@
+/* Scoped B5 diagnostic-copy surface. No global font, palette or theme changes. */
+.public-diagnostic-copy {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.public-diagnostic-copy__title,
+.public-diagnostic-copy__intro,
+.public-diagnostic-copy__status {
+  margin: 0;
+}
+
+.public-diagnostic-copy__title {
+  font-size: 1rem;
+  line-height: 1.4;
+}
+
+.public-diagnostic-copy__intro,
+.public-diagnostic-copy__status {
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.public-diagnostic-copy__steps,
+.public-diagnostic-copy__preview {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  font: inherit;
+  line-height: 1.5;
+  color: inherit;
+  background: transparent;
+  resize: vertical;
+}
+
+.public-diagnostic-copy__preview {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.public-diagnostic-copy__button {
+  min-height: 44px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.625rem 0.875rem;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.public-diagnostic-copy__button:disabled {
+  cursor: wait;
+}
+
+@media (max-width: 420px) {
+  .public-diagnostic-copy__button {
+    width: 100%;
+  }
+}

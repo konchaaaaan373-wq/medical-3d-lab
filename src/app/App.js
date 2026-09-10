@@ -38,6 +38,8 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { createAnatomyTreePanel } from '../components/AnatomyTreePanel.js';
+import { createAnatomyPanel } from '../components/AnatomyPanel.js';
 import { createInspectionPanel } from '../components/InspectionPanel.js';
 import { emitAppEvent } from './appEvents.js';
 
@@ -247,6 +249,11 @@ export async function createApp({ stage, ui }) {
   let sequenceOwnsCamera = () => false;
   let inspectionPanel = null;
   let inspectionOpen = false;
+  /** Set below, once the panel exists. */
+  let anatomyPanel = null;
+  /** Set below, when the rail is assembled; the panel toggles a class on it. */
+  let railElement = null;
+  const isAnatomyScene = Boolean(scene.getAnatomyTree && scene.getAnatomySelection);
 
   /**
    * The viewer's own vantage during the guided sequence.
@@ -315,7 +322,22 @@ export async function createApp({ stage, ui }) {
   const initialInspectionMode = scene.getInspectionMode?.() ?? inspectionModes[0]?.id;
   let inspectionLabelsVisible = true;
 
+  /**
+   * Open or close the shared display controls.
+   *
+   * On an anatomy scene they are not a sheet of their own — they are the panel's
+   * Display tab — so the console's control brings that tab forward instead of
+   * hiding a panel the reader can already see. Same button, same place in the
+   * console: nothing about the pathology scenes' layout changes.
+   */
   function setInspectionOpen(enabled) {
+    if (anatomyPanel) {
+      if (enabled) anatomyPanel.showDisplay();
+      else anatomyPanel.closeSheet();
+      controlPanel?.setInspection(Boolean(enabled));
+      inspectionOpen = Boolean(enabled);
+      return;
+    }
     inspectionOpen = Boolean(enabled);
     inspectionPanel?.setOpen(inspectionOpen);
     controlPanel?.setInspection(inspectionOpen);
@@ -412,7 +434,12 @@ export async function createApp({ stage, ui }) {
     onDataToggle:
       scene.getMetrics && !meta.modelControls?.primary ? (enabled) => setDataView(enabled) : undefined,
     onZoom: (direction) => zoomBy(direction),
-    onInspectionToggle: (enabled) => setInspectionOpen(enabled),
+    // An anatomy scene owns its display controls: they are a tab of its panel,
+    // reached by the panel's own Parts button and its tabs. A second control in
+    // the console would be a second way in to the same surface — and on a phone
+    // it would be a second way to open a modal, which is one too many. The
+    // pathology scenes keep the button exactly as they had it.
+    onInspectionToggle: isAnatomyScene ? undefined : (enabled) => setInspectionOpen(enabled),
     // Only scenes that ship a guided sequence get the button; without this it
     // latched on and did nothing on a scene with no storyboard.
     //
@@ -504,14 +531,49 @@ export async function createApp({ stage, ui }) {
       setInspectionOpen(false);
       controlPanel.focusInspection();
     },
+    // An anatomy scene shows these inside its Display tab, where a close button
+    // would close nothing the reader can see.
+    embedded: isAnatomyScene,
   });
   if (initialInspectionMode) applyInspectionMode(initialInspectionMode);
 
+  // An anatomy scene gets one panel instead of three stacked in the rail. It is
+  // the same components — the tree, the shared inspection controls, the colour
+  // key and the selection card — composed into a layout where the summary
+  // cannot be scrolled away and exactly one region scrolls. Nothing is built
+  // twice: each element is created once here and handed over.
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onPreferredView: applyInspectionView,
+        // The panel's summary already carries the name and the breadcrumb, and
+        // a second copy inside the scrolling body is the copy that scrolls away.
+        heading: !isAnatomyScene,
       })
     : null;
+
+  // The part tree and the card are two readings of one selection, not two
+  // states: both bind to `onAnatomySelection`, and neither holds an opinion the
+  // scene has not been told about. `src/app/anatomyContract.js` is the rule they
+  // share, and `tests/anatomy-contract.test.js` is what holds the scene to it.
+  const anatomyTree = scene.getAnatomyTree ? createAnatomyTreePanel(scene) : null;
+
+  anatomyPanel = isAnatomyScene
+    ? createAnatomyPanel({
+        scene,
+        tree: anatomyTree,
+        display: inspectionPanel.element,
+        legend: legend.element,
+        detail: anatomyInfo.element,
+        // Docked, the panel's body is the one scroller and the rail must not be
+        // a second one around it. As a sheet the body is `position: fixed` and
+        // out of the rail entirely, so the rail goes back to scrolling like it
+        // does on every other scene — which it has to: with the consent
+        // question on screen a 320 px phone leaves the rail 92 px, and a rail
+        // that clips instead of scrolling puts the Parts button out of reach.
+        onLayout: (layout) => railElement?.classList.toggle('is-anatomy-docked', layout === 'docked'),
+      })
+    : null;
+
 
   // Optional: sliders for the conditions the scene's model is solved under.
   const modelControls = scene.getModelControls
@@ -622,15 +684,29 @@ export async function createApp({ stage, ui }) {
   // The rail is a shared scroll box: on a short or narrow window its contents
   // genuinely run past its edge, and a clipped panel reads as one that simply
   // ends. Both it and the display panel say when there is more below.
-  const rail = el('div', { class: 'rail' }, [
-    inspectionPanel.element,
-    anatomyInfo?.element,
-    legend.element,
-    metricsPanel?.element,
-    el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
-  ]);
-  markScrollable(rail);
-  markScrollable(inspectionPanel.element);
+  const rail = el('div', { class: 'rail' }, anatomyPanel
+    ? [
+        // One panel, and it owns its own height: the rail must not scroll
+        // around a panel whose body already does, or the body's rows end up
+        // straddling the rail's clip edge.
+        anatomyPanel.element,
+        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+      ]
+    : [
+        inspectionPanel.element,
+        anatomyInfo?.element,
+        legend.element,
+        metricsPanel?.element,
+        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+      ]);
+  if (anatomyPanel) {
+    rail.classList.add('is-anatomy');
+    railElement = rail;
+    rail.classList.toggle('is-anatomy-docked', anatomyPanel.element.dataset.layout === 'docked');
+  } else {
+    markScrollable(rail);
+    markScrollable(inspectionPanel.element);
+  }
 
   const consoleElement = el('div', { class: 'panel console' }, [
     stageReadout.element,

@@ -23,6 +23,7 @@ export function createInspectionPanel({
   onLabels,
   onReset,
   onClose,
+  embedded = false,
 }) {
   // App mounts exactly one inspection surface. A stable id keeps snapshots and
   // accessibility output deterministic.
@@ -110,7 +111,7 @@ export function createInspectionPanel({
         el('strong', { class: 'lang-en', text: 'Spatial inspection' }),
         el('strong', { class: 'lang-ja', text: '空間を観察' }),
       ]),
-      closeButton,
+      embedded ? null : closeButton,
     ]),
     el('p', { class: 'inspection-intro' }, [
       el('span', { class: 'lang-en', text: 'Change only how the model is viewed. Medical values stay unchanged.' }),
@@ -146,7 +147,9 @@ export function createInspectionPanel({
       ]),
     ]),
   ]);
-  element.hidden = true;
+  // Embedded in a tab, the panel is shown by whatever governs the tab. On its
+  // own it starts closed, as it always has.
+  element.hidden = !embedded;
 
   return {
     element,

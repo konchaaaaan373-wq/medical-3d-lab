@@ -12,8 +12,8 @@ import {
   HERO_ORGANS,
   heroOrgansForModels,
 } from '../data/landingHero.js';
+import { NECO_LINKS } from '../data/necoLinks.js';
 import { createLandingOrganHero } from './landingOrganHero.js';
-import { createLandingFlowField } from './landingFlowField.js';
 import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
 
@@ -24,6 +24,25 @@ const dual = (en, ja, className = '') => [
 
 const shellLink = (href, en, ja, className = 'landing-button') =>
   el('a', { class: className, href }, dual(en, ja));
+
+const externalLink = (href, en, ja, className = 'landing-external-link') =>
+  el('a', {
+    class: className,
+    href,
+    target: '_blank',
+    rel: 'noopener noreferrer',
+  }, [
+    ...dual(en, ja),
+    el('span', { class: 'landing-external-mark', 'aria-hidden': 'true', text: '↗' }),
+    ...dual('Opens in a new tab', '新しいタブで開きます', 'landing-sr-only'),
+  ]);
+
+const operatorCredit = (className) => externalLink(
+  NECO_LINKS.operator,
+  'Operated by Neco Inc.',
+  '運営：株式会社Neco',
+  className
+);
 
 function landingSummary(models) {
   if (models.length === 0) {
@@ -44,18 +63,6 @@ function landingSummary(models) {
   };
 }
 
-function modelActionLabel(model) {
-  const en = model.organId === 'brain'
-    ? 'View the brain'
-    : model.organId === 'heart'
-      ? 'View the heart'
-      : `View ${model.titleEn}`;
-  const ja = model.organLabelJa
-    ? `${model.organLabelJa}を見る`
-    : `${model.titleJa}を見る`;
-  return { en, ja };
-}
-
 /**
  * Public landing surface.
  *
@@ -74,28 +81,18 @@ export function createLanding({
   const heroModels = heroOrgansForModels(models, heroCandidates);
   const primaryModel = models[0] ?? null;
   const summary = landingSummary(models);
-  const flowField = createLandingFlowField();
   const organHero = heroModels.length
     ? createLandingOrganHero({
         onRendererFailure,
         organs: heroModels,
+        compact: true,
+        showOpenLink: false,
       })
     : null;
 
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
-
-  const primaryAction = primaryModel ? modelActionLabel(primaryModel) : null;
-  const modelLinks = models.length > 1
-    ? el('nav', {
-        class: 'landing-model-switches',
-        'aria-label': 'Published anatomy models / 公開中の解剖モデル',
-      }, models.map((model) => {
-        const label = modelActionLabel(model);
-        return shellLink(model.route, label.en, label.ja, 'landing-model-switch');
-      }))
-    : null;
 
   const element = el('main', { class: 'landing' }, [
     el('header', { class: 'landing-nav' }, [
@@ -130,20 +127,7 @@ export function createLanding({
           )),
           el('p', { class: 'landing-hero-summary' }, dual(summary.en, summary.ja)),
           primaryModel
-            ? el('div', { class: 'landing-hero-actions' }, [
-                shellLink(
-                  primaryModel.route,
-                  primaryAction.en,
-                  primaryAction.ja,
-                  'landing-button primary landing-cta'
-                ),
-                shellLink(
-                  primaryModel.modelInfoRoute ?? MODEL_INFO_ROUTE,
-                  'Model information',
-                  'モデル情報',
-                  'landing-button secondary landing-cta'
-                ),
-              ])
+            ? null
             : el('p', {
                 class: 'landing-empty-state',
                 role: 'status',
@@ -154,41 +138,73 @@ export function createLanding({
         ]),
       ]),
       organHero ? el('div', { class: 'landing-hero-instrument' }, [organHero.element]) : null,
-      modelLinks,
+      organHero
+        ? el('div', { class: 'landing-hero-actions' }, [
+            organHero.actionElement,
+            shellLink(
+              primaryModel.modelInfoRoute ?? MODEL_INFO_ROUTE,
+              'Model information',
+              'モデル情報',
+              'landing-model-info-link landing-cta'
+            ),
+          ])
+        : null,
     ]),
 
     el('section', { class: 'landing-method', 'aria-labelledby': 'landing-method-title' }, [
       el('div', { class: 'landing-method-heading' }, [
-        el('p', { class: 'landing-section-kicker' }, dual('MODEL INFORMATION', 'モデル情報')),
         el('h2', { id: 'landing-method-title' }, dual(
-          'Sources and current review status',
-          '出典と現在の確認状況'
+          'Check the model before using it',
+          'モデルについて確認する'
         )),
       ]),
       el('p', { class: 'landing-method-copy' }, dual(
         'See the source, licence, revision, represented structures and known limits for each model.',
         '各モデルの出典、ライセンス、revision、表現している構造と限界を確認できます。'
       )),
-      shellLink(
-        MODEL_INFO_ROUTE,
-        'View model information',
-        'モデル情報を見る',
-        'landing-button secondary landing-cta'
-      ),
+      el('nav', { class: 'landing-method-links', 'aria-label': 'Model information and support / モデル情報・サポート' }, [
+        shellLink(
+          MODEL_INFO_ROUTE,
+          'View model information',
+          'モデル情報を見る',
+          'landing-method-link is-primary landing-cta'
+        ),
+        shellLink('#/support', 'Report a problem', '不具合を連絡する', 'landing-method-link'),
+      ]),
     ]),
 
-    el('section', { class: 'landing-contact' }, [
-      el('h2', {}, dual('Contact', 'お問い合わせ')),
-      el('p', {}, dual(
-        'Send questions or report a problem with the model.',
-        'モデルに関するご質問や不具合をご連絡ください。'
+    el('section', { class: 'landing-neco', 'aria-labelledby': 'landing-neco-title' }, [
+      el('div', { class: 'landing-neco-heading' }, [
+        operatorCredit('landing-neco-operator'),
+        el('h2', { id: 'landing-neco-title' }, dual(
+          'Support for doctors and medical institutions',
+          '医師の働き方・採用のご相談'
+        )),
+      ]),
+      el('p', { class: 'landing-neco-copy' }, dual(
+        'Neco, the operator of Medical 3D Lab, supports doctors considering their work and careers, and medical institutions recruiting doctors.',
+        '運営する株式会社Necoは、医師の転職・働き方の相談と、医療機関の採用を支援しています。'
       )),
-      shellLink('#/support', 'Contact us', '問い合わせる', 'landing-inline-link'),
+      el('nav', { class: 'landing-neco-links', 'aria-label': 'Neco services / Necoの相談窓口' }, [
+        externalLink(
+          NECO_LINKS.doctor,
+          'For doctors: discuss work and opportunities',
+          '医師の方：働き方・求人について相談する'
+        ),
+        externalLink(
+          NECO_LINKS.medicalInstitution,
+          'For medical institutions: discuss doctor recruitment',
+          '医療機関の方：医師の採用について相談する'
+        ),
+      ]),
     ]),
 
     el('footer', { class: 'landing-footer' }, [
-      el('div', { class: 'landing-footer-brand', text: 'Medical 3D Lab' }),
-      el('p', {}, dual(
+      el('div', { class: 'landing-footer-identity' }, [
+        el('div', { class: 'landing-footer-brand', text: 'Medical 3D Lab' }),
+        operatorCredit('landing-footer-operator'),
+      ]),
+      el('p', { class: 'landing-footer-boundary' }, dual(
         'Representative educational models — not for individual diagnosis or treatment decisions.',
         '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
       )),
@@ -202,7 +218,7 @@ export function createLanding({
     ]),
   ].filter(Boolean));
 
-  ui.append(skipLink(), flowField.element, element);
+  ui.append(skipLink(), element);
   languageToggle.init();
   void organHero?.mount();
   document.title = 'Medical 3D Lab — 人体の3D解剖モデル';
@@ -212,7 +228,6 @@ export function createLanding({
     organHero,
     destroy() {
       organHero?.destroy();
-      flowField.destroy();
       languageToggle.element.remove();
       element.remove();
     },
@@ -235,19 +250,17 @@ export function createPublicModelsExplorer({
   const models = [...(manifest?.models ?? [])];
   const heroModels = heroOrgansForModels(models, heroCandidates);
   const organHero = heroModels.length
-    ? createLandingOrganHero({ organs: heroModels })
+    ? createLandingOrganHero({
+        organs: heroModels,
+        compact: true,
+        showOpenLink: false,
+        // The page heading already names the sole model. Keep an in-canvas
+        // identity only when the manifest actually offers a choice.
+        showIdentity: models.length > 1,
+      })
     : null;
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
-  });
-
-  const actions = models.map((model) => {
-    const label = modelActionLabel(model);
-    return el('a', {
-      class: 'public-model-link',
-      href: model.route,
-      dataset: { scene: model.sceneId },
-    }, dual(label.en, label.ja));
   });
 
   const summary = models.length === 0
@@ -264,26 +277,31 @@ export function createPublicModelsExplorer({
           'Choose a published organ, then rotate and zoom it to inspect the spatial relationship between its structures.',
           '公開中の臓器を選び、回転・拡大して部位ごとの位置関係を確認できます。',
         ];
+  const heading = models.length === 1
+    ? [models[0].titleEn, models[0].titleJa]
+    : ['3D anatomical models', '3D解剖モデル'];
 
   const element = el('main', { class: 'explorer public-models' }, [
     el('header', {
-      class: 'panel explorer-header public-models-header',
+      class: 'explorer-header public-models-header',
       id: 'content',
       tabindex: '-1',
       'data-skip-target': '',
     }, [
-      el('p', { class: 'eyebrow' }, dual('3D ANATOMY', '3D解剖')),
-      el('h1', { class: 'title' }, dual(
-        '3D anatomical models of the human body',
-        '人体の3D解剖モデル'
-      )),
-      el('p', { class: 'subtitle' }, dual(summary[0], summary[1])),
-      el('div', { class: 'explorer-header-actions' }, [
-        el('a', { class: 'explorer-shell-link', href: LANDING_ROUTE }, dual('Home', 'ホーム')),
-        el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
-        accountButton,
-        languageToggle.element,
+      el('div', { class: 'public-models-appbar' }, [
+        el('a', { class: 'public-models-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
+        el('nav', { class: 'explorer-header-actions', 'aria-label': 'Model navigation / モデルナビゲーション' }, [
+          el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
+          accountButton,
+          languageToggle.element,
+        ]),
       ]),
+      el('p', { class: 'eyebrow' }, dual(
+        models.length === 0 ? 'MODEL AVAILABILITY' : 'AVAILABLE MODEL',
+        models.length === 0 ? '公開状況' : '公開モデル'
+      )),
+      el('h1', { class: 'title' }, dual(heading[0], heading[1])),
+      el('p', { class: 'subtitle' }, dual(summary[0], summary[1])),
     ]),
     organHero
       ? el('section', {
@@ -303,20 +321,32 @@ export function createPublicModelsExplorer({
             'モデル情報を見る'
           )),
         ]),
-    models.length > 1
+    organHero
       ? el('nav', {
-          class: 'panel public-models-choices',
-          'aria-label': 'Published models / 公開中のモデル',
-        }, actions)
+          class: 'public-models-actions',
+          'aria-label': 'Selected model actions / 選択中モデルの操作',
+        }, [
+          organHero.actionElement,
+          el('a', { class: 'explorer-shell-link', href: MODEL_INFO_ROUTE }, dual(
+            'Model information',
+            'モデル情報'
+          )),
+        ])
       : null,
-    el('footer', { class: 'panel explorer-footer public-models-footer' }, [
-      el('p', {}, dual(
-        'Representative educational models — not for individual diagnosis or treatment decisions.',
-        '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
-      )),
-      el('nav', { class: 'public-models-footer-links' }, [
+    el('footer', { class: 'explorer-footer public-models-footer' }, [
+      el('div', { class: 'public-models-footer-copy' }, [
+        operatorCredit('public-models-operator'),
+        el('p', {}, dual(
+          'Representative educational models — not for individual diagnosis or treatment decisions.',
+          '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
+        )),
+      ]),
+      el('nav', { class: 'public-models-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
         el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
-        el('a', { class: 'explorer-shell-link', href: '#/support' }, dual('Contact', 'お問い合わせ')),
+        el('a', { class: 'explorer-shell-link', href: '#/terms' }, dual('Terms', '利用規約')),
+        el('a', { class: 'explorer-shell-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
+        el('a', { class: 'explorer-shell-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
+        el('a', { class: 'explorer-shell-link', href: '#/support' }, dual('Support', 'サポート')),
       ]),
     ]),
   ].filter(Boolean));

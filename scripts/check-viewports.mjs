@@ -547,7 +547,9 @@ async function measureEvidenceFrame(page) {
     const cta = [...document.querySelectorAll('a.landing-cta')]
       .find((element) => isVisible(element) && element.textContent?.includes('脳を見る')) ?? null;
     const canvas = document.querySelector('.landing-demo-viewport canvas');
-    const header = document.querySelector('.landing-nav, .explorer-header');
+    const header = document.querySelector('.landing-nav') ??
+      document.querySelector('.public-models-appbar') ??
+      document.querySelector('.explorer-header');
     const h1 = document.querySelector('h1');
     const feedback = document.querySelector('.feedback-trigger.is-floating');
     const ctaRect = rectOf(cta);
@@ -810,7 +812,7 @@ async function captureB1Evidence(browser) {
       engine,
       build: 'npm run build (production capability; preview unlock disabled)',
       prHeadSha: process.env.PR_HEAD_SHA ?? null,
-      checkedOutSha: process.env.GITHUB_SHA ?? null,
+      checkedOutSha: process.env.CHECKED_OUT_SHA ?? process.env.GITHUB_SHA ?? null,
       captures,
     }, null, 2)}\n`,
   );
@@ -932,7 +934,7 @@ function createLifecycleTrace(page, viewport) {
           engine,
           viewport,
           prHeadSha: process.env.PR_HEAD_SHA ?? null,
-          checkedOutSha: process.env.GITHUB_SHA ?? null,
+          checkedOutSha: process.env.CHECKED_OUT_SHA ?? process.env.GITHUB_SHA ?? null,
           events,
         }, null, 2)}\n`,
       );

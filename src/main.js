@@ -1,6 +1,9 @@
 import './styles/base.css';
 import './styles/reading-surface.css';
 import './styles/ui.css';
+import './styles/anatomy-panel.css';
+import './styles/anatomy-shell-presentation.css';
+import './styles/public-diagnostics.css';
 import './styles/navigation.css';
 import './styles/scene-library.css';
 import './styles/access.css';
@@ -23,11 +26,6 @@ import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 
-/**
- * Consent, telemetry and the feedback route are loaded after the route is
- * known rather than with the entry chunk. Nothing a visitor is waiting for
- * depends on them, and the entry chunk is the one weight every visitor pays.
- */
 const observe = async (options) => {
   const { installObservability } = await import('./app/observability.js');
   return installObservability(options);
@@ -39,8 +37,6 @@ const ui = document.getElementById('ui');
 boot().catch(async (error) => {
   console.error(error);
   ui.textContent = 'Failed to start Medical 3D Lab.';
-  // A failure this early is the one nobody hears about otherwise: no surface
-  // has mounted, so nothing else has installed error capture yet.
   try {
     const { installTelemetry } = await import('./telemetry/install.js');
     installTelemetry({ surface: 'fallback' }).reporter.capture(error, { handled: false });
@@ -50,44 +46,22 @@ boot().catch(async (error) => {
 });
 
 async function boot() {
-  // Recovery links are product-shell work, not medical scene routes. Supabase's
-  // implicit recovery token arrives in the hash, which would otherwise look like
-  // an unknown scene until AccessManager consumes it. Keep the return on the
-  // WebGL-independent landing shell while the modal finishes the recovery.
   const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
   const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
-
-  // Which routes the current release opens. Decided before anything is
-  // recorded or loaded: a locked route must not enter recent history, and must
-  // not download the scene chunk it is refusing to show.
   const open = routeOpen(route);
 
-  // Recent history is navigation convenience only: one published scene id, no
-  // model controls or personal/clinical state. Storage denial is swallowed by
-  // the helper and can never block the free scene from opening.
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
 
-  // Account/access is product chrome, not part of a medical scene. Start its
-  // network work in parallel on every route. A slow auth or billing provider may
-  // delay an unlock; it may never delay free/public content.
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
-
-  // Opening Account is also an explicit "re-check my access" action. This is
-  // especially important after returning from Stripe Customer Portal, where a
-  // signed webhook can land a moment after the browser.
   access.accountButton.addEventListener('click', () => {
     void access.refresh({ reconcile: true });
   });
-
   const accessReady = access.init().catch((error) => {
     console.error('access init', error);
   });
 
   if (!open) {
-    // A shared link to work that is not open yet still has to answer as a page:
-    // what it points at, that the beta holds it back, and where the open models
-    // are. No scene module is imported on this path.
     document.documentElement.dataset.route = 'locked';
     const { createLockedSurface } = await import('./app/LockedSurface.js');
     createLockedSurface({ ui, route, accountButton: access.accountButton });
@@ -110,10 +84,6 @@ async function boot() {
       onRendererFailure: async (error, context) => {
         const observability = await observabilityReady;
         observability?.reporter.captureRendererFailure(error, {
-          // The hero shows a different organ on different days, and it says
-          // which one failed. Naming one scene for all of them — as this did
-          // while it still said `circulation`, a scene the landing page has
-          // not run since the hero was replaced — reports the wrong thing.
           scene: context?.sceneId ?? 'landing-hero',
           device: observability.deviceClass,
           reason: rendererFailureReason(error),
@@ -131,8 +101,6 @@ async function boot() {
   }
 
   if (route.kind === 'trust') {
-    // Medical-review state is a product/trust concern and must remain readable
-    // even if the browser cannot construct a WebGL context or load a scene.
     document.documentElement.dataset.route = 'trust';
     const { createTrust } = await import('./app/Trust.js');
     await createTrust({ ui, accountButton: access.accountButton });
@@ -146,9 +114,6 @@ async function boot() {
   }
 
   if (route.kind === 'legal') {
-    // Cancellation terms, the privacy policy and the commercial disclosure are
-    // exactly the pages a person may need on the device that could not start
-    // WebGL. They are plain DOM for that reason.
     document.documentElement.dataset.route = 'legal';
     const { createLegal } = await import('./app/Legal.js');
     createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
@@ -162,9 +127,6 @@ async function boot() {
   }
 
   if (route.kind === 'explorer' || route.kind === 'lab') {
-    // The catalogue content is plain DOM and survives without WebGL. The public
-    // Explorer may progressively add small, lazy organ previews; Lab remains a
-    // catalogue projection rather than a second app.
     document.documentElement.dataset.route = 'explorer';
     const { createExplorer } = await import('./app/Explorer.js');
     createExplorer({
@@ -174,11 +136,7 @@ async function boot() {
     });
     void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
     void accessReady;
-
-    // Explorer system jump links are in-page anchors. Every actual app route
-    // (scene, landing, public catalogue or Lab) reloads the shell cleanly.
     window.addEventListener('hashchange', () => {
-      // Explorer jump links and the skip link are in-page anchors, not routes.
       if (isInPageAnchor(window.location.hash)) return;
       const next = resolveRoute(window.location.hash);
       if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
@@ -186,31 +144,13 @@ async function boot() {
     return;
   }
 
-  // Everything past this point is a scene: a WebGL viewport with its own
-  // chrome pinned to the edges of the frame.
-  //
-  // Named, rather than left as the absence of the other four. A stylesheet
-  // that has to ask "is this *not* landing, explorer, trust or legal" gets the
-  // answer wrong the day a sixth surface is added, and the consent banner
-  // needs to know: on a reading surface the bottom of the viewport is empty,
-  // and on a scene it belongs to the console.
   document.documentElement.dataset.route = 'scene';
 
-  // Simple loading veil: the first frame has to compile shaders and build geometry.
   const veil = document.createElement('div');
   veil.className = 'loading';
   veil.innerHTML = '<span>building model</span><span class="loading-bar"></span>';
   document.body.append(veil);
 
-  // Start-up is measured from navigation, because what a visitor waits through
-  // includes the entry chunk, the access manager and the module downloads
-  // below — not just the scene build.
-  //
-  // `performance.now()` is already relative to navigation, so the elapsed time
-  // is simply that value at the moment the first frame is ready. Taking a
-  // reading here and subtracting it measured the scene build alone, which is
-  // the smaller half, and would have made the declared start-up budget close
-  // to impossible to fail while the comment claimed otherwise.
   const fallbackStartedAt = Date.now();
   const elapsedSinceNavigation = () =>
     typeof performance?.now === 'function' ? performance.now() : Date.now() - fallbackStartedAt;
@@ -223,9 +163,41 @@ async function boot() {
     ]);
     const app = await createApp({ stage, ui });
     installAccess({ app, access, ui, sceneId: resolveSceneId() });
-    // No await on purpose. Subscribers installed above will receive the paid
-    // grants when the parallel auth/entitlement check finishes.
     void accessReady;
+
+    // The shared anatomy implementation owns the actual panel and its state.
+    // Work only opts its presentation adapter in when that real panel exists.
+    let anatomyPresentation = null;
+    if (ui.querySelector('.anatomy-panel')) {
+      ui.dataset.anatomy = 'yes';
+      const { mountAnatomyShellPresentation } = await import('./app/anatomyShellPresentation.js');
+      anatomyPresentation = mountAnatomyShellPresentation({ ui });
+    }
+
+    // App's model shortcuts live on window. Let controls inside the UI handle
+    // their own Space/Enter/arrows first instead of bubbling those keys into the
+    // model playback/camera shortcuts. This does not prevent the control's own
+    // default action because the guard is a bubbling listener on its ancestor.
+    const interactiveTags = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION']);
+    const stopUiShortcutLeak = (event) => {
+      for (let node = event.target; node && node !== ui.parentElement; node = node.parentElement) {
+        if (interactiveTags.has(node.tagName) ||
+            node.getAttribute?.('contenteditable') === 'true' ||
+            node.getAttribute?.('role') === 'dialog') {
+          event.stopPropagation();
+          return;
+        }
+        if (node === ui) return;
+      }
+    };
+    ui.addEventListener('keydown', stopUiShortcutLeak);
+
+    window.addEventListener('pagehide', (event) => {
+      if (event.persisted) return;
+      ui.removeEventListener('keydown', stopUiShortcutLeak);
+      anatomyPresentation?.destroy?.();
+      delete ui.dataset.anatomy;
+    }, { once: true });
 
     const observability = await observe({
       ui,
@@ -242,23 +214,25 @@ async function boot() {
   } catch (error) {
     console.error(error);
     veil.remove();
-    const { createSceneFailureFallback } = await import('./app/SceneFailureFallback.js');
-    createSceneFailureFallback({ ui, sceneId: route.sceneId });
+    const [{ createSceneFailureFallback }, { createPublicDiagnosticCopyControl }] = await Promise.all([
+      import('./app/SceneFailureFallback.js'),
+      import('./app/publicDiagnosticCopyControl.js'),
+    ]);
+    const fallback = createSceneFailureFallback({ ui, sceneId: route.sceneId });
+    const diagnostic = createPublicDiagnosticCopyControl({
+      getContext: () => ({
+        modelId: route.sceneId,
+        language: ui.dataset.lang ?? 'ja',
+        state: rendererFailureReason(error),
+      }),
+    });
+    fallback.element.querySelector('.scene-fallback-card')?.append(diagnostic.element);
 
-    // The scene route's own hashchange listener is registered inside
-    // `createApp` — which is what just threw. Without one here, every link on
-    // the fallback ("Browse public models", "Home", "Experimental Lab")
-    // changes the hash and nothing happens: the one screen whose entire job is
-    // to keep navigation working when the renderer does not.
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
       window.location.reload();
     });
 
-    // A renderer failure is the one thing this product most needs to know
-    // about, so the fallback carries its own reporting and its own feedback
-    // route. The consent question is not asked here: a visitor who has just
-    // lost the 3D view is owed the fallback, not a dialog.
     const observability = await observe({
       ui,
       surface: 'fallback',
@@ -274,12 +248,6 @@ async function boot() {
   }
 }
 
-/**
- * Which of the declared reasons a renderer failure was.
- *
- * Kept coarse on purpose: the metric answers "how often, and is the fallback
- * catching it", and the detail lives in the redacted diagnostic beside it.
- */
 function rendererFailureReason(error) {
   const message = String(error?.message ?? '').toLowerCase();
   if (message.includes('webgl') || message.includes('context')) return 'no_context';
@@ -288,10 +256,6 @@ function rendererFailureReason(error) {
   return 'unknown';
 }
 
-/**
- * Record that a model opened, how long it took, and what the frame budget
- * subsequently had to do about it.
- */
 async function reportSceneStart(observability, app, sceneId, elapsedSinceNavigation) {
   if (!observability) return;
   const { telemetry, deviceClass } = observability;

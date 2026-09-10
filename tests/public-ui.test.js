@@ -10,6 +10,7 @@ import {
   featuredHeroOrgan,
   heroOrgansForModels,
 } from '../src/data/landingHero.js';
+import { NECO_LINKS } from '../src/data/necoLinks.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -87,8 +88,30 @@ test('public UI: one model is the live brain and has a direct action, not a one-
     assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
     assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
+    assert.equal(findByClass(mounted.element, 'landing-flow-field').length, 0);
     assert.ok(hrefs.includes('#/brain-anatomy'));
     assert.equal(mounted.organHero.organ, 'brain');
+  });
+});
+
+test('public UI: Neco is identified after the model with verified, audience-specific links', () => {
+  withDom(() => {
+    const ui = new FakeElement('div');
+    const mounted = createLanding({ ui, manifest: manifest([BRAIN]) });
+    const sections = findByClass(mounted.element, 'landing-neco');
+    const links = linksOf(sections[0]);
+
+    assert.equal(sections.length, 1, 'the consultation block appears once below the model experience');
+    assert.match(textOf(sections[0]), /運営：株式会社Neco/);
+    assert.match(textOf(sections[0]), /医師の働き方・採用のご相談/);
+    assert.deepEqual(
+      links.map((link) => link.getAttribute('href')),
+      [NECO_LINKS.operator, NECO_LINKS.doctor, NECO_LINKS.medicalInstitution]
+    );
+    for (const link of links) {
+      assert.equal(link.getAttribute('target'), '_blank');
+      assert.equal(link.getAttribute('rel'), 'noopener noreferrer');
+    }
   });
 });
 
@@ -100,16 +123,21 @@ test('public UI: two-model fixture uses an explicit chooser and keeps one live v
     assert.equal(first.organ, 'brain');
     assert.equal(later.organ, 'brain', 'the date must not change the initial model');
 
-    const hero = createLandingOrganHero({ organs });
+    const hero = createLandingOrganHero({ organs, compact: true });
     const controls = findByClass(hero.element, 'landing-demo-state');
     const viewports = findByClass(hero.element, 'landing-demo-viewport');
-    const openLink = findByClass(hero.element, 'landing-demo-link')[0];
+    const openLink = hero.actionElement;
+    const identity = findByClass(hero.element, 'landing-demo-identity')[0];
 
     assert.equal(controls.length, 2);
     assert.equal(viewports.length, 1, 'switching models must reuse one WebGL viewport');
+    assert.match(textOf(identity), /脳の3Dモデル/);
+    assert.match(viewports[0].getAttribute('aria-label'), /操作できる脳の3Dモデル/);
     controls[1].click();
     assert.equal(hero.organ, 'heart');
     assert.equal(openLink.getAttribute('href'), '#/heart-anatomy');
+    assert.match(textOf(identity), /心臓の3Dモデル/);
+    assert.match(viewports[0].getAttribute('aria-label'), /操作できる心臓の3Dモデル/);
     assert.equal(controls[0].getAttribute('aria-pressed'), 'false');
     assert.equal(controls[1].getAttribute('aria-pressed'), 'true');
   });
@@ -121,12 +149,33 @@ test('public model route: one model has no search, filters, category jumps or pl
     const mounted = createPublicModelsExplorer({ ui, manifest: manifest([BRAIN]) });
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
-    assert.match(textOf(mounted.element), /人体の3D解剖モデル/);
+    assert.match(textOf(mounted.element), /Brain anatomy/);
+    assert.match(textOf(mounted.element), /脳/);
     assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+    assert.equal(
+      findByClass(mounted.element, 'landing-demo-identity').length,
+      0,
+      'the page H1 already names the sole model'
+    );
     assert.equal(findByClass(mounted.element, 'explorer-search').length, 0);
     assert.equal(findByClass(mounted.element, 'explorer-jump').length, 0);
     assert.equal(findByClass(mounted.element, 'explorer-scene').length, 0);
     assert.ok(hrefs.includes('#/brain-anatomy'));
+    for (const route of ['#/', '#/trust', '#/terms', '#/privacy', '#/commerce', '#/support']) {
+      assert.ok(hrefs.includes(route), `the public model route keeps ${route} reachable`);
+    }
+  });
+});
+
+test('public model route: a two-model fixture keeps the selected identity beside one viewport', () => {
+  withDom(() => {
+    const ui = new FakeElement('div');
+    const mounted = createPublicModelsExplorer({ ui, manifest: manifest([BRAIN, HEART]) });
+
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+    assert.equal(findByClass(mounted.element, 'landing-demo-identity').length, 1);
+    assert.equal(findByClass(mounted.element, 'landing-demo-state-index').length, 0);
+    assert.match(textOf(findByClass(mounted.element, 'landing-demo-identity')[0]), /脳の3Dモデル/);
   });
 });
 

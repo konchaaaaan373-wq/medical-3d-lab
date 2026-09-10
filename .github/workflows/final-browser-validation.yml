@@ -1,0 +1,83 @@
+name: Final browser validation
+
+"on":
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact 40-character candidate commit or PR merge SHA
+        required: true
+        type: string
+      pr_head_sha:
+        description: PR head SHA when commit_sha is a PR merge SHA
+        required: false
+        type: string
+      pr_number:
+        description: PR number used to cancel an older candidate run
+        required: true
+        type: string
+      capture_evidence:
+        description: Save Chromium B1 screenshots and evidence.json
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: final-browser-pr-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  viewport-matrix:
+    name: viewport matrix (${{ matrix.engine }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "${PR_HEAD_SHA}" || "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - id: revision
+        name: Record checked-out revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Verify viewport matrix
+        env:
+          CHECKED_OUT_SHA: ${{ steps.revision.outputs.sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha || inputs.commit_sha }}
+          VIEWPORT_EVIDENCE_DIR: ${{ inputs.capture_evidence && matrix.engine == 'chromium' && 'viewport-evidence' || '' }}
+        run: npm run verify:ui -- --engine ${{ matrix.engine }} --json viewport-report-${{ matrix.engine }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: viewport-report-${{ matrix.engine }}
+          path: viewport-report-${{ matrix.engine }}.json
+          if-no-files-found: ignore
+          retention-days: 3
+      - uses: actions/upload-artifact@v4
+        if: always() && inputs.capture_evidence && matrix.engine == 'chromium'
+        with:
+          name: b1-ui-evidence-chromium-attempt-${{ github.run_attempt }}
+          path: viewport-evidence/
+          if-no-files-found: warn
+          retention-days: 3

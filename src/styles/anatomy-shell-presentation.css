@@ -1,0 +1,198 @@
+/* Work-owned anatomy shell presentation.
+ *
+ * Nothing in this file applies until B4's shared App explicitly mounts
+ * `mountAnatomyShellPresentation()` and therefore writes
+ * `data-anatomy-shell="calm"`. Scene state, camera state and anatomy controls
+ * remain owned by the existing App and panel implementations. */
+
+#ui[data-anatomy-shell='calm'] .global-scene-nav {
+  border-radius: 9px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* The H1 in the scene is normally the visible model name. Keep the navigation's
+ * copy in the accessibility tree without printing the same title twice. The
+ * shared compact-landscape contract hides the card heading, so its navigation
+ * copy stays visible there instead. */
+#ui[data-anatomy-shell='calm']:not([data-anatomy-compact='landscape']) .global-nav-current-scene,
+#ui[data-anatomy-shell='calm']:not([data-anatomy-compact='landscape']) .global-nav-separator {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#ui[data-anatomy-shell='calm'] .title-card {
+  max-width: min(39vw, 340px);
+  padding: 12px 15px 13px;
+  border-radius: 7px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(9px) saturate(1.02);
+  -webkit-backdrop-filter: blur(9px) saturate(1.02);
+}
+
+#ui[data-anatomy-shell='calm'] .title-card > .eyebrow {
+  display: none;
+}
+
+#ui[data-anatomy-shell='calm'] .title-card > .title {
+  font-size: clamp(19px, 2.3vw, 26px);
+  line-height: 1.14;
+}
+
+#ui[data-anatomy-shell='calm'] .title-card > .title-ja {
+  font-size: clamp(13px, 1.35vw, 16px);
+  line-height: 1.3;
+}
+
+#ui[data-anatomy-shell='calm'] .title-trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 12px;
+  margin-top: 8px;
+}
+
+#ui[data-anatomy-shell='calm'] .title-card .status-badge,
+#ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 0 2px 8px;
+  border: 0;
+  border-left: 2px solid currentColor;
+  border-radius: 0;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.35;
+  opacity: 1;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about {
+  margin-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle:hover,
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle:focus-visible {
+  color: var(--ink);
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-copy > .subtitle {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 0 8px;
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0;
+}
+
+/* Anatomy has no temporal stage. Its stage heading is a permanent explanation,
+ * not an operation. Keep the real camera/display controls and their educational
+ * boundary, but release the broad lower card back to the model. */
+#ui[data-anatomy-shell='calm'] .console > .stage-readout {
+  display: none;
+}
+
+#ui[data-anatomy-shell='calm'] .console {
+  width: fit-content;
+  max-width: 100%;
+  align-self: flex-start;
+  gap: 5px;
+  padding: 7px 9px 8px;
+  border-radius: 7px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(9px) saturate(1.02);
+  -webkit-backdrop-filter: blur(9px) saturate(1.02);
+}
+
+#ui[data-anatomy-shell='calm'] .console .button-row {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+#ui[data-anatomy-shell='calm'] .console .disclaimer {
+  max-width: 52ch;
+  color: var(--ink-dim);
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-info,
+#ui[data-anatomy-shell='calm'] .anatomy-panel,
+#ui[data-anatomy-shell='calm'] .inspection-panel {
+  border-radius: 7px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(9px) saturate(1.02);
+  -webkit-backdrop-filter: blur(9px) saturate(1.02);
+}
+
+@media (max-width: 560px) {
+  #ui[data-anatomy-shell='calm'] .title-card {
+    max-width: min(48vw, 210px);
+    padding: 10px 11px 11px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card > .title {
+    font-size: clamp(17px, 5.4vw, 21px);
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card > .title-ja {
+    font-size: 13px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    min-height: 44px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .console {
+    max-width: calc(100% - 64px);
+  }
+}
+
+@media (max-height: 460px) and (min-aspect-ratio: 8 / 5) {
+  #ui[data-anatomy-shell='calm'] .title-card,
+  #ui[data-anatomy-shell='calm'][data-anatomy-compact='landscape'] .title-card {
+    max-width: min(34vw, 310px);
+    padding: 6px 10px;
+    box-shadow: none;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-trust-badges {
+    margin-top: 0;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about {
+    display: none;
+  }
+
+  #ui[data-anatomy-shell='calm'] .console {
+    padding: 5px 7px 6px;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    scroll-behavior: auto;
+  }
+}

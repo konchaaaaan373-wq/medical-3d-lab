@@ -3,13 +3,12 @@
 Last updated: 2026-09-08。現状だけ。詳細はリンク先。
 
 ```text
-契約固定 SHA:  837505a   ← 現行。ここから始めてください
-旧契約点:      eecd21b / 1a02bd0   ← ここから新規開始しないこと
+契約固定 SHA:  eecd21ba661ee4a7cdaa4018bce681b26b276005        ← 現行。ここから始めてください
+旧契約点:      1a02bd0             ← レビュー前。ここから新規開始しないこと
 Base SHA:      bc2c09b (main)   Branch: claude/medical-3d-lab-b0-dv85dl   PR: #48 (Draft)
-後続:          PR #50（B2-1・解剖パネル）がこのブランチを base に積まれています
 ```
 
-すでに古い SHA から切ったブランチがある場合は、**差分を捨てず**現行 SHA へ
+すでに `1a02bd0` から切ったブランチがある場合は、**差分を捨てず**現行 SHA へ
 rebase / merge して取り込んでください。
 
 ## 決めたこと
@@ -60,10 +59,8 @@ PUBLIC_MODELS, publicModelById, publicModelsForOrgan, organIsPublished, MODEL_IN
 
 ## 検証
 
-`npm test` **1642 pass / 0 fail**、build、`verify:site`（asset 配信・判断記録の実在を含む）、
-`revisions:check`、`cards:check`、`budget`、`verify:ui`、`verify:anatomy` すべて緑。
-未登録 GLB を 2 か所（新フォルダ・decoder フォルダ）に実際に置いてビルドし、
-`verify:site` が両方を報告することを確認しています。
+`npm test` **1638 pass / 0 fail**、build、`verify:site`（asset 配信・判断記録の実在を含む）、
+`revisions:check`、`cards:check`、`budget`、`verify:ui`、**`verify:anatomy`（新規）** すべて緑。
 実施内容と未確認事項 → [`docs/beta-publication/brain-anatomy.md`](../beta-publication/brain-anatomy.md)
 **未実行**: Safari / Firefox 実機、スクリーンリーダー、タッチ、本番デプロイと `verify:live`。
 
