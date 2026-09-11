@@ -38,6 +38,8 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'eye-anatomy',
   'ear-anatomy',
   'skin-anatomy',
+  'lymph-node-anatomy',
+  'lymphatic-drainage',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -189,6 +191,18 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '皮膚を1ブロック切り出す。3つの層と、体表へ出る2つの経路。',
     ['LAYERS', 'FOLLICLE', 'DEPTH'],
     ['層', '毛包', '深さ']
+  ),
+  'lymph-node-anatomy': presentation(
+    'Count the vessels: several arrive, one leaves, and lymph has no way round.',
+    '管を数える。入るのは多数、出るのは1本。リンパに迂回路はありません。',
+    ['CORTEX', 'HILUM', 'ONE OUT'],
+    ['皮質', '門', '1本の出口']
+  ),
+  'lymphatic-drainage': presentation(
+    'See which way a place drains — and why the two sides are not the same.',
+    'どの部位がどちらへ流れるか。左右が同じではない理由。',
+    ['DUCTS', 'GROUPS', 'ASYMMETRY'],
+    ['本幹', '節群', '左右差']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

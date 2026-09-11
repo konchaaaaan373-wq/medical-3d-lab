@@ -473,6 +473,32 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code as a block of skin with its sides cut, so the section is what the model is rather than a viewpoint on it. Three slabs share their boundary surfaces by construction: one `reteWave` is both the floor of the epidermis and the roof of the dermis, so the interlocking junction cannot drift apart. Fat is drawn as lobules inside the subcutaneous compartment so that the compartment and its contents can each be pointed at. A hair follicle runs from the surface down into the fat with the hair it makes, a sebaceous gland opens into it, a sweat gland coil sends a spiral duct to open on the surface instead, and an arteriole, a venule and a sensory nerve run in the dermis. No state and no mechanism: nothing moves and nothing grows. **The layers are deliberately not to scale** (`LAYER_DISPLAY_THICKNESS`) — the epidermis is drawn at about a quarter of the dermis where in life it is about a twentieth — so no thickness or ratio may be read off the model. The epidermal layers, the arrector muscle, the named receptors, the lymphatics, the septa between fat lobules and regional differences in skin are not drawn.',
   },
   {
+    profileId: 'lymph-node-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as one schematic node at its own scale: a bean-shaped outline with a hilar dent, drawn at three depths so that capsule, cortex and medulla are the same shape at three depths rather than three shapes that happen to nest. Nine follicles sit inside the cortex as one structure, five afferent vessels arrive on the convex surface as one structure, a single efferent leaves at the hilum, and a marker names the hilum itself so the place can be pointed at without pointing at a vessel. No state and no mechanism: nothing flows and nothing swells. **This is a schematic node and not a magnified one** — a real node is not arranged as even shells — and no size, proportion or count is a measurement. The sinuses, the paracortex, the germinal centres, the reticular framework, the hilar artery and vein and the valves in the vessels are not drawn. The body-scale routes are a separate scene, `lymphatic-drainage`.',
+  },
+  {
+    profileId: 'lymphatic-drainage-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code at body scale as routes and groups inside the shared body silhouette: a thoracic duct from a cisterna chyli in the abdomen up behind the chest and across to the left venous angle, a short right lymphatic duct to the other, and cervical, axillary and inguinal node groups drawn as paired handfuls of beads. Two representative collecting routes are drawn so that the asymmetry between the two ducts is visible rather than merely stated. No state and no mechanism: nothing flows. **Each node group is a marker and not a model of a node** (`NODE_DISPLAY_SIZE`) — a real group is a dozen or more nodes of a few millimetres — so no node size or count may be read off the model; one node at its own scale is the separate scene `lymph-node-anatomy`. The great majority of lymphatic vessels and node groups, the spleen, thymus, tonsils and the valves in the vessels are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

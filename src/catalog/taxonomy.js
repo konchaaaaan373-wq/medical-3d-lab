@@ -69,6 +69,8 @@ export const ORGANS = [
   { id: 'eye', system: 'sensory', label: 'Eye', labelJa: '眼' },
   { id: 'ear', system: 'sensory', label: 'Ear', labelJa: '耳' },
   { id: 'skin', system: 'integumentary', label: 'Skin', labelJa: '皮膚' },
+  { id: 'lymph-node', system: 'hematologic', label: 'Lymph node', labelJa: 'リンパ節' },
+  { id: 'lymphatic-system', system: 'hematologic', label: 'Lymphatic system', labelJa: 'リンパ系' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

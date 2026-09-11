@@ -20,6 +20,8 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { LymphaticDrainageScene } from '../src/scenes/hematologic/scenes/lymphaticDrainage/LymphaticDrainageScene.js';
+import { LymphNodeAnatomyScene } from '../src/scenes/hematologic/scenes/lymphNodeAnatomy/LymphNodeAnatomyScene.js';
 import { SkinAnatomyScene } from '../src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js';
 import { EarAnatomyScene } from '../src/scenes/sensory/scenes/earAnatomy/EarAnatomyScene.js';
 import { EyeAnatomyScene } from '../src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js';
@@ -63,6 +65,8 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'lymphatic-drainage', Scene: LymphaticDrainageScene, minimum: 8 },
+  { id: 'lymph-node-anatomy', Scene: LymphNodeAnatomyScene, minimum: 6 },
   { id: 'skin-anatomy', Scene: SkinAnatomyScene, minimum: 9 },
   { id: 'ear-anatomy', Scene: EarAnatomyScene, minimum: 10 },
   { id: 'eye-anatomy', Scene: EyeAnatomyScene, minimum: 15 },
@@ -199,13 +203,33 @@ test('the layer slider fades the outer tissue and brings the inner structures up
     // outlet behind it rather than to reveal a structure that was not there.
     assert.ok(outer.length > 0, `${entry.id}: something has to get out of the way`);
 
+    // Measured against each structure's own resting opacity rather than against
+    // 1. Not every outer layer is opaque to begin with — a body silhouette
+    // drawn for scale is a ghost at rest and still has to get out of the way —
+    // and the invariant worth holding is that the slider moves a layer *from*
+    // where it sits *towards* transparent, not that it started solid.
     settle(scene, 0);
-    for (const structure of outer) assert.ok(structure.currentOpacity > 0.85, `${entry.id}/${structure.id} starts solid`);
+    for (const structure of outer) {
+      assert.ok(
+        structure.currentOpacity > structure.baseOpacity * 0.85,
+        `${entry.id}/${structure.id} starts at its resting opacity`
+      );
+    }
     for (const structure of inner) assert.ok(structure.currentOpacity < 0.05, `${entry.id}/${structure.id} starts hidden`);
 
     settle(scene, 1);
-    for (const structure of outer) assert.ok(structure.currentOpacity < 0.25, `${entry.id}/${structure.id} steps back`);
-    for (const structure of inner) assert.ok(structure.currentOpacity > 0.6, `${entry.id}/${structure.id} comes up`);
+    for (const structure of outer) {
+      assert.ok(
+        structure.currentOpacity < structure.baseOpacity * 0.35,
+        `${entry.id}/${structure.id} steps back`
+      );
+    }
+    for (const structure of inner) {
+      assert.ok(
+        structure.currentOpacity > structure.baseOpacity * 0.6,
+        `${entry.id}/${structure.id} comes up`
+      );
+    }
 
     settle(scene, 0);
   }
@@ -375,6 +399,10 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'lymphatic-drainage:venous-angles',
+  'lymphatic-drainage:routes-only',
+  'lymph-node-anatomy:hilum',
+  'lymph-node-anatomy:section',
   'skin-anatomy:surface',
   'skin-anatomy:follicle',
   'skin-anatomy:contents',
