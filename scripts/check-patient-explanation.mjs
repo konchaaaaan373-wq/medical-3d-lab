@@ -131,6 +131,17 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 const problems = [];
 const observed = [];
+/**
+ * Whether this scene's progression axis writes its model controls as well.
+ *
+ * Some do — the oedema and hepatorenal scenes put the variable their axis moves
+ * on the control panel too, so the reader can reach it either way. That changes
+ * what "the controls came back" can mean on close: the explanation deliberately
+ * leaves the axis where the conversation walked it, and on such a scene the
+ * controls follow the axis there. Detected from the walk rather than declared,
+ * so a scene that stops doing it stops being excused.
+ */
+let axisDrivesControls = false;
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
@@ -237,6 +248,7 @@ const readState = () =>
         })
       ),
       consoleTop: document.querySelector('.console')?.getBoundingClientRect().top ?? window.innerHeight,
+      headerBottom: document.querySelector('.global-scene-nav')?.getBoundingClientRect().bottom ?? 0,
       frame: { width: window.innerWidth, height: window.innerHeight },
     };
   });
@@ -300,8 +312,9 @@ if (!(await patientButton.count())) {
       // can reach it either way. Only a control change with the axis standing
       // still is a step re-solving the model it did not ask to re-solve.
       const axisMoved = Math.abs(now.progress - previous.progress) > 1e-6;
-      if (!declaresControls && modelMoved && !axisMoved) {
-        problems.push(`step ${index + 1} ("${step.title}") re-solved the model without asking to`);
+      if (!declaresControls && modelMoved) {
+        if (axisMoved) axisDrivesControls = true;
+        else problems.push(`step ${index + 1} ("${step.title}") re-solved the model without asking to`);
       }
     }
 
@@ -318,6 +331,15 @@ if (!(await patientButton.count())) {
       problems.push(`step ${index + 1} ("${step.title}"): has a "where to look" line and the panel did not draw it`);
     }
 
+    // A step that asks for a second model beside this one has to get it: the
+    // labels it points at do not exist without it, and "compare the two" over a
+    // picture of one is the failure.
+    if (step.compare !== undefined && now.comparing !== step.compare) {
+      problems.push(
+        `step ${index + 1} ("${step.title}") asked for comparison ${step.compare} and the scene is ${now.comparing}`
+      );
+    }
+
     // The whole reason a step names a framing: what it points at has to be in
     // the part of the frame the reader can see. A correct sentence over a
     // subject behind the console is the failure this check exists for.
@@ -331,12 +353,13 @@ if (!(await patientButton.count())) {
         !anchor.behind &&
         anchor.x > 0 &&
         anchor.x < now.frame.width &&
-        anchor.y > 0 &&
+        anchor.y > now.headerBottom &&
         anchor.y < now.consoleTop;
       if (!clear) {
         problems.push(
           `step ${index + 1} ("${step.title}"): "${id}" is at ${Math.round(anchor.x)},${Math.round(anchor.y)}` +
-            ` in a ${now.frame.width}x${Math.round(now.consoleTop)} usable band — the reader cannot see what it points at`
+            ` in a band running ${Math.round(now.headerBottom)}-${Math.round(now.consoleTop)} down a ${now.frame.width}px frame` +
+            ' — the reader cannot see what it points at'
         );
       }
     }
@@ -372,8 +395,16 @@ if (!(await patientButton.count())) {
   await page.waitForTimeout(700);
   const after = await readState();
 
+  const axisKept = Math.abs(after.progress - clinician.progress) > 1e-6;
   if (!sameControls(after.controls, clinician.controls)) {
-    problems.push('closing the explanation left the clinician with the lung the explanation was using');
+    if (axisDrivesControls && axisKept) {
+      console.log(
+        '  note: this scene\'s axis writes its own controls, so the controls follow the position' +
+          ' the explanation walked to. Only that position was kept on purpose.'
+      );
+    } else {
+      problems.push('closing the explanation left the clinician with the state the explanation was using');
+    }
   }
   if (Math.abs(after.progress - walkedTo) > 1e-3) {
     problems.push(

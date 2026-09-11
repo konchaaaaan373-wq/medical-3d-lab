@@ -452,3 +452,34 @@ export const DISCLAIMER_SHORT =
   'Conceptual model · haemodynamic mechanism only, no kidney injury modelled · not for diagnosis';
 
 export const DISCLAIMER_SHORT_JA = '概念モデル｜循環の機序のみ・腎障害は未実装｜診断には使用できません';
+
+/**
+ * The scene this one contains, and the sentence that goes with it.
+ *
+ * **Two different statements, and they must not blur.** The chain *inside* this
+ * scene is one solve: `solveHepatorenal` imports `solvePortalCirculation`, so
+ * the liver, the systemic circulation and the kidneys here are solved together
+ * with one unknown between them. Following the link below is not that. It opens
+ * a separate model of the liver on its own, with its own axis and its own
+ * calibration, and nothing computed here goes with the reader.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'portal-hypertension',
+      label: 'The liver on its own',
+      labelJa: '肝臓だけを見る',
+      why: 'Why a scarred liver raises the pressure in front of it, and why the detours that open do not bring it down.',
+      whyJa: '瘢痕化した肝臓の手前で圧が上がる理由と、迂回路が開いても圧が下がりきらない理由。',
+    },
+    {
+      slug: 'renal-filtration',
+      label: 'The kidney on its own',
+      labelJa: '腎臓だけを見る',
+      why: 'A separate kidney model with a tubule in it — this scene has none, and the two kidneys are not the same kidney.',
+      whyJa: '尿細管を持つ別の腎臓モデルです。このシーンに尿細管はなく、二つの腎臓は同じものではありません。',
+    },
+  ],
+  note: 'These are separate models, not stages of one patient. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 人の患者の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

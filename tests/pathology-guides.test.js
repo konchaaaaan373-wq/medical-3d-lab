@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import { PATIENT_GUIDES } from '../src/data/patientGuides.js';
 import { guideProblems } from '../src/data/guideContract.js';
@@ -19,9 +20,13 @@ import { STAGES as EDEMA_STAGES } from '../src/data/pulmonaryEdema.js';
 import { PneumoniaScene } from '../src/scenes/respiratory/scenes/pneumonia/PneumoniaScene.js';
 import { PulmonaryEmbolismScene } from '../src/scenes/respiratory/scenes/pulmonaryEmbolism/PulmonaryEmbolismScene.js';
 import { PulmonaryEdemaScene } from '../src/scenes/respiratory/scenes/pulmonaryEdema/PulmonaryEdemaScene.js';
+import { STAGES as PORTAL_STAGES } from '../src/data/portalHypertension.js';
+import { STAGES as HEPATORENAL_STAGES } from '../src/data/hepatorenal.js';
+import { PortalHypertensionScene } from '../src/scenes/hepatobiliary/scenes/portalHypertension/PortalHypertensionScene.js';
+import { HepatorenalScene } from '../src/scenes/renal/scenes/hepatorenalSyndrome/HepatorenalScene.js';
 
 /**
- * The respiratory explanations, held to the same promises the cardiac ones are.
+ * The disease explanations, held to the same promises the cardiac ones are.
  *
  * `src/data/guideContract.js` is the shape a guided explanation has, worked out
  * by the heart-failure guide and reused here rather than reinvented. What this
@@ -69,6 +74,18 @@ const GUIDES = [
   { id: 'pneumonia-consolidation', stages: PNEUMONIA_STAGES, scene: () => new PneumoniaScene({}) },
   { id: 'pulmonary-embolism', stages: EMBOLISM_STAGES, scene: () => new PulmonaryEmbolismScene({}) },
   { id: 'pulmonary-edema', stages: EDEMA_STAGES, scene: () => new PulmonaryEdemaScene({}) },
+  /**
+   * The liver and kidney pair.
+   *
+   * They are here for the same rules and for one of their own: the hepatorenal
+   * scene is the only place in this product where a single solve really does
+   * span three organs — `solveHepatorenal` imports and calls
+   * `solvePortalCirculation` — and the test below holds the two facts apart,
+   * because the tempting mistake is to let *navigating* between two scenes read
+   * as the same thing.
+   */
+  { id: 'portal-hypertension', stages: PORTAL_STAGES, scene: () => new PortalHypertensionScene({}) },
+  { id: 'hepatorenal-syndrome', stages: HEPATORENAL_STAGES, scene: () => new HepatorenalScene({}) },
 ];
 
 for (const guide of GUIDES) {
@@ -105,14 +122,28 @@ for (const guide of GUIDES) {
     const scene = guide.scene ? guide.scene() : null;
     if (!scene) return;
     scene.build?.();
-    const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a.range ?? [0, 1]]));
+    const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a]));
+    // A `compare` a step set stays set until another step changes it, so this
+    // walks the guide in order rather than asking each step in isolation.
+    let comparing = false;
     for (const step of PATIENT_GUIDES[id].steps) {
+      if (step.compare !== undefined) comparing = step.compare;
       for (const focusId of step.focus ?? []) {
-        const range = annotations.get(focusId);
-        assert.ok(range, `${step.stage}: points at "${focusId}", which the scene does not draw`);
+        const annotation = annotations.get(focusId);
+        assert.ok(annotation, `${step.stage}: points at "${focusId}", which the scene does not draw`);
+        const range = annotation.range ?? [0, 1];
         assert.ok(
           step.progress >= range[0] - 1e-9 && step.progress <= range[1] + 1e-9,
           `${step.stage}: points at "${focusId}", which the scene draws only between ${range[0]} and ${range[1]}`
+        );
+        // Some labels exist only when a second model is on screen beside this
+        // one. A step pointing at one of those without asking for the
+        // comparison narrows the label layer to nothing, and the reader is told
+        // to compare two things while looking at one.
+        assert.equal(
+          Boolean(annotation.comparisonOnly) && !comparing,
+          false,
+          `${step.stage}: points at "${focusId}", which the scene only draws while comparing`
         );
       }
     }
@@ -166,4 +197,45 @@ test('the model-state rules actually reject a step that breaks them', () => {
     ),
     ['b: is a general explanation and moves the model as well']
   );
+});
+
+/**
+ * The one place a chain across organs is a single solve — and the one place it
+ * must not be claimed anywhere else.
+ *
+ * `solveHepatorenal` imports and calls `solvePortalCirculation`: the liver on
+ * that screen is solved by the same function the portal-hypertension scene
+ * uses, inside one solve, and the kidney's perfusion pressure comes out of it.
+ * That is a real coupling and it is worth saying so.
+ *
+ * Everything else that links a liver scene to a kidney scene is navigation.
+ * Two models, two solves, nothing passing between them — and a reader moving
+ * between them has no way to tell those apart from the moving unless the
+ * product says which it is. So the note that travels with every onward link
+ * has to deny the coupling, and this holds it to that.
+ */
+test('organ chains: the coupling is inside one solve, and the links say they are not', async () => {
+  const hepatorenal = await readFile(new URL('../src/models/hepatorenal.js', import.meta.url), 'utf8');
+  assert.match(
+    hepatorenal,
+    /import\s*\{[^}]*solvePortalCirculation[^}]*\}\s*from\s*'\.\/portalHypertension\.js'/,
+    'the hepatorenal model is supposed to solve the portal circulation rather than restate it'
+  );
+
+  // And every scene that offers an onward link says, in both languages, that
+  // the scene it is offering is a separate model.
+  for (const scene of [
+    PortalHypertensionScene,
+    HepatorenalScene,
+    CopdScene,
+    AsthmaScene,
+    PneumoniaScene,
+    PulmonaryEmbolismScene,
+    PulmonaryEdemaScene,
+  ]) {
+    const related = scene.meta.related;
+    if (!related?.scenes?.length) continue;
+    assert.match(related.note ?? '', /separate models/i, scene.meta.id);
+    assert.match(related.noteJa ?? '', /別々のモデル/, scene.meta.id);
+  }
 });

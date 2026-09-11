@@ -693,14 +693,268 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Portal hypertension, on the same contract as the respiratory scenes.
+   *
+   * **The axis is the liver's own resistance and nothing else.** The scene says
+   * so: splanchnic vasodilation — the second half of the story — is a control
+   * of its own, and this walk does not touch it. So the steps are about one
+   * thing getting harder to cross, and the last mechanism step says plainly
+   * that the detours do not fix it because the resistance behind them and the
+   * inflow in front of them are both still there. That is the scene's own
+   * finding and the reason it exists.
+   *
+   * **What it refuses is on the record and is respected here.** Its scope
+   * excludes ascites, varices, bleeding, encephalopathy and liver function of
+   * every kind — it has flows, not consequences — so no step names any of them
+   * as something that follows. The two marked steps say what the picture does
+   * not contain and that what happens to a person is not in it.
+   *
+   * No step gives a pressure. The model reports a portal pressure gradient and
+   * an HVPG and is emphatic that they are not the same number; a patient-facing
+   * figure would be the easiest place in the product to conflate them.
+   */
   'portal-hypertension': Object.freeze({
-    title: 'Why pressure rises before the liver',
-    titleJa: '肝臓の手前で圧が上がる仕組み',
+    title: 'Why pressure builds up before the liver',
+    titleJa: '肝臓の手前で圧が上がる理由',
     steps: Object.freeze([
-      { progress: 0, title: 'Blood flows through the liver', titleJa: '血液が肝臓を通る', body: 'Blood from the digestive organs normally flows through the portal vein and then through the liver.', bodyJa: '消化管などから戻った血液は、通常は門脈を通って肝臓の中を流れます。' },
-      { progress: 0.42, title: 'The liver becomes harder to flow through', titleJa: '肝臓の中を通りにくくなる', body: 'Cirrhosis changes the liver structure and increases resistance to that flow.', bodyJa: '肝硬変では肝臓の構造が変化し、血液が通るときの抵抗が大きくなります。' },
-      { progress: 0.72, title: 'Portal pressure rises', titleJa: '門脈の圧が上がる', body: 'More pressure is then needed to drive blood across the liver.', bodyJa: 'そのため、肝臓へ血液を通すために、より高い圧が必要になります。' },
-      { progress: 1, title: 'Blood can take detours', titleJa: '血液が迂回路へ流れる', body: 'Alternative veins can carry part of the blood around the liver, but the underlying resistance in the liver remains.', bodyJa: '血液の一部は別の静脈を迂回するようになりますが、肝臓の中の通りにくさ自体がなくなるわけではありません。' },
+      {
+        progress: 0,
+        stage: 'healthy',
+        frame: 'system',
+        focus: ['liver', 'portal'],
+        certainty: 'established',
+        title: 'Blood from the gut goes through the liver first',
+        titleJa: '腸からの血液は、まず肝臓を通ります',
+        body: 'Blood leaving the stomach and intestines does not go straight back to the heart. It is routed through the liver on the way, in its own vein.',
+        bodyJa: '胃や腸から出た血液は、そのまま心臓へ戻るのではありません。途中で肝臓を通るよう、専用の静脈で導かれています。',
+        look: 'Follow the vein into the liver and out the other side. A healthy liver is very easy to flow through.',
+        lookJa: '肝臓に入り、反対側から出ていく静脈を目で追ってください。健康な肝臓は、とても通りやすい場所です。',
+      },
+      {
+        progress: 0.35,
+        stage: 'scarring',
+        frame: 'system',
+        focus: ['liver', 'portal'],
+        certainty: 'established',
+        title: 'Scarring makes the liver hard to cross',
+        titleJa: '瘢痕化で、肝臓を通りにくくなります',
+        body: 'Scar tissue and regrowing nodules change the inside of the liver, and blood has to be pushed harder to get through it. The pressure in front of it rises.',
+        bodyJa: '瘢痕の組織と再生した結節が肝臓の内部を変え、血液を通すのにより強い力が要るようになります。その手前の圧が上がります。',
+        look: 'Nothing about the vein has changed. What changed is the liver the vein has to push through.',
+        lookJa: '静脈そのものは変わっていません。変わったのは、静脈が血液を押し通す先の肝臓です。',
+      },
+      {
+        progress: 0.6,
+        stage: 'collaterals',
+        frame: 'system',
+        focus: ['collateral', 'portal'],
+        certainty: 'established',
+        title: 'Other veins open, and carry blood around it',
+        titleJa: '別の静脈が開き、迂回路になります',
+        body: 'Over months and years, small existing veins widen into a network that carries a large share of the blood past the liver instead of through it.',
+        bodyJa: '数か月から数年かけて、もともとある細い静脈が広がってつながり、血液のかなりの部分を肝臓の中ではなく脇を通して運ぶようになります。',
+        look: 'New routes have appeared beside the liver. Watch how much of the flow moves onto them.',
+        lookJa: '肝臓の脇に新しい通り道が現れています。どれだけの流れがそちらへ移るかを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'advanced',
+        frame: 'system',
+        focus: ['collateral', 'splanchnic'],
+        certainty: 'established',
+        title: 'The detours help, and the pressure stays high',
+        titleJa: '迂回路は効きますが、圧は高いままです',
+        body: 'The detours take a real share of the load and the pressure comes down a little. It stays far above normal, because the liver is still hard to cross and blood keeps arriving.',
+        bodyJa: '迂回路は負荷のかなりの部分を引き受け、圧は少し下がります。それでも正常よりはるかに高いままです。肝臓が通りにくいことも、血液が届き続けることも変わらないからです。',
+        look: 'Compare the two routes, then look at the pressure. Most of the blood has moved and the pressure has barely followed.',
+        lookJa: '二つの通り道を見比べ、それから圧を見てください。血液の大半は移ったのに、圧はほとんど下がっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'advanced',
+        // The model has flows, not consequences: its scope excludes ascites,
+        // varices, bleeding, encephalopathy and liver function of every kind.
+        frame: 'system',
+        focus: ['collateral', 'splanchnic'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'This screen is pressure and flow, and nothing else',
+        titleJa: 'この画面は圧と流れだけです',
+        body: 'What the liver does as an organ — the work it performs for the body — is not represented here at all. Neither is anything that happens as a result of the pressure.',
+        bodyJa: '肝臓が臓器として果たしている働きは、ここには一切描かれていません。圧が高いことによって起きることも同様です。',
+        look: 'There is no liver function anywhere on this screen. What is drawn is where blood goes and how hard it is pushed.',
+        lookJa: 'この画面に肝臓の働きを示すものはありません。描かれているのは血液の行き先と、押す力の強さだけです。',
+      },
+      {
+        progress: 1,
+        stage: 'advanced',
+        frame: 'system',
+        focus: ['collateral', 'splanchnic'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What high pressure here can lead to varies greatly',
+        titleJa: 'ここで圧が高いと何が起きるかは、人によって大きく違います',
+        body: 'Raised pressure in this system is associated with several problems elsewhere in the body. Which of them appear, and when, differs widely and is not shown here.',
+        bodyJa: 'この系の圧が高いことは、体の別の場所で起きるいくつかの問題と関連が知られています。どれがいつ現れるかは人によって大きく異なり、ここには示されていません。',
+        look: 'Nothing new is drawn for this step. The picture shows a pressure, not what will happen to anyone.',
+        lookJa: 'この段階で新しく描かれるものはありません。示しているのは圧であって、誰かに起きることではありません。',
+      },
+    ]),
+  }),
+
+  /**
+   * Hepatorenal syndrome — the walk where one solve really does span three
+   * organs, and the one place in this product where that may be said.
+   *
+   * `solveHepatorenal` **imports and calls** `solvePortalCirculation`: the liver
+   * on this screen is solved by the same function the portal-hypertension scene
+   * uses, inside one solve with one unknown, and the kidney's perfusion pressure
+   * comes out of it. So the chain this walk describes — the liver, the
+   * circulation, then the kidney — is numerically coupled, not two pictures
+   * placed side by side.
+   *
+   * **That is exactly why the neighbouring links say the opposite.** Moving
+   * from the portal-hypertension scene to this one is navigation between two
+   * models; nothing is carried across. The coupling is inside this scene, and
+   * `RELATED` in `src/data/hepatorenal.js` says so rather than letting the two
+   * facts blur into each other.
+   *
+   * **The scene's own boundary is the last mechanism step, not a footnote.**
+   * This model gives the kidney no injury at all, and filtration still collapses
+   * — which is the measure the scene exists to give. The step after it says, on
+   * screen, that a person's kidney may be injured as well and that this picture
+   * has none of it to weigh. No step names a diagnosis, a criterion, a drug or
+   * a course: the scope excludes ascites, every tubule, all structural injury
+   * and all time, and the patient copy rules forbid the rest.
+   */
+  'hepatorenal-syndrome': Object.freeze({
+    title: 'How a liver problem reaches the kidneys',
+    titleJa: '肝臓の問題が、どうやって腎臓に届くのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'healthy',
+        frame: 'chain',
+        // Start from one kidney. The step that compares two of them turns the
+        // comparison on; this makes sure the walk begins somewhere known
+        // whatever the reader had on screen before.
+        compare: false,
+        focus: ['liver', 'kidney'],
+        certainty: 'established',
+        title: 'Two organs on one circulation',
+        titleJa: '一つの循環につながった二つの臓器',
+        body: 'The liver and the kidneys are far apart and share one blood supply. Neither is defending itself against anything here.',
+        bodyJa: '肝臓と腎臓は離れていますが、血液の流れは一つでつながっています。ここではどちらも、何かに対抗している状態ではありません。',
+        look: 'Both organs are on screen at once. That pairing is what the rest of this is about.',
+        lookJa: '二つの臓器が同時に映っています。この組み合わせが、以降の話の軸です。',
+      },
+      {
+        progress: 0.18,
+        stage: 'vasodilation',
+        frame: 'chain',
+        focus: ['splanchnic', 'aorta'],
+        certainty: 'established',
+        title: 'The vessels around the gut open wide',
+        titleJa: '腸のまわりの血管が大きく開きます',
+        body: 'A liver that blood cannot cross easily causes the arteries feeding the gut to widen. That is a large, easy route opening in parallel with every other one.',
+        bodyJa: '血液が通りにくくなった肝臓のために、腸へ向かう動脈が広がります。ほかのすべての経路と並んで、大きくて通りやすい道が開くということです。',
+        look: 'Watch the vessels in the middle widen. The pressure through the whole system falls as they do.',
+        lookJa: '中央の血管が広がるのを見てください。それにつれて、系全体の圧が下がります。',
+      },
+      {
+        progress: 0.38,
+        stage: 'defended',
+        frame: 'chain',
+        focus: ['afferent', 'efferent', 'kidney'],
+        certainty: 'established',
+        title: 'The body tightens everything it can',
+        titleJa: '体は、締められるところをすべて締めます',
+        body: 'To hold the pressure up, the body narrows the vessels that still respond. The ones around the gut do not, so most of that narrowing lands elsewhere — the kidneys among them.',
+        bodyJa: '圧を保つため、体はまだ反応する血管を細くします。腸のまわりの血管は反応しないので、その締めつけの多くは別の場所に及びます。腎臓もその一つです。',
+        look: 'Watch the two small vessels at the kidney. The one leaving is tightening more than the one arriving.',
+        lookJa: '腎臓の二本の細い血管を見てください。出ていく側のほうが、入ってくる側より強く締まっています。',
+      },
+      {
+        progress: 0.58,
+        stage: 'failure',
+        frame: 'chain',
+        focus: ['afferent', 'filtrate'],
+        certainty: 'established',
+        title: 'The kidney runs out of ways to protect itself',
+        titleJa: '腎臓が、自分を守る手立てを使い切ります',
+        body: 'The kidney had been widening its incoming vessel to keep its own flow up. There is a limit to that, and past it the kidney simply follows the falling pressure.',
+        bodyJa: '腎臓は、入ってくる血管を広げることで自らの血流を保ってきました。それには限界があり、超えた先では、腎臓は下がる圧にただ従うことになります。',
+        look: 'The incoming vessel cannot widen any further. Watch what is filtered fall from here.',
+        lookJa: '入ってくる血管はもう広がれません。ここから、ろ過される量が落ちていくのを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'circulatory-share',
+        // No framing named here on purpose. The scene has its own shot for when
+        // two models are on screen, and asking for the single-organ one would
+        // hold the pair at a distance chosen for a chain that is no longer what
+        // is being drawn.
+        // These two labels belong to the scene's comparison, so the steps that
+        // say "compare the two kidneys" have to put the second one on screen.
+        // Presentation, not physiology: a second model drawn beside this one,
+        // with nothing about this one changed.
+        compare: true,
+        focus: ['thisKidney', 'releasedKidney'],
+        certainty: 'established',
+        title: 'Nothing here has damaged the kidney',
+        titleJa: 'ここでは、腎臓そのものは傷んでいません',
+        body: 'Filtering has fallen to a fraction of normal and the kidney in this picture is undamaged throughout. This is how far the circulation alone can carry it.',
+        bodyJa: 'ろ過の量は正常のごく一部まで落ちましたが、この絵の腎臓は最後まで傷んでいません。循環の変化だけで、ここまで到達し得るということです。',
+        look: 'Compare the two kidneys: the same organ, with and without the signal squeezing it. Neither is injured.',
+        lookJa: '二つの腎臓を見比べてください。締めつけの信号があるかないかの違いだけで、どちらも傷んではいません。',
+      },
+      {
+        progress: 1,
+        stage: 'circulatory-share',
+        // The model's own boundary, said on screen: it has no structural
+        // injury in it at all, so it cannot weigh one part against the other.
+        // No framing named here on purpose. The scene has its own shot for when
+        // two models are on screen, and asking for the single-organ one would
+        // hold the pair at a distance chosen for a chain that is no longer what
+        // is being drawn.
+        // These two labels belong to the scene's comparison, so the steps that
+        // say "compare the two kidneys" have to put the second one on screen.
+        // Presentation, not physiology: a second model drawn beside this one,
+        // with nothing about this one changed.
+        compare: true,
+        focus: ['thisKidney', 'releasedKidney'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'A person’s kidney may also be injured',
+        titleJa: '実際には、腎臓自体が傷んでいることもあります',
+        body: 'In a person, damage to the kidney itself can be present alongside all of this. There is none of it in this picture, so nothing here can weigh one against the other.',
+        bodyJa: '実際には、これらと並んで腎臓そのものの傷みがあることもあります。この絵にはそれが一切ないため、どちらがどれだけかを比べることはできません。',
+        look: 'The kidney on screen is undamaged by construction. That is a choice about the model, not a finding about anyone.',
+        lookJa: '画面の腎臓は、作りとして傷んでいません。これはモデル上の設定であって、誰かについて分かったことではありません。',
+      },
+      {
+        progress: 1,
+        stage: 'circulatory-share',
+        // No framing named here on purpose. The scene has its own shot for when
+        // two models are on screen, and asking for the single-organ one would
+        // hold the pair at a distance chosen for a chain that is no longer what
+        // is being drawn.
+        // These two labels belong to the scene's comparison, so the steps that
+        // say "compare the two kidneys" have to put the second one on screen.
+        // Presentation, not physiology: a second model drawn beside this one,
+        // with nothing about this one changed.
+        compare: true,
+        focus: ['thisKidney', 'releasedKidney'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'How far and how fast this goes varies',
+        titleJa: 'どこまで、どのくらいの速さで進むかは様々です',
+        body: 'This screen shows one path through the changes at a single moment each time. It has no days or weeks in it, and people do not follow one course.',
+        bodyJa: 'この画面が示すのは、変化の中の一本の道を、そのつど一瞬ずつ見たものです。日や週といった時間はなく、経過も人によって一様ではありません。',
+        look: 'Nothing new is drawn for this step. There is no time anywhere in this picture.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵のどこにも時間はありません。',
+      },
     ]),
   }),
 });

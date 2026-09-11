@@ -33,6 +33,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
 } from '../../../../data/hepatorenal.js';
@@ -92,6 +93,7 @@ export class HepatorenalScene {
     subtitleJa:
       '2 つの臓器と 1 つの循環 ｜ 血圧を守る代償そのものが腎の予備能を奪います ｜ 腎障害は実装していません',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -496,6 +498,36 @@ export class HepatorenalScene {
   }
 
   // --- what the interface reads --------------------------------------------
+
+  /**
+   * The one framing a guided explanation asks for here.
+   *
+   * Presentation only — the camera, and nothing the model is set to.
+   *
+   * Three organs across ten world units, and the explanation points at all of
+   * them in turn — so there is one framing rather than several, and it holds
+   * the whole chain at once. It is the scene's own shot aimed lower: with a
+   * patient explanation open the console takes the bottom of the frame, and the
+   * kidney's label sat three pixels inside it.
+   *
+   * Measured rather than guessed — `scripts/check-patient-explanation.mjs`
+   * projects the anchors through the reader's own camera and fails when one
+   * lands under the console.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    chain: Object.freeze({
+      target: new THREE.Vector3(0, -0.75, 0),
+      distance: 17.2,
+      direction: new THREE.Vector3(0.2, 0.5, 17.2).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return HepatorenalScene.guideFramings;
+  }
 
   getAnnotations() {
     /** A point in the magnified glomerulus, in the world. */
