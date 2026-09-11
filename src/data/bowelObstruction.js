@@ -174,9 +174,9 @@ export const MODEL_SCOPE = {
         '回盲弁が保たれていると、結腸の閉塞は両端が閉じた状態になり、結腸だけがそれを受け止めること。',
     },
     {
-      text: 'That wall tension follows the calibre as well as the distension, so the widest part of the distended bowel — in the colon, the caecum — carries more of it than the blockage does.',
+      text: 'That wall tension follows the calibre as well as the distension, so the widest part of the *distended* bowel carries more of it than the blockage does — and which part that is depends on the site and on the valve, not on a rule. **In this model’s colonic scenarios, where a competent valve shuts the loop at its upper end, that comes out at the caecum; in a small bowel obstruction the caecum is below the blockage and not distended at all, and the distended bowel is one calibre throughout, so no segment stands out.**',
       textJa:
-        '壁の負担は拡張だけでなく太さにも従うため、拡張した区間のうち最も太い部分——結腸では盲腸——が、閉塞部より大きな負担を負うこと。',
+        '壁の負担は拡張だけでなく太さにも従うため、**拡張している**区間のうち最も太い部分が閉塞部より大きな負担を負うこと。どこがそれに当たるかは、閉塞部位と回盲弁の状態によって決まり、一般則ではありません。**回盲弁が保たれて上端が閉じる本モデルの結腸閉塞シナリオでは盲腸側が最大になりますが、小腸閉塞では盲腸は閉塞より下流で拡張せず、拡張部は全長が同じ太さのため、突出する区間はありません。**',
     },
   ],
   excludes: [
@@ -213,7 +213,7 @@ export const MODEL_SCOPE = {
         '**長さも太さも、アトラスの描画上の比率であって解剖学的な比ではありません。** 実際の小腸は結腸の数倍の長さで、ここで描かれているよりずっと細いものです。主張しているのは「盲腸が大腸で最も太い」という**順序**であって、比率ではありません。',
     },
     {
-      text: '**The wall tension figure is an index, not a tension and not a pressure.** It compares segments inside one picture. Comparing the number between two scenarios is not something this model supports, and no value in it is a threshold.',
+      text: '**The wall tension figure is an index, not a tension and not a pressure.** It compares segments inside one picture, and which segment comes out highest is a property of that picture — the site, the valve and the calibres drawn — and not a general fact about the gut. Comparing the number between two scenarios is not something this model supports, and no value in it is a threshold. **Nothing here is perforation, ischaemia, or a risk of either, at the caecum or anywhere else.**',
       textJa:
         '**壁の負担の数値は指標であって、張力でも内圧でもありません。** 同じ画面の中で区間どうしを比べるためのものです。シナリオをまたいで数値を比べることはこのモデルでは支持されず、いかなる値も基準値ではありません。',
     },
@@ -241,9 +241,9 @@ export const MODEL_SCOPE = {
       kind: 'textbook',
     },
     {
-      text: 'Standard descriptions of closed-loop large bowel obstruction with a competent ileocaecal valve, and of the caecum as the segment that distends most.',
+      text: 'Standard descriptions of closed-loop large bowel obstruction with a competent ileocaecal valve, in which the caecum is described as the segment that distends most. **That description belongs to that arrangement**, and this model reproduces it there rather than generalising it.',
       textJa:
-        '回盲弁が保たれた閉鎖係蹄型の大腸閉塞と、盲腸が最も拡張する区間であることについての標準的記載。',
+        '回盲弁が保たれた閉鎖係蹄型の大腸閉塞について、盲腸が最も拡張する区間とされる標準的記載。**この記載はその配置についてのもの**であり、本モデルはそこで同じ結果を再現しているだけで、一般化していません。',
       kind: 'textbook',
     },
     {

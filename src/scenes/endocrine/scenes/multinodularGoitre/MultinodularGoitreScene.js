@@ -92,6 +92,15 @@ export class MultinodularGoitreScene {
   /** Where the ring of bone is, and how wide it is. Drawn, not in the atlas. */
   static INLET = Object.freeze({ y: -0.95, radius: 0.66, tube: 0.085 });
 
+  /**
+   * The levels the model's `pressesAt` names, in this scene's own coordinates.
+   *
+   * `gland` is where the lobes are — the same level the deviation bend is
+   * centred on — and `inlet` is the ring. Semantic geometry: the model says
+   * which level, and only this table says where in the scene that is.
+   */
+  static PRESSES_AT = Object.freeze({ gland: 0.05, inlet: MultinodularGoitreScene.INLET.y });
+
   /** Which way the patient's left is (`docs/architecture-rules.md` rule 5). */
   static LEFT = 1;
 
@@ -227,7 +236,8 @@ export class MultinodularGoitreScene {
    * straight where it is not.
    */
   airwayCurve(deviation) {
-    const bend = (y) => deviation * Math.exp(-Math.pow((y - 0.05) / 0.7, 2));
+    const gland = MultinodularGoitreScene.PRESSES_AT.gland;
+    const bend = (y) => deviation * Math.exp(-Math.pow((y - gland) / 0.7, 2));
     const points = [];
     for (let step = 0; step <= 10; step += 1) {
       const y = lerp(-1.55, 1.15, step / 10);
@@ -239,15 +249,20 @@ export class MultinodularGoitreScene {
   /**
    * The airway's calibre along its own path.
    *
-   * Full width everywhere except at the inlet, where the model's fraction is
-   * applied — because the inlet is the only place the gland has nothing to push
-   * into. The fraction is the model's; the width of the dip is drawn.
+   * Full width except where the gland is pressing on it, which is **the level
+   * the model names** and not always the inlet: a goitre that stays in the neck
+   * narrows the airway at the level of the lobes, and one that has followed it
+   * down narrows it at the inlet. Putting every dip at the inlet would draw the
+   * cervical narrowing in a place it is not. The fraction and the level are the
+   * model's; the width of the dip is drawn.
    */
   airwayRadiusAt(u) {
     const solved = this.solved ?? solveMultinodularGoitre(this.controls);
+    const level = MultinodularGoitreScene.PRESSES_AT[solved.pressesAt ?? ''];
+    if (level === undefined) return THYROID.tracheaRadius;
     const y = lerp(-1.55, 1.15, u);
-    const atInlet = Math.exp(-Math.pow((y - MultinodularGoitreScene.INLET.y) / 0.3, 2));
-    return THYROID.tracheaRadius * lerp(1, solved.tracheaWidthFraction, atInlet);
+    const here = Math.exp(-Math.pow((y - level) / 0.3, 2));
+    return THYROID.tracheaRadius * lerp(1, solved.tracheaWidthFraction, here);
   }
 
   /**

@@ -11,9 +11,10 @@
  * It is why the site is a **scenario and not a severity**. A blockage high in
  * the small bowel and one at the sigmoid are not two points on one axis: they
  * distend different lengths of gut, put the transition at a different place,
- * and — because the widest part of the bowel is neither of them — raise the
- * wall tension somewhere neither of them is. The axis in this model is how
- * completely the path is blocked, at whichever site the reader has chosen.
+ * and — depending on where the blockage is and how much of the gut is behind
+ * it — carry the highest wall tension somewhere that is neither end. The axis
+ * in this model is how completely the path is blocked, at whichever site the
+ * reader has chosen.
  *
  * ## What the numbers are
  *
@@ -29,10 +30,21 @@
  * pressure**, it has no units, and this model has no pressure–volume curve for
  * bowel wall in it. What the index is for is comparing *segments in one
  * picture*: at one pressure the wider tube carries the higher wall tension, so
- * the caecum — the widest part of the large bowel — carries more of it than
- * the blockage does. Comparing the number between two scenarios is not
- * something it supports, and the scene's read-out reports a ratio within one
- * picture for exactly that reason.
+ * whichever distended segment is widest carries more of it than the blockage
+ * does. **Which segment that is depends on the scenario, and the model works
+ * it out rather than assuming it.** In the colonic scenarios here the answer
+ * comes out at the caecum; in a small bowel obstruction the caecum is below
+ * the blockage and is not distended at all, the distended bowel is one calibre
+ * throughout, and `tensionStandsOut` is false because there is no worst-off
+ * segment to name. **Nothing in this model says the caecum is generally the
+ * wall under most strain** — it says what this gut, this site and this valve
+ * come out at. Comparing the number between two scenarios is not something it
+ * supports, and the scene's read-out reports a ratio within one picture for
+ * exactly that reason.
+ *
+ * Nor does the index say anything about what happens to a wall that carries
+ * the most. There is no perforation, no ischaemia and no risk of either in
+ * this model, so it does not predict them anywhere — the caecum included.
  *
  * ## The ileocaecal valve
  *

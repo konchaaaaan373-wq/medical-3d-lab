@@ -72,6 +72,16 @@ The last line is Laplace's `T = P·r` with `areaRatio` standing in for the
 distending pressure. **It is an index, not a pressure and not a tension**, it
 has no units, and the model has no pressure–volume curve for bowel wall in it.
 
+Which stretch comes out highest is **solved per scenario, not asserted**. It
+depends on the site, on how far the ileocaecal valve holds, and on the calibres
+of what happens to lie above the blockage. In the colonic closed-loop
+arrangements it comes out at the caecum, which is what the standard description
+of that arrangement says; in a small bowel obstruction the caecum is below the
+blockage and not distended at all, the distended gut is one calibre throughout,
+and the model reports that no stretch stands out. **The card does not claim, and
+the scene must not be read as claiming, that the caecum is generally the wall
+under most strain.**
+
 ## 8. Constants and calibration
 
 Two, and neither is a measurement. The lengths and calibres are the intestinal
@@ -95,7 +105,8 @@ Declared in `VISUAL_MAPPING` (`src/data/bowelObstruction.js`) and handed out by
   size.
 - The stretch whose wall carries the most is lit, and only when one of them
   stands out — distended small bowel is drawn at one calibre and has no worst
-  part. **Lit is not at risk.**
+  part. **Lit is not at risk**, and it is this picture's answer rather than a
+  general one: move the blockage and it moves.
 
 ## 10. Known failure modes
 
@@ -106,6 +117,9 @@ Declared in `VISUAL_MAPPING` (`src/data/bowelObstruction.js`) and handed out by
   it gives way.
 - The atlas's taper understates how much wider the caecum is than the rest of
   the colon, so the tension spread the scene reports is a floor.
+- There is no perforation, no ischaemia and no risk of either. The model does
+  not predict what becomes of the wall that carries the most, at the caecum or
+  anywhere else.
 
 ## 11. Where it will mislead
 

@@ -48,6 +48,20 @@ test('physiology: displacement dominates in the neck and narrowing dominates at 
   assert.equal(at('anterior').tracheaWidthFraction, 1);
 });
 
+test('physiology: the narrowing is at the level the gland is, not always at the inlet', () => {
+  // The level is part of the claim. A cervical goitre narrows the airway where
+  // it lies; only one that has followed the airway down narrows it at the
+  // inlet. A scene that drew every dip at the inlet would put the cervical
+  // narrowing somewhere it is not.
+  assert.equal(at('medial').pressesAt, 'gland');
+  assert.equal(at('posterior').pressesAt, 'gland');
+  assert.equal(at('retrosternal').pressesAt, 'inlet');
+
+  // And a gland that has not enlarged is not pressing anywhere.
+  assert.equal(at('medial', 0).pressesAt, null);
+  assert.equal(at('none').pressesAt, null);
+});
+
 test('physiology: the same amount of gland is the same size in every direction', () => {
   // The figure that says nothing, and the reason the read-out prints it first.
   for (const burden of [0.5, 1.5, 3]) {

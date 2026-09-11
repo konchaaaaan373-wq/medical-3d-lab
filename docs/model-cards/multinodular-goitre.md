@@ -91,9 +91,15 @@ Declared in `VISUAL_MAPPING` (`src/data/multinodularGoitre.js`):
   shape they grow *into* is drawn rather than solved: this model has one distance
   in it and no nodules.
 - The airway is bent across by the distance the model says it was pushed, and
-  narrowed by the fraction it reports — the large fraction at the inlet and the
-  small one in the neck. **That fraction is against this model's own resting
+  narrowed by the fraction it reports — the large fraction below the inlet and
+  the small one in the neck. **That fraction is against this model's own resting
   width and is not a tracheal diameter.**
+- **Where** the narrowing is drawn is the model's too, not the scene's. The
+  solver reports `pressesAt` as a level by name — `gland` for a goitre that
+  stays at the level of the lobes, `inlet` for one that has followed the airway
+  down — and the scene has one table turning that name into a height. A cervical
+  goitre narrows the airway where it lies; drawing every dip at the inlet would
+  put it somewhere it is not.
 - The nerve and the parathyroid glands are lit once the gland reaches back past
   them. **Lit is where they are, not what has happened to them.**
 

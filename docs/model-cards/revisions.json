@@ -346,8 +346,8 @@
     "modelSources": [
       "src/models/bowelObstruction.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "1a5bbb552be4d90c",
+    "cardRevision": 4,
+    "modelDigest": "a8fb92a692df03ee",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -406,8 +406,8 @@
     "modelSources": [
       "src/models/multinodularGoitre.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "050b26e69d3bdbe5",
+    "cardRevision": 4,
+    "modelDigest": "d61a7403f33e1ffd",
     "cardUpdatedAt": "2026-09-11"
   },
   {
