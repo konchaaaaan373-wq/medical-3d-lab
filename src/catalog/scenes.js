@@ -761,6 +761,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/sensory/scenes/eyeAnatomy/index.js'),
   },
   {
+    id: 'ear-anatomy',
+    slug: 'ear-anatomy',
+    titleEn: 'Interactive ear anatomy',
+    titleJa: '触れて学ぶ耳の解剖',
+    system: 'sensory',
+    organ: 'ear',
+    organs: ['ear'],
+    disease: null,
+    conditions: ['ear anatomy', 'ossicles', 'cochlea', 'eustachian tube', 'tympanic membrane', '耳の解剖', '耳小骨', '蝸牛', '耳管', '鼓膜'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/ear-anatomy.md',
+    modelProfile: 'ear-anatomy-procedural-atlas',
+    description:
+      'Air, then bone, then fluid: a funnel to a drum, three bones on a lever across an air space, and a spiral with three loops behind it.',
+    descriptionJa:
+      '空気・骨・液体と続く伝達経路。鼓膜までの漏斗、含気腔を横切る3つの耳小骨、その奥のらせんと3つのループを示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/sensory/scenes/earAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

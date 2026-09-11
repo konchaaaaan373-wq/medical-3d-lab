@@ -216,6 +216,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the retinal layers and the central retinal vessels, the optic cup, the posterior chamber and the trabecular meshwork the aqueous actually drains through, the suspensory fibres of the lens, the oblique muscles, the eyelids, conjunctiva and lacrimal apparatus, and the orbit around it. Nothing here moves, which is the first thing an accommodation or pupillary scene would need',
   },
   {
+    organ: 'ear',
+    level: 'A2',
+    evidence:
+      'scenes/sensory/scenes/earAnatomy — auricle and external auditory canal, tympanic membrane, middle ear cavity, malleus, incus and stapes, Eustachian tube, cochlea, vestibule, all three semicircular canals as one structure and the vestibulocochlear nerve, selectable by name; tests/organ-parts-anatomy.test.js — the chain runs medially in order from auricle to nerve, the canal ends at the drum and the drum’s centre is its most medial point, the three ossicles meet in order and only the stapes reaches the oval window, the Eustachian tube leaves the cavity forwards and downwards, and the three canals lie in three different planes',
+    next: 'A3: the temporal bone and the mastoid air cells around it, the facial nerve crossing the middle ear, the two ossicular muscles, the ampullae of the canals, the round window membrane, and the scalae and organ of Corti inside the cochlea. Nothing here moves, which is the first thing a conduction scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,
