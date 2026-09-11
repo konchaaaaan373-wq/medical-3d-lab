@@ -1703,6 +1703,119 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Benign prostatic enlargement.
+   *
+   * The walk exists for one correction: this is not a gland that gets
+   * uniformly bigger. So the first three steps are all about *which part*, and
+   * the channel only appears once the reader has seen that the middle is what
+   * grew and the outside is what was pushed.
+   *
+   * Everything a person would actually notice is at the end, marked, and says
+   * on screen that the picture has no urine in it.
+   */
+  'benign-prostatic-enlargement': Object.freeze({
+    title: 'Which part of the prostate is getting bigger',
+    titleJa: '前立腺の、どの部分が大きくなるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'normal',
+        frame: 'gland',
+        focus: ['peripheral', 'transition'],
+        certainty: 'established',
+        title: 'Most of the gland is on the outside',
+        titleJa: '腺の大部分は外側にあります',
+        body: 'The prostate is not one block of tissue. Most of it lies on the outside. A much smaller part sits in the middle, wrapped around the channel that runs through it.',
+        bodyJa: '前立腺は、ひとつの塊ではありません。大部分は外側にあります。ずっと小さな部分が中央にあり、そこを通る通り道を取り巻いています。',
+        look: 'Two colours. The large one on the outside, and the small one in the middle against the channel.',
+        lookJa: '色は 2 つです。外側の大きな部分と、通り道に接した中央の小さな部分です。',
+      },
+      {
+        progress: 0.45,
+        stage: 'inner-gland',
+        frame: 'gland',
+        focus: ['transition'],
+        certainty: 'established',
+        title: 'The small middle part is what grows',
+        titleJa: '大きくなるのは中央の小さな部分です',
+        body: 'Enlargement starts in that small middle part, and only there. The large outer part is not growing — which is why the gland as a whole changes far less than its middle does.',
+        bodyJa: '大きくなるのは中央の小さな部分だけで、外側の大きな部分は大きくなりません。だから腺全体の変化は、中央の変化よりずっと小さくとどまります。',
+        look: 'Watch the middle, not the outline. The middle is several times what it was; the outline has barely moved.',
+        lookJa: '輪郭ではなく中央を見てください。中央は数倍になり、輪郭はほとんど動いていません。',
+      },
+      {
+        progress: 0.45,
+        stage: 'inner-gland',
+        frame: 'gland',
+        focus: ['peripheral'],
+        certainty: 'established',
+        title: 'The outside is pushed outward, not used up',
+        titleJa: '外側は押しやられます。減るのではありません',
+        body: 'The large outer part gets thinner on screen. Nothing has been taken out of it: it is being pressed outward from the inside, into a thin shell around what grew.',
+        bodyJa: '外側の大きな部分は、画面上で薄くなります。何かが失われたのではありません。内側から押され、大きくなった部分を包む薄い層になっています。',
+        look: 'Follow the outer colour. It becomes a shell around the middle, and it stays the same amount of tissue.',
+        lookJa: '外側の色を追ってください。中央を包む層になりますが、組織の量は変わりません。',
+      },
+      {
+        progress: 1,
+        stage: 'rim',
+        frame: 'channel',
+        focus: ['urethra'],
+        certainty: 'established',
+        title: 'The channel runs through the part that grew',
+        titleJa: '通り道は、大きくなった部分の中を通ります',
+        body: 'The channel out of the bladder passes straight through the middle part. When that part grows around it, the channel is narrowed along its whole length inside the gland.',
+        bodyJa: '膀胱から出る通り道は、その中央の部分を貫いています。そこが周りで大きくなると、腺の中を通る区間の全長にわたって狭くなります。',
+        look: 'The channel has changed colour where it is narrowed. That is the whole stretch inside the gland.',
+        lookJa: '狭くなった区間は色が変わっています。腺の中を通る全長です。',
+      },
+      {
+        progress: 1,
+        stage: 'rim',
+        frame: 'channel',
+        focus: ['bladderNeck'],
+        // The one step that moves the model: the same growth, arranged
+        // differently. It is a shape and not a severity, which is exactly why
+        // it is a control rather than a position on the axis.
+        controls: { medianLobeShare: 1 },
+        certainty: 'established',
+        title: 'The same amount, in a different place, does something else',
+        titleJa: '同じ量でも、場所が違えば起きることも違います',
+        body: 'The growth does not always sit the same way. Arranged as a lobe pushing up at the exit from the bladder, the same amount leaves the length alone and narrows the exit instead.',
+        bodyJa: '大きくなる場所は一通りではありません。膀胱の出口へ突き出す形になると、同じ量でも腺の中の全長は狭まらず、代わりに出口が狭くなります。',
+        look: 'The narrowing has moved to the top, where the channel leaves the bladder. The stretch below it has opened.',
+        lookJa: '狭窄が上端——膀胱から通り道が出るところ——へ移り、その下の区間は開いています。',
+      },
+      {
+        progress: 1,
+        stage: 'rim',
+        frame: 'channel',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why size alone does not settle it',
+        titleJa: '気づくことと、大きさだけでは決まらないこと',
+        body: 'A weaker stream, going more often, and getting up at night are described. How much someone notices is not set by how large the gland is; the two are not a simple pair.',
+        bodyJa: '勢いが弱い、回数が増える、夜に起きる、といったことが語られます。どれだけ気づくかは腺の大きさだけでは決まらず、単純な比例関係ではありません。',
+        look: 'Nothing new is drawn for this step. There is no urine anywhere in this picture, and no person in it.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に尿はなく、人もいません。',
+      },
+      {
+        progress: 1,
+        stage: 'rim',
+        frame: 'channel',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'What this picture does not contain',
+        titleJa: 'この絵に含まれていないもの',
+        body: 'This is a shape and only a shape. Nothing flows through it, so no figure on the screen is a size, a speed or an amount that was measured in anybody.',
+        bodyJa: 'ここにあるのは形だけです。何も流れていないので、画面の値は誰かの体で測った大きさ・速さ・量ではありません。',
+        look: 'The numbers are ratios of this drawing against itself, and nothing else.',
+        lookJa: '画面の数値は、この絵の中での比です。大きさや速さを表すものではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

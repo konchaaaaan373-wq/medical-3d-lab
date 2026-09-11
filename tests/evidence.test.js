@@ -16,6 +16,7 @@ import {
   PULMONARY_EMBOLISM_EVIDENCE,
   LAYER,
   PORTAL_EVIDENCE,
+  PROSTATIC_ENLARGEMENT_EVIDENCE,
   defineEvidence,
 } from '../src/models/evidence.js';
 
@@ -54,6 +55,7 @@ const FILE_LAYERS = {
   'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
   'biliary-physiology.test.js': LAYER.EXTERNAL,
   'achalasia-physiology.test.js': LAYER.EXTERNAL,
+  'prostatic-enlargement-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -69,6 +71,7 @@ const DOSSIERS = {
   'pulmonary-embolism': 'docs/model-evidence/pulmonary-embolism.md',
   'biliary-obstruction': 'docs/model-evidence/biliary-obstruction.md',
   achalasia: 'docs/model-evidence/achalasia.md',
+  'benign-prostatic-enlargement': 'docs/model-evidence/benign-prostatic-enlargement.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -204,6 +207,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'pulmonary-embolism',
       'biliary-obstruction',
       'achalasia',
+      'benign-prostatic-enlargement',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -219,6 +223,9 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   // count would mean writing claims the model does not make.
   assert.ok(BILIARY_EVIDENCE.length >= 6);
   assert.ok(ACHALASIA_EVIDENCE.length >= 6);
+  // Shorter for the same reason: this model is geometry, and a registry padded
+  // past what the geometry asserts would be claims nobody could defend.
+  assert.ok(PROSTATIC_ENLARGEMENT_EVIDENCE.length >= 6);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

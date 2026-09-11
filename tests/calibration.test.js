@@ -6,6 +6,12 @@ import {
   solveAchalasia,
 } from '../src/models/achalasia.js';
 import {
+  LUMEN_COMPRESSION,
+  REST_SHARES as PROSTATE_REST_SHARES,
+  solveProstaticEnlargement,
+} from '../src/models/prostaticEnlargement.js';
+import { INNER_GLAND_FRACTION } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -1027,4 +1033,55 @@ test('calibration: a normal swallow clears and a failed one balances inside the 
     false,
     'and a complete failure has nowhere to settle'
   );
+});
+
+test('calibration: the prostatic enlargement model starts from the atlas’s own zone proportions', () => {
+  // Defends `zone-display-proportions`. The resting shares are not anatomy:
+  // they are the proportions `prostateAnatomy.js` draws, chosen there so four
+  // zones can be told apart on screen. The scene is drawn on that atlas, so
+  // the two have to agree — and this test is what keeps them agreeing.
+  //
+  // What is being defended is the agreement and the shape it produces, never
+  // the numbers themselves. No prostate volume follows from any of this.
+  assert.equal(
+    PROSTATE_REST_SHARES.innerRadiusFraction,
+    INNER_GLAND_FRACTION,
+    'the model grows the inner gland the atlas drew, at the radius the atlas drew it'
+  );
+
+  const rest = solveProstaticEnlargement();
+  assert.ok(rest.zoneShares.peripheral > 0.5, 'so at rest the outside is the larger part');
+  assert.ok(rest.zoneShares.transition < 0.12, 'and the transition zone is a small one');
+  assert.ok(
+    rest.zoneShares.transition + rest.zoneShares.central + rest.zoneShares.peripheral > 0.999,
+    'and the three account for the gland'
+  );
+});
+
+test('calibration: the channel narrows visibly across the walk without closing', () => {
+  // Defends `lumen-compression`. One number says how much of the channel is
+  // left per unit of transition-zone growth. It was chosen so the narrowing is
+  // plain across the span the scene walks and never reaches nothing — because
+  // a channel drawn shut would be a retention this model cannot model.
+  //
+  // That it still behaves that way is a property of the choice. The fraction
+  // is a fraction of this model's own resting channel: it is not a calibre, it
+  // is not a flow rate, and no position on it is a threshold for anything.
+  assert.ok(LUMEN_COMPRESSION > 0, 'growth narrows rather than widens');
+
+  const walked = solveProstaticEnlargement({ transitionGrowth: 14 });
+  assert.ok(
+    walked.urethralLumenFraction < 0.35,
+    `the far end of the walk is plainly narrowed (${walked.urethralLumenFraction.toFixed(2)})`
+  );
+  assert.ok(walked.urethralLumenFraction > 0.1, 'and is not drawn shut');
+
+  // Monotone, and starting from a channel that is whole.
+  let previous = 1.0001;
+  for (const growth of [1, 2, 4, 7, 10, 14]) {
+    const solved = solveProstaticEnlargement({ transitionGrowth: growth });
+    assert.ok(solved.urethralLumenFraction < previous, `it narrows further by ×${growth}`);
+    previous = solved.urethralLumenFraction;
+  }
+  assert.equal(solveProstaticEnlargement().urethralLumenFraction, 1, 'and an unenlarged gland is unnarrowed');
 });

@@ -30,6 +30,11 @@ import { STAGES as BILIARY_STAGES, MODEL_CONTROLS as BILIARY_CONTROLS } from '..
 import { BiliaryObstructionScene } from '../src/scenes/hepatobiliary/scenes/biliaryObstruction/BiliaryObstructionScene.js';
 import { STAGES as ACHALASIA_STAGES, MODEL_CONTROLS as ACHALASIA_CONTROLS } from '../src/data/achalasia.js';
 import { AchalasiaScene } from '../src/scenes/gastrointestinal/scenes/achalasia/AchalasiaScene.js';
+import {
+  STAGES as PROSTATE_STAGES,
+  MODEL_CONTROLS as PROSTATE_CONTROLS,
+} from '../src/data/benignProstaticEnlargement.js';
+import { BenignProstaticEnlargementScene } from '../src/scenes/reproductive/scenes/benignProstaticEnlargement/BenignProstaticEnlargementScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -138,6 +143,28 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new AchalasiaScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The prostate, which is the fourth shape and the plainest: **no solver at
+   * all**. The disease state is one zone's growth, the model output is the
+   * arithmetic that follows from conserving the others, and the symptoms are
+   * `educationalOnly` because nothing in the model produces them.
+   *
+   * Its one model-state step is not a severity. It arranges the same amount of
+   * tissue two ways, which is why it is a control and not a position on the
+   * axis.
+   */
+  {
+    id: 'benign-prostatic-enlargement',
+    stages: PROSTATE_STAGES,
+    controls: PROSTATE_CONTROLS,
+    scene: () => {
+      const scene = new BenignProstaticEnlargementScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new BenignProstaticEnlargementScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];

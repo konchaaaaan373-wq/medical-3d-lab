@@ -1680,6 +1680,84 @@ export const PULMONARY_EMBOLISM_EVIDENCE = defineEvidence('pulmonary-embolism', 
   },
 ]);
 
+export const PROSTATIC_ENLARGEMENT_EVIDENCE = defineEvidence('benign-prostatic-enlargement', [
+  {
+    id: 'arises-in-the-transition-zone',
+    claim:
+      'Benign prostatic enlargement arises in the transition zone — the small periurethral part of the gland — and not in the peripheral zone, which is most of the glandular tissue and the part a rectal examination reaches. The gland does not enlarge uniformly.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'McNeal’s zonal anatomy of the prostate, and the standard urological description of benign prostatic hyperplasia as a transition-zone process.',
+    validation: 'physiology: what enlarges is the transition zone, and nothing is added to the peripheral zone',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'peripheral-zone-is-displaced-not-lost',
+    claim:
+      'The peripheral zone is not consumed by the enlargement. It is displaced outward and compressed into a rim — the plane a surgeon enucleates against — so it is thinner while containing the tissue it always had.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard urological and pathological descriptions of the compressed peripheral zone as the surgical capsule, and of enucleation proceeding in that plane.',
+    validation: 'physiology: the rim thins while the tissue in it is conserved',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-gland-grows-less-than-the-zone',
+    claim:
+      'Because the transition zone is a small share of the gland and volumes add, a several-fold transition zone is a much more modest gland: ten times the zone is under twice the organ. The proportion between the two is arithmetic, not an observation.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Arithmetic of additive volumes, applied to the zonal division above. V(gland) = V(inner) + V(peripheral), with the peripheral term unchanged.',
+    validation: 'physiology: several times the zone is a fraction more gland',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'median-lobe-acts-at-the-neck',
+    claim:
+      'Where the enlarged tissue sits changes what it is next to. Lateral-lobe growth surrounds the prostatic urethra along its length; a median lobe projects into the bladder neck instead, so the same amount of tissue narrows a different place.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard urological descriptions of lateral-lobe and median-lobe patterns of benign prostatic enlargement. The direction is textbook; how much narrowing either produces is not claimed here.',
+    validation: 'physiology: the same tissue in two arrangements narrows different places',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'zone-display-proportions',
+    claim:
+      'The resting share each zone takes of the model gland, from which every ratio the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The anatomy atlas’s display proportions, chosen there so four zones can be told apart on screen rather than to anatomical scale. In a real prostate the peripheral zone is roughly seventy per cent of the glandular tissue and the transition zone a few per cent.',
+    note:
+      'An illustrative starting geometry, not a measurement. Because the scene is drawn on the atlas the two have to agree, so the ratios inherit the atlas’s legibility choice. **No prostate volume, and no zone volume, may be read off this model.**',
+    validation: 'calibration: the prostatic enlargement model starts from the atlas’s own zone proportions',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'lumen-compression',
+    claim:
+      'How much of the channel through the gland is left per unit of transition-zone growth, and therefore how quickly the scene narrows it.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, not a derivation: the value was chosen so that the channel is visibly narrowed across the span of growth the scene walks, without closing. This model has no tissue mechanics in it and cannot work out how a lumen deforms when the tissue around it grows.',
+    note:
+      'A calibration, and an assumed relation on top of it. What the model reports is a fraction of its own unenlarged channel — never a urethral calibre, never a flow rate, never a post-void residual, and never a threshold.',
+    validation: 'calibration: the channel narrows visibly across the walk without closing',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'growth-axis-is-not-a-course',
+    claim:
+      'The scene’s axis runs from a resting gland to an enlarged one, and a reader will take that travel for a course over time.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A presentation decision, not a finding. This model has no time in it: the axis is how far into an enlarged gland the reader has gone, and nothing in the model says a gland passes through those arrangements in that order or at any rate.',
+    note:
+      'The direction this scene is known to mislead. Neither end of the axis is a grade, neither is a severity, and no position on it corresponds to a symptom, a score or an indication for anything.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1691,4 +1769,5 @@ export const EVIDENCE_REGISTRIES = [
   PULMONARY_EMBOLISM_EVIDENCE,
   BILIARY_EVIDENCE,
   ACHALASIA_EVIDENCE,
+  PROSTATIC_ENLARGEMENT_EVIDENCE,
 ];
