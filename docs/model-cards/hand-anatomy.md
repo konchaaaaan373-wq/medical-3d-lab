@@ -69,7 +69,15 @@ thumb having two bones where every other digit has three.
   over. Nothing is moved out from under them.
 - **One view carries the scene**: `across-the-tunnel`, end on down the wrist.
   The tunnel is a cross-section problem — an arch with a lid — and from any
-  other angle it is a line.
+  other angle it is a line. **The soft tissue that is not in the tunnel is put
+  away in that view** (`outside-tunnel`): from the only direction the tunnel can
+  be seen from, the thenar muscle lies across the front of it and the extensor
+  tendons behind it, and both were most of what the view drew. They are the same
+  group in the parts tree; only this view hides them.
+- **That view is not a cut, and it was tried as one.** A clipping plane across
+  the wrist keeps a whole forearm rather than a slice, so what it draws is the
+  forearm receding from the cut face. Recorded as `docs/follow-ups.md` F-93 and
+  taken out again.
 - **The band and the space under it do not fade**, because they are what the
   slider is clearing the way to.
 - **One table, four uses.** `RAYS` holds each ray's base, direction and bone

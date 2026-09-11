@@ -69,9 +69,18 @@ export class HandAnatomyScene extends OrganAnatomyScene {
       id: 'across-the-tunnel',
       label: 'Across the tunnel',
       labelJa: '手根管の断面',
-      position: [-0.3, 6.8, 3.4],
-      target: [-0.2, 0.6, 0.45],
-      hideTags: ['rays'],
+      position: [-0.35, 7.6, 3.6],
+      target: [-0.2, 0.66, 0.5],
+      // The thenar muscle and the extensor tendons are put away here. Neither
+      // is in the tunnel, and from the only direction the tunnel can be seen
+      // from, the thenar mass lies across the front of it — which is what the
+      // first version of this view mostly drew.
+      //
+      // A real cut across the wrist was tried here and taken out again: the
+      // viewer takes one clipping plane, so it keeps a whole forearm rather
+      // than a slice, and what it draws is that forearm receding from the cut
+      // face. See `docs/follow-ups.md` F-93.
+      hideTags: ['rays', 'outside-tunnel'],
     },
     {
       id: 'through-the-tunnel',

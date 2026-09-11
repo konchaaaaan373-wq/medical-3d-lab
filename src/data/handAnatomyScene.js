@@ -95,6 +95,10 @@ export function handStructureCopy() {
   const ray = entry('The five rays', '中手骨と指骨', 'rays', ['rays']);
   const tunnel = entry('The tunnel', '手根管', 'tunnel', ['tunnel']);
   const soft = entry('Tendons and muscle', '腱と筋', 'soft', ['soft']);
+  // Soft tissue that is **not** in the tunnel, and is in front of it or behind
+  // it from the one viewpoint the tunnel can be seen from. Tagged separately so
+  // that view can put it away; it is the same group in the tree.
+  const outside = entry('Tendons and muscle', '腱と筋', 'soft', ['soft', 'outside-tunnel']);
 
   const carpalBone = (id, name, nameJa, description, descriptionJa, note, noteJa) =>
     carpus(id, name, nameJa, description, descriptionJa, note, noteJa);
@@ -271,7 +275,7 @@ export function handStructureCopy() {
       'One plain cord. Its branches, its fascicles and everything it supplies are described and not drawn.',
       '単純な1本のひもとして描いています。分枝・神経束・支配領域は説明にとどめています。'
     ),
-    soft(
+    outside(
       'extensor-tendons',
       'Extensor tendons',
       '伸筋腱',
@@ -280,7 +284,7 @@ export function handStructureCopy() {
       'Four cords for the fingers; the thumb’s extensors, the extensor retinaculum over them and the hoods over the knuckles are not drawn.',
       '手指の4本のみを描いています。母指の伸筋腱、その上の伸筋支帯、指背腱膜は描いていません。'
     ),
-    soft(
+    outside(
       'thenar-muscles',
       'Thenar muscles',
       '母指球筋',

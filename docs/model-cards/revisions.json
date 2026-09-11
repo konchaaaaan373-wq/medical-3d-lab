@@ -532,8 +532,8 @@
       "src/data/oralAnatomyScene.js",
       "src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "fc9fd0176bf6f732",
+    "cardRevision": 4,
+    "modelDigest": "f0d1261fb7e57ae3",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -556,8 +556,8 @@
       "src/data/handAnatomyScene.js",
       "src/scenes/musculoskeletal/scenes/handAnatomy/HandAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "634bb8b4b3b18786",
+    "cardRevision": 4,
+    "modelDigest": "ccc3b4d86fa984a1",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -606,8 +606,8 @@
       "src/scenes/musculoskeletal/scenes/elbowAnatomy/ElbowAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "37a978e0a842b5fe",
+    "cardRevision": 3,
+    "modelDigest": "b05edb07c3d69a20",
     "cardUpdatedAt": "2026-09-11"
   }
 ]
