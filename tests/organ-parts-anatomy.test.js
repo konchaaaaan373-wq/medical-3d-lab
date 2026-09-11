@@ -26,6 +26,7 @@ import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
 import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
 import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
 import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
+import { NASAL as EYE_NASAL, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1093,4 +1094,80 @@ test('the hip’s socket grips past the widest part of the head', () => {
   // The socket is cut into the hip bone rather than sitting next to it.
   assert.ok(box('hip-bone').intersectsBox(socket), 'the acetabulum is part of the hip bone');
   assert.ok(at('hip-bone').y > centre.y, 'whose weight comes down from above');
+});
+
+// --- the eye ----------------------------------------------------------------
+
+test('the eye is three coats around three transparent things', () => {
+  // A globe is easy to draw and hard to make useful, because everything worth
+  // pointing at is inside it. What is checked is the order things come in along
+  // the axis, and the two fundus landmarks whose relation says which eye it is.
+  const eye = buildEyeball();
+  eye.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(eye.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the nose. A sign read the wrong way round mirrors the fundus. */
+  const nasal = (point) => point.x * EYE_NASAL;
+
+  // Outside in, and no two coats touching: coincident shells speckle along
+  // every rim, and a reader cannot tell three layers from one.
+  const sclera = box('sclera');
+  const choroid = box('choroid');
+  const retina = box('retina');
+  assert.ok(sclera.containsBox(choroid), 'the choroid is inside the sclera');
+  assert.ok(choroid.containsBox(retina), 'and the retina inside the choroid');
+  const radius = (b) => Math.max(b.max.x, -b.min.x);
+  assert.ok(radius(sclera) > radius(choroid) + 0.02, 'with a gap between sclera and choroid');
+  assert.ok(radius(choroid) > radius(retina) + 0.01, 'and between choroid and retina');
+
+  // The cornea is a steeper dome than the globe: it bulges past the front of a
+  // sphere whose radius is bigger than its own.
+  const cornea = box('cornea');
+  assert.ok(cornea.max.z > sclera.max.z, 'the cornea stands proud of the globe');
+  assert.ok(radius(cornea) < radius(sclera), 'and is narrower than it — a steeper curve, not a bigger one');
+  assert.ok(cornea.intersectsBox(sclera), 'meeting the sclera at the limbus');
+
+  // Along the axis, front to back: cornea, chamber, iris and pupil, lens,
+  // vitreous. Any two of these out of order is a different organ.
+  const iris = box('iris');
+  const lens = box('lens');
+  const chamber = box('anterior-chamber');
+  const vitreous = box('vitreous-body');
+  assert.ok(chamber.min.z >= iris.max.z - 1e-6, 'the anterior chamber is in front of the iris');
+  assert.ok(chamber.max.z <= cornea.max.z, 'and behind the front of the cornea');
+  assert.ok(lens.max.z <= iris.min.z, 'the lens sits behind the iris, never through it');
+  assert.ok(radius(lens) > radius(box('pupil')), 'and is wider than the pupil it is seen through');
+  // A ring and the thing it surrounds share a bounding box, so the claim has to
+  // be made about radius: the ciliary body lies outside the lens's edge, which
+  // is what "the lens hangs from it" means.
+  assert.ok(radius(box('ciliary-body')) > radius(lens), 'the ciliary ring lies outside the edge of the lens it hangs');
+  assert.ok(vitreous.max.z < iris.min.z, 'the vitreous fills the eye behind the lens');
+  assert.ok(retina.containsBox(vitreous) === false && vitreous.min.z > retina.min.z, 'and lies inside the retina');
+
+  // The fundus, and the one relation it is read by: disc nasal, macula
+  // temporal, and the macula on the axis at the back.
+  const disc = at('optic-disc');
+  const macula = at('macula');
+  assert.ok(nasal(disc) > nasal(macula), 'the optic disc is nasal to the macula');
+  assert.ok(Math.abs(macula.x) < Math.abs(disc.x), 'and the macula is the one on the axis');
+  assert.ok(macula.z < 0 && disc.z < 0, 'both are at the back of the eye');
+  assert.ok(box('macula').min.z <= box('optic-disc').min.z, 'the macula sits at the posterior pole');
+
+  // The nerve leaves at the disc, and goes back and towards the midline.
+  const nerve = box('optic-nerve');
+  assert.ok(nerve.intersectsBox(box('optic-disc')), 'the optic nerve leaves at the disc');
+  assert.ok(nerve.min.z < retina.min.z, 'running back out of the globe');
+  assert.ok(nasal(nerve.max) > nasal(box('optic-disc').max), 'and towards the midline as it goes');
+
+  // Four muscles, four directions, each reaching the globe in front of its
+  // widest point.
+  assert.ok(at('superior-rectus').y > 0, 'superior rectus runs along the top');
+  assert.ok(at('inferior-rectus').y < 0, 'inferior rectus along the bottom');
+  assert.ok(nasal(at('medial-rectus')) > 0, 'medial rectus along the nasal side');
+  assert.ok(nasal(at('lateral-rectus')) < 0, 'lateral rectus along the temporal side');
+  for (const id of ['superior-rectus', 'inferior-rectus', 'medial-rectus', 'lateral-rectus']) {
+    assert.ok(box(id).intersectsBox(sclera), `${id} reaches the sclera`);
+    assert.ok(box(id).min.z < -1.5, `and comes from behind the eye`);
+    assert.ok(box(id).max.z < sclera.max.z, 'inserting behind the front of the globe');
+  }
 });

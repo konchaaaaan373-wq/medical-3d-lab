@@ -61,6 +61,33 @@ export function latheFromProfile(profile, { segments = 48, radial = 40, arc = Ma
 }
 
 /**
+ * A shell of revolution: a dome with a wall, open at one end.
+ *
+ * The third organ in a row wanted one. A warped sphere cannot be a cup, a coat
+ * or a cornea, because it has no rim and no inside — and the inside is usually
+ * the subject. Swept about `+y` with the closed pole at `−y`, so the opening
+ * faces `+y`; rotate the geometry to point it where the organ needs it.
+ *
+ * `sweep` past 90° is what separates a cup from a dish: the rim then grips
+ * beyond the equator.
+ *
+ * @param {{ outer: number, inner: number, sweep?: number, steps?: number,
+ *           segments?: number, radial?: number }} options
+ */
+export function shellOfRevolution({ outer, inner, sweep = Math.PI / 2, steps = 30, segments = 72, radial = 44 }) {
+  const profile = [];
+  for (let i = 0; i <= steps; i += 1) {
+    const angle = (sweep * i) / steps;
+    profile.push([outer * Math.sin(angle), -outer * Math.cos(angle)]);
+  }
+  for (let i = steps; i >= 0; i -= 1) {
+    const angle = (sweep * i) / steps;
+    profile.push([inner * Math.sin(angle), -inner * Math.cos(angle)]);
+  }
+  return latheFromProfile(profile, { segments, radial });
+}
+
+/**
  * Deterministic, allocation-free surface wobble.
  *
  * Sines rather than a noise lattice: it is three multiplications, it repeats

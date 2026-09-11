@@ -142,6 +142,8 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // The iris and pupil in the middle, the sclera around them, and a muscle behind.
+  'eye-anatomy': [[0.5, 0.47], [0.46, 0.44], [0.56, 0.55], [0.4, 0.36]],
 };
 
 const clickPoints = (() => {

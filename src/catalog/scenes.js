@@ -741,6 +741,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/hipAnatomy/index.js'),
   },
   {
+    id: 'eye-anatomy',
+    slug: 'eye-anatomy',
+    titleEn: 'Interactive eye anatomy',
+    titleJa: '触れて学ぶ眼の解剖',
+    system: 'sensory',
+    organ: 'eye',
+    organs: ['eye'],
+    disease: null,
+    conditions: ['eye anatomy', 'retina', 'macula', 'optic disc', 'cornea', 'anterior chamber', '眼の解剖', '網膜', '黄斑', '視神経乳頭', '角膜', '前房'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/eye-anatomy.md',
+    modelProfile: 'eye-anatomy-procedural-atlas',
+    description:
+      'Three coats around three transparent things, the angle the fluid in front leaves by, and a fundus with its disc nasal and its macula temporal.',
+    descriptionJa:
+      '3つの膜と3つの透明な内容、前房水が流出する隅角、そして鼻側に視神経乳頭・耳側に黄斑をもつ眼底を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/sensory/scenes/eyeAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

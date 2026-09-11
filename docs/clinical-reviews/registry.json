@@ -746,5 +746,31 @@
       "No fracture, arthritis, impingement, dysplasia or dislocation is represented in any form, and nothing here is anyone's hip.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, fixation or arthroplasty."
     ]
+  },
+  {
+    "sceneId": "eye-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right eye — three coats, cornea, iris and lens, the two spaces, the fundus landmarks and the four rectus muscles — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/eye-anatomy.md",
+      "docs/model-evidence/eye-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The three coats are drawn far thicker than they are, so that each can be seen and selected; no thickness may be read off the model.",
+      "No radius, angle or distance is a measurement, and the eye is drawn at one size.",
+      "Nothing in the scene moves: no accommodation, no pupillary reflex, no eye movement, and intraocular pressure is not represented in any form.",
+      "The aqueous route is stated in the copy but not modelled: the posterior chamber and the trabecular meshwork are not drawn.",
+      "The retinal layers and vessels, the optic cup, the suspensory fibres of the lens, the oblique muscles, the eyelids, conjunctiva, lacrimal apparatus and orbit are not drawn.",
+      "No cataract, glaucoma, detachment or maculopathy is represented in any form, and nothing here is anyone's eye.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, laser or surgery."
+    ]
   }
 ]
