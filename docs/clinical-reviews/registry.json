@@ -948,5 +948,27 @@
       "The frontal and ethmoid drainage channels are described in the copy and not drawn as geometry.",
       "Nothing swells: the hourly turbinate cycle the copy describes is not animated."
     ]
+  },
+  {
+    "sceneId": "larynx-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of the pharynx and larynx and how the airway and the food route are separated. No swallowing, no phonation, no airway movement, no disease, and no procedural route."
+    ],
+    "sources": [
+      "docs/model-cards/larynx-anatomy.md",
+      "docs/model-evidence/larynx-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "The vocal folds are drawn parted at one fixed display opening (GLOTTIS_DISPLAY_GAP); they neither open, close nor vibrate, and no airway calibre may be read off the gap.",
+      "Nothing moves: the soft palate does not lift, the larynx does not rise and the epiglottis does not fold, so the mechanism every structure here exists for is described in the copy and not shown.",
+      "The cricothyroid membrane is a landmark only; no route, depth, angle or technique is represented and the scene must not be used to plan one.",
+      "The muscles of the larynx and pharynx, the joints between the cartilages, the tongue, the thyroid gland and the lower course of the left recurrent laryngeal nerve are not drawn, and the two nerves are drawn alike where in life they differ."
+    ]
   }
 ]

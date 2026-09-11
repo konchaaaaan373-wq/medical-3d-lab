@@ -901,6 +901,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/noseAnatomy/index.js'),
   },
   {
+    id: 'larynx-anatomy',
+    slug: 'larynx-anatomy',
+    titleEn: 'Interactive larynx and pharynx anatomy',
+    titleJa: '触れて学ぶ喉頭・咽頭の解剖',
+    system: 'respiratory',
+    organ: 'larynx',
+    organs: ['larynx', 'pharynx'],
+    disease: null,
+    conditions: ['larynx anatomy', 'pharynx', 'vocal folds', 'epiglottis', 'cricothyroid membrane', 'piriform sinus', '喉頭の解剖', '咽頭', '声帯', '喉頭蓋', '輪状甲状膜', '梨状陥凹'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/larynx-anatomy.md',
+    modelProfile: 'larynx-anatomy-procedural-atlas',
+    description:
+      'For a few centimetres air and food share one space, and the larynx sits in the front wall of it — with a gutter down each side carrying a swallow round the outside of the airway.',
+    descriptionJa:
+      '空気と食物が数センチだけ1つの通り道を共有する場所。喉頭はその前壁にあり、両側の梨状陥凹が嚥下物を気道の外側へ回します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/respiratory/scenes/larynxAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

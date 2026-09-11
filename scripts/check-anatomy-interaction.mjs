@@ -142,6 +142,9 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the midline of a tall, narrow organ: the soft palate, the pharynx
+  // behind the mouth, the thyroid cartilage and the trachea. Read off a render.
+  'larynx-anatomy': [[0.48, 0.19], [0.49, 0.33], [0.49, 0.52], [0.5, 0.76]],
   // The external nose in profile, the septum behind it, and the palate under
   // both. Read off a render at the view the scene opens on.
   'nose-anatomy': [[0.34, 0.58], [0.56, 0.44], [0.56, 0.71], [0.49, 0.58]],

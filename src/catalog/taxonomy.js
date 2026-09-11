@@ -74,6 +74,8 @@ export const ORGANS = [
   { id: 'breast', system: 'reproductive', label: 'Breast', labelJa: '乳房' },
   { id: 'spine', system: 'musculoskeletal', label: 'Spine', labelJa: '脊柱' },
   { id: 'nose', system: 'respiratory', label: 'Nose and sinuses', labelJa: '鼻・副鼻腔' },
+  { id: 'larynx', system: 'respiratory', label: 'Larynx and pharynx', labelJa: '喉頭・咽頭' },
+  { id: 'pharynx', system: 'respiratory', label: 'Pharynx', labelJa: '咽頭' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

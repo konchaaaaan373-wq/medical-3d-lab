@@ -43,6 +43,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'breast-anatomy',
   'spine-anatomy',
   'nose-anatomy',
+  'larynx-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -224,6 +225,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     'それぞれの副鼻腔は、どこへ開口しているのか。',
     ['TURBINATES', 'MEATUS', 'OSTIUM'],
     ['鼻甲介', '鼻道', '自然孔']
+  ),
+  'larynx-anatomy': presentation(
+    'Where do air and food share a space, and what keeps them apart again?',
+    '空気と食物はどこで同じ空間を通り、どうやって再び分かれるのか。',
+    ['CROSSING', 'GLOTTIS', 'PIRIFORM'],
+    ['交差', '声門', '梨状陥凹']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',
