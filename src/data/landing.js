@@ -66,6 +66,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'benign-prostatic-enlargement',
   'uterine-fibroid',
   'multinodular-goitre',
+  'knee-osteoarthritis',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -435,6 +436,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'knee-osteoarthritis': presentation(
+    'Wear one compartment of a knee and leave the other; watch what follows the side.',
+    '膝の片方の区画だけを消耗させ、その側に何が続くかを確認。',
+    ['ONE COMPARTMENT', 'THE MENISCUS', 'THE RIM'],
+    ['1 つの区画', '半月板', '辺縁']
   ),
   'multinodular-goitre': presentation(
     'Send the same goitre four ways; watch the airway move in three of them and narrow in one.',

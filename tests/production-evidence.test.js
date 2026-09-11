@@ -50,6 +50,7 @@ test('migrated production evidence and the existing model registries share one c
       'bowel-obstruction',
       'uterine-fibroid',
       'multinodular-goitre',
+      'knee-osteoarthritis',
     ]
   );
 });
