@@ -47,6 +47,15 @@ test('migrated production evidence and the existing model registries share one c
       'biliary-obstruction',
       'achalasia',
       'benign-prostatic-enlargement',
+      'bowel-obstruction',
+      'uterine-fibroid',
+      'multinodular-goitre',
+      'knee-osteoarthritis',
+      'acl-injury',
+      'rotator-cuff-tear',
+      'hip-osteoarthritis',
+      'urinary-obstruction',
+      'lobar-collapse',
     ]
   );
 });

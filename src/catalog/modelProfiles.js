@@ -794,6 +794,24 @@ export const MODEL_PROFILES = Object.freeze([
       'or an imaging score, and the vasoconstriction strength is an illustrative constant.',
   },
   {
+    profileId: 'bowel-obstruction-site',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A series-path model with a site of blockage: what is above it fills, what is below it receives nothing, and ' +
+      'the retained volume is distributed over the distensible length above. Wall tension is Laplace\'s T = P·r ' +
+      'with a distension index standing in for the pressure, reported as an index for comparing segments inside ' +
+      'one picture. The card says it carries no time, no rate, no symptom, no ischaemia, no perforation and no ' +
+      'cause, and that the lengths and calibres are the intestinal atlas\'s drawn proportions rather than ' +
+      'anatomical ones.@ ',
+  },
+  {
     profileId: 'achalasia-swallow-transport',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
@@ -810,6 +828,151 @@ export const MODEL_PROFILES = Object.freeze([
       'reports instead of a height it has no room for. The card says it is not manometry, identifies no cause, and ' +
       'carries no regurgitation, aspiration, pain, nutrition, risk or treatment; the conductance and the column ' +
       'cross-section are calibration constants and no figure is a threshold.',
+  },
+  {
+    profileId: 'hip-osteoarthritis-direction',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a sphere in a shell: the drawn articular layer is lost in a chosen direction, the ball ' +
+      'settles that way by what has gone, and the space between the two bones is computed round the socket from ' +
+      'the resulting eccentricity — closing where the layer went and appearing to widen opposite. The pattern with ' +
+      'no direction leaves the centres shared. The card says the fractions it reports are of a layer this ' +
+      'repository drew and are emphatically not radiographic joint space widths, and that the model contains no ' +
+      'pain, no loading, no time and no treatment.@ ',
+  },
+  {
+    profileId: 'urinary-obstruction-level',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a urinary tract drawn as two tubes joining at one bladder: a chosen level names the ' +
+      'last stretch that still fills, every stretch above it on that side is distended and every stretch below it ' +
+      'is not, and the number of kidneys behind the blockage falls out of the topology rather than out of an ' +
+      'amount. A retained volume is added to the collecting system inside a capsule that yields only slightly, so ' +
+      'the parenchymal thickness reported is the room the dilation took. The card says the thickness is against ' +
+      'the model\'s own resting thickness and is not a cortical thickness on any scan, that the model contains no ' +
+      'kidney function, no cause, no time and no treatment, and that it does not grade hydronephrosis.@ ',
+  },
+  {
+    profileId: 'lobar-collapse-volume',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A conservation model over the lung atlas\'s five lobes: a chosen bronchus names the lobe that loses its air, ' +
+      'the volume it vacates is divided between compensatory expansion of the remaining lobes of the same lung and ' +
+      'the hemithorax itself, and the remainder becomes the distance the midline is drawn across. The three amounts ' +
+      'add up, which is the only thing the model asserts. The card says the lobe ratios are against each lobe\'s own ' +
+      'resting volume, that the shift is a volume spread over a chosen face and is not a tracheal deviation or a ' +
+      'measured mediastinal shift, that the split between the two destinations is a calibration, and that the model ' +
+      'contains no gas exchange, no cause, no time and no treatment and does not grade collapse.@ ',
+  },
+  {
+    profileId: 'rotator-cuff-tear-containment',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a supraspinatus defect and of what is left holding the humeral head on its socket: the ' +
+      'top tendon\'s share falls with the tear, the facing pair keeps its own, and the head rises only once the ' +
+      'total drops below a threshold. The card says the rise is reported as a fraction of the shoulder atlas\'s ' +
+      'subacromial display gap, which the atlas itself declares to be a legibility value, and that it is not an ' +
+      'acromiohumeral distance and not millimetres. The model contains no pain, no weakness, no movement, no time ' +
+      'and no treatment.@ ',
+  },
+  {
+    profileId: 'acl-injury-restraint',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of one ligament in three states and of what is left of the restraint to the tibia sliding ' +
+      'forward: the ligament\'s share falls as it is disrupted and drops to nothing once it is no longer ' +
+      'continuous, the secondary restraints keep their share, and the tibia sits forward by a fraction of the ' +
+      'drawn plateau. The card says nothing in it is a Lachman test, an anterior drawer or a pivot shift, that ' +
+      'there is no examiner in the model, and that it contains no mechanism of injury, no symptom, no rotation, no ' +
+      'time and no treatment.@ ',
+  },
+  {
+    profileId: 'knee-osteoarthritis-compartment',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of what is left of a drawn articular layer in each compartment of one knee, and what ' +
+      'follows on the side that lost it: a meniscus pushed out from between converging surfaces, and marginal bone ' +
+      'past a threshold. The card says the fraction it reports is of the model\'s own drawn layer and is ' +
+      'emphatically not a radiographic joint space width, and that the model contains no pain, no loading, no time ' +
+      'and no treatment — including the loop by which uneven loss loads the worn side harder, which it explicitly ' +
+      'does not close.@ ',
+  },
+  {
+    profileId: 'multinodular-goitre-direction',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of an enlarging nodular thyroid: the volume added is turned into a distance the gland\'s ' +
+      'face advances, and the direction chosen decides how much of that distance moves the airway and how much ' +
+      'narrows it, plus how far the gland reaches back past the recurrent laryngeal nerve and the parathyroid ' +
+      'glands. The card says it carries no thyroid function of any kind — no hormone, no TSH, no uptake, no ' +
+      'autonomy — no malignancy, no symptom, no time and no treatment, and that the nerve relation in it is ' +
+      'anatomy rather than injury.@ ',
+  },
+  {
+    profileId: 'uterine-fibroid-location',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of one sphere at a chosen depth in a schematic uterine wall: what it reaches, how much of ' +
+      'the flattened cavity it presses into, how far past the serosa it stands, and the organ volume — which is ' +
+      'identical at every location, and is reported for that reason. The card says it carries no bleeding, no ' +
+      'pain, no pressure symptoms, no fertility, no time, no hormone and no treatment, and that the wall\'s depth, ' +
+      'the cavity\'s area and the organ\'s volume are measured off the uterine atlas rather than off anybody.@ ',
   },
   {
     profileId: 'benign-prostatic-enlargement-zonal',

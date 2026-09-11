@@ -1758,6 +1758,888 @@ export const PROSTATIC_ENLARGEMENT_EVIDENCE = defineEvidence('benign-prostatic-e
   },
 ]);
 
+export const BOWEL_OBSTRUCTION_EVIDENCE = defineEvidence('bowel-obstruction', [
+  {
+    id: 'divides-the-path',
+    claim:
+      'The gut is one path in series, so a mechanical blockage divides it in two: the bowel above it keeps receiving and cannot pass anything on, and the bowel below it receives nothing and collapses. The place the picture changes is the transition point, and it is what identifies the level of the blockage.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard surgical descriptions of mechanical bowel obstruction: dilatation proximal to the point, collapse distal to it, the transition point as the radiological and operative landmark.',
+    validation: 'physiology: a blockage fills what is above it and empties what is below it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'site-decides-how-much-is-above',
+    claim:
+      'How far the bowel above a blockage distends depends on how much bowel there is above it, because the same delivered volume spread over a shorter length has to go further into each part of it. A high blockage therefore distends a short length a great deal and leaves most of the gut empty; a low one distends much more bowel, less.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Conservation of volume applied to the series path above. The clinical counterpart — proximal obstruction with little visible distension, distal obstruction with a great deal — is a standard description.',
+    validation: 'physiology: the same amount over a shorter length distends it further',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'closed-loop-at-a-competent-valve',
+    claim:
+      'An ileocaecal valve that holds turns a colonic obstruction into a segment shut at both ends: nothing can decompress back into the ileum, so the colon between the valve and the blockage takes all of it and distends much further than it would with the small bowel sharing.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of closed-loop large bowel obstruction with a competent ileocaecal valve. The direction is textbook; how competent a given valve is, and for how long, is not something this model claims.',
+    validation: 'physiology: a valve that holds shuts a colonic blockage in at both ends',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'laplace-favours-the-widest',
+    claim:
+      'Wall tension follows calibre as well as distending pressure: T = P·r for a cylinder. So at one pressure it is the widest part of the distended bowel whose wall carries the most. Which segment that is belongs to the scenario — the site, the state of the ileocaecal valve and the calibres of what lies above — and the model works it out rather than assuming it: in its colonic closed-loop arrangements the answer comes out at the caecum, and in a small bowel obstruction the caecum is not distended at all and no segment stands out.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Laplace’s law for a cylinder, and the standard description of the caecum as the segment that distends most in closed-loop large bowel obstruction with a competent ileocaecal valve.',
+    validation: 'physiology: at one pressure the widest distended part carries the most wall tension',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'drawn-proportions',
+    claim:
+      'The length and calibre each named stretch of gut has in the model, from which every ratio the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The intestinal atlas’s drawn proportions, measured off its own curves and chosen there to be legible rather than to scale. In a person the small bowel is several times the length of the colon and much narrower than these make it.',
+    note:
+      'Illustrative proportions, not anatomy. What the model claims is the *ordering* — that the caecum is the widest part of the large bowel and the sigmoid the narrowest — and not the ratios. No length, calibre or volume here may be read as a measurement.',
+    validation: 'calibration: the bowel obstruction model is measured off the atlas’s own gut',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'retained-load',
+    claim:
+      'How much the gut delivers into the obstructed length, as a multiple of the whole gut’s resting luminal volume, and therefore how far the bowel above a blockage is drawn distended.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the value was calibrated so that a complete blockage distends the bowel above it visibly at every one of the four sites and never past about twice its resting calibre.',
+    note:
+      'A calibration, not a secretion. Nothing in the model is millilitres, and the distension it produces is a ratio against the model’s own resting calibre rather than a diameter anyone could measure.',
+    validation: 'calibration: a complete blockage distends the bowel visibly at every site without doubling it',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'same-load-at-every-site',
+    claim:
+      'The model takes the same amount to arrive above the blockage wherever the blockage is, on the grounds that most of what fills an obstructed bowel enters above the duodenum.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A simplification, and the figure is this repository’s. Secretion, absorption and how much any of it varies with the level of the blockage are all outside the model.',
+    note:
+      'It is why the wall tension index may not be compared between two scenarios: the number is built on a retained load this repository chose and a single distending pressure. What it supports is comparing segments inside one picture, which is what the read-out reports.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'held-bowel-stays-resting',
+    claim:
+      'Small bowel held back by a competent valve is drawn at its resting calibre and stays there for as long as the reader looks at it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A consequence of having no time in the model. In a person a valve does not hold indefinitely and the bowel above it does not stay at rest; what happens next is a sequence, and this model has no sequence in it.',
+    note:
+      'The direction this scene is known to mislead. A resting small bowel on screen is the model saying the volume has not reached it, not a claim that it never will.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const UTERINE_FIBROID_EVIDENCE = defineEvidence('uterine-fibroid', [
+  {
+    id: 'three-locations-not-three-stages',
+    claim:
+      'Submucosal, intramural and subserosal name three depths in the uterine wall, not three stages of one thing. A fibroid does not travel from one to the next, and the classification is where it sits rather than how far it has got.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard gynaecological descriptions of leiomyoma location, in which the three names are positions in the myometrium relative to the endometrium and the serosa.',
+    validation: 'physiology: where it sits is a choice, and moving the size does not change it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'volume-is-the-same-everywhere',
+    claim:
+      'A fibroid of a given size adds the same volume to the uterus wherever in the wall it sits, so the size of the uterus says nothing about what the fibroid is against.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Arithmetic of additive volumes. A sphere of radius r has the volume (4/3)πr³ at any depth in a wall.',
+    validation: 'physiology: the same size is the same uterine volume at every depth',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-middle-reaches-nothing-then-both',
+    claim:
+      'A fibroid in the middle of the wall reaches neither boundary until its diameter approaches the depth of the wall, and then it reaches the cavity and the serosa in the same moment. One just under either boundary is against that boundary from the smallest size upward and never reaches the other.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a sphere of radius r centred at depth d crosses a plane when r > d. Applied to the two surfaces of one wall.',
+    validation: 'physiology: the middle of the wall is the one place that reaches nothing',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-cavity-is-a-plane',
+    claim:
+      'The uterine cavity is a flattened triangular space rather than a bag, so what a fibroid does to it is to press into a surface, and how much of that surface it takes is what "distorting the cavity" means geometrically.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of the uterine cavity as a flattened triangle between the two tubal ostia and the internal os, which is the shape every intrauterine procedure is read against. That the contact is worth measuring as an area share is this model’s framing.',
+    validation: 'physiology: what presses into the cavity is measured as a share of a surface',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-proportions',
+    claim:
+      'The depth of the wall, the area of the cavity and the volume of the organ, from which every ratio the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off this repository’s uterine atlas, whose own proportions are drawn to be legible rather than to scale. The atlas also draws the uterus upright, where a uterus is normally tipped and bent forward.',
+    note:
+      'An illustrative organ, not a measured one. No centimetre, no millilitre and no volume here is a measurement of anybody, and no size in it is a size at which anything is indicated.',
+    validation: 'calibration: the fibroid model is measured off the atlas’s own uterus',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'three-chosen-depths',
+    claim:
+      'The depth in the wall each of the three names is taken to mean: just under the cavity, in the middle, just under the serosa.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Three fractions this repository chose, calibrated so that each name behaves the way it is described: the shallow one is against the cavity across the whole range, the deep one against the serosa across the whole range, and the middle one crosses from reaching nothing to reaching both inside it.',
+    note:
+      'A calibration of three names, not a measurement of three fibroids. Real fibroids sit anywhere in the wall, including on a stalk, and the boundaries between the three names are not sharp.',
+    validation: 'calibration: each of the three names behaves the way its description says',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'nothing-follows-about-symptoms',
+    claim:
+      'Nothing in this model says what a fibroid causes. Bleeding, pain, pressure and fertility are outside it entirely, and no figure in it is a symptom, a score or a probability of one.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the scene is about location: what a fibroid produces does not follow from its size in any simple way, and this model has nothing in it that could make it follow.',
+    note:
+      'A reader watching a share of the cavity rise is watching a shape cross a surface. The relation between that and anything a person notices is not in this model, and none of the standard names is a prediction.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'one-fibroid-and-a-rigid-wall',
+    claim:
+      'There is exactly one fibroid, and the uterus around it keeps the shape the atlas gave it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'Two simplifications. Most uteruses that have fibroids have several, and a real uterus takes the shape of what is inside it — which needs tissue mechanics this model does not have.',
+    note:
+      'The direction this scene is known to mislead. The bulge on screen is the fibroid itself standing past the surface, not a deformed organ, and the wall is not thinned or stretched anywhere.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const GOITRE_EVIDENCE = defineEvidence('multinodular-goitre', [
+  {
+    id: 'the-neck-gives-way-more-than-the-inlet',
+    claim:
+      'A goitre enlarging in the neck spends most of itself displacing the airway and the rest narrowing it, because the surrounding neck gives way readily. Below the thoracic inlet the gland is enclosed by structures that cannot move aside, so the same amount of tissue is spent mostly on narrowing instead. This is a shift in the balance and not a rule about where compression can occur: a cervical goitre can deviate, compress and narrow the airway.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of multinodular goitre: tracheal deviation and compression in the neck, and the thoracic inlet as the level below which a gland is enclosed by structures that cannot move aside, so compression becomes the more prominent problem.',
+    validation: 'physiology: displacement dominates in the neck and narrowing dominates at the inlet',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'volume-is-the-same-in-every-direction',
+    claim:
+      'A given amount of nodular tissue makes the gland the same size whichever way it has gone, so how large the gland has become says nothing about what it is against.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Arithmetic of additive volumes: the direction a volume is added in does not change the volume.',
+    validation: 'physiology: the same amount of gland is the same size in every direction',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-posterior-structures-are-passed-not-approached',
+    claim:
+      'The recurrent laryngeal nerve runs in the groove behind the gland and the parathyroid glands lie against its posterior surface, so an enlargement that goes backwards does not approach them: it passes them, and they end up on or inside the thing that was in front of them.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard thyroid surgical anatomy of the tracheo-oesophageal groove and the posterior parathyroid glands. The direction is textbook; the parathyroids’ positions vary more than almost anything else in the neck, which is why a surgeon looks for them.',
+    validation: 'physiology: a backward enlargement passes the nerve and the parathyroids rather than approaching them',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'two-lobes-round-one-airway',
+    claim:
+      'The gland is wrapped round the front and sides of the airway, so a trachea pushed equally from both sides does not move: deviation needs one side to lead.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard thyroid anatomy — two lobes joined by an isthmus across the front of the trachea — and the standard observation that tracheal deviation follows asymmetric enlargement.',
+    validation: 'physiology: a trachea pushed equally from both sides does not move',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-and-face-area',
+    claim:
+      'The lobe’s volume and depth, the airway’s calibre, and the area the added tissue is taken to come out through — which together turn a volume into the distance the gland’s face advances.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'The first three are measured off this repository’s thyroid atlas; the face area is a calibration chosen so that the range of burdens the scene offers produces displacements and narrowings that are visible without being absurd.',
+    note:
+      'A calibration, not a measurement. No volume here is a millilitre, no distance is a centimetre, and the width across the airway is reported against this model’s own resting width rather than as a tracheal diameter.',
+    validation: 'calibration: the goitre model is measured off the atlas’s own gland and airway',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'four-directions',
+    claim:
+      'How much of each direction’s advance is aimed at the airway, how much of that meets a boundary that will not move, and how much goes back past the posterior structures.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Twelve numbers chosen by this repository as a reading of four standard pictures. Nothing was measured and no source gives them.',
+    note:
+      'Illustrative coefficients. What the model claims is the *ordering* they produce — that one direction narrows and the others displace — and never the sizes. A real goitre goes several ways at once, and the four are not exclusive.',
+    validation: 'calibration: one of the four directions narrows the airway and the others displace it',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-function-anywhere',
+    claim:
+      'There is no thyroid function in this model. A goitre of any shape in it may be euthyroid, overactive or underactive, and nothing about the shape says which.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in the scene: morphology does not determine function, and a picture that let a reader infer it would be teaching something false.',
+    note:
+      'The direction this scene would mislead if it did not say so. No hormone, no TSH, no uptake and no autonomy appear anywhere, and no shape on screen is a functional state.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-relation-is-not-an-injury',
+    claim:
+      'The nerve and the parathyroid glands are lit when the gland reaches back past them. That is where they are, not what has happened to them.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Whether a nerve is stretched, invaded, displaced intact or untouched is not something a volume and a direction can tell you, and this model contains nothing about any of it.',
+    note:
+      'The second direction this scene could mislead. Nothing in it says a nerve is damaged, at risk or anything else about it, and nothing says a parathyroid gland has stopped working.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const KNEE_OA_EVIDENCE = defineEvidence('knee-osteoarthritis', [
+  {
+    id: 'it-is-a-compartment',
+    claim:
+      'Knee osteoarthritis is predominantly compartmental rather than whole-joint: one compartment loses its articular layer while the other still has its own, and the medial compartment is the commoner one.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of knee osteoarthritis as compartmental, most often medial, and of the compartments as separately affected.',
+    validation: 'physiology: a knee loses a compartment rather than a joint',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'what-follows-goes-with-the-side',
+    claim:
+      'Marginal osteophytes and meniscal extrusion appear on the affected side, so the consequences of the loss belong to the compartment rather than to the joint.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of marginal osteophytes and meniscal extrusion in the affected compartment. The association is textbook; nothing here claims a size or an order.',
+    validation: 'physiology: what follows appears on the side that lost the layer and not on the other',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-wedge-has-one-way-out',
+    claim:
+      'A wedge between two surfaces that are coming together has one direction available to it, so as a compartment narrows its meniscus is pushed outward from between them.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry, applied to the meniscal wedge between the femoral condyle and the tibial plateau.',
+    validation: 'physiology: a wedge between converging surfaces is pushed outward',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'confined-and-even-are-different-pictures',
+    claim:
+      'At the same amount lost, loss confined to one compartment and loss spread evenly across both are two different pictures rather than two severities: one has a side and the other does not.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Arithmetic of the two distributions, and the standard clinical distinction between compartmental and generalised disease.',
+    validation: 'physiology: the same amount lost is two pictures, not two severities',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'drawn-layer-not-a-joint-space',
+    claim:
+      'The thickness of the layer this model thins, and the separation between the compartments it is thinned in.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The knee atlas’s own drawn values, which are chosen there so the layer reads as a glaze on the joint rather than measured. The atlas says in as many words that no thickness in it is a measurement.',
+    note:
+      'An illustrative layer. What the model reports is a fraction of it, and **that fraction is not a joint space width**: joint space width is millimetres between bone surfaces on a weight-bearing radiograph and it includes the meniscus. Nothing here is measured, weight-bearing or millimetres.',
+    validation: 'calibration: the knee model thins the atlas’s own drawn layer',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'extrusion-coefficient',
+    claim:
+      'How far a meniscus is pushed out per unit of layer lost, as a fraction of its own width.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the value was calibrated so the extrusion is visible across the range the scene walks without the meniscus leaving the joint altogether.',
+    note:
+      'The direction is geometry and the size is this repository’s. No millimetre of extrusion follows from it, and the meniscus is moved rather than deformed.',
+    validation: 'calibration: the meniscus is visibly pushed out without leaving the joint',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-loop-is-open',
+    claim:
+      'Uneven loss loads the worn side harder, which is thought to be part of why it continues. This model does not represent that.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no loading in the model at all — no weight, no alignment, no gait — so the feedback cannot be in it.',
+    note:
+      'A reader watching one side wear away is not watching a process that drives itself on screen. The axis is how much is gone, not how it got there, and nothing here says a knee moves along it.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-follows-about-pain',
+    claim:
+      'Nothing in this model says what a person with any of these pictures feels or can do.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a deliberate one: the relation between what is left of a layer and what somebody notices is not one this model could carry.',
+    note:
+      'Pain, stiffness and function are outside the model entirely. No fraction, difference or picture in it is a symptom, a grade or a probability of one.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const ACL_EVIDENCE = defineEvidence('acl-injury', [
+  {
+    id: 'the-thing-in-the-way',
+    claim:
+      'The anterior cruciate ligament runs from the back of the lateral femoral condyle forward and down to the front of the tibia, so it is the structure in the way when the tibia slides forward under the femur.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard knee anatomy for the ligament’s attachments and course.',
+    validation: 'physiology: the ligament runs the way an ACL runs, between the atlas’s own attachments',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'primary-and-secondary',
+    claim:
+      'It is the primary restraint to that movement, and the menisci, the capsule and the shape of the plateau are secondary ones — so with it intact they carry a small part, and with it gone they carry all of what is left.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the ACL as the primary restraint to anterior tibial translation, with the menisci, capsule and plateau geometry as secondary restraints.',
+    validation: 'physiology: with the ligament gone the secondary restraints carry all of what is left',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-failed-cord-holds-nothing',
+    claim:
+      'A ligament that is no longer continuous carries none of the load it carried. It does not go on holding a fraction of it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Mechanics of a cord in tension: a discontinuous one transmits no tension across the discontinuity.',
+    validation: 'physiology: a discontinuous ligament holds nothing at all',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'less-restraint-is-more-travel',
+    claim:
+      'How far forward the tibia can sit follows how much of the restraint is missing, so losing the secondary restraints as well leaves it further forward than losing the ligament alone.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The direction is mechanics — less restraint, more travel — and is standard. **thin**: how much further, for any given loss, is not claimed here.',
+    validation: 'physiology: the less is holding it, the further forward it can sit',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'restraint-split',
+    claim:
+      'How the restraint to anterior translation is divided between the ligament and everything else when all of it is intact.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose as a reading of one word: the ligament is described as the *primary* restraint and the rest as secondary ones. The split was chosen so that the ordering holds and the crossover falls where the ligament stops being continuous.',
+    note:
+      'A calibration of an ordering, not a measured contribution. The model claims that the ligament is first and the rest second, and never the numbers; no percentage it prints is anybody’s.',
+    validation: 'calibration: the ordering holds and the crossover falls where the ligament fails',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'drawn-travel',
+    claim: 'The furthest forward this model lets the tibia sit, as a fraction of the drawn plateau’s depth.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen by this repository so the travel is visible without the tibia leaving the femur. The plateau it is a fraction of is the knee atlas’s, drawn to be legible rather than measured.',
+    note:
+      'Illustrative. **It is not millimetres and not a side-to-side difference**, and no position on screen is a grade of anything.',
+    validation: 'calibration: the tibia travels visibly without leaving the femur',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-examiner',
+    claim:
+      'Nothing in this model is a Lachman test, an anterior drawer or a pivot shift, and no number in it is a grade.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one here: those are manoeuvres a person performs, under a load they choose, graded by what they feel. None of that is in a geometric model.',
+    note:
+      'The direction this scene would mislead. A tibia sitting forward on screen is where the model says it can sit; it is not somebody’s knee being examined, and there is no examiner anywhere in it.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'context-not-resolved',
+    claim:
+      'The collateral ligaments and the tendon across the front are drawn while the tibia moves, and they are not re-solved as it does.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Only the two cruciates are the subject, and solving the rest would be modelling a knee rather than a ligament.',
+    note:
+      'A reader watching the bone move is watching two cruciates follow it and everything else stay where it was. Nothing about what the collaterals do is in this model.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const CUFF_EVIDENCE = defineEvidence('rotator-cuff-tear', [
+  {
+    id: 'the-cuff-holds-rather-than-lifts',
+    claim:
+      'The rotator cuff does not lift the arm. Its four tendons make a sleeve round the head of the humerus and hold it on its socket while the large muscle over the shoulder moves the limb.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard shoulder anatomy and standard descriptions of the cuff as a head depressor and stabiliser rather than an elevator.',
+    validation: 'physiology: the cuff holds the head on its socket rather than lifting the arm',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-facing-pair-centres-it',
+    claim:
+      'The tendon in front and the tendons behind pull against one another across the sleeve, and that pairing is what keeps the head centred — so a tear that spares it can leave the head exactly where it was.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the transverse force couple — subscapularis in front against infraspinatus and teres minor behind — and of cuff tears that spare it leaving the head centred.',
+    validation: 'physiology: a tear that spares the facing pair leaves the head where it was',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-head-rises-when-the-pair-goes',
+    claim:
+      'When the tear reaches the pair, the head is no longer held centred and rides up towards the arch above it.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of superior migration of the humeral head with large cuff tears involving the couple. The direction is textbook; how far, and in whom, is not claimed here.',
+    validation: 'physiology: the head rises only once the pair has stopped holding it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'size-is-the-wrong-first-question',
+    claim:
+      'Because of that pairing, how much of the top tendon has gone does not by itself decide whether the head is centred: the same complete defect has the head centred or not, depending on what the tear has reached.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'A consequence of the two claims above, and the standard clinical distinction between tears that spare the couple and tears that do not.',
+    validation: 'physiology: the same complete defect is two pictures, depending on the pair',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'containment-shares',
+    claim:
+      'How the job of holding the head on its socket is divided between the tendon over the top and the pair facing each other across the sleeve, and how much of it has to be left before the head stays put.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, calibrated so that a complete tear of the top tendon with the pair intact leaves the head centred and a tear that reaches the pair does not. That behaviour is the claim; the numbers are how this model produces it.',
+    note:
+      'A calibration of a behaviour, not a measured contribution. No percentage the scene prints is anybody’s, and the threshold is not a point at which anything happens in a person.',
+    validation: 'calibration: a complete tear sparing the pair keeps the head centred, and one reaching it does not',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-share-of-a-drawn-gap',
+    claim: 'How far the head rises, reported as a fraction of the gap drawn under the arch.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The gap is the shoulder atlas’s `SUBACROMIAL_DISPLAY_GAP`, which the atlas itself declares a display value: in life the space is a few millimetres against a head of several centimetres, and drawn to scale the tendon under the arch is a line nobody can see.',
+    note:
+      'Illustrative, and imported from the atlas rather than typed here so the two cannot drift. **A share of an opened-up gap is not an acromiohumeral distance and is not millimetres**, and no position on screen is a measurement.',
+    validation: 'calibration: the rise is a share of the atlas’s own display gap',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'one-number-for-the-pair',
+    claim: 'The pair is one number in this model rather than two tendons with courses of their own.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Which of them a tear reaches, how far round it goes, and what a partial involvement of one does are not things a single share can carry.',
+    note:
+      'A lit pair on screen marks which side of a threshold the model is on. It is not a statement about any particular tendon, and nothing in this model distinguishes them.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-moves-an-arm',
+    claim: 'Nothing in this model moves an arm, and nothing in it is anything a person experiences.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the scene can say what it says without saying more: the shoulder is drawn at one position, with the arm at the side.',
+    note:
+      'Pain, weakness, the arc of movement and range are all outside the model. A head sitting higher on screen is where the model says it can sit, not a shoulder failing to lift.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const HIP_OA_EVIDENCE = defineEvidence('hip-osteoarthritis', [
+  {
+    id: 'one-shared-centre',
+    claim:
+      'In a healthy hip the centre of the femoral head and the centre of the acetabulum are the same point, and the space between the two bones is even all the way round.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard hip anatomy: a spherical head concentric with its socket. The atlas this scene is drawn on states it of its own two sites.',
+    validation: 'physiology: an intact hip is concentric and its space is even all round',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-direction-not-a-compartment',
+    claim:
+      'Hip osteoarthritis loses the layer in a direction rather than in a compartment, so the ball settles that way and the two centres come apart by what has gone there. The described patterns — up and out, straight up, into the floor of the socket — are directions.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the patterns of joint space narrowing in hip osteoarthritis, and of femoral head migration along them.',
+    validation: 'physiology: a hip narrows in a direction and the ball settles that way',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-far-side-opens',
+    claim:
+      'Because the ball has moved away from a socket wall whose own layer is still there, the space on the far side is wider than it began — an apparent widening that is a consequence of the movement rather than of anything being added.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a sphere that settles against one side of a shell is no longer concentric with it, and the clearance opposite increases by what it moved.',
+    validation: 'physiology: the far side opens by what the ball moved',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'even-loss-keeps-the-centre',
+    claim:
+      'Where the layer goes evenly the ball has nowhere thinner to settle towards, so the centres stay shared and the space closes all round. That is a different picture rather than a milder one.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'A consequence of the geometry, and the standard description of concentric joint space narrowing as a pattern of its own. **thin** — what makes a hip take one pattern rather than another is not claimed here.',
+    validation: 'physiology: even loss leaves the centres shared',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-drawn-layer-not-a-joint-space',
+    claim: 'The thickness of the layer between the two bones, which every fraction this scene reports is a fraction of.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The hip atlas’s own drawn radii: the difference between the head it draws and the socket it draws. The atlas says no dimension in it is a measurement.',
+    note:
+      'An illustrative layer. **The fraction reported of it is not a joint space width**, which is millimetres between bone surfaces on a weight-bearing radiograph in a direction somebody chose. Nothing here is measured, weight-bearing or millimetres.',
+    validation: 'calibration: the hip model thins the layer the atlas’s own radii leave',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'four-patterns-and-a-spill',
+    claim:
+      'The four directions the scene offers, and how much of a directional loss reaches the rest of the surface.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the angles are a reading of three described patterns and the spill was calibrated so a directional loss is plainly directional while the rest of the surface is not left untouched.',
+    note:
+      'Four patterns standing for a continuum of directions. The model claims that the direction is what decides the picture, and never these angles or this share.',
+    validation: 'calibration: a directional loss is plainly directional and an even one has no direction at all',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-loop-is-open',
+    claim:
+      'Where the ball sits changes what it loads, which is thought to be part of why it goes on. This model does not represent that.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no loading in the model at all — no weight, no alignment, no gait — so the feedback cannot be in it.',
+    note:
+      'A reader watching the ball settle is not watching a process that drives itself on screen. The axis is how much is gone, not how it got there or why it went that way.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-follows-about-the-person',
+    claim: 'Nothing in this model says what somebody with any of these pictures feels or can do.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a deliberate one: the relation between what is left of a layer and what a person notices is not one this model could carry.',
+    note:
+      'Pain, stiffness, limp and range are outside the model entirely. No fraction, offset or pattern in it is a symptom, a grade or a probability of one.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const URINARY_OBSTRUCTION_EVIDENCE = defineEvidence('urinary-obstruction', [
+  {
+    id: 'two-tubes-one-bladder',
+    claim:
+      'The urinary tract is two tubes that join at one bladder, so how many kidneys lie above a blockage is a property of where the blockage is rather than of how much has backed up: one above the bladder, both at the way out of it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard urinary tract anatomy, and standard descriptions of obstruction above the bladder involving one side while bladder outlet obstruction involves both.',
+    validation: 'physiology: how many kidneys are behind it is decided by the place, not the amount',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'above-fills-and-below-does-not',
+    claim:
+      'What lies above a blockage distends and what lies below it does not, so the boundary between the two is where the blockage is.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of dilatation of the collecting system and ureter proximal to the level of an obstruction.',
+    validation: 'physiology: everything above the blockage is distended and everything below is not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-same-kidney-with-a-different-length-behind-it',
+    claim:
+      'A blockage at the top of a ureter and one at its bottom stand above the same kidney with a different length of tube between them, so the place decides how much of the tract dilates and not only which side.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the topology, with the standard description of a pelviureteric obstruction dilating the collecting system while leaving the ureter below it undilated.',
+    validation: 'physiology: further down the same ureter puts more of the tract above the same kidney',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-capsule-does-not-give',
+    claim:
+      'A kidney is inside a capsule that does not stretch readily, so a collecting system that fills takes its room from the parenchyma next to it. The dilated pelvis and the thinned parenchyma are the same volume counted twice.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the renal capsule as a layer that does not stretch readily, and of parenchymal thinning accompanying a dilated collecting system.',
+    validation: 'physiology: the room the collecting system gains comes mostly out of the parenchyma',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-spared-side-is-not-in-the-picture',
+    claim:
+      'The side with nothing above it is unchanged **by this model**. Nothing is claimed about what happens to the other kidney in a person.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the topology rather than a clinical observation: this model does nothing on a side that has no blockage above it.',
+    validation: 'physiology: the spared kidney is untouched, whatever the amount',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-proportions',
+    claim:
+      'The kidney\'s and the collecting system\'s semi-axes, from which every volume, ratio and thickness the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off the landmark kidney builder in `src/scenes/renal/organs/kidney.js`, so the picture and the arithmetic are the same organ.',
+    note:
+      'Illustrative proportions, not anatomy. They were chosen there to read as a kidney at thumbnail size. No volume here is millilitres and no semi-axis is a dimension of anybody.',
+    validation: 'calibration: the urinary tract scene is built from the volumes the model was given',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'retained-load-and-capsule-give',
+    claim:
+      'How much backs up at the top of the axis, and how far the capsule itself yields.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrations this repository chose: the load was calibrated so that the dilation and the thinning are both visible across the range without the collecting system reaching the capsule, and the give was chosen so that the capsule takes only a minority share of the retained volume.',
+    note:
+      'The claim that the room comes out of the parenchyma is a claim about that ratio and nothing else, which is why a test fixes the ratio rather than either constant.',
+    validation: 'calibration: the capsule takes only a minority share of what backs up',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'dilation-factors',
+    claim:
+      'How far a distended ureter and a distended bladder are drawn against their own resting size.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen to be legible. Unlike the kidney, where the thickness follows from two volumes, these are illustrative drawn values.',
+    note:
+      'They say *distended* and do not say *how much*. No calibre in the tract is solved from anything, and none is a measurement.',
+    validation: 'calibration: a distended stretch is plainly distended and an undistended one is plainly not',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'thinned-below',
+    claim:
+      'The share of its resting thickness below which the parenchyma is reported as thinned rather than as merely narrower.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'A reporting threshold for the copy, chosen so that it fires where the change is visible on screen.',
+    note:
+      'Illustrative, and chosen. It is not a grade and not a clinical threshold: this model grades nothing, and a geometry could not be a grade.',
+    validation: 'calibration: the thinned threshold fires where the drawing changes and nowhere else',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-thin-parenchyma-reads-as-a-failing-kidney',
+    claim:
+      'What a kidney behind an obstruction is actually doing — whether it is filtering, how much, and whether it recovers — is not represented here in any form.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no kidney function in this model at all, and nothing is carried from `renal-filtration`, which is a separate model with its own scope.',
+    note:
+      'A parenchyma drawn thin looks like a kidney that has stopped working, and this model says nothing of the kind. The thickness is a thickness in a drawing.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'thickness-is-not-volume',
+    claim:
+      'The parenchyma\'s thickness falls faster than its volume does, so the picture reads worse than the volume is.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a thin shell round a large cavity still holds a good deal, which is why the two numbers diverge.',
+    validation: 'physiology: the thickness falls faster than the volume, and the model says both',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-level-reads-as-a-stage',
+    claim:
+      'Nothing in this model says a blockage moves from one level to another, or that a person passes through the five in order.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the level is a control rather than a point on the axis: five arrangements, with how much has backed up as a separate thing.',
+    note:
+      'Five levels in a list read as five degrees of one illness. They are not, and the axis underneath them is not how far along anybody is.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const LOBAR_COLLAPSE_EVIDENCE = defineEvidence('lobar-collapse', [
+  {
+    id: 'the-gas-is-absorbed-and-not-replaced',
+    claim:
+      'A lobe whose bronchus is obstructed absorbs the gas already in it and is not refilled, so it loses volume. It does not keep its volume and become denser in place.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of resorption atelectasis distal to an obstructed bronchus, and of loss of volume as its defining feature.',
+    validation: 'physiology: a collapsed lobe loses volume rather than keeping it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-room-is-accounted-for',
+    claim:
+      'The room the lobe stops occupying is taken by something: the remaining lobes of the same lung expand into it, and what is left over is taken by the hemithorax itself getting smaller. A chest does not acquire a space.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of compensatory expansion of the remaining lobes and of displacement of adjacent structures towards a collapsed lobe.',
+    validation: 'physiology: the room the lobe vacates is accounted for, all of it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'towards-the-side-it-happened-on',
+    claim:
+      'The structures at the middle are drawn towards the side the collapse is on, and the direction is a property of which bronchus rather than of how much has gone.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of mediastinal displacement towards the affected side in lobar and lung collapse.',
+    validation: 'physiology: the middle is drawn towards the side the collapse is on',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'collapse-is-not-consolidation',
+    claim:
+      'Consolidation fills the airspaces while the lobe keeps its volume, so nothing is drawn towards it; collapse loses volume, so everything nearby is. The two are opposite on a picture of volume and alike on a picture of density.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of consolidation as a volume-preserving airspace-filling process, against collapse as a volume-losing one.',
+    validation: 'physiology: a collapsed lobe loses volume rather than keeping it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-other-side-takes-none-of-it',
+    claim:
+      'Compensation happens within one hemithorax. The other lung is unchanged **by this model** — not a claim that it is unaffected in a person, but that a volume lost on one side is not offered to the other.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of there being two pleural cavities with the mediastinum between them; compensatory expansion is described as ipsilateral.',
+    validation: 'physiology: the other lung takes none of it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-lobe-shares',
+    claim:
+      'Each lobe\'s share of its own side, from which every volume in the model is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Copied from `LOBE_VOLUME_SHARES` in the respiratory atlas, whose own provenance and open question are recorded there and in `docs/medical-notes.md`.',
+    note:
+      'Illustrative here: the model inherits the atlas\'s figures rather than asserting them, and reports every lobe against its own resting volume rather than in any absolute unit.',
+    validation: 'calibration: the lobar collapse model and the lung atlas divide a lung the same way',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'how-the-room-divides',
+    claim:
+      'How much of the vacated room the rest of the lung takes, against how much the hemithorax takes by getting smaller.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, so that both halves of the answer are legible at once: at one nothing at the midline would move, and at zero no lobe would expand.',
+    note:
+      'Not a measured proportion. A real chest divides it differently from case to case, and the model claims only that the two together are all of it.',
+    validation: 'calibration: both halves of the answer are visible at the top of the axis',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-face-the-shift-is-spread-over',
+    claim:
+      'The area the hemithorax\'s share of the volume is spread over to become the distance the midline is drawn across.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'A calibration chosen so the gap between the two midline bars is legible. The first value put a whole lower lobe at seven pixels.',
+    note:
+      'Illustrative, and chosen. **It is not a tracheal deviation, not a mediastinal shift anybody measured, and not millimetres.** The scene draws the resting midline beside it so what is read is a gap rather than an absolute distance.',
+    validation: 'calibration: both halves of the answer are visible at the top of the axis',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-residual-so-there-is-something-to-point-at',
+    claim:
+      'What is left of a lobe that has lost all the air this model lets it lose.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen away from zero: a lobe collapsed to nothing would be a lobe the scene had deleted, and there would be no shape left to label.',
+    note:
+      'Illustrative. It is not a residual volume anybody measured, and nothing in the model says how airless a lobe can actually become.',
+    validation: 'calibration: a fully collapsed lobe is still a shape there is something to point at',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'nothing-here-is-gas-exchange',
+    claim:
+      'What a collapsed lobe does to anybody\'s blood is not represented here in any form.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no oxygen, no shunt, no saturation, no blood flow and no hypoxic vasoconstriction in this model.',
+    note:
+      'A lobe drawn airless reads as a person who is short of breath. Nothing here supports that: the model computes a volume and stops.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-expansion-has-no-shape',
+    claim:
+      'The remaining lobes expand in proportion to what each already had, which is the only division this model has any basis for.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. A real lung does not expand evenly, and neither the shape nor the direction of compensatory expansion is claimed.',
+    note:
+      'The proportional division is a default, not a finding. Nothing in the model says where in a lobe the expansion goes.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'six-arrangements-are-not-six-degrees',
+    claim:
+      'Nothing in this model says a blockage moves from one bronchus to another, or that the six choices are an order.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the bronchus is a control rather than a point on the axis.',
+    note:
+      'Six places in a list read as six degrees of one illness. The axis underneath them is how much of one lobe\'s air has gone, not how far along anybody is.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1770,4 +2652,13 @@ export const EVIDENCE_REGISTRIES = [
   BILIARY_EVIDENCE,
   ACHALASIA_EVIDENCE,
   PROSTATIC_ENLARGEMENT_EVIDENCE,
+  BOWEL_OBSTRUCTION_EVIDENCE,
+  UTERINE_FIBROID_EVIDENCE,
+  GOITRE_EVIDENCE,
+  KNEE_OA_EVIDENCE,
+  ACL_EVIDENCE,
+  CUFF_EVIDENCE,
+  HIP_OA_EVIDENCE,
+  URINARY_OBSTRUCTION_EVIDENCE,
+  LOBAR_COLLAPSE_EVIDENCE,
 ];

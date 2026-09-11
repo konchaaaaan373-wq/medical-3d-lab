@@ -341,6 +341,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "bowel-obstruction",
+    "card": "docs/model-cards/bowel-obstruction.md",
+    "modelSources": [
+      "src/models/bowelObstruction.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "a8fb92a692df03ee",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "achalasia",
     "card": "docs/model-cards/achalasia.md",
     "modelSources": [
@@ -348,6 +358,86 @@
     ],
     "cardRevision": 2,
     "modelDigest": "155d95ed453fea94",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "hip-osteoarthritis",
+    "card": "docs/model-cards/hip-osteoarthritis.md",
+    "modelSources": [
+      "src/models/hipOsteoarthritis.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "bb2599c3fb447c57",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "urinary-obstruction",
+    "card": "docs/model-cards/urinary-obstruction.md",
+    "modelSources": [
+      "src/models/urinaryObstruction.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "92bb3f9e658ace66",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "lobar-collapse",
+    "card": "docs/model-cards/lobar-collapse.md",
+    "modelSources": [
+      "src/models/lobarCollapse.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "a237a11a90d30151",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "rotator-cuff-tear",
+    "card": "docs/model-cards/rotator-cuff-tear.md",
+    "modelSources": [
+      "src/models/rotatorCuffTear.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "cebbe6e9bf13bcd7",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "acl-injury",
+    "card": "docs/model-cards/acl-injury.md",
+    "modelSources": [
+      "src/models/aclInjury.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "2c9567d53b16146f",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "knee-osteoarthritis",
+    "card": "docs/model-cards/knee-osteoarthritis.md",
+    "modelSources": [
+      "src/models/kneeOsteoarthritis.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "86ee4cfcd8a1857b",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "multinodular-goitre",
+    "card": "docs/model-cards/multinodular-goitre.md",
+    "modelSources": [
+      "src/models/multinodularGoitre.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "d61a7403f33e1ffd",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "uterine-fibroid",
+    "card": "docs/model-cards/uterine-fibroid.md",
+    "modelSources": [
+      "src/models/uterineFibroid.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "335febff74c029ac",
     "cardUpdatedAt": "2026-09-11"
   },
   {

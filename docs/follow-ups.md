@@ -1777,6 +1777,88 @@ structure」を出し、再実行では通ることがありました。**再実
 - 完了の定義: 補正が 1 か所になり、`#/pancreas-anatomy` の膵尾部が
   1440×900 でパネルに入らないこと。各シーンのポーズは動かさないこと。
 
+### F-87 ラベルの位置は生成時に 1 度だけ読まれる — P2（病態シーン全般）
+
+**Claude① 宛の申し送りです。`LabelLayer.js` / `App.js` は Claude① の所有なので、
+こちらからは触っていません。**
+
+`createLabelLayer({ annotations })` は `scene.getAnnotations()` を**構築時に 1 度だけ**
+呼び、以後は各フレームで `item.annotation.position`（その時に受け取った `Vector3`
+オブジェクト）を読みます。つまり、
+
+1. **`position` を毎回 `clone()` して返すシーンのラベルは動きません。**
+   腸閉塞シーンでは閉塞部のラベルが最初の部位に貼り付いたままになり、
+   「移行部」というラベルが別の場所の腸を指していました。
+   回避策として、シーン側が**同じ `Vector3` を持ち続けて中身を書き換える**形に
+   しました（`BowelObstructionScene#updateAnchors`、
+   `BenignProstaticEnlargementScene#updateAnchors`）。
+2. **状態によって現れるラベルは、構築時の状態にしか従えません。**
+   構築時に存在しなかった注釈は、その後どれだけ状態が変わっても生成されません。
+   回避策として、注釈を常に返したうえで `isDrawn()` で隠しています。
+
+どちらも回避はできていますが、**これはシーン側が知っているべき規約ではありません。**
+`getAnnotations()` が「1 度きりのスナップショットである」ことはどこにも書かれておらず、
+素直に `clone()` を返した実装が静かに壊れます。
+
+- 決めること: `labels.setAnnotations()` のような入れ替え口を足すか、
+  `getAnnotations()` の契約を「同一オブジェクトを返し続けること」として明文化し、
+  テストで守るか。
+- 完了の定義: 位置が変わる注釈と、状態によって現れる注釈のどちらも、
+  シーン側の申し合わせなしに正しく描かれること。
+
+### F-88 小腸コイルの曲率半径が描画半径を大きく下回る — P3（Claude② 所有の臓器）
+
+**Claude② 宛の記録です。`organs/intestine.js` は触っていません。**
+
+`buildSmallIntestine` のコイルは、最も急な折り返しで**曲率半径が約 0.028**、
+離れた区間どうしの最小距離が約 0.067 です。描画半径は 0.21 なので、
+チューブ面は自分自身を貫通しており、離れたループも互いに食い込んでいます。
+アトラスが不透明度 0.96 で描いているあいだは目立ちませんが、**不透明にすると
+鋸歯状の継ぎ目としてはっきり出ます**。腸閉塞シーンでは小腸だけアトラスの
+半透明のままにして回避しました（結腸は不透明にしています）。
+
+- 測り方: 曲線を 600 点で標本化し、隣接 3 点の外接円半径の最小値と、
+  インデックス差 25 以上の点対の最小距離を取ります。
+- 決めること: コイルの `inner` / `outer` / `jitter` を緩めるか、描画半径を下げるか、
+  半透明で描く前提を `intestine.js` 側に書いておくか。
+- 完了の定義: 不透明で描いても自己貫通の継ぎ目が出ないこと。または、
+  半透明で描く前提がアトラス側に明記されていること。
+
+### F-89 病態 8 件で共通して起きた「注釈が安全域の外に出る」 — P2（病態シーン）
+
+B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認して初めて**
+「その段階が指しているラベルが、コンソールやヘッダの裏に隠れていた」ことが
+分かりました（`npm run verify:patient` が 1280×800 で band 62–494 を検査）。
+単体テストはすべて green のままです。
+
+これは F-44（framing がパネルの隠す領域を考慮していない）の別の現れ方で、
+**シーン側は毎回ラベルの位置を手で当てて回避しています。** 記録として残します。
+
+- 実際に起きた型は 3 つです。(1) 縦に長い臓器（気管・脛骨）で臓器の中ほどに
+  置いたラベルが下に出る、(2) 器官が画面の上半分に来る framing（肩）で
+  関節の高さに置いたラベルが下に出る、(3) 位置がモデル出力で動く注釈
+  （腸閉塞の移行部、股関節の狭小方向）が、ある選択肢でだけ枠外へ出る。
+- 完了の定義: シーンが「この点を指したい」とだけ言えば、安全域に収まるように
+  ラベル側が寄せられること。あるいは、寄せられないことをシーン側が
+  検出できる API があること。
+
+### F-90 モデルの答えが数ピクセルしかないときは「空間」を描く — 記録のみ（病態シーン）
+
+肩と股関節で同じ問題に当たりました。**モデルが正しく、テストも green で、
+画面では何も起きていないように見える**——肩峰下の隙間はアトラス自身が
+「表示用に広げた値」と明示している 0.1 単位で、骨頭がその 75% 上がっても
+約 8 px です。股関節の層も 0.08 単位しかありません。
+
+どちらも、**動かす代わりに「空間そのもの」を描く**ことで解決しました
+（肩は骨頭とアーチのあいだの帯、股関節は臼蓋を巡る環）。
+薄くなる／色が変わるものは、同じ大きさの平行移動より桁違いに読みやすく、
+しかも「関節裂隙幅ではない」という宣言と両立します。
+
+- 次に同種のシーンを作るときは、**モデル量を平行移動で表す前に、
+  それを面や帯として描けないかを先に考えてください。**
+- 関連: `docs/organ-3d-playbook.md` の失敗モード一覧に足す価値があります
+  （まだ足していません。Claude① / Claude② の所有文書のため）。
+
 
 ---
 
@@ -1861,3 +1943,44 @@ structure」を出し、再実行では通ることがありました。**再実
   ——アプリ内の破棄——しか見ておらず、別ドキュメントへのリンクを踏む経路は
   素通りしていました。`pagehide` を見る `pageLeaving` を足して閉じ、
   `tests/brain-anatomy.test.js` に回帰テストを追加。
+
+### F-91 — the readable band of the screen is a scene constraint, not a check
+
+`scripts/check-patient-explanation.mjs` asserts that a focused annotation
+projects into pixels 62–494 of a 1280×800 frame, because the explanation panel
+covers the lower third and the header the top. Two of the three scenes added in
+this branch needed their **camera framings** re-derived from that band rather
+than from the anatomy — a tract or a chest that fits the viewport does not fit
+the band, and the fix each time was to target the camera *below* the structure
+so the structure sits in the upper half.
+
+That is a property of the shell's layout, so every scene inherits it and each
+one discovers it separately in the browser. Worth Claude① and Work deciding
+whether the viewer should expose the band (or a safe target) to scenes, rather
+than each scene tuning three numbers against a screenshot.
+
+*Raised by Claude③ from `claude/pathology-expansion-b3`. For Claude① / Work.*
+
+### F-92 — a paired organ needs both halves on screen, and the shell assumes one
+
+`urinary-obstruction` and `lobar-collapse` both claim something about **how
+many** — one kidney or two, one lung or the other — so both draw the pair. At
+phone width the info cards in the top-left overlap the left-hand member of the
+pair at rest. Nothing is unreadable and no label fails the band check, so this
+is not a defect being reported; it is a case the shell's layout has not had to
+consider before.
+
+*Raised by Claude③. For Work, when convenient.*
+
+### F-93 — "draw the space, not the displacement" has now happened four times
+
+Hip, shoulder, urinary obstruction and lobar collapse each computed a
+displacement that came out at single-digit pixels, and each solved it the same
+way: draw the space the displacement opened, or draw a second marker at the
+resting position so the reader sees a gap rather than remembering a location.
+`docs/organ-3d-playbook.md` records the failure modes of *surfaces*; this is a
+failure mode of *quantities*, and four instances is enough to write it down.
+
+Not blocking anything — the scenes are correct. Offered as a playbook entry.
+
+*Raised by Claude③.*

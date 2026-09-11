@@ -215,13 +215,16 @@ test('the explorer files each scene once under its primary organ', () => {
   assert.ok(scenesListedForOrgan('lungs').includes(copd), 'COPD is filed under the lungs');
 });
 
-test('respiratory public coverage starts with five textbook disease models', () => {
+test('respiratory disease coverage is the set the catalogue says it is', () => {
+  // An enumeration rather than a count: adding a respiratory disease is meant
+  // to be a deliberate edit here, and a test that only counted would let one
+  // arrive by accident.
   const respiratory = SCENES.filter(
     (scene) => scene.system === 'respiratory' && scene.status !== 'prototype' && scene.disease
   );
   assert.deepEqual(
     respiratory.map((scene) => scene.disease).sort(),
-    ['asthma', 'copd', 'pneumonia', 'pulmonary-edema', 'pulmonary-embolism']
+    ['asthma', 'copd', 'lobar-collapse', 'pneumonia', 'pulmonary-edema', 'pulmonary-embolism']
   );
 });
 
