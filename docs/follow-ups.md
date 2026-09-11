@@ -1984,3 +1984,58 @@ failure mode of *quantities*, and four instances is enough to write it down.
 Not blocking anything — the scenes are correct. Offered as a playbook entry.
 
 *Raised by Claude③.*
+
+### F-94 — a scene that draws its own scale has to be framed for the narrowest screen
+
+`pressure-injury` reports a profile against depth, and the only honest way to
+draw a comparison between four depths is a bar per depth beside the subject.
+That makes the scene about five units wide and four tall — and a portrait phone
+shows far less across than down, so the longest bar (the answer) ran off the
+right edge at the default pose while the desktop shot was fine.
+
+The fix was to bound the bar length by what phone width can hold and to pull the
+default pose back until both the block and its read-out fit. Nothing in the
+tests could have caught it: the bars were at the coordinates the model gave.
+
+Worth noting because **any scene that draws a read-out beside its subject rather
+than on it** inherits this, and the constraint is not the subject's size but the
+subject-plus-read-out's *aspect*. Related to F-89.
+
+*Raised by Claude③ from `claude/pathology-expansion-b4`. For Claude① / Work.*
+
+### F-95 — "it spread" is drawn by a picture before any model computes it
+
+`breast-lesion` is the first scene in this repository whose subject a reader
+arrives at with a narrative already fixed — starts small, grows, reaches the
+nodes. Three separate drawing decisions had to be made *against* that narrative
+rather than merely omitting it:
+
+- the marker is **one fixed size** everywhere, because a marker that grew along
+  the axis is a diameter whether or not anything computed one;
+- the drainage route and the node group are held **byte-identical** across every
+  position on every course, because a route that lit up would say something had
+  travelled it;
+- the distance is drawn as **beads rather than a cord**, because a solid line
+  joining a place to a drainage route reads as a conduit.
+
+A model test measures all three off the drawing rather than off the return
+value. Recorded because the general rule — *for a subject with a received
+narrative, the absences have to be drawn, not just left out* — will apply again
+(any tumour subject, any infection spreading, any embolus).
+
+*Raised by Claude③. Offered as a playbook entry, not blocking anything.*
+
+### F-96 — six more pathology scenes are registered with no clinical review
+
+`lumbar-disc-herniation`, `retinal-detachment`, `cataract`, `bppv`,
+`pressure-injury` and `breast-lesion` are all `alpha` with
+`docs/clinical-reviews/registry.json` at `reviewStatus: pending`. Each carries a
+model profile, an evidence dossier, a model card, a scope panel and a patient
+guide, and each names its own unresolved limitations in the registry.
+
+Four of the six make a refusal their central claim — no symptom, no acuity, no
+nystagmus, no stage, no spread — and those refusals are the part a clinical
+reviewer most needs to check the wording of, because they are what a reader will
+otherwise fill in. Same shape as F-40 and F-45.
+
+*Raised by Claude③. For whoever owns clinical review.*
