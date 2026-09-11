@@ -900,5 +900,31 @@
       "No lump, cyst, mastitis or tumour is represented in any form, and nothing here is anyone’s breast.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging, screening decisions, or planning any biopsy or surgery."
     ]
+  },
+  {
+    "sceneId": "spine-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built spine — four regions, one lumbar segment in full, the disc, the canal and its contents — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/spine-anatomy.md",
+      "docs/model-evidence/spine-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "One lumbar level is drawn in full and the rest are simplified blocks; the individual vertebrae of a region are not separately selectable.",
+      "No height, width, angle or curve is a measurement, and the degree of each curve is drawn to read rather than measured.",
+      "Nothing moves or bends: flexion, extension and instability are not represented.",
+      "The ribs and their joints, the ligaments of the column, the muscles, the intervertebral foramina as openings, the ligamentum flavum, the epidural fat and venous plexus and the coccyx are not drawn.",
+      "One pair of nerve roots is drawn, at the detailed level only.",
+      "No herniation, stenosis, fracture or deformity is represented in any form, and nothing here is anyone’s spine.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, level counting on an image, or planning any injection, instrumentation or surgery."
+    ]
   }
 ]

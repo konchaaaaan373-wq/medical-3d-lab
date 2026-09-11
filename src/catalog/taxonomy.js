@@ -72,6 +72,7 @@ export const ORGANS = [
   { id: 'lymph-node', system: 'hematologic', label: 'Lymph node', labelJa: 'リンパ節' },
   { id: 'lymphatic-system', system: 'hematologic', label: 'Lymphatic system', labelJa: 'リンパ系' },
   { id: 'breast', system: 'reproductive', label: 'Breast', labelJa: '乳房' },
+  { id: 'spine', system: 'musculoskeletal', label: 'Spine', labelJa: '脊柱' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
