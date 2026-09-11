@@ -367,10 +367,10 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['1 つの区画', '半月板', '辺縁']
   ),
   'multinodular-goitre': presentation(
-    'Send the same goitre four ways; watch the airway move in three of them and narrow in one.',
-    '同じ甲状腺腫を 4 方向へ伸ばし、3 方向では気道が動き、1 方向でのみ狭くなることを確認。',
-    ['FOUR DIRECTIONS', 'MOVED OR NARROWED', 'WHAT IS BEHIND'],
-    ['4 つの方向', '動くか狭くなるか', '後方にあるもの']
+    'Send the same goitre four ways; watch how much of it moves the airway and how much presses on it.',
+    '同じ甲状腺腫を 4 方向へ伸ばし、そのうちどれだけが気道を動かし、どれだけが圧迫するかを確認。',
+    ['FOUR DIRECTIONS', 'MOVED AND NARROWED', 'WHAT IS BEHIND'],
+    ['4 つの方向', '偏位と狭窄の割合', '後方にあるもの']
   ),
   'uterine-fibroid': presentation(
     'Put the same fibroid at three depths in the wall; watch what each one reaches.',

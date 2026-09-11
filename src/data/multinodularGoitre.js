@@ -23,7 +23,7 @@ export const LEGEND = [
   { key: 'trachea', label: 'The airway', labelJa: '気管' },
   { key: 'nerve', label: 'The nerve behind it', labelJa: '後方を走る反回神経' },
   { key: 'parathyroid', label: 'The parathyroid glands', labelJa: '副甲状腺' },
-  { key: 'bone', label: 'The thoracic inlet — the one rigid boundary', labelJa: '胸郭上口｜唯一の硬い境界' },
+  { key: 'bone', label: 'The thoracic inlet — where the surroundings cannot give way', labelJa: '胸郭上口｜周囲が逃げられない境界' },
   { key: 'narrowed', label: 'Where the airway is narrowed', labelJa: '気管が狭くなっている部分', activeFrom: 0.15 },
 ];
 
@@ -54,9 +54,9 @@ export const STAGES = [
     at: 0.55,
     focus: ['trachea'],
     summary:
-      'The neck is soft in every direction but one, so most of this pushes rather than presses. Whether the airway is moved or made narrower depends entirely on where the extra went.',
+      'How much of this pushes the airway aside and how much presses on it depends on how far the surroundings can give way — and that differs with where the extra went. Both happen in every direction; the balance is what changes.',
     summaryJa:
-      '頸部は 1 方向を除いて軟らかいため、多くは「押しのける」ことになります。気道が動くのか狭くなるのかは、増えた分がどこへ行ったかだけで決まります。',
+      '増えた分のうち、どれだけが気道を押しやり、どれだけが気道を圧迫するかは、周囲がどれだけ逃げられるかで決まり、それは増えた分の向きによって変わります。どちらもどの方向でも起こり、変わるのはその割合です。',
   },
   {
     id: 'large',
@@ -65,9 +65,9 @@ export const STAGES = [
     at: 1,
     focus: ['trachea', 'nerve'],
     summary:
-      'At this size the gland is the same volume in all four directions. What differs is what it is against — and only one of the four has a boundary that will not move.',
+      'At this size the gland is the same volume in all four directions. What differs is what it is against — and how much that neighbour can move out of the way.',
     summaryJa:
-      'この大きさでは、4 方向のどれでも腺の体積は同じです。違うのは何に接しているかで、動かない境界を持つのは 4 つのうち 1 つだけです。',
+      'この大きさでは、4 方向のどれでも腺の体積は同じです。違うのは何に接しているか、そしてその隣人がどれだけ逃げられるかです。',
   },
 ];
 
@@ -118,8 +118,8 @@ export const MODEL_CONTROLS = [
         value: 'medial',
         label: 'Toward the airway, in the neck',
         labelJa: '気道側（頸部内）',
-        effect: 'The airway is pushed across and stays open, because nothing on the far side of it refuses to move.',
-        effectJa: '気道は横へ押しやられますが、開存は保たれます。反対側に動かないものがないためです。',
+        effect: 'Most of it moves the airway across, because the neck gives way readily — but not all of it: the lumen narrows by the smaller share as well.',
+        effectJa: '頸部は逃げやすいため、多くは気道を横へ押しやることに使われます。ただし全部ではなく、残りの分だけ内腔も狭くなります。',
       },
       {
         value: 'posterior',
@@ -132,16 +132,16 @@ export const MODEL_CONTROLS = [
         value: 'retrosternal',
         label: 'Down behind the sternum',
         labelJa: '下方（胸骨の裏へ）',
-        effect: 'Into the thoracic inlet, which is a ring of bone. Here the same tissue narrows the airway instead of moving it.',
-        effectJa: '胸郭上口は骨の輪です。ここでは同じ組織が気道を動かすのではなく、狭くします。',
+        effect: 'Into the thoracic inlet, where the gland is enclosed by structures that cannot move aside. Here most of the same tissue is spent narrowing the airway rather than moving it.',
+        effectJa: '胸郭上口では、周囲の固定された構造に囲まれて逃げ場がありません。ここでは同じ組織の多くが、気道を動かすことではなく狭くすることに使われます。',
       },
     ],
   },
 ];
 
 export const MODEL_CONTROLS_COPY = {
-  label: 'Four directions, one of them boxed in',
-  labelJa: '4 つの方向、うち 1 つは囲まれている',
+  label: 'Four directions, and how much each one can give way',
+  labelJa: '4 つの方向と、それぞれがどれだけ逃げられるか',
   hint: 'Four arrangements, not four degrees. The direction decides what the extra tissue is against.',
   hintJa: '4 通りの配置であって 4 段階ではありません。方向によって、増えた組織が何に接するかが決まります。',
 };
@@ -153,14 +153,14 @@ export const MODEL_SCOPE = {
     '同じ大きさの結節性甲状腺でも、どちらへ大きくなったかで何が決まるのか。',
   answers: [
     {
-      text: 'That the neck is soft in every direction but one, so most enlargement pushes the airway aside rather than narrowing it — a deviated trachea with a normal lumen.',
+      text: 'That an enlargement in the neck spends most of itself pushing the airway aside and the rest narrowing it, because the surrounding neck gives way readily. Displacement dominates there — it is not the only thing that happens.',
       textJa:
-        '頸部は 1 方向を除いて軟らかく、多くの腫大は気道を狭めるのではなく押しやること。気管は偏位しても内腔は保たれます。',
+        '頸部での腫大は、周囲が逃げやすいために多くが気道を押しやることに使われ、残りが狭窄になること。頸部では偏位が主になりますが、狭窄が起こらないという意味ではありません。',
     },
     {
-      text: 'That the one rigid boundary is the thoracic inlet, so a gland that has followed the airway down behind the sternum narrows it with the same amount of tissue that would otherwise only have moved it.',
+      text: 'That at the thoracic inlet the gland is enclosed by structures that cannot move, so a gland that has followed the airway down behind the sternum spends most of the same tissue narrowing it rather than moving it. Tracheal compression is more of a problem there — not exclusive to there.',
       textJa:
-        '唯一の硬い境界が胸郭上口であること。気道に沿って胸骨の裏へ下がった腺は、本来なら押しやるだけだったのと同じ量の組織で気道を狭めます。',
+        '胸郭上口では周囲の固定された構造に囲まれるため、気道に沿って胸骨の裏へ下がった腺は、同じ量の組織の多くを「動かす」のではなく「狭くする」ことに使うこと。下方へ進展する甲状腺腫では気管圧迫がより問題になりやすい、ということであって、そこでしか起こらないという意味ではありません。',
     },
     {
       text: 'That the recurrent laryngeal nerve and the parathyroid glands lie against the gland’s posterior surface, so an enlargement that goes backwards passes them rather than approaching them.',
@@ -201,14 +201,14 @@ export const MODEL_SCOPE = {
         '**ここにあるものはすべて実測値ではありません。** 葉の体積・奥行き・気道の太さは、このリポジトリの甲状腺アトラスから測ったものです。そのアトラス自体が実寸比ではなく「見分けられるように」描かれています。気道の幅は「このモデルの安静時に対する割合」であって、**気管径ではありません。**',
     },
     {
-      text: 'The four directions and how much of each one meets a boundary are this repository’s reading of four standard pictures. A real goitre goes several ways at once, and the four are not exclusive.',
+      text: 'The four directions, and the share of each one that is spent narrowing rather than displacing, are this repository’s reading of four standard pictures. A real goitre goes several ways at once, and the four are not exclusive. **The shares are a difference of degree, not a rule about where compression can occur** — a cervical goitre can deviate, compress and narrow the airway, and this model shows displacement as the larger share there rather than the only one.',
       textJa:
-        '4 つの方向と、それぞれがどれだけ境界に当たるかは、標準的な 4 つの像に対するこのリポジトリの解釈です。実際の甲状腺腫は同時に複数の方向へ広がり、4 者は排他的ではありません。',
+        '4 つの方向と、それぞれのうち「狭くする」側へ回る割合は、標準的な 4 つの像に対するこのリポジトリの解釈です。実際の甲状腺腫は同時に複数の方向へ広がり、4 者は排他的ではありません。**この割合は程度の差であって、「どこで圧迫が起こりうるか」の規則ではありません。** 頸部の甲状腺腫でも気管偏位・圧迫・狭窄は起こりえます。本モデルは、頸部では偏位の方が大きい割合を占める、と示しているだけです。',
     },
     {
-      text: 'The thoracic inlet is drawn as a ring. The atlas has no skeleton, so this is a structure the scene adds — and it is the boundary the whole claim rests on, which is why it is drawn at all.',
+      text: 'The thoracic inlet is drawn as a ring. The atlas has no skeleton, so this is a structure the scene adds — and it is the boundary the whole claim rests on, which is why it is drawn at all. **The ring is not a claim that a goitre above it cannot narrow the airway**; it is where the surroundings stop giving way.',
       textJa:
-        '胸郭上口は輪として描いています。アトラスに骨格はないため、これはシーンが付け加えた構造です。主張全体が依拠する境界であるからこそ描いています。',
+        '胸郭上口は輪として描いています。アトラスに骨格はないため、これはシーンが付け加えた構造です。主張全体が依拠する境界であるからこそ描いています。**この輪は「その上（頸部）では気道が狭くならない」という主張ではありません。** 周囲が逃げられなくなる場所を示しているだけです。',
     },
     {
       text: 'The parathyroid glands are drawn in four plausible places. Their position varies more than almost anything else in the neck, which is the reason a surgeon looks for them rather than knowing where they are.',
@@ -218,9 +218,9 @@ export const MODEL_SCOPE = {
   ],
   sources: [
     {
-      text: 'Standard descriptions of multinodular goitre: tracheal deviation in the neck, tracheal compression where the gland is retrosternal, and the thoracic inlet as the point at which a goitre is confined.',
+      text: 'Standard descriptions of multinodular goitre: tracheal deviation and compression in the neck, and the thoracic inlet as the level at which a gland extending below it is enclosed by structures that cannot move aside, so that compression becomes the more prominent problem.',
       textJa:
-        '多結節性甲状腺腫の標準的な記載から、頸部での気管偏位、胸骨後方に及ぶ場合の気管圧排、そして甲状腺腫が絞扼される部位としての胸郭上口。',
+        '多結節性甲状腺腫の標準的な記載から、頸部での気管偏位および圧迫と、それより下方へ進展した腺が周囲の固定された構造に囲まれることで圧迫がより前面に出る部位としての胸郭上口。',
       kind: 'textbook',
     },
     {
