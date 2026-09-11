@@ -57,6 +57,7 @@ test('migrated production evidence and the existing model registries share one c
       'urinary-obstruction',
       'lobar-collapse',
       'lumbar-disc-herniation',
+      'retinal-detachment',
     ]
   );
 });

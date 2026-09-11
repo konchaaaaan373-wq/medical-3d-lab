@@ -1414,5 +1414,33 @@
       "Past the width of what it meets the model stops measuring; it does not push a root aside, deform it, or follow it.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "retinal-detachment",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of retinal separation as a round patch on the eye atlas’s globe: how far it reaches from a chosen origin, what share of the drawn retina that is, and whether the macula lies inside it"
+    ],
+    "sources": [
+      "docs/model-cards/retinal-detachment.md",
+      "docs/model-evidence/retinal-detachment.md",
+      "tests/retinal-detachment-physiology.test.js",
+      "tests/retinal-detachment-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five origins, the copy and the Japanese terminology is not yet recorded.",
+      "No angle, area or height is a measurement. The globe, its coats and the macula’s position are this repository’s own eye atlas’s.",
+      "The height the retina is drawn lifted is illustrative and much larger than the atlas’s own coat spacing; at the real spacing a separation is a few pixels. It says separated, not how high.",
+      "The model contains no vision of any kind and says nothing about what anybody can see.",
+      "The model contains no prognosis. Nothing here says what recovers, how much, or whether the macula being inside changes that.",
+      "macula-on and macula-off are two pictures, not two stages; nothing says one becomes the other.",
+      "There is no cause and no kind: no tear, traction, exudate, myopia or trauma.",
+      "There is no time, no fluid, no gravity and no surgery. The inferior origin behaves exactly like the superior one.",
+      "The separation is drawn as a circular patch spreading evenly from one point; a real detachment is neither.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

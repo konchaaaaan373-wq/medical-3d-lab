@@ -73,6 +73,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'urinary-obstruction',
   'lobar-collapse',
   'lumbar-disc-herniation',
+  'retinal-detachment',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -466,6 +467,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '物質を 3 方向へ進ませ、輪が破れる点と、何かに届く点が別であることを確認。',
     ['THREE DIRECTIONS', 'THE RING, ONCE', 'REACHING IS SEPARATE'],
     ['3 つの方向', '輪は一度だけ', '「届く」は別の話']
+  ),
+  'retinal-detachment': presentation(
+    'Start the separation in five places; watch a small one take the macula and a large one miss it.',
+    '剥離を 5 か所から始め、小さな剥離が黄斑を含み、大きな剥離が含まないことを確認。',
+    ['FIVE STARTS', 'AREA SAYS LITTLE', 'MACULA IN OR OUT'],
+    ['5 つの起点', '面積では分からない', '黄斑は内か外か']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

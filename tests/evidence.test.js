@@ -19,6 +19,7 @@ import {
   URINARY_OBSTRUCTION_EVIDENCE,
   LOBAR_COLLAPSE_EVIDENCE,
   LUMBAR_DISC_EVIDENCE,
+  RETINAL_DETACHMENT_EVIDENCE,
   KNEE_OA_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
@@ -72,6 +73,7 @@ const FILE_LAYERS = {
   'urinary-obstruction-physiology.test.js': LAYER.EXTERNAL,
   'lobar-collapse-physiology.test.js': LAYER.EXTERNAL,
   'lumbar-disc-herniation-physiology.test.js': LAYER.EXTERNAL,
+  'retinal-detachment-physiology.test.js': LAYER.EXTERNAL,
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
@@ -98,6 +100,7 @@ const DOSSIERS = {
   'urinary-obstruction': 'docs/model-evidence/urinary-obstruction.md',
   'lobar-collapse': 'docs/model-evidence/lobar-collapse.md',
   'lumbar-disc-herniation': 'docs/model-evidence/lumbar-disc-herniation.md',
+  'retinal-detachment': 'docs/model-evidence/retinal-detachment.md',
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
   'acl-injury': 'docs/model-evidence/acl-injury.md',
   'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
@@ -248,6 +251,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'urinary-obstruction',
       'lobar-collapse',
       'lumbar-disc-herniation',
+      'retinal-detachment',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -276,6 +280,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(URINARY_OBSTRUCTION_EVIDENCE.length >= 8);
   assert.ok(LOBAR_COLLAPSE_EVIDENCE.length >= 8);
   assert.ok(LUMBAR_DISC_EVIDENCE.length >= 8);
+  assert.ok(RETINAL_DETACHMENT_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

@@ -904,6 +904,23 @@ export const MODEL_PROFILES = Object.freeze([
       'and no treatment.@ ',
   },
   {
+    profileId: 'retinal-detachment-position',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the eye atlas\'s own globe: a chosen origin and a reach give a spherical cap, its area is ' +
+      'the cap as a share of the sphere, and whether the macula lies inside it is the angle from the origin against that ' +
+      'reach. The card says the area and the macula state are independent by construction, that the height the retina is ' +
+      'drawn lifted is illustrative and far larger than the atlas\'s own coat spacing, and that the model contains no ' +
+      'vision, no prognosis, no cause, no time and no gravity.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

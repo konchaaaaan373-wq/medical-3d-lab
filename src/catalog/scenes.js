@@ -657,6 +657,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/lumbarDiscHerniation/index.js'),
   },
   {
+    id: 'retinal-detachment',
+    slug: 'retinal-detachment',
+    titleEn: 'Retinal detachment',
+    titleJa: '網膜剥離',
+    system: 'sensory',
+    organ: 'eye',
+    organs: ['eye'],
+    disease: 'retinal-detachment',
+    conditions: ['retinal detachment', 'macula-on', 'macula-off', 'neurosensory retina', 'retinal pigment epithelium', '網膜剥離', '黄斑オン', '黄斑剥離', '神経網膜', '網膜色素上皮'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/retinal-detachment.md',
+    modelProfile: 'retinal-detachment-position',
+    description:
+      'Whether the macula is inside a detachment is decided by where the separation is, not by how much of the retina it covers — a separation over a twentieth of it can have the macula in it, and one over nearly half can miss it.',
+    descriptionJa:
+      '黄斑が剥離範囲に入るかどうかを決めるのは、網膜のどれだけを覆うかではなく、剥離がどこにあるかです。網膜の 1/20 の剥離が黄斑を含むこともあり、半分近い剥離が含まないこともあります。',
+    tags: ['sensory', 'position-scenario', 'geometric-model'],
+    load: () => import('../scenes/sensory/scenes/retinalDetachment/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

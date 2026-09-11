@@ -2762,6 +2762,129 @@ export const LUMBAR_DISC_EVIDENCE = defineEvidence('lumbar-disc-herniation', [
   },
 ]);
 
+export const RETINAL_DETACHMENT_EVIDENCE = defineEvidence('retinal-detachment', [
+  {
+    id: 'the-macula-is-one-place-at-the-back',
+    claim:
+      'The macula is a discrete region at the posterior pole, so whether it lies inside a separation is a question about position rather than about how much retina has come away.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the macula as a discrete region at the posterior pole, and of retinal detachment as separation of the neurosensory retina from the pigment epithelium.',
+    validation: 'physiology: whether the macula is in it is decided by position, not by size',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-periphery-is-far-from-it',
+    claim:
+      'A separation beginning at the periphery is the better part of a right angle away from the macula, so it has a long way to reach before the macula is inside it; one beginning at the back is inside almost at once.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The geometry of a sphere with the macula at one pole, over the eye atlas\'s own positions.',
+    validation: 'physiology: a peripheral start has a long way to go and a posterior one does not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'area-and-macula-are-independent',
+    claim:
+      'The area detached rises with the reach alone and is the same whichever way the separation started, so it cannot answer the question about the macula. A small separation can include it and a large one can miss it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: the area of a spherical cap depends on its half-angle and not on where its axis points.',
+    validation: 'physiology: the area is a cap on a sphere and rises with the reach alone',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'macula-on-and-off-are-two-pictures',
+    claim:
+      'The two states are a scenario rather than a sequence. Nothing here says one becomes the other.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The standard clinical distinction, taken **only** as a statement about whether the macula lies inside the separated area.',
+    validation: 'physiology: how much further it has to reach is reported, and reaches zero exactly once',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-globe-and-angles',
+    claim:
+      'The globe, its coats and the angular distance from each named origin to the macula, from which every figure here is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off `buildEyeball()` in `src/scenes/sensory/organs/eyeball.js`, so the picture and the arithmetic are the same eye.',
+    note:
+      'Illustrative. The angles are angles of that drawing, and the area is a share of that sphere. **No figure here is a measurement of anybody.**',
+    validation: 'calibration: the detachment model and the eye atlas measure the same globe',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'how-far-the-arc-goes',
+    claim:
+      'The widest the separation is drawn, in degrees of arc from its origin.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, so a peripheral separation can reach the macula before the top of the axis while leaving a long span in which it plainly has not.',
+    note:
+      'Without it the scene could never show the thing it exists to show. It is not an extent anybody has.',
+    validation: 'calibration: a peripheral separation arrives late and a posterior one at once',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-lift-is-drawn-not-measured',
+    claim:
+      'How far the retina is drawn standing off the layer behind it.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen to be visible. At the atlas\'s own spacing between the coats a separation is a few pixels and cannot be seen at all.',
+    note:
+      'Illustrative, and much larger than that spacing. The height says *separated*; it does not say *how high*, and it is not a measurement.',
+    validation: 'calibration: the drawn lift is far larger than the atlas’s own coat spacing, and says so',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-vision-is-produced-or-implied',
+    claim:
+      'What anybody can see is not represented here in any form and cannot be inferred from an area or a macula state.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no acuity, no field, no contrast and no perception in this model — a separated retina here is a surface that has moved.',
+    note:
+      'The read-out prints "not in this model" where sight would go rather than omitting the row, because an absent row reads as an oversight and this absence is the claim.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-prognosis-follows-from-the-macula',
+    claim:
+      'Whether the macula is inside the separation says nothing here about what recovers, how much, or when.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in this model: it is the thing most often said about this subject and the thing the model most firmly does not compute.',
+    note:
+      'The two states are a position against an edge. Nothing connects them to an outcome anywhere in this repository.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-cause-and-no-kind',
+    claim:
+      'Tear, traction, exudate, myopia and trauma are not distinguished, and no mechanism of separation is represented.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. The model has a cap and a position, and no account of how either came about.',
+    note:
+      'A reader who takes the five origins for five causes is reading something that is not there: they are five places.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-gravity-and-no-fluid',
+    claim:
+      'The inferior origin behaves exactly like the superior one, because there is no gravity and no fluid in this model.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a visible one: the two origins are the same angular distance from the macula and therefore give the same answer.',
+    note:
+      'A real detachment does not spread evenly or circularly. Both the shape and the direction of spread are outside this model.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2784,4 +2907,5 @@ export const EVIDENCE_REGISTRIES = [
   URINARY_OBSTRUCTION_EVIDENCE,
   LOBAR_COLLAPSE_EVIDENCE,
   LUMBAR_DISC_EVIDENCE,
+  RETINAL_DETACHMENT_EVIDENCE,
 ];

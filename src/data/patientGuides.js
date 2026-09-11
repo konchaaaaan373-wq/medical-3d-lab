@@ -2973,6 +2973,92 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Retinal detachment.
+   *
+   * The walk is a comparison. Two steps at the same place on the axis, with the
+   * separation started in two different places, so that a small one with the
+   * macula in it sits directly beside a large one without — which is the only
+   * way to say "size is not the answer" and have it land.
+   */
+  'retinal-detachment': Object.freeze({
+    title: 'Where the separation is, and why its size does not answer the question',
+    titleJa: '剥離がどこにあるか、そしてなぜ広さが答えにならないのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'attached',
+        frame: 'eye',
+        focus: ['retina', 'macula'],
+        certainty: 'established',
+        title: 'One layer lying against another',
+        titleJa: '層と層が接しています',
+        body: 'The light-sensing layer at the back of the eye lies against the layer behind it. One small part of it, right at the back, is where fine detail is seen.',
+        bodyJa: '眼の奥にある光を受け取る層は、その後ろの層に接しています。そのうち最も奥にある小さな一部分が、細かいものを見るための場所です。',
+        look: 'The small bright patch at the back is that part. Keep an eye on it.',
+        lookJa: '奥にある小さな明るい部分がその場所です。ここに注目しておいてください。',
+      },
+      {
+        progress: 0.45,
+        stage: 'lifting',
+        frame: 'macula',
+        focus: ['separated', 'macula'],
+        // Started at the back, so the macula is inside it while the patch is
+        // still small — the first half of the comparison the walk exists for.
+        controls: { origin: 'posterior' },
+        certainty: 'established',
+        title: 'A small separation that does include it',
+        titleJa: '小さな剥離でも、そこを含むことがあります',
+        body: 'This separation started at the back and is a small one. The part that sees fine detail is inside it already.',
+        bodyJa: 'この剥離は奥から始まった小さなものです。細かいものを見るための部分は、すでにその中に入っています。',
+        look: 'Not much has come away, and the bright patch has changed colour.',
+        lookJa: '剥がれた範囲は大きくありませんが、明るい部分の色が変わりました。',
+      },
+      {
+        progress: 0.8,
+        stage: 'reaching',
+        frame: 'back',
+        focus: ['separated', 'macula'],
+        // The other half: much more of the layer, started at the edge, and the
+        // opposite answer. Size did not decide either of them.
+        controls: { origin: 'superior' },
+        certainty: 'established',
+        title: 'A much larger one that does not',
+        titleJa: 'ずっと広い剥離でも、含まないことがあります',
+        body: 'This separation started at the edge and covers many times as much of the layer. The part that sees fine detail is still lying where it was.',
+        bodyJa: 'この剥離は周辺から始まり、層の何倍もの範囲に及んでいます。それでも細かいものを見るための部分は、もとの位置に接したままです。',
+        look: 'Far more has come away, and the bright patch has not changed colour. Size decided neither of these.',
+        lookJa: '剥がれた範囲ははるかに広いのに、明るい部分の色は変わっていません。どちらも広さで決まっていません。',
+      },
+      {
+        progress: 0.8,
+        stage: 'reaching',
+        frame: 'eye',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice',
+        titleJa: '人が気づくこと',
+        body: 'Floating specks, flashes, and a shadow coming in from one side are described. What anybody notices is not something this picture works out.',
+        bodyJa: '飛蚊症、光が走る感じ、片側から影が広がってくる感じなどが語られます。誰が何に気づくかは、この絵が導き出すものではありません。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 0.8,
+        stage: 'reaching',
+        frame: 'eye',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture says nothing about sight, now or later',
+        titleJa: 'この絵は、いまも先も、見え方について何も述べていません',
+        body: 'Everything here is about where one layer is with respect to another. What anybody can see, and what returns, are not on this screen.',
+        bodyJa: 'ここにあるのはすべて「ある層が別の層に対してどこにあるか」の話です。何が見えるか、何が戻るかは、この画面にはありません。',
+        look: 'Where sight would be listed, the screen says it is not in this model — rather than leaving the line out.',
+        lookJa: '見え方が並ぶはずの場所には、行を省くのではなく「このモデルにはありません」と表示されています。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

@@ -149,6 +149,15 @@ import {
   TARGETS as DISC_TARGETS,
   solveLumbarDiscHerniation,
 } from '../src/models/lumbarDiscHerniation.js';
+import { RetinalDetachmentScene } from '../src/scenes/sensory/scenes/retinalDetachment/RetinalDetachmentScene.js';
+import { SITES as EYE_SITES, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
+import {
+  GLOBE as RD_GLOBE,
+  MAX_ARC as RD_MAX_ARC,
+  MAX_LIFT as RD_MAX_LIFT,
+  ORIGINS as RD_ORIGINS,
+  solveRetinalDetachment,
+} from '../src/models/retinalDetachment.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1788,4 +1797,54 @@ test('calibration: every direction arrives before the top of the axis, and the f
   }
   assert.ok(far > near && far > canal, 'the furthest thing is reached last');
   assert.ok(DISC_MAX_REACH > 0);
+});
+
+// --- retinal detachment ----------------------------------------------------
+
+test('calibration: the detachment model and the eye atlas measure the same globe', () => {
+  // Defends `atlas-globe-and-angles`. The model may not import `three`, so the
+  // globe and the angles are copied — and the scene's own direction table is
+  // what makes those angles true. All three have to agree.
+  const eye = buildEyeball({});
+  const macula = new THREE.Vector3(...EYE_SITES.fovea).normalize();
+  for (const origin of RD_ORIGINS.filter((o) => o.toMacula !== null)) {
+    const direction = RetinalDetachmentScene.ORIGIN_DIRECTION[origin.id];
+    assert.ok(direction, `${origin.id} has a direction in the scene`);
+    const degrees = (direction.angleTo(macula) * 180) / Math.PI;
+    assert.ok(
+      Math.abs(degrees - origin.toMacula) < 6,
+      `${origin.id}: the scene aims ${degrees}° from the macula where the model says ${origin.toMacula}°`
+    );
+  }
+  assert.ok(RD_GLOBE.retina[0] < RD_GLOBE.choroid[1], 'the retina sits inside the layer it separates from');
+  eye.dispose?.();
+});
+
+test('calibration: a peripheral separation arrives late and a posterior one at once', () => {
+  // Defends `how-far-the-arc-goes`. The constant carries no claim; what it has
+  // to deliver is a long span where a peripheral separation has not reached the
+  // macula, and an arrival before the axis runs out.
+  const arrival = (origin) => {
+    for (let step = 0; step <= 100; step += 1) {
+      if (solveRetinalDetachment(step / 100, { origin }).maculaInside) return step / 100;
+    }
+    return null;
+  };
+  for (const origin of ['superior', 'temporal', 'inferior']) {
+    const when = arrival(origin);
+    assert.ok(when !== null && when <= 1, `${origin} never arrives within the axis`);
+    assert.ok(when > 0.6, `${origin} arrives at ${when}, too early to show a span without it`);
+  }
+  assert.ok(arrival('posterior') < 0.2, 'and a posterior start is inside almost at once');
+  assert.ok(RD_MAX_ARC > 0);
+});
+
+test('calibration: the drawn lift is far larger than the atlas’s own coat spacing, and says so', () => {
+  // Defends `the-lift-is-drawn-not-measured`. What must hold is the gap between
+  // the two: the drawn height has to be unmistakably not the real spacing, so
+  // nobody can read it as one.
+  const coatGap = RD_GLOBE.choroid[1] - RD_GLOBE.retina[0];
+  assert.ok(coatGap < 0.02, `the atlas's own spacing is ${coatGap}, which is invisible`);
+  assert.ok(RD_MAX_LIFT > coatGap * 8, 'so the drawn lift is much larger, and cannot be read as the spacing');
+  assert.ok(RD_MAX_LIFT < 0.25, 'while still leaving the sheet on a globe rather than beside one');
 });

@@ -208,6 +208,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'urinary-obstruction': MECHANISM_LEVEL.ILLUSTRATIVE,
     'lobar-collapse': MECHANISM_LEVEL.ILLUSTRATIVE,
     'lumbar-disc-herniation': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'retinal-detachment': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 
