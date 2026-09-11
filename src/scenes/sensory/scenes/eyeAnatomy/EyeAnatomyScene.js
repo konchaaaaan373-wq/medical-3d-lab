@@ -33,9 +33,10 @@ export class EyeAnatomyScene extends OrganAnatomyScene {
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
 
   /** A globe with a nerve and four muscles behind it; the widest whole view
-   *  fills the frame's width at an aspect of 1.54: the nerve and the muscles
-   *  run back a long way behind a globe that is only two units across. */
-  static framing = { minHorizontalAspect: 1.6 };
+   *  fills the frame's width at an aspect of 1.05. It is above 1 because the
+   *  subject is deeper than it is wide, and a reserve much above that makes the
+   *  eye tiny on a phone — see F-49. */
+  static framing = { minHorizontalAspect: 1.15 };
 
   static colorModes = EYE_COLOR_MODES;
 

@@ -147,8 +147,10 @@ const SCENE_POINTS = {
   'spine-anatomy': [[0.5, 0.22], [0.5, 0.4], [0.5, 0.58], [0.5, 0.76]],
   // The dome, the nipple on it, the axilla up to the left and the chest wall behind.
   'breast-anatomy': [[0.52, 0.5], [0.52, 0.44], [0.36, 0.3], [0.66, 0.62]],
-  // Neck, axilla, the duct up the middle, and the groin.
-  'lymphatic-drainage': [[0.5, 0.28], [0.42, 0.38], [0.52, 0.46], [0.46, 0.72]],
+  // The node beads, not the ducts: a duct is a few pixels wide and the body
+  // silhouette behind it is drawn too faint to be clickable at all, so a miss
+  // lands on nothing. Neck, both armpits, and the groin.
+  'lymphatic-drainage': [[0.53, 0.16], [0.41, 0.33], [0.59, 0.33], [0.45, 0.81]],
   // The node itself, its inside, an afferent vessel on the left and the efferent on the right.
   'lymph-node-anatomy': [[0.5, 0.47], [0.5, 0.42], [0.34, 0.4], [0.63, 0.52]],
   // Down the cut face: epidermis, dermis, subcutis — and the hair off to the side.
