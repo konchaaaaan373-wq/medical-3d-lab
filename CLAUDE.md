@@ -27,6 +27,9 @@ npm run build      # vite build
   誤解を生みうる場所
 - `docs/architecture/intended-use-and-model-provenance.md` — 用途と出典の境界の所有文書。
   `docs/asset-pipeline.md` — 外部 3D asset の工程と停止条件
+- `docs/pathology-explanation-handoff.md` — 病態シーンが臨床家向けと患者向けの
+  両方を持つための契約と、その境界。`docs/pulse-engine-poc.md` — Pulse Physiology
+  Engine を調べた結果と、なぜまだ何も繋いでいないか
 - `docs/follow-ups.md` — **マージ済みだが未確認・未決定・先送りの残課題台帳**。
   一区切りの PR を出すときはここに書き足し、解決したら Resolved へ移す
 

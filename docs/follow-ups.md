@@ -190,6 +190,61 @@ model card の **§11 Where it could mislead** と evidence dossier の §3 で�
 - 決めること: 区域対応を将来つけるか（つけるなら病態ごとの分布根拠が必要）。
 - 完了の定義: `disease-candidates.md` か `anatomy-specs.md` に判断を記録。
 
+
+### F-40 患者説明を持つシーンの臨床レビュー — P1（病態説明の展開）
+
+7 シーン（COPD・喘息・肺炎・肺塞栓症・肺水腫・門脈圧亢進症・肝腎症候群）に
+患者向け説明を書きました。**どれも公開されていません。** `featuresForScene()`
+は reviewed + 現行系統の医学レビュー完了でしか患者モードを開かず、現在の
+レビュー状態は COPD・喘息が `stale`、他 5 つが `pending` です。preview ビルド
+（`VITE_ALLOW_PREVIEW=1`）でのみ `authoredFeaturesForScene()` が開き、
+production バンドルにはそもそも入りません。
+
+- レビューで確かめること（model card の新しい節「Who it is said to, and where
+  it stops」に各シーンぶん書きました）:
+  - 各 step の `certainty`（`established` / `associated`）の割り当て。とくに
+    症状の step を `associated` にとどめている判断。
+  - `educationalOnly` の付け方。「モデルが出していないものに全部ついているか」
+    と「ついているのに実はモデルが出しているものはないか」の両方向。
+  - 日本語コピーが英語の翻訳ではなく、同じ主張になっているか。
+  - COPD の step 2 と step 5 がモデル制御を動かすこと（正常肺→気道狭窄、
+    そこへ弾性収縮力の低下）が、臨床的に説明として妥当な順序か。
+- 完了の定義: `docs/clinical-reviews/registry.json` が `reviewed` になり、
+  `tests/clinical-reviews.test.js` が通る。それまで患者モードは開きません。
+
+### F-41 腎濾過（`renal-filtration`）の患者説明をどの situation で書くか — P2（病態説明の展開）
+
+このシーンだけ患者説明を書いていません。理由は書けなかったからではなく、
+**軸の意味が situation によって変わる**からです。ステージは `intact` /
+`compensating` / `established` という総称で、「何が代償しているか」は
+`situation`（prerenal ほか）が決めます。1 本の患者説明はどれか 1 つを選んで
+「これはその状況の話です」と言わなければならず、それは書く前に決める判断です。
+
+- 決めること: どの situation を代表として歩くか。あるいは situation ごとに
+  複数の guide を持てるようにするか（`patientGuideFor(sceneId)` は 1 対 1 です）。
+- 付随して: `situation` は文字列の制御で、`guideModelStateProblems()` は数値しか
+  検証できません。step が situation を選べるようにするなら、選択肢を持つ制御の
+  検証を足す必要があります。
+- 完了の定義: 代表 situation を決めて `docs/model-cards/renal-filtration.md` に
+  1 行書き、guide を足して `tests/pathology-guides.test.js` に行を追加。
+
+### F-42 Pulse Physiology Engine の PoC は未実行 — P3（病態説明の展開）
+
+[`docs/pulse-engine-poc.md`](pulse-engine-poc.md) に調べたことを全部書きました。
+**ライセンス（Apache 2.0）は確認できましたが、エンジン自体はこの環境から一切
+取得できません** — Kitware のドメインは egress policy で遮断されており、PyPI の
+`pulse-engine` は同名の無関係なプロジェクト（ダウンロードして確認済み）、
+conda-forge には存在しません。したがって CDM のフィールド名も出力一覧も
+**未検証のまま**で、検索で出てきた JSON は記録していません。
+
+- 残る判断は設計のほうで、そちらは走らせなくても出ています: Pulse が足せるのは
+  COPD・喘息の両 scope が明示的に除外しているもの（ガス交換）であり、既存
+  シーンに数値を足す話ではなく **別モデル・別 model profile・別 dossier** の話です。
+- 次の 1 手: Kitware に到達できる環境で Python binding を入れ、標準患者に COPD
+  condition を 2 段階の severity で与えて、エンジン自身の出力一覧を印字する。
+- 完了の定義: フィールド名・単位・出力・実行方法を `pulse-engine-poc.md` に
+  実測で書き換える。それまで統合の判断はしません。
+
 ---
 
 ## C. 製品・UI の判断
@@ -374,6 +429,37 @@ production ビルドはアンロックできなくなりました（`VITE_ALLOW_
 `docs/grand-design.md` §3「現在地」のシーン数・モデル層本数は手で更新して
 おり、`#40` と `#42` の連続マージで一度ずれました（本 PR で修正）。
 `tests/` でカタログの実数と照合するか、表を生成にする。
+
+
+### F-43 `verify:patient` は CI に入っていない — P2（病態説明の展開）
+
+`npm run verify:patient`（`scripts/check-patient-explanation.mjs`）は患者説明を
+実ブラウザで歩かせ、step が宣言したとおりにカメラとモデルが動いたか、指している
+構造がヘッダとコンソールのあいだの帯に入っているかを測ります。**この工程だけで
+実際に 10 件の欠陥を見つけました**（横隔膜・換気単位・コンソリデーション領域・
+側副血行路・輸入細動脈のラベルが隠れていた、腎臓の比較が 1 つしか描かれて
+いなかった、ほか）。`npm test` では原理的に見えないものです。
+
+- いまの制約: Playwright を `--no-save` で入れる必要があり、preview ビルド
+  （`VITE_ALLOW_PREVIEW=1`）が要ります。`verify:anatomy` と同じ形なので、
+  ワークフローの作り方はそちらを踏襲できます。
+- 決めること: 既存の browser validation ワークフローに相乗りするか、独立させるか。
+  7 シーンぶんで所要は 2 分程度です。
+- 完了の定義: `.github/workflows/` のどれかから 7 シーンぶん走り、失敗が
+  PR に出る。
+
+### F-44 `verify:patient` は有料プラミングをスタブする — P3（病態説明の展開）
+
+患者モードは entitlement で閉じており、コピーは Netlify function から来ます。
+どちらもこのチェックの対象ではなく、静的ビルドの前では動かないので、スクリプトは
+localStorage にセッションを置き、`entitlements` と `paid-content` を
+route intercept で答えています（`paid-content` にはこのリポジトリ自身の guide を
+返します）。**アプリ・シーン・モデル・カメラ・パネルはすべて本物です。**
+
+- 残る穴: entitlement が実際に閉じることと、function が正しい guide を返すことは
+  `tests/access.test.js` 側の担当で、ブラウザでは確かめていません。
+- 決めること: 本物のセッションで 1 度だけ通す経路を用意するか、現状の分担で
+  よしとするか。
 
 ---
 
