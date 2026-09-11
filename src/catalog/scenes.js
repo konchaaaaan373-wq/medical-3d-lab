@@ -681,6 +681,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hematologic/scenes/spleenFiltration/index.js'),
   },
   {
+    id: 'knee-anatomy',
+    slug: 'knee-anatomy',
+    titleEn: 'Interactive knee anatomy',
+    titleJa: '触れて学ぶ膝関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'knee',
+    organs: ['knee', 'bone'],
+    disease: null,
+    conditions: ['knee anatomy', 'cruciate ligament', 'meniscus', 'collateral ligament', '膝関節解剖', '十字靱帯', '半月板', '側副靱帯'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/knee-anatomy.md',
+    modelProfile: 'knee-anatomy-procedural-atlas',
+    description:
+      'Femur on tibia, cartilage over every surface that meets another, both menisci between them, and the four ligaments that decide what the joint will and will not do.',
+    descriptionJa:
+      '脛骨の上の大腿骨、接する面を覆う関節軟骨、その間の半月板、そして関節の動きを決める4本の靱帯を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/kneeAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

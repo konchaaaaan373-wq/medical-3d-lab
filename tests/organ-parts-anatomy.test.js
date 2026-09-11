@@ -23,6 +23,7 @@ import { CAVITY_CORNERS, buildUterusParts } from '../src/scenes/reproductive/org
 import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
 import { buildProstateZones } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
 import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
+import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -770,4 +771,126 @@ test('the male tract is one chain, and every link in it meets the next', () => {
       `and not inside the ${side} cavernosum`
     );
   }
+});
+
+// --- the knee ---------------------------------------------------------------
+
+test('the knee’s ligaments each run between the two things they hold together', () => {
+  // A joint is a set of relations, so the arrangement *is* the model. What is
+  // checked is which structure runs between which two points: the cruciates
+  // inside the notch and crossing, the collaterals outside on their own sides,
+  // each meniscus between its own pair of surfaces, and the extensor mechanism
+  // as one chain with a bone in the middle of it.
+  const knee = buildKneeJoint();
+  knee.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(knee.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+
+  // A right knee, so medial points towards the patient's left. Every side below
+  // goes through `MEDIAL`; nothing here reads a sign of its own.
+  assert.equal(patientSide(at('medial-femoral-condyle')), 'left', 'a right knee: medial is the patient’s left');
+  assert.equal(patientSide(at('lateral-femoral-condyle')), 'right', 'and lateral the patient’s right');
+  assert.ok(at('fibula').x * MEDIAL < 0, 'the fibula is on the lateral side');
+
+  // The notch is the gap between the two condyles, and it is where both
+  // cruciates are. That is why it is not drawn as a structure.
+  //
+  // And it is only behind: in front the two condyles run together into the
+  // surface the patella slides on, so the gap cannot be read off a bounding box.
+  const innerEdge = (side, within) => {
+    const mesh = knee.mesh(`${side}-femoral-condyle`);
+    const position = mesh.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    let edge = null;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).add(mesh.position);
+      if (!within(vertex)) continue;
+      const towardsMidline = vertex.x * (side === 'medial' ? MEDIAL : -MEDIAL);
+      if (edge === null || towardsMidline < edge) edge = towardsMidline;
+    }
+    assert.ok(edge !== null, `the ${side} condyle has a surface there at all`);
+    return edge;
+  };
+  const behind = (vertex) => vertex.z < -0.3;
+  // In front of the notch, but not at the very front: the groove the patella
+  // runs in is a dip *between* the two condyles, so the most anterior surface
+  // of each is again its own.
+  const inFront = (vertex) => vertex.z > 0.1;
+  assert.ok(
+    innerEdge('medial', behind) > 0.05 && innerEdge('lateral', behind) > 0.05,
+    'behind, the two condyles stand apart: the gap between them is the notch'
+  );
+  assert.ok(
+    innerEdge('medial', inFront) <= 0 && innerEdge('lateral', inFront) <= 0,
+    'in front they meet, which is the surface the patella runs on — not a hole'
+  );
+  for (const id of ['anterior-cruciate-ligament', 'posterior-cruciate-ligament']) {
+    const middle = at(id);
+    assert.ok(
+      Math.abs(middle.x) < innerEdge('medial', behind) + 0.2,
+      `the ${id} runs in the notch between the condyles`
+    );
+    assert.ok(box(id).min.z < -0.3, `and the ${id} reaches back into it`);
+  }
+
+  // Cruciate means crossing: the ACL comes off the *lateral* condyle and runs
+  // forward as it descends, the PCL off the *medial* one and runs backwards.
+  const attachment = (id) => new THREE.Vector3(...ATTACHMENTS[id]);
+  assert.ok(attachment('aclFemoral').x * MEDIAL < 0, 'the ACL starts on the lateral condyle’s inner wall');
+  assert.ok(attachment('pclFemoral').x * MEDIAL > 0, 'the PCL starts on the medial condyle’s inner wall');
+  for (const [femoral, tibial] of [['aclFemoral', 'aclTibial'], ['pclFemoral', 'pclTibial']]) {
+    assert.ok(attachment(tibial).y < attachment(femoral).y, `${femoral} → ${tibial} descends`);
+  }
+  assert.ok(attachment('aclTibial').z > attachment('aclFemoral').z, 'the ACL runs forward as it descends');
+  assert.ok(attachment('pclTibial').z < attachment('pclFemoral').z, 'the PCL runs backwards as it descends');
+  assert.ok(attachment('aclTibial').z > attachment('pclTibial').z, 'so at the tibia the ACL is the anterior one');
+  assert.ok(attachment('aclFemoral').z < attachment('pclFemoral').z, 'and at the femur it is the posterior one — they cross');
+
+  // The collaterals are outside, one down each side, and only one of them ends
+  // on the fibula. That is the whole of why the lateral meniscus is mobile.
+  const mcl = box('medial-collateral-ligament');
+  const lcl = box('lateral-collateral-ligament');
+  assert.ok(mcl.min.x * MEDIAL > at('medial-femoral-condyle').x * MEDIAL, 'the MCL lies outside the medial condyle');
+  assert.ok(lcl.max.x * MEDIAL < at('lateral-femoral-condyle').x * MEDIAL, 'the LCL lies outside the lateral condyle');
+  assert.ok(lcl.intersectsBox(box('fibula')), 'the LCL ends on the head of the fibula');
+  assert.ok(!mcl.intersectsBox(box('fibula')), 'and the MCL does not');
+  assert.ok(mcl.min.y < box('medial-tibial-plateau').min.y, 'the MCL reaches well below the joint line');
+
+  // Each meniscus is between its own condyle and its own plateau.
+  for (const side of ['medial', 'lateral']) {
+    const meniscus = at(`${side}-meniscus`);
+    assert.equal(patientSide(meniscus), patientSide(at(`${side}-femoral-condyle`)), `the ${side} meniscus is on its own side`);
+    assert.ok(meniscus.y < at(`${side}-femoral-condyle`).y, `and below the ${side} condyle`);
+    assert.ok(meniscus.y > at(`${side}-tibial-plateau`).y, `and above the ${side} plateau`);
+  }
+
+  // The two bones never touch: one structure, four meshes, each of them
+  // standing off the surface it covers.
+  // It stands off the surfaces that meet — distal and posterior on a condyle,
+  // the top of a plateau — and nowhere else: a layer that enclosed the whole
+  // bone would be a coat of paint, and it would hide the bone it covers.
+  const cartilage = new Map(knee.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  for (const side of ['medial', 'lateral']) {
+    const condyle = box(`${side}-femoral-condyle`);
+    const overCondyle = cartilage.get(`${side}-condylar-cartilage`);
+    assert.ok(overCondyle.min.y < condyle.min.y, `the ${side} condyle's cartilage covers its distal surface`);
+    assert.ok(overCondyle.min.z < condyle.min.z, 'and its posterior surface');
+    assert.ok(overCondyle.max.y <= condyle.max.y + 1e-6, 'and does not climb the shaft above it');
+
+    const plateau = box(`${side}-tibial-plateau`);
+    const overPlateau = cartilage.get(`${side}-plateau-cartilage`);
+    assert.ok(overPlateau.max.y > plateau.max.y, `the ${side} plateau's cartilage covers its top`);
+    assert.ok(overPlateau.min.y >= plateau.min.y - 1e-6, 'and not its underside, which meets nothing');
+  }
+
+  // The extensor mechanism is one chain from thigh to shin with the patella in
+  // the middle of it, not two tendons that happen to point the same way.
+  const patella = box('patella');
+  assert.ok(patella.getCenter(new THREE.Vector3()).z > at('medial-femoral-condyle').z, 'the patella is in front of the condyles');
+  const quadriceps = box('quadriceps-tendon');
+  const patellar = box('patellar-tendon');
+  assert.ok(quadriceps.max.y > patella.max.y && quadriceps.intersectsBox(patella), 'the quadriceps tendon arrives on top of the patella');
+  assert.ok(patellar.min.y < patella.min.y && patellar.intersectsBox(patella), 'and the patellar tendon leaves from below it');
+  assert.ok(patellar.distanceToPoint(attachment('tibialTuberosity')) < 0.02, 'ending at the tibial tuberosity');
+  assert.ok(attachment('tibialTuberosity').y < box('medial-tibial-plateau').min.y, 'which is below the joint line');
 });

@@ -669,5 +669,30 @@
       "The prostate here is one undivided translucent gland; its zones are `prostate-anatomy`.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning vasectomy, catheterisation, surgery or any fertility decision."
     ]
+  },
+  {
+    "sceneId": "knee-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right knee in extension — bones, articular cartilage, menisci, cruciate and collateral ligaments and the extensor mechanism — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/knee-anatomy.md",
+      "docs/model-evidence/knee-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement; bone shapes are simplified solids and cartilage thickness is drawn to be visible.",
+      "The joint is drawn at one position, in full extension, and nothing in the scene moves: rolling, gliding and the screw-home rotation are not represented.",
+      "Each ligament is one band between two points; the separate bundles of the cruciates and the layers of the medial collateral ligament are not modelled.",
+      "The joint capsule, the synovium and its bursae, the popliteus, the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns, the vessels and the nerves are not drawn.",
+      "No injury, degeneration or repair is represented in any form, and nothing here is anyone's knee.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, reconstruction or arthroplasty."
+    ]
   }
 ]

@@ -188,6 +188,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the capsule and the neurovascular bundles, the internal and external sphincters, the urethral crest and sinuses, the prostatic utricle and Denonvilliers’ fascia. The zone proportions are drawn so four zones can be told apart and are not the real ones — no volume may be read off the model',
   },
   {
+    organ: 'knee',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/kneeAnatomy — femur, both femoral condyles, both tibial plateaus, tibia, fibula and patella, the articular cartilage over every surface that meets another, both menisci, both cruciates, both collaterals and the two tendons of the extensor mechanism, selectable by name; tests/organ-parts-anatomy.test.js — the cruciates cross inside the notch between the condyles and run in opposite directions, the collaterals lie outside both condyles on their own sides, the lateral collateral ends on the fibula and the medial does not, each meniscus sits between its own condyle and plateau, and the extensor mechanism is one chain from femur to tibial tuberosity through the patella',
+    next: 'A3: the joint capsule and synovium with its bursae and the suprapatellar pouch, the popliteus and the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns as separate attachments, and the popliteal vessels and the nerves behind. Nothing here moves, which is the first thing a knee scene beyond anatomy would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

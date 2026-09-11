@@ -17,6 +17,7 @@ import { AdrenalAnatomyScene } from '../src/scenes/endocrine/scenes/adrenalAnato
 import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
 import { ProstateAnatomyScene } from '../src/scenes/reproductive/scenes/prostateAnatomy/ProstateAnatomyScene.js';
 import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js';
+import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -54,6 +55,7 @@ const SCENES = [
   { id: 'uterus-anatomy', Scene: UterusAnatomyScene, minimum: 10 },
   { id: 'prostate-anatomy', Scene: ProstateAnatomyScene, minimum: 12 },
   { id: 'male-tract-anatomy', Scene: MaleTractAnatomyScene, minimum: 12 },
+  { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
 ];
 
 const built = new Map();
@@ -350,6 +352,10 @@ const DETAIL_VIEWS = new Set([
   'prostate-anatomy:vesicles',
   'male-tract-anatomy:testis',
   'male-tract-anatomy:junction',
+  // The bones are hidden in one and cut away in the other, so neither is
+  // showing the whole joint.
+  'knee-anatomy:ligaments-only',
+  'knee-anatomy:plateau-from-above',
 ]);
 
 /**

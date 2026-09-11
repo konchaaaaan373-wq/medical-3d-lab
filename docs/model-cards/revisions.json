@@ -328,5 +328,18 @@
     "cardRevision": 3,
     "modelDigest": "2427496d6a66f7a7",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "knee-anatomy",
+    "card": "docs/model-cards/knee-anatomy.md",
+    "modelSources": [
+      "src/data/kneeAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/kneeJoint.js",
+      "src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "84f2a2a7276a902c",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
