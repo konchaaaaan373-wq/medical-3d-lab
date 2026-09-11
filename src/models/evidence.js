@@ -1938,13 +1938,13 @@ export const UTERINE_FIBROID_EVIDENCE = defineEvidence('uterine-fibroid', [
 
 export const GOITRE_EVIDENCE = defineEvidence('multinodular-goitre', [
   {
-    id: 'the-neck-is-soft-but-the-inlet-is-not',
+    id: 'the-neck-gives-way-more-than-the-inlet',
     claim:
-      'A goitre enlarging in the neck mostly displaces the airway rather than narrowing it, because everything around it will move. The thoracic inlet is the exception: it is a ring of bone, and a gland that has followed the airway down into it has nowhere to push, so the same amount of tissue narrows the airway instead.',
+      'A goitre enlarging in the neck spends most of itself displacing the airway and the rest narrowing it, because the surrounding neck gives way readily. Below the thoracic inlet the gland is enclosed by structures that cannot move aside, so the same amount of tissue is spent mostly on narrowing instead. This is a shift in the balance and not a rule about where compression can occur: a cervical goitre can deviate, compress and narrow the airway.',
     confidence: CONFIDENCE.ESTABLISHED,
     source:
-      'Standard descriptions of multinodular goitre: tracheal deviation in the neck, compression where the gland is retrosternal, and the thoracic inlet as the level at which a goitre is confined.',
-    validation: 'physiology: the airway is pushed aside where the neck is soft and narrowed where it is not',
+      'Standard descriptions of multinodular goitre: tracheal deviation and compression in the neck, and the thoracic inlet as the level below which a gland is enclosed by structures that cannot move aside, so compression becomes the more prominent problem.',
+    validation: 'physiology: displacement dominates in the neck and narrowing dominates at the inlet',
     layer: LAYER.EXTERNAL,
   },
   {

@@ -406,8 +406,8 @@
     "modelSources": [
       "src/models/multinodularGoitre.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "f4ade682ad27c70a",
+    "cardRevision": 3,
+    "modelDigest": "050b26e69d3bdbe5",
     "cardUpdatedAt": "2026-09-11"
   },
   {

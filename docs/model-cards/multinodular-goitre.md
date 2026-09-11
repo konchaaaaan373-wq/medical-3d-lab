@@ -25,6 +25,15 @@ structures on the gland's posterior surface.
 The direction is a **scenario and not a severity**. Four arrangements, and a
 goitre does not pass from one to the next.
 
+The split between moving and narrowing is a **difference of degree**. Every
+direction that reaches the airway both displaces and narrows it; what the
+direction sets is the share. In the neck the surroundings give way readily, so
+displacement takes the larger share and narrowing the smaller one; at the
+thoracic inlet the gland is enclosed by structures that cannot move aside, so
+the shares reverse. **This model does not claim that a goitre in the neck
+cannot compress or narrow the airway** — it claims that the same volume buys
+less narrowing there than it does below the inlet.
+
 ## 3. What it is not
 
 **It contains no thyroid function of any kind.** No hormone, no TSH, no uptake,
@@ -82,14 +91,17 @@ Declared in `VISUAL_MAPPING` (`src/data/multinodularGoitre.js`):
   shape they grow *into* is drawn rather than solved: this model has one distance
   in it and no nodules.
 - The airway is bent across by the distance the model says it was pushed, and
-  narrowed at the inlet by the fraction it reports. **That fraction is against
-  this model's own resting width and is not a tracheal diameter.**
+  narrowed by the fraction it reports — the large fraction at the inlet and the
+  small one in the neck. **That fraction is against this model's own resting
+  width and is not a tracheal diameter.**
 - The nerve and the parathyroid glands are lit once the gland reaches back past
   them. **Lit is where they are, not what has happened to them.**
 
 The scene draws two things the atlas does not have, and both are declared: its
-own airway, because whether that is bent or narrowed is the subject; and the
-thoracic inlet, because it is the boundary the whole claim rests on.
+own airway, because how much of it is bent and how much narrowed is the
+subject; and the thoracic inlet, because it is where the surroundings stop
+giving way. **The ring is not a claim that nothing above it can be
+compressed.**
 
 ## 10. Known failure modes
 
@@ -125,7 +137,8 @@ has passed. All of those are outside it.
 
 ## 14. Evidence and review
 
-The dossier records the soft neck and the rigid inlet, the invariant volume, the
+The dossier records the neck that gives way and the inlet that does not, the
+invariant volume, the
 posterior arrangement and the need for asymmetry as the externally supported
 claims, and declares the atlas's proportions, the face area and the twelve
 direction coefficients as things this repository chose. Independent clinical

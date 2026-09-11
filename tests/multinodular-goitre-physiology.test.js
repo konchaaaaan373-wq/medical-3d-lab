@@ -17,27 +17,33 @@ import { MultinodularGoitreScene } from '../src/scenes/endocrine/scenes/multinod
 const PLACES = ['anterior', 'medial', 'posterior', 'retrosternal'];
 const at = (direction, burden = BURDEN_RANGE.max) => solveMultinodularGoitre({ direction, burden });
 
-test('physiology: the airway is pushed aside where the neck is soft and narrowed where it is not', () => {
-  // The whole claim. Three of the four directions displace the airway and leave
-  // it open; the one that has followed it into a ring of bone narrows it.
+test('physiology: displacement dominates in the neck and narrowing dominates at the inlet', () => {
+  // The whole claim, and it is a claim about **shares**. A goitre in the neck
+  // both moves the airway and narrows it; so does one below the inlet. What
+  // the direction sets is which of the two takes the larger part.
   const inTheNeck = at('medial');
   const behindTheSternum = at('retrosternal');
 
   assert.equal(inTheNeck.airwayEffect, 'pushed aside');
-  assert.ok(inTheNeck.tracheaWidthFraction > 0.9, 'and it is still open');
   assert.ok(inTheNeck.deviationRadii > 1, 'having moved more than its own radius');
 
-  assert.equal(behindTheSternum.airwayEffect, 'narrowed');
-  assert.equal(behindTheSternum.confined, true, 'because something refuses to move');
-  assert.ok(behindTheSternum.tracheaWidthFraction < 0.6, 'and it is not open');
-  assert.ok(behindTheSternum.deviationRadii < 0.3, 'while barely moving at all');
+  // **The neck narrows too.** The model must not be readable as "a cervical
+  // goitre cannot compress the airway": the share is the minority one, not zero.
+  assert.ok(inTheNeck.tracheaWidthFraction < 0.95, 'a large cervical goitre does narrow the airway');
+  assert.ok(inTheNeck.tracheaWidthFraction > 0.6, 'but narrowing is not what most of it did');
+  assert.ok(inTheNeck.indent > 0, 'and the narrowing is a real quantity, not a rounding artefact');
 
-  // The two are not a matter of degree: the confined one narrows more while
-  // displacing less, which a single severity axis cannot produce.
+  assert.equal(behindTheSternum.airwayEffect, 'narrowed');
+  assert.equal(behindTheSternum.confined, true, 'because the surroundings cannot move aside');
+  assert.ok(behindTheSternum.tracheaWidthFraction < 0.6, 'and most of the tissue went into narrowing');
+  assert.ok(behindTheSternum.deviationRadii < 0.3, 'while barely moving it at all');
+
+  // The two are not a matter of degree along one axis: the enclosed one narrows
+  // more while displacing less, which a single severity axis cannot produce.
   assert.ok(behindTheSternum.tracheaWidthFraction < inTheNeck.tracheaWidthFraction);
   assert.ok(behindTheSternum.deviationRadii < inTheNeck.deviationRadii);
 
-  // And the direction with nothing in the way does neither.
+  // And the direction that is not aimed at the airway does neither.
   assert.equal(at('anterior').airwayEffect, 'neither');
   assert.equal(at('anterior').tracheaWidthFraction, 1);
 });
