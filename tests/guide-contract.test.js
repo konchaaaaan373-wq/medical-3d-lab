@@ -159,12 +159,13 @@ test('guide contract: the amyloid guide does not close the causal chain', () => 
   }
 });
 
-test('guide contract: the ischaemia guide never lets the colour mean necrosis', () => {
-  // This model has no infarction in it — no necrosis, no scar, no infarct
-  // expansion — and its own scope says so. A patient looking at a discoloured
-  // wall will reach for "dead muscle" unless the words stop them, so the step
-  // that introduces the colour says what it means, and no step anywhere uses
-  // the language of infarction.
+test('guide contract: the ischaemia guide says what the colour is, and never says infarction', () => {
+  // What this checks is the *copy*, not what a reader ends up believing. The
+  // model has no infarction in it — no necrosis, no scar, no infarct expansion
+  // — and the colour is an educational emphasis of the ischaemic region. A
+  // patient looking at a discoloured wall may still reach for "dead muscle";
+  // whether the words are enough to stop them is a clinical-review question,
+  // and no test here settles it.
   const steps = PATIENT_GUIDES['myocardial-ischemia'].steps;
   const colour = steps.find((step) => step.stage === 'burden');
   assert.match(colour.bodyJa, /壊死ではありません/);

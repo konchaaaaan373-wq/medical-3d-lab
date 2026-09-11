@@ -38,7 +38,14 @@ export function createModelScopePanel(scope) {
       ]),
       list(scope.answers, 'scope-answers'),
     ]),
-    section('What it does not represent', '表現していないこと', [list(scope.excludes, 'scope-excludes')]),
+    // `limits` is the older name for the same list, and three scenes still use
+    // it — myocardial ischaemia, pulmonary edema, renal filtration. Reading only
+    // `excludes` drew the heading with nothing under it, so the sentence those
+    // scenes most need on screen ("there is no infarction here — no necrosis,
+    // no scar") was declared, tested as data, and never shown to anybody.
+    section('What it does not represent', '表現していないこと', [
+      list(scope.excludes ?? scope.limits, 'scope-excludes'),
+    ]),
     scope.cautions?.length
       ? section('Where it will mislead', '誤解しやすいところ', [list(scope.cautions, 'scope-cautions')])
       : null,

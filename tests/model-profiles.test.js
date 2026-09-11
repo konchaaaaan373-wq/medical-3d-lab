@@ -199,7 +199,10 @@ test('the two atlas scenes are the only asset-backed geometry, and each names a 
 
   const heart = modelProfileForScene(sceneById('heart-anatomy'));
   assert.deepEqual(heart.assets, [], 'the heart file is not in the asset manifest, and is not claimed to be');
-  assert.deepEqual(profileCandidateAssets(heart), ['hubmap-vh-m-heart']);
+  // Both files the scene loads. It draws the heart and the great-vessel
+  // geometry, and a profile that lists one of them leaves the other on screen
+  // with nobody credited for it — `tests/attribution.test.js` holds that end.
+  assert.deepEqual(profileCandidateAssets(heart), ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature']);
   for (const id of profileCandidateAssets(heart)) {
     assert.ok(devAssetById(id), `${id} is a pinned candidate in devAssets.js`);
     assert.equal(assetById(id), null, `${id} must not be in the asset manifest until it is adopted`);

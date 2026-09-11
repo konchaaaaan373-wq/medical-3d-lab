@@ -60,6 +60,10 @@ export const SCENE_MANIFEST = [
       scenes: [
         {
           slug: 'amyloid-beta',
+          // Not a zoom: see `src/data/relatedContract.js`. The prose note below
+          // says why; this is the same thing in a form the panel can act on.
+          transitionType: 'scale-change',
+          scaleRelationship: 'schematic',
           label: 'Amyloid-β — a schematic at a different scale',
           labelJa: 'アミロイドβ — 別のスケールの模式図',
           why: 'Molecules around a single neuron, drawn as a diagram. **Not a zoom into this brain**: it has no anatomical scale and no place inside it.',

@@ -39,6 +39,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { attributionForScene } from '../catalog/attribution.js';
 import { createAnatomyTreePanel } from '../components/AnatomyTreePanel.js';
 import { createAnatomyPanel } from '../components/AnatomyPanel.js';
 import { createInspectionPanel } from '../components/InspectionPanel.js';
@@ -734,6 +735,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // The panel's summary already carries the name and the breadcrumb, and
         // a second copy inside the scrolling body is the copy that scrolls away.
         heading: !isAnatomyScene,
+        // Who to credit, read from the asset records rather than written into
+        // the panel: this panel serves every anatomy scene, and a literal was
+        // only ever right for one of them.
+        attribution: attributionForScene(entry?.id ?? entry?.slug ?? meta.id),
       })
     : null;
 

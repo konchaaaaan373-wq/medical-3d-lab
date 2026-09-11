@@ -48,11 +48,18 @@ export function anatomyStatusText(status) {
 
 /**
  * @param {object} scene
- * @param {{onPreferredView?: (id:string) => void, heading?: boolean}} [options]
+ * @param {{onPreferredView?: (id:string) => void, heading?: boolean,
+ *   attribution?: import('../catalog/attribution.js').SceneAttribution[]}} [options]
  *   `heading` renders the name and breadcrumb here as well; the anatomy panel
  *   turns it off because its summary already carries them.
+ *
+ *   `attribution` is who to credit for the geometry, resolved from the asset
+ *   records by `attributionForScene`. It used to be a literal link to one
+ *   repository, which was right for the brain and wrong for every other scene
+ *   this panel serves — the heart atlas rests on a HuBMAP CCF release and was
+ *   crediting the Brain Project.
  */
-export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true } = {}) {
+export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true, attribution = [] } = {}) {
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
@@ -95,15 +102,7 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
         class: 'anatomy-grade lang-ja',
         text: '肉眼解剖の学習用モデル・深部アトラス構造は近似',
       }),
-      el('a', {
-        class: 'anatomy-source',
-        href: 'https://github.com/itayinbarr/brainproject#attribution--licence',
-        target: '_blank',
-        rel: 'noreferrer',
-      }, [
-        el('span', { class: 'lang-en', text: 'Model source & licence ↗' }),
-        el('span', { class: 'lang-ja', text: 'モデル出典・ライセンス ↗' }),
-      ]),
+      ...creditNodes(attribution),
     ]),
   ]);
 
@@ -164,4 +163,48 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true 
       unsubscribeStatus?.();
     },
   };
+}
+
+/**
+ * The credit line for each asset the scene draws.
+ *
+ * A released asset links to the record that discharges its attribution
+ * obligation, not to the upstream page: the licence asks us to carry the
+ * credit, and the file that carries it is the thing to point at.
+ *
+ * A candidate links to where the file came from and says it is under
+ * examination. It deliberately does **not** name a licence — the record has
+ * read one, the release gate has not assessed it, and printing an SPDX id here
+ * would show a decision nobody has made.
+ */
+function creditNodes(attribution) {
+  return (attribution ?? []).flatMap((entry) => {
+    // `recordUrl`, not `record`: the second is a repository path and 404s.
+    const href = entry.released ? entry.recordUrl ?? entry.sourceUrl : entry.sourceUrl;
+    const label = entry.released
+      ? {
+          en: `${entry.sourceName}${entry.licenseName ? ` · ${entry.licenseName}` : ''} ↗`,
+          ja: `${entry.sourceName}${entry.licenseName ? ` · ${entry.licenseName}` : ''} ↗`,
+        }
+      : {
+          en: `Candidate asset under examination · ${entry.assetId} ↗`,
+          ja: `検討中の候補アセット · ${entry.assetId} ↗`,
+        };
+    const nodes = [];
+    if (href) {
+      nodes.push(el('a', {
+        class: entry.released ? 'anatomy-source' : 'anatomy-source is-candidate',
+        href,
+        target: '_blank',
+        rel: 'noreferrer',
+      }, [
+        el('span', { class: 'lang-en', text: label.en }),
+        el('span', { class: 'lang-ja', text: label.ja }),
+      ]));
+    }
+    if (!entry.released && entry.note) {
+      nodes.push(el('span', { class: 'anatomy-source-note', text: entry.note }));
+    }
+    return nodes;
+  });
 }

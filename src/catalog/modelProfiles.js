@@ -239,7 +239,9 @@ export const MODEL_PROFILES = Object.freeze([
     intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
     prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
     assets: [],
-    candidateAssets: ['hubmap-vh-m-heart'],
+    // Both files the scene loads, because credit has to cover everything drawn:
+    // listing only the heart left the vasculature geometry uncredited.
+    candidateAssets: ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature'],
     validationRecords: [],
     basis:
       'A gross-anatomy reference organ (HuBMAP CCF VH_M_Heart, segmented from the Visible Human Male) shown ' +

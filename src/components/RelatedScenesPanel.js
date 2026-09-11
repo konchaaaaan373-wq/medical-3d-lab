@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { TRANSITION_COPY } from '../data/relatedContract.js';
 
 /**
  * Where else this subject is shown, and what those other scenes are not.
@@ -27,18 +28,32 @@ export function createRelatedScenesPanel(related) {
   const scenes = related?.scenes ?? [];
   if (!scenes.length) return null;
 
-  const list = el('ul', { class: 'related-list' }, scenes.map((entry) =>
-    el('li', { class: 'related-item' }, [
+  const list = el('ul', { class: 'related-list' }, scenes.map((entry) => {
+    // A crossing to another scale is marked before the reader follows it, and
+    // the two kinds are marked differently — a magnified real part is a
+    // promise the model can keep, a schematic is not. `relatedContract.js`.
+    const scale = entry.transitionType === 'scale-change'
+      ? TRANSITION_COPY[entry.scaleRelationship] ?? null
+      : null;
+    const item = el('li', { class: 'related-item' }, [
       el('a', { class: 'related-link', href: `#/${entry.slug}` }, [
         el('span', { class: 'lang-en', text: entry.label }),
         el('span', { class: 'lang-ja', text: entry.labelJa }),
       ]),
+      scale
+        ? el('span', { class: 'related-scale', 'data-scale': entry.scaleRelationship }, [
+            el('span', { class: 'lang-en', text: scale.en }),
+            el('span', { class: 'lang-ja', text: scale.ja }),
+          ])
+        : null,
       el('span', { class: 'related-why' }, [
         el('span', { class: 'lang-en' }, emphasised(entry.why)),
         el('span', { class: 'lang-ja' }, emphasised(entry.whyJa)),
       ]),
-    ])
-  ));
+    ].filter(Boolean));
+    if (entry.transitionType) item.setAttribute('data-transition', entry.transitionType);
+    return item;
+  }));
 
   const note = related.note
     ? el('p', { class: 'related-note' }, [

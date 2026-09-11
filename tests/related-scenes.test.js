@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { createRelatedScenesPanel } from '../src/components/RelatedScenesPanel.js';
 import { HEART_RELATED } from '../src/data/heartAnatomy.js';
+import { RELATED as AMYLOID_RELATED } from '../src/data/amyloidBeta.js';
+import { relatedProblems } from '../src/data/relatedContract.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { SCENES } from '../src/catalog/index.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
@@ -136,4 +138,69 @@ test('related: the amyloid scene offers the way back', () => {
   // out where the structures are.
   const amyloid = SCENE_MANIFEST.find((scene) => scene.id === 'amyloid-beta');
   assert.equal(amyloid.related, undefined, 'declared on the scene, not the catalogue');
+});
+
+/**
+ * Crossing to another scale.
+ *
+ * The prose note already says brain anatomy and amyloid-β are separate models
+ * at separate scales. What the note cannot do is let the interface tell that
+ * case apart from a link between two models of one organ at one size, and the
+ * difference is not cosmetic: a reader who thinks the molecular diagram is what
+ * they would see by pushing in on a gyrus has been told something false.
+ *
+ * Two fields carry it (`src/data/relatedContract.js`), and the next two cases —
+ * kidney → nephron, lung → alveolus — are the other kind, `magnified-detail`.
+ */
+
+test('scale: every declared transition is one the contract knows', async () => {
+  const problems = [];
+  for (const entry of SCENE_MANIFEST) {
+    const module = await entry.load();
+    const meta = module.default?.meta ?? module.Scene?.meta ?? null;
+    const related = meta?.related ?? entry.related ?? null;
+    if (related) problems.push(...relatedProblems(related, entry.slug));
+  }
+  assert.deepEqual(problems, []);
+});
+
+test('scale: the brain crossing is marked a schematic in both directions', () => {
+  const brain = SCENE_MANIFEST.find((entry) => entry.slug === 'brain-anatomy');
+  const toAmyloid = brain.related.scenes.find((scene) => scene.slug === 'amyloid-beta');
+  assert.equal(toAmyloid.transitionType, 'scale-change');
+  assert.equal(toAmyloid.scaleRelationship, 'schematic');
+
+  const back = AMYLOID_RELATED.scenes.find((scene) => scene.slug === 'brain-anatomy');
+  assert.equal(back.transitionType, 'scale-change', 'the way back is the same crossing');
+  assert.equal(back.scaleRelationship, 'schematic');
+});
+
+test('scale: a schematic crossing says so on screen, before the link is followed', () => {
+  withFakeDom(() => {
+    const panel = createRelatedScenesPanel(AMYLOID_RELATED);
+    const [marker] = findByClass(panel.element, 'related-scale');
+    assert.ok(marker, 'the crossing is marked');
+    assert.match(textOf(marker), /模式図（拡大ではありません）/);
+    const [item] = findByClass(panel.element, 'related-item');
+    assert.equal(item.getAttribute('data-transition'), 'scale-change');
+  });
+});
+
+test('scale: a same-scale route carries no scale marker', () => {
+  withFakeDom(() => {
+    // The heart atlas points at two models of the same heart at the same size.
+    // Marking those "another scale" would make the word meaningless where it
+    // matters.
+    const panel = createRelatedScenesPanel(HEART_RELATED);
+    assert.equal(findByClass(panel.element, 'related-scale').length, 0);
+  });
+});
+
+test('scale: a scale-change that does not say which kind is refused', () => {
+  const problems = relatedProblems(
+    { scenes: [{ slug: 'nephron', transitionType: 'scale-change' }] },
+    'kidney'
+  );
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /must declare scaleRelationship/);
 });

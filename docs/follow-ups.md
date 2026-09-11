@@ -875,6 +875,78 @@ F-80 は実レンダリングを目で見て見つけたもので、`verify:ui` 
 - `.related-note` は 9px → 10px。パネルが存在する理由である一文です
 - 死んでいた `.scope-next-*`（F-79 で出力元が消えた）を削除
 
+### F-83 「表現していないこと」が、3 シーンで見出しだけ出ていた — 対応済み（B12 / UI）
+
+scope パネルは `scope.excludes` しか読んでいませんでしたが、心筋虚血・肺水腫・腎濾過の
+3 つは同じ一覧を **`limits`** という名前で宣言しています。結果、
+**見出し「表現していないこと」の下が空**のまま描かれていました。
+
+落ちていたのは、心筋虚血がいちばん必要とする一文です——
+「心筋梗塞かどうか。**ここに梗塞はありません**——壊死も瘢痕も梗塞拡大もありません。」
+宣言はされ、`tests/myocardial-ischemia-scene.test.js` が
+`meta.modelScope.limits.length >= 4` で**データとして**通っていたので、
+誰も気付きませんでした。**データを読むテストは、画面に出ているかを見ていません。**
+
+- パネルが `scope.excludes ?? scope.limits` を読むようにしました。pinned model source
+  （`src/data/pulmonaryEdema.js`）を触らずに 3 シーンとも直るのはこの形だけです
+- `tests/model-scope-panel.test.js` を新設。**パネルを組み立てて描画ノードを読み**、
+  manifest の全シーンで「見出しの下が空でない」ことを見ます
+
+### F-84 心筋虚血の色を、断定ではなく実装意図として書き直した — 対応済み（B12 / 医学表現）
+
+「blue-grey なので壊死には読めない」は**言い過ぎ**でした。色の見え方から誤認しないことは
+導けません。実装意図は「**虚血領域を教育目的で強調したもの**であり、壊死・梗塞・瘢痕を
+表していない」で、そこへ揃えました。
+
+- `MODEL_SCOPE.cautions` に 1 項目追加。**専門家表示の「誤解しやすいところ」に出ます**——
+  患者ガイドの文面だけに置くと、絵が何を主張しているか確かめる側が読めません
+- テスト名を「never lets the colour mean necrosis」→「says what the colour is, and never
+  says infarction」に変更。**検査しているのは文面であって、読者が何を信じるかではありません**
+- **誤認の可能性そのものは臨床レビュー項目として残します**（`docs/clinical-reviews/` の
+  6 段表で「最重要」に据えたまま）。色を変えるためだけの新しい検証工程は作りません
+
+### F-85 心臓アトラスが、脳プロジェクトをクレジットしていた — 対応済み（B12 / 公開準備）
+
+選択カードの脚注は **1 つのリポジトリへのリテラルなリンク**でした。それが正しいのは脳だけで、
+このパネルは `getAnatomySelection()` を持つ**すべての**シーンに付きます——心臓アトラスは
+HuBMAP CCF release（CC BY 4.0）の geometry を描きながら、Brain Project を表示していました。
+**別の著作物に対して果たした attribution は、果たしたことになりません。**
+
+- `src/catalog/attribution.js` を追加。`modelProfiles.js` の `assets` /
+  `candidateAssets` から `assetManifest.js` / `devAssets.js` を引いて解決します。
+  **新しい宣言は増やしていません**——出典・ライセンス・義務の記録は既にそこにあります
+- **候補 asset は `released: false`** で返り、ライセンス名を名乗りません。記録は読んでいても、
+  release gate は何も評価していないからです。画面では caution 色で
+  「検討中の候補アセット」と出ます
+- `record`（リポジトリ上のパス）と `recordUrl`（配信 URL）を分けました。
+  `public/` はルートで配信されるので、`public/assets/brain/ATTRIBUTION.md` を
+  そのまま href にすると **404** です。**辿れないリンクはクレジットではありません**——
+  実ブラウザで 200 と中身を確認しました
+- `tests/attribution.test.js`：脳は自分のライセンスが名指す著作物をクレジットする／
+  心臓は脳をクレジットしない／候補はライセンス判断を主張しない／
+  released な asset は必ず辿れるクレジットを持つ
+
+**公開ゲートは開けていません。** `betaPublicationProblems('heart-anatomy')` はいまも
+2 件返します（候補 asset が asset release gate を通っていない／この release の公開判断記録が無い）。
+どちらも承認であって実装ではありません。
+
+### F-86 別スケールへの行き先を、UI が見分けられるようにした — 対応済み（B12 / 接続）
+
+脳 → Aβ で成立した「別スケールへ移るがズームではない」を、
+**kidney → nephron・lung → alveolus でも使える最小の形**にしました。
+**新しい scale engine は作っていません**——`related.scenes[]` に 2 つの任意フィールドだけです。
+
+- `transitionType: 'same-subject' | 'scale-change'`
+- `scaleRelationship: 'magnified-detail' | 'schematic'`（`scale-change` のとき必須）
+
+区別が要るのは、**「その臓器の実在する一部を拡大したもの」**（腎 → ネフロン、肺 → 肺胞）と
+**「解剖学的縮尺を持たない模式図」**（脳 → Aβ）が、読者への約束として別物だからです。
+前者は「押し込めばそこへ行ける」が本当で、後者は嘘になります。
+
+`src/data/relatedContract.js` が語彙と `relatedProblems()` を持ち、パネルは
+リンクを辿る**前**に `別スケール・模式図（拡大ではありません）` を出します。
+`scale-change` なのに種類を宣言しないものはテストで落ちます。
+
 
 ### F-59 main（dae2acc）へ内容で同期した — 対応済み（B6 / 統合）
 

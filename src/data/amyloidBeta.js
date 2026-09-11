@@ -86,6 +86,10 @@ export const RELATED = Object.freeze({
   scenes: [
     {
       slug: 'brain-anatomy',
+      // The same crossing, read the other way round: this diagram is not a
+      // magnified piece of that atlas, so going back is not zooming out.
+      transitionType: 'scale-change',
+      scaleRelationship: 'schematic',
       label: 'Brain anatomy — where the structures are and what they are called',
       labelJa: '脳の解剖 — 構造の位置と名前',
       why: 'A named atlas of one specimen. **A different model**: nothing molecular is drawn on it, and nothing here is drawn to its scale.',

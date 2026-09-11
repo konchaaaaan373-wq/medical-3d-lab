@@ -310,6 +310,23 @@ export const MODEL_SCOPE = {
   questionJa: '冠動脈がここで細くなる。どの筋肉が、いつ動かなくなるのか。',
   answers: SCOPE.answers.map((entry) => ({ text: entry.en, textJa: entry.ja })),
   limits: SCOPE.refuses.map((entry) => ({ text: entry.en, textJa: entry.ja })),
+  /**
+   * The colour is the thing a reader will read hardest, so what it is — and
+   * what it is not — is said where the model's own limits are said, not only in
+   * the guide copy.
+   */
+  cautions: [
+    {
+      text:
+        'The colour over the starved territory is an **educational emphasis of the ischaemic region**. '
+        + 'It does not represent necrosis, infarct or scar, and ischaemic muscle does not turn this colour. '
+        + 'How readily it is misread is an open question for clinical review.',
+      textJa:
+        '飢えている支配域に載る色は、**虚血領域を教育目的で強調したもの**です。'
+        + '壊死・梗塞・瘢痕を表してはおらず、虚血の心筋が実際にこの色になるわけでもありません。'
+        + 'どの程度誤認されうるかは、臨床レビューで確かめる項目として残しています。',
+    },
+  ],
   sources: [
     'docs/model-cards/myocardial-ischemia.md',
     'docs/model-evidence/myocardial-ischemia.md',

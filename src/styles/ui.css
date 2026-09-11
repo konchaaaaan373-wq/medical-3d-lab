@@ -607,6 +607,17 @@
 }
 .anatomy-source:hover { color: var(--accent); }
 
+/* A file still under examination is marked as one. It is not a worse link, it
+   is a different claim: the release gate has assessed nothing about it. */
+.anatomy-source.is-candidate { color: var(--caution-ink); }
+
+.anatomy-source-note {
+  color: var(--ink-faint);
+  font-size: 8.5px;
+  line-height: 1.4;
+  max-width: 46ch;
+}
+
 #ui[data-lang='both'] .anatomy-view .lang-ja,
 #ui[data-lang='both'] .anatomy-source .lang-ja {
   display: none;
@@ -3397,6 +3408,20 @@
 .related-why {
   display: block;
   color: var(--ink-dim);
+}
+
+/* Said before the reader follows the link, not after. A schematic gets the
+   caution colour because "this is not a zoom" is a limit of the model; a
+   magnified real part is simply information. */
+.related-scale {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--ink-faint);
+}
+
+.related-scale[data-scale='schematic'] {
+  color: var(--caution-ink);
 }
 
 /* The sentence that has to stay beside the links: other models, and — for the
