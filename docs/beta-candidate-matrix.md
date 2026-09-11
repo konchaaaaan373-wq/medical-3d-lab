@@ -81,7 +81,7 @@ Claude② が正常臓器を、Claude③ が病態を増やし続けている先
 | 2 | **`heart-failure`** | なし | ⚠️ `legacy-unversioned` → 同上 | 次期 β へ切替 | なし | **最短** |
 | 3 | **`copd`** | なし | ⚠️ **`stale`** → 再レビュー | 次期 β へ切替 | なし | 短 |
 | 4 | **`myocardial-ischemia`** | なし | ❌ `pending`（未実施）＋**色の誤認可否**が未判断 | 候補に登録済み | なし | 中 |
-| 5 | **`heart-anatomy`** | **派生 asset の採用作業**（技術は解決済み） | 解剖レビュー未実施 | 現 β の候補 | ✅ 解決（CC BY 4.0 確認済み・NLM 申請不要） | 中〜長 |
+| 5 | **`heart-anatomy`** | ✅ **なし**（配信方式決定・再現性検証済み） | 解剖レビュー未実施 | 現 β の候補（通れば次期 β へ自動継承） | ✅ 解決（CC BY 4.0 確認済み・NLM 申請不要） | 中 |
 
 **1〜3 に実装作業はありません。** `NEXT_BETA_CANDIDATE_STATUS` が返す blocker は各 2 件
 （臨床レビューと公開判断記録）だけで、どちらも記録です。
@@ -90,18 +90,23 @@ Claude② が正常臓器を、Claude③ が病態を増やし続けている先
 レビューと公開判断記録が揃った順に開きます。`asthma` は実装は同等ですが未登録——
 レビューが返れば 1 行で候補になります。
 
-**いま何が止めているかは、いつでも 1 コマンドで見られます**：
+**次期 β は現行 β の上位集合です。** `brain-anatomy` は再承認せず継承し、
+channel を切り替えても公開中のものは消えません。新しい判断が要るのは病態だけです。
 
 ```
 $ npm run verify:next-beta
-brain-anatomy        BLOCKED: clinical review (pending), publication decision
+brain-anatomy        READY   (inherited from the current beta — not re-decided)
 amyloid-beta         BLOCKED: clinical review (legacy-unversioned), publication decision
+                       review ❌  decision ❌  revision pin ✅
 heart-failure        BLOCKED: clinical review (legacy-unversioned), publication decision
-copd-hyperinflation  BLOCKED: stale review, publication decision
+copd-hyperinflation  BLOCKED: stale clinical review, publication decision
 myocardial-ischemia  BLOCKED: clinical review (pending), publication decision
 ```
 
-**registry も判断記録も書き換えません**——読むだけです。
+**registry も判断記録も channel も書き換えません**——読むだけです。
+**候補は 1 件ずつ開きます**：最初の単位は `brain-anatomy` ＋ amyloid-beta ＋ heart-failure で、
+COPD と心筋虚血の完了は待ちません。レビューの入口は
+[`NEXT-BETA-REVIEW.md`](clinical-reviews/NEXT-BETA-REVIEW.md)。
 
 **5 だけが性質の違う待ちです。** 外部データ・ライセンス・法務が絡み、
 これらは Medical 3D Lab の中では解決できません。

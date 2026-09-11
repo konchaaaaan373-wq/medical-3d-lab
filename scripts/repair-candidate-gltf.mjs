@@ -64,6 +64,12 @@ import { dirname, join, resolve } from 'node:path';
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const DRY = process.argv.includes('--dry-run');
+/**
+ * `--verify` runs the whole thing twice, validates the output, and checks that
+ * the sources are untouched — the question "can a clean machine produce the
+ * exact bytes a publication decision pinned?" asked as a command.
+ */
+const VERIFY = process.argv.includes('--verify');
 
 const CANDIDATES = [
   { id: 'hubmap-vh-m-heart', file: 'heart/VH_M_Heart.glb' },
@@ -394,4 +400,56 @@ function largestFaceNormal(vertex, faces, p) {
     if (area > bestArea) { bestArea = area; best = [fx / area, fy / area, fz / area]; }
   }
   return best;
+}
+
+// --- `--verify`: the reproducibility claim, as a check -----------------------
+if (VERIFY) {
+  const { createHash: hash } = await import('node:crypto');
+  const digest = (path) => hash('sha256').update(readFileSync(path)).digest('hex');
+  const failures = [];
+
+  // 1. The sources are exactly what the candidate record pins.
+  const { DEV_ASSETS } = await import(`${ROOT}/src/catalog/devAssets.js`);
+  for (const candidate of CANDIDATES) {
+    const record = DEV_ASSETS.find((entry) => entry.id === candidate.id);
+    const actual = digest(join(ROOT, 'dev-assets', candidate.file));
+    if (record?.sha256 && record.sha256 !== actual) {
+      failures.push(`${candidate.id}: the source on disk is not the pinned file`);
+    }
+  }
+
+  // 2. Running it again produces the same bytes. A hash a decision pins has to
+  //    be reachable from the source, not from this particular afternoon.
+  const first = report.files.map((file) => file.derived?.sha256 ?? null);
+  const { execFileSync } = await import('node:child_process');
+  execFileSync(process.execPath, [new URL(import.meta.url).pathname], { cwd: ROOT, stdio: 'ignore' });
+  const second = CANDIDATES.map((candidate) => digest(join(ROOT, 'dev-assets/derived', candidate.file)));
+  for (const [i, candidate] of CANDIDATES.entries()) {
+    if (first[i] !== second[i]) failures.push(`${candidate.id}: a second run produced different bytes`);
+  }
+
+  // 3. The sources are still the sources.
+  for (const candidate of CANDIDATES) {
+    const record = DEV_ASSETS.find((entry) => entry.id === candidate.id);
+    if (record?.sha256 && digest(join(ROOT, 'dev-assets', candidate.file)) !== record.sha256) {
+      failures.push(`${candidate.id}: the source was modified by the repair`);
+    }
+  }
+
+  // 4. The output is what the release gate requires: nothing, from the validator.
+  const validator = await import('gltf-validator');
+  for (const [i, candidate] of CANDIDATES.entries()) {
+    const result = await validator.validateBytes(new Uint8Array(readFileSync(join(ROOT, 'dev-assets/derived', candidate.file))));
+    const { numErrors, numWarnings } = result.issues;
+    if (numErrors !== 0 || numWarnings !== 0) {
+      failures.push(`${candidate.id}: validator reports ${numErrors} errors and ${numWarnings} warnings`);
+    }
+    console.error(`  ${candidate.id}: ${second[i].slice(0, 16)}… — ${numErrors} errors, ${numWarnings} warnings`);
+  }
+
+  if (failures.length) {
+    console.error(`\nnot reproducible:\n  ${failures.join('\n  ')}`);
+    process.exit(1);
+  }
+  console.error('\nreproducible: same sources in, same derived hashes out, sources untouched, validator clean.');
 }

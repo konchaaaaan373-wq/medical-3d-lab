@@ -21,12 +21,14 @@
  * records a person writes.
  */
 import {
-  NEXT_BETA_CANDIDATES,
+  NEXT_BETA_CANDIDATE_STATUS,
   RELEASE_CHANNEL,
-  nextBetaPublicationProblems,
+  RELEASED_SCENES,
 } from '../src/catalog/release.js';
 import { sceneById } from '../src/catalog/index.js';
-import { clinicalReviewForScene } from '../src/catalog/clinicalReview.js';
+import { clinicalReviewForScene, hasCurrentClinicalReview } from '../src/catalog/clinicalReview.js';
+import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
+import { NEXT_BETA_PUBLICATION_DECISIONS } from '../src/catalog/release.js';
 
 const quiet = process.argv.includes('--quiet');
 const say = (line) => { if (!quiet) console.log(line); };
@@ -40,7 +42,7 @@ if (RELEASE_CHANNEL === 'next-beta') {
 function shorten(problem) {
   if (/clinical review is "([^"]+)"/.test(problem)) {
     const [, state] = problem.match(/clinical review is "([^"]+)"/);
-    return state === 'stale' ? 'stale review' : `clinical review (${state})`;
+    return state === 'stale' ? 'stale clinical review' : `clinical review (${state})`;
   }
   if (/publication decision on file/.test(problem)) return 'publication decision';
   if (/candidate asset/.test(problem)) return 'asset not released';
@@ -49,29 +51,48 @@ function shorten(problem) {
   return problem.length > 60 ? `${problem.slice(0, 57)}…` : problem;
 }
 
-say(`Next-beta dry run — channel in force is "${RELEASE_CHANNEL}", and this changes nothing.\n`);
+/** The three records a candidate needs, each present or not. */
+function records(id) {
+  const scene = sceneById(id);
+  return {
+    review: hasCurrentClinicalReview(scene),
+    decision: NEXT_BETA_PUBLICATION_DECISIONS.some((entry) => entry.sceneId === id),
+    revision: Boolean(sceneRevisionPin(scene)),
+  };
+}
+
+say(`Next-beta dry run — channel in force is "${RELEASE_CHANNEL}", and this changes nothing.`);
+say(`It adds to the current release rather than replacing it: ${RELEASED_SCENES.length} scene(s) published today stay published.\n`);
 
 let blocked = 0;
-const width = Math.max(...NEXT_BETA_CANDIDATES.map((id) => id.length));
-for (const id of NEXT_BETA_CANDIDATES) {
-  const problems = nextBetaPublicationProblems(id);
-  const scene = sceneById(id);
-  const review = clinicalReviewForScene(scene)?.reviewStatus ?? 'no record';
-  if (!problems.length) {
-    say(`  ${id.padEnd(width)}  READY`);
+const width = Math.max(...NEXT_BETA_CANDIDATE_STATUS.map((entry) => entry.sceneId.length));
+const mark = (ok) => (ok ? '✅' : '❌');
+
+for (const entry of NEXT_BETA_CANDIDATE_STATUS) {
+  const { sceneId, source, open, problems } = entry;
+  if (open && source === 'inherited') {
+    say(`  ${sceneId.padEnd(width)}  READY   (inherited from the current beta — not re-decided)`);
+    continue;
+  }
+  if (open) {
+    say(`  ${sceneId.padEnd(width)}  READY`);
     continue;
   }
   blocked += 1;
-  say(`  ${id.padEnd(width)}  BLOCKED: ${[...new Set(problems.map(shorten))].join(', ')}`);
-  if (!quiet && problems.length > 2) for (const problem of problems) say(`  ${' '.repeat(width)}    · ${problem}`);
-  void review;
+  say(`  ${sceneId.padEnd(width)}  BLOCKED: ${[...new Set(problems.map(shorten))].join(', ')}`);
+  const has = records(sceneId);
+  // Which of the three records is missing, without anyone opening a registry.
+  say(`  ${' '.repeat(width)}    review ${mark(has.review)}  decision ${mark(has.decision)}  revision pin ${mark(has.revision)}`);
+  const review = clinicalReviewForScene(sceneById(sceneId));
+  if (!has.review && review) say(`  ${' '.repeat(width)}    review is "${review.reviewStatus}"`);
 }
 
 if (!quiet) {
   say('');
   if (blocked) {
-    say(`${blocked} of ${NEXT_BETA_CANDIDATES.length} blocked. Every line above is a record somebody writes,`);
-    say('not code somebody changes — see docs/decisions/NEXT-BETA-APPLY.md.');
+    say(`${blocked} blocked. Every line above is a record somebody writes, not code somebody changes`);
+    say('— see docs/decisions/NEXT-BETA-APPLY.md. Candidates open one at a time: the first two do not');
+    say('wait for the rest.');
   } else {
     say('Every candidate is READY. The remaining step is the channel switch, which is a release decision.');
   }

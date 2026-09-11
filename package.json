@@ -28,7 +28,8 @@
     "verify:patient": "node scripts/check-patient-explanation.mjs",
     "assets:repair": "node scripts/repair-candidate-gltf.mjs",
     "verify:next-beta": "node scripts/check-next-beta.mjs",
-    "review:packets": "node scripts/build-review-packet.mjs amyloid-beta heart-failure copd-hyperinflation myocardial-ischemia"
+    "review:packets": "node scripts/build-review-packet.mjs amyloid-beta heart-failure copd-hyperinflation myocardial-ischemia",
+    "assets:repair:verify": "node scripts/repair-candidate-gltf.mjs --verify"
   },
   "dependencies": {
     "three": "^0.169.0"

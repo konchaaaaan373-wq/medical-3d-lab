@@ -263,38 +263,94 @@ record を直接確認し、どちらも CC BY 4.0・Visible Human Male・publis
 
 ---
 
-## 残っている blocker（再計算）
+## 配信方式 — 既存の方針をそのまま使います
 
-### 技術 — すべて解決済み
+**新しいインフラは作りません。** このリポジトリには既に 2 段構えの方針があり、
+心臓はまだ 1 段目にいるだけです。
+
+| | 置き場所 | git | 用途 |
+| --- | --- | --- | --- |
+| **検討中の候補** | `dev-assets/`（`derived/` も） | **追跡しない** | 審査中。`npm run assets:dev` が取得、`npm run assets:repair` が派生を作る |
+| **採用済みの公開 asset** | `public/assets/<organ>/` | **コミットする** | 配信対象。脳が既にこの形（`public/assets/brain/brain.glb`、4.6 MB） |
+
+**採用が決まった時点で、派生 GLB 2 本を `public/assets/heart/` へコミットします**
+（方式 A）。脳と同じ扱いで、新しい仕組みはゼロです。
 
 | | |
 | --- | --- |
+| source provenance が追えるか | ✅ `assetManifest` の `sources[]` が元 2 ファイルの hash を持ち、`upstream/` に record の写しがある |
+| derived hash が固定されるか | ✅ コミットしたバイト列そのもの。`output.sha256` がそれを pin する |
+| clean clone から再現できるか | ✅ **clone した時点でファイルがある。** ネットワーク不要 |
+| Netlify の build 環境で使えるか | ✅ `public/` は Vite がそのままコピーする。脳で実証済み |
+| untracked な local file に依存しないか | ✅ 依存しません |
+| 公開判断が exact hash を pin できるか | ✅ |
+
+**方式 B（build 前に毎回 repair）を採らない理由**：build 環境にソース GLB を取得する必要が生じ、
+**ネットワークが使えないと release できなく**なります。方式 C（object storage）は
+新しいインフラで、脳が既に成立している以上、増やす理由がありません。
+
+`npm run assets:repair` は**採用判断のための道具**として残ります——
+「そのバイト列がこのソースから出ることの証明」であって、build の一部ではありません。
+
+### 再現性は検証済み
+
+```
+$ npm run assets:repair:verify
+  hubmap-vh-m-heart:             46d375e36d8181c1… — 0 errors, 0 warnings
+  hubmap-vh-m-blood-vasculature: b971eec1fc0d0d6a… — 0 errors, 0 warnings
+reproducible: same sources in, same derived hashes out, sources untouched, validator clean.
+```
+
+確認しているのは 4 点です——①ディスク上のソースが pin されたファイルと一致する
+②**2 回走らせても同じ hash**（決定的）③**ソースが書き換わっていない**
+④validator が 0 errors / 0 warnings。
+
+**サイズについて記録**：派生 2 本で約 11.5 MB（脳は 4.6 MB）。大血管ファイルは 104 メッシュ中
+37 しか使いませんが、**未使用部分の削除はさらなる改変**になるため、いまは行いません。
+必要になれば別途判断してください。
+
+---
+
+## 残っている blocker（再分類）
+
+### Technical — すべて解決
+
+| | |
+| --- | --- |
+| deterministic repair | ✅ `npm run assets:repair:verify` が 2 回実行で同一 hash を確認 |
 | validator | ✅ 派生 2 本とも **0 errors / 0 warnings** |
-| geometry integrity | ✅ 頂点座標・頂点数が source と一致。三角形の減少は削除数と一致 |
-| structure integrity | ✅ ノード名・階層・ontology id・マテリアル数が一致。**選択可能な部位は 46 件で不変** |
-| attribution resolver | ✅ `attributionForScene('heart-anatomy')` が 2 ファイルとも返し、候補であることを画面に出す |
-| 見た目 | ✅ source / derived の実レンダリングが見分けられない（`docs/screenshots/b15-repair/`） |
+| geometry integrity | ✅ 頂点座標・頂点数が一致。三角形の減少は削除数と一致 |
+| structure integrity | ✅ ノード名・階層・ontology id・マテリアルが一致。**選択可能な部位 46 件**で不変 |
+| production asset delivery | ✅ 方式決定（`public/assets/heart/`）。**脳で実証済みの経路**で、clean clone・ネットワーク不要 |
+| attribution resolver | ✅ 2 ファイルとも返し、候補であることを画面に出す |
 
-### asset / license — 解決済み
+### Asset / legal — すべて解決
 
 | | |
 | --- | --- |
-| HuBMAP CC BY 4.0 の provenance | ✅ **2 ファイルそれぞれの上流 record を個別に確認**（写し同梱）。推定していません |
-| NLM terms | ✅ license 申請は不要（2019 年以降）。attribution・非 endorsement・version 明示の 3 要件は上の文面で満たします |
-| 商用配信 | ✅ HuBMAP 公式 FAQ が commercial applications を明示、CC BY 4.0 も許可 |
+| Heart, Male v1.2 provenance | ✅ 上流 record を個別に確認（DOI `HBM373.VSTV.568`） |
+| Blood Vasculature, Male v1.2 provenance | ✅ 同（DOI `HBM686.LBDQ.998`）。**推定していません** |
+| CC BY 4.0 | ✅ 2 record とも明記 |
+| NLM terms | ✅ license 申請不要。attribution・非 endorsement・version 明示で対応 |
 
-### 残り — 3 件、すべて判断
+### Decision — 残り 3 件
 
-1. **asset adoption decision** — 面積ゼロ三角形 820 本の削除を改変として受け入れるか（[判断欄](#判断欄)）
-2. **anatomy review** — 解剖学者が形状・ラベル・日本語術語を見ていません
-3. **publication decision** — この release の公開判断記録
+- [ ] **derived asset adoption** — 面積ゼロ三角形 820 本の削除を改変として受け入れるか
+- [ ] **anatomy review** — 解剖学者が形状・ラベル・日本語術語を見ていません
+- [ ] **publication decision** — この release の公開判断記録
 
-いま gate が返すのは 3 行で、**中身は上の 1 と 3** です（asset が manifest に入っていないことが
-2 行として出ます）。**「壊れているから公開できない」も「ライセンスが不明だから公開できない」も、
-もうありません。**
+**技術と法務の blocker は 1 件も残っていません。**
 
-### 本当に残る不明点 — 1 問
+### 運用上の 1 問（判断欄）
 
-> **NLM Terms の republish 条件を (ア) version 明示で満たす、という方針でよいか。**
+> **NLM Terms の republish 条件を、最新版追従ではなく「使用 version の明示」で満たす方式でよいか。**
 
-法的な不明点ではなく運用の決めごとです。(ア) の文面は用意してあります。
+**version pin 方式を推奨します。** 理由は 4 つ——①再現性（同じソースから同じバイト列）
+②hash pin（公開判断が exact hash に結びつく）③公開判断との対応（上流が動いても判断が生き続ける）
+④**上流の更新でシーンが勝手に変わらない**。
+
+- [ ] version pin 方式でよい（推奨）
+- [ ] 最新版に追従する
+- [ ] 別案：
+
+UI 側は、使用 version・出典・改変内容を表示できるデータを保持しています（上の attribution 文面）。

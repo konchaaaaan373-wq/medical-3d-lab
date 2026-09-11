@@ -3,22 +3,34 @@
 **承認前に gate は開けません。** ここにあるのは、レビューが返ってきたら何をするかだけです。
 **仮のレビュー承認値や署名を入れてテストを通すことはしていません。**
 
-対象は `src/catalog/release.js` の `NEXT_BETA_CANDIDATES`：
-`brain-anatomy` / `amyloid-beta` / `heart-failure` / `copd-hyperinflation`。
+## 次期 β は現行 β の**上位集合**です
 
-いま各候補が返す blocker は**ちょうど 2 つ**です——
+`brain-anatomy` は**再承認しません**。現行 β の gate と公開判断をそのまま継承します——
+channel を切り替えても**いま公開しているものは消えません**。
+`heart-anatomy` も、現行 β の asset / publication gate を通れば自動的に継承されます。
+
+新しい判断が要るのは病態だけです（`NEXT_BETA_DISEASE_CANDIDATES`）：
+`amyloid-beta` / `heart-failure` / `copd-hyperinflation` / `myocardial-ischemia`。
 
 ```
-$ node -e "import('./src/catalog/release.js').then(m=>console.log(m.NEXT_BETA_CANDIDATE_STATUS))"
-amyloid-beta        : 臨床レビューが "legacy-unversioned"／公開判断記録なし
-heart-failure       : 臨床レビューが "legacy-unversioned"／公開判断記録なし
-copd-hyperinflation : 臨床レビューが "stale"／公開判断記録なし
-brain-anatomy       : 臨床レビューが "pending"／公開判断記録なし
+$ npm run verify:next-beta
+  brain-anatomy        READY   (inherited from the current beta — not re-decided)
+  amyloid-beta         BLOCKED: clinical review (legacy-unversioned), publication decision
+                         review ❌  decision ❌  revision pin ✅
+  heart-failure        BLOCKED: clinical review (legacy-unversioned), publication decision
+                         review ❌  decision ❌  revision pin ✅
+  copd-hyperinflation  BLOCKED: stale clinical review, publication decision
+                         review ❌  decision ❌  revision pin ✅
+  myocardial-ischemia  BLOCKED: clinical review (pending), publication decision
+                         review ❌  decision ❌  revision pin ✅
 ```
 
-**実装の不足は 1 件もありません。** 残っているのは記録だけです。
+**実装の不足は 1 件もありません。** 残っているのは記録だけで、
+どの scene に何が足りないかはこの 1 行（`review / decision / revision pin`）で読めます。
 
----
+**候補は 1 件ずつ開きます。** amyloid-beta と heart-failure が承認されれば、
+COPD の再レビューや心筋虚血の初回レビューを待たずに、その 2 つで次期 β を成立させられます。
+未承認の候補は閉じたままです。
 
 ## Step 1 — 臨床レビュー registry を更新する
 
@@ -59,6 +71,7 @@ node -e "import('./src/catalog/modelRevisions.js').then(m=>console.log(m.sceneRe
 ## Step 3 — 公開判断記録を足す
 
 `src/catalog/release.js` の `NEXT_BETA_PUBLICATION_DECISIONS`（いま空配列）へ 1 件ずつ。
+**継承される scene（brain-anatomy）はここに書きません**——既存の判断を持っています。
 
 ```js
 {
@@ -96,7 +109,7 @@ export const RELEASE_CHANNEL = 'beta';   →   'next-beta'
 npm test
 node -e "import('./src/catalog/release.js').then(m=>console.log(m.NEXT_BETA_CANDIDATE_STATUS))"   # problems が [] に
 npx vite build
-npm run verify:site        # publishes が 1 → 4 になる
+npm run verify:site        # publishes が 1 → 承認した数だけ増える
 ```
 
 hero・カタログ・クロール面の編集は**不要**です——公開一覧は `publicManifest.js` 1 本から出ます。
@@ -112,6 +125,6 @@ hero・カタログ・クロール面の編集は**不要**です——公開一
 
 ## 候補を増やすとき
 
-`NEXT_BETA_CANDIDATES` に id を足します。**`reviewed` なら自動で入る仕組みにはしていません**——
+`NEXT_BETA_DISEASE_CANDIDATES` に id を足します。**`reviewed` なら自動で入る仕組みにはしていません**——
 status は誰かが公開を決めた証拠ではないからです。`myocardial-ischemia` と `asthma` は
 実装が揃っているので、レビューが返れば 1 行足すだけで候補になります。

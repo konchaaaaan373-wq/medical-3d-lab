@@ -117,44 +117,53 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
 export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-anatomy']);
 
 /**
- * The next release, which is a different question from the current one.
+ * The next release **adds to** this one rather than replacing it.
  *
- * The current beta publishes anatomy and nothing else, and that is why most of
- * this catalogue reports "not one of the scenes this release opens" rather than
- * a failure. The next one is meant to carry the thing this product is actually
- * for — a disease, with a professional view and a patient explanation of the
- * same solved state — so it cannot reuse `betaPublicationProblems`, which
- * refuses any scene whose model claims a mechanism.
+ * The current beta publishes anatomy, which is why most of this catalogue
+ * reports "not one of the scenes this release opens" rather than a failure. The
+ * next one is meant to carry the thing this product is actually for — a
+ * disease, with a professional view and a patient explanation of the same
+ * solved state.
+ *
+ * **A scene already open on the beta stays open, on the decision it already
+ * has.** The first version of this asked `brain-anatomy` for a second clinical
+ * review and a second publication decision, which is two records for one
+ * question and a way for them to disagree: the atlas is published today on a
+ * review honestly labelled `pending`, and a channel that demanded a current one
+ * would have *closed* it by being switched on. Inheritance is the fix, and it
+ * is the reason `nextBetaPublicationProblems` checks the beta gate first.
+ *
+ * So this list is the **diseases only**. Anything the beta opens — the brain
+ * today, the heart the day its assets and decision land — arrives by
+ * inheritance and needs no entry here.
  *
  * **It is an allowlist, not a rule about status.** "Anything marked reviewed
  * gets published" is one mislabelled scene away from publishing a model nobody
  * decided to publish, and `reviewed` is a status a scene can reach without
- * anyone deciding it should be public. A scene is a candidate here because
- * somebody named it here.
+ * anyone deciding it should be public.
  *
- * Nothing on this channel is open today: every candidate below still fails at
- * least one of the checks in `nextBetaPublicationProblems`, and the failures
- * are the work list rather than an error. Registering a name is not publishing
- * it — that is the same distinction `BETA_ANATOMY_CANDIDATES` draws.
+ * Nothing here is open today: each still lacks a current clinical review and a
+ * publication decision, and the failures are the work list rather than an
+ * error. **They open one at a time** — amyloid-beta and heart-failure can be
+ * published without waiting for COPD's re-review or ischaemia's first one.
  */
-export const NEXT_BETA_CANDIDATES = Object.freeze([
-  // Already published on the current channel; listed so the next release is a
-  // superset rather than a replacement, and so the anatomy a disease points at
-  // is never absent from the release the disease is in.
-  'brain-anatomy',
+export const NEXT_BETA_DISEASE_CANDIDATES = Object.freeze([
   'amyloid-beta',
   'heart-failure',
   // Behind the first two only by its review being stale rather than absent.
   'copd-hyperinflation',
   // Technically the equal of the three above — model profile, guide, both
   // views, the anatomy it points at — and behind them only in that no review
-  // has been attempted. Listed so that the day one is, nothing else is needed.
+  // has been attempted.
   'myocardial-ischemia',
 ]);
 
 /**
- * Publication decisions for the next channel. Empty, and that is the point:
- * every candidate above fails on this until somebody records one.
+ * Publication decisions for the diseases above. Empty, and that is the point:
+ * every candidate fails on this until somebody records one.
+ *
+ * Scenes inherited from the current beta are **not** listed here — they carry
+ * the decision they were published on, in `BETA_PUBLICATION_DECISIONS`.
  *
  * @type {readonly object[]}
  */
@@ -530,23 +539,25 @@ export function betaPublicationProblems(candidate, {
 /**
  * Why this scene is not open on the **next** release. Empty means open.
  *
- * Same shape as `betaPublicationProblems` and deliberately not the same
- * function. The two channels answer different questions, and the difference is
- * one line: this one does not require the scene's model to claim structure and
- * nothing more, because a disease scene exists to claim a mechanism. Every
- * other bar is the same or higher.
+ * **The beta gate is asked first, and passing it is enough.** That is what
+ * makes this channel a superset: every scene the current release publishes
+ * stays published, on the decision it was published with, and switching the
+ * channel can only ever add. A scene that has already been decided is not asked
+ * to be decided again — two records for one question is how they come to
+ * disagree.
  *
- * **A current clinical review is required here, and is not on the current
- * channel.** The beta publishes anatomy whose review is honestly labelled
- * `pending` on screen; a scene that solves a mechanism and explains it to a
- * patient cannot be published on "pending". `stale` is refused for the same
- * reason it is refused on the beta, and `legacy-unversioned` is refused because
- * a review nobody can point at is not a review.
+ * A scene that is *not* already open has to be a registered disease candidate
+ * and clear a bar the beta does not set. The beta publishes anatomy whose
+ * review is honestly labelled `pending` on screen; a scene that solves a
+ * mechanism and explains it to a patient cannot be published on "pending".
+ * `stale` is refused for the same reason it is refused on the beta, and
+ * `legacy-unversioned` because a review nobody can point at is not a review.
  *
- * The rest is the beta's list, unchanged: a registered candidate, a model
- * profile, released assets with their obligations discharged, a publication
- * decision pinned to both the asset hashes and the scene revision, and a
- * recorded scope. It fails closed on each.
+ * The rest is the beta's list: a model profile, released assets with their
+ * obligations discharged, a publication decision pinned to both the asset
+ * hashes and the scene revision, a recorded scope — and, here, both halves of
+ * the experience the release exists for. It fails closed on each, and each
+ * candidate opens on its own: amyloid-beta does not wait for COPD.
  *
  * @param {object|string|null} candidate
  * @param {object} [options]
@@ -561,11 +572,18 @@ export function nextBetaPublicationProblems(candidate, {
   resolveRevision = sceneRevisionPin,
   hasReview = hasCurrentClinicalReview,
   decisions = NEXT_BETA_PUBLICATION_DECISIONS,
-  candidates = NEXT_BETA_CANDIDATES,
+  candidates = NEXT_BETA_DISEASE_CANDIDATES,
   guides = PATIENT_GUIDES,
+  inherits = betaPublicationProblems,
 } = {}) {
   const id = typeof candidate === 'string' ? candidate : candidate?.id;
   const problems = [];
+
+  // Inherited. Whatever the current release publishes, this one publishes too,
+  // on the record it already has — so the switch cannot take anything away.
+  if (inherits(candidate, { fileExists, profiles, resolveScene, resolveAsset, resolveReview, resolveRevision, hasReview }).length === 0) {
+    return [];
+  }
 
   if (!candidates.includes(id)) {
     return [`"${id ?? '(no id)'}" is not one of the scenes the next release opens`];
@@ -660,11 +678,24 @@ export function nextBetaPublicationProblems(candidate, {
   return problems;
 }
 
-/** Every next-release candidate with the reasons it is not open yet. */
+/**
+ * What the next release would publish, and what stops the rest.
+ *
+ * Two kinds of row, marked as such. `inherited` is a scene the current release
+ * already publishes: it is open here because it is open there, and nothing
+ * about it is being decided again. `candidate` is a disease that has to clear
+ * this channel's own bar.
+ */
 export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
-  NEXT_BETA_CANDIDATES.map((id) =>
-    Object.freeze({ sceneId: id, open: nextBetaPublicationProblems(id).length === 0, problems: Object.freeze(nextBetaPublicationProblems(id)) })
-  )
+  [
+    ...BETA_ANATOMY_CANDIDATES.filter((id) => betaPublicationProblems(id).length === 0).map((id) =>
+      Object.freeze({ sceneId: id, source: 'inherited', open: true, problems: Object.freeze([]) })
+    ),
+    ...NEXT_BETA_DISEASE_CANDIDATES.map((id) => {
+      const problems = nextBetaPublicationProblems(id);
+      return Object.freeze({ sceneId: id, source: 'candidate', open: problems.length === 0, problems: Object.freeze(problems) });
+    }),
+  ]
 );
 
 /**
