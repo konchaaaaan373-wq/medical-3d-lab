@@ -158,30 +158,143 @@ QA 記録が書かれるまでは、gate は候補のままです。
 
 ---
 
-## NLM（Visible Human）で確認が必要な条項 — 外部調査へ渡せる形
+## provenance chain — 2 ファイルを 1 対 1 で追跡
 
-**repo の中に答えがありません。** Claude① が法的判断を代行する必要はありませんが、
-**何を確認すれば adopt を判断できるか**はここで確定させます。Astra へそのまま渡せます。
+**出典記録を上流から取り直して確認しました**（pin した commit の、各オブジェクト自身の
+metadata ファイル）。写しは [`docs/asset-qa/upstream/`](../asset-qa/upstream/) にあります。
 
-### 確認すべき正式文書
-
-1. **NLM Visible Human Project の利用条件**（現行版。かつて署名が必要な license agreement がありました）
-2. NLM / NIH の一般的なコンテンツ利用ポリシー
-3. HuBMAP CCF release が VHP を再配布している根拠（HuBMAP 側が既に許諾を得ているのか）
-
-### 確認すべき条項 — この 6 つに答えが出れば adopt を判断できます
-
-| # | 質問 | なぜ要るか |
+| | 心臓 | 大血管 |
 | --- | --- | --- |
-| 1 | **商用 Web 配信**：VHP 由来のデータを、有料機能を持つ Web サービスから配信してよいか | Medical 3D Lab は課金機能を持ちます |
-| 2 | **derived work**：VHP 由来メッシュを改変（面積ゼロ三角形の削除・法線再計算）した派生物の配布に、追加の条件が付くか | 上の (A) が前提 |
-| 3 | **attribution**：NLM が要求する表記の**正確な文面と掲示場所**（courtesy line の書式） | いま attribution surface がありません |
-| 4 | **redistribution**：第三者（HuBMAP）経由で取得したものを、さらに再配布してよいか | 私たちは HuBMAP から取っています |
-| 5 | **browser delivery**：GLB をブラウザへ配信することが「配布」に当たるか（閲覧のみとの区別） | 3D は必ずクライアントへ落ちます |
-| 6 | **署名の要否**：利用に先立って NLM との合意書・申請が要るか | 要るなら誰がいつ行うかの判断 |
+| **元ファイル名** | `VH_M_Heart.glb` | `VH_M_Blood_Vasculature.glb` |
+| **source repository** | `hubmapconsortium/ccf-releases` | 同左 |
+| **commit（pin）** | `b036a91aaf7234f462b1249d4a5f4fb0e982f412` | 同左 |
+| **source URL** | `…/$COMMIT/v1.2/models/VH_M_Heart.glb` | `…/$COMMIT/v1.2/models/VH_M_Blood_Vasculature.glb` |
+| **HRA object / version** | **3D Reference Organ for Heart, Male v1.2** | **3D Reference Organ for Blood Vasculature, Male v1.2** |
+| **HuBMAP ID** | `HBM373.VSTV.568` | `HBM686.LBDQ.998` |
+| **DOI** | `10.48539/HBM373.VSTV.568` | `10.48539/HBM686.LBDQ.998` |
+| **creator(s)** | Kristen Browne（ORCID 0000-0003-4066-7531） | Kristen Browne ＋ **Heidi Schlehlein**（0000-0002-3333-5646） |
+| **reviewer(s)** | Shin Lin | Marc Halushka ＋ Shin Lin |
+| **publisher / funder** | HuBMAP / NIH OT2OD026671 | 同左 |
+| **license（各オブジェクト自身の record に明記）** | **CC BY 4.0** | **CC BY 4.0** |
+| **元データ** | **Visible Human Male**（NLM） | **Visible Human Male**（NLM） |
+| **download 時点** | 2026-09-09（`raw.githubusercontent.com`） | 2026-09-09（同） |
+| **source hash（sha256）** | `b1237e7e…8244c70` | `a31ebed6…4309d0d` |
+| **derived hash（sha256）** | `46d375e3…a73eb3d` | `b971eec1…d0ec13fb` |
+| **記録の出どころ** | `v1.3/markdown/ref-organs/heart-male.md` | `v1.3/markdown/ref-organs/blood-vasculature-male.md` |
 
-### この調査が不要になる条件
+**2 ファイルは別 record で、それぞれが自分の DOI と自分の license 記載を持ちます。**
+片方から他方を推定してはいません——2 つとも上流で個別に確認し、**どちらも CC BY 4.0** でした。
 
-HuBMAP CCF release が **VHP の再配布許諾を既に取得しており、その範囲が下流の商用利用まで
-及ぶ**ことが文書で確認できれば、1〜6 は HuBMAP の CC BY 4.0 の中に収まります。
-**まずそこを確認するのが最短**です。
+### ⚠️ 頂いた公式情報と、実際に使っているファイルは別オブジェクトです
+
+Astra 側で確認されたのは **Heart Female v1.1 / Visible Human Female** の record と伺いました。
+**このリポジトリが使っているのは Male v1.2 の 2 本**（`VH_M_*`、元データは Visible Human **Male**）です。
+
+女性版の record は、男性版ファイルの条件を証明しません——これは「vasculature を heart から
+推定しない」のと同じ理由です。**ただし結論は変わりません**：上で男性版 2 本それぞれの
+record を直接確認し、どちらも CC BY 4.0・Visible Human Male・publisher HuBMAP でした。
+結論が同じでも、**根拠は別々に取っています。**
+
+なお attribution では **Male** と書く必要があります（Female ではありません）。
+
+### 上流 record 内の小さな不整合（記録のみ）
+
+心臓の record は `Creator(s): Kristen Browne` の一方で、`How to Cite This 3D Data` は
+**「Kristen Browne; Heidi Schlehlein」**と 2 名を挙げています。**修正せず記録します。**
+引用文は出版元が「こう引いてほしい」と書いたものなので、**attribution は How to Cite に従う**
+のが安全です。
+
+---
+
+## 法務論点 — 公式情報で解決したもの／残るもの
+
+### ✅ 解決（根拠つき）
+
+| 論点 | 回答 | 根拠 |
+| --- | --- | --- |
+| **NLM の license 申請は要るか** | **不要。** 2019 年以降、VHP dataset の利用に license 契約は不要 | NLM 公式（Astra 確認） |
+| **NLM の attribution は要るか** | **必要。** “Courtesy of the U.S. National Library of Medicine” 等、明確かつ目立つ形で source を明示 | NLM Terms and Conditions |
+| **商用 Web 配信してよいか** | **可。** HuBMAP CCF 3D Reference Object Library は teaching / research / **commercial applications** での利用可と公式 FAQ に記載。加えて CC BY 4.0 自体が商用利用を許可 | HuBMAP 公式 FAQ ＋ 各 record の license 記載 |
+| **HuBMAP の attribution は要るか** | **必要。** CC BY 4.0 の要件。各 record が「How to Cite」を明示 | 上流 record（写し同梱） |
+| **derived work（改変）は可か** | **可。ただし改変した旨の表示が必要。** CC BY 4.0 は改変を許可し、attribution に modification indication を含めることを求めます | CC BY 4.0 |
+| **第三者（HuBMAP）経由の再配布は可か** | **可。** CC BY 4.0 は再配布を許可。HuBMAP 自身が VHP 由来として公開しています | 各 record |
+| **2 ファイルは同じ license 根拠か** | **それぞれ独立に CC BY 4.0。** 推定ではなく、2 つの record を個別に確認 | 上の provenance 表 |
+| **asset 自体が壊れていて公開不能か** | **解消。** 派生 GLB 2 本とも validator 0 errors / 0 warnings | 本ページ上部 |
+
+### ⚠️ 残る論点 — 1 問だけです
+
+> **NLM Terms の「republish / redistribute するなら最新版を維持するか、
+> 使用データが最新でない可能性と使用 version を明示する」を、どう満たすか。**
+
+これは**法的な不明点ではなく、運用の決めごと**です。私たちは v1.2 を hash で pin しており、
+上流には v1.3 系の記述が既に存在します。取り得る形は 2 つ——
+
+- **(ア)** 画面に使用 version を明示する（例：「HuBMAP HRA v1.2 を使用。より新しい版が
+  存在する場合があります」）。pin を維持したまま条件を満たせます
+- **(イ)** 最新版に追従する運用にする。pin の意味が薄れ、hash に結びついた公開判断を
+  毎回取り直すことになります
+
+**(ア) を推奨します**——このリポジトリは hash pin と公開判断の結合を設計の中心に据えており、
+(イ) はそれを壊します。表示文は下の attribution 設計に入れてあります。
+
+**最終的な法的判断は代筆しません。** 上の表は公式文書の読みであって、法務レビューではありません。
+
+---
+
+## adopt した場合に表示する attribution（実装済みのデータ）
+
+`src/catalog/assetManifest.js` に入れる形の文面です。**repo の実際の provenance に一致させています。**
+
+> **Heart, Male v1.2** and **Blood Vasculature, Male v1.2** from the HuBMAP CCF
+> 3D Reference Object Library. Kristen Browne; Heidi Schlehlein. 2022.
+> DOI [10.48539/HBM373.VSTV.568](https://doi.org/10.48539/HBM373.VSTV.568) and
+> [10.48539/HBM686.LBDQ.998](https://doi.org/10.48539/HBM686.LBDQ.998).
+> Licensed **CC BY 4.0**. Created using data from the **Visible Human Male**,
+> courtesy of the **U.S. National Library of Medicine**.
+> **Modified by Medical 3D Lab**: degenerate vertex normals recomputed and
+> zero-area triangles removed; no geometry was reshaped.
+> This build uses **HRA release v1.2**; a more recent release may exist.
+> *The NLM does not endorse Medical 3D Lab or this product.*
+
+- **NLM が推奨や後援をしていると読める文言は入れていません**——最後の 1 行で明示的に否定します
+- **改変の表示**（normal repair・zero-area triangle 削除）を含みます
+- **使用 version の明示**で NLM Terms の republish 条件（ア）を満たします
+
+
+---
+
+## 残っている blocker（再計算）
+
+### 技術 — すべて解決済み
+
+| | |
+| --- | --- |
+| validator | ✅ 派生 2 本とも **0 errors / 0 warnings** |
+| geometry integrity | ✅ 頂点座標・頂点数が source と一致。三角形の減少は削除数と一致 |
+| structure integrity | ✅ ノード名・階層・ontology id・マテリアル数が一致。**選択可能な部位は 46 件で不変** |
+| attribution resolver | ✅ `attributionForScene('heart-anatomy')` が 2 ファイルとも返し、候補であることを画面に出す |
+| 見た目 | ✅ source / derived の実レンダリングが見分けられない（`docs/screenshots/b15-repair/`） |
+
+### asset / license — 解決済み
+
+| | |
+| --- | --- |
+| HuBMAP CC BY 4.0 の provenance | ✅ **2 ファイルそれぞれの上流 record を個別に確認**（写し同梱）。推定していません |
+| NLM terms | ✅ license 申請は不要（2019 年以降）。attribution・非 endorsement・version 明示の 3 要件は上の文面で満たします |
+| 商用配信 | ✅ HuBMAP 公式 FAQ が commercial applications を明示、CC BY 4.0 も許可 |
+
+### 残り — 3 件、すべて判断
+
+1. **asset adoption decision** — 面積ゼロ三角形 820 本の削除を改変として受け入れるか（[判断欄](#判断欄)）
+2. **anatomy review** — 解剖学者が形状・ラベル・日本語術語を見ていません
+3. **publication decision** — この release の公開判断記録
+
+いま gate が返すのは 3 行で、**中身は上の 1 と 3** です（asset が manifest に入っていないことが
+2 行として出ます）。**「壊れているから公開できない」も「ライセンスが不明だから公開できない」も、
+もうありません。**
+
+### 本当に残る不明点 — 1 問
+
+> **NLM Terms の republish 条件を (ア) version 明示で満たす、という方針でよいか。**
+
+法的な不明点ではなく運用の決めごとです。(ア) の文面は用意してあります。

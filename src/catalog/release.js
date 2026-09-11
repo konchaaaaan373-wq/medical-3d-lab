@@ -146,6 +146,10 @@ export const NEXT_BETA_CANDIDATES = Object.freeze([
   'heart-failure',
   // Behind the first two only by its review being stale rather than absent.
   'copd-hyperinflation',
+  // Technically the equal of the three above — model profile, guide, both
+  // views, the anatomy it points at — and behind them only in that no review
+  // has been attempted. Listed so that the day one is, nothing else is needed.
+  'myocardial-ischemia',
 ]);
 
 /**

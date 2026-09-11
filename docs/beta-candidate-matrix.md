@@ -21,10 +21,11 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 心臓の解剖 `heart-anatomy` | ✅ 14 構造＋血管 37 | — | — | 1280 / 844 | **候補 2 本・未採用** | ①asset が release gate 未通過 ②公開判断記録なし — **どちらも承認**（→ `docs/decisions/`） |
 
-**この 1 件だけが現 β の「承認待ち」です。** validator の問題は**解決済み**——
-派生ファイルで **0 errors / 0 warnings**、見た目も部位数も不変です
+**この 1 件だけが現 β の「承認待ち」です。** 技術とライセンスは**どちらも解決済み**——
+派生ファイルで **0 errors / 0 warnings**（見た目・部位数とも不変）、
+2 ファイルの CC BY 4.0 provenance は上流 record で個別に確認、NLM の license 申請は不要。
+残るのは **asset 採用判断・解剖レビュー・公開判断記録の 3 つ、すべて判断**です
 （[`HEART-ASSET-ADOPTION.md`](decisions/HEART-ASSET-ADOPTION.md)）。
-残るのは**採用判断と NLM 条件の確認**で、どちらも repo の外の話です。
 
 ## C. 次期 β 候補 — 技術的には統合済み
 
@@ -79,24 +80,40 @@ Claude② が正常臓器を、Claude③ が病態を増やし続けている先
 | 1 | **`amyloid-beta`** | なし | ⚠️ `legacy-unversioned` → 現行基準で取り直す | 次期 β へ切替 | なし | **最短** |
 | 2 | **`heart-failure`** | なし | ⚠️ `legacy-unversioned` → 同上 | 次期 β へ切替 | なし | **最短** |
 | 3 | **`copd`** | なし | ⚠️ **`stale`** → 再レビュー | 次期 β へ切替 | なし | 短 |
-| 4 | **`myocardial-ischemia`** | なし | ❌ `pending`（未実施）＋**色の誤認可否**が未判断 | 候補に 1 行追加＋切替 | なし | 中 |
-| 5 | **`heart-anatomy`** | **派生 asset の採用作業**（技術は解決済み） | 解剖・臨床とも未実施 | 現 β の候補 | ❌ **NLM 条件未確認・改変表示・採用判断** | **最長** |
+| 4 | **`myocardial-ischemia`** | なし | ❌ `pending`（未実施）＋**色の誤認可否**が未判断 | 候補に登録済み | なし | 中 |
+| 5 | **`heart-anatomy`** | **派生 asset の採用作業**（技術は解決済み） | 解剖レビュー未実施 | 現 β の候補 | ✅ 解決（CC BY 4.0 確認済み・NLM 申請不要） | 中〜長 |
 
 **1〜3 に実装作業はありません。** `NEXT_BETA_CANDIDATE_STATUS` が返す blocker は各 2 件
 （臨床レビューと公開判断記録）だけで、どちらも記録です。
 
-**4 は候補一覧に未登録**です。実装は揃っているので、レビューが返れば
-`NEXT_BETA_CANDIDATES` に 1 行足すだけで候補になります（`asthma` も同じ状態）。
+**4 も候補一覧に登録済みです**（`NEXT_BETA_CANDIDATES`）。5 件とも fail-closed のままで、
+レビューと公開判断記録が揃った順に開きます。`asthma` は実装は同等ですが未登録——
+レビューが返れば 1 行で候補になります。
+
+**いま何が止めているかは、いつでも 1 コマンドで見られます**：
+
+```
+$ npm run verify:next-beta
+brain-anatomy        BLOCKED: clinical review (pending), publication decision
+amyloid-beta         BLOCKED: clinical review (legacy-unversioned), publication decision
+heart-failure        BLOCKED: clinical review (legacy-unversioned), publication decision
+copd-hyperinflation  BLOCKED: stale review, publication decision
+myocardial-ischemia  BLOCKED: clinical review (pending), publication decision
+```
+
+**registry も判断記録も書き換えません**——読むだけです。
 
 **5 だけが性質の違う待ちです。** 外部データ・ライセンス・法務が絡み、
 これらは Medical 3D Lab の中では解決できません。
 
-### 順位が入れ替わった理由
+### 順位が動いた理由
 
-前回 `heart-anatomy` を最長としたのは validator が通らなかったためですが、
-**技術的には解決しました**（派生 asset で 0 errors / 0 warnings、見た目は不変）。
-それでも最長のままなのは、残りが **NLM 条件の確認と採用判断**だからです——
-実装で縮められない距離です。
+`heart-anatomy` は 2 段階で縮みました。validator は派生 asset で解決し、
+**ライセンスも解決しました**——2 ファイルそれぞれの上流 record を確認し、どちらも CC BY 4.0、
+NLM の license 申請は 2019 年以降不要です。最長ではなくなり、残るのは判断 3 件です。
+
+**それでも 1〜3 が先です。** あちらは procedural で外部データを含まず、
+必要なのはレビューと記録だけ——心臓は加えて **asset 採用判断と解剖レビュー**が要ります。
 
 ---
 
