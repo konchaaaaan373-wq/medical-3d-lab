@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import {
+  RELATED,
   BULLSEYE,
   CHARTS,
   DISCLAIMER,
@@ -213,6 +214,7 @@ export class MyocardialIschemiaScene {
     progressLabel: PROGRESS_LABEL,
     palette: PALETTE,
     modelScope: MODEL_SCOPE,
+    related: RELATED,
     modelControls: MODEL_CONTROLS_COPY,
     story: STORY_LABEL,
     learning: LEARNING_LABEL,
@@ -246,6 +248,35 @@ export class MyocardialIschemiaScene {
     position: new THREE.Vector3(-2.4, 1.6, 20.4),
     target: new THREE.Vector3(0, -1.35, 0),
   };
+
+  /**
+   * Framings a guided explanation may ask for by name.
+   *
+   * The opening shot holds the whole heart and its three arteries, which is
+   * what the first two steps are about — an artery, and the region beyond it.
+   * The steps after that are about the muscle: which region changed, where its
+   * border with the next region runs, and how it moves. From the opening
+   * distance that is a small patch of a small heart, so `wall` comes in on the
+   * anterior wall, along the same line of sight so nothing has to be re-learned.
+   *
+   * **Camera only.** No supply, no burden, no progress. The target is the
+   * anterior wall's own label anchor rather than a coordinate typed twice: the
+   * scene already decided where that wall is.
+   */
+  static guideFramings = Object.freeze({
+    wall: Object.freeze({
+      // Close enough that the wall is the subject, far enough that the *next*
+      // territory is still in frame: three of these steps are about a border —
+      // this artery's muscle changed and the one beside it did not — and a
+      // framing that fills the screen with one wall has cropped the comparison
+      // the sentence is making. Measured from the pictures at 1280x720.
+      target: new THREE.Vector3(0, -1.9, 0.6),
+      distance: 16.5,
+      direction: new THREE.Vector3(-2.4, 1.6, 20.4)
+        .sub(new THREE.Vector3(0, -1.35, 0))
+        .normalize(),
+    }),
+  });
 
   constructor({ viewer } = {}) {
     this.viewer = viewer ?? null;
@@ -722,6 +753,11 @@ export class MyocardialIschemiaScene {
         emphasis: Boolean(metric.emphasis),
       };
     });
+  }
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return MyocardialIschemiaScene.guideFramings;
   }
 
   getAnnotations() {

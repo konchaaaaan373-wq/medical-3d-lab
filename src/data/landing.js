@@ -17,6 +17,7 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
+  'heart-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -156,6 +157,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '脳回・脳溝、島皮質、深部核の位置関係を3Dで確認。',
     ['CORTEX', 'INSULA', 'DEEP NUCLEI'],
     ['皮質', '島皮質', '深部核']
+  ),
+  'heart-anatomy': presentation(
+    'Name the chambers, the septum, the valves and the papillary muscles on one heart.',
+    '四腔・心室中隔・弁・乳頭筋を、心臓の上で名前で確認。',
+    ['CHAMBERS', 'VALVES', 'PAPILLARY'],
+    ['心腔', '心臓弁', '乳頭筋']
   ),
   'amyloid-beta': presentation(
     'Move through one aggregation state from Aβ monomer to plaque.',

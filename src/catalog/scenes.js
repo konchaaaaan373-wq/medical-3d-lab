@@ -39,6 +39,48 @@ export const SCENE_MANIFEST = [
     description: 'Select individual gyri and sulci, peel back an operculum and reveal deep structures in place.',
     descriptionJa: '脳回・脳溝を個別に選択し、弁蓋部を薄くして島皮質と深部構造を本来の位置で観察します。',
     tags: ['anatomy', 'interactive', 'cortex'],
+    /**
+     * Where else this subject is shown — declared here rather than on the
+     * scene's metadata, and that is deliberate.
+     *
+     * `src/data/brainAnatomy.js` is a pinned model source: touching it moves the
+     * card revision, which makes the beta's publication decision stale, which
+     * closes the one scene the beta publishes. Which scenes relate to which is
+     * catalogue information anyway, so it lives with the catalogue and nothing
+     * about the model changes.
+     *
+     * **The note does a second job here.** The heart's links go between models
+     * of one organ at one scale. This one crosses scales: the amyloid scene is
+     * a schematic of molecules around a single neuron, with no anatomical scale
+     * and no location inside this brain. Moving to it is a change of subject and
+     * **not a zoom**, and implying otherwise — that pushing in on a gyrus would
+     * reveal those particles — is the misreading this exists to prevent.
+     */
+    related: {
+      scenes: [
+        {
+          slug: 'amyloid-beta',
+          // Not a zoom: see `src/data/relatedContract.js`. The prose note below
+          // says why; this is the same thing in a form the panel can act on.
+          transitionType: 'scale-change',
+          scaleRelationship: 'schematic',
+          label: 'Amyloid-β — a schematic at a different scale',
+          labelJa: 'アミロイドβ — 別のスケールの模式図',
+          why: 'Molecules around a single neuron, drawn as a diagram. **Not a zoom into this brain**: it has no anatomical scale and no place inside it.',
+          whyJa: '1 個の神経細胞のまわりの分子を図として描いたものです。**この脳を拡大したものではありません**——解剖学的な縮尺も、この脳の中での位置も持ちません。',
+        },
+      ],
+      note:
+        '**A different model, and a different scale.** This atlas is gross anatomy: nothing smaller '
+        + 'than a named structure is drawn. The amyloid scene is a schematic of molecular species '
+        + 'around one neuron, at no anatomical scale. Moving between them is a change of subject, '
+        + '**not a zoom**, and neither model says where in this brain those particles would be.',
+      noteJa:
+        '**別のモデルで、別のスケールです。** このアトラスは肉眼解剖で、名前の付いた構造より小さい'
+        + 'ものは描いていません。アミロイドβのシーンは 1 個の神経細胞のまわりの分子種の模式図で、'
+        + '解剖学的な縮尺を持ちません。行き来は主題の切り替えであって**拡大ではなく**、この脳の'
+        + 'どこにその粒があるのかは、どちらのモデルも述べていません。',
+    },
     load: () => import('../scenes/nervous/scenes/brainAnatomy/index.js'),
   },
   {
@@ -60,6 +102,23 @@ export const SCENE_MANIFEST = [
     descriptionJa: 'Aβ のモノマー → オリゴマー → 線維 → プラークを、連続した凝集状態として示します。',
     tags: ['molecular', 'aggregation', 'neurodegeneration'],
     load: () => import('../scenes/nervous/scenes/amyloidBeta/index.js'),
+  },
+  {
+    id: 'heart-anatomy',
+    slug: 'heart-anatomy',
+    titleEn: 'Interactive heart anatomy',
+    titleJa: '触れて学ぶ心臓の解剖',
+    system: 'cardiovascular',
+    organ: 'heart',
+    disease: null,
+    conditions: ['heart anatomy', 'cardiac chambers', 'heart valves', '心臓解剖', '心腔', '心臓弁'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/heart-anatomy.md',
+    modelProfile: 'heart-anatomy-reference-atlas',
+    description: 'The four chambers, the septum, the four valves and the papillary muscles, each selectable by name.',
+    descriptionJa: '四腔・心室中隔・4 つの弁・乳頭筋を、名前で個別に選択できます。',
+    tags: ['anatomy', 'interactive', 'chambers'],
+    load: () => import('../scenes/cardiovascular/scenes/heartAnatomy/index.js'),
   },
   {
     id: 'heart-failure',

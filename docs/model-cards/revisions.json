@@ -6,9 +6,20 @@
       "src/data/brainAnatomy.js",
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "584cdfefac8a7464",
-    "cardUpdatedAt": "2026-09-08"
+    "cardRevision": 14,
+    "modelDigest": "3c3175a6da4b6944",
+    "cardUpdatedAt": "2026-09-09"
+  },
+  {
+    "sceneId": "heart-anatomy",
+    "card": "docs/model-cards/heart-anatomy.md",
+    "modelSources": [
+      "src/data/heartAnatomy.js",
+      "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
+    ],
+    "cardRevision": 19,
+    "modelDigest": "e70530f01379d8e2",
+    "cardUpdatedAt": "2026-09-10"
   },
   {
     "sceneId": "circulation",

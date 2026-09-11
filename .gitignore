@@ -15,3 +15,8 @@ viewport-report.json
 
 # Written by `npm run cards:check` while it compares against what is committed.
 .social-check/
+
+# Candidate assets a scene under development fetches. Pinned in
+# src/catalog/devAssets.js and fetched by `npm run assets:dev`; never committed —
+# a third-party binary does not belong in this repository.
+dev-assets/

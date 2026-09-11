@@ -1,0 +1,279 @@
+import { el } from '../utils/dom.js';
+import { buildSearchIndex, searchStructures } from '../app/anatomySearch.js';
+
+/**
+ * A search box over the part tree, and the results it shows instead of it.
+ *
+ * Four hundred structures in a tree is a list you can read only if you already
+ * know which branch to open. A reader who arrives with a name — 「海馬」,
+ * "hippocampus", something they heard in a lecture — has no way in. This is
+ * that way in, and it is deliberately thin: it owns an input, a list of rows,
+ * and the decision of which of the two surfaces is showing. It owns no
+ * selection, no highlight and no structure identity.
+ *
+ * ## The tree is not rebuilt, only covered
+ *
+ * Searching hides the tree; clearing shows it again, with the branches the
+ * reader had opened still open and the body scrolled back to where they left
+ * it. That is the whole reason the tree element is passed in rather than
+ * re-rendered: a tree that is rebuilt on clear has forgotten everything the
+ * reader did to it, and "come back" turns into "start again".
+ *
+ * ## What a row is, and what it is not
+ *
+ * A row stands for a **structure** — one id, however many meshes the model
+ * draws it from — and selecting one calls the same `onSelect` a tree row does,
+ * with the same id. Left and right are two structures and stay two rows. A name
+ * from higher up the hierarchy (a lobe, a hemisphere) is not a selectable
+ * structure and never becomes a row of its own; it finds the structures under
+ * it, and the row says that is why it matched.
+ *
+ * @param {object} options
+ * @param {HTMLElement} options.treeElement the part tree this sits above
+ * @param {() => Array<object>} options.inventory the scene's structures
+ * @param {(id: any) => void} options.onSelect
+ * @param {() => number} [options.readScroll] current scroll of the body
+ * @param {(top: number) => void} [options.writeScroll]
+ */
+export function createAnatomyPartsFinder({
+  treeElement,
+  inventory,
+  onSelect,
+  selectedId = () => null,
+  readScroll = () => 0,
+  writeScroll = () => {},
+}) {
+  let index = null;
+  /** The results currently shown, in order. */
+  let hits = [];
+  /** The result rows, in the same order, so state is a lookup. */
+  let rowNodes = [];
+  /**
+   * Where the keyboard is in the list — not what is selected.
+   *
+   * Two different things, and a list that conflates them repaints the model on
+   * every arrow key. Moving is free; Enter and Space are what commit.
+   */
+  let activeIndex = -1;
+  /** Where the tree was left, so clearing the search is coming back. */
+  let treeScroll = 0;
+  let searching = false;
+
+  const results = el('ul', {
+    class: 'anatomy-search-results',
+    role: 'listbox',
+    'aria-label': 'Search results / 検索結果',
+    hidden: 'hidden',
+  });
+  const empty = el('p', { class: 'anatomy-search-empty', hidden: 'hidden' }, [
+    el('span', { class: 'lang-en', text: 'No structure matches that name.' }),
+    el('span', { class: 'lang-ja', text: '該当する部位がありません。' }),
+  ]);
+  // Bilingual like everything else on this surface: one mixed string would be
+  // read out in the wrong language by half the screen readers that meet it.
+  const countEn = el('span', { class: 'lang-en' });
+  const countJa = el('span', { class: 'lang-ja' });
+  const count = el('p', { class: 'anatomy-search-count', role: 'status', hidden: 'hidden' }, [countEn, countJa]);
+
+  const input = el('input', {
+    class: 'anatomy-search-input',
+    type: 'search',
+    // `search` inputs get a browser clear button; the Escape key below is the
+    // keyboard equivalent and both end in the same place.
+    placeholder: '部位を検索 / Search structures',
+    'aria-label': 'Search structures / 部位を検索',
+    autocomplete: 'off',
+    on: {
+      input: () => run(input.value),
+      keydown: onKeydown,
+    },
+  });
+  // A fresh input has no value until something is typed into it; starting it at
+  // the empty string means every read is a string.
+  input.value = '';
+  const element = el('div', { class: 'anatomy-finder' }, [
+    el('div', { class: 'anatomy-search-row' }, [input]),
+    count,
+    empty,
+    results,
+    treeElement,
+  ]);
+
+  /**
+   * Enter commits; the IME's Enter does not.
+   *
+   * A Japanese reader types 「かいば」 and presses Enter to accept 「海馬」. That
+   * keystroke belongs to the input method, not to this list, and acting on it
+   * would select whatever happened to be first while the reader was still
+   * typing the word. `isComposing` is the browser saying so; keyCode 229 is the
+   * same fact from browsers that do not set it.
+   *
+   * Escape clears the search and **stops there**. The same key closes the parts
+   * sheet on a phone, and one press doing both would throw away the search and
+   * the panel together.
+   */
+  function onKeydown(event) {
+    if (event.isComposing || event.keyCode === 229) return;
+    if (event.key === 'Escape') {
+      if (!input.value) return;
+      event.preventDefault();
+      event.stopPropagation();
+      clear();
+      return;
+    }
+    if (!hits.length) return;
+    const move = (next) => {
+      event.preventDefault();
+      setActive(Math.min(hits.length - 1, Math.max(0, next)));
+    };
+    if (event.key === 'ArrowDown') return move(activeIndex + 1);
+    if (event.key === 'ArrowUp') return move(activeIndex - 1);
+    if (event.key === 'Home') return move(0);
+    if (event.key === 'End') return move(hits.length - 1);
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      const hit = hits[Math.max(0, activeIndex)];
+      // The scene's own id, in the scene's own type. The string on the element
+      // is how the DOM had to store it, not what the model is asked with.
+      if (hit) onSelect(hit.structure.id);
+    }
+  }
+
+  /** Where the keyboard is. Moving does not select. */
+  function setActive(next) {
+    activeIndex = next;
+    rowNodes.forEach((node, at) => {
+      node.dataset.active = at === activeIndex ? 'yes' : 'no';
+    });
+    const node = rowNodes[activeIndex];
+    if (node) {
+      input.setAttribute('aria-activedescendant', node.id);
+      node.scrollIntoView?.({ block: 'nearest' });
+    } else {
+      input.removeAttribute('aria-activedescendant');
+    }
+  }
+
+  /**
+   * Which result is the pinned selection — asked of the scene, not remembered.
+   *
+   * A result list that keeps its own idea of what is selected is a second
+   * source of truth, and it drifts the moment the reader clicks the model
+   * instead. So this reads the scene every time it paints, and marks nothing at
+   * all when the pinned structure is not among the results — rather than
+   * leaving the first row looking chosen.
+   */
+  function paintSelection() {
+    const current = selectedId();
+    rowNodes.forEach((node, at) => {
+      const same = current != null && String(current) === String(hits[at]?.structure.id);
+      node.setAttribute('aria-selected', String(same));
+    });
+  }
+
+  /** Build the index the first time it is needed, from the scene's inventory. */
+  function ensureIndex() {
+    if (!index) index = buildSearchIndex(inventory() ?? []);
+    return index;
+  }
+
+  function run(query) {
+    const text = typeof query === 'string' ? query : '';
+    hits = text.trim() ? searchStructures(ensureIndex(), text) : [];
+    const wasSearching = searching;
+    searching = Boolean(text.trim());
+
+    // Remember where the tree was, once, on the way into a search — not on
+    // every keystroke, which would record the search's own scroll position.
+    if (searching && !wasSearching) treeScroll = readScroll();
+
+    rowNodes = [];
+    results.replaceChildren(...hits.map(row));
+    activeIndex = hits.length ? 0 : -1;
+    setActive(activeIndex);
+    paintSelection();
+    results.hidden = !searching || hits.length === 0;
+    empty.hidden = !searching || hits.length > 0;
+    count.hidden = !searching;
+    if (searching) {
+      // Structures, not meshes and not rows: the number a reader can act on.
+      countEn.textContent = `${hits.length} structure${hits.length === 1 ? '' : 's'}`;
+      countJa.textContent = `${hits.length} 件`;
+    }
+    treeElement.hidden = searching;
+    if (!searching && wasSearching) writeScroll(treeScroll);
+  }
+
+  /** One structure. The id is the scene's; nothing here parses it. */
+  function row(hit, at) {
+    const structure = hit.structure;
+    const where = [structure.sideJa, (structure.hierarchyJa ?? []).slice(-2, -1)[0]]
+      .filter(Boolean)
+      .join(' · ');
+    const whereEn = [structure.side, (structure.hierarchy ?? []).slice(-2, -1)[0]]
+      .filter(Boolean)
+      .join(' · ');
+    const button = el(
+      'button',
+      {
+        class: 'anatomy-search-hit',
+        type: 'button',
+        role: 'option',
+        id: `anatomy-search-hit-${at}`,
+        'aria-selected': 'false',
+        // `identity` is the scene's own word for "the source's records for this
+        // structure disagree with each other". A row carries it so the name in
+        // a result list is not read as settled; the row is otherwise unchanged
+        // and searching by the source's own name still finds it.
+        dataset: {
+          structureId: String(structure.id),
+          active: 'no',
+          ...(structure.identity ? { identity: String(structure.identity) } : {}),
+        },
+        // The scene's own id, not the string the element had to carry.
+        on: { click: () => { setActive(at); onSelect(structure.id); } },
+      },
+        [
+          el('span', { class: 'anatomy-search-name' }, [
+            el('span', { class: 'lang-en', text: structure.name ?? '' }),
+            el('span', { class: 'lang-ja', text: structure.nameJa ?? '' }),
+          ]),
+          el('span', { class: 'anatomy-search-where' }, [
+            el('span', { class: 'lang-en', text: whereEn }),
+            el('span', { class: 'lang-ja', text: where }),
+          ]),
+      ]
+    );
+    rowNodes[at] = button;
+    return el('li', { class: 'anatomy-search-row-item', role: 'presentation' }, [button]);
+  }
+
+  function clear() {
+    input.value = '';
+    run('');
+    input.focus?.();
+  }
+
+  return {
+    element,
+    input,
+    /** True while results are covering the tree. */
+    isSearching: () => searching,
+    clear,
+    /**
+     * The atlas changed, so the index is stale.
+     *
+     * Rebuilt rather than cleared: a reader who searched while the model was
+     * still loading typed a real question, and answering it once the structures
+     * exist is better than making them type it again. The one thing that must
+     * not survive is the *answer* — an index built over an empty inventory said
+     * "no such structure" and went on saying it.
+     */
+    refresh() {
+      index = null;
+      if (searching) run(input.value);
+    },
+    /** The pinned selection moved; the rows say which one it is. */
+    syncSelection: paintSelection,
+  };
+}

@@ -71,12 +71,28 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
 });
 
 test('beta release: an unfinished heart is not published as a disease model instead', () => {
-  // The decision this release exists to record. `heart-anatomy` is named, is
-  // not built, and nothing stands in for it.
-  assert.equal(sceneById('heart-anatomy'), null, 'if this scene now exists, this test is what has to change');
+  // The decision this release exists to record. `heart-anatomy` now exists as a
+  // scene — built against a candidate asset, with the great vessels missing —
+  // and existing is not the same as being open. Nothing stands in for it.
+  const scene = sceneById('heart-anatomy');
+  assert.ok(scene, 'the scene is registered in the catalogue');
+  assert.equal(scene.disease, null, 'it is an anatomy scene, not a disease model wearing the name');
+  assert.equal(isSceneReleased(scene), false, 'and being registered opens nothing');
+
   const heart = BETA_CANDIDATE_STATUS.find((entry) => entry.sceneId === 'heart-anatomy');
   assert.equal(heart.open, false);
   assert.ok(heart.problems.length > 0, 'a candidate that is not open says why');
+  // The two reasons, stated separately: the file it draws has passed no asset
+  // release gate, and no publication decision has been taken about it. Either
+  // one alone closes the gate.
+  assert.ok(
+    heart.problems.some((line) => /candidate asset "hubmap-vh-m-heart"/.test(line)),
+    'the candidate asset is named as a reason'
+  );
+  assert.ok(
+    heart.problems.some((line) => /publication decision/.test(line)),
+    'and so is the absence of a publication decision'
+  );
 
   for (const scene of SCENES.filter((entry) => entry.organ === 'heart')) {
     assert.equal(isSceneReleased(scene), false, `${scene.id} is a heart scene and the beta has no heart model`);
@@ -378,12 +394,13 @@ test('beta release: a mistyped URL lands on an open model, not on a withheld one
   assert.equal(isRouteReleased(fallback), true);
   assert.equal(sceneById(DEFAULT_SCENE_ID).disease, null, 'and it is not a disease model');
 
-  // `#/heart-anatomy` is a link somebody could reasonably write today. It is
-  // not a scene, so it behaves as a typo — and lands on the brain, not on a
-  // heart disease model dressed up as the heart.
+  // `#/heart-anatomy` is a real scene now, so it is not a typo any more — it
+  // resolves to itself. What it must not do is open: the release answers it
+  // with "to be updated", and never with a heart disease model dressed up as
+  // the heart.
   const heartLink = resolveRoute('#/heart-anatomy');
-  assert.equal(heartLink.sceneId, DEFAULT_SCENE_ID);
-  assert.equal(sceneById(heartLink.sceneId).organ, 'brain');
+  assert.equal(heartLink.sceneId, 'heart-anatomy');
+  assert.equal(isRouteReleased(heartLink), false, 'it resolves, and it does not open');
 });
 
 test('beta release: a production build has no unlock at all', () => {

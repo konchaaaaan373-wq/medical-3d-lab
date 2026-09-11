@@ -125,6 +125,7 @@ export class FakeElement {
     this.append(...children);
   }
 
+  /** Detach from wherever this is, the way `Element.remove()` does. */
   remove() {
     const siblings = this.parentElement?.children;
     if (!siblings) return;
@@ -133,6 +134,13 @@ export class FakeElement {
     this.parentElement = null;
   }
 
+  /**
+   * The nearest ancestor (or self) matching a simple selector.
+   *
+   * `#id` and `.class` only — which is all the product's components ask for,
+   * and pretending to support more would invite a test that passes here and
+   * fails in a browser.
+   */
   closest(selector) {
     const matches = (node) =>
       selector.startsWith('#')
@@ -146,11 +154,19 @@ export class FakeElement {
     return null;
   }
 
+  /** This element, or anything under it. */
   contains(node) {
     if (node === this) return true;
     return this.children.some((child) => child instanceof FakeElement && child.contains(node));
   }
 
+  /**
+   * Take focus.
+   *
+   * `document.activeElement` is what a component reads to decide where to send
+   * focus back to, so the fake document has to have one for that to be testable
+   * at all.
+   */
   focus() {
     if (globalThis.document) globalThis.document.activeElement = this;
   }
@@ -171,6 +187,14 @@ export class FakeElement {
     }
   }
 
+  /**
+   * Deliver an event to this element's own listeners.
+   *
+   * No capture and no bubbling: a component that binds one handler on its root
+   * and reads `event.target` is testable with this, and one that relies on the
+   * event travelling is relying on something this cannot promise — better that
+   * it says so by not working than by half-working.
+   */
   dispatchEvent(event) {
     for (const listener of this.listeners.get(event.type) ?? []) {
       listener({ currentTarget: this, target: this, ...event });
@@ -183,6 +207,16 @@ export function installFakeDocument() {
   const previous = globalThis.document;
   globalThis.document = {
     createElement: (tagName) => new FakeElement(tagName),
+    /**
+     * A text node, as far as anything here needs one.
+     *
+     * `ModelScopePanel` builds `**emphasis**` out of `<strong>` elements and
+     * text nodes rather than assigning HTML, so a fake document without this
+     * cannot render the one panel whose whole job is careful wording. It is a
+     * plain object, not a `FakeElement`: `findByClass` walks elements and must
+     * not be handed something claiming to be one.
+     */
+    createTextNode: (text) => ({ nodeType: 3, text: String(text), textContent: String(text) }),
     activeElement: null,
   };
   return () => {

@@ -1,5 +1,7 @@
 import { SCENE_MANIFEST } from '../catalog/scenes.js';
 import { clinicalReviewForScene } from '../catalog/clinicalReview.js';
+import { patientGuideFor } from '../data/patientGuides.js';
+import { educationGuideFor } from '../data/educationGuides.js';
 
 /**
  * Product capabilities are declared on the scene manifest itself, but the
@@ -29,10 +31,9 @@ function hasVersionedClinicalReview(scene) {
   return clinicalReviewForScene(scene)?.reviewStatus === 'reviewed';
 }
 
-function featureSet(scene) {
-  if (!scene || !PAID_READY_STATUSES.has(scene.status) || !hasVersionedClinicalReview(scene)) {
-    return FREE_ONLY;
-  }
+function featureSet(scene, { requireClinicalReview = true } = {}) {
+  if (!scene || !PAID_READY_STATUSES.has(scene.status)) return FREE_ONLY;
+  if (requireClinicalReview && !hasVersionedClinicalReview(scene)) return FREE_ONLY;
   const patient = scene.access?.patient === true;
   const education = scene.access?.education === true;
   if (!patient && !education) return FREE_ONLY;
@@ -68,6 +69,46 @@ export const SCENE_PRODUCT_FEATURES = Object.freeze(
  */
 export function featuresForScene(sceneOrId) {
   return featureSet(sceneFor(sceneOrId));
+}
+
+/**
+ * The same declaration with the clinical-review requirement lifted — **for an
+ * internal preview build and nothing else**.
+ *
+ * Today no scene in the registry is `reviewed`: everything is `pending`,
+ * `stale` or `legacy-unversioned`. That is the correct answer for the public
+ * product and it also means the authored patient explanation cannot be looked
+ * at *at all* — not by a reviewer, not by whoever has to decide whether it is
+ * good enough to sign. A mode nobody can open is a mode nobody can improve.
+ *
+ * So this exists to answer "what would this scene offer if the review existed",
+ * and only `installAccess` asks it, and only when `betaUnlocked()` — which is a
+ * build-time capability absent from production, the same one that opens an
+ * unreleased scene. Every catalogue surface keeps asking `featuresForScene`,
+ * so cards, badges and the use filter go on describing the public product
+ * truthfully.
+ *
+ * **It is not a way in.** A preview build still requires a signed-in session
+ * and a server that grants the entitlement; this only decides whether the
+ * button is built.
+ *
+ * @param {string|{id?:string,status?:string,access?:object}} sceneOrId
+ */
+export function authoredFeaturesForScene(sceneOrId) {
+  const scene = sceneFor(sceneOrId);
+  if (!scene) return FREE_ONLY;
+  // Asked of the writing rather than of the manifest.
+  //
+  // `access.patient` is a product claim, and the catalogue's own rules say an
+  // `alpha` scene may not make one — rightly: an alpha model is still moving.
+  // But the question here is not "does this scene offer a patient mode", it is
+  // "is there a patient explanation written for it that somebody could read".
+  // The guides answer that themselves, so nothing has to be declared on an
+  // unfinished scene to let a reviewer see its copy.
+  const patient = Boolean(patientGuideFor(scene.id));
+  const education = Boolean(educationGuideFor(scene.id));
+  if (!patient && !education) return FREE_ONLY;
+  return Object.freeze({ core: 'free', basicExplanation: 'free', patient, education });
 }
 
 /**

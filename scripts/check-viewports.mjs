@@ -35,6 +35,7 @@
  *   --diagnostics-wait-detail  wait for Explorer detail to settle in a direct-open control
  */
 import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chromiumExecutable } from './lib/browser.mjs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -1010,7 +1011,7 @@ try {
   browser = await browserType.launch({
     headless: !headed,
     ...(engineName === 'chromium'
-      ? { executablePath: process.env.CHROMIUM_PATH || undefined, args: BROWSER_ARGS }
+      ? { executablePath: chromiumExecutable(browserType), args: BROWSER_ARGS }
       : {}),
     ...(engineName === 'firefox' ? { firefoxUserPrefs: FIREFOX_PREFS } : {}),
   });
