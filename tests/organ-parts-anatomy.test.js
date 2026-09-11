@@ -24,6 +24,7 @@ import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnat
 import { buildProstateZones } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
 import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
 import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
+import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -893,4 +894,115 @@ test('the knee’s ligaments each run between the two things they hold together'
   assert.ok(patellar.min.y < patella.min.y && patellar.intersectsBox(patella), 'and the patellar tendon leaves from below it');
   assert.ok(patellar.distanceToPoint(attachment('tibialTuberosity')) < 0.02, 'ending at the tibial tuberosity');
   assert.ok(attachment('tibialTuberosity').y < box('medial-tibial-plateau').min.y, 'which is below the joint line');
+});
+
+// --- the shoulder -----------------------------------------------------------
+
+test('the shoulder’s socket is small, and four tendons make up for it', () => {
+  // The opposite problem from the knee. A knee is held by its ligaments; a
+  // shoulder is barely held by its bones at all, so what is checked here is the
+  // sleeve: which tendon arrives from which direction, and which of the two
+  // tubercles each one ends on.
+  const shoulder = buildShoulderJoint();
+  shoulder.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(shoulder.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  const size = (id) => box(id).getSize(new THREE.Vector3());
+  const lateralOf = (a, b) => at(a).x * SHOULDER_MEDIAL < at(b).x * SHOULDER_MEDIAL;
+
+  // A right shoulder: the scapula is medial, the humerus lateral.
+  assert.ok(lateralOf('humeral-head', 'glenoid'), 'the head sits lateral to the socket');
+  assert.ok(lateralOf('humeral-head', 'scapula'), 'and the whole humerus is lateral to the scapula');
+
+  // The claim the scene is built on: the socket is a fraction of the head.
+  // Not an assertion that it is a third — that is a fact about contact arcs,
+  // stated in the copy and not built into this geometry. What the geometry has
+  // to be is a face smaller than the ball on it, in both directions and by a
+  // long way in area.
+  const socket = size('glenoid');
+  const head = size('humeral-head');
+  assert.ok(socket.y < head.y * 0.9, 'the glenoid is shorter than the head it faces');
+  assert.ok(socket.z < head.z * 0.75, 'and much shallower front to back');
+  assert.ok(socket.y * socket.z < head.y * head.z * 0.6, 'so its face is a fraction of the head’s');
+
+  // The labrum is a rim *around* the socket, so it reaches past it on all sides.
+  const labrum = box('glenoid-labrum');
+  const glenoid = box('glenoid');
+  assert.ok(labrum.min.y < glenoid.min.y && labrum.max.y > glenoid.max.y, 'the labrum rims the socket top and bottom');
+  assert.ok(labrum.min.z < glenoid.min.z && labrum.max.z > glenoid.max.z, 'and front and back');
+
+  // Three of the four cuff tendons end on the greater tubercle; subscapularis,
+  // the only one in front, ends on the lesser. That is the whole of why it
+  // rotates the arm the other way.
+  const greater = box('greater-tubercle');
+  const lesser = box('lesser-tubercle');
+  for (const id of ['supraspinatus-tendon', 'infraspinatus-tendon', 'teres-minor-tendon']) {
+    assert.ok(box(id).intersectsBox(greater), `${id} ends on the greater tubercle`);
+    assert.ok(!box(id).intersectsBox(lesser), `${id} does not reach the lesser tubercle`);
+  }
+  assert.ok(box('subscapularis-tendon').intersectsBox(lesser), 'subscapularis ends on the lesser tubercle');
+  assert.ok(!box('subscapularis-tendon').intersectsBox(greater), 'and not on the greater');
+
+  // And they arrive from four different directions round the head.
+  const centre = at('humeral-head');
+  assert.ok(at('supraspinatus-tendon').y > centre.y, 'supraspinatus comes over the top');
+  assert.ok(at('infraspinatus-tendon').z < centre.z, 'infraspinatus from behind');
+  assert.ok(at('teres-minor-tendon').z < centre.z, 'teres minor from behind');
+  assert.ok(at('teres-minor-tendon').y < at('infraspinatus-tendon').y, 'and below infraspinatus');
+  assert.ok(at('subscapularis-tendon').z > centre.z, 'subscapularis from in front');
+
+  // Supraspinatus passes *under* the acromion — which is why it is the cuff
+  // tendon with a bony shelf over it. Measured where the two actually overlap:
+  // a bounding box cannot say this, because the acromion runs away medially
+  // and downwards to the spine it comes from.
+  const extreme = (id, within, pick) => {
+    const mesh = shoulder.mesh(id);
+    const position = mesh.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    let found = null;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).add(mesh.position);
+      if (!within(vertex)) continue;
+      found = found === null ? vertex.y : pick(found, vertex.y);
+    }
+    assert.ok(found !== null, `${id} has a surface over the joint at all`);
+    return found;
+  };
+  const overTheJoint = (vertex) => vertex.x * SHOULDER_MEDIAL > -0.35 && vertex.x * SHOULDER_MEDIAL < 0.3;
+  const roof = extreme('acromion', overTheJoint, Math.min);
+  const tendon = extreme('supraspinatus-tendon', overTheJoint, Math.max);
+  assert.ok(roof > tendon, 'the acromion is above the supraspinatus tendon, not through it');
+  assert.ok(at('supraspinatus-tendon').y > centre.y, 'and the tendon is above the middle of the head');
+  assert.ok(box('coracoacromial-ligament').intersectsBox(box('coracoid-process')), 'the arch reaches the coracoid');
+
+  // The biceps tendon starts inside the joint and runs down between the two
+  // tubercles. Nothing else in the body does that.
+  const biceps = box('long-head-of-biceps-tendon');
+  assert.ok(biceps.intersectsBox(labrum), 'the long head of biceps begins at the rim of the socket');
+  assert.ok(biceps.min.y < Math.min(greater.min.y, lesser.min.y), 'and ends below both tubercles');
+  const groove = shoulder.anchorPoints.bicipitalGroove;
+  assert.ok(biceps.containsPoint(groove), 'passing through the groove');
+  const between = [at('greater-tubercle').x, at('lesser-tubercle').x].sort((a, b) => a - b);
+  assert.ok(groove.x > between[0] && groove.x < between[1], 'which is between the two tubercles');
+
+  // The arm hangs from the clavicle, and two ligaments are how.
+  assert.ok(box('clavicle').intersectsBox(box('acromion')), 'the clavicle reaches the acromion');
+  assert.ok(box('acromioclavicular-ligament').intersectsBox(box('clavicle')), 'the AC ligament spans that joint');
+  const coracoclavicular = box('coracoclavicular-ligament');
+  assert.ok(coracoclavicular.intersectsBox(box('coracoid-process')), 'the CC ligament reaches the coracoid');
+  assert.ok(coracoclavicular.intersectsBox(box('clavicle')), 'and the clavicle');
+
+  // The cartilage covers the part of the head that faces the socket, and not
+  // the lateral side of it, where nothing articulates.
+  const cartilage = new Map(shoulder.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  const glaze = cartilage.get('humeral-cartilage');
+  const headBox = box('humeral-head');
+  assert.ok(glaze.max.x * SHOULDER_MEDIAL > headBox.max.x * SHOULDER_MEDIAL, 'the glaze stands off the head on the socket side');
+  assert.ok(glaze.min.x * SHOULDER_MEDIAL >= headBox.min.x * SHOULDER_MEDIAL, 'and not on the side away from it');
+
+  // And the sling under the head runs from the socket to the humerus.
+  const sling = box('inferior-glenohumeral-ligament');
+  assert.ok(sling.max.y < centre.y, 'the inferior glenohumeral ligament is below the head');
+  assert.ok(sling.intersectsBox(labrum), 'reaching the lower rim of the socket');
+  assert.ok(sling.intersectsBox(box('humeral-shaft')) || sling.intersectsBox(headBox), 'and the neck of the humerus');
 });

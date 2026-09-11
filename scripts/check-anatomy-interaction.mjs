@@ -138,6 +138,8 @@ const SCENE_POINTS = {
   'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
   // A femoral condyle, the other one, the patella between them, and a plateau.
   'knee-anatomy': [[0.45, 0.37], [0.56, 0.37], [0.52, 0.44], [0.46, 0.56]],
+  // The head, the scapula behind it, the arch above, and the shaft below.
+  'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
 };
 
 const clickPoints = (() => {

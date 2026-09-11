@@ -341,5 +341,18 @@
     "cardRevision": 3,
     "modelDigest": "84f2a2a7276a902c",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "shoulder-anatomy",
+    "card": "docs/model-cards/shoulder-anatomy.md",
+    "modelSources": [
+      "src/data/shoulderAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/shoulderJoint.js",
+      "src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "9e1178f3b1fd07ac",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

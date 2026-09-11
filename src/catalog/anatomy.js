@@ -195,6 +195,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the joint capsule and synovium with its bursae and the suprapatellar pouch, the popliteus and the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns as separate attachments, and the popliteal vessels and the nerves behind. Nothing here moves, which is the first thing a knee scene beyond anatomy would need',
   },
   {
+    organ: 'shoulder',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/shoulderAnatomy — scapula, glenoid, acromion and scapular spine, coracoid, clavicle, humeral head, both tubercles and the humeral shaft, the articular cartilage on both surfaces, the labrum, all four rotator cuff tendons, the long head of biceps and four ligaments, selectable by name; tests/organ-parts-anatomy.test.js — the glenoid is a fraction of the head it faces, three cuff tendons end on the greater tubercle and subscapularis on the lesser, supraspinatus passes under the acromion, the biceps tendon begins at the socket rim and runs down between the tubercles, and the coracoacromial ligament spans coracoid to acromion above the cuff',
+    next: 'A3: the joint capsule with its other glenohumeral ligaments, the subacromial and subcoracoid bursae, deltoid and the remaining scapular muscles as bellies rather than straps, the conoid and trapezoid as separate ligaments, and the axillary vessels and the brachial plexus. Nothing here moves, which is the first thing a shoulder scene beyond anatomy would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

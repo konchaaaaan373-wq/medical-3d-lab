@@ -33,6 +33,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'prostate-anatomy',
   'male-tract-anatomy',
   'knee-anatomy',
+  'shoulder-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -154,6 +155,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '骨を薄くして、どの靱帯がどこからどこへ走るのかを確認。',
     ['LIGAMENTS', 'MENISCI', 'JOINT'],
     ['靱帯', '半月板', '関節']
+  ),
+  'shoulder-anatomy': presentation(
+    'See how little socket there is, and which four tendons make up for it.',
+    '関節窩の浅さと、それを補う腱板4筋の走行。',
+    ['CUFF', 'SOCKET', 'ARCH'],
+    ['腱板', '関節窩', 'アーチ']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

@@ -408,6 +408,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code as a right knee in full extension: two femoral condyles as separate solids with the intercondylar notch as the gap between them, two tibial plateaus on a shaft, a fibula, a patella, one cartilage layer drawn as slightly enlarged translucent copies of every surface that meets another, two menisci as arcs of changing calibre, and four ligaments plus two tendons drawn between named attachment points. No state and no mechanism: nothing moves, and the joint is drawn at one position. **No length, angle, thickness or attachment footprint is a measurement** — bone shapes are simplified solids and cartilage thickness is drawn to be visible. The capsule, the synovium and its bursae, the popliteus, the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns, the vessels and the nerves are not drawn.',
   },
   {
+    profileId: 'shoulder-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as a right shoulder with the arm at the side: a thin triangular scapula carrying a separately drawn glenoid dish, the spine and acromion as one process over the joint, the coracoid as another, the clavicle joining the two to the trunk, and a humeral head with its two tubercles on a shaft. A labral ring deepens the socket, one cartilage structure is drawn as two translucent copies of the two articular surfaces, four cuff tendons are drawn as straps from four faces of the scapula to the tubercles, the long head of biceps runs from the socket rim down the bicipital groove, and four ligaments span coracoid, acromion, clavicle and humeral neck. No state and no mechanism: nothing moves and the joint is drawn at one position. **No length, angle, thickness or attachment footprint is a measurement**; the subacromial space is drawn wider than it is, as a declared display value, so that the tendon under the arch can be seen and selected, and no clearance may be read off the model; each cuff tendon is one strap standing for a muscle and its tendon; the joint capsule apart from one ligament, the bursae, deltoid, the remaining scapular muscles, the vessels and the brachial plexus are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

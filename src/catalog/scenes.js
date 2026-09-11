@@ -701,6 +701,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/kneeAnatomy/index.js'),
   },
   {
+    id: 'shoulder-anatomy',
+    slug: 'shoulder-anatomy',
+    titleEn: 'Interactive shoulder anatomy',
+    titleJa: '触れて学ぶ肩関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'shoulder',
+    organs: ['shoulder', 'bone'],
+    disease: null,
+    conditions: ['shoulder anatomy', 'rotator cuff', 'glenoid', 'labrum', 'subacromial', '肩関節解剖', '腱板', '関節窩', '関節唇'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/shoulder-anatomy.md',
+    modelProfile: 'shoulder-anatomy-procedural-atlas',
+    description:
+      'A large head on a small socket, the four cuff tendons that hold it there, and the arch of bone and ligament they pass under.',
+    descriptionJa:
+      '小さな関節窩に対する大きな上腕骨頭、それを保持する腱板4筋の腱、そしてその腱が通る骨と靱帯のアーチを示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/shoulderAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

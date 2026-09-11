@@ -694,5 +694,32 @@
       "No injury, degeneration or repair is represented in any form, and nothing here is anyone's knee.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, reconstruction or arthroplasty."
     ]
+  },
+  {
+    "sceneId": "shoulder-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right shoulder with the arm at the side — bones, glenoid and labrum, articular cartilage, all four rotator cuff tendons, the long head of biceps and four ligaments — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/shoulder-anatomy.md",
+      "docs/model-evidence/shoulder-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement; bone shapes are simplified solids and cartilage thickness is drawn to be visible.",
+      "The subacromial space is drawn wider than it is, so that the tendon passing under the arch can be seen and selected; it is a display value and no clearance may be read off the model.",
+      "The joint is drawn at one position, with the arm at the side, and nothing in the scene moves: the cuff neither tightens nor slackens and the head does not translate.",
+      "Each cuff tendon is one strap standing for a muscle and its tendon; the myotendinous junctions and the footprints are not modelled.",
+      "The joint capsule apart from one glenohumeral ligament, the subacromial and other bursae, deltoid, the remaining scapular muscles, the vessels and the brachial plexus are not drawn.",
+      "Glenoid version and humeral retroversion are not represented.",
+      "No tear, impingement, instability or degeneration is represented in any form, and nothing here is anyone's shoulder.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, cuff repair, stabilisation or arthroplasty."
+    ]
   }
 ]
