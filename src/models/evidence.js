@@ -2640,6 +2640,128 @@ export const LOBAR_COLLAPSE_EVIDENCE = defineEvidence('lobar-collapse', [
   },
 ]);
 
+export const LUMBAR_DISC_EVIDENCE = defineEvidence('lumbar-disc-herniation', [
+  {
+    id: 'two-tissues-one-threshold',
+    claim:
+      'The disc is an annulus fibrosus enclosing a nucleus pulposus, and the difference between a disc that is deformed and material that has left one is whether the annulus still closes behind it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the intervertebral disc as two tissues, and of displacement of nuclear material through a defect in the annulus.',
+    validation: 'physiology: the ring closing behind it is one threshold, not a degree',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-direction-decides-what-is-there',
+    claim:
+      'What displaced material can reach is decided by the direction it goes rather than by how far it has gone: straight back is the canal, and posterolaterally is the nerve root.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the posterolateral direction as the one in which displaced material most often approaches a nerve root, and of central displacement approaching the canal instead.',
+    validation: 'physiology: what it can reach is decided by the direction, not by how far it went',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'past-the-ring-is-not-reaching-anything',
+    claim:
+      'Material can be past the annulus and reach nothing, and the two events are separate. A containment state and a spatial relation are different facts.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the geometry, and the standard observation that displaced disc material is frequently present without contacting a neural structure.',
+    validation: 'physiology: passing the ring and reaching something are two separate events',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-narrow-target-and-a-wide-one',
+    claim:
+      'The canal is wide and the nerve root is narrow, so the same displacement means a different share of what it met. An indentation is only meaningful against the width of the thing indented.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry, over the atlas\'s own calibres for the canal and the root.',
+    validation: 'physiology: how far in is reported against the structure’s own width, and is bounded',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-clearances',
+    claim:
+      'The nucleus\'s half-depth, the annulus behind it, and the clearance from the nucleus to the canal and to the nerve root, from which every distance here is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off `buildSpine()` in `src/scenes/musculoskeletal/organs/spine.js`, so the picture and the arithmetic are the same column.',
+    note:
+      'Illustrative. The spine atlas declares itself not anatomically validated and says no height, width, angle or curve in it is a measurement. **Nothing derived from it is millimetres.**',
+    validation: 'calibration: the disc model and the spine atlas measure the same column',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'how-far-the-axis-goes',
+    claim:
+      'The furthest the axis carries the material.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, so that every direction can reach what lies that way before the top of the axis — including the furthest — without the material leaving the picture.',
+    note:
+      'Not a distance anybody travels. It exists so the three directions are comparable across one axis.',
+    validation: 'calibration: every direction arrives before the top of the axis, and the far one arrives last',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-containment-state-is-not-the-classification',
+    claim:
+      'Nothing in this model is a bulge, a protrusion, an extrusion or a sequestration.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Those categories are defined on measured geometry in a chosen plane, with rules about the base against the depth, and this model has neither a plane nor a base.',
+    note:
+      'A two-valued containment state sitting beside those four words will be read as the first two of them. The card, the scope panel and the visual mapping each say it is not.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'overlap-is-not-contact-in-anybody',
+    claim:
+      'Two drawn shapes overlapping on screen is not a radiological finding of root contact and not a finding in a person.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the read-out says "in this drawing" in as many words rather than "yes".',
+    note:
+      'The clearance it is measured against comes from an atlas that is not anatomically validated, so the overlap inherits that and nothing more.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-symptom-is-produced-or-implied',
+    claim:
+      'Whether anybody feels anything is not represented here in any form, and cannot be inferred from a containment state or an overlap.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in this model: there is no nerve here in any sense beyond a drawn tube with a position.',
+    note:
+      'The read-out prints "not in this model" where a symptom would go rather than omitting the row, because an absent row reads as an oversight and this absence is the claim. `physiology: there is no symptom anywhere in the output` holds the absence open.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'one-pair-of-roots',
+    claim:
+      'Which root a displacement takes — the one traversing the level or the one exiting it — is not available in this drawing and is not claimed.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A property of the atlas: it draws one pair of roots at the detailed level, leaving above the disc.',
+    note:
+      'The two lateral directions reach the same drawn root at two places along it. That is a statement about this drawing and not about anatomy.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-time-and-no-cause',
+    claim:
+      'How a disc comes to displace material, how long it takes, and what becomes of it afterwards are not in this model.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. The axis is how far the material has gone, not how it got there or how long ago.',
+    note:
+      'There is no inflammation and no chemistry either: a disc here displaces, and nothing about it irritates anything.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2661,4 +2783,5 @@ export const EVIDENCE_REGISTRIES = [
   HIP_OA_EVIDENCE,
   URINARY_OBSTRUCTION_EVIDENCE,
   LOBAR_COLLAPSE_EVIDENCE,
+  LUMBAR_DISC_EVIDENCE,
 ];

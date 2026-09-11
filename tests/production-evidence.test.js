@@ -56,6 +56,7 @@ test('migrated production evidence and the existing model registries share one c
       'hip-osteoarthritis',
       'urinary-obstruction',
       'lobar-collapse',
+      'lumbar-disc-herniation',
     ]
   );
 });

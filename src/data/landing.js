@@ -72,6 +72,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'hip-osteoarthritis',
   'urinary-obstruction',
   'lobar-collapse',
+  'lumbar-disc-herniation',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -459,6 +460,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '気管支を 1 本塞ぎ、肺葉が黒くなるのではなく縮み、空いた場所がどこかへ行くことを確認。',
     ['SMALLER, NOT DENSER', 'WHO TAKES THE ROOM', 'THE MIDDLE MOVES'],
     ['濃くならず小さく', '場所を引き受けるのは誰か', '正中が動く']
+  ),
+  'lumbar-disc-herniation': presentation(
+    'Send the material three ways; watch the ring give at one point and the reaching happen at another.',
+    '物質を 3 方向へ進ませ、輪が破れる点と、何かに届く点が別であることを確認。',
+    ['THREE DIRECTIONS', 'THE RING, ONCE', 'REACHING IS SEPARATE'],
+    ['3 つの方向', '輪は一度だけ', '「届く」は別の話']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

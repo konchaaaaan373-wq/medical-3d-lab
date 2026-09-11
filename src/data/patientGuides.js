@@ -2876,6 +2876,103 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Lumbar disc displacement.
+   *
+   * The walk is a separation. A reader arrives with one sentence — "a slipped
+   * disc presses on a nerve and that is why it hurts" — which runs three
+   * different facts together, so the steps take them apart in order: the ring,
+   * then the reaching, then an explicit statement that the third one is not on
+   * this screen at all.
+   */
+  'lumbar-disc-herniation': Object.freeze({
+    title: 'What has moved, what it reaches, and what this picture cannot say',
+    titleJa: '何が動いたのか、何に届くのか、この絵が言えないこと',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'held',
+        frame: 'disc',
+        focus: ['nucleus', 'annulus', 'root'],
+        certainty: 'established',
+        title: 'A ring, and something soft inside it',
+        titleJa: '輪と、その中の柔らかいもの',
+        body: 'Between two bones sits a disc made of two things: a soft centre, and a tough ring holding it in place.',
+        bodyJa: '2 つの骨のあいだにある椎間板は、2 つのものでできています。柔らかい中心と、それを抑える丈夫な輪です。',
+        look: 'The pale middle is the soft part. The darker band around it is the ring.',
+        lookJa: '中央の淡い部分が柔らかい中心で、その周りの濃い帯が輪です。',
+      },
+      {
+        progress: 0.35,
+        stage: 'pressing',
+        frame: 'disc',
+        focus: ['annulus', 'displaced'],
+        certainty: 'established',
+        title: 'The centre moves, and the ring still holds',
+        titleJa: '中心が動き、輪はまだ保たれています',
+        body: 'The soft part has shifted towards one side. The ring is stretched around it and has not given way, so nothing has left the disc.',
+        bodyJa: '柔らかい部分が一方へ寄りました。輪はその周りで引き伸ばされていますが破れておらず、椎間板から出たものはありません。',
+        look: 'Watch the ring’s colour. While it is holding, it stays as it was.',
+        lookJa: '輪の色を見てください。保たれているあいだは、はじめのままです。',
+      },
+      {
+        progress: 1,
+        stage: 'through',
+        frame: 'behind',
+        focus: ['displaced', 'touched'],
+        certainty: 'established',
+        title: 'Past the ring is not the same as reaching something',
+        titleJa: '「輪を越えた」と「何かに届いた」は別です',
+        body: 'The ring has given way and material is outside it. Whether that material reaches anything depends on which way it went — and it can be outside and reach nothing.',
+        bodyJa: '輪が破れ、物質が外へ出ています。それが何かに届くかどうかは進んだ方向によって決まり、外へ出ていても何にも届かないことがあります。',
+        look: 'The ring has changed colour. The bright mark, if there is one, is where the two shapes overlap.',
+        lookJa: '輪の色が変わりました。明るい印があれば、そこが 2 つの形が重なっている場所です。',
+      },
+      {
+        progress: 1,
+        stage: 'through',
+        frame: 'level',
+        focus: ['displaced', 'canal'],
+        // The same amount, a different way: what is reachable is the direction's
+        // doing, which a single slider could never have shown.
+        controls: { direction: 'central' },
+        certainty: 'established',
+        title: 'A different direction meets something different',
+        titleJa: '方向が違えば、出会うものも違います',
+        body: 'Nothing about the amount has changed — only the direction. Straight back is a much wider space, so the same material takes up far less of it.',
+        bodyJa: '量は変えていません。変えたのは方向だけです。真後ろにはずっと広い空間があるため、同じ量の物質でも、そこに占める割合はずっと小さくなります。',
+        look: 'Compare how much of what it met is taken up. It is the same material in both.',
+        lookJa: '出会った相手のどれだけを占めているか見比べてください。物質の量はどちらも同じです。',
+      },
+      {
+        progress: 1,
+        stage: 'through',
+        frame: 'disc',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why it fits this picture so loosely',
+        titleJa: '人が気づくこと、そしてそれがこの絵と結びつきにくい理由',
+        body: 'Pain down a leg, numbness and weakness are described. Pictures like this one and what a person feels are often said to match each other poorly, in both directions.',
+        bodyJa: '脚へ広がる痛み・しびれ・力の入りにくさなどが語られます。こうした画像と本人の感じ方は、どちらの向きにもよく食い違うと言われます。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'through',
+        frame: 'disc',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture does not say whether anything hurts',
+        titleJa: 'この絵は、痛むかどうかを述べていません',
+        body: 'Everything here is about shapes and where they are. There is no nerve in this picture doing anything — only a drawn tube with a position.',
+        bodyJa: 'ここにあるのはすべて「形」と「その位置」の話です。この絵の中に、何かをしている神経はありません。あるのは位置を持つ描かれた管だけです。',
+        look: 'Where a symptom would be listed, the screen says it is not in this model — rather than leaving the line out.',
+        lookJa: '症状が並ぶはずの場所には、行を省くのではなく「このモデルにはありません」と表示されています。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

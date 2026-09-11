@@ -1386,5 +1386,33 @@
       "The model does not grade collapse and does not read a chest radiograph. No output is a sign, a degree or a threshold.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "lumbar-disc-herniation",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of displaced lumbar disc material: how far it has gone along a chosen direction, whether the drawn annulus still closes behind it, and whether the drawn material overlaps the drawn spinal canal or nerve root"
+    ],
+    "sources": [
+      "docs/model-cards/lumbar-disc-herniation.md",
+      "docs/model-evidence/lumbar-disc-herniation.md",
+      "tests/lumbar-disc-herniation-physiology.test.js",
+      "tests/lumbar-disc-herniation-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the three directions, the copy and the Japanese terminology is not yet recorded.",
+      "No distance, fraction or state is a measurement. Every distance is measured off this repository’s spine atlas, which declares itself not anatomically validated.",
+      "The containment states `intact` and `breached` are NOT the radiological classification. Bulge, protrusion, extrusion and sequestration are defined on measured geometry this model does not have.",
+      "Overlap between two drawn shapes is not root contact in anybody, is not a radiological finding, and is not a cause of anything.",
+      "The model contains no symptom or sign of any kind. Sciatica, numbness, weakness and reflex change are not outputs and cannot be read off any number here.",
+      "The atlas draws one pair of roots at this level, leaving above the disc, so the traversing/exiting root distinction is unavailable and is not claimed.",
+      "There is no imaging of any kind: no plane, no sequence, no measurement, and no canal or foraminal stenosis ratio.",
+      "There is no time, no cause, no mechanism of injury, no inflammation, no treatment, no natural history and no resorption.",
+      "Past the width of what it meets the model stops measuring; it does not push a root aside, deform it, or follow it.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

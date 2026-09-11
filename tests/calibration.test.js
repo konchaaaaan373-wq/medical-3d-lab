@@ -141,6 +141,14 @@ import {
   TAKEN_BY_REST,
   solveLobarCollapse,
 } from '../src/models/lobarCollapse.js';
+import { buildSpine } from '../src/scenes/musculoskeletal/organs/spine.js';
+import {
+  ANNULUS_BEHIND as DISC_ANNULUS_BEHIND,
+  MAX_REACH as DISC_MAX_REACH,
+  NUCLEUS_HALF_DEPTH as DISC_NUCLEUS_HALF_DEPTH,
+  TARGETS as DISC_TARGETS,
+  solveLumbarDiscHerniation,
+} from '../src/models/lumbarDiscHerniation.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1719,4 +1727,65 @@ test('calibration: a fully collapsed lobe is still a shape there is something to
   assert.ok(lobe.scale.x < 0.7, 'and it is unmistakably smaller than it was');
   assert.equal(lobe.visible, true, 'the scene draws it rather than removing it');
   scene.dispose();
+});
+
+// --- lumbar disc displacement ----------------------------------------------
+
+test('calibration: the disc model and the spine atlas measure the same column', () => {
+  // Defends `atlas-clearances`. The model may not import `three`, so the
+  // distances are copied out of the atlas — and a copy nothing compares drifts.
+  const spine = buildSpine({});
+  const nucleus = spine.mesh('nucleus-pulposus');
+  const annulus = spine.mesh('annulus-fibrosus');
+  nucleus.geometry.computeBoundingBox();
+  annulus.geometry.computeBoundingBox();
+
+  const halfDepth = nucleus.geometry.boundingBox.max.z;
+  assert.ok(Math.abs(halfDepth - DISC_NUCLEUS_HALF_DEPTH) < 0.01, `${halfDepth} against ${DISC_NUCLEUS_HALF_DEPTH}`);
+
+  // The ring left behind the nucleus, posteriorly: from the nucleus's own back
+  // to the annulus's, both in the disc's frame.
+  const nucleusBack = nucleus.position.z - halfDepth;
+  const annulusBack = annulus.position.z - annulus.geometry.boundingBox.max.z;
+  const behind = nucleusBack - annulusBack;
+  assert.ok(Math.abs(behind - DISC_ANNULUS_BEHIND) < 0.01, `${behind} of ring against ${DISC_ANNULUS_BEHIND}`);
+
+  // And the clearance to each thing a direction names, measured to the nearest
+  // vertex of that structure and reduced by the nucleus's own half-depth.
+  const nearest = (mesh) => {
+    const attribute = mesh.geometry.attributes.position;
+    const point = new THREE.Vector3();
+    let best = Infinity;
+    for (let i = 0; i < attribute.count; i += 1) {
+      point.fromBufferAttribute(attribute, i).add(mesh.position);
+      best = Math.min(best, point.distanceTo(nucleus.position));
+    }
+    return best;
+  };
+  const toCanal = nearest(spine.mesh('spinal-canal')) - halfDepth;
+  assert.ok(Math.abs(toCanal - DISC_TARGETS.canal.clearance) < 0.05, `${toCanal} to the canal`);
+  const toRoot = nearest(spine.rootMeshes[0]) - halfDepth - DISC_TARGETS['root-shoulder'].width;
+  assert.ok(Math.abs(toRoot - DISC_TARGETS['root-shoulder'].clearance) < 0.05, `${toRoot} to the root`);
+
+  spine.dispose?.();
+});
+
+test('calibration: every direction arrives before the top of the axis, and the far one arrives last', () => {
+  // Defends `how-far-the-axis-goes`. The constant carries no claim of its own;
+  // what it has to deliver is that three directions are comparable on one axis.
+  const arrival = (direction) => {
+    for (let step = 0; step <= 100; step += 1) {
+      if (solveLumbarDiscHerniation(step / 100, { direction }).touching) return step / 100;
+    }
+    return null;
+  };
+  const near = arrival('posterolateral');
+  const canal = arrival('central');
+  const far = arrival('far-lateral');
+  for (const [name, value] of [['posterolateral', near], ['central', canal], ['far-lateral', far]]) {
+    assert.ok(value !== null && value < 1, `${name} never arrives within the axis`);
+    assert.ok(value > 0.2, `${name} arrives too early to show anything before it`);
+  }
+  assert.ok(far > near && far > canal, 'the furthest thing is reached last');
+  assert.ok(DISC_MAX_REACH > 0);
 });

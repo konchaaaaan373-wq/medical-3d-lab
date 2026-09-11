@@ -673,5 +673,15 @@
     "cardRevision": 4,
     "modelDigest": "0443b3f8582b5981",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "lumbar-disc-herniation",
+    "card": "docs/model-cards/lumbar-disc-herniation.md",
+    "modelSources": [
+      "src/models/lumbarDiscHerniation.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "a6d02db1da81e620",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

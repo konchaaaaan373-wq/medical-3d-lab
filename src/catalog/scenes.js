@@ -636,6 +636,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/lobarCollapse/index.js'),
   },
   {
+    id: 'lumbar-disc-herniation',
+    slug: 'lumbar-disc-herniation',
+    titleEn: 'Lumbar disc displacement',
+    titleJa: '腰椎椎間板の物質移動',
+    system: 'musculoskeletal',
+    organ: 'spine',
+    organs: ['spine'],
+    disease: 'lumbar-disc-herniation',
+    conditions: ['lumbar disc herniation', 'disc protrusion', 'nerve root contact', 'annulus fibrosus', 'nucleus pulposus', '腰椎椎間板ヘルニア', '椎間板突出', '神経根接触', '線維輪', '髄核'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/lumbar-disc-herniation.md',
+    modelProfile: 'lumbar-disc-direction',
+    description:
+      'How far disc material has moved, whether the ring still closes behind it, and whether it reaches the canal or the nerve root are three different questions — and whether anybody feels anything is a fourth this model does not answer at all.',
+    descriptionJa:
+      '椎間板の物質がどれだけ移動したか、輪が後方でまだ閉じているか、脊柱管や神経根に届くかは、3 つの別々の問いです。そして「本人が何かを感じるか」は、本モデルが一切答えない第 4 の問いです。',
+    tags: ['musculoskeletal', 'direction-scenario', 'geometric-model'],
+    load: () => import('../scenes/musculoskeletal/scenes/lumbarDiscHerniation/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

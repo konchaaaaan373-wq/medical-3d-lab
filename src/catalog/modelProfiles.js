@@ -886,6 +886,24 @@ export const MODEL_PROFILES = Object.freeze([
       'contains no gas exchange, no cause, no time and no treatment and does not grade collapse.@ ',
   },
   {
+    profileId: 'lumbar-disc-direction',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the spine atlas\'s own lumbar disc: a chosen direction carries the nucleus a distance ' +
+      'along it, the state of the annulus behind it is one threshold, and whether the displaced material overlaps the ' +
+      'drawn canal or the drawn nerve root is a clearance measured off the atlas. The card says the containment state ' +
+      'is not the radiological classification, that overlap is contact in a drawing and not a finding in anybody, that ' +
+      'nothing here is millimetres or a stenosis ratio, and that the model contains no symptom, no imaging, no time ' +
+      'and no treatment.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
