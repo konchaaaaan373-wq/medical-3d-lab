@@ -125,8 +125,13 @@ export const PATIENT_GUIDES = Object.freeze({
         certainty: 'established',
         title: 'Threads pack into deposits outside the cells',
         titleJa: '糸が集まって、細胞の外に沈着します',
-        body: 'Threads gather into dense deposits in the space between cells. These deposits are one of the findings that define this disease under a microscope.',
-        bodyJa: '糸が密に集まり、細胞と細胞のあいだに沈着します。この沈着は、顕微鏡でこの病気と判断するときの所見のひとつです。',
+        body:
+          'Threads gather into dense deposits between cells, forming plaques \u2014 a finding seen '
+          + 'characteristically in Alzheimer\u2019s disease. On its own it does not settle what one person '
+          + 'experiences.',
+        bodyJa:
+          '糸が密に集まり、細胞の外に沈着してプラークを作ります。アルツハイマー病でみられる代表的な神経病理'
+          + '所見の一つですが、この所見だけでその人の症状が決まるわけではありません。',
         look: 'The dense clumps outside the cell bodies are the deposits. Note that the earlier forms have not disappeared.',
         lookJa: '細胞の外にある濃いかたまりが沈着です。前の段階のものが消えていないことにも注目してください。',
       },
@@ -193,16 +198,25 @@ export const PATIENT_GUIDES = Object.freeze({
    * every step without the flag to something the scene draws.
    */
   'heart-failure': Object.freeze({
-    title: 'Why the heart can become less efficient',
-    titleJa: '心臓の働きが弱くなる仕組み',
+    // The scope is in the title because the panel shows it above every step and
+    // carries it into the printed handout. A reader who walks the six steps
+    // without it reads one illustrative HFrEF remodelling pattern as the
+    // natural history of heart failure — which is what the limitations already
+    // say it is not.
+    title: 'Why one failing heart becomes less efficient (HFrEF)',
+    titleJa: '心臓の働きが弱くなる仕組み（HFrEF の一例）',
     steps: Object.freeze([
       {
         progress: 0,
         stage: 'normal',
         title: 'A healthy pump',
         titleJa: '正常なポンプ',
-        body: 'The heart fills with blood, then squeezes it forward with each beat.',
-        bodyJa: '心臓は血液を受け取り、1 回ごとの拍動で前へ送り出します。',
+        body:
+          'The heart fills with blood, then squeezes it forward with each beat. What follows is one example '
+          + 'of heart failure: the kind where the chamber enlarges and its squeeze weakens (HFrEF).',
+        bodyJa:
+          '心臓は血液を受け取り、1 回ごとの拍動で前へ送り出します。ここで示すのは、心室が広がって収縮する力が'
+          + '弱くなる心不全（HFrEF）の一例です。心不全のすべての型を表すものではありません。',
         look: 'Watch the chamber in the middle: it widens as it fills, then narrows as it empties.',
         lookJa: '中央の部屋を見てください。血液がたまると広がり、送り出すと縮みます。',
       },
@@ -211,8 +225,12 @@ export const PATIENT_GUIDES = Object.freeze({
         stage: 'concentric-hypertrophy',
         title: 'The wall thickens',
         titleJa: '壁が厚くなる',
-        body: 'Working against a higher load for a long time, the muscle can grow thicker. The room inside stays about the same.',
-        bodyJa: '高い負担が長く続くと、筋肉は厚くなることがあります。中の広さはあまり変わりません。',
+        body:
+          'In conditions where a high **pressure** load is held for a long time, the muscle can grow thicker. '
+          + 'The room inside stays about the same. This is not where every heart failure begins.',
+        bodyJa:
+          '高い圧の負担が長く続く病態では、心筋が厚くなることがあります。中の広さはあまり変わりません。'
+          + 'すべての心不全がここから始まるわけではありません。',
         look: 'Watch the muscle around the chamber, not the space inside it — the wall is what is changing here.',
         lookJa: '部屋の中ではなく、そのまわりの筋肉を見てください。ここで変わっているのは壁の厚さです。',
       },
@@ -221,18 +239,28 @@ export const PATIENT_GUIDES = Object.freeze({
         stage: 'dilation',
         title: 'The chamber widens',
         titleJa: '部屋が広がる',
-        body: 'Later the chamber itself can enlarge and become rounder, and the wall is thin for a room that size.',
-        bodyJa: 'その後、部屋そのものが広がって丸みを帯び、その大きさに対して壁は薄くなります。',
+        body:
+          'Along the course this model shows, the chamber itself widens and becomes rounder, and the wall thins '
+          + 'relative to that size. A thickened heart does not always go on to do this.',
+        bodyJa:
+          'このモデルで示す経過では、心室が広がって丸みを帯び、その大きさに対して壁が相対的に薄くなっていきます。'
+          + '厚くなった心臓が必ずこうなるわけではありません。',
         look: 'Watch the outline of the chamber: it is wider and rounder than it was at the start.',
         lookJa: '部屋の輪郭を見てください。最初より広く、丸くなっています。',
       },
       {
         progress: 0.64,
         stage: 'systolic-dysfunction',
-        title: 'Less leaves with each beat',
-        titleJa: '1 回に送り出せる量が減る',
-        body: 'A wider chamber that squeezes less firmly empties less completely, so some blood stays behind.',
-        bodyJa: '広がった部屋は縮む力も弱いため、完全には空になりません。血液が残ります。',
+        title:
+          'A smaller share of the blood leaves with each beat',
+        titleJa:
+          '1 回に送り出せる割合が減る',
+        body:
+          'With the chamber widened and its squeeze weakened, a smaller share of the blood inside leaves with '
+          + 'each beat, and more stays behind.',
+        bodyJa:
+          '心室が広がり、収縮する力が弱くなった状態では、中に入った血液のうち送り出せる割合が減り、'
+          + '収縮後にもより多くの血液が残ります。',
         look: 'Watch what is still inside at the end of a squeeze — that is the blood that did not leave.',
         lookJa: '縮み終わったときに中に残っているものを見てください。それが送り出せなかった血液です。',
       },
@@ -253,10 +281,18 @@ export const PATIENT_GUIDES = Object.freeze({
         focus: ['pressure', 'pulmonary-bed'],
         title: 'The pressure reaches the lungs',
         titleJa: '圧は肺のほうへ伝わる',
-        body: 'Blood that cannot move forward backs up behind the heart, and the vessels between the heart and the lungs carry that raised pressure.',
-        bodyJa: '前へ進めなかった血液は心臓の手前にたまり、心臓と肺のあいだの血管がその高い圧を受けます。',
-        look: 'Watch above the heart, around the vessels running to the lungs: the haze that spreads there is how far the pressure has reached.',
-        lookJa: '心臓の上、肺へ向かう血管のまわりを見てください。にじむように広がっているのが、圧が届いている範囲です。',
+        body:
+          'As the pressure needed to fill the left ventricle rises, that pressure carries back through the left '
+          + 'atrium into the vessels that bring blood **from the lungs to the heart**.',
+        bodyJa:
+          '左心室を満たすのに要る圧が上がると、その圧は左心房を通じて、肺から心臓へ血液が戻ってくる側の'
+          + '血管へ伝わります。',
+        look:
+          'Look around the vessels above the heart that return blood from the lungs. The bloom spreading '
+          + 'through them is where the pressure has reached.',
+        lookJa:
+          '心臓の上、肺から戻ってくる側の血管のまわりを見てください。にじむように広がっているのが、'
+          + '圧が届いている範囲です。',
       },
       {
         // Not a model output. The model solves pressures and volumes; it does
@@ -270,8 +306,12 @@ export const PATIENT_GUIDES = Object.freeze({
         educationalOnly: true,
         title: 'Why breathing can feel harder',
         titleJa: '息が苦しく感じられる理由',
-        body: 'When that pressure is high, fluid can move into the spaces around the small airways, and breathing takes more effort — often more so when lying flat.',
-        bodyJa: 'その圧が高いと、細い気道のまわりの隙間に水分が移りやすくなり、呼吸に力が要るようになります。横になったときに強く感じられることもあります。',
+        body:
+          'High pressure in the lung\u2019s small vessels moves fluid more easily into its interstitium. The '
+          + 'lung becomes harder to expand, which can be felt as breathlessness \u2014 often more so lying down.',
+        bodyJa:
+          '肺の細い血管の圧が高くなると、肺の間質へ水分が移りやすくなります。肺が広がりにくくなり、'
+          + '息苦しさにつながることがあります。横になったときに強く感じられることもあります。',
         look: 'Nothing new is drawn for this step: it explains what the spread on screen tends to mean for a person.',
         lookJa: 'この段階で新しく描かれるものはありません。画面に出ている広がりが、人にとってどういうことかの説明です。',
       },

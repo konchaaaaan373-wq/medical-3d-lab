@@ -292,12 +292,20 @@ test('patient mode: COPD copy does not reinterpret demand as disease progression
 test('patient mode: amyloid guide separates aggregation from individual cognition', () => {
   // The claim, not a sentence: somewhere in this guide it has to say that how
   // much deposit is on screen tells you nothing about the person looking at it,
-  // and it has to say so as a step of its own rather than in passing.
+  // and it has to say so **as a step of its own** rather than in passing.
+  //
+  // "A step of its own" is what `educationalOnly` means here, and filtering on
+  // it is the point rather than an optimisation: other steps legitimately
+  // mention a person — the plaque step says the finding alone does not settle
+  // what one person experiences — and picking the first of those found a step
+  // that was never the one this is about.
   const guide = patientGuideFor('amyloid-beta');
   const separates = guide.steps.filter(
-    (step) => /memory|person/i.test(`${step.title} ${step.body}`) && /記憶|その人|誰か/.test(`${step.titleJa} ${step.bodyJa}`)
+    (step) => step.educationalOnly
+      && /memory|person/i.test(`${step.title} ${step.body}`)
+      && /記憶|その人|誰か/.test(`${step.titleJa} ${step.bodyJa}`)
   );
-  assert.ok(separates.length >= 1, 'no step separates the picture from the person');
+  assert.ok(separates.length >= 1, 'no step of its own separates the picture from the person');
   const step = separates[0];
   assert.match(step.bodyJa, /ありません|できません/);
   // And it is marked as something the field has not settled, so it cannot be
