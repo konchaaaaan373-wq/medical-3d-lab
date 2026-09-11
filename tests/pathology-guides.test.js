@@ -45,6 +45,11 @@ import {
   MODEL_CONTROLS as FIBROID_CONTROLS,
 } from '../src/data/uterineFibroid.js';
 import { UterineFibroidScene } from '../src/scenes/reproductive/scenes/uterineFibroid/UterineFibroidScene.js';
+import {
+  STAGES as GOITRE_STAGES,
+  MODEL_CONTROLS as GOITRE_CONTROLS,
+} from '../src/data/multinodularGoitre.js';
+import { MultinodularGoitreScene } from '../src/scenes/endocrine/scenes/multinodularGoitre/MultinodularGoitreScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -211,6 +216,24 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new UterineFibroidScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The thyroid, whose walk ends on a refusal rather than on a finding: the
+   * last step says the shape does not tell you how the gland is working, which
+   * is the inference a picture of a thyroid invites and the one thing this
+   * scene most needs to deny.
+   */
+  {
+    id: 'multinodular-goitre',
+    stages: GOITRE_STAGES,
+    controls: GOITRE_CONTROLS,
+    scene: () => {
+      const scene = new MultinodularGoitreScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new MultinodularGoitreScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];

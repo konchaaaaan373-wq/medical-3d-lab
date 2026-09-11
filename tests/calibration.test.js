@@ -28,6 +28,14 @@ import {
 } from '../src/models/uterineFibroid.js';
 import { buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
 import {
+  BURDEN_RANGE as GOITRE_BURDEN,
+  DIRECTIONS as GOITRE_DIRECTIONS,
+  FACE_AREA,
+  THYROID,
+  solveMultinodularGoitre,
+} from '../src/models/multinodularGoitre.js';
+import { buildThyroidParts } from '../src/scenes/endocrine/organs/thyroidAnatomy.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -1279,4 +1287,85 @@ test('calibration: each of the three names behaves the way its description says'
   for (const location of FIBROID_LOCATIONS) {
     assert.equal(solveUterineFibroid({ location: location.id }).controls.location, location.id);
   }
+});
+
+test('calibration: the goitre model is measured off the atlas’s own gland and airway', () => {
+  // Defends `atlas-and-face-area`. Three of the four numbers are the atlas's
+  // own, measured off its meshes so that the arithmetic and the picture are the
+  // same gland; the fourth turns a volume into a distance and is a calibration.
+  const thyroid = buildThyroidParts({});
+  const lobe = thyroid.mesh('left-lobe');
+  lobe.updateMatrixWorld(true);
+
+  const position = lobe.geometry.attributes.position;
+  const index = lobe.geometry.index;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  let volume = 0;
+  const count = index ? index.count : position.count;
+  for (let step = 0; step < count; step += 3) {
+    const [i, j, k] = index
+      ? [index.getX(step), index.getX(step + 1), index.getX(step + 2)]
+      : [step, step + 1, step + 2];
+    a.fromBufferAttribute(position, i);
+    b.fromBufferAttribute(position, j);
+    c.fromBufferAttribute(position, k);
+    volume += a.dot(b.clone().cross(c)) / 6;
+  }
+  assert.ok(
+    Math.abs(THYROID.lobeVolume - Math.abs(volume)) < 0.01,
+    `the model has a lobe of ${THYROID.lobeVolume}, the atlas draws ${Math.abs(volume).toFixed(4)}`
+  );
+
+  lobe.geometry.computeBoundingBox();
+  const box = lobe.geometry.boundingBox;
+  const depth = box.max.z - box.min.z;
+  assert.ok(
+    Math.abs(THYROID.lobeDepth - depth) < 0.01,
+    `the model has a lobe ${THYROID.lobeDepth} deep, the atlas draws ${depth.toFixed(4)}`
+  );
+
+  const trachea = thyroid.mesh('trachea');
+  trachea.geometry.computeBoundingBox();
+  const radius = trachea.geometry.boundingBox.max.x;
+  assert.ok(
+    Math.abs(THYROID.tracheaRadius - radius) < 0.01,
+    `the model has an airway of ${THYROID.tracheaRadius}, the atlas draws ${radius.toFixed(4)}`
+  );
+
+  // The one that is not measured: chosen so the burdens the scene offers move
+  // and narrow things visibly without running away.
+  assert.ok(FACE_AREA > 0);
+  const largest = solveMultinodularGoitre({ direction: 'medial', burden: GOITRE_BURDEN.max });
+  assert.ok(largest.deviationRadii > 1 && largest.deviationRadii < 4, largest.deviationRadii);
+
+  thyroid.dispose();
+});
+
+test('calibration: one of the four directions narrows the airway and the others displace it', () => {
+  // Defends `four-directions`. Twelve coefficients were chosen as a reading of
+  // four standard pictures. What is defended is the *ordering* they produce —
+  // exactly one direction is confined — and never the sizes.
+  const confined = GOITRE_DIRECTIONS.filter((direction) => direction.confined > 0.5);
+  assert.equal(confined.length, 1, 'exactly one direction meets a boundary that will not move');
+  assert.equal(confined[0].id, 'retrosternal');
+
+  const narrowed = [];
+  for (const direction of GOITRE_DIRECTIONS) {
+    if (direction.id === 'none') continue;
+    const solved = solveMultinodularGoitre({ direction: direction.id, burden: GOITRE_BURDEN.max });
+    if (solved.airwayEffect === 'narrowed') narrowed.push(direction.id);
+    assert.ok(solved.tracheaWidthFraction > 0.08, `${direction.id}: it never closes`);
+  }
+  assert.deepEqual(narrowed, ['retrosternal'], 'and exactly one of them narrows the airway');
+
+  // Each direction is a different picture rather than a different amount.
+  const signatures = new Set(
+    GOITRE_DIRECTIONS.filter((direction) => direction.id !== 'none').map((direction) => {
+      const solved = solveMultinodularGoitre({ direction: direction.id, burden: GOITRE_BURDEN.max });
+      return `${solved.deviationRadii.toFixed(2)}/${solved.tracheaWidthFraction.toFixed(2)}/${solved.behindFraction.toFixed(2)}`;
+    })
+  );
+  assert.equal(signatures.size, 4, 'the four directions produce four different pictures');
 });

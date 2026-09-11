@@ -2065,6 +2065,120 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Multinodular goitre.
+   *
+   * Three steps establish that a goitre in the neck *moves* the airway, and
+   * then the direction changes twice at the same size — once into the one
+   * place with a boundary that will not move, and once backwards past the
+   * structures on the gland's own back.
+   *
+   * The last step is the one the scene exists to make: a shape does not tell
+   * you how the gland is working, and it is marked because nothing in the model
+   * produces it.
+   */
+  'multinodular-goitre': Object.freeze({
+    title: 'Which way it grew, and what that decides',
+    titleJa: 'どちらへ大きくなったかが、何を決めるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'nodular',
+        frame: 'neck',
+        focus: ['gland', 'trachea'],
+        certainty: 'established',
+        title: 'The gland is wrapped round the airway',
+        titleJa: '甲状腺は気道を取り巻いています',
+        body: 'The thyroid sits across the front and sides of the windpipe, with the two halves joined in front of it. Anything it grows into, it grows into from there.',
+        bodyJa: '甲状腺は気管の前面と側面にまたがり、左右が前で繋がっています。大きくなるときは、必ずそこから広がります。',
+        look: 'The grey tube in the middle is the airway. The gland is the darker tissue on either side of it.',
+        lookJa: '中央の灰色の管が気道です。腺はその両側にある濃い色の組織です。',
+      },
+      {
+        progress: 0.55,
+        stage: 'grown',
+        frame: 'airway',
+        focus: ['trachea'],
+        certainty: 'established',
+        title: 'In the neck, it pushes the airway across',
+        titleJa: '頸部では、気道を横へ押しやります',
+        body: 'Everything around the gland in the neck will give way, so the airway moves rather than being squeezed. It ends up off to one side, and it is still as wide as it was.',
+        bodyJa: '頸部で腺の周りにあるものはすべて動くため、気道は締めつけられるのではなく移動します。片側に寄りますが、太さは変わりません。',
+        look: 'The airway has bent away from the larger side. Watch its width, not its position: it has not changed.',
+        lookJa: '気道は大きいほうと反対側へ曲がっています。位置ではなく太さを見てください。変わっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'airway',
+        focus: ['trachea'],
+        certainty: 'established',
+        title: 'Larger still, and still only moved',
+        titleJa: 'さらに大きくなっても、動かされるだけ',
+        body: 'Twice as much tissue pushes it twice as far and does nothing else to it. Where there is somewhere to go, that is what happens.',
+        bodyJa: '組織が 2 倍になれば 2 倍押しやりますが、それ以外のことは起きません。逃げ場がある限り、起きるのはそれだけです。',
+        look: 'It is well off the midline now. The width across it is unchanged.',
+        lookJa: '正中からかなり外れています。幅は変わっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'inlet',
+        focus: ['inlet', 'trachea'],
+        // The direction changes at the same size: the one place with a boundary
+        // that will not move.
+        controls: { direction: 'retrosternal' },
+        certainty: 'established',
+        title: 'Down behind the breastbone, there is nowhere to go',
+        titleJa: '胸骨の裏では、逃げ場がありません',
+        body: 'The way into the chest is a ring of bone. A gland that has followed the airway down into it cannot push anything aside, so the same amount of tissue makes the airway narrower instead.',
+        bodyJa: '胸へ入る口は骨の輪です。気道に沿ってそこまで下がった腺は何も押しのけられないため、同じ量の組織が代わりに気道を細くします。',
+        look: 'The pale ring is that boundary. The airway has changed colour where it passes through it.',
+        lookJa: '淡い色の輪がその境界です。そこを通る部分で気道の色が変わっています。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'behind',
+        focus: ['nerve', 'parathyroid'],
+        controls: { direction: 'posterior' },
+        certainty: 'established',
+        title: 'Backwards, the gland goes past what lies behind it',
+        titleJa: '後方へ広がると、後ろのものを追い越します',
+        body: 'A nerve to the voice box runs in the groove behind the gland, and four small glands sit on its back. An enlargement that goes backwards passes them rather than approaching them.',
+        bodyJa: '声帯へ向かう神経が腺の後ろの溝を走り、4 つの小さな腺が背面にあります。後方への腫大は、それらに近づくのではなく追い越します。',
+        look: 'Seen from behind. The lit structures are where they always were; the gland has come past them.',
+        lookJa: '後方から見ています。光っているものは元からその位置にあり、腺のほうが追い越しました。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'neck',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and when',
+        titleJa: '気づくこと、そしてその時期',
+        body: 'A swelling in the neck, a sense of something in the throat, and a change in the voice are described. Many are noticed by someone else first, or not at all.',
+        bodyJa: '首の腫れ、のどに何かある感じ、声の変化などが語られます。他の人に先に気づかれることも、まったく気づかれないことも多いものです。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and no air moving through it.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、空気も流れていません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'neck',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'The shape does not tell you how the gland is working',
+        titleJa: '形からは、腺の働きは分かりません',
+        body: 'A gland this shape may be working normally, too much, or too little. None of that is in this picture, and none of it can be read off a shape.',
+        bodyJa: 'この形の腺でも、働きは正常のことも、過剰なことも、不足していることもあります。そのどれもこの絵にはなく、形からは読み取れません。',
+        look: 'Nothing about how the gland works is drawn anywhere on this screen.',
+        lookJa: '腺の働きに関わるものは、この画面のどこにも描かれていません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

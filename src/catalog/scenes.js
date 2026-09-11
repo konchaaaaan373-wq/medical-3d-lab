@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'multinodular-goitre',
+    slug: 'multinodular-goitre',
+    titleEn: 'Multinodular goitre',
+    titleJa: '多結節性甲状腺腫',
+    system: 'endocrine',
+    organ: 'thyroid',
+    organs: ['thyroid'],
+    disease: 'multinodular-goitre',
+    conditions: ['multinodular goitre', 'multinodular goiter', 'thyroid nodule', 'retrosternal goitre', 'substernal goitre', 'tracheal deviation', '甲状腺腫', '多結節性甲状腺腫', '甲状腺結節', '縦隔内甲状腺腫', '気管偏位'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/multinodular-goitre.md',
+    modelProfile: 'multinodular-goitre-direction',
+    description:
+      'The neck is soft in every direction but one. A gland that enlarges in it pushes the airway aside and leaves it open; a gland that has followed the airway down into the thoracic inlet, which is a ring of bone, narrows it with the same amount of tissue.',
+    descriptionJa:
+      '頸部は 1 方向を除いて軟らかい空間です。そこで大きくなった腺は気道を押しやるだけで開存は保たれますが、気道に沿って骨の輪である胸郭上口まで下がった腺は、同じ量の組織で気道を狭めます。',
+    tags: ['endocrine', 'direction-scenario', 'geometric-model'],
+    load: () => import('../scenes/endocrine/scenes/multinodularGoitre/index.js'),
+  },
+  {
     id: 'uterine-fibroid',
     slug: 'uterine-fibroid',
     titleEn: 'Uterine fibroid',
