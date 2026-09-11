@@ -19,7 +19,17 @@
  * **It cannot be used to approve anything.** The two blockers every candidate
  * reports today are a clinical review and a publication decision, and both are
  * records a person writes.
+ *
+ *   npm run verify:next-beta -- --pins
+ *
+ * prints, for each blocked candidate, the values those two records have to
+ * carry — the revision pin, the commit under review, the packet a reviewer
+ * read. Reading them here rather than copying them by hand is the point: a
+ * mistyped digest pins a decision to a scene that does not exist. The reviewer
+ * name, role, date and verdict stay as placeholders, because this script does
+ * not know them and must not invent them.
  */
+import { execFileSync } from 'node:child_process';
 import {
   NEXT_BETA_CANDIDATE_STATUS,
   RELEASE_CHANNEL,
@@ -27,10 +37,12 @@ import {
 } from '../src/catalog/release.js';
 import { sceneById } from '../src/catalog/index.js';
 import { clinicalReviewForScene, hasCurrentClinicalReview } from '../src/catalog/clinicalReview.js';
+import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
 import { NEXT_BETA_PUBLICATION_DECISIONS } from '../src/catalog/release.js';
 
 const quiet = process.argv.includes('--quiet');
+const pins = process.argv.includes('--pins');
 const say = (line) => { if (!quiet) console.log(line); };
 
 if (RELEASE_CHANNEL === 'next-beta') {
@@ -85,6 +97,35 @@ for (const entry of NEXT_BETA_CANDIDATE_STATUS) {
   say(`  ${' '.repeat(width)}    review ${mark(has.review)}  decision ${mark(has.decision)}  revision pin ${mark(has.revision)}`);
   const review = clinicalReviewForScene(sceneById(sceneId));
   if (!has.review && review) say(`  ${' '.repeat(width)}    review is "${review.reviewStatus}"`);
+}
+
+if (pins) {
+  say('');
+  say('--- values for docs/decisions/NEXT-BETA-APPLY.md, read from the product just now ---');
+  say('');
+  let head = 'unknown';
+  try {
+    head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    // Not a checkout, or no git. The pins below are still right; only the
+    // commit under review has to be filled in by hand.
+  }
+  say(`reviewedCommit (HEAD right now): ${head}`);
+  say('If the scene is edited after a reviewer reads it, this changes and the review goes stale.');
+  say('');
+  for (const entry of NEXT_BETA_CANDIDATE_STATUS) {
+    if (entry.open) continue;
+    const scene = sceneById(entry.sceneId);
+    const pin = sceneRevisionPin(scene);
+    const profile = modelProfileForScene(scene);
+    const assets = profile?.assets ?? [];
+    say(`  ${entry.sceneId}`);
+    say(`    sceneRevision:   { cardRevision: ${pin?.cardRevision ?? '?'}, modelDigest: '${pin?.modelDigest ?? '?'}' }`);
+    say(`    assetRevisions:  ${assets.length ? `${assets.length} asset(s) — take each sha256 from src/catalog/assetManifest.js` : '{}  (procedural — no external asset)'}`);
+    say(`    evidence:        docs/clinical-reviews/packets/${scene?.slug ?? entry.sceneId}.md, docs/model-cards/${scene?.slug ?? entry.sceneId}.md`);
+    say('');
+  }
+  say('Reviewer, role, date and verdict are deliberately absent: nobody has decided yet.');
 }
 
 if (!quiet) {

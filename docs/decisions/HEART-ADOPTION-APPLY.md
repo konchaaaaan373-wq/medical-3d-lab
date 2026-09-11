@@ -9,31 +9,42 @@
 
 ---
 
-## 先に：現状のままでは到達できません
+## 先に：元ファイルのままでは到達できません
 
 `formatValidation` gate は **errors 0 かつ warnings 0** でしか通りません
 （`assetReleaseProblems`）。候補 2 ファイルは 408 件と 33 件の
 `ACCESSOR_VECTOR3_NON_UNIT` を持っています。
 
-**つまり adopt だけでは公開に届きません。** 派生ファイル（法線再計算）を作る判断が要り、
+**つまり元ファイルを adopt するだけでは公開に届きません。** 派生ファイルを作る判断が要り、
 それは**新しい hash の新しい asset**になります。下の手順はその前提で書いてあります。
 
 ---
 
-## Step 0 — 派生ファイルを作る（offline、runtime 依存を足さない）
+## Step 0 — 派生ファイルを作る（済。ただし repo には入っていません）
 
-`docs/asset-pipeline.md` の工程に従い、**元ファイルは読むだけ**で派生を作ります。
+`npm run assets:repair` が作ります。**元ファイルは読むだけ**で、書き込み先は
+`dev-assets/derived/` です。`npm run assets:repair:verify` が、同じ入力から同じ hash が
+出ること・元ファイルが動いていないこと・validator が 0/0 であることを一度に確かめます。
 
 ```
-入力 : VH_M_Heart.glb            sha256 b1237e7e…
+入力 : VH_M_Heart.glb             sha256 b1237e7e…
        VH_M_Blood_Vasculature.glb sha256 a31ebed6…
-処理 : 縮退した頂点法線のみ再計算（幾何は動かさない）
-出力 : 新しい GLB 2 本 → 新しい sha256 を記録
-検証 : npm run assets:validate が exit 0（errors 0 / warnings 0）
+出力 : dev-assets/derived/heart/VH_M_Heart.glb             sha256 46d375e3…
+       dev-assets/derived/heart/VH_M_Blood_Vasculature.glb sha256 b971eec1…
+検証 : npm run assets:validate → 0 errors / 0 warnings（2 本とも）
+記録 : docs/asset-qa/measurements/normal-repair.json
 ```
 
-**確認事項**：三角形数・頂点数・境界箱・パーツ名・ontology id が入力と一致すること。
-一致しなければ法線以外も動いており、それは別の判断になります。
+**幾何は 1 か所だけ動いています。** 面積ゼロの三角形と重複面を取り除いたので、
+**三角形数は入力と一致しません**——心臓 164,119 → 163,295、大血管 359,598 → 359,567。
+記録はこの差が「取り除いた数ちょうど」であることを測っており
+（`trianglesAccountedFor`）、頂点座標・頂点数・ノード名・階層・ontology id・マテリアルは
+一致しています。`heldUnchanged.vertexPositions` は**座標だけ**の話で、index は動きます。
+
+**残っているのは配布です。** `dev-assets/` は `.gitignore` 配下なので、
+**いま derived GLB があるのは作業環境のローカルだけ**です。これを release-ready とは呼びません。
+公開するには脳と同じく `public/assets/heart/` に commit する必要があり、
+それが Step 1 で記録する `output.sha256` の実体になります。
 
 ## Step 1 — `devAssets` → `assetManifest`
 

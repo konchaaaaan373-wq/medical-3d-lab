@@ -24,15 +24,21 @@
         "VH_M_right_cardiac_atrium": 203
       },
       "heldUnchanged": {
-        "positionsAndIndices": true,
+        "vertexPositions": true,
         "nodesNamesExtrasMaterials": true,
         "trianglesAccountedFor": true,
         "vertices": true
       },
-      "counts": {
+      "sourceCounts": {
         "nodes": 18,
         "meshes": 14,
         "triangles": 164119,
+        "vertices": 82066
+      },
+      "derivedCounts": {
+        "nodes": 18,
+        "meshes": 14,
+        "triangles": 163295,
         "vertices": 82066
       }
     },
@@ -59,15 +65,21 @@
         "VH_M_superior_vena_cava": 5
       },
       "heldUnchanged": {
-        "positionsAndIndices": true,
+        "vertexPositions": true,
         "nodesNamesExtrasMaterials": true,
         "trianglesAccountedFor": true,
         "vertices": true
       },
-      "counts": {
+      "sourceCounts": {
         "nodes": 153,
         "meshes": 104,
         "triangles": 359598,
+        "vertices": 182788
+      },
+      "derivedCounts": {
+        "nodes": 153,
+        "meshes": 104,
+        "triangles": 359567,
         "vertices": 182788
       }
     }

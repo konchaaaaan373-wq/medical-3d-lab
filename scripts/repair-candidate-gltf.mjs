@@ -368,13 +368,19 @@ for (const candidate of CANDIDATES) {
     removedDuplicateFaces: removedDuplicate,
     meshesTouched: Object.fromEntries(touched),
     heldUnchanged: {
-      positionsAndIndices: positionsHeld,
+      // Positions only. The indices do change — pruning a triangle removes its
+      // three entries — so this must not be read as "the mesh is untouched".
+      vertexPositions: positionsHeld,
       nodesNamesExtrasMaterials: structureHeld,
       // Triangles change by exactly what was pruned, and nothing else.
       trianglesAccountedFor: before.triangles - after.triangles === removedZeroArea + removedDuplicate,
       vertices: before.vertices === after.vertices,
     },
-    counts: { nodes: before.nodes, meshes: before.meshCount, triangles: before.triangles, vertices: before.vertices },
+    // Both sides, because a provenance record that gives one count leaves the
+    // reader to guess whether it is the file that went in or the one that came
+    // out — and here they differ by the triangles that were pruned.
+    sourceCounts: { nodes: before.nodes, meshes: before.meshCount, triangles: before.triangles, vertices: before.vertices },
+    derivedCounts: { nodes: after.nodes, meshes: after.meshCount, triangles: after.triangles, vertices: after.vertices },
   });
 }
 

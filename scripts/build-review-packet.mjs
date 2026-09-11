@@ -17,9 +17,13 @@
  * script has no way to write into it.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
+/** Packets live here, so every link in one is written relative to this. */
+const PACKET_DIR = 'docs/clinical-reviews/packets';
+/** A repository path, as a link that works from inside a packet. */
+const linkTo = (repoPath) => relative(PACKET_DIR, repoPath);
 const { PATIENT_GUIDES } = await import(`${ROOT}/src/data/patientGuides.js`);
 const { SCENE_MANIFEST } = await import(`${ROOT}/src/catalog/scenes.js`);
 const { modelProfileForScene } = await import(`${ROOT}/src/catalog/modelProfiles.js`);
@@ -81,9 +85,12 @@ for (const id of ids) {
   out.push(`| model profile | \`${profile?.profileId ?? 'なし'}\` — mechanism level **${profile?.mechanismLevel ?? '-'}** |`);
   out.push(`| 臨床レビューの現状 | **${review?.reviewStatus ?? '記録なし'}**（${review?.reviewerRole ?? '-'}） |`);
   out.push(`| 患者説明 | ${guide.steps.length} 段 |`);
+  // The guide's own title is on-screen copy too, so a reviewer signing off
+  // on the wording has to see it here and not only the catalogue's name.
+  if (guide.titleJa ?? guide.title) out.push(`| 患者説明のタイトル | 「${guide.titleJa ?? guide.title}」 |`);
   if (SHOTS[id]) out.push(`| 実画面 | \`${SHOTS[id]}\` |`);
   if (SHEETS[id] && existsSync(join(ROOT, SHEETS[id]))) {
-    out.push(`| 詳細シート | [${SHEETS[id].split('/').pop()}](../${SHEETS[id].split('/').slice(2).join('/')}) — 段ごとの根拠はこちら |`);
+    out.push(`| 詳細シート | [${SHEETS[id].split('/').pop()}](${linkTo(SHEETS[id])}) — 段ごとの根拠はこちら |`);
   }
   out.push('');
   out.push('---');
@@ -161,7 +168,7 @@ for (const id of ids) {
   out.push('## 既存の根拠');
   out.push('');
   for (const path of [`docs/model-cards/${entry.slug}.md`, `docs/model-evidence/${entry.slug}.md`]) {
-    out.push(`- ${existsSync(join(ROOT, path)) ? `[\`${path}\`](../../${path})` : `\`${path}\`（未作成）`}`);
+    out.push(`- ${existsSync(join(ROOT, path)) ? `[\`${path}\`](${linkTo(path)})` : `\`${path}\`（未作成）`}`);
   }
   if (profile) out.push(`- model profile \`${profile.profileId}\` — \`src/catalog/modelProfiles.js\``);
   out.push('- 患者向けの文：`src/data/patientGuides.js`');
@@ -193,13 +200,13 @@ for (const id of ids) {
   out.push('- [ ] **revise** — 直すべき段と内容：');
   out.push('- [ ] **hold** — 追加で要るもの：');
   out.push('');
-  out.push('承認後の反映手順は [`NEXT-BETA-APPLY.md`](../../decisions/NEXT-BETA-APPLY.md) にあります。');
+  out.push(`承認後の反映手順は [\`NEXT-BETA-APPLY.md\`](${linkTo('docs/decisions/NEXT-BETA-APPLY.md')}) にあります。`);
   out.push('**このファイルに承認を書き込んでも、それだけでは何も公開されません**——');
   out.push('registry と公開判断記録を更新して初めて gate が動きます。');
   out.push('');
 
-  const path = join(ROOT, 'docs/clinical-reviews/packets', `${entry.slug}.md`);
+  const path = join(ROOT, PACKET_DIR, `${entry.slug}.md`);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${out.join('\n')}`);
-  console.log(`${entry.slug}: ${guide.steps.length} steps -> docs/clinical-reviews/packets/${entry.slug}.md`);
+  console.log(`${entry.slug}: ${guide.steps.length} steps -> ${PACKET_DIR}/${entry.slug}.md`);
 }

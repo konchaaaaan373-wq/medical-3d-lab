@@ -27,7 +27,7 @@ test('derived assets: the repair changed only what it is allowed to change', () 
   for (const file of report.files) {
     const where = file.assetId;
     // The four things that must not have moved.
-    assert.equal(file.heldUnchanged.positionsAndIndices, true, `${where}: vertex positions moved`);
+    assert.equal(file.heldUnchanged.vertexPositions, true, `${where}: vertex positions moved`);
     assert.equal(file.heldUnchanged.nodesNamesExtrasMaterials, true, `${where}: names, hierarchy, ontology ids or materials moved`);
     assert.equal(file.heldUnchanged.vertices, true, `${where}: the vertex count changed`);
     // Triangles may only fall by exactly what was removed.
@@ -43,6 +43,16 @@ test('derived assets: the repair changed only what it is allowed to change', () 
     assert.ok(file.derived?.sha256, `${where}: no derived hash recorded`);
     assert.notEqual(file.derived.sha256, file.source.sha256, `${where}: derived and source are the same bytes`);
     assert.ok(file.derived.path.includes('/derived/'), `${where}: the derived file was not written to its own directory`);
+
+    // Both counts are recorded, and they differ by exactly what was pruned —
+    // a reader of this record must never have to guess which side a number is.
+    const pruned = file.removedZeroAreaTriangles + file.removedDuplicateFaces;
+    assert.equal(
+      file.sourceCounts.triangles - file.derivedCounts.triangles,
+      pruned,
+      `${where}: the recorded source and derived triangle counts do not differ by the ${pruned} pruned`,
+    );
+    assert.equal(file.sourceCounts.vertices, file.derivedCounts.vertices, `${where}: the vertex count changed`);
   }
 });
 
@@ -53,7 +63,7 @@ test('derived assets: the amount removed is recorded, because it is the whole ar
     // and the count is what lets somebody check the claim is small.
     assert.ok(Number.isInteger(file.removedZeroAreaTriangles), `${file.assetId}: no count of removed triangles`);
     const removed = file.removedZeroAreaTriangles + file.removedDuplicateFaces;
-    const share = removed / file.counts.triangles;
+    const share = removed / file.sourceCounts.triangles;
     assert.ok(share < 0.01, `${file.assetId}: ${(share * 100).toFixed(2)}% of triangles removed — too much to call it a repair`);
   }
 });

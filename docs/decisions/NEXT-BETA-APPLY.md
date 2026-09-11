@@ -61,11 +61,18 @@ node -e "import('./src/catalog/clinicalReview.js').then(m=>console.log(m.hasCurr
 ## Step 2 — revision pin を確認する（変更ではなく確認）
 
 ```bash
-npm run revisions:check        # 34 entries, ok
-node -e "import('./src/catalog/modelRevisions.js').then(m=>console.log(m.sceneRevisionPin({id:'amyloid-beta'})))"
+npm run revisions:check                  # ok
+npm run verify:next-beta -- --pins       # 4 候補ぶんの pin をまとめて出す
 ```
 
-出た `cardRevision` と `modelDigest` を Step 3 に**そのまま**書きます。
+`--pins` は、Step 1 の `reviewedCommit`（いまの HEAD）と Step 3 の `sceneRevision` /
+`assetRevisions` / `evidence` を、**製品から読んだ値のまま**並べて出します。
+**手で書き写さないでください**——digest を 1 文字打ち間違えると、
+存在しないシーンに判断を固定したことになり、gate は静かに閉じたままになります。
+
+`--pins` が出さないのは、レビュアーの氏名・立場・日付・可否です。
+**スクリプトはそれを知らないので、作りません。**
+
 **Step 3 の後にシーンを触らないでください**——触ると判断が stale になり gate が閉じます。
 
 ## Step 3 — 公開判断記録を足す
@@ -89,6 +96,11 @@ node -e "import('./src/catalog/modelRevisions.js').then(m=>console.log(m.sceneRe
 
 `role: 'clinical'` は Step 1 が終わっていないと gate が拒否します
 （判断が自分を sign-off に昇格させられないため）。
+
+`record` の文書そのものは**先に用意していません。** gate はそのファイルの存在しか見ないので、
+空のテンプレートを置けば「記録がある」という条件だけが先に満たされてしまうからです。
+書き方は [`docs/beta-publication/brain-anatomy.md`](../beta-publication/brain-anatomy.md) が前例です——
+何を確認したか、**何を確認していないか**、どの版に対する判断かが書いてあります。
 
 ## Step 4 — チャンネルを切り替える（これが公開そのもの）
 

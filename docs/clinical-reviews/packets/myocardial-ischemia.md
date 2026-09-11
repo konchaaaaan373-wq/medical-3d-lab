@@ -11,6 +11,7 @@
 | model profile | `myocardial-ischemia-supply-demand` — mechanism level **mechanistic** |
 | 臨床レビューの現状 | **pending**（no completed clinical sign-off recorded） |
 | 患者説明 | 6 段 |
+| 患者説明のタイトル | 「細くなった血管が、心臓の一部を動かなくする仕組み」 |
 | 実画面 | `docs/screenshots/b10-ischemia/` |
 | 詳細シート | [myocardial-ischemia-patient-6-steps.md](../myocardial-ischemia-patient-6-steps.md) — 段ごとの根拠はこちら |
 
@@ -92,8 +93,8 @@
 
 ## 既存の根拠
 
-- [`docs/model-cards/myocardial-ischemia.md`](../../docs/model-cards/myocardial-ischemia.md)
-- [`docs/model-evidence/myocardial-ischemia.md`](../../docs/model-evidence/myocardial-ischemia.md)
+- [`docs/model-cards/myocardial-ischemia.md`](../../model-cards/myocardial-ischemia.md)
+- [`docs/model-evidence/myocardial-ischemia.md`](../../model-evidence/myocardial-ischemia.md)
 - model profile `myocardial-ischemia-supply-demand` — `src/catalog/modelProfiles.js`
 - 患者向けの文：`src/data/patientGuides.js`
 
