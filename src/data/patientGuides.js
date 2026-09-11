@@ -394,6 +394,305 @@ export const PATIENT_GUIDES = Object.freeze({
       },
     ]),
   }),
+  /**
+   * Pneumonia, on the same contract as the two scenes before it.
+   *
+   * This model is a regional ventilation/perfusion one: it solves what share of
+   * a lung is consolidated, what share is still ventilated, and what share of
+   * the blood is passing lung that is not being ventilated. Everything the walk
+   * says up to the last two steps is one of those three numbers.
+   *
+   * **What it stops at is a hard line.** Its own scope excludes PaO₂, SpO₂,
+   * imaging, the pathogen and every treatment decision. So the step about
+   * oxygen says what the shunt mechanism *is* and says on screen that the
+   * screen is not measuring anyone's oxygen, and the step about how it feels is
+   * marked as well. No step names an organism, an antibiotic or an x-ray.
+   */
+  'pneumonia-consolidation': Object.freeze({
+    title: 'Why filled air sacs make breathing less effective',
+    titleJa: '空気の袋が埋まると、呼吸が効きにくくなる理由',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'aerated',
+        focus: ['regional-ventilation'],
+        certainty: 'established',
+        title: 'Air and blood meet everywhere',
+        titleJa: '空気と血液は、どこでも出会っています',
+        body: 'The lung works by bringing air and blood close together in every part of it, so that oxygen can cross from one to the other.',
+        bodyJa: '肺は、どの場所でも空気と血液を近づけることで働いています。そうして酸素が一方から他方へ移ります。',
+        look: 'Every region is lit the same way. Both things it needs are arriving in all of them.',
+        lookJa: 'どの領域も同じように光っています。必要な二つが、すべての場所に届いています。',
+      },
+      {
+        progress: 0.22,
+        stage: 'focal',
+        frame: 'lower',
+        focus: ['consolidated-unit'],
+        certainty: 'established',
+        title: 'One patch fills up',
+        titleJa: '一部が埋まります',
+        body: 'In one part, the tiny air sacs fill with fluid and cells instead of air. Air cannot get into a sac that is already full.',
+        bodyJa: 'ある場所で、小さな空気の袋が空気ではなく液体と細胞で満たされます。すでに埋まった袋に空気は入れません。',
+        look: 'One region has changed colour. That is the part where air is no longer arriving.',
+        lookJa: '一部の領域の色が変わりました。そこが、空気の届かなくなった場所です。',
+      },
+      {
+        progress: 0.5,
+        stage: 'shunt',
+        frame: 'lower',
+        focus: ['consolidated-unit', 'persistent-perfusion'],
+        certainty: 'established',
+        title: 'The blood still goes there',
+        titleJa: '血液はそこへ流れ続けます',
+        body: 'Blood keeps flowing past that filled patch. It arrives, finds no air to collect oxygen from, and leaves much as it came.',
+        bodyJa: '血液は、埋まった場所のそばを流れ続けます。着いても酸素を受け取る空気がないため、ほとんどそのまま出ていきます。',
+        look: 'The blood flow marks are still there over the filled region — that is the part of this that matters.',
+        lookJa: '埋まった領域の上にも血流の印が残っています。ここがこの段階の要点です。',
+      },
+      {
+        progress: 0.82,
+        stage: 'multifocal',
+        frame: 'lower',
+        focus: ['persistent-perfusion', 'regional-ventilation'],
+        certainty: 'established',
+        title: 'The lung diverts some of it, but not all',
+        titleJa: '肺は血流を一部そらしますが、すべてではありません',
+        body: 'The lung narrows the vessels going to parts with no air, pushing some blood towards parts that still have it. It can only do so much.',
+        bodyJa: '肺は、空気のない場所へ向かう血管を細くして、血液を空気のある場所へ回そうとします。ただし、できる範囲には限りがあります。',
+        look: 'Compare the two: more blood is reaching the lit regions now, and some is still crossing the filled ones.',
+        lookJa: '見比べてください。明るい領域へ向かう血液が増えていますが、埋まった領域を通る分も残っています。',
+      },
+      {
+        progress: 0.82,
+        stage: 'multifocal',
+        frame: 'lower',
+        // The model solves what share of the blood passes lung that is not
+        // ventilated. It does not solve what that does to anyone's blood
+        // oxygen — its own scope excludes PaO2 and SpO2 outright.
+        focus: ['persistent-perfusion', 'regional-ventilation'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'How much oxygen arrives is a separate question',
+        titleJa: '酸素がどれだけ届くかは別の話です',
+        body: 'The share of blood passing unventilated lung is what this screen is about. How much oxygen ends up in a person is not something it works out.',
+        bodyJa: '換気されていない肺を通る血液の割合が、この画面の主題です。その人の血液にどれだけ酸素が入るかは、ここでは計算していません。',
+        look: 'There is no oxygen level anywhere on this screen. What is shown is where the blood goes and where the air does.',
+        lookJa: 'この画面に酸素の値はどこにもありません。示しているのは、血液と空気それぞれの行き先だけです。',
+      },
+      {
+        progress: 0.82,
+        stage: 'multifocal',
+        frame: 'lower',
+        focus: ['persistent-perfusion', 'regional-ventilation'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What people notice',
+        titleJa: '本人が気づくこと',
+        body: 'A cough, a fever, and breathing that takes more effort are commonly described. Which of them appear, and how strongly, differs widely between people.',
+        bodyJa: 'せき、発熱、呼吸のしづらさが訴えられることがよくあります。どれが出るか、どの程度かは人によって大きく異なります。',
+        look: 'Nothing new is drawn for this step. The screen shows air and blood, not a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面が示すのは空気と血液であって、人ではありません。',
+      },
+    ]),
+  }),
+
+  /**
+   * Pulmonary embolism — the mirror image of the pneumonia walk, deliberately.
+   *
+   * Both scenes are about air and blood failing to meet, and they fail in
+   * opposite directions: in pneumonia the blood arrives where the air cannot,
+   * here the air arrives where the blood cannot. Reading them one after the
+   * other is the point, and `RELATED` on each scene is what makes that possible.
+   *
+   * **The load step is carefully worded.** This model's own scope excludes
+   * pulmonary artery pressure, cardiac output and right-ventricular function.
+   * It solves the conductance of a fixed twelve-territory network, so the walk
+   * says the remaining routes have to carry everything and says nothing about a
+   * pressure, a heart or a number.
+   */
+  'pulmonary-embolism': Object.freeze({
+    title: 'Why breathing into a part with no blood does nothing',
+    titleJa: '血液の来ない場所に空気を送っても、意味がない理由',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'matched',
+        focus: ['continued-ventilation'],
+        certainty: 'established',
+        title: 'Both have to arrive in the same place',
+        titleJa: '二つが同じ場所に届く必要があります',
+        body: 'Oxygen crosses from air to blood only where the two are side by side. Air on its own does nothing, and blood on its own does nothing.',
+        bodyJa: '酸素が空気から血液へ移るのは、その二つが隣り合っている場所だけです。空気だけでも、血液だけでも何も起きません。',
+        look: 'Every territory has both. That pairing is what the rest of this is about.',
+        lookJa: 'どの領域にも両方があります。この対応関係が、以降の話の軸です。',
+      },
+      {
+        progress: 0.25,
+        stage: 'segmental',
+        focus: ['vascular-obstruction'],
+        certainty: 'established',
+        title: 'A blood vessel is blocked',
+        titleJa: '血管が詰まります',
+        body: 'Something lodges in one of the vessels carrying blood into the lung. Beyond it, blood stops arriving — and the air keeps arriving, because nothing blocked the airway.',
+        bodyJa: '肺へ血液を運ぶ血管の一本が、何かでふさがれます。その先には血液が届かなくなります。気道はふさがれていないので、空気は届き続けます。',
+        look: 'Watch the blocked vessel, then the region beyond it: the air is still going there and the blood is not.',
+        lookJa: '詰まった血管と、その先の領域を見てください。空気は届いていて、血液は届いていません。',
+      },
+      {
+        progress: 0.52,
+        stage: 'redistribution',
+        focus: ['underperfused-region', 'continued-ventilation'],
+        certainty: 'established',
+        title: 'That breath is wasted',
+        titleJa: 'その呼吸は無駄になります',
+        body: 'Air reaching a part with no blood in it cannot hand its oxygen to anything. The effort of that breath is spent and nothing is exchanged.',
+        bodyJa: '血液のない場所へ届いた空気は、酸素を渡す相手がありません。その呼吸にかけた力は使われますが、何も交換されません。',
+        look: 'The pale regions are still being ventilated. They are the share of each breath that achieves nothing.',
+        lookJa: '淡い色の領域にも空気は届いています。そこが、何も生まない呼吸の割合です。',
+      },
+      {
+        progress: 0.82,
+        stage: 'afterload',
+        focus: ['vascular-obstruction', 'underperfused-region'],
+        certainty: 'established',
+        title: 'The routes that are left carry everything',
+        titleJa: '残った通り道が、すべてを引き受けます',
+        body: 'Blood through the lung takes many parallel routes. Close some and the same amount has to go through the ones still open, which is harder work to push through.',
+        bodyJa: '肺を通る血液は、多くの並行した経路に分かれています。いくつかが閉じれば、同じ量が残りの経路を通ることになり、押し送るのに余計な力が要ります。',
+        look: 'Count what is still open against what was open at the start — that difference is what this step is about.',
+        lookJa: '開いている経路を、最初の状態と見比べてください。その差がこの段階の主題です。',
+      },
+      {
+        progress: 0.82,
+        stage: 'afterload',
+        // The model solves the conductance of a fixed network. It does not
+        // solve a pressure, a cardiac output or anything about the heart —
+        // its own scope says so — and it solves no blood value either.
+        focus: ['vascular-obstruction', 'underperfused-region'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'What this screen is not working out',
+        titleJa: 'この画面が計算していないこと',
+        body: 'How hard any heart is having to push, and how much oxygen is reaching a person, are both outside what is drawn here. This is about where air and blood go.',
+        bodyJa: '心臓がどれだけの力で押しているか、その人にどれだけ酸素が届いているかは、どちらもここに描かれていません。示しているのは空気と血液の行き先です。',
+        look: 'There is no heart on this screen and no oxygen level. Neither is being calculated.',
+        lookJa: 'この画面に心臓も酸素の値もありません。どちらも計算していません。',
+      },
+      {
+        progress: 0.82,
+        stage: 'afterload',
+        focus: ['vascular-obstruction', 'underperfused-region'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What people notice',
+        titleJa: '本人が気づくこと',
+        body: 'Sudden breathlessness and chest discomfort are commonly described, and sometimes very little is noticed at all. How much any of it shows differs widely.',
+        bodyJa: '急な息苦しさや胸の違和感が訴えられることがよくあり、ほとんど何も感じない場合もあります。現れ方は人によって大きく異なります。',
+        look: 'Nothing new is drawn for this step. The screen shows air and blood, not a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面が示すのは空気と血液であって、人ではありません。',
+      },
+    ]),
+  }),
+
+  /**
+   * Pulmonary oedema — the one respiratory walk whose oxygen step is the model
+   * talking.
+   *
+   * Every other scene here stops before the blood: COPD, asthma, pneumonia and
+   * embolism all exclude PaO₂ and SpO₂ from their scope, so the step a person
+   * asks about is marked. This model does not stop there — it solves the shunt
+   * fraction, an arterial oxygen tension and the alveolar–arterial difference,
+   * and reads them out. So the step about oxygen here is an ordinary step, and
+   * only the one about what a person feels is marked.
+   *
+   * That difference is the reason these marks exist. Two scenes drawing lungs
+   * side by side answer different questions, and a reader has no way to tell
+   * which is which by looking.
+   */
+  'pulmonary-edema': Object.freeze({
+    title: 'Where the water goes, and when it starts to matter',
+    titleJa: '水はどこへ行き、いつから問題になるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'dry',
+        focus: ['interstitium', 'hilum'],
+        certainty: 'established',
+        title: 'A healthy lung leaks, and drains',
+        titleJa: '健康な肺も水を漏らし、そして流し出します',
+        body: 'A small amount of water crosses out of the blood vessels into the lung all the time. Drainage channels carry away exactly that much, so the lung stays dry.',
+        bodyJa: '血管から肺へ、わずかな水がつねに染み出しています。排水の通り道がちょうど同じ量を運び去るので、肺は乾いたままでいられます。',
+        look: 'Watch the space around the vessels. Water is moving through it and not collecting in it.',
+        lookJa: '血管のまわりの空間を見てください。水はそこを通り抜けていて、たまってはいません。',
+      },
+      {
+        progress: 0.4,
+        stage: 'buffered',
+        focus: ['interstitium', 'hilum'],
+        certainty: 'established',
+        title: 'More pressure, and the drains keep up',
+        titleJa: '圧が上がっても、排水が追いつきます',
+        body: 'When the pressure pushing water out rises, more crosses — and the drainage speeds up to match. For a while nothing accumulates and nothing is felt.',
+        bodyJa: '水を押し出す圧が上がると、染み出す量も増えます。排水もそれに合わせて速くなります。しばらくは何もたまらず、自覚もありません。',
+        look: 'More water is crossing than before, and the space around the vessels has barely changed.',
+        lookJa: '染み出す量は増えていますが、血管まわりの空間はほとんど変わっていません。',
+      },
+      {
+        progress: 0.68,
+        stage: 'interstitial',
+        focus: ['interstitium'],
+        certainty: 'established',
+        title: 'The space around the air sacs fills first',
+        titleJa: 'まず、空気の袋のまわりが満たされます',
+        body: 'Past what the drainage can carry, water collects — but in the space between the air sacs, not inside them. Breathing gets heavier while the sacs are still dry.',
+        bodyJa: '排水が運べる量を超えると、水がたまり始めます。ただし空気の袋の中ではなく、袋と袋のあいだの空間にです。袋が乾いたままでも、呼吸は重くなります。',
+        look: 'The filling is around the air sacs, not in them. That distinction is the whole of this step.',
+        lookJa: 'たまっているのは袋の中ではなく、そのまわりです。この違いが、この段階のすべてです。',
+      },
+      {
+        progress: 1,
+        stage: 'alveolar',
+        focus: ['alveoli'],
+        certainty: 'established',
+        title: 'Then it crosses into the air sacs',
+        titleJa: 'やがて、袋の中へ入ります',
+        body: 'When that space can hold no more, water crosses into the air sacs themselves. A flooded sac still has blood arriving at it and no longer has air.',
+        bodyJa: 'その空間が満杯になると、水は空気の袋そのものへ入ります。水で満たされた袋にも血液は届きますが、空気はもうありません。',
+        look: 'The sacs themselves have changed now. That is a different thing from the step before it.',
+        lookJa: '今度は袋そのものが変わりました。前の段階とは別のことが起きています。',
+      },
+      {
+        progress: 1,
+        stage: 'alveolar',
+        // An ordinary step, not a marked one: this model solves the shunt
+        // fraction, the arterial oxygen tension and the A-a difference, and
+        // reads all three out. The scenes either side of it do not.
+        focus: ['alveoli'],
+        certainty: 'established',
+        title: 'Now the oxygen falls',
+        titleJa: 'ここで酸素が下がります',
+        body: 'Blood arriving at a flooded sac finds no air to take oxygen from and carries on past. This is the point at which the amount reaching the body drops.',
+        bodyJa: '水で満たされた袋に届いた血液は、酸素を受け取る空気がないまま通り過ぎます。体に届く量が落ちるのは、この時点からです。',
+        look: 'The flooded sacs still have blood going to them. That blood is the part that is not picking anything up.',
+        lookJa: '水で満たされた袋にも血液は向かっています。その血液が、何も受け取れていない分です。',
+      },
+      {
+        progress: 1,
+        stage: 'alveolar',
+        focus: ['alveoli'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'Why lying flat can make it worse',
+        titleJa: '横になると苦しくなることがある理由',
+        body: 'Breathlessness that is worse lying down, and eases on sitting up, is commonly described. How much, and how quickly, differs a great deal between people.',
+        bodyJa: '横になると息苦しく、起き上がると楽になると訴えられることがよくあります。程度も現れ方も、人によって大きく異なります。',
+        look: 'Nothing new is drawn for this step. The screen shows where the water is, not how anyone feels.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面が示すのは水の位置であって、感じ方ではありません。',
+      },
+    ]),
+  }),
+
   'portal-hypertension': Object.freeze({
     title: 'Why pressure rises before the liver',
     titleJa: '肝臓の手前で圧が上がる仕組み',

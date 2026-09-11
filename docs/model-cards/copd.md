@@ -185,3 +185,35 @@ Three kinds of test, and they mean different things — see
   exponent still puts the flow ceiling where it was aimed, and that the
   bronchodilator's 28%-against-10% split still holds. A failure here means a
   choice changed. It is never evidence that the medicine is wrong.
+
+## 17. Who it is said to, and where it stops
+
+There is now a patient-facing explanation of this scene
+(`src/data/patientGuides.js`, id `copd-hyperinflation`), paired step for step
+with the clinician's walk-through in `src/data/copdTeaching.js`.
+
+**They stand on the same three lungs.** `HEALTHY`, `NARROWED` and `OBSTRUCTED`
+are exported from the teaching data and both explanations use them, so neither
+can arrive at a lung the other never describes and re-tuning one of them moves
+both or fails `tests/respiratory-guides.test.js`.
+
+**The axis is demand, and the explanation never treats it as severity.** Eight
+steps: an ordinary lung breathing out passively, the same lung with its airways
+narrowed (same position on the axis — the difference is the lung), the axis then
+walked from rest to hard work while the lung is held still, and the loss of
+recoil added at a fixed workload. `tests/access.test.js` holds that rule
+directly: a step may change the lung or move along the axis, never both at once.
+
+**It stops where section 12 says it stops.** This model has no gas exchange in
+it, so the step about oxygen says on screen that the screen is not answering
+that, and the step about stopping to catch your breath is marked `associated`.
+Neither is told as a consequence of the step before it.
+
+**What the drawing is doing with the numbers is declared**, not left in a
+comment: `VISUAL_MAPPING` in `src/data/copd.js` records, per channel, what the
+picture is entitled to say and what it must never be read as — including that
+the airway's drawn calibre is not a modelled diameter, because this model has a
+resistance and not a lumen.
+
+`scripts/check-patient-explanation.mjs` drives the eight steps in a browser and
+holds each to what it declared.

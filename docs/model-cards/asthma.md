@@ -197,3 +197,35 @@ Three kinds of test, and they mean different things — see
   exponent's regime, the knee's sharpness, the inherited share, the maximum
   narrowing, and that applying `r⁴` to a whole tree still cancels because every
   resistance is a ratio. A failure here means a choice changed.
+
+## 17. Who it is said to, and where it stops
+
+There is now a patient-facing explanation of this scene
+(`src/data/patientGuides.js`, id `asthma-heterogeneity`), on the same contract
+as the COPD one beside it.
+
+**It stands on three declared trees.** `NOT_HYPERRESPONSIVE`, `ASTHMATIC` and
+`RELAXED` are exported from `src/data/asthmaTeaching.js`, and
+`tests/respiratory-guides.test.js` holds every step of both explanations to that
+list. The resistances the walk relies on are the model's own arithmetic: the
+same stimulus takes a tree that is not hyperresponsive from 1.00 to about 1.7
+and the asthmatic one to about 8.8, and releasing the smooth muscle at full
+stimulus brings it back to about 1.7.
+
+**Reversibility is the last thing the mechanism walk says**, because it is the
+property that separates this scene from the COPD one. The step is worded as the
+muscle letting go — the model's `bronchodilator` control is a relaxation of
+airway smooth muscle and is not a medicine, a dose or a response rate, and no
+patient-facing step may present it as one.
+
+**It stops where section 12 says it stops.** There is no blood in this model, so
+the step about oxygen says on screen that the screen is not answering that, and
+the step about symptoms coming and going is marked `associated`.
+
+**What the drawing is doing with the numbers is declared** in `VISUAL_MAPPING`
+(`src/data/asthma.js`): the branch calibre is proportional and says so, the
+whole-tree tint is illustrative and says what it must not be read as, and the
+unit colours are a ventilation share and not a blood gas.
+
+`scripts/check-patient-explanation.mjs` drives the eight steps in a browser and
+holds each to what it declared.

@@ -98,9 +98,9 @@
       "src/models/pulmonaryEdema.js",
       "src/data/pulmonaryEdema.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "8815703fb151d470",
-    "cardUpdatedAt": "2026-09-03"
+    "cardRevision": 5,
+    "modelDigest": "194489b7a2f3cd2c",
+    "cardUpdatedAt": "2026-09-11"
   },
   {
     "sceneId": "myocardial-ischemia",
@@ -121,9 +121,9 @@
       "src/models/pneumonia.js",
       "src/data/pneumonia.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "6745c661d97cd049",
-    "cardUpdatedAt": "2026-09-06"
+    "cardRevision": 3,
+    "modelDigest": "2d65f69551066cf5",
+    "cardUpdatedAt": "2026-09-11"
   },
   {
     "sceneId": "pulmonary-embolism",
@@ -132,8 +132,8 @@
       "src/models/pulmonaryEmbolism.js",
       "src/data/pulmonaryEmbolism.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "cf008ab5bb6d5cfa",
-    "cardUpdatedAt": "2026-09-06"
+    "cardRevision": 3,
+    "modelDigest": "ec21bac12525a747",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

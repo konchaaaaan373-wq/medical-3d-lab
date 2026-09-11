@@ -295,7 +295,12 @@ if (!(await patientButton.count())) {
       if (declaresControls && !modelMoved) {
         problems.push(`step ${index + 1} ("${step.title}") asks for a different lung and the model did not change`);
       }
-      if (!declaresControls && modelMoved) {
+      // A control that moved while the axis moved is the axis: some scenes put
+      // their progression variable on the control panel as well, so the reader
+      // can reach it either way. Only a control change with the axis standing
+      // still is a step re-solving the model it did not ask to re-solve.
+      const axisMoved = Math.abs(now.progress - previous.progress) > 1e-6;
+      if (!declaresControls && modelMoved && !axisMoved) {
         problems.push(`step ${index + 1} ("${step.title}") re-solved the model without asking to`);
       }
     }

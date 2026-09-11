@@ -193,7 +193,39 @@ detail moved.
 
 ---
 
-## 17. Revision history
+## 17. Who it is said to, and where it stops — and where it does not
+
+There is now a patient-facing explanation of this scene
+(`src/data/patientGuides.js`, id `pulmonary-edema`). It walks the same four
+stages this card describes.
+
+**This is the one respiratory explanation whose oxygen step is the model
+talking.** COPD, asthma, pneumonia and embolism all exclude PaO₂ and SpO₂ from
+their scope, so in each of those the step a person actually asks about is marked
+as a general explanation. This model solves the shunt fraction, an arterial
+oxygen tension and the alveolar–arterial difference and reads all three out — so
+"now the oxygen falls" is an ordinary step here, and only the step about what a
+person notices when lying flat is marked. That difference between neighbouring
+scenes is the reason the marks exist: two scenes drawing lungs side by side
+answer different questions and a reader cannot tell which is which by looking.
+
+**The step order carries this model's own finding.** The interstitium fills
+before the alveoli do, and the explanation says breathing gets heavier while the
+air sacs are still dry — which is the distinction section 1 of this card is
+about, said without a radiograph and without a saturation.
+
+**Onward scenes are declared.** `RELATED` in `src/data/pulmonaryEdema.js` points
+at the pneumonia scene and at heart failure — the model of the heart behind the
+pressure this scene takes as its axis — with the note that they are separate
+models and that no value passes between them. That note matters most here:
+the left atrial pressure on this axis is an input, not something the heart-failure
+scene hands over.
+
+`tests/respiratory-guides.test.js` holds the pairing, the marks and the copy
+limits; `scripts/check-patient-explanation.mjs` drives the walk in a browser and
+fails when a step points at something the reader cannot see.
+
+## 18. Revision history
 
 **Revision 3.** No medical change. Three of the scene's surfaces were built to
 contracts they did not match, and are rebuilt to the real ones: the chart is

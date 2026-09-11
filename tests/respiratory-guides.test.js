@@ -13,6 +13,12 @@ import { STAGES as ASTHMA_STAGES, MODEL_CONTROLS as ASTHMA_CONTROLS } from '../s
 import { CAUSAL_STORY as ASTHMA_STORY, AIRWAY_STATES } from '../src/data/asthmaTeaching.js';
 import { AsthmaScene } from '../src/scenes/respiratory/scenes/asthma/AsthmaScene.js';
 import { solveAsthma } from '../src/models/asthma.js';
+import { STAGES as PNEUMONIA_STAGES } from '../src/data/pneumonia.js';
+import { STAGES as EMBOLISM_STAGES } from '../src/data/pulmonaryEmbolism.js';
+import { STAGES as EDEMA_STAGES } from '../src/data/pulmonaryEdema.js';
+import { PneumoniaScene } from '../src/scenes/respiratory/scenes/pneumonia/PneumoniaScene.js';
+import { PulmonaryEmbolismScene } from '../src/scenes/respiratory/scenes/pulmonaryEmbolism/PulmonaryEmbolismScene.js';
+import { PulmonaryEdemaScene } from '../src/scenes/respiratory/scenes/pulmonaryEdema/PulmonaryEdemaScene.js';
 
 /**
  * The respiratory explanations, held to the same promises the cardiac ones are.
@@ -51,10 +57,25 @@ const GUIDES = [
     professional: ASTHMA_STORY,
     states: AIRWAY_STATES,
   },
+  /**
+   * The three that have no model-state steps.
+   *
+   * Each is a scene whose whole subject is one axis, so its explanation walks
+   * that axis and moves nothing else. They are here for the same per-step rules
+   * — the stage pairing, the copy limits, the marks on what the model does not
+   * produce — and for the rule that matters most for a progress-only guide: a
+   * step may not point at a label the scene is not drawing at that position.
+   */
+  { id: 'pneumonia-consolidation', stages: PNEUMONIA_STAGES, scene: () => new PneumoniaScene({}) },
+  { id: 'pulmonary-embolism', stages: EMBOLISM_STAGES, scene: () => new PulmonaryEmbolismScene({}) },
+  { id: 'pulmonary-edema', stages: EDEMA_STAGES, scene: () => new PulmonaryEdemaScene({}) },
 ];
 
 for (const guide of GUIDES) {
-  const { id, stages, controls, framings } = guide;
+  const { id, stages, controls = [] } = guide;
+  // A scene that declares framings declares them once, and both the test and
+  // the app read that same declaration.
+  const framings = guide.framings ?? Object.keys(guide.scene?.().getGuideFramings?.() ?? {});
 
   test(`${id}: the patient explanation keeps every promise the shape makes`, () => {
     assert.deepEqual(guideProblems(PATIENT_GUIDES[id], { stages, framings }), []);
@@ -75,6 +96,29 @@ for (const guide of GUIDES) {
       assert.equal(step.frame, marked[0].frame, `${step.stage}: shows nothing the step before it did not`);
     }
   });
+
+  test(`${id}: no step points at a label the scene is not drawing there`, () => {
+    // A `focus` list narrows the label layer to the ids it names. An id whose
+    // annotation is not in range at that position narrows it to nothing, and
+    // the step then says "watch the consolidated region" over a picture with no
+    // labels on it at all.
+    const scene = guide.scene ? guide.scene() : null;
+    if (!scene) return;
+    scene.build?.();
+    const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a.range ?? [0, 1]]));
+    for (const step of PATIENT_GUIDES[id].steps) {
+      for (const focusId of step.focus ?? []) {
+        const range = annotations.get(focusId);
+        assert.ok(range, `${step.stage}: points at "${focusId}", which the scene does not draw`);
+        assert.ok(
+          step.progress >= range[0] - 1e-9 && step.progress <= range[1] + 1e-9,
+          `${step.stage}: points at "${focusId}", which the scene draws only between ${range[0]} and ${range[1]}`
+        );
+      }
+    }
+  });
+
+  if (!guide.visualMapping) continue;
 
   test(`${id}: the drawing says what it is doing with the model's numbers`, () => {
     assert.deepEqual(

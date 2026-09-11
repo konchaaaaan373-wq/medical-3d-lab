@@ -15,6 +15,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
   situation,
@@ -69,6 +70,7 @@ export class PulmonaryEdemaScene {
     subtitleJa:
       '1 つの Starling 式と 3 つの緩衝機構 ｜ 肺が浸水する圧は、どこにも書かれておらず、解いて探しています',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     charts: CHARTS,
     range: RANGE,
