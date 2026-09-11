@@ -87,11 +87,11 @@ export const BURDEN_RANGE = Object.freeze({ min: 0, max: 3 });
  * see the dossier.
  */
 export const DIRECTIONS = Object.freeze([
-  { id: 'none', towardTrachea: 0, confined: 0, behind: 0 },
-  { id: 'anterior', towardTrachea: 0.02, confined: 0, behind: 0 },
-  { id: 'medial', towardTrachea: 0.85, confined: 0.2, behind: 0.05 },
-  { id: 'posterior', towardTrachea: 0.3, confined: 0.1, behind: 0.85 },
-  { id: 'retrosternal', towardTrachea: 0.55, confined: 0.85, behind: 0.3 },
+  { id: 'none', towardTrachea: 0, confined: 0, behind: 0, pressesAt: null },
+  { id: 'anterior', towardTrachea: 0.02, confined: 0, behind: 0, pressesAt: 'gland' },
+  { id: 'medial', towardTrachea: 0.85, confined: 0.2, behind: 0.05, pressesAt: 'gland' },
+  { id: 'posterior', towardTrachea: 0.3, confined: 0.1, behind: 0.85, pressesAt: 'gland' },
+  { id: 'retrosternal', towardTrachea: 0.55, confined: 0.85, behind: 0.3, pressesAt: 'inlet' },
 ]);
 
 /** Past this share of a lobe's depth, the posterior structures are inside it. */
@@ -136,6 +136,14 @@ export function solveMultinodularGoitre(controls = {}) {
     /** What is left across the airway, against this model's own resting width. */
     tracheaWidthFraction: Math.max(0.08, (width - indent) / width),
     indent,
+    /**
+     * **Where along the airway the narrowing is**, by name rather than by
+     * coordinate: `gland` for a goitre that stays at the level of the lobes,
+     * `inlet` for one that has followed the airway down below them. A cervical
+     * goitre narrows the airway where it lies, not at the inlet — the level is
+     * part of the claim, so the drawing must not put the dip somewhere else.
+     */
+    pressesAt: burden > 0 ? direction.pressesAt : null,
     /**
      * Whether this direction is the enclosed one, where most of the advance is
      * spent narrowing. **Not a claim that the other directions cannot narrow.**

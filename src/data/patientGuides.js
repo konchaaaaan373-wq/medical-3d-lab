@@ -1956,12 +1956,12 @@ export const PATIENT_GUIDES = Object.freeze({
         frame: 'caecum',
         focus: ['caecum', 'tension'],
         certainty: 'established',
-        title: 'The wall that carries the most is at neither end',
-        titleJa: '壁の負担が最大なのは、どちらの端でもありません',
-        body: 'A wider tube at the same pressure pulls harder on its own wall. So the part under the most strain is the widest part above the blockage — here, the first part of the colon.',
-        bodyJa: '同じ圧なら、太い管ほど自らの壁を強く引きます。最も負担が大きいのは閉塞部ではなく、上流で最も太い部分——ここでは結腸の最初の部分です。',
-        look: 'The lit stretch is the widest one above the blockage, not the one next to it.',
-        lookJa: '光っているのは、閉塞の隣ではなく、上流で最も太い区間です。',
+        title: 'Where the strain falls depends on the place',
+        titleJa: '負担のかかり方は一様ではなく、場所によって違います',
+        body: 'What is above a blockage widens, and a wider tube pulls harder on its own wall. Which part is pulled hardest depends on where the blockage is. In this arrangement it comes out here.',
+        bodyJa: '閉塞より上流は広がり、太い管ほど自らの壁を強く引きます。どこが最も引かれるかは、閉塞の位置と上流にある腸の量によって変わります。この配置ではここになります。',
+        look: 'The lit stretch is this picture’s answer, not a general one. Move the blockage and it moves too.',
+        lookJa: '光っているのはこの画面での答えであって、一般則ではありません。閉塞を動かせば、ここも動きます。'
       },
       {
         progress: 1,

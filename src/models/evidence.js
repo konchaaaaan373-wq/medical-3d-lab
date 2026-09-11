@@ -1792,10 +1792,10 @@ export const BOWEL_OBSTRUCTION_EVIDENCE = defineEvidence('bowel-obstruction', [
   {
     id: 'laplace-favours-the-widest',
     claim:
-      'Wall tension follows calibre as well as distending pressure: T = P·r for a cylinder. So at one pressure it is the widest part of the distended bowel whose wall carries the most — in the large bowel the caecum, which is neither the blockage nor next to it.',
+      'Wall tension follows calibre as well as distending pressure: T = P·r for a cylinder. So at one pressure it is the widest part of the distended bowel whose wall carries the most. Which segment that is belongs to the scenario — the site, the state of the ileocaecal valve and the calibres of what lies above — and the model works it out rather than assuming it: in its colonic closed-loop arrangements the answer comes out at the caecum, and in a small bowel obstruction the caecum is not distended at all and no segment stands out.',
     confidence: CONFIDENCE.ESTABLISHED,
     source:
-      'Laplace’s law for a cylinder, and the standard description of the caecum as the segment that distends most in large bowel obstruction.',
+      'Laplace’s law for a cylinder, and the standard description of the caecum as the segment that distends most in closed-loop large bowel obstruction with a competent ileocaecal valve.',
     validation: 'physiology: at one pressure the widest distended part carries the most wall tension',
     layer: LAYER.EXTERNAL,
   },
