@@ -28,6 +28,11 @@ import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/mus
 import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
 import { NASAL as EYE_NASAL, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
 import { MEDIAL as EAR_MEDIAL, buildEar } from '../src/scenes/sensory/organs/ear.js';
+import {
+  LAYER_DISPLAY_THICKNESS as SKIN_LAYERS,
+  reteWave as SKIN_RETE,
+  buildSkinBlock,
+} from '../src/scenes/integumentary/organs/skinBlock.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1242,4 +1247,80 @@ test('the ear is one chain: air, then bone, then fluid', () => {
     return [size.x, size.y, size.z].indexOf(Math.min(size.x, size.y, size.z));
   });
   assert.equal(new Set(planes).size, 3, 'and each of the three lies in a different plane');
+});
+
+// --- skin -------------------------------------------------------------------
+
+test('skin is three layers, and what goes through them has two ways out', () => {
+  // Skin is a sheet with a thickness rather than a thing with a shape, so every
+  // claim here is about depth: which layer a structure is in, and which of the
+  // two routes to the surface it takes.
+  const skin = buildSkinBlock();
+  skin.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(skin.mesh(id));
+  const L = SKIN_LAYERS;
+
+  // The three stack, in order, without a gap: each layer's floor is the next
+  // one's roof, and they are built from the same function rather than from two
+  // that happen to agree.
+  const epidermis = box('epidermis');
+  const dermis = box('dermis');
+  const subcutis = box('subcutaneous-tissue');
+  assert.ok(epidermis.min.y > dermis.min.y, 'the epidermis is above the dermis');
+  assert.ok(dermis.min.y > subcutis.min.y, 'and the dermis above the subcutis');
+  assert.ok(epidermis.min.y < dermis.max.y, 'epidermis and dermis meet, with no gap between them');
+  assert.ok(dermis.min.y < subcutis.max.y, 'and so do dermis and subcutis');
+
+  // And the join between the first two is not flat. A flat junction is the one
+  // thing about skin this model would be wrong to say.
+  const flat = SKIN_RETE(0, 0);
+  let lowest = Infinity;
+  let highest = -Infinity;
+  for (let i = 0; i < 40; i += 1) {
+    const x = -1.5 + (i / 39) * 3;
+    for (let j = 0; j < 40; j += 1) {
+      const z = -1.5 + (j / 39) * 3;
+      const h = SKIN_RETE(x, z);
+      lowest = Math.min(lowest, h);
+      highest = Math.max(highest, h);
+    }
+  }
+  assert.ok(highest - lowest > 0.08, 'the dermo-epidermal junction interlocks rather than lying flat');
+  assert.ok(Number.isFinite(flat));
+
+  // A follicle is a tube of surface that has grown down: it starts at the top
+  // and finishes below the dermis, in the fat.
+  const follicle = new THREE.Box3();
+  for (const mesh of skin.follicleMeshes) follicle.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(follicle.max.y > L.surface, 'the hair reaches above the surface');
+  assert.ok(follicle.min.y < L.dermisFloor, 'and the follicle reaches below the dermis, into the fat');
+
+  // The sebaceous gland opens into the follicle. It does not reach the surface,
+  // and that is the whole relation.
+  const sebaceous = box('sebaceous-gland');
+  assert.ok(sebaceous.intersectsBox(box('hair-follicle')), 'the sebaceous gland opens into the follicle');
+  assert.ok(sebaceous.max.y < L.epidermisFloor, 'and never reaches the surface itself');
+
+  // The sweat gland takes the other route: its duct opens on the surface, well
+  // away from the hair.
+  const sweat = new THREE.Box3();
+  for (const mesh of skin.sweatMeshes) sweat.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(sweat.max.y >= L.surface - 0.06, 'the sweat duct reaches the surface');
+  assert.ok(sweat.min.y < L.dermisFloor + 0.3, 'from a coil deep in the skin');
+  const pore = skin.anchorPoints.sweatPore;
+  const mouth = skin.anchorPoints.follicleMouth;
+  assert.ok(pore.distanceTo(mouth) > 0.8, 'and it opens nowhere near the hair');
+
+  // Nothing that carries blood is in the epidermis. It is fed across the join,
+  // which is why it can be peeled off and live.
+  for (const id of ['arteriole', 'venule']) {
+    assert.ok(box(id).max.y < L.epidermisFloor, `the ${id} stops below the epidermis`);
+  }
+  assert.ok(box('sensory-nerve').max.y < L.epidermisFloor, 'and so does the nerve');
+
+  // The fat is inside the compartment, not instead of it.
+  const fat = new THREE.Box3();
+  for (const mesh of skin.lobuleMeshes) fat.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(subcutis.containsBox(fat), 'every fat lobule is inside the subcutaneous compartment');
+  assert.ok(skin.lobuleMeshes.length > 6, 'and there is more than one of them');
 });

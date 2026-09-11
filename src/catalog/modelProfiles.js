@@ -460,6 +460,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code as a right ear laid out along one line: an auricle shell with a scooped concha, the canal drawn as the passage it is with a turn in it, a drum as a shallow cone with its apex medial, an air cavity drawn as a body, three ossicles as small bones meeting in order from the umbo to the oval window, a Eustachian tube leaving forwards and downwards, and a cochlear spiral of two and a half tapering turns with a vestibule and three canals in three planes beside it. No state and no mechanism: nothing vibrates, nothing conducts and there is no fluid. **No length, calibre, angle or turn-count is a measurement, and everything medial to the drum is drawn far larger than life** (`DEEP_EAR_VISUAL_SCALE`) so that each part can be seen and selected — no size relation across the drum may be read off the model. The temporal bone, mastoid air cells, facial nerve, ossicular muscles, ampullae, endolymph and perilymph and the organ of Corti are not drawn.',
   },
   {
+    profileId: 'skin-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as a block of skin with its sides cut, so the section is what the model is rather than a viewpoint on it. Three slabs share their boundary surfaces by construction: one `reteWave` is both the floor of the epidermis and the roof of the dermis, so the interlocking junction cannot drift apart. Fat is drawn as lobules inside the subcutaneous compartment so that the compartment and its contents can each be pointed at. A hair follicle runs from the surface down into the fat with the hair it makes, a sebaceous gland opens into it, a sweat gland coil sends a spiral duct to open on the surface instead, and an arteriole, a venule and a sensory nerve run in the dermis. No state and no mechanism: nothing moves and nothing grows. **The layers are deliberately not to scale** (`LAYER_DISPLAY_THICKNESS`) — the epidermis is drawn at about a quarter of the dermis where in life it is about a twentieth — so no thickness or ratio may be read off the model. The epidermal layers, the arrector muscle, the named receptors, the lymphatics, the septa between fat lobules and regional differences in skin are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

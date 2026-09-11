@@ -797,5 +797,31 @@
       "No otitis, perforation, ossicular disruption, vertigo or hearing loss is represented in any form, and nothing here is anyone's ear.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any procedure."
     ]
+  },
+  {
+    "sceneId": "skin-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built block of skin — three layers, adipose lobules, a hair follicle with its sebaceous gland, a sweat gland, an arteriole, a venule and a sensory nerve — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/skin-anatomy.md",
+      "docs/model-evidence/skin-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The layer thicknesses are deliberately not to scale: the epidermis is drawn at about a quarter of the dermis where in life it is about a twentieth. No thickness or ratio may be read off the model.",
+      "Nothing in the scene moves or grows: no shedding, no hair cycle, no sweating, no wound healing.",
+      "One block stands for all skin; the differences between palm, scalp, eyelid and back are not represented.",
+      "The layers of the epidermis, the arrector pili muscle, the named sensory receptors, the lymphatics and the fibrous septa between fat lobules are not drawn.",
+      "One arteriole and one venule stand for the two dermal plexuses, which are not separately drawn.",
+      "No rash, ulcer, burn, infection or tumour is represented in any form, and nothing here is anyone’s skin.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging a wound, or planning any procedure."
+    ]
   }
 ]

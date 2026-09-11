@@ -164,6 +164,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'knee-anatomy': MECHANISM_LEVEL.NONE,
     'shoulder-anatomy': MECHANISM_LEVEL.NONE,
     'hip-anatomy': MECHANISM_LEVEL.NONE,
+    'skin-anatomy': MECHANISM_LEVEL.NONE,
     'ear-anatomy': MECHANISM_LEVEL.NONE,
     'eye-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,

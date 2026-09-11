@@ -393,5 +393,18 @@
     "cardRevision": 3,
     "modelDigest": "782fa436b70be62b",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "skin-anatomy",
+    "card": "docs/model-cards/skin-anatomy.md",
+    "modelSources": [
+      "src/data/skinAnatomyScene.js",
+      "src/scenes/integumentary/organs/skinBlock.js",
+      "src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "b24241ce0a4b291e",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

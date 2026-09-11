@@ -28,6 +28,7 @@ export const SYSTEMS = [
   { id: 'musculoskeletal', label: 'Musculoskeletal', labelJa: '筋骨格' },
   { id: 'reproductive', label: 'Reproductive', labelJa: '生殖器' },
   { id: 'sensory', label: 'Special senses', labelJa: '感覚器' },
+  { id: 'integumentary', label: 'Skin', labelJa: '皮膚' },
   { id: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
@@ -67,6 +68,7 @@ export const ORGANS = [
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
   { id: 'eye', system: 'sensory', label: 'Eye', labelJa: '眼' },
   { id: 'ear', system: 'sensory', label: 'Ear', labelJa: '耳' },
+  { id: 'skin', system: 'integumentary', label: 'Skin', labelJa: '皮膚' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
