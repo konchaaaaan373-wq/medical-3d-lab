@@ -699,6 +699,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/sensory/scenes/cataract/index.js'),
   },
   {
+    id: 'bppv',
+    slug: 'bppv',
+    titleEn: 'Particles in a semicircular canal',
+    titleJa: '半規管内の遊離耳石',
+    system: 'sensory',
+    organ: 'ear',
+    organs: ['ear'],
+    disease: 'bppv',
+    conditions: ['BPPV', 'benign paroxysmal positional vertigo', 'otoconia', 'semicircular canal', 'canal plane', 'ampulla', '良性発作性頭位めまい症', '耳石', '半規管', '膨大部'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/bppv.md',
+    modelProfile: 'bppv-canal-plane',
+    description:
+      'A loop can only be driven along by the part of gravity lying in its plane, so two canals in one ear with the head in the same place are in completely different states — the level one can move nothing at all until the head goes back.',
+    descriptionJa:
+      'ループに沿って動かせるのは、その平面内にある重力成分だけです。そのため同じ耳の 2 つの半規管は、同じ頭位でもまったく異なる状態にあります。水平なほうは、頭を後ろへ倒すまで何も動かせません。',
+    tags: ['sensory', 'plane-scenario', 'geometric-model'],
+    load: () => import('../scenes/sensory/scenes/bppv/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

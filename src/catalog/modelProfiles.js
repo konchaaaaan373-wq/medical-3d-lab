@@ -938,6 +938,23 @@ export const MODEL_PROFILES = Object.freeze([
       'physics, no cause, no time and no indication for any treatment.@ ',
   },
   {
+    profileId: 'bppv-canal-plane',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the ear atlas\'s own canal planes: gravity is rotated into the head\'s frame by a chosen ' +
+      'head position, decomposed against a chosen canal\'s normal, and the particle is placed at the lowest point of ' +
+      'that loop. The card says the model is quasi-static with no inertia, fluid or time, that the head\'s path is one ' +
+      'chosen rotation whose extent is a calibration rather than any named manoeuvre, and that **no eye movement is ' +
+      'derived**: the model contains no nystagmus, no symptom and no manoeuvre.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

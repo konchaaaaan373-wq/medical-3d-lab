@@ -159,6 +159,15 @@ import {
   solveRetinalDetachment,
 } from '../src/models/retinalDetachment.js';
 import { LENS as CATARACT_LENS, PUPILS as CATARACT_PUPILS, solveCataract } from '../src/models/cataract.js';
+import { BppvScene } from '../src/scenes/sensory/scenes/bppv/BppvScene.js';
+import { SITES as EAR_SITES, buildEar } from '../src/scenes/sensory/organs/ear.js';
+import {
+  CANAL as BPPV_CANAL,
+  CANALS as BPPV_CANALS,
+  DRIVES_ABOVE as BPPV_DRIVES_ABOVE,
+  MAX_PITCH as BPPV_MAX_PITCH,
+  solveBppv,
+} from '../src/models/bppv.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1886,4 +1895,58 @@ test('calibration: the two apertures produce the reversal the scene exists for',
   // "all of it" case the scene opens on is not available.
   assert.ok(Math.abs(solveCataract(1, { kind: 'nuclear', pupil: 'narrow' }).inPath - 1) < 1e-9);
   assert.ok(CATARACT_PUPILS.wide < 1, 'and the wide aperture is still inside the lens');
+});
+
+// --- particles in a semicircular canal --------------------------------------
+
+test('calibration: the canal model and the ear atlas use the same planes and the same loop', () => {
+  // Defends `atlas-canal-planes`. The model may not import `three`, so the
+  // planes and the loop are copied — and the scene builds its own frame from
+  // the same normals. All three have to describe one labyrinth.
+  const ear = buildEar({});
+  const scene = new BppvScene({});
+  scene.build();
+
+  for (const entry of BPPV_CANALS.filter((c) => c.normal)) {
+    const mesh = ear.canalMeshes.find((m) => m.name.startsWith(entry.id));
+    assert.ok(mesh, `${entry.id}: the atlas draws this loop`);
+
+    // Every vertex of the atlas's tube lies about the model's plane, and about
+    // the model's radius from the loop's centre in it.
+    const attribute = mesh.geometry.attributes.position;
+    const normal = new THREE.Vector3(...entry.normal).normalize();
+    const centre = new THREE.Vector3(...EAR_SITES.vestibule);
+    const point = new THREE.Vector3();
+    let minRadius = Infinity;
+    let maxRadius = 0;
+    for (let i = 0; i < attribute.count; i += 7) {
+      point.fromBufferAttribute(attribute, i).sub(centre);
+      const inPlane = point.clone().addScaledVector(normal, -point.dot(normal));
+      minRadius = Math.min(minRadius, inPlane.length());
+      maxRadius = Math.max(maxRadius, inPlane.length());
+    }
+    assert.ok(
+      Math.abs((minRadius + maxRadius) / 2 - BPPV_CANAL.radius) < 0.08,
+      `${entry.id}: the drawn loop is ${(minRadius + maxRadius) / 2} across against ${BPPV_CANAL.radius}`
+    );
+    // And the scene puts a point at the model's angle on that same loop.
+    const drawn = scene.pointOnLoop(entry.normal, 0).sub(centre);
+    assert.ok(Math.abs(drawn.dot(normal) - 0.12) < 1e-9, `${entry.id}: the scene's loop lies in the atlas's plane`);
+  }
+
+  scene.dispose();
+  ear.dispose?.();
+});
+
+test('calibration: the head’s path takes the level loop from nothing to nearly all of it', () => {
+  // Defends `the-heads-path-is-chosen`. The rotation carries no claim of its
+  // own; what it has to deliver is that the scene can show a loop going from
+  // driving nothing to driving something. That is what is fixed.
+  assert.ok(solveBppv(0, { canal: 'lateral' }).inPlane < BPPV_DRIVES_ABOVE, 'it begins holding nothing');
+  const most = Math.max(...[0.25, 0.5, 0.75, 1].map((head) => solveBppv(head, { canal: 'lateral' }).inPlane));
+  assert.ok(most > 0.9, `${most} is not enough of it to read as a plane holding gravity`);
+  assert.ok(BPPV_MAX_PITCH > 60 && BPPV_MAX_PITCH < 180, 'and the head goes back rather than over');
+
+  // The other loop must not do the same thing, or the comparison is empty.
+  assert.ok(solveBppv(0, { canal: 'posterior' }).drives, 'the posterior loop holds it from the start');
 });

@@ -703,5 +703,15 @@
     "cardRevision": 2,
     "modelDigest": "e11f73cd0ea26199",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "bppv",
+    "card": "docs/model-cards/bppv.md",
+    "modelSources": [
+      "src/models/bppv.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "dc6000671eca6342",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

@@ -1471,5 +1471,33 @@
       "There is no time, no progression and no cause: no age, steroid, diabetes or trauma.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "bppv",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of loose particles in a semicircular canal: how much of gravity lies in a chosen canal’s plane for a given head position, where in the loop a particle would settle, and whether that path runs towards the ampulla"
+    ],
+    "sources": [
+      "docs/model-cards/bppv.md",
+      "docs/model-evidence/bppv.md",
+      "tests/bppv-physiology.test.js",
+      "tests/bppv-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the two loops, the head’s path, the copy and the Japanese terminology is not yet recorded.",
+      "No angle, distance or share is a measurement. The canals’ planes and the loop’s radius are this repository’s own ear atlas’s.",
+      "NO EYE MOVEMENT IS DERIVED. Nothing in this model is an eye, a muscle or a direction of gaze, and no output of it is a nystagmus.",
+      "There is no symptom, no vertigo, no latency, no duration, no fatigue and no repositioning manoeuvre or its effect.",
+      "The model is quasi-static: the particle is drawn where it would end up, with no inertia, no fluid, no drag, no cupula and no time.",
+      "The head’s path is one chosen rotation and its extent is a calibration; it is not the angle of any named manoeuvre and no point on the axis is a step of one.",
+      "In this drawing the posterior loop answers a turn either way identically, because the atlas draws one ear and the turn is symmetric about that loop’s plane. Only the lateral loop makes the two turns different pictures. That is a property of the drawing.",
+      "The particle is drawn as a single body; real otoconia are many, and nothing here says how many or whether they move together.",
+      "There is no cause, no recurrence, and nothing about which ear is affected in anybody.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

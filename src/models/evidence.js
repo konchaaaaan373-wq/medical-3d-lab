@@ -3018,6 +3018,139 @@ export const CATARACT_EVIDENCE = defineEvidence('cataract', [
   },
 ]);
 
+export const BPPV_EVIDENCE = defineEvidence('bppv', [
+  {
+    id: 'only-what-lies-in-the-plane-drives-it',
+    claim:
+      'A particle in a canal can only be driven along the loop by the part of gravity lying in that loop\'s plane. The part along the normal presses it against the wall and moves it nowhere.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Vector decomposition against a plane, applied to the atlas\'s own canal normals.',
+    validation: 'physiology: a loop can only be driven by the gravity lying in its plane',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-level-loop-and-the-standing-one',
+    claim:
+      'The lateral canal lies approximately level with the head upright, so upright gravity runs along its normal; the posterior canal\'s plane already holds gravity. Two loops in one ear, at one head position, are therefore in completely different states.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the semicircular canals as three loops in three planes, with the lateral one approximately level in an upright head.',
+    validation: 'physiology: two loops in one ear, at one head position, are in different states',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-head-moves-and-the-planes-go-with-it',
+    claim:
+      'Taking the head back brings gravity into the plane of a canal that held none of it, which is why the head\'s position is the whole of the question.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of benign paroxysmal positional vertigo as loose particles moving under gravity when the head changes position, taken only as far as the geometry.',
+    validation: 'physiology: taking the head back brings gravity into the level loop’s plane',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-still-head-has-already-settled',
+    claim:
+      'A particle in a loop whose plane already holds gravity sits at that loop\'s lowest point, so an upright head shows no travel at all. Travel is measured from there.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the quasi-static treatment: with no inertia and nothing holding it, the particle is wherever the in-plane pull points.',
+    validation: 'physiology: the particle starts where it already was, not somewhere convenient',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-canal-planes',
+    claim:
+      'The normals of the canal planes and the radius of the loop, from which every angle here is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off `buildEar()` in `src/scenes/sensory/organs/ear.js`, so the picture and the arithmetic are the same labyrinth.',
+    note:
+      'Illustrative. The atlas draws the three canals on three cardinal planes, which a real labyrinth does not; the claims here are about which plane, not about the angles between them.',
+    validation: 'calibration: the canal model and the ear atlas use the same planes and the same loop',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-heads-path-is-chosen',
+    claim:
+      'The rotation the axis carries the head through, and how far it goes.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: enough to bring the level loop\'s plane plainly into gravity, otherwise the scene could never show what it exists to show.',
+    note:
+      '**It is not the angle of any named manoeuvre**, and no point on the axis corresponds to a step of one. What it has to deliver is that the level loop begins at nothing and ends holding most of it.',
+    validation: 'calibration: the head’s path takes the level loop from nothing to nearly all of it',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-eye-movement-is-derived',
+    claim:
+      'The direction of any nystagmus is not computed here. Nothing in this model is an eye, a muscle or a direction of gaze.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in this model. A canal\'s plane is related to the plane of the response it drives; the model does not take that step.',
+    note:
+      'The read-out prints "not derived here" where a nystagmus would go rather than omitting the row, because an absent row reads as an oversight and this absence is the claim.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'quasi-static-and-nothing-else',
+    claim:
+      'The particle is drawn where it would end up, not where it is on the way. There is no inertia, no fluid, no drag, no cupula and no time.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Everything that makes this subject a matter of seconds rather than positions is outside the model.',
+    note:
+      'Latency, duration and fatigue all live in the physics this model does not have, which is why none of them appears anywhere in it.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-two-turns-are-not-mirror-images-here',
+    claim:
+      'In this drawing the posterior loop answers a turn either way identically, and only the lateral loop makes the two turns different pictures.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A property of the atlas: it draws one ear, and the turn is symmetric about the posterior loop\'s plane.',
+    note:
+      '**A statement about this drawing, not about ears.** A reader who takes the two turns for two sides of a head is reading something that is not there.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'one-particle-standing-for-many',
+    claim:
+      'The particle is drawn as a single body, and nothing here says how many there are or whether they move together.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. A single body has a position, which is what the model needs; a cloud of them would need the physics the model does not have.',
+    note:
+      'Nothing about the size of the drawn particle is a size, and nothing about there being one is a count.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-symptom-and-no-manoeuvre',
+    claim:
+      'Vertigo, nausea and the effect of any repositioning procedure are not represented here in any form.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. The axis is a head position, not a step of a procedure, and nothing in the model is a person.',
+    note:
+      'A head going back on an axis reads as a manoeuvre being performed. It is one rotation, chosen so the geometry is visible.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'three-cardinal-planes',
+    claim:
+      'The atlas puts the three canals on three cardinal planes, which a real labyrinth does not.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A property of the atlas, which declares its own proportions to be drawn rather than measured.',
+    note:
+      'The claims here are about *which* plane rather than about the angles between them, so the simplification does not reach them — but no angle reported is an angle in anybody.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -3042,4 +3175,5 @@ export const EVIDENCE_REGISTRIES = [
   LUMBAR_DISC_EVIDENCE,
   RETINAL_DETACHMENT_EVIDENCE,
   CATARACT_EVIDENCE,
+  BPPV_EVIDENCE,
 ];

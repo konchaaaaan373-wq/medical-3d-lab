@@ -3158,6 +3158,103 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Particles in a semicircular canal.
+   *
+   * The walk is a comparison between two loops at the same head position, and
+   * it has to survive a reader who arrives wanting a diagnosis. So the last two
+   * steps say, in order, that nothing here is an eye movement and nothing here
+   * is a manoeuvre.
+   */
+  'bppv': Object.freeze({
+    title: 'Why the position of the head is the whole of it',
+    titleJa: '頭の位置がすべてを決める理由',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'upright',
+        frame: 'labyrinth',
+        focus: ['canal', 'particle'],
+        // The level loop, upright: the case where nothing can move at all.
+        controls: { canal: 'lateral' },
+        certainty: 'established',
+        title: 'A loop lying flat, and nothing to move anything along it',
+        titleJa: '水平に横たわるループと、そこを動かすもののない状態',
+        body: 'This loop is level while the head is upright. Down points straight through it rather than along it, so anything loose inside is pressed against the wall and goes nowhere.',
+        bodyJa: 'このループは、頭がまっすぐなときは水平です。「下」はループに沿ってではなく、その面を貫く向きになるため、中にある遊離したものは壁に押しつけられ、どこへも動きません。',
+        look: 'The arrow is which way is down. It points through the lit loop, not around it.',
+        lookJa: '矢印が「下」の向きです。明るいループに沿ってではなく、それを貫く向きを指しています。',
+      },
+      {
+        progress: 0,
+        stage: 'upright',
+        frame: 'loop',
+        focus: ['active', 'particle'],
+        // The same head position, the other loop: a different state entirely.
+        controls: { canal: 'posterior' },
+        certainty: 'established',
+        title: 'The same head, a different loop, a different state',
+        titleJa: '同じ頭位でも、ループが違えば状態が違います',
+        body: 'This loop stands upright rather than lying flat, so down runs around it. Anything loose in it settled at its lowest point long ago and is sitting there now.',
+        bodyJa: 'このループは水平ではなく立っているため、「下」はループに沿う向きになります。中の遊離したものはとうに最下点へ落ち着いており、いまもそこにあります。',
+        look: 'The arrow has not moved. The loop has — and now it runs the same way the arrow points.',
+        lookJa: '矢印は動いていません。変わったのはループのほうで、いまは矢印の向きに沿っています。',
+      },
+      {
+        progress: 0.5,
+        stage: 'tipping',
+        frame: 'down',
+        focus: ['gravity', 'active'],
+        certainty: 'established',
+        title: 'Take the head back, and the loops meet gravity differently',
+        titleJa: '頭を後ろへ倒すと、ループと重力の関係が変わります',
+        body: 'Down has not changed; the head has. So how much of it runs around each loop changes too, and the particles travel to wherever the new lowest point is.',
+        bodyJa: '「下」は変わっていません。変わったのは頭です。そのため各ループに沿う成分も変わり、遊離したものは新しい最下点まで移動します。',
+        look: 'The arrow has swung round. Watch where the small bright body ends up on the lit loop.',
+        lookJa: '矢印の向きが変わりました。明るいループ上で、小さな明るい粒がどこへ行き着くかを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'settled',
+        frame: 'loop',
+        focus: ['particle', 'ampulla'],
+        certainty: 'established',
+        title: 'Where they end up, and which way that ran',
+        titleJa: '落ち着く場所と、どちら向きに動いたか',
+        body: 'The particles have travelled round to the lowest point the loop now has. How far that was, and whether it ran towards the widened end of the loop, is a fact about the shape of the loop.',
+        bodyJa: '遊離したものは、いまのループにおける最下点まで回り込みました。それがどれだけの距離で、ループの膨らんだ端へ向かったのかどうかは、ループの形についての事実です。',
+        look: 'The small bright body is where it settled. The orange one is the widened end it may or may not have moved towards.',
+        lookJa: '小さな明るい粒が落ち着いた場所です。オレンジ色のものが膨らんだ端で、そちらへ動いたとは限りません。',
+      },
+      {
+        progress: 1,
+        stage: 'settled',
+        frame: 'labyrinth',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice',
+        titleJa: '人が気づくこと',
+        body: 'A short spinning feeling on turning over in bed or looking up is described, settling after a little while. None of that is worked out here.',
+        bodyJa: '寝返りや上を向いたときに短くぐるぐる回る感じがあり、しばらくすると治まる、と語られます。そのいずれも、ここでは導き出していません。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'settled',
+        frame: 'labyrinth',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture has no eye in it, and no examination',
+        titleJa: 'この絵には眼もなく、検査もありません',
+        body: 'Everything here is a direction, a loop and a place on it. The eye movements this subject is usually explained through are not worked out anywhere on this screen.',
+        bodyJa: 'ここにあるのは、向きと、ループと、その上の位置だけです。この主題が通常説明される際に用いられる眼球運動は、この画面のどこでも導き出していません。',
+        look: 'Where an eye movement would be listed, the screen says it is not derived here — rather than leaving the line out.',
+        lookJa: '眼球運動が並ぶはずの場所には、行を省くのではなく「ここでは導出していません」と表示されています。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

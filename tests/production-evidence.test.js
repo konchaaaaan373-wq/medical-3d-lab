@@ -59,6 +59,7 @@ test('migrated production evidence and the existing model registries share one c
       'lumbar-disc-herniation',
       'retinal-detachment',
       'cataract',
+      'bppv',
     ]
   );
 });

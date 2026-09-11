@@ -75,6 +75,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'lumbar-disc-herniation',
   'retinal-detachment',
   'cataract',
+  'bppv',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -480,6 +481,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '混濁を 3 か所に置いて瞳孔を開き、どちらが通り道にあるかが入れ替わるのを確認。',
     ['THREE PLACES', 'TWO APERTURES', 'BIG IS NOT IN THE WAY'],
     ['3 つの場所', '2 つの開口部', '広い＝邪魔とは限らない']
+  ),
+  'bppv': presentation(
+    'Take the head back and watch a loop that could drive nothing begin to.',
+    '頭を後ろへ倒し、何も動かせなかったループが動かし始めるのを確認。',
+    ['THREE PLANES', 'GRAVITY IN OR ALONG', 'NO EYE HERE'],
+    ['3 つの平面', '平面内か法線方向か', '眼は扱いません']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

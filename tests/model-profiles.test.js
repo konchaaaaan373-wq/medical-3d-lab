@@ -210,6 +210,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'lumbar-disc-herniation': MECHANISM_LEVEL.ILLUSTRATIVE,
     'retinal-detachment': MECHANISM_LEVEL.ILLUSTRATIVE,
     'cataract': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'bppv': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 
