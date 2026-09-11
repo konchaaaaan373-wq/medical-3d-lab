@@ -1562,7 +1562,7 @@ PR 本文の「`npm test` — 1390/1390」は初版時点の数値です（最�
 - 完了の定義: なし（記録として残します）。数が要るときは
   `SCENE_MANIFEST` から数えてください——手で数えた値を文書に書き写さないこと。
 
-### F-48 シーン下部の注意書きで `**` がそのまま出ていた — 解決（UI）
+### F-88 シーン下部の注意書きで `**` がそのまま出ていた — 解決（UI）
 
 `ControlPanel` の disclaimer は `text` で設定していたため、
 文中の `**…**` がマークアップとして解釈されず、アスタリスクのまま表示されていました。
@@ -1575,6 +1575,122 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 形にしました。**パースはしていません**——`innerHTML` を使わないので、
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
+
+### F-92 色モードを切り替えて部位タブへ戻ると、木の選択マークが消えるシーンがある — P2（AnatomyPanel / shared）
+
+**再現条件.** `npm run verify:anatomy -- --scene foot-anatomy --preview`
+（`oral-anatomy` でも同じ）。`fee3c6d` + 正常解剖統合の build で再現します。
+
+```
+  - recolouring left 0 rows marked selected in the tree
+```
+
+チェッカーの手順は「3D で 1 つ選択 → 表示タブ → 色モードを切替 → 部位タブへ戻る →
+`.anatomy-tree-leaf[aria-selected="true"]` を数える」で、期待は 1、実測 0 です。
+
+**分かっていること**:
+- 同じ run の中で、**3D クリック直後の**「木に 1 行マークされる」判定は
+  通っています。失われるのはタブを往復したあとだけです
+- 「色モードの切替で選択が変わった」判定も通っています。つまり
+  **選択そのものは生きており、木の表示だけが追随していません**
+- 同じ build・同じチェッカーで `brain-anatomy` `lung-anatomy`
+  `kidney-anatomy` `eye-anatomy` `spine-anatomy` `nose-anatomy`
+  `larynx-anatomy` `hand-anatomy` `skeleton-overview`
+  `pelvic-floor-anatomy` は通ります。再現するのは `foot-anatomy` と
+  `oral-anatomy` の 2 つだけで、**どちらも hideTags を持つ named view が
+  多いシーン**ですが、同じ条件で通るシーンもあるため断定していません
+- `setTab()` は `body.replaceChildren(tab.content)` で**作り直していない**
+  ため、単純な再構築ではありません（`src/components/AnatomyPanel.js`）
+
+**Claude② は手を入れていません。** AnatomyPanel は共有コンポーネントで、
+担当外です。再現条件と切り分け結果のみ置きます。
+
+---
+
+### F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している — P1（product shell / 所有者未定）
+
+**再現条件.** `origin/main` の `fee3c6d`（"B6: refine product shell UX and consent flow"）を
+そのまま checkout して `node --test tests/feedback.test.js` を実行すると、
+16 件中 2 件が失敗します。**この統合 branch を作る前から赤で、
+正常解剖の取り込みとは無関係です**（同一 SHA の worktree で確認済み）。
+
+```
+not ok - consent: refusing is offered as plainly as accepting
+not ok - consent: the banner appears only while the question is unanswered
+```
+
+**原因.** B6 が `src/components/ConsentBanner.js` を作り替え、テストが
+記述している形と合わなくなりました。
+
+- テストは `button('denied'` / `button('granted'` を探しますが、実装の
+  ヘルパは `choice('denied', …)` / `choice('granted', …)` に改名されています。
+  **保護している規則（拒否が承諾と同じ明確さで提示され、拒否が DOM 上先で、
+  どちらも事前選択されていない）は新実装でも成立**しており、regex を
+  実装に合わせれば済みます
+- もう 1 件は `if (telemetry.consent !== 'unset') return null` の存在を
+  要求しますが、新実装は回答後も `aria-pressed` を持つ設定行として残る
+  設計に変わっています。**これは UX の判断**であり、テストを消すか
+  実装を戻すかは shell の所有者が決めることです
+
+**Claude② はどちらにも手を入れていません。** 外側 UI shell は担当外で、
+片方だけ直すと「半端に手入れされたファイル」が残るためです。
+
+---
+
+### F-90 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（shared Viewer / future integration owner）
+
+**再現条件.** `src/controls/createControls.js` の既定は
+`minDistance = 5, maxDistance = 55` で、`src/app/zoom.js` の
+`zoomedDistance()` がこれで clamp します。したがって
+**シーンが `cameraPose` に何を書いても、カメラは target から 55 unit より
+遠くには行きません。** fov 42 では、この距離で画面に収まる subject の高さは
+およそ 26 unit（実際に使える縦帯を 0.62 として）です。
+
+- 2026-09-11、`skeleton-overview` を 1 unit = 1 cm で作ったところ、
+  170 unit の立像を収めるには距離 360 が必要で、camera の far plane（200、
+  `src/app/Viewer.js:80`）と `maxDistance`（55）の両方に引っかかりました。
+  レンダリングされたのは骨盤の拡大像で、**エラーは一切出ません**
+- 回避策として `WORLD_SCALE = 0.14` を掛け、立像を 24 unit にしました。
+  同じ理由で `hand-anatomy`（24.5 unit）と `foot-anatomy`（27.8 unit）も
+  上限のすぐ内側にいます
+- **最小要件**: (a) `maxDistance` をシーンが上書きできるようにするか、
+  subject の bounds から導出してください。(b) clamp が効いたことを
+  開発時に分かる形にしてください。現状は「なぜか大きく映る」としか
+  観測できず、framing の数値をいくら直しても変わりません
+
+---
+
+### F-89 subject が横に長いシーンは phone 幅で極端に小さくなる — P2（shared Viewer / future integration owner）
+
+**再現条件.** `minHorizontalAspect` が 1 を超えるシーンを 375×667 で開くと、
+対象が frame の 1/3 以下になります。実測（2026-09-11、`?preview=1`）:
+
+| scene | reserve | phone での対象の見かけ幅 |
+| --- | --- | --- |
+| `eye-anatomy` | 1.6 → 1.15 に下げた | 375px 中およそ 120px |
+| `ear-anatomy` | 1.4 | 375px 中およそ 130px |
+| `nose-anatomy` | 1.15 | 375px 中およそ 190px |
+| `knee-anatomy` | 0.45 | frame をほぼ満たす（問題なし） |
+
+reserve は「その距離で subject が frame の幅を満たす aspect」なので、
+narrow viewport では定義どおり引きます。問題は、**奥行きが幅を決めている
+subject**（眼球：視神経と外眼筋が後方へ伸びる）でも同じ扱いになることです。
+軸に平行な bounds／bounding sphere では、正面から見て奥行きでしかないものが
+「幅」として効きます。
+
+- Claude② 側でやったこと: 眼の視神経と直筋を短くし、`posterior` view を
+  reserve の測定対象から外して 1.6 → 1.15。耳は形状上これ以上詰められません
+- `nose-anatomy`（2026-09-11 追加）で分かった 2 つめの症状: reserve 1.15 を
+  aspect 0.56 の phone で開くと 1.875 倍引きますが、対象は frame 幅の約半分
+  にしかならず、**縦は 667px 中およそ 110px しか使っていません**。幅を満たす
+  ところまで引くだけなら対象は frame 幅いっぱいになるはずで、引きすぎです。
+  縦に余っている空間を使わないのは、幅の reserve を距離に掛ける段階で
+  二重に効いているように見えます（`src/app/framing.js` の `widthReserve`）
+- **最小要求（Claude① へ）**: framing が subject の幅を測るとき、
+  **その view の視線方向に投影した幅**を使えれば、奥行きの長いシーンが
+  narrow viewport で不当に縮みません。共通機能なので Claude② 側では
+  実装していません
+- 完了の定義: `ear-anatomy` が phone 幅で frame の半分以上を占めること
 
 ### F-45 患者向け説明の「画面のどこを見るか」を UI が出していない — P2（代表病態）
 

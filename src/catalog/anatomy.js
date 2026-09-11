@@ -209,6 +209,118 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the joint capsule itself with the three ligaments as thickenings of it, the acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels up the neck and the sciatic nerve behind. Nothing here moves, which is the first thing a hip scene beyond anatomy would need',
   },
   {
+    organ: 'eye',
+    level: 'A2',
+    evidence:
+      'scenes/sensory/scenes/eyeAnatomy — sclera, choroid and retina as shells with walls, cornea, iris, pupil, lens and ciliary body, the anterior chamber and vitreous body, the optic disc, macula and optic nerve, and all four rectus muscles, selectable by name; tests/organ-parts-anatomy.test.js — the three coats nest outside-in without touching, the cornea is more steeply curved than the globe and meets it at the limbus, the lens sits behind the iris and never through it, the anterior chamber lies between cornea and iris, the optic disc is nasal to the macula and the macula is at the posterior pole, and the four recti reach the globe from four directions',
+    next: 'A3: the retinal layers and the central retinal vessels, the optic cup, the posterior chamber and the trabecular meshwork the aqueous actually drains through, the suspensory fibres of the lens, the oblique muscles, the eyelids, conjunctiva and lacrimal apparatus, and the orbit around it. Nothing here moves, which is the first thing an accommodation or pupillary scene would need',
+  },
+  {
+    organ: 'ear',
+    level: 'A2',
+    evidence:
+      'scenes/sensory/scenes/earAnatomy — auricle and external auditory canal, tympanic membrane, middle ear cavity, malleus, incus and stapes, Eustachian tube, cochlea, vestibule, all three semicircular canals as one structure and the vestibulocochlear nerve, selectable by name; tests/organ-parts-anatomy.test.js — the chain runs medially in order from auricle to nerve, the canal ends at the drum and the drum’s centre is its most medial point, the three ossicles meet in order and only the stapes reaches the oval window, the Eustachian tube leaves the cavity forwards and downwards, and the three canals lie in three different planes',
+    next: 'A3: the temporal bone and the mastoid air cells around it, the facial nerve crossing the middle ear, the two ossicular muscles, the ampullae of the canals, the round window membrane, and the scalae and organ of Corti inside the cochlea. Nothing here moves, which is the first thing a conduction scene would need',
+  },
+  {
+    organ: 'skin',
+    level: 'A2',
+    evidence:
+      'scenes/integumentary/scenes/skinAnatomy — epidermis, dermis and subcutaneous tissue as slabs sharing their boundary surfaces, adipose lobules inside the subcutaneous compartment, a hair follicle with the hair it makes, a sebaceous gland opening into that follicle, a sweat gland opening on the surface instead, an arteriole, a venule and a sensory nerve, selectable by name; tests/organ-parts-anatomy.test.js — the three layers stack without gaps and share one interlocking junction, the epidermis contains no vessel, the follicle reaches from the surface into the subcutis, the sebaceous gland touches the follicle and not the surface, the sweat duct opens on the surface away from the hair, and the vessels stay below the dermo-epidermal junction',
+    next: 'A3: the layers of the epidermis itself, the arrector pili muscle, the named sensory receptors, the lymphatics, the fibrous septa between the fat lobules, and a way to say that skin from a palm is not skin from an eyelid. Nothing here grows, which is the first thing a wound-healing scene would need',
+  },
+  {
+    organ: 'lymph-node',
+    level: 'A2',
+    evidence:
+      'scenes/hematologic/scenes/lymphNodeAnatomy — capsule, cortex, medulla, the lymphoid follicles, the afferent vessels as one structure, the single efferent vessel and the hilum, selectable by name; tests/organ-parts-anatomy.test.js — capsule, cortex and medulla nest as three depths of one outline, the follicles lie inside the cortex, there are several afferent vessels and exactly one efferent, the afferents arrive on the convex side and the efferent leaves at the hilum on the other, and the medulla reaches towards the hilum',
+    next: 'A3: the subcapsular and medullary sinuses lymph actually passes along, the paracortex as its own region, germinal centres inside the follicles, the reticular framework, and the artery and vein at the hilum. Nothing flows, which is the first thing a drainage or metastasis scene would need',
+  },
+  {
+    organ: 'lymphatic-system',
+    level: 'A1',
+    evidence:
+      'scenes/hematologic/scenes/lymphaticDrainage — thoracic duct, right lymphatic duct and cisterna chyli, the cervical, axillary and inguinal node groups each as one structure, two representative routes and a body silhouette for scale, selectable by name; tests/organ-parts-anatomy.test.js — the thoracic duct runs from the abdomen to the left venous angle and is far longer than the right duct, the right duct stays on the patient’s right and in the upper body, the cisterna chyli is at the thoracic duct’s lower end, and the three node groups are paired about the midline at neck, axilla and groin height',
+    next: 'A2: the node groups anatomy actually names — mediastinal, para-aortic, iliac, popliteal, supratrochlear and the levels of the neck — as separately selectable structures, plus the spleen, thymus and tonsils as parts of the same system, and the valves that make lymph one-way. Nothing flows, which is the first thing a lymphoedema scene would need',
+  },
+  {
+    organ: 'breast',
+    level: 'A2',
+    evidence:
+      'scenes/reproductive/scenes/breastAnatomy — skin, nipple and areola, the lactiferous ducts and the lobules as separate structures, adipose tissue, Cooper’s ligaments, pectoralis major, the axillary tail and the axillary nodes, selectable by name; tests/organ-parts-anatomy.test.js — every duct reaches the nipple and no lobule does, the lobules lie at the far end of the ducts, Cooper’s ligaments span from the chest-wall side to the skin, the gland lies in front of pectoralis major and does not enter it, and the axillary tail runs towards the node group from the upper outer part of the gland',
+    next: 'A2+: the quadrants a report is written in, the internal mammary drainage as a second route, the retromammary space between gland and muscle, the ribs and the muscles behind pectoralis, and the blood supply. Nothing changes with age or the cycle, which is the first thing a density or lactation scene would need',
+  },
+  {
+    organ: 'spine',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/spineAnatomy — cervical, thoracic and lumbar regions and the sacrum, plus one lumbar level drawn in full with its body, pedicles, laminae, facet joints and spinous process, the disc below it as annulus and nucleus, the canal, the cord, the cauda equina and a pair of nerve roots, selectable by name; tests/organ-parts-anatomy.test.js — the three regions stack in order with the sacrum below, the curves alternate forward, back and forward, the canal runs behind the bodies for the whole column, the cord stops well above the bottom and the cauda equina continues below it, the nucleus is inside the annulus, the disc sits below the body and not inside it, and the roots leave laterally beneath the pedicles',
+    next: 'A3: the ribs and their joints, the ligaments of the column including the ligamentum flavum, the intervertebral foramina as openings rather than gaps, the epidural fat and venous plexus, the coccyx, and the roots of every level rather than one pair. Nothing bends, which is the first thing a movement or instability scene would need',
+  },
+  {
+    organ: 'nose',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/noseAnatomy — external nose, nasal vestibule, septum, lateral nasal wall, hard palate, all three turbinates, all three meatuses, maxillary sinus and its ostium, frontal sinus, ethmoid air cells, sphenoid sinus, nasolacrimal duct, olfactory region and nasopharynx, selectable by name; tests/organ-parts-anatomy.test.js — the three shelves stack in order on one wall and each gutter lies below the shelf it is named for and above the next, the maxillary ostium leaves the sinus well above its floor and ends inside the middle meatus, the tear duct ends inside the inferior meatus and nowhere else, the olfactory patch sits on the roof above every turbinate, and the cavity runs from nostril to choana without the septum crossing into it',
+    next: 'A3: the uncinate process, ethmoid bulla and hiatus semilunaris that shape the middle meatus, the frontal recess as a drawn channel, the anterior and posterior ethmoid groups separated by where they drain, the sphenoethmoidal recess, the cribriform plate and olfactory bulb, and the left cavity. Nothing here swells, which is the first thing an obstruction scene would need',
+  },
+  {
+    organ: 'larynx',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/larynxAnatomy — nasopharynx, oropharynx, laryngopharynx, both piriform sinuses, soft palate, palatine tonsils, epiglottis, hyoid bone, thyroid and cricoid cartilages, both arytenoids, cricothyroid membrane, vestibular folds, laryngeal ventricles, vocal folds, subglottic space, trachea, oesophagus and both recurrent laryngeal nerves, selectable by name; tests/organ-parts-anatomy.test.js — the three named lengths of the pharynx stack in order without overlapping, the piriform gutters reach forward past the larynx on both sides while the laryngopharynx stays behind it, the two pairs of folds are separated by the ventricle with the true folds below, the glottis is a V that closes to the midline in front and opens behind, the cricothyroid membrane lies in the gap between the two cartilages with nothing else in front of it, and the oesophagus lies behind the trachea with a nerve in the groove between them on each side',
+    next: 'A3: the muscles of the larynx and pharynx and the joints they act on, the tongue and the valleculae in front of the epiglottis, the thyroid gland over the trachea, the aryepiglottic folds, the lower course of the left recurrent laryngeal nerve, and the layers of a vocal fold. Nothing here moves, which is the first thing a swallowing or a phonation scene would need',
+  },
+  {
+    organ: 'pharynx',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/larynxAnatomy — nasopharynx, oropharynx, laryngopharynx, both piriform sinuses, soft palate and palatine tonsils selectable by name, drawn as one lumen cut at the levels its names come from; tests/organ-parts-anatomy.test.js — the three lengths stack in order without overlapping and meet at the soft palate and the laryngeal inlet, and below the inlet the gutters reach forward past the larynx while the space behind it stays behind the cricoid',
+    next: 'A3: the muscular wall and the constrictors, the tongue and the valleculae, the palatoglossal and palatopharyngeal arches, the rest of the lymphoid ring, the openings of the Eustachian tubes, and the upper oesophageal sphincter. Nothing here moves, which is the first thing a swallowing scene would need',
+  },
+  {
+    organ: 'mouth',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/oralAnatomy — lips, hard and soft palate, both palatoglossal arches, both palatine tonsils, upper and lower dental arches, mandible, the tongue in its two parts with the vallate papillae between them, the lingual tonsil, the floor of the mouth, the frenulum, and all three pairs of salivary glands with the parotid and submandibular ducts, selectable by name; tests/organ-parts-anatomy.test.js — the tongue is drawn in two parts meeting at the sulcus with the row of vallate papillae on that line and nothing else marking it, the lingual tonsil lies behind it, each duct starts at its own gland and ends at the opening its copy names, the parotid opening is level with the upper teeth while its gland is behind the jaw, the submandibular opening is beside the frenulum while its gland is under the jaw, and the tongue sits between the palate above and the floor below',
+    next: 'A3: the muscles of the tongue, floor and jaw, the joint of the jaw and the condyle, the lingual and hypoglossal nerves and the facial nerve in the parotid, the openings of the ducts as openings, the cheeks, the palatopharyngeal arch, and individual teeth. The jaw is drawn open at a fixed display position and nothing moves, which is the first thing a chewing or swallowing scene would need',
+  },
+  {
+    organ: 'tongue',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/oralAnatomy — the tongue drawn in two parts, oral and root, meeting at the sulcus terminalis, with the row of vallate papillae lying along that line and the lingual tonsil behind it, all selectable by name; tests/organ-parts-anatomy.test.js — the two parts meet at SULCUS_Z and do not overlap, the papillae lie on that boundary and nothing else marks it, and the lingual tonsil is behind it on the root',
+    next: 'A3: the intrinsic and extrinsic muscles and the midline septum, the filiform, fungiform and foliate papillae, the lingual and hypoglossal nerves and the boundary between their territories, and the vessels. The tongue does not move, which is the first thing a swallowing or a speech scene would need',
+  },
+  {
+    organ: 'pelvic-floor',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/pelvicFloorAnatomy — pelvic ring, sacrum, coccyx, obturator internus, tendinous arch, pubococcygeus, iliococcygeus, coccygeus, puborectalis, urogenital hiatus, perineal body, perineal membrane, external anal sphincter, urethra, vagina, rectum and anal canal, selectable by name; tests/organ-parts-anatomy.test.js — the three slices of the levator sheet run front to back without overlapping and all hang from the same origin line the tendinous arch is drawn along, the two sides stop short of the midline in front so the hiatus between them is a real gap, the urethra and the vagina pass through that gap and the bowel does not, the puborectalis passes behind the anorectal junction, and the perineal body lies between the vagina in front and the anal canal behind',
+    next: 'A3: the hip bones as bones rather than as a ring, the subdivisions of the levator, the fascia and the ligaments that suspend the viscera, the pudendal nerve and the vessels, the internal anal sphincter, and the bladder and uterus above. Nothing contracts and nothing descends, which is the first two things a continence or a prolapse scene would need',
+  },
+  {
+    organ: 'hand',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/handAnatomy — radius, ulna, all eight carpal bones and the hook of the hamate named individually, the metacarpals and all three rows of phalanges, the flexor retinaculum, the carpal tunnel, the flexor tendons, the median nerve, the extensor tendons and the thenar muscles, selectable by name; tests/organ-parts-anatomy.test.js — the eight carpals lie in two rows in the right order across the wrist, the pisiform sits palmar to the triquetrum rather than beside it, the roof of the tunnel spans the two pillars and the tunnel lies under it and above the arch, the median nerve is the most palmar thing in the tunnel and the flexor tendons are deep to it, the extensor tendons are dorsal to every bone, and there are five metacarpals, five proximal phalanges, four middle phalanges and five distal phalanges — the thumb having two bones where the others have three',
+    next: 'A3: bone ends rather than shafts — heads, bases, styloids and joint surfaces — the capsules and ligaments, the saddle shape of the thumb’s carpometacarpal joint, the flexor sheaths and which tendon is which, the extensor retinaculum and hoods, the ulnar nerve and artery in their own canal, and the intrinsic muscles. No joint bends, which is the first thing a grip or a tendon-excursion scene would need',
+  },
+  {
+    organ: 'foot',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/footAnatomy — tibia, fibula, talus, calcaneus, navicular, cuboid, cuneiforms, the metatarsals and all three rows of phalanges, the plantar fascia, the spring ligament, the Achilles, tibialis posterior and peroneal tendons, the deltoid and lateral ligaments, and the ankle and subtalar joints, selectable by name; tests/organ-parts-anatomy.test.js — the navicular rides higher than the cuboid so the arch is an arch, the plantar fascia runs from the heel to the metatarsal heads and passes below the top of that arch, the talus sits between the leg above and the calcaneus below with a joint space at each boundary, the lateral malleolus reaches lower than the medial one, the deltoid is one sheet where the lateral side is three separate bands, and there are five metatarsals, five proximal phalanges, four middle phalanges and five distal phalanges',
+    next: 'A3: joint surfaces rather than blocks — the dome of the talus, the three subtalar facets, the mortise itself — the capsules, the three cuneiforms separately so the transverse arch can be seen, the sesamoids, the fat pad, the tarsal tunnel, the intrinsic muscles, and the blood supply of the talus. Nothing bears weight and nothing bends, which is the first two things an arch-collapse or a gait scene would need',
+  },
+  {
+    organ: 'skeleton',
+    level: 'A1',
+    evidence:
+      'scenes/musculoskeletal/scenes/skeletonOverview — skull, mandible, the three named lengths of spine, sacrum and coccyx, ribs, sternum, clavicle, scapula, humerus, radius and ulna, hand bones, hip bones, femur, patella, tibia and fibula and foot bones, selectable by name; tests/organ-parts-anatomy.test.js — the column runs continuously from skull to sacrum in order with no gaps, the clavicle reaches the sternum while the scapula touches no other bone, the hip bone reaches the sacrum on both sides, the ribs run from the thoracic spine forward with the upper ones reaching the sternum and the lower ones not, and every joint of the limbs is below the one above it',
+    next: 'A2 for this scene is not the goal: it is an overview by design, and every region that deserves named parts has its own scene. What would improve it is the regions that still have none — the skull as bones rather than one shell, the thorax as a cage with costal cartilages, and the elbow. Nothing here moves or bears weight',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

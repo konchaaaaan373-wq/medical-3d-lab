@@ -143,6 +143,47 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the midline of a standing figure: skull, pelvis, leg, and the cage
+  // last, because that is the widest thing the re-click has to find again.
+  'skeleton-overview': [[0.5, 0.211], [0.486, 0.456], [0.486, 0.544], [0.5, 0.356]],
+  // Along the inside of the foot from the heel forward, and the leg last,
+  // because that is the widest thing the re-click has to find again.
+  'foot-anatomy': [[0.514, 0.511], [0.43, 0.57], [0.59, 0.28], [0.625, 0.533]],
+  // Down the back of the hand: a finger, the palm, the carpus, and the forearm
+  // last, because that is the widest thing the re-click has to find again.
+  'hand-anatomy': [[0.486, 0.644], [0.472, 0.7], [0.479, 0.5], [0.479, 0.278]],
+  // A wing, the bowel coming down through the ring, the front of the ring, and
+  // the sheet itself last, because that is the one the re-click has to find.
+  'pelvic-floor-anatomy': [[0.625, 0.278], [0.535, 0.311], [0.5, 0.52], [0.458, 0.4]],
+  // Into an open mouth: the roof, the row of papillae across the tongue, the
+  // tongue itself, and a parotid gland out at the side. Read off a render.
+  'oral-anatomy': [[0.49, 0.36], [0.625, 0.444], [0.44, 0.56], [0.49, 0.52]],
+  // Down the midline of a tall, narrow organ: the soft palate, the pharynx
+  // behind the mouth, the thyroid cartilage and the trachea. Read off a render.
+  'larynx-anatomy': [[0.48, 0.19], [0.49, 0.33], [0.49, 0.52], [0.5, 0.76]],
+  // The external nose in profile, the septum behind it, and the palate under
+  // both. Read off a render at the view the scene opens on.
+  'nose-anatomy': [[0.34, 0.58], [0.56, 0.44], [0.56, 0.71], [0.49, 0.58]],
+  // Down the column: neck, chest, low back and sacrum.
+  'spine-anatomy': [[0.5, 0.22], [0.5, 0.4], [0.5, 0.58], [0.5, 0.76]],
+  // The dome, the nipple on it, the axilla up to the left and the chest wall behind.
+  'breast-anatomy': [[0.52, 0.5], [0.52, 0.44], [0.36, 0.3], [0.66, 0.62]],
+  // The node beads, not the ducts: a duct is a few pixels wide and the body
+  // silhouette behind it is drawn too faint to be clickable at all, so a miss
+  // lands on nothing. Neck, both armpits, and the groin.
+  'lymphatic-drainage': [[0.53, 0.16], [0.41, 0.33], [0.59, 0.33], [0.45, 0.81]],
+  // The node itself, its inside, an afferent vessel on the left and the efferent on the right.
+  'lymph-node-anatomy': [[0.5, 0.47], [0.5, 0.42], [0.34, 0.4], [0.63, 0.52]],
+  // Down the cut face: epidermis, dermis, subcutis — and the hair off to the side.
+  'skin-anatomy': [[0.5, 0.36], [0.5, 0.48], [0.5, 0.62], [0.36, 0.33]],
+  // The auricle, the canal, the middle ear and the inner ear, left to right.
+  'ear-anatomy': [[0.3, 0.45], [0.44, 0.47], [0.57, 0.44], [0.66, 0.52]],
+  // The globe is a ball, so the useful points are inside its silhouette and off
+  // its centre: the sclera around the cornea, and the cornea itself, which sits
+  // in front of the iris and answers for every click through the middle.
+  // Read these off a render — they were once set from a frame taken before the
+  // scene's framing changed, and then two of the four fell past the edge.
+  'eye-anatomy': [[0.44, 0.35], [0.5, 0.62], [0.55, 0.45], [0.42, 0.52]],
 };
 
 const clickPoints = (() => {
@@ -380,12 +421,18 @@ try {
   };
   const modelPoints = [];
   const emptyPoints = [];
-  for (const fy of [0.30, 0.40, 0.50, 0.60, 0.20]) {
-    for (const fx of [0.30, 0.42, 0.54, 0.66, 0.20]) {
-      if (modelPoints.length >= 6 && emptyPoints.length >= 1) break;
+  // Worked outwards from the middle rather than across a coarse grid. A grid
+  // of five columns spanning 0.30–0.66 is still an assumption — that the
+  // subject is wide — and a spine, a hand or a standing skeleton is not: they
+  // are a couple of frame-percent across at the middle, and every sample
+  // missed. "The model is not drawn" was then reported for a model that was
+  // drawn, centred, and perfectly clickable.
+  for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+    for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
+      if (modelPoints.length >= 6 && emptyPoints.length >= 2) break;
       const hit = await overModel(fx, fy);
       if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
-      if (!hit && emptyPoints.length < 1) emptyPoints.push([fx, fy]);
+      if (!hit && emptyPoints.length < 6) emptyPoints.push([fx, fy]);
     }
   }
   await restPointer();
@@ -397,7 +444,17 @@ try {
     );
   }
   const atModel = (index) => modelPoints[index % modelPoints.length];
-  const emptyPoint = emptyPoints[0] ?? [0.04, 0.94];
+  // The farthest miss from the middle of what was found, not the first one: a
+  // near miss beside a narrow subject is background now and may not be after a
+  // drag, and the point is used to check that clicking nothing clears.
+  const centre = modelPoints.reduce(
+    (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
+    [0, 0]
+  );
+  const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
+  const emptyPoint = [...(emptyPoints.length
+    ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
+    : [0.04, 0.94])];
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -441,14 +498,47 @@ try {
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
+  // Orbit back to where the sweep happened, by **exactly reversing the drag**.
+  // Every check below clicks a point that had something under it *before* the
+  // turn, which is only still true if the camera is put back. Approximately
+  // back was enough for a dense organ and not for a narrow one: a spine is a
+  // few frame-percent wide, and a few pixels of leftover rotation moved every
+  // one of those points off it.
+  await page.mouse.move(box.x + box.width * dragToX, box.y + box.height * dragToY);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY, { steps: 20 });
+  await page.mouse.up();
+  await restPointer();
   if (afterDrag.en !== pinned.en) {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
   }
 
   // 3. Clicking the background clears rather than keeping a stale card.
+  //    Confirmed to still be background first. The point was chosen before the
+  //    drag, and beside a subject with a large open outline — a ring of lips
+  //    around a mouth — a pixel that read as background then can be over the
+  //    model now. Checking it again costs one pointer move and stops the check
+  //    reporting the product for the instrument's own staleness.
+  if (await overModel(emptyPoint[0], emptyPoint[1])) {
+    for (const candidate of [[0.04, 0.94], [0.04, 0.06], [0.96, 0.94]]) {
+      if (!(await overModel(candidate[0], candidate[1]))) {
+        emptyPoint[0] = candidate[0];
+        emptyPoint[1] = candidate[1];
+        break;
+      }
+    }
+    await restPointer();
+  }
   const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
-  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  // At a point that selected something during the sweep, not at the middle of
+  // the frame: not every scene has anything in the middle. The drainage map's
+  // centre is a body outline drawn too faint to be clickable, so a centre click
+  // there reports the selection failing to come back when nothing is wrong.
+  await page.mouse.click(
+    box.x + box.width * lastHitPoint[0],
+    box.y + box.height * lastHitPoint[1]
+  );
   await page.waitForTimeout(350);
   await restPointer();
   const reselected = await read();
@@ -539,8 +629,15 @@ try {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
-    // clickable again.
-    await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+    // clickable again. Clicked at a point that *did* select something earlier
+    // rather than at the middle of the frame — the middle of a drainage map is
+    // a body outline drawn too faint to be clickable at all, and a check that
+    // assumes every scene has something in the centre reports that as the
+    // model failing to come back.
+    await page.mouse.click(
+      box.x + box.width * lastHitPoint[0],
+      box.y + box.height * lastHitPoint[1]
+    );
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
@@ -981,7 +1078,16 @@ try {
   // the button works, which is the whole thing worth knowing here.
   //
   // Each press gets its own page, because a working retry navigates.
+  //
+  // **Only for a scene that loads the atlas.** Most scenes in this repository
+  // are procedural and fetch nothing: blocking a URL they never request leaves
+  // them loading normally, and every assertion below then reports a missing
+  // error state, a missing message and a missing retry button for a scene that
+  // has nothing to fail. Checked by counting the aborts rather than by naming
+  // the scene, so a second atlas scene is covered without editing this.
   const atlas = 'assets/brain/brain.glb';
+  let atlasAborts = 0;
+  let atlasScene = true;
   const recoveryRuns = [
     ['click', async (button) => { await button.click(); }],
     ['Enter', async (button) => { await button.focus(); await button.press('Enter'); }],
@@ -992,7 +1098,13 @@ try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const failing = await context.newPage();
     let blockAtlas = true;
-    await failing.route(`**/${atlas}`, (route) => (blockAtlas ? route.abort('failed') : route.continue()));
+    await failing.route(`**/${atlas}`, (route) => {
+      if (blockAtlas) {
+        atlasAborts += 1;
+        return route.abort('failed');
+      }
+      return route.continue();
+    });
     await failing.goto(url, { waitUntil: 'domcontentloaded' });
     await failing.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
     await failing.waitForFunction(
@@ -1000,6 +1112,12 @@ try {
       null,
       { timeout: 60000 }
     ).catch(() => {});
+    if (!atlasAborts) {
+      atlasScene = false;
+      notes.push('this scene loads no atlas, so there is no failed load to recover from');
+      await context.close();
+      break;
+    }
 
     const failed = await failing.evaluate(() => ({
       state: window.__app?.scene?.getAnatomyStatus?.().state ?? null,
@@ -1088,7 +1206,7 @@ try {
   //     screen without opening anything — but "should" is what this checks.
   //     The consent card is a declared transient overlay, so the overlap it
   //     causes is recorded rather than counted as a defect.
-  for (const [width, height] of [[844, 390], [375, 667]]) {
+  for (const [width, height] of atlasScene ? [[844, 390], [375, 667]] : []) {
     const context = await browser.newContext({ viewport: { width, height } });
     const small = await context.newPage();
     await small.route(`**/${atlas}`, (route) => route.abort('failed'));

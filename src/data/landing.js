@@ -36,6 +36,20 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'knee-anatomy',
   'shoulder-anatomy',
   'hip-anatomy',
+  'eye-anatomy',
+  'ear-anatomy',
+  'skin-anatomy',
+  'lymph-node-anatomy',
+  'lymphatic-drainage',
+  'breast-anatomy',
+  'spine-anatomy',
+  'nose-anatomy',
+  'larynx-anatomy',
+  'oral-anatomy',
+  'pelvic-floor-anatomy',
+  'hand-anatomy',
+  'foot-anatomy',
+  'skeleton-overview',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -172,6 +186,90 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '断面で、臼蓋の縁が骨頭の最大径を越えていることを確認。',
     ['SOCKET', 'NECK', 'SECTION'],
     ['臼蓋', '頸部', '断面']
+  ),
+  'eye-anatomy': presentation(
+    'Look into an eye: the coats, the lens behind the iris, and the fundus.',
+    '眼の中を見る。3つの膜、虹彩の奥の水晶体、そして眼底。',
+    ['RETINA', 'LENS', 'FUNDUS'],
+    ['網膜', '水晶体', '眼底']
+  ),
+  'ear-anatomy': presentation(
+    'Follow one sound in: air to a drum, bone across a gap, then fluid.',
+    '音の通り道をたどる。空気から鼓膜へ、骨で渡り、そして液体へ。',
+    ['OSSICLES', 'COCHLEA', 'CHAIN'],
+    ['耳小骨', '蝸牛', '伝達経路']
+  ),
+  'skin-anatomy': presentation(
+    'Cut a block out of skin: three layers, and two different ways out to the surface.',
+    '皮膚を1ブロック切り出す。3つの層と、体表へ出る2つの経路。',
+    ['LAYERS', 'FOLLICLE', 'DEPTH'],
+    ['層', '毛包', '深さ']
+  ),
+  'lymph-node-anatomy': presentation(
+    'Count the vessels: several arrive, one leaves, and lymph has no way round.',
+    '管を数える。入るのは多数、出るのは1本。リンパに迂回路はありません。',
+    ['CORTEX', 'HILUM', 'ONE OUT'],
+    ['皮質', '門', '1本の出口']
+  ),
+  'lymphatic-drainage': presentation(
+    'See which way a place drains — and why the two sides are not the same.',
+    'どの部位がどちらへ流れるか。左右が同じではない理由。',
+    ['DUCTS', 'GROUPS', 'ASYMMETRY'],
+    ['本幹', '節群', '左右差']
+  ),
+  'breast-anatomy': presentation(
+    'Which tissue, how deep, and which way does it drain.',
+    'どの組織か、どの深さか、どちらへ流れるか。',
+    ['DUCTS', 'LOBULES', 'AXILLA'],
+    ['乳管', '小葉', '腋窩']
+  ),
+  'spine-anatomy': presentation(
+    'Four regions and three curves — then one segment, close enough to name its parts.',
+    '4つの部位と3つの弯曲。そして1椎間を、部位の名前が分かる近さで。',
+    ['REGIONS', 'DISC', 'CANAL'],
+    ['部位', '椎間板', '脊柱管']
+  ),
+  'nose-anatomy': presentation(
+    'Where does each sinus actually let go of what is in it?',
+    'それぞれの副鼻腔は、どこへ開口しているのか。',
+    ['TURBINATES', 'MEATUS', 'OSTIUM'],
+    ['鼻甲介', '鼻道', '自然孔']
+  ),
+  'larynx-anatomy': presentation(
+    'Where do air and food share a space, and what keeps them apart again?',
+    '空気と食物はどこで同じ空間を通り、どうやって再び分かれるのか。',
+    ['CROSSING', 'GLOTTIS', 'PIRIFORM'],
+    ['交差', '声門', '梨状陥凹']
+  ),
+  'oral-anatomy': presentation(
+    'Why is a tongue two organs, and where does saliva actually come out?',
+    '舌はなぜ2つの部分に分かれるのか。唾液は実際どこから出てくるのか。',
+    ['SULCUS', 'PAPILLAE', 'DUCTS'],
+    ['分界溝', '有郭乳頭', '導管']
+  ),
+  'pelvic-floor-anatomy': presentation(
+    'What is the pelvic floor actually shaped like, and what goes through it?',
+    '骨盤底はどんな形をしていて、何がそこを通るのか。',
+    ['HIATUS', 'SLING', 'FUNNEL'],
+    ['裂孔', '吊り輪', '漏斗']
+  ),
+  'hand-anatomy': presentation(
+    'What shape is the wrist, and what has to share the space inside it?',
+    '手関節はどんな形をしていて、その内側を何が共有しているのか。',
+    ['CARPUS', 'TUNNEL', 'RAYS'],
+    ['手根骨', '手根管', '指の骨']
+  ),
+  'foot-anatomy': presentation(
+    'What holds the arch of a foot up, and where does a foot actually turn?',
+    '足のアーチを支えているのは何か。そして足はどこで向きを変えるのか。',
+    ['ARCH', 'MORTISE', 'BOWSTRING'],
+    ['アーチ', '臼蓋', '足底腱膜']
+  ),
+  'skeleton-overview': presentation(
+    'Where is a limb actually attached to the trunk?',
+    '四肢は、どこで体幹につながっているのか。',
+    ['COLUMN', 'GIRDLES', 'JOIN'],
+    ['体軸', '肢帯', '付着']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

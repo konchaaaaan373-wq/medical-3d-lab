@@ -26,6 +26,65 @@ import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
 import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
 import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
 import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
+import { NASAL as EYE_NASAL, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
+import { MEDIAL as EAR_MEDIAL, buildEar } from '../src/scenes/sensory/organs/ear.js';
+import {
+  LAYER_DISPLAY_THICKNESS as SKIN_LAYERS,
+  reteWave as SKIN_RETE,
+  buildSkinBlock,
+} from '../src/scenes/integumentary/organs/skinBlock.js';
+import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
+import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
+import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
+import {
+  FORWARD as SPINE_FORWARD,
+  spineAt as SPINE_AT,
+  buildSpine,
+} from '../src/scenes/musculoskeletal/organs/spine.js';
+import {
+  LEVELS as BODY_LEVELS,
+  buildSkeleton,
+} from '../src/scenes/musculoskeletal/organs/skeleton.js';
+import {
+  ARCH,
+  MEDIAL as FOOT_MEDIAL,
+  RAYS as FOOT_RAYS,
+  raySegment as footSegment,
+  buildFoot,
+} from '../src/scenes/musculoskeletal/organs/foot.js';
+import {
+  CARPALS,
+  RADIAL as HAND_RADIAL,
+  RAYS,
+  TUNNEL,
+  raySegment,
+  buildHand,
+} from '../src/scenes/musculoskeletal/organs/hand.js';
+import {
+  HIATUS_BACK_T,
+  levatorOrigin,
+  buildPelvicFloor,
+} from '../src/scenes/musculoskeletal/organs/pelvicFloor.js';
+import {
+  JAW_DISPLAY_OPENING,
+  LEVELS as ORAL_LEVELS,
+  SULCUS_Z,
+  buildOralCavity,
+} from '../src/scenes/gastrointestinal/organs/oralCavity.js';
+import {
+  GLOTTIS_DISPLAY_GAP,
+  LEVELS as LARYNX_LEVELS,
+  pharynxFrontAt,
+  buildLarynx,
+} from '../src/scenes/respiratory/organs/larynx.js';
+import {
+  CAVITY as NOSE_CAVITY,
+  MEDIAL as NOSE_MEDIAL,
+  TURBINATES as NOSE_TURBINATES,
+  turbinateEdge as noseTurbinateEdge,
+  turbinateSurface as noseTurbinateSurface,
+  buildNose,
+} from '../src/scenes/respiratory/organs/nose.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1093,4 +1152,1021 @@ test('the hip’s socket grips past the widest part of the head', () => {
   // The socket is cut into the hip bone rather than sitting next to it.
   assert.ok(box('hip-bone').intersectsBox(socket), 'the acetabulum is part of the hip bone');
   assert.ok(at('hip-bone').y > centre.y, 'whose weight comes down from above');
+});
+
+// --- the eye ----------------------------------------------------------------
+
+test('the eye is three coats around three transparent things', () => {
+  // A globe is easy to draw and hard to make useful, because everything worth
+  // pointing at is inside it. What is checked is the order things come in along
+  // the axis, and the two fundus landmarks whose relation says which eye it is.
+  const eye = buildEyeball();
+  eye.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(eye.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the nose. A sign read the wrong way round mirrors the fundus. */
+  const nasal = (point) => point.x * EYE_NASAL;
+
+  // Outside in, and no two coats touching: coincident shells speckle along
+  // every rim, and a reader cannot tell three layers from one.
+  const sclera = box('sclera');
+  const choroid = box('choroid');
+  const retina = box('retina');
+  assert.ok(sclera.containsBox(choroid), 'the choroid is inside the sclera');
+  assert.ok(choroid.containsBox(retina), 'and the retina inside the choroid');
+  const radius = (b) => Math.max(b.max.x, -b.min.x);
+  assert.ok(radius(sclera) > radius(choroid) + 0.02, 'with a gap between sclera and choroid');
+  assert.ok(radius(choroid) > radius(retina) + 0.01, 'and between choroid and retina');
+
+  // The cornea is a steeper dome than the globe: it bulges past the front of a
+  // sphere whose radius is bigger than its own.
+  const cornea = box('cornea');
+  assert.ok(cornea.max.z > sclera.max.z, 'the cornea stands proud of the globe');
+  assert.ok(radius(cornea) < radius(sclera), 'and is narrower than it — a steeper curve, not a bigger one');
+  assert.ok(cornea.intersectsBox(sclera), 'meeting the sclera at the limbus');
+
+  // Along the axis, front to back: cornea, chamber, iris and pupil, lens,
+  // vitreous. Any two of these out of order is a different organ.
+  const iris = box('iris');
+  const lens = box('lens');
+  const chamber = box('anterior-chamber');
+  const vitreous = box('vitreous-body');
+  assert.ok(chamber.min.z >= iris.max.z - 1e-6, 'the anterior chamber is in front of the iris');
+  assert.ok(chamber.max.z <= cornea.max.z, 'and behind the front of the cornea');
+  assert.ok(lens.max.z <= iris.min.z, 'the lens sits behind the iris, never through it');
+  assert.ok(radius(lens) > radius(box('pupil')), 'and is wider than the pupil it is seen through');
+  // A ring and the thing it surrounds share a bounding box, so the claim has to
+  // be made about radius: the ciliary body lies outside the lens's edge, which
+  // is what "the lens hangs from it" means.
+  assert.ok(radius(box('ciliary-body')) > radius(lens), 'the ciliary ring lies outside the edge of the lens it hangs');
+  assert.ok(vitreous.max.z < iris.min.z, 'the vitreous fills the eye behind the lens');
+  assert.ok(retina.containsBox(vitreous) === false && vitreous.min.z > retina.min.z, 'and lies inside the retina');
+
+  // The fundus, and the one relation it is read by: disc nasal, macula
+  // temporal, and the macula on the axis at the back.
+  const disc = at('optic-disc');
+  const macula = at('macula');
+  assert.ok(nasal(disc) > nasal(macula), 'the optic disc is nasal to the macula');
+  assert.ok(Math.abs(macula.x) < Math.abs(disc.x), 'and the macula is the one on the axis');
+  assert.ok(macula.z < 0 && disc.z < 0, 'both are at the back of the eye');
+  assert.ok(box('macula').min.z <= box('optic-disc').min.z, 'the macula sits at the posterior pole');
+
+  // The nerve leaves at the disc, and goes back and towards the midline.
+  const nerve = box('optic-nerve');
+  assert.ok(nerve.intersectsBox(box('optic-disc')), 'the optic nerve leaves at the disc');
+  assert.ok(nerve.min.z < retina.min.z, 'running back out of the globe');
+  assert.ok(nasal(nerve.max) > nasal(box('optic-disc').max), 'and towards the midline as it goes');
+
+  // Four muscles, four directions, each reaching the globe in front of its
+  // widest point.
+  assert.ok(at('superior-rectus').y > 0, 'superior rectus runs along the top');
+  assert.ok(at('inferior-rectus').y < 0, 'inferior rectus along the bottom');
+  assert.ok(nasal(at('medial-rectus')) > 0, 'medial rectus along the nasal side');
+  assert.ok(nasal(at('lateral-rectus')) < 0, 'lateral rectus along the temporal side');
+  for (const id of ['superior-rectus', 'inferior-rectus', 'medial-rectus', 'lateral-rectus']) {
+    assert.ok(box(id).intersectsBox(sclera), `${id} reaches the sclera`);
+    assert.ok(box(id).min.z < -1.5, `and comes from behind the eye`);
+    assert.ok(box(id).max.z < sclera.max.z, 'inserting behind the front of the globe');
+  }
+});
+
+// --- the ear ----------------------------------------------------------------
+
+test('the ear is one chain: air, then bone, then fluid', () => {
+  // An ear is a route, so what is checked is the order along it and the three
+  // joins that make it a chain rather than three collections of parts.
+  const ear = buildEar();
+  ear.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(ear.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Into the head. Read the wrong way round, the ear is inside out. */
+  const inwards = (point) => point.x * EAR_MEDIAL;
+
+  // The route, outside in. Every step is further in than the one before it.
+  const route = [
+    'auricle',
+    'external-auditory-canal',
+    'tympanic-membrane',
+    'middle-ear-cavity',
+    'vestibule',
+    'vestibulocochlear-nerve',
+  ];
+  for (let i = 1; i < route.length; i += 1) {
+    assert.ok(
+      inwards(at(route[i])) > inwards(at(route[i - 1])),
+      `${route[i]} is deeper than ${route[i - 1]}`
+    );
+  }
+
+  // The canal ends at the drum, and the drum is drawn inwards at its centre —
+  // which is what makes the umbo a landmark and not just a word.
+  const canal = box('external-auditory-canal');
+  const drum = box('tympanic-membrane');
+  assert.ok(canal.intersectsBox(drum) || Math.abs(inwards(canal.max) - inwards(drum.min)) < 0.1, 'the canal ends at the drum');
+  const umbo = ear.anchorPoints.umbo;
+  assert.ok(Math.abs(inwards(umbo) - inwards(drum.max)) < 0.05, 'the umbo is the drum’s most medial point');
+
+  // Three bones, meeting in order, and only the last of them in the window.
+  assert.ok(box('malleus').intersectsBox(drum), 'the malleus is attached to the drum');
+  assert.ok(box('malleus').intersectsBox(box('incus')), 'the malleus meets the incus');
+  assert.ok(box('incus').intersectsBox(box('stapes')), 'the incus meets the stapes');
+  assert.ok(!box('malleus').intersectsBox(box('stapes')), 'and the malleus does not reach the stapes');
+  const window_ = ear.anchorPoints.ovalWindow;
+  assert.ok(box('stapes').distanceToPoint(window_) < 0.06, 'the stapes sits in the oval window');
+  assert.ok(box('malleus').distanceToPoint(window_) > 0.1, 'and nothing else does');
+  const cavity = box('middle-ear-cavity');
+  for (const id of ['malleus', 'incus', 'stapes']) {
+    assert.ok(cavity.intersectsBox(box(id)), `the ${id} crosses the air space`);
+  }
+
+  // The tube leaves the cavity forwards, downwards and inwards — which is the
+  // whole of why a throat and an ear are connected.
+  const tube = box('eustachian-tube');
+  assert.ok(tube.min.y < cavity.min.y, 'the Eustachian tube runs down from the cavity');
+  assert.ok(tube.max.z > cavity.max.z, 'and forwards');
+  assert.ok(inwards(tube.max) > inwards(cavity.max), 'and towards the midline');
+
+  // The inner ear: a spiral that tapers, and three loops in three planes.
+  const cochlea = box('cochlea');
+  assert.ok(inwards(at('cochlea')) > inwards(at('vestibule')), 'the cochlea is deeper than the vestibule');
+  const spiral = cochlea.getSize(new THREE.Vector3());
+  assert.ok(spiral.y > 0.6 && spiral.z > 0.6, 'the cochlea is a coil and not a straight tube');
+
+  assert.equal(ear.canalMeshes.length, 3, 'three canals, drawn as one structure');
+  const planes = ear.canalMeshes.map((mesh) => {
+    const size = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+    // The axis a loop turns about is the one it is thinnest along.
+    return [size.x, size.y, size.z].indexOf(Math.min(size.x, size.y, size.z));
+  });
+  assert.equal(new Set(planes).size, 3, 'and each of the three lies in a different plane');
+});
+
+// --- skin -------------------------------------------------------------------
+
+test('skin is three layers, and what goes through them has two ways out', () => {
+  // Skin is a sheet with a thickness rather than a thing with a shape, so every
+  // claim here is about depth: which layer a structure is in, and which of the
+  // two routes to the surface it takes.
+  const skin = buildSkinBlock();
+  skin.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(skin.mesh(id));
+  const L = SKIN_LAYERS;
+
+  // The three stack, in order, without a gap: each layer's floor is the next
+  // one's roof, and they are built from the same function rather than from two
+  // that happen to agree.
+  const epidermis = box('epidermis');
+  const dermis = box('dermis');
+  const subcutis = box('subcutaneous-tissue');
+  assert.ok(epidermis.min.y > dermis.min.y, 'the epidermis is above the dermis');
+  assert.ok(dermis.min.y > subcutis.min.y, 'and the dermis above the subcutis');
+  assert.ok(epidermis.min.y < dermis.max.y, 'epidermis and dermis meet, with no gap between them');
+  assert.ok(dermis.min.y < subcutis.max.y, 'and so do dermis and subcutis');
+
+  // And the join between the first two is not flat. A flat junction is the one
+  // thing about skin this model would be wrong to say.
+  const flat = SKIN_RETE(0, 0);
+  let lowest = Infinity;
+  let highest = -Infinity;
+  for (let i = 0; i < 40; i += 1) {
+    const x = -1.5 + (i / 39) * 3;
+    for (let j = 0; j < 40; j += 1) {
+      const z = -1.5 + (j / 39) * 3;
+      const h = SKIN_RETE(x, z);
+      lowest = Math.min(lowest, h);
+      highest = Math.max(highest, h);
+    }
+  }
+  assert.ok(highest - lowest > 0.08, 'the dermo-epidermal junction interlocks rather than lying flat');
+  assert.ok(Number.isFinite(flat));
+
+  // A follicle is a tube of surface that has grown down: it starts at the top
+  // and finishes below the dermis, in the fat.
+  const follicle = new THREE.Box3();
+  for (const mesh of skin.follicleMeshes) follicle.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(follicle.max.y > L.surface, 'the hair reaches above the surface');
+  assert.ok(follicle.min.y < L.dermisFloor, 'and the follicle reaches below the dermis, into the fat');
+
+  // The sebaceous gland opens into the follicle. It does not reach the surface,
+  // and that is the whole relation.
+  const sebaceous = box('sebaceous-gland');
+  assert.ok(sebaceous.intersectsBox(box('hair-follicle')), 'the sebaceous gland opens into the follicle');
+  assert.ok(sebaceous.max.y < L.epidermisFloor, 'and never reaches the surface itself');
+
+  // The sweat gland takes the other route: its duct opens on the surface, well
+  // away from the hair.
+  const sweat = new THREE.Box3();
+  for (const mesh of skin.sweatMeshes) sweat.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(sweat.max.y >= L.surface - 0.06, 'the sweat duct reaches the surface');
+  assert.ok(sweat.min.y < L.dermisFloor + 0.3, 'from a coil deep in the skin');
+  const pore = skin.anchorPoints.sweatPore;
+  const mouth = skin.anchorPoints.follicleMouth;
+  assert.ok(pore.distanceTo(mouth) > 0.8, 'and it opens nowhere near the hair');
+
+  // Nothing that carries blood is in the epidermis. It is fed across the join,
+  // which is why it can be peeled off and live.
+  for (const id of ['arteriole', 'venule']) {
+    assert.ok(box(id).max.y < L.epidermisFloor, `the ${id} stops below the epidermis`);
+  }
+  assert.ok(box('sensory-nerve').max.y < L.epidermisFloor, 'and so does the nerve');
+
+  // The fat is inside the compartment, not instead of it.
+  const fat = new THREE.Box3();
+  for (const mesh of skin.lobuleMeshes) fat.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(subcutis.containsBox(fat), 'every fat lobule is inside the subcutaneous compartment');
+  assert.ok(skin.lobuleMeshes.length > 6, 'and there is more than one of them');
+});
+
+// --- a lymph node -----------------------------------------------------------
+
+test('a lymph node has many ways in and one way out', () => {
+  // The whole shape of a node, and the reason it does what it does: lymph
+  // cannot go round it. What is checked is the count and the two ends.
+  const node = buildLymphNode();
+  node.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(node.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+
+  // Three depths of one outline, nesting without touching.
+  const capsule = box('capsule');
+  const cortex = box('cortex');
+  const medulla = box('medulla');
+  assert.ok(capsule.containsBox(cortex), 'the cortex is inside the capsule');
+  assert.ok(cortex.containsBox(medulla), 'and the medulla inside the cortex');
+
+  // The follicles are in the cortex and not in the medulla — which is what
+  // makes "the cortex enlarges first" a statement about a place.
+  const follicles = new THREE.Box3();
+  for (const mesh of node.follicleMeshes) follicles.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(cortex.containsBox(follicles), 'the follicles lie inside the cortex');
+  assert.ok(node.follicleMeshes.length > 4, 'and there is more than one of them');
+
+  // Many in, one out. The count is the claim.
+  assert.ok(node.afferentMeshes.length >= 3, 'several afferent vessels arrive');
+  const afferents = new THREE.Box3();
+  for (const mesh of node.afferentMeshes) afferents.union(new THREE.Box3().setFromObject(mesh));
+  const efferent = box('efferent-vessel');
+  assert.ok(afferents.min.x < capsule.min.x, 'the afferents arrive from outside the node');
+  assert.ok(efferent.max.x > capsule.max.x, 'and the efferent leaves it on the other side');
+  assert.ok(afferents.max.x < efferent.min.x, 'they are at opposite ends: lymph passes through');
+
+  // Everything that is not lymph uses one door, and the way out is at it.
+  const hilum = node.anchorPoints.hilum;
+  assert.ok(box('hilum').containsPoint(hilum), 'the hilum marker is at the hilum');
+  assert.ok(efferent.distanceToPoint(hilum) < 0.05, 'the efferent vessel leaves at the hilum');
+  assert.ok(afferents.distanceToPoint(hilum) > 0.5, 'and no afferent arrives there');
+  assert.ok(at('medulla').x > at('cortex').x - 0.3, 'the medulla reaches towards the way out');
+});
+
+// --- where lymph drains -----------------------------------------------------
+
+test('lymph does not drain symmetrically', () => {
+  // The one fact this scene exists for. Everything else on it — which group is
+  // where, which route goes which way — is only useful because of it.
+  const routes = buildLymphaticRoutes();
+  routes.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(routes.mesh(id));
+  /** Towards the patient's left, which is the side the long duct runs up. */
+  const left = (point) => point.x * LYMPH_LEFT;
+
+  const thoracic = box('thoracic-duct');
+  const right = box('right-lymphatic-duct');
+  const span = (b) => b.getSize(new THREE.Vector3()).y;
+  assert.ok(span(thoracic) > span(right) * 4, 'the thoracic duct is far longer than the right duct');
+  assert.ok(thoracic.min.y < 0, 'it starts in the abdomen');
+  assert.ok(left(thoracic.max) > 0, 'and ends on the patient’s left');
+  assert.ok(left(right.max) < 0, 'while the right lymphatic duct stays on the patient’s right');
+  assert.ok(right.min.y > 0, 'and never leaves the upper body');
+  assert.ok(Math.abs(thoracic.max.y - right.max.y) < 0.35, 'both empty at about the same height, at the root of the neck');
+
+  // The sac the long one starts from is at its lower end, not its upper.
+  const cistern = routes.anchorPoints.cisternaChyli;
+  assert.ok(Math.abs(cistern.y - thoracic.min.y) < 0.35, 'the cisterna chyli is at the thoracic duct’s lower end');
+
+  // Three groups, each paired about the midline, at three heights.
+  const groups = ['cervical', 'axillary', 'inguinal'].map((name) => {
+    const meshes = routes.groupMeshes[name];
+    const bounds = new THREE.Box3();
+    for (const mesh of meshes) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return { name, meshes, bounds, centre: bounds.getCenter(new THREE.Vector3()) };
+  });
+  for (const group of groups) {
+    assert.ok(group.meshes.length >= 8, `${group.name}: a group is more than one node`);
+    assert.ok(group.bounds.min.x < 0 && group.bounds.max.x > 0, `${group.name}: drawn on both sides`);
+  }
+  const [cervical, axillary, inguinal] = groups;
+  assert.ok(cervical.centre.y > axillary.centre.y, 'the neck groups are above the armpit ones');
+  assert.ok(axillary.centre.y > inguinal.centre.y, 'and the armpit ones above the groin ones');
+  assert.ok(
+    Math.abs(axillary.bounds.max.x) > Math.abs(cervical.bounds.max.x),
+    'the armpit groups are further out from the midline than the neck ones'
+  );
+});
+
+// --- the breast -------------------------------------------------------------
+
+test('every duct in a breast ends at one place, and the lobules do not', () => {
+  // The division the whole subject is built on: a thing is ductal or it is
+  // lobular, and which it is is a question about where along a tree it sits.
+  const breast = buildBreast();
+  breast.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(breast.mesh(id));
+  /** Towards the armpit. Read the wrong way round, the drainage is mirrored. */
+  const lateral = (point) => -point.x * BREAST_MEDIAL;
+
+  const nipple = breast.anchorPoints.nipple;
+  assert.ok(breast.ductMeshes.length >= 6, 'several duct systems are drawn');
+  for (const mesh of breast.ductMeshes) {
+    const duct = new THREE.Box3().setFromObject(mesh);
+    assert.ok(duct.distanceToPoint(nipple) < 0.12, 'every duct reaches the nipple');
+  }
+  // And the lobules are at the far end of them, not at the nipple.
+  assert.ok(breast.lobuleMeshes.length >= breast.ductMeshes.length, 'each duct ends in lobules');
+  for (const mesh of breast.lobuleMeshes) {
+    const lobule = new THREE.Box3().setFromObject(mesh);
+    assert.ok(lobule.distanceToPoint(nipple) > 0.5, 'no lobule sits at the nipple');
+  }
+  const ducts = new THREE.Box3();
+  for (const mesh of breast.ductMeshes) ducts.union(new THREE.Box3().setFromObject(mesh));
+  const lobules = new THREE.Box3();
+  for (const mesh of breast.lobuleMeshes) lobules.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(lobules.max.z < ducts.max.z, 'the lobules lie deeper than the ducts’ near ends');
+
+  // Depth: skin outside, fat under it, gland in the fat, muscle behind all of
+  // it — and the gland does not enter the muscle.
+  const skin = box('skin');
+  const fat = box('adipose-tissue');
+  const muscle = box('pectoralis-major');
+  assert.ok(skin.max.z > fat.max.z, 'the skin is outside the fat');
+  assert.ok(fat.containsBox(lobules), 'the gland is inside the fat');
+  assert.ok(muscle.max.z <= fat.min.z + 0.2, 'the muscle is behind the gland');
+  assert.ok(lobules.min.z > muscle.max.z, 'and nothing glandular is inside it');
+
+  // The ligaments reach the skin. That is why a tethered one shows on it.
+  const coopers = new THREE.Box3();
+  for (const mesh of breast.cooperMeshes) coopers.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(coopers.max.z > fat.max.z - 0.3, 'Cooper’s ligaments reach out to the skin');
+  assert.ok(coopers.min.z < 0, 'and back towards the chest wall');
+
+  // The tail runs out towards the armpit, and the nodes are beyond it.
+  const tail = box('axillary-tail');
+  const nodes = new THREE.Box3();
+  for (const mesh of breast.nodeMeshes) nodes.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(lateral(tail.getCenter(new THREE.Vector3())) > 0, 'the tail runs towards the armpit');
+  assert.ok(tail.max.y > 0, 'from the upper part of the gland');
+  assert.ok(lateral(nodes.min) > lateral(tail.max) - 0.4, 'and the nodes are beyond it');
+  assert.ok(nodes.min.y > fat.getCenter(new THREE.Vector3()).y, 'up in the armpit, not beside the breast');
+});
+
+// --- the spine --------------------------------------------------------------
+
+test('the spine curves three ways, and the cord stops before the column does', () => {
+  // Two claims, and everything a spine is asked about rests on one of them:
+  // which region, and what one segment is made of.
+  const spine = buildSpine();
+  spine.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(spine.mesh(id));
+  const bounds = (meshes) => {
+    const b = new THREE.Box3();
+    for (const mesh of meshes) b.union(new THREE.Box3().setFromObject(mesh));
+    return b;
+  };
+
+  // Four regions, stacked in order.
+  const cervical = bounds(spine.regionMeshes.cervical);
+  const thoracic = bounds(spine.regionMeshes.thoracic);
+  const lumbar = bounds(spine.regionMeshes.lumbar);
+  const sacrum = box('sacrum');
+  assert.ok(cervical.min.y > thoracic.max.y - 0.3, 'the cervical spine is above the thoracic');
+  assert.ok(thoracic.min.y > lumbar.max.y - 0.3, 'the thoracic above the lumbar');
+  assert.ok(lumbar.min.y > sacrum.max.y - 0.3, 'and the lumbar above the sacrum');
+  assert.ok(spine.regionMeshes.cervical.length === 7, 'seven cervical vertebrae');
+  assert.ok(spine.regionMeshes.thoracic.length === 12, 'twelve thoracic');
+
+  // Three curves, alternating. A spine drawn straight is a stick.
+  const forward = (y) => SPINE_AT(y) * SPINE_FORWARD;
+  assert.ok(forward(4.0) > 0.1, 'the neck curves forward');
+  assert.ok(forward(1.5) < -0.1, 'the chest curves back');
+  assert.ok(forward(-1.0) > 0.1, 'and the low back forward again');
+
+  // The canal runs behind the bodies, the whole way down.
+  const canal = box('spinal-canal');
+  const body = box('vertebral-body');
+  assert.ok(canal.max.z < body.min.z + 0.15, 'the canal is behind the vertebral bodies');
+  assert.ok(canal.getSize(new THREE.Vector3()).y > 5, 'and runs most of the column');
+
+  // The cord stops partway down; roots continue below it. That single fact is
+  // why a needle low down is a different proposition.
+  const cord = box('spinal-cord');
+  const cauda = bounds(spine.caudaMeshes);
+  assert.ok(cord.min.y > canal.min.y + 1.0, 'the cord stops well above the bottom of the canal');
+  assert.ok(cauda.min.y < cord.min.y, 'and the cauda equina continues below it');
+  assert.ok(cauda.max.y <= cord.min.y + 0.3, 'taking over where the cord ends');
+  assert.ok(spine.caudaMeshes.length > 3, 'as a bundle of strands rather than one structure');
+
+  // The disc is below the body, not inside it, and the nucleus is inside the
+  // annulus: two tissues, and the difference between them is the whole subject.
+  const annulus = box('annulus-fibrosus');
+  const nucleus = box('nucleus-pulposus');
+  assert.ok(annulus.max.y <= body.min.y + 1e-6, 'the disc sits below the vertebral body');
+  assert.ok(annulus.containsBox(nucleus), 'and the nucleus is inside the annulus');
+
+  // The arch: pedicles from the body back, laminae closing it, facets on the
+  // sides, roots leaving underneath.
+  const pedicles = bounds(spine.pedicleMeshes);
+  const laminae = bounds(spine.laminaMeshes);
+  const roots = bounds(spine.rootMeshes);
+  assert.ok(pedicles.max.z < body.max.z, 'the pedicles run back from the body');
+  assert.ok(laminae.max.z < pedicles.min.z + 0.1, 'the laminae close the arch behind them');
+  assert.ok(box('spinous-process').min.z < laminae.min.z + 0.1, 'and the spinous process is behind those');
+  assert.ok(roots.max.x > pedicles.max.x, 'the roots leave laterally');
+  assert.ok(roots.min.y < pedicles.min.y, 'passing out beneath the pedicles');
+});
+
+// --- the nose and the paranasal sinuses -------------------------------------
+
+test('the nose is three shelves, three gutters, and what opens into each', () => {
+  // Every claim this scene makes is about *which gutter* a thing arrives in, so
+  // that is what is measured: the order of the shelves, the space under each
+  // one, and the two openings that a reader is told apart by where they end.
+  const nose = buildNose();
+  nose.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(nose.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the septum. Read the wrong way round, the cavity is inside out. */
+  const medially = (point) => point.x * NOSE_MEDIAL;
+
+  // Three shelves, in order, all on the one wall and none of them reaching the
+  // septum — a turbinate that touched the midline would have closed the cavity.
+  const shelves = ['inferior-turbinate', 'middle-turbinate', 'superior-turbinate'];
+  for (let i = 1; i < shelves.length; i += 1) {
+    assert.ok(at(shelves[i]).y > at(shelves[i - 1]).y, `the ${shelves[i]} sits above the ${shelves[i - 1]}`);
+  }
+  const wall = box('lateral-nasal-wall');
+  const septum = box('nasal-septum');
+  for (const id of shelves) {
+    assert.ok(box(id).intersectsBox(wall), `the ${id} hangs off the lateral wall`);
+    assert.ok(!box(id).intersectsBox(septum), `and the ${id} does not reach the septum`);
+    // The free edge hangs below the attachment: that curl is what makes a
+    // shelf into a roof over the gutter under it.
+    const level = NOSE_TURBINATES[id.split('-')[0]];
+    const edge = noseTurbinateSurface(level, NOSE_CAVITY.lateralWall + NOSE_MEDIAL * level.reach);
+    assert.ok(edge < level.attachY - 0.05, `and the ${id} curls downwards away from the wall`);
+  }
+
+  // Each gutter is the space under the shelf it is named for, and above the
+  // next structure down. They are built from one surface function, and this is
+  // the check that the function is the one being used.
+  const pairs = [
+    ['inferior-meatus', NOSE_TURBINATES.inferior, null],
+    ['middle-meatus', NOSE_TURBINATES.middle, NOSE_TURBINATES.inferior],
+    ['superior-meatus', NOSE_TURBINATES.superior, NOSE_TURBINATES.middle],
+  ];
+  for (const [id, above, below] of pairs) {
+    const gutter = box(id);
+    assert.ok(gutter.max.y <= above.attachY + 1e-6, `the ${id} is under the ${above.id} turbinate`);
+    // The lowest the gutter's floor gets is at its medial edge, where the
+    // turbinate below it has curled furthest down. Nothing about the gutter may
+    // sink below that, or the space would be inside the shelf under it.
+    const floor = below
+      ? noseTurbinateSurface(below, noseTurbinateEdge(above)) + below.thickness
+      : NOSE_CAVITY.floor;
+    assert.ok(gutter.min.y >= floor - 1e-6, `and the ${id} is above what is below it`);
+    assert.ok(
+      medially(gutter.max) <= medially(new THREE.Vector3(noseTurbinateEdge(above), 0, 0)) + 1e-6,
+      `and does not reach past the free edge of the ${above.id} turbinate`
+    );
+  }
+  assert.ok(!box('inferior-meatus').intersectsBox(box('middle-meatus')), 'the gutters are three spaces, not one');
+  assert.ok(!box('middle-meatus').intersectsBox(box('superior-meatus')), 'and the upper two are separate too');
+
+  // The fact the scene exists for: the maxillary sinus lets go near its roof.
+  const sinus = box('maxillary-sinus');
+  const ostium = box('maxillary-ostium');
+  const height = sinus.max.y - sinus.min.y;
+  assert.ok(ostium.min.y > sinus.min.y + 0.6 * height, 'the maxillary ostium is near the roof of the sinus, not its floor');
+  assert.ok(ostium.intersectsBox(sinus), 'it starts inside the sinus');
+  assert.ok(ostium.intersectsBox(box('middle-meatus')), 'and ends in the middle meatus');
+  assert.ok(!ostium.intersectsBox(box('inferior-meatus')), 'and nowhere else');
+  assert.ok(!ostium.intersectsBox(box('superior-meatus')), 'and nowhere else above either');
+
+  // The one thing that does open into the lowest gutter, and it is not a sinus.
+  // Measured at the opening rather than over the whole tube: the duct descends
+  // through the wall right past the middle meatus, so the claim is about where
+  // it *ends*, not about what it goes near.
+  const opening = nose.anchorPoints.nasolacrimalOpening;
+  assert.ok(box('nasolacrimal-duct').distanceToPoint(opening) < 1e-6, 'the tear duct reaches its opening');
+  assert.ok(box('inferior-meatus').containsPoint(opening), 'and the opening is in the inferior meatus');
+  assert.ok(!box('middle-meatus').containsPoint(opening), 'and not in the middle one');
+  for (const id of ['maxillary-sinus', 'frontal-sinus', 'sphenoid-sinus']) {
+    assert.ok(!box(id).intersectsBox(box('inferior-meatus')), `no sinus opens into the inferior meatus (${id})`);
+  }
+
+  // Smell is a small patch, high up and out of the way.
+  const olfactory = new THREE.Box3();
+  for (const mesh of nose.olfactoryParts) olfactory.union(new THREE.Box3().setFromObject(mesh));
+  for (const id of shelves) {
+    assert.ok(olfactory.min.y > box(id).max.y, `the olfactory patch is above the ${id}`);
+  }
+  assert.ok(olfactory.max.y > NOSE_CAVITY.roof, 'and its filaments leave through the roof');
+
+  // And the cavity runs from the nostril back to the pharynx.
+  assert.ok(box('nasal-vestibule').min.z > at('middle-turbinate').z, 'the vestibule is in front of the shelves');
+  assert.ok(box('nasopharynx').max.z <= NOSE_CAVITY.choana + 0.1, 'the nasopharynx is behind the choana');
+  assert.ok(box('hard-palate').max.y <= NOSE_CAVITY.floor + 0.1, 'and the palate is the floor they all stand on');
+});
+
+// --- the larynx and the pharynx ---------------------------------------------
+
+test('the larynx and pharynx sort one shared space back into two', () => {
+  // The scene's whole claim is an arrangement, so that is what is measured:
+  // what is above what, what is in front of what, and which of the two routes
+  // each space belongs to once they have parted again.
+  const larynx = buildLarynx();
+  larynx.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of larynx.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const L = LARYNX_LEVELS;
+
+  // One lumen, three names, stacked at the levels the names come from.
+  const lengths = ['nasopharynx', 'oropharynx', 'laryngopharynx'];
+  for (let i = 1; i < lengths.length; i += 1) {
+    assert.ok(box(lengths[i]).max.y <= box(lengths[i - 1]).min.y + 1e-6, `${lengths[i]} is below ${lengths[i - 1]}`);
+  }
+  assert.ok(Math.abs(box('nasopharynx').min.y - L.softPalate) < 1e-6, 'the soft palate is where the top one ends');
+  assert.ok(Math.abs(box('oropharynx').min.y - L.laryngealInlet) < 1e-6, 'and the inlet where the middle one does');
+
+  // The gutters reach forward past the larynx; the space behind it does not.
+  const behind = box('laryngopharynx');
+  const gutters = box('piriform-sinus');
+  assert.ok(gutters.max.z > behind.max.z + 0.2, 'the piriform gutters reach forward past the laryngopharynx');
+  // Measured through the function rather than the bounding box: the lumen
+  // leans back as it descends, so its box reaches forward at the top where
+  // there is no larynx yet. The claim is about the level of the folds.
+  assert.ok(
+    pharynxFrontAt(L.vocalFold, 0) < box('cricoid-cartilage').min.z + 0.02,
+    'the space behind the larynx stays behind the cricoid'
+  );
+  assert.ok(pharynxFrontAt(L.vocalFold, 0.95) > 0, 'while beside it the lumen reaches forward past the airway');
+  for (const mesh of larynx.meshesFor('piriform-sinus')) {
+    const side = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+    assert.ok(Math.abs(side.x) > 0.3, 'and each gutter is off to one side of the midline');
+  }
+  assert.equal(larynx.meshesFor('piriform-sinus').length, 2, 'there are two of them');
+
+  // Two pairs of folds, and the pocket that proves they are two.
+  const vestibular = box('vestibular-fold');
+  const ventricle = box('laryngeal-ventricle');
+  const vocal = box('vocal-fold');
+  assert.ok(ventricle.max.y <= vestibular.min.y + 1e-6, 'the ventricle is below the false folds');
+  assert.ok(vocal.max.y <= ventricle.min.y + 1e-6, 'and the true folds below the ventricle');
+
+  // The glottis is a V: the folds meet in front and are apart behind.
+  const [left, right] = larynx.meshesFor('vocal-fold').map((mesh) => mesh.geometry.attributes.position);
+  /** How close to the midline this fold gets, at the front of the glottis. */
+  const freeEdgeAt = (positions, targetZ) => {
+    const v = new THREE.Vector3();
+    let nearest = Infinity;
+    for (let i = 0; i < positions.count; i += 1) {
+      v.fromBufferAttribute(positions, i);
+      if (Math.abs(v.z - targetZ) < 0.02) nearest = Math.min(nearest, Math.abs(v.x));
+    }
+    return nearest;
+  };
+  const frontGap = freeEdgeAt(left, 0.76) + freeEdgeAt(right, 0.76);
+  assert.ok(frontGap < 0.08, `the two folds meet at the front (${frontGap.toFixed(3)})`);
+  assert.ok(vocal.max.x > GLOTTIS_DISPLAY_GAP, 'and are apart behind by the declared display gap');
+
+  // Each fold is inside the cartilage it is attached to.
+  const thyroid = box('thyroid-cartilage');
+  assert.ok(vocal.max.x <= thyroid.max.x + 1e-6, 'the folds do not reach past the thyroid cartilage');
+
+  // The one place the airway is under the skin: between the two cartilages,
+  // in front of both, and in front of the airway itself.
+  const membrane = box('cricothyroid-membrane');
+  const cricoid = box('cricoid-cartilage');
+  assert.ok(membrane.min.y < thyroid.min.y + 0.1, 'the membrane starts below the thyroid cartilage');
+  assert.ok(membrane.max.y > cricoid.max.y - 0.72, 'and reaches up from the cricoid');
+  assert.ok(membrane.max.z > box('subglottic-space').max.z, 'with the airway directly behind it');
+
+  // And where the two ways part again.
+  const trachea = box('trachea');
+  const oesophagus = box('oesophagus');
+  assert.ok(oesophagus.max.z < trachea.min.z, 'the oesophagus is wholly behind the trachea');
+  const nerves = larynx.meshesFor('recurrent-laryngeal-nerve');
+  assert.equal(nerves.length, 2, 'one nerve on each side');
+  for (const mesh of nerves) {
+    const nerve = new THREE.Box3().setFromObject(mesh);
+    assert.ok(nerve.max.z < trachea.min.z && nerve.min.z > oesophagus.max.z - 0.3, 'in the groove between them');
+    assert.ok(nerve.max.y > L.vocalFold - 0.2, 'reaching the larynx from below');
+    assert.ok(nerve.min.y < L.cricoidBase, 'and coming from below to do it');
+  }
+});
+
+// --- the mouth and the tongue -----------------------------------------------
+
+test('the tongue is two parts, and a duct opens nowhere near its gland', () => {
+  // The scene makes two claims. One is a boundary that nothing on the surface
+  // shows except a row of papillae; the other is that three glands outside the
+  // mouth deliver into it somewhere else entirely. Both are measured here.
+  const mouth = buildOralCavity();
+  mouth.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of mouth.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const sideBox = (id, side) => new THREE.Box3().setFromObject(mouth.meshesFor(id)[side]);
+
+  // Two parts of one tongue, meeting on one line and not overlapping.
+  const front = box('tongue-oral-part');
+  const root = box('tongue-root');
+  assert.ok(Math.abs(front.min.z - SULCUS_Z) < 1e-6, 'the oral part ends at the sulcus');
+  assert.ok(Math.abs(root.max.z - SULCUS_Z) < 1e-6, 'and the root begins there');
+
+  // And the only thing on the surface that marks that line.
+  const papillae = box('vallate-papillae');
+  assert.ok(papillae.max.z > SULCUS_Z && papillae.min.z < SULCUS_Z + 0.42, 'the papillae lie on the boundary');
+  assert.ok(box('lingual-tonsil').max.z < SULCUS_Z, 'the lingual tonsil is behind it, on the root');
+  assert.ok(papillae.min.y > front.min.y, 'and the papillae are on the surface, not inside the tongue');
+
+  // The tongue sits between the roof above and the floor below.
+  assert.ok(front.max.y < box('hard-palate').min.y, 'the tongue is below the palate');
+  assert.ok(front.min.y > box('floor-of-mouth').min.y, 'and above the floor of the mouth');
+
+  // The jaw is drawn open by exactly the amount the constant declares — so the
+  // display value cannot drift away from what is drawn.
+  const opening = box('upper-teeth').min.y - box('lower-teeth').max.y;
+  assert.ok(
+    Math.abs(opening - JAW_DISPLAY_OPENING) < 0.1,
+    `the two rows are apart by the declared display opening (${opening.toFixed(2)})`
+  );
+  assert.ok(box('mandible').min.y < box('lower-teeth').min.y, 'the jaw is below the teeth standing in it');
+  assert.ok(box('mandible').min.z < box('lower-teeth').min.z - 1, 'and reaches back behind them, as its rami do');
+  assert.ok(box('lower-teeth').max.x < box('upper-teeth').max.x, 'and the lower arch is inside the upper one');
+
+  // A doorway, with a tonsil in the bed behind each side of its frame.
+  for (const side of [0, 1]) {
+    const arch = sideBox('palatoglossal-arch', side);
+    const tonsil = sideBox('palatine-tonsil', side);
+    assert.ok(arch.max.y > box('soft-palate').min.y, 'the arch starts up under the soft palate');
+    assert.ok(arch.min.y < front.max.y, 'and ends down beside the tongue');
+    assert.ok(tonsil.max.z < arch.max.z, 'the tonsil is behind its arch');
+    assert.ok(Math.sign(tonsil.getCenter(new THREE.Vector3()).x) === Math.sign(arch.getCenter(new THREE.Vector3()).x),
+      'and on the same side as it');
+  }
+
+  // The claim about the glands: each duct starts in its own gland and ends
+  // somewhere else entirely.
+  const caruncle = mouth.anchorPoints.caruncle;
+  const parotidOpening = mouth.anchorPoints.parotidOpening;
+  for (const side of [0, 1]) {
+    const submandibular = sideBox('submandibular-gland', side);
+    const submandibularDuct = sideBox('submandibular-duct', side);
+    assert.ok(submandibularDuct.intersectsBox(submandibular), 'the submandibular duct starts at its gland');
+    assert.ok(submandibularDuct.max.z > submandibular.max.z + 2, 'and runs a long way forwards from it');
+
+    const parotid = sideBox('parotid-gland', side);
+    const parotidDuct = sideBox('parotid-duct', side);
+    assert.ok(parotidDuct.intersectsBox(parotid), 'the parotid duct starts at its gland');
+    assert.ok(parotidDuct.max.z > parotid.max.z + 2, 'and runs forwards across the cheek');
+    assert.ok(parotid.max.z < box('lower-teeth').min.z, 'the parotid gland itself is behind the teeth');
+  }
+  // Where each of them arrives.
+  assert.ok(
+    Math.abs(parotidOpening.y - box('upper-teeth').min.y) < 0.5,
+    'the parotid duct opens level with the upper teeth'
+  );
+  assert.ok(caruncle.y < box('lower-teeth').min.y, 'and the submandibular one under the tongue');
+  assert.ok(box('lingual-frenulum').distanceToPoint(caruncle) < 1.1, 'beside the frenulum');
+  // The smallest pair is the one that opens where it sits.
+  const sublingual = box('sublingual-gland');
+  assert.ok(sublingual.distanceToPoint(caruncle) < 1.2, 'the sublingual glands are where their saliva arrives');
+});
+
+// --- the pelvic floor -------------------------------------------------------
+
+test('the pelvic floor is a sheet with a real gap in it, and a sling behind the bowel', () => {
+  // Two things make this anatomy what it is: a hole in the front of the sheet
+  // that nothing closes, and one part of the sheet that is a sling rather than
+  // a sheet. Both are measured here, because both are easy to draw away.
+  const pelvis = buildPelvicFloor();
+  pelvis.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of pelvis.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+
+  // One sheet, three slices, front to back and not on top of one another.
+  const slices = ['pubococcygeus', 'iliococcygeus', 'coccygeus'];
+  for (let i = 1; i < slices.length; i += 1) {
+    const ahead = box(slices[i - 1]).getCenter(new THREE.Vector3());
+    const behind = box(slices[i]).getCenter(new THREE.Vector3());
+    assert.ok(behind.z < ahead.z, `${slices[i]} is behind ${slices[i - 1]}`);
+  }
+  // And all of them hang from the line the tendinous arch is drawn along.
+  const arch = box('tendinous-arch');
+  for (const id of slices) {
+    assert.ok(box(id).intersectsBox(arch) || box(id).max.y > arch.min.y, `${id} reaches the arch it hangs from`);
+  }
+  const originMid = new THREE.Vector3(...levatorOrigin(0.5, 1));
+  assert.ok(arch.distanceToPoint(originMid) < 0.2, 'the arch is drawn along the sheet’s own origin line');
+
+  // The gap. Its edges are the sheet's medial edges, so it cannot be widened
+  // without moving the sheet.
+  const hiatus = box('urogenital-hiatus');
+  const sheet = box('pubococcygeus');
+  assert.ok(hiatus.max.x < sheet.max.x, 'the gap is inside the sheet that bounds it');
+  assert.ok(HIATUS_BACK_T > 0 && HIATUS_BACK_T < 1, 'and it ends part way back along the sheet');
+
+  // What goes through it, and what does not.
+  for (const id of ['urethra', 'vagina']) {
+    const viscus = box(id);
+    assert.ok(viscus.max.x < hiatus.max.x + 0.05, `the ${id} is within the width of the gap`);
+    assert.ok(
+      viscus.max.z < hiatus.max.z + 0.05 && viscus.min.z > hiatus.min.z - 0.05,
+      `and within its depth`
+    );
+  }
+  assert.ok(box('anal-canal').max.z < hiatus.min.z, 'the bowel does not go through the urogenital gap');
+
+  // A sling, not a ring: behind the bowel, and reaching the pubis on both sides.
+  const sling = box('puborectalis');
+  const anal = box('anal-canal');
+  assert.ok(sling.min.z < anal.min.z, 'the sling passes behind the bowel');
+  assert.ok(sling.max.z > box('urogenital-hiatus').max.z - 0.4, 'and comes forward to the pubis');
+  assert.ok(sling.max.x > 0.5 && sling.min.x < -0.5, 'on both sides');
+  assert.ok(sling.min.y > box('external-anal-sphincter').min.y, 'and it is above the sphincter below it');
+
+  // The knot between the two halves of the perineum.
+  const body = pelvis.anchorPoints.perinealBody;
+  assert.ok(body.z < box('vagina').min.z, 'the perineal body is behind the vagina');
+  assert.ok(body.z > anal.max.z, 'and in front of the anal canal');
+
+  // And the frame the whole thing is slung inside.
+  const ring = box('pelvic-ring');
+  assert.ok(ring.min.x < sheet.min.x && ring.max.x > sheet.max.x, 'the ring is outside the sheet');
+  assert.ok(ring.containsPoint(originMid) || ring.distanceToPoint(originMid) < 0.6, 'which the sheet hangs from');
+});
+
+// --- the hand and wrist -----------------------------------------------------
+
+test('the wrist is eight bones in an arch, with a lid and ten things under it', () => {
+  // Two claims: the carpus is an arch with a roof, and the five rays are not
+  // five of the same thing. Both are the kind of fact a model quietly loses.
+  const hand = buildHand();
+  hand.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of hand.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the thumb. Read the wrong way round, the hand is a left one. */
+  const radially = (point) => point.x * HAND_RADIAL;
+
+  // Two rows, the far one further out.
+  const proximal = ['scaphoid', 'lunate', 'triquetrum'];
+  const distal = ['trapezium', 'trapezoid', 'capitate', 'hamate'];
+  for (const far of distal) {
+    for (const near of proximal) {
+      assert.ok(at(far).y > at(near).y, `the ${far} is distal to the ${near}`);
+    }
+  }
+  // And each row runs from the thumb side across.
+  for (const row of [proximal, distal]) {
+    for (let i = 1; i < row.length; i += 1) {
+      assert.ok(radially(at(row[i])) < radially(at(row[i - 1])), `${row[i]} is ulnar to ${row[i - 1]}`);
+    }
+  }
+  // The pisiform is not a fourth bone in the row: it is on top of one.
+  const pisiform = at('pisiform');
+  const triquetrum = at('triquetrum');
+  assert.ok(pisiform.z > triquetrum.z + 0.4, 'the pisiform sits palmar to the triquetrum');
+  assert.ok(Math.abs(pisiform.y - triquetrum.y) < 0.4, 'rather than beyond it');
+
+  // An arch with a lid. The band reaches both pillars, and the space is under
+  // it and over the bones.
+  const band = box('flexor-retinaculum');
+  const tunnel = box('carpal-tunnel');
+  for (const pillar of [TUNNEL.radialPillar, TUNNEL.ulnarPillar]) {
+    assert.ok(band.distanceToPoint(new THREE.Vector3(...pillar)) < 0.25, 'the band reaches its pillar');
+  }
+  assert.ok(tunnel.max.z <= band.max.z, 'the tunnel is under the band');
+  assert.ok(tunnel.min.z > at('capitate').z, 'and palmar to the bones it arches over');
+  // Measured against the band rather than against the tunnel's deepest point:
+  // the tunnel's floor rises towards each pillar, so its overall minimum is the
+  // middle of the arch and comparing a radial bone against it says nothing.
+  for (const id of ['scaphoid', 'lunate', 'capitate', 'hamate']) {
+    assert.ok(at(id).z < band.min.z, `the ${id} is under the band, not through it`);
+  }
+
+  // The nerve is the most palmar thing in the tunnel.
+  const nerve = box('median-nerve');
+  const tendons = box('flexor-tendons');
+  const inTunnel = (b) => b.min.y < TUNNEL.to && b.max.y > TUNNEL.from;
+  assert.ok(inTunnel(nerve) && inTunnel(tendons), 'both run through the tunnel');
+  for (const mesh of hand.meshesFor('flexor-tendons')) {
+    const tendon = new THREE.Box3().setFromObject(mesh);
+    assert.ok(tendon.max.z < nerve.max.z, 'every flexor tendon is deep to the nerve');
+  }
+  // And the extensors are on the other side of everything.
+  assert.ok(box('extensor-tendons').max.z < box('metacarpals').min.z + 0.2, 'the extensors are dorsal to the bones');
+
+  // Five rays, and one of them is a thumb.
+  assert.equal(hand.meshesFor('metacarpals').length, 5, 'five metacarpals');
+  assert.equal(hand.meshesFor('proximal-phalanges').length, 5, 'five proximal phalanges');
+  assert.equal(hand.meshesFor('middle-phalanges').length, 4, 'four middle phalanges — the thumb has none');
+  assert.equal(hand.meshesFor('distal-phalanges').length, 5, 'five distal phalanges');
+  assert.equal(raySegment(RAYS[0], 'middle'), null, 'and the table is where that is written down');
+
+  // Each ray's bones run in order out along one line.
+  for (const ray of RAYS) {
+    let previous = null;
+    for (const bone of ['metacarpal', 'proximal', 'middle', 'distal']) {
+      const segment = raySegment(ray, bone);
+      if (!segment) continue;
+      if (previous) {
+        assert.ok(segment.from[1] > previous[1], `${ray.id}: the ${bone} starts beyond the bone before it`);
+      }
+      previous = segment.to;
+    }
+  }
+  // The thumb is the one that is set apart from the rest.
+  const thumbTip = raySegment(RAYS[0], 'distal').to;
+  const middleTip = raySegment(RAYS[2], 'distal').to;
+  const spread = (ray) => {
+    const tip = raySegment(ray, 'distal').to;
+    return Math.hypot(tip[0] - middleTip[0], tip[1] - middleTip[1], tip[2] - middleTip[2]);
+  };
+  for (const ray of RAYS.slice(1)) {
+    if (ray.id === 'middle') continue;
+    assert.ok(spread(RAYS[0]) > spread(ray), `the thumb is further from the middle finger than the ${ray.id} is`);
+  }
+  assert.ok(radially(new THREE.Vector3(...thumbTip)) > 0, 'and it is on the radial side');
+
+  // The bones are where the carpal table says they are.
+  for (const [id, spec] of Object.entries(CARPALS)) {
+    const centre = at(id);
+    assert.ok(centre.distanceTo(new THREE.Vector3(...spec.at)) < 0.08, `${id} is where the table puts it`);
+  }
+});
+
+// --- the foot and ankle -----------------------------------------------------
+
+test('a foot is an arch with a bowstring under it, and a bone in a socket', () => {
+  // The arch is a relationship between bones rather than a bone, so it is the
+  // easiest thing in this model to lose without noticing. Everything below is
+  // a way of noticing.
+  const foot = buildFoot();
+  foot.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of foot.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the big toe. Read the wrong way round, the foot is a left one. */
+  const medially = (point) => point.x * FOOT_MEDIAL;
+
+  // The arch: high on the inside, low on the outside.
+  assert.ok(at('navicular').y > at('cuboid').y + 1, 'the navicular rides higher than the cuboid');
+  assert.ok(medially(at('navicular')) > medially(at('cuboid')), 'and it is the one on the inside');
+
+  // The bowstring, under the whole of it.
+  const fascia = box('plantar-fascia');
+  // Measured against the bones rather than against a number: the foot is laid
+  // out in centimetres and drawn at `WORLD_SCALE`, so a literal here would be
+  // in neither unit.
+  assert.ok(fascia.min.z < box('calcaneus').min.z + 2.0, 'the band starts back at the heel');
+  assert.ok(fascia.max.z > box('cuneiforms').max.z, 'and runs forward past the tarsus into the forefoot');
+  assert.ok(fascia.max.z > box('metatarsals').getCenter(new THREE.Vector3()).z, 'to the heads of the metatarsals');
+  assert.ok(fascia.max.y < ARCH.summit[1], 'passing below the summit of the arch the whole way');
+  assert.ok(box('spring-ligament').max.y > fascia.max.y, 'and the short sling sits above it');
+
+  // A bone in a socket, with a second joint under it.
+  const talus = box('talus');
+  assert.ok(talus.min.y > box('calcaneus').max.y - 0.6, 'the talus sits on the heel bone');
+  assert.ok(talus.max.y < box('tibia').max.y, 'with the leg above it');
+  const ankle = box('ankle-joint');
+  const subtalar = box('subtalar-joint');
+  assert.ok(ankle.min.y > talus.max.y - 0.3, 'the ankle joint is at the top of the talus');
+  assert.ok(subtalar.max.y < talus.min.y + 0.3, 'and the subtalar joint at the bottom of it');
+  assert.ok(subtalar.max.y < ankle.min.y, 'one below the other, which is the point of naming both');
+
+  // The two malleoli are not the same length, and that asymmetry is the claim.
+  assert.ok(box('fibula').min.y < box('tibia').min.y, 'the lateral malleolus reaches lower than the medial one');
+  assert.ok(medially(at('fibula')) < 0, 'and the fibula is the lateral bone');
+
+  // One sheet inside, three bands outside.
+  assert.equal(foot.meshesFor('deltoid-ligament').length, 1, 'the deltoid is one sheet');
+  assert.equal(foot.meshesFor('lateral-ligaments').length, 3, 'the lateral side is three bands');
+  assert.ok(medially(at('deltoid-ligament')) > 0, 'the deltoid is on the inside');
+  for (const mesh of foot.meshesFor('lateral-ligaments')) {
+    const band = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+    assert.ok(medially(band) < 0, 'and every lateral band is on the outside');
+  }
+
+  // Five rays, and one of them is a great toe.
+  assert.equal(foot.meshesFor('metatarsals').length, 5, 'five metatarsals');
+  assert.equal(foot.meshesFor('proximal-phalanges').length, 5, 'five proximal phalanges');
+  assert.equal(foot.meshesFor('middle-phalanges').length, 4, 'four middle phalanges — the great toe has none');
+  assert.equal(foot.meshesFor('distal-phalanges').length, 5, 'five distal phalanges');
+  assert.equal(footSegment(FOOT_RAYS[0], 'middle'), null, 'and the table is where that is written down');
+  for (const ray of FOOT_RAYS) {
+    let previous = null;
+    for (const bone of ['metatarsal', 'proximal', 'middle', 'distal']) {
+      const segment = footSegment(ray, bone);
+      if (!segment) continue;
+      if (previous) assert.ok(segment.from[2] > previous[2], `${ray.id}: the ${bone} is in front of the one before it`);
+      previous = segment.to;
+    }
+  }
+  // And nothing goes through the ground it stands on.
+  const all = new THREE.Box3().setFromObject(foot.object);
+  assert.ok(all.min.y >= 0, 'the whole foot is above the ground line it stands on');
+});
+
+// --- the skeleton, whole ----------------------------------------------------
+
+test('the skeleton is a column with two girdles joined to it in different ways', () => {
+  // This scene claims an arrangement and nothing about the shape of any bone,
+  // so the arrangement is all there is to check — and the most important part
+  // of it is an **absence**: the scapula touching nothing.
+  const skeleton = buildSkeleton();
+  skeleton.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of skeleton.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+
+  // One column, top to bottom, meeting end to end.
+  const column = ['skull', 'cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacrum-and-coccyx'];
+  for (let i = 1; i < column.length; i += 1) {
+    const above = box(column[i - 1]);
+    const below = box(column[i]);
+    assert.ok(below.max.y <= above.max.y, `${column[i]} is below ${column[i - 1]}`);
+    assert.ok(below.max.y >= above.min.y - 0.5, `and reaches it rather than floating under it`);
+  }
+
+  // An arm is attached at one small joint, and the bone behind it at none.
+  const clavicle = box('clavicle');
+  // Through `anchorPoints`, which are in world units; `STERNOCLAVICULAR` is in
+  // the centimetre table the figure is laid out from, before it is scaled.
+  assert.ok(
+    clavicle.distanceToPoint(skeleton.anchorPoints.sternoclavicular) < 0.4,
+    'the clavicle starts at the sternoclavicular joint'
+  );
+  assert.ok(clavicle.intersectsBox(box('sternum')), 'and reaches it');
+  // The scapula lies *against* the back of the ribs, which is contact and not a
+  // joint — and a bounding box cannot tell those apart. So what is checked is
+  // the thing a box can see: **nothing of the arm but the clavicle reaches the
+  // column or the sternum**, which is the same claim from the other side.
+  // Measured one mesh at a time: the union of a left and a right bone spans the
+  // midline even when neither of them comes near it.
+  for (const id of ['scapula', 'humerus', 'radius-and-ulna', 'hand-bones']) {
+    for (const mesh of skeleton.meshesFor(id)) {
+      const bone = new THREE.Box3().setFromObject(mesh);
+      for (const axial of ['sternum', 'cervical-spine', 'thoracic-spine', 'lumbar-spine', 'skull']) {
+        assert.ok(!bone.intersectsBox(box(axial)), `the ${id} does not reach the ${axial}`);
+      }
+    }
+  }
+
+  // A leg is attached by being locked into the column itself.
+  const sacrum = box('sacrum-and-coccyx');
+  for (const mesh of skeleton.meshesFor('pelvis')) {
+    const hip = new THREE.Box3().setFromObject(mesh);
+    assert.ok(hip.intersectsBox(sacrum), 'each hip bone reaches the sacrum');
+  }
+  assert.ok(sacrum.intersectsBox(box('lumbar-spine')), 'and the sacrum is continuous with the column');
+
+  // A cage that is open below.
+  const ribs = skeleton.meshesFor('ribs');
+  assert.equal(ribs.length, 24, 'twelve pairs of ribs');
+  const spine = box('thoracic-spine');
+  const sternum = box('sternum');
+  const boxes = ribs.map((mesh) => new THREE.Box3().setFromObject(mesh));
+  for (const rib of boxes) assert.ok(rib.intersectsBox(spine), 'every rib starts at the column');
+  const highest = boxes.reduce((best, rib) => (rib.max.y > best.max.y ? rib : best), boxes[0]);
+  const lowest = boxes.reduce((best, rib) => (rib.min.y < best.min.y ? rib : best), boxes[0]);
+  assert.ok(highest.max.z > sternum.min.z, 'the upper ribs reach the sternum');
+  assert.ok(lowest.max.z < sternum.min.z, 'and the lower ones stop short of it');
+
+  // Every joint of a limb is below the one above it, which is what `LEVELS` is
+  // for: a figure cannot end up with an elbow above its shoulder.
+  assert.ok(BODY_LEVELS.elbow < BODY_LEVELS.shoulder, 'the elbow is below the shoulder');
+  assert.ok(BODY_LEVELS.wrist < BODY_LEVELS.elbow, 'the wrist below the elbow');
+  assert.ok(BODY_LEVELS.knee < BODY_LEVELS.hip, 'the knee below the hip');
+  assert.ok(BODY_LEVELS.ankle < BODY_LEVELS.knee, 'the ankle below the knee');
+  assert.ok(box('humerus').min.y > box('radius-and-ulna').min.y, 'and the drawn bones follow it');
+  assert.ok(box('femur').min.y > box('tibia-and-fibula').min.y, 'on both limbs');
+  // Standing on the ground it is drawn on.
+  const all = new THREE.Box3().setFromObject(skeleton.object);
+  assert.ok(all.min.y >= 0, 'the whole figure is above the ground');
 });

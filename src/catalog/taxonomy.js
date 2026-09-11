@@ -27,6 +27,8 @@ export const SYSTEMS = [
   { id: 'hematologic', label: 'Hematologic & lymphatic', labelJa: '血液・リンパ' },
   { id: 'musculoskeletal', label: 'Musculoskeletal', labelJa: '筋骨格' },
   { id: 'reproductive', label: 'Reproductive', labelJa: '生殖器' },
+  { id: 'sensory', label: 'Special senses', labelJa: '感覚器' },
+  { id: 'integumentary', label: 'Skin', labelJa: '皮膚' },
   { id: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
@@ -64,6 +66,22 @@ export const ORGANS = [
   { id: 'hip', system: 'musculoskeletal', label: 'Hip joint', labelJa: '股関節' },
   { id: 'uterus', system: 'reproductive', label: 'Uterus', labelJa: '子宮' },
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
+  { id: 'eye', system: 'sensory', label: 'Eye', labelJa: '眼' },
+  { id: 'ear', system: 'sensory', label: 'Ear', labelJa: '耳' },
+  { id: 'skin', system: 'integumentary', label: 'Skin', labelJa: '皮膚' },
+  { id: 'lymph-node', system: 'hematologic', label: 'Lymph node', labelJa: 'リンパ節' },
+  { id: 'lymphatic-system', system: 'hematologic', label: 'Lymphatic system', labelJa: 'リンパ系' },
+  { id: 'breast', system: 'reproductive', label: 'Breast', labelJa: '乳房' },
+  { id: 'spine', system: 'musculoskeletal', label: 'Spine', labelJa: '脊柱' },
+  { id: 'nose', system: 'respiratory', label: 'Nose and sinuses', labelJa: '鼻・副鼻腔' },
+  { id: 'larynx', system: 'respiratory', label: 'Larynx and pharynx', labelJa: '喉頭・咽頭' },
+  { id: 'pharynx', system: 'respiratory', label: 'Pharynx', labelJa: '咽頭' },
+  { id: 'mouth', system: 'gastrointestinal', label: 'Mouth and tongue', labelJa: '口腔・舌' },
+  { id: 'tongue', system: 'gastrointestinal', label: 'Tongue', labelJa: '舌' },
+  { id: 'pelvic-floor', system: 'musculoskeletal', label: 'Pelvic floor', labelJa: '骨盤底' },
+  { id: 'hand', system: 'musculoskeletal', label: 'Hand and wrist', labelJa: '手・手関節' },
+  { id: 'foot', system: 'musculoskeletal', label: 'Foot and ankle', labelJa: '足・足関節' },
+  { id: 'skeleton', system: 'musculoskeletal', label: 'Skeleton (overview)', labelJa: '全身骨格（概観）' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

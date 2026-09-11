@@ -20,6 +20,20 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { SkeletonOverviewScene } from '../src/scenes/musculoskeletal/scenes/skeletonOverview/SkeletonOverviewScene.js';
+import { FootAnatomyScene } from '../src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js';
+import { HandAnatomyScene } from '../src/scenes/musculoskeletal/scenes/handAnatomy/HandAnatomyScene.js';
+import { PelvicFloorAnatomyScene } from '../src/scenes/musculoskeletal/scenes/pelvicFloorAnatomy/PelvicFloorAnatomyScene.js';
+import { OralAnatomyScene } from '../src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js';
+import { LarynxAnatomyScene } from '../src/scenes/respiratory/scenes/larynxAnatomy/LarynxAnatomyScene.js';
+import { NoseAnatomyScene } from '../src/scenes/respiratory/scenes/noseAnatomy/NoseAnatomyScene.js';
+import { SpineAnatomyScene } from '../src/scenes/musculoskeletal/scenes/spineAnatomy/SpineAnatomyScene.js';
+import { BreastAnatomyScene } from '../src/scenes/reproductive/scenes/breastAnatomy/BreastAnatomyScene.js';
+import { LymphaticDrainageScene } from '../src/scenes/hematologic/scenes/lymphaticDrainage/LymphaticDrainageScene.js';
+import { LymphNodeAnatomyScene } from '../src/scenes/hematologic/scenes/lymphNodeAnatomy/LymphNodeAnatomyScene.js';
+import { SkinAnatomyScene } from '../src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js';
+import { EarAnatomyScene } from '../src/scenes/sensory/scenes/earAnatomy/EarAnatomyScene.js';
+import { EyeAnatomyScene } from '../src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -60,6 +74,20 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'skeleton-overview', Scene: SkeletonOverviewScene, minimum: 16 },
+  { id: 'foot-anatomy', Scene: FootAnatomyScene, minimum: 18 },
+  { id: 'hand-anatomy', Scene: HandAnatomyScene, minimum: 19 },
+  { id: 'pelvic-floor-anatomy', Scene: PelvicFloorAnatomyScene, minimum: 15 },
+  { id: 'oral-anatomy', Scene: OralAnatomyScene, minimum: 17 },
+  { id: 'larynx-anatomy', Scene: LarynxAnatomyScene, minimum: 17 },
+  { id: 'nose-anatomy', Scene: NoseAnatomyScene, minimum: 17 },
+  { id: 'spine-anatomy', Scene: SpineAnatomyScene, minimum: 13 },
+  { id: 'breast-anatomy', Scene: BreastAnatomyScene, minimum: 9 },
+  { id: 'lymphatic-drainage', Scene: LymphaticDrainageScene, minimum: 8 },
+  { id: 'lymph-node-anatomy', Scene: LymphNodeAnatomyScene, minimum: 6 },
+  { id: 'skin-anatomy', Scene: SkinAnatomyScene, minimum: 9 },
+  { id: 'ear-anatomy', Scene: EarAnatomyScene, minimum: 10 },
+  { id: 'eye-anatomy', Scene: EyeAnatomyScene, minimum: 15 },
 ];
 
 const built = new Map();
@@ -193,13 +221,33 @@ test('the layer slider fades the outer tissue and brings the inner structures up
     // outlet behind it rather than to reveal a structure that was not there.
     assert.ok(outer.length > 0, `${entry.id}: something has to get out of the way`);
 
+    // Measured against each structure's own resting opacity rather than against
+    // 1. Not every outer layer is opaque to begin with — a body silhouette
+    // drawn for scale is a ghost at rest and still has to get out of the way —
+    // and the invariant worth holding is that the slider moves a layer *from*
+    // where it sits *towards* transparent, not that it started solid.
     settle(scene, 0);
-    for (const structure of outer) assert.ok(structure.currentOpacity > 0.85, `${entry.id}/${structure.id} starts solid`);
+    for (const structure of outer) {
+      assert.ok(
+        structure.currentOpacity > structure.baseOpacity * 0.85,
+        `${entry.id}/${structure.id} starts at its resting opacity`
+      );
+    }
     for (const structure of inner) assert.ok(structure.currentOpacity < 0.05, `${entry.id}/${structure.id} starts hidden`);
 
     settle(scene, 1);
-    for (const structure of outer) assert.ok(structure.currentOpacity < 0.25, `${entry.id}/${structure.id} steps back`);
-    for (const structure of inner) assert.ok(structure.currentOpacity > 0.6, `${entry.id}/${structure.id} comes up`);
+    for (const structure of outer) {
+      assert.ok(
+        structure.currentOpacity < structure.baseOpacity * 0.35,
+        `${entry.id}/${structure.id} steps back`
+      );
+    }
+    for (const structure of inner) {
+      assert.ok(
+        structure.currentOpacity > structure.baseOpacity * 0.6,
+        `${entry.id}/${structure.id} comes up`
+      );
+    }
 
     settle(scene, 0);
   }
@@ -369,6 +417,47 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'skeleton-overview:shoulder-join',
+  'skeleton-overview:pelvic-join',
+  'foot-anatomy:the-arch',
+  'foot-anatomy:the-ankle',
+  'foot-anatomy:ligaments',
+  'hand-anatomy:carpus',
+  'hand-anatomy:across-the-tunnel',
+  'hand-anatomy:through-the-tunnel',
+  'pelvic-floor-anatomy:the-sling',
+  'pelvic-floor-anatomy:the-gap',
+  'oral-anatomy:underneath',
+  'oral-anatomy:glands',
+  'larynx-anatomy:from-above',
+  'larynx-anatomy:front-of-neck',
+  'nose-anatomy:turbinates',
+  'nose-anatomy:drainage',
+  'nose-anatomy:coronal',
+  'nose-anatomy:airway',
+  'spine-anatomy:segment',
+  'spine-anatomy:arch',
+  'spine-anatomy:canal',
+  'breast-anatomy:ducts',
+  'breast-anatomy:axilla',
+  'breast-anatomy:lateral',
+  'lymphatic-drainage:venous-angles',
+  'lymphatic-drainage:routes-only',
+  'lymph-node-anatomy:hilum',
+  'lymph-node-anatomy:section',
+  'skin-anatomy:surface',
+  'skin-anatomy:follicle',
+  'skin-anatomy:contents',
+  'ear-anatomy:middle-ear',
+  'ear-anatomy:inner-ear',
+  'ear-anatomy:ossicles',
+  'ear-anatomy:outer-ear',
+  'eye-anatomy:fundus',
+  // Down the axis from behind: it sees the length of the nerve rather than the
+  // eye, and measuring the reserve against it makes every other view tiny.
+  'eye-anatomy:posterior',
+  'eye-anatomy:sagittal-section',
+  'eye-anatomy:muscles',
 ]);
 
 /**
