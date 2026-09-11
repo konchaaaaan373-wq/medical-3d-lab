@@ -24,6 +24,8 @@ import { STAGES as PORTAL_STAGES } from '../src/data/portalHypertension.js';
 import { STAGES as HEPATORENAL_STAGES } from '../src/data/hepatorenal.js';
 import { PortalHypertensionScene } from '../src/scenes/hepatobiliary/scenes/portalHypertension/PortalHypertensionScene.js';
 import { HepatorenalScene } from '../src/scenes/renal/scenes/hepatorenalSyndrome/HepatorenalScene.js';
+import { STAGES as RENAL_STAGES, CONTROLS as RENAL_CONTROLS } from '../src/data/renalFiltration.js';
+import { RenalFiltrationScene } from '../src/scenes/renal/scenes/renalFiltration/RenalFiltrationScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -86,6 +88,20 @@ const GUIDES = [
    */
   { id: 'portal-hypertension', stages: PORTAL_STAGES, scene: () => new PortalHypertensionScene({}) },
   { id: 'hepatorenal-syndrome', stages: HEPATORENAL_STAGES, scene: () => new HepatorenalScene({}) },
+  /**
+   * The nephron, which is a list of alternatives rather than a sequence.
+   *
+   * Four of its steps sit at the same position on the axis and differ only in
+   * which `situation` is selected, because pre-renal failure, tubular injury,
+   * a leaking barrier and an obstruction below are four different problems and
+   * not four stages of one. The test below holds that shape directly.
+   */
+  {
+    id: 'renal-filtration',
+    stages: RENAL_STAGES,
+    controls: RENAL_CONTROLS,
+    scene: () => new RenalFiltrationScene({}),
+  },
 ];
 
 for (const guide of GUIDES) {
@@ -238,4 +254,74 @@ test('organ chains: the coupling is inside one solve, and the links say they are
     assert.match(related.note ?? '', /separate models/i, scene.meta.id);
     assert.match(related.noteJa ?? '', /別々のモデル/, scene.meta.id);
   }
+});
+
+/**
+ * A scene that selects between mechanisms may not be walked as a progression.
+ *
+ * The renal scene's `situation` control picks *which thing has gone wrong*, and
+ * its progression axis means "how far into that". Switching the situation while
+ * also moving the axis would tell a reader that pre-renal failure becomes
+ * tubular injury becomes an obstruction, which is exactly what this scene
+ * exists to stop them believing.
+ *
+ * So: whenever a step changes a `choice` control, the axis stands still.
+ */
+test('scenario scenes: switching mechanism never moves along the axis as well', () => {
+  const choices = new Set(
+    RENAL_CONTROLS.filter((control) => control.kind === 'choice').map((control) => control.id)
+  );
+  assert.ok(choices.size, 'this test is about a scene with a choice control');
+
+  /**
+   * Which of the choices are mechanisms, asked of the model rather than of a
+   * list of names.
+   *
+   * A mechanism is something the axis takes further: select it, move the axis,
+   * and the kidney is in a different state. A **baseline** is a selection the
+   * axis does nothing to — the normal kidney solves the same way at either end
+   * of it — and leaving a baseline is entering the first mechanism, not
+   * claiming that one mechanism turns into another.
+   */
+  const scene = new RenalFiltrationScene({});
+  scene.build();
+  const solvedAt = (situation, progress) => {
+    scene.setModelControl('situation', situation);
+    scene.setProgress(progress);
+    return JSON.stringify(scene.getMetrics().map((row) => row.value));
+  };
+  const mechanisms = new Set(
+    RENAL_CONTROLS.find((control) => control.id === 'situation')
+      .options.map((option) => option.value)
+      .filter((value) => solvedAt(value, 0) !== solvedAt(value, 1))
+  );
+  assert.ok(mechanisms.size >= 4, 'this scene is supposed to offer several mechanisms');
+
+  const steps = PATIENT_GUIDES['renal-filtration'].steps;
+  for (const [index, step] of steps.entries()) {
+    const previous = steps[index - 1];
+    if (!previous) continue;
+    const switched = [...choices].some((id) => {
+      const was = (previous.controls ?? {})[id];
+      const now = (step.controls ?? {})[id];
+      // Only a move between two mechanisms counts. Leaving the baseline does
+      // not, because the baseline is not one of the things that went wrong.
+      return was !== undefined && now !== undefined && was !== now && mechanisms.has(was);
+    });
+    if (!switched) continue;
+    assert.equal(
+      step.progress,
+      previous.progress,
+      `${step.stage}: switches mechanism and moves along the axis in the same step`
+    );
+  }
+
+  // And every mechanism the walk shows is one the scene offers by name, so a
+  // step cannot describe a kidney the reader has no way to reach.
+  const offered = new Set(
+    RENAL_CONTROLS.find((control) => control.id === 'situation').options.map((option) => option.value)
+  );
+  const walked = steps.map((step) => step.controls?.situation).filter(Boolean);
+  assert.ok(walked.every((id) => offered.has(id)), walked.join(', '));
+  assert.ok(new Set(walked).size >= 4, 'the point of this walk is that there is more than one mechanism');
 });

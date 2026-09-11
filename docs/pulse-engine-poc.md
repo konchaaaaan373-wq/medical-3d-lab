@@ -61,15 +61,28 @@ fields, the output names and the units are unknown to this repository.
 The interesting result is architectural, and it points the other way from where
 the PoC started.
 
-**Pulse and these scenes are not the same kind of model, and the overlap is
-small.** Pulse is a lumped whole-body simulator: a systemic patient with a
-circulation, a respiratory system, gas exchange and a drug system, advanced in
-real time. The COPD scene is twelve lung units with a time constant each, and
-the asthma scene is a 255-branch airway tree solved as a network. **The spatial
-structure is the entire point of both of them** — which regions did not give
-their gas back, which branch lost its air to its sister — and a lumped
-respiratory system does not have it. Pulse could not drive either scene's
-geometry.
+**Pulse and these scenes are not the same kind of model, and it decides what
+an integration could and could not do.** Pulse is a lumped whole-body
+simulator: a systemic patient with a circulation, a respiratory system, gas
+exchange and a drug system, advanced in real time. The COPD scene is twelve
+lung units with a time constant each, and the asthma scene is a 255-branch
+airway tree solved as a network. **The spatial structure is the entire point of
+both of them** — which regions did not give their gas back, which branch lost
+its air to its sister.
+
+Pulse has no correspondence to those twelve units or those 255 branches, so
+**the 3D state of an individual branch or region cannot be determined from
+Pulse**. What *is* possible is the other direction: a Pulse global or
+compartment-level output can be handed to this product's **educational visual
+mapping** and change how the geometry here is drawn. A Pulse airway resistance
+could drive the emphasis on airway narrowing in this scene exactly the way
+`flowLimitedFraction` does today.
+
+And the rule that governs it is the one already written down in
+`src/data/visualMapping.js`: such a drawing is `illustrative`, and its
+`notClaim` has to say that the calibre on screen is **not a diameter Pulse
+calculated** and not anybody's measurement. A whole-body engine's resistance is
+not a lumen any more than this repository's own resistance is.
 
 **What Pulse would add is precisely what both scenes declare they do not do.**
 Both model scopes exclude gas exchange outright: COPD's says "no PaO₂, no PaCO₂,

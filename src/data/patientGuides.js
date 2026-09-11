@@ -957,6 +957,167 @@ export const PATIENT_GUIDES = Object.freeze({
       },
     ]),
   }),
+  /**
+   * The kidney — the one walk in this file that is a **list of alternatives**
+   * rather than a sequence.
+   *
+   * Every other guide here follows one mechanism getting further along. This
+   * scene is not built that way and must not be explained that way: it has a
+   * `situation` control that selects *which thing has gone wrong* — not enough
+   * blood arriving, a damaged lining, a blockage below, a sieve that stopped
+   * choosing — and a progression axis that means "how far into **that**". Told
+   * as one story, four different diseases read as four stages of one, which is
+   * the single worst thing a kidney explanation can teach.
+   *
+   * **So four of the steps sit at the same position on the axis.** They differ
+   * only in the situation, the axis does not move between them, and each one
+   * says in its own words that it is a different problem. `src/data/
+   * guideModelState.js` knows the difference too: a control that is a `choice`
+   * is switching subject, and a control that is a number is not.
+   *
+   * **The numbers behind the copy are the model's.** Pre-renal takes the
+   * filtration from 128 to 66 mL/min while the fraction of sodium excreted
+   * *falls* from 0.70 to 0.18 % and the urine concentrates; tubular injury
+   * takes it to 14 with sodium excretion rising to 5.5 % and no concentrating
+   * at all; obstruction raises the pressure in Bowman's space from 15 to 28
+   * mmHg; nephrotic leaves filtration near normal and loses grams of protein.
+   * The patient copy says the direction of each and none of the figures.
+   *
+   * **The last mechanism step is the only one that goes further along the
+   * axis**, and it stays on the obstruction it just introduced, because that
+   * is the one whose "further along" has a plain meaning: the back-pressure
+   * rises until it meets the pressure doing the filtering.
+   *
+   * The two marked steps carry the thing this scene most needs to refuse. It
+   * shows four mechanisms; it does not decide which one anybody has.
+   */
+  'renal-filtration': Object.freeze({
+    title: 'Four different things that go wrong in a kidney',
+    titleJa: '腎臓で起きる、4 つの別々の問題',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'intact',
+        controls: { situation: 'normal' },
+        frame: 'nephron',
+        focus: ['glomerulus', 'proximalConvoluted'],
+        certainty: 'established',
+        title: 'A kidney throws almost everything away, then takes it back',
+        titleJa: '腎臓は、いったん捨ててから取り戻します',
+        body: 'Blood is filtered at one end into a tube, and almost all of the water and salt in what was filtered is taken back along that tube. Most of the work is the taking back.',
+        bodyJa: '血液は一方の端で濾されて管へ入り、濾された水と塩のほとんどは、その管を通るあいだに取り戻されます。仕事の大半は、取り戻すほうです。',
+        look: 'Follow the tuft at the top into the tube below it. What leaves the tuft is not what leaves the tube.',
+        lookJa: '上の毛玉から、その下の管へと目で追ってください。毛玉を出たものと、管を出るものは違います。',
+      },
+      {
+        progress: 0.5,
+        stage: 'compensating',
+        // A different problem, not a later stage. The axis does not move here
+        // and does not move again until the last mechanism step.
+        controls: { situation: 'prerenal' },
+        frame: 'nephron',
+        focus: ['glomerulus', 'proximalConvoluted'],
+        certainty: 'established',
+        title: 'One: not enough blood arriving',
+        titleJa: 'その 1：血液が足りない',
+        body: 'With less blood reaching it, the kidney tightens the vessel leaving the filter so that filtering continues. It also holds on hard to salt and water.',
+        bodyJa: '届く血液が減ると、腎臓は濾過器から出ていく血管を締めて、濾過を続けようとします。同時に、塩と水をしっかり抱え込みます。',
+        look: 'Watch the vessel on the far side of the tuft narrow. The tube below it is undamaged and is working harder.',
+        lookJa: '毛玉の向こう側の血管が細くなるのを見てください。その下の管は傷んでおらず、よく働いています。',
+      },
+      {
+        progress: 0.5,
+        stage: 'compensating',
+        controls: { situation: 'tubularInjury' },
+        frame: 'nephron',
+        focus: ['proximalConvoluted', 'loopTip'],
+        certainty: 'established',
+        title: 'Two: the lining of the tube is damaged',
+        titleJa: 'その 2：管の内張りが傷む',
+        body: 'A different problem, not a later one. Here the filter is fine and the tube cannot take back what was filtered, so salt and water leave instead of returning.',
+        bodyJa: 'これは別の問題であって、続きではありません。濾過器は無事で、管が濾したものを取り戻せません。塩と水は戻らずに出ていきます。',
+        look: 'The tube is what changed, not the tuft. Compare it with the step before, where the tube was the healthy part.',
+        lookJa: '変わったのは毛玉ではなく管です。管が健常だった前の段階と見比べてください。',
+      },
+      {
+        progress: 0.5,
+        stage: 'compensating',
+        controls: { situation: 'nephrotic' },
+        frame: 'nephron',
+        focus: ['glomerulus'],
+        certainty: 'established',
+        title: 'Three: the sieve stops choosing',
+        titleJa: 'その 3：ふるいが選ばなくなる',
+        body: 'Again a different problem. The amount being filtered is close to normal, but the filter has stopped holding protein back, so protein goes through it into the tube.',
+        bodyJa: 'これもまた別の問題です。濾す量はほぼ正常のまま、濾過器がタンパク質を留めなくなり、タンパク質が管のほうへ通り抜けます。',
+        look: 'Watch the tuft, not the tube. Nothing about how much passes has changed — only what is allowed to.',
+        lookJa: '管ではなく毛玉を見てください。通る量は変わっていません。変わったのは「何を通すか」です。',
+      },
+      {
+        progress: 0.5,
+        stage: 'compensating',
+        controls: { situation: 'obstruction' },
+        frame: 'nephron',
+        focus: ['collectingDuct', 'glomerulus'],
+        certainty: 'established',
+        title: 'Four: the way out is blocked',
+        titleJa: 'その 4：出口がふさがれる',
+        body: 'The fourth problem is below the kidney altogether. Nothing about the filter or the tube has changed — what has changed is that the fluid they make cannot get away.',
+        bodyJa: '4 つめの問題は、腎臓より下にあります。濾過器も管も変わっていません。変わったのは、作られた液が出ていけないことです。',
+        look: 'Look at the bottom of the tube first, and then back up at the tuft. The blockage is at one end and it will be felt at the other.',
+        lookJa: 'まず管の下端を見て、それから毛玉へ戻ってください。詰まりは一方の端にあり、影響はもう一方に出ます。',
+      },
+      {
+        progress: 1,
+        stage: 'established',
+        // The one step that moves along the axis, and it stays on the situation
+        // the step before introduced. The model's own result: the pressure in
+        // Bowman's space rises from 15 to 28 mmHg and filtration falls with it.
+        controls: { situation: 'obstruction' },
+        frame: 'nephron',
+        focus: ['collectingDuct', 'glomerulus'],
+        certainty: 'established',
+        title: 'A blockage reaches back up to the filter',
+        titleJa: '詰まりは、濾過器まで戻ってきます',
+        body: 'Fluid that cannot leave backs up, and the pressure it builds pushes against the pressure doing the filtering. Where the two meet, filtering stops.',
+        bodyJa: '出ていけない液はたまり、その圧が、濾過を行っている圧を押し返します。両者が釣り合ったところで、濾過は止まります。',
+        look: 'Watch the space around the tuft rather than the tuft itself. That is where the returning pressure is felt.',
+        lookJa: '毛玉そのものではなく、そのまわりの空間を見てください。戻ってきた圧を受けるのはそこです。',
+      },
+      {
+        progress: 1,
+        stage: 'established',
+        // What this scene most needs to refuse. It shows four mechanisms; it
+        // does not decide which one anybody has.
+        controls: { situation: 'obstruction' },
+        frame: 'nephron',
+        focus: ['collectingDuct', 'glomerulus'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'Which of the four it is, is not on this screen',
+        titleJa: 'どの 4 つなのかは、この画面にはありません',
+        body: 'These are four separate things that go wrong, and telling them apart in a person is done with tests and history. This picture shows the mechanisms, not the answer.',
+        bodyJa: 'この 4 つは別々の問題であり、実際にどれなのかは検査や経過から見分けます。この絵が示すのは仕組みであって、答えではありません。',
+        look: 'Nothing new is drawn for this step. The screen shows one mechanism at a time because you chose it, not because it was found.',
+        lookJa: 'この段階で新しく描かれるものはありません。仕組みが 1 つずつ映るのは選んだからであって、見つかったからではありません。',
+      },
+      {
+        progress: 1,
+        stage: 'established',
+        controls: { situation: 'obstruction' },
+        frame: 'nephron',
+        focus: ['collectingDuct', 'glomerulus'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What people notice, and how much, varies',
+        titleJa: '気づくこと、その程度は様々です',
+        body: 'Swelling, passing less water, and tiredness are described in kidney trouble of several kinds. Some people notice very little. None of it is shown here.',
+        bodyJa: 'むくみ、尿の量が減ること、だるさは、いろいろな腎臓の不調で語られます。ほとんど気づかない人もいます。どれもここには描かれていません。',
+        look: 'Nothing new is drawn for this step. The screen shows one nephron, not a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面にあるのはネフロン 1 本であって、人ではありません。',
+      },
+    ]),
+  }),
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

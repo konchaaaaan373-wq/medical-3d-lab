@@ -15,6 +15,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
   situation,
@@ -60,6 +61,7 @@ export class RenalFiltrationScene {
     subtitleJa:
       '1 個のネフロン、1 つの Starling 平衡、1 つの物質収支 ｜ 画面上のすべての数値が同じ解から導かれています',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -243,6 +245,37 @@ export class RenalFiltrationScene {
     return STAGES.reduce((closest, stage) =>
       Math.abs(stage.at - at) < Math.abs(closest.at - at) ? stage : closest
     );
+  }
+
+  /**
+   * The one framing a guided explanation asks for here.
+   *
+   * Presentation only — the camera, and nothing the model is set to. The
+   * nephron is the tallest subject in this repository: its labels span from the
+   * tuft at the top to the tip of the loop nearly six world units below, and
+   * the scene's own shot fits that into the whole canvas. With a patient
+   * explanation open the canvas is not what is available — the console takes
+   * the bottom and the nav takes the top — and the loop and the collecting duct
+   * were both inside the console.
+   *
+   * So this is the scene's own line of sight, further back and aimed lower,
+   * with the whole run of the tubule in the band the panels leave. Measured:
+   * `scripts/check-patient-explanation.mjs` projects every anchor through the
+   * reader's own camera and fails when one lands under either band.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    nephron: Object.freeze({
+      target: new THREE.Vector3(-0.2, -0.7, 0),
+      distance: 17.6,
+      direction: new THREE.Vector3(3.8, 1.25, 15.2).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return RenalFiltrationScene.guideFramings;
   }
 
   getAnnotations() {

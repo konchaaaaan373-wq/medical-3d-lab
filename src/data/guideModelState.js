@@ -28,6 +28,20 @@
  * control declares — a guide that sets `airwayResistance` to 9 on a control
  * that stops at 4 is silently clamped by the scene, and the explanation then
  * describes a lung nobody can reach with the slider it is sitting next to.
+ *
+ * ### Controls that are a choice rather than a dial
+ *
+ * Some scenes select between **mechanisms** rather than turning one up. The
+ * renal scene is the clear case: pre-renal failure, tubular injury, obstruction
+ * and a leaking barrier are four different things that go wrong, and its
+ * `situation` control picks one. Such a control declares `kind: 'choice'` and a
+ * list of `options`, and a step may name any option's `value`.
+ *
+ * **This is the one place the contract says something medical.** A dial has an
+ * order and a choice does not, so a guide that walks a choice control is
+ * walking a list of alternatives — never a progression. Nothing here can check
+ * the copy, but the distinction is at least visible in the data: a step that
+ * changes a choice is switching subject, and a step that moves a number is not.
  */
 
 /**
@@ -59,6 +73,13 @@ export function guideModelStateProblems(step, { controls = [] }) {
     const control = byId.get(id);
     if (!control) {
       problems.push(`${where}: sets "${id}", which this scene has no control for`);
+      continue;
+    }
+    if (control.kind === 'choice') {
+      const offered = (control.options ?? []).map((option) => option.value);
+      if (!offered.includes(value)) {
+        problems.push(`${where}: sets "${id}" to "${value}", which is not one of ${offered.join(', ')}`);
+      }
       continue;
     }
     if (!Number.isFinite(value)) {
