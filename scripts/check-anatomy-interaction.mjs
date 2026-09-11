@@ -143,6 +143,9 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the back of the hand: a finger, the palm, the carpus, and the forearm
+  // last, because that is the widest thing the re-click has to find again.
+  'hand-anatomy': [[0.486, 0.644], [0.472, 0.7], [0.479, 0.5], [0.479, 0.278]],
   // A wing, the bowel coming down through the ring, the front of the ring, and
   // the sheet itself last, because that is the one the re-click has to find.
   'pelvic-floor-anatomy': [[0.625, 0.278], [0.535, 0.311], [0.5, 0.52], [0.458, 0.4]],

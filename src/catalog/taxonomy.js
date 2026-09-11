@@ -79,6 +79,7 @@ export const ORGANS = [
   { id: 'mouth', system: 'gastrointestinal', label: 'Mouth and tongue', labelJa: '口腔・舌' },
   { id: 'tongue', system: 'gastrointestinal', label: 'Tongue', labelJa: '舌' },
   { id: 'pelvic-floor', system: 'musculoskeletal', label: 'Pelvic floor', labelJa: '骨盤底' },
+  { id: 'hand', system: 'musculoskeletal', label: 'Hand and wrist', labelJa: '手・手関節' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

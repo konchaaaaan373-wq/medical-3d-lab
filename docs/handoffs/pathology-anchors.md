@@ -667,6 +667,52 @@ urethra  vagina  rectum  anal-canal
 
 ---
 
+## `hand-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 21 |
+| tags | `forearm` `carpus` `rays` `tunnel` `soft` |
+| views | `whole` `palm` `carpus` `across-the-tunnel` `through-the-tunnel` `from-the-side` |
+| bounds | 10.4 × 24.5 × 3.8 |
+
+```
+radius  ulna
+scaphoid  lunate  triquetrum  pisiform  trapezium  trapezoid  capitate  hamate  hamate-hook
+metacarpals  proximal-phalanges  middle-phalanges  distal-phalanges
+flexor-retinaculum  carpal-tunnel
+flexor-tendons  median-nerve  extensor-tendons  thenar-muscles
+```
+
+**anchors** — `SITES`: `tunnel` `scaphoid` `radialPulse` `thumbTip`
+`middleTip` `knuckle`。
+表としては `RAYS`（5 本の ray の起点・方向・各骨の長さ。母指の `middle` は
+`null`）、`raySegment(ray, bone)`、`CARPALS`（8 個の位置と大きさ）、
+`TUNNEL`（`radialPillar` / `ulnarPillar` / `from` / `to`）、`RADIAL`。
+
+**病態候補**: 手根管症候群、舟状骨骨折・偽関節、月状骨脱臼、
+橈骨遠位端骨折、有鉤骨鉤骨折、ばね指（屈筋腱）、
+母指 CM 関節症、伸筋腱断裂。
+
+**動かしてよいもの**: `carpal-tunnel` の断面（内容物の腫脹）、
+`median-nerve` の太さと扁平化、`flexor-tendons` の太さ、
+`flexor-retinaculum` の厚み、`thenar-muscles` の大きさ（萎縮）、
+各骨の連続性（骨折線）、`lunate` の位置（脱臼）。
+
+**変えてはいけない関係**:
+- **正中神経は手根管内で最も掌側**、屈筋支帯の裏面に接します。
+  腱より深部に置かないでください
+- **豆状骨は三角骨の掌側に載って**います。列の 4 つ目として横に並べないでください
+- 手根管の屋根は `TUNNEL` の 2 本の柱に固定されます。片方だけ動かすと
+  アーチが成立しません
+- **中節骨は 4 本です。** 母指には中節骨がなく、これは `RAYS` の
+  `middle: null` として書かれています。5 本目を生やさないでください
+- 伸筋腱は**すべての骨より背側**です。手背には管がありません
+- **骨は骨幹とブロックです。** 関節面・靭帯・舟状骨の血行は描いていません。
+  骨癒合や関節不安定性を形から主張しないでください
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

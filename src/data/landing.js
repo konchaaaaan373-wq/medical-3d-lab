@@ -47,6 +47,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'larynx-anatomy',
   'oral-anatomy',
   'pelvic-floor-anatomy',
+  'hand-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -249,6 +250,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '骨盤底はどんな形をしていて、何がそこを通るのか。',
     ['HIATUS', 'SLING', 'FUNNEL'],
     ['裂孔', '吊り輪', '漏斗']
+  ),
+  'hand-anatomy': presentation(
+    'What shape is the wrist, and what has to share the space inside it?',
+    '手関節はどんな形をしていて、その内側を何が共有しているのか。',
+    ['CARPUS', 'TUNNEL', 'RAYS'],
+    ['手根骨', '手根管', '指の骨']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',
