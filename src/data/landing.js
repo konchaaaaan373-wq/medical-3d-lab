@@ -38,6 +38,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'hip-anatomy',
   'eye-anatomy',
   'ear-anatomy',
+  'skin-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -186,6 +187,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '音の通り道をたどる。空気から鼓膜へ、骨で渡り、そして液体へ。',
     ['OSSICLES', 'COCHLEA', 'CHAIN'],
     ['耳小骨', '蝸牛', '伝達経路']
+  ),
+  'skin-anatomy': presentation(
+    'Cut a block out of skin: three layers, and two different ways out to the surface.',
+    '皮膚を1ブロック切り出す。3つの層と、体表へ出る2つの経路。',
+    ['LAYERS', 'FOLLICLE', 'DEPTH'],
+    ['層', '毛包', '深さ']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

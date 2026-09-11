@@ -223,6 +223,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the temporal bone and the mastoid air cells around it, the facial nerve crossing the middle ear, the two ossicular muscles, the ampullae of the canals, the round window membrane, and the scalae and organ of Corti inside the cochlea. Nothing here moves, which is the first thing a conduction scene would need',
   },
   {
+    organ: 'skin',
+    level: 'A2',
+    evidence:
+      'scenes/integumentary/scenes/skinAnatomy — epidermis, dermis and subcutaneous tissue as slabs sharing their boundary surfaces, adipose lobules inside the subcutaneous compartment, a hair follicle with the hair it makes, a sebaceous gland opening into that follicle, a sweat gland opening on the surface instead, an arteriole, a venule and a sensory nerve, selectable by name; tests/organ-parts-anatomy.test.js — the three layers stack without gaps and share one interlocking junction, the epidermis contains no vessel, the follicle reaches from the surface into the subcutis, the sebaceous gland touches the follicle and not the surface, the sweat duct opens on the surface away from the hair, and the vessels stay below the dermo-epidermal junction',
+    next: 'A3: the layers of the epidermis itself, the arrector pili muscle, the named sensory receptors, the lymphatics, the fibrous septa between the fat lobules, and a way to say that skin from a palm is not skin from an eyelid. Nothing here grows, which is the first thing a wound-healing scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

@@ -994,6 +994,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/sensory/scenes/earAnatomy/index.js'),
   },
   {
+    id: 'skin-anatomy',
+    slug: 'skin-anatomy',
+    titleEn: 'Interactive skin anatomy',
+    titleJa: '触れて学ぶ皮膚の解剖',
+    system: 'integumentary',
+    organ: 'skin',
+    organs: ['skin'],
+    disease: null,
+    conditions: ['skin anatomy', 'epidermis', 'dermis', 'hair follicle', 'sweat gland', '皮膚の解剖', '表皮', '真皮', '毛包', '汗腺'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/skin-anatomy.md',
+    modelProfile: 'skin-anatomy-procedural-atlas',
+    description:
+      'A block with its sides cut: three layers, a follicle down into the fat, two different routes to the surface, and vessels that stop at the epidermis.',
+    descriptionJa:
+      '側面を切り出した1ブロック。3つの層、脂肪層まで達する毛包、体表への2つの異なる経路、そして表皮の手前で終わる血管を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/integumentary/scenes/skinAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',
