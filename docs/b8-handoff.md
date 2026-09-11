@@ -9,8 +9,9 @@
 
 ### 1. 浅い病態導線（データは用意済み、置き場所は Work）
 
-**リンク情報を書き写さないでください。** 正本は `meta.modelScope.next` / `nextNote` で、
-**公開ゲートで閉じたシーンは除外済みの配列**がアプリ API に出ています。
+**リンク情報を書き写さないでください。** 正本は `meta.related`（脳だけカタログ側の
+エントリ、理由は F-79）で、**公開ゲートで閉じたシーンは除外済みの配列**が
+アプリ API に出ています。
 
 ```js
 const app = await createApp({ stage, ui, onRetryModel });
@@ -23,6 +24,9 @@ app.related.noteJa;  // 同（ja）
 - リンク先は `#/<slug>`。ルーティングはハッシュ 1 本のままです
 - **`note` は入口と一緒に出してください。** 別のモデルであって同一標本の変化ではない、
   という一文が主張の一部です。出典・限界の詳細は既存の scope パネルに残します
+- 製品内の描画は [`RelatedScenesPanel`](../src/components/RelatedScenesPanel.js) が
+  1 か所で持っています（scope パネルからは外しました）。**別の入口を作るなら、
+  この 1 本を置き換える形にしてください**——2 か所から同じ行き先を描かないこと
 - 判定を複製しないでください。`sceneOpen` を呼び直す必要はありません
 
 ### 2. 患者表示の外枠
@@ -60,8 +64,13 @@ scene 側は済んでいます（`.patient-guide` とその中身、`is-patient-
 | **モード切替と状態** | 表示の切替は状態を変えません。構築時に `setProgress` を呼ばない／`reset({ progress })` でいまの位置から開く／閉じるときは `restoreGuideSession(snapshot, playback, { movedByGuide })` | `PatientGuidePanel.reset`、`installAccess.js`、`tests/guide-session.test.js` |
 
 **行き先**は `meta.related = { scenes: [{ slug, label, labelJa, why, whyJa }], note, noteJa }` に
-1 度だけ書きます。App が公開ゲートで絞って、scope パネルと `app.related` の両方へ同じものを渡します。
-**別モデルであることを言う一文（`note`）は必須**です。
+1 度だけ書きます。App が公開ゲートで絞って、`RelatedScenesPanel` と `app.related` の
+両方へ同じものを渡します。**別モデルであることを言う一文（`note`）は必須**です。
+
+**公開中のシーンでは、宣言先に気をつけてください。** `src/data/brainAnatomy.js` のような
+**pinned model source** に 1 行足すとカードの revision が上がり、asset の hash に
+結び付いた公開判断記録が stale になって、そのシーンが**非公開に戻ります**。
+その場合は `src/catalog/scenes.js` のエントリ側に置いてください（脳がそれです）。
 
 ### 最小コード例
 

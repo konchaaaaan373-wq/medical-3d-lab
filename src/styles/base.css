@@ -4,6 +4,9 @@
   --ink: #eaf2ff;
   --ink-dim: #a7b6ce;
   --ink-faint: #6b7c95;
+  /* Text that warns about the limits of a model. It has to stay readable on
+     whichever panel it lands on, so it is a token, not a literal. */
+  --caution-ink: rgba(255, 205, 160, 0.85);
   --panel: rgba(10, 16, 28, 0.62);
   --panel-strong: rgba(8, 13, 24, 0.86);
   /* Opaque: a phone sheet sits over the model and over other chrome, and
@@ -86,6 +89,7 @@ body {
   --ink: #12191e;
   --ink-dim: #34434c;
   --ink-faint: #586770;
+  --caution-ink: #8a4212;
   --panel: rgba(250, 251, 249, 0.78);
   --panel-strong: rgba(252, 252, 250, 0.94);
   --panel-sheet: #fbfbf9;

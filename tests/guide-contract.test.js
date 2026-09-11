@@ -158,3 +158,32 @@ test('guide contract: the amyloid guide does not close the causal chain', () => 
     }
   }
 });
+
+test('guide contract: the ischaemia guide never lets the colour mean necrosis', () => {
+  // This model has no infarction in it — no necrosis, no scar, no infarct
+  // expansion — and its own scope says so. A patient looking at a discoloured
+  // wall will reach for "dead muscle" unless the words stop them, so the step
+  // that introduces the colour says what it means, and no step anywhere uses
+  // the language of infarction.
+  const steps = PATIENT_GUIDES['myocardial-ischemia'].steps;
+  const colour = steps.find((step) => step.stage === 'burden');
+  assert.match(colour.bodyJa, /壊死ではありません/);
+  assert.match(colour.body, /not dead/i);
+
+  for (const step of steps) {
+    for (const text of [step.title, step.titleJa, step.body, step.bodyJa, step.look, step.lookJa]) {
+      assert.doesNotMatch(text, /梗塞|壊死し|心筋梗塞|発作/, text);
+      assert.doesNotMatch(text, /\binfarct|necrosis|heart attack/i, text);
+    }
+  }
+});
+
+test('guide contract: the ischaemia guide keeps the neighbouring region in the sentence', () => {
+  // The whole point of drawing territories is the comparison. Three steps rest
+  // on it, and a framing that filled the screen with one wall cropped it — so
+  // the copy names the neighbour and the steps that do share one framing.
+  const steps = PATIENT_GUIDES['myocardial-ischemia'].steps;
+  const comparing = steps.filter((step) => /隣|境目|見比べ/.test(`${step.bodyJa} ${step.lookJa}`));
+  assert.ok(comparing.length >= 2, 'the comparison is made more than once');
+  for (const step of comparing) assert.equal(step.frame, 'wall', `${step.stage}: framed to hold both regions`);
+});

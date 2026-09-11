@@ -30,6 +30,7 @@ import { createPressureWavePanel } from '../components/PressureWavePanel.js';
 import { createBullseyePanel } from '../components/BullseyePanel.js';
 import { createChartPanel } from '../components/ChartPanel.js';
 import { createModelScopePanel } from '../components/ModelScopePanel.js';
+import { createRelatedScenesPanel } from '../components/RelatedScenesPanel.js';
 import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
 import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
@@ -673,16 +674,29 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // would be a link to "TO BE UPDATED". They are dropped here, once, and the
   // gate — not the panel and not the shell — decides which.
   const isSceneSlugOpen = (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug });
+  /**
+   * Declared on the scene's own meta, or — for a scene whose model sources are
+   * pinned to a recorded publication decision — on its catalogue entry.
+   *
+   * The brain atlas is the second kind. Adding a route to `src/data/
+   * brainAnatomy.js` moves that file's digest, which moves the card revision,
+   * which makes the beta's publication decision stale and closes the one scene
+   * the beta publishes. Which route a scene offers is catalogue information
+   * anyway, so for that case it is declared where the catalogue is and nothing
+   * about the model changes.
+   */
+  const relatedSource = meta.related ?? entry?.related ?? null;
   const related = Object.freeze({
     scenes: Object.freeze(
-      (meta.related?.scenes ?? []).filter((entry) => entry?.slug && isSceneSlugOpen(entry.slug)).map(Object.freeze)
+      (relatedSource?.scenes ?? []).filter((item) => item?.slug && isSceneSlugOpen(item.slug)).map(Object.freeze)
     ),
-    note: meta.related?.note ?? null,
-    noteJa: meta.related?.noteJa ?? null,
+    note: relatedSource?.note ?? null,
+    noteJa: relatedSource?.noteJa ?? null,
   });
-  const scopePanel = meta.modelScope
-    ? createModelScopePanel(meta.modelScope, { related })
-    : null;
+  const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  // One place, on every scene. The scope panel says what the model does not
+  // represent; this says where the rest is shown.
+  const relatedPanel = createRelatedScenesPanel(related);
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
 
   inspectionPanel = createInspectionPanel({
@@ -951,6 +965,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     ...chartPanels.map((panel) => panel.element),
     controlsInConsole ? null : modelControls?.element,
     scopePanel?.element,
+    // Last, under the model's own limits: "what this does not represent" is the
+    // question the way on answers.
+    relatedPanel?.element,
   ]);
   // And it scrolls for the same reason the rail does — but it was the one
   // scroll box in the frame that never said so. Measured on the ischemia scene,

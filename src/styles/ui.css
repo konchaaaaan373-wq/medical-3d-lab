@@ -3236,12 +3236,33 @@
   /* 236px where the column has room, and never wider than the column.
      `.top-left` is 146px on a 375px phone and clips its overflow-x, so a fixed
      236px panel had most of its toggle cut away: painted, and not reachable.
-     Found by driving the reader's path to "Model scope & sources" at 375x667. */
+     Found by driving the reader's path to "Model scope & sources" at 375x667.
+
+     `max-width` repeats the 236px because `min(..., 100%)` is an *indefinite*
+     size while the column is being measured: the column then asks for the
+     panel's max-content instead — one unwrapped sentence of prose — and
+     `.top-left` claimed 1022px of a 1252px bar at 1280x720 while still drawing
+     236px. The rail got the remainder, 219px, and clipped the 340px structure
+     panel inside it: the search box and "pick a structure from the list" lost
+     their first characters. A definite cap keeps the column honest. */
   width: min(236px, 100%);
+  max-width: 236px;
   padding: 0;
   overflow: hidden;
 }
 
+/* ---------- where else this subject is shown ----------
+   Same shape as the scope panel above it and the same width, because they read
+   as a pair: what the model does not represent, and where the rest is. That
+   includes the definite `max-width`: see the note on `.model-scope` above. */
+.related-scenes {
+  width: min(236px, 100%);
+  max-width: 236px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.related-toggle,
 .scope-toggle {
   display: block;
   width: 100%;
@@ -3256,16 +3277,19 @@
   cursor: pointer;
 }
 
+.related-toggle::after,
 .scope-toggle::after {
   content: '＋';
   float: right;
   color: var(--ink-faint);
 }
 
+.related-scenes.is-open .related-toggle::after,
 .model-scope.is-open .scope-toggle::after {
   content: '−';
 }
 
+.related-toggle:hover,
 .scope-toggle:hover {
   color: var(--ink);
 }
@@ -3325,22 +3349,39 @@
 }
 
 .scope-cautions .scope-item {
-  color: rgba(255, 205, 160, 0.85);
+  color: var(--caution-ink);
 }
 
 /* The way on. An arrow rather than a bullet, because these are the only items
    in the panel a reader is meant to act on. */
-.scope-next .scope-item::before {
+.related-body {
+  padding: 0 11px 9px;
+}
+
+.related-list {
+  margin: 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+
+.related-item {
+  position: relative;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  padding-bottom: 7px;
+}
+
+.related-item::before {
   content: '\2192';
-  font-size: 9px;
+  position: absolute;
+  left: -12px;
   top: 1px;
+  font-size: 9px;
+  color: var(--ink-faint);
 }
 
-.scope-next .scope-item {
-  padding-bottom: 6px;
-}
-
-.scope-next-link {
+.related-link {
   display: block;
   color: var(--ink);
   font-weight: 600;
@@ -3348,23 +3389,23 @@
   border-bottom: 1px solid transparent;
 }
 
-.scope-next-link:hover,
-.scope-next-link:focus-visible {
+.related-link:hover,
+.related-link:focus-visible {
   border-bottom-color: currentColor;
 }
 
-.scope-next-why {
+.related-why {
   display: block;
   color: var(--ink-dim);
 }
 
-/* The sentence that has to stay next to the links: those scenes are other
-   models, not this one later. */
-.scope-next-note {
-  margin: 4px 0 0;
-  font-size: 9px;
+/* The sentence that has to stay beside the links: other models, and — for the
+   brain — another scale entirely. */
+.related-note {
+  margin: 5px 0 0;
+  font-size: 10px;
   line-height: 1.5;
-  color: rgba(255, 205, 160, 0.85);
+  color: var(--caution-ink);
 }
 
 .scope-evidence {
