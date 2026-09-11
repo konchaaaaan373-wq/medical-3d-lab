@@ -603,6 +603,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of a right foot and ankle, placed from standard descriptive anatomy: the talus held in a mortise by the tibia above and the two malleoli, with the lateral one reaching further distally; the subtalar joint beneath it; a medial longitudinal arch in which the navicular rides high and the cuboid low; the plantar fascia running from the calcaneal tuberosity to the metatarsal heads and the spring ligament under the head of the talus; one deltoid sheet medially against three separate lateral bands; and five rays with the great toe carrying two phalanges where the others carry three. No bone length, arch height, joint angle or ligament strength is a measurement, bones are drawn as smooth blocks and shafts without their joint surfaces, and nothing in the scene moves or bears weight.',
   },
   {
+    profileId: 'skeleton-overview-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A procedural whole-body skeleton at overview scale, proportioned from standard descriptive anatomy for a representative adult of about 170 cm: one continuous axial column from skull to sacrum with twelve pairs of ribs of which the lower ones do not reach the sternum, a shoulder girdle attached to the trunk only through the sternoclavicular joint with the scapula held by muscle, and a pelvic girdle locked to the sacrum. No bone is modelled as a bone: every one is a smooth shaft or block without joint surfaces, processes, sutures or foramina, and no length, proportion or bone count is a measurement.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

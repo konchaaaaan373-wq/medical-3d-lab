@@ -449,6 +449,29 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
 
+### F-51 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（Claude① / Viewer）
+
+**再現条件.** `src/controls/createControls.js` の既定は
+`minDistance = 5, maxDistance = 55` で、`src/app/zoom.js` の
+`zoomedDistance()` がこれで clamp します。したがって
+**シーンが `cameraPose` に何を書いても、カメラは target から 55 unit より
+遠くには行きません。** fov 42 では、この距離で画面に収まる subject の高さは
+およそ 26 unit（実際に使える縦帯を 0.62 として）です。
+
+- 2026-09-11、`skeleton-overview` を 1 unit = 1 cm で作ったところ、
+  170 unit の立像を収めるには距離 360 が必要で、camera の far plane（200、
+  `src/app/Viewer.js:80`）と `maxDistance`（55）の両方に引っかかりました。
+  レンダリングされたのは骨盤の拡大像で、**エラーは一切出ません**
+- 回避策として `WORLD_SCALE = 0.14` を掛け、立像を 24 unit にしました。
+  同じ理由で `hand-anatomy`（24.5 unit）と `foot-anatomy`（27.8 unit）も
+  上限のすぐ内側にいます
+- **最小要件**: (a) `maxDistance` をシーンが上書きできるようにするか、
+  subject の bounds から導出してください。(b) clamp が効いたことを
+  開発時に分かる形にしてください。現状は「なぜか大きく映る」としか
+  観測できず、framing の数値をいくら直しても変わりません
+
+---
+
 ### F-49 subject が横に長いシーンは phone 幅で極端に小さくなる — P2（Claude① / framing）
 
 **再現条件.** `minHorizontalAspect` が 1 を超えるシーンを 375×667 で開くと、

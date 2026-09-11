@@ -1001,6 +1001,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/footAnatomy/index.js'),
   },
   {
+    id: 'skeleton-overview',
+    slug: 'skeleton-overview',
+    titleEn: 'The skeleton, whole',
+    titleJa: '全身の骨格を俯瞰する',
+    system: 'musculoskeletal',
+    organ: 'skeleton',
+    organs: ['skeleton'],
+    disease: null,
+    conditions: ['skeleton', 'axial skeleton', 'appendicular skeleton', 'shoulder girdle', 'pelvic girdle', '全身骨格', '体軸骨格', '四肢骨格', '上肢帯', '下肢帯'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/skeleton-overview.md',
+    modelProfile: 'skeleton-overview-procedural-atlas',
+    description:
+      'A skeleton is two skeletons — a column, and limbs hung off it. The arm hangs by one small joint; the leg is locked into the spine itself.',
+    descriptionJa:
+      '骨格は「体軸」と「そこに吊られた四肢」の2つでできています。腕は1つの小さな関節で付き、脚は脊柱そのものに固定されています。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/skeletonOverview/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

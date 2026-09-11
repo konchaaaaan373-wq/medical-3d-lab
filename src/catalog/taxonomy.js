@@ -81,6 +81,7 @@ export const ORGANS = [
   { id: 'pelvic-floor', system: 'musculoskeletal', label: 'Pelvic floor', labelJa: '骨盤底' },
   { id: 'hand', system: 'musculoskeletal', label: 'Hand and wrist', labelJa: '手・手関節' },
   { id: 'foot', system: 'musculoskeletal', label: 'Foot and ankle', labelJa: '足・足関節' },
+  { id: 'skeleton', system: 'musculoskeletal', label: 'Skeleton (overview)', labelJa: '全身骨格（概観）' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

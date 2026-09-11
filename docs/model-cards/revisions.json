@@ -530,5 +530,17 @@
     "cardRevision": 2,
     "modelDigest": "b618f2654f6fea49",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "skeleton-overview",
+    "card": "docs/model-cards/skeleton-overview.md",
+    "modelSources": [
+      "src/scenes/musculoskeletal/organs/skeleton.js",
+      "src/data/skeletonOverviewScene.js",
+      "src/scenes/musculoskeletal/scenes/skeletonOverview/SkeletonOverviewScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "0443b3f8582b5981",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

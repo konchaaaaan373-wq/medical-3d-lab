@@ -142,6 +142,9 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the midline of a standing figure: skull, pelvis, leg, and the cage
+  // last, because that is the widest thing the re-click has to find again.
+  'skeleton-overview': [[0.5, 0.211], [0.486, 0.456], [0.486, 0.544], [0.5, 0.356]],
   // Along the inside of the foot from the heel forward, and the leg last,
   // because that is the widest thing the re-click has to find again.
   'foot-anatomy': [[0.514, 0.511], [0.43, 0.57], [0.59, 0.28], [0.625, 0.533]],
