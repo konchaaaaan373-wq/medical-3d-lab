@@ -20,6 +20,7 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { ElbowAnatomyScene } from '../src/scenes/musculoskeletal/scenes/elbowAnatomy/ElbowAnatomyScene.js';
 import { NeckAnatomyScene } from '../src/scenes/regional/scenes/neckAnatomy/NeckAnatomyScene.js';
 import { SkeletonOverviewScene } from '../src/scenes/musculoskeletal/scenes/skeletonOverview/SkeletonOverviewScene.js';
 import { FootAnatomyScene } from '../src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js';
@@ -75,6 +76,7 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'elbow-anatomy', Scene: ElbowAnatomyScene, minimum: 16 },
   { id: 'neck-anatomy', Scene: NeckAnatomyScene, minimum: 18 },
   { id: 'skeleton-overview', Scene: SkeletonOverviewScene, minimum: 16 },
   { id: 'foot-anatomy', Scene: FootAnatomyScene, minimum: 18 },
@@ -419,6 +421,11 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'elbow-anatomy:medial',
+  'elbow-anatomy:lateral',
+  'elbow-anatomy:hinge',
+  'elbow-anatomy:cubital-fossa',
+  'elbow-anatomy:sagittal',
   'neck-anatomy:recurrent-nerves',
   'neck-anatomy:thyroid-bed',
   'neck-anatomy:sheath',

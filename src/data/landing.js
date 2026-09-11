@@ -51,6 +51,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'foot-anatomy',
   'skeleton-overview',
   'neck-anatomy',
+  'elbow-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -277,6 +278,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '頸部ではすべてが隣り合っています。そして声を動かす2本の神経は、左右で違う道を通ります。',
     ['SHEATH', 'THYROID', 'NERVES'],
     ['血管神経束', '甲状腺', '反回神経']
+  ),
+  'elbow-anatomy': presentation(
+    'One axis, two joints on it — and both ligaments start on the axis, which is why neither ever goes slack.',
+    '1本の軸の上に2つの関節。側副靱帯はどちらも軸そのものから起こるので、曲げても緩みません。',
+    ['HINGE', 'PIVOT', 'NERVE'],
+    ['蝶番', '回旋', '尺骨神経']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

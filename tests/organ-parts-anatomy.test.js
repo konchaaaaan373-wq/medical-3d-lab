@@ -46,6 +46,13 @@ import {
   sheathAt,
   sheathContentAt,
 } from '../src/scenes/regional/organs/neck.js';
+import {
+  HINGE as ELBOW_HINGE,
+  MEDIAL as ELBOW_MEDIAL,
+  buildElbowJoint,
+  collateralOrigin,
+  trochleaRadiusAt,
+} from '../src/scenes/musculoskeletal/organs/elbowJoint.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2105,6 +2112,150 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('an elbow is one axis with a hinge on one end of it and a pivot on the other', () => {
+  // Everything this scene claims is a claim about one line. What is checked is
+  // that the line is really what the parts are built from: that the notch grips
+  // the spool the spool actually is, that the ball is on the same line as the
+  // spool, and that **both collateral ligaments start on the line** — which is
+  // the reason the model gives for neither of them going slack.
+  const elbow = buildElbowJoint();
+  elbow.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of elbow.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of elbow.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()));
+      }
+    }
+    return out;
+  };
+  /** How far a point is from the hinge axis, which runs along x. */
+  const fromAxis = (point) => Math.hypot(point.y - ELBOW_HINGE.y, point.z - ELBOW_HINGE.z);
+
+  // 1. The trochlea is a spool: a waist between two flanges, not a cylinder.
+  const groove = trochleaRadiusAt(
+    (ELBOW_HINGE.trochlea.medialX + ELBOW_HINGE.trochlea.lateralX) / 2
+  );
+  assert.ok(
+    groove < trochleaRadiusAt(ELBOW_HINGE.trochlea.medialX) - 0.08,
+    'the trochlea is waisted against its medial flange'
+  );
+  assert.ok(
+    groove < trochleaRadiusAt(ELBOW_HINGE.trochlea.lateralX) - 0.08,
+    'and against its lateral one'
+  );
+  assert.ok(
+    trochleaRadiusAt(ELBOW_HINGE.trochlea.medialX) >
+      trochleaRadiusAt(ELBOW_HINGE.trochlea.lateralX),
+    'the medial flange is the deeper of the two, which is what stops the ulna sliding off'
+  );
+
+  // 2. The ball is lateral to the spool, and on the same line.
+  const capitellum = box('capitellum').getCenter(new THREE.Vector3());
+  assert.ok(
+    capitellum.x * ELBOW_MEDIAL < ELBOW_HINGE.trochlea.lateralX * ELBOW_MEDIAL,
+    'the capitellum is lateral to the trochlea'
+  );
+  assert.ok(fromAxis(capitellum) < 0.06, 'and centred on the same axis');
+
+  // 3. The ulna grips the spool: nothing inside it, and something touching it.
+  let nearest = Infinity;
+  for (const point of points('olecranon')) {
+    const within =
+      point.x > Math.min(ELBOW_HINGE.trochlea.lateralX, ELBOW_HINGE.trochlea.medialX) &&
+      point.x < Math.max(ELBOW_HINGE.trochlea.lateralX, ELBOW_HINGE.trochlea.medialX);
+    if (!within) continue;
+    const gap = fromAxis(point) - trochleaRadiusAt(point.x);
+    assert.ok(gap > -1e-6, 'no part of the ulna lies inside the trochlea');
+    nearest = Math.min(nearest, gap);
+  }
+  assert.ok(nearest < 0.12, 'and the notch is pressed onto it rather than floating off it');
+
+  // The C wraps past half a circle, which is why the ulna stays on without a
+  // ligament: measured as the angular spread of the points that touch.
+  const angles = points('olecranon')
+    .filter((point) => fromAxis(point) - trochleaRadiusAt(point.x) < 0.2)
+    .map((point) => Math.atan2(point.y - ELBOW_HINGE.y, point.z - ELBOW_HINGE.z));
+  assert.ok(angles.length > 0, 'some of the ulna touches the spool');
+  assert.ok(
+    Math.max(...angles) - Math.min(...angles) > Math.PI,
+    'and it wraps past half a circle'
+  );
+
+  // 4. **Both collateral ligaments start on the axis.** This is the claim.
+  for (const side of [ELBOW_MEDIAL, -ELBOW_MEDIAL]) {
+    const origin = new THREE.Vector3(...collateralOrigin(side));
+    assert.ok(fromAxis(origin) < 0.2, 'a collateral ligament starts on the joint axis');
+    assert.ok(origin.x * side > 0, 'on its own side of the joint');
+  }
+  const medialBand = box('ulnar-collateral-ligament');
+  const lateralBand = box('radial-collateral-ligament');
+  assert.ok(
+    medialBand.containsPoint(new THREE.Vector3(...collateralOrigin(ELBOW_MEDIAL))),
+    'the drawn ulnar collateral ligament reaches that origin'
+  );
+  assert.ok(
+    lateralBand.containsPoint(new THREE.Vector3(...collateralOrigin(-ELBOW_MEDIAL))),
+    'and so does the radial one'
+  );
+
+  // 5. The ring holds the radial head against the ulna and grips neither.
+  const ring = box('annular-ligament');
+  const ulna = box('ulna-shaft').union(box('olecranon'));
+  assert.ok(ring.intersectsBox(ulna), 'the annular ligament reaches the ulna');
+  assert.ok(
+    ring.max.x * ELBOW_MEDIAL > box('radial-head').max.x * ELBOW_MEDIAL,
+    'and reaches past the radial head towards it'
+  );
+  assert.ok(
+    lateralBand.intersectsBox(ring),
+    'the radial collateral ligament ends on the ring and not on the radius'
+  );
+  assert.ok(
+    !lateralBand.intersectsBox(box('radius-shaft')),
+    'so it never reaches the radius'
+  );
+
+  // 6. The ulnar nerve passes behind the medial epicondyle.
+  const epicondyle = box('medial-epicondyle');
+  const behind = points('ulnar-nerve').filter(
+    (point) => point.y > epicondyle.min.y && point.y < epicondyle.max.y
+  );
+  assert.ok(behind.length > 0, 'the nerve passes the epicondyle');
+  assert.ok(
+    Math.max(...behind.map((point) => point.z)) < epicondyle.min.z,
+    'and it passes behind it, not in front'
+  );
+
+  // 7. In the hollow at the front: tendon, artery, nerve, from the thumb inwards.
+  const at = (id, y) => {
+    const near = points(id).reduce((best, point) =>
+      Math.abs(point.y - y) < Math.abs(best.y - y) ? point : best
+    );
+    return near;
+  };
+  const tendon = at('biceps-tendon', 0.4);
+  const artery = at('brachial-artery', 0.4);
+  const median = at('median-nerve', 0.4);
+  assert.ok(
+    tendon.x * ELBOW_MEDIAL < artery.x * ELBOW_MEDIAL,
+    'the biceps tendon is the most lateral of the three'
+  );
+  assert.ok(
+    artery.x * ELBOW_MEDIAL < median.x * ELBOW_MEDIAL,
+    'and the median nerve the most medial'
+  );
+
+  elbow.dispose();
+});
 
 test('a neck is a stack in the middle, a bundle each side, and two nerves that differ', () => {
   // Every claim this scene makes is about what is next to what, so that is the

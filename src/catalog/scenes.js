@@ -1254,6 +1254,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/regional/scenes/neckAnatomy/index.js'),
   },
   {
+    id: 'elbow-anatomy',
+    slug: 'elbow-anatomy',
+    titleEn: 'Interactive elbow anatomy',
+    titleJa: '触れて学ぶ肘関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'elbow',
+    organs: ['elbow', 'bone', 'skeletal-muscle'],
+    disease: null,
+    conditions: ['elbow anatomy', 'trochlea', 'capitellum', 'ulnar collateral ligament', 'annular ligament', 'ulnar nerve', 'cubital fossa', 'biceps tendon', '肘関節の解剖', '滑車', '小頭', '内側側副靱帯', '輪状靱帯', '尺骨神経', '肘窩', '上腕二頭筋腱'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/elbow-anatomy.md',
+    modelProfile: 'elbow-anatomy-procedural-atlas',
+    description:
+      'One axis with two joints on it: the ulna hinges on a spool, the radius spins on a ball, both collateral ligaments start on the axis itself, and a nerve passes behind the bump with nothing over it but skin.',
+    descriptionJa:
+      '1本の軸の上に2つの関節があります——尺骨は糸巻き状の滑車で蝶番運動を、橈骨は球状の小頭で回旋を行い、左右の側副靱帯はいずれも軸そのものから起始し、尺骨神経は皮膚以外に覆うもののない溝を通ります。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/elbowAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

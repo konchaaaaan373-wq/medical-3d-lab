@@ -1,8 +1,8 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-11。対象は 2026-09 に追加した 20 シーンです——
+Last updated: 2026-09-11。対象は 2026-09 に追加した 21 シーンです——
 前立腺・男性生殖路・膝・肩・股、眼・耳・皮膚・リンパ節・全身リンパ路・乳房・
-脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、そして頸部。
+脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、そして頸部と肘関節。
 既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した分だけ**を
 書きます。
 
@@ -855,6 +855,56 @@ vagus-nerve  recurrent-laryngeal-nerve  subclavian-artery  aortic-arch
 - **大動脈弓と鎖骨下動脈は文脈**です（`contextTags`）。縦隔を足さないでください
 - `DISPLAY` の拡大（上皮小体・迷走神経・反回神経）は**寸法ではありません**。
   病態側で大きさを主張しないでください
+
+---
+
+## `elbow-anatomy` — 肘関節
+
+| | |
+| --- | --- |
+| 構造 | 21 |
+| tags | `humerus` `forearm` `articular` `cartilage` `capsule` `ligament` `tendon` `muscle` `nerve` `vessel` |
+| views | `anteromedial` `anterior` `medial` `lateral` `posterior` `hinge` `cubital-fossa` `sagittal` |
+| bounds | 2.8 × 5.6 × 2.0（world unit） |
+
+```
+humerus-shaft  trochlea  capitellum  medial-epicondyle  lateral-epicondyle
+olecranon  ulna-shaft  radial-head  radius-shaft
+articular-cartilage  joint-capsule
+ulnar-collateral-ligament  radial-collateral-ligament  annular-ligament
+biceps-tendon  triceps-tendon  common-flexor-origin  common-extensor-origin
+ulnar-nerve  median-nerve  brachial-artery
+```
+
+**anchors** — `SITES`: `hinge` `capitellum` `medialEpicondyle`
+`lateralEpicondyle` `olecranonTip` `cubitalTunnel` `cubitalFossa`
+`radialTuberosity`。関数としては `trochleaRadiusAt(x)`・`collateralOrigin(side)`・
+`humerusSection(y)`、表としては `HINGE`・`HUMERUS`・`FOREARM`。
+
+**このシーンが持っている病態の足場**:
+- **内側側副靱帯**: `ulnar-collateral-ligament` は前斜走束・後斜走束の 2 mesh です。
+  外反ストレスと投球障害の定位置。ただし**動かないので「外反で開く」ことは
+  主張できません**——それを言うには屈曲と外反を持つ機構が要ります
+- **尺骨神経**: `ulnar-nerve` は内側上顆の背側を通ります。絞扼の局在は指せますが、
+  **屈曲時の前方亜脱臼は描いていません**
+- **橈骨頭と輪状靱帯**: `radial-head` / `annular-ligament`。肘内障（pulled elbow）の
+  舞台ですが、**整復の主張はしてはいけません**（model card の禁止用途）
+- **上顆**: `common-flexor-origin` / `common-extensor-origin` は上顆炎の
+  「痛む場所」を指せます。炎症・変性・断裂は一切表現していません
+- **肘頭と関節包**: `olecranon` / `joint-capsule`。関節液貯留は 1 つの袋の話として
+  扱えますが、**脂肪体（fat pad sign の主体）は描いていません**
+
+**変えてはいけない関係**:
+- **軸は 1 本です。** 滑車・小頭・両側副靱帯の起始はすべて `HINGE` から
+  派生しています。個別に動かすと、このシーンの主張が消えます
+- **尺骨の切痕は滑車の表面そのもの**です（`clearTrochlea`）。離したり
+  めり込ませたりしないでください。半円以上巻いていることが骨性安定性の根拠です
+- **輪状靱帯は尺骨に付き、橈骨には付きません。** 外側側副靱帯は輪状靱帯に
+  終わり、橈骨には届きません
+- **尺骨神経は内側上顆の「後ろ」です。** 前に出した瞬間、シーンは嘘になります
+- **肘窩は外側から腱・動脈・神経の順**です
+- `articular-cartilage` の厚みは**実物より厚く**描いています。寸法として
+  使わないでください
 
 ---
 

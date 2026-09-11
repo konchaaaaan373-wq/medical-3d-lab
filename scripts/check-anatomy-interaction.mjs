@@ -143,6 +143,8 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the joint in the midline: shaft, hinge and the two forearm bones under it.
+  'elbow-anatomy': [[0.5, 0.42], [0.5, 0.52], [0.46, 0.3], [0.54, 0.62]],
   // Down the front of the neck: the larynx, the thyroid, and one side of it each way.
   'neck-anatomy': [[0.5, 0.4], [0.5, 0.52], [0.44, 0.46], [0.56, 0.46]],
   // Down the midline of a standing figure: skull, pelvis, leg, and the cage

@@ -1199,5 +1199,34 @@
       "No goitre, nodule, tumour, node metastasis, nerve palsy or vascular disease is represented in any form, and nothing here is anyone’s neck.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any puncture, central line, nerve block, airway procedure or operation."
     ]
+  },
+  {
+    "sceneId": "elbow-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right elbow — the distal humerus and its two articular surfaces, the proximal radius and ulna, the capsule and cartilage, the three ligaments, the two tendons and two common origins, and the nerves and artery crossing the joint — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/elbow-anatomy.md",
+      "docs/model-evidence/elbow-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement, and the joint is drawn as one representative right elbow.",
+      "Nothing moves: flexion, extension, pronation, supination and the spin of the radial head are described and not shown.",
+      "The articular cartilage is drawn thicker than life so that it can be seen and selected; no thickness may be read off it.",
+      "The capitellum is drawn as a whole sphere, where in life it has no articular surface posteriorly.",
+      "Muscles are drawn as two common origins rather than as individual bellies, and no muscle belly is drawn.",
+      "The interosseous membrane, which is how load reaches the elbow from the hand, is not drawn at all.",
+      "The growth plates, the bursae, the fat pads, the synovium, the veins of the cubital fossa, the bicipital aponeurosis and the lateral ulnar collateral ligament are not drawn.",
+      "Each nerve is drawn as one cord on the usual course; branches are not drawn, and an ulnar nerve that slips forward over the epicondyle in flexion is not represented.",
+      "No fracture, dislocation, subluxation, epicondylitis, effusion, nerve entrapment or arthritis is represented in any form, and nothing here is anyone’s elbow.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning or performing any puncture, line, nerve block, reduction, injection or operation."
+    ]
   }
 ]

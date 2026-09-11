@@ -596,5 +596,18 @@
     "cardRevision": 2,
     "modelDigest": "17652d9a3c2da60f",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "elbow-anatomy",
+    "card": "docs/model-cards/elbow-anatomy.md",
+    "modelSources": [
+      "src/data/elbowAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/elbowJoint.js",
+      "src/scenes/musculoskeletal/scenes/elbowAnatomy/ElbowAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "37a978e0a842b5fe",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
