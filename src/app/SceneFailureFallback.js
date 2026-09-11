@@ -6,20 +6,18 @@ import {
   statusById,
 } from '../catalog/index.js';
 import { betaUnlocked } from './releaseGate.js';
-import { sceneFailureGuidance } from './sceneFailureGuidance.js';
-import { createManualRetry } from './sceneShellBridge.js';
 import { el } from '../utils/dom.js';
 
-/** Useful non-WebGL failure state for a scene route. */
-export function createSceneFailureFallback({
-  ui,
-  sceneId,
-  reason = 'unknown',
-  onRetry = () => window.location.reload(),
-}) {
+/**
+ * Useful non-WebGL failure state for a scene route.
+ *
+ * This never tries to reconstruct the medical visualization in DOM. It keeps
+ * navigation, scene identity, maturity/scope copy and a retry path available so
+ * renderer failure cannot turn the entire product into a blank/error canvas.
+ */
+export function createSceneFailureFallback({ ui, sceneId }) {
   const scene = sceneById(sceneId);
   const status = statusById(scene?.status);
-  const guidance = sceneFailureGuidance(reason);
 
   const link = (href, en, ja, primary = false) =>
     el('a', { class: `scene-fallback-link${primary ? ' primary' : ''}`, href }, [
@@ -27,57 +25,23 @@ export function createSceneFailureFallback({
       el('span', { class: 'lang-ja', text: ja }),
     ]);
 
-  let retry = null;
-  const paintRetryReady = () => {
-    if (!retry) return;
-    retry.disabled = false;
-    retry.removeAttribute?.('aria-busy');
-    retry.replaceChildren?.(
-      el('span', { class: 'lang-en', text: guidance.retryEn }),
-      el('span', { class: 'lang-ja', text: guidance.retryJa })
-    );
-  };
-  const retryOnce = createManualRetry({
-    reload: () => onRetry(),
-    onStart: (event) => {
-      const button = event?.currentTarget ?? retry;
-      if (!button) return;
-      button.disabled = true;
-      button.setAttribute?.('aria-busy', 'true');
-      button.replaceChildren?.(
-        el('span', { class: 'lang-en', text: 'Reloading…' }),
-        el('span', { class: 'lang-ja', text: '再読み込み中…' })
-      );
-    },
-    // A future shared in-place retry (Claude's onRetryModel) can settle without
-    // navigation. Re-enable this same button then; do not create a second retry
-    // surface or leave the first attempt permanently disabled.
-    onSettled: () => paintRetryReady(),
-  });
-  retry = guidance.retry
-    ? el('button', {
-        class: 'scene-fallback-retry',
-        type: 'button',
-        on: { click: (event) => retryOnce(event) },
-      }, [
-        el('span', { class: 'lang-en', text: guidance.retryEn }),
-        el('span', { class: 'lang-ja', text: guidance.retryJa }),
-      ])
-    : null;
-
-  const title = el('h1', { class: 'scene-fallback-title', tabindex: '-1' }, [
-    el('span', { class: 'lang-en', text: scene?.titleEn ?? 'Medical 3D Lab' }),
-    el('span', { class: 'lang-ja', text: scene?.titleJa ?? 'Medical 3D Lab' }),
-  ]);
-
   const element = el('main', { class: 'scene-fallback', role: 'main' }, [
     el('section', { class: 'panel scene-fallback-card' }, [
       el('div', { class: 'scene-fallback-mark', 'aria-hidden': 'true', text: '3D' }),
       el('p', { class: 'scene-fallback-kicker' }, [
-        el('span', { class: 'lang-en', text: guidance.kickerEn }),
-        el('span', { class: 'lang-ja', text: guidance.kickerJa }),
+        el('span', { class: 'lang-en', text: '3D renderer unavailable' }),
+        el('span', { class: 'lang-ja', text: '3D表示を開始できませんでした' }),
       ]),
-      title,
+      el('h1', { class: 'scene-fallback-title' }, [
+        el('span', { class: 'lang-en', text: scene?.titleEn ?? 'Medical 3D Lab' }),
+        el('span', { class: 'lang-ja', text: scene?.titleJa ?? 'Medical 3D Lab' }),
+      ]),
+      scene
+        ? el('p', { class: 'scene-fallback-copy' }, [
+            el('span', { class: 'lang-en', text: scene.description }),
+            el('span', { class: 'lang-ja', text: scene.descriptionJa }),
+          ])
+        : null,
       status
         ? el('div', { class: `scene-fallback-status is-${scene.status}` }, [
             el('span', { class: 'lang-en', text: `Maturity: ${status.label}` }),
@@ -85,30 +49,35 @@ export function createSceneFailureFallback({
           ])
         : null,
       el('p', { class: 'scene-fallback-help' }, [
-        el('span', { class: 'lang-en', text: guidance.helpEn }),
-        el('span', { class: 'lang-ja', text: guidance.helpJa }),
+        el('span', {
+          class: 'lang-en',
+          text: 'The catalogue and account remain usable without WebGL. Retry this scene in a current browser with hardware acceleration enabled, or continue browsing the non-3D product shell.',
+        }),
+        el('span', {
+          class: 'lang-ja',
+          text: 'WebGLが使えない場合でも、カタログとアカウントは利用できます。ハードウェアアクセラレーションを有効にした最新ブラウザで再試行するか、3Dを使わない製品画面から他のモデルを探してください。',
+        }),
       ]),
       el('div', { class: 'scene-fallback-actions' }, [
-        retry,
+        el('button', {
+          class: 'scene-fallback-retry',
+          type: 'button',
+          on: { click: () => window.location.reload() },
+        }, [
+          el('span', { class: 'lang-en', text: 'Retry 3D' }),
+          el('span', { class: 'lang-ja', text: '3Dを再試行' }),
+        ]),
         link(EXPLORER_ROUTE, 'Browse public models', '公開モデルを見る', true),
         link(LANDING_ROUTE, 'Home', 'ホーム'),
+        // Lab is a locked route during the beta; a recovery screen must not
+        // hand out a link that lands on another apology.
         betaUnlocked() ? link(LAB_ROUTE, 'Experimental Lab', '実験室') : null,
-      ].filter(Boolean)),
+      ]),
     ]),
-  ]);
+  ].filter(Boolean));
 
   ui.classList.add('has-scene-fallback');
   ui.append(element);
-  title.focus?.();
-  const language = ui.dataset.lang === 'en' ? 'en' : 'ja';
-  document.title = language === 'en'
-    ? `${scene?.titleEn ?? 'Medical 3D Lab'} — 3D unavailable`
-    : `${scene?.titleJa ?? 'Medical 3D Lab'} — 3Dを開始できません`;
-  return {
-    element,
-    destroy() {
-      element.remove?.();
-      ui.classList.remove?.('has-scene-fallback');
-    },
-  };
+  document.title = `${scene?.titleEn ?? 'Medical 3D Lab'} — 3D unavailable`;
+  return { element };
 }

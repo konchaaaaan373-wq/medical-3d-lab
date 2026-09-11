@@ -11,7 +11,7 @@
  * product carries on without it.
  */
 import { onAppEvent } from './appEvents.js';
-import { createConsentSettings } from '../components/ConsentBanner.js';
+import { createConsentBanner } from '../components/ConsentBanner.js';
 import { createFeedbackPanel } from '../components/FeedbackPanel.js';
 import { installTelemetry } from '../telemetry/install.js';
 
@@ -38,14 +38,6 @@ function mountTrigger(ui, trigger, placement) {
   }
   trigger.classList.add('is-floating');
   ui.append(trigger);
-}
-
-function mountConsentSettings(ui, telemetry) {
-  const slot = ui.querySelector?.('[data-usage-recording-slot]') ?? null;
-  if (!slot) return null;
-  const settings = createConsentSettings({ telemetry });
-  slot.replaceChildren(settings.element);
-  return settings;
 }
 
 /**
@@ -107,10 +99,10 @@ export function installObservability({
     const { telemetry, reporter, deviceClass } = installTelemetry({ surface, sceneId });
     telemetry.recordVisit({ device: deviceClass, surface });
 
-    // `askConsent` now controls whether an existing settings slot may expose
-    // the preference. It never interrupts first use. Without a slot the state
-    // remains unset and nothing is sent.
-    const consentSettings = askConsent ? mountConsentSettings(ui, telemetry) : null;
+    if (askConsent) {
+      const banner = createConsentBanner({ telemetry });
+      if (banner) ui.append(banner.element);
+    }
 
     const endpoint = env('VITE_FEEDBACK_ENDPOINT');
     const feedback = createFeedbackPanel({
@@ -133,17 +125,7 @@ export function installObservability({
     mountTrigger(ui, feedback.trigger, placement);
     const unbridge = bridgeAppEvents(telemetry, { sceneId, deviceClass, surface });
 
-    return {
-      telemetry,
-      reporter,
-      feedback,
-      consentSettings,
-      deviceClass,
-      dispose() {
-        consentSettings?.dispose?.();
-        unbridge();
-      },
-    };
+    return { telemetry, reporter, feedback, deviceClass, dispose: unbridge };
   } catch (error) {
     console.warn('[observability] not installed', error);
     return null;
