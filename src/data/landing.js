@@ -49,6 +49,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'portal-hypertension',
   'hepatorenal-syndrome',
   'biliary-obstruction',
+  'benign-prostatic-enlargement',
   'achalasia',
   'breathing-lungs',
   'body-overview',
@@ -327,6 +328,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'benign-prostatic-enlargement': presentation(
+    'Grow the transition zone; watch the gland grow far less and the outside become a rim.',
+    '移行域を大きくし、腺全体の変化がはるかに小さいことと、外側が縁になることを確認。',
+    ['TRANSITION ZONE', 'WHAT IS DISPLACED', 'THE CHANNEL'],
+    ['移行域', '圧排されるもの', '通り道']
   ),
   'biliary-obstruction': presentation(
     'Put the same blockage in three different places; watch which segments end up behind it and which do not.',

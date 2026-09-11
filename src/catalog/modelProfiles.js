@@ -630,6 +630,23 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'benign-prostatic-enlargement-zonal',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of zonal proportions, not a flow model: the transition zone grows, the peripheral zone\'s ' +
+      'tissue is conserved and displaced outward, and the radii, the rim and the zone shares follow. How much the ' +
+      'channel narrows per unit of growth is an assumed relation and is stated as one. The card says it carries no ' +
+      'urine, no flow rate, no residual volume, no bladder, no symptom, no score, no PSA and no time; the ' +
+      'proportions are the atlas\'s display proportions and no volume may be read off them.@ ',
+  },
+  {
     profileId: 'biliary-obstruction-site',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

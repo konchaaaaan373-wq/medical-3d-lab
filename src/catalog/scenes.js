@@ -552,6 +552,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'benign-prostatic-enlargement',
+    slug: 'benign-prostatic-enlargement',
+    titleEn: 'Benign prostatic enlargement',
+    titleJa: '前立腺肥大',
+    system: 'reproductive',
+    organ: 'prostate',
+    organs: ['prostate', 'bladder'],
+    disease: 'benign-prostatic-hyperplasia',
+    conditions: ['benign prostatic hyperplasia', 'BPH', 'benign prostatic enlargement', 'transition zone', 'median lobe', '前立腺肥大症', '移行域', '中葉'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/benign-prostatic-enlargement.md',
+    modelProfile: 'benign-prostatic-enlargement-zonal',
+    description:
+      'The transition zone grows and the gland grows far less, because the peripheral zone is not enlarged by it \u2014 it is displaced into a rim, with nothing taken out of it.',
+    descriptionJa:
+      '大きくなるのは移行域で、腺全体の変化ははるかに小さくなります。末梢域は大きくならず、何も失わないまま縁へと押しやられるためです。',
+    tags: ['reproductive', 'zonal-anatomy', 'geometric-model'],
+    load: () => import('../scenes/reproductive/scenes/benignProstaticEnlargement/index.js'),
+  },
+  {
     id: 'biliary-obstruction',
     slug: 'biliary-obstruction',
     titleEn: 'Biliary obstruction',

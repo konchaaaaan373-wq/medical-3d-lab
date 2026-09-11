@@ -228,6 +228,28 @@
     ]
   },
   {
+    "sceneId": "benign-prostatic-enlargement",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric zonal model of benign prostatic enlargement, prepared for future clinical sign-off: which zone enlarges, and what that does to the zones that do not"
+    ],
+    "sources": [
+      "docs/model-cards/benign-prostatic-enlargement.md",
+      "docs/model-evidence/benign-prostatic-enlargement.md",
+      "tests/prostatic-enlargement-model.test.js",
+      "src/models/prostaticEnlargement.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing in this model is a measurement. The proportions are the prostate atlas's display proportions, drawn so four zones can be told apart rather than to scale, and no volume may be read off them.",
+      "The channel is reported as a fraction of this model's own resting lumen and is not a calibre. How much it narrows per unit of transition-zone growth is an assumed relation: the model has no tissue mechanics and cannot derive it.",
+      "There is no urine, no flow, no flow rate, no post-void residual, no bladder wall, no detrusor, no symptom and no score anywhere in the model, and no figure in it is a threshold.",
+      "Lateral-lobe and median-lobe patterns are offered as two described arrangements. Which one a gland takes is not something a volume can tell you, and the control is a shape rather than a severity."
+    ]
+  },
+  {
     "sceneId": "biliary-obstruction",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

@@ -46,6 +46,7 @@ test('migrated production evidence and the existing model registries share one c
       'pulmonary-embolism',
       'biliary-obstruction',
       'achalasia',
+      'benign-prostatic-enlargement',
     ]
   );
 });

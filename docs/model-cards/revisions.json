@@ -351,6 +351,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "benign-prostatic-enlargement",
+    "card": "docs/model-cards/benign-prostatic-enlargement.md",
+    "modelSources": [
+      "src/models/prostaticEnlargement.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "5b6ff585a015f49f",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "biliary-obstruction",
     "card": "docs/model-cards/biliary-obstruction.md",
     "modelSources": [
