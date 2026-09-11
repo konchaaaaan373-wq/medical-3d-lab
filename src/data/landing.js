@@ -40,6 +40,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'skin-anatomy',
   'lymph-node-anatomy',
   'lymphatic-drainage',
+  'breast-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -203,6 +204,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     'どの部位がどちらへ流れるか。左右が同じではない理由。',
     ['DUCTS', 'GROUPS', 'ASYMMETRY'],
     ['本幹', '節群', '左右差']
+  ),
+  'breast-anatomy': presentation(
+    'Which tissue, how deep, and which way does it drain.',
+    'どの組織か、どの深さか、どちらへ流れるか。',
+    ['DUCTS', 'LOBULES', 'AXILLA'],
+    ['乳管', '小葉', '腋窩']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

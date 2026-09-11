@@ -841,6 +841,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hematologic/scenes/lymphaticDrainage/index.js'),
   },
   {
+    id: 'breast-anatomy',
+    slug: 'breast-anatomy',
+    titleEn: 'Interactive breast anatomy',
+    titleJa: '触れて学ぶ乳房の解剖',
+    system: 'reproductive',
+    organ: 'breast',
+    organs: ['breast', 'lymph-node'],
+    disease: null,
+    conditions: ['breast anatomy', 'lactiferous duct', 'lobule', 'Cooper ligament', 'axillary drainage', '乳房の解剖', '乳管', '小葉', 'クーパー靱帯', '腋窩リンパ流'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/breast-anatomy.md',
+    modelProfile: 'breast-anatomy-procedural-atlas',
+    description:
+      'Ducts converging on one place, lobules at the far end of each, strands reaching the skin, and a tail running out to the armpit.',
+    descriptionJa:
+      '1か所に収束する乳管、その末端の小葉、皮膚に達する支持索、そして腋窩へ伸びる乳腺の尾部を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/reproductive/scenes/breastAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',
