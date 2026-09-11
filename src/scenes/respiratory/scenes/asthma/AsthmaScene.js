@@ -388,7 +388,12 @@ export class AsthmaScene {
     // cropped the regions at the edges, and which regions went dark *together*
     // is the entire content of the steps that ask for it.
     units: Object.freeze({
-      target: new THREE.Vector3(0, -0.5, 0),
+      // Lower than the units' own centre on purpose: the console during a
+      // patient explanation takes the bottom of the frame, and a framing
+      // centred on the units put their own label inside it. Measured by
+      // `scripts/check-patient-explanation.mjs`, which projects the anchors
+      // through the camera and fails when one lands under the console.
+      target: new THREE.Vector3(0, -0.95, 0),
       distance: 11.4,
       direction: new THREE.Vector3(2, 1.5, 16.2).normalize(),
     }),

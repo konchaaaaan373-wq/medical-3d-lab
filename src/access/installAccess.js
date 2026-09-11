@@ -247,12 +247,20 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     app.setDataView?.(false);
 
     stateSnapshot = app.guideState?.capture?.() ?? null;
+    const lung = Object.fromEntries(
+      (stateSnapshot?.modelControls ?? []).map(({ id, value }) => [id, value])
+    );
 
     open = true;
     emitAppEvent('guide:open', { fullscreen: false });
     // Opened where the model already is, so the explanation describes the state
-    // on screen instead of resetting it to the first caption.
-    guidePanel.reset({ progress: sessionSnapshot.progress });
+    // on screen instead of resetting it to the first caption — the controls as
+    // well as the position, because two steps can sit at the same place on the
+    // axis and be about two different lungs.
+    guidePanel.reset({
+      progress: sessionSnapshot.progress,
+      controls: lung,
+    });
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');

@@ -115,6 +115,10 @@ export const PATIENT_GUIDES = Object.freeze({
         progress: 0,
         stage: 'rest',
         controls: COPD_LUNGS.healthy,
+        // The scene's own opening shot puts the diaphragm's label under the
+        // console, and this step is about the diaphragm. Same line of sight,
+        // lower in the frame.
+        frame: 'base',
         focus: ['lungs', 'diaphragm'],
         certainty: 'established',
         title: 'Breathing out needs no pushing',

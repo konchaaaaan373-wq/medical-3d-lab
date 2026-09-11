@@ -426,7 +426,19 @@ export function createPatientGuidePanel({
      * forward and back from there, and every one of those *is* a change,
      * because they asked for it.
      *
-     * @param {{ progress?: number }} [where] the model's current position
+     * **Where a guide's steps also name a model state, the position is not the
+     * whole answer.** Two steps can sit at the same place on the axis and be
+     * about two different lungs — an ordinary one and the same one with
+     * narrowed airways — and "the last step at or before here" then picks
+     * whichever of them happens to be written second. So when the caller says
+     * what the model's controls currently are, the step that describes *that*
+     * lung is the one opened on; and when none of them does, the group is
+     * opened at its first step and the model is put into the state that step is
+     * about, because a caption describing a lung that is not on screen is worse
+     * than a model that moved when the mode opened.
+     *
+     * @param {{ progress?: number, controls?: Record<string, number> }} [where]
+     *   the model's current position, and the model controls it is currently at
      */
     reset(where = {}) {
       setPresentation(false);
@@ -435,9 +447,31 @@ export function createPatientGuidePanel({
         setIndex(0);
         return;
       }
-      let at = 0;
-      for (const [index, step] of guide.steps.entries()) {
-        if ((step.progress ?? 0) <= progress + 1e-6) at = index;
+      const reachable = guide.steps
+        .map((step, index) => ({ step, index }))
+        .filter(({ step }) => (step.progress ?? 0) <= progress + 1e-6);
+      if (!reachable.length) {
+        setIndex(0);
+        return;
+      }
+      let at = reachable[reachable.length - 1].index;
+      if (where.controls) {
+        const describesCurrentLung = ({ step }) =>
+          !step.controls ||
+          Object.entries(step.controls).every(
+            ([id, value]) => Math.abs((where.controls[id] ?? NaN) - value) < 1e-9
+          );
+        const matching = reachable.filter(describesCurrentLung);
+        if (matching.length) {
+          at = matching[matching.length - 1].index;
+        } else {
+          // Nothing here describes the lung on screen. Open at the first step of
+          // the furthest group reached and let it put the model where its words
+          // say the model is.
+          const furthest = reachable[reachable.length - 1].step.progress ?? 0;
+          at = reachable.find(({ step }) => (step.progress ?? 0) === furthest).index;
+          stateFor(guide.steps[at]);
+        }
       }
       // Show that step without driving the model back to its exact position:
       // the reader is somewhere between two steps and the explanation should

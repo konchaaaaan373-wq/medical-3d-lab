@@ -485,17 +485,22 @@ export class CopdScene {
   static guideFramings = Object.freeze({
     // The trachea and the main bronchi, measured from the built airway group.
     airway: Object.freeze({
-      target: new THREE.Vector3(0, 1.55, 0),
-      distance: 7,
+      target: new THREE.Vector3(0, 0.9, 0),
+      distance: 10,
       direction: new THREE.Vector3(2.1, 1.35, 10.6).normalize(),
     }),
     // The lung bases and the diaphragm under them. Lower and a little further
     // back than the airway shot, because the dome is 3.8 units across and a
     // framing tight enough to fill the height would have cut its edges off —
     // and its edges are where flattening is legible.
+    // The target sits well below the diaphragm on purpose. The console during
+    // a patient explanation takes the bottom ~38% of the frame, and a framing
+    // centred on the dome put the dome's own label inside it — measured, not
+    // guessed: `scripts/check-patient-explanation.mjs` projects the anchors
+    // through the camera and fails when one lands under the console.
     base: Object.freeze({
-      target: new THREE.Vector3(0, -0.45, 0),
-      distance: 8.2,
+      target: new THREE.Vector3(0, -1, 0),
+      distance: 12.6,
       direction: new THREE.Vector3(2.1, 1.35, 10.6).normalize(),
     }),
   });
