@@ -325,3 +325,41 @@ test('scenario scenes: switching mechanism never moves along the axis as well', 
   assert.ok(walked.every((id) => offered.has(id)), walked.join(', '));
   assert.ok(new Set(walked).size >= 4, 'the point of this walk is that there is more than one mechanism');
 });
+
+/**
+ * The chain the hepatorenal scene claims, checked as numbers rather than as
+ * prose.
+ *
+ * Saying "one solve spans three organs" is cheap. What makes it true is that
+ * moving this scene's one axis moves a liver number, a systemic number and a
+ * kidney number **together, out of the same call** — and that the scene puts
+ * all three in front of the reader, because a coupling nothing displays is a
+ * coupling nobody can check.
+ */
+test('hepatorenal: one axis moves the liver, the circulation and the kidney at once', () => {
+  const scene = new HepatorenalScene({});
+  scene.build();
+  const read = (progress) => {
+    scene.setProgress(progress);
+    return Object.fromEntries(scene.getMetrics().map((row) => [row.id, Number(row.value)]));
+  };
+  const start = read(0);
+  const end = read(1);
+
+  // The liver's own number is on screen at all, which it was not before.
+  assert.ok(Number.isFinite(start.portalGradient), 'the scene reads out a portal pressure gradient');
+  // And the chain runs in the directions the walk describes: the liver gets
+  // harder to cross, more blood arrives in the splanchnic bed, the arterial
+  // pressure falls, and filtration falls with it.
+  assert.ok(end.portalGradient > start.portalGradient + 5, `${start.portalGradient} -> ${end.portalGradient}`);
+  assert.ok(end.splanchnicInflow > start.splanchnicInflow, `${start.splanchnicInflow} -> ${end.splanchnicInflow}`);
+  assert.ok(end.map < start.map, `${start.map} -> ${end.map}`);
+  assert.ok(end.gfr < start.gfr * 0.6, `${start.gfr} -> ${end.gfr}`);
+
+  // The patient walk meets them in that order.
+  const walked = PATIENT_GUIDES['hepatorenal-syndrome'].steps.map((step) => step.focus?.[0]);
+  const liverAt = walked.indexOf('liver');
+  const splanchnicAt = walked.indexOf('splanchnic');
+  const kidneyAt = walked.indexOf('afferent');
+  assert.ok(liverAt >= 0 && splanchnicAt > liverAt && kidneyAt > splanchnicAt, walked.join(' -> '));
+});

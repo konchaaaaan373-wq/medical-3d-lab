@@ -814,6 +814,14 @@ export const PATIENT_GUIDES = Object.freeze({
    * circulation, then the kidney — is numerically coupled, not two pictures
    * placed side by side.
    *
+   * **And now the screen shows it.** The scene reads out the portal pressure
+   * gradient and the splanchnic inflow beside the filtration rate, all from the
+   * same solve: along this axis the gradient goes 3.0 → 17.0 mmHg, the inflow
+   * 1016 → 1289 mL/min, the arterial pressure 90 → 79 mmHg and the filtration
+   * 120 → 53 mL/min. The walk has a step for each of those, in that order, so
+   * the reader meets the whole chain in one scene rather than being asked to
+   * carry it across a link.
+   *
    * **That is exactly why the neighbouring links say the opposite.** Moving
    * from the portal-hypertension scene to this one is navigation between two
    * models; nothing is carried across. The coupling is inside this scene, and
@@ -848,6 +856,24 @@ export const PATIENT_GUIDES = Object.freeze({
         bodyJa: '肝臓と腎臓は離れていますが、血液の流れは一つでつながっています。ここではどちらも、何かに対抗している状態ではありません。',
         look: 'Both organs are on screen at once. That pairing is what the rest of this is about.',
         lookJa: '二つの臓器が同時に映っています。この組み合わせが、以降の話の軸です。',
+      },
+      {
+        progress: 0.18,
+        stage: 'vasodilation',
+        // The liver step, and the reason it can be here at all: this scene's
+        // solve contains the portal circulation's, so the pressure in front of
+        // the liver is one of *this* model's outputs — 3.0 mmHg at the start of
+        // the axis, 8.1 here, 17.0 at the end. The scene reads it out beside
+        // the filtration rate, from the same solve.
+        frame: 'chain',
+        focus: ['liver'],
+        certainty: 'established',
+        title: 'The liver becomes hard to get through',
+        titleJa: '肝臓を通りにくくなります',
+        body: 'Blood from the gut is routed through the liver on its way back. When the liver is scarred it becomes hard to cross, and the pressure in front of it rises.',
+        bodyJa: '腸からの血液は、戻る途中で肝臓を通ります。肝臓が瘢痕化すると通りにくくなり、その手前の圧が上がります。',
+        look: 'Watch the liver on the left and the vessel arriving at it. Everything after this step follows from what is happening here.',
+        lookJa: '左の肝臓と、そこへ届く血管を見てください。この先の段階は、すべてここから始まります。',
       },
       {
         progress: 0.18,

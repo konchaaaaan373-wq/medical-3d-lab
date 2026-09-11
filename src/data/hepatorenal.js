@@ -158,6 +158,38 @@ export const CHARTS = [
 ];
 
 export const METRICS = [
+  /**
+   * The liver's own numbers, read out here because they are solved here.
+   *
+   * `solveHepatorenal` calls `solvePortalCirculation` and keeps its whole
+   * answer: the portal pressure gradient below is that sub-solve's, produced by
+   * the same call, at the same moment, from the same controls as the filtration
+   * rate two rows down. **That is the claim this scene exists to make** — one
+   * chain, one solve, from the liver to the kidney — and until these rows
+   * existed a reader had to take it on trust, because nothing about the liver
+   * appeared anywhere on screen.
+   *
+   * They are first because they are first in the chain, and because a reader
+   * scanning for "why is this happening" should meet the cause before the
+   * consequence.
+   *
+   * **A gradient, not an HVPG.** The two are different numbers and the portal
+   * scene is emphatic about it; this reports the one the model computes and
+   * calls it what it is.
+   */
+  {
+    id: 'portalGradient',
+    label: 'Portal pressure gradient (not HVPG)',
+    labelJa: '門脈圧較差（HVPG ではありません）',
+    unit: 'mmHg',
+    emphasis: true,
+  },
+  {
+    id: 'splanchnicInflow',
+    label: 'Splanchnic inflow',
+    labelJa: '内臓循環への流入量',
+    unit: 'mL/min',
+  },
   {
     id: 'gfr',
     label: 'Glomerular filtration rate',

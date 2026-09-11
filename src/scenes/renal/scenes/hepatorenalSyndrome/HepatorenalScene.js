@@ -560,6 +560,12 @@ export class HepatorenalScene {
     const state = this.solved;
     const released = this.released ?? kidneyWithoutTheSignal(state);
     const value = {
+      // The liver's own two, from the portal sub-solve this scene's solve
+      // contains. Not fetched from the portal-hypertension scene and not
+      // carried across a link — the same `solveHepatorenal` call produced these
+      // and the filtration rate below them.
+      portalGradient: state.portal.portalPressureGradientMmHg.toFixed(1),
+      splanchnicInflow: Math.round(state.portal.splanchnicInflowMlPerMin),
       gfr: Math.round(state.kidney.glomerularFiltrationRateMlPerMin),
       renalFlow: Math.round(state.kidney.renalBloodFlowMlPerMin),
       filtrationFraction: (state.kidney.filtrationFraction * 100).toFixed(1),
