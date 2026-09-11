@@ -50,6 +50,8 @@ import {
 } from '../src/models/aclInjury.js';
 import { HOLDS_ABOVE, RISE_MAX, SHARE, solveRotatorCuffTear } from '../src/models/rotatorCuffTear.js';
 import { SUBACROMIAL_DISPLAY_GAP } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
+import { DIRECTIONS as HIP_DIRECTIONS, HIP, SPILL, solveHipOsteoarthritis } from '../src/models/hipOsteoarthritis.js';
+import { buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
 import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
 import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
@@ -1497,4 +1499,52 @@ test('calibration: the rise is a share of the atlas’s own display gap', () => 
   assert.ok(scene.displayGap > SUBACROMIAL_DISPLAY_GAP, 'the arch stands clear of the head');
   assert.ok(scene.displayGap < SUBACROMIAL_DISPLAY_GAP * 6, 'and not by an unrelated amount');
   scene.dispose();
+});
+
+test('calibration: the hip model thins the layer the atlas’s own radii leave', () => {
+  // Defends `a-drawn-layer-not-a-joint-space`. The layer every fraction in this
+  // scene is a fraction of is the difference between the head the atlas draws
+  // and the socket it draws — so the arithmetic and the picture are the same
+  // hip. **It is an illustrative layer and the fraction is not a joint space.**
+  const hip = buildHipJoint({});
+  const head = hip.mesh('femoral-head');
+  head.geometry.computeBoundingBox();
+  // The fovea is carved out of the medial face, so the radius is read from the
+  // side the socket's roof is on rather than from the widest span.
+  const drawnHeadRadius = head.geometry.boundingBox.max.y;
+  assert.ok(
+    Math.abs(HIP.headRadius - drawnHeadRadius) < 0.01,
+    `the model has a head of ${HIP.headRadius}, the atlas draws ${drawnHeadRadius.toFixed(3)}`
+  );
+  assert.ok(HIP.socketRadius > HIP.headRadius, 'and the socket is the larger of the two');
+  assert.ok(HIP.layer > 0.02 && HIP.layer < 0.2, `${HIP.layer} is a layer rather than a cavity`);
+  hip.dispose();
+});
+
+test('calibration: a directional loss is plainly directional and an even one has no direction at all', () => {
+  // Defends `four-patterns-and-a-spill`. The angles are a reading of three
+  // described patterns and the spill says how much of a directional loss
+  // reaches the rest of the surface. What is defended is the behaviour: a
+  // direction that is unmistakably a direction, and a surface that is not left
+  // untouched away from it.
+  assert.ok(SPILL > 0 && SPILL < 0.35, 'some of it reaches the rest, and not most of it');
+
+  const directional = solveHipOsteoarthritis({ direction: 'superolateral', loss: 1 });
+  assert.ok(
+    directional.at.superolateral.gapFraction < 0.1 && directional.at.medial.gapFraction > 1.2,
+    'the two ends of the joint are in opposite states'
+  );
+  assert.ok(
+    directional.remainingAt(directional.narrowest.angle + Math.PI) < 1,
+    'and the far side has lost a little of its layer too'
+  );
+
+  const even = solveHipOsteoarthritis({ direction: 'concentric', loss: 1 });
+  assert.equal(even.offsetFraction, 0, 'the even pattern has no direction in it at all');
+
+  // Every direction the scene offers is one the model knows, and the three that
+  // have an angle are distinct.
+  const angles = HIP_DIRECTIONS.filter((entry) => entry.angle !== null).map((entry) => entry.angle);
+  assert.equal(new Set(angles).size, angles.length);
+  assert.equal(angles.length, 3);
 });

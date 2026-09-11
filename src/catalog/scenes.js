@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'hip-osteoarthritis',
+    slug: 'hip-osteoarthritis',
+    titleEn: 'Hip osteoarthritis',
+    titleJa: '股関節症',
+    system: 'musculoskeletal',
+    organ: 'hip',
+    organs: ['hip'],
+    disease: 'hip-osteoarthritis',
+    conditions: ['hip osteoarthritis', 'superolateral migration', 'concentric joint space narrowing', 'femoral head migration', '股関節症', '変形性股関節症', '上外側型', '全周性狭小化', '骨頭移動'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/hip-osteoarthritis.md',
+    modelProfile: 'hip-osteoarthritis-direction',
+    description:
+      'The centre of the ball and the centre of the socket are the same point, and this disease is what happens when they stop being. A hip does not narrow all round: it narrows in a direction, and the far side then looks wider than it was.',
+    descriptionJa:
+      '骨頭の中心と臼蓋の中心は同じ点であり、この病態はそれが同じでなくなることです。股関節は全周で狭くなるのではなく 1 つの方向で狭くなり、その反対側は元より広く見えるようになります。',
+    tags: ['musculoskeletal', 'direction-scenario', 'geometric-model'],
+    load: () => import('../scenes/musculoskeletal/scenes/hipOsteoarthritis/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',
