@@ -42,6 +42,10 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  LEVELS as BODY_LEVELS,
+  buildSkeleton,
+} from '../src/scenes/musculoskeletal/organs/skeleton.js';
+import {
   ARCH,
   MEDIAL as FOOT_MEDIAL,
   RAYS as FOOT_RAYS,
@@ -2081,4 +2085,84 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
   // And nothing goes through the ground it stands on.
   const all = new THREE.Box3().setFromObject(foot.object);
   assert.ok(all.min.y >= 0, 'the whole foot is above the ground line it stands on');
+});
+
+// --- the skeleton, whole ----------------------------------------------------
+
+test('the skeleton is a column with two girdles joined to it in different ways', () => {
+  // This scene claims an arrangement and nothing about the shape of any bone,
+  // so the arrangement is all there is to check — and the most important part
+  // of it is an **absence**: the scapula touching nothing.
+  const skeleton = buildSkeleton();
+  skeleton.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of skeleton.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+
+  // One column, top to bottom, meeting end to end.
+  const column = ['skull', 'cervical-spine', 'thoracic-spine', 'lumbar-spine', 'sacrum-and-coccyx'];
+  for (let i = 1; i < column.length; i += 1) {
+    const above = box(column[i - 1]);
+    const below = box(column[i]);
+    assert.ok(below.max.y <= above.max.y, `${column[i]} is below ${column[i - 1]}`);
+    assert.ok(below.max.y >= above.min.y - 0.5, `and reaches it rather than floating under it`);
+  }
+
+  // An arm is attached at one small joint, and the bone behind it at none.
+  const clavicle = box('clavicle');
+  // Through `anchorPoints`, which are in world units; `STERNOCLAVICULAR` is in
+  // the centimetre table the figure is laid out from, before it is scaled.
+  assert.ok(
+    clavicle.distanceToPoint(skeleton.anchorPoints.sternoclavicular) < 0.4,
+    'the clavicle starts at the sternoclavicular joint'
+  );
+  assert.ok(clavicle.intersectsBox(box('sternum')), 'and reaches it');
+  // The scapula lies *against* the back of the ribs, which is contact and not a
+  // joint — and a bounding box cannot tell those apart. So what is checked is
+  // the thing a box can see: **nothing of the arm but the clavicle reaches the
+  // column or the sternum**, which is the same claim from the other side.
+  // Measured one mesh at a time: the union of a left and a right bone spans the
+  // midline even when neither of them comes near it.
+  for (const id of ['scapula', 'humerus', 'radius-and-ulna', 'hand-bones']) {
+    for (const mesh of skeleton.meshesFor(id)) {
+      const bone = new THREE.Box3().setFromObject(mesh);
+      for (const axial of ['sternum', 'cervical-spine', 'thoracic-spine', 'lumbar-spine', 'skull']) {
+        assert.ok(!bone.intersectsBox(box(axial)), `the ${id} does not reach the ${axial}`);
+      }
+    }
+  }
+
+  // A leg is attached by being locked into the column itself.
+  const sacrum = box('sacrum-and-coccyx');
+  for (const mesh of skeleton.meshesFor('pelvis')) {
+    const hip = new THREE.Box3().setFromObject(mesh);
+    assert.ok(hip.intersectsBox(sacrum), 'each hip bone reaches the sacrum');
+  }
+  assert.ok(sacrum.intersectsBox(box('lumbar-spine')), 'and the sacrum is continuous with the column');
+
+  // A cage that is open below.
+  const ribs = skeleton.meshesFor('ribs');
+  assert.equal(ribs.length, 24, 'twelve pairs of ribs');
+  const spine = box('thoracic-spine');
+  const sternum = box('sternum');
+  const boxes = ribs.map((mesh) => new THREE.Box3().setFromObject(mesh));
+  for (const rib of boxes) assert.ok(rib.intersectsBox(spine), 'every rib starts at the column');
+  const highest = boxes.reduce((best, rib) => (rib.max.y > best.max.y ? rib : best), boxes[0]);
+  const lowest = boxes.reduce((best, rib) => (rib.min.y < best.min.y ? rib : best), boxes[0]);
+  assert.ok(highest.max.z > sternum.min.z, 'the upper ribs reach the sternum');
+  assert.ok(lowest.max.z < sternum.min.z, 'and the lower ones stop short of it');
+
+  // Every joint of a limb is below the one above it, which is what `LEVELS` is
+  // for: a figure cannot end up with an elbow above its shoulder.
+  assert.ok(BODY_LEVELS.elbow < BODY_LEVELS.shoulder, 'the elbow is below the shoulder');
+  assert.ok(BODY_LEVELS.wrist < BODY_LEVELS.elbow, 'the wrist below the elbow');
+  assert.ok(BODY_LEVELS.knee < BODY_LEVELS.hip, 'the knee below the hip');
+  assert.ok(BODY_LEVELS.ankle < BODY_LEVELS.knee, 'the ankle below the knee');
+  assert.ok(box('humerus').min.y > box('radius-and-ulna').min.y, 'and the drawn bones follow it');
+  assert.ok(box('femur').min.y > box('tibia-and-fibula').min.y, 'on both limbs');
+  // Standing on the ground it is drawn on.
+  const all = new THREE.Box3().setFromObject(skeleton.object);
+  assert.ok(all.min.y >= 0, 'the whole figure is above the ground');
 });

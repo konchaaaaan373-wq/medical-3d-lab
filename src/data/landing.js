@@ -49,6 +49,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'pelvic-floor-anatomy',
   'hand-anatomy',
   'foot-anatomy',
+  'skeleton-overview',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -263,6 +264,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '足のアーチを支えているのは何か。そして足はどこで向きを変えるのか。',
     ['ARCH', 'MORTISE', 'BOWSTRING'],
     ['アーチ', '臼蓋', '足底腱膜']
+  ),
+  'skeleton-overview': presentation(
+    'Where is a limb actually attached to the trunk?',
+    '四肢は、どこで体幹につながっているのか。',
+    ['COLUMN', 'GIRDLES', 'JOIN'],
+    ['体軸', '肢帯', '付着']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

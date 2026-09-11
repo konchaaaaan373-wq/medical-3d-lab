@@ -314,6 +314,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: joint surfaces rather than blocks — the dome of the talus, the three subtalar facets, the mortise itself — the capsules, the three cuneiforms separately so the transverse arch can be seen, the sesamoids, the fat pad, the tarsal tunnel, the intrinsic muscles, and the blood supply of the talus. Nothing bears weight and nothing bends, which is the first two things an arch-collapse or a gait scene would need',
   },
   {
+    organ: 'skeleton',
+    level: 'A1',
+    evidence:
+      'scenes/musculoskeletal/scenes/skeletonOverview — skull, mandible, the three named lengths of spine, sacrum and coccyx, ribs, sternum, clavicle, scapula, humerus, radius and ulna, hand bones, hip bones, femur, patella, tibia and fibula and foot bones, selectable by name; tests/organ-parts-anatomy.test.js — the column runs continuously from skull to sacrum in order with no gaps, the clavicle reaches the sternum while the scapula touches no other bone, the hip bone reaches the sacrum on both sides, the ribs run from the thoracic spine forward with the upper ones reaching the sternum and the lower ones not, and every joint of the limbs is below the one above it',
+    next: 'A2 for this scene is not the goal: it is an overview by design, and every region that deserves named parts has its own scene. What would improve it is the regions that still have none — the skull as bones rather than one shell, the thorax as a cage with costal cartilages, and the elbow. Nothing here moves or bears weight',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

@@ -762,6 +762,46 @@ ankle-joint  subtalar-joint
 
 ---
 
+## `skeleton-overview`
+
+| | |
+| --- | --- |
+| 構造 | 18 |
+| tags | `axial` `appendicular` `shoulder` `arm` `pelvis-girdle` `leg` |
+| views | `whole` `from-the-side` `from-behind` `the-column` `shoulder-join` `pelvic-join` |
+| bounds | 5.8 × 24.0 × 3.1（world unit。1 cm = `WORLD_SCALE` = 0.14） |
+
+```
+skull  mandible  cervical-spine  thoracic-spine  lumbar-spine  sacrum-and-coccyx  ribs  sternum
+clavicle  scapula  humerus  radius-and-ulna  hand-bones
+pelvis  femur  patella  tibia-and-fibula  foot-bones
+```
+
+**anchors** — `SITES`: `sternoclavicular` `sacroiliac` `hip` `shoulder`
+`crown`（`anchorPoints` は world unit、`SITES` は cm）。
+表としては `LEVELS`（cm 単位の全身の高さ）、`SPAN`、`spineAt(y)`、
+`STERNOCLAVICULAR`、`WORLD_SCALE`。
+
+**このシーンに病態を載せないでください。** これは地図であって領域では
+ありません。骨の形に依存する主張（骨折・変形・関節症）は、その部位を
+実際にモデル化したシーン——`spine-anatomy` / `shoulder-anatomy` /
+`hip-anatomy` / `knee-anatomy` / `hand-anatomy` / `foot-anatomy` /
+`pelvic-floor-anatomy`——に属します。
+
+**ここで使えるのは全身スケールの主題だけです**: 姿勢・側弯の全体像、
+四肢の欠損・切断レベル、全身性の骨疾患の分布（骨転移・多発性骨髄腫など
+「どこに起きるか」の地図）、成長と骨年齢の概観。
+
+**変えてはいけない関係**:
+- **体軸は連続した 1 本**です。頭蓋から仙骨まで途切れさせないでください
+- **腕は鎖骨 1 本でしか体幹に接していません。** 肩甲骨は体軸のどの骨とも
+  接しません（胸郭に「載る」のは接触であって関節ではありません）
+- **脚は仙骨に固定**されています。この左右の対比がシーンの主張そのものです
+- 上位肋骨は胸骨に届き、下位肋骨は届きません
+- **どの骨も、その骨のモデルではありません。** 形を根拠にしないでください
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

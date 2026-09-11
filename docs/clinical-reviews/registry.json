@@ -1148,5 +1148,27 @@
       "The blood supply of the talus — the reason that bone is spoken about the way it is — is not represented at all.",
       "No ligament strength or order of failure is represented, so nothing here supports any claim about which band tears first beyond what the copy states in words."
     ]
+  },
+  {
+    "sceneId": "skeleton-overview",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "How the skeleton is put together: the axial column, the two girdles, and the difference between the two ways a limb is attached. Not the shape of any individual bone, no movement, no weight-bearing, no disease."
+    ],
+    "sources": [
+      "docs/model-cards/skeleton-overview.md",
+      "docs/model-evidence/skeleton-overview.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "No bone here is a model of that bone: every one is a smooth shaft or block with no joint surfaces, processes, sutures or foramina, and the vertebrae, carpals, tarsals and the bones of the hands and feet are not drawn individually at all.",
+      "The figure is one representative adult of no particular sex, age or size; no length, proportion, joint angle or bone count is a measurement.",
+      "Nothing moves and nothing bears weight, and cartilage, ligaments, muscle and every soft tissue are absent.",
+      "Each structure’s note names the scene that actually models that region, because the detail is deliberately not here."
+    ]
   }
 ]
