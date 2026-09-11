@@ -2024,6 +2024,95 @@ export const GOITRE_EVIDENCE = defineEvidence('multinodular-goitre', [
   },
 ]);
 
+export const KNEE_OA_EVIDENCE = defineEvidence('knee-osteoarthritis', [
+  {
+    id: 'it-is-a-compartment',
+    claim:
+      'Knee osteoarthritis is predominantly compartmental rather than whole-joint: one compartment loses its articular layer while the other still has its own, and the medial compartment is the commoner one.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of knee osteoarthritis as compartmental, most often medial, and of the compartments as separately affected.',
+    validation: 'physiology: a knee loses a compartment rather than a joint',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'what-follows-goes-with-the-side',
+    claim:
+      'Marginal osteophytes and meniscal extrusion appear on the affected side, so the consequences of the loss belong to the compartment rather than to the joint.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of marginal osteophytes and meniscal extrusion in the affected compartment. The association is textbook; nothing here claims a size or an order.',
+    validation: 'physiology: what follows appears on the side that lost the layer and not on the other',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-wedge-has-one-way-out',
+    claim:
+      'A wedge between two surfaces that are coming together has one direction available to it, so as a compartment narrows its meniscus is pushed outward from between them.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry, applied to the meniscal wedge between the femoral condyle and the tibial plateau.',
+    validation: 'physiology: a wedge between converging surfaces is pushed outward',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'confined-and-even-are-different-pictures',
+    claim:
+      'At the same amount lost, loss confined to one compartment and loss spread evenly across both are two different pictures rather than two severities: one has a side and the other does not.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Arithmetic of the two distributions, and the standard clinical distinction between compartmental and generalised disease.',
+    validation: 'physiology: the same amount lost is two pictures, not two severities',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'drawn-layer-not-a-joint-space',
+    claim:
+      'The thickness of the layer this model thins, and the separation between the compartments it is thinned in.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The knee atlas’s own drawn values, which are chosen there so the layer reads as a glaze on the joint rather than measured. The atlas says in as many words that no thickness in it is a measurement.',
+    note:
+      'An illustrative layer. What the model reports is a fraction of it, and **that fraction is not a joint space width**: joint space width is millimetres between bone surfaces on a weight-bearing radiograph and it includes the meniscus. Nothing here is measured, weight-bearing or millimetres.',
+    validation: 'calibration: the knee model thins the atlas’s own drawn layer',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'extrusion-coefficient',
+    claim:
+      'How far a meniscus is pushed out per unit of layer lost, as a fraction of its own width.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the value was calibrated so the extrusion is visible across the range the scene walks without the meniscus leaving the joint altogether.',
+    note:
+      'The direction is geometry and the size is this repository’s. No millimetre of extrusion follows from it, and the meniscus is moved rather than deformed.',
+    validation: 'calibration: the meniscus is visibly pushed out without leaving the joint',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-loop-is-open',
+    claim:
+      'Uneven loss loads the worn side harder, which is thought to be part of why it continues. This model does not represent that.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no loading in the model at all — no weight, no alignment, no gait — so the feedback cannot be in it.',
+    note:
+      'A reader watching one side wear away is not watching a process that drives itself on screen. The axis is how much is gone, not how it got there, and nothing here says a knee moves along it.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-follows-about-pain',
+    claim:
+      'Nothing in this model says what a person with any of these pictures feels or can do.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a deliberate one: the relation between what is left of a layer and what somebody notices is not one this model could carry.',
+    note:
+      'Pain, stiffness and function are outside the model entirely. No fraction, difference or picture in it is a symptom, a grade or a probability of one.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2039,4 +2128,5 @@ export const EVIDENCE_REGISTRIES = [
   BOWEL_OBSTRUCTION_EVIDENCE,
   UTERINE_FIBROID_EVIDENCE,
   GOITRE_EVIDENCE,
+  KNEE_OA_EVIDENCE,
 ];

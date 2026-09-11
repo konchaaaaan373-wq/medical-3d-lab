@@ -36,6 +36,13 @@ import {
 } from '../src/models/multinodularGoitre.js';
 import { buildThyroidParts } from '../src/scenes/endocrine/organs/thyroidAnatomy.js';
 import {
+  EXTRUSION_PER_LOSS,
+  KNEE,
+  solveKneeOsteoarthritis,
+} from '../src/models/kneeOsteoarthritis.js';
+import { CONDYLE_SITES, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
+import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -1368,4 +1375,45 @@ test('calibration: one of the four directions narrows the airway and the others 
     })
   );
   assert.equal(signatures.size, 4, 'the four directions produce four different pictures');
+});
+
+test('calibration: the knee model thins the atlas’s own drawn layer', () => {
+  // Defends `drawn-layer-not-a-joint-space`. The layer this model reports a
+  // fraction of is the atlas's, so the arithmetic and the picture are the same
+  // knee. What is defended is that agreement — never that either is a
+  // measurement, and emphatically never that the fraction is a joint space.
+  assert.ok(
+    Math.abs(KNEE.compartmentSeparation - (CONDYLE_SITES.medial[0] - CONDYLE_SITES.lateral[0]) / 0.84) < 0.2,
+    'the compartments are as far apart as the atlas puts them'
+  );
+
+  const knee = buildKneeJoint({});
+  // The layer really is four meshes and not one coat, which is what makes a
+  // compartment expressible at all.
+  assert.equal(knee.cartilageMeshes.length, 4);
+  const names = knee.cartilageMeshes.map((mesh) => mesh.name).sort();
+  assert.deepEqual(names, [
+    'lateral-condylar-cartilage',
+    'lateral-plateau-cartilage',
+    'medial-condylar-cartilage',
+    'medial-plateau-cartilage',
+  ]);
+  knee.dispose();
+
+  // Thinning it to nothing brings the cap back onto the bone it was inflated
+  // from, and leaving it alone leaves it where the atlas put it.
+  const scene = new KneeOsteoarthritisScene({});
+  assert.equal(scene.capScaleFor(1), 1);
+  assert.ok(Math.abs(scene.capScaleFor(0) - 1 / (1 + KNEE.condylarLayer)) < 1e-9);
+});
+
+test('calibration: the meniscus is visibly pushed out without leaving the joint', () => {
+  // Defends `extrusion-coefficient`. One number says how far a meniscus is
+  // pushed per unit of layer lost. It was chosen so the movement is plain
+  // across the range the scene walks and the wedge stays in the joint.
+  assert.ok(EXTRUSION_PER_LOSS > 0);
+  const gone = solveKneeOsteoarthritis({ side: 'medial', loss: 1, confinement: 1 });
+  assert.ok(gone.medial.meniscalExtrusion > 0.3, `${gone.medial.meniscalExtrusion} is not visible`);
+  assert.ok(gone.medial.meniscalExtrusion < 1, 'and it has not left the joint');
+  assert.equal(solveKneeOsteoarthritis({ side: 'none' }).medial.meniscalExtrusion, 0);
 });

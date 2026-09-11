@@ -185,6 +185,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'benign-prostatic-enlargement': MECHANISM_LEVEL.ILLUSTRATIVE,
     'uterine-fibroid': MECHANISM_LEVEL.ILLUSTRATIVE,
     'multinodular-goitre': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'knee-osteoarthritis': MECHANISM_LEVEL.ILLUSTRATIVE,
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
     'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
   });

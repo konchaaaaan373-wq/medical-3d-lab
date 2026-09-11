@@ -361,6 +361,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "knee-osteoarthritis",
+    "card": "docs/model-cards/knee-osteoarthritis.md",
+    "modelSources": [
+      "src/models/kneeOsteoarthritis.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "86ee4cfcd8a1857b",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "multinodular-goitre",
     "card": "docs/model-cards/multinodular-goitre.md",
     "modelSources": [
