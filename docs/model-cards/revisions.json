@@ -359,5 +359,44 @@
     "cardRevision": 1,
     "modelDigest": "f3fa13dfdf54fa95",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "knee-anatomy",
+    "card": "docs/model-cards/knee-anatomy.md",
+    "modelSources": [
+      "src/data/kneeAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/kneeJoint.js",
+      "src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "84f2a2a7276a902c",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "shoulder-anatomy",
+    "card": "docs/model-cards/shoulder-anatomy.md",
+    "modelSources": [
+      "src/data/shoulderAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/shoulderJoint.js",
+      "src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "e029e8c9f79bebe5",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "hip-anatomy",
+    "card": "docs/model-cards/hip-anatomy.md",
+    "modelSources": [
+      "src/data/hipAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/hipJoint.js",
+      "src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "4b9a0d651116f6cb",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

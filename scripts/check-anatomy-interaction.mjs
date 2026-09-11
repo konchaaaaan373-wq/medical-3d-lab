@@ -137,6 +137,12 @@ const SCENE_POINTS = {
   'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
   // The route runs bottom-left to middle and then forward.
   'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
+  // A femoral condyle, the other one, the patella between them, and a plateau.
+  'knee-anatomy': [[0.45, 0.37], [0.56, 0.37], [0.52, 0.44], [0.46, 0.56]],
+  // The head, the scapula behind it, the arch above, and the shaft below.
+  'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
+  // The pelvis, the socket, the head in it, and the femur below.
+  'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
 };
 
 const clickPoints = (() => {

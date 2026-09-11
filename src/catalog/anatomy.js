@@ -188,6 +188,27 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the capsule and the neurovascular bundles, the internal and external sphincters, the urethral crest and sinuses, the prostatic utricle and Denonvilliers’ fascia. The zone proportions are drawn so four zones can be told apart and are not the real ones — no volume may be read off the model',
   },
   {
+    organ: 'knee',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/kneeAnatomy — femur, both femoral condyles, both tibial plateaus, tibia, fibula and patella, the articular cartilage over every surface that meets another, both menisci, both cruciates, both collaterals and the two tendons of the extensor mechanism, selectable by name; tests/organ-parts-anatomy.test.js — the cruciates cross inside the notch between the condyles and run in opposite directions, the collaterals lie outside both condyles on their own sides, the lateral collateral ends on the fibula and the medial does not, each meniscus sits between its own condyle and plateau, and the extensor mechanism is one chain from femur to tibial tuberosity through the patella',
+    next: 'A3: the joint capsule and synovium with its bursae and the suprapatellar pouch, the popliteus and the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns as separate attachments, and the popliteal vessels and the nerves behind. Nothing here moves, which is the first thing a knee scene beyond anatomy would need',
+  },
+  {
+    organ: 'shoulder',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/shoulderAnatomy — scapula, glenoid, acromion and scapular spine, coracoid, clavicle, humeral head, both tubercles and the humeral shaft, the articular cartilage on both surfaces, the labrum, all four rotator cuff tendons, the long head of biceps and four ligaments, selectable by name; tests/organ-parts-anatomy.test.js — the glenoid is a fraction of the head it faces, three cuff tendons end on the greater tubercle and subscapularis on the lesser, supraspinatus passes under the acromion, the biceps tendon begins at the socket rim and runs down between the tubercles, and the coracoacromial ligament spans coracoid to acromion above the cuff',
+    next: 'A3: the joint capsule with its other glenohumeral ligaments, the subacromial and subcoracoid bursae, deltoid and the remaining scapular muscles as bellies rather than straps, the conoid and trapezoid as separate ligaments, and the axillary vessels and the brachial plexus. Nothing here moves, which is the first thing a shoulder scene beyond anatomy would need',
+  },
+  {
+    organ: 'hip',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/hipAnatomy — hip bone, acetabulum and labrum, articular cartilage, femoral head, neck, both trochanters and shaft, the ligament of the head, the three capsular ligaments and the gluteus medius and iliopsoas tendons, selectable by name; tests/organ-parts-anatomy.test.js — the socket rim reaches past the equator of the head so the cup grips rather than cradles, the labrum rings that rim, the neck holds the head lateral to and above the shaft, gluteus medius ends on the greater trochanter and iliopsoas on the lesser, the iliofemoral ligament crosses the front of the joint and the ischiofemoral the back, and the ligament of the head runs inside the socket',
+    next: 'A3: the joint capsule itself with the three ligaments as thickenings of it, the acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels up the neck and the sciatic nerve behind. Nothing here moves, which is the first thing a hip scene beyond anatomy would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

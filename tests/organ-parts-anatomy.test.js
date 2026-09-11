@@ -23,6 +23,9 @@ import { CAVITY_CORNERS, buildUterusParts } from '../src/scenes/reproductive/org
 import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
 import { buildProstateZones } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
 import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
+import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
+import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
+import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -770,4 +773,324 @@ test('the male tract is one chain, and every link in it meets the next', () => {
       `and not inside the ${side} cavernosum`
     );
   }
+});
+
+// --- the knee ---------------------------------------------------------------
+
+test('the knee’s ligaments each run between the two things they hold together', () => {
+  // A joint is a set of relations, so the arrangement *is* the model. What is
+  // checked is which structure runs between which two points: the cruciates
+  // inside the notch and crossing, the collaterals outside on their own sides,
+  // each meniscus between its own pair of surfaces, and the extensor mechanism
+  // as one chain with a bone in the middle of it.
+  const knee = buildKneeJoint();
+  knee.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(knee.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+
+  // A right knee, so medial points towards the patient's left. Every side below
+  // goes through `MEDIAL`; nothing here reads a sign of its own.
+  assert.equal(patientSide(at('medial-femoral-condyle')), 'left', 'a right knee: medial is the patient’s left');
+  assert.equal(patientSide(at('lateral-femoral-condyle')), 'right', 'and lateral the patient’s right');
+  assert.ok(at('fibula').x * MEDIAL < 0, 'the fibula is on the lateral side');
+
+  // The notch is the gap between the two condyles, and it is where both
+  // cruciates are. That is why it is not drawn as a structure.
+  //
+  // And it is only behind: in front the two condyles run together into the
+  // surface the patella slides on, so the gap cannot be read off a bounding box.
+  const innerEdge = (side, within) => {
+    const mesh = knee.mesh(`${side}-femoral-condyle`);
+    const position = mesh.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    let edge = null;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).add(mesh.position);
+      if (!within(vertex)) continue;
+      const towardsMidline = vertex.x * (side === 'medial' ? MEDIAL : -MEDIAL);
+      if (edge === null || towardsMidline < edge) edge = towardsMidline;
+    }
+    assert.ok(edge !== null, `the ${side} condyle has a surface there at all`);
+    return edge;
+  };
+  const behind = (vertex) => vertex.z < -0.3;
+  // In front of the notch, but not at the very front: the groove the patella
+  // runs in is a dip *between* the two condyles, so the most anterior surface
+  // of each is again its own.
+  const inFront = (vertex) => vertex.z > 0.1;
+  assert.ok(
+    innerEdge('medial', behind) > 0.05 && innerEdge('lateral', behind) > 0.05,
+    'behind, the two condyles stand apart: the gap between them is the notch'
+  );
+  assert.ok(
+    innerEdge('medial', inFront) <= 0 && innerEdge('lateral', inFront) <= 0,
+    'in front they meet, which is the surface the patella runs on — not a hole'
+  );
+  for (const id of ['anterior-cruciate-ligament', 'posterior-cruciate-ligament']) {
+    const middle = at(id);
+    assert.ok(
+      Math.abs(middle.x) < innerEdge('medial', behind) + 0.2,
+      `the ${id} runs in the notch between the condyles`
+    );
+    assert.ok(box(id).min.z < -0.3, `and the ${id} reaches back into it`);
+  }
+
+  // Cruciate means crossing: the ACL comes off the *lateral* condyle and runs
+  // forward as it descends, the PCL off the *medial* one and runs backwards.
+  const attachment = (id) => new THREE.Vector3(...ATTACHMENTS[id]);
+  assert.ok(attachment('aclFemoral').x * MEDIAL < 0, 'the ACL starts on the lateral condyle’s inner wall');
+  assert.ok(attachment('pclFemoral').x * MEDIAL > 0, 'the PCL starts on the medial condyle’s inner wall');
+  for (const [femoral, tibial] of [['aclFemoral', 'aclTibial'], ['pclFemoral', 'pclTibial']]) {
+    assert.ok(attachment(tibial).y < attachment(femoral).y, `${femoral} → ${tibial} descends`);
+  }
+  assert.ok(attachment('aclTibial').z > attachment('aclFemoral').z, 'the ACL runs forward as it descends');
+  assert.ok(attachment('pclTibial').z < attachment('pclFemoral').z, 'the PCL runs backwards as it descends');
+  assert.ok(attachment('aclTibial').z > attachment('pclTibial').z, 'so at the tibia the ACL is the anterior one');
+  assert.ok(attachment('aclFemoral').z < attachment('pclFemoral').z, 'and at the femur it is the posterior one — they cross');
+
+  // The collaterals are outside, one down each side, and only one of them ends
+  // on the fibula. That is the whole of why the lateral meniscus is mobile.
+  const mcl = box('medial-collateral-ligament');
+  const lcl = box('lateral-collateral-ligament');
+  assert.ok(mcl.min.x * MEDIAL > at('medial-femoral-condyle').x * MEDIAL, 'the MCL lies outside the medial condyle');
+  assert.ok(lcl.max.x * MEDIAL < at('lateral-femoral-condyle').x * MEDIAL, 'the LCL lies outside the lateral condyle');
+  assert.ok(lcl.intersectsBox(box('fibula')), 'the LCL ends on the head of the fibula');
+  assert.ok(!mcl.intersectsBox(box('fibula')), 'and the MCL does not');
+  assert.ok(mcl.min.y < box('medial-tibial-plateau').min.y, 'the MCL reaches well below the joint line');
+
+  // Each meniscus is between its own condyle and its own plateau.
+  for (const side of ['medial', 'lateral']) {
+    const meniscus = at(`${side}-meniscus`);
+    assert.equal(patientSide(meniscus), patientSide(at(`${side}-femoral-condyle`)), `the ${side} meniscus is on its own side`);
+    assert.ok(meniscus.y < at(`${side}-femoral-condyle`).y, `and below the ${side} condyle`);
+    assert.ok(meniscus.y > at(`${side}-tibial-plateau`).y, `and above the ${side} plateau`);
+  }
+
+  // The two bones never touch: one structure, four meshes, each of them
+  // standing off the surface it covers.
+  // It stands off the surfaces that meet — distal and posterior on a condyle,
+  // the top of a plateau — and nowhere else: a layer that enclosed the whole
+  // bone would be a coat of paint, and it would hide the bone it covers.
+  const cartilage = new Map(knee.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  for (const side of ['medial', 'lateral']) {
+    const condyle = box(`${side}-femoral-condyle`);
+    const overCondyle = cartilage.get(`${side}-condylar-cartilage`);
+    assert.ok(overCondyle.min.y < condyle.min.y, `the ${side} condyle's cartilage covers its distal surface`);
+    assert.ok(overCondyle.min.z < condyle.min.z, 'and its posterior surface');
+    assert.ok(overCondyle.max.y <= condyle.max.y + 1e-6, 'and does not climb the shaft above it');
+
+    const plateau = box(`${side}-tibial-plateau`);
+    const overPlateau = cartilage.get(`${side}-plateau-cartilage`);
+    assert.ok(overPlateau.max.y > plateau.max.y, `the ${side} plateau's cartilage covers its top`);
+    assert.ok(overPlateau.min.y >= plateau.min.y - 1e-6, 'and not its underside, which meets nothing');
+  }
+
+  // The extensor mechanism is one chain from thigh to shin with the patella in
+  // the middle of it, not two tendons that happen to point the same way.
+  const patella = box('patella');
+  assert.ok(patella.getCenter(new THREE.Vector3()).z > at('medial-femoral-condyle').z, 'the patella is in front of the condyles');
+  const quadriceps = box('quadriceps-tendon');
+  const patellar = box('patellar-tendon');
+  assert.ok(quadriceps.max.y > patella.max.y && quadriceps.intersectsBox(patella), 'the quadriceps tendon arrives on top of the patella');
+  assert.ok(patellar.min.y < patella.min.y && patellar.intersectsBox(patella), 'and the patellar tendon leaves from below it');
+  assert.ok(patellar.distanceToPoint(attachment('tibialTuberosity')) < 0.02, 'ending at the tibial tuberosity');
+  assert.ok(attachment('tibialTuberosity').y < box('medial-tibial-plateau').min.y, 'which is below the joint line');
+});
+
+// --- the shoulder -----------------------------------------------------------
+
+test('the shoulder’s socket is small, and four tendons make up for it', () => {
+  // The opposite problem from the knee. A knee is held by its ligaments; a
+  // shoulder is barely held by its bones at all, so what is checked here is the
+  // sleeve: which tendon arrives from which direction, and which of the two
+  // tubercles each one ends on.
+  const shoulder = buildShoulderJoint();
+  shoulder.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(shoulder.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  const size = (id) => box(id).getSize(new THREE.Vector3());
+  const lateralOf = (a, b) => at(a).x * SHOULDER_MEDIAL < at(b).x * SHOULDER_MEDIAL;
+
+  // A right shoulder: the scapula is medial, the humerus lateral.
+  assert.ok(lateralOf('humeral-head', 'glenoid'), 'the head sits lateral to the socket');
+  assert.ok(lateralOf('humeral-head', 'scapula'), 'and the whole humerus is lateral to the scapula');
+
+  // The claim the scene is built on: the socket is a fraction of the head.
+  // Not an assertion that it is a third — that is a fact about contact arcs,
+  // stated in the copy and not built into this geometry. What the geometry has
+  // to be is a face smaller than the ball on it, in both directions and by a
+  // long way in area.
+  const socket = size('glenoid');
+  const head = size('humeral-head');
+  assert.ok(socket.y < head.y * 0.9, 'the glenoid is shorter than the head it faces');
+  assert.ok(socket.z < head.z * 0.75, 'and much shallower front to back');
+  assert.ok(socket.y * socket.z < head.y * head.z * 0.6, 'so its face is a fraction of the head’s');
+
+  // The labrum is a rim *around* the socket, so it reaches past it on all sides.
+  const labrum = box('glenoid-labrum');
+  const glenoid = box('glenoid');
+  assert.ok(labrum.min.y < glenoid.min.y && labrum.max.y > glenoid.max.y, 'the labrum rims the socket top and bottom');
+  assert.ok(labrum.min.z < glenoid.min.z && labrum.max.z > glenoid.max.z, 'and front and back');
+
+  // Three of the four cuff tendons end on the greater tubercle; subscapularis,
+  // the only one in front, ends on the lesser. That is the whole of why it
+  // rotates the arm the other way.
+  const greater = box('greater-tubercle');
+  const lesser = box('lesser-tubercle');
+  for (const id of ['supraspinatus-tendon', 'infraspinatus-tendon', 'teres-minor-tendon']) {
+    assert.ok(box(id).intersectsBox(greater), `${id} ends on the greater tubercle`);
+    assert.ok(!box(id).intersectsBox(lesser), `${id} does not reach the lesser tubercle`);
+  }
+  assert.ok(box('subscapularis-tendon').intersectsBox(lesser), 'subscapularis ends on the lesser tubercle');
+  assert.ok(!box('subscapularis-tendon').intersectsBox(greater), 'and not on the greater');
+
+  // And they arrive from four different directions round the head.
+  const centre = at('humeral-head');
+  assert.ok(at('supraspinatus-tendon').y > centre.y, 'supraspinatus comes over the top');
+  assert.ok(at('infraspinatus-tendon').z < centre.z, 'infraspinatus from behind');
+  assert.ok(at('teres-minor-tendon').z < centre.z, 'teres minor from behind');
+  assert.ok(at('teres-minor-tendon').y < at('infraspinatus-tendon').y, 'and below infraspinatus');
+  assert.ok(at('subscapularis-tendon').z > centre.z, 'subscapularis from in front');
+
+  // Supraspinatus passes *under* the acromion — which is why it is the cuff
+  // tendon with a bony shelf over it. Measured where the two actually overlap:
+  // a bounding box cannot say this, because the acromion runs away medially
+  // and downwards to the spine it comes from.
+  const extreme = (id, within, pick) => {
+    const mesh = shoulder.mesh(id);
+    const position = mesh.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    let found = null;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).add(mesh.position);
+      if (!within(vertex)) continue;
+      found = found === null ? vertex.y : pick(found, vertex.y);
+    }
+    assert.ok(found !== null, `${id} has a surface over the joint at all`);
+    return found;
+  };
+  const overTheJoint = (vertex) => vertex.x * SHOULDER_MEDIAL > -0.35 && vertex.x * SHOULDER_MEDIAL < 0.3;
+  const roof = extreme('acromion', overTheJoint, Math.min);
+  const tendon = extreme('supraspinatus-tendon', overTheJoint, Math.max);
+  assert.ok(roof > tendon, 'the acromion is above the supraspinatus tendon, not through it');
+  assert.ok(at('supraspinatus-tendon').y > centre.y, 'and the tendon is above the middle of the head');
+  assert.ok(box('coracoacromial-ligament').intersectsBox(box('coracoid-process')), 'the arch reaches the coracoid');
+
+  // The biceps tendon starts inside the joint and runs down between the two
+  // tubercles. Nothing else in the body does that.
+  const biceps = box('long-head-of-biceps-tendon');
+  assert.ok(biceps.intersectsBox(labrum), 'the long head of biceps begins at the rim of the socket');
+  assert.ok(biceps.min.y < Math.min(greater.min.y, lesser.min.y), 'and ends below both tubercles');
+  const groove = shoulder.anchorPoints.bicipitalGroove;
+  assert.ok(biceps.containsPoint(groove), 'passing through the groove');
+  const between = [at('greater-tubercle').x, at('lesser-tubercle').x].sort((a, b) => a - b);
+  assert.ok(groove.x > between[0] && groove.x < between[1], 'which is between the two tubercles');
+
+  // The arm hangs from the clavicle, and two ligaments are how.
+  assert.ok(box('clavicle').intersectsBox(box('acromion')), 'the clavicle reaches the acromion');
+  assert.ok(box('acromioclavicular-ligament').intersectsBox(box('clavicle')), 'the AC ligament spans that joint');
+  const coracoclavicular = box('coracoclavicular-ligament');
+  assert.ok(coracoclavicular.intersectsBox(box('coracoid-process')), 'the CC ligament reaches the coracoid');
+  assert.ok(coracoclavicular.intersectsBox(box('clavicle')), 'and the clavicle');
+
+  // The cartilage covers the part of the head that faces the socket, and not
+  // the lateral side of it, where nothing articulates.
+  const cartilage = new Map(shoulder.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  const glaze = cartilage.get('humeral-cartilage');
+  const headBox = box('humeral-head');
+  assert.ok(glaze.max.x * SHOULDER_MEDIAL > headBox.max.x * SHOULDER_MEDIAL, 'the glaze stands off the head on the socket side');
+  assert.ok(glaze.min.x * SHOULDER_MEDIAL >= headBox.min.x * SHOULDER_MEDIAL, 'and not on the side away from it');
+
+  // And the sling under the head runs from the socket to the humerus.
+  const sling = box('inferior-glenohumeral-ligament');
+  assert.ok(sling.max.y < centre.y, 'the inferior glenohumeral ligament is below the head');
+  assert.ok(sling.intersectsBox(labrum), 'reaching the lower rim of the socket');
+  assert.ok(sling.intersectsBox(box('humeral-shaft')) || sling.intersectsBox(headBox), 'and the neck of the humerus');
+});
+
+// --- the hip ----------------------------------------------------------------
+
+test('the hip’s socket grips past the widest part of the head', () => {
+  // The claim the whole scene is built on, and the one thing that separates
+  // this joint from the shoulder. A dish cradles a ball; a cup holds it.
+  const hip = buildHipJoint();
+  hip.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(hip.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  // How far out towards the leg a point is. Medial is +x here, so lateral is
+  // the other way, and a sign read the wrong way round makes every one of the
+  // assertions below quietly true of a mirrored hip.
+  const outward = (point) => -point.x * HIP_MEDIAL;
+
+  const head = box('femoral-head');
+  const socket = box('acetabulum');
+  const centre = hip.anchorPoints.femoralHead;
+
+  // Head and socket share a centre — that is what a congruent ball-and-socket
+  // joint is, and it is why the hip turns in every direction about one point.
+  assert.ok(
+    hip.anchorPoints.acetabulum.distanceTo(centre) < 1e-9,
+    'the ball and the cup are drawn about the same point'
+  );
+
+  // The rim reaches past the equator: the most lateral part of the socket is
+  // lateral of the centre of the head, so the head cannot come straight out.
+  const rim = box('acetabular-labrum');
+  const rimReach = Math.max(outward(rim.min), outward(rim.max));
+  assert.ok(rimReach > outward(centre), 'the rim reaches past the middle of the head — a cup, not a dish');
+  assert.ok(
+    rimReach < Math.max(outward(head.min), outward(head.max)),
+    'and not so far that it swallows the head the neck has to come out of'
+  );
+
+  // And the labrum rings the mouth of the cup rather than sitting beside it.
+  const rimSize = rim.getSize(new THREE.Vector3());
+  assert.ok(rimSize.y > 0.6 && rimSize.z > 0.6, 'the labrum is a ring, not a patch');
+  assert.ok(rimSize.x < rimSize.y * 0.4, 'lying in the plane of the socket’s mouth');
+
+  // The neck holds the head out to the side of the shaft. Nothing about the
+  // hip's weak point makes sense until that is true.
+  const neck = at('femoral-neck');
+  const shaft = at('femoral-shaft');
+  const trochanter = at('greater-trochanter');
+  assert.ok(outward(centre) < outward(neck) && outward(neck) < outward(trochanter), 'head, then neck, then trochanter, going outwards');
+  assert.ok(centre.y > shaft.y, 'and the head is above the shaft it hands the load to');
+  assert.ok(box('femoral-neck').intersectsBox(head), 'the neck meets the head');
+  assert.ok(box('femoral-neck').intersectsBox(box('greater-trochanter')), 'and the trochanter at the other end');
+  assert.ok(at('lesser-trochanter').y < trochanter.y, 'the lesser trochanter is the lower of the two');
+  assert.ok(at('lesser-trochanter').z < trochanter.z, 'and lies behind it');
+
+  // Two tendons, two trochanters, and they are not interchangeable.
+  assert.ok(box('gluteus-medius-tendon').intersectsBox(box('greater-trochanter')), 'gluteus medius ends on the greater trochanter');
+  assert.ok(!box('gluteus-medius-tendon').intersectsBox(box('lesser-trochanter')), 'and not on the lesser');
+  assert.ok(box('iliopsoas-tendon').intersectsBox(box('lesser-trochanter')), 'iliopsoas ends on the lesser trochanter');
+
+  // The three capsular ligaments come from three different parts of the hip
+  // bone and cross the joint on three different sides.
+  assert.ok(at('iliofemoral-ligament').z > centre.z, 'the iliofemoral ligament crosses the front');
+  assert.ok(at('pubofemoral-ligament').z > centre.z, 'the pubofemoral ligament crosses the front, below');
+  assert.ok(at('pubofemoral-ligament').y < at('iliofemoral-ligament').y, 'below the iliofemoral');
+  assert.ok(at('ischiofemoral-ligament').z < centre.z, 'the ischiofemoral ligament crosses behind');
+  for (const id of ['iliofemoral-ligament', 'pubofemoral-ligament', 'ischiofemoral-ligament']) {
+    const band = box(id);
+    assert.ok(outward(band.min) > outward(centre), `the ${id} reaches the femur`);
+    assert.ok(outward(band.max) < outward(centre), `and comes from the hip bone`);
+  }
+
+  // The ligament of the head is the one inside: it stays within the socket.
+  const inside = box('ligament-of-the-head');
+  assert.ok(socket.containsBox(inside), 'the ligament of the head is inside the socket');
+  assert.ok(inside.intersectsBox(head), 'and reaches the head it is named for');
+
+  // The cartilage lines both surfaces: the ball nearly all over, the cup on the
+  // inside. The two layers are between the two bones and nowhere else.
+  const cartilage = new Map(hip.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  const glaze = cartilage.get('femoral-cartilage');
+  assert.ok(glaze.containsBox(head), 'the head is glazed all over — it lives inside a cup');
+  const lining = cartilage.get('acetabular-cartilage');
+  assert.ok(socket.containsBox(lining), 'and the cup is lined on its inside, not coated on its outside');
+
+  // The socket is cut into the hip bone rather than sitting next to it.
+  assert.ok(box('hip-bone').intersectsBox(socket), 'the acetabulum is part of the hip bone');
+  assert.ok(at('hip-bone').y > centre.y, 'whose weight comes down from above');
 });

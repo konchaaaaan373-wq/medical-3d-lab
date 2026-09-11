@@ -10,6 +10,25 @@ export const CAPTURE_PRESETS = [
 ];
 
 /**
+ * `**like this**` as emphasis, and nothing else as markup.
+ *
+ * Every disclaimer in the catalogue marks its sharpest sentence this way —
+ * "no volume may be read off this model", "nothing here moves" — because the
+ * same string is read by the model cards, which are markdown. Set as plain text
+ * the asterisks were showing through, so the one warning a reader most needs to
+ * notice was the one wearing punctuation. Split, never parsed: the text becomes
+ * text nodes and `<strong>` elements, so nothing here can inject markup even if
+ * a disclaimer one day contains some.
+ */
+function emphasised(text) {
+  if (!text) return [];
+  return String(text)
+    .split('**')
+    .map((part, index) => (index % 2 ? el('strong', { text: part }) : document.createTextNode(part)))
+    .filter((node) => node.textContent !== '');
+}
+
+/**
  * Progression slider + transport buttons + the educational disclaimer.
  *
  * @param {{
@@ -197,10 +216,10 @@ export function createControlPanel({
     // The notice must always be visible, so a shorter wording is swapped in on
     // narrow screens rather than the notice being dropped.
     el('p', { class: 'disclaimer' }, [
-      el('span', { class: 'disclaimer-full lang-ja', text: `⚠︎ ${meta.disclaimerJa}` }),
-      el('span', { class: 'disclaimer-full disclaimer-en lang-en', text: meta.disclaimer }),
-      el('span', { class: 'disclaimer-short lang-ja', text: `⚠︎ ${meta.disclaimerShortJa ?? meta.disclaimerJa}` }),
-      el('span', { class: 'disclaimer-short disclaimer-en lang-en', text: meta.disclaimerShort ?? meta.disclaimer }),
+      el('span', { class: 'disclaimer-full lang-ja' }, emphasised(`⚠︎ ${meta.disclaimerJa}`)),
+      el('span', { class: 'disclaimer-full disclaimer-en lang-en' }, emphasised(meta.disclaimer)),
+      el('span', { class: 'disclaimer-short lang-ja' }, emphasised(`⚠︎ ${meta.disclaimerShortJa ?? meta.disclaimerJa}`)),
+      el('span', { class: 'disclaimer-short disclaimer-en lang-en' }, emphasised(meta.disclaimerShort ?? meta.disclaimer)),
     ]),
   ]);
 

@@ -33,6 +33,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'uterus-anatomy',
   'prostate-anatomy',
   'male-tract-anatomy',
+  'knee-anatomy',
+  'shoulder-anatomy',
+  'hip-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -150,6 +153,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '1周期を通じた子宮内膜の厚さを、断面で。',
     ['CYCLE', 'ENDOMETRIUM', 'SECTION'],
     ['周期', '内膜', '断面']
+  ),
+  'knee-anatomy': presentation(
+    'Point at a ligament and see what it runs between, with the bones faded out of the way.',
+    '骨を薄くして、どの靱帯がどこからどこへ走るのかを確認。',
+    ['LIGAMENTS', 'MENISCI', 'JOINT'],
+    ['靱帯', '半月板', '関節']
+  ),
+  'shoulder-anatomy': presentation(
+    'See how little socket there is, and which four tendons make up for it.',
+    '関節窩の浅さと、それを補う腱板4筋の走行。',
+    ['CUFF', 'SOCKET', 'ARCH'],
+    ['腱板', '関節窩', 'アーチ']
+  ),
+  'hip-anatomy': presentation(
+    'See the rim reach past the widest part of the head — in section.',
+    '断面で、臼蓋の縁が骨頭の最大径を越えていることを確認。',
+    ['SOCKET', 'NECK', 'SECTION'],
+    ['臼蓋', '頸部', '断面']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

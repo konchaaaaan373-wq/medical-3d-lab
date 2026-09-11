@@ -56,6 +56,12 @@ export const ORGANS = [
   { id: 'spleen', system: 'hematologic', label: 'Spleen', labelJa: '脾臓' },
   { id: 'bone', system: 'musculoskeletal', label: 'Bone', labelJa: '骨' },
   { id: 'skeletal-muscle', system: 'musculoskeletal', label: 'Skeletal muscle', labelJa: '骨格筋' },
+  // A joint is not an organ, but it is a thing a reader navigates to by name,
+  // and this taxonomy is the map a reader uses. Each major joint gets its own
+  // node rather than one lumped 'joints', because nobody looks for 'joints'.
+  { id: 'knee', system: 'musculoskeletal', label: 'Knee joint', labelJa: '膝関節' },
+  { id: 'shoulder', system: 'musculoskeletal', label: 'Shoulder joint', labelJa: '肩関節' },
+  { id: 'hip', system: 'musculoskeletal', label: 'Hip joint', labelJa: '股関節' },
   { id: 'uterus', system: 'reproductive', label: 'Uterus', labelJa: '子宮' },
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },

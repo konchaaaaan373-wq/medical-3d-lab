@@ -737,5 +737,82 @@
       "The prostate here is one undivided translucent gland; its zones are `prostate-anatomy`.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning vasectomy, catheterisation, surgery or any fertility decision."
     ]
+  },
+  {
+    "sceneId": "knee-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right knee in extension — bones, articular cartilage, menisci, cruciate and collateral ligaments and the extensor mechanism — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/knee-anatomy.md",
+      "docs/model-evidence/knee-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement; bone shapes are simplified solids and cartilage thickness is drawn to be visible.",
+      "The joint is drawn at one position, in full extension, and nothing in the scene moves: rolling, gliding and the screw-home rotation are not represented.",
+      "Each ligament is one band between two points; the separate bundles of the cruciates and the layers of the medial collateral ligament are not modelled.",
+      "The joint capsule, the synovium and its bursae, the popliteus, the posterolateral corner, the hamstring and iliotibial attachments, the meniscal horns, the vessels and the nerves are not drawn.",
+      "No injury, degeneration or repair is represented in any form, and nothing here is anyone's knee.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, reconstruction or arthroplasty."
+    ]
+  },
+  {
+    "sceneId": "shoulder-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right shoulder with the arm at the side — bones, glenoid and labrum, articular cartilage, all four rotator cuff tendons, the long head of biceps and four ligaments — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/shoulder-anatomy.md",
+      "docs/model-evidence/shoulder-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement; bone shapes are simplified solids and cartilage thickness is drawn to be visible.",
+      "The subacromial space is drawn wider than it is, so that the tendon passing under the arch can be seen and selected; it is a display value and no clearance may be read off the model.",
+      "The joint is drawn at one position, with the arm at the side, and nothing in the scene moves: the cuff neither tightens nor slackens and the head does not translate.",
+      "Each cuff tendon is one strap standing for a muscle and its tendon; the myotendinous junctions and the footprints are not modelled.",
+      "The joint capsule apart from one glenohumeral ligament, the subacromial and other bursae, deltoid, the remaining scapular muscles, the vessels and the brachial plexus are not drawn.",
+      "Glenoid version and humeral retroversion are not represented.",
+      "No tear, impingement, instability or degeneration is represented in any form, and nothing here is anyone's shoulder.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, cuff repair, stabilisation or arthroplasty."
+    ]
+  },
+  {
+    "sceneId": "hip-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right hip, standing — bones, acetabulum and labrum, articular cartilage, the ligament of the head, three capsular ligaments and two tendons — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/hip-anatomy.md",
+      "docs/model-evidence/hip-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement, the neck-shaft angle included: it is drawn to read.",
+      "The joint is drawn at one position, standing, and nothing in the scene moves: no ligament tightens or slackens.",
+      "The joint capsule itself is not drawn; the three ligaments are drawn as separate bands where in life they are thickenings of it, and the iliofemoral ligament is drawn as one band where it has two limbs.",
+      "The acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels of the head and neck and the sciatic nerve are not drawn.",
+      "No fracture, arthritis, impingement, dysplasia or dislocation is represented in any form, and nothing here is anyone's hip.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, fixation or arthroplasty."
+    ]
   }
 ]
