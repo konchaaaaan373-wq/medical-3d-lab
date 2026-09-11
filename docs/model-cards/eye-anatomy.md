@@ -68,6 +68,10 @@ the sclera from its own side, from behind, inserting in front of the equator.
 - **"The fundus" hides the front of the eye by tag.** That is what an
   ophthalmoscope does with light, and it puts the disc and the macula exactly
   where a fundus photograph has them.
+- **A click on the front of the eye selects the cornea**, because the cornea is
+  what is in front — it is a structure and not a coating, even at the
+  transparency it is drawn with. The iris and the lens behind it are reached
+  from the parts list, from isolation, or from the section.
 - **The pupil is drawn as a black disc**, because an opening cannot be clicked
   and black is what an unlit eye interior looks like. The copy says it is an
   opening and not a structure.
