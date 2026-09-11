@@ -47,6 +47,7 @@ test('migrated production evidence and the existing model registries share one c
       'biliary-obstruction',
       'achalasia',
       'benign-prostatic-enlargement',
+      'bowel-obstruction',
     ]
   );
 });

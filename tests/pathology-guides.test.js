@@ -35,6 +35,11 @@ import {
   MODEL_CONTROLS as PROSTATE_CONTROLS,
 } from '../src/data/benignProstaticEnlargement.js';
 import { BenignProstaticEnlargementScene } from '../src/scenes/reproductive/scenes/benignProstaticEnlargement/BenignProstaticEnlargementScene.js';
+import {
+  STAGES as BOWEL_STAGES,
+  MODEL_CONTROLS as BOWEL_CONTROLS,
+} from '../src/data/bowelObstruction.js';
+import { BowelObstructionScene } from '../src/scenes/gastrointestinal/scenes/bowelObstruction/BowelObstructionScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -167,6 +172,24 @@ const GUIDES = [
     visualMapping: new BenignProstaticEnlargementScene({}).getVisualMapping(),
     stateFields: null,
   },
+  /**
+   * The gut, which is the nephron's and the biliary tree's shape again: the
+   * site is a choice and the axis is how complete. What is new is that two of
+   * its steps *move the site* at the same position on the axis, so the reader
+   * is shown two obstructions rather than two amounts of one.
+   */
+  {
+    id: 'bowel-obstruction',
+    stages: BOWEL_STAGES,
+    controls: BOWEL_CONTROLS,
+    scene: () => {
+      const scene = new BowelObstructionScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new BowelObstructionScene({}).getVisualMapping(),
+    stateFields: null,
+  },
 ];
 
 for (const guide of GUIDES) {
@@ -203,15 +226,32 @@ for (const guide of GUIDES) {
     const scene = guide.scene ? guide.scene() : null;
     if (!scene) return;
     scene.build?.();
-    const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a]));
     // A `compare` a step set stays set until another step changes it, so this
-    // walks the guide in order rather than asking each step in isolation.
+    // walks the guide in order rather than asking each step in isolation — and
+    // it walks the *scene* with it, because a label can depend on the state:
+    // the bowel scene draws "the wall carrying the most" only where one stretch
+    // stands out, which is true after a step has moved the blockage into the
+    // colon and not before. Asking the scene in its opening state would have
+    // passed that step for the wrong reason, or failed it for one.
     let comparing = false;
     for (const step of PATIENT_GUIDES[id].steps) {
       if (step.compare !== undefined) comparing = step.compare;
+      if (typeof step.progress === 'number') scene.setProgress?.(step.progress);
+      for (const [control, value] of Object.entries(step.controls ?? {})) {
+        scene.setModelControl?.(control, value);
+      }
+      const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a]));
       for (const focusId of step.focus ?? []) {
         const annotation = annotations.get(focusId);
         assert.ok(annotation, `${step.stage}: points at "${focusId}", which the scene does not draw`);
+        // A scene may also answer that it is not drawing a label right now —
+        // the bowel scene does, for the one that names the wall carrying the
+        // most, which is only true of a picture where one stretch stands out.
+        assert.notEqual(
+          annotation.isDrawn?.(),
+          false,
+          `${step.stage}: points at "${focusId}", which the scene is not drawing in this state`
+        );
         const range = annotation.range ?? [0, 1];
         assert.ok(
           step.progress >= range[0] - 1e-9 && step.progress <= range[1] + 1e-9,

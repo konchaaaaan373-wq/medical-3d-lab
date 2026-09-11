@@ -184,6 +184,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'biliary-obstruction': MECHANISM_LEVEL.MECHANISTIC,
     'benign-prostatic-enlargement': MECHANISM_LEVEL.ILLUSTRATIVE,
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
+    'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
   });
 });
 

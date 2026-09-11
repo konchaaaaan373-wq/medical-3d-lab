@@ -6,6 +6,7 @@ import {
   ASSERTABLE,
   ASTHMA_EVIDENCE,
   BILIARY_EVIDENCE,
+  BOWEL_OBSTRUCTION_EVIDENCE,
   CIRCULATION_EVIDENCE,
   CONFIDENCE,
   COPD_EVIDENCE,
@@ -56,6 +57,7 @@ const FILE_LAYERS = {
   'biliary-physiology.test.js': LAYER.EXTERNAL,
   'achalasia-physiology.test.js': LAYER.EXTERNAL,
   'prostatic-enlargement-physiology.test.js': LAYER.EXTERNAL,
+  'bowel-obstruction-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -72,6 +74,7 @@ const DOSSIERS = {
   'biliary-obstruction': 'docs/model-evidence/biliary-obstruction.md',
   achalasia: 'docs/model-evidence/achalasia.md',
   'benign-prostatic-enlargement': 'docs/model-evidence/benign-prostatic-enlargement.md',
+  'bowel-obstruction': 'docs/model-evidence/bowel-obstruction.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -208,6 +211,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'biliary-obstruction',
       'achalasia',
       'benign-prostatic-enlargement',
+      'bowel-obstruction',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -226,6 +230,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   // Shorter for the same reason: this model is geometry, and a registry padded
   // past what the geometry asserts would be claims nobody could defend.
   assert.ok(PROSTATIC_ENLARGEMENT_EVIDENCE.length >= 6);
+  assert.ok(BOWEL_OBSTRUCTION_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

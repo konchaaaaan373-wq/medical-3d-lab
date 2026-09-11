@@ -12,6 +12,14 @@ import {
 } from '../src/models/prostaticEnlargement.js';
 import { INNER_GLAND_FRACTION } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
 import {
+  SEGMENTS as GUT_SEGMENTS,
+  RETAINED_LOAD,
+  SITES as OBSTRUCTION_SITES,
+  solveBowelObstruction,
+} from '../src/models/bowelObstruction.js';
+import { buildColon, buildDuodenum, buildSmallIntestine, colonCalibre } from '../src/scenes/gastrointestinal/organs/intestine.js';
+import { buildColonParts } from '../src/scenes/gastrointestinal/organs/colonParts.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -1084,4 +1092,93 @@ test('calibration: the channel narrows visibly across the walk without closing',
     previous = solved.urethralLumenFraction;
   }
   assert.equal(solveProstaticEnlargement().urethralLumenFraction, 1, 'and an unenlarged gland is unnarrowed');
+});
+
+test('calibration: the bowel obstruction model is measured off the atlas’s own gut', () => {
+  // Defends `drawn-proportions`. The model's lengths and calibres are not
+  // anatomy and do not claim to be: they are the proportions the intestinal
+  // atlas draws, so that the arithmetic and the picture are the same gut.
+  //
+  // What this defends is that agreement and the ordering it produces. It is
+  // not a check that either is right about a person, and it never could be.
+  const small = buildSmallIntestine({});
+  const colon = buildColon({});
+  const duodenum = buildDuodenum({});
+  const parts = buildColonParts({});
+
+  const smallLength = small.curve.getLength();
+  const colonLength = colon.curve.getLength();
+  const total = smallLength + colonLength + duodenum.curve.getLength();
+
+  // The coil carries two of the model's segments, split where the scene splits
+  // it, so the two are checked as one length.
+  const drawn = {
+    duodenum: duodenum.curve.getLength() / total,
+    'proximal-small-bowel': (smallLength * 0.4) / total,
+    'distal-small-bowel': (smallLength * 0.6) / total,
+  };
+  for (const part of parts.parts) drawn[part.id] = ((part.to - part.from) * colonLength) / total;
+
+  // Calibres against the caecum's, from the profile the colon is built from.
+  const calibre = colonCalibre(0);
+  const caecumPart = parts.parts.find((part) => part.id === 'caecum');
+  const caecumRadius = calibre((caecumPart.from + caecumPart.to) / 2);
+  const drawnRadius = { duodenum: 0.2 / caecumRadius * 1.15, 'proximal-small-bowel': 0.21 / caecumRadius * 1.15 };
+  drawnRadius['distal-small-bowel'] = drawnRadius['proximal-small-bowel'];
+  for (const part of parts.parts) {
+    drawnRadius[part.id] = calibre((part.from + part.to) / 2) / caecumRadius;
+  }
+
+  for (const segment of GUT_SEGMENTS) {
+    assert.ok(
+      Math.abs(segment.lengthShare - drawn[segment.id]) < 0.01,
+      `${segment.id}: the model has ${segment.lengthShare} of the gut, the atlas draws ${drawn[segment.id]?.toFixed(4)}`
+    );
+    assert.ok(
+      Math.abs(segment.restingRadius - drawnRadius[segment.id]) < 0.02,
+      `${segment.id}: the model has a calibre of ${segment.restingRadius}, the atlas draws ${drawnRadius[segment.id]?.toFixed(3)}`
+    );
+  }
+
+  // The ordering the model actually claims, held directly.
+  const colonSegments = GUT_SEGMENTS.filter((segment) => parts.parts.some((part) => part.id === segment.id));
+  assert.equal(colonSegments[0].id, 'caecum');
+  for (let at = 1; at < colonSegments.length; at += 1) {
+    assert.ok(
+      colonSegments[at].restingRadius < colonSegments[at - 1].restingRadius,
+      `${colonSegments[at].id} is narrower than the part before it`
+    );
+  }
+
+  small.dispose();
+  colon.dispose();
+  duodenum.dispose();
+  parts.dispose();
+});
+
+test('calibration: a complete blockage distends the bowel visibly at every site without doubling it', () => {
+  // Defends `retained-load`. One number says how much arrives above a blockage,
+  // as a multiple of the whole gut's resting volume. It was chosen so that the
+  // distension is plain at every one of the four sites and never runs away.
+  //
+  // That it still behaves that way is a property of the choice. Nothing here is
+  // millilitres, and no figure in it is a threshold.
+  assert.ok(RETAINED_LOAD > 0);
+
+  for (const site of OBSTRUCTION_SITES.filter((candidate) => candidate.blocks)) {
+    for (const valveCompetence of [0, 1]) {
+      const solved = solveBowelObstruction({ site: site.id, completeness: 1, valveCompetence });
+      assert.ok(
+        solved.radiusRatio > 1.12,
+        `${site.id} (valve ${valveCompetence}): ${solved.radiusRatio.toFixed(2)}× is not a visible distension`
+      );
+      assert.ok(
+        solved.radiusRatio < 2,
+        `${site.id} (valve ${valveCompetence}): ${solved.radiusRatio.toFixed(2)}× has run away`
+      );
+    }
+  }
+
+  // And a patent gut is drawn at its resting calibre, exactly.
+  assert.equal(solveBowelObstruction({ site: 'none', completeness: 1 }).radiusRatio, 1);
 });
