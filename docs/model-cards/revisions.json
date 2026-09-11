@@ -361,6 +361,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "uterine-fibroid",
+    "card": "docs/model-cards/uterine-fibroid.md",
+    "modelSources": [
+      "src/models/uterineFibroid.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "335febff74c029ac",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "benign-prostatic-enlargement",
     "card": "docs/model-cards/benign-prostatic-enlargement.md",
     "modelSources": [

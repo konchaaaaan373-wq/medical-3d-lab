@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "uterine-fibroid",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of one uterine fibroid by location in the wall, prepared for future clinical sign-off: what the depth at which it sits decides"
+    ],
+    "sources": [
+      "docs/model-cards/uterine-fibroid.md",
+      "docs/model-evidence/uterine-fibroid.md",
+      "tests/uterine-fibroid-model.test.js",
+      "src/models/uterineFibroid.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing in this model is a measurement. The wall's depth, the cavity's area and the organ's volume are measured off the uterine atlas, whose own proportions are drawn to be legible rather than to scale, and no centimetre or millilitre follows from any of it.",
+      "Bleeding, pain, pressure symptoms, fertility and pregnancy are outside the model entirely, and nothing in it makes any of them follow from size. That they do not follow from size in any simple way is why the scene is about location.",
+      "The uterus is not redrawn around the fibroid: the model has no tissue mechanics and does not work out how an organ takes the shape of what is inside it.",
+      "The three depths are this repository's reading of three standard names, and the boundaries between those names are not sharp. There is exactly one fibroid, and most uteruses that have them have several.",
+      "There is no time, no growth, no hormone, no degeneration, no sarcoma and no treatment anywhere in the model."
+    ]
+  },
+  {
     "sceneId": "benign-prostatic-enlargement",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

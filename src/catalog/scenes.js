@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'uterine-fibroid',
+    slug: 'uterine-fibroid',
+    titleEn: 'Uterine fibroid',
+    titleJa: '子宮筋腫',
+    system: 'reproductive',
+    organ: 'uterus',
+    organs: ['uterus'],
+    disease: 'uterine-leiomyoma',
+    conditions: ['uterine fibroid', 'leiomyoma', 'myoma', 'submucosal fibroid', 'intramural fibroid', 'subserosal fibroid', '子宮筋腫', '平滑筋腫', '粘膜下筋腫', '筋層内筋腫', '漿膜下筋腫'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/uterine-fibroid.md',
+    modelProfile: 'uterine-fibroid-location',
+    description:
+      'Submucosal, intramural and subserosal are three depths in one wall, not three stages. The same volume presses into the cavity, pushes the outline out, or reaches neither \u2014 and the uterus is the same size in all three.',
+    descriptionJa:
+      '粘膜下・筋層内・漿膜下は、1 つの壁の 3 つの深さであって 3 段階ではありません。同じ体積が、子宮腔を押すか、外形を押し出すか、どちらにも届かないかが変わり、子宮の大きさは 3 者で同じです。',
+    tags: ['reproductive', 'location-scenario', 'geometric-model'],
+    load: () => import('../scenes/reproductive/scenes/uterineFibroid/index.js'),
+  },
+  {
     id: 'benign-prostatic-enlargement',
     slug: 'benign-prostatic-enlargement',
     titleEn: 'Benign prostatic enlargement',

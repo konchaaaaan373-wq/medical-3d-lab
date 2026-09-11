@@ -18,6 +18,7 @@ import {
   LAYER,
   PORTAL_EVIDENCE,
   PROSTATIC_ENLARGEMENT_EVIDENCE,
+  UTERINE_FIBROID_EVIDENCE,
   defineEvidence,
 } from '../src/models/evidence.js';
 
@@ -58,6 +59,7 @@ const FILE_LAYERS = {
   'achalasia-physiology.test.js': LAYER.EXTERNAL,
   'prostatic-enlargement-physiology.test.js': LAYER.EXTERNAL,
   'bowel-obstruction-physiology.test.js': LAYER.EXTERNAL,
+  'uterine-fibroid-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -75,6 +77,7 @@ const DOSSIERS = {
   achalasia: 'docs/model-evidence/achalasia.md',
   'benign-prostatic-enlargement': 'docs/model-evidence/benign-prostatic-enlargement.md',
   'bowel-obstruction': 'docs/model-evidence/bowel-obstruction.md',
+  'uterine-fibroid': 'docs/model-evidence/uterine-fibroid.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -212,6 +215,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'achalasia',
       'benign-prostatic-enlargement',
       'bowel-obstruction',
+      'uterine-fibroid',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -231,6 +235,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   // past what the geometry asserts would be claims nobody could defend.
   assert.ok(PROSTATIC_ENLARGEMENT_EVIDENCE.length >= 6);
   assert.ok(BOWEL_OBSTRUCTION_EVIDENCE.length >= 8);
+  assert.ok(UTERINE_FIBROID_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {
