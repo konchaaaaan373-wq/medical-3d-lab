@@ -265,6 +265,20 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the uncinate process, ethmoid bulla and hiatus semilunaris that shape the middle meatus, the frontal recess as a drawn channel, the anterior and posterior ethmoid groups separated by where they drain, the sphenoethmoidal recess, the cribriform plate and olfactory bulb, and the left cavity. Nothing here swells, which is the first thing an obstruction scene would need',
   },
   {
+    organ: 'larynx',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/larynxAnatomy — nasopharynx, oropharynx, laryngopharynx, both piriform sinuses, soft palate, palatine tonsils, epiglottis, hyoid bone, thyroid and cricoid cartilages, both arytenoids, cricothyroid membrane, vestibular folds, laryngeal ventricles, vocal folds, subglottic space, trachea, oesophagus and both recurrent laryngeal nerves, selectable by name; tests/organ-parts-anatomy.test.js — the three named lengths of the pharynx stack in order without overlapping, the piriform gutters reach forward past the larynx on both sides while the laryngopharynx stays behind it, the two pairs of folds are separated by the ventricle with the true folds below, the glottis is a V that closes to the midline in front and opens behind, the cricothyroid membrane lies in the gap between the two cartilages with nothing else in front of it, and the oesophagus lies behind the trachea with a nerve in the groove between them on each side',
+    next: 'A3: the muscles of the larynx and pharynx and the joints they act on, the tongue and the valleculae in front of the epiglottis, the thyroid gland over the trachea, the aryepiglottic folds, the lower course of the left recurrent laryngeal nerve, and the layers of a vocal fold. Nothing here moves, which is the first thing a swallowing or a phonation scene would need',
+  },
+  {
+    organ: 'pharynx',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/larynxAnatomy — nasopharynx, oropharynx, laryngopharynx, both piriform sinuses, soft palate and palatine tonsils selectable by name, drawn as one lumen cut at the levels its names come from; tests/organ-parts-anatomy.test.js — the three lengths stack in order without overlapping and meet at the soft palate and the laryngeal inlet, and below the inlet the gutters reach forward past the larynx while the space behind it stays behind the cricoid',
+    next: 'A3: the muscular wall and the constrictors, the tongue and the valleculae, the palatoglossal and palatopharyngeal arches, the rest of the lymphoid ring, the openings of the Eustachian tubes, and the upper oesophageal sphincter. Nothing here moves, which is the first thing a swallowing scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

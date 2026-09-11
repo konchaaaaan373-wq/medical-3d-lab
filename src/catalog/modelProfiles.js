@@ -541,6 +541,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of one nasal cavity and its four paranasal sinuses, placed from standard descriptive anatomy: three turbinates on the lateral wall with the meatus of the same name beneath each, the maxillary ostium high on the sinus’s medial wall opening into the middle meatus, the nasolacrimal duct opening into the inferior meatus, and the olfactory region confined to the roof. No dimension, angle or sinus volume is a measurement, no individual variation is represented, and nothing in the scene moves or swells.',
   },
   {
+    profileId: 'larynx-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of the pharynx and larynx in the midline, placed from standard descriptive anatomy: the pharynx as one lumen named in three lengths, the larynx occupying the middle of its front wall below the inlet with a piriform gutter on each side, two pairs of folds separated by the ventricle, the cricoid as the one complete ring, and the recurrent laryngeal nerves reaching the larynx from below in the tracheo-oesophageal groove. No dimension, angle or calibre is a measurement, the glottis is drawn at one fixed display opening, and nothing in the scene moves.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

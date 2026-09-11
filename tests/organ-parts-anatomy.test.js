@@ -42,6 +42,12 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  GLOTTIS_DISPLAY_GAP,
+  LEVELS as LARYNX_LEVELS,
+  pharynxFrontAt,
+  buildLarynx,
+} from '../src/scenes/respiratory/organs/larynx.js';
+import {
   CAVITY as NOSE_CAVITY,
   MEDIAL as NOSE_MEDIAL,
   TURBINATES as NOSE_TURBINATES,
@@ -1638,4 +1644,94 @@ test('the nose is three shelves, three gutters, and what opens into each', () =>
   assert.ok(box('nasal-vestibule').min.z > at('middle-turbinate').z, 'the vestibule is in front of the shelves');
   assert.ok(box('nasopharynx').max.z <= NOSE_CAVITY.choana + 0.1, 'the nasopharynx is behind the choana');
   assert.ok(box('hard-palate').max.y <= NOSE_CAVITY.floor + 0.1, 'and the palate is the floor they all stand on');
+});
+
+// --- the larynx and the pharynx ---------------------------------------------
+
+test('the larynx and pharynx sort one shared space back into two', () => {
+  // The scene's whole claim is an arrangement, so that is what is measured:
+  // what is above what, what is in front of what, and which of the two routes
+  // each space belongs to once they have parted again.
+  const larynx = buildLarynx();
+  larynx.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of larynx.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const L = LARYNX_LEVELS;
+
+  // One lumen, three names, stacked at the levels the names come from.
+  const lengths = ['nasopharynx', 'oropharynx', 'laryngopharynx'];
+  for (let i = 1; i < lengths.length; i += 1) {
+    assert.ok(box(lengths[i]).max.y <= box(lengths[i - 1]).min.y + 1e-6, `${lengths[i]} is below ${lengths[i - 1]}`);
+  }
+  assert.ok(Math.abs(box('nasopharynx').min.y - L.softPalate) < 1e-6, 'the soft palate is where the top one ends');
+  assert.ok(Math.abs(box('oropharynx').min.y - L.laryngealInlet) < 1e-6, 'and the inlet where the middle one does');
+
+  // The gutters reach forward past the larynx; the space behind it does not.
+  const behind = box('laryngopharynx');
+  const gutters = box('piriform-sinus');
+  assert.ok(gutters.max.z > behind.max.z + 0.2, 'the piriform gutters reach forward past the laryngopharynx');
+  // Measured through the function rather than the bounding box: the lumen
+  // leans back as it descends, so its box reaches forward at the top where
+  // there is no larynx yet. The claim is about the level of the folds.
+  assert.ok(
+    pharynxFrontAt(L.vocalFold, 0) < box('cricoid-cartilage').min.z + 0.02,
+    'the space behind the larynx stays behind the cricoid'
+  );
+  assert.ok(pharynxFrontAt(L.vocalFold, 0.95) > 0, 'while beside it the lumen reaches forward past the airway');
+  for (const mesh of larynx.meshesFor('piriform-sinus')) {
+    const side = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+    assert.ok(Math.abs(side.x) > 0.3, 'and each gutter is off to one side of the midline');
+  }
+  assert.equal(larynx.meshesFor('piriform-sinus').length, 2, 'there are two of them');
+
+  // Two pairs of folds, and the pocket that proves they are two.
+  const vestibular = box('vestibular-fold');
+  const ventricle = box('laryngeal-ventricle');
+  const vocal = box('vocal-fold');
+  assert.ok(ventricle.max.y <= vestibular.min.y + 1e-6, 'the ventricle is below the false folds');
+  assert.ok(vocal.max.y <= ventricle.min.y + 1e-6, 'and the true folds below the ventricle');
+
+  // The glottis is a V: the folds meet in front and are apart behind.
+  const [left, right] = larynx.meshesFor('vocal-fold').map((mesh) => mesh.geometry.attributes.position);
+  /** How close to the midline this fold gets, at the front of the glottis. */
+  const freeEdgeAt = (positions, targetZ) => {
+    const v = new THREE.Vector3();
+    let nearest = Infinity;
+    for (let i = 0; i < positions.count; i += 1) {
+      v.fromBufferAttribute(positions, i);
+      if (Math.abs(v.z - targetZ) < 0.02) nearest = Math.min(nearest, Math.abs(v.x));
+    }
+    return nearest;
+  };
+  const frontGap = freeEdgeAt(left, 0.76) + freeEdgeAt(right, 0.76);
+  assert.ok(frontGap < 0.08, `the two folds meet at the front (${frontGap.toFixed(3)})`);
+  assert.ok(vocal.max.x > GLOTTIS_DISPLAY_GAP, 'and are apart behind by the declared display gap');
+
+  // Each fold is inside the cartilage it is attached to.
+  const thyroid = box('thyroid-cartilage');
+  assert.ok(vocal.max.x <= thyroid.max.x + 1e-6, 'the folds do not reach past the thyroid cartilage');
+
+  // The one place the airway is under the skin: between the two cartilages,
+  // in front of both, and in front of the airway itself.
+  const membrane = box('cricothyroid-membrane');
+  const cricoid = box('cricoid-cartilage');
+  assert.ok(membrane.min.y < thyroid.min.y + 0.1, 'the membrane starts below the thyroid cartilage');
+  assert.ok(membrane.max.y > cricoid.max.y - 0.72, 'and reaches up from the cricoid');
+  assert.ok(membrane.max.z > box('subglottic-space').max.z, 'with the airway directly behind it');
+
+  // And where the two ways part again.
+  const trachea = box('trachea');
+  const oesophagus = box('oesophagus');
+  assert.ok(oesophagus.max.z < trachea.min.z, 'the oesophagus is wholly behind the trachea');
+  const nerves = larynx.meshesFor('recurrent-laryngeal-nerve');
+  assert.equal(nerves.length, 2, 'one nerve on each side');
+  for (const mesh of nerves) {
+    const nerve = new THREE.Box3().setFromObject(mesh);
+    assert.ok(nerve.max.z < trachea.min.z && nerve.min.z > oesophagus.max.z - 0.3, 'in the groove between them');
+    assert.ok(nerve.max.y > L.vocalFold - 0.2, 'reaching the larynx from below');
+    assert.ok(nerve.min.y < L.cricoidBase, 'and coming from below to do it');
+  }
 });

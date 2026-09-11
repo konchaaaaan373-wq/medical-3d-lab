@@ -529,6 +529,54 @@ nasolacrimal-duct  olfactory-region
 
 ---
 
+## `larynx-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 19 |
+| tags | `pharynx` `above` `skeleton` `inlet` `glottis` `below` `nerve` |
+| views | `whole` `from-behind` `crossing` `skeleton` `from-above` `front-of-neck` `sagittal` |
+| bounds | 2.09 × 7.90 × 2.57 |
+
+```
+nasopharynx  oropharynx  laryngopharynx  piriform-sinus  soft-palate  palatine-tonsil
+epiglottis  hyoid-bone  thyroid-cartilage  cricoid-cartilage
+arytenoid-cartilage  cricothyroid-membrane
+vestibular-fold  laryngeal-ventricle  vocal-fold  subglottic-space
+trachea  oesophagus  recurrent-laryngeal-nerve
+```
+
+**anchors** — `SITES`: `epiglottisTip` `inlet` `glottis` `prominence`
+`cricothyroid` `piriform` `oesophagusMouth`。
+高さは `LEVELS`（`skullBase` `softPalate` `laryngealInlet` `vestibularFold`
+`ventricle` `vocalFold` `subglottis` `cricoidBase` `floor`）、
+面としては `pharynxSection(y)`・`pharynxFrontAt(y, across)`・
+`laryngealWallAt(z)`・`LARYNX_INNER_RADIUS`・`GLOTTIS_DISPLAY_GAP`。
+
+**病態候補**: 喉頭浮腫、クループ（声門下）、急性喉頭蓋炎、声帯麻痺（反回神経）、
+声帯ポリープ・結節、喉頭癌・下咽頭癌、扁桃炎・扁桃肥大、
+睡眠時無呼吸（上気道の虚脱）、誤嚥。
+
+**動かしてよいもの**: `vocal-fold` の内外転（`GLOTTIS_DISPLAY_GAP`）と厚み、
+`vestibular-fold` の厚み、`subglottic-space` の口径、`epiglottis` の傾き、
+`palatine-tonsil` の大きさ、各 pharynx 区間の断面
+（`pharynxSection` の `halfWidth` / `halfDepth`）。
+
+**変えてはいけない関係**:
+- **上から下へ**：仮声帯 → 喉頭室 → 声帯 → 声門下。`LEVELS` がこの順序を
+  持っています。喉頭室を挟まずに 2 対のひだを並べないでください
+- **声門は V です。** 前方で左右が正中で合わさり（前交連）、後方へ開きます。
+  前方の合わさりは表示値ではありません
+- **輪状軟骨は完全な輪**です。後方に切れ目を入れないでください
+- **梨状陥凹は喉頭の外側**を前方へ回り、下咽頭本体は喉頭の後方に留まります。
+  この関係が「嚥下物は気道を迂回する」という主張そのものです
+- **食道は気管の後方**、反回神経はその間の溝を**下から**上行します
+- `GLOTTIS_DISPLAY_GAP` は表示値です。ここから気道の太さを出さないでください
+- 輪状甲状膜は**指標としてのみ**描いています。到達経路・深さ・角度を
+  このモデルから導かないでください
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

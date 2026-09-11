@@ -511,5 +511,17 @@
     "cardRevision": 4,
     "modelDigest": "b37c7632af4ec271",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "larynx-anatomy",
+    "card": "docs/model-cards/larynx-anatomy.md",
+    "modelSources": [
+      "src/scenes/respiratory/organs/larynx.js",
+      "src/data/larynxAnatomyScene.js",
+      "src/scenes/respiratory/scenes/larynxAnatomy/LarynxAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "4ccd73d3a83e0dc9",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
