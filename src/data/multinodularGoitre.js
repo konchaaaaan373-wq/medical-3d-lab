@@ -242,6 +242,13 @@ export const MODEL_SCOPE = {
 export const RELATED = {
   scenes: [
     {
+      slug: 'larynx-anatomy',
+      label: 'Where the nerve behind the gland is going',
+      labelJa: '腺の後ろを走る神経の行き先',
+      why: 'The recurrent laryngeal nerve is a named structure there, with the vocal folds it supplies. This scene says an enlargement passes it; that one says what it is on its way to.',
+      whyJa: '反回神経は、そこでは名前で指せる構造として、支配する声帯とともに示されています。このシーンは「腫大がそれを追い越す」ことを述べ、あちらは「それが何へ向かっているか」を示します。',
+    },
+    {
       slug: 'thyroid-anatomy',
       label: 'The same gland, named',
       labelJa: '同じ腺を、名前で',
