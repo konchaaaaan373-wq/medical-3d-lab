@@ -55,6 +55,7 @@ test('migrated production evidence and the existing model registries share one c
       'rotator-cuff-tear',
       'hip-osteoarthritis',
       'urinary-obstruction',
+      'lobar-collapse',
     ]
   );
 });

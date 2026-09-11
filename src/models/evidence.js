@@ -2506,6 +2506,140 @@ export const URINARY_OBSTRUCTION_EVIDENCE = defineEvidence('urinary-obstruction'
   },
 ]);
 
+export const LOBAR_COLLAPSE_EVIDENCE = defineEvidence('lobar-collapse', [
+  {
+    id: 'the-gas-is-absorbed-and-not-replaced',
+    claim:
+      'A lobe whose bronchus is obstructed absorbs the gas already in it and is not refilled, so it loses volume. It does not keep its volume and become denser in place.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of resorption atelectasis distal to an obstructed bronchus, and of loss of volume as its defining feature.',
+    validation: 'physiology: a collapsed lobe loses volume rather than keeping it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-room-is-accounted-for',
+    claim:
+      'The room the lobe stops occupying is taken by something: the remaining lobes of the same lung expand into it, and what is left over is taken by the hemithorax itself getting smaller. A chest does not acquire a space.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of compensatory expansion of the remaining lobes and of displacement of adjacent structures towards a collapsed lobe.',
+    validation: 'physiology: the room the lobe vacates is accounted for, all of it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'towards-the-side-it-happened-on',
+    claim:
+      'The structures at the middle are drawn towards the side the collapse is on, and the direction is a property of which bronchus rather than of how much has gone.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of mediastinal displacement towards the affected side in lobar and lung collapse.',
+    validation: 'physiology: the middle is drawn towards the side the collapse is on',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'collapse-is-not-consolidation',
+    claim:
+      'Consolidation fills the airspaces while the lobe keeps its volume, so nothing is drawn towards it; collapse loses volume, so everything nearby is. The two are opposite on a picture of volume and alike on a picture of density.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of consolidation as a volume-preserving airspace-filling process, against collapse as a volume-losing one.',
+    validation: 'physiology: a collapsed lobe loses volume rather than keeping it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-other-side-takes-none-of-it',
+    claim:
+      'Compensation happens within one hemithorax. The other lung is unchanged **by this model** — not a claim that it is unaffected in a person, but that a volume lost on one side is not offered to the other.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of there being two pleural cavities with the mediastinum between them; compensatory expansion is described as ipsilateral.',
+    validation: 'physiology: the other lung takes none of it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-lobe-shares',
+    claim:
+      'Each lobe\'s share of its own side, from which every volume in the model is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Copied from `LOBE_VOLUME_SHARES` in the respiratory atlas, whose own provenance and open question are recorded there and in `docs/medical-notes.md`.',
+    note:
+      'Illustrative here: the model inherits the atlas\'s figures rather than asserting them, and reports every lobe against its own resting volume rather than in any absolute unit.',
+    validation: 'calibration: the lobar collapse model and the lung atlas divide a lung the same way',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'how-the-room-divides',
+    claim:
+      'How much of the vacated room the rest of the lung takes, against how much the hemithorax takes by getting smaller.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, so that both halves of the answer are legible at once: at one nothing at the midline would move, and at zero no lobe would expand.',
+    note:
+      'Not a measured proportion. A real chest divides it differently from case to case, and the model claims only that the two together are all of it.',
+    validation: 'calibration: both halves of the answer are visible at the top of the axis',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-face-the-shift-is-spread-over',
+    claim:
+      'The area the hemithorax\'s share of the volume is spread over to become the distance the midline is drawn across.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'A calibration chosen so the gap between the two midline bars is legible. The first value put a whole lower lobe at seven pixels.',
+    note:
+      'Illustrative, and chosen. **It is not a tracheal deviation, not a mediastinal shift anybody measured, and not millimetres.** The scene draws the resting midline beside it so what is read is a gap rather than an absolute distance.',
+    validation: 'calibration: both halves of the answer are visible at the top of the axis',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-residual-so-there-is-something-to-point-at',
+    claim:
+      'What is left of a lobe that has lost all the air this model lets it lose.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen away from zero: a lobe collapsed to nothing would be a lobe the scene had deleted, and there would be no shape left to label.',
+    note:
+      'Illustrative. It is not a residual volume anybody measured, and nothing in the model says how airless a lobe can actually become.',
+    validation: 'calibration: a fully collapsed lobe is still a shape there is something to point at',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'nothing-here-is-gas-exchange',
+    claim:
+      'What a collapsed lobe does to anybody\'s blood is not represented here in any form.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no oxygen, no shunt, no saturation, no blood flow and no hypoxic vasoconstriction in this model.',
+    note:
+      'A lobe drawn airless reads as a person who is short of breath. Nothing here supports that: the model computes a volume and stops.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-expansion-has-no-shape',
+    claim:
+      'The remaining lobes expand in proportion to what each already had, which is the only division this model has any basis for.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. A real lung does not expand evenly, and neither the shape nor the direction of compensatory expansion is claimed.',
+    note:
+      'The proportional division is a default, not a finding. Nothing in the model says where in a lobe the expansion goes.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'six-arrangements-are-not-six-degrees',
+    claim:
+      'Nothing in this model says a blockage moves from one bronchus to another, or that the six choices are an order.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the bronchus is a control rather than a point on the axis.',
+    note:
+      'Six places in a list read as six degrees of one illness. The axis underneath them is how much of one lobe\'s air has gone, not how far along anybody is.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2526,4 +2660,5 @@ export const EVIDENCE_REGISTRIES = [
   CUFF_EVIDENCE,
   HIP_OA_EVIDENCE,
   URINARY_OBSTRUCTION_EVIDENCE,
+  LOBAR_COLLAPSE_EVIDENCE,
 ];

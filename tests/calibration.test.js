@@ -132,6 +132,15 @@ import {
   THINNED_BELOW,
   solveUrinaryObstruction,
 } from '../src/models/urinaryObstruction.js';
+import { LobarCollapseScene } from '../src/scenes/respiratory/scenes/lobarCollapse/LobarCollapseScene.js';
+import { LOBE_VOLUME_SHARES } from '../src/scenes/respiratory/organs/lungAnatomy.js';
+import {
+  LOBES as COLLAPSE_LOBES,
+  MIDLINE_FACE,
+  RESIDUAL as COLLAPSE_RESIDUAL,
+  TAKEN_BY_REST,
+  solveLobarCollapse,
+} from '../src/models/lobarCollapse.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1649,4 +1658,65 @@ test('calibration: the thinned threshold fires where the drawing changes and now
     if (expected && crossed === null) crossed = backPressure;
   }
   assert.ok(crossed !== null && crossed > 0, 'and it is not already true at rest');
+});
+
+// --- lobar collapse --------------------------------------------------------
+
+test('calibration: the lobar collapse model and the lung atlas divide a lung the same way', () => {
+  // Defends `atlas-lobe-shares`. The model may not import `three`, so the lobe
+  // shares are copied rather than imported — and a copy that nothing compares
+  // is a copy that drifts. This is the comparison.
+  for (const lobe of COLLAPSE_LOBES) {
+    assert.equal(
+      lobe.share,
+      LOBE_VOLUME_SHARES[lobe.id],
+      `${lobe.id}: the model and the atlas disagree about how much of a lung it is`
+    );
+  }
+  assert.equal(COLLAPSE_LOBES.length, Object.keys(LOBE_VOLUME_SHARES).length, 'and about how many lobes there are');
+
+  // Shares are per side, so each lung's lobes come to one.
+  for (const side of ['right', 'left']) {
+    const total = COLLAPSE_LOBES.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + lobe.share, 0);
+    assert.ok(Math.abs(total - 1) < 1e-9, `${side}: its lobes come to ${total} of a lung`);
+  }
+});
+
+test('calibration: both halves of the answer are visible at the top of the axis', () => {
+  // Defends `how-the-room-divides` and `the-face-the-shift-is-spread-over`.
+  // Neither constant carries a claim on its own; what they carry together is
+  // that a reader can see both destinations at once. A split near either end
+  // tells half the story, and a shift of a few pixels tells none of it.
+  assert.ok(TAKEN_BY_REST > 0.35 && TAKEN_BY_REST < 0.85, 'neither destination takes nearly all of it');
+
+  const solved = solveLobarCollapse(1, { bronchus: 'right-lower' });
+  assert.ok(solved.takenByTheRest > 0 && solved.takenByTheHemithorax > 0);
+
+  // The rest of the lung expands enough to read as expansion.
+  const expanded = solved.lobes.filter((lobe) => lobe.expanded);
+  assert.ok(expanded.length > 0, 'something visibly took the room');
+  assert.ok(expanded.every((lobe) => lobe.volumeRatio > 1.08), 'and by enough to see');
+
+  // The shift is a legible fraction of a lung's own width rather than a few
+  // pixels of something the reader has no reference for.
+  assert.ok(solved.shift > 0.18, `${solved.shift} is a shift nobody can read`);
+  assert.ok(solved.shift < 0.8, 'and not one that puts the middle inside a lung');
+  assert.ok(MIDLINE_FACE > 0, 'the face is an area, not a sign');
+});
+
+test('calibration: a fully collapsed lobe is still a shape there is something to point at', () => {
+  // Defends `a-residual-so-there-is-something-to-point-at`. Chosen away from
+  // zero, and the reason is drawing rather than physiology: a lobe scaled to
+  // nothing is a lobe the scene has deleted.
+  assert.ok(COLLAPSE_RESIDUAL > 0.05 && COLLAPSE_RESIDUAL < 0.3, 'small, and not nothing');
+
+  const scene = new LobarCollapseScene({});
+  scene.build();
+  scene.setModelControl('bronchus', 'right-lower');
+  scene.setProgress(1);
+  const lobe = scene.lobeById.get('right-lower').mesh;
+  assert.ok(lobe.scale.x > 0.3, `${lobe.scale.x} of its size is not a shape anybody can point at`);
+  assert.ok(lobe.scale.x < 0.7, 'and it is unmistakably smaller than it was');
+  assert.equal(lobe.visible, true, 'the scene draws it rather than removing it');
+  scene.dispose();
 });

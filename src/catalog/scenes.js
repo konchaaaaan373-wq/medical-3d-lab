@@ -615,6 +615,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/renal/scenes/urinaryObstruction/index.js'),
   },
   {
+    id: 'lobar-collapse',
+    slug: 'lobar-collapse',
+    titleEn: 'Lobar collapse',
+    titleJa: '肺葉性無気肺',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs'],
+    disease: 'lobar-collapse',
+    conditions: ['lobar collapse', 'atelectasis', 'bronchial obstruction', 'compensatory hyperinflation', 'mediastinal shift', '肺葉性無気肺', '無気肺', '気管支閉塞', '代償性過膨張', '縦隔偏位'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/lobar-collapse.md',
+    modelProfile: 'lobar-collapse-volume',
+    description:
+      'A lobe whose bronchus is blocked gets smaller rather than denser, and a chest does not get a hole in it — so the room it vacated is taken twice over, by the rest of that lung and by the side itself. This is the opposite of consolidation, not a worse version of it.',
+    descriptionJa:
+      '気管支が塞がれた肺葉は、濃くなるのではなく小さくなります。胸の中に空洞はできないため、空いた場所は同じ肺の残りとその側自体の 2 通りに引き受けられます。これは consolidation の重症型ではなく、逆の像です。',
+    tags: ['respiratory', 'conservation', 'geometric-model'],
+    load: () => import('../scenes/respiratory/scenes/lobarCollapse/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

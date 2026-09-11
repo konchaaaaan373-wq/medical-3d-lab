@@ -867,6 +867,25 @@ export const MODEL_PROFILES = Object.freeze([
       'kidney function, no cause, no time and no treatment, and that it does not grade hydronephrosis.@ ',
   },
   {
+    profileId: 'lobar-collapse-volume',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A conservation model over the lung atlas\'s five lobes: a chosen bronchus names the lobe that loses its air, ' +
+      'the volume it vacates is divided between compensatory expansion of the remaining lobes of the same lung and ' +
+      'the hemithorax itself, and the remainder becomes the distance the midline is drawn across. The three amounts ' +
+      'add up, which is the only thing the model asserts. The card says the lobe ratios are against each lobe\'s own ' +
+      'resting volume, that the shift is a volume spread over a chosen face and is not a tracheal deviation or a ' +
+      'measured mediastinal shift, that the split between the two destinations is a calibration, and that the model ' +
+      'contains no gas exchange, no cause, no time and no treatment and does not grade collapse.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

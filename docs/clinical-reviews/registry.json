@@ -1358,5 +1358,33 @@
       "The ureter is drawn as three equal named stretches of one tube so that 'above the blockage' can be said; they are divisions of a drawing and none has a length.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "lobar-collapse",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a conservation model of one lobe losing its air: what is left of its volume, how much of the room it vacated the remaining lobes of the same lung take, and how far the midline is drawn across by the remainder"
+    ],
+    "sources": [
+      "docs/model-cards/lobar-collapse.md",
+      "docs/model-evidence/lobar-collapse.md",
+      "tests/lobar-collapse-physiology.test.js",
+      "tests/lobar-collapse-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the six arrangements, the copy and the Japanese terminology is not yet recorded.",
+      "No volume, distance or ratio is a measurement. The lobe shares are this repository's lung atlas's own, and each lobe is reported against its own resting volume.",
+      "The midline shift is a volume spread over a face this repository chose. It is not a tracheal deviation, not a mediastinal shift anybody measured, and not millimetres.",
+      "How the vacated room divides between the rest of the lung and the hemithorax is a calibration chosen so both halves of the answer are legible; it is not a measured proportion.",
+      "The remaining lobes expand in proportion to what each already had. A real lung does not expand evenly, and neither the shape nor the direction of compensatory expansion is claimed.",
+      "A fully collapsed lobe is still drawn at an eighth of its volume so that there is something left to point at; that eighth is not a measured residual volume.",
+      "The model contains no gas exchange of any kind — no oxygen, shunt, saturation, blood flow or hypoxic vasoconstriction — and says nothing about what anybody's blood is doing.",
+      "There is no cause of the obstruction, no time, no breathing cycle, no recovery, no symptom and no treatment.",
+      "The model does not grade collapse and does not read a chest radiograph. No output is a sign, a degree or a threshold.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

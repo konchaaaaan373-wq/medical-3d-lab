@@ -71,6 +71,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'rotator-cuff-tear',
   'hip-osteoarthritis',
   'urinary-obstruction',
+  'lobar-collapse',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -452,6 +453,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '閉塞を尿路の下方へ動かし、腎が 1 つ、次に両方満たされ、あいだの組織が薄くなることを確認。',
     ['FIVE PLACES', 'ONE KIDNEY OR TWO', 'THE ROOM IT TOOK'],
     ['5 つの場所', '腎は 1 つか 2 つか', '奪われた場所']
+  ),
+  'lobar-collapse': presentation(
+    'Block one bronchus; watch the lobe shrink rather than darken, and the room it left go somewhere.',
+    '気管支を 1 本塞ぎ、肺葉が黒くなるのではなく縮み、空いた場所がどこかへ行くことを確認。',
+    ['SMALLER, NOT DENSER', 'WHO TAKES THE ROOM', 'THE MIDDLE MOVES'],
+    ['濃くならず小さく', '場所を引き受けるのは誰か', '正中が動く']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',
