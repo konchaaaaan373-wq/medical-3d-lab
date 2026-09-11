@@ -92,9 +92,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'thyroid',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — the lobes sit on the sides they are named for',
-    next: 'A2: lobes, isthmus and the follicular unit as named parts',
+    level: 'A2',
+    evidence:
+      'scenes/endocrine/scenes/thyroidAnatomy — lobes, isthmus, pyramidal lobe, four parathyroid glands, both recurrent laryngeal nerves and the trachea and oesophagus they run between, selectable by name; tests/organ-parts-anatomy.test.js — the gland in front of the trachea, each nerve behind its own lobe and between trachea and oesophagus, the superior parathyroid above the inferior one on each side; tests/organ-anatomy.test.js — the lobes sit on the sides they are named for',
+    next: 'A3: the superior and inferior thyroid arteries and the relation of each to its nerve, the strap muscles and pretracheal fascia, and tracheal cartilage. Parathyroid positions remain plausible rather than fixed, and the pyramidal lobe is drawn every time although it is present in about half of people',
   },
   {
     organ: 'stomach',
@@ -112,9 +113,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'spleen',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — the hilum faces the midline, not the ribs, and the splenic vein starts on it',
-    next: 'A2: red and white pulp, and the hilar vessels by name',
+    level: 'A2',
+    evidence:
+      'scenes/hematologic/scenes/spleenAnatomy — superior and inferior arterial segments, the splenic artery and its two terminal branches, the splenic vein and the pancreatic tail, selectable by name; tests/organ-parts-anatomy.test.js — the two segments partition the organ at the hilar plane, the artery divides outside it and each branch runs into its own segment, the vein leaves posterior to the artery; tests/organ-anatomy.test.js — the hilum faces the midline, not the ribs',
+    next: 'A3: red and white pulp, the capsule and trabeculae, and the short gastric and gastroepiploic branches. The segment plane is flat and passes through the hilum; real boundaries are curved and vary, and two segments is the usual number rather than the only one',
   },
   {
     organ: 'adrenal',
@@ -124,9 +126,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'bladder',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — the contents stay inside the wall across the whole range of the filling setter',
-    next: 'A2: trigone, ureteric orifices, internal urethral orifice and the detrusor wall',
+    level: 'A2',
+    evidence:
+      'scenes/renal/scenes/bladderAnatomy — apex, body, fundus and neck, the trigone and its three openings, and the ureters and urethra that meet them, selectable by name; tests/organ-parts-anatomy.test.js — the four wall parts in order, each orifice on a corner of the trigone, and each tube meeting the opening it belongs to; tests/organ-anatomy.test.js — the contents stay inside the wall across the whole range of the filling setter',
+    next: 'A3: the detrusor’s layers, the internal and external sphincters, the ureters’ oblique intramural course, the mucosal folds the trigone is smooth by contrast with, and the male and female outlets as different things. The bladder is drawn at one fixed degree of filling',
   },
   {
     organ: 'uterus',
@@ -146,8 +149,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'gallbladder',
-    level: 'A0',
-    next: 'A1: seated in the fossa on the liver’s visceral surface, on Cantlie’s line. Then A2: fundus, body, neck, cystic duct and the biliary tree',
+    level: 'A2',
+    evidence:
+      'scenes/hepatobiliary/scenes/biliaryAnatomy — fundus, body and neck of the gallbladder, the cystic, hepatic, common hepatic, common bile and pancreatic ducts, and the papilla they open at, selectable by name; tests/organ-parts-anatomy.test.js — every duct reaches the junction it is supposed to, each junction is below the one above it, and the gallbladder narrows from fundus to neck; scenes/hepatobiliary/scenes/liverAnatomy seats the same organ in its fossa on the liver’s visceral surface',
+    next: 'A3: the intrahepatic ducts, the cystic artery and Calot’s triangle, Hartmann’s pouch, the spiral valve, the sphincter of Oddi and the common channel. The largest departure stands: the common bile duct is drawn in front of the duodenum and pancreatic head rather than behind and through them, and only one of the many cystic- and hepatic-duct variants is drawn',
   },
   {
     organ: 'pancreas',

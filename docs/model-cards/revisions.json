@@ -210,5 +210,58 @@
     "cardRevision": 5,
     "modelDigest": "5e7cd792e9326c5b",
     "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "thyroid-anatomy",
+    "card": "docs/model-cards/thyroid-anatomy.md",
+    "modelSources": [
+      "src/data/thyroidAnatomyScene.js",
+      "src/scenes/endocrine/organs/thyroidAnatomy.js",
+      "src/scenes/endocrine/scenes/thyroidAnatomy/ThyroidAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "17639b07032758e8",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "spleen-anatomy",
+    "card": "docs/model-cards/spleen-anatomy.md",
+    "modelSources": [
+      "src/data/spleenAnatomyScene.js",
+      "src/scenes/hematologic/organs/spleen.js",
+      "src/scenes/hematologic/organs/spleenParts.js",
+      "src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "10378e60f2988cc3",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "bladder-anatomy",
+    "card": "docs/model-cards/bladder-anatomy.md",
+    "modelSources": [
+      "src/data/bladderAnatomyScene.js",
+      "src/scenes/renal/organs/bladderParts.js",
+      "src/scenes/renal/scenes/bladderAnatomy/BladderAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "4a527138692ce438",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "biliary-anatomy",
+    "card": "docs/model-cards/biliary-anatomy.md",
+    "modelSources": [
+      "src/data/biliaryAnatomyScene.js",
+      "src/scenes/hepatobiliary/organs/biliaryTree.js",
+      "src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "aec68aa793a5b219",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

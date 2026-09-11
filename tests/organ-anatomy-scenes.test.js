@@ -8,6 +8,10 @@ import { KidneyAnatomyScene } from '../src/scenes/renal/scenes/kidneyAnatomy/Kid
 import { StomachAnatomyScene } from '../src/scenes/gastrointestinal/scenes/stomachAnatomy/StomachAnatomyScene.js';
 import { IntestineAnatomyScene } from '../src/scenes/gastrointestinal/scenes/intestineAnatomy/IntestineAnatomyScene.js';
 import { PancreasAnatomyScene } from '../src/scenes/hepatobiliary/scenes/pancreasAnatomy/PancreasAnatomyScene.js';
+import { ThyroidAnatomyScene } from '../src/scenes/endocrine/scenes/thyroidAnatomy/ThyroidAnatomyScene.js';
+import { SpleenAnatomyScene } from '../src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js';
+import { BladderAnatomyScene } from '../src/scenes/renal/scenes/bladderAnatomy/BladderAnatomyScene.js';
+import { BiliaryAnatomyScene } from '../src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -36,6 +40,10 @@ const SCENES = [
   { id: 'stomach-anatomy', Scene: StomachAnatomyScene, minimum: 7 },
   { id: 'intestine-anatomy', Scene: IntestineAnatomyScene, minimum: 8 },
   { id: 'pancreas-anatomy', Scene: PancreasAnatomyScene, minimum: 6 },
+  { id: 'thyroid-anatomy', Scene: ThyroidAnatomyScene, minimum: 10 },
+  { id: 'spleen-anatomy', Scene: SpleenAnatomyScene, minimum: 6 },
+  { id: 'bladder-anatomy', Scene: BladderAnatomyScene, minimum: 9 },
+  { id: 'biliary-anatomy', Scene: BiliaryAnatomyScene, minimum: 10 },
 ];
 
 const built = new Map();
@@ -303,7 +311,7 @@ test('a scene can say what it is about, which is not everything it draws', () =>
 
   // The kidney is the one that has to narrow: it draws the whole tract, and a
   // frame that fits the bladder makes the organ it is named after too small.
-  const kidney = sceneFor(SCENES[2]);
+  const kidney = sceneFor(SCENES.find((entry) => entry.id === 'kidney-anatomy'));
   const subject = kidney.getSubjectBounds().getSize(new THREE.Vector3());
   const everything = kidney.getSubjectBounds({ excludeTags: [] }).getSize(new THREE.Vector3());
   assert.ok(subject.y < everything.y * 0.6, 'the kidney subject is much shorter than the tract it drains into');
@@ -321,6 +329,9 @@ const DETAIL_VIEWS = new Set([
   'kidney-anatomy:coronal-section',
   'stomach-anatomy:outlet',
   'pancreas-anatomy:head',
+  'thyroid-anatomy:right-lobe',
+  'biliary-anatomy:confluence',
+  'biliary-anatomy:outlet',
 ]);
 
 /**

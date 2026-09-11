@@ -19,6 +19,61 @@ import { tissueMaterial } from '../../shared/materials.js';
  */
 const MEDIAL = -1;
 
+/** The spleen's proportions, before the warp below is applied. */
+export const SPLEEN_SCALE = Object.freeze([0.86, 1.5, 0.7]);
+
+/**
+ * Where the splenic vessels meet the organ, in its own coordinates.
+ *
+ * Exported because two builders now need it: `buildSpleen` for the scenes that
+ * draw flow through the organ, and `spleenParts.js`, which cuts the parenchyma
+ * into the two segments the artery's terminal branches supply. A hilum typed
+ * into both would be a hilum that drifts in one of them.
+ */
+export const SPLEEN_HILUM = Object.freeze([0.55 * MEDIAL, 0.05, 0]);
+
+/**
+ * The shape, on the unit sphere.
+ *
+ * Exported so the parts builder cuts the same organ rather than a second
+ * approximation of it (`docs/architecture-rules.md` rule 1).
+ *
+ * @param {import('three').Vector3} v
+ */
+export function spleenWarp(v) {
+  const { x, y, z } = v;
+
+  // How far into the visceral (medial) half of the organ this vertex is.
+  const inward = v.x * MEDIAL;
+
+  // Visceral surface: concave, facing the stomach and the left kidney.
+  if (inward > 0) {
+    v.x -= MEDIAL * 0.34 * bump(y, z, { atY: 0, atZ: 0, spreadY: 0.85, spreadZ: 0.9 }) * Math.min(1, inward);
+  }
+
+  // Hilum: a groove along that concave face.
+  v.x -=
+    MEDIAL *
+    0.16 *
+    Math.exp(-Math.pow((y - 0.05) / 0.28, 2)) *
+    Math.exp(-Math.pow(z / 0.5, 2)) *
+    Math.max(0, inward);
+
+  // Notches on the superior border, cut into the convex diaphragmatic
+  // aspect — the side away from the hilum. They are the feature an
+  // enlarged spleen is recognised by on examination, so they are cut deep
+  // enough to survive being seen from the front — shallower, the organ was
+  // an ovoid that could have been anything.
+  for (const at of [0.3, 0.58]) {
+    const d = y - at;
+    v.multiplyScalar(
+      1 - 0.17 * Math.exp(-(d * d) / 0.006) * Math.exp(-Math.pow((x + 0.4 * MEDIAL) / 0.7, 2))
+    );
+  }
+
+  v.multiplyScalar(1 + 0.014 * ripple(x, y, z, 3.2, 1.1));
+}
+
 /**
  * The spleen.
  *
@@ -27,45 +82,12 @@ const MEDIAL = -1;
  * border that makes an enlarged spleen recognisable on examination. The hilum
  * is where the vessels enter. Red and white pulp are not drawn as structures;
  * the parenchyma is translucent so that flow through it can be seen.
+ *
+ * One mesh. `organs/spleenParts.js` cuts the same shape into the two segments
+ * the splenic artery's terminal branches supply, which is the other scale.
  */
 export function buildSpleen({ color = '#7c3f52', opacity = 0.78, detail = 8 } = {}) {
-  const geometry = shapedSphere({
-    detail,
-    scale: [0.86, 1.5, 0.7],
-    warp: (v) => {
-      const { x, y, z } = v;
-
-      // How far into the visceral (medial) half of the organ this vertex is.
-      const inward = v.x * MEDIAL;
-
-      // Visceral surface: concave, facing the stomach and the left kidney.
-      if (inward > 0) {
-        v.x -= MEDIAL * 0.34 * bump(y, z, { atY: 0, atZ: 0, spreadY: 0.85, spreadZ: 0.9 }) * Math.min(1, inward);
-      }
-
-      // Hilum: a groove along that concave face.
-      v.x -=
-        MEDIAL *
-        0.16 *
-        Math.exp(-Math.pow((y - 0.05) / 0.28, 2)) *
-        Math.exp(-Math.pow(z / 0.5, 2)) *
-        Math.max(0, inward);
-
-      // Notches on the superior border, cut into the convex diaphragmatic
-      // aspect — the side away from the hilum. They are the feature an
-      // enlarged spleen is recognised by on examination, so they are cut deep
-      // enough to survive being seen from the front — shallower, the organ was
-      // an ovoid that could have been anything.
-      for (const at of [0.3, 0.58]) {
-        const d = y - at;
-        v.multiplyScalar(
-          1 - 0.17 * Math.exp(-(d * d) / 0.006) * Math.exp(-Math.pow((x + 0.4 * MEDIAL) / 0.7, 2))
-        );
-      }
-
-      v.multiplyScalar(1 + 0.014 * ripple(x, y, z, 3.2, 1.1));
-    },
-  });
+  const geometry = shapedSphere({ detail, scale: [...SPLEEN_SCALE], warp: spleenWarp });
 
   const mesh = new THREE.Mesh(geometry, tissueMaterial({ color, roughness: 0.5, opacity }));
   mesh.name = 'spleen';
@@ -78,7 +100,7 @@ export function buildSpleen({ color = '#7c3f52', opacity = 0.78, detail = 8 } = 
      * retyping the position (architecture rule 1); one that placed the spleen
      * and the vessels independently is how they came apart.
      */
-    hilum: new THREE.Vector3(0.55 * MEDIAL, 0.05, 0),
+    hilum: new THREE.Vector3(...SPLEEN_HILUM),
     anchors: {
       // Off the convex diaphragmatic side, where there is clear space.
       spleen: new THREE.Vector3(-1.35 * MEDIAL, 1.05, 0.5),

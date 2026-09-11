@@ -291,6 +291,62 @@ export const MODEL_PROFILES = Object.freeze([
       'appendix, rectum, anal canal, mesentery, taenia coli or wall layer.',
   },
   {
+    profileId: 'spleen-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the spleen\u2019s own shape at a transverse plane through the hilum into the two territories the splenic artery\u2019s terminal branches supply, with those vessels drawn meeting the organ at the hilum it declares. No state and no mechanism. The plane is flat and real segment boundaries are neither flat nor identical between people; two segments is the usual number rather than the only one. Red and white pulp are histology and are not drawn.',
+  },
+  {
+    profileId: 'bladder-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the same bladder shape the urinary-tract scene draws into apex, body, fundus and neck, with the trigone drawn as a flat patch of lining between the two ureteric orifices and the internal urethral orifice. No state and no mechanism. The bladder is drawn at one fixed degree of filling, the trigone has no thickness, mucosal folds and sphincters are not drawn, and the ureters\u2019 oblique intramural course is described but not modelled.',
+  },
+  {
+    profileId: 'biliary-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: the gallbladder as one tube of falling calibre cut into fundus, body and neck, and the ducts as tubes joining in the order anatomy gives them \u2014 hepatic ducts to common hepatic, cystic to common bile, common bile and pancreatic to one papilla. No state and no mechanism. Calibres, lengths and angles are drawn to be legible and none is a measurement; what is claimed is the order of the junctions. The liver is not drawn, the common bile duct runs in front of the duodenum and pancreas rather than behind and through them, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.',
+  },
+  {
+    profileId: 'thyroid-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: two lobe warps hollowed against a drawn trachea, an isthmus and a pyramidal lobe, with four '+
+      'parathyroid glands behind the gland and a recurrent laryngeal nerve on each side in the tracheo-oesophageal '+
+      'groove. No state and no mechanism. What is claimed is arrangement, not dimension \u2014 no measurement is made, '+
+      'parathyroid positions are plausible rather than fixed, the pyramidal lobe is drawn although it is present in '+
+      'roughly half of people, and the nerves\u2019 course below the neck is not modelled.',
+  },
+  {
     profileId: 'pancreas-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

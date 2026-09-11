@@ -23,6 +23,10 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'stomach-anatomy',
   'intestine-anatomy',
   'pancreas-anatomy',
+  'thyroid-anatomy',
+  'spleen-anatomy',
+  'bladder-anatomy',
+  'biliary-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -174,6 +178,30 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '頭部・頸部・体部・尾部、そして4つを貫く1本の膵管。',
     ['PARTS', 'DUCT', 'ISLETS'],
     ['部位', '膵管', '膵島']
+  ),
+  'thyroid-anatomy': presentation(
+    'Fade the gland and find the four parathyroids and the two nerves behind it.',
+    '甲状腺を薄くして、その背面の副甲状腺4つと左右の反回神経を見つける。',
+    ['LOBES', 'PARATHYROID', 'NERVE'],
+    ['葉', '副甲状腺', '反回神経']
+  ),
+  'spleen-anatomy': presentation(
+    'Two territories, and the artery that divides before it reaches the hilum.',
+    '2つの支配領域と、脾門の手前で分かれる脾動脈。',
+    ['SEGMENTS', 'ARTERY', 'VEIN'],
+    ['区域', '動脈', '静脈']
+  ),
+  'bladder-anatomy': presentation(
+    'Fade the wall and find the trigone, with an opening at each of its corners.',
+    '壁を薄くして、3つの角に開口部をもつ膀胱三角を見つける。',
+    ['WALL', 'TRIGONE', 'ORIFICES'],
+    ['膀胱壁', '膀胱三角', '開口部']
+  ),
+  'biliary-anatomy': presentation(
+    'Follow bile from two hepatic ducts to one papilla, past the gallbladder on the way.',
+    '左右の肝管から1つの乳頭まで、胆嚢を経由して胆汁の道をたどる。',
+    ['GALLBLADDER', 'DUCTS', 'PAPILLA'],
+    ['胆嚢', '胆管', '乳頭']
   ),
   'lung-anatomy': presentation(
     'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',

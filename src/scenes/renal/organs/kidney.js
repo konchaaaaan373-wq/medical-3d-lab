@@ -534,25 +534,35 @@ export function buildUreter(points, { color = '#8fd6c4' } = {}) {
  * inside it, so "filling" is something you can see rather than infer.
  * `setFill` is a shape, not a volume in millilitres.
  */
+/** The bladder's proportions, before the warp below. */
+export const BLADDER_SCALE = Object.freeze([0.7, 0.68, 0.64]);
+
+/**
+ * The bladder's shape, on the unit sphere.
+ *
+ * Exported so that `organs/bladderParts.js` cuts the same organ this scene
+ * draws behind the kidneys, rather than a second approximation of it
+ * (`docs/architecture-rules.md` rule 1).
+ *
+ * @param {THREE.Vector3} v
+ */
+export function bladderWarp(v) {
+  // Domed above, tapering to the neck below. Flattened much further than
+  // this it stops reading as a container and starts reading as a disc.
+  v.y -= 0.06 * smoothstep(0.35, 1, v.y);
+  // Only the last of it narrows towards the neck: taper the whole lower
+  // half and the organ reads as a bowl with a lip.
+  const low = smoothstep(-0.55, -1, v.y);
+  v.x *= 1 - 0.4 * low;
+  v.z *= 1 - 0.4 * low;
+}
+
 export function buildBladder({ color = '#c8a6b8', fluidColor = '#e8d75f' } = {}) {
   const object = new THREE.Group();
   object.name = 'bladder';
 
   const wall = new THREE.Mesh(
-    shapedSphere({
-      detail: 7,
-      scale: [0.7, 0.68, 0.64],
-      warp: (v) => {
-        // Domed above, tapering to the neck below. Flattened much further than
-        // this it stops reading as a container and starts reading as a disc.
-        v.y -= 0.06 * smoothstep(0.35, 1, v.y);
-        // Only the last of it narrows towards the neck: taper the whole lower
-        // half and the organ reads as a bowl with a lip.
-        const low = smoothstep(-0.55, -1, v.y);
-        v.x *= 1 - 0.4 * low;
-        v.z *= 1 - 0.4 * low;
-      },
-    }),
+    shapedSphere({ detail: 7, scale: [...BLADDER_SCALE], warp: bladderWarp }),
     tissueMaterial({ color, roughness: 0.45, opacity: 0.5 })
   );
   wall.name = 'bladder-wall';

@@ -8,6 +8,11 @@ import { buildColonParts } from '../src/scenes/gastrointestinal/organs/colonPart
 import { buildColon } from '../src/scenes/gastrointestinal/organs/intestine.js';
 import { buildPancreasParts } from '../src/scenes/hepatobiliary/organs/pancreasParts.js';
 import { buildDuodenum } from '../src/scenes/gastrointestinal/organs/intestine.js';
+import { buildThyroidParts } from '../src/scenes/endocrine/organs/thyroidAnatomy.js';
+import { buildSpleen } from '../src/scenes/hematologic/organs/spleen.js';
+import { SEGMENT_PLANE_Y, buildSpleenParts } from '../src/scenes/hematologic/organs/spleenParts.js';
+import { TRIGONE_CORNERS, buildBladderParts } from '../src/scenes/renal/organs/bladderParts.js';
+import { buildBiliaryTree } from '../src/scenes/hepatobiliary/organs/biliaryTree.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -284,4 +289,143 @@ test('the islets are scattered along the gland rather than gathered in one part'
   const gland = new THREE.Box3();
   for (const part of pancreas.parts) gland.expandByObject(part.mesh);
   assert.ok(spread > (gland.max.x - gland.min.x) * 0.5, 'and they reach across the gland');
+});
+
+// --- thyroid ---------------------------------------------------------------
+
+test('the thyroid is in front of the trachea and everything that matters is behind it', () => {
+  // The arrangement is the whole claim of that scene: from in front there is a
+  // gland, and the two things a thyroid operation is careful about are on the
+  // other side of it. Depth, not size — no dimension in that model is measured.
+  const thyroid = buildThyroidParts();
+  const at = (id) => centre(thyroid.mesh(id));
+  const trachea = at('trachea');
+  const oesophagus = at('oesophagus');
+
+  assert.ok(at('isthmus').z > trachea.z, 'the isthmus crosses in front of the trachea');
+  assert.ok(oesophagus.z < trachea.z, 'the oesophagus is behind the trachea');
+  assert.equal(patientSide(at('left-lobe')), 'left', 'the left lobe');
+  assert.equal(patientSide(at('right-lobe')), 'right', 'the right lobe');
+
+  for (const side of ['right', 'left']) {
+    const nerve = at(`${side}-recurrent-laryngeal-nerve`);
+    assert.equal(patientSide(nerve), side, `the ${side} recurrent laryngeal nerve is on its own side`);
+    // In the groove: behind the trachea's centre, in front of the oesophagus's.
+    assert.ok(nerve.z < trachea.z, `the ${side} nerve is behind the trachea`);
+    assert.ok(nerve.z > oesophagus.z, `the ${side} nerve is in front of the oesophagus`);
+    assert.ok(nerve.z < at(`${side}-lobe`).z, `the ${side} nerve is behind its own lobe`);
+
+    const superior = at(`${side}-superior-parathyroid`);
+    const inferior = at(`${side}-inferior-parathyroid`);
+    assert.ok(superior.z < at(`${side}-lobe`).z, `the ${side} superior parathyroid is behind the gland`);
+    assert.ok(inferior.z < at(`${side}-lobe`).z, `the ${side} inferior parathyroid is behind the gland`);
+    assert.ok(superior.y > inferior.y, `the ${side} superior parathyroid is above the inferior one`);
+    assert.equal(patientSide(superior), side, `the ${side} superior parathyroid is on its own side`);
+  }
+});
+
+// --- spleen ----------------------------------------------------------------
+
+test('the spleen is two arterial territories, divided where the artery divides', () => {
+  const spleen = buildSpleenParts();
+  const superior = new THREE.Box3().setFromObject(spleen.mesh('superior-segment'));
+  const inferior = new THREE.Box3().setFromObject(spleen.mesh('inferior-segment'));
+
+  // They meet at the plane and do not overlap across it.
+  assert.ok(superior.min.y >= SEGMENT_PLANE_Y - 0.05, 'the superior segment is above the plane');
+  assert.ok(inferior.max.y <= SEGMENT_PLANE_Y + 0.05, 'the inferior segment is below it');
+  // Between them they are the organ: as tall as the whole spleen was.
+  const whole = new THREE.Box3().setFromObject(buildSpleen({ detail: 7 }).object);
+  const height = superior.max.y - inferior.min.y;
+  assert.ok(
+    Math.abs(height - (whole.max.y - whole.min.y)) < 0.08,
+    `the two segments are as tall as the spleen (${height.toFixed(2)})`
+  );
+
+  // The division happens outside the organ, which is what makes the two
+  // territories separable at all.
+  const artery = new THREE.Box3().setFromObject(spleen.mesh('splenic-artery'));
+  const parenchyma = new THREE.Box3().union(superior).union(inferior);
+  const medial = Math.sign(spleen.hilum.x) || -1;
+  assert.ok(
+    medial < 0 ? artery.min.x < parenchyma.min.x : artery.max.x > parenchyma.max.x,
+    'the splenic artery reaches the organ from outside it'
+  );
+  // Each branch ends in the segment it is named for.
+  assert.ok(centre(spleen.mesh('superior-terminal-branch')).y > SEGMENT_PLANE_Y, 'the superior branch runs up');
+  assert.ok(centre(spleen.mesh('inferior-terminal-branch')).y < SEGMENT_PLANE_Y, 'the inferior branch runs down');
+  // And the vein leaves behind the artery.
+  assert.ok(centre(spleen.mesh('splenic-vein')).z < centre(spleen.mesh('splenic-artery')).z, 'the vein is posterior');
+});
+
+// --- bladder ---------------------------------------------------------------
+
+test('the bladder’s trigone has an opening at each of its three corners', () => {
+  const bladder = buildBladderParts();
+  const at = (id) => centre(bladder.mesh(id));
+
+  // The wall, in order, top to bottom and back to front.
+  assert.ok(at('apex').y > at('body').y, 'the apex is above the body');
+  assert.ok(at('body').y > at('neck').y, 'the neck is below the body');
+  assert.ok(at('fundus').z < at('body').z, 'the fundus is the posterior wall');
+
+  // Every corner of the patch is an orifice, and every orifice is at a corner.
+  const patch = new THREE.Box3().setFromObject(bladder.mesh('trigone'));
+  for (const id of Object.keys(TRIGONE_CORNERS)) {
+    const point = at(id);
+    assert.ok(
+      patch.distanceToPoint(point) < 0.08,
+      `${id} sits on the trigone (${patch.distanceToPoint(point).toFixed(3)} away)`
+    );
+  }
+  assert.ok(at('right-ureteric-orifice').y > at('internal-urethral-orifice').y, 'the ureters enter above the way out');
+  assert.equal(patientSide(at('left-ureteric-orifice')), 'left', 'the left ureteric orifice');
+  assert.equal(patientSide(at('right-ureteric-orifice')), 'right', 'the right ureteric orifice');
+
+  // Each tube meets the opening it belongs to rather than somewhere near it.
+  const meets = (tube, orifice) => {
+    const box = new THREE.Box3().setFromObject(bladder.mesh(tube));
+    return box.distanceToPoint(at(orifice));
+  };
+  assert.ok(meets('right-ureter', 'right-ureteric-orifice') < 0.06, 'the right ureter ends at its orifice');
+  assert.ok(meets('left-ureter', 'left-ureteric-orifice') < 0.06, 'the left ureter ends at its orifice');
+  assert.ok(meets('urethra', 'internal-urethral-orifice') < 0.06, 'the urethra begins at the internal orifice');
+});
+
+// --- biliary tree ----------------------------------------------------------
+
+test('the bile ducts join in the order that decides what an obstruction does', () => {
+  // The order is the whole content of that scene, and it is the only thing in
+  // it that is a claim: calibres, lengths and angles are drawn to be legible.
+  const tree = buildBiliaryTree();
+  const reaches = (id, point) =>
+    new THREE.Box3().setFromObject(tree.mesh(id)).distanceToPoint(point) < 0.09;
+
+  const { confluence, cystic, papilla } = tree.junctions;
+
+  assert.ok(reaches('right-hepatic-duct', confluence), 'the right hepatic duct reaches the confluence');
+  assert.ok(reaches('left-hepatic-duct', confluence), 'the left hepatic duct reaches the confluence');
+  assert.ok(reaches('common-hepatic-duct', confluence), 'the common hepatic duct starts at the confluence');
+  assert.ok(reaches('common-hepatic-duct', cystic), 'and runs to the cystic junction');
+  assert.ok(reaches('cystic-duct', cystic), 'the cystic duct reaches the same junction');
+  assert.ok(reaches('cystic-duct', tree.gallbladderCurve.getPointAt(1)), 'and leaves the gallbladder’s neck');
+  assert.ok(reaches('common-bile-duct', cystic), 'the common bile duct begins there');
+  assert.ok(reaches('common-bile-duct', papilla), 'and ends at the papilla');
+  assert.ok(reaches('pancreatic-duct', papilla), 'the pancreatic duct ends at the same papilla');
+
+  // Downstream is downstream: each junction is below the one above it.
+  assert.ok(confluence.y > cystic.y, 'the cystic junction is below the confluence');
+  assert.ok(cystic.y > papilla.y, 'the papilla is below the cystic junction');
+
+  // The gallbladder runs fundus to neck, and the neck is its narrowest part.
+  const parts = ['gallbladder-fundus', 'gallbladder-body', 'gallbladder-neck'];
+  const widths = parts.map((id) => new THREE.Box3().setFromObject(tree.mesh(id)).getSize(new THREE.Vector3()).z);
+  assert.ok(widths[0] > widths[1] && widths[1] > widths[2], `the gallbladder narrows towards the neck (${widths.map((w) => w.toFixed(2))})`);
+  assert.equal(patientSide(centre(tree.mesh('gallbladder-fundus'))), 'right', 'the gallbladder is on the right');
+  // The fundus is the free end: it is further from the neck than the body is.
+  const neck = centre(tree.mesh('gallbladder-neck'));
+  assert.ok(
+    centre(tree.mesh('gallbladder-fundus')).distanceTo(neck) > centre(tree.mesh('gallbladder-body')).distanceTo(neck),
+    'the fundus is the far end'
+  );
 });

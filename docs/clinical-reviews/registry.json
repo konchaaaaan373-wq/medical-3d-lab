@@ -454,5 +454,100 @@
       "Nothing is secreted or solved in this scene.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning ERCP, biopsy, resection or staging."
     ]
+  },
+  {
+    "sceneId": "thyroid-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built thyroid lobes, isthmus, pyramidal lobe, parathyroid glands and recurrent laryngeal nerves, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/thyroid-anatomy.md",
+      "docs/model-evidence/thyroid-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Parathyroid positions are plausible rather than fixed, and four is the usual number rather than the only one: they must not be read as where to look.",
+      "The pyramidal lobe is drawn every time although it is present in roughly half of people.",
+      "The recurrent laryngeal nerves' course below the neck is not modelled, so the difference between the two sides is not shown.",
+      "No vessel, cartilage ring, strap muscle, fascia or lymph node is drawn, and nothing is secreted or solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning thyroidectomy, parathyroid exploration, nerve monitoring or biopsy."
+    ]
+  },
+  {
+    "sceneId": "spleen-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built splenic arterial segments and hilar vessels, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/spleen-anatomy.md",
+      "docs/model-evidence/spleen-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The segment plane is flat and passes through the hilum; real boundaries are neither flat nor identical between people, and two segments is the usual number rather than the only one.",
+      "Red and white pulp are not drawn, and no capsule, trabecula or short gastric vessel is modelled.",
+      "Nothing flows or is solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning splenectomy, partial splenectomy or embolisation."
+    ]
+  },
+  {
+    "sceneId": "bladder-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built bladder wall parts, trigone and orifices, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/bladder-anatomy.md",
+      "docs/model-evidence/bladder-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The trigone is a flat patch with no thickness, and the mucosal folds it is smooth by contrast with are not drawn.",
+      "The bladder is drawn at one fixed degree of filling; nothing fills or empties in this scene.",
+      "The ureters' oblique intramural course, the sphincters, the detrusor's layers and the urachal remnant are not modelled.",
+      "The urethra is drawn the same for everyone: male and female urethral anatomy differ and neither is represented.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning cystoscopy, catheterisation, resection or stenting."
+    ]
+  },
+  {
+    "sceneId": "biliary-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gallbladder parts and bile-duct tree with its duodenal outlet, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/biliary-anatomy.md",
+      "docs/model-evidence/biliary-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Calibres, lengths and angles are drawn to be legible; only the order of the junctions is claimed.",
+      "The liver is not drawn, so the hepatic ducts begin at the edge of the model.",
+      "The common bile duct runs in front of the duodenum and the pancreatic head rather than behind and through them.",
+      "The spiral valve, the sphincter of Oddi, Hartmann's pouch, the minor papilla and the common channel are not modelled, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning cholecystectomy, ERCP, stenting or any biliary procedure."
+    ]
   }
 ]
