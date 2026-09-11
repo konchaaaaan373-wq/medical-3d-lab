@@ -52,6 +52,7 @@ test('migrated production evidence and the existing model registries share one c
       'multinodular-goitre',
       'knee-osteoarthritis',
       'acl-injury',
+      'rotator-cuff-tear',
     ]
   );
 });

@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'rotator-cuff-tear',
+    slug: 'rotator-cuff-tear',
+    titleEn: 'Rotator cuff tear',
+    titleJa: '腱板断裂',
+    system: 'musculoskeletal',
+    organ: 'shoulder',
+    organs: ['shoulder'],
+    disease: 'rotator-cuff-tear',
+    conditions: ['rotator cuff tear', 'supraspinatus tear', 'transverse force couple', 'humeral head migration', '腱板断裂', '棘上筋腱断裂', 'force couple', '骨頭上方化'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/rotator-cuff-tear.md',
+    modelProfile: 'rotator-cuff-tear-containment',
+    description:
+      'The cuff does not lift the arm; it holds the head on its socket. The tendon in front and the one behind pull against each other, so the whole width of the top tendon can be gone with the head exactly where it was.',
+    descriptionJa:
+      '腱板は腕を持ち上げるものではなく、骨頭を臼蓋に保つものです。前の腱と後ろの腱が引き合っているため、上の腱が全幅失われても骨頭は元の位置のままでありえます。',
+    tags: ['musculoskeletal', 'injury-state', 'geometric-model'],
+    load: () => import('../scenes/musculoskeletal/scenes/rotatorCuffTear/index.js'),
+  },
+  {
     id: 'acl-injury',
     slug: 'acl-injury',
     titleEn: 'ACL injury',

@@ -2397,6 +2397,115 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Rotator cuff tear.
+   *
+   * The walk replaces one question with another. Three steps take the tendon
+   * over the top from whole to gone across its width — and the head has not
+   * moved, which is the surprise. Only then does the pair come out, and the
+   * head rises.
+   */
+  'rotator-cuff-tear': Object.freeze({
+    title: 'What was holding the head, and what happens when it goes',
+    titleJa: '何が骨頭を保っていたのか、そして失われると何が起きるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'intact',
+        frame: 'shoulder',
+        focus: ['tendon', 'couple'],
+        certainty: 'established',
+        title: 'These tendons do not lift the arm',
+        titleJa: 'これらの腱は腕を持ち上げていません',
+        body: 'A big muscle over the shoulder lifts it. What this sleeve of tendons does is hold the ball of the arm bone onto its socket while that happens.',
+        bodyJa: '持ち上げているのは肩の上の大きな筋です。この腱の袖がしているのは、そのあいだ上腕骨の球を臼蓋に保っておくことです。',
+        look: 'Follow the straps wrapping the ball. One goes over the top; the others come round the front and the back.',
+        lookJa: '球を包む帯を追ってください。1 本は上を通り、ほかは前と後ろから回り込んでいます。',
+      },
+      {
+        progress: 0.5,
+        stage: 'partial',
+        frame: 'arch',
+        focus: ['tendon'],
+        certainty: 'established',
+        title: 'A hole opens in the one over the top',
+        titleJa: '上を通る 1 本に穴があきます',
+        body: 'It is a defect in a sheet, not a cord snapping. The two edges draw apart and the rest of the sleeve is still where it was.',
+        bodyJa: '索が切れるのではなく、シートに欠損ができることです。両側の縁が離れていき、袖の残りは元の位置にあります。',
+        look: 'The gap between the two edges. Watch how wide it gets, and where the ball is sitting.',
+        lookJa: '両縁のあいだの隙間です。それがどこまで広がるか、そして球がどこにあるかを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'full',
+        frame: 'arch',
+        focus: ['tendon', 'head'],
+        certainty: 'established',
+        title: 'Gone across its width, and the ball has not moved',
+        titleJa: '全幅が失われても、球は動いていません',
+        body: 'The whole width of that tendon is missing and the ball is exactly where it started. That is the part most people do not expect.',
+        bodyJa: 'その腱の全幅が失われていますが、球は最初と同じ位置にあります。ここが多くの人にとって意外な点です。',
+        look: 'Compare the ball’s position with the first step. It has not risen at all.',
+        lookJa: '球の位置を最初の段階と見比べてください。まったく上がっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'full',
+        frame: 'cuff',
+        focus: ['couple'],
+        certainty: 'established',
+        title: 'Because the two facing each other are still pulling',
+        titleJa: '向かい合う 2 本がまだ引き合っているからです',
+        body: 'One comes round the front and one round the back. Pulling against each other, they hold the ball on its socket on their own.',
+        bodyJa: '1 本は前から、もう 1 本は後ろから回り込んでいます。互いに引き合うことで、その 2 本だけで球を臼蓋に保っています。',
+        look: 'The lit straps are that pair. Neither of them is the one with the hole in it.',
+        lookJa: '光っている帯がその対です。どちらも、穴があいているほうの腱ではありません。',
+      },
+      {
+        progress: 1,
+        stage: 'full',
+        frame: 'arch',
+        focus: ['head', 'arch'],
+        // The pair is the control, not the axis: this is what the tear reaching
+        // round changes, at exactly the same size of hole.
+        controls: { couple: 0.2 },
+        certainty: 'established',
+        title: 'Take the pair away, and the ball rides up',
+        titleJa: 'その対が失われると、球は上がります',
+        body: 'The hole in the top tendon is the same size as it was a moment ago. What has changed is that the pair is no longer facing each other, and the ball is no longer held down.',
+        bodyJa: '上の腱の穴の大きさは、いまと変わっていません。変わったのは対が向かい合わなくなったことで、球はもう押さえられていません。',
+        look: 'The band above the ball is the space under the arch. Watch it thin. The hole did not get bigger.',
+        lookJa: '球の上の帯がアーチ下の隙間です。それが薄くなるのを見てください。穴が大きくなったわけではありません。',
+      },
+      {
+        progress: 1,
+        stage: 'full',
+        frame: 'shoulder',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why the size is a poor guide',
+        titleJa: '気づくこと、そして大きさが目安にならない理由',
+        body: 'Pain at night, trouble reaching up, and weakness are described. How much of any of it there is does not follow from how big the hole is.',
+        bodyJa: '夜間の痛み、上へ手を伸ばしにくいこと、力の入りにくさなどが語られます。その程度は、穴の大きさから決まるわけではありません。',
+        look: 'Nothing new is drawn for this step. There is no person here and no arm is being lifted.',
+        lookJa: 'この段階で新しく描かれるものはありません。ここに人はおらず、腕も持ち上げられていません。',
+      },
+      {
+        progress: 1,
+        stage: 'full',
+        frame: 'shoulder',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'The space under the arch here is drawn, not measured',
+        titleJa: 'ここでのアーチ下の隙間は、測ったものではなく描いたものです',
+        body: 'In life that space is a few millimetres against a ball several centimetres across. It is opened up here so the tendon under it can be seen at all.',
+        bodyJa: '実際のその空間は、数 cm の球に対して数 mm です。ここでは、その下の腱が見えるように広げて描いています。',
+        look: 'The figure on the screen is a share of that drawn space, and not a distance in anybody.',
+        lookJa: '画面の数値は、その描かれた空間に対する割合であって、誰かの体での距離ではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

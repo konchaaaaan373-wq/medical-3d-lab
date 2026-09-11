@@ -648,6 +648,24 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'rotator-cuff-tear-containment',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a supraspinatus defect and of what is left holding the humeral head on its socket: the ' +
+      'top tendon\'s share falls with the tear, the facing pair keeps its own, and the head rises only once the ' +
+      'total drops below a threshold. The card says the rise is reported as a fraction of the shoulder atlas\'s ' +
+      'subacromial display gap, which the atlas itself declares to be a legibility value, and that it is not an ' +
+      'acromiohumeral distance and not millimetres. The model contains no pain, no weakness, no movement, no time ' +
+      'and no treatment.@ ',
+  },
+  {
     profileId: 'acl-injury-restraint',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

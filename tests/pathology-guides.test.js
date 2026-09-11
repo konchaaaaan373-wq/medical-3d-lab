@@ -60,6 +60,11 @@ import {
   MODEL_CONTROLS as ACL_CONTROLS,
 } from '../src/data/aclInjury.js';
 import { AclInjuryScene } from '../src/scenes/musculoskeletal/scenes/aclInjury/AclInjuryScene.js';
+import {
+  STAGES as CUFF_STAGES,
+  MODEL_CONTROLS as CUFF_CONTROLS,
+} from '../src/data/rotatorCuffTear.js';
+import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -279,6 +284,23 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new AclInjuryScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The shoulder, whose walk spends three steps arriving at a non-event — the
+   * tendon is gone across its width and the head has not moved — and only then
+   * takes the pair away. The surprise is the content.
+   */
+  {
+    id: 'rotator-cuff-tear',
+    stages: CUFF_STAGES,
+    controls: CUFF_CONTROLS,
+    scene: () => {
+      const scene = new RotatorCuffTearScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new RotatorCuffTearScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];
