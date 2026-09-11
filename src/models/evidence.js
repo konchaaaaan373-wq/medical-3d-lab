@@ -2373,6 +2373,139 @@ export const HIP_OA_EVIDENCE = defineEvidence('hip-osteoarthritis', [
   },
 ]);
 
+export const URINARY_OBSTRUCTION_EVIDENCE = defineEvidence('urinary-obstruction', [
+  {
+    id: 'two-tubes-one-bladder',
+    claim:
+      'The urinary tract is two tubes that join at one bladder, so how many kidneys lie above a blockage is a property of where the blockage is rather than of how much has backed up: one above the bladder, both at the way out of it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard urinary tract anatomy, and standard descriptions of obstruction above the bladder involving one side while bladder outlet obstruction involves both.',
+    validation: 'physiology: how many kidneys are behind it is decided by the place, not the amount',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'above-fills-and-below-does-not',
+    claim:
+      'What lies above a blockage distends and what lies below it does not, so the boundary between the two is where the blockage is.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of dilatation of the collecting system and ureter proximal to the level of an obstruction.',
+    validation: 'physiology: everything above the blockage is distended and everything below is not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-same-kidney-with-a-different-length-behind-it',
+    claim:
+      'A blockage at the top of a ureter and one at its bottom stand above the same kidney with a different length of tube between them, so the place decides how much of the tract dilates and not only which side.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the topology, with the standard description of a pelviureteric obstruction dilating the collecting system while leaving the ureter below it undilated.',
+    validation: 'physiology: further down the same ureter puts more of the tract above the same kidney',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-capsule-does-not-give',
+    claim:
+      'A kidney is inside a capsule that does not stretch readily, so a collecting system that fills takes its room from the parenchyma next to it. The dilated pelvis and the thinned parenchyma are the same volume counted twice.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the renal capsule as a layer that does not stretch readily, and of parenchymal thinning accompanying a dilated collecting system.',
+    validation: 'physiology: the room the collecting system gains comes mostly out of the parenchyma',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-spared-side-is-not-in-the-picture',
+    claim:
+      'The side with nothing above it is unchanged **by this model**. Nothing is claimed about what happens to the other kidney in a person.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the topology rather than a clinical observation: this model does nothing on a side that has no blockage above it.',
+    validation: 'physiology: the spared kidney is untouched, whatever the amount',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-proportions',
+    claim:
+      'The kidney\'s and the collecting system\'s semi-axes, from which every volume, ratio and thickness the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off the landmark kidney builder in `src/scenes/renal/organs/kidney.js`, so the picture and the arithmetic are the same organ.',
+    note:
+      'Illustrative proportions, not anatomy. They were chosen there to read as a kidney at thumbnail size. No volume here is millilitres and no semi-axis is a dimension of anybody.',
+    validation: 'calibration: the urinary tract scene is built from the volumes the model was given',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'retained-load-and-capsule-give',
+    claim:
+      'How much backs up at the top of the axis, and how far the capsule itself yields.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrations this repository chose: the load was calibrated so that the dilation and the thinning are both visible across the range without the collecting system reaching the capsule, and the give was chosen so that the capsule takes only a minority share of the retained volume.',
+    note:
+      'The claim that the room comes out of the parenchyma is a claim about that ratio and nothing else, which is why a test fixes the ratio rather than either constant.',
+    validation: 'calibration: the capsule takes only a minority share of what backs up',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'dilation-factors',
+    claim:
+      'How far a distended ureter and a distended bladder are drawn against their own resting size.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen to be legible. Unlike the kidney, where the thickness follows from two volumes, these are illustrative drawn values.',
+    note:
+      'They say *distended* and do not say *how much*. No calibre in the tract is solved from anything, and none is a measurement.',
+    validation: 'calibration: a distended stretch is plainly distended and an undistended one is plainly not',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'thinned-below',
+    claim:
+      'The share of its resting thickness below which the parenchyma is reported as thinned rather than as merely narrower.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'A reporting threshold for the copy, chosen so that it fires where the change is visible on screen.',
+    note:
+      'Illustrative, and chosen. It is not a grade and not a clinical threshold: this model grades nothing, and a geometry could not be a grade.',
+    validation: 'calibration: the thinned threshold fires where the drawing changes and nowhere else',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-thin-parenchyma-reads-as-a-failing-kidney',
+    claim:
+      'What a kidney behind an obstruction is actually doing — whether it is filtering, how much, and whether it recovers — is not represented here in any form.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no kidney function in this model at all, and nothing is carried from `renal-filtration`, which is a separate model with its own scope.',
+    note:
+      'A parenchyma drawn thin looks like a kidney that has stopped working, and this model says nothing of the kind. The thickness is a thickness in a drawing.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'thickness-is-not-volume',
+    claim:
+      'The parenchyma\'s thickness falls faster than its volume does, so the picture reads worse than the volume is.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a thin shell round a large cavity still holds a good deal, which is why the two numbers diverge.',
+    validation: 'physiology: the thickness falls faster than the volume, and the model says both',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-level-reads-as-a-stage',
+    claim:
+      'Nothing in this model says a blockage moves from one level to another, or that a person passes through the five in order.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the level is a control rather than a point on the axis: five arrangements, with how much has backed up as a separate thing.',
+    note:
+      'Five levels in a list read as five degrees of one illness. They are not, and the axis underneath them is not how far along anybody is.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2392,4 +2525,5 @@ export const EVIDENCE_REGISTRIES = [
   ACL_EVIDENCE,
   CUFF_EVIDENCE,
   HIP_OA_EVIDENCE,
+  URINARY_OBSTRUCTION_EVIDENCE,
 ];

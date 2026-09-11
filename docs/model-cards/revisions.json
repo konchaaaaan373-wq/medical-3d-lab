@@ -371,6 +371,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "urinary-obstruction",
+    "card": "docs/model-cards/urinary-obstruction.md",
+    "modelSources": [
+      "src/models/urinaryObstruction.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "92bb3f9e658ace66",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "rotator-cuff-tear",
     "card": "docs/model-cards/rotator-cuff-tear.md",
     "modelSources": [

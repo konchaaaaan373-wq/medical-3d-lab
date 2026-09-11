@@ -997,5 +997,32 @@
       "No fracture, arthritis, impingement, dysplasia or dislocation is represented in any form, and nothing here is anyone's hip.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, fixation or arthroplasty."
     ]
+  },
+  {
+    "sceneId": "urinary-obstruction",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of a urinary tract blocked at one of five named levels: which drawn stretches lie above the blockage, how many kidneys do, and what thickness of parenchyma is left beside a collecting system that has filled inside a capsule that barely yields"
+    ],
+    "sources": [
+      "docs/model-cards/urinary-obstruction.md",
+      "docs/model-evidence/urinary-obstruction.md",
+      "tests/urinary-obstruction-physiology.test.js",
+      "tests/urinary-obstruction-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five levels, the copy and the Japanese terminology is not yet recorded.",
+      "No volume, calibre, thickness or ratio is a measurement. Every one is measured off this repository's own kidney, ureter and bladder builders, whose proportions are drawn to be legible.",
+      "The parenchymal thickness is reported against this model's own resting thickness and is not a cortical thickness on any scan. A real kidney thins unevenly; this one thins evenly.",
+      "The model contains no kidney function of any kind — no filtration, no creatinine, no urine output, no recovery and no loss — and nothing in it is coupled to renal-filtration.",
+      "The model does not grade hydronephrosis. No output is a grade, a stage or a threshold.",
+      "There is no cause of the obstruction, no time, no symptom, no infection and no treatment; the axis is how much has backed up rather than how long it has been there.",
+      "The obstruction is drawn on the left in every one-sided level because it has to be drawn somewhere; the side carries no claim.",
+      "The ureter is drawn as three equal named stretches of one tube so that 'above the blockage' can be said; they are divisions of a drawing and none has a length.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

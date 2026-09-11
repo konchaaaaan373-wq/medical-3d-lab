@@ -594,6 +594,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/hipOsteoarthritis/index.js'),
   },
   {
+    id: 'urinary-obstruction',
+    slug: 'urinary-obstruction',
+    titleEn: 'Urinary obstruction',
+    titleJa: '尿路閉塞',
+    system: 'renal',
+    organ: 'kidney',
+    organs: ['kidney', 'ureter', 'bladder'],
+    disease: 'urinary-obstruction',
+    conditions: ['urinary tract obstruction', 'hydronephrosis', 'ureteric obstruction', 'bladder outlet obstruction', 'parenchymal thinning', '尿路閉塞', '水腎症', '尿管閉塞', '膀胱出口部閉塞', '腎実質菲薄化'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/urinary-obstruction.md',
+    modelProfile: 'urinary-obstruction-level',
+    description:
+      'The urinary tract is two tubes that join at the bladder, so where a blockage sits decides how many kidneys are behind it — one above the bladder, both at the way out of it. And because a kidney is inside a capsule, a collecting system that fills takes its room from the parenchyma beside it.',
+    descriptionJa:
+      '尿路は膀胱で合流する 2 本の管であるため、閉塞の場所が「上流にある腎の数」を決めます。膀胱より上なら 1 つ、膀胱の出口なら両方です。また腎は被膜の中にあるため、満たされた腎盂は隣の実質から場所を得ます。',
+    tags: ['renal', 'level-scenario', 'geometric-model'],
+    load: () => import('../scenes/renal/scenes/urinaryObstruction/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

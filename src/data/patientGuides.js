@@ -2668,6 +2668,116 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Urinary obstruction.
+   *
+   * The walk has to keep two things apart that a reader will merge: how much
+   * has backed up, and where the blockage is. So the first three steps move
+   * only the axis at one level, and the two after them move only the level at
+   * the top of the axis — the second of which is the only step in the guide
+   * where the number of kidneys changes.
+   */
+  'urinary-obstruction': Object.freeze({
+    title: 'Where the blockage is, and what that leaves above it',
+    titleJa: '閉塞がどこにあり、その上流に何が残るのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'draining',
+        frame: 'tract',
+        focus: ['leftKidney', 'rightKidney', 'bladder'],
+        certainty: 'established',
+        title: 'Two kidneys, two tubes, one bladder',
+        titleJa: '2 つの腎、2 本の管、1 つの膀胱',
+        body: 'Each kidney has a tube of its own running down to the bladder. The two never meet until they get there. Everything on this screen follows from that.',
+        bodyJa: '左右の腎にはそれぞれ自分の管があり、膀胱まで下りています。2 本はそこに着くまで合流しません。この画面のすべては、そこから導かれます。',
+        look: 'Follow one side from the top down: the kidney, then its tube, then where it reaches the bladder.',
+        lookJa: '片側を上から順に追ってください。腎、その管、そして膀胱に届く場所です。',
+      },
+      {
+        progress: 0.5,
+        stage: 'backing-up',
+        frame: 'transition',
+        focus: ['blockage', 'leftKidney'],
+        certainty: 'established',
+        title: 'What cannot get past stays above',
+        titleJa: '通れなかった分は、上流に留まります',
+        body: 'Something is in the way partway down one tube. What cannot pass it stays above it, so the tube above widens and the tube below does not.',
+        bodyJa: '片方の管の途中に、通り道を塞ぐものがあります。通れなかった分は上流に留まるため、上の管は太くなり、下の管はそのままです。',
+        look: 'The ring is where it is blocked. Above it the tube is wider; below it, it is the width it always was.',
+        lookJa: '輪のあるところが塞がっています。その上では管が太く、下では元のままの太さです。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-from-the-kidney',
+        frame: 'kidney',
+        focus: ['parenchyma', 'leftKidney'],
+        certainty: 'established',
+        title: 'The room has to come from somewhere',
+        titleJa: '広がる場所は、どこかから来ます',
+        body: 'A kidney is wrapped in a covering that hardly stretches. So as the space inside fills, it takes its room from the tissue around it, which gets thinner.',
+        bodyJa: '腎は、ほとんど伸びない膜に包まれています。そのため内側の空間が満たされていくと、その場所は周りの組織から取られ、組織は薄くなります。',
+        look: 'Watch the pale outline, not the bright middle: the outline is barely bigger, and the gap inside it is narrower.',
+        lookJa: '明るい中心ではなく、淡い外形を見てください。外形はほとんど大きくならず、その内側の隙間が狭くなっています。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-from-the-kidney',
+        frame: 'both',
+        focus: ['spared', 'rightKidney'],
+        certainty: 'established',
+        title: 'The other side is not in this picture',
+        titleJa: 'もう一方の側は、この絵に入っていません',
+        body: 'The other kidney has its own tube, and nothing is in the way of it. On this screen it is exactly as it started, because nothing here has changed it.',
+        bodyJa: 'もう一方の腎には自分の管があり、そこには何も詰まっていません。この画面では最初のままです。ここでは何もその側を変えていないからです。',
+        look: 'Compare the two kidneys side by side. One has filled and thinned; the other is untouched.',
+        lookJa: '2 つの腎を並べて見比べてください。片方は満たされて薄くなり、もう片方はそのままです。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-from-the-kidney',
+        frame: 'outlet',
+        focus: ['bladder', 'blockage'],
+        // The only step where the number of kidneys above the blockage changes,
+        // which is the whole reason the level is a control and not the axis.
+        controls: { level: 'bladder-outlet' },
+        certainty: 'established',
+        title: 'Lower down, and both sides are above it',
+        titleJa: 'さらに下では、両側が上流になります',
+        body: 'The two tubes join at the bladder. So something in the way of what leaves the bladder has both tubes and both kidneys above it, not one.',
+        bodyJa: '2 本の管は膀胱で合流します。そのため膀胱から出ていく道が塞がれると、その上流にあるのは片方ではなく、両方の管と両方の腎です。',
+        look: 'Nothing changed about how much has backed up — only where. Both kidneys have filled now.',
+        lookJa: '溜まった量は変えていません。変えたのは場所だけです。いま両方の腎が満たされています。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-from-the-kidney',
+        frame: 'tract',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why it varies',
+        titleJa: '気づくこと、そしてそれが人によって違う理由',
+        body: 'Pain in the side or the back, going less often or with difficulty, and a feeling of not emptying are described. Some of it is noticed late or not at all.',
+        bodyJa: '脇腹や背中の痛み、出にくさや回数の変化、出しきれない感じなどが語られます。気づかれるのが遅いことも、まったく気づかれないこともあります。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-from-the-kidney',
+        frame: 'tract',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture does not say how the kidney is working',
+        titleJa: 'この絵は、腎の働きについては何も述べていません',
+        body: 'Thinner here is a thickness in a drawing. Whether a kidney behind a blockage is still doing its job, and how much, is not on this screen at all.',
+        bodyJa: 'ここでの「薄い」は、図の中の厚みのことです。塞がれた側の腎がまだ働いているか、どれだけ働いているかは、この画面のどこにもありません。',
+        look: 'The numbers are ratios of this drawing against itself. None of them is a width, a volume or how well anything works.',
+        lookJa: '画面の数値は、この絵の中での比です。太さも体積も、働きの良し悪しも表すものではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

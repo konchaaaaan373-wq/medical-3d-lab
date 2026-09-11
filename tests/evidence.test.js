@@ -16,6 +16,7 @@ import {
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
   HIP_OA_EVIDENCE,
+  URINARY_OBSTRUCTION_EVIDENCE,
   KNEE_OA_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
@@ -66,6 +67,7 @@ const FILE_LAYERS = {
   'bowel-obstruction-physiology.test.js': LAYER.EXTERNAL,
   'uterine-fibroid-physiology.test.js': LAYER.EXTERNAL,
   'multinodular-goitre-physiology.test.js': LAYER.EXTERNAL,
+  'urinary-obstruction-physiology.test.js': LAYER.EXTERNAL,
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
@@ -89,6 +91,7 @@ const DOSSIERS = {
   'bowel-obstruction': 'docs/model-evidence/bowel-obstruction.md',
   'uterine-fibroid': 'docs/model-evidence/uterine-fibroid.md',
   'multinodular-goitre': 'docs/model-evidence/multinodular-goitre.md',
+  'urinary-obstruction': 'docs/model-evidence/urinary-obstruction.md',
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
   'acl-injury': 'docs/model-evidence/acl-injury.md',
   'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
@@ -236,6 +239,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'acl-injury',
       'rotator-cuff-tear',
       'hip-osteoarthritis',
+      'urinary-obstruction',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -261,6 +265,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(ACL_EVIDENCE.length >= 8);
   assert.ok(CUFF_EVIDENCE.length >= 8);
   assert.ok(HIP_OA_EVIDENCE.length >= 8);
+  assert.ok(URINARY_OBSTRUCTION_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {
