@@ -1,4 +1,6 @@
 import { el } from '../utils/dom.js';
+import { anatomyStatusText } from './AnatomyInfoPanel.js';
+import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
 // The stylesheet is imported by `src/main.js`, with the rest of the app's CSS.
 // Importing it from a component is how a component stops being testable under
 // `node --test`, which is where this panel's behaviour is checked.
@@ -54,13 +56,160 @@ import { el } from '../utils/dom.js';
  * @param {HTMLElement} options.detail the selection's description
  * @param {(layout: 'docked'|'sheet') => void} [options.onLayout] told which
  *   layout the panel is in, so the app shell can lay the rail out around it.
+ * @param {() => void} [options.onRetryModel] what "Reload and try again" does
+ *   when the model failed to load. Injected by the app shell, which owns how
+ *   recovery works; **with no callback the button is not rendered at all**,
+ *   because an enabled control that answers to nothing is worse than the plain
+ *   message. It takes no arguments on purpose: a raw `Error` or a developer
+ *   hint (`npm run assets:dev`) is not something to hand a reader.
  */
-export function createAnatomyPanel({ scene, tree, display, legend = null, detail, onLayout }) {
+export function createAnatomyPanel({
+  scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange, onViewChange,
+  onRetryModel = null,
+}) {
+  /**
+   * The Parts tab is the tree with a way into it.
+   *
+   * The finder is given the tree element rather than a copy of its data: a
+   * search covers the tree and clearing uncovers it, with the branches the
+   * reader opened still open. It reads and writes the body's scroll through
+   * this panel, because the body is the one region that scrolls and this panel
+   * is what owns it.
+   */
+  const finder = scene.getAnatomyInventory
+    ? createAnatomyPartsFinder({
+        treeElement: tree.element,
+        inventory: () => scene.getAnatomyInventory(),
+        onSelect: (id) => scene.selectStructure(id),
+        // Asked, not remembered: one selection, however the reader made it.
+        selectedId: () => scene.getAnatomySelection()?.id ?? null,
+        readScroll: () => body.scrollTop ?? 0,
+        writeScroll: (top) => { body.scrollTop = top; },
+      })
+    : null;
+
+  /**
+   * Fixed ways of looking, when the scene offers any.
+   *
+   * A recipe is the scene's own list of hides and a viewpoint — it can do
+   * nothing this panel's own buttons cannot, which is the point: a reader who
+   * wants "inside the chambers" should not have to know which four structures to
+   * hide. Scenes that offer none get nothing here.
+   */
+  const recipes = scene.getDisplayRecipes?.() ?? [];
+  /**
+   * Set for exactly one repaint after a recipe runs.
+   *
+   * `applyRecipe` writes the line and then calls `paint()`, and `paint()` is
+   * also what every change event calls — so without this the line would clear
+   * itself on the way in. One repaint's grace, then any further change clears
+   * it.
+   */
+  let recipeLatch = false;
+  const recipeStatus = el('p', { class: 'anatomy-recipe-status', role: 'status', hidden: true });
+  const recipeList = recipes.length
+    ? el('div', { class: 'anatomy-recipes' }, [
+        el('h4', { class: 'anatomy-recipes-title' }, [
+          el('span', { class: 'lang-en', text: 'Fixed views' }),
+          el('span', { class: 'lang-ja', text: '決まった見せ方' }),
+        ]),
+        ...recipes.map((recipe) =>
+          el('button', {
+            class: 'anatomy-recipe',
+            type: 'button',
+            dataset: { action: 'recipe', recipe: String(recipe.id) },
+            on: { click: () => applyRecipe(recipe) },
+          }, [
+            el('span', { class: 'anatomy-recipe-name' }, [
+              el('span', { class: 'lang-en', text: recipe.label }),
+              el('span', { class: 'lang-ja', text: recipe.labelJa }),
+            ]),
+            el('span', { class: 'anatomy-recipe-summary' }, [
+              el('span', { class: 'lang-en', text: recipe.summary }),
+              el('span', { class: 'lang-ja', text: recipe.summaryJa }),
+            ]),
+          ])
+        ),
+        recipeStatus,
+      ])
+    : null;
+
   const TABS = [
-    { id: 'parts', en: 'Parts', ja: '部位', content: tree.element },
-    { id: 'display', en: 'Display', ja: '表示', content: el('div', { class: 'anatomy-panel-display' }, [display, legend]) },
+    { id: 'parts', en: 'Parts', ja: '部位', content: finder ? finder.element : tree.element },
+    {
+      id: 'display',
+      en: 'Display',
+      ja: '表示',
+      content: el('div', { class: 'anatomy-panel-display' }, [display, recipeList, legend].filter(Boolean)),
+    },
     { id: 'detail', en: 'Detail', ja: '詳細', content: detail },
   ];
+
+  /**
+   * Run one, then say what it actually produced.
+   *
+   * The scene reports which of the structures the recipe names are visible from
+   * the viewpoint it turned to, and the status line reads that back rather than
+   * repeating the recipe's own promise. A recipe that hides nothing because
+   * everything was already hidden says so.
+   */
+  function applyRecipe(recipe) {
+    const result = scene.applyDisplayRecipe?.(recipe.id);
+    if (!result?.ok) return;
+    // Applied on the reader's behalf, not by the reader. The owner moves the
+    // camera either way; the difference is that this move must not invalidate
+    // the report this function is about to write about it.
+    if (result.view) onViewChange?.(result.view, { byReader: false });
+
+    // **Say what was measured, in the words of what was measured.**
+    //
+    // The scene casts one ray per structure, at one anchor point each, from the
+    // viewpoint the recipe is turning to. That is not "you can see it": the
+    // camera has not arrived yet, one anchor does not speak for a whole
+    // structure, and nothing knows the frustum or what a panel is covering. The
+    // line used to read "8 of 10 are visible", which claimed all three.
+    //
+    // Anything the ray could not answer is reported separately and is never
+    // added to the successes.
+    const clear = result.anchorsClear?.length ?? 0;
+    const unmeasured = result.anchorsUnmeasured?.length ?? 0;
+    const total = recipe.shows?.length ?? 0;
+    const view = recipe.view ?? result.view;
+    const label = (scene.getAnatomyViews?.() ?? []).find((entry) => entry.id === view) ?? null;
+    const tailEn = unmeasured ? ` ${unmeasured} could not be measured.` : '';
+    const tailJa = unmeasured ? `うち ${unmeasured} 件は判定できませんでした。` : '';
+    setRecipeStatus(
+      `Hid ${result.hid.length}. From the ${label?.label ?? view} viewpoint, ${clear} of ${total} named structures have an unobstructed anchor.${tailEn}`,
+      `${result.hid.length} 件を非表示にしました。${label?.labelJa ?? view}の視点では、対象 ${total} のうち ${clear} 件のアンカーが遮られていません。${tailJa}`
+    );
+    paint();
+  }
+
+  /**
+   * The one line under the recipes, and the rule that it describes **now**.
+   *
+   * It is a report about one moment: the recipe ran, from that viewpoint, with
+   * that display. Orbit, zoom, resize, a hide or another action and it is a
+   * statement about a frame that no longer exists — so any of those clears it
+   * rather than leaving an old number sitting there looking current.
+   */
+  function setRecipeStatus(en, ja) {
+    recipeLatch = true;
+    recipeStatus.hidden = false;
+    recipeStatus.replaceChildren(
+      el('span', { class: 'lang-en', text: en }),
+      el('span', { class: 'lang-ja', text: ja })
+    );
+  }
+
+  function clearRecipeStatus() {
+    if (recipeLatch) {
+      recipeLatch = false;
+      return;
+    }
+    recipeStatus.hidden = true;
+    recipeStatus.replaceChildren();
+  }
   let activeTab = 'parts';
   let sheetOpen = false;
   let opener = null;
@@ -78,17 +227,83 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     type: 'button',
     'aria-pressed': 'false',
     hidden: true,
+    dataset: { action: 'isolate' },
     on: { click: toggleIsolation },
   });
   const showAllButton = el('button', {
     class: 'anatomy-panel-action is-restore',
     type: 'button',
     hidden: true,
+    // Named, because three different buttons on this row restore three
+    // different things and a shared class cannot tell them apart.
+    dataset: { action: 'show-all' },
     on: { click: () => scene.clearIsolation() },
   }, [
     el('span', { class: 'lang-en', text: 'Show all' }),
     el('span', { class: 'lang-ja', text: '全体に戻す' }),
   ]);
+  /**
+   * The three things a reader can ask about the structure they have picked, and
+   * they are three because they are not the same request.
+   *
+   * **Go to it** moves the camera and changes no display state. **Show it**
+   * changes the display — the layer, the view, a hide the reader had set — and
+   * moves no anatomy. **Hide it** takes it off screen and leaves it selected.
+   * Collapsing any two of these into one button is how "take me there" starts
+   * silently rearranging the model, or how "show me" quietly means "and throw
+   * away the view you set up".
+   *
+   * They appear when they apply, rather than sitting greyed out: a disabled
+   * control that is painted, named and skipped by Tab is the worst of both.
+   */
+  const focusButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'focus' },
+    on: { click: focusSelection },
+  }, [
+    el('span', { class: 'lang-en', text: 'Go to it' }),
+    el('span', { class: 'lang-ja', text: '寄る' }),
+  ]);
+  const revealButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'reveal' },
+    on: { click: revealSelection },
+  }, [
+    el('span', { class: 'lang-en', text: 'Show it' }),
+    el('span', { class: 'lang-ja', text: '見える位置に表示' }),
+  ]);
+  const restoreDisplayButton = el('button', {
+    class: 'anatomy-panel-action is-restore',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'restore-display' },
+    on: { click: restorePreviousDisplay },
+  }, [
+    el('span', { class: 'lang-en', text: 'Back to how it was' }),
+    el('span', { class: 'lang-ja', text: '元の表示へ' }),
+  ]);
+  const hideButton = el('button', {
+    class: 'anatomy-panel-action',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'hide' },
+    on: { click: toggleHidden },
+  });
+  const showHiddenButton = el('button', {
+    class: 'anatomy-panel-action is-restore',
+    type: 'button',
+    hidden: true,
+    dataset: { action: 'unhide-all' },
+    on: { click: () => { scene.showAllHiddenStructures?.(); paint(); } },
+  }, [
+    el('span', { class: 'lang-en', text: 'Unhide all' }),
+    el('span', { class: 'lang-ja', text: '非表示を解除' }),
+  ]);
+
   const partsButton = el('button', {
     class: 'anatomy-panel-open',
     type: 'button',
@@ -99,13 +314,109 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     el('span', { class: 'lang-ja', text: '部位' }),
   ]);
 
+  /**
+   * The load state, where it can actually be seen.
+   *
+   * The same words appear in the Detail tab's footer, and that was the only
+   * place they appeared. On an anatomy scene the tab body holds **only the open
+   * tab's content** — `body.replaceChildren(tab.content)` — so with Parts open,
+   * which is the default, the footer is not merely hidden, it is not in the
+   * document. A model that failed to load therefore said nothing anywhere: the
+   * reader got the ordinary scene chrome around an empty canvas.
+   *
+   * This line lives in the summary, which is always on screen in both layouts.
+   * It appears **only when the state is not `ready`**, so a scene that loads
+   * normally looks exactly as it did.
+   */
+  const statusEn = el('span', { class: 'lang-en' });
+  const statusJa = el('span', { class: 'lang-ja' });
+  const statusLine = el('p', { class: 'anatomy-panel-status', role: 'status' }, [statusEn, statusJa]);
+  statusLine.hidden = true;
+
+  /**
+   * The way out of a failed load, in the place that says it failed.
+   *
+   * **It exists only when something is there to answer it.** `onRetryModel` is
+   * injected by the app shell; with no callback there is no button, because a
+   * control that looks live and does nothing is worse than the plain message.
+   *
+   * The name says what pressing it does rather than "Retry", because it
+   * reloads the page: the reader is told they will lose nothing they can see
+   * except the view they had. A button is used — not a link, not a div — so
+   * Enter and Space work without this file implementing keyboard handling, and
+   * so the shell's own shortcut guard, which stops model shortcuts leaking out
+   * of controls, cannot swallow its default action.
+   */
+  const retryEn = el('span', { class: 'lang-en', text: 'Reload and try again' });
+  const retryJa = el('span', { class: 'lang-ja', text: '再読み込みして再試行' });
+  const retryButton = onRetryModel
+    ? el('button', {
+        class: 'anatomy-panel-retry',
+        type: 'button',
+        dataset: { action: 'retry' },
+        on: { click: () => runRetry() },
+      }, [retryEn, retryJa])
+    : null;
+  if (retryButton) retryButton.hidden = true;
+
+  let retryPending = false;
+  /**
+   * Press once, and say so.
+   *
+   * A reload does not resolve — the page goes away — so nothing here waits for
+   * the callback to finish. What it must not do is latch: if the callback
+   * throws, the button goes back to being pressable rather than sitting on
+   * "reloading…" for a page that is never going to reload.
+   */
+  function runRetry() {
+    if (retryPending || !onRetryModel || !retryButton) return;
+    retryPending = true;
+    retryEn.textContent = 'Reloading…';
+    retryJa.textContent = '再読み込みしています…';
+    retryButton.disabled = true;
+    try {
+      onRetryModel();
+    } catch {
+      retryPending = false;
+      retryEn.textContent = 'Reload and try again';
+      retryJa.textContent = '再読み込みして再試行';
+      retryButton.disabled = false;
+    }
+  }
+
+  const paintStatus = (status) => {
+    const { en, ja, ready } = anatomyStatusText(status);
+    statusEn.textContent = en;
+    statusJa.textContent = ja;
+    statusLine.hidden = ready;
+    statusLine.dataset.state = status?.state ?? 'loading';
+    // Only a failure offers a way out. Loading is not a failure, and `ready`
+    // must clear the offer so a recovered model carries no trace of the one
+    // that failed before it.
+    if (!retryButton) return;
+    retryButton.hidden = status?.state !== 'error';
+    if (status?.state === 'ready' || status?.state === 'loading') {
+      retryPending = false;
+      retryButton.disabled = false;
+      retryEn.textContent = 'Reload and try again';
+      retryJa.textContent = '再読み込みして再試行';
+    }
+  };
+
   const summary = el('div', { class: 'anatomy-panel-summary' }, [
     el('div', { class: 'anatomy-panel-heading' }, [
       swatch,
       el('div', { class: 'anatomy-panel-names' }, [nameEn, nameJa, whereEn, whereJa]),
     ]),
-    el('div', { class: 'anatomy-panel-actions' }, [isolateButton, showAllButton, partsButton]),
+    statusLine,
+    retryButton,
+    el('div', { class: 'anatomy-panel-actions' }, [
+      focusButton, revealButton, isolateButton, hideButton,
+      showAllButton, restoreDisplayButton, showHiddenButton, partsButton,
+    ]),
   ]);
+  paintStatus(scene.getAnatomyStatus?.() ?? { state: 'ready', selectableCount: 0 });
+  const unsubscribeSummaryStatus = scene.onAnatomyStatus?.(paintStatus);
 
   // --- body: the tabs, and the one region that scrolls ----------------------
 
@@ -303,6 +614,11 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       return;
     }
     if (event.key !== 'Escape') return;
+    // The search box is a step inside the sheet, and Escape steps back one at a
+    // time. This handler runs on the document in the capture phase, so it sees
+    // the key first — the input calling stopPropagation later cannot undo a
+    // sheet that has already closed. The order has to be decided here.
+    if (finder?.isSearching() && event.target === finder.input) return;
     event.stopPropagation();
     closeSheet();
   };
@@ -431,6 +747,9 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
   const subject = () => scene.getAnatomySelection() ?? scene.getAnatomyHover?.() ?? null;
 
   function paint() {
+    // Any repaint at all means something moved, and the recipe line describes a
+    // moment that has passed. `recipeLatch` lets the run that wrote it through.
+    if (recipeList) clearRecipeStatus();
     const value = subject();
     const selection = scene.getAnatomySelection();
     const isolated = scene.getAnatomyIsolation();
@@ -464,6 +783,78 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       el('span', { class: 'lang-ja', text: isolatingSelection ? '元の位置で表示' : 'この部位だけ' })
     );
     showAllButton.hidden = isolated == null;
+
+    const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
+    const selectionHidden = Boolean(selection) && hidden.includes(selection.id);
+    const drawn = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
+    // Two ways a reader cannot see a structure: the settings are not drawing it,
+    // or it is drawn and something else is in front of it. The second only has
+    // an answer in a scene that can measure it — a heart where a papillary
+    // muscle sits inside a ventricle — so it is asked as an optional capability
+    // and defaults to "no".
+    const obscured = selection ? scene.isStructureObscured?.(selection.id) ?? false : false;
+    const canSee = drawn && !obscured;
+
+    focusButton.hidden = !selection || !onFocusStructure;
+    // Offered when the structure is not on screen — which is the only time the
+    // question "where is it?" cannot be answered by looking.
+    revealButton.hidden = !selection || canSee;
+    hideButton.hidden = !selection;
+    hideButton.replaceChildren(
+      el('span', { class: 'lang-en', text: selectionHidden ? 'Unhide' : 'Hide' }),
+      el('span', { class: 'lang-ja', text: selectionHidden ? '再表示' : '非表示' })
+    );
+    showHiddenButton.hidden = hidden.length === 0;
+    restoreDisplayButton.hidden = !(scene.canRestoreDisplay?.() ?? false);
+
+    // A pinned structure that is off screen still has a card; it says so rather
+    // than looking like a structure the reader is failing to find.
+    finder?.syncSelection();
+    element.dataset.selectionHidden = selectionHidden ? 'yes' : 'no';
+    element.dataset.selectionOffscreen = selection && !canSee ? 'yes' : 'no';
+    element.dataset.selectionObscured = selection && obscured ? 'yes' : 'no';
+    // The source file's own records for this structure disagree about what it
+    // is. That belongs beside the name, not three taps away in the detail tab,
+    // because the name is the thing a reader would otherwise take as settled.
+    element.dataset.selectionIdentity = selection?.identity ?? 'settled';
+  }
+
+  function focusSelection() {
+    const selection = scene.getAnatomySelection();
+    if (selection) onFocusStructure?.(selection.id);
+  }
+
+  function revealSelection() {
+    const selection = scene.getAnatomySelection();
+    if (!selection) return;
+    const result = scene.revealStructure?.(selection.id);
+    // A scene that cannot bring this structure into view says so, and the offer
+    // becomes the one that always works rather than a button that lies.
+    if (result && result.ok === false) scene.isolateStructure(selection.id);
+    else {
+      // The anatomical layer belongs to the console's slider and the viewpoint
+      // belongs to the inspection panel. The scene reports what the structure
+      // needs; the controls that own those values set them, so the model, the
+      // slider and the pressed viewpoint never disagree.
+      if (result?.layer != null) onLayerChange?.(result.layer);
+      if (result?.view) onViewChange?.(result.view);
+    }
+    paint();
+  }
+
+  function restorePreviousDisplay() {
+    const result = scene.restoreDisplay?.();
+    if (result?.layer != null) onLayerChange?.(result.layer);
+    if (result?.view) onViewChange?.(result.view);
+    paint();
+  }
+
+  function toggleHidden() {
+    const selection = scene.getAnatomySelection();
+    if (!selection) return;
+    const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
+    scene.setStructureHidden?.(selection.id, !hidden.includes(selection.id));
+    paint();
   }
 
   function toggleIsolation() {
@@ -476,6 +867,17 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
   const unsubscribeSelection = scene.onAnatomySelection(paint);
   const unsubscribeHover = scene.onAnatomyHover?.(paint);
   const unsubscribeIsolation = scene.onAnatomyIsolation(paint);
+  const unsubscribeVisibility = scene.onAnatomyVisibility?.(paint);
+  /**
+   * A new atlas means a new inventory, and a search index built over the old one
+   * — or over no atlas at all, if the reader typed while it was still loading —
+   * is a list that answers with yesterday's model.
+   */
+  const unsubscribeStatus = finder
+    ? scene.onAnatomyStatus?.((status) => {
+        if (status.state === 'ready') finder.refresh();
+      })
+    : undefined;
 
   setTab('parts');
   applyLayout();
@@ -483,6 +885,14 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
 
   return {
     element,
+    /**
+     * Repaint the actions.
+     *
+     * Which of them apply depends on the anatomical layer, and that value is
+     * owned by the console rather than by the scene — so when the reader moves
+     * the slider themselves, nothing here hears about it unless the app says so.
+     */
+    refresh: paint,
     get activeTab() {
       return activeTab;
     },
@@ -492,6 +902,19 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
     setTab,
     openSheet,
     closeSheet,
+    /**
+     * The camera moved, or the frame did.
+     *
+     * The panel cannot see either — it has no camera and no canvas — so the
+     * owner tells it. All it does is drop the recipe's report, which describes
+     * a viewpoint and a display the reader has now left. Nothing else repaints,
+     * because nothing else went stale.
+     */
+    noteDisplayChanged() {
+      if (!recipeList) return;
+      recipeLatch = false;
+      clearRecipeStatus();
+    },
     /** Exposed so the console's display control can bring its tab forward. */
     showDisplay() {
       setTab('display');
@@ -507,6 +930,9 @@ export function createAnatomyPanel({ scene, tree, display, legend = null, detail
       unsubscribeSelection?.();
       unsubscribeHover?.();
       unsubscribeIsolation?.();
+      unsubscribeVisibility?.();
+      unsubscribeStatus?.();
+      unsubscribeSummaryStatus?.();
       element.remove();
     },
   };

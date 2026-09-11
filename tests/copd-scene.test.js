@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { CopdScene } from '../src/scenes/respiratory/scenes/copd/CopdScene.js';
 import { CHARTS, METRICS, MODEL_CONTROLS, MODEL_SCOPE, STAGES } from '../src/data/copd.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../src/data/copdTeaching.js';
-import { createRespiratoryModel, lungMechanics } from '../src/models/copd.js';
+import { DEFAULT_CONTROLS, createRespiratoryModel, lungMechanics } from '../src/models/copd.js';
 
 /**
  * What the COPD scene is required to get right.
@@ -36,6 +36,42 @@ const scene = () => {
   built.build();
   return built;
 };
+
+test('Reset returns the lung to rest, not just the sliders to their defaults', () => {
+  const built = scene();
+  const at = (id) => built.getModelControls().find((control) => control.id === id).value;
+  const resting = { ...built.model.state };
+
+  // A state that actually traps: obstruction up, recoil down, and a demand the
+  // expiratory time cannot keep up with. Driving every control to its maximum
+  // does not do it — one of them is bronchodilation, and another is the recoil
+  // whose *low* end is emphysema.
+  built.setModelControl('airwayResistance', 4);
+  built.setModelControl('elasticRecoil', 0.45);
+  // `demand` is the progression, not one of the panel's controls: the console's
+  // Reset puts the progression back itself, and this stands in for that.
+  built.model.setControl('demand', 1);
+  built.settleModel();
+  const trapped = { ...built.model.state };
+  assert.ok(
+    trapped.endExpiratoryVolumeL > resting.endExpiratoryVolumeL + 0.5,
+    'the lung is sitting higher than it was'
+  );
+
+  built.model.setControl('demand', 0);
+  built.resetModelControls();
+  const back = { ...built.model.state };
+  for (const control of MODEL_CONTROLS) assert.equal(at(control.id), DEFAULT_CONTROLS[control.id], control.id);
+  assert.ok(
+    Math.abs(back.endExpiratoryVolumeL - resting.endExpiratoryVolumeL) < 0.02,
+    `Reset left the lung at ${back.endExpiratoryVolumeL.toFixed(2)} L, not the ${resting.endExpiratoryVolumeL.toFixed(2)} L it opened at`
+  );
+  assert.ok(back.tidalVolumeL > 0, 'and not emptying: a tidal volume is never negative');
+  assert.ok(
+    Math.abs(back.tidalVolumeL - resting.tidalVolumeL) < 0.02,
+    'the breath it hands back is the breath it started with'
+  );
+});
 
 /** Runs a fresh model to its settled state under the given controls. */
 function settled(controls) {

@@ -30,8 +30,10 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
+  VISUAL_MAPPING,
 } from '../../../../data/copd.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../../../../data/copdTeaching.js';
 import { REEL_CUES, REEL_DURATION, cameraAt, demandAt, overlayAt } from './reelStoryboard.js';
@@ -74,6 +76,8 @@ export class CopdScene {
     subtitle: 'Twelve lung units, one time constant each · one model drives every number here',
     subtitleJa: '12 単位の肺モデル ｜ 画面上のすべての数値が 1 つのモデルから導かれています',
     stages: STAGES,
+    related: RELATED,
+    visualMapping: VISUAL_MAPPING,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -461,6 +465,63 @@ export class CopdScene {
 
   // --- what the interface reads --------------------------------------------
 
+  /**
+   * Framings a guided explanation may ask for **by name**.
+   *
+   * Presentation only — the camera, and nothing the model is set to. They exist
+   * because the opening shot holds the whole chest, and half of what this scene
+   * explains happens somewhere specific in it: the airways squeezing shut on
+   * the way out is a change a few tenths of a unit across, and "watch the
+   * airways" pointed at a thin grey stem three metres away.
+   *
+   * Both keep the scene's own line of sight, so a reader who is taken closer
+   * has nothing to re-learn about which way round the chest is. Distances are
+   * chosen for the 42° vertical field this app uses: the subject takes roughly
+   * two-thirds of the frame's height and the rest of the chest stays in it,
+   * because every one of these steps is a comparison with the part beside it.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    // The trachea and the main bronchi, measured from the built airway group.
+    airway: Object.freeze({
+      target: new THREE.Vector3(0, 0.9, 0),
+      distance: 10,
+      direction: new THREE.Vector3(2.1, 1.35, 10.6).normalize(),
+    }),
+    // The lung bases and the diaphragm under them. Lower and a little further
+    // back than the airway shot, because the dome is 3.8 units across and a
+    // framing tight enough to fill the height would have cut its edges off —
+    // and its edges are where flattening is legible.
+    // The target sits well below the diaphragm on purpose. The console during
+    // a patient explanation takes the bottom ~38% of the frame, and a framing
+    // centred on the dome put the dome's own label inside it — measured, not
+    // guessed: `scripts/check-patient-explanation.mjs` projects the anchors
+    // through the camera and fails when one lands under the console.
+    base: Object.freeze({
+      target: new THREE.Vector3(0, -1, 0),
+      distance: 12.6,
+      direction: new THREE.Vector3(2.1, 1.35, 10.6).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return CopdScene.guideFramings;
+  }
+
+  /**
+   * What the drawing is doing with the model's numbers.
+   *
+   * Declared in `src/data/copd.js` and handed out here so a reviewer, a test or
+   * a panel can ask the scene rather than read `drawBody`. The airway row is
+   * the one that matters: it pinches visibly and the amount is a drawing
+   * decision, so nothing may present it as a calibre.
+   */
+  getVisualMapping() {
+    return VISUAL_MAPPING;
+  }
+
   getAnnotations() {
     // Laid out so that nothing lands under the scene switcher at the top left
     // or behind the console: the labels are the first thing a reader looks for
@@ -611,6 +672,20 @@ export class CopdScene {
     for (const control of MODEL_CONTROLS) {
       this.model.setControl(control.id, DEFAULT_CONTROLS[control.id]);
     }
+    // The controls are not the whole state. Dynamic hyperinflation lives in the
+    // volume the lung is sitting at, and putting the sliders back leaves that
+    // volume where the reader drove it: pressed after a run at the ceiling,
+    // Reset used to hand back a lung still trapping three quarters of its
+    // breath, then several breaths of *negative* tidal volume while it emptied
+    // — a read-out a lung cannot produce and a reader has no way to interpret.
+    //
+    // `reset()` puts the volumes, the flows and the breath phase back and
+    // settles under the restored controls, which is what the button says it
+    // does. It is the model's own entry point, so the resting state Reset gives
+    // is the same one the scene opened at rather than a second definition of
+    // rest kept here.
+    this.model.reset();
+    this.applyModelToScene();
   }
 
   /**

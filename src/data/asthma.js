@@ -385,3 +385,92 @@ export const DISCLAIMER_JA =
   'いません。診断・重症度判定・予測には使用できません。';
 export const DISCLAIMER_SHORT = 'Conceptual airway model — relative values only, no gas exchange, not for diagnosis.';
 export const DISCLAIMER_SHORT_JA = '気道の概念モデル｜すべて相対値。ガス交換は扱いません。診断には使用できません。';
+
+/**
+ * The other models that draw these airways, and the sentence that goes with them.
+ *
+ * `copd` is the neighbour and the confusion: both scenes are about narrowed
+ * airways and they answer different questions with different models. This one
+ * solves how a stimulus divides the air across a branching tree and says
+ * nothing about whether a breath finishes; that one solves whether a breath
+ * finishes and says nothing about where in the tree the narrowing is. Neither
+ * carries a number into the other, and a reader who moves between them must not
+ * take one as the later stage of the other.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'copd',
+      label: 'COPD: air that does not get out',
+      labelJa: 'COPD：吐き切れない空気',
+      why: 'Narrowed airways solved as one emptying lung, where the question is whether the breath finishes in time.',
+      whyJa: '狭くなった気道を「1 つの肺が吐き切れるか」として解きます。問いが違います。',
+    },
+    {
+      // The named-structure lung atlas this file was waiting for. It replaces
+      // the `breathing-lungs` prototype row, which is what the note here said
+      // to do the day such an atlas landed.
+      slug: 'lung-anatomy',
+      label: 'Lung anatomy — lobes, segments and the airway tree by name',
+      labelJa: '肺の解剖 — 葉・区域・気道を名前で',
+      why: '**A different model.** Structure you can point at and name; it has no breath and no obstruction.',
+      whyJa: '**別のモデルです。** 名前で指せる構造を持ちますが、呼吸も閉塞もありません。',
+    },
+  ],
+  note:
+    'These are separate models, not stages of one lung. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa:
+    'いずれも別々のモデルであり、1 つの肺の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};
+
+/**
+ * What the 3D does with the numbers, declared so it can be checked and quoted.
+ *
+ * This scene is unusual in that its main channel really is proportional: an
+ * airway drawn at half its radius is one the model narrowed by half, and the
+ * unit colours are a ventilation share with a stated threshold in them. The
+ * declaration matters most for the one that is not — the overall tint on the
+ * tree, which exists so that a tree whose small branches are below a pixel
+ * still reads as constricted, and which no reader may take as a calibre.
+ *
+ * See `src/data/visualMapping.js`.
+ */
+export const VISUAL_MAPPING = [
+  {
+    id: 'airway-calibre',
+    target: 'airway tree',
+    channel: 'geometry',
+    from: 'calibres',
+    reading: 'proportional',
+    claim: 'Each branch is drawn at the fraction of its open radius the model solved for it. Half the radius means half the radius.',
+    claimJa: '各枝は、モデルが解いた開存率どおりの半径で描かれます。半分に描かれていれば、モデル上も半分です。',
+  },
+  {
+    id: 'tree-tint',
+    target: 'airway tree',
+    channel: 'colour',
+    from: 'medianCalibre',
+    reading: 'illustrative',
+    claim: 'The whole tree tints towards the constricted colour as its median branch narrows.',
+    claimJa: '枝の中央値が細くなるほど、気道樹全体が収縮側の色へ寄ります。',
+    notClaim:
+      'It exists because branches this small are below a pixel. The colour is not a calibre and not a severity grade.',
+    notClaimJa:
+      'これは細い枝が 1 ピクセル未満になるための措置です。色は気道径でも重症度でもありません。',
+  },
+  {
+    id: 'unit-ventilation',
+    target: 'ventilation units',
+    channel: 'colour',
+    from: 'units',
+    reading: 'thresholded',
+    claim:
+      'Each unit is coloured by the share of ventilation it receives, on a ramp that changes at the defect threshold the model declares.',
+    claimJa:
+      '各単位は受け取る換気の割合で着色されます。色の変化はモデルが定義する欠損しきい値で切り替わります。',
+    notClaim:
+      'It is a share of ventilation, not oxygen and not blood. Two units of the same colour are not two units with the same blood gas.',
+    notClaimJa:
+      '示しているのは換気の分配であって、酸素でも血液でもありません。同じ色の 2 単位が同じ血液ガスを意味することはありません。',
+  },
+];

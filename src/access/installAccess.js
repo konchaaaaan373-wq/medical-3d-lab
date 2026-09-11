@@ -8,10 +8,11 @@ import {
   readEducationGuideProgress,
   saveEducationGuideStep,
 } from './educationProgress.js';
-import { featuresForScene } from './features.js';
+import { authoredFeaturesForScene, featuresForScene } from './features.js';
 import { captureGuideSession, restoreGuideSession } from './guideSession.js';
 import { ENTITLEMENT } from './policy.js';
 import { emitAppEvent } from '../app/appEvents.js';
+import { betaUnlocked } from '../app/releaseGate.js';
 
 /**
  * Adds paid use-case modes around an already-created scene without changing the
@@ -24,7 +25,11 @@ import { emitAppEvent } from '../app/appEvents.js';
  */
 export function installAccess({ app, access, ui, sceneId }) {
   mountAccountButton(access, ui);
-  const features = featuresForScene(sceneId);
+  // A preview build shows the authored modes so they can be looked at before
+  // anyone is asked to sign them off; production asks the gated question. The
+  // capability is compiled out of a production bundle — see
+  // `authoredFeaturesForScene` and `src/app/releaseGate.js`.
+  const features = betaUnlocked() ? authoredFeaturesForScene(sceneId) : featuresForScene(sceneId);
   const coordinator = createModeCoordinator();
 
   if (features.patient) {
@@ -111,6 +116,27 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
   let previousDataView = false;
   let guidePanel = null;
   let guidePromise = null;
+  /**
+   * Whether the explanation itself moved the model while it was open.
+   *
+   * The difference decides what closing does: a mode opened and closed again
+   * hands the model back untouched, while a walk through the stages leaves the
+   * model where the conversation got to, so the clinician can look at *that*
+   * state in detail. See `restoreGuideSession`.
+   */
+  let movedByGuide = false;
+  /**
+   * Everything beyond the progression axis a step may have moved — the model
+   * controls and whether a reference model is on screen beside this one.
+   *
+   * Captured once, when the mode opens, and put back when it closes. The
+   * progression axis is deliberately **not** put back when the guide walked it
+   * (`movedByGuide`): where the conversation arrived is the state the clinician
+   * now wants the numbers for. The controls are different — a step that made
+   * the airways narrow to show what narrow airways do was illustrating a
+   * mechanism, not choosing the lung the clinician came in with.
+   */
+  let stateSnapshot = null;
 
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   const button = el('button', {
@@ -153,8 +179,36 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     guidePanel = createPatientGuidePanel({
       guide,
       setProgress: (value) => {
+        // The panel calls this for the step it opens on as well as for the ones
+        // a reader steps to, so "the guide moved it" means moved it somewhere
+        // else — otherwise merely opening the mode would count as a change.
+        if (Number.isFinite(value) && Math.abs(value - (app.playback?.value ?? 0)) > 1e-6) {
+          movedByGuide = true;
+        }
         app.playback.pause();
         app.playback.set(value);
+      },
+      /**
+       * Where the explanation is looking, which is not what it is explaining.
+       *
+       * A step that turns attention from the ventricle to the vessels behind
+       * it, or from the whole lung to one airway, needs a different picture of
+       * the same solved state. The camera and the labels move; the model does
+       * not, which is why this is separate from `setProgress` and why
+       * `movedByGuide` is untouched by it.
+       */
+      setFraming: (framing, focus) => app.guideView?.apply?.(framing ?? null, { focus }),
+      /**
+       * And where a step *does* change the model.
+       *
+       * A respiratory explanation opens on an ordinary lung and then narrows
+       * its airways, because that is the mechanism. That is a model change, it
+       * goes through the scene's public setters, and the read-outs re-derive
+       * from it — which is the whole reason it is a third callback and not
+       * folded into either of the two above.
+       */
+      setModelState: (state) => {
+        if (app.guideState?.apply?.(state)) movedByGuide = true;
       },
       onExit: closeGuide,
       onPresentationChange: (enabled) => {
@@ -193,9 +247,21 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     // without inventing a second physiology or a second set of read-outs.
     app.setDataView?.(false);
 
+    stateSnapshot = app.guideState?.capture?.() ?? null;
+    const controlsNow = Object.fromEntries(
+      (stateSnapshot?.modelControls ?? []).map(({ id, value }) => [id, value])
+    );
+
     open = true;
     emitAppEvent('guide:open', { fullscreen: false });
-    guidePanel.reset();
+    // Opened where the model already is, so the explanation describes the state
+    // on screen instead of resetting it to the first caption — the controls as
+    // well as the position, because two steps can sit at the same place on the
+    // axis and be about two different lungs.
+    guidePanel.reset({
+      progress: sessionSnapshot.progress,
+      controls: controlsNow,
+    });
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
@@ -212,7 +278,31 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
 
     const snapshot = sessionSnapshot;
     sessionSnapshot = null;
-    restoreGuideSession(snapshot, app.playback);
+    // The controls, the comparison and the camera were the explanation's; the
+    // position on the progression axis, once the explanation walked it, is the
+    // conversation's and stays. Restoring the session first would put the axis
+    // back too, so the axis is set afterwards from the same decision.
+    const state = stateSnapshot;
+    stateSnapshot = null;
+    // Where the conversation got to, read before anything is put back.
+    const walkedTo = app.playback?.value;
+    if (state) app.guideState?.restore?.(state);
+    restoreGuideSession(snapshot, app.playback, { movedByGuide });
+    // `restoreSessionState` puts the whole session back, the axis included, so a
+    // position the explanation walked to has to be re-applied after it. This is
+    // the same decision `restoreGuideSession` makes, said once more because the
+    // controls and the axis are restored by two different helpers.
+    if (movedByGuide && Number.isFinite(walkedTo)) {
+      app.playback.pause();
+      app.playback.set(walkedTo);
+    }
+    movedByGuide = false;
+    // The explanation's camera goes back with it. The state it walked to stays;
+    // where it was looking from does not, because that was the explanation's.
+    app.guideView?.apply?.(null);
+    // The detail comes back either way. Hiding the numbers is how the patient
+    // view reads; it is not a change to the model, and the clinician gets the
+    // read-out for whatever state they are now looking at.
     app.setDataView?.(previousDataView);
     previousDataView = false;
     requestAnimationFrame(() => button.focus());
@@ -231,6 +321,8 @@ function installEducationGuide({ app, access, ui, sceneId, activate }) {
   let educationUnlocked = false;
   let guide = null;
   let guidePanel = null;
+  /** Whether the lesson itself moved the model. See `restoreGuideSession`. */
+  let movedByGuide = false;
   let guidePromise = null;
   let progress = { step: 0, completed: false };
 
@@ -298,6 +390,11 @@ function installEducationGuide({ app, access, ui, sceneId, activate }) {
     guidePanel = createEducationGuidePanel({
       guide,
       setProgress: (value) => {
+        // Same rule as the patient guide: walking a lesson is a change the
+        // learner made, and it survives closing the lesson.
+        if (Number.isFinite(value) && Math.abs(value - (app.playback?.value ?? 0)) > 1e-6) {
+          movedByGuide = true;
+        }
         app.playback.pause();
         app.playback.set(value);
       },
@@ -362,7 +459,8 @@ function installEducationGuide({ app, access, ui, sceneId, activate }) {
 
     const snapshot = sessionSnapshot;
     sessionSnapshot = null;
-    restoreGuideSession(snapshot, app.playback);
+    restoreGuideSession(snapshot, app.playback, { movedByGuide });
+    movedByGuide = false;
     requestAnimationFrame(() => button.focus());
   }
 

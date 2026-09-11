@@ -124,7 +124,31 @@ paths, the sub-total-lung cap, absence of clinical outputs and safe handling
 of non-finite input; `tests/pulmonary-embolism-scene.test.js` checks that the
 scene's twelve territories, emboli and read-outs all come from the same solve.
 
-## 16. Revision identity
+## 16. Who it is said to, and where it stops
+
+There is now a patient-facing explanation of this scene
+(`src/data/patientGuides.js`, id `pulmonary-embolism`). It walks the same four
+stages this card describes and it stops where this model stops.
+
+**Six steps, deliberately the mirror of the pneumonia walk.** Both scenes are
+about air and blood failing to meet and they fail in opposite directions; the
+two explanations are written to be read one after the other, and `RELATED` in
+`src/data/pulmonaryEmbolism.js` says so on screen.
+
+**The load step is worded against this card's own scope.** This model solves the
+conductance of a fixed twelve-territory network and explicitly does not solve
+pulmonary artery pressure, cardiac output or right-ventricular function. So the
+step says the routes that remain have to carry everything, and it names no
+pressure, no heart chamber and no number. The step after it says, on screen,
+that neither how hard a heart is pushing nor how much oxygen is arriving is
+being calculated here. The last step, about sudden breathlessness and chest
+discomfort, is marked `associated`.
+
+`tests/respiratory-guides.test.js` holds the pairing, the marks and the copy
+limits; `scripts/check-patient-explanation.mjs` drives the walk in a browser and
+fails when a step points at something the reader cannot see.
+
+## 17. Revision identity
 
 `docs/model-cards/revisions.json` binds this card to
 `src/models/pulmonaryEmbolism.js` and `src/data/pulmonaryEmbolism.js`. A change

@@ -39,6 +39,48 @@ export const SCENE_MANIFEST = [
     description: 'Select individual gyri and sulci, peel back an operculum and reveal deep structures in place.',
     descriptionJa: '脳回・脳溝を個別に選択し、弁蓋部を薄くして島皮質と深部構造を本来の位置で観察します。',
     tags: ['anatomy', 'interactive', 'cortex'],
+    /**
+     * Where else this subject is shown — declared here rather than on the
+     * scene's metadata, and that is deliberate.
+     *
+     * `src/data/brainAnatomy.js` is a pinned model source: touching it moves the
+     * card revision, which makes the beta's publication decision stale, which
+     * closes the one scene the beta publishes. Which scenes relate to which is
+     * catalogue information anyway, so it lives with the catalogue and nothing
+     * about the model changes.
+     *
+     * **The note does a second job here.** The heart's links go between models
+     * of one organ at one scale. This one crosses scales: the amyloid scene is
+     * a schematic of molecules around a single neuron, with no anatomical scale
+     * and no location inside this brain. Moving to it is a change of subject and
+     * **not a zoom**, and implying otherwise — that pushing in on a gyrus would
+     * reveal those particles — is the misreading this exists to prevent.
+     */
+    related: {
+      scenes: [
+        {
+          slug: 'amyloid-beta',
+          // Not a zoom: see `src/data/relatedContract.js`. The prose note below
+          // says why; this is the same thing in a form the panel can act on.
+          transitionType: 'scale-change',
+          scaleRelationship: 'schematic',
+          label: 'Amyloid-β — a schematic at a different scale',
+          labelJa: 'アミロイドβ — 別のスケールの模式図',
+          why: 'Molecules around a single neuron, drawn as a diagram. **Not a zoom into this brain**: it has no anatomical scale and no place inside it.',
+          whyJa: '1 個の神経細胞のまわりの分子を図として描いたものです。**この脳を拡大したものではありません**——解剖学的な縮尺も、この脳の中での位置も持ちません。',
+        },
+      ],
+      note:
+        '**A different model, and a different scale.** This atlas is gross anatomy: nothing smaller '
+        + 'than a named structure is drawn. The amyloid scene is a schematic of molecular species '
+        + 'around one neuron, at no anatomical scale. Moving between them is a change of subject, '
+        + '**not a zoom**, and neither model says where in this brain those particles would be.',
+      noteJa:
+        '**別のモデルで、別のスケールです。** このアトラスは肉眼解剖で、名前の付いた構造より小さい'
+        + 'ものは描いていません。アミロイドβのシーンは 1 個の神経細胞のまわりの分子種の模式図で、'
+        + '解剖学的な縮尺を持ちません。行き来は主題の切り替えであって**拡大ではなく**、この脳の'
+        + 'どこにその粒があるのかは、どちらのモデルも述べていません。',
+    },
     load: () => import('../scenes/nervous/scenes/brainAnatomy/index.js'),
   },
   {
@@ -60,6 +102,23 @@ export const SCENE_MANIFEST = [
     descriptionJa: 'Aβ のモノマー → オリゴマー → 線維 → プラークを、連続した凝集状態として示します。',
     tags: ['molecular', 'aggregation', 'neurodegeneration'],
     load: () => import('../scenes/nervous/scenes/amyloidBeta/index.js'),
+  },
+  {
+    id: 'heart-anatomy',
+    slug: 'heart-anatomy',
+    titleEn: 'Interactive heart anatomy',
+    titleJa: '触れて学ぶ心臓の解剖',
+    system: 'cardiovascular',
+    organ: 'heart',
+    disease: null,
+    conditions: ['heart anatomy', 'cardiac chambers', 'heart valves', '心臓解剖', '心腔', '心臓弁'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/heart-anatomy.md',
+    modelProfile: 'heart-anatomy-reference-atlas',
+    description: 'The four chambers, the septum, the four valves and the papillary muscles, each selectable by name.',
+    descriptionJa: '四腔・心室中隔・4 つの弁・乳頭筋を、名前で個別に選択できます。',
+    tags: ['anatomy', 'interactive', 'chambers'],
+    load: () => import('../scenes/cardiovascular/scenes/heartAnatomy/index.js'),
   },
   {
     id: 'heart-failure',
@@ -104,6 +163,70 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/cardiovascular/scenes/circulation/index.js'),
   },
   {
+    id: 'lung-anatomy',
+    slug: 'lung-anatomy',
+    titleEn: 'Interactive lung anatomy',
+    titleJa: '触れて学ぶ肺の解剖',
+    system: 'respiratory',
+    organ: 'lungs',
+    organs: ['lungs', 'airway'],
+    disease: null,
+    conditions: ['lung anatomy', 'pulmonary lobes', 'bronchopulmonary segments', '肺解剖', '肺葉', '肺区域'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/lung-anatomy.md',
+    modelProfile: 'lung-anatomy-procedural-atlas',
+    description:
+      'Five lobes, eighteen segmental bronchi with the artery that runs with each, and the veins that run between segments instead — every one of them selectable by name.',
+    descriptionJa:
+      '5つの肺葉、18本の区域気管支とそれに伴走する区域動脈、そして区域の「間」を走る静脈を、すべて名前で選択できます。',
+    tags: ['anatomy', 'interactive', 'segments'],
+    relatedScenes: ['copd-hyperinflation'],
+    related: {
+      scenes: [
+        {
+          slug: 'copd',
+          label: 'COPD — why a full lung cannot empty in time',
+          labelJa: 'COPD — 膨らんだ肺が吐ききれなくなるまで',
+          why: '**A different model.** Airways and a diaphragm that move with the breath; this atlas does not breathe.',
+          whyJa: '**別のモデルです。** 呼吸に合わせて動く気道と横隔膜を持ちます。このアトラスは呼吸しません。',
+        },
+        {
+          slug: 'asthma',
+          label: 'Asthma — why the same lung is not narrowed evenly',
+          labelJa: '喘息 — 同じ肺のなかで狭くなり方がそろわない',
+          why: '**A different model.** The airway tree carries a per-region state; the atlas carries names only.',
+          whyJa: '**別のモデルです。** 気道樹が場所ごとの状態を持ちます。アトラスが持つのは名前だけです。',
+        },
+        {
+          slug: 'pulmonary-edema',
+          label: 'Pulmonary edema — when pressure pushes fluid into the air spaces',
+          labelJa: '肺水腫 — 圧が水分を空気の側へ押し出すとき',
+          why: '**A different model.** It solves a pressure and a flooded fraction; neither exists in this atlas.',
+          whyJa: '**別のモデルです。** 圧と浸水した割合を解きます。どちらもこのアトラスにはありません。',
+        },
+        {
+          slug: 'pneumonia',
+          label: 'Pneumonia — a region that fills and stops taking part',
+          labelJa: '肺炎 — 詰まって換気から外れる領域',
+          why: '**A different model.** One region is consolidated and shunts; the atlas has no gas exchange at all.',
+          whyJa: '**別のモデルです。** 1 つの領域が硬化しシャントします。アトラスにガス交換はありません。',
+        },
+        {
+          slug: 'pulmonary-embolism',
+          label: 'Pulmonary embolism — perfusion lost while ventilation stays',
+          labelJa: '肺塞栓症 — 換気は残り、血流だけが失われる',
+          why: '**A different model.** It separates ventilation from perfusion; this atlas draws neither.',
+          whyJa: '**別のモデルです。** 換気と血流を分けて扱います。このアトラスはどちらも描きません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
+    load: () => import('../scenes/respiratory/scenes/lungAnatomy/index.js'),
+  },
+  {
     id: 'copd-hyperinflation',
     slug: 'copd',
     titleEn: 'COPD',
@@ -123,6 +246,7 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '固有の時定数をもつ 12 単位の肺モデル。呼気が時間内に終わらず動的過膨張が生じる理由と、呼気流量制限に達すると呼気努力を強めても流量を増やせなくなる理由を示します。',
     tags: ['respiratory-mechanics', 'flow-limitation', 'learning-module'],
+    relatedScenes: ['lung-anatomy'],
     load: () => import('../scenes/respiratory/scenes/copd/index.js'),
   },
   {
@@ -247,6 +371,47 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/breathingLungs/index.js'),
   },
   {
+    id: 'stomach-anatomy',
+    slug: 'stomach-anatomy',
+    titleEn: 'Interactive stomach anatomy',
+    titleJa: '触れて学ぶ胃の解剖',
+    system: 'gastrointestinal',
+    organ: 'stomach',
+    organs: ['stomach', 'esophagus', 'small-intestine'],
+    disease: null,
+    conditions: ['stomach anatomy', 'gastric regions', 'pylorus', '胃解剖', '胃底部', '幽門'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/stomach-anatomy.md',
+    modelProfile: 'stomach-anatomy-procedural-atlas',
+    description:
+      'Fundus, cardia, body, antrum and pyloric canal as five separate walls, with the sphincter ring at the outlet and the duodenum it opens into.',
+    descriptionJa:
+      '胃底部・噴門部・胃体部・前庭部・幽門管を5つの別々の壁として表示し、出口の括約筋リングと開口先の十二指腸も示します。',
+    tags: ['anatomy', 'interactive', 'upper-gi'],
+    relatedScenes: ['upper-gi-peristalsis'],
+    load: () => import('../scenes/gastrointestinal/scenes/stomachAnatomy/index.js'),
+  },
+  {
+    id: 'esophagus-anatomy',
+    slug: 'esophagus-anatomy',
+    titleEn: 'Interactive oesophageal anatomy',
+    titleJa: '触れて学ぶ食道の解剖',
+    system: 'gastrointestinal',
+    organ: 'esophagus',
+    organs: ['esophagus'],
+    disease: null,
+    conditions: ['esophagus anatomy', 'oesophageal constrictions', '食道解剖', '食道狭窄部', '食道裂孔'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/esophagus-anatomy.md',
+    modelProfile: 'esophagus-anatomy-procedural-atlas',
+    description:
+      'Cervical, thoracic and abdominal parts, and the three places the tube is narrow \u2014 each narrow for a different reason, with that reason drawn beside it.',
+    descriptionJa:
+      '頸部・胸部・腹部食道と、3か所の生理的狭窄部を示します。狭くなる理由は3か所それぞれ異なり、その原因となる構造を隣に描いています。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/gastrointestinal/scenes/esophagusAnatomy/index.js'),
+  },
+  {
     id: 'upper-gi-peristalsis',
     slug: 'upper-gi-peristalsis',
     titleEn: 'Swallow & gastric mixing',
@@ -259,7 +424,29 @@ export const SCENE_MANIFEST = [
     description: 'A constriction wave travelling down the esophagus and around the gastric body.',
     descriptionJa: '食道を下行し、胃体部を回る収縮波（蠕動）を示します。',
     tags: ['peristalsis', 'wave'],
+    relatedScenes: ['stomach-anatomy'],
     load: () => import('../scenes/gastrointestinal/scenes/upperGi/index.js'),
+  },
+  {
+    id: 'intestine-anatomy',
+    slug: 'intestine-anatomy',
+    titleEn: 'Interactive intestinal anatomy',
+    titleJa: '触れて学ぶ腸の解剖',
+    system: 'gastrointestinal',
+    organ: 'colon',
+    organs: ['colon', 'small-intestine'],
+    disease: null,
+    conditions: ['intestinal anatomy', 'colon', 'colic flexures', '腸解剖', '結腸', '結腸曲'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/intestine-anatomy.md',
+    modelProfile: 'intestine-anatomy-procedural-atlas',
+    description:
+      'Caecum, ascending, transverse, descending and sigmoid as separate parts with the two colic flexures between them, and the small bowel that fills the frame they make.',
+    descriptionJa:
+      '盲腸・上行・横行・下行・S状結腸を別々の部位として表示し、その間の2つの結腸曲と、枠の内側を満たす小腸も示します。',
+    tags: ['anatomy', 'interactive', 'lower-gi'],
+    relatedScenes: ['intestinal-transit'],
+    load: () => import('../scenes/gastrointestinal/scenes/intestineAnatomy/index.js'),
   },
   {
     id: 'intestinal-transit',
@@ -274,7 +461,51 @@ export const SCENE_MANIFEST = [
     description: 'Segmentation giving way to propulsive peristalsis along the small bowel and colon.',
     descriptionJa: '小腸の分節運動から、大腸へ向かう推進性蠕動へと移る動きを示します。',
     tags: ['peristalsis', 'transit'],
+    relatedScenes: ['intestine-anatomy'],
     load: () => import('../scenes/gastrointestinal/scenes/intestinalTransit/index.js'),
+  },
+  {
+    id: 'liver-anatomy',
+    slug: 'liver-anatomy',
+    titleEn: 'Interactive liver anatomy',
+    titleJa: '触れて学ぶ肝臓の解剖',
+    system: 'hepatobiliary',
+    organ: 'liver',
+    organs: ['liver', 'gallbladder'],
+    disease: null,
+    conditions: ['liver anatomy', 'Couinaud segments', 'Cantlie line', '肝解剖', '肝区域', 'Couinaud分類'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/liver-anatomy.md',
+    modelProfile: 'liver-anatomy-procedural-atlas',
+    description:
+      'Couinaud’s eight segments — nine parts to point at, because IV is carried as IVa and IVb — with the hepatic veins that run between them and the portal pedicles that run inside them.',
+    descriptionJa:
+      'Couinaudの8区域を、IVをIVa・IVbに分けた9つの部分として選べます。区域の「間」を走る肝静脈と、「内部」を走る門脈枝の違いを示します。',
+    tags: ['anatomy', 'interactive', 'segments'],
+    relatedScenes: ['portal-hypertension'],
+    related: {
+      scenes: [
+        {
+          slug: 'portal-hypertension',
+          label: 'Portal hypertension — when the liver is hard to flow through',
+          labelJa: '門脈圧亢進症 — 肝臓が流れにくくなるとき',
+          why: '**A different model.** A resistance and a pressure the atlas has no place for; its segments are shape, not flow.',
+          whyJa: '**別のモデルです。** アトラスが持たない抵抗と圧を解きます。区域は形であって流れではありません。',
+        },
+        {
+          slug: 'hepatorenal-syndrome',
+          label: 'Hepatorenal syndrome — the liver read through the kidney',
+          labelJa: '肝腎症候群 — 肝臓の変化を腎臓側から読む',
+          why: '**A different model, and two organs.** It couples a circulation to a kidney; nothing here is that couple.',
+          whyJa: '**別のモデルで、臓器も 2 つです。** 循環と腎臓を連成させます。ここにその連成はありません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
+    load: () => import('../scenes/hepatobiliary/scenes/liverAnatomy/index.js'),
   },
   {
     id: 'portal-hypertension',
@@ -296,7 +527,71 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '流量保存が成り立つネットワークとして門脈循環を表現し、側副血行路へ血流が再分配されても門脈圧亢進が持続し得る理由と、HVPG が門脈圧較差そのものではない理由を示します。',
     tags: ['haemodynamics', 'portal-hypertension', 'learning-module'],
+    relatedScenes: ['liver-anatomy'],
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
+  },
+  {
+    id: 'achalasia',
+    slug: 'achalasia',
+    titleEn: 'Achalasia',
+    titleJa: 'アカラシア',
+    system: 'gastrointestinal',
+    organ: 'esophagus',
+    organs: ['esophagus'],
+    disease: 'achalasia',
+    conditions: ['achalasia', 'oesophageal achalasia', 'esophageal achalasia', 'impaired LES relaxation', 'aperistalsis', 'アカラシア', '食道アカラシア', '下部食道括約筋弛緩不全', '蠕動消失'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/achalasia.md',
+    modelProfile: 'achalasia-swallow-transport',
+    description:
+      'One swallow model: why a wave that stops travelling and a ring that does not let go retain what was swallowed, and why the column that collects is what settles where it stops.',
+    descriptionJa:
+      '1 つの嚥下モデル。途中で伝わらなくなる波と、緩まない輪が飲み込んだものを貯留させる理由と、溜まった液柱自体が落ち着き先を決める仕組みを示します。',
+    tags: ['gastrointestinal', 'motility', 'time-to-balance'],
+    load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
+  },
+  {
+    id: 'benign-prostatic-enlargement',
+    slug: 'benign-prostatic-enlargement',
+    titleEn: 'Benign prostatic enlargement',
+    titleJa: '前立腺肥大',
+    system: 'reproductive',
+    organ: 'prostate',
+    organs: ['prostate', 'bladder'],
+    disease: 'benign-prostatic-hyperplasia',
+    conditions: ['benign prostatic hyperplasia', 'BPH', 'benign prostatic enlargement', 'transition zone', 'median lobe', '前立腺肥大症', '移行域', '中葉'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/benign-prostatic-enlargement.md',
+    modelProfile: 'benign-prostatic-enlargement-zonal',
+    description:
+      'The transition zone grows and the gland grows far less, because the peripheral zone is not enlarged by it \u2014 it is displaced into a rim, with nothing taken out of it.',
+    descriptionJa:
+      '大きくなるのは移行域で、腺全体の変化ははるかに小さくなります。末梢域は大きくならず、何も失わないまま縁へと押しやられるためです。',
+    tags: ['reproductive', 'zonal-anatomy', 'geometric-model'],
+    load: () => import('../scenes/reproductive/scenes/benignProstaticEnlargement/index.js'),
+  },
+  {
+    id: 'biliary-obstruction',
+    slug: 'biliary-obstruction',
+    titleEn: 'Biliary obstruction',
+    titleJa: '胆道閉塞',
+    system: 'hepatobiliary',
+    organ: 'gallbladder',
+    organs: ['gallbladder', 'liver', 'pancreas'],
+    disease: 'biliary-obstruction',
+    conditions: ['biliary obstruction', 'gallstone', 'choledocholithiasis', 'cystic duct obstruction', 'ampullary obstruction', '胆道閉塞', '胆石', '総胆管結石', '胆嚢管閉塞', '乳頭部閉塞'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/biliary-obstruction.md',
+    modelProfile: 'biliary-obstruction-site',
+    description:
+      'Four resistances from the liver to the gut: why a blockage in the cystic duct, the common bile duct and the papilla do three different things, and why only the last of them reaches the pancreatic duct.',
+    descriptionJa:
+      '肝臓から腸までを 4 つの抵抗として解き、胆嚢管・総胆管・乳頭部の閉塞が三者三様に異なる結果をもたらす理由と、膵管に及ぶのが最後の一つだけである理由を示します。',
+    tags: ['hepatobiliary', 'obstruction', 'scenario-model'],
+    load: () => import('../scenes/hepatobiliary/scenes/biliaryObstruction/index.js'),
   },
   {
     id: 'hepatorenal-syndrome',
@@ -320,6 +615,53 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/renal/scenes/hepatorenalSyndrome/index.js'),
   },
   {
+    id: 'kidney-anatomy',
+    slug: 'kidney-anatomy',
+    titleEn: 'Interactive kidney anatomy',
+    titleJa: '触れて学ぶ腎臓の解剖',
+    system: 'renal',
+    organ: 'kidney',
+    organs: ['kidney', 'ureter', 'bladder'],
+    disease: null,
+    conditions: ['kidney anatomy', 'renal pyramids', 'renal columns', 'calyces', '腎解剖', '髄質錐体', '腎杯'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/kidney-anatomy.md',
+    modelProfile: 'kidney-anatomy-procedural-atlas',
+    description:
+      'The cortex as one shell, seven medullary pyramids and the cortical columns between them, and a minor calyx on every papilla draining to one pelvis and out as the ureter.',
+    descriptionJa:
+      '1枚のシェルとしての皮質、7つの髄質錐体とそのあいだの腎柱、各腎乳頭を包む小腎杯から腎盂・尿管へ至る集合系を表示します。',
+    tags: ['anatomy', 'interactive', 'collecting-system'],
+    relatedScenes: ['renal-filtration'],
+    related: {
+      scenes: [
+        {
+          slug: 'renal-filtration',
+          // A real part of this kidney, drawn larger — the other kind of
+          // scale change from the brain's schematic. `relatedContract.js`.
+          transitionType: 'scale-change',
+          scaleRelationship: 'magnified-detail',
+          label: 'Filtration — one nephron, and what it can hide',
+          labelJa: '濾過 — ネフロン 1 本と、それが隠せてしまうもの',
+          why: '**A different model, and a different scale.** One nephron, not this kidney magnified.',
+          whyJa: '**別のモデルで、縮尺も違います。** ネフロン 1 本であって、この腎臓を拡大したものではありません。',
+        },
+        {
+          slug: 'hepatorenal-syndrome',
+          label: 'Hepatorenal syndrome — a kidney failing for a reason outside it',
+          labelJa: '肝腎症候群 — 腎臓の外に理由がある腎不全',
+          why: '**A different model.** The kidney here is one term in a circulation, not an organ you can name parts of.',
+          whyJa: '**別のモデルです。** ここでの腎臓は循環のなかの 1 項で、部位を名前で指せる臓器ではありません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
+    load: () => import('../scenes/renal/scenes/kidneyAnatomy/index.js'),
+  },
+  {
     id: 'renal-filtration',
     slug: 'renal-filtration',
     titleEn: 'AKI, CKD and nephrotic syndrome',
@@ -340,7 +682,28 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '1 本の糸球体毛細血管の Starling 平衡と、その下流の尿細管の物質収支を同時に解きます。FENa・BUN/Cr 比・尿中 Na・尿浸透圧は覚えるべき 4 つの事実ではなく、同じ解の 4 つの読み方です。機序を 1 つ動かして、どれが逆転するのかを確かめられます。',
     tags: ['mass-balance', 'filtration', 'learning-module'],
+    relatedScenes: ['kidney-anatomy'],
     load: () => import('../scenes/renal/scenes/renalFiltration/index.js'),
+  },
+  {
+    id: 'biliary-anatomy',
+    slug: 'biliary-anatomy',
+    titleEn: 'Interactive biliary anatomy',
+    titleJa: '触れて学ぶ胆道の解剖',
+    system: 'hepatobiliary',
+    organ: 'gallbladder',
+    organs: ['gallbladder', 'small-intestine'],
+    disease: null,
+    conditions: ['biliary anatomy', 'gallbladder', 'common bile duct', 'cystic duct', '胆道解剖', '胆嚢', '総胆管', '胆嚢管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/biliary-anatomy.md',
+    modelProfile: 'biliary-anatomy-procedural-atlas',
+    description:
+      'Gallbladder, cystic duct, hepatic ducts and common bile duct in the order they join — which is what decides where an obstruction has to be for a particular thing to go wrong.',
+    descriptionJa:
+      '胆嚢・胆嚢管・肝管・総胆管を合流の順序どおりに示します。どこが詰まると何が起こるかを決めているのは、この順序です。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/hepatobiliary/scenes/biliaryAnatomy/index.js'),
   },
   {
     id: 'liver-portal-flow',
@@ -358,6 +721,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hepatobiliary/scenes/liverPortalFlow/index.js'),
   },
   {
+    id: 'pancreas-anatomy',
+    slug: 'pancreas-anatomy',
+    titleEn: 'Interactive pancreatic anatomy',
+    titleJa: '触れて学ぶ膵臓の解剖',
+    system: 'hepatobiliary',
+    organ: 'pancreas',
+    organs: ['pancreas', 'small-intestine'],
+    disease: null,
+    conditions: ['pancreas anatomy', 'pancreatic duct', 'islets of Langerhans', '膵解剖', '主膵管', '膵島'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pancreas-anatomy.md',
+    modelProfile: 'pancreas-anatomy-procedural-atlas',
+    description:
+      'Head, neck, body and tail as separate parts, the duct that runs the whole length of them, and endocrine tissue scattered through the exocrine.',
+    descriptionJa:
+      '膵頭部・頸部・体部・尾部を別々の部位として表示し、全長を貫く主膵管と、外分泌組織の中に散在する内分泌組織を示します。',
+    tags: ['anatomy', 'interactive', 'endocrine'],
+    relatedScenes: ['pancreatic-secretion'],
+    load: () => import('../scenes/hepatobiliary/scenes/pancreasAnatomy/index.js'),
+  },
+  {
     id: 'pancreatic-secretion',
     slug: 'pancreatic-secretion',
     titleEn: 'Pancreatic secretion',
@@ -369,7 +753,28 @@ export const SCENE_MANIFEST = [
     description: 'The two outputs of one gland: enzymes into the duct, insulin into the blood.',
     descriptionJa: '1 つの臓器がもつ 2 つの分泌 — 膵管への外分泌と、血中への内分泌を示します。',
     tags: ['secretion', 'endocrine', 'exocrine'],
+    relatedScenes: ['pancreas-anatomy'],
     load: () => import('../scenes/hepatobiliary/scenes/pancreaticSecretion/index.js'),
+  },
+  {
+    id: 'bladder-anatomy',
+    slug: 'bladder-anatomy',
+    titleEn: 'Interactive bladder anatomy',
+    titleJa: '触れて学ぶ膀胱の解剖',
+    system: 'renal',
+    organ: 'bladder',
+    organs: ['bladder', 'ureter'],
+    disease: null,
+    conditions: ['bladder anatomy', 'trigone', 'ureteric orifice', '膀胱解剖', '膀胱三角', '尿管口'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/bladder-anatomy.md',
+    modelProfile: 'bladder-anatomy-procedural-atlas',
+    description:
+      'Apex, body, fundus and neck from outside — then fade the wall and find the trigone and its three openings on the inside of the base.',
+    descriptionJa:
+      '外から膀胱尖・体・底・頸を見たあと、壁を薄くして、膀胱底の内面にある膀胱三角と3つの開口部を見つけます。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/renal/scenes/bladderAnatomy/index.js'),
   },
   {
     id: 'urinary-filtration',
@@ -387,6 +792,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/renal/scenes/urinaryFiltration/index.js'),
   },
   {
+    id: 'thyroid-anatomy',
+    slug: 'thyroid-anatomy',
+    titleEn: 'Interactive thyroid anatomy',
+    titleJa: '触れて学ぶ甲状腺の解剖',
+    system: 'endocrine',
+    organ: 'thyroid',
+    organs: ['thyroid'],
+    disease: null,
+    conditions: ['thyroid anatomy', 'parathyroid glands', 'recurrent laryngeal nerve', '甲状腺解剖', '副甲状腺', '反回神経'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/thyroid-anatomy.md',
+    modelProfile: 'thyroid-anatomy-procedural-atlas',
+    description:
+      'Two lobes and the isthmus clasped around the trachea — then fade the gland and find the four parathyroids and the two recurrent laryngeal nerves behind it.',
+    descriptionJa:
+      '気管を抱き込む左右の葉と峡部を表示し、甲状腺を薄くすると、その背面にある4つの副甲状腺と左右の反回神経が現れます。',
+    tags: ['anatomy', 'interactive', 'endocrine'],
+    load: () => import('../scenes/endocrine/scenes/thyroidAnatomy/index.js'),
+  },
+  {
     id: 'thyroid-hormone',
     slug: 'thyroid-hormone',
     titleEn: 'Thyroid hormone release',
@@ -399,6 +824,26 @@ export const SCENE_MANIFEST = [
     descriptionJa: '刺激の増加にあわせ、濾胞から周囲の毛細血管へホルモンが放出される様子を示します。',
     tags: ['secretion', 'particles'],
     load: () => import('../scenes/endocrine/scenes/thyroidHormone/index.js'),
+  },
+  {
+    id: 'adrenal-anatomy',
+    slug: 'adrenal-anatomy',
+    titleEn: 'Interactive adrenal anatomy',
+    titleJa: '触れて学ぶ副腎の解剖',
+    system: 'endocrine',
+    organ: 'adrenal',
+    organs: ['adrenal', 'kidney'],
+    disease: null,
+    conditions: ['adrenal anatomy', 'zona glomerulosa', 'adrenal medulla', '副腎解剖', '球状層', '副腎髄質'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/adrenal-anatomy.md',
+    modelProfile: 'adrenal-anatomy-procedural-atlas',
+    description:
+      'Three cortical zones and, inside them, nervous tissue that is not cortex at all \u2014 one organ made of two entirely different things.',
+    descriptionJa:
+      '皮質の3層と、その内側にある皮質とは全く別の神経系組織を示します。1つの臓器が、まったく異なる2つの組織でできています。',
+    tags: ['anatomy', 'interactive', 'endocrine'],
+    load: () => import('../scenes/endocrine/scenes/adrenalAnatomy/index.js'),
   },
   {
     id: 'adrenal-response',
@@ -415,6 +860,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/endocrine/scenes/adrenalResponse/index.js'),
   },
   {
+    id: 'spleen-anatomy',
+    slug: 'spleen-anatomy',
+    titleEn: 'Interactive splenic anatomy',
+    titleJa: '触れて学ぶ脾臓の解剖',
+    system: 'hematologic',
+    organ: 'spleen',
+    organs: ['spleen'],
+    disease: null,
+    conditions: ['spleen anatomy', 'splenic segments', 'splenic hilum', '脾臓解剖', '脾区域', '脾門'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/spleen-anatomy.md',
+    modelProfile: 'spleen-anatomy-procedural-atlas',
+    description:
+      'The two territories the splenic artery’s terminal branches supply — the one division of this organ that is a solid rather than a stain.',
+    descriptionJa:
+      '脾動脈の2本の終枝が支配する2つの領域を示します。脾臓で唯一、染色ではなく立体として分けられる区分です。',
+    tags: ['anatomy', 'interactive', 'vascular'],
+    load: () => import('../scenes/hematologic/scenes/spleenAnatomy/index.js'),
+  },
+  {
     id: 'spleen-filtration',
     slug: 'spleen-filtration',
     titleEn: 'Splenic filtration',
@@ -427,6 +892,66 @@ export const SCENE_MANIFEST = [
     descriptionJa: '赤脾髄を通過する赤血球のうち、老化した赤血球が捕捉される様子を示します。',
     tags: ['flow', 'particles'],
     load: () => import('../scenes/hematologic/scenes/spleenFiltration/index.js'),
+  },
+  {
+    id: 'knee-anatomy',
+    slug: 'knee-anatomy',
+    titleEn: 'Interactive knee anatomy',
+    titleJa: '触れて学ぶ膝関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'knee',
+    organs: ['knee', 'bone'],
+    disease: null,
+    conditions: ['knee anatomy', 'cruciate ligament', 'meniscus', 'collateral ligament', '膝関節解剖', '十字靱帯', '半月板', '側副靱帯'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/knee-anatomy.md',
+    modelProfile: 'knee-anatomy-procedural-atlas',
+    description:
+      'Femur on tibia, cartilage over every surface that meets another, both menisci between them, and the four ligaments that decide what the joint will and will not do.',
+    descriptionJa:
+      '脛骨の上の大腿骨、接する面を覆う関節軟骨、その間の半月板、そして関節の動きを決める4本の靱帯を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/kneeAnatomy/index.js'),
+  },
+  {
+    id: 'shoulder-anatomy',
+    slug: 'shoulder-anatomy',
+    titleEn: 'Interactive shoulder anatomy',
+    titleJa: '触れて学ぶ肩関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'shoulder',
+    organs: ['shoulder', 'bone'],
+    disease: null,
+    conditions: ['shoulder anatomy', 'rotator cuff', 'glenoid', 'labrum', 'subacromial', '肩関節解剖', '腱板', '関節窩', '関節唇'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/shoulder-anatomy.md',
+    modelProfile: 'shoulder-anatomy-procedural-atlas',
+    description:
+      'A large head on a small socket, the four cuff tendons that hold it there, and the arch of bone and ligament they pass under.',
+    descriptionJa:
+      '小さな関節窩に対する大きな上腕骨頭、それを保持する腱板4筋の腱、そしてその腱が通る骨と靱帯のアーチを示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/shoulderAnatomy/index.js'),
+  },
+  {
+    id: 'hip-anatomy',
+    slug: 'hip-anatomy',
+    titleEn: 'Interactive hip anatomy',
+    titleJa: '触れて学ぶ股関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'hip',
+    organs: ['hip', 'bone'],
+    disease: null,
+    conditions: ['hip anatomy', 'acetabulum', 'femoral neck', 'labrum', 'iliofemoral ligament', '股関節解剖', '臼蓋', '大腿骨頸部', '関節唇'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/hip-anatomy.md',
+    modelProfile: 'hip-anatomy-procedural-atlas',
+    description:
+      'A socket that grips past the widest part of the head, and a neck that holds the head out to the side of the bone carrying the weight.',
+    descriptionJa:
+      '骨頭の最大径より先まで達する臼蓋と、荷重を支える骨幹から骨頭を側方に離して支える頸部を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/hipAnatomy/index.js'),
   },
   {
     id: 'bone-remodeling',
@@ -459,6 +984,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/muscleContraction/index.js'),
   },
   {
+    id: 'uterus-anatomy',
+    slug: 'uterus-anatomy',
+    titleEn: 'Interactive uterine anatomy',
+    titleJa: '触れて学ぶ子宮の解剖',
+    system: 'reproductive',
+    organ: 'uterus',
+    organs: ['uterus'],
+    disease: null,
+    conditions: ['uterus anatomy', 'uterine cavity', 'fallopian tube', '子宮解剖', '子宮腔', '卵管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/uterus-anatomy.md',
+    modelProfile: 'uterus-anatomy-procedural-atlas',
+    description:
+      'Fundus, body, isthmus and cervix, a tube reaching towards each ovary without touching it \u2014 then fade the wall and the cavity is a flattened triangle, not a bag.',
+    descriptionJa:
+      '子宮底・体部・峡部・頸部と、卵巣に触れずに向かい合う左右の卵管を示します。子宮壁を薄くすると、内腔が袋ではなく扁平な三角形であることが見えます。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/reproductive/scenes/uterusAnatomy/index.js'),
+  },
+  {
     id: 'uterine-cycle',
     slug: 'uterine-cycle',
     titleEn: 'Endometrial cycle',
@@ -471,6 +1016,46 @@ export const SCENE_MANIFEST = [
     descriptionJa: '1 周期を通じた子宮内膜の厚さの変化を、断面で示します。',
     tags: ['cycle', 'section'],
     load: () => import('../scenes/reproductive/scenes/uterineCycle/index.js'),
+  },
+  {
+    id: 'prostate-anatomy',
+    slug: 'prostate-anatomy',
+    titleEn: 'Interactive prostatic anatomy',
+    titleJa: '触れて学ぶ前立腺の解剖',
+    system: 'reproductive',
+    organ: 'prostate',
+    organs: ['prostate', 'bladder'],
+    disease: null,
+    conditions: ['prostate anatomy', 'peripheral zone', 'transition zone', 'ejaculatory duct', '前立腺解剖', '末梢域', '移行域', '射精管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/prostate-anatomy.md',
+    modelProfile: 'prostate-anatomy-procedural-atlas',
+    description:
+      'Peripheral zone outside, transition and central zones inside, and the urethra and ejaculatory ducts running through them \u2014 which zone a thing is in is what prostate disease turns on.',
+    descriptionJa:
+      '外側の末梢域、内側の移行域と中心域、そしてそこを貫く尿道と射精管を示します。前立腺の疾患は「どの領域か」で決まります。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/reproductive/scenes/prostateAnatomy/index.js'),
+  },
+  {
+    id: 'male-tract-anatomy',
+    slug: 'male-tract-anatomy',
+    titleEn: 'The male genital tract, end to end',
+    titleJa: '男性生殖路の全体像',
+    system: 'reproductive',
+    organ: 'prostate',
+    organs: ['prostate', 'bladder'],
+    disease: null,
+    conditions: ['male reproductive anatomy', 'vas deferens', 'epididymis', 'urethra', '男性生殖器', '精管', '精巣上体', '尿道'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/male-tract-anatomy.md',
+    modelProfile: 'male-tract-anatomy-procedural-atlas',
+    description:
+      'Testis, epididymis, vas, ejaculatory duct and three lengths of urethra as one continuous route \u2014 what connects to what, and where each connection can be interrupted.',
+    descriptionJa:
+      '精巣・精巣上体・精管・射精管・尿道3部を1本の連続した経路として示します。何が何につながり、どこで断てるのかが分かります。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/reproductive/scenes/maleTractAnatomy/index.js'),
   },
   {
     id: 'prostate-outflow',

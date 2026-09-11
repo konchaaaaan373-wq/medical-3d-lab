@@ -37,3 +37,46 @@ test('paid guide session: snapshot is a value, not a live reference', () => {
 
   assert.deepEqual(snapshot, { progress: 0.27, playing: false });
 });
+
+test('paid guide session: opening a mode and closing it again changes nothing', () => {
+  // The clinician looked at the patient explanation, decided against it, and
+  // closed it. The model has to be exactly where they left it.
+  const playback = new Playback();
+  playback.set(0.63);
+  const snapshot = captureGuideSession(playback);
+
+  restoreGuideSession(snapshot, playback, { movedByGuide: false });
+
+  assert.equal(playback.value, 0.63);
+});
+
+test('paid guide session: where the explanation walked to is kept, not rolled back', () => {
+  // The other case, and the one that was wrong. A patient has just been walked
+  // from a normal ventricle to a failing one; closing the guide put the model
+  // back where the clinician had been standing before the conversation, so the
+  // pressure-volume loop they then opened was for the wrong state.
+  const playback = new Playback();
+  playback.set(0);
+  const snapshot = captureGuideSession(playback);
+
+  playback.set(0.64); // the guide's last step
+  restoreGuideSession(snapshot, playback, { movedByGuide: true });
+
+  assert.equal(playback.value, 0.64, 'the state the explanation arrived at survives');
+});
+
+test('paid guide session: a guide that moved the model does not resume playback either', () => {
+  // Restoring is all-or-nothing: the play state belongs to the same snapshot as
+  // the position, and half of it would be a state nobody was ever in.
+  const playback = new Playback();
+  playback.set(0.2);
+  playback.play();
+  const snapshot = captureGuideSession(playback);
+
+  playback.pause();
+  playback.set(0.8);
+  restoreGuideSession(snapshot, playback, { movedByGuide: true });
+
+  assert.equal(playback.value, 0.8);
+  assert.equal(playback.playing, false, 'the guide left it paused, and it stays paused');
+});

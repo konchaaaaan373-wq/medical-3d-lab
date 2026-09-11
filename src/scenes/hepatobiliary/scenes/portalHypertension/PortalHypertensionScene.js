@@ -27,6 +27,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
 } from '../../../../data/portalHypertension.js';
@@ -68,6 +69,7 @@ export class PortalHypertensionScene {
     subtitle: 'One network, flow conserved · a portal pressure gradient, which is not an HVPG',
     subtitleJa: '流量保存が成り立つ 1 つのネットワーク ｜ 表示しているのは門脈圧較差であり、HVPG ではありません',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -270,6 +272,37 @@ export class PortalHypertensionScene {
   }
 
   // --- what the interface reads --------------------------------------------
+
+  /**
+   * The one framing a guided explanation asks for here.
+   *
+   * Presentation only — the camera, and nothing the model is set to.
+   *
+   * The scene's own shot centres the whole drawing, which is right until a
+   * patient explanation opens: the console then takes the bottom of the frame
+   * and takes the splanchnic bed's label with it — and the splanchnic bed is
+   * where the blood this scene is about arrives from. One framing, the scene's
+   * own line of sight, aimed low enough that every label the explanation points
+   * at is in the band the panels leave.
+   *
+   * Measured rather than guessed — `scripts/check-patient-explanation.mjs`
+   * projects the anchors through the reader's own camera and fails when one
+   * lands under the console.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    system: Object.freeze({
+      target: new THREE.Vector3(0.05, -1.66, 0),
+      distance: 13.6,
+      direction: new THREE.Vector3(1.55, 1.15, 12.6).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return PortalHypertensionScene.guideFramings;
+  }
 
   getAnnotations() {
     const anchors = this.vessels.anchors;

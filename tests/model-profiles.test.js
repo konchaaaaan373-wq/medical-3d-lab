@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
-import { SCENES, ORGANS } from '../src/catalog/index.js';
+import { SCENES, ORGANS, sceneById } from '../src/catalog/index.js';
 import { modelCardForScene } from '../src/catalog/clinicalReview.js';
 import { ASSET_MANIFEST, ASSET_SOURCE_TYPE, QA_GATE, QA_STATUS, assetById } from '../src/catalog/assetManifest.js';
 import {
@@ -21,8 +21,10 @@ import {
   modelProfileById,
   modelProfileForScene,
   modelProfileProblems,
+  profileCandidateAssets,
   validateModelProfiles,
 } from '../src/catalog/modelProfiles.js';
+import { devAssetById } from '../src/catalog/devAssets.js';
 import { materialFixture, meshFixture, meshOfType, withQa } from './helpers/assetFixtures.js';
 
 /**
@@ -75,7 +77,9 @@ const problemsOf = (profile, scene, extra = {}) =>
 // The registry as it stands
 
 test('the model-profile registry is well formed and every scene reference resolves', () => {
-  assert.deepEqual(validateModelProfiles(), []);
+  // The real registry, with the candidate lookup wired in — the one caller that
+  // has any business knowing the development-only registry exists.
+  assert.deepEqual(validateModelProfiles(MODEL_PROFILES, { candidateAssetById: devAssetById }), []);
   assert.deepEqual(modelProfileProblems({ scenes: SCENE_MANIFEST, assetById, modelCardFor, fileExists }), []);
 });
 
@@ -143,6 +147,28 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
   const levels = Object.fromEntries(NON_PROTOTYPE.map((scene) => [scene.id, modelProfileForScene(scene).mechanismLevel]));
   assert.deepEqual(levels, {
     'brain-anatomy': MECHANISM_LEVEL.NONE,
+    'heart-anatomy': MECHANISM_LEVEL.NONE,
+    // Organs whose anatomy is built in code rather than loaded from an
+    // atlas. Same claim shape as the brain's — structure, no state — and the
+    // geometry basis below is where the difference is recorded.
+    'lung-anatomy': MECHANISM_LEVEL.NONE,
+    'liver-anatomy': MECHANISM_LEVEL.NONE,
+    'kidney-anatomy': MECHANISM_LEVEL.NONE,
+    'stomach-anatomy': MECHANISM_LEVEL.NONE,
+    'intestine-anatomy': MECHANISM_LEVEL.NONE,
+    'pancreas-anatomy': MECHANISM_LEVEL.NONE,
+    'thyroid-anatomy': MECHANISM_LEVEL.NONE,
+    'spleen-anatomy': MECHANISM_LEVEL.NONE,
+    'bladder-anatomy': MECHANISM_LEVEL.NONE,
+    'biliary-anatomy': MECHANISM_LEVEL.NONE,
+    'esophagus-anatomy': MECHANISM_LEVEL.NONE,
+    'adrenal-anatomy': MECHANISM_LEVEL.NONE,
+    'uterus-anatomy': MECHANISM_LEVEL.NONE,
+    'prostate-anatomy': MECHANISM_LEVEL.NONE,
+    'male-tract-anatomy': MECHANISM_LEVEL.NONE,
+    'knee-anatomy': MECHANISM_LEVEL.NONE,
+    'shoulder-anatomy': MECHANISM_LEVEL.NONE,
+    'hip-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,
@@ -155,6 +181,9 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'portal-hypertension': MECHANISM_LEVEL.MECHANISTIC,
     'hepatorenal-syndrome': MECHANISM_LEVEL.MECHANISTIC,
     'renal-filtration': MECHANISM_LEVEL.MECHANISTIC,
+    'biliary-obstruction': MECHANISM_LEVEL.MECHANISTIC,
+    'benign-prostatic-enlargement': MECHANISM_LEVEL.ILLUSTRATIVE,
+    achalasia: MECHANISM_LEVEL.MECHANISTIC,
   });
 });
 
@@ -173,13 +202,76 @@ test('every scene with a paid patient capability declares patient-explanation', 
   }
 });
 
-test('the brain atlas is the only asset-backed geometry, and its asset is in the manifest', () => {
+test('the two atlas scenes are the only asset-backed geometry, and each names a real file', () => {
   const backed = NON_PROTOTYPE.filter((scene) => modelProfileForScene(scene).geometryBasis !== GEOMETRY_BASIS.PROCEDURAL);
-  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy']);
-  const profile = modelProfileForScene(backed[0]);
-  assert.equal(profile.geometryBasis, GEOMETRY_BASIS.REFERENCE_ATLAS);
-  for (const id of profile.assets) assert.ok(assetById(id), `${id} is in the asset manifest`);
-  assert.ok(profile.prohibitedUses.includes(PROHIBITED_USE.PROCEDURE_PLANNING), 'the review registry forbids operative planning');
+  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  for (const scene of backed) {
+    const profile = modelProfileForScene(scene);
+    assert.equal(profile.geometryBasis, GEOMETRY_BASIS.REFERENCE_ATLAS);
+    assert.ok(
+      profile.prohibitedUses.includes(PROHIBITED_USE.PROCEDURE_PLANNING),
+      'the review registry forbids operative planning'
+    );
+  }
+
+  // The brain draws a shipped asset; the heart draws a candidate under
+  // examination. Those are different records in different files, and the
+  // difference is the whole reason the heart cannot be published.
+  const brain = modelProfileForScene(sceneById('brain-anatomy'));
+  for (const id of brain.assets) assert.ok(assetById(id), `${id} is in the asset manifest`);
+  assert.deepEqual(profileCandidateAssets(brain), [], 'nothing shipped rests on a candidate');
+
+  const heart = modelProfileForScene(sceneById('heart-anatomy'));
+  assert.deepEqual(heart.assets, [], 'the heart file is not in the asset manifest, and is not claimed to be');
+  // Both files the scene loads. It draws the heart and the great-vessel
+  // geometry, and a profile that lists one of them leaves the other on screen
+  // with nobody credited for it — `tests/attribution.test.js` holds that end.
+  assert.deepEqual(profileCandidateAssets(heart), ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature']);
+  for (const id of profileCandidateAssets(heart)) {
+    assert.ok(devAssetById(id), `${id} is a pinned candidate in devAssets.js`);
+    assert.equal(assetById(id), null, `${id} must not be in the asset manifest until it is adopted`);
+  }
+});
+
+test('a candidate asset satisfies the geometry basis and never the release gate', () => {
+  // Two separate questions the registry used to be able to answer only one of:
+  // "does this profile say where its geometry comes from" and "may it ship".
+  const profile = {
+    profileId: 'fixture-candidate-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: 'representative',
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES],
+    assets: [],
+    candidateAssets: ['hubmap-vh-m-heart'],
+    validationRecords: [],
+    basis: 'fixture',
+  };
+  const resolve = { candidateAssetById: devAssetById };
+  assert.deepEqual(validateModelProfiles([profile], resolve), [], 'a candidate answers "where does the geometry come from"');
+
+  const unknown = { ...profile, profileId: 'fixture-unknown-candidate', candidateAssets: ['no-such-candidate'] };
+  assert.ok(
+    validateModelProfiles([unknown], resolve).some((line) => /is not registered in devAssets/.test(line)),
+    'and it has to be a candidate that actually exists'
+  );
+
+  const nothing = { ...profile, profileId: 'fixture-no-geometry', candidateAssets: [] };
+  assert.ok(
+    validateModelProfiles([nothing], resolve).some((line) => /must name at least one asset/.test(line)),
+    'naming neither still fails'
+  );
+
+  // Production is the line: a scene may be built on a candidate and may not be
+  // called finished on one.
+  const production = modelProfileProblems({
+    scenes: [{ id: 'fixture-scene', status: 'production', organ: 'heart', modelProfile: profile.profileId, modelCard: 'x.md' }],
+    profiles: [profile],
+    modelCardFor: () => 'x.md',
+  });
+  assert.ok(production.some((line) => /production scene cannot rest on candidate assets/.test(line)));
 });
 
 test('the amyloid scene is illustrative and procedural rather than molecular', () => {

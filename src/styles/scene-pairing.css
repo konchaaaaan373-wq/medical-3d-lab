@@ -1,0 +1,46 @@
+/* Scene pairing — the link from an organ to the disease that happens in it.
+ *
+ * Lives with the title card that renders it rather than in the global sheet:
+ * it is one component's rule set, and the pairing is a catalogue relation that
+ * every scene surface reads the same way.
+ *
+ * Sized down from the title so it reads as a way out of this scene rather than
+ * as a second heading, and given a real hit target because on a phone it is the
+ * only way between the two halves of the same subject. */
+.title-pairing {
+  margin: 10px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.title-pairing-lead {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.title-pairing-link {
+  display: block;
+  /* 44px of target on a phone without a 44px-tall box on a desktop card. */
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.title-pairing-link:hover,
+.title-pairing-link:focus-visible {
+  border-bottom-color: currentColor;
+}
+
+.title-pairing-link::after {
+  content: ' →';
+  color: var(--ink-faint);
+}

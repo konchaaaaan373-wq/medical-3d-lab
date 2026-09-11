@@ -112,3 +112,33 @@ export const DISCLAIMER_JA =
   '肺胞性コンソリデーションを扱う教育用の局所V/Qモデルです。起因菌の同定、画像所見の再現、PaO2・SpO2の算出、患者経過の予測、抗菌薬・呼吸管理の推奨は行いません。';
 export const DISCLAIMER_SHORT = 'Conceptual V/Q model — not diagnosis or treatment guidance.';
 export const DISCLAIMER_SHORT_JA = 'V/Qの概念モデルであり、診断・治療支援ではありません。';
+
+/**
+ * The neighbours, and the sentence that has to travel with them.
+ *
+ * The embolism scene is the mirror of this one and is the most useful thing to
+ * read next: both are about air and blood failing to meet, and they fail in
+ * opposite directions. The oedema scene fills the same air spaces with
+ * something else and does solve the blood values this one does not — which is
+ * exactly why they must not be read as one model.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'pulmonary-embolism',
+      label: 'Embolism: the opposite mismatch',
+      labelJa: '肺塞栓：逆向きの不一致',
+      why: 'Air arriving where blood cannot, rather than blood arriving where air cannot.',
+      whyJa: '血液の来ない場所に空気が届く状態です。こことは向きが逆です。',
+    },
+    {
+      slug: 'pulmonary-edema',
+      label: 'Oedema: the same sacs, filled with water',
+      labelJa: '肺水腫：同じ袋が水で満たされる',
+      why: 'A different thing filling the air spaces — and a model that does solve the blood values this one leaves out.',
+      whyJa: '空気の場所を満たすものが異なります。こちらが扱わない血液の値を、あちらのモデルは解きます。',
+    },
+  ],
+  note: 'These are separate models, not stages of one lung. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 つの肺の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

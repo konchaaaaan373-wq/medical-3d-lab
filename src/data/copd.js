@@ -387,3 +387,115 @@ export const DISCLAIMER_JA =
   'から導いたもので、個人の実測値ではありません。ガス交換はモデル化していません。診断・重症度判定・予測には使用できません。';
 export const DISCLAIMER_SHORT = 'Conceptual model of lung mechanics — no gas exchange, not for diagnosis.';
 export const DISCLAIMER_SHORT_JA = '肺メカニクスの概念モデル｜ガス交換は扱いません。診断には使用できません。';
+
+/**
+ * The lungs the reader is looking at, and the other models that draw them.
+ *
+ * The sentence that travels with these links is the point of them. The normal
+ * lung is a different model of a lung; this is twelve mechanical units with a
+ * time constant each, drawn as a lung. Reaching one from the other must not read as
+ * "and here is the same lung, later" — they are different models built for
+ * different questions, and neither is a stage of the other.
+ *
+ * `asthma` is the closest neighbour and the most likely confusion: it solves a
+ * branching airway *network* and says nothing about air trapping, while this
+ * one solves emptying and says nothing about where in the tree the narrowing
+ * is. Two models, two questions, no shared numbers.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'asthma',
+      label: 'Asthma: uneven ventilation',
+      labelJa: '喘息：換気の不均一',
+      why: 'Narrowing solved across a branching airway tree, rather than as one emptying lung.',
+      whyJa: '狭窄を分岐気道のネットワークとして解きます。「吐き切れるか」を解くこのモデルとは別の問いです。',
+    },
+    {
+      // The named-structure lung atlas this file was waiting for. It replaces
+      // the `breathing-lungs` prototype row, which is what the note here said
+      // to do the day such an atlas landed.
+      slug: 'lung-anatomy',
+      label: 'Lung anatomy — lobes, segments and the airway tree by name',
+      labelJa: '肺の解剖 — 葉・区域・気道を名前で',
+      why: '**A different model.** Structure you can point at and name; it has no breath and no obstruction.',
+      whyJa: '**別のモデルです。** 名前で指せる構造を持ちますが、呼吸も閉塞もありません。',
+    },
+  ],
+  note:
+    'These are separate models, not stages of one lung. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa:
+    'いずれも別々のモデルであり、1 つの肺の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};
+
+/**
+ * What the 3D does with the numbers, declared so it can be checked and quoted.
+ *
+ * Every entry here corresponds to a line in `CopdScene.drawBody`, and the
+ * reason the declaration exists rather than the comment alone is the row for
+ * the airway: the airways on screen pinch visibly, and the amount they pinch by
+ * is a drawing decision. A reader — or a screenshot, or a slide made from one —
+ * must not come away with a number for an airway calibre, because this model
+ * does not solve one. See `src/data/visualMapping.js`.
+ */
+export const VISUAL_MAPPING = [
+  {
+    id: 'lung-inflation',
+    target: 'lungs',
+    channel: 'geometry',
+    from: 'volumeL',
+    reading: 'illustrative',
+    claim: 'The lungs are larger when the model holds more gas, and the difference between breaths is the model’s.',
+    claimJa: 'モデルの肺気量が多いほど肺は大きく描かれ、呼吸ごとの差はモデルの値です。',
+    notClaim:
+      'The drawn excursion is enlarged so a tidal breath reads at this scale. It is not a volume you can measure off the screen.',
+    notClaimJa:
+      '一回換気が画面上で見て取れるよう、動きの幅は誇張しています。画面から容量を読み取ることはできません。',
+  },
+  {
+    id: 'diaphragm-flattening',
+    target: 'diaphragm',
+    channel: 'geometry',
+    from: 'endExpiratoryVolumeL',
+    reading: 'illustrative',
+    claim: 'The dome flattens as the volume the lung rests at climbs — the model’s resting volume, not the breath inside it.',
+    claimJa: '肺の安静位が上がるほどドームは平坦になります。参照するのはモデルの呼気終末肺気量であり、その中の一回換気ではありません。',
+    notClaim: 'How flat it is drawn is a drawing coefficient. No diaphragm position or muscle length is modelled.',
+    notClaimJa: '平坦さの度合いは描画係数です。横隔膜の位置や筋長はモデル化していません。',
+  },
+  {
+    id: 'airway-compression',
+    target: 'airway',
+    channel: 'geometry',
+    from: 'flowLimitedFraction',
+    reading: 'illustrative',
+    claim: 'The airways narrow during expiration exactly when the model says flow is against its ceiling, and not otherwise.',
+    claimJa: 'モデルが「呼気流量が上限に達している」と解いたときにだけ、呼気中の気道が細く描かれます。',
+    notClaim:
+      'The drawn calibre is not a modelled airway diameter and not a measurement. This model has a resistance, not a lumen.',
+    notClaimJa:
+      '描かれた太さはモデルが計算した気道径ではなく、実測値でもありません。このモデルにあるのは抵抗であって内腔ではありません。',
+  },
+  {
+    id: 'trapped-gas',
+    target: 'unit markers',
+    channel: 'emissive',
+    from: 'tidalVolumeL',
+    reading: 'proportional',
+    claim:
+      'Each marker brightens with the gas that unit did not give back, scaled so full brightness is about one breath’s worth. The legend says so.',
+    claimJa:
+      '各マーカーは、その単位が返しきれなかった気体の量に応じて明るくなります。最大の明るさがおよそ一回換気量ぶんに相当し、凡例に明記しています。',
+  },
+  {
+    id: 'airflow',
+    target: 'air',
+    channel: 'motion',
+    from: 'peakExpiratoryFlowLPerS',
+    reading: 'illustrative',
+    claim: 'The stream runs in while the model’s flow is inspiratory, out while it is expiratory, and thins as the flow falls.',
+    claimJa: 'モデルの流量が吸気方向のときは内向きに、呼気方向のときは外向きに流れ、流量が落ちると細くなります。',
+    notClaim: 'The speed and density on screen are presentation. Read flow from the flow–volume plot, not from the animation.',
+    notClaimJa: '画面上の速さと濃さは演出です。流量は流量-容量曲線から読んでください（アニメーションからではありません）。',
+  },
+];

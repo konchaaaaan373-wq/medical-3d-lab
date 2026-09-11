@@ -409,3 +409,35 @@ export const DISCLAIMER_SHORT =
   'Conceptual network model — a portal pressure gradient, not an HVPG. No ascites. Not for diagnosis.';
 export const DISCLAIMER_SHORT_JA =
   '概念的なネットワークモデル｜HVPG ではなく門脈圧較差です。腹水は扱いません。診断には使用できません。';
+
+/**
+ * Where the rest of this chain is shown, and the sentence that goes with it.
+ *
+ * The hepatorenal scene is the obvious next question — what a liver blood
+ * cannot cross does to the rest of the body — and it is a **different model**.
+ * It happens to contain this one: `solveHepatorenal` imports and calls
+ * `solvePortalCirculation`, so the liver on that screen is solved the same way
+ * the liver on this one is. That coupling is inside that scene. Following this
+ * link is not a handoff: no state, no pressure and no flow travels from here to
+ * there, and a reader must not read the second screen as this screen later.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'liver-anatomy',
+      label: 'Liver anatomy — the segments and what separates them',
+      labelJa: '肝臓の解剖 — 区域と、その境目',
+      why: '**A different model.** Named segments and their planes; no resistance, no pressure, no flow.',
+      whyJa: '**別のモデルです。** 名前の付いた区域と切断面を持ちますが、抵抗も圧も流れもありません。',
+    },
+    {
+      slug: 'hepatorenal-syndrome',
+      label: 'What this does to the rest of the circulation',
+      labelJa: '循環の残りの部分に何が起きるか',
+      why: 'A separate model that solves this liver, the systemic circulation and the kidneys together in one go.',
+      whyJa: 'この肝臓・全身循環・腎臓を一度にまとめて解く、別のモデルです。',
+    },
+  ],
+  note: 'These are separate models, not stages of one patient. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 人の患者の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

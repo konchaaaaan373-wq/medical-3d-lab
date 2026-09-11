@@ -17,6 +17,25 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
+  'heart-anatomy',
+  'lung-anatomy',
+  'liver-anatomy',
+  'kidney-anatomy',
+  'stomach-anatomy',
+  'intestine-anatomy',
+  'pancreas-anatomy',
+  'thyroid-anatomy',
+  'spleen-anatomy',
+  'bladder-anatomy',
+  'biliary-anatomy',
+  'esophagus-anatomy',
+  'adrenal-anatomy',
+  'uterus-anatomy',
+  'prostate-anatomy',
+  'male-tract-anatomy',
+  'knee-anatomy',
+  'shoulder-anatomy',
+  'hip-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -29,6 +48,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'asthma-heterogeneity',
   'portal-hypertension',
   'hepatorenal-syndrome',
+  'biliary-obstruction',
+  'benign-prostatic-enlargement',
+  'achalasia',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -133,6 +155,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['CYCLE', 'ENDOMETRIUM', 'SECTION'],
     ['周期', '内膜', '断面']
   ),
+  'knee-anatomy': presentation(
+    'Point at a ligament and see what it runs between, with the bones faded out of the way.',
+    '骨を薄くして、どの靱帯がどこからどこへ走るのかを確認。',
+    ['LIGAMENTS', 'MENISCI', 'JOINT'],
+    ['靱帯', '半月板', '関節']
+  ),
+  'shoulder-anatomy': presentation(
+    'See how little socket there is, and which four tendons make up for it.',
+    '関節窩の浅さと、それを補う腱板4筋の走行。',
+    ['CUFF', 'SOCKET', 'ARCH'],
+    ['腱板', '関節窩', 'アーチ']
+  ),
+  'hip-anatomy': presentation(
+    'See the rim reach past the widest part of the head — in section.',
+    '断面で、臼蓋の縁が骨頭の最大径を越えていることを確認。',
+    ['SOCKET', 'NECK', 'SECTION'],
+    ['臼蓋', '頸部', '断面']
+  ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',
     '前立腺の体積と、その中を通る尿道の内径。',
@@ -151,11 +191,107 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
   ),
+  'stomach-anatomy': presentation(
+    'Pick the antrum, then fade the wall to the sphincter it empties through.',
+    '前庭部を選び、壁を透かして、その先の幽門括約筋を見る。',
+    ['FUNDUS', 'BODY', 'PYLORUS'],
+    ['胃底部', '胃体部', '幽門']
+  ),
+  'intestine-anatomy': presentation(
+    'Fade the small bowel and the colon is left as the frame it is.',
+    '小腸を薄くすると、結腸が枠として残る。',
+    ['CAECUM', 'FLEXURES', 'SIGMOID'],
+    ['盲腸', '結腸曲', 'S状結腸']
+  ),
+  'pancreas-anatomy': presentation(
+    'Head, neck, body, tail — then one duct running the length of all four.',
+    '頭部・頸部・体部・尾部、そして4つを貫く1本の膵管。',
+    ['PARTS', 'DUCT', 'ISLETS'],
+    ['部位', '膵管', '膵島']
+  ),
+  'thyroid-anatomy': presentation(
+    'Fade the gland and find the four parathyroids and the two nerves behind it.',
+    '甲状腺を薄くして、その背面の副甲状腺4つと左右の反回神経を見つける。',
+    ['LOBES', 'PARATHYROID', 'NERVE'],
+    ['葉', '副甲状腺', '反回神経']
+  ),
+  'spleen-anatomy': presentation(
+    'Two territories, and the artery that divides before it reaches the hilum.',
+    '2つの支配領域と、脾門の手前で分かれる脾動脈。',
+    ['SEGMENTS', 'ARTERY', 'VEIN'],
+    ['区域', '動脈', '静脈']
+  ),
+  'bladder-anatomy': presentation(
+    'Fade the wall and find the trigone, with an opening at each of its corners.',
+    '壁を薄くして、3つの角に開口部をもつ膀胱三角を見つける。',
+    ['WALL', 'TRIGONE', 'ORIFICES'],
+    ['膀胱壁', '膀胱三角', '開口部']
+  ),
+  'biliary-anatomy': presentation(
+    'Follow bile from two hepatic ducts to one papilla, past the gallbladder on the way.',
+    '左右の肝管から1つの乳頭まで、胆嚢を経由して胆汁の道をたどる。',
+    ['GALLBLADDER', 'DUCTS', 'PAPILLA'],
+    ['胆嚢', '胆管', '乳頭']
+  ),
+  'esophagus-anatomy': presentation(
+    'Three places the tube is narrow, and what makes each one narrow.',
+    '食道が狭くなる3か所と、それぞれを狭くしている構造。',
+    ['PARTS', 'CONSTRICTIONS', 'NEIGHBOURS'],
+    ['部位', '狭窄部', '周囲の構造']
+  ),
+  'adrenal-anatomy': presentation(
+    'Three layers of cortex, and inside them a piece of nervous system.',
+    '3層の皮質と、その内側にある神経系の組織。',
+    ['ZONES', 'MEDULLA', 'KIDNEY'],
+    ['皮質3層', '髄質', '腎臓']
+  ),
+  'uterus-anatomy': presentation(
+    'Fade the wall: the cavity is a flattened triangle, not a bag.',
+    '子宮壁を薄くすると、内腔は袋ではなく扁平な三角形。',
+    ['PARTS', 'CAVITY', 'ADNEXA'],
+    ['部位', '内腔', '付属器']
+  ),
+  'prostate-anatomy': presentation(
+    'Which zone: the outside a finger reaches, or the inside round the urethra.',
+    'どの領域か——指が届く外側か、尿道を取り巻く内側か。',
+    ['ZONES', 'URETHRA', 'DUCTS'],
+    ['領域', '尿道', '射精管']
+  ),
+  'male-tract-anatomy': presentation(
+    'One continuous channel from testis to outside, with a gland part way along it.',
+    '精巣から外尿道口まで、途中に腺を挟んだ1本の管。',
+    ['ROUTE', 'DUCTS', 'URETHRA'],
+    ['経路', '導管', '尿道']
+  ),
+  'lung-anatomy': presentation(
+    'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',
+    '肺葉を選び、実質を薄くして、その区域を換気する区域気管支を選ぶ。',
+    ['LOBES', 'SEGMENTS', 'VESSELS'],
+    ['肺葉', '肺区域', '血管']
+  ),
+  'liver-anatomy': presentation(
+    'Couinaud’s eight segments, IV split in two: the veins run between them, the portal branches inside them.',
+    'Couinaudの8区域（IVは2つに分割）。肝静脈は区域の「間」を、門脈枝は「内部」を走る。',
+    ['SEGMENTS', 'OUTFLOW', 'INFLOW']  ,
+    ['区域', '流出', '流入']
+  ),
+  'kidney-anatomy': presentation(
+    'Fade the cortex to the pyramids, then follow one papilla out to the ureter.',
+    '皮質を薄くして錐体を見て、1つの腎乳頭から尿管までをたどる。',
+    ['CORTEX', 'PYRAMIDS', 'CALYCES'],
+    ['皮質', '錐体', '腎杯']
+  ),
   'brain-anatomy': presentation(
     'Select gyri and sulci, then reveal the insula and deep nuclei in place.',
     '脳回・脳溝、島皮質、深部核の位置関係を3Dで確認。',
     ['CORTEX', 'INSULA', 'DEEP NUCLEI'],
     ['皮質', '島皮質', '深部核']
+  ),
+  'heart-anatomy': presentation(
+    'Name the chambers, the septum, the valves and the papillary muscles on one heart.',
+    '四腔・心室中隔・弁・乳頭筋を、心臓の上で名前で確認。',
+    ['CHAMBERS', 'VALVES', 'PAPILLARY'],
+    ['心腔', '心臓弁', '乳頭筋']
   ),
   'amyloid-beta': presentation(
     'Move through one aggregation state from Aβ monomer to plaque.',
@@ -186,6 +322,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
     ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
     ['コンソリデーション', '換気', 'シャント']
+  ),
+  achalasia: presentation(
+    'Take away the wave and the ring together; watch swallows stop clearing, and then watch what collects take over the pushing.',
+    '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
+    ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
+    ['蠕動波', '括約筋', '貯留']
+  ),
+  'benign-prostatic-enlargement': presentation(
+    'Grow the transition zone; watch the gland grow far less and the outside become a rim.',
+    '移行域を大きくし、腺全体の変化がはるかに小さいことと、外側が縁になることを確認。',
+    ['TRANSITION ZONE', 'WHAT IS DISPLACED', 'THE CHANNEL'],
+    ['移行域', '圧排されるもの', '通り道']
+  ),
+  'biliary-obstruction': presentation(
+    'Put the same blockage in three different places; watch which segments end up behind it and which do not.',
+    '同じ閉塞を 3 か所に置き替え、どの区間が上流になり、どの区間はならないのかを確認。',
+    ['SITE', 'PRESSURE', 'WHAT DRAINS'],
+    ['部位', '内圧', '流出']
   ),
   'pulmonary-embolism': presentation(
     'Obstruct parallel pulmonary vessels; watch perfusion fall while ventilation persists and relative PVR rises.',

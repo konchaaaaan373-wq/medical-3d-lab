@@ -19,6 +19,7 @@ import {
   STORY_DURATION,
   STORY_STEPS,
   STORY_CUES,
+  GUIDE_FRAMINGS,
   STORY_CHAPTERS,
   stepAt,
   cardiacPhaseAt as storyCardiacPhaseAt,
@@ -42,6 +43,7 @@ import {
   ventricleShape,
 } from '../../../../models/cardiacMechanics.js';
 import {
+  RELATED,
   STAGES,
   LEGEND,
   RANGE,
@@ -120,6 +122,7 @@ export class HeartFailureScene {
     subtitle: 'Illustrative LV remodeling in HFrEF · simplified 3D model',
     subtitleJa: '左室リモデリング',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -658,6 +661,16 @@ export class HeartFailureScene {
    * the machinery, so another scene can ship its own sequence by returning the
    * same shape.
    */
+  /**
+   * Framings a guided explanation may ask for by name.
+   *
+   * Presentation only — the camera, and nothing the model is set to. Declared
+   * beside the guided sequence's own framings so the two cannot drift apart.
+   */
+  getGuideFramings() {
+    return GUIDE_FRAMINGS;
+  }
+
   getStory() {
     return {
       duration: STORY_DURATION,

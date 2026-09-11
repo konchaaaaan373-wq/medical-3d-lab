@@ -77,8 +77,12 @@ test('landing hero: every rotation entry is a real organ that opens a released m
   assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
   const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
   assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene, built or not');
-  assert.equal(sceneById(heart.sceneId), null);
-  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until that scene exists');
+  // The scene exists now, and the hero still does not show it: what the filter
+  // asks is whether the release *opens* it, not whether it was written. That
+  // distinction is the whole mechanism, and this is where it is checked.
+  assert.ok(sceneById(heart.sceneId), 'the scene is registered');
+  assert.equal(isSceneReleased(sceneById(heart.sceneId)), false);
+  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until the release opens it');
 
   for (const entry of HERO_ROTATION) {
     // The detailed model that replaces the builder has to be a scene the

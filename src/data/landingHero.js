@@ -7,6 +7,30 @@
  */
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 
+/**
+ * The rotation the beta is aiming at, brain first.
+ *
+ * Two organs, because the anatomy of two organs is what the beta is for.
+ *
+ * - `sceneId` is the model the hero's link opens.
+ * - `upgradeSceneId` is the scene whose geometry replaces the lightweight
+ *   builder once it has loaded (`landingOrganViewport.js`). It is the organ's
+ *   real anatomy model; the builder is what stands in until it arrives.
+ *
+ * **This is the declared rotation, not the shown one.** `HERO_ROTATION` below
+ * is what the hero actually turns through, and it is this list filtered by what
+ * the release opens. The heart entry names `heart-anatomy`, which now exists as
+ * a scene and which the release does not open — it is built on candidate assets
+ * that have been through no asset pipeline — so today the hero still shows the
+ * brain and offers no way to "see the heart".
+ *
+ * It used to point at `heart-failure` with the coronary anatomy loaded behind
+ * it, on the reasoning that the heart had no anatomy scene of its own. That is
+ * exactly the substitution this release does not make: a disease model is not
+ * an anatomy model with a different label. The gap is recorded in
+ * `src/catalog/anatomy.js`, and the heart returns to the rotation the day
+ * `heart-anatomy` passes `betaPublicationProblems()` — with no edit here.
+ */
 export const HERO_ORGANS = Object.freeze([
   Object.freeze({
     organ: 'brain',

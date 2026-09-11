@@ -1,0 +1,75 @@
+{
+  "generatedAt": "2026-09-11",
+  "dryRun": false,
+  "files": [
+    {
+      "assetId": "hubmap-vh-m-heart",
+      "source": {
+        "path": "dev-assets/heart/VH_M_Heart.glb",
+        "sha256": "b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70",
+        "bytes": 4071500
+      },
+      "derived": {
+        "path": "dev-assets/derived/heart/VH_M_Heart.glb",
+        "sha256": "46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d"
+      },
+      "degenerateNormals": 408,
+      "repaired": 203,
+      "unrepairable": 0,
+      "unusedGivenUnitNormal": 168,
+      "foldTookLargestFace": 37,
+      "removedZeroAreaTriangles": 820,
+      "removedDuplicateFaces": 4,
+      "meshesTouched": {
+        "VH_M_right_cardiac_atrium": 203
+      },
+      "heldUnchanged": {
+        "positionsAndIndices": true,
+        "nodesNamesExtrasMaterials": true,
+        "trianglesAccountedFor": true,
+        "vertices": true
+      },
+      "counts": {
+        "nodes": 18,
+        "meshes": 14,
+        "triangles": 164119,
+        "vertices": 82066
+      }
+    },
+    {
+      "assetId": "hubmap-vh-m-blood-vasculature",
+      "source": {
+        "path": "dev-assets/heart/VH_M_Blood_Vasculature.glb",
+        "sha256": "a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d",
+        "bytes": 7436204
+      },
+      "derived": {
+        "path": "dev-assets/derived/heart/VH_M_Blood_Vasculature.glb",
+        "sha256": "b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb"
+      },
+      "degenerateNormals": 33,
+      "repaired": 16,
+      "unrepairable": 0,
+      "unusedGivenUnitNormal": 14,
+      "foldTookLargestFace": 3,
+      "removedZeroAreaTriangles": 26,
+      "removedDuplicateFaces": 5,
+      "meshesTouched": {
+        "VH_M_left_coronary_artery": 11,
+        "VH_M_superior_vena_cava": 5
+      },
+      "heldUnchanged": {
+        "positionsAndIndices": true,
+        "nodesNamesExtrasMaterials": true,
+        "trianglesAccountedFor": true,
+        "vertices": true
+      },
+      "counts": {
+        "nodes": 153,
+        "meshes": 104,
+        "triangles": 359598,
+        "vertices": 182788
+      }
+    }
+  ]
+}

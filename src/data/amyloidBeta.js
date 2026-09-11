@@ -78,6 +78,33 @@ export const STAGES = [
   },
 ];
 
+/**
+ * Where else this is shown. The brain atlas is where the structures have names;
+ * this scene is a schematic of molecules, drawn at no anatomical scale at all.
+ */
+export const RELATED = Object.freeze({
+  scenes: [
+    {
+      slug: 'brain-anatomy',
+      // The same crossing, read the other way round: this diagram is not a
+      // magnified piece of that atlas, so going back is not zooming out.
+      transitionType: 'scale-change',
+      scaleRelationship: 'schematic',
+      label: 'Brain anatomy — where the structures are and what they are called',
+      labelJa: '脳の解剖 — 構造の位置と名前',
+      why: 'A named atlas of one specimen. **A different model**: nothing molecular is drawn on it, and nothing here is drawn to its scale.',
+      whyJa: '1 体の標本を名前で引けるアトラスです。**別のモデル**で、分子は描かれていませんし、こちらの図もその縮尺ではありません。',
+    },
+  ],
+  note:
+    '**These are separate models, and this one has no anatomical scale.** The particle sizes here are '
+    + 'chosen so the species can be told apart, not measured; the atlas is a specimen. Neither is a '
+    + 'stage of the other.',
+  noteJa:
+    '**それぞれ別のモデルで、こちらには解剖学的な縮尺がありません。** ここでの粒の大きさは種類を'
+    + '見分けるために選んだもので、計測値ではありません。アトラスは標本です。互いの段階ではありません。',
+});
+
 /** Legend entries shown under the 3D view. */
 export const LEGEND = [
   // `activeFrom` is the progression at which the species becomes present; the

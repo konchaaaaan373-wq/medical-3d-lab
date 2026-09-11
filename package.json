@@ -18,7 +18,18 @@
     "verify:ui": "node scripts/check-viewports.mjs",
     "cards": "node scripts/render-social-cards.mjs",
     "cards:check": "node scripts/check-social-cards.js",
-    "verify:anatomy": "node scripts/check-anatomy-interaction.mjs"
+    "verify:anatomy": "node scripts/check-anatomy-interaction.mjs",
+    "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
+    "assets:dev": "node scripts/fetch-dev-assets.mjs",
+    "assets:measure": "node scripts/measure-candidate-surfaces.mjs",
+    "assets:validate": "node scripts/validate-candidate-gltf.mjs",
+    "verify:recipe-report": "node scripts/check-heart-recipe-report.mjs",
+    "verify:disease": "node scripts/check-disease-interaction.mjs",
+    "verify:patient": "node scripts/check-patient-explanation.mjs",
+    "assets:repair": "node scripts/repair-candidate-gltf.mjs",
+    "verify:next-beta": "node scripts/check-next-beta.mjs",
+    "review:packets": "node scripts/build-review-packet.mjs amyloid-beta heart-failure copd-hyperinflation myocardial-ischemia",
+    "assets:repair:verify": "node scripts/repair-candidate-gltf.mjs --verify"
   },
   "dependencies": {
     "three": "^0.169.0"

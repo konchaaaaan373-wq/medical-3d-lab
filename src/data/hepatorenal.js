@@ -158,6 +158,38 @@ export const CHARTS = [
 ];
 
 export const METRICS = [
+  /**
+   * The liver's own numbers, read out here because they are solved here.
+   *
+   * `solveHepatorenal` calls `solvePortalCirculation` and keeps its whole
+   * answer: the portal pressure gradient below is that sub-solve's, produced by
+   * the same call, at the same moment, from the same controls as the filtration
+   * rate two rows down. **That is the claim this scene exists to make** — one
+   * chain, one solve, from the liver to the kidney — and until these rows
+   * existed a reader had to take it on trust, because nothing about the liver
+   * appeared anywhere on screen.
+   *
+   * They are first because they are first in the chain, and because a reader
+   * scanning for "why is this happening" should meet the cause before the
+   * consequence.
+   *
+   * **A gradient, not an HVPG.** The two are different numbers and the portal
+   * scene is emphatic about it; this reports the one the model computes and
+   * calls it what it is.
+   */
+  {
+    id: 'portalGradient',
+    label: 'Portal pressure gradient (not HVPG)',
+    labelJa: '門脈圧較差（HVPG ではありません）',
+    unit: 'mmHg',
+    emphasis: true,
+  },
+  {
+    id: 'splanchnicInflow',
+    label: 'Splanchnic inflow',
+    labelJa: '内臓循環への流入量',
+    unit: 'mL/min',
+  },
   {
     id: 'gfr',
     label: 'Glomerular filtration rate',
@@ -452,3 +484,48 @@ export const DISCLAIMER_SHORT =
   'Conceptual model · haemodynamic mechanism only, no kidney injury modelled · not for diagnosis';
 
 export const DISCLAIMER_SHORT_JA = '概念モデル｜循環の機序のみ・腎障害は未実装｜診断には使用できません';
+
+/**
+ * The scene this one contains, and the sentence that goes with it.
+ *
+ * **Two different statements, and they must not blur.** The chain *inside* this
+ * scene is one solve: `solveHepatorenal` imports `solvePortalCirculation`, so
+ * the liver, the systemic circulation and the kidneys here are solved together
+ * with one unknown between them. Following the link below is not that. It opens
+ * a separate model of the liver on its own, with its own axis and its own
+ * calibration, and nothing computed here goes with the reader.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'kidney-anatomy',
+      label: 'Kidney anatomy — the parts, at organ scale',
+      labelJa: '腎臓の解剖 — 臓器のスケールで見る各部',
+      why: '**A different model.** The kidney here is one term in a circulation; there it is an organ with named parts.',
+      whyJa: '**別のモデルです。** ここでの腎臓は循環のなかの 1 項ですが、向こうは部位を名前で指せる臓器です。',
+    },
+    {
+      slug: 'liver-anatomy',
+      label: 'Liver anatomy — the segments and what separates them',
+      labelJa: '肝臓の解剖 — 区域と、その境目',
+      why: '**A different model.** Named segments and their planes; no resistance, no pressure, no flow.',
+      whyJa: '**別のモデルです。** 名前の付いた区域と切断面を持ちますが、抵抗も圧も流れもありません。',
+    },
+    {
+      slug: 'portal-hypertension',
+      label: 'The liver on its own',
+      labelJa: '肝臓だけを見る',
+      why: 'Why a scarred liver raises the pressure in front of it, and why the detours that open do not bring it down.',
+      whyJa: '瘢痕化した肝臓の手前で圧が上がる理由と、迂回路が開いても圧が下がりきらない理由。',
+    },
+    {
+      slug: 'renal-filtration',
+      label: 'The kidney on its own',
+      labelJa: '腎臓だけを見る',
+      why: 'A separate kidney model with a tubule in it — this scene has none, and the two kidneys are not the same kidney.',
+      whyJa: '尿細管を持つ別の腎臓モデルです。このシーンに尿細管はなく、二つの腎臓は同じものではありません。',
+    },
+  ],
+  note: 'These are separate models, not stages of one patient. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 人の患者の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

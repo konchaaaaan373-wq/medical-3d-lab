@@ -15,6 +15,39 @@ import { createRandom } from '../../../utils/math.js';
  * The islets are placed by a seeded generator: their number and positions are
  * decorative, and no proportion of the gland is being claimed.
  */
+/**
+ * The pancreas's axis: head (screen left, inside the duodenal C) → neck → body
+ * → tail.
+ *
+ * Exported with the calibre profile because a second builder cuts this same
+ * gland into those named parts; the comment beside each calibre is what that
+ * stretch is, and `pancreasParts.js` reads the divisions from here.
+ */
+export const PANCREAS_PATH = Object.freeze([
+  [-1.42, -0.42, 0.12],
+  [-1.0, -0.12, 0.06],
+  [-0.4, 0.08, 0],
+  [0.35, 0.24, -0.08],
+  [1.1, 0.38, -0.18],
+  [1.72, 0.52, -0.3],
+]);
+
+/**
+ * The head is much the bulkiest part; the tail thins to a point. Drawn thin
+ * and translucent the whole organ read as a ramp rather than as a gland.
+ */
+export const PANCREAS_CALIBRE = Object.freeze([
+  [0, 0.56], // head
+  [0.2, 0.4],
+  [0.34, 0.3], // neck
+  [0.55, 0.34], // body
+  [0.78, 0.26],
+  [1, 0.08], // tail
+]);
+
+export const pancreasPath = () => smoothCurve(PANCREAS_PATH.map((point) => [...point]));
+export const pancreasCalibre = () => smoothProfile(PANCREAS_CALIBRE.map((point) => [...point]));
+
 export function buildPancreas({
   color = '#e0b088',
   ductColor = '#8fd6c4',
@@ -25,26 +58,8 @@ export function buildPancreas({
   const object = new THREE.Group();
   object.name = 'pancreas';
 
-  // Head (screen left, inside the duodenal C) → neck → body → tail.
-  const curve = smoothCurve([
-    [-1.42, -0.42, 0.12],
-    [-1.0, -0.12, 0.06],
-    [-0.4, 0.08, 0],
-    [0.35, 0.24, -0.08],
-    [1.1, 0.38, -0.18],
-    [1.72, 0.52, -0.3],
-  ]);
-
-  // The head is much the bulkiest part; the tail thins to a point. Drawn thin
-  // and translucent the whole organ read as a ramp rather than as a gland.
-  const radius = smoothProfile([
-    [0, 0.56], // head
-    [0.2, 0.4],
-    [0.34, 0.3], // neck
-    [0.55, 0.34], // body
-    [0.78, 0.26],
-    [1, 0.08], // tail
-  ]);
+  const curve = pancreasPath();
+  const radius = pancreasCalibre();
 
   const gland = new TubeSurface(curve, { radius, steps: 120, radial: 22 });
   // 0.84 let 16% of the duct through, which is not translucent — it was a

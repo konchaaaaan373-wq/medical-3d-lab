@@ -56,11 +56,26 @@
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
+ *   --points <list> where to click, as "fx,fy fx,fy …" in canvas fractions.
+ *                   The default four are placed for a solid mass filling the
+ *                   frame. An organ with a real gap down the middle — two lungs
+ *                   with a mediastinum between them — needs its own four, and
+ *                   moving the model to satisfy a fixed grid would be the
+ *                   check deciding the anatomy.
+ *   --empty <fx,fy> a point that is background, for the check that a click on
+ *                   nothing clears the card. The default is at the left edge,
+ *                   clear of the title card above it and of the console along
+ *                   the bottom: the bottom-left corner this used to use is
+ *                   *behind* the console, so the click never reached the canvas
+ *                   and the check could only pass when the card was already
+ *                   empty — which it was, until a scene came along whose clicks
+ *                   all landed on something.
  *   --shots <dir>   write screenshots here
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
  */
 import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { chromiumExecutable } from './lib/browser.mjs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -74,6 +89,85 @@ const value = (name, fallback = null) => {
 const distDir = value('--dist', 'dist');
 const sceneSlug = value('--scene', 'brain-anatomy');
 const shotsDir = value('--shots');
+const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
+
+/**
+ * Where to click on each organ, when the caller does not say.
+ *
+ * `DEFAULT_POINTS` is a cluster around the middle of the frame, which is right
+ * for a brain and wrong for most organs: two lungs have a mediastinum between
+ * them, two kidneys have the spine, a stomach is a J with its own hole in it.
+ * On those, all four default clicks land on background and the run reports
+ * "the picking may be broken" — about a scene whose picking is fine.
+ *
+ * These are read off a render of each scene's opening view at this script's own
+ * viewport, and each one is named for what it is on. They are re-measured when
+ * a scene's opening pose or its geometry moves; a point that stops hitting is a
+ * question about the render, not a number to nudge.
+ */
+const SCENE_POINTS = {
+  // Two lungs and the airway between them, not one mass.
+  'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
+  // Right lobe, left lobe, the inferior third, and the gallbladder below it.
+  'liver-anatomy': [[0.35, 0.40], [0.66, 0.45], [0.45, 0.62], [0.42, 0.75]],
+  // One kidney, the other, and twice on the opened one.
+  'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
+  // Fundus, body, antrum, and the duodenum it empties into.
+  'stomach-anatomy': [[0.62, 0.33], [0.59, 0.45], [0.53, 0.62], [0.40, 0.82]],
+  // The colon frame, clockwise from the ascending limb.
+  'intestine-anatomy': [[0.35, 0.44], [0.49, 0.24], [0.69, 0.50], [0.52, 0.76]],
+  // Head, neck, body, tail — the gland runs across the frame.
+  'pancreas-anatomy': [[0.34, 0.52], [0.45, 0.48], [0.56, 0.45], [0.66, 0.40]],
+  // Two lobes clasping a trachea, with the isthmus across the front of it.
+  'thyroid-anatomy': [[0.44, 0.48], [0.57, 0.48], [0.50, 0.56], [0.50, 0.25]],
+  // The two segments, and the pancreatic tail off to the medial side.
+  'spleen-anatomy': [[0.54, 0.29], [0.54, 0.69], [0.60, 0.20], [0.32, 0.57]],
+  // Apex, body, neck, and a ureter arriving behind.
+  'bladder-anatomy': [[0.50, 0.37], [0.50, 0.51], [0.50, 0.63], [0.42, 0.20]],
+  // Gallbladder, common bile duct, a hepatic duct, and the bowel it opens into.
+  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.45, 0.66], [0.60, 0.74]],
+  // The tube runs down the middle; the trachea is half-transparent in front of
+  // its upper end, so a click there lands on the trachea.
+  'esophagus-anatomy': [[0.48, 0.60], [0.49, 0.80], [0.48, 0.25], [0.487, 0.45]],
+  // A gland and its kidney, on each side.
+  'adrenal-anatomy': [[0.365, 0.36], [0.635, 0.36], [0.35, 0.62], [0.645, 0.62]],
+  // Fundus, body, cervix, and a tube on its way to an ovary.
+  'uterus-anatomy': [[0.50, 0.33], [0.50, 0.50], [0.50, 0.66], [0.33, 0.36]],
+  // The gland, a seminal vesicle above it, and the rectum behind.
+  'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
+  // The route runs bottom-left to middle and then forward.
+  'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
+  // A femoral condyle, the other one, the patella between them, and a plateau.
+  'knee-anatomy': [[0.45, 0.37], [0.56, 0.37], [0.52, 0.44], [0.46, 0.56]],
+  // The head, the scapula behind it, the arch above, and the shaft below.
+  'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
+  // The pelvis, the socket, the head in it, and the femur below.
+  'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+};
+
+const clickPoints = (() => {
+  const raw = value('--points');
+  if (!raw) return SCENE_POINTS[sceneSlug] ?? DEFAULT_POINTS;
+  const points = raw
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map(Number));
+  if (!points.length || points.some((point) => point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1)))) {
+    console.error('--points takes "fx,fy fx,fy …" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return points;
+})();
+const emptyPoint = (() => {
+  const raw = value('--empty');
+  if (!raw) return [0.03, 0.45];
+  const point = raw.split(',').map(Number);
+  if (point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1))) {
+    console.error('--empty takes "fx,fy" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return point;
+})();
 
 const die = (message) => {
   console.error(message);
@@ -141,10 +235,20 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 const problems = [];
 const notes = [];
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null };
+/**
+ * What the drive is doing right now.
+ *
+ * A step that cannot complete reports a Playwright timeout and nothing else,
+ * and one timeout looks like every other one — the run that motivated this said
+ * only "locator.click: Timeout 30000ms exceeded" about a drive with a dozen
+ * clicks in it. The cost of knowing which is one assignment per step.
+ */
+let step = 'opening the scene';
+const at = (what) => { step = what; };
+const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
+  executablePath: chromiumExecutable(chromium),
   headless: !flag('--headed'),
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -189,8 +293,6 @@ const shot = async (name) => {
 try {
   const url = flag('--preview') ? `${base}?preview=1#/${sceneSlug}` : `${base}#/${sceneSlug}`;
   await page.goto(url, { waitUntil: 'networkidle' });
-  // The consent question is a one-time overlay and would sit over the canvas.
-  await page.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
 
   // A locked route answers with the plain "to be updated" page, which has no
   // canvas and never will. Saying so beats a thirty-second timeout that reads
@@ -211,6 +313,25 @@ try {
   });
   observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
   if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
+
+  // The consent question is a one-time overlay and it sits over the canvas —
+  // over the lower middle of it, which is where the clicks below go.
+  //
+  // It is dismissed *here*, after the scene is ready, and not right after
+  // `goto`. Carving an organ is synchronous: the lung holds the main thread for
+  // about seventeen seconds, during which the page paints ten frames and no
+  // click is actionable. A five-second attempt before that timed out, was
+  // swallowed by its own `catch`, and left the banner standing over the model —
+  // so the run reported "the picking may be broken" about a banner. It looked
+  // like a flake because a warm re-run builds fast enough to get the click in.
+  // The fix is to ask at a moment the page can answer, not to wait longer.
+  const consent = page.locator('.consent-banner button').last();
+  if (await consent.count()) {
+    await consent.click({ timeout: 15000 }).catch(() => {
+      problems.push('the consent banner would not close, and it covers the part of the canvas clicked below');
+    });
+    await page.waitForTimeout(300);
+  }
 
   const canvas = page.locator('canvas').first();
   const box = await canvas.boundingBox();
@@ -241,26 +362,82 @@ try {
     return read();
   };
 
+  /**
+   * Where the model actually is, asked rather than assumed.
+   *
+   * This used to click four fixed fractions of the canvas, which is a check on
+   * the composition wearing the clothes of a check on the picking: the framing
+   * changed, the model moved, and two of the four points landed on the
+   * background — reported as "the picking may be broken". The scene already
+   * says what is under the pointer, by setting the cursor, so the points are
+   * found by moving over a grid and keeping the ones the scene answers for.
+   * Nothing is selected while looking.
+   */
+  const overModel = async (fx, fy) => {
+    await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy);
+    await page.waitForTimeout(90);
+    return (await canvas.evaluate((element) => element.style.cursor)) === 'pointer';
+  };
+  const modelPoints = [];
+  const emptyPoints = [];
+  for (const fy of [0.30, 0.40, 0.50, 0.60, 0.20]) {
+    for (const fx of [0.30, 0.42, 0.54, 0.66, 0.20]) {
+      if (modelPoints.length >= 6 && emptyPoints.length >= 1) break;
+      const hit = await overModel(fx, fy);
+      if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
+      if (!hit && emptyPoints.length < 1) emptyPoints.push([fx, fy]);
+    }
+  }
+  await restPointer();
+  if (modelPoints.length < 4) {
+    die(
+      `only ${modelPoints.length} of the sampled points are over the model. Either the model is not ` +
+        'drawn, or it no longer covers the middle of the frame — both are findings, and neither is ' +
+        'something to click around.'
+    );
+  }
+  const atModel = (index) => modelPoints[index % modelPoints.length];
+  const emptyPoint = emptyPoints[0] ?? [0.04, 0.94];
+
   // 1. A click on the model names a structure, in both languages, with a path.
-  for (const [fx, fy] of [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]]) {
+  //    The last point that *hit* is remembered, because a point that misses
+  //    clears the selection: with a miss last, everything below was testing
+  //    what happens to a selection that is not there, and reporting it as the
+  //    scene losing one.
+  let lastHitPoint = null;
+  for (const [fx, fy] of clickPoints) {
     const hit = await clickAt(fx, fy);
     if (hit.en === EMPTY) continue;
+    lastHitPoint = [fx, fy];
     observed.structures.push(hit);
     if (!hit.ja || hit.ja === '部位を選択してください') problems.push(`"${hit.en}" has no Japanese name`);
     if (!hit.where.includes('›')) problems.push(`"${hit.en}" is named without a place in the hierarchy`);
   }
   if (observed.structures.length < 3) {
-    problems.push(`only ${observed.structures.length} click(s) resolved to a structure; the picking may be broken`);
+    problems.push(
+      `only ${observed.structures.length} of ${clickPoints.length} click(s) resolved to a structure. ` +
+        'Either the picking is broken or the points are not on this organ — look at the screenshot ' +
+        'before believing the first one, and see SCENE_POINTS at the top of this file.'
+    );
   }
   await shot('brain-selection');
 
-  const pinned = observed.structures.at(-1);
+  // Everything below pins a structure and watches what happens to it. With
+  // nothing pinned there is nothing to watch, and going on used to produce a
+  // TypeError that buried the sentence above it. Thrown rather than returned,
+  // because the catch below is already the place that turns "this step could
+  // not run" into a finding without discarding the ones already collected.
+  if (!lastHitPoint) throw new Error('no structure was ever selected, so nothing below could be checked');
+  if ((await read()).en === EMPTY) await clickAt(lastHitPoint[0], lastHitPoint[1]);
+  const pinned = await read();
 
   // 2. A drag is not a click. Orbiting away from the pinned structure and
   //    releasing over another one must not reselect.
-  await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.55);
+  const [dragFromX, dragFromY] = atModel(0);
+  const [dragToX, dragToY] = atModel(2);
+  await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5, { steps: 20 });
+  await page.mouse.move(box.x + box.width * dragToX, box.y + box.height * dragToY, { steps: 20 });
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
@@ -269,9 +446,9 @@ try {
   }
 
   // 3. Clicking the background clears rather than keeping a stale card.
-  const afterEmpty = await clickAt(0.04, 0.94);
+  const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
+  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
   await page.waitForTimeout(350);
   await restPointer();
   const reselected = await read();
@@ -280,7 +457,7 @@ try {
   // 3b. A pinned structure is not rewritten by a pointer crossing the model.
   //     This is what `hovered ?? selected` got wrong: moving the mouse replaced
   //     the name — and the controls beside it — with whatever it passed over.
-  await page.mouse.move(box.x + box.width * 0.40, box.y + box.height * 0.34);
+  await page.mouse.move(box.x + box.width * atModel(3)[0], box.y + box.height * atModel(3)[1]);
   await page.waitForTimeout(400);
   const whileHovering = await read();
   if (whileHovering.en !== reselected.en) {
@@ -310,8 +487,19 @@ try {
     }
 
     // And the other direction: selecting a row selects that structure.
-    const row = leaves.nth(Math.min(2, observed.treeRows - 1));
+    //
+    // A *visible* row. The tree opens the branch the selection is in and
+    // leaves the rest closed, so on an organ with more branches than the brain
+    // the third leaf in the DOM is inside a collapsed one — and clicking a row
+    // nobody can see is not the interaction being checked.
+    const openLeaves = page.locator('.anatomy-tree-leaf:visible');
+    const openCount = await openLeaves.count();
+    if (!openCount) problems.push('every row of the part tree is inside a collapsed branch');
+    // `Math.max(0, …)` so a tree with no open row asks for row 0 and fails on
+    // the assertion above rather than on `nth(-1)`.
+    const row = openLeaves.nth(Math.min(2, Math.max(0, openCount - 1)));
     const rowName = (await row.locator('.lang-en').first().textContent()).trim();
+    at('selecting a structure from the part tree');
     await row.click();
     await page.waitForTimeout(350);
     const fromTree = await read();
@@ -324,7 +512,10 @@ try {
     await shot('brain-tree');
 
     // 5. Isolate shows one structure, and Show all puts the model back.
-    const isolate = page.locator('.anatomy-panel-action').first();
+    // By name, not by position: the actions row grew and "the first one" is a
+    // different button than it was.
+    const isolate = page.locator('.anatomy-panel-action[data-action="isolate"]');
+    at('isolating one structure');
     await isolate.click();
     await page.waitForTimeout(500);
     if ((await isolate.getAttribute('aria-pressed')) !== 'true') problems.push('isolating did not take');
@@ -333,7 +524,7 @@ try {
       problems.push(`isolating changed the selection from "${fromTree.en}" to "${whileIsolated.en}"`);
     }
     // Nothing else is clickable while one structure is isolated.
-    await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
+    await page.mouse.click(box.x + box.width * atModel(4)[0], box.y + box.height * atModel(4)[1]);
     await page.waitForTimeout(350);
     const afterStrayClick = await read();
     if (afterStrayClick.en !== EMPTY && afterStrayClick.en !== fromTree.en) {
@@ -341,14 +532,15 @@ try {
     }
     await shot('brain-isolated');
 
-    await page.locator('.anatomy-panel-action.is-restore').click();
+    at('showing everything again');
+    await page.locator('.anatomy-panel-action[data-action="show-all"]').click();
     await page.waitForTimeout(600);
     if ((await isolate.getAttribute('aria-pressed')) !== 'false') {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
     // clickable again.
-    await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.42);
+    await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
@@ -419,8 +611,73 @@ try {
 
   // The display controls live in the panel's own Display tab.
   const tab = (ja) => page.locator('.anatomy-panel-tab', { hasText: ja });
+  at('opening the Display tab');
   await tab('表示').click();
   await page.waitForTimeout(400);
+
+  // 3c. The structure a reader pinned is named on the model, not only in the
+  //     panel — and that label obeys the same occlusion rule as the authored
+  //     ones, so turning away from the structure takes it with it while the
+  //     card goes on naming it.
+  const labelTexts = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.label3d')]
+        .filter((node) => node.style.visibility !== 'hidden' && node.style.opacity !== '0')
+        .map((node) => node.querySelector('.label-ja')?.textContent?.trim())
+        .filter(Boolean)
+    );
+  const pinnedName = async () =>
+    (await page.locator('.anatomy-panel-name.lang-ja').first().textContent()).trim();
+
+  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  await page.waitForTimeout(500);
+  const pinnedForLabel = await pinnedName();
+  const labelled = await labelTexts();
+  observed.labels = labelled;
+  if (labelled.length > 6) {
+    problems.push(`${labelled.length} labels are on screen at once; the cap is 6`);
+  }
+  if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
+    // Not every anchor can be seen from every angle — a fold's outward point can
+    // sit behind the gyrus beside it, which is F-40 — so this is reported with
+    // the structure named rather than asserted blindly.
+    notes.push(
+      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle ` +
+        '(F-40: one anchor point decides for the whole structure).'
+    );
+  } else if (pinnedForLabel) {
+    // It is there. Now turn to the other side: it must go, and the card must not.
+    const otherSide = page.locator('.inspection-choice.inspection-view').filter({ hasText: '右外側' }).first();
+    if (await otherSide.count()) {
+      await page.locator('#anatomy-tab-display').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(300);
+    at('turning to the other side of the head');
+      await otherSide.click({ noWaitAfter: true });
+      await page.waitForTimeout(2500);
+      const afterTurn = await labelTexts();
+      if (afterTurn.includes(pinnedForLabel)) {
+        problems.push(`"${pinnedForLabel}" is still labelled after turning to the other side of the head`);
+      }
+      if ((await pinnedName()) !== pinnedForLabel) {
+        problems.push('hiding a label changed what the panel says is pinned');
+      }
+      await page.locator('.inspection-choice.inspection-view').first().click({ noWaitAfter: true });
+      await page.waitForTimeout(2000);
+      await page.locator('#anatomy-tab-parts').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(200);
+    }
+  }
+
+  // The display controls are read next, and the step above may or may not have
+  // left the panel on the tab that holds them: whether it turns the head at all
+  // depends on whether the structure the pointer happened to land on carries a
+  // visible label from that angle. That is a fact about the model, not about
+  // the panel, and it must not decide whether this check can see the viewpoints
+  // — which is exactly what it did: one run reported "the scene offers no named
+  // viewpoints" about a scene with eight of them, because the panel was sitting
+  // on Parts. So the tab is opened here rather than assumed.
+  await tab('表示').click();
+  await page.waitForTimeout(300);
 
   // 4. Recolouring is a display choice: it must not change what is selected.
   observed.colorModes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map((t) =>
@@ -713,12 +970,189 @@ try {
     await page.waitForTimeout(300);
     await shot('brain-phone');
   }
+  // ---------------------------------------------------------------------
+  // 12. A failed load, and the way out of it.
+  //
+  // The atlas is aborted, so the scene takes its real load-failure branch —
+  // the same one a reader gets when the asset does not arrive. What is being
+  // checked is that the reader can get back **by pressing the button the
+  // product shows them**. This deliberately does not call `page.reload()` to
+  // help: a check that reloads on the product's behalf passes whether or not
+  // the button works, which is the whole thing worth knowing here.
+  //
+  // Each press gets its own page, because a working retry navigates.
+  const atlas = 'assets/brain/brain.glb';
+  const recoveryRuns = [
+    ['click', async (button) => { await button.click(); }],
+    ['Enter', async (button) => { await button.focus(); await button.press('Enter'); }],
+    ['Space', async (button) => { await button.focus(); await button.press(' '); }],
+  ];
+
+  for (const [how, press] of recoveryRuns) {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    const failing = await context.newPage();
+    let blockAtlas = true;
+    await failing.route(`**/${atlas}`, (route) => (blockAtlas ? route.abort('failed') : route.continue()));
+    await failing.goto(url, { waitUntil: 'domcontentloaded' });
+    await failing.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
+    await failing.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'error',
+      null,
+      { timeout: 60000 }
+    ).catch(() => {});
+
+    const failed = await failing.evaluate(() => ({
+      state: window.__app?.scene?.getAnatomyStatus?.().state ?? null,
+      tab: document.querySelector('.anatomy-panel-body')?.dataset.tab ?? null,
+      said: /could not be loaded|読み込めませんでした/.test(document.body.innerText),
+      // What a reader must never be handed.
+      leaks: /npm run|Error:|TypeError/.test(document.body.innerText),
+    }));
+    if (failed.state !== 'error') problems.push(`[retry ${how}] a blocked atlas did not report an error state (${failed.state})`);
+    if (failed.tab !== 'parts') problems.push(`[retry ${how}] the default tab was not Parts (${failed.tab})`);
+    if (!failed.said) problems.push(`[retry ${how}] the failure is not said on screen without opening a tab`);
+    if (failed.leaks) problems.push(`[retry ${how}] a developer hint or raw error reached the reader`);
+
+    // `.loading` is the veil between navigation and the first frame, and
+    // covering everything is its job (`TRANSIENT_OVERLAYS`). It is removed
+    // half a second after the app resolves, so a reader sees the failure
+    // uncovered — but a check that measures inside that window reports the
+    // veil as an obstruction. Wait it out, and say so if it never goes.
+    const veilGone = await failing
+      .waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!veilGone) problems.push(`[retry ${how}] the loading veil never went away over a failed load`);
+
+    const button = failing.locator('.anatomy-panel-retry');
+    if ((await button.count()) !== 1) {
+      problems.push(`[retry ${how}] expected exactly one retry button, found ${await button.count()}`);
+      await context.close();
+      continue;
+    }
+    if (!(await button.isVisible())) {
+      problems.push(`[retry ${how}] the retry button is present but not visible`);
+      await context.close();
+      continue;
+    }
+    // Nothing is covering it: a button a reader cannot hit is not a way out.
+    const box = await button.boundingBox();
+    const covering = await failing.evaluate(
+      ({ x, y }) => {
+        const top = document.elementFromPoint(x, y);
+        return top?.closest('.anatomy-panel-retry') ? null : `${top?.tagName}.${top?.className}`;
+      },
+      { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) }
+    );
+    if (covering) problems.push(`[retry ${how}] the retry button is covered by ${covering}`);
+
+    // Let the atlas through, then press what the reader would press.
+    blockAtlas = false;
+    await press(button);
+    const recovered = await failing
+      .waitForFunction(
+        () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+        null,
+        { timeout: 90000 }
+      )
+      .then(() => true)
+      .catch(() => false);
+    if (!recovered) {
+      problems.push(`[retry ${how}] pressing the retry button did not bring the model back`);
+      await context.close();
+      continue;
+    }
+
+    // Back to a usable model: the failure is gone and a structure can be picked.
+    const after = await failing.evaluate(() => ({
+      retryGone: document.querySelector('.anatomy-panel-retry')?.hidden !== false,
+      statusGone: document.querySelector('.anatomy-panel-status')?.hidden !== false,
+      count: window.__app.scene.getAnatomyStatus().selectableCount,
+    }));
+    if (!after.retryGone) problems.push(`[retry ${how}] the retry button is still offered after recovery`);
+    if (!after.statusGone) problems.push(`[retry ${how}] the failure line survived recovery`);
+    if (!after.count) problems.push(`[retry ${how}] recovered with no selectable structures`);
+
+    await failing.locator('.consent-banner button').last().click({ timeout: 3000 }).catch(() => {});
+    const row = failing.locator('.anatomy-tree-leaf').first();
+    await row.click({ timeout: 15000 }).catch(() => {});
+    const picked = await failing.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
+    if (!picked) problems.push(`[retry ${how}] no structure could be selected after recovering`);
+    else notes.push(`retry by ${how}: recovered to ${after.count} structures, then selected ${picked}`);
+    if (shotsDir && how === 'click') await failing.screenshot({ path: join(shotsDir, 'brain-recovered.png') });
+    await context.close();
+  }
+
+  // 13. The same button, at the sizes where the panel is a sheet rather than
+  //     docked. The summary carries it in both layouts, so it should be on
+  //     screen without opening anything — but "should" is what this checks.
+  //     The consent card is a declared transient overlay, so the overlap it
+  //     causes is recorded rather than counted as a defect.
+  for (const [width, height] of [[844, 390], [375, 667]]) {
+    const context = await browser.newContext({ viewport: { width, height } });
+    const small = await context.newPage();
+    await small.route(`**/${atlas}`, (route) => route.abort('failed'));
+    await small.goto(url, { waitUntil: 'domcontentloaded' });
+    await small.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'error',
+      null,
+      { timeout: 60000 }
+    ).catch(() => {});
+    const smallVeilGone = await small
+      .waitForFunction(() => !document.querySelector('.loading'), null, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!smallVeilGone) problems.push(`[${width}x${height}] the loading veil never went away over a failed load`);
+    await small.waitForTimeout(400);
+
+    const size = `${width}x${height}`;
+    const at = async () => small.evaluate(() => {
+      const button = document.querySelector('.anatomy-panel-retry');
+      if (!button) return { present: false };
+      const box = button.getBoundingClientRect();
+      if (!box.width || !box.height) return { present: true, drawn: false };
+      const x = Math.round(box.left + box.width / 2);
+      const y = Math.round(box.top + box.height / 2);
+      const top = document.elementFromPoint(x, y);
+      const onScreen = box.top >= 0 && box.bottom <= window.innerHeight
+        && box.left >= 0 && box.right <= window.innerWidth;
+      return {
+        present: true,
+        drawn: true,
+        onScreen,
+        covering: top?.closest('.anatomy-panel-retry') ? null : `${top?.tagName}.${top?.className}`.slice(0, 60),
+      };
+    });
+
+    // Before the consent card is answered.
+    const before = await at();
+    if (before.covering) {
+      notes.push(`${size}: before the usage-data card is answered, the retry button is under ${before.covering} (a declared transient overlay)`);
+    }
+
+    await small.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
+    await small.waitForTimeout(400);
+    const after = await at();
+    if (!after.present) problems.push(`[${size}] a failed load offered no retry button`);
+    else if (!after.drawn) problems.push(`[${size}] the retry button has no box`);
+    else {
+      if (!after.onScreen) problems.push(`[${size}] the retry button is outside the viewport`);
+      if (after.covering) problems.push(`[${size}] the retry button is covered by ${after.covering}`);
+      if (!after.covering && after.onScreen) notes.push(`${size}: the retry button is on screen and uncovered without opening the sheet`);
+    }
+    if (shotsDir) await small.screenshot({ path: join(shotsDir, `brain-retry-${size}.png`) });
+    await context.close();
+  }
 } catch (error) {
   // A step that cannot complete is a finding, not a reason to throw away the
   // findings collected before it. Breaking the modal boundary made a later
   // click time out, and the timeout discarded the sentence that said why — so
   // the run reported a stack trace where it had already worked out the cause.
-  problems.push(`the drive stopped: ${error.message.split('\n')[0]}`);
+  problems.push(`the drive stopped while ${step}: ${error.message.split('\n')[0]}`);
+  // The first line says a click timed out; the rest says what it was waiting
+  // for — covered, out of view, still moving — and that is the part somebody
+  // reading this needs.
+  console.error(`\nwhile ${step}:\n${error.message}`);
 } finally {
   await browser.close();
   server.close();
@@ -728,6 +1162,7 @@ console.log(`Anatomy interaction — ${sceneSlug}, ${observed.selectableCount} s
 console.log(`  structures named by click: ${observed.structures.map((s) => `${s.en} / ${s.ja}`).join('; ') || 'none'}`);
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
+console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
 console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
 for (const note of notes) console.log(`  note: ${note}`);
 

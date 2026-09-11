@@ -66,6 +66,15 @@ import * as THREE from 'three';
  * result written down. `tests/liver-anatomy.test.js` re-measures it, so an
  * offset edited by hand fails rather than drifting.
  *
+ * **Re-fitted on 2026-09-10, when the outer shape was corrected.** The liver
+ * had been drawn half its own height, and the offsets below are where the
+ * planes have to sit in the taller organ. Nothing in `SEGMENT_VOLUME_SHARES`
+ * moved: the targets are what the literature reports and the offsets are what
+ * this shape needed to hit them, which is the whole point of keeping the two
+ * kinds of number apart. The new fit is the closer of the two — every segment
+ * and sector now lands within 0.3 percentage points of its target, against
+ * margins of one to two before.
+ *
  * A fitted offset is **not** a measurement of anything. It says where a plane
  * had to sit in *this* organ's shape to reproduce the reference specimen's
  * volumes; a different liver shape would need different offsets for the same
@@ -78,21 +87,21 @@ export const PLANES = {
    * the real division between right and left liver, and it is oblique — not
    * the vertical line a diagram usually draws.
    */
-  cantlie: { normal: [1, 0, -0.22], through: [-0.02, 0, 0] },
+  cantlie: { normal: [1, 0, -0.22], through: [0.206, 0, 0] },
   /** The right hepatic vein, between the anterior and posterior right sectors. */
-  rightHepaticVein: { normal: [1, 0, 0.42], through: [-0.494, 0, 0] },
+  rightHepaticVein: { normal: [1, 0, 0.42], through: [-0.392, 0, 0] },
   /**
    * The left hepatic vein, running with the falciform ligament: segment IV on
    * its right, segments II and III on its left.
    */
-  falciform: { normal: [1, 0, -0.1], through: [0.21, 0, 0] },
+  falciform: { normal: [1, 0, -0.1], through: [0.429, 0, 0] },
   /**
    * The portal plane, through the right and left portal branches. Nearly
    * transverse, tipped a little because the left branch runs higher than the
    * right. It divides segments IV to VIII into their superior and inferior
    * halves; the left lateral sector has its own plane, below.
    */
-  portal: { normal: [-0.12, 1, 0], through: [0, -0.326, 0] },
+  portal: { normal: [-0.12, 1, 0], through: [0, -0.229, 0] },
   /**
    * The umbilical portion of the left portal vein, which is what separates
    * segment II from segment III.
@@ -104,7 +113,7 @@ export const PLANES = {
    * 1% of the liver instead of eight. The tilt is the anatomy, not a fudge to
    * make a number land.
    */
-  leftPortal: { normal: [0.25, 1, -0.62], through: [0, -0.126, 0.05] },
+  leftPortal: { normal: [0.25, 1, -0.62], through: [0, 0.160, 0.05] },
   /**
    * The back of the porta hepatis. Everything behind it is taken as the caudate
    * lobe, which is not part of either the right or the left liver.
@@ -117,7 +126,7 @@ export const PLANES = {
    * at all. Taken as a slab it partitions cleanly, at the cost of calling a
    * thin posterior shaving of its neighbours "caudate".
    */
-  caudateFront: { normal: [0, 0, 1], through: [0, 0, -0.747] },
+  caudateFront: { normal: [0, 0, 1], through: [0, 0, -0.806] },
 };
 
 /**

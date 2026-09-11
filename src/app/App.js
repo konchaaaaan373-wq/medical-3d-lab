@@ -3,12 +3,12 @@ import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
-import { betaUnlocked } from './releaseGate.js';
+import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect } from './framing.js';
+import { framePose, distanceScaleForAspect, fitPoseToSafeArea, orbitLimitsForSubject } from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -30,6 +30,7 @@ import { createPressureWavePanel } from '../components/PressureWavePanel.js';
 import { createBullseyePanel } from '../components/BullseyePanel.js';
 import { createChartPanel } from '../components/ChartPanel.js';
 import { createModelScopePanel } from '../components/ModelScopePanel.js';
+import { createRelatedScenesPanel } from '../components/RelatedScenesPanel.js';
 import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
 import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
@@ -38,6 +39,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { attributionForScene } from '../catalog/attribution.js';
 import { createAnatomyTreePanel } from '../components/AnatomyTreePanel.js';
 import { createAnatomyPanel } from '../components/AnatomyPanel.js';
 import { createInspectionPanel } from '../components/InspectionPanel.js';
@@ -52,7 +54,17 @@ import { emitAppEvent } from './appEvents.js';
  *
  * @param {{ stage: HTMLElement, ui: HTMLElement }} mounts
  */
-export async function createApp({ stage, ui }) {
+/**
+ * @param {object} options
+ * @param {HTMLElement} options.stage where the renderer draws
+ * @param {HTMLElement} options.ui the shell the panels are appended to
+ * @param {() => void} [options.onRetryModel] how a reader recovers from a model
+ *   that failed to load. Passed through to the anatomy panel, which renders the
+ *   button only if this is here. The shell owns what recovery means — today
+ *   `src/main.js` reloads the page, the same thing the WebGL fallback's own
+ *   retry does — so this file neither reloads nor reconstructs anything.
+ */
+export async function createApp({ stage, ui, onRetryModel = null }) {
   const viewer = new Viewer(stage);
 
   const SceneClass = await loadScene(resolveSceneId());
@@ -142,6 +154,13 @@ export async function createApp({ stage, ui }) {
     return Math.min(0.45, Math.max(0, (height - rect.top) / height));
   };
 
+  // The shared orbit floor is the last word on where the camera ends up — it is
+  // re-applied on every `controls.update()`, after the framing has run — and it
+  // was set for a scene an atlas is not the size of. A scene that can say what
+  // it is drawing gets limits measured from that instead. See
+  // `orbitLimitsForSubject`.
+  Object.assign(viewer.controls, orbitLimitsForSubject(scene.getSubjectBounds?.(), viewer.controls));
+
   const shot = framePose(
     SceneClass.cameraPose,
     viewer.camera.aspect,
@@ -173,9 +192,57 @@ export async function createApp({ stage, ui }) {
    */
   let userZoom = 1;
 
+  /**
+   * What each edge of the frame is covered by, as a fraction of it.
+   *
+   * Measured from the elements themselves, because they move: the console grows
+   * with its copy, the anatomy panel is docked on a wide window and a sheet on a
+   * narrow one, and the header is there throughout. Only the bands that run the
+   * whole way across an edge are counted — the scene card sits in the top-left
+   * corner and taking it as a full-height inset would shove the model right for
+   * something it clears anyway.
+   */
+  const safeAreaInsets = () => {
+    const width = viewer.container.clientWidth;
+    const height = viewer.container.clientHeight;
+    if (!width || !height) return null;
+    /**
+     * An element only counts as an edge band when it crosses the middle of the
+     * frame, because that is where the subject is. The anatomy panel docked
+     * down a wide window does cross it and genuinely takes the right-hand third;
+     * the same panel on a phone is a summary in the top corner, and counting it
+     * as a right-hand band shoved the model into the left edge and shrank it to
+     * a third of the height for something it was never behind.
+     */
+    const band = (selector, crosses, read) => {
+      const element = ui.querySelector(selector);
+      if (!element) return 0;
+      const rect = element.getBoundingClientRect();
+      if (!rect.width || !rect.height || !crosses(rect)) return 0;
+      return Math.min(0.5, Math.max(0, read(rect)));
+    };
+    const spansWidth = (rect) => rect.left < width / 2 && rect.right > width / 2;
+    const spansHeight = (rect) => rect.top < height / 2 && rect.bottom > height / 2;
+    // The same panel is a different band on a different window. Docked down a
+    // wide window it takes the right; collapsed to a summary on a phone it sits
+    // across the top, so there it is part of the top band instead — which is
+    // why this asks where the element actually is rather than which one it is.
+    const railAcrossTop = (rect) =>
+      spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
+    return {
+      top: Math.max(
+        band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
+        band('.rail', railAcrossTop, (rect) => rect.bottom / height)
+      ),
+      bottom: band('.console', spansWidth, (rect) => (height - rect.top) / height),
+      right: band('.rail', spansHeight, (rect) => (width - rect.left) / width),
+      left: 0,
+    };
+  };
+
   /** The scene's authored framing for the current view and window, before zoom. */
-  const framedPose = (pose) =>
-    framePose(
+  const framedPose = (pose) => {
+    const framed = framePose(
       pose,
       viewer.camera.aspect,
       dataView ? 'data' : 'learning',
@@ -183,6 +250,25 @@ export async function createApp({ stage, ui }) {
       bottomInset(),
       SceneClass.framing
     );
+    // An anatomy scene knows what it is currently drawing, so its viewpoints can
+    // be fitted to the band the panels leave rather than to the whole canvas.
+    // Every other scene keeps the framing it has: this is opt-in on a capability
+    // the scene either offers or does not.
+    const bounds = scene.getSubjectBounds?.();
+    const insets = bounds ? safeAreaInsets() : null;
+    return insets ? fitPoseToSafeArea(framed, {
+      bounds,
+      aspect: viewer.camera.aspect,
+      fovDegrees: viewer.camera.fov,
+      insets,
+      // A scene may also say how much of that band its subject should take. The
+      // brain is the whole of what is drawn and fills it; the heart is an organ
+      // with vessels leaving it in every direction, and filling the band cut
+      // every one of them off flush with an edge. It is a composition, so the
+      // scene that knows what it is drawing owns it.
+      ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
+    }) : framed;
+  };
 
   const setShot = (pose) => {
     shotSource = pose;
@@ -224,6 +310,11 @@ export async function createApp({ stage, ui }) {
     // arrives at the distance the viewer chose rather than undoing it.
     setShot(shotSource);
     syncZoomLimits();
+    // The reader changed what they are looking at. `start` on the controls
+    // catches a drag, a pinch and a wheel; it does not catch this, because the
+    // camera is moved here directly — and both zoom buttons and the +/- keys
+    // arrive through this one function.
+    anatomyPanel?.noteDisplayChanged?.();
   }
 
   function syncZoomLimits() {
@@ -235,10 +326,26 @@ export async function createApp({ stage, ui }) {
 
   // Re-frame on rotate/resize: a portrait phone needs a lot more distance than a laptop.
   window.addEventListener('resize', () => {
+    // Before the shot, because the shot is fitted to the bands the panels leave
+    // and those bands are what this changes.
+    syncCompactLayout();
     setShot(shotSource);
     pvPanel?.resize();
     wavePanel?.resize();
+    anatomyPanel?.noteDisplayChanged?.();
   });
+
+  // Orbiting and zooming change what the reader is looking at, and the anatomy
+  // panel has no way to know: it has no camera and no canvas. Telling it is the
+  // owner's job, and all it does with it is drop a report about a viewpoint the
+  // reader has left.
+  //
+  // `start`, not `change`. `change` fires for every camera move including the
+  // ones this app makes — applying a viewpoint tweens the camera, which fired
+  // `change`, which cleared the very report the viewpoint had just been applied
+  // to produce. `start` fires when the **reader** begins a drag, a pinch or a
+  // wheel, which is the event this is actually about.
+  viewer.controls?.addEventListener?.('start', () => anatomyPanel?.noteDisplayChanged?.());
 
   // Only tweens while a "reset view" is in flight, so it never fights a drag.
   const view = { active: false, resumeAutoRotate: true };
@@ -254,6 +361,42 @@ export async function createApp({ stage, ui }) {
   /** Set below, when the rail is assembled; the panel toggles a class on it. */
   let railElement = null;
   const isAnatomyScene = Boolean(scene.getAnatomyTree && scene.getAnatomySelection);
+  // The dense-console treatment is about what an anatomy scene's controls are,
+  // not about which organ it is. It began keyed on `data-scene='brain-anatomy'`
+  // and stayed there while the brain was the only one; the heart wants exactly
+  // the same frame, and a second scene id in twenty-four selectors is how a
+  // rule stops being a rule.
+  if (isAnatomyScene) ui.dataset.anatomy = 'yes';
+
+
+  /**
+   * A short, wide frame is a different problem from a small one.
+   *
+   * A phone on its side gives 390 px of height and 844 of width. The header,
+   * the title card, the console and the consent card are each a sensible height
+   * on their own and together they leave the model a strip. The answer is not a
+   * smaller model — it is a smaller *control area*: the title card's heading
+   * duplicates the one already in the header, and the console's stage heading
+   * duplicates the one in the panel. In this frame both go, and nothing that
+   * does something goes with them.
+   *
+   * **Anatomy scenes only.** A disease scene's console carries the progression
+   * it exists for, and compressing that would be removing the scene. The flag
+   * is an attribute so the whole rule lives in one CSS block that cannot reach
+   * any other scene.
+   */
+  const COMPACT_MAX_HEIGHT = 460;
+  const COMPACT_MIN_ASPECT = 1.6;
+  const syncCompactLayout = () => {
+    const short = window.innerHeight <= COMPACT_MAX_HEIGHT;
+    const wide = window.innerWidth / Math.max(1, window.innerHeight) >= COMPACT_MIN_ASPECT;
+    const compact = isAnatomyScene && short && wide;
+    if (compact) ui.dataset.anatomyCompact = 'landscape';
+    else delete ui.dataset.anatomyCompact;
+    return compact;
+  };
+  syncCompactLayout();
+
 
   /**
    * The viewer's own vantage during the guided sequence.
@@ -353,7 +496,14 @@ export async function createApp({ stage, ui }) {
     return standardInspectionViews(comparisonOrStageShot()).find((candidate) => candidate.id === id) ?? null;
   }
 
-  function applyInspectionView(id) {
+  /**
+   * @param {string} id
+   * @param {{byReader?: boolean}} [options] `byReader: false` when the app is
+   *   applying a viewpoint on the reader's behalf — a display recipe turning to
+   *   the view it is defined at. Such a move must not invalidate the report the
+   *   recipe is about to write; a viewpoint the reader presses must.
+   */
+  function applyInspectionView(id, { byReader = true } = {}) {
     if (!inspectionViews.some((candidate) => candidate.id === id)) return false;
     // A guided sequence and a recording own the camera outright and rewrite the
     // shot every frame. Accepting a viewpoint here would leave the panel
@@ -371,6 +521,7 @@ export async function createApp({ stage, ui }) {
     viewer.controls.autoRotate = false;
     syncZoomLimits();
     inspectionPanel?.setView(id);
+    if (byReader) anatomyPanel?.noteDisplayChanged?.();
     return true;
   }
 
@@ -510,7 +661,43 @@ export async function createApp({ stage, ui }) {
   // Optional: what the model answers, what it does not, and where it came from.
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
+  /**
+   * Where this model says the rest is shown, filtered to what this build opens.
+   *
+   * One list, decided once. The scope panel renders it at the bottom of "what
+   * this model does not represent", which is the right place for the detail and
+   * the wrong place to *find* it — so the same list is handed out on the app's
+   * API for a shallower entry point elsewhere in the shell. Whoever adds that
+   * entry point reads this rather than writing the routes out again: two copies
+   * of a link list is how one of them comes to offer a scene the gate closed.
+   */
+  // A scene the release is holding back is not in this build, so a link to it
+  // would be a link to "TO BE UPDATED". They are dropped here, once, and the
+  // gate — not the panel and not the shell — decides which.
+  const isSceneSlugOpen = (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug });
+  /**
+   * Declared on the scene's own meta, or — for a scene whose model sources are
+   * pinned to a recorded publication decision — on its catalogue entry.
+   *
+   * The brain atlas is the second kind. Adding a route to `src/data/
+   * brainAnatomy.js` moves that file's digest, which moves the card revision,
+   * which makes the beta's publication decision stale and closes the one scene
+   * the beta publishes. Which route a scene offers is catalogue information
+   * anyway, so for that case it is declared where the catalogue is and nothing
+   * about the model changes.
+   */
+  const relatedSource = meta.related ?? entry?.related ?? null;
+  const related = Object.freeze({
+    scenes: Object.freeze(
+      (relatedSource?.scenes ?? []).filter((item) => item?.slug && isSceneSlugOpen(item.slug)).map(Object.freeze)
+    ),
+    note: relatedSource?.note ?? null,
+    noteJa: relatedSource?.noteJa ?? null,
+  });
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  // One place, on every scene. The scope panel says what the model does not
+  // represent; this says where the rest is shown.
+  const relatedPanel = createRelatedScenesPanel(related);
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
 
   inspectionPanel = createInspectionPanel({
@@ -548,6 +735,10 @@ export async function createApp({ stage, ui }) {
         // The panel's summary already carries the name and the breadcrumb, and
         // a second copy inside the scrolling body is the copy that scrolls away.
         heading: !isAnatomyScene,
+        // Who to credit, read from the asset records rather than written into
+        // the panel: this panel serves every anatomy scene, and a literal was
+        // only ever right for one of them.
+        attribution: attributionForScene(entry?.id ?? entry?.slug ?? meta.id),
       })
     : null;
 
@@ -557,6 +748,45 @@ export async function createApp({ stage, ui }) {
   // share, and `tests/anatomy-contract.test.js` is what holds the scene to it.
   const anatomyTree = scene.getAnatomyTree ? createAnatomyTreePanel(scene) : null;
 
+  /**
+   * Take the camera to one structure, at the angle it is already being seen from.
+   *
+   * The same fit the whole model gets, given a smaller subject: the band the
+   * panels leave, the distance that fills it, the pan that centres it. The
+   * direction is left alone — a reader who asked to go *closer* to something did
+   * not ask to be turned around, and a viewpoint they chose is not undone by it.
+   *
+   * A structure the scene cannot bound is not a failure to report loudly: the
+   * caller offers this only for structures it got from the scene, so `false`
+   * here means the model is not loaded yet.
+   */
+  const focusOnStructure = (id) => {
+    const bounds = scene.getStructureBounds?.(id);
+    if (!bounds) return false;
+    const pose = { position: viewer.camera.position.clone(), target: viewer.controls.target.clone() };
+    const insets = safeAreaInsets();
+    const fitted = insets
+      ? fitPoseToSafeArea(pose, {
+          bounds,
+          aspect: viewer.camera.aspect,
+          fovDegrees: viewer.camera.fov,
+          insets,
+          // Closer than the whole model sits, because the subject is one part
+          // of it and the point of asking was to see it larger.
+          coverage: 0.5,
+        })
+      : pose;
+    userZoom = 1;
+    shot.target.copy(fitted.target);
+    shot.position.copy(fitted.position);
+    view.active = true;
+    viewer.controls.autoRotate = false;
+    // "Go to it" moves the camera without touching the controls, so nothing
+    // else would notice.
+    anatomyPanel?.noteDisplayChanged?.();
+    return true;
+  };
+
   anatomyPanel = isAnatomyScene
     ? createAnatomyPanel({
         scene,
@@ -564,6 +794,17 @@ export async function createApp({ stage, ui }) {
         display: inspectionPanel.element,
         legend: legend.element,
         detail: anatomyInfo.element,
+        // Handed straight through. The panel decides when to offer it — only on
+        // a failed load — and the shell decides what it does.
+        onRetryModel,
+        onFocusStructure: focusOnStructure,
+        // Through the control that owns the value, so the slider, the stage
+        // readout and the model all move together.
+        onLayerChange: (value) => seek(value),
+        // Same rule for the viewpoint: the inspection panel owns which one is
+        // current, so a scene that reports a new one is applied through it
+        // rather than moving the camera behind the control's back.
+        onViewChange: (id, options) => applyInspectionView(id, options),
         // Docked, the panel's body is the one scroller and the rail must not be
         // a second one around it. As a sheet the body is `position: fixed` and
         // out of the rail entirely, so the rail goes back to scrolling like it
@@ -729,6 +970,9 @@ export async function createApp({ stage, ui }) {
     ...chartPanels.map((panel) => panel.element),
     controlsInConsole ? null : modelControls?.element,
     scopePanel?.element,
+    // Last, under the model's own limits: "what this does not represent" is the
+    // question the way on answers.
+    relatedPanel?.element,
   ]);
   // And it scrolls for the same reason the rail does — but it was the one
   // scroll box in the frame that never said so. Measured on the ischemia scene,
@@ -757,6 +1001,24 @@ export async function createApp({ stage, ui }) {
     labels.element
   );
 
+  /**
+   * The structure a reader picked gets a label on the model, not only a card.
+   *
+   * Both of these go through the same layer the authored landmarks do, so they
+   * take the same occlusion test and the same cap: a selection outranks a hover,
+   * a hover outranks a landmark, and when there is not room the landmarks are
+   * the ones that step back. A structure the display is not drawing has no
+   * label — and none of this touches the panel, which goes on naming what is
+   * pinned whether or not the model can show it.
+   */
+  if (isAnatomyScene && scene.getStructureAnnotation) {
+    const label = (kind) => (structure) => {
+      labels.setStructureLabel(kind, structure ? scene.getStructureAnnotation(structure.id) : null);
+    };
+    scene.onAnatomySelection(label('selection'));
+    scene.onAnatomyHover?.(label('hover'));
+  }
+
   // --- state flow -----------------------------------------------------------
   playback.onChange = (value, playing) => {
     scene.setProgress(value);
@@ -766,6 +1028,10 @@ export async function createApp({ stage, ui }) {
     controlPanel.update(value, playing);
     refreshModelReadouts();
     applyLabelFocus();
+    // Which actions the anatomy panel offers depends on this value — a deep
+    // structure the layer has just brought into view no longer needs a way to
+    // be brought into view.
+    anatomyPanel?.refresh?.();
 
   };
 
@@ -810,6 +1076,90 @@ export async function createApp({ stage, ui }) {
     return SceneClass.cameraPose;
   }
 
+  /**
+   * Take the camera somewhere a guided explanation names, and point the labels
+   * at what that step is about.
+   *
+   * **Presentation only.** It moves the camera and narrows the label layer; it
+   * sets no progression, runs no solve and changes nothing the model is in. A
+   * step that turns the reader's attention from the ventricle to the vessels
+   * behind it is a different picture of the same solved state, and this is what
+   * makes that possible without the step also being a state change.
+   *
+   * It is an *explicit* operation — the reader pressed Next — so it is allowed
+   * to move a camera the reader had orbited, exactly as choosing a named
+   * viewpoint is. That is a different thing from the automatic re-framing that
+   * follows a panel resize, which stops as soon as anyone touches the camera.
+   *
+   * The framings themselves belong to the scene (`getGuideFramings`), because
+   * where the pulmonary veins lie is a fact about the anatomy on screen.
+   *
+   * @param {string|null} id a framing the scene declares, or null for its own
+   * @param {{focus?: string[]|null}} [options] annotation ids to point at
+   * @returns {boolean} whether the id was one the scene offers
+   */
+  function applyGuideFraming(id, { focus = null } = {}) {
+    if (sequenceOwnsCamera()) return false;
+    storyFocus = focus ?? null;
+    const framing = id ? scene.getGuideFramings?.()[id] : null;
+    if (id && !framing) {
+      applyLabelFocus();
+      return false;
+    }
+    userZoom = 1;
+    storyView.orbit.identity();
+    if (framing) {
+      const target = framing.target.clone();
+      setShot({
+        target,
+        position: target.clone().addScaledVector(framing.direction.clone().normalize(), framing.distance),
+      });
+    } else {
+      setShot(comparisonOrStageShot());
+    }
+    applyLabelFocus();
+    view.active = true;
+    view.resumeAutoRotate = false;
+    viewer.controls.autoRotate = false;
+    inspectionPanel?.clearView();
+    syncZoomLimits();
+    return true;
+  }
+
+  /**
+   * Put the model into the state a guided explanation's step is about.
+   *
+   * **This one does change the model**, which is exactly why it is not part of
+   * `applyGuideFraming`. A respiratory guide's opening step is an ordinary lung
+   * and its second step is the same lung with narrowed airways; the difference
+   * between them is a model control, not a camera. So the two live apart and a
+   * reader of a step can tell which kind of change it asks for.
+   *
+   * It goes through the scene's public setters — the same ones the stepped
+   * walk-through and the model-control panel use — so there is no private path
+   * into the physiology and every read-out re-derives from the solved state.
+   *
+   * @param {{controls?: Record<string, number>|null, compare?: boolean|null}} step
+   * @returns {boolean} whether anything moved
+   */
+  function applyGuideState({ controls = null, compare = null } = {}) {
+    let moved = false;
+    if (controls && scene.setModelControl) {
+      for (const [id, value] of Object.entries(controls)) {
+        scene.setModelControl(id, value);
+        moved = true;
+      }
+      scene.settleModel?.();
+      modelControls?.sync(scene.getModelControls?.() ?? []);
+      refreshModelReadouts();
+    }
+    if (compare !== null && scene.setComparison && Boolean(compare) !== comparing) {
+      setComparison(Boolean(compare));
+      moved = true;
+    }
+    return moved;
+  }
+
   function seek(value) {
     playback.pause();
     playback.set(value);
@@ -828,6 +1178,8 @@ export async function createApp({ stage, ui }) {
     view.active = true;
     view.resumeAutoRotate = true;
     if (initialInspectionView) inspectionPanel?.setView(initialInspectionView);
+    // "View" is the reader asking for the authored framing back.
+    anatomyPanel?.noteDisplayChanged?.();
     // Auto-rotate would pull against the tween and stall it half-way;
     // it is switched back on once the camera has actually landed.
     viewer.controls.autoRotate = false;
@@ -1111,6 +1463,78 @@ export async function createApp({ stage, ui }) {
   viewer.controls.target.copy(shot.target);
   viewer.controls.update();
   view.active = false;
+
+  /**
+   * Re-frame when the bands move, not only when the window does.
+   *
+   * The camera is fitted to the part of the frame no panel is covering, and
+   * those panels are measured from the elements. The elements are not finished
+   * when the app is: the shell marks `#ui` after `createApp` returns, and the
+   * stylesheet keyed on that mark releases the lower console from a full-width
+   * card to a small one in the corner. The band the console had been taking —
+   * a fifth of the frame height, measured — disappears, and nothing told the
+   * camera. It stayed framed for a band that no longer existed: the heart
+   * opened at 4.37 world units where the settled layout asks for 3.44, and it
+   * stayed there until the reader pressed a fixed view, which re-framed and
+   * jumped. A reader who never pressed one never saw the framing the scene
+   * meant.
+   *
+   * So the bands are watched rather than assumed, and — this is the part that
+   * makes it safe — a re-frame happens only when they have actually changed.
+   * The panels' contents change constantly, and re-framing on any of that would
+   * pull the camera back from wherever the reader had orbited to. Same call the
+   * resize listener makes, for the same reason.
+   */
+  if (typeof ResizeObserver === 'function' && typeof MutationObserver === 'function') {
+    const measure = () => JSON.stringify(safeAreaInsets());
+    let applied = measure();
+    let pending = false;
+    const bandsMayHaveMoved = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(() => {
+        pending = false;
+        const now = measure();
+        if (now === applied) return;
+        applied = now;
+        // Whether the reader has taken the camera since the last framing. If
+        // they have not, the camera is exactly where the framing left it and
+        // should follow the framing to the new band. If they have, it is theirs:
+        // the new framing still applies to the next viewpoint they choose, but
+        // nothing pulls them out of the view they are in.
+        const untouched =
+          viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
+          viewer.controls.target.distanceToSquared(shot.target) < 1e-6;
+        setShot(shotSource);
+        if (!untouched) return;
+        viewer.camera.position.copy(shot.position);
+        viewer.controls.target.copy(shot.target);
+        viewer.controls.update();
+      });
+    };
+
+    const sizes = new ResizeObserver(bandsMayHaveMoved);
+    for (const element of [railElement, consoleElement]) {
+      if (element) sizes.observe(element);
+    }
+    // The console does not resize itself: it is restyled by an attribute the
+    // shell writes on `#ui`, which no `ResizeObserver` sees as a cause.
+    const marks = new MutationObserver(bandsMayHaveMoved);
+    marks.observe(ui, { attributes: true, childList: true });
+
+    const stopWatching = () => {
+      sizes.disconnect();
+      marks.disconnect();
+    };
+    // Only until the reader arrives. This exists to correct a framing computed
+    // before the shell had finished marking itself; once someone has taken the
+    // camera, the window's own resize listener is what the framing follows, as
+    // it always was. Watching past that point would be one more thing moving
+    // the camera while a reader is using it.
+    viewer.controls.addEventListener('start', stopWatching, { once: true });
+    window.addEventListener('pagehide', stopWatching, { once: true });
+  }
+
   // The canvases have no size until they are in the document.
   pvPanel?.resize();
   wavePanel?.resize();
@@ -1146,6 +1570,36 @@ export async function createApp({ stage, ui }) {
     causalStory: causalStory
       ? { panel: causalStory, set: setCausalStory, isActive: () => storyStepping }
       : null,
+    /**
+     * The onward scenes this build opens, and the sentence that has to travel
+     * with them. Empty when the model declares none or the gate closed them
+     * all; never a route to a placeholder page.
+     */
+    /**
+     * A guided explanation's camera. `apply(null)` returns the scene's own
+     * framing. Nothing here changes what the model is set to.
+     */
+    guideView: {
+      apply: applyGuideFraming,
+      framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
+    },
+    related,
+    /**
+     * A guided explanation's *model* state, kept apart from its camera so that
+     * the two kinds of step are distinguishable from outside as well as in.
+     * `capture()` / `restore()` are the same session helpers every other mode
+     * that drives the model uses.
+     */
+    guideState: {
+      apply: applyGuideState,
+      capture: () => captureSessionState({ playback, viewer, scene, comparing }),
+      restore: (state) => {
+        if (!state) return;
+        restoreSessionState(state, { playback, viewer, scene, setComparison });
+        modelControls?.sync(scene.getModelControls?.() ?? []);
+        refreshModelReadouts();
+      },
+    },
     inspection: {
       panel: inspectionPanel,
       setOpen: setInspectionOpen,

@@ -1,6 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CAPACITY_ML as ACHALASIA_CAPACITY_ML,
+  REFERENCE as ACHALASIA_REFERENCE,
+  solveAchalasia,
+} from '../src/models/achalasia.js';
+import {
+  LUMEN_COMPRESSION,
+  REST_SHARES as PROSTATE_REST_SHARES,
+  solveProstaticEnlargement,
+} from '../src/models/prostaticEnlargement.js';
+import { INNER_GLAND_FRACTION } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
+import {
+  DEFAULT_CONTROLS as BILIARY_DEFAULTS,
+  REFERENCE as BILIARY_REFERENCE,
+  solveBiliaryObstruction,
+} from '../src/models/biliaryObstruction.js';
+import {
   BASELINE_INTERSTITIAL_VOLUME_ML as EDEMA_BASELINE_WATER_ML,
   INTERSTITIUM as EDEMA_INTERSTITIUM,
   LYMPHATICS as EDEMA_LYMPHATICS,
@@ -946,4 +962,126 @@ test('calibration: diversion reduces the shunt without abolishing it', () => {
   assert.equal(fullyFlooded.floodedFraction, 1, 'the test needs a completely flooded lung');
   assert.ok(fullyFlooded.shuntFraction > 0.5, `shunt was ${fullyFlooded.shuntFraction.toFixed(2)}`);
   assert.ok(fullyFlooded.shuntFraction < 0.85, 'but diversion keeps it short of the whole output');
+});
+
+test('calibration: the open biliary tree lands on an ordinary resting pressure', () => {
+  // Defends `duct-resistances`. The four resistances were chosen to put an
+  // unobstructed common bile duct near ten centimetres of water at an ordinary
+  // bile flow, with nearly all of the normal resistance in the sphincter. That
+  // they still do is a property of the choice, not a finding — and no pressure
+  // this model reports is a threshold for anything.
+  const open = solveBiliaryObstruction();
+  const cbd = open.pressure['common-bile-duct'];
+  assert.ok(cbd > 4 && cbd < 12, `the resting common bile duct drifted to ${cbd} cmH2O`);
+  assert.ok(
+    open.pressure['common-hepatic-duct'] - cbd < 1,
+    'nearly all of the normal resistance is supposed to be the sphincter, so the ducts sit close together'
+  );
+  const pancreatic = open.pressure['pancreatic-duct'];
+  assert.ok(pancreatic > cbd, `the pancreatic duct is supposed to sit higher: ${pancreatic} vs ${cbd}`);
+  // And the gallbladder keeps up with a meal when nothing is blocking it.
+  assert.ok(
+    open.gallbladderTimeConstantMin < BILIARY_REFERENCE.gallbladderWindowMin / 3,
+    `τ ${open.gallbladderTimeConstantMin} min against a ${BILIARY_REFERENCE.gallbladderWindowMin} min window`
+  );
+});
+
+test('calibration: one occlusion resistance means the same thing at every site', () => {
+  // Defends `occlusion-resistance`. It is added rather than multiplied so that
+  // "complete" is site-independent — a stone is the same stone wherever it
+  // lodges — and the number is large enough that a complete blockage delivers
+  // almost nothing through the resistance it sits in. Neither is a measurement
+  // of a stone, a stricture or a degree of stenosis.
+  assert.ok(BILIARY_DEFAULTS.occlusionResistance > 500, BILIARY_DEFAULTS.occlusionResistance);
+  const distal = solveBiliaryObstruction({ site: 'common-bile-duct', completeness: 1 });
+  const ampullary = solveBiliaryObstruction({ site: 'ampulla', completeness: 1 });
+  assert.ok(distal.bileDeliveredFraction < 0.1, distal.bileDeliveredFraction);
+  assert.ok(ampullary.pancreaticDeliveredFraction < 0.1, ampullary.pancreaticDeliveredFraction);
+  // The same addition at two sites leaves the bile path in the same state,
+  // because the resistance it was added to is downstream of the same segments.
+  assert.equal(
+    distal.bileDeliveredFraction.toFixed(4),
+    ampullary.bileDeliveredFraction.toFixed(4),
+    'a blockage at the papilla and one just above it cost the bile path the same'
+  );
+});
+
+test('calibration: a normal swallow clears and a failed one balances inside the organ', () => {
+  // Defends `swallow-conductance` and `column-cross-section`. Two numbers were
+  // chosen together: what the sphincter passes per millimetre of mercury, and
+  // the cross-section a retained column stands in. They were chosen so that a
+  // normal swallow clears with room to spare, a failed one settles somewhere a
+  // human oesophagus has room for, and a complete failure has nowhere to settle.
+  // That they still do is a property of the choice, not a finding — and no
+  // figure here is a manometric value or a threshold.
+  const normal = solveAchalasia({ relaxationFailure: 0, peristalticVigour: 1 });
+  assert.equal(normal.retainedVolumeMl, 0, 'a normal swallow leaves nothing behind');
+
+  const balanced = solveAchalasia({ relaxationFailure: 0.74, peristalticVigour: 0.3 });
+  assert.ok(balanced.balanced, 'the middle of the range settles');
+  assert.ok(
+    balanced.retainedVolumeMl > 5 && balanced.retainedVolumeMl < ACHALASIA_CAPACITY_ML,
+    `it settles at ${balanced.retainedVolumeMl} mL, inside a ${ACHALASIA_CAPACITY_ML} mL organ`
+  );
+  assert.ok(
+    balanced.columnHeightCm < ACHALASIA_REFERENCE.lengthCm,
+    `and at ${balanced.columnHeightCm} cm, inside a ${ACHALASIA_REFERENCE.lengthCm} cm one`
+  );
+
+  assert.equal(
+    solveAchalasia({ relaxationFailure: 1, peristalticVigour: 0 }).balanced,
+    false,
+    'and a complete failure has nowhere to settle'
+  );
+});
+
+test('calibration: the prostatic enlargement model starts from the atlas’s own zone proportions', () => {
+  // Defends `zone-display-proportions`. The resting shares are not anatomy:
+  // they are the proportions `prostateAnatomy.js` draws, chosen there so four
+  // zones can be told apart on screen. The scene is drawn on that atlas, so
+  // the two have to agree — and this test is what keeps them agreeing.
+  //
+  // What is being defended is the agreement and the shape it produces, never
+  // the numbers themselves. No prostate volume follows from any of this.
+  assert.equal(
+    PROSTATE_REST_SHARES.innerRadiusFraction,
+    INNER_GLAND_FRACTION,
+    'the model grows the inner gland the atlas drew, at the radius the atlas drew it'
+  );
+
+  const rest = solveProstaticEnlargement();
+  assert.ok(rest.zoneShares.peripheral > 0.5, 'so at rest the outside is the larger part');
+  assert.ok(rest.zoneShares.transition < 0.12, 'and the transition zone is a small one');
+  assert.ok(
+    rest.zoneShares.transition + rest.zoneShares.central + rest.zoneShares.peripheral > 0.999,
+    'and the three account for the gland'
+  );
+});
+
+test('calibration: the channel narrows visibly across the walk without closing', () => {
+  // Defends `lumen-compression`. One number says how much of the channel is
+  // left per unit of transition-zone growth. It was chosen so the narrowing is
+  // plain across the span the scene walks and never reaches nothing — because
+  // a channel drawn shut would be a retention this model cannot model.
+  //
+  // That it still behaves that way is a property of the choice. The fraction
+  // is a fraction of this model's own resting channel: it is not a calibre, it
+  // is not a flow rate, and no position on it is a threshold for anything.
+  assert.ok(LUMEN_COMPRESSION > 0, 'growth narrows rather than widens');
+
+  const walked = solveProstaticEnlargement({ transitionGrowth: 14 });
+  assert.ok(
+    walked.urethralLumenFraction < 0.35,
+    `the far end of the walk is plainly narrowed (${walked.urethralLumenFraction.toFixed(2)})`
+  );
+  assert.ok(walked.urethralLumenFraction > 0.1, 'and is not drawn shut');
+
+  // Monotone, and starting from a channel that is whole.
+  let previous = 1.0001;
+  for (const growth of [1, 2, 4, 7, 10, 14]) {
+    const solved = solveProstaticEnlargement({ transitionGrowth: growth });
+    assert.ok(solved.urethralLumenFraction < previous, `it narrows further by ×${growth}`);
+    previous = solved.urethralLumenFraction;
+  }
+  assert.equal(solveProstaticEnlargement().urethralLumenFraction, 1, 'and an unenlarged gland is unnarrowed');
 });

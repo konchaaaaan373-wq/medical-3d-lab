@@ -140,3 +140,49 @@ and the beta opens one organ instead. See `beta-release.md`.
    A2 plus the pulled A3), taken through the same stages with the pipeline
    the heart pilot has proved. This is the first asset that may reach a
    public scene, and it goes through every gate above, reviews included.
+
+
+---
+
+## 派生 asset の工程（derived asset pipeline）
+
+第三者の GLB が validator を通らないとき、**source を書き換えずに**通る版を作る工程です。
+心臓の候補 2 本で実際に使いました。`npm run assets:repair`。
+
+```
+source GLB（read-only）
+  → scripts/repair-candidate-gltf.mjs    決定的な修復のみ
+  → dev-assets/derived/… の GLB          source とは別ディレクトリ・別 hash
+  → npm run assets:validate              0 errors / 0 warnings を要求
+  → 前後比較（座標・数・ノード・階層・ontology・マテリアル）
+  → 実レンダリング比較                     docs/screenshots/b15-repair/
+  → docs/asset-qa/measurements/normal-repair.json に記録
+```
+
+### 守る条件
+
+- **source binary は読むだけ**です。`dev-assets/` 配下の元ファイルは開いて閉じるだけで、
+  書き込み先は必ず `dev-assets/derived/` です
+- **source と derived を取り違えない。** 別ディレクトリ・別 hash で、manifest が pin するのは
+  **derived の hash** です。混同は「どのバイト列を審査したのか」が分からなくなることを意味します
+- **修復スクリプトは version 管理下**に置きます。同じ入力から同じ出力が出ることが、
+  記録した hash の意味です
+- **削除した面積ゼロ三角形の数を記録**します（心臓 820・大血管 26）。
+  面積ゼロの三角形は何も描かないので、削除しても見た目は変わりません——
+  **これが「形を作り直していない」と言える唯一の根拠**なので、数を残します
+- **fallback の法線処理を記録**します。面が打ち消し合う頂点（折り返し）では最大面の法線を採り、
+  どの三角形にも使われなくなった頂点には単位法線を入れます。**どちらも選択であって復元ではない**ので、
+  別々に数えます
+- **ノード名・階層・ontology id・マテリアルの保持を検証**します。スクリプトが前後で測り、
+  一致しなければ報告に出ます
+- **validator 0/0 を満たすまで `passed` にしません。** QA gate は errors も warnings も
+  0 のときだけ通ります（`assetReleaseProblems`）
+
+### binary を repo に入れるか
+
+**入れません。** `dev-assets/` は `.gitignore` にあり、derived も同じ扱いです。
+repo が持つのは**作り方と、測った結果**です——スクリプト・測定 JSON・比較画像・hash。
+`npm run assets:dev` が source を取得し、`npm run assets:repair` が derived を作ります。
+
+理由が無い限り大きな binary を Git に入れない、という既存方針のままです。
+adopt が決まった段階で、配信用にどこへ置くかは別の判断になります。

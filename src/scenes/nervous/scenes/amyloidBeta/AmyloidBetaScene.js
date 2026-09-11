@@ -6,6 +6,7 @@ import { Neuron } from './Neuron.js';
 import { buildAggregationLayout } from './aggregationLayout.js';
 import {
   ANNOTATIONS,
+  RELATED,
   STAGES,
   LEGEND,
   RANGE,
@@ -51,6 +52,7 @@ export class AmyloidBetaScene {
     subtitle: "Aβ aggregation in Alzheimer's disease · simplified 3D model",
     subtitleJa: 'アルツハイマー病における Aβ の凝集 ｜ 教育用3Dモデル',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,

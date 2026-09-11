@@ -275,11 +275,58 @@ export const PROGRESS_LABEL = {
   endJa: '再灌流',
 };
 
+/**
+ * Where else this heart is shown. Same rule as the other two: declared once,
+ * filtered by the release gate in the app, and carrying the sentence that says
+ * these are different models rather than one model at different times.
+ */
+export const RELATED = Object.freeze({
+  scenes: [
+    {
+      slug: 'heart-anatomy',
+      label: 'Heart anatomy — what the parts are called',
+      labelJa: '心臓の解剖 — 部位の名前を確かめる',
+      why: 'The coronary arteries this scene narrows, named and selectable on a specimen. **A different model**, and no territories are drawn on it.',
+      whyJa: 'このシーンが細くする冠動脈を、標本の上で名前から選べます。**別のモデル**で、支配域は描かれていません。',
+    },
+    {
+      slug: 'heart-failure',
+      label: 'Heart failure — the same ventricle over years',
+      labelJa: '心不全 — 同じ心室を年単位で見る',
+      why: 'What a ventricle becomes when the load never lets up, rather than what one episode does to one region.',
+      whyJa: '1 回の経過が 1 領域に起こすことではなく、負荷が続いたときに心室そのものがどうなるか。',
+    },
+  ],
+  note:
+    '**These are separate models.** The atlas is a fixed cadaveric specimen and the heart-failure scene '
+    + 'solves its own ventricle. Nothing here is carried across from either, and no measurement is shared.',
+  noteJa:
+    '**それぞれ別のモデルです。** 解剖アトラスは固定標本、心不全シーンは独自に心室を解きます。'
+    + 'ここへ持ち込まれた形も、共有された計測値もありません。',
+});
+
 export const MODEL_SCOPE = {
   question: 'A coronary artery narrows here. Which muscle stops moving, and when?',
   questionJa: '冠動脈がここで細くなる。どの筋肉が、いつ動かなくなるのか。',
   answers: SCOPE.answers.map((entry) => ({ text: entry.en, textJa: entry.ja })),
   limits: SCOPE.refuses.map((entry) => ({ text: entry.en, textJa: entry.ja })),
+  /**
+   * The colour is the thing a reader will read hardest, so what it is — and
+   * what it is not — is said where the model's own limits are said, not only in
+   * the guide copy.
+   */
+  cautions: [
+    {
+      text:
+        'The colour over the starved territory is an **educational emphasis of the ischaemic region**. '
+        + 'It does not represent necrosis, infarct or scar, and ischaemic muscle does not turn this colour. '
+        + 'How readily it is misread is an open question for clinical review.',
+      textJa:
+        '飢えている支配域に載る色は、**虚血領域を教育目的で強調したもの**です。'
+        + '壊死・梗塞・瘢痕を表してはおらず、虚血の心筋が実際にこの色になるわけでもありません。'
+        + 'どの程度誤認されうるかは、臨床レビューで確かめる項目として残しています。',
+    },
+  ],
   sources: [
     'docs/model-cards/myocardial-ischemia.md',
     'docs/model-evidence/myocardial-ischemia.md',

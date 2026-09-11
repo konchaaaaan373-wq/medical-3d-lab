@@ -29,6 +29,7 @@
  *   --only <slug>   one card (repeatable)
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { chromiumExecutable } from './lib/browser.mjs';
 import { join } from 'node:path';
 
 import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
@@ -106,7 +107,7 @@ const cards = [
 mkdirSync(outDir, { recursive: true });
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
+  executablePath: chromiumExecutable(chromium),
   // Nothing here is allowed off the machine: the card must be reproducible
   // from the catalogue alone, and a webfont fetched at draw time is not.
   args: ['--host-resolver-rules=MAP * ~NOTFOUND', '--no-proxy-server', '--disable-background-networking'],
