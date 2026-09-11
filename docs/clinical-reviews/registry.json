@@ -1014,5 +1014,27 @@
       "The subdivisions of the levator, the fascia and the ligaments that suspend the viscera, the pudendal nerve, the vessels and the internal anal sphincter are not drawn.",
       "Only a female pelvis is drawn, and nothing in the scene supports any claim about childbirth, continence, prolapse or any procedure."
     ]
+  },
+  {
+    "sceneId": "hand-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of the bones of the hand and wrist and of the carpal tunnel and its contents. No joint movement, no tendon excursion, no grip, no blood supply, no disease."
+    ],
+    "sources": [
+      "docs/model-cards/hand-anatomy.md",
+      "docs/model-evidence/hand-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Bones are smooth blocks and shafts: heads, bases, styloids, joint surfaces, capsules and ligaments are not drawn, and the saddle shape of the thumb’s carpometacarpal joint is described rather than modelled.",
+      "The blood supply of the scaphoid — the reason that bone is spoken about the way it is — is not represented at all.",
+      "Seven cords stand for the nine flexor tendons and which tendon is which is not represented; the sheaths, the extensor retinaculum and hoods, the thumb’s extensors and the ulnar nerve and artery are not drawn.",
+      "No cross-sectional area or pressure is represented, so nothing here supports any claim about the tunnel being narrow enough to matter."
+    ]
   }
 ]

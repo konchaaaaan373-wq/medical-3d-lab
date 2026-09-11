@@ -42,6 +42,14 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  CARPALS,
+  RADIAL as HAND_RADIAL,
+  RAYS,
+  TUNNEL,
+  raySegment,
+  buildHand,
+} from '../src/scenes/musculoskeletal/organs/hand.js';
+import {
   HIATUS_BACK_T,
   levatorOrigin,
   buildPelvicFloor,
@@ -1892,4 +1900,107 @@ test('the pelvic floor is a sheet with a real gap in it, and a sling behind the 
   const ring = box('pelvic-ring');
   assert.ok(ring.min.x < sheet.min.x && ring.max.x > sheet.max.x, 'the ring is outside the sheet');
   assert.ok(ring.containsPoint(originMid) || ring.distanceToPoint(originMid) < 0.6, 'which the sheet hangs from');
+});
+
+// --- the hand and wrist -----------------------------------------------------
+
+test('the wrist is eight bones in an arch, with a lid and ten things under it', () => {
+  // Two claims: the carpus is an arch with a roof, and the five rays are not
+  // five of the same thing. Both are the kind of fact a model quietly loses.
+  const hand = buildHand();
+  hand.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of hand.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the thumb. Read the wrong way round, the hand is a left one. */
+  const radially = (point) => point.x * HAND_RADIAL;
+
+  // Two rows, the far one further out.
+  const proximal = ['scaphoid', 'lunate', 'triquetrum'];
+  const distal = ['trapezium', 'trapezoid', 'capitate', 'hamate'];
+  for (const far of distal) {
+    for (const near of proximal) {
+      assert.ok(at(far).y > at(near).y, `the ${far} is distal to the ${near}`);
+    }
+  }
+  // And each row runs from the thumb side across.
+  for (const row of [proximal, distal]) {
+    for (let i = 1; i < row.length; i += 1) {
+      assert.ok(radially(at(row[i])) < radially(at(row[i - 1])), `${row[i]} is ulnar to ${row[i - 1]}`);
+    }
+  }
+  // The pisiform is not a fourth bone in the row: it is on top of one.
+  const pisiform = at('pisiform');
+  const triquetrum = at('triquetrum');
+  assert.ok(pisiform.z > triquetrum.z + 0.4, 'the pisiform sits palmar to the triquetrum');
+  assert.ok(Math.abs(pisiform.y - triquetrum.y) < 0.4, 'rather than beyond it');
+
+  // An arch with a lid. The band reaches both pillars, and the space is under
+  // it and over the bones.
+  const band = box('flexor-retinaculum');
+  const tunnel = box('carpal-tunnel');
+  for (const pillar of [TUNNEL.radialPillar, TUNNEL.ulnarPillar]) {
+    assert.ok(band.distanceToPoint(new THREE.Vector3(...pillar)) < 0.25, 'the band reaches its pillar');
+  }
+  assert.ok(tunnel.max.z <= band.max.z, 'the tunnel is under the band');
+  assert.ok(tunnel.min.z > at('capitate').z, 'and palmar to the bones it arches over');
+  // Measured against the band rather than against the tunnel's deepest point:
+  // the tunnel's floor rises towards each pillar, so its overall minimum is the
+  // middle of the arch and comparing a radial bone against it says nothing.
+  for (const id of ['scaphoid', 'lunate', 'capitate', 'hamate']) {
+    assert.ok(at(id).z < band.min.z, `the ${id} is under the band, not through it`);
+  }
+
+  // The nerve is the most palmar thing in the tunnel.
+  const nerve = box('median-nerve');
+  const tendons = box('flexor-tendons');
+  const inTunnel = (b) => b.min.y < TUNNEL.to && b.max.y > TUNNEL.from;
+  assert.ok(inTunnel(nerve) && inTunnel(tendons), 'both run through the tunnel');
+  for (const mesh of hand.meshesFor('flexor-tendons')) {
+    const tendon = new THREE.Box3().setFromObject(mesh);
+    assert.ok(tendon.max.z < nerve.max.z, 'every flexor tendon is deep to the nerve');
+  }
+  // And the extensors are on the other side of everything.
+  assert.ok(box('extensor-tendons').max.z < box('metacarpals').min.z + 0.2, 'the extensors are dorsal to the bones');
+
+  // Five rays, and one of them is a thumb.
+  assert.equal(hand.meshesFor('metacarpals').length, 5, 'five metacarpals');
+  assert.equal(hand.meshesFor('proximal-phalanges').length, 5, 'five proximal phalanges');
+  assert.equal(hand.meshesFor('middle-phalanges').length, 4, 'four middle phalanges — the thumb has none');
+  assert.equal(hand.meshesFor('distal-phalanges').length, 5, 'five distal phalanges');
+  assert.equal(raySegment(RAYS[0], 'middle'), null, 'and the table is where that is written down');
+
+  // Each ray's bones run in order out along one line.
+  for (const ray of RAYS) {
+    let previous = null;
+    for (const bone of ['metacarpal', 'proximal', 'middle', 'distal']) {
+      const segment = raySegment(ray, bone);
+      if (!segment) continue;
+      if (previous) {
+        assert.ok(segment.from[1] > previous[1], `${ray.id}: the ${bone} starts beyond the bone before it`);
+      }
+      previous = segment.to;
+    }
+  }
+  // The thumb is the one that is set apart from the rest.
+  const thumbTip = raySegment(RAYS[0], 'distal').to;
+  const middleTip = raySegment(RAYS[2], 'distal').to;
+  const spread = (ray) => {
+    const tip = raySegment(ray, 'distal').to;
+    return Math.hypot(tip[0] - middleTip[0], tip[1] - middleTip[1], tip[2] - middleTip[2]);
+  };
+  for (const ray of RAYS.slice(1)) {
+    if (ray.id === 'middle') continue;
+    assert.ok(spread(RAYS[0]) > spread(ray), `the thumb is further from the middle finger than the ${ray.id} is`);
+  }
+  assert.ok(radially(new THREE.Vector3(...thumbTip)) > 0, 'and it is on the radial side');
+
+  // The bones are where the carpal table says they are.
+  for (const [id, spec] of Object.entries(CARPALS)) {
+    const centre = at(id);
+    assert.ok(centre.distanceTo(new THREE.Vector3(...spec.at)) < 0.08, `${id} is where the table puts it`);
+  }
 });

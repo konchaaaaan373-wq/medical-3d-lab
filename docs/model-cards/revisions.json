@@ -506,5 +506,17 @@
     "cardRevision": 3,
     "modelDigest": "93196e0ac817d870",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "hand-anatomy",
+    "card": "docs/model-cards/hand-anatomy.md",
+    "modelSources": [
+      "src/scenes/musculoskeletal/organs/hand.js",
+      "src/data/handAnatomyScene.js",
+      "src/scenes/musculoskeletal/scenes/handAnatomy/HandAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "634bb8b4b3b18786",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

@@ -577,6 +577,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of the female pelvic floor, placed from standard descriptive anatomy: the levator ani as one sheet from the back of the pubis along the tendinous arch to the ischial spine, named in three parts front to back, with its two sides stopping short of the midline anteriorly so that the urogenital hiatus between them transmits the urethra and the vagina; the puborectalis as a sling passing behind the anorectal junction; and the perineal body between the vagina and the anal canal. The bones are drawn as the ring the floor spans rather than as hip bones. No dimension, angle or thickness is a measurement and nothing in the scene contracts.',
   },
   {
+    profileId: 'hand-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of a right hand and wrist, placed from standard descriptive anatomy: eight carpal bones in two rows with the pisiform palmar to the triquetrum and the hook of the hamate and the scaphoid tubercle as the two pillars of the carpal arch, the flexor retinaculum spanning them, and the carpal tunnel between arch and band carrying nine flexor tendons with the median nerve most palmar; five rays with the thumb shorter, angled and carrying two phalanges where the others carry three. No bone length, joint angle or tunnel dimension is a measurement, bones are drawn as smooth blocks and shafts without their ends, and nothing in the scene moves.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

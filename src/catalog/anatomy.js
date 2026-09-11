@@ -300,6 +300,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the hip bones as bones rather than as a ring, the subdivisions of the levator, the fascia and the ligaments that suspend the viscera, the pudendal nerve and the vessels, the internal anal sphincter, and the bladder and uterus above. Nothing contracts and nothing descends, which is the first two things a continence or a prolapse scene would need',
   },
   {
+    organ: 'hand',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/handAnatomy — radius, ulna, all eight carpal bones and the hook of the hamate named individually, the metacarpals and all three rows of phalanges, the flexor retinaculum, the carpal tunnel, the flexor tendons, the median nerve, the extensor tendons and the thenar muscles, selectable by name; tests/organ-parts-anatomy.test.js — the eight carpals lie in two rows in the right order across the wrist, the pisiform sits palmar to the triquetrum rather than beside it, the roof of the tunnel spans the two pillars and the tunnel lies under it and above the arch, the median nerve is the most palmar thing in the tunnel and the flexor tendons are deep to it, the extensor tendons are dorsal to every bone, and there are five metacarpals, five proximal phalanges, four middle phalanges and five distal phalanges — the thumb having two bones where the others have three',
+    next: 'A3: bone ends rather than shafts — heads, bases, styloids and joint surfaces — the capsules and ligaments, the saddle shape of the thumb’s carpometacarpal joint, the flexor sheaths and which tendon is which, the extensor retinaculum and hoods, the ulnar nerve and artery in their own canal, and the intrinsic muscles. No joint bends, which is the first thing a grip or a tendon-excursion scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

@@ -961,6 +961,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/pelvicFloorAnatomy/index.js'),
   },
   {
+    id: 'hand-anatomy',
+    slug: 'hand-anatomy',
+    titleEn: 'Interactive hand and wrist anatomy',
+    titleJa: '触れて学ぶ手・手関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'hand',
+    organs: ['hand'],
+    disease: null,
+    conditions: ['hand anatomy', 'carpal bones', 'carpal tunnel', 'scaphoid', 'median nerve', 'flexor tendons', '手の解剖', '手根骨', '手根管', '舟状骨', '正中神経', '屈筋腱'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/hand-anatomy.md',
+    modelProfile: 'hand-anatomy-procedural-atlas',
+    description:
+      'Eight small bones make an arch, a band roofs it, and ten things share the space underneath with nowhere to move.',
+    descriptionJa:
+      '8個の手根骨がつくるアーチに屈筋支帯が蓋をし、その下の逃げ場のない空間を9本の腱と1本の神経が分け合います。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/handAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',
