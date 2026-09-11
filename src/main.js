@@ -22,9 +22,17 @@ import './styles/scene-fallback.css';
 import './styles/locked.css';
 import './styles/telemetry.css';
 import './styles/legal.css';
+import './styles/product-shell-b6.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
+import {
+  installFinalPagehideCleanup,
+  installUiShortcutGuard,
+  settleOptionalService,
+  readUiLanguagePreference,
+  classifySceneStartFailure,
+} from './app/sceneShellBridge.js';
 
 const observe = async (options) => {
   const { installObservability } = await import('./app/observability.js');
@@ -146,9 +154,20 @@ async function boot() {
 
   document.documentElement.dataset.route = 'scene';
 
+  // LanguageToggle normally applies this later inside createApp(). A renderer
+  // or atlas failure can happen before that point, so seed the same persisted
+  // preference before any scene work.
+  const sceneLanguage = readUiLanguagePreference();
+  ui.dataset.lang = sceneLanguage;
+  document.documentElement.setAttribute('lang', sceneLanguage);
+
   const veil = document.createElement('div');
   veil.className = 'loading';
-  veil.innerHTML = '<span>building model</span><span class="loading-bar"></span>';
+  veil.setAttribute('lang', sceneLanguage);
+  veil.innerHTML = [
+    `<span>${sceneLanguage === 'en' ? 'Loading 3D model' : '3Dモデルを読み込んでいます'}</span>`,
+    '<span class="loading-bar"></span>',
+  ].join('');
   document.body.append(veil);
 
   const fallbackStartedAt = Date.now();
@@ -165,18 +184,8 @@ async function boot() {
       stage,
       ui,
       /**
-       * How a reader recovers from a model that failed to load.
-       *
-       * The shell owns this (01-RECOVERY-CONTRACT), and it does the same thing
-       * the WebGL fallback's own "Retry 3D" already does: reload the page. The
-       * route is in the hash and the language choice is in `localStorage`, so
-       * the reader comes back to the same model in the same language. It does
-       * **not** restore the view they had orbited to, and nothing here claims
-       * otherwise.
-       *
-       * The anatomy panel renders its button only because this exists; without
-       * it there is no button. Work owns this file and may replace this with a
-       * finer recovery, and the panel needs no change if it does.
+       * Keep the shared recovery contract from the current integration tree.
+       * AnatomyPanel owns its retry/status UI; the shell supplies the action.
        */
       onRetryModel: () => window.location.reload(),
     });
@@ -192,86 +201,91 @@ async function boot() {
       anatomyPresentation = mountAnatomyShellPresentation({ ui });
     }
 
-    // App's model shortcuts live on window. Let controls inside the UI handle
-    // their own Space/Enter/arrows first instead of bubbling those keys into the
-    // model playback/camera shortcuts. This does not prevent the control's own
-    // default action because the guard is a bubbling listener on its ancestor.
-    const interactiveTags = new Set(['BUTTON', 'A', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION']);
-    const stopUiShortcutLeak = (event) => {
-      for (let node = event.target; node && node !== ui.parentElement; node = node.parentElement) {
-        if (interactiveTags.has(node.tagName) ||
-            node.getAttribute?.('contenteditable') === 'true' ||
-            node.getAttribute?.('role') === 'dialog') {
-          event.stopPropagation();
-          return;
-        }
-        if (node === ui) return;
-      }
-    };
-    ui.addEventListener('keydown', stopUiShortcutLeak);
+    // Model shortcuts live at window level. UI controls retain their native and
+    // component-local behavior, while their key events stop before the model.
+    const removeUiShortcutGuard = installUiShortcutGuard({ ui });
 
-    window.addEventListener('pagehide', (event) => {
-      if (event.persisted) return;
-      ui.removeEventListener('keydown', stopUiShortcutLeak);
+    installFinalPagehideCleanup({ cleanup: () => {
+      removeUiShortcutGuard();
       anatomyPresentation?.destroy?.();
       delete ui.dataset.anatomy;
-    }, { once: true });
+    } });
 
-    const observability = await observe({
-      ui,
-      surface: 'scene',
-      sceneId: route.sceneId,
-      placement: 'rail',
-    });
-    await reportSceneStart(observability, app, route.sceneId, elapsedSinceNavigation);
-
+    // createApp() already means the scene shell is ready. Optional reporting
+    // must never keep the loading veil over a usable model.
+    const readyElapsedMs = elapsedSinceNavigation();
     requestAnimationFrame(() => {
       veil.classList.add('is-done');
       setTimeout(() => veil.remove(), 500);
     });
+
+    settleOptionalService(
+      observe({
+        ui,
+        surface: 'scene',
+        sceneId: route.sceneId,
+        placement: 'rail',
+      }),
+      (observability) => reportSceneStart(
+        observability,
+        app,
+        route.sceneId,
+        () => readyElapsedMs
+      ),
+      (reportError) => console.warn('scene observability unavailable', reportError)
+    );
   } catch (error) {
     console.error(error);
     veil.remove();
+    const failureReason = rendererFailureReason(error);
     const [{ createSceneFailureFallback }, { createPublicDiagnosticCopyControl }] = await Promise.all([
       import('./app/SceneFailureFallback.js'),
       import('./app/publicDiagnosticCopyControl.js'),
     ]);
-    const fallback = createSceneFailureFallback({ ui, sceneId: route.sceneId });
+    const fallback = createSceneFailureFallback({
+      ui,
+      sceneId: route.sceneId,
+      reason: failureReason,
+    });
     const diagnostic = createPublicDiagnosticCopyControl({
       getContext: () => ({
         modelId: route.sceneId,
         language: ui.dataset.lang ?? 'ja',
-        state: rendererFailureReason(error),
+        state: failureReason,
       }),
     });
     fallback.element.querySelector('.scene-fallback-card')?.append(diagnostic.element);
+
+    installFinalPagehideCleanup({ cleanup: () => {
+      diagnostic.dispose?.();
+      fallback.destroy?.();
+    } });
 
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
       window.location.reload();
     });
 
-    const observability = await observe({
-      ui,
-      surface: 'fallback',
-      sceneId: route.sceneId,
-      askConsent: false,
-    });
-    observability?.reporter.captureRendererFailure(error, {
-      scene: route.sceneId,
-      device: observability.deviceClass,
-      reason: rendererFailureReason(error),
-      fallbackShown: true,
-    });
+    settleOptionalService(
+      observe({
+        ui,
+        surface: 'fallback',
+        sceneId: route.sceneId,
+        askConsent: false,
+      }),
+      (observability) => observability?.reporter.captureRendererFailure(error, {
+        scene: route.sceneId,
+        device: observability.deviceClass,
+        reason: failureReason,
+        fallbackShown: true,
+      }),
+      (reportError) => console.warn('fallback observability unavailable', reportError)
+    );
   }
 }
 
 function rendererFailureReason(error) {
-  const message = String(error?.message ?? '').toLowerCase();
-  if (message.includes('webgl') || message.includes('context')) return 'no_context';
-  if (message.includes('fetch') || message.includes('load') || message.includes('404')) return 'asset_error';
-  if (error instanceof Error) return 'scene_error';
-  return 'unknown';
+  return classifySceneStartFailure(error);
 }
 
 async function reportSceneStart(observability, app, sceneId, elapsedSinceNavigation) {

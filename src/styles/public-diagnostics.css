@@ -5,6 +5,12 @@
   min-width: 0;
 }
 
+.scene-fallback-card > .public-diagnostic-copy {
+  margin-top: 1.25rem;
+  padding-top: 1.125rem;
+  border-top: 1px solid var(--border);
+}
+
 .public-diagnostic-copy__title,
 .public-diagnostic-copy__intro,
 .public-diagnostic-copy__status {
@@ -49,13 +55,28 @@
   width: fit-content;
   max-width: 100%;
   padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border, currentColor);
+  border-radius: 0.5rem;
+  background: var(--control-bg, rgba(255, 255, 255, 0.04));
+  color: inherit;
   font: inherit;
   font-weight: 650;
   cursor: pointer;
 }
 
+.public-diagnostic-copy__button:hover {
+  border-color: var(--accent-border, currentColor);
+  background: var(--control-hover, rgba(255, 255, 255, 0.08));
+}
+
+.public-diagnostic-copy__button:focus-visible {
+  outline: 2px solid var(--accent, currentColor);
+  outline-offset: 2px;
+}
+
 .public-diagnostic-copy__button:disabled {
   cursor: wait;
+  opacity: 0.72;
 }
 
 @media (max-width: 420px) {

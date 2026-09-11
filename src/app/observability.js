@@ -11,7 +11,7 @@
  * product carries on without it.
  */
 import { onAppEvent } from './appEvents.js';
-import { createConsentBanner } from '../components/ConsentBanner.js';
+import { createConsentSettings } from '../components/ConsentBanner.js';
 import { createFeedbackPanel } from '../components/FeedbackPanel.js';
 import { installTelemetry } from '../telemetry/install.js';
 
@@ -38,6 +38,14 @@ function mountTrigger(ui, trigger, placement) {
   }
   trigger.classList.add('is-floating');
   ui.append(trigger);
+}
+
+function mountConsentSettings(ui, telemetry) {
+  const slot = ui.querySelector?.('[data-usage-recording-slot]') ?? null;
+  if (!slot) return null;
+  const settings = createConsentSettings({ telemetry });
+  slot.replaceChildren(settings.element);
+  return settings;
 }
 
 /**
@@ -99,10 +107,11 @@ export function installObservability({
     const { telemetry, reporter, deviceClass } = installTelemetry({ surface, sceneId });
     telemetry.recordVisit({ device: deviceClass, surface });
 
-    if (askConsent) {
-      const banner = createConsentBanner({ telemetry });
-      if (banner) ui.append(banner.element);
-    }
+    // `askConsent` is kept as the existing call-site gate, but no longer means
+    // "interrupt first use". If the current surface exposes an existing
+    // information/settings slot, mount the preference there. With no slot,
+    // remain unset/unsent and render no consent chrome at all.
+    const consentSettings = askConsent ? mountConsentSettings(ui, telemetry) : null;
 
     const endpoint = env('VITE_FEEDBACK_ENDPOINT');
     const feedback = createFeedbackPanel({
@@ -125,7 +134,17 @@ export function installObservability({
     mountTrigger(ui, feedback.trigger, placement);
     const unbridge = bridgeAppEvents(telemetry, { sceneId, deviceClass, surface });
 
-    return { telemetry, reporter, feedback, deviceClass, dispose: unbridge };
+    return {
+      telemetry,
+      reporter,
+      feedback,
+      consentSettings,
+      deviceClass,
+      dispose() {
+        consentSettings?.dispose?.();
+        unbridge();
+      },
+    };
   } catch (error) {
     console.warn('[observability] not installed', error);
     return null;

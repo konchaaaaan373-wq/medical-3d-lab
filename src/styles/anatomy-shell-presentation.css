@@ -1,13 +1,13 @@
 /* Work-owned anatomy shell presentation.
  *
- * Nothing in this file applies until B4's shared App explicitly mounts
- * `mountAnatomyShellPresentation()` and therefore writes
+ * Integrated main mounts `mountAnatomyShellPresentation()` only after the real
+ * anatomy panel exists; this scoped stylesheet then follows
  * `data-anatomy-shell="calm"`. Scene state, camera state and anatomy controls
  * remain owned by the existing App and panel implementations. */
 
 #ui[data-anatomy-shell='calm'] .global-scene-nav {
   border-radius: 9px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
 }
 
 /* The H1 in the scene is normally the visible model name. Keep the navigation's
@@ -30,7 +30,7 @@
   max-width: min(39vw, 340px);
   padding: 12px 15px 13px;
   border-radius: 7px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(9px) saturate(1.02);
   -webkit-backdrop-filter: blur(9px) saturate(1.02);
 }
@@ -58,7 +58,7 @@
 
 #ui[data-anatomy-shell='calm'] .title-card .status-badge,
 #ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge {
-  min-height: 24px;
+  min-height: 28px;
   display: inline-flex;
   align-items: center;
   padding: 2px 0 2px 8px;
@@ -66,8 +66,8 @@
   border-left: 2px solid currentColor;
   border-radius: 0;
   background: transparent;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.4;
   opacity: 1;
 }
 
@@ -77,12 +77,12 @@
 }
 
 #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
-  min-height: 40px;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: 6px;
   color: var(--ink-dim);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 650;
   cursor: pointer;
 }
@@ -103,8 +103,8 @@
   margin: 0;
   padding: 0 0 8px;
   color: var(--ink-dim);
-  font-size: 11px;
-  line-height: 1.55;
+  font-size: 13px;
+  line-height: 1.6;
   letter-spacing: 0;
 }
 
@@ -122,7 +122,7 @@
   gap: 5px;
   padding: 7px 9px 8px;
   border-radius: 7px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(9px) saturate(1.02);
   -webkit-backdrop-filter: blur(9px) saturate(1.02);
 }
@@ -141,7 +141,7 @@
 #ui[data-anatomy-shell='calm'] .anatomy-panel,
 #ui[data-anatomy-shell='calm'] .inspection-panel {
   border-radius: 7px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.16);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(9px) saturate(1.02);
   -webkit-backdrop-filter: blur(9px) saturate(1.02);
 }
@@ -182,7 +182,17 @@
   }
 
   #ui[data-anatomy-shell='calm'] .anatomy-shell-about {
-    display: none;
+    margin-top: 2px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    min-height: 44px;
+    font-size: 13px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-copy > .subtitle {
+    max-height: 88px;
+    overflow: auto;
   }
 
   #ui[data-anatomy-shell='calm'] .console {

@@ -1,0 +1,808 @@
+/* B6 product-shell polish. Scoped to existing navigation/consent components. */
+
+/* The fixed header is orientation, not a content card. It keeps the same span
+ * whether one model or many are available; only controls without a job vanish. */
+.global-scene-nav.is-single {
+  right: max(14px, env(safe-area-inset-right));
+  width: auto;
+  max-width: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
+
+.global-nav-brand-compact {
+  display: none;
+}
+
+.global-nav-current {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-width: 0;
+}
+
+.global-nav-current-label {
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--ink-dim);
+}
+
+/* A visible model control on every visual path. Do not rely on a hamburger
+ * whose label is clipped away; the user asked for a model chooser, so say so. */
+.global-nav-trigger {
+  width: auto;
+  min-width: 76px;
+  min-height: 44px;
+  padding: 0 11px;
+  gap: 7px;
+}
+
+.global-nav-trigger-label {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.global-nav-trigger-chevron {
+  flex: none;
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-1px);
+  transition: transform 140ms ease;
+}
+
+.global-scene-nav.is-open .global-nav-trigger-chevron {
+  transform: translateY(1px) rotate(180deg);
+}
+
+/* Drawer = fixed head + one scrolling model list + quiet footer. */
+.global-nav-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color-scheme: dark;
+  scrollbar-color: rgba(145, 171, 204, 0.42) transparent;
+}
+
+.global-nav-panel-head {
+  flex: none;
+  margin-bottom: 6px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.global-nav-panel-title {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.global-nav-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  padding: 1px 4px 6px 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(145, 171, 204, 0.42) transparent;
+}
+
+.global-nav-list::-webkit-scrollbar,
+.global-nav-panel::-webkit-scrollbar {
+  width: 9px;
+}
+
+.global-nav-list::-webkit-scrollbar-track,
+.global-nav-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.global-nav-list::-webkit-scrollbar-thumb,
+.global-nav-panel::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(145, 171, 204, 0.38);
+  background-clip: padding-box;
+}
+
+/* Organ headings group rows; the organ itself is not another card. */
+.global-nav-organ {
+  min-width: 0;
+  padding: 10px 2px 11px;
+}
+
+.global-nav-organ + .global-nav-organ {
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.global-nav-organ-name {
+  margin: 0 8px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.global-nav-organ-name .lang-ja {
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.global-nav-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.global-nav-scene {
+  min-height: 44px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  align-items: center;
+}
+
+.global-nav-scene-name {
+  flex: 1;
+  min-width: 0;
+  display: block;
+  font-size: 14px;
+  line-height: 1.38;
+  font-weight: 560;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.global-nav-scene-name .lang-ja {
+  font-size: 14px;
+  color: inherit;
+}
+
+.global-nav-scene-kind {
+  flex: 0 0 auto;
+  width: 74px;
+  color: var(--ink-faint);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.global-nav-scene-kind .lang-ja {
+  font-size: 10px;
+}
+
+.global-nav-current-check {
+  flex: none;
+  width: 20px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.global-nav-organ.is-current > .global-nav-organ-name {
+  color: var(--ink);
+}
+
+/* Index/Lab links are secondary navigation after the model rows, never hero
+ * cards that consume the first screen of a short drawer. */
+.global-nav-footer {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  padding: 8px 4px 1px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.global-nav-footer-link {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-decoration: none;
+}
+
+.global-nav-footer-link:hover,
+.global-nav-footer-link:focus-visible {
+  color: var(--ink);
+}
+
+.global-nav-footer-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --------------------------------------------------------------------------
+ * Model information + usage recording
+ *
+ * Consent no longer owns first use. The existing model-information disclosure
+ * is the settings host, so the normal canvas stays unobstructed while `unset`
+ * remains a real consent state and therefore still sends nothing.
+ * -------------------------------------------------------------------------- */
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-copy {
+  display: grid;
+  gap: 13px;
+  max-height: min(56vh, 380px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(145, 171, 204, 0.36) transparent;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-model-info {
+  display: grid;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-section-title,
+#ui[data-anatomy-shell='calm'] .usage-recording-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-model-info > .subtitle {
+  margin: 0;
+  padding: 0;
+  max-height: none;
+  overflow: visible;
+  color: var(--ink-dim);
+  font-size: 12.5px;
+  line-height: 1.58;
+}
+
+#ui[data-anatomy-shell='calm'] .anatomy-shell-usage-slot:empty {
+  display: none;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-settings {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  min-width: 0;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-state {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-state-value {
+  color: var(--ink);
+  font-weight: 750;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-state-detail {
+  color: var(--ink-faint);
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-summary,
+#ui[data-anatomy-shell='calm'] .usage-recording-detail {
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-detail {
+  color: var(--ink-faint);
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 1px;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-choice {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+/* Both answers have exactly the same resting and selected treatment. Consent
+ * is a preference, not a conversion funnel. */
+#ui[data-anatomy-shell='calm'] .usage-recording-choice:hover,
+#ui[data-anatomy-shell='calm'] .usage-recording-choice[aria-pressed='true'] {
+  border-color: rgba(205, 219, 239, 0.46);
+  background: rgba(255, 255, 255, 0.075);
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-choice:focus-visible,
+#ui[data-anatomy-shell='calm'] .usage-recording-privacy:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-privacy {
+  justify-self: start;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  text-decoration: none;
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-privacy:hover {
+  color: var(--ink);
+}
+
+@media (max-width: 980px) {
+  /* Upstream navigation hides the brand name below 980px. Keep a compact but
+   * explicit product identity instead of relying on the 3D mark alone. */
+  .global-nav-brand-name {
+    display: inline;
+  }
+
+  .global-nav-brand-full {
+    display: none;
+  }
+
+  .global-nav-brand-compact {
+    display: inline;
+  }
+}
+
+@media (max-width: 720px) {
+  .global-scene-nav,
+  .global-scene-nav.is-single {
+    top: max(7px, env(safe-area-inset-top));
+    left: max(8px, env(safe-area-inset-left));
+    right: max(8px, env(safe-area-inset-right));
+    width: auto;
+    max-width: none;
+    min-height: 50px;
+    height: auto;
+    padding: 3px 5px 3px 6px;
+    gap: 7px;
+  }
+
+  .global-nav-brand {
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  .global-nav-brand-mark {
+    width: 32px;
+    height: 32px;
+  }
+
+  .global-nav-brand-name {
+    display: inline;
+    max-width: none;
+    overflow: visible;
+    white-space: nowrap;
+    font-size: 11px;
+  }
+
+  .global-nav-brand-full {
+    display: none;
+  }
+
+  .global-nav-brand-compact {
+    display: inline;
+  }
+
+  .global-nav-current {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+  }
+
+  .global-nav-current-label {
+    max-width: 100%;
+    font-size: 12px;
+  }
+
+  .global-nav-trigger,
+  .global-nav-favorite,
+  .global-nav-close,
+  .global-nav-scene {
+    min-height: 44px;
+  }
+
+  .global-nav-trigger {
+    min-width: 70px;
+    padding: 0 9px;
+  }
+
+  .global-nav-favorite {
+    width: 44px;
+    height: 44px;
+  }
+
+  .global-nav-close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .global-nav-panel {
+    top: max(62px, calc(env(safe-area-inset-top) + 55px));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    padding: 10px 10px 8px;
+  }
+
+  .global-nav-organ {
+    padding: 8px 1px 9px;
+  }
+
+  .global-nav-organ-name,
+  .global-nav-organ-name .lang-ja {
+    font-size: 12.5px;
+  }
+
+  .global-nav-scene,
+  .global-nav-scene-name,
+  .global-nav-scene-name .lang-ja {
+    font-size: 14px;
+  }
+
+  html[data-route='scene'] .consent-banner {
+    gap: 10px;
+    padding: 11px 12px;
+  }
+
+  .consent-title {
+    margin-bottom: 2px;
+  }
+
+  .consent-detail {
+    font-size: 11.5px;
+    line-height: 1.45;
+  }
+}
+
+@media (max-width: 520px) {
+  .global-nav-scene-kind {
+    width: 62px;
+    font-size: 9.5px;
+  }
+
+  .global-nav-scene-kind .lang-ja {
+    font-size: 9.5px;
+  }
+}
+
+@media (max-width: 390px) {
+  .global-nav-brand-name {
+    font-size: 10.5px;
+  }
+
+  .global-nav-current-label {
+    font-size: 11.5px;
+  }
+
+  .global-nav-trigger {
+    min-width: 68px;
+    padding-inline: 8px;
+  }
+}
+
+@media (max-height: 620px) and (max-width: 720px) {
+  .global-nav-organ-name .lang-ja,
+  .global-nav-scene-name .lang-ja {
+    display: inline;
+  }
+}
+
+@media (max-height: 460px) and (min-aspect-ratio: 8 / 5) {
+  .global-nav-trigger,
+  .global-nav-favorite,
+  .global-nav-close,
+  .global-nav-scene {
+    min-height: 44px;
+  }
+
+  .global-nav-close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .global-nav-panel {
+    max-height: calc(100vh - 80px);
+    padding: 8px 10px 7px;
+  }
+
+  .global-nav-panel-head {
+    margin-bottom: 3px;
+    padding-bottom: 4px;
+  }
+
+  .global-nav-organ {
+    padding-block: 6px 7px;
+  }
+
+  .global-nav-footer {
+    padding-top: 5px;
+  }
+}
+
+@media (max-width: 720px) {
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-copy {
+    max-height: min(52vh, 340px);
+  }
+
+  #ui[data-anatomy-shell='calm'] .usage-recording-summary,
+  #ui[data-anatomy-shell='calm'] .usage-recording-detail {
+    font-size: 12px;
+    line-height: 1.52;
+  }
+}
+
+@media (max-height: 460px) and (min-aspect-ratio: 8 / 5) {
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-copy {
+    max-height: min(54vh, 210px);
+  }
+
+  #ui[data-anatomy-shell='calm'] .usage-recording-actions {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-nav-trigger-chevron {
+    transition: none;
+  }
+}
+
+
+/* UX audit pass: model-first opening composition and flatter chooser. */
+#ui[data-anatomy-shell='calm'] .title-card {
+  max-width: min(35vw, 300px);
+  padding: 9px 12px 10px;
+}
+#ui[data-anatomy-shell='calm'] .title-card .eyebrow { display: none; }
+#ui[data-anatomy-shell='calm'] .title-card .title,
+#ui[data-anatomy-shell='calm'] .title-card .title-ja {
+  margin-block: 0;
+  font-size: clamp(17px, 1.55vw, 21px);
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+#ui[data-anatomy-shell='calm'] .title-trust-badges { margin-top: 5px; }
+#ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge {
+  min-height: 24px;
+  padding-block: 1px;
+  font-size: 11.5px;
+}
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about {
+  margin-top: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+  min-height: 42px;
+  font-size: 12.5px;
+}
+#ui[data-anatomy-shell='calm'] .anatomy-shell-maturity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+}
+#ui[data-anatomy-shell='calm'] .anatomy-shell-maturity .status-badge {
+  min-height: 24px;
+  font-size: 11px;
+}
+
+.global-nav-kind-group + .global-nav-kind-group { margin-top: 7px; }
+.global-nav-kind-heading {
+  margin: 2px 10px 3px;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  line-height: 1.3;
+  font-weight: 650;
+}
+.global-nav-panel-head .global-nav-favorite {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+}
+.global-nav-panel-head .global-nav-close { margin-left: 2px; }
+.global-nav-scene-kind { display: none; }
+
+#ui[data-anatomy-shell='calm'] .usage-recording-settings {
+  display: block;
+  border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+#ui[data-anatomy-shell='calm'] .usage-recording-heading {
+  min-height: 44px;
+  align-items: center;
+  padding: 4px 0;
+  cursor: pointer;
+  list-style: none;
+}
+#ui[data-anatomy-shell='calm'] .usage-recording-heading::-webkit-details-marker { display: none; }
+#ui[data-anatomy-shell='calm'] .usage-recording-body {
+  display: grid;
+  gap: 8px;
+  padding: 2px 0 4px;
+}
+#ui[data-anatomy-shell='calm'] .usage-recording-chevron {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: 15px;
+  transition: transform 140ms ease;
+}
+#ui[data-anatomy-shell='calm'] .usage-recording-settings[open] .usage-recording-chevron {
+  transform: rotate(180deg);
+}
+
+.anatomy-shell-gesture-hint {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(86px, 16vh, 132px);
+  z-index: 8;
+  transform: translateX(-50%);
+  max-width: min(88vw, 420px);
+  padding: 7px 11px;
+  border: 1px solid rgba(164, 188, 218, 0.2);
+  border-radius: 999px;
+  background: rgba(6, 11, 20, 0.68);
+  color: rgba(236, 244, 255, 0.84);
+  pointer-events: none;
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+.anatomy-shell-gesture-hint .gesture-touch { display: none; }
+@media (pointer: coarse) {
+  .anatomy-shell-gesture-hint .gesture-pointer { display: none; }
+  .anatomy-shell-gesture-hint .gesture-touch { display: inline; }
+}
+
+@media (max-width: 720px) {
+  .global-nav-brand-mark { display: none; }
+  .global-nav-brand { gap: 0; }
+  #ui[data-anatomy-shell='calm'] .title-card {
+    max-width: min(78vw, 292px);
+    padding: 8px 11px 9px;
+  }
+  #ui[data-anatomy-shell='calm'] .title-card .title,
+  #ui[data-anatomy-shell='calm'] .title-card .title-ja { font-size: 18px; }
+  .anatomy-shell-gesture-hint {
+    bottom: max(78px, calc(env(safe-area-inset-bottom) + 70px));
+    font-size: 11px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #ui[data-anatomy-shell='calm'] .usage-recording-chevron { transition: none; }
+}
+
+/* Real-model visual tuning.
+ * Checked against the stored Chromium brain render rather than the shell
+ * placeholder: the atlas is already visually dense, so permanent chrome should
+ * identify the model without competing with it. */
+@media (max-width: 720px) {
+  #ui[data-anatomy-shell='calm'] .title-card {
+    max-width: min(72vw, 264px);
+    padding: 7px 10px 8px;
+    border-color: color-mix(in srgb, var(--border) 72%, transparent);
+    background: color-mix(in srgb, var(--panel-strong) 82%, transparent);
+    box-shadow: none;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card .title,
+  #ui[data-anatomy-shell='calm'] .title-card .title-ja {
+    font-size: 17px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge {
+    min-height: 20px;
+    margin-top: 3px;
+    font-size: 10.5px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about {
+    margin-top: 2px;
+    border-top-color: color-mix(in srgb, var(--border) 52%, transparent);
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    min-height: 36px;
+    font-size: 11.8px;
+    color: var(--ink-dim);
+  }
+
+  /* Once the reader explicitly opens information/settings, trade width for
+   * height. This is a requested reading state, unlike the first model view. */
+  #ui[data-anatomy-shell='calm'] .title-card:has(.anatomy-shell-about[open]) {
+    max-width: min(92vw, 340px);
+  }
+
+  /* The real atlas already carries strong colour and shape. Keep the first-use
+   * gesture hint legible but unboxed, then let the model own the frame. */
+  .anatomy-shell-gesture-hint {
+    bottom: max(72px, calc(env(safe-area-inset-bottom) + 66px));
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    color: color-mix(in srgb, var(--ink-dim) 78%, transparent);
+    font-size: 10.5px;
+    text-shadow: 0 1px 4px var(--page-ground), 0 0 12px var(--page-ground);
+  }
+}
+
+@media (max-height: 460px) and (min-aspect-ratio: 8/5) {
+  #ui[data-anatomy-shell='calm'] .title-card {
+    max-width: 236px;
+    padding: 6px 9px 7px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card .title,
+  #ui[data-anatomy-shell='calm'] .title-card .title-ja {
+    font-size: 15.5px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge {
+    font-size: 10px;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    min-height: 32px;
+    font-size: 11px;
+  }
+
+  .anatomy-shell-gesture-hint {
+    bottom: max(58px, calc(env(safe-area-inset-bottom) + 54px));
+    font-size: 10px;
+  }
+}

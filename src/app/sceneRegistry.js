@@ -18,6 +18,7 @@ import {
   sceneRoute,
   systemsWithScenes as catalogSystemsWithScenes,
 } from '../catalog/index.js';
+import { projectSceneSubsetForNavigation } from './sceneNavigationModel.js';
 
 export {
   DEFAULT_SCENE_ID,
@@ -47,6 +48,15 @@ export const LAB_SCENES = SCENES.filter((scene) => scene.status === 'prototype')
  * inverse. Both remain projections of the same manifest.
  */
 export const systemsWithScenes = (scope = 'auto') => {
+  // App may pass an explicit release-projected scene list. Preserve that exact
+  // boundary instead of interpreting the array as an unknown scope and falling
+  // through to every registered scene. Re-shape through this adapter's SCENES
+  // so SceneSwitcher still receives label/labelJa without rebuilding catalogue
+  // data or release rules here.
+  if (Array.isArray(scope)) {
+    return catalogSystemsWithScenes(projectSceneSubsetForNavigation(scope, SCENES));
+  }
+
   let resolvedScope = scope;
   if (scope === 'auto') {
     const hash = globalThis.window?.location?.hash ?? '';
