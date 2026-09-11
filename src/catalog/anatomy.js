@@ -120,9 +120,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'adrenal',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — the medulla stays inside the cortex through every state',
-    next: 'A2: the three cortical zones and the medulla as named parts',
+    level: 'A2',
+    evidence:
+      'scenes/endocrine/scenes/adrenalAnatomy — zona glomerulosa, fasciculata and reticularis and the medulla, on both sides, selectable by name; tests/organ-parts-anatomy.test.js — each layer encloses the next, the medulla is inside all three cortical zones, each gland is on its own side and above its own kidney, and the left gland is the flatter of the two; tests/organ-anatomy.test.js — the medulla stays inside the cortex through every state',
+    next: 'A3: the capsule, the arterial supply and the single draining vein on each side (which differ, and that difference is what adrenal venous sampling turns on), and the chromaffin cells with their sympathetic supply. The zone thicknesses are drawn so three zones can be told apart and are not the real proportions',
   },
   {
     organ: 'bladder',
@@ -139,8 +140,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'esophagus',
-    level: 'A0',
-    next: 'A1: the three constrictions and the course behind the trachea and the arch, measured. Then A2: cervical, thoracic and abdominal parts, and the wall layers',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/esophagusAnatomy — cervical, thoracic and abdominal parts, the three constrictions, and the trachea, aortic arch, left main bronchus and diaphragm that make them, selectable by name; tests/organ-parts-anatomy.test.js — the three parts partition the tube in order, each ring sits at a minimum of the same calibre profile the tube is built from, the arch is posterior and the bronchus anterior at the middle narrowing, and the lowest narrowing is inside the diaphragm’s ring',
+    next: 'A3: the muscle layers and the striated-to-smooth transition, the upper and lower oesophageal sphincters, the diaphragmatic crura, the vagus nerves and the submucosal venous plexus. Lengths and calibres remain illustrative and no distance from the incisors is given',
   },
   {
     organ: 'small-intestine',

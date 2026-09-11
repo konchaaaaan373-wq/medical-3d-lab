@@ -549,5 +549,51 @@
       "The spiral valve, the sphincter of Oddi, Hartmann's pouch, the minor papilla and the common channel are not modelled, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning cholecystectomy, ERCP, stenting or any biliary procedure."
     ]
+  },
+  {
+    "sceneId": "esophagus-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built oesophageal parts, the three constrictions and the structures that make them, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/esophagus-anatomy.md",
+      "docs/model-evidence/esophagus-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths, calibres and angles are drawn to be legible; no distance from the incisors is given or implied, and none may be read off the model.",
+      "The middle constriction is drawn as one although it is often counted as two (aortic and bronchial).",
+      "Muscle layers, the upper and lower oesophageal sphincters, the diaphragmatic crura, the vagus nerves and the submucosal venous plexus are not drawn, so nothing here shows why reflux is resisted or how varices form.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning endoscopy, dilatation, stenting or any oesophageal procedure."
+    ]
+  },
+  {
+    "sceneId": "adrenal-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built adrenal cortical zones and medulla on both sides, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/adrenal-anatomy.md",
+      "docs/model-evidence/adrenal-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The zone thicknesses are drawn so that three zones can be told apart and are not the real proportions; only their order from the capsule inwards is claimed.",
+      "No capsule, vessel or nerve is drawn, and the medulla's chromaffin cells and their sympathetic supply are not represented.",
+      "Nothing is secreted or solved in this scene; the two time courses are `adrenal-response`.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning adrenalectomy, venous sampling or biopsy."
+    ]
   }
 ]

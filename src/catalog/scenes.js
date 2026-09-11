@@ -290,6 +290,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/stomachAnatomy/index.js'),
   },
   {
+    id: 'esophagus-anatomy',
+    slug: 'esophagus-anatomy',
+    titleEn: 'Interactive oesophageal anatomy',
+    titleJa: '触れて学ぶ食道の解剖',
+    system: 'gastrointestinal',
+    organ: 'esophagus',
+    organs: ['esophagus'],
+    disease: null,
+    conditions: ['esophagus anatomy', 'oesophageal constrictions', '食道解剖', '食道狭窄部', '食道裂孔'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/esophagus-anatomy.md',
+    modelProfile: 'esophagus-anatomy-procedural-atlas',
+    description:
+      'Cervical, thoracic and abdominal parts, and the three places the tube is narrow \u2014 each narrow for a different reason, with that reason drawn beside it.',
+    descriptionJa:
+      '頸部・胸部・腹部食道と、3か所の生理的狭窄部を示します。狭くなる理由は3か所それぞれ異なり、その原因となる構造を隣に描いています。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/gastrointestinal/scenes/esophagusAnatomy/index.js'),
+  },
+  {
     id: 'upper-gi-peristalsis',
     slug: 'upper-gi-peristalsis',
     titleEn: 'Swallow & gastric mixing',
@@ -591,6 +611,26 @@ export const SCENE_MANIFEST = [
     descriptionJa: '刺激の増加にあわせ、濾胞から周囲の毛細血管へホルモンが放出される様子を示します。',
     tags: ['secretion', 'particles'],
     load: () => import('../scenes/endocrine/scenes/thyroidHormone/index.js'),
+  },
+  {
+    id: 'adrenal-anatomy',
+    slug: 'adrenal-anatomy',
+    titleEn: 'Interactive adrenal anatomy',
+    titleJa: '触れて学ぶ副腎の解剖',
+    system: 'endocrine',
+    organ: 'adrenal',
+    organs: ['adrenal', 'kidney'],
+    disease: null,
+    conditions: ['adrenal anatomy', 'zona glomerulosa', 'adrenal medulla', '副腎解剖', '球状層', '副腎髄質'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/adrenal-anatomy.md',
+    modelProfile: 'adrenal-anatomy-procedural-atlas',
+    description:
+      'Three cortical zones and, inside them, nervous tissue that is not cortex at all \u2014 one organ made of two entirely different things.',
+    descriptionJa:
+      '皮質の3層と、その内側にある皮質とは全く別の神経系組織を示します。1つの臓器が、まったく異なる2つの組織でできています。',
+    tags: ['anatomy', 'interactive', 'endocrine'],
+    load: () => import('../scenes/endocrine/scenes/adrenalAnatomy/index.js'),
   },
   {
     id: 'adrenal-response',

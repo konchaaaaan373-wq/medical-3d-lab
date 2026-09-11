@@ -1,5 +1,13 @@
 import * as THREE from 'three';
-import { carvePart, partCentroid, planeThrough, radialField, surfaceSamples } from '../geometry/carve.js';
+import {
+  carvePart,
+  partCentroid,
+  planeThrough,
+  radialField,
+  scaledField,
+  shellBetween,
+  surfaceSamples,
+} from '../geometry/carve.js';
 import { tissueMaterial } from '../materials.js';
 
 /**
@@ -113,6 +121,99 @@ export function carveNamedParts({
     part: (id) => index.get(id),
     field,
     bounds,
+    dispose() {
+      for (const item of disposables) item.dispose?.();
+    },
+  };
+}
+
+/**
+ * Cut a solid organ into concentric layers.
+ *
+ * The other way an organ divides. A cortex is not a wedge of an organ, it is
+ * the *outside* of it, continuous all the way round — and cutting it into
+ * wedges to make the arithmetic work would invent a boundary the organ does
+ * not have. `shellBetween` is what makes a layer one part; this is the loop
+ * around it, which the kidney's cortex already ran.
+ *
+ * Layers are given as fractions of the organ's own radius in each direction, so
+ * "the outer fifth" follows the shape rather than an ellipsoid the organ is not.
+ * The innermost layer may start at 0, and then it is a solid rather than a shell.
+ *
+ * @param {{
+ *   warp: (v: THREE.Vector3) => void,
+ *   scale: [number, number, number],
+ *   layers: Array<{ id: string, from: number, to: number, color?: string, opacity?: number }>,
+ *   detail?: number,
+ *   samples?: number,
+ *   cacheKey?: string,
+ *   roughness?: number,
+ *   material?: (layer: object) => THREE.Material,
+ * }} options
+ */
+export function carveLayers({
+  warp,
+  scale,
+  layers,
+  detail = 6,
+  samples = 12000,
+  cacheKey,
+  roughness = 0.5,
+  material,
+}) {
+  const points = surfaceSamples(warp, scale, samples);
+  const bounds = new THREE.Box3();
+  const probe = new THREE.Vector3();
+  for (let i = 0; i < points.length; i += 3) {
+    bounds.expandByPoint(probe.set(points[i], points[i + 1], points[i + 2]));
+  }
+  const centre = bounds.getCenter(new THREE.Vector3());
+  const field = radialField(points, centre);
+
+  const object = new THREE.Group();
+  const disposables = [];
+  const built = [];
+
+  const surfaceAt = (fraction) =>
+    carvePart({
+      field: fraction >= 1 ? field : scaledField(field, fraction),
+      centre,
+      detail,
+      cacheKey: cacheKey ? `${cacheKey}:${samples}:${fraction}` : null,
+    });
+
+  for (const layer of layers) {
+    const outer = surfaceAt(layer.to);
+    let geometry = outer;
+    if (layer.from > 0) {
+      const inner = surfaceAt(layer.from);
+      geometry = shellBetween(outer, inner);
+      outer.dispose();
+      inner.dispose();
+    }
+    const layerMaterial =
+      material?.(layer) ??
+      tissueMaterial({
+        color: layer.color ?? '#b3565c',
+        roughness,
+        opacity: layer.opacity ?? 1,
+        emissiveIntensity: 0.05,
+      });
+    const mesh = new THREE.Mesh(geometry, layerMaterial);
+    mesh.name = layer.id;
+    object.add(mesh);
+    disposables.push(geometry, layerMaterial);
+    built.push({ ...layer, mesh, geometry, material: layerMaterial });
+  }
+
+  const index = new Map(built.map((layer) => [layer.id, layer]));
+  return {
+    object,
+    layers: built,
+    layer: (id) => index.get(id),
+    field,
+    bounds,
+    centre,
     dispose() {
       for (const item of disposables) item.dispose?.();
     },

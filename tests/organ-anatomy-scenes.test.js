@@ -12,6 +12,8 @@ import { ThyroidAnatomyScene } from '../src/scenes/endocrine/scenes/thyroidAnato
 import { SpleenAnatomyScene } from '../src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js';
 import { BladderAnatomyScene } from '../src/scenes/renal/scenes/bladderAnatomy/BladderAnatomyScene.js';
 import { BiliaryAnatomyScene } from '../src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js';
+import { EsophagusAnatomyScene } from '../src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js';
+import { AdrenalAnatomyScene } from '../src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -44,6 +46,8 @@ const SCENES = [
   { id: 'spleen-anatomy', Scene: SpleenAnatomyScene, minimum: 6 },
   { id: 'bladder-anatomy', Scene: BladderAnatomyScene, minimum: 9 },
   { id: 'biliary-anatomy', Scene: BiliaryAnatomyScene, minimum: 10 },
+  { id: 'esophagus-anatomy', Scene: EsophagusAnatomyScene, minimum: 10 },
+  { id: 'adrenal-anatomy', Scene: AdrenalAnatomyScene, minimum: 9 },
 ];
 
 const built = new Map();
@@ -332,6 +336,10 @@ const DETAIL_VIEWS = new Set([
   'thyroid-anatomy:right-lobe',
   'biliary-anatomy:confluence',
   'biliary-anatomy:outlet',
+  'adrenal-anatomy:right-gland',
+  'adrenal-anatomy:left-gland',
+  'esophagus-anatomy:crossing',
+  'esophagus-anatomy:hiatus',
 ]);
 
 /**

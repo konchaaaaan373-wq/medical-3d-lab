@@ -263,5 +263,31 @@
     "cardRevision": 3,
     "modelDigest": "aec68aa793a5b219",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "esophagus-anatomy",
+    "card": "docs/model-cards/esophagus-anatomy.md",
+    "modelSources": [
+      "src/data/esophagusAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/esophagusParts.js",
+      "src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "f2caa13847ff95af",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "adrenal-anatomy",
+    "card": "docs/model-cards/adrenal-anatomy.md",
+    "modelSources": [
+      "src/data/adrenalAnatomyScene.js",
+      "src/scenes/endocrine/organs/adrenalAnatomy.js",
+      "src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "ccf2d8a71ef8a832",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

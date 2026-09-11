@@ -27,6 +27,8 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'spleen-anatomy',
   'bladder-anatomy',
   'biliary-anatomy',
+  'esophagus-anatomy',
+  'adrenal-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -202,6 +204,18 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '左右の肝管から1つの乳頭まで、胆嚢を経由して胆汁の道をたどる。',
     ['GALLBLADDER', 'DUCTS', 'PAPILLA'],
     ['胆嚢', '胆管', '乳頭']
+  ),
+  'esophagus-anatomy': presentation(
+    'Three places the tube is narrow, and what makes each one narrow.',
+    '食道が狭くなる3か所と、それぞれを狭くしている構造。',
+    ['PARTS', 'CONSTRICTIONS', 'NEIGHBOURS'],
+    ['部位', '狭窄部', '周囲の構造']
+  ),
+  'adrenal-anatomy': presentation(
+    'Three layers of cortex, and inside them a piece of nervous system.',
+    '3層の皮質と、その内側にある神経系の組織。',
+    ['ZONES', 'MEDULLA', 'KIDNEY'],
+    ['皮質3層', '髄質', '腎臓']
   ),
   'lung-anatomy': presentation(
     'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',

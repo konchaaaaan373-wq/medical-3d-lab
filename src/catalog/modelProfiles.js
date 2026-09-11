@@ -330,6 +330,32 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code: the gallbladder as one tube of falling calibre cut into fundus, body and neck, and the ducts as tubes joining in the order anatomy gives them \u2014 hepatic ducts to common hepatic, cystic to common bile, common bile and pancreatic to one papilla. No state and no mechanism. Calibres, lengths and angles are drawn to be legible and none is a measurement; what is claimed is the order of the junctions. The liver is not drawn, the common bile duct runs in front of the duodenum and pancreas rather than behind and through them, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.',
   },
   {
+    profileId: 'esophagus-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: one tube on a path, cut into cervical, thoracic and abdominal parts, with three narrowings in its calibre profile and a ring marking each at the profile\u2019s own minimum. The structures that make each narrowing \u2014 trachea, aortic arch, left main bronchus, diaphragmatic hiatus \u2014 are drawn beside them. No state and no mechanism. Lengths, calibres and angles are drawn to be legible and none is a measurement; no distance from the incisors is given or implied. Muscle layers, the sphincters, the crura, the vagus nerves and the venous plexus are not drawn.',
+  },
+  {
+    profileId: 'adrenal-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting each gland into four concentric shells \u2014 three cortical zones and the medulla \u2014 with the right gland pyramidal and the left crescentic, each on its own kidney. No state and no mechanism. **The zone thicknesses are drawn so that three zones can be told apart, not to scale**: in life the cortex is about nine tenths of the gland and the glomerulosa is a thin rim inside its capsule. No capsule, vessel or nerve is drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

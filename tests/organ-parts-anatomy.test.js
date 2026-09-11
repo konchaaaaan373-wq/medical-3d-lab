@@ -13,6 +13,12 @@ import { buildSpleen } from '../src/scenes/hematologic/organs/spleen.js';
 import { SEGMENT_PLANE_Y, buildSpleenParts } from '../src/scenes/hematologic/organs/spleenParts.js';
 import { TRIGONE_CORNERS, buildBladderParts } from '../src/scenes/renal/organs/bladderParts.js';
 import { buildBiliaryTree } from '../src/scenes/hepatobiliary/organs/biliaryTree.js';
+import {
+  CONSTRICTIONS,
+  buildEsophagusParts,
+  esophagusCalibre,
+} from '../src/scenes/gastrointestinal/organs/esophagusParts.js';
+import { ADRENAL_LAYERS, ADRENAL_SITES, buildAdrenalParts } from '../src/scenes/endocrine/organs/adrenalAnatomy.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -428,4 +434,80 @@ test('the bile ducts join in the order that decides what an obstruction does', (
     centre(tree.mesh('gallbladder-fundus')).distanceTo(neck) > centre(tree.mesh('gallbladder-body')).distanceTo(neck),
     'the fundus is the far end'
   );
+});
+
+// --- oesophagus -------------------------------------------------------------
+
+test('the oesophagus is narrow in three places, and something makes each one narrow', () => {
+  const esophagus = buildEsophagusParts();
+  assert.deepEqual(esophagus.parts.map((part) => part.id), ['cervical', 'thoracic', 'abdominal']);
+  assertPartition(esophagus.parts, 'oesophagus');
+
+  // The narrowing is in the calibre, and the calibre is what the tube is built
+  // from — so this measures the profile rather than the rings drawn on it.
+  const calibre = esophagusCalibre();
+  const between = [0.25, 0.68, 0.97].map(calibre);
+  for (const { at, id } of CONSTRICTIONS) {
+    const here = calibre(at);
+    for (const wide of between) {
+      assert.ok(here < wide * 0.95, `${id} is narrower than the tube between the narrowings`);
+    }
+  }
+
+  // Each ring is on the curve at its own fraction, not near it.
+  for (const { id, at } of CONSTRICTIONS) {
+    const ring = centre(esophagus.mesh(id));
+    assert.ok(
+      ring.distanceTo(esophagus.curve.getPointAt(at)) < 0.02,
+      `${id} sits on the tube at its own fraction`
+    );
+  }
+
+  // And each is narrow for its own reason, drawn beside it.
+  const middle = esophagus.constrictionAt('aortobronchial-constriction');
+  assert.ok(centre(esophagus.mesh('aortic-arch')).z < middle.z, 'the arch crosses behind the oesophagus');
+  assert.ok(centre(esophagus.mesh('left-main-bronchus')).z > middle.z, 'the bronchus crosses in front of it');
+  assert.equal(patientSide(centre(esophagus.mesh('aortic-arch'))), 'left', 'the arch goes to the patient’s left');
+
+  const hiatus = esophagus.constrictionAt('diaphragmatic-constriction');
+  const sheet = new THREE.Box3().setFromObject(esophagus.mesh('diaphragm'));
+  assert.ok(sheet.containsPoint(hiatus), 'the lowest narrowing is inside the diaphragm’s ring');
+  assert.ok(centre(esophagus.mesh('trachea')).z > centre(esophagus.mesh('cervical')).z, 'the trachea is in front');
+});
+
+// --- adrenal ---------------------------------------------------------------
+
+test('each adrenal layer encloses the next, and the two glands are not mirror images', () => {
+  const glands = buildAdrenalParts();
+  glands.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(glands.mesh(id));
+
+  for (const { side } of ADRENAL_SITES) {
+    const boxes = ADRENAL_LAYERS.map((layer) => box(`${side}-${layer.id}`));
+    for (let i = 1; i < boxes.length; i += 1) {
+      assert.ok(
+        boxes[i - 1].containsBox(boxes[i]),
+        `${side}: ${ADRENAL_LAYERS[i - 1].id} encloses ${ADRENAL_LAYERS[i].id}`
+      );
+    }
+    // The one that is not cortex is inside all three that are.
+    const medulla = box(`${side}-adrenal-medulla`);
+    for (const zone of ADRENAL_LAYERS.slice(0, 3)) {
+      assert.ok(box(`${side}-${zone.id}`).containsBox(medulla), `${side}: the medulla is inside ${zone.id}`);
+    }
+  }
+
+  // Each gland is on its own side and above its own kidney.
+  for (const { side } of ADRENAL_SITES) {
+    const gland = centre(glands.mesh(`${side}-zona-glomerulosa`));
+    const kidney = centre(glands.mesh(`${side}-kidney`));
+    assert.equal(patientSide(gland), side, `the ${side} gland is on the ${side}`);
+    assert.ok(gland.y > kidney.y, `the ${side} gland is above its kidney`);
+  }
+
+  // Not mirrored: the left is scooped underneath where it lies along the
+  // kidney's medial border, so it is the shallower of the two.
+  const right = box('right-zona-glomerulosa').getSize(new THREE.Vector3());
+  const left = box('left-zona-glomerulosa').getSize(new THREE.Vector3());
+  assert.ok(left.y < right.y, `the left gland is the flatter of the two (${left.y.toFixed(2)} vs ${right.y.toFixed(2)})`);
 });
