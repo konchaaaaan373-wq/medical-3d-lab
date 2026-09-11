@@ -45,10 +45,9 @@
   display: flex;
   flex-direction: column;
   color: var(--accent);
-  font-size: 9.5px;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
 }
 
 .scene-fallback-title {
@@ -91,7 +90,8 @@
   align-items: flex-start;
   margin-top: 15px;
   color: var(--ink-faint);
-  font-size: 9px;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .scene-fallback-status.is-reviewed {
@@ -107,8 +107,8 @@
   padding-top: 18px;
   border-top: 1px solid var(--border);
   color: var(--ink-faint);
-  font-size: 10.5px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.65;
 }
 
 .scene-fallback-actions {
@@ -120,7 +120,7 @@
 
 .scene-fallback-link,
 .scene-fallback-retry {
-  min-height: 38px;
+  min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -130,7 +130,7 @@
   background: rgba(255, 255, 255, 0.025);
   color: var(--ink-dim);
   font: inherit;
-  font-size: 10.5px;
+  font-size: 13px;
   font-weight: 650;
   text-decoration: none;
   cursor: pointer;
@@ -150,6 +150,11 @@
 
 .scene-fallback-link.primary:hover {
   color: #031015;
+}
+
+.scene-fallback-retry:disabled {
+  cursor: wait;
+  opacity: 0.72;
 }
 
 .scene-fallback a:focus-visible,
