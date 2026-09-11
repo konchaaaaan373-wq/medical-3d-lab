@@ -381,6 +381,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "lobar-collapse",
+    "card": "docs/model-cards/lobar-collapse.md",
+    "modelSources": [
+      "src/models/lobarCollapse.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "a237a11a90d30151",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "rotator-cuff-tear",
     "card": "docs/model-cards/rotator-cuff-tear.md",
     "modelSources": [

@@ -192,6 +192,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
     'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
     'urinary-obstruction': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'lobar-collapse': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 

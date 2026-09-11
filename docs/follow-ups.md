@@ -1804,3 +1804,44 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
   ——アプリ内の破棄——しか見ておらず、別ドキュメントへのリンクを踏む経路は
   素通りしていました。`pagehide` を見る `pageLeaving` を足して閉じ、
   `tests/brain-anatomy.test.js` に回帰テストを追加。
+
+### F-91 — the readable band of the screen is a scene constraint, not a check
+
+`scripts/check-patient-explanation.mjs` asserts that a focused annotation
+projects into pixels 62–494 of a 1280×800 frame, because the explanation panel
+covers the lower third and the header the top. Two of the three scenes added in
+this branch needed their **camera framings** re-derived from that band rather
+than from the anatomy — a tract or a chest that fits the viewport does not fit
+the band, and the fix each time was to target the camera *below* the structure
+so the structure sits in the upper half.
+
+That is a property of the shell's layout, so every scene inherits it and each
+one discovers it separately in the browser. Worth Claude① and Work deciding
+whether the viewer should expose the band (or a safe target) to scenes, rather
+than each scene tuning three numbers against a screenshot.
+
+*Raised by Claude③ from `claude/pathology-expansion-b3`. For Claude① / Work.*
+
+### F-92 — a paired organ needs both halves on screen, and the shell assumes one
+
+`urinary-obstruction` and `lobar-collapse` both claim something about **how
+many** — one kidney or two, one lung or the other — so both draw the pair. At
+phone width the info cards in the top-left overlap the left-hand member of the
+pair at rest. Nothing is unreadable and no label fails the band check, so this
+is not a defect being reported; it is a case the shell's layout has not had to
+consider before.
+
+*Raised by Claude③. For Work, when convenient.*
+
+### F-93 — "draw the space, not the displacement" has now happened four times
+
+Hip, shoulder, urinary obstruction and lobar collapse each computed a
+displacement that came out at single-digit pixels, and each solved it the same
+way: draw the space the displacement opened, or draw a second marker at the
+resting position so the reader sees a gap rather than remembering a location.
+`docs/organ-3d-playbook.md` records the failure modes of *surfaces*; this is a
+failure mode of *quantities*, and four instances is enough to write it down.
+
+Not blocking anything — the scenes are correct. Offered as a playbook entry.
+
+*Raised by Claude③.*

@@ -2778,6 +2778,104 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Lobar collapse.
+   *
+   * The walk is a correction of a habit rather than an account of an illness.
+   * A reader arrives knowing that a collapsed lobe "looks white", which is the
+   * one thing this scene is not about — so the second step says in as many
+   * words that the lobe is smaller rather than darker, and the fourth puts the
+   * blockage somewhere else at the same amount, so that "which bronchus" is
+   * seen to be a different question from "how much".
+   */
+  'lobar-collapse': Object.freeze({
+    title: 'Where the room goes when a lobe loses its air',
+    titleJa: '肺葉が空気を失ったとき、その場所はどこへ行くのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'aerated',
+        frame: 'chest',
+        focus: ['rightLung', 'leftLung', 'midline'],
+        certainty: 'established',
+        title: 'Five parts, each with its own way in',
+        titleJa: '5 つの部分と、それぞれの入口',
+        body: 'Each lung is divided into parts, three on one side and two on the other. Air reaches each part through a tube of its own.',
+        bodyJa: '左右の肺はそれぞれ部分に分かれており、片側は 3 つ、もう片側は 2 つです。空気はそれぞれの部分に、自分の管を通って届きます。',
+        look: 'The two blue bars in the middle sit on top of each other for now. Watch them later.',
+        lookJa: '中央の 2 本の青い線は、いまは重なっています。あとで注目してください。',
+      },
+      {
+        progress: 0.5,
+        stage: 'absorbing',
+        frame: 'lobe',
+        focus: ['blockage', 'collapsed'],
+        certainty: 'established',
+        title: 'It gets smaller, not darker',
+        titleJa: '濃くなるのではなく、小さくなります',
+        body: 'One tube is blocked. The air already in that part is taken up by the body and nothing comes in behind it, so the part shrinks.',
+        bodyJa: '1 本の管が塞がれました。その部分にもともとあった空気は体に取り込まれ、後から何も入ってこないため、その部分は縮みます。',
+        look: 'Watch its size, not its colour. The colour only says which part we are talking about.',
+        lookJa: '色ではなく大きさを見てください。色は「どの部分の話か」を示しているだけです。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-up',
+        frame: 'chest',
+        focus: ['expanded', 'midline'],
+        certainty: 'established',
+        title: 'The room it left does not stay empty',
+        titleJa: '空いた場所は、空のままにはなりません',
+        body: 'There is no empty space inside a chest. The other parts of that same lung spread into the room, and what is left over is taken by that side becoming a little smaller.',
+        bodyJa: '胸の中に空いたままの場所はできません。同じ肺の他の部分がそこへ広がり、残った分は、その側全体が少し小さくなることで引き受けられます。',
+        look: 'The two blue bars have come apart. The gap between them is the part of the room that side took.',
+        lookJa: '2 本の青い線が離れました。そのあいだの隙間が、その側が引き受けた分です。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-up',
+        frame: 'chest',
+        focus: ['collapsed', 'expanded'],
+        // The same amount, a different tube: the picture changes because the
+        // place did, which a single slider could never have shown.
+        controls: { bronchus: 'left-upper' },
+        certainty: 'established',
+        title: 'A different tube, and a different picture',
+        titleJa: '別の管なら、別の像になります',
+        body: 'Nothing about the amount has changed — only which tube. A different part is affected, a different part takes the room, and the middle moves the other way.',
+        bodyJa: '量は何も変えていません。変えたのはどの管かだけです。影響を受ける部分が変わり、場所を引き受ける部分が変わり、中央は反対側へ動きます。',
+        look: 'Compare the two blue bars again. They have come apart the other way.',
+        lookJa: 'もう一度 2 本の青い線を見比べてください。今度は反対向きに離れています。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-up',
+        frame: 'chest',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why it varies so much',
+        titleJa: '気づくこと、そしてそれが人によって大きく違う理由',
+        body: 'Breathlessness and a cough are described. How much anyone notices is said to depend on how large a part it is and on what the rest of the lungs are like.',
+        bodyJa: '息切れや咳などが語られます。どれだけ気づくかは、失われた部分の大きさや、残りの肺の状態によると言われます。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'taken-up',
+        frame: 'chest',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture does not say anything about breathing',
+        titleJa: 'この絵は、呼吸については何も述べていません',
+        body: 'Everything here is about where the room went. How much oxygen anyone is getting is not on this screen, and cannot be read off a size.',
+        bodyJa: 'ここにあるのはすべて「場所がどこへ行ったか」の話です。酸素がどれだけ取り込めているかはこの画面になく、大きさから読み取ることもできません。',
+        look: 'The numbers are shares of one lung against itself. None of them is a litre, a distance or a measure of breathing.',
+        lookJa: '画面の数値は、1 つの肺の中での比です。リットルでも距離でも、呼吸の指標でもありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;
