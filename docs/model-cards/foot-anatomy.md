@@ -82,7 +82,7 @@ phalanges.
   side is nearly thirty units long: at life scale the framing asks for more
   distance than the viewer will give and the toes are cropped on a phone, with
   no error anywhere. The layout stays in the unit the anatomy is known in and
-  the finished group is scaled. See F-51 in `docs/follow-ups.md`.
+  the finished group is scaled. See F-90 in `docs/follow-ups.md`.
 
 ## 7. What it must never be used for
 

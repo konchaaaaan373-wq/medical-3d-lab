@@ -1562,7 +1562,7 @@ PR 本文の「`npm test` — 1390/1390」は初版時点の数値です（最�
 - 完了の定義: なし（記録として残します）。数が要るときは
   `SCENE_MANIFEST` から数えてください——手で数えた値を文書に書き写さないこと。
 
-### F-48 シーン下部の注意書きで `**` がそのまま出ていた — 解決（UI）
+### F-88 シーン下部の注意書きで `**` がそのまま出ていた — 解決（UI）
 
 `ControlPanel` の disclaimer は `text` で設定していたため、
 文中の `**…**` がマークアップとして解釈されず、アスタリスクのまま表示されていました。
@@ -1576,7 +1576,7 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
 
-### F-51 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（Claude① / Viewer）
+### F-90 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（shared Viewer / future integration owner）
 
 **再現条件.** `src/controls/createControls.js` の既定は
 `minDistance = 5, maxDistance = 55` で、`src/app/zoom.js` の
@@ -1599,7 +1599,7 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 
 ---
 
-### F-49 subject が横に長いシーンは phone 幅で極端に小さくなる — P2（Claude① / framing）
+### F-89 subject が横に長いシーンは phone 幅で極端に小さくなる — P2（shared Viewer / future integration owner）
 
 **再現条件.** `minHorizontalAspect` が 1 を超えるシーンを 375×667 で開くと、
 対象が frame の 1/3 以下になります。実測（2026-09-11、`?preview=1`）:

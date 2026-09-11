@@ -418,8 +418,8 @@
       "src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "dc382678f28069ca",
+    "cardRevision": 6,
+    "modelDigest": "f4159aa6b5720324",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -568,8 +568,8 @@
       "src/data/footAnatomyScene.js",
       "src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "6702634974dff00a",
+    "cardRevision": 4,
+    "modelDigest": "d70ae2a019757907",
     "cardUpdatedAt": "2026-09-11"
   },
   {

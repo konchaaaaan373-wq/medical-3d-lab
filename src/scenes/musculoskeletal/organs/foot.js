@@ -41,7 +41,7 @@ export const MEDIAL = 1;
  * clamps the camera to **55 units from its target**
  * (`src/controls/createControls.js`). On a phone the framing asks for more
  * distance than that, gets 55, and crops the toes — with no error anywhere.
- * See F-51 in `docs/follow-ups.md`.
+ * See F-90 in `docs/follow-ups.md`.
  */
 export const WORLD_SCALE = 0.7;
 

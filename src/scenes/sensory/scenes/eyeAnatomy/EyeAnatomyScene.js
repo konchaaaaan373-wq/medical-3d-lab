@@ -35,7 +35,7 @@ export class EyeAnatomyScene extends OrganAnatomyScene {
   /** A globe with a nerve and four muscles behind it; the widest whole view
    *  fills the frame's width at an aspect of 1.05. It is above 1 because the
    *  subject is deeper than it is wide, and a reserve much above that makes the
-   *  eye tiny on a phone — see F-49. */
+   *  eye tiny on a phone — see F-89. */
   static framing = { minHorizontalAspect: 1.15 };
 
   static colorModes = EYE_COLOR_MODES;
