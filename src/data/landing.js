@@ -50,6 +50,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'hepatorenal-syndrome',
   'biliary-obstruction',
   'benign-prostatic-enlargement',
+  'uterine-fibroid',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -335,6 +336,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'uterine-fibroid': presentation(
+    'Put the same fibroid at three depths in the wall; watch what each one reaches.',
+    '同じ筋腫を壁の 3 つの深さに置き、それぞれが何に届くかを確認。',
+    ['THREE DEPTHS', 'THE CAVITY', 'THE OUTLINE'],
+    ['3 つの深さ', '子宮腔', '外形']
   ),
   'benign-prostatic-enlargement': presentation(
     'Grow the transition zone; watch the gland grow far less and the outside become a rim.',

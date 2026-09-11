@@ -1847,6 +1847,95 @@ export const BOWEL_OBSTRUCTION_EVIDENCE = defineEvidence('bowel-obstruction', [
   },
 ]);
 
+export const UTERINE_FIBROID_EVIDENCE = defineEvidence('uterine-fibroid', [
+  {
+    id: 'three-locations-not-three-stages',
+    claim:
+      'Submucosal, intramural and subserosal name three depths in the uterine wall, not three stages of one thing. A fibroid does not travel from one to the next, and the classification is where it sits rather than how far it has got.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard gynaecological descriptions of leiomyoma location, in which the three names are positions in the myometrium relative to the endometrium and the serosa.',
+    validation: 'physiology: where it sits is a choice, and moving the size does not change it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'volume-is-the-same-everywhere',
+    claim:
+      'A fibroid of a given size adds the same volume to the uterus wherever in the wall it sits, so the size of the uterus says nothing about what the fibroid is against.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Arithmetic of additive volumes. A sphere of radius r has the volume (4/3)πr³ at any depth in a wall.',
+    validation: 'physiology: the same size is the same uterine volume at every depth',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-middle-reaches-nothing-then-both',
+    claim:
+      'A fibroid in the middle of the wall reaches neither boundary until its diameter approaches the depth of the wall, and then it reaches the cavity and the serosa in the same moment. One just under either boundary is against that boundary from the smallest size upward and never reaches the other.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a sphere of radius r centred at depth d crosses a plane when r > d. Applied to the two surfaces of one wall.',
+    validation: 'physiology: the middle of the wall is the one place that reaches nothing',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-cavity-is-a-plane',
+    claim:
+      'The uterine cavity is a flattened triangular space rather than a bag, so what a fibroid does to it is to press into a surface, and how much of that surface it takes is what "distorting the cavity" means geometrically.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of the uterine cavity as a flattened triangle between the two tubal ostia and the internal os, which is the shape every intrauterine procedure is read against. That the contact is worth measuring as an area share is this model’s framing.',
+    validation: 'physiology: what presses into the cavity is measured as a share of a surface',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-proportions',
+    claim:
+      'The depth of the wall, the area of the cavity and the volume of the organ, from which every ratio the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off this repository’s uterine atlas, whose own proportions are drawn to be legible rather than to scale. The atlas also draws the uterus upright, where a uterus is normally tipped and bent forward.',
+    note:
+      'An illustrative organ, not a measured one. No centimetre, no millilitre and no volume here is a measurement of anybody, and no size in it is a size at which anything is indicated.',
+    validation: 'calibration: the fibroid model is measured off the atlas’s own uterus',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'three-chosen-depths',
+    claim:
+      'The depth in the wall each of the three names is taken to mean: just under the cavity, in the middle, just under the serosa.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Three fractions this repository chose, calibrated so that each name behaves the way it is described: the shallow one is against the cavity across the whole range, the deep one against the serosa across the whole range, and the middle one crosses from reaching nothing to reaching both inside it.',
+    note:
+      'A calibration of three names, not a measurement of three fibroids. Real fibroids sit anywhere in the wall, including on a stalk, and the boundaries between the three names are not sharp.',
+    validation: 'calibration: each of the three names behaves the way its description says',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'nothing-follows-about-symptoms',
+    claim:
+      'Nothing in this model says what a fibroid causes. Bleeding, pain, pressure and fertility are outside it entirely, and no figure in it is a symptom, a score or a probability of one.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the scene is about location: what a fibroid produces does not follow from its size in any simple way, and this model has nothing in it that could make it follow.',
+    note:
+      'A reader watching a share of the cavity rise is watching a shape cross a surface. The relation between that and anything a person notices is not in this model, and none of the standard names is a prediction.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'one-fibroid-and-a-rigid-wall',
+    claim:
+      'There is exactly one fibroid, and the uterus around it keeps the shape the atlas gave it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'Two simplifications. Most uteruses that have fibroids have several, and a real uterus takes the shape of what is inside it — which needs tissue mechanics this model does not have.',
+    note:
+      'The direction this scene is known to mislead. The bulge on screen is the fibroid itself standing past the surface, not a deformed organ, and the wall is not thinned or stretched anywhere.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1860,4 +1949,5 @@ export const EVIDENCE_REGISTRIES = [
   ACHALASIA_EVIDENCE,
   PROSTATIC_ENLARGEMENT_EVIDENCE,
   BOWEL_OBSTRUCTION_EVIDENCE,
+  UTERINE_FIBROID_EVIDENCE,
 ];

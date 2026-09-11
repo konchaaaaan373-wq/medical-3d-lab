@@ -2006,6 +2006,116 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Uterine fibroid.
+   *
+   * The walk exists to take one number away from the reader. Three steps
+   * establish what a lump in the middle of a wall does, and then the *location*
+   * moves twice at the same size — so the volume stays on screen, unchanged,
+   * beside two entirely different pictures.
+   */
+  'uterine-fibroid': Object.freeze({
+    title: 'Where in the wall it sits, and what that changes',
+    titleJa: '壁のどこにあるかが、何を変えるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'small',
+        frame: 'whole',
+        focus: ['wall', 'fibroid'],
+        certainty: 'established',
+        title: 'A lump growing inside the wall of the uterus',
+        titleJa: '子宮の壁の中で育つ塊',
+        body: 'A fibroid is muscle growing inside the wall itself, not in the space inside. How deep in that wall it sits is what this screen is about.',
+        bodyJa: '筋腫は、内側の空間ではなく壁そのものの中で育つ筋肉です。この画面の主題は、その壁のどの深さにあるかです。',
+        look: 'Seen from the side, so the thickness of the wall runs left to right. The pale ball is the fibroid.',
+        lookJa: '横から見ています。壁の厚みが左右方向になります。淡い球が筋腫です。',
+      },
+      {
+        progress: 0.6,
+        stage: 'reaching',
+        frame: 'wall',
+        focus: ['fibroid', 'cavity'],
+        certainty: 'established',
+        title: 'In the middle, it reaches nothing until it reaches both',
+        titleJa: '中央にあると、届かないか、両側に届くか',
+        body: 'A lump in the middle of the wall touches neither side while it is small. Grown to about the depth of the wall, it reaches the inner space and the outer surface together.',
+        bodyJa: '壁の中央にある塊は、小さいうちはどちらにも触れません。壁の厚みほどになると、内側の空間と外表面へ同時に届きます。',
+        look: 'It has just crossed both boundaries. The inner surface has changed colour where it is pressed.',
+        lookJa: 'いま両側の境界を越えたところです。押されている内側の面は色が変わっています。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'wall',
+        focus: ['fibroid'],
+        certainty: 'established',
+        title: 'How large the uterus is does not say what it is against',
+        titleJa: '子宮の大きさは、何に接しているかを語りません',
+        body: 'The lump adds the same amount to the uterus wherever it sits. So the size of the uterus is the same in all three pictures, and it is the picture that differs.',
+        bodyJa: '塊がどこにあっても、子宮に加わる量は同じです。3 通りのどれでも子宮の大きさは同じで、違うのは絵のほうです。',
+        look: 'Note the first number. It will not change in the next two steps.',
+        lookJa: '最初の数値に注目してください。次の 2 段階でも変わりません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'cavity',
+        focus: ['cavity'],
+        // The location moves, at the same size: a second fibroid, not more of
+        // the first.
+        controls: { location: 'submucosal' },
+        certainty: 'established',
+        title: 'Just under the inner space: it presses into it',
+        titleJa: '内側のすぐ下にあると、そこを押し込みます',
+        body: 'Moved to just under the inner surface, the same lump presses into the space inside from its smallest size upward, and never reaches the outside at all.',
+        bodyJa: '同じ塊を内側の面のすぐ下へ移すと、小さいうちからその空間を押し込み、外側にはまったく届きません。',
+        look: 'The inner surface is now taken up by it. The outline of the organ has not moved.',
+        lookJa: '内側の面は大きく占められています。臓器の輪郭は動いていません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'whole',
+        focus: ['serosa'],
+        controls: { location: 'subserosal' },
+        certainty: 'established',
+        title: 'Just under the outside: it pushes the outline out',
+        titleJa: '外側のすぐ下にあると、外形を押し出します',
+        body: 'Moved to just under the outer surface, the same lump stands out past it and is next to whatever the uterus is next to — and the inner space is untouched.',
+        bodyJa: '同じ塊を外表面のすぐ下へ移すと、そこから外へ出て、子宮の隣にあるものに接します。内側の空間には触れません。',
+        look: 'The inner surface is back to its own colour, and the ball now stands outside the organ.',
+        lookJa: '内側の面は元の色に戻り、球は臓器の外へ出ています。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'whole',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why size alone does not settle it',
+        titleJa: '気づくこと、大きさだけでは決まらない理由',
+        body: 'Heavier or longer periods, a feeling of pressure, and difficulty becoming pregnant are described. Which of them, and whether any, is not settled by how big it is.',
+        bodyJa: '経血が多い・長い、圧迫される感じ、妊娠しにくいこと、などが語られます。どれが起きるか、起きるかどうかは、大きさだけでは決まりません。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'large',
+        frame: 'whole',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'What this picture does not contain',
+        titleJa: 'この絵に含まれていないもの',
+        body: 'One lump, in a uterus that keeps its own shape around it. There is no time in it, and most people who have these have more than one.',
+        bodyJa: 'ここにあるのは 1 つの塊と、その周りで形を保ったままの子宮です。時間はなく、実際には複数あることのほうが多いものです。',
+        look: 'The numbers are ratios of this drawing against itself. None of them is a length or a volume.',
+        lookJa: '画面の数値は、この絵の中での比です。長さでも体積でもありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

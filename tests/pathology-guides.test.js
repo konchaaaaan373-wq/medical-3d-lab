@@ -40,6 +40,11 @@ import {
   MODEL_CONTROLS as BOWEL_CONTROLS,
 } from '../src/data/bowelObstruction.js';
 import { BowelObstructionScene } from '../src/scenes/gastrointestinal/scenes/bowelObstruction/BowelObstructionScene.js';
+import {
+  STAGES as FIBROID_STAGES,
+  MODEL_CONTROLS as FIBROID_CONTROLS,
+} from '../src/data/uterineFibroid.js';
+import { UterineFibroidScene } from '../src/scenes/reproductive/scenes/uterineFibroid/UterineFibroidScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -188,6 +193,24 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new BowelObstructionScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The uterus, whose walk is the plainest statement of the scenario shape so
+   * far: the *size* stays where it is while the location moves twice, so the
+   * one number that does not distinguish the three stays on screen beside two
+   * entirely different pictures.
+   */
+  {
+    id: 'uterine-fibroid',
+    stages: FIBROID_STAGES,
+    controls: FIBROID_CONTROLS,
+    scene: () => {
+      const scene = new UterineFibroidScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new UterineFibroidScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];
