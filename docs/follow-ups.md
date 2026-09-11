@@ -1576,6 +1576,67 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
 
+### F-92 色モードを切り替えて部位タブへ戻ると、木の選択マークが消えるシーンがある — P2（AnatomyPanel / shared）
+
+**再現条件.** `npm run verify:anatomy -- --scene foot-anatomy --preview`
+（`oral-anatomy` でも同じ）。`fee3c6d` + 正常解剖統合の build で再現します。
+
+```
+  - recolouring left 0 rows marked selected in the tree
+```
+
+チェッカーの手順は「3D で 1 つ選択 → 表示タブ → 色モードを切替 → 部位タブへ戻る →
+`.anatomy-tree-leaf[aria-selected="true"]` を数える」で、期待は 1、実測 0 です。
+
+**分かっていること**:
+- 同じ run の中で、**3D クリック直後の**「木に 1 行マークされる」判定は
+  通っています。失われるのはタブを往復したあとだけです
+- 「色モードの切替で選択が変わった」判定も通っています。つまり
+  **選択そのものは生きており、木の表示だけが追随していません**
+- 同じ build・同じチェッカーで `brain-anatomy` `lung-anatomy`
+  `kidney-anatomy` `eye-anatomy` `spine-anatomy` `nose-anatomy`
+  `larynx-anatomy` `hand-anatomy` `skeleton-overview`
+  `pelvic-floor-anatomy` は通ります。再現するのは `foot-anatomy` と
+  `oral-anatomy` の 2 つだけで、**どちらも hideTags を持つ named view が
+  多いシーン**ですが、同じ条件で通るシーンもあるため断定していません
+- `setTab()` は `body.replaceChildren(tab.content)` で**作り直していない**
+  ため、単純な再構築ではありません（`src/components/AnatomyPanel.js`）
+
+**Claude② は手を入れていません。** AnatomyPanel は共有コンポーネントで、
+担当外です。再現条件と切り分け結果のみ置きます。
+
+---
+
+### F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している — P1（product shell / 所有者未定）
+
+**再現条件.** `origin/main` の `fee3c6d`（"B6: refine product shell UX and consent flow"）を
+そのまま checkout して `node --test tests/feedback.test.js` を実行すると、
+16 件中 2 件が失敗します。**この統合 branch を作る前から赤で、
+正常解剖の取り込みとは無関係です**（同一 SHA の worktree で確認済み）。
+
+```
+not ok - consent: refusing is offered as plainly as accepting
+not ok - consent: the banner appears only while the question is unanswered
+```
+
+**原因.** B6 が `src/components/ConsentBanner.js` を作り替え、テストが
+記述している形と合わなくなりました。
+
+- テストは `button('denied'` / `button('granted'` を探しますが、実装の
+  ヘルパは `choice('denied', …)` / `choice('granted', …)` に改名されています。
+  **保護している規則（拒否が承諾と同じ明確さで提示され、拒否が DOM 上先で、
+  どちらも事前選択されていない）は新実装でも成立**しており、regex を
+  実装に合わせれば済みます
+- もう 1 件は `if (telemetry.consent !== 'unset') return null` の存在を
+  要求しますが、新実装は回答後も `aria-pressed` を持つ設定行として残る
+  設計に変わっています。**これは UX の判断**であり、テストを消すか
+  実装を戻すかは shell の所有者が決めることです
+
+**Claude② はどちらにも手を入れていません。** 外側 UI shell は担当外で、
+片方だけ直すと「半端に手入れされたファイル」が残るためです。
+
+---
+
 ### F-90 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（shared Viewer / future integration owner）
 
 **再現条件.** `src/controls/createControls.js` の既定は

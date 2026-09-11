@@ -452,9 +452,9 @@ try {
     [0, 0]
   );
   const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
-  const emptyPoint = emptyPoints.length
+  const emptyPoint = [...(emptyPoints.length
     ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
-    : [0.04, 0.94];
+    : [0.04, 0.94])];
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -514,6 +514,21 @@ try {
   }
 
   // 3. Clicking the background clears rather than keeping a stale card.
+  //    Confirmed to still be background first. The point was chosen before the
+  //    drag, and beside a subject with a large open outline — a ring of lips
+  //    around a mouth — a pixel that read as background then can be over the
+  //    model now. Checking it again costs one pointer move and stops the check
+  //    reporting the product for the instrument's own staleness.
+  if (await overModel(emptyPoint[0], emptyPoint[1])) {
+    for (const candidate of [[0.04, 0.94], [0.04, 0.06], [0.96, 0.94]]) {
+      if (!(await overModel(candidate[0], candidate[1]))) {
+        emptyPoint[0] = candidate[0];
+        emptyPoint[1] = candidate[1];
+        break;
+      }
+    }
+    await restPointer();
+  }
   const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   // At a point that selected something during the sweep, not at the middle of
