@@ -459,6 +459,15 @@ try {
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
+  // Orbit back to where the sweep happened. The drag turned the model, and
+  // every check below clicks a point that had something under it *before* the
+  // turn — which is only still true if the camera is put back. A dense organ
+  // survives that by luck; a scene of small scattered markers does not.
+  await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.55, { steps: 20 });
+  await page.mouse.up();
+  await restPointer();
   if (afterDrag.en !== pinned.en) {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
   }
@@ -466,7 +475,14 @@ try {
   // 3. Clicking the background clears rather than keeping a stale card.
   const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
   if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
-  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  // At a point that selected something during the sweep, not at the middle of
+  // the frame: not every scene has anything in the middle. The drainage map's
+  // centre is a body outline drawn too faint to be clickable, so a centre click
+  // there reports the selection failing to come back when nothing is wrong.
+  await page.mouse.click(
+    box.x + box.width * lastHitPoint[0],
+    box.y + box.height * lastHitPoint[1]
+  );
   await page.waitForTimeout(350);
   await restPointer();
   const reselected = await read();
@@ -557,8 +573,15 @@ try {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
-    // clickable again.
-    await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+    // clickable again. Clicked at a point that *did* select something earlier
+    // rather than at the middle of the frame — the middle of a drainage map is
+    // a body outline drawn too faint to be clickable at all, and a check that
+    // assumes every scene has something in the centre reports that as the
+    // model failing to come back.
+    await page.mouse.click(
+      box.x + box.width * lastHitPoint[0],
+      box.y + box.height * lastHitPoint[1]
+    );
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
