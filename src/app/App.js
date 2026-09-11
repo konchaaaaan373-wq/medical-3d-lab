@@ -8,7 +8,7 @@ import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect, fitPoseToSafeArea, orbitLimitsForSubject } from './framing.js';
+import { framePose, distanceScaleForAspect } from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -142,13 +142,6 @@ export async function createApp({ stage, ui }) {
     return Math.min(0.45, Math.max(0, (height - rect.top) / height));
   };
 
-  // The shared orbit floor is the last word on where the camera ends up — it is
-  // re-applied on every `controls.update()`, after the framing has run — and it
-  // was set for a scene an atlas is not the size of. A scene that can say what
-  // it is drawing gets limits measured from that instead. See
-  // `orbitLimitsForSubject`.
-  Object.assign(viewer.controls, orbitLimitsForSubject(scene.getSubjectBounds?.(), viewer.controls));
-
   const shot = framePose(
     SceneClass.cameraPose,
     viewer.camera.aspect,
@@ -180,57 +173,9 @@ export async function createApp({ stage, ui }) {
    */
   let userZoom = 1;
 
-  /**
-   * What each edge of the frame is covered by, as a fraction of it.
-   *
-   * Measured from the elements themselves, because they move: the console grows
-   * with its copy, the anatomy panel is docked on a wide window and a sheet on a
-   * narrow one, and the header is there throughout. Only the bands that run the
-   * whole way across an edge are counted — the scene card sits in the top-left
-   * corner and taking it as a full-height inset would shove the model right for
-   * something it clears anyway.
-   */
-  const safeAreaInsets = () => {
-    const width = viewer.container.clientWidth;
-    const height = viewer.container.clientHeight;
-    if (!width || !height) return null;
-    /**
-     * An element only counts as an edge band when it crosses the middle of the
-     * frame, because that is where the subject is. The anatomy panel docked
-     * down a wide window does cross it and genuinely takes the right-hand third;
-     * the same panel on a phone is a summary in the top corner, and counting it
-     * as a right-hand band shoved the model into the left edge and shrank it to
-     * a third of the height for something it was never behind.
-     */
-    const band = (selector, crosses, read) => {
-      const element = ui.querySelector(selector);
-      if (!element) return 0;
-      const rect = element.getBoundingClientRect();
-      if (!rect.width || !rect.height || !crosses(rect)) return 0;
-      return Math.min(0.5, Math.max(0, read(rect)));
-    };
-    const spansWidth = (rect) => rect.left < width / 2 && rect.right > width / 2;
-    const spansHeight = (rect) => rect.top < height / 2 && rect.bottom > height / 2;
-    // The same panel is a different band on a different window. Docked down a
-    // wide window it takes the right; collapsed to a summary on a phone it sits
-    // across the top, so there it is part of the top band instead — which is
-    // why this asks where the element actually is rather than which one it is.
-    const railAcrossTop = (rect) =>
-      spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
-    return {
-      top: Math.max(
-        band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
-        band('.rail', railAcrossTop, (rect) => rect.bottom / height)
-      ),
-      bottom: band('.console', spansWidth, (rect) => (height - rect.top) / height),
-      right: band('.rail', spansHeight, (rect) => (width - rect.left) / width),
-      left: 0,
-    };
-  };
-
   /** The scene's authored framing for the current view and window, before zoom. */
-  const framedPose = (pose) => {
-    const framed = framePose(
+  const framedPose = (pose) =>
+    framePose(
       pose,
       viewer.camera.aspect,
       dataView ? 'data' : 'learning',
@@ -238,27 +183,6 @@ export async function createApp({ stage, ui }) {
       bottomInset(),
       SceneClass.framing
     );
-    // A scene that knows what it is currently drawing can have its viewpoints
-    // fitted to the band the panels leave rather than to the whole canvas. This
-    // is what a guided explanation's framings are measured against: the console
-    // during a patient explanation is tall, and a framing that filled the canvas
-    // put the subject half behind it. Every other scene keeps the framing it
-    // has — this is opt-in on a capability the scene either offers or does not.
-    const bounds = scene.getSubjectBounds?.();
-    const insets = bounds ? safeAreaInsets() : null;
-    return insets ? fitPoseToSafeArea(framed, {
-      bounds,
-      aspect: viewer.camera.aspect,
-      fovDegrees: viewer.camera.fov,
-      insets,
-      // A scene may also say how much of that band its subject should take. The
-      // brain is the whole of what is drawn and fills it; the heart is an organ
-      // with vessels leaving it in every direction, and filling the band cut
-      // every one of them off flush with an edge. It is a composition, so the
-      // scene that knows what it is drawing owns it.
-      ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
-    }) : framed;
-  };
 
   const setShot = (pose) => {
     shotSource = pose;

@@ -65,10 +65,16 @@
 ## Claude① へ — 契約はそのまま使いました
 
 `guideContract.js`・`guideSession.js`・`PatientGuidePanel.js`・`features.js`・
-`ModelScopePanel.js`・`access.css`・`framing.js` は branch
-`claude/heart-anatomy-b7` から**そのまま**取りました（`git show` で写しただけで、
-1 文字も変えていません）。`App.js` と `installAccess.js` は該当箇所だけ移植です。
-マージのとき、これらの多くは同じ内容どうしで衝突しません。
+`ModelScopePanel.js`・`access.css` は branch `claude/heart-anatomy-b7` から
+**そのまま**取りました（`git show` で写しただけで、1 文字も変えていません）。
+`App.js` と `installAccess.js` は該当箇所だけ移植です。マージのとき、これらの
+多くは同じ内容どうしで衝突しません。
+
+`framing.js` の `fitPoseToSafeArea` / `orbitLimitsForSubject` は**持ってきて、
+戻しました**。ここでは 1 度も走らないからです——効くのは
+`scene.getSubjectBounds()` を持つシーンだけで、このブランチにはそれを持つ
+シーンがありません。コンソールの帯の問題は、寄り先を実測して解きました
+（下）。そちらが解剖シーンと一緒に持ってくるのが筋です。
 
 **衝突する見込みがあるのは 3 か所です:**
 
