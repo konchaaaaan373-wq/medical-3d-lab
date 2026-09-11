@@ -1,8 +1,9 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-11。対象は 2026-09 に追加した 5 シーンです
-（前立腺・男性生殖路・膝・肩・股）。既存の臓器シーンは同じ契約に載っていますが、
-ここには**新しく足した分だけ**を書きます。
+Last updated: 2026-09-11。対象は 2026-09 に追加した 12 シーンです——
+前立腺・男性生殖路・膝・肩・股、そして眼・耳・皮膚・リンパ節・全身リンパ路・
+乳房・脊柱。既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した
+分だけ**を書きます。
 
 このファイルは **足場の目録** です。病態ロジックはここには一切ありません。
 Claude② は病態を実装しません——病態が触ってよいものと、触ると嘘になるものを
@@ -231,6 +232,252 @@ gluteus-medius-tendon  iliopsoas-tendon
 - 中殿筋は大転子、腸腰筋は小転子。入れ替えないこと
 - **頸体角は見やすさのために描いた角度で、実測値ではありません。** coxa vara /
   valga を角度で主張しないでください
+
+---
+
+---
+
+## `eye-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 17 |
+| tags | `coat` `anterior` `media` `fundus` `muscle` |
+| views | `oblique` `anterior` `sagittal-section` `fundus` `posterior` `muscles` |
+| bounds | 2.01 × 2.00 × 3.59 |
+
+```
+sclera  choroid  retina
+cornea  iris  pupil  lens  ciliary-body
+anterior-chamber  vitreous-body
+optic-disc  macula  optic-nerve
+superior-rectus  inferior-rectus  medial-rectus  lateral-rectus
+```
+
+**anchors** — `buildEyeball()` の `anchorPoints`（`SITES` と同じ鍵）:
+`pupil` `lens` `iridocornealAngle` `posteriorPole` `opticDisc` `fovea`。
+房水経路（毛様体 → 後房 → 瞳孔 → 前房 → 隅角）は **copy には書いてありますが
+ジオメトリにはありません**。`iridocornealAngle` がその出口の anchor です。
+
+**病態候補**: 緑内障、白内障、網膜剥離、加齢黄斑変性、糖尿病網膜症、視神経炎。
+
+**動かしてよいもの**: `lens` の透明度と形（白内障・調節）、`pupil` の径、
+`retina` の連続性（剥離）、`optic-disc` の陥凹、`macula` の表示。
+
+**変えてはいけない関係**:
+- **3層の順序**（外から強膜・脈絡膜・網膜）。厚みは `COAT_DISPLAY_THICKNESS` で、
+  **表示値**です。菲薄化・肥厚を「厚さ」として主張しないでください
+- 水晶体は虹彩の**後ろ**。前方脱臼を描くなら別の表示モードにしてください
+- **視神経乳頭は鼻側、黄斑は耳側。** これが左右どちらの眼かを決めています
+- 眼圧はモデルにありません。緑内障を描くなら圧はモデル層が持つべきです
+
+---
+
+## `ear-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 12 |
+| tags | `outer` `middle` `inner` |
+| views | `whole` `outer-ear` `middle-ear` `inner-ear` `ossicles` `from-behind` |
+| bounds | 5.17 × 2.91 × 2.39 |
+
+```
+auricle  external-auditory-canal
+tympanic-membrane  middle-ear-cavity  malleus  incus  stapes  eustachian-tube
+cochlea  vestibule  semicircular-canals  vestibulocochlear-nerve
+```
+
+**anchors** — `SITES`: `meatus` `umbo` `ovalWindow` `roundWindow`
+`eustachianOrigin` `cochlea` `vestibule`。
+
+**病態候補**: 中耳炎、鼓膜穿孔、耳管機能不全、伝音難聴、耳硬化症、
+BPPV、感音難聴、メニエール病。
+
+**動かしてよいもの**: `middle-ear-cavity` の内容（貯留液）、
+`tympanic-membrane` の連続性と位置（穿孔・陥凹）、耳小骨連鎖の連続性、
+`eustachian-tube` の開通。
+
+**変えてはいけない関係**:
+- **経路の順序**（耳介 → 外耳道 → 鼓膜 → 鼓室 → 前庭 → 神経）
+- ツチ骨は鼓膜に付着、**アブミ骨だけが前庭窓**にはまります
+- 耳管は鼓室から**前下内方**へ。これが咽頭と中耳をつなぐ理由です
+- **`DEEP_EAR_VISUAL_SCALE` は表示値です。** 鼓膜より内側は実際より大きく
+  描いてあります。鼓膜をまたぐ大きさの比を使わないでください
+
+---
+
+## `skin-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 10 |
+| tags | `layer` `appendage` `supply` |
+| views | `block` `cut-face` `surface` `follicle` `contents` |
+| bounds | 3.20 × 3.12 × 3.20 |
+
+```
+epidermis  dermis  subcutaneous-tissue  adipose-tissue
+hair-follicle  sebaceous-gland  sweat-gland
+arteriole  venule  sensory-nerve
+```
+
+**anchors** — `SITES`: `follicleMouth` `follicleBulb` `sweatCoil` `sweatPore`。
+層の境界は `LAYER_DISPLAY_THICKNESS` と、境界面そのものを返す
+`reteWave(x,z)` / `dermisFloorWave(x,z)` が export されています。
+**深さを扱う病態は、メッシュを測らずにこの 2 関数を使ってください。**
+
+**病態候補**: 褥瘡（深達度）、蜂窩織炎、熱傷（深度）、皮膚炎、創傷治癒、
+毛包炎・ざ瘡。
+
+**動かしてよいもの**: 各層の連続性（欠損の深さ）、`arteriole` / `venule` の
+表示（充血・虚血）、付属器の表示。
+
+**変えてはいけない関係**:
+- **表皮に血管はありません。** 血管・神経は真皮境界より上に入れないでください
+- **表皮と真皮の境界は平坦ではありません。** 水疱はこの面での剥離です
+- 脂腺は**毛包に**、汗腺は**体表に**開口します。この 2 経路を混ぜないこと
+- **層の厚みは実際の比率ではありません**（表皮は実際には真皮の約 1/20、
+  ここでは約 1/4）。深達度を mm で主張しないでください
+
+---
+
+## `lymph-node-anatomy` と `lymphatic-drainage`
+
+**2 シーンに分けてあります。縮尺が違うためです。** 片方のスケールで
+もう片方を語らないでください。
+
+### `lymph-node-anatomy`（節の縮尺）
+
+| | |
+| --- | --- |
+| 構造 | 7 |
+| tags | `region` `vessel` |
+| views | `whole` `flow` `section` `hilum` |
+| bounds | 3.94 × 1.82 × 1.64 |
+
+```
+capsule  cortex  medulla  lymphoid-follicle
+afferent-vessels  efferent-vessel  hilum
+```
+
+**anchors** — `SITES`: `hilum` `convexPole`。
+
+**病態候補**: リンパ節腫脹、転移、リンパ腫、結核性リンパ節炎。
+
+**動かしてよいもの**: `cortex` と `lymphoid-follicle` の大きさ（腫脹はまず
+ここです）、`capsule` の連続性（節外浸潤）、節内の病変表示。
+
+**変えてはいけない関係**:
+- **多数が入り、1 本が出る。** 輸入・輸出の数と向きを入れ替えないこと
+- 輸出リンパ管は**門から**。他の場所から出さないでください
+- 皮質は外、髄質は内。順序は疾患で入れ替わりません
+
+### `lymphatic-drainage`（全身の縮尺）
+
+| | |
+| --- | --- |
+| 構造 | 9（`body-silhouette` を含む） |
+| tags | `duct` `nodes` `route` `silhouette` |
+| views | `front` `left-side` `right-side` `venous-angles` `routes-only` |
+| bounds | 3.03 × 6.04 × 1.11 |
+
+```
+thoracic-duct  right-lymphatic-duct  cisterna-chyli
+cervical-nodes  axillary-nodes  inguinal-nodes
+left-drainage-route  right-drainage-route  body-silhouette
+```
+
+**anchors** — `SITES`: `cisternaChyli` `leftVenousAngle` `rightVenousAngle`。
+
+**病態候補**: リンパ浮腫、リンパ行性転移、乳び胸。
+
+**動かしてよいもの**: 各 node group の表示（腫大）、経路の表示（閉塞部位）。
+
+**変えてはいけない関係**:
+- **左右差。** 右リンパ本幹は右上半身のみ、胸管はそれ以外すべて。
+  ここを対称にすると、このシーンの存在理由が消えます
+- **`NODE_DISPLAY_SIZE` は表示値です。** マーカーであって節のモデルではありません。
+  節の大きさ・個数を使いたいときは `lymph-node-anatomy` 側で扱ってください
+- `body-silhouette` は縮尺の目安です。身体のモデルとして使わないでください
+
+---
+
+## `breast-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 10 |
+| tags | `surface` `gland` `filler` `ductal` `lobular` `support` `chest-wall` `axillary` |
+| views | `oblique` `anterior` `lateral` `ducts` `axilla` |
+| bounds | 4.34 × 4.00 × 2.49 |
+
+```
+skin  nipple  areola
+lactiferous-ducts  lobules  adipose-tissue  cooper-ligaments
+pectoralis-major  axillary-tail  axillary-nodes
+```
+
+**anchors** — `SITES`: `nipple` `chestWall` `axillaryTail` `axilla`。
+**`ductal` / `lobular` / `axillary` / `chest-wall` は tag として安定させてあります。**
+病態側はこの 4 語で対象を選べます。
+
+**病態候補**: 乳癌（浸潤性乳管癌・浸潤性小葉癌）、乳管内乳頭腫、乳腺炎、
+線維腺腫、腋窩リンパ節転移。
+
+**動かしてよいもの**: 腺内の病変表示、`skin` の表示（陥凹・発赤）、
+`cooper-ligaments` の牽引表現、`axillary-nodes` の腫大、
+`lactiferous-ducts` の内腔。
+
+**変えてはいけない関係**:
+- **すべての乳管は乳頭に収束します。** 小葉は乳管の**末端**にあります。
+  ductal と lobular の区別はこの位置関係そのものです
+- 乳腺は大胸筋の**前**にあり、筋の中には入りません
+- クーパー靱帯は**皮膚に達します**。だから牽引が体表に現れます
+- 腋窩尾部は乳腺の一部で、腋窩リンパ節は腋窩の構造です
+- 描いてある乳管・小葉・靱帯の数は **`DISPLAY_COUNTS`（表示用の数）** です
+
+---
+
+## `spine-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 15 |
+| tags | `region` `segment` `disc` `neural` |
+| views | `column` `lateral` `posterior` `segment` `arch` `canal` |
+| bounds | 1.41 × 8.14 × 1.83 |
+
+```
+cervical-spine  thoracic-spine  lumbar-spine  sacrum
+vertebral-body  pedicle  lamina  facet-joint  spinous-process
+annulus-fibrosus  nucleus-pulposus
+spinal-canal  spinal-cord  cauda-equina  nerve-root
+```
+
+**anchors** — `buildSpine()` の `anchorPoints`:
+`detailedBody` `detailedDisc` `canalAtLevel` `conusMedullaris`。
+加えて `spineAt(y)`（その高さの前方偏位）、`bodySizeAt(y)`、
+`levelHeight(region, i)`、`CORD_ENDS_AT`、`DETAILED_LEVEL` が export されています。
+**高さから位置を出すときは、メッシュを測らずにこれらを使ってください。**
+
+**病態候補**: 椎間板ヘルニア、脊柱管狭窄症、圧迫骨折、すべり症、
+馬尾症候群、脊髄損傷。
+
+**動かしてよいもの**: `nucleus-pulposus` の位置と形（膨隆・脱出）、
+`annulus-fibrosus` の連続性、`spinal-canal` の径、`vertebral-body` の高さ
+（圧迫骨折）、`nerve-root` の表示。
+
+**変えてはいけない関係**:
+- **髄核は線維輪の中にあります。** 脱出を描くときは「線維輪を破って出た」
+  という形にしてください。最初から外に置かないこと
+- 椎間板は椎体の**下**。椎体の中に入れないでください
+- **脊髄は `CORD_ENDS_AT` で終わり、その下は馬尾です。** 腰椎レベルに脊髄を
+  描かないでください
+- 神経根は椎弓根の**下**を外側へ出ます
+- 弯曲は `spineAt` が 1 本で持っています。部位ごとに別々の曲げ方をしないこと
+- 詳細に描いた 1 椎間は**拡大していません**。他と同じ縮尺で、脊柱内の本来の
+  位置にあります
 
 ---
 
