@@ -36,6 +36,11 @@ import {
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
+import {
+  FORWARD as SPINE_FORWARD,
+  spineAt as SPINE_AT,
+  buildSpine,
+} from '../src/scenes/musculoskeletal/organs/spine.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1467,4 +1472,69 @@ test('every duct in a breast ends at one place, and the lobules do not', () => {
   assert.ok(tail.max.y > 0, 'from the upper part of the gland');
   assert.ok(lateral(nodes.min) > lateral(tail.max) - 0.4, 'and the nodes are beyond it');
   assert.ok(nodes.min.y > fat.getCenter(new THREE.Vector3()).y, 'up in the armpit, not beside the breast');
+});
+
+// --- the spine --------------------------------------------------------------
+
+test('the spine curves three ways, and the cord stops before the column does', () => {
+  // Two claims, and everything a spine is asked about rests on one of them:
+  // which region, and what one segment is made of.
+  const spine = buildSpine();
+  spine.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(spine.mesh(id));
+  const bounds = (meshes) => {
+    const b = new THREE.Box3();
+    for (const mesh of meshes) b.union(new THREE.Box3().setFromObject(mesh));
+    return b;
+  };
+
+  // Four regions, stacked in order.
+  const cervical = bounds(spine.regionMeshes.cervical);
+  const thoracic = bounds(spine.regionMeshes.thoracic);
+  const lumbar = bounds(spine.regionMeshes.lumbar);
+  const sacrum = box('sacrum');
+  assert.ok(cervical.min.y > thoracic.max.y - 0.3, 'the cervical spine is above the thoracic');
+  assert.ok(thoracic.min.y > lumbar.max.y - 0.3, 'the thoracic above the lumbar');
+  assert.ok(lumbar.min.y > sacrum.max.y - 0.3, 'and the lumbar above the sacrum');
+  assert.ok(spine.regionMeshes.cervical.length === 7, 'seven cervical vertebrae');
+  assert.ok(spine.regionMeshes.thoracic.length === 12, 'twelve thoracic');
+
+  // Three curves, alternating. A spine drawn straight is a stick.
+  const forward = (y) => SPINE_AT(y) * SPINE_FORWARD;
+  assert.ok(forward(4.0) > 0.1, 'the neck curves forward');
+  assert.ok(forward(1.5) < -0.1, 'the chest curves back');
+  assert.ok(forward(-1.0) > 0.1, 'and the low back forward again');
+
+  // The canal runs behind the bodies, the whole way down.
+  const canal = box('spinal-canal');
+  const body = box('vertebral-body');
+  assert.ok(canal.max.z < body.min.z + 0.15, 'the canal is behind the vertebral bodies');
+  assert.ok(canal.getSize(new THREE.Vector3()).y > 5, 'and runs most of the column');
+
+  // The cord stops partway down; roots continue below it. That single fact is
+  // why a needle low down is a different proposition.
+  const cord = box('spinal-cord');
+  const cauda = bounds(spine.caudaMeshes);
+  assert.ok(cord.min.y > canal.min.y + 1.0, 'the cord stops well above the bottom of the canal');
+  assert.ok(cauda.min.y < cord.min.y, 'and the cauda equina continues below it');
+  assert.ok(cauda.max.y <= cord.min.y + 0.3, 'taking over where the cord ends');
+  assert.ok(spine.caudaMeshes.length > 3, 'as a bundle of strands rather than one structure');
+
+  // The disc is below the body, not inside it, and the nucleus is inside the
+  // annulus: two tissues, and the difference between them is the whole subject.
+  const annulus = box('annulus-fibrosus');
+  const nucleus = box('nucleus-pulposus');
+  assert.ok(annulus.max.y <= body.min.y + 1e-6, 'the disc sits below the vertebral body');
+  assert.ok(annulus.containsBox(nucleus), 'and the nucleus is inside the annulus');
+
+  // The arch: pedicles from the body back, laminae closing it, facets on the
+  // sides, roots leaving underneath.
+  const pedicles = bounds(spine.pedicleMeshes);
+  const laminae = bounds(spine.laminaMeshes);
+  const roots = bounds(spine.rootMeshes);
+  assert.ok(pedicles.max.z < body.max.z, 'the pedicles run back from the body');
+  assert.ok(laminae.max.z < pedicles.min.z + 0.1, 'the laminae close the arch behind them');
+  assert.ok(box('spinous-process').min.z < laminae.min.z + 0.1, 'and the spinous process is behind those');
+  assert.ok(roots.max.x > pedicles.max.x, 'the roots leave laterally');
+  assert.ok(roots.min.y < pedicles.min.y, 'passing out beneath the pedicles');
 });

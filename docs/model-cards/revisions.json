@@ -486,5 +486,18 @@
     "cardRevision": 3,
     "modelDigest": "333335541b23c3ef",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "spine-anatomy",
+    "card": "docs/model-cards/spine-anatomy.md",
+    "modelSources": [
+      "src/data/spineAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/spine.js",
+      "src/scenes/musculoskeletal/scenes/spineAnatomy/SpineAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "5d82d9d6c3d78a1d",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

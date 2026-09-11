@@ -251,6 +251,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A2+: the quadrants a report is written in, the internal mammary drainage as a second route, the retromammary space between gland and muscle, the ribs and the muscles behind pectoralis, and the blood supply. Nothing changes with age or the cycle, which is the first thing a density or lactation scene would need',
   },
   {
+    organ: 'spine',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/spineAnatomy — cervical, thoracic and lumbar regions and the sacrum, plus one lumbar level drawn in full with its body, pedicles, laminae, facet joints and spinous process, the disc below it as annulus and nucleus, the canal, the cord, the cauda equina and a pair of nerve roots, selectable by name; tests/organ-parts-anatomy.test.js — the three regions stack in order with the sacrum below, the curves alternate forward, back and forward, the canal runs behind the bodies for the whole column, the cord stops well above the bottom and the cauda equina continues below it, the nucleus is inside the annulus, the disc sits below the body and not inside it, and the roots leave laterally beneath the pedicles',
+    next: 'A3: the ribs and their joints, the ligaments of the column including the ligamentum flavum, the intervertebral foramina as openings rather than gaps, the epidural fat and venous plexus, the coccyx, and the roots of every level rather than one pair. Nothing bends, which is the first thing a movement or instability scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

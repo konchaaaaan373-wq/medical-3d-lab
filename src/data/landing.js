@@ -42,6 +42,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'lymph-node-anatomy',
   'lymphatic-drainage',
   'breast-anatomy',
+  'spine-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -214,6 +215,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     'どの組織か、どの深さか、どちらへ流れるか。',
     ['DUCTS', 'LOBULES', 'AXILLA'],
     ['乳管', '小葉', '腋窩']
+  ),
+  'spine-anatomy': presentation(
+    'Four regions and three curves — then one segment, close enough to name its parts.',
+    '4つの部位と3つの弯曲。そして1椎間を、部位の名前が分かる近さで。',
+    ['REGIONS', 'DISC', 'CANAL'],
+    ['部位', '椎間板', '脊柱管']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

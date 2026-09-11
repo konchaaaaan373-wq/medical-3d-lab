@@ -1074,6 +1074,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/reproductive/scenes/breastAnatomy/index.js'),
   },
   {
+    id: 'spine-anatomy',
+    slug: 'spine-anatomy',
+    titleEn: 'Interactive spine anatomy',
+    titleJa: '触れて学ぶ脊柱の解剖',
+    system: 'musculoskeletal',
+    organ: 'spine',
+    organs: ['spine', 'bone'],
+    disease: null,
+    conditions: ['spine anatomy', 'intervertebral disc', 'nucleus pulposus', 'spinal canal', 'nerve root', 'cauda equina', '脊柱の解剖', '椎間板', '髄核', '脊柱管', '神経根', '馬尾'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/spine-anatomy.md',
+    modelProfile: 'spine-anatomy-procedural-atlas',
+    description:
+      'Four regions and three curves, with one lumbar level drawn in full: body, pedicles, laminae, facets, disc, canal and the roots leaving it.',
+    descriptionJa:
+      '4つの部位と3つの弯曲、そして詳細に描いた腰椎1椎間——椎体・椎弓根・椎弓板・椎間関節・椎間板・脊柱管と、そこを出る神経根を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/spineAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

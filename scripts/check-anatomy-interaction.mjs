@@ -143,6 +143,8 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Down the column: neck, chest, low back and sacrum.
+  'spine-anatomy': [[0.5, 0.22], [0.5, 0.4], [0.5, 0.58], [0.5, 0.76]],
   // The dome, the nipple on it, the axilla up to the left and the chest wall behind.
   'breast-anatomy': [[0.52, 0.5], [0.52, 0.44], [0.36, 0.3], [0.66, 0.62]],
   // Neck, axilla, the duct up the middle, and the groin.
