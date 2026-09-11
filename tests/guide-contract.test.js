@@ -165,14 +165,33 @@ test('guide contract: the amyloid guide does not close the causal chain', () => 
   assert.doesNotMatch(oligomer.bodyJa, /引き起こ|原因|によって/);
   assert.match(oligomer.bodyJa, /並んで|一緒|報告/);
 
-  // 3. It ends by saying the amount says nothing about a person, and that the
-  //    causal claim is a proposal — not as a footnote, as steps.
+  // 3. It ends on two open questions, as steps rather than footnotes: how much
+  //    is on screen says nothing about a person, and the route from the
+  //    build-up to that person's symptoms is not fully known.
+  //
+  //    **What is open is the route, not the involvement.** An earlier version
+  //    marked the last step `hypothesised` and called the whole thing "one
+  //    explanation researchers have put forward", which reads as though Aβ's
+  //    part in the disease were itself unsettled — more doubt than the field
+  //    has. Both are `uncertain` now, and the fourth check below is what keeps
+  //    that from sliding the other way into a stated cause.
   const uncertain = steps.filter((step) => step.certainty === 'uncertain');
-  const hypothesised = steps.filter((step) => step.certainty === 'hypothesised');
-  assert.equal(uncertain.length, 1);
-  assert.equal(hypothesised.length, 1);
-  assert.match(uncertain[0].bodyJa, /記憶の問題がない人|測ったものではありません/);
-  assert.match(hypothesised[0].bodyJa, /決着はついていません|説明の一つ/);
+  assert.equal(uncertain.length, 2, 'the amount and the route are both open, and both are steps');
+  assert.ok(
+    uncertain.some((step) => /記憶の問題がない人|測ったものではありません/.test(step.bodyJa)),
+    'one says the amount says nothing about a person'
+  );
+  assert.ok(
+    uncertain.some((step) => /道筋|分かっていない/.test(step.bodyJa)),
+    'and one says the route to symptoms is not fully known'
+  );
+  // And the build-up's part in the disease is stated rather than doubted: the
+  // correction that produced this test was that the guide had made it sound
+  // like an open question.
+  const last = steps.at(-1);
+  assert.match(last.bodyJa, /アルツハイマー病でみられる重要な脳の変化|重要な脳の変化の一つ/);
+  assert.equal(last.certainty, 'uncertain');
+  assert.equal(last.educationalOnly, true);
 
   // 4. No step anywhere states the cascade as fact.
   for (const step of steps) {

@@ -150,12 +150,23 @@ export const PATIENT_GUIDES = Object.freeze({
       {
         progress: 0.84,
         stage: 'plaque',
-        certainty: 'hypothesised',
+        // `uncertain`, not `hypothesised`. That Aβ build-up is one of the
+        // important brain changes of Alzheimer's disease is not the contested
+        // part; what is open is the route from it to any one person's symptoms.
+        // Marking the whole thing "a proposal researchers put forward" read as
+        // though the involvement itself were undecided, which is more doubt
+        // than the field has.
+        certainty: 'uncertain',
         educationalOnly: true,
-        title: 'Whether this sequence is the cause is still argued',
-        titleJa: 'この流れが原因かどうかは、まだ議論されています',
-        body: 'That this build-up is what brings on the symptoms is one explanation researchers have put forward. Others disagree, and the question is open.',
-        bodyJa: 'この蓄積が症状を引き起こすという考えは、研究者が挙げている説明の一つです。異なる立場もあり、決着はついていません。',
+        title: 'The route to symptoms is not fully known',
+        titleJa: '症状につながる道筋は、まだすべて分かっていません',
+        body:
+          'This build-up is one of the important brain changes of Alzheimer\u2019s disease. How much there is '
+          + 'does not settle how severe one person\u2019s symptoms are, or when. Parts of the route are '
+          + 'unknown.',
+        bodyJa:
+          'アミロイドβの蓄積は、アルツハイマー病でみられる重要な脳の変化の一つです。ただし、この蓄積だけで'
+          + '一人ひとりの症状の強さや時期が決まるわけではなく、症状につながる道筋には、まだ分かっていない部分があります。',
         look: 'The screen shows one sequence of shapes. It does not show why anyone became unwell.',
         lookJa: 'この画面が示すのは形の移り変わりだけです。誰かが不調になった理由を示すものではありません。',
       },
