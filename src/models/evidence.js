@@ -2286,6 +2286,93 @@ export const CUFF_EVIDENCE = defineEvidence('rotator-cuff-tear', [
   },
 ]);
 
+export const HIP_OA_EVIDENCE = defineEvidence('hip-osteoarthritis', [
+  {
+    id: 'one-shared-centre',
+    claim:
+      'In a healthy hip the centre of the femoral head and the centre of the acetabulum are the same point, and the space between the two bones is even all the way round.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard hip anatomy: a spherical head concentric with its socket. The atlas this scene is drawn on states it of its own two sites.',
+    validation: 'physiology: an intact hip is concentric and its space is even all round',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-direction-not-a-compartment',
+    claim:
+      'Hip osteoarthritis loses the layer in a direction rather than in a compartment, so the ball settles that way and the two centres come apart by what has gone there. The described patterns — up and out, straight up, into the floor of the socket — are directions.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the patterns of joint space narrowing in hip osteoarthritis, and of femoral head migration along them.',
+    validation: 'physiology: a hip narrows in a direction and the ball settles that way',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-far-side-opens',
+    claim:
+      'Because the ball has moved away from a socket wall whose own layer is still there, the space on the far side is wider than it began — an apparent widening that is a consequence of the movement rather than of anything being added.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Solid geometry: a sphere that settles against one side of a shell is no longer concentric with it, and the clearance opposite increases by what it moved.',
+    validation: 'physiology: the far side opens by what the ball moved',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'even-loss-keeps-the-centre',
+    claim:
+      'Where the layer goes evenly the ball has nowhere thinner to settle towards, so the centres stay shared and the space closes all round. That is a different picture rather than a milder one.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'A consequence of the geometry, and the standard description of concentric joint space narrowing as a pattern of its own. **thin** — what makes a hip take one pattern rather than another is not claimed here.',
+    validation: 'physiology: even loss leaves the centres shared',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-drawn-layer-not-a-joint-space',
+    claim: 'The thickness of the layer between the two bones, which every fraction this scene reports is a fraction of.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The hip atlas’s own drawn radii: the difference between the head it draws and the socket it draws. The atlas says no dimension in it is a measurement.',
+    note:
+      'An illustrative layer. **The fraction reported of it is not a joint space width**, which is millimetres between bone surfaces on a weight-bearing radiograph in a direction somebody chose. Nothing here is measured, weight-bearing or millimetres.',
+    validation: 'calibration: the hip model thins the layer the atlas’s own radii leave',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'four-patterns-and-a-spill',
+    claim:
+      'The four directions the scene offers, and how much of a directional loss reaches the rest of the surface.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the angles are a reading of three described patterns and the spill was calibrated so a directional loss is plainly directional while the rest of the surface is not left untouched.',
+    note:
+      'Four patterns standing for a continuum of directions. The model claims that the direction is what decides the picture, and never these angles or this share.',
+    validation: 'calibration: a directional loss is plainly directional and an even one has no direction at all',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-loop-is-open',
+    claim:
+      'Where the ball sits changes what it loads, which is thought to be part of why it goes on. This model does not represent that.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no loading in the model at all — no weight, no alignment, no gait — so the feedback cannot be in it.',
+    note:
+      'A reader watching the ball settle is not watching a process that drives itself on screen. The axis is how much is gone, not how it got there or why it went that way.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-follows-about-the-person',
+    claim: 'Nothing in this model says what somebody with any of these pictures feels or can do.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a deliberate one: the relation between what is left of a layer and what a person notices is not one this model could carry.',
+    note:
+      'Pain, stiffness, limp and range are outside the model entirely. No fraction, offset or pattern in it is a symptom, a grade or a probability of one.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2304,4 +2391,5 @@ export const EVIDENCE_REGISTRIES = [
   KNEE_OA_EVIDENCE,
   ACL_EVIDENCE,
   CUFF_EVIDENCE,
+  HIP_OA_EVIDENCE,
 ];

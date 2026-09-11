@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "hip-osteoarthritis",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of hip osteoarthritis by direction of joint space loss, prepared for future clinical sign-off: what is left of the layer round the socket and how far the two centres have come apart"
+    ],
+    "sources": [
+      "docs/model-cards/hip-osteoarthritis.md",
+      "docs/model-evidence/hip-osteoarthritis.md",
+      "tests/hip-osteoarthritis-model.test.js",
+      "src/models/hipOsteoarthritis.js"
+    ],
+    "unresolvedLimitations": [
+      "The fractions reported are of a layer this repository drew and are not joint space widths. Joint space width is millimetres between bone surfaces on a weight-bearing radiograph in a direction somebody chose; nothing here is measured, weight-bearing or millimetres.",
+      "There is no pain, stiffness, limp, range or anything a person can do anywhere in the model, and nothing in it makes any of them follow from how much layer is left.",
+      "There is no loading in the model at all, so the loop by which where the ball sits changes what it loads is left open rather than represented.",
+      "Four patterns stand for a continuum of directions, and the space is drawn as a ring in one plane. A hip is not a disc.",
+      "Cysts, sclerosis, osteophytes, dysplasia, impingement, avascular necrosis, every grading system and every treatment are outside the model, as are time, progression and cause."
+    ]
+  },
+  {
     "sceneId": "rotator-cuff-tear",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

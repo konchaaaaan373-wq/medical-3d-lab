@@ -15,6 +15,7 @@ import {
   CUFF_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
+  HIP_OA_EVIDENCE,
   KNEE_OA_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
@@ -68,6 +69,7 @@ const FILE_LAYERS = {
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
+  'hip-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -90,6 +92,7 @@ const DOSSIERS = {
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
   'acl-injury': 'docs/model-evidence/acl-injury.md',
   'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
+  'hip-osteoarthritis': 'docs/model-evidence/hip-osteoarthritis.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -232,6 +235,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'knee-osteoarthritis',
       'acl-injury',
       'rotator-cuff-tear',
+      'hip-osteoarthritis',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -256,6 +260,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(KNEE_OA_EVIDENCE.length >= 8);
   assert.ok(ACL_EVIDENCE.length >= 8);
   assert.ok(CUFF_EVIDENCE.length >= 8);
+  assert.ok(HIP_OA_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {
