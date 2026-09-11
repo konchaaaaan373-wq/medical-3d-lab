@@ -7,8 +7,51 @@
  * `tests/asthma-scene.test.js` re-derives every stored answer from it.
  */
 
+/**
+ * The three airway trees this scene explains itself with — **exported, because
+ * two explanations use them.**
+ *
+ * The clinician's walk-through stands on one of them throughout, because its
+ * subject is what a single tree does as the stimulus rises. The patient
+ * explanation needs the other two, because its subject includes the two things
+ * that make asthma asthma rather than a narrow tube: a tree that is not twitchy
+ * barely responds to the same stimulus, and a tree that has responded can open
+ * again. Both are states of this model, and both are reached with the controls
+ * the reader has in front of them.
+ *
+ * Written once, here, so the two explanations cannot drift onto different trees
+ * while both go on reading sensibly. `tests/respiratory-guides.test.js` holds
+ * every step of both to this list.
+ */
 /** The lung the scene is about: hyperresponsive, with some wall thickening. */
-const ASTHMATIC = { hyperresponsiveness: 1.2, wallThickening: 0.25, lungInflation: 1, bronchodilator: 0 };
+export const ASTHMATIC = Object.freeze({ hyperresponsiveness: 1.2, wallThickening: 0.25, lungInflation: 1, bronchodilator: 0 });
+/**
+ * A tree without asthma's airway: not hyperresponsive, walls not thickened.
+ *
+ * The same stimulus, applied to this, takes the resistance from 1.00 to about
+ * 1.7 rather than to about 8.8 — which is the comparison the first step of the
+ * patient explanation is making, and it is the model's own arithmetic, not an
+ * assertion typed beside it.
+ */
+export const NOT_HYPERRESPONSIVE = Object.freeze({ hyperresponsiveness: 0.8, wallThickening: 0, lungInflation: 1, bronchodilator: 0 });
+/**
+ * The same asthmatic tree with its smooth muscle largely released.
+ *
+ * The model's `bronchodilator` control is a relaxation of airway smooth muscle;
+ * it is not a medicine, a dose or a response rate, and nothing that reads this
+ * state may present it as one. What it shows is the property that separates
+ * this scene from the COPD one next to it: at full stimulus the resistance
+ * comes back from about 8.8 to about 1.7 — the narrowing here is something the
+ * airway can come out of.
+ */
+export const RELAXED = Object.freeze({ ...ASTHMATIC, bronchodilator: 0.8 });
+
+/** Every model state either explanation of this scene is allowed to stand on. */
+export const AIRWAY_STATES = Object.freeze({
+  notHyperresponsive: NOT_HYPERRESPONSIVE,
+  asthmatic: ASTHMATIC,
+  relaxed: RELAXED,
+});
 
 /**
  * Seven steps. The middle three are the loop, taken one link at a time,

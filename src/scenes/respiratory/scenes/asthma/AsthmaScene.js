@@ -27,8 +27,10 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
   STORY_LABEL,
+  VISUAL_MAPPING,
 } from '../../../../data/asthma.js';
 import { CAUSAL_STORY, LEARNING_MODULES } from '../../../../data/asthmaTeaching.js';
 import { REEL_CUES, REEL_DURATION, cameraAt, overlayAt, stimulusAt } from './reelStoryboard.js';
@@ -68,6 +70,8 @@ export class AsthmaScene {
     subtitle: '128 regions of one airway tree · an even stimulus, an uneven result',
     subtitleJa: '1 本の気道樹の 128 領域 ｜ 均一な刺激が生む不均一な結果',
     stages: STAGES,
+    related: RELATED,
+    visualMapping: VISUAL_MAPPING,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -354,6 +358,56 @@ export class AsthmaScene {
   }
 
   // --- what the interface reads --------------------------------------------
+
+  /**
+   * Framings a guided explanation may ask for **by name**.
+   *
+   * Presentation only — the camera, and nothing the model is set to. The
+   * opening shot stands well back, because the subject of this scene is the
+   * whole lung's *distribution* and that needs every unit in frame at once.
+   * Two of the steps are not about the distribution: they are about the tubes,
+   * and at the opening distance a sixth-generation airway is a hairline.
+   *
+   * Both keep the scene's own line of sight, so nothing has to be re-learned
+   * about which way round the tree is. Distances are for the 42° vertical
+   * field this app uses, measured from the built geometry: the tree is 4.4
+   * units across and the units 6.4, which is why the wider subject is the
+   * further shot rather than the closer one.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    // The trachea and the conducting branches above the units.
+    tree: Object.freeze({
+      target: new THREE.Vector3(0, 0.75, 0),
+      distance: 8.6,
+      direction: new THREE.Vector3(2, 1.5, 16.2).normalize(),
+    }),
+    // The ventilation units. Wider and deeper than the tree, so this is the
+    // further of the two: a framing tight enough to fill the height would have
+    // cropped the regions at the edges, and which regions went dark *together*
+    // is the entire content of the steps that ask for it.
+    units: Object.freeze({
+      target: new THREE.Vector3(0, -0.5, 0),
+      distance: 11.4,
+      direction: new THREE.Vector3(2, 1.5, 16.2).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return AsthmaScene.guideFramings;
+  }
+
+  /**
+   * What the drawing is doing with the model's numbers.
+   *
+   * Declared in `src/data/asthma.js` and handed out here so a reviewer, a test
+   * or a panel can ask the scene rather than read `drawTree`.
+   */
+  getVisualMapping() {
+    return VISUAL_MAPPING;
+  }
 
   getAnnotations() {
     const anchors = {

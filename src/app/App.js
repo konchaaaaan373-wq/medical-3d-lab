@@ -3,7 +3,7 @@ import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
-import { betaUnlocked } from './releaseGate.js';
+import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
@@ -510,7 +510,30 @@ export async function createApp({ stage, ui }) {
   // Optional: what the model answers, what it does not, and where it came from.
   // A scene that has lost the Prototype badge needs this on the same screen as
   // the numbers it is now asking to be believed about.
-  const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  /**
+   * Where this model says the rest is shown, filtered to what this build opens.
+   *
+   * One list, decided once. The scope panel renders it at the bottom of "what
+   * this model does not represent", which is the right place for the detail and
+   * the wrong place to *find* it — so the same list is handed out on the app's
+   * API for a shallower entry point elsewhere in the shell. Whoever adds that
+   * entry point reads this rather than writing the routes out again: two copies
+   * of a link list is how one of them comes to offer a scene the gate closed.
+   */
+  // A scene the release is holding back is not in this build, so a link to it
+  // would be a link to "TO BE UPDATED". They are dropped here, once, and the
+  // gate — not the panel and not the shell — decides which.
+  const isSceneSlugOpen = (slug) => sceneOpen(SCENES.find((entry) => entry.slug === slug) ?? { id: slug });
+  const related = Object.freeze({
+    scenes: Object.freeze(
+      (meta.related?.scenes ?? []).filter((entry) => entry?.slug && isSceneSlugOpen(entry.slug)).map(Object.freeze)
+    ),
+    note: meta.related?.note ?? null,
+    noteJa: meta.related?.noteJa ?? null,
+  });
+  const scopePanel = meta.modelScope
+    ? createModelScopePanel(meta.modelScope, { related })
+    : null;
   if (meta.modelScope?.primary) scopePanel?.element.classList.add('is-primary');
 
   inspectionPanel = createInspectionPanel({
@@ -808,6 +831,90 @@ export async function createApp({ stage, ui }) {
   function comparisonOrStageShot() {
     if (comparing) return scene.getComparisonView?.() ?? SceneClass.cameraPose;
     return SceneClass.cameraPose;
+  }
+
+  /**
+   * Take the camera somewhere a guided explanation names, and point the labels
+   * at what that step is about.
+   *
+   * **Presentation only.** It moves the camera and narrows the label layer; it
+   * sets no progression, runs no solve and changes nothing the model is in. A
+   * step that turns the reader's attention from the ventricle to the vessels
+   * behind it is a different picture of the same solved state, and this is what
+   * makes that possible without the step also being a state change.
+   *
+   * It is an *explicit* operation — the reader pressed Next — so it is allowed
+   * to move a camera the reader had orbited, exactly as choosing a named
+   * viewpoint is. That is a different thing from the automatic re-framing that
+   * follows a panel resize, which stops as soon as anyone touches the camera.
+   *
+   * The framings themselves belong to the scene (`getGuideFramings`), because
+   * where the pulmonary veins lie is a fact about the anatomy on screen.
+   *
+   * @param {string|null} id a framing the scene declares, or null for its own
+   * @param {{focus?: string[]|null}} [options] annotation ids to point at
+   * @returns {boolean} whether the id was one the scene offers
+   */
+  function applyGuideFraming(id, { focus = null } = {}) {
+    if (sequenceOwnsCamera()) return false;
+    storyFocus = focus ?? null;
+    const framing = id ? scene.getGuideFramings?.()[id] : null;
+    if (id && !framing) {
+      applyLabelFocus();
+      return false;
+    }
+    userZoom = 1;
+    storyView.orbit.identity();
+    if (framing) {
+      const target = framing.target.clone();
+      setShot({
+        target,
+        position: target.clone().addScaledVector(framing.direction.clone().normalize(), framing.distance),
+      });
+    } else {
+      setShot(comparisonOrStageShot());
+    }
+    applyLabelFocus();
+    view.active = true;
+    view.resumeAutoRotate = false;
+    viewer.controls.autoRotate = false;
+    inspectionPanel?.clearView();
+    syncZoomLimits();
+    return true;
+  }
+
+  /**
+   * Put the model into the state a guided explanation's step is about.
+   *
+   * **This one does change the model**, which is exactly why it is not part of
+   * `applyGuideFraming`. A respiratory guide's opening step is an ordinary lung
+   * and its second step is the same lung with narrowed airways; the difference
+   * between them is a model control, not a camera. So the two live apart and a
+   * reader of a step can tell which kind of change it asks for.
+   *
+   * It goes through the scene's public setters — the same ones the stepped
+   * walk-through and the model-control panel use — so there is no private path
+   * into the physiology and every read-out re-derives from the solved state.
+   *
+   * @param {{controls?: Record<string, number>|null, compare?: boolean|null}} step
+   * @returns {boolean} whether anything moved
+   */
+  function applyGuideState({ controls = null, compare = null } = {}) {
+    let moved = false;
+    if (controls && scene.setModelControl) {
+      for (const [id, value] of Object.entries(controls)) {
+        scene.setModelControl(id, value);
+        moved = true;
+      }
+      scene.settleModel?.();
+      modelControls?.sync(scene.getModelControls?.() ?? []);
+      refreshModelReadouts();
+    }
+    if (compare !== null && scene.setComparison && Boolean(compare) !== comparing) {
+      setComparison(Boolean(compare));
+      moved = true;
+    }
+    return moved;
   }
 
   function seek(value) {
@@ -1146,6 +1253,36 @@ export async function createApp({ stage, ui }) {
     causalStory: causalStory
       ? { panel: causalStory, set: setCausalStory, isActive: () => storyStepping }
       : null,
+    /**
+     * The onward scenes this build opens, and the sentence that has to travel
+     * with them. Empty when the model declares none or the gate closed them
+     * all; never a route to a placeholder page.
+     */
+    related,
+    /**
+     * A guided explanation's camera. `apply(null)` returns the scene's own
+     * framing. Nothing here changes what the model is set to.
+     */
+    guideView: {
+      apply: applyGuideFraming,
+      framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
+    },
+    /**
+     * A guided explanation's *model* state, kept apart from its camera so that
+     * the two kinds of step are distinguishable from outside as well as in.
+     * `capture()` / `restore()` are the same session helpers every other mode
+     * that drives the model uses.
+     */
+    guideState: {
+      apply: applyGuideState,
+      capture: () => captureSessionState({ playback, viewer, scene, comparing }),
+      restore: (state) => {
+        if (!state) return;
+        restoreSessionState(state, { playback, viewer, scene, setComparison });
+        modelControls?.sync(scene.getModelControls?.() ?? []);
+        refreshModelReadouts();
+      },
+    },
     inspection: {
       panel: inspectionPanel,
       setOpen: setInspectionOpen,

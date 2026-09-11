@@ -17,16 +17,46 @@
  * of their own, in `tests/respiratory-physiology.test.js`.
  */
 
+/**
+ * The three lungs this scene explains itself with — **exported, because two
+ * explanations use them.**
+ *
+ * The clinician's walk-through steps through these, and so does the patient
+ * explanation in `src/data/patientGuides.js`. Written twice they would drift,
+ * and the drift would be invisible: the two would go on reading sensibly while
+ * describing lungs that were no longer the same one. Written once, re-tuning a
+ * lung moves both explanations or fails the build.
+ */
 /** Where the walk-through starts: an ordinary lung, at rest. */
-const HEALTHY = { airwayResistance: 1, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
+export const HEALTHY = Object.freeze({ airwayResistance: 1, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 });
 /** And the lung it is about. */
-const OBSTRUCTED = { airwayResistance: 3, elasticRecoil: 0.6, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
+export const OBSTRUCTED = Object.freeze({ airwayResistance: 3, elasticRecoil: 0.6, expiratoryPressureCmH2O: 0, bronchodilation: 0 });
 /**
  * Narrowed airways in a lung whose elastic recoil is intact — the condition
  * induced bronchoconstriction produces, and the one that shows that a longer
  * time constant is on its own enough to raise end-expiratory volume.
  */
-const NARROWED = { airwayResistance: 2, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 };
+export const NARROWED = Object.freeze({ airwayResistance: 2, elasticRecoil: 1, expiratoryPressureCmH2O: 0, bronchodilation: 0 });
+
+/**
+ * The same two lungs with the person pushing on the way out.
+ *
+ * Expiratory effort is a separate mechanism from resistance and from recoil,
+ * and the pair exists because the walk-through's point is that it helps in one
+ * of these lungs and does nothing in the other. Fifteen centimetres of water is
+ * the value both steps use; declaring it once is what keeps them comparable.
+ */
+export const NARROWED_PUSHING = Object.freeze({ ...NARROWED, expiratoryPressureCmH2O: 15 });
+export const OBSTRUCTED_PUSHING = Object.freeze({ ...OBSTRUCTED, expiratoryPressureCmH2O: 15 });
+
+/** Every model state either explanation of this scene is allowed to stand on. */
+export const LUNG_STATES = Object.freeze({
+  healthy: HEALTHY,
+  narrowed: NARROWED,
+  narrowedPushing: NARROWED_PUSHING,
+  obstructed: OBSTRUCTED,
+  obstructedPushing: OBSTRUCTED_PUSHING,
+});
 
 /**
  * Eight steps, each one the cause of the next.
@@ -117,7 +147,7 @@ export const CAUSAL_STORY = {
         'Add fifteen centimetres of water of expiratory muscle pressure to the same lung at the same workload. The resting volume comes back down — a long way down. Effort is a real mechanism and it is a separate one: nothing about the resistance, the recoil or the expiratory time has changed. This is why a lung that has only narrowed airways can defend its operating volume, if the person pushes.',
       bodyJa:
         '同じ肺・同じ負荷に、15 cmH₂O の呼気筋圧を加えます。安静位は下がります。しかもかなり下がります。呼気努力は実在する機序であり、独立した機序です。抵抗も弾性収縮力も呼気時間も変えていません。気道が狭くなっただけの肺が、本人が押し出せば動作肺気量を守れるのは、このためです。',
-      controls: { ...NARROWED, expiratoryPressureCmH2O: 15 },
+      controls: { ...NARROWED_PUSHING },
       progress: 0.6,
       watch: ['pexp', 'eelv', 'ic', 'limited'],
       chart: 'flow-volume',
@@ -135,7 +165,7 @@ export const CAUSAL_STORY = {
         'Take the recoil down to sixty per cent — emphysema, on top of the same narrowed airways. Three things happen together: the time constant lengthens again, the relaxed volume itself rises, and the flow ceiling drops into the range tidal breathing needs. Now most of the breath is leaving at the ceiling, and the fifteen centimetres of water that worked a moment ago moves almost nothing. Raising pleural pressure raises the pressure driving the gas out and the pressure squeezing the airway shut by the same amount, and past the equal pressure point the two cancel.',
       bodyJa:
         '弾性収縮力を 60% まで下げます。同じ狭い気道に肺気腫が加わった状態です。3 つのことが同時に起こります。時定数がさらに延び、弛緩位そのものが上がり、そして流量上限が安静換気の必要とする範囲まで下がります。いまや呼気の大半が上限に達しており、先ほど効いた 15 cmH₂O はほとんど何も動かしません。胸腔内圧を上げると、気体を押し出す圧と気道を押しつぶす圧が同じだけ上がり、equal pressure point より下流では互いに打ち消し合うからです。',
-      controls: { ...OBSTRUCTED, expiratoryPressureCmH2O: 15 },
+      controls: { ...OBSTRUCTED_PUSHING },
       progress: 0.6,
       watch: ['limited', 'eelv', 'tau', 'ic'],
       chart: 'flow-volume',

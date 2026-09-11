@@ -23,9 +23,26 @@ import { el } from '../utils/dom.js';
  *   evidence: 'docs/model-evidence/<id>.md' }
  * ```
  *
+ * ### Where the rest is shown
+ *
+ * `related` is the other half of "what it does not represent". Saying an
+ * anatomy atlas carries no physiology is true and unhelpful on its own; the
+ * reader's next question is where the physiology *is*, and the answer is
+ * another scene in this app. It is declared on the scene's own meta
+ * (`meta.related`), filtered by the release gate before it gets here, and
+ * handed to this panel and to the app's API from that one place — so a shallow
+ * entry point elsewhere in the shell cannot drift from what this panel says.
+ *
+ * `related.note` is the sentence that has to travel with those links: an
+ * anatomy atlas and a pathophysiology scene are **different models**, built
+ * from different geometry, and neither is the other one later. Without it, two
+ * scenes reached from one panel read as two states of one thing.
+ *
  * @param {object} scope
+ * @param {{ related?: {scenes?: object[], note?: string, noteJa?: string} }} [options]
  */
-export function createModelScopePanel(scope) {
+export function createModelScopePanel(scope, { related = {} } = {}) {
+  const next = related.scenes ?? [];
   const body = el('div', { class: 'scope-body' }, [
     section('What this model is for', 'このモデルが答えること', [
       el('p', { class: 'scope-question' }, [
@@ -35,6 +52,28 @@ export function createModelScopePanel(scope) {
       list(scope.answers, 'scope-answers'),
     ]),
     section('What it does not represent', '表現していないこと', [list(scope.excludes, 'scope-excludes')]),
+    next.length
+      ? section('What is shown elsewhere', 'この先はどこで見られるか', [
+          el('ul', { class: 'scope-list scope-next' }, next.map((entry) =>
+            el('li', { class: 'scope-item' }, [
+              el('a', { class: 'scope-next-link', href: `#/${entry.slug}` }, [
+                el('span', { class: 'lang-en', text: entry.label }),
+                el('span', { class: 'lang-ja', text: entry.labelJa }),
+              ]),
+              el('span', { class: 'scope-next-why' }, [
+                el('span', { class: 'lang-en' }, emphasised(entry.why)),
+                el('span', { class: 'lang-ja' }, emphasised(entry.whyJa)),
+              ]),
+            ])
+          )),
+          related.note
+            ? el('p', { class: 'scope-next-note' }, [
+                el('span', { class: 'lang-en' }, emphasised(related.note)),
+                el('span', { class: 'lang-ja' }, emphasised(related.noteJa)),
+              ])
+            : null,
+        ])
+      : null,
     scope.cautions?.length
       ? section('Where it will mislead', '誤解しやすいところ', [list(scope.cautions, 'scope-cautions')])
       : null,

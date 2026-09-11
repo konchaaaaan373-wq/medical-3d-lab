@@ -257,11 +257,36 @@ test('patient mode: guides stay on each authored scene progression axis', () => 
 });
 
 test('patient mode: COPD copy does not reinterpret demand as disease progression', () => {
+  // The scene's axis is what the body is *asking* the lungs for, from sitting
+  // still to working hard. It is not a severity slider, and the danger this
+  // test exists for is patient copy quietly treating it as one — walking the
+  // axis while narrating a disease getting worse.
+  //
+  // The guide changes the lung too, and that is allowed; what is not allowed is
+  // doing it on the axis. So: how obstructed the lung is may only change
+  // between steps that sit at the **same** position on the axis, and a step
+  // that moves along the axis has to be about activity.
   const guide = patientGuideFor('copd-hyperinflation');
+  for (const [index, step] of guide.steps.entries()) {
+    const previous = guide.steps[index - 1];
+    if (!previous) continue;
+    const lungChanged = JSON.stringify(previous.controls ?? null) !== JSON.stringify(step.controls ?? null);
+    if (!lungChanged) continue;
+    assert.equal(
+      step.progress,
+      previous.progress,
+      `${step.stage}: changes the lung and moves along the demand axis in the same step`
+    );
+  }
+
   const allCopy = guide.steps.map((step) => `${step.title} ${step.body} ${step.titleJa} ${step.bodyJa}`).join(' ');
-  assert.match(allCopy, /already showing an obstructed lung/);
-  assert.match(allCopy, /安静時/);
-  assert.doesNotMatch(allCopy, /A normal lung has enough time/);
+  // The axis is spoken of as exertion, in both languages.
+  assert.match(allCopy, /Walking asks for more air/);
+  assert.match(allCopy, /歩くと必要な空気の量が増え/);
+  // And never as the disease advancing, which is the thing this model has no
+  // time course for at all: its own scope excludes any progression.
+  assert.doesNotMatch(allCopy, /gets worse over (the )?years|as the disease progresses/i);
+  assert.doesNotMatch(allCopy, /年単位で|病気が進行/);
 });
 
 test('patient mode: amyloid guide separates aggregation from individual cognition', () => {
