@@ -964,5 +964,31 @@
       "No lymphadenopathy, lymphoedema or metastasis is represented in any form.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging, or planning any biopsy, dissection or radiotherapy field."
     ]
+  },
+  {
+    "sceneId": "breast-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right breast — skin, nipple and areola, ducts and lobules, fat and suspensory ligaments, the pectoral sheet behind it and the axillary tail and nodes — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/breast-anatomy.md",
+      "docs/model-evidence/breast-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The outline is deliberately plain: the model is for the arrangement inside, and no size or proportion is a measurement.",
+      "The numbers of ducts, lobules and suspensory ligaments drawn are display counts, not real ones.",
+      "Nothing moves and nothing changes with age, the cycle, pregnancy or lactation, and breast density is not represented.",
+      "The axillary node markers are markers for a group, not models of nodes.",
+      "The internal mammary drainage, the quadrants a report is written in, the retromammary space, the ribs, the muscles behind pectoralis major, the blood supply and the nerves are not drawn.",
+      "No lump, cyst, mastitis or tumour is represented in any form, and nothing here is anyone’s breast.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging, screening decisions, or planning any biopsy or surgery."
+    ]
   }
 ]

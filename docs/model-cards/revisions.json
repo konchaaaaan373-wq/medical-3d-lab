@@ -473,5 +473,18 @@
     "cardRevision": 2,
     "modelDigest": "9c107a45319ef50c",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "breast-anatomy",
+    "card": "docs/model-cards/breast-anatomy.md",
+    "modelSources": [
+      "src/data/breastAnatomyScene.js",
+      "src/scenes/reproductive/organs/breast.js",
+      "src/scenes/reproductive/scenes/breastAnatomy/BreastAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "333335541b23c3ef",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

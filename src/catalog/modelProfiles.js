@@ -502,6 +502,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code at body scale as routes and groups inside the shared body silhouette: a thoracic duct from a cisterna chyli in the abdomen up behind the chest and across to the left venous angle, a short right lymphatic duct to the other, and cervical, axillary and inguinal node groups drawn as paired handfuls of beads. Two representative collecting routes are drawn so that the asymmetry between the two ducts is visible rather than merely stated. No state and no mechanism: nothing flows. **Each node group is a marker and not a model of a node** (`NODE_DISPLAY_SIZE`) — a real group is a dozen or more nodes of a few millimetres — so no node size or count may be read off the model; one node at its own scale is the separate scene `lymph-node-anatomy`. The great majority of lymphatic vessels and node groups, the spleen, thymus, tonsils and the valves in the vessels are not drawn.',
   },
   {
+    profileId: 'breast-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as a right breast: one dome outline drawn twice for skin and fat with a tail warped out towards the axilla, an areola ring and a nipple at the apex, eight duct systems all converging on the nipple with lobules at the far end of each, strands from the chest-wall side through the gland to the skin, a flattened pectoral sheet behind everything, and a group of axillary node markers. No state and no mechanism: nothing moves and nothing changes with age or the cycle. **The outline is deliberately plain and the counts are display counts** (`DISPLAY_COUNTS`) — a breast has fifteen to twenty duct systems and far more lobules — so no size or count may be read off the model. The node markers are markers for a group, not models of nodes; one node at its own scale is `lymph-node-anatomy`. The internal mammary drainage, the quadrants, the retromammary space, the ribs, the muscles behind the pectoralis, the blood supply and the nerves are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

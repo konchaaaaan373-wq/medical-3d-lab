@@ -35,6 +35,7 @@ import {
 } from '../src/scenes/integumentary/organs/skinBlock.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
+import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1411,4 +1412,59 @@ test('lymph does not drain symmetrically', () => {
     Math.abs(axillary.bounds.max.x) > Math.abs(cervical.bounds.max.x),
     'the armpit groups are further out from the midline than the neck ones'
   );
+});
+
+// --- the breast -------------------------------------------------------------
+
+test('every duct in a breast ends at one place, and the lobules do not', () => {
+  // The division the whole subject is built on: a thing is ductal or it is
+  // lobular, and which it is is a question about where along a tree it sits.
+  const breast = buildBreast();
+  breast.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(breast.mesh(id));
+  /** Towards the armpit. Read the wrong way round, the drainage is mirrored. */
+  const lateral = (point) => -point.x * BREAST_MEDIAL;
+
+  const nipple = breast.anchorPoints.nipple;
+  assert.ok(breast.ductMeshes.length >= 6, 'several duct systems are drawn');
+  for (const mesh of breast.ductMeshes) {
+    const duct = new THREE.Box3().setFromObject(mesh);
+    assert.ok(duct.distanceToPoint(nipple) < 0.12, 'every duct reaches the nipple');
+  }
+  // And the lobules are at the far end of them, not at the nipple.
+  assert.ok(breast.lobuleMeshes.length >= breast.ductMeshes.length, 'each duct ends in lobules');
+  for (const mesh of breast.lobuleMeshes) {
+    const lobule = new THREE.Box3().setFromObject(mesh);
+    assert.ok(lobule.distanceToPoint(nipple) > 0.5, 'no lobule sits at the nipple');
+  }
+  const ducts = new THREE.Box3();
+  for (const mesh of breast.ductMeshes) ducts.union(new THREE.Box3().setFromObject(mesh));
+  const lobules = new THREE.Box3();
+  for (const mesh of breast.lobuleMeshes) lobules.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(lobules.max.z < ducts.max.z, 'the lobules lie deeper than the ducts’ near ends');
+
+  // Depth: skin outside, fat under it, gland in the fat, muscle behind all of
+  // it — and the gland does not enter the muscle.
+  const skin = box('skin');
+  const fat = box('adipose-tissue');
+  const muscle = box('pectoralis-major');
+  assert.ok(skin.max.z > fat.max.z, 'the skin is outside the fat');
+  assert.ok(fat.containsBox(lobules), 'the gland is inside the fat');
+  assert.ok(muscle.max.z <= fat.min.z + 0.2, 'the muscle is behind the gland');
+  assert.ok(lobules.min.z > muscle.max.z, 'and nothing glandular is inside it');
+
+  // The ligaments reach the skin. That is why a tethered one shows on it.
+  const coopers = new THREE.Box3();
+  for (const mesh of breast.cooperMeshes) coopers.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(coopers.max.z > fat.max.z - 0.3, 'Cooper’s ligaments reach out to the skin');
+  assert.ok(coopers.min.z < 0, 'and back towards the chest wall');
+
+  // The tail runs out towards the armpit, and the nodes are beyond it.
+  const tail = box('axillary-tail');
+  const nodes = new THREE.Box3();
+  for (const mesh of breast.nodeMeshes) nodes.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(lateral(tail.getCenter(new THREE.Vector3())) > 0, 'the tail runs towards the armpit');
+  assert.ok(tail.max.y > 0, 'from the upper part of the gland');
+  assert.ok(lateral(nodes.min) > lateral(tail.max) - 0.4, 'and the nodes are beyond it');
+  assert.ok(nodes.min.y > fat.getCenter(new THREE.Vector3()).y, 'up in the armpit, not beside the breast');
 });

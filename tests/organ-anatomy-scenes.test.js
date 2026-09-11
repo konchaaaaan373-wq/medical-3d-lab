@@ -20,6 +20,7 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { BreastAnatomyScene } from '../src/scenes/reproductive/scenes/breastAnatomy/BreastAnatomyScene.js';
 import { LymphaticDrainageScene } from '../src/scenes/hematologic/scenes/lymphaticDrainage/LymphaticDrainageScene.js';
 import { LymphNodeAnatomyScene } from '../src/scenes/hematologic/scenes/lymphNodeAnatomy/LymphNodeAnatomyScene.js';
 import { SkinAnatomyScene } from '../src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js';
@@ -65,6 +66,7 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'breast-anatomy', Scene: BreastAnatomyScene, minimum: 9 },
   { id: 'lymphatic-drainage', Scene: LymphaticDrainageScene, minimum: 8 },
   { id: 'lymph-node-anatomy', Scene: LymphNodeAnatomyScene, minimum: 6 },
   { id: 'skin-anatomy', Scene: SkinAnatomyScene, minimum: 9 },
@@ -399,6 +401,9 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'breast-anatomy:ducts',
+  'breast-anatomy:axilla',
+  'breast-anatomy:lateral',
   'lymphatic-drainage:venous-angles',
   'lymphatic-drainage:routes-only',
   'lymph-node-anatomy:hilum',

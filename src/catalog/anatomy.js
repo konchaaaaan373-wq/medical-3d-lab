@@ -244,6 +244,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A2: the node groups anatomy actually names — mediastinal, para-aortic, iliac, popliteal, supratrochlear and the levels of the neck — as separately selectable structures, plus the spleen, thymus and tonsils as parts of the same system, and the valves that make lymph one-way. Nothing flows, which is the first thing a lymphoedema scene would need',
   },
   {
+    organ: 'breast',
+    level: 'A2',
+    evidence:
+      'scenes/reproductive/scenes/breastAnatomy — skin, nipple and areola, the lactiferous ducts and the lobules as separate structures, adipose tissue, Cooper’s ligaments, pectoralis major, the axillary tail and the axillary nodes, selectable by name; tests/organ-parts-anatomy.test.js — every duct reaches the nipple and no lobule does, the lobules lie at the far end of the ducts, Cooper’s ligaments span from the chest-wall side to the skin, the gland lies in front of pectoralis major and does not enter it, and the axillary tail runs towards the node group from the upper outer part of the gland',
+    next: 'A2+: the quadrants a report is written in, the internal mammary drainage as a second route, the retromammary space between gland and muscle, the ribs and the muscles behind pectoralis, and the blood supply. Nothing changes with age or the cycle, which is the first thing a density or lactation scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,
