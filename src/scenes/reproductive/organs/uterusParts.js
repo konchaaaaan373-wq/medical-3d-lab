@@ -49,16 +49,18 @@ export const CAVITY_CORNERS = Object.freeze({
 
 /** A pear flattened front to back, with a waist above the cervix. */
 function uterusWarp(v) {
-  // Widest across the fundus, narrowing downwards.
-  const down = smoothstep(0.6, -1, v.y);
+  // Widest across the cornua, narrowing downwards.
+  const down = smoothstep(0.45, -1, v.y);
   v.x *= 1 - 0.62 * down;
   v.z *= 1 - 0.55 * down;
   // The waist: a groove where the body becomes the cervix.
   const waist = Math.exp(-Math.pow((v.y + 0.42) / 0.16, 2));
   v.x *= 1 - 0.2 * waist;
   v.z *= 1 - 0.2 * waist;
-  // The fundus is domed between the two cornua rather than pointed.
-  v.y += 0.08 * smoothstep(0.5, 1, v.y);
+  // The fundus is a broad dome between the two cornua, not a point. Lifting the
+  // top instead — which is what this did first — made an egg balanced on an
+  // organ, and a uterus is widest at the top rather than tallest there.
+  v.y *= 1 - 0.16 * smoothstep(0.5, 1, v.y);
 }
 
 /**
@@ -189,12 +191,14 @@ export function buildUterusParts({ colors = {}, opacity = 0.95, detail = 7 } = {
   // The vagina as a short cuff around the cervix. Context, and it is what makes
   // the cervix's lower end an opening into somewhere rather than a stump.
   const vaginaSurface = new TubeSurface(
+    // Starting above the end of the cervix, so it sleeves it rather than
+    // standing below it as a separate cylinder.
     smoothCurve([
-      [0, -0.72, 0],
-      [0, -1.05, 0.02],
+      [0, -0.58, 0],
+      [0, -1.0, 0.02],
       [0, -1.45, 0.04],
     ]),
-    { radius: (u) => 0.3 - 0.08 * u, steps: 24, radial: 18 }
+    { radius: (u) => 0.32 - 0.09 * u, steps: 24, radial: 18 }
   );
   const vaginaMaterial = wallMaterial({ color: colors.vagina ?? '#c9909b', opacity: 0.6 });
   const vagina = new THREE.Mesh(vaginaSurface.geometry, vaginaMaterial);

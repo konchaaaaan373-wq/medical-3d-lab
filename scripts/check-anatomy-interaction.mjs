@@ -117,6 +117,21 @@ const SCENE_POINTS = {
   'intestine-anatomy': [[0.35, 0.44], [0.49, 0.24], [0.69, 0.50], [0.52, 0.76]],
   // Head, neck, body, tail — the gland runs across the frame.
   'pancreas-anatomy': [[0.34, 0.52], [0.45, 0.48], [0.56, 0.45], [0.66, 0.40]],
+  // Two lobes clasping a trachea, with the isthmus across the front of it.
+  'thyroid-anatomy': [[0.44, 0.48], [0.57, 0.48], [0.50, 0.56], [0.50, 0.25]],
+  // The two segments, and the pancreatic tail off to the medial side.
+  'spleen-anatomy': [[0.54, 0.29], [0.54, 0.69], [0.60, 0.20], [0.32, 0.57]],
+  // Apex, body, neck, and a ureter arriving behind.
+  'bladder-anatomy': [[0.50, 0.37], [0.50, 0.51], [0.50, 0.63], [0.42, 0.20]],
+  // Gallbladder, common bile duct, a hepatic duct, and the bowel it opens into.
+  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.516, 0.675], [0.652, 0.80]],
+  // The tube runs down the middle; the trachea is half-transparent in front of
+  // its upper end, so a click there lands on the trachea.
+  'esophagus-anatomy': [[0.48, 0.60], [0.49, 0.80], [0.48, 0.25], [0.487, 0.45]],
+  // A gland and its kidney, on each side.
+  'adrenal-anatomy': [[0.365, 0.36], [0.635, 0.36], [0.35, 0.62], [0.645, 0.62]],
+  // Fundus, body, cervix, and a tube on its way to an ovary.
+  'uterus-anatomy': [[0.50, 0.33], [0.50, 0.50], [0.50, 0.66], [0.33, 0.36]],
 };
 
 const clickPoints = (() => {
