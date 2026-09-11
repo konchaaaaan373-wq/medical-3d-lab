@@ -154,8 +154,10 @@ const SCENE_POINTS = {
   'skin-anatomy': [[0.5, 0.36], [0.5, 0.48], [0.5, 0.62], [0.36, 0.33]],
   // The auricle, the canal, the middle ear and the inner ear, left to right.
   'ear-anatomy': [[0.3, 0.45], [0.44, 0.47], [0.57, 0.44], [0.66, 0.52]],
-  // The iris and pupil in the middle, the sclera around them, and a muscle behind.
-  'eye-anatomy': [[0.5, 0.47], [0.46, 0.44], [0.56, 0.55], [0.4, 0.36]],
+  // Not the middle of the eye: the cornea is a real structure in front of the
+  // iris, so every click there selects the cornea and the check learns nothing.
+  // The sclera around it, and further out, the muscles and the nerve behind.
+  'eye-anatomy': [[0.36, 0.35], [0.62, 0.66], [0.33, 0.52], [0.4, 0.3]],
 };
 
 const clickPoints = (() => {
