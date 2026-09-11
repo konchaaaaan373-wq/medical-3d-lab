@@ -429,8 +429,8 @@
       "src/scenes/hematologic/scenes/lymphaticDrainage/LymphaticDrainageScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "9c107a45319ef50c",
+    "cardRevision": 3,
+    "modelDigest": "13334698e9164317",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -457,6 +457,18 @@
     ],
     "cardRevision": 3,
     "modelDigest": "5d82d9d6c3d78a1d",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "nose-anatomy",
+    "card": "docs/model-cards/nose-anatomy.md",
+    "modelSources": [
+      "src/scenes/respiratory/organs/nose.js",
+      "src/data/noseAnatomyScene.js",
+      "src/scenes/respiratory/scenes/noseAnatomy/NoseAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "b37c7632af4ec271",
     "cardUpdatedAt": "2026-09-11"
   }
 ]

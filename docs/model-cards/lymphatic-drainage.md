@@ -31,7 +31,10 @@ short way in. **9 structures are selectable**, including the silhouette.
 
 - **Each node group is a marker, not a model of a node.** A real group is a
   dozen or more nodes of a few millimetres; these are beads big enough to click
-  (`NODE_DISPLAY_SIZE`). **No node size or count may be read off this model.**
+  (`NODE_DISPLAY_SIZE`), and how many beads a group is drawn with is a display
+  choice too. Both were enlarged once already, because at the first size the
+  markers came out about ten pixels across and a reader could not hit them.
+  **No node size or count may be read off this model.**
 - **Not a map.** The great majority of lymphatic vessels and node groups —
   mediastinal, abdominal, pelvic, popliteal and the rest — are not drawn, and
   neither are the spleen, thymus or tonsils.

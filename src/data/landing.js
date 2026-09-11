@@ -42,6 +42,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'lymphatic-drainage',
   'breast-anatomy',
   'spine-anatomy',
+  'nose-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -217,6 +218,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '4つの部位と3つの弯曲。そして1椎間を、部位の名前が分かる近さで。',
     ['REGIONS', 'DISC', 'CANAL'],
     ['部位', '椎間板', '脊柱管']
+  ),
+  'nose-anatomy': presentation(
+    'Where does each sinus actually let go of what is in it?',
+    'それぞれの副鼻腔は、どこへ開口しているのか。',
+    ['TURBINATES', 'MEATUS', 'OSTIUM'],
+    ['鼻甲介', '鼻道', '自然孔']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

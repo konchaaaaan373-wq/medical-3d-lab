@@ -41,6 +41,14 @@ import {
   spineAt as SPINE_AT,
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
+import {
+  CAVITY as NOSE_CAVITY,
+  MEDIAL as NOSE_MEDIAL,
+  TURBINATES as NOSE_TURBINATES,
+  turbinateEdge as noseTurbinateEdge,
+  turbinateSurface as noseTurbinateSurface,
+  buildNose,
+} from '../src/scenes/respiratory/organs/nose.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1537,4 +1545,97 @@ test('the spine curves three ways, and the cord stops before the column does', (
   assert.ok(box('spinous-process').min.z < laminae.min.z + 0.1, 'and the spinous process is behind those');
   assert.ok(roots.max.x > pedicles.max.x, 'the roots leave laterally');
   assert.ok(roots.min.y < pedicles.min.y, 'passing out beneath the pedicles');
+});
+
+// --- the nose and the paranasal sinuses -------------------------------------
+
+test('the nose is three shelves, three gutters, and what opens into each', () => {
+  // Every claim this scene makes is about *which gutter* a thing arrives in, so
+  // that is what is measured: the order of the shelves, the space under each
+  // one, and the two openings that a reader is told apart by where they end.
+  const nose = buildNose();
+  nose.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(nose.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the septum. Read the wrong way round, the cavity is inside out. */
+  const medially = (point) => point.x * NOSE_MEDIAL;
+
+  // Three shelves, in order, all on the one wall and none of them reaching the
+  // septum — a turbinate that touched the midline would have closed the cavity.
+  const shelves = ['inferior-turbinate', 'middle-turbinate', 'superior-turbinate'];
+  for (let i = 1; i < shelves.length; i += 1) {
+    assert.ok(at(shelves[i]).y > at(shelves[i - 1]).y, `the ${shelves[i]} sits above the ${shelves[i - 1]}`);
+  }
+  const wall = box('lateral-nasal-wall');
+  const septum = box('nasal-septum');
+  for (const id of shelves) {
+    assert.ok(box(id).intersectsBox(wall), `the ${id} hangs off the lateral wall`);
+    assert.ok(!box(id).intersectsBox(septum), `and the ${id} does not reach the septum`);
+    // The free edge hangs below the attachment: that curl is what makes a
+    // shelf into a roof over the gutter under it.
+    const level = NOSE_TURBINATES[id.split('-')[0]];
+    const edge = noseTurbinateSurface(level, NOSE_CAVITY.lateralWall + NOSE_MEDIAL * level.reach);
+    assert.ok(edge < level.attachY - 0.05, `and the ${id} curls downwards away from the wall`);
+  }
+
+  // Each gutter is the space under the shelf it is named for, and above the
+  // next structure down. They are built from one surface function, and this is
+  // the check that the function is the one being used.
+  const pairs = [
+    ['inferior-meatus', NOSE_TURBINATES.inferior, null],
+    ['middle-meatus', NOSE_TURBINATES.middle, NOSE_TURBINATES.inferior],
+    ['superior-meatus', NOSE_TURBINATES.superior, NOSE_TURBINATES.middle],
+  ];
+  for (const [id, above, below] of pairs) {
+    const gutter = box(id);
+    assert.ok(gutter.max.y <= above.attachY + 1e-6, `the ${id} is under the ${above.id} turbinate`);
+    // The lowest the gutter's floor gets is at its medial edge, where the
+    // turbinate below it has curled furthest down. Nothing about the gutter may
+    // sink below that, or the space would be inside the shelf under it.
+    const floor = below
+      ? noseTurbinateSurface(below, noseTurbinateEdge(above)) + below.thickness
+      : NOSE_CAVITY.floor;
+    assert.ok(gutter.min.y >= floor - 1e-6, `and the ${id} is above what is below it`);
+    assert.ok(
+      medially(gutter.max) <= medially(new THREE.Vector3(noseTurbinateEdge(above), 0, 0)) + 1e-6,
+      `and does not reach past the free edge of the ${above.id} turbinate`
+    );
+  }
+  assert.ok(!box('inferior-meatus').intersectsBox(box('middle-meatus')), 'the gutters are three spaces, not one');
+  assert.ok(!box('middle-meatus').intersectsBox(box('superior-meatus')), 'and the upper two are separate too');
+
+  // The fact the scene exists for: the maxillary sinus lets go near its roof.
+  const sinus = box('maxillary-sinus');
+  const ostium = box('maxillary-ostium');
+  const height = sinus.max.y - sinus.min.y;
+  assert.ok(ostium.min.y > sinus.min.y + 0.6 * height, 'the maxillary ostium is near the roof of the sinus, not its floor');
+  assert.ok(ostium.intersectsBox(sinus), 'it starts inside the sinus');
+  assert.ok(ostium.intersectsBox(box('middle-meatus')), 'and ends in the middle meatus');
+  assert.ok(!ostium.intersectsBox(box('inferior-meatus')), 'and nowhere else');
+  assert.ok(!ostium.intersectsBox(box('superior-meatus')), 'and nowhere else above either');
+
+  // The one thing that does open into the lowest gutter, and it is not a sinus.
+  // Measured at the opening rather than over the whole tube: the duct descends
+  // through the wall right past the middle meatus, so the claim is about where
+  // it *ends*, not about what it goes near.
+  const opening = nose.anchorPoints.nasolacrimalOpening;
+  assert.ok(box('nasolacrimal-duct').distanceToPoint(opening) < 1e-6, 'the tear duct reaches its opening');
+  assert.ok(box('inferior-meatus').containsPoint(opening), 'and the opening is in the inferior meatus');
+  assert.ok(!box('middle-meatus').containsPoint(opening), 'and not in the middle one');
+  for (const id of ['maxillary-sinus', 'frontal-sinus', 'sphenoid-sinus']) {
+    assert.ok(!box(id).intersectsBox(box('inferior-meatus')), `no sinus opens into the inferior meatus (${id})`);
+  }
+
+  // Smell is a small patch, high up and out of the way.
+  const olfactory = new THREE.Box3();
+  for (const mesh of nose.olfactoryParts) olfactory.union(new THREE.Box3().setFromObject(mesh));
+  for (const id of shelves) {
+    assert.ok(olfactory.min.y > box(id).max.y, `the olfactory patch is above the ${id}`);
+  }
+  assert.ok(olfactory.max.y > NOSE_CAVITY.roof, 'and its filaments leave through the roof');
+
+  // And the cavity runs from the nostril back to the pharynx.
+  assert.ok(box('nasal-vestibule').min.z > at('middle-turbinate').z, 'the vestibule is in front of the shelves');
+  assert.ok(box('nasopharynx').max.z <= NOSE_CAVITY.choana + 0.1, 'the nasopharynx is behind the choana');
+  assert.ok(box('hard-palate').max.y <= NOSE_CAVITY.floor + 0.1, 'and the palate is the floor they all stand on');
 });

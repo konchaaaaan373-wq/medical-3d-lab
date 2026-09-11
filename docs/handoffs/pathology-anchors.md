@@ -481,6 +481,54 @@ spinal-canal  spinal-cord  cauda-equina  nerve-root
 
 ---
 
+## `nose-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 19 |
+| tags | `midline` `outer` `wall` `turbinate` `space` `sinus` `opening` |
+| views | `whole` `lateral-wall` `turbinates` `sinuses` `drainage` `coronal` `airway` |
+| bounds | 2.68 × 2.39 × 4.43 |
+
+```
+external-nose  nasal-vestibule
+nasal-septum  lateral-nasal-wall  hard-palate
+inferior-turbinate  middle-turbinate  superior-turbinate
+inferior-meatus  middle-meatus  superior-meatus  nasopharynx
+maxillary-sinus  maxillary-ostium  frontal-sinus  ethmoid-air-cells  sphenoid-sinus
+nasolacrimal-duct  olfactory-region
+```
+
+**anchors** — `SITES`: `nostril` `tip` `maxillaryOstium` `maxillaryFloor`
+`middleMeatus` `nasolacrimalOpening` `olfactoryRoof` `choana`。
+面としては `CAVITY`（`septum` `lateralWall` `floor` `roof` `nostril` `choana`）、
+`TURBINATES`（3 段の `attachY` `reach` `curl` `thickness` `zFront` `zBack`）、
+`turbinateSurface(level, x)`、`turbinateEdge(level)`、`septumTop(z)`、
+`septumBottom(z)`、`lateralWallTop(z)`、`NOSE_PROFILE`、`noseHalfWidth(y)`。
+
+**病態候補**: アレルギー性鼻炎、副鼻腔炎（急性・慢性）、鼻茸、
+鼻中隔弯曲症、鼻出血、鼻涙管閉塞、嗅覚障害、上顎洞真菌症。
+
+**動かしてよいもの**: 鼻甲介粘膜の厚み（`TURBINATES[*].thickness` と
+`curl`）、`maxillary-ostium` の口径、各 meatus の断面、
+`maxillary-sinus` の内容（貯留・鏡面像）、`nasal-septum` の正中からの
+ずれ、`olfactory-region` の面積。
+
+**変えてはいけない関係**:
+- **各鼻道は、同じ名前の鼻甲介の下**にあります。`turbinateSurface` が
+  その 1 本の面で、棚とその上下の空間の両方がここから出ています。
+  鼻道だけを動かすと棚の中に空間が入ります
+- **上顎洞の自然孔は洞の天井側**にあり、中鼻道へ開きます。
+  ここを下げるとこのシーンの主張が消えます
+- **鼻涙管は下鼻道に開口し、副鼻腔はどれも下鼻道に開きません**
+- 嗅部は**すべての鼻甲介より上**の天井にあります
+- 描いてあるのは**右側だけ**です。左の鼻腔・鼻甲介・副鼻腔はありません
+- 中鼻道の内部構造（鉤状突起・篩骨胞・半月裂孔）は**描いていません**。
+  osteomeatal complex の細部を主張する病態シーンは、まずこれを足す
+  必要があります
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

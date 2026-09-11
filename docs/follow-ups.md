@@ -458,6 +458,7 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 | --- | --- | --- |
 | `eye-anatomy` | 1.6 → 1.15 に下げた | 375px 中およそ 120px |
 | `ear-anatomy` | 1.4 | 375px 中およそ 130px |
+| `nose-anatomy` | 1.15 | 375px 中およそ 190px |
 | `knee-anatomy` | 0.45 | frame をほぼ満たす（問題なし） |
 
 reserve は「その距離で subject が frame の幅を満たす aspect」なので、
@@ -468,6 +469,12 @@ subject**（眼球：視神経と外眼筋が後方へ伸びる）でも同じ�
 
 - Claude② 側でやったこと: 眼の視神経と直筋を短くし、`posterior` view を
   reserve の測定対象から外して 1.6 → 1.15。耳は形状上これ以上詰められません
+- `nose-anatomy`（2026-09-11 追加）で分かった 2 つめの症状: reserve 1.15 を
+  aspect 0.56 の phone で開くと 1.875 倍引きますが、対象は frame 幅の約半分
+  にしかならず、**縦は 667px 中およそ 110px しか使っていません**。幅を満たす
+  ところまで引くだけなら対象は frame 幅いっぱいになるはずで、引きすぎです。
+  縦に余っている空間を使わないのは、幅の reserve を距離に掛ける段階で
+  二重に効いているように見えます（`src/app/framing.js` の `widthReserve`）
 - **最小要求（Claude① へ）**: framing が subject の幅を測るとき、
   **その view の視線方向に投影した幅**を使えれば、奥行きの長いシーンが
   narrow viewport で不当に縮みません。共通機能なので Claude② 側では

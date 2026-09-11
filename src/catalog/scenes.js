@@ -881,6 +881,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/spineAnatomy/index.js'),
   },
   {
+    id: 'nose-anatomy',
+    slug: 'nose-anatomy',
+    titleEn: 'Interactive nose and sinus anatomy',
+    titleJa: '触れて学ぶ鼻・副鼻腔の解剖',
+    system: 'respiratory',
+    organ: 'nose',
+    organs: ['nose'],
+    disease: null,
+    conditions: ['nasal anatomy', 'paranasal sinuses', 'turbinates', 'middle meatus', 'maxillary sinus', 'olfactory region', '鼻の解剖', '副鼻腔', '鼻甲介', '中鼻道', '上顎洞', '嗅部'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/nose-anatomy.md',
+    modelProfile: 'nose-anatomy-procedural-atlas',
+    description:
+      'A cavity that is a slit with three shelves in it, and four air-filled rooms that drain into the gutters below them — one of them uphill.',
+    descriptionJa:
+      '3つの鼻甲介が張り出す狭い鼻腔と、その下の鼻道へ開口する4つの副鼻腔。上顎洞の自然孔が底ではなく天井近くにあることを示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/respiratory/scenes/noseAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',
