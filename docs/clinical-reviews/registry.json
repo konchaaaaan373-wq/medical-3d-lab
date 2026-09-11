@@ -913,5 +913,56 @@
       "No rash, ulcer, burn, infection or tumour is represented in any form, and nothing here is anyone’s skin.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging a wound, or planning any procedure."
     ]
+  },
+  {
+    "sceneId": "lymph-node-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built schematic lymph node — capsule, cortex, medulla, follicles, afferent and efferent vessels and the hilum — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/lymph-node-anatomy.md",
+      "docs/model-evidence/lymph-node-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "This is a schematic node, not a magnified one: the regions are drawn as three depths of one outline, and a real node’s cortex, paracortex and medulla are not even shells.",
+      "No size, proportion or node count is a measurement.",
+      "Nothing flows and nothing swells: neither lymph movement nor enlargement is represented.",
+      "The subcapsular and medullary sinuses, the paracortex, the germinal centres, the reticular framework, the hilar artery and vein and the valves in the vessels are not drawn.",
+      "No lymphadenopathy, infection or metastasis is represented in any form, and nothing here is anyone’s lymph node.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging, or planning any biopsy or dissection."
+    ]
+  },
+  {
+    "sceneId": "lymphatic-drainage",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built body-scale map of lymphatic drainage — two ducts, the cisterna chyli, three node groups and two representative routes in a body silhouette — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/lymphatic-drainage.md",
+      "docs/model-evidence/lymphatic-drainage.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Each node group is a marker rather than a model of a node: no node size or count may be read off the model.",
+      "No length, calibre or position is a measurement, and the course of the thoracic duct varies between people in ways not represented.",
+      "Nothing flows, and no direction of flow is animated.",
+      "The great majority of lymphatic vessels and node groups — mediastinal, abdominal, pelvic, popliteal and the rest — are not drawn, and neither are the spleen, thymus, tonsils or the valves in the vessels.",
+      "The body silhouette is context for scale only; it is not a model of a body and the limbs are omitted.",
+      "No lymphadenopathy, lymphoedema or metastasis is represented in any form.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, staging, or planning any biopsy, dissection or radiotherapy field."
+    ]
   }
 ]

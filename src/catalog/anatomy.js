@@ -230,6 +230,20 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the layers of the epidermis itself, the arrector pili muscle, the named sensory receptors, the lymphatics, the fibrous septa between the fat lobules, and a way to say that skin from a palm is not skin from an eyelid. Nothing here grows, which is the first thing a wound-healing scene would need',
   },
   {
+    organ: 'lymph-node',
+    level: 'A2',
+    evidence:
+      'scenes/hematologic/scenes/lymphNodeAnatomy — capsule, cortex, medulla, the lymphoid follicles, the afferent vessels as one structure, the single efferent vessel and the hilum, selectable by name; tests/organ-parts-anatomy.test.js — capsule, cortex and medulla nest as three depths of one outline, the follicles lie inside the cortex, there are several afferent vessels and exactly one efferent, the afferents arrive on the convex side and the efferent leaves at the hilum on the other, and the medulla reaches towards the hilum',
+    next: 'A3: the subcapsular and medullary sinuses lymph actually passes along, the paracortex as its own region, germinal centres inside the follicles, the reticular framework, and the artery and vein at the hilum. Nothing flows, which is the first thing a drainage or metastasis scene would need',
+  },
+  {
+    organ: 'lymphatic-system',
+    level: 'A1',
+    evidence:
+      'scenes/hematologic/scenes/lymphaticDrainage — thoracic duct, right lymphatic duct and cisterna chyli, the cervical, axillary and inguinal node groups each as one structure, two representative routes and a body silhouette for scale, selectable by name; tests/organ-parts-anatomy.test.js — the thoracic duct runs from the abdomen to the left venous angle and is far longer than the right duct, the right duct stays on the patient’s right and in the upper body, the cisterna chyli is at the thoracic duct’s lower end, and the three node groups are paired about the midline at neck, axilla and groin height',
+    next: 'A2: the node groups anatomy actually names — mediastinal, para-aortic, iliac, popliteal, supratrochlear and the levels of the neck — as separately selectable structures, plus the spleen, thymus and tonsils as parts of the same system, and the valves that make lymph one-way. Nothing flows, which is the first thing a lymphoedema scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

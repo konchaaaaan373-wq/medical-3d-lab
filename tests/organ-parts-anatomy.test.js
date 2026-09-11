@@ -33,6 +33,8 @@ import {
   reteWave as SKIN_RETE,
   buildSkinBlock,
 } from '../src/scenes/integumentary/organs/skinBlock.js';
+import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
+import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1323,4 +1325,90 @@ test('skin is three layers, and what goes through them has two ways out', () => 
   for (const mesh of skin.lobuleMeshes) fat.union(new THREE.Box3().setFromObject(mesh));
   assert.ok(subcutis.containsBox(fat), 'every fat lobule is inside the subcutaneous compartment');
   assert.ok(skin.lobuleMeshes.length > 6, 'and there is more than one of them');
+});
+
+// --- a lymph node -----------------------------------------------------------
+
+test('a lymph node has many ways in and one way out', () => {
+  // The whole shape of a node, and the reason it does what it does: lymph
+  // cannot go round it. What is checked is the count and the two ends.
+  const node = buildLymphNode();
+  node.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(node.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+
+  // Three depths of one outline, nesting without touching.
+  const capsule = box('capsule');
+  const cortex = box('cortex');
+  const medulla = box('medulla');
+  assert.ok(capsule.containsBox(cortex), 'the cortex is inside the capsule');
+  assert.ok(cortex.containsBox(medulla), 'and the medulla inside the cortex');
+
+  // The follicles are in the cortex and not in the medulla — which is what
+  // makes "the cortex enlarges first" a statement about a place.
+  const follicles = new THREE.Box3();
+  for (const mesh of node.follicleMeshes) follicles.union(new THREE.Box3().setFromObject(mesh));
+  assert.ok(cortex.containsBox(follicles), 'the follicles lie inside the cortex');
+  assert.ok(node.follicleMeshes.length > 4, 'and there is more than one of them');
+
+  // Many in, one out. The count is the claim.
+  assert.ok(node.afferentMeshes.length >= 3, 'several afferent vessels arrive');
+  const afferents = new THREE.Box3();
+  for (const mesh of node.afferentMeshes) afferents.union(new THREE.Box3().setFromObject(mesh));
+  const efferent = box('efferent-vessel');
+  assert.ok(afferents.min.x < capsule.min.x, 'the afferents arrive from outside the node');
+  assert.ok(efferent.max.x > capsule.max.x, 'and the efferent leaves it on the other side');
+  assert.ok(afferents.max.x < efferent.min.x, 'they are at opposite ends: lymph passes through');
+
+  // Everything that is not lymph uses one door, and the way out is at it.
+  const hilum = node.anchorPoints.hilum;
+  assert.ok(box('hilum').containsPoint(hilum), 'the hilum marker is at the hilum');
+  assert.ok(efferent.distanceToPoint(hilum) < 0.05, 'the efferent vessel leaves at the hilum');
+  assert.ok(afferents.distanceToPoint(hilum) > 0.5, 'and no afferent arrives there');
+  assert.ok(at('medulla').x > at('cortex').x - 0.3, 'the medulla reaches towards the way out');
+});
+
+// --- where lymph drains -----------------------------------------------------
+
+test('lymph does not drain symmetrically', () => {
+  // The one fact this scene exists for. Everything else on it — which group is
+  // where, which route goes which way — is only useful because of it.
+  const routes = buildLymphaticRoutes();
+  routes.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(routes.mesh(id));
+  /** Towards the patient's left, which is the side the long duct runs up. */
+  const left = (point) => point.x * LYMPH_LEFT;
+
+  const thoracic = box('thoracic-duct');
+  const right = box('right-lymphatic-duct');
+  const span = (b) => b.getSize(new THREE.Vector3()).y;
+  assert.ok(span(thoracic) > span(right) * 4, 'the thoracic duct is far longer than the right duct');
+  assert.ok(thoracic.min.y < 0, 'it starts in the abdomen');
+  assert.ok(left(thoracic.max) > 0, 'and ends on the patient’s left');
+  assert.ok(left(right.max) < 0, 'while the right lymphatic duct stays on the patient’s right');
+  assert.ok(right.min.y > 0, 'and never leaves the upper body');
+  assert.ok(Math.abs(thoracic.max.y - right.max.y) < 0.35, 'both empty at about the same height, at the root of the neck');
+
+  // The sac the long one starts from is at its lower end, not its upper.
+  const cistern = routes.anchorPoints.cisternaChyli;
+  assert.ok(Math.abs(cistern.y - thoracic.min.y) < 0.35, 'the cisterna chyli is at the thoracic duct’s lower end');
+
+  // Three groups, each paired about the midline, at three heights.
+  const groups = ['cervical', 'axillary', 'inguinal'].map((name) => {
+    const meshes = routes.groupMeshes[name];
+    const bounds = new THREE.Box3();
+    for (const mesh of meshes) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return { name, meshes, bounds, centre: bounds.getCenter(new THREE.Vector3()) };
+  });
+  for (const group of groups) {
+    assert.ok(group.meshes.length >= 8, `${group.name}: a group is more than one node`);
+    assert.ok(group.bounds.min.x < 0 && group.bounds.max.x > 0, `${group.name}: drawn on both sides`);
+  }
+  const [cervical, axillary, inguinal] = groups;
+  assert.ok(cervical.centre.y > axillary.centre.y, 'the neck groups are above the armpit ones');
+  assert.ok(axillary.centre.y > inguinal.centre.y, 'and the armpit ones above the groin ones');
+  assert.ok(
+    Math.abs(axillary.bounds.max.x) > Math.abs(cervical.bounds.max.x),
+    'the armpit groups are further out from the midline than the neck ones'
+  );
 });
