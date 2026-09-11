@@ -32,6 +32,19 @@ import { mineralMaterial, mucosaMaterial, tissueMaterial, wallMaterial } from '.
 /** Which way the big-toe side is, in a right foot. */
 export const MEDIAL = 1;
 
+/**
+ * How many world units a centimetre is.
+ *
+ * The foot is laid out in **centimetres**, because that is the unit its
+ * proportions are known in. The finished group is then scaled down, because a
+ * foot seen from the side is nearly thirty units long and the shared viewer
+ * clamps the camera to **55 units from its target**
+ * (`src/controls/createControls.js`). On a phone the framing asks for more
+ * distance than that, gets 55, and crops the toes — with no error anywhere.
+ * See F-51 in `docs/follow-ups.md`.
+ */
+export const WORLD_SCALE = 0.7;
+
 /** The ground the foot stands on, and the two ends of the arch. */
 export const GROUND = 0;
 
@@ -469,12 +482,19 @@ export function buildFoot({ colors = {}, opacity = 1 } = {}) {
     wallMaterial
   );
 
+  object.scale.setScalar(WORLD_SCALE);
+
   return {
     object,
     mesh: (id) => index.get(id) ?? null,
     meshesFor: (id) => groups.get(id) ?? (index.has(id) ? [index.get(id)] : []),
+    /** In world units, so they line up with the meshes rather than with the
+     *  centimetre table the meshes were laid out from. */
     anchorPoints: Object.fromEntries(
-      Object.entries(SITES).map(([key, point]) => [key, new THREE.Vector3(...point)])
+      Object.entries(SITES).map(([key, point]) => [
+        key,
+        new THREE.Vector3(...point).multiplyScalar(WORLD_SCALE),
+      ])
     ),
     dispose: () => {
       for (const item of disposables) item.dispose?.();

@@ -24,8 +24,8 @@ export class FootAnatomyScene extends OrganAnatomyScene {
   static meta = FOOT_ANATOMY_META;
 
   static cameraPose = {
-    position: new THREE.Vector3(45.0, 13.0, 14.8),
-    target: new THREE.Vector3(0, 4.0, 6.4),
+    position: new THREE.Vector3(31.50, 9.10, 10.36),
+    target: new THREE.Vector3(0, 2.80, 4.48),
   };
 
   static lightRig = { key: 30, fill: 0.95, rim: 14 };
@@ -44,15 +44,15 @@ export class FootAnatomyScene extends OrganAnatomyScene {
       id: 'whole',
       label: 'From the inside',
       labelJa: '内側から',
-      position: [45.0, 13.0, 14.8],
-      target: [0, 4.0, 6.4],
+      position: [31.50, 9.10, 10.36],
+      target: [0.00, 2.80, 4.48],
     },
     {
       id: 'from-outside',
       label: 'From the outside',
       labelJa: '外側から',
-      position: [-45.0, 13.0, 14.8],
-      target: [0, 4.0, 6.4],
+      position: [-31.50, 9.10, 10.36],
+      target: [0.00, 2.80, 4.48],
     },
     // From above and inside rather than straight down: a foot is three times
     // longer than it is wide, and straight down puts its long axis across the
@@ -61,8 +61,8 @@ export class FootAnatomyScene extends OrganAnatomyScene {
       id: 'from-above',
       label: 'From above',
       labelJa: '上から',
-      position: [39.0, 30.0, 12.0],
-      target: [0, 3.0, 6.4],
+      position: [27.30, 21.00, 8.40],
+      target: [0.00, 2.10, 4.48],
     },
     // The arch, with the bones out of the way: the band from the heel to the
     // heads, and the short one at the top of the bow.
@@ -70,8 +70,8 @@ export class FootAnatomyScene extends OrganAnatomyScene {
       id: 'the-arch',
       label: 'What holds the arch',
       labelJa: 'アーチを支えるもの',
-      position: [22.0, 7.0, 9.0],
-      target: [0.5, 2.4, 4.0],
+      position: [15.40, 4.90, 6.30],
+      target: [0.35, 1.68, 2.80],
       hideTags: ['leg', 'joint'],
     },
     // The socket, close: the two malleoli gripping the talus, one lower than
@@ -80,16 +80,16 @@ export class FootAnatomyScene extends OrganAnatomyScene {
       id: 'the-ankle',
       label: 'The socket and the joint under it',
       labelJa: '足関節と距骨下関節',
-      position: [-3.0, 9.5, 20.0],
-      target: [0, 4.4, 1.4],
+      position: [-2.10, 6.65, 14.00],
+      target: [0.00, 3.08, 0.98],
       hideTags: ['rays', 'arch'],
     },
     {
       id: 'ligaments',
       label: 'One sheet inside, three bands outside',
       labelJa: '内側は1枚、外側は3本',
-      position: [-14.0, 7.4, 14.0],
-      target: [0, 4.0, 1.6],
+      position: [-9.80, 5.18, 9.80],
+      target: [0.00, 2.80, 1.12],
       hideTags: ['rays'],
     },
   ];
