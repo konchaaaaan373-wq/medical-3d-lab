@@ -531,6 +531,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
+    id: 'bowel-obstruction',
+    slug: 'bowel-obstruction',
+    titleEn: 'Bowel obstruction',
+    titleJa: '腸閉塞',
+    system: 'gastrointestinal',
+    organ: 'small-intestine',
+    organs: ['small-intestine', 'colon'],
+    disease: 'mechanical-bowel-obstruction',
+    conditions: ['bowel obstruction', 'small bowel obstruction', 'large bowel obstruction', 'closed loop obstruction', 'transition point', 'ileocaecal valve', '腸閉塞', 'イレウス', '閉鎖係蹄', '移行部'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/bowel-obstruction.md',
+    modelProfile: 'bowel-obstruction-site',
+    description:
+      'The gut is one path in series, so a blockage divides it: everything above keeps receiving and cannot pass anything on, everything below receives nothing. Where it sits decides how much bowel is above it \u2014 and the wall that carries the most is at neither end.',
+    descriptionJa:
+      '腸は直列の 1 本の通り道で、閉塞はそれを 2 つに分けます。上流は受け取り続けて送り出せず、下流には何も届きません。部位によって上流の腸の長さが決まり、壁の負担が最大になるのはそのどちらでもありません。',
+    tags: ['gastrointestinal', 'obstruction', 'site-scenario'],
+    load: () => import('../scenes/gastrointestinal/scenes/bowelObstruction/index.js'),
+  },
+  {
     id: 'achalasia',
     slug: 'achalasia',
     titleEn: 'Achalasia',

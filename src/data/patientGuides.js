@@ -1867,6 +1867,145 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Bowel obstruction.
+   *
+   * The walk exists for one distinction: this is not a scale. Three steps
+   * establish what a blockage does at all, and then the site *moves* — twice —
+   * so that the reader sees two obstructions rather than two amounts of one.
+   *
+   * The last two steps are marked, and say on screen that there is no person in
+   * the picture and no time in the model.
+   */
+  'bowel-obstruction': Object.freeze({
+    title: 'What a blockage does, and what the place of it changes',
+    titleJa: '腸が塞がると何が起きるのか、そして場所で何が変わるのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'patent',
+        frame: 'whole',
+        focus: ['smallBowel', 'colon'],
+        certainty: 'established',
+        title: 'The gut is one path, end to end',
+        titleJa: '腸は端から端まで続く 1 本の道です',
+        body: 'Everything that goes in at the top travels the same single path to the bottom. There is no way round any part of it.',
+        bodyJa: '上から入ったものは、同じ 1 本の道を通って下まで進みます。途中のどこかを迂回する道はありません。',
+        look: 'Follow it once: the coiled small bowel first, then the wider frame around it, which is the colon.',
+        lookJa: 'ひと通り目で追ってください。まず渦を巻いた小腸、次にその周りの太い枠が結腸です。',
+      },
+      {
+        progress: 0.5,
+        stage: 'partial',
+        frame: 'whole',
+        focus: ['transition'],
+        certainty: 'established',
+        title: 'Something in the way, and part of it still gets past',
+        titleJa: '塞がっていても、一部はまだ通ります',
+        body: 'Where the path is narrowed rather than shut, some of what arrives still crosses. Less collects above it, and the far side is not empty yet.',
+        bodyJa: '道が塞がりきらず狭くなっているだけなら、届いたものの一部はまだ通過します。上流に溜まる量は少なく、向こう側もまだ空ではありません。',
+        look: 'The ring marks the place. The two sides of it already look different, but only a little.',
+        lookJa: '輪が場所を示しています。その両側はすでに違って見えますが、その差はまだわずかです。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'whole',
+        focus: ['transition'],
+        certainty: 'established',
+        title: 'Nothing crosses it, and the two sides part company',
+        titleJa: '何も通らなくなり、両側が別の姿になります',
+        body: 'Above it, what keeps arriving has nowhere to go, so it collects and the bowel widens. Below it nothing arrives at all, and it empties.',
+        bodyJa: '上流では、届き続けるものの行き場がなくなり、溜まって腸が太くなります。下流には何も届かず、空になります。',
+        look: 'One side is wide and warm, the other is drained of colour. The ring is where it changes.',
+        lookJa: '片側は太く色が濃く、反対側は色が抜けています。切り替わるのが輪の位置です。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'small-bowel',
+        focus: ['smallBowel'],
+        // The site moves, and that is the point of the step: this is a second
+        // obstruction, not more of the first.
+        controls: { site: 'proximal-small-bowel' },
+        certainty: 'established',
+        title: 'High up: a short length takes all of it',
+        titleJa: '上のほうで塞がると、短い区間がすべてを受けます',
+        body: 'Near the top there is very little bowel above the blockage. The same amount arriving goes into that little, so it widens the furthest — and nearly all of the gut below is empty.',
+        bodyJa: '上のほうでは、閉塞より上流の腸はごくわずかです。届く量は同じなので、その短い区間が最も大きく広がり、下流のほとんどは空になります。',
+        look: 'Only a short stretch is wide. Look at how much of the rest has gone pale.',
+        lookJa: '太くなっているのは短い区間だけです。残りのどれだけが淡くなったかを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'colon',
+        focus: ['colon'],
+        controls: { site: 'distal-colon' },
+        certainty: 'established',
+        title: 'Far down: much more bowel is above it, and each part less',
+        titleJa: '下のほうなら上流は長く、1 区間あたりは小さく',
+        body: 'Move it to the far end and almost the whole gut is above it. The same amount spread over that much length widens each part of it far less.',
+        bodyJa: '下の端へ移すと、ほぼ腸全体が上流になります。同じ量がその長さに分かれるため、1 区間あたりの広がりはずっと小さくなります。',
+        look: 'Nearly all of it is wide now, and none of it is as wide as the short stretch was.',
+        lookJa: '今度はほぼ全体が太くなりますが、どこもさきほどの短い区間ほどは太くありません。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'caecum',
+        focus: ['caecum', 'tension'],
+        certainty: 'established',
+        title: 'The wall that carries the most is at neither end',
+        titleJa: '壁の負担が最大なのは、どちらの端でもありません',
+        body: 'A wider tube at the same pressure pulls harder on its own wall. So the part under the most strain is the widest part above the blockage — here, the first part of the colon.',
+        bodyJa: '同じ圧なら、太い管ほど自らの壁を強く引きます。最も負担が大きいのは閉塞部ではなく、上流で最も太い部分——ここでは結腸の最初の部分です。',
+        look: 'The lit stretch is the widest one above the blockage, not the one next to it.',
+        lookJa: '光っているのは、閉塞の隣ではなく、上流で最も太い区間です。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'caecum',
+        focus: ['valve'],
+        controls: { valveCompetence: 0 },
+        certainty: 'established',
+        title: 'A one-way join above it changes how much is behind',
+        titleJa: '上流の一方通行の継ぎ目が、上流の量を変えます',
+        body: 'Where the small bowel meets the colon there is a one-way join. If it holds, the colon alone takes it; if it gives way, the small bowel shares it and the colon widens less.',
+        bodyJa: '小腸と結腸の継ぎ目は一方通行です。保たれていれば結腸だけが受け止め、緩めば小腸も分け合うので、結腸の広がりは小さくなります。',
+        look: 'Watch the coil. It was at its resting width; now it is sharing, and the colon has narrowed.',
+        lookJa: '渦の部分を見てください。さきほどは安静時の太さでしたが、いま分け合い、結腸は細くなりました。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'whole',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why it depends on where',
+        titleJa: '気づくこと、そしてそれが場所によって違う理由',
+        body: 'Feeling sick, being unable to keep things down, a swollen belly and nothing passing are described. Which of them comes first is said to depend on how high up it is.',
+        bodyJa: '吐き気、戻してしまうこと、お腹が張ること、何も出なくなること、などが語られます。どれが先に現れるかは、閉塞の高さによると言われます。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        frame: 'whole',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'What this picture does not contain',
+        titleJa: 'この絵に含まれていないもの',
+        body: 'There is no time in it. The slider is how completely the path is shut, not how long it has been shut, and nothing here says what happens next.',
+        bodyJa: 'ここに時間はありません。スライダーは「どれだけ塞がっているか」であって経過時間ではなく、この先どうなるかも示していません。',
+        look: 'The numbers are ratios of this drawing against itself. None of them is a width, a pressure or a risk.',
+        lookJa: '画面の数値は、この絵の中での比です。太さも圧も危険度も表すものではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

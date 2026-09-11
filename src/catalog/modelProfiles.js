@@ -794,6 +794,24 @@ export const MODEL_PROFILES = Object.freeze([
       'or an imaging score, and the vasoconstriction strength is an illustrative constant.',
   },
   {
+    profileId: 'bowel-obstruction-site',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A series-path model with a site of blockage: what is above it fills, what is below it receives nothing, and ' +
+      'the retained volume is distributed over the distensible length above. Wall tension is Laplace\'s T = P·r ' +
+      'with a distension index standing in for the pressure, reported as an index for comparing segments inside ' +
+      'one picture. The card says it carries no time, no rate, no symptom, no ischaemia, no perforation and no ' +
+      'cause, and that the lengths and calibres are the intestinal atlas\'s drawn proportions rather than ' +
+      'anatomical ones.@ ',
+  },
+  {
     profileId: 'achalasia-swallow-transport',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

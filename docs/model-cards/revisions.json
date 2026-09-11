@@ -341,6 +341,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "bowel-obstruction",
+    "card": "docs/model-cards/bowel-obstruction.md",
+    "modelSources": [
+      "src/models/bowelObstruction.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "1a5bbb552be4d90c",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "achalasia",
     "card": "docs/model-cards/achalasia.md",
     "modelSources": [
