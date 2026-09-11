@@ -723,5 +723,15 @@
     "cardRevision": 2,
     "modelDigest": "02523d525fd23bd8",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "breast-lesion",
+    "card": "docs/model-cards/breast-lesion.md",
+    "modelSources": [
+      "src/models/breastLesion.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "664b2206b26f4c69",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

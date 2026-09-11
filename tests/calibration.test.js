@@ -170,6 +170,12 @@ import {
 } from '../src/models/pressureInjury.js';
 import { BLOCK as SKIN_BLOCK, LAYER_DISPLAY_THICKNESS, buildSkinBlock } from '../src/scenes/integumentary/organs/skinBlock.js';
 import {
+  COURSES as BREAST_COURSES,
+  PARTS as BREAST_PARTS,
+  solveBreastLesion,
+} from '../src/models/breastLesion.js';
+import { DISPLAY_COUNTS as BREAST_DISPLAY_COUNTS, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
+import {
   CANAL as BPPV_CANAL,
   CANALS as BPPV_CANALS,
   DRIVES_ABOVE as BPPV_DRIVES_ABOVE,
@@ -2014,4 +2020,79 @@ test('calibration: the calibrations deliver the deep peak the claim needs', () =
   const soft = solvePressureInjury(1, { ground: 'soft-tissue' });
   assert.equal(soft.worstAt, 'epidermis');
   assert.ok(soft.layer('deep-interface').share < 0.25, 'and the other shape has to be plainly the other shape');
+});
+
+
+// --- a place in a breast ----------------------------------------------------
+
+test('calibration: the lesion model and the breast atlas use the same courses', () => {
+  // Defends `the-atlas-courses-and-the-route`. The model may not import `three`,
+  // so the courses are sampled off the atlas and baked in — and a course that
+  // had drifted would put the marker beside the duct it names rather than on it.
+  const breast = buildBreast({});
+  const point = new THREE.Vector3();
+  const near = new THREE.Vector3();
+
+  for (const course of BREAST_COURSES.filter((entry) => entry.duct !== null)) {
+    const mesh = breast.ductMeshes.find((candidate) => candidate.name === `lactiferous-duct-${course.duct}`);
+    assert.ok(mesh, `${course.id}: the atlas draws this duct`);
+    const attribute = mesh.geometry.attributes.position;
+
+    // Every point the model walks lies within the drawn tube: for each, the
+    // nearest vertex of the atlas's own duct is no further than its calibre.
+    for (const along of [0, 0.25, 0.5, 0.75, 1]) {
+      point.set(...solveBreastLesion(along, { site: course.id }).at);
+      let least = Infinity;
+      for (let i = 0; i < attribute.count; i += 1) {
+        near.fromBufferAttribute(attribute, i);
+        least = Math.min(least, near.distanceTo(point));
+      }
+      assert.ok(least < 0.1, `${course.id} at ${along}: ${least} off the duct the atlas draws`);
+    }
+
+    // And the lobules the model carries are the ones hanging off that duct.
+    for (const [j, lobule] of course.lobules.entries()) {
+      const drawn = breast.lobuleMeshes.find(
+        (candidate) => candidate.name === `lobule-${course.duct}-${j}`
+      );
+      assert.ok(drawn, `${course.id}: lobule ${j} is drawn`);
+      assert.ok(drawn.position.distanceTo(new THREE.Vector3(...lobule)) < 1e-3, `${course.id}: lobule ${j} is where the atlas put it`);
+    }
+  }
+
+  // The tail's course is the tail the atlas draws, and the route is that course.
+  const tail = BREAST_COURSES.find((entry) => entry.id === 'axillary-tail');
+  const tailMesh = breast.mesh('axillary-tail');
+  assert.ok(tailMesh, 'the atlas draws the tail');
+  const tailAttribute = tailMesh.geometry.attributes.position;
+  for (const along of [0, 0.5, 1]) {
+    point.set(...solveBreastLesion(along, { site: 'axillary-tail' }).at);
+    let least = Infinity;
+    for (let i = 0; i < tailAttribute.count; i += 1) {
+      near.fromBufferAttribute(tailAttribute, i);
+      least = Math.min(least, near.distanceTo(point));
+    }
+    assert.ok(least < 0.3, `the tail at ${along}: ${least} off the tail the atlas draws`);
+  }
+  assert.ok(tail.points.length >= 8);
+  assert.equal(BREAST_DISPLAY_COUNTS.lobulesPerDuct, tail ? BREAST_COURSES[0].lobules.length : 0);
+  breast.dispose?.();
+});
+
+test('calibration: the part boundaries put the lobular end where the lobules are', () => {
+  // Defends `where-the-parts-are-divided`. The two thresholds carry no claim of
+  // their own; what they have to deliver is that the part called the lobular
+  // end is the part the atlas hangs its lobules off.
+  assert.ok(BREAST_PARTS.largeUntil > 0 && BREAST_PARTS.largeUntil < BREAST_PARTS.terminalUntil);
+  assert.ok(BREAST_PARTS.terminalUntil < 1);
+
+  for (const course of BREAST_COURSES.filter((entry) => entry.duct !== null)) {
+    const large = solveBreastLesion(BREAST_PARTS.largeUntil - 0.01, { site: course.id });
+    const lobular = solveBreastLesion(1, { site: course.id });
+    assert.equal(large.inTissue, 'large-duct');
+    assert.equal(lobular.inTissue, 'lobular-end');
+    // The end is against the lobules; the large duct is nowhere near them.
+    assert.ok(lobular.toLobule < 0.25, `${course.id}: the end is at the lobules (${lobular.toLobule})`);
+    assert.ok(large.toLobule > 0.6, `${course.id}: and the large duct is not (${large.toLobule})`);
+  }
 });

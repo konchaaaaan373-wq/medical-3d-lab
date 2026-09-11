@@ -1528,5 +1528,34 @@
       "There is no person, no body position and no support surface, and nothing here is a risk assessment.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "breast-lesion",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of where a place sits in a drawn breast: its position along one of the atlas’s own duct systems or along its axillary tail, which part of that system the position is in, and how far that point is from the drainage route the atlas draws"
+    ],
+    "sources": [
+      "docs/model-cards/breast-lesion.md",
+      "docs/model-evidence/breast-lesion.md",
+      "tests/breast-lesion-physiology.test.js",
+      "tests/breast-lesion-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five places, the copy and the Japanese terminology is not yet recorded.",
+      "No distance or position is a measurement. Every course, point and distance is sampled off this repository’s breast atlas, which declares itself not anatomically validated and its duct and lobule counts to be display counts.",
+      "Nothing in the model spreads, travels or is carried anywhere. No output is a spread, a nodal status or a risk of either, and the drainage route is drawn because the gland drains that way.",
+      "The marker is a place and has no size: no diameter, no volume, no growth, no margin and no shape. It is drawn at one fixed size at every position on every course.",
+      "The model produces no stage and no grade. Staging rests on size, on nodes and on what is elsewhere in a person, none of which this model has, and no probability or prognosis is computed.",
+      "The part names `large-duct`, `terminal-duct` and `lobular-end` are places on a drawn course. They are NOT histological types and must not be read as ductal or lobular carcinoma or as any classification.",
+      "The gland has one drainage route in this picture, the one the atlas draws. A breast has more than one; their absence here is a property of the drawing.",
+      "Four of the atlas’s eight duct systems are offered, and the quadrant names say where each happens to point rather than dividing the breast into quadrants. Neither the choice of courses nor the baseline says anything about where lesions occur in people.",
+      "There is no biology of any kind: no cell type, no receptor, no histology, no in-situ or invasive distinction and no cause.",
+      "There is no imaging, no examination, no screening, no biopsy and no treatment.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

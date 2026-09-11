@@ -212,6 +212,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'cataract': MECHANISM_LEVEL.ILLUSTRATIVE,
     'bppv': MECHANISM_LEVEL.ILLUSTRATIVE,
     'pressure-injury': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'breast-lesion': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 

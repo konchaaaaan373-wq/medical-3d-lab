@@ -3294,6 +3294,149 @@ export const PRESSURE_INJURY_EVIDENCE = defineEvidence('pressure-injury', [
   },
 ]);
 
+export const BREAST_LESION_EVIDENCE = defineEvidence('breast-lesion', [
+  {
+    id: 'every-duct-system-begins-at-the-nipple',
+    claim:
+      'Every duct system in the gland converges on the nipple and runs outwards from it, so a position in the breast is a matter of which system it is on and how far out along it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the breast as duct systems converging on the nipple.',
+    validation: 'physiology: every duct system begins at the same place',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'further-out-is-not-nearer',
+    claim:
+      'Because the systems run outwards in different directions and the drainage route leaves from one corner of the gland, moving out along one course takes a place **towards** that route while moving out along another takes it **further away**.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the arrangement: the courses share a start and differ in direction, and the route is at one side.',
+    validation: 'physiology: further out along a duct is not nearer the route — on some courses it is further',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-lobules-are-at-the-far-ends',
+    claim:
+      'The lobules hang off the peripheral ends of the ducts, so how far out a position is settles which part of the duct system it is in — and the four courses pass through the same parts in the same order.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the duct system ending peripherally in lobules.',
+    validation: 'physiology: how far out settles which part of the duct system a place is in',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'which-part-is-not-which-quadrant',
+    claim:
+      'Which part of a duct system a place is in is a fact about how far out it is, not about which direction the course happens to point.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the four courses being the same shape of course in four directions.',
+    validation: 'physiology: the four courses pass through the same parts in the same order',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-tail-is-a-different-place',
+    claim:
+      'The axillary tail is gland tissue lying along the drainage route, and no position on any duct\'s axis ever reaches it: it is reached by choosing it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the axillary tail as gland tissue extending towards the axilla, taken only as far as the geometry.',
+    validation: 'physiology: the axillary tail is a different place, not a later one',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-atlas-courses-and-the-route',
+    claim:
+      'The four duct courses, their lobules, the axillary tail and the node group beyond it, from which every position and distance here is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Sampled off `buildBreast()` in `src/scenes/reproductive/organs/breast.js`, so a place this model computes is a place on a structure that is on screen.',
+    note:
+      '**Illustrative, and the atlas says so of itself**: it declares itself not anatomically validated and its duct and lobule counts to be display counts. The four courses are four of the atlas\'s own eight, and the quadrant names say where each happens to point.',
+    validation: 'calibration: the lesion model and the breast atlas use the same courses',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'where-the-parts-are-divided',
+    claim:
+      'Where along a course the large duct gives way to its terminal part, and where the lobular end begins.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrations this repository chose, placed so that the part called `lobular-end` is the part the atlas hangs its lobules off.',
+    note:
+      '**Neither is a length in anybody**, and neither is a boundary anybody measured. What they have to deliver is that the far end is where the lobules are, which is what a calibration test fixes.',
+    validation: 'calibration: the part boundaries put the lobular end where the lobules are',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'nothing-spreads-anywhere-in-this-model',
+    claim:
+      'No cell moves, no lesion advances, no node is involved and no route carries anything. The route is drawn because the gland drains that way, and every distance is between two drawn points.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in this model. A picture of a marker sliding towards the axilla says "it spread" whether or not anything computed it, which is why the route never reacts and the marker never grows.',
+    note:
+      'The read-out prints "nothing spreads in this model" where such a row would go rather than omitting it, and `tests/breast-lesion-model.test.js` holds the route and the node group byte-identical across every position on every course.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-marker-has-no-size',
+    claim:
+      'The marker is a place. It has no diameter, no volume, no growth, no margin and no shape.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. A marker that grew along the axis would be a diameter, and nothing in this model could say what it was a diameter of.',
+    note:
+      'It is drawn at **one fixed size** at every position on every course, which a model test measures, and the visual mapping declares that the fixed size is the claim.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-part-names-are-not-diagnoses',
+    claim:
+      '`large-duct`, `terminal-duct` and `lobular-end` name where on a drawn course a point is.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision about words rather than about arithmetic: the two things disease in this organ is named after are also the two parts of the system, and a reader will carry one across to the other.',
+    note:
+      '**They are not histological types.** Nothing here distinguishes in-situ from invasive, names a cell, or classifies anything, and a reader who reads "lobular" as a diagnosis is reading something that is not there.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'one-drainage-route-in-this-picture',
+    claim:
+      'The gland has a single drawn drainage route here, the one running towards the axilla.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A property of the atlas, which draws the axillary route and no other.',
+    note:
+      'A breast has more than one. **The absence of the others is a property of the drawing, not a claim that they do not exist**, and no comparison between routes is available here.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-stage-no-prognosis-and-no-biology',
+    claim:
+      'There is no stage, no grade, no probability, no prognosis, no cell type, no receptor, no histology and no cause, and no imaging, screening, biopsy or treatment.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Staging rests on size, on nodes and on what is elsewhere in a person, and this model has none of the three.',
+    note:
+      'A physiology test scans every output name for a field reading as a spread, a size or a stage, so the absences cannot be filled in quietly.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'four-of-eight-and-a-chosen-baseline',
+    claim:
+      'Four of the atlas\'s eight duct systems are offered, with the upper outer one as the baseline.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A presentation decision: four directions are enough to make the comparison and eight would be a thicket.',
+    note:
+      '**Neither the choice nor the baseline says anything about where anything occurs in people.** The upper outer course is the baseline because it is the one the other three are compared against — it is the course on which the distance falls.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -3320,4 +3463,5 @@ export const EVIDENCE_REGISTRIES = [
   CATARACT_EVIDENCE,
   BPPV_EVIDENCE,
   PRESSURE_INJURY_EVIDENCE,
+  BREAST_LESION_EVIDENCE,
 ];

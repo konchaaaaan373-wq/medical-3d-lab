@@ -973,6 +973,24 @@ export const MODEL_PROFILES = Object.freeze([
       'contains no stress, no strain, no blood, no time and no damage of any kind and **does not stage anything**.@ ',
   },
   {
+    profileId: 'breast-lesion-site-and-route',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the breast atlas\'s own duct systems: a marker runs along one of four of the courses ' +
+      '`buildBreast()` lays out, or along its axillary tail, and the model reports which part of that duct system the ' +
+      'position is in and how far the point is from the drainage route the atlas draws, against the distance the ' +
+      'nipple itself is from that route. The card says the part names are places on a drawn course rather than ' +
+      'diagnoses, that the tail is a different place and not a later one, and that the model contains **no size, no ' +
+      'spread, no nodal status, no stage and no biology**: nothing in it travels anywhere.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

@@ -77,6 +77,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'cataract',
   'bppv',
   'pressure-injury',
+  'breast-lesion',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -494,6 +495,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '荷重の下に骨を置き、最も長い棒がブロックの下端へ移るのを確認。',
     ['NOT ALWAYS THE SKIN', 'TWO GROUNDS', 'NEVER A STAGE'],
     ['皮膚とは限らない', '2 つの下地', 'stage は扱いません']
+  ),
+  'breast-lesion': presentation(
+    'Run a marker out along one duct and then another; watch the distance to the drainage route fall, then rise.',
+    'ある乳管系に沿って外へ、次に別の乳管系で同じことを。流出経路までの距離が縮み、そして伸びるのを確認。',
+    ['FIVE PLACES', 'FURTHER IS NOT NEARER', 'NOTHING SPREADS'],
+    ['5 つの場所', '先は近くではない', '何も広がりません']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

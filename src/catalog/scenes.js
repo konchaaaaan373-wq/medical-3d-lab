@@ -741,6 +741,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/integumentary/scenes/pressureInjury/index.js'),
   },
   {
+    id: 'breast-lesion',
+    slug: 'breast-lesion',
+    titleEn: 'A place in a breast',
+    titleJa: '乳腺内の場所',
+    system: 'reproductive',
+    organ: 'breast',
+    organs: ['breast', 'lymph-node'],
+    disease: 'breast-lesion',
+    conditions: ['breast lesion site', 'lactiferous duct', 'terminal duct lobular unit', 'axillary tail', 'axillary drainage', 'lymphatic route', '乳腺の病変部位', '乳管', '終末乳管小葉単位', '腋窩尾部', '腋窩リンパ流'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/breast-lesion.md',
+    modelProfile: 'breast-lesion-site-and-route',
+    description:
+      'Every duct system leaves the nipple outwards, but in different directions — so moving out along one takes a place towards the corner the gland drains from and moving out along another takes it further away. Further along is not nearer, and nothing here spreads.',
+    descriptionJa:
+      'どの乳管系も乳頭から外へ向かいますが、その方向は異なります。そのため、ある経路では外側へ進むほど乳腺が流れ出る角に近づき、別の経路では遠ざかります。「先へ進む」ことは「近づく」ことではなく、ここでは何も広がりません。',
+    tags: ['reproductive', 'site-scenario', 'geometric-model'],
+    load: () => import('../scenes/reproductive/scenes/breastLesion/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

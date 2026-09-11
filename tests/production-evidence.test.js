@@ -61,6 +61,7 @@ test('migrated production evidence and the existing model registries share one c
       'cataract',
       'bppv',
       'pressure-injury',
+      'breast-lesion',
     ]
   );
 });
