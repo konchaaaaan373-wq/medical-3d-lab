@@ -848,6 +848,25 @@ export const MODEL_PROFILES = Object.freeze([
       'pain, no loading, no time and no treatment.@ ',
   },
   {
+    profileId: 'urinary-obstruction-level',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a urinary tract drawn as two tubes joining at one bladder: a chosen level names the ' +
+      'last stretch that still fills, every stretch above it on that side is distended and every stretch below it ' +
+      'is not, and the number of kidneys behind the blockage falls out of the topology rather than out of an ' +
+      'amount. A retained volume is added to the collecting system inside a capsule that yields only slightly, so ' +
+      'the parenchymal thickness reported is the room the dilation took. The card says the thickness is against ' +
+      'the model\'s own resting thickness and is not a cortical thickness on any scan, that the model contains no ' +
+      'kidney function, no cause, no time and no treatment, and that it does not grade hydronephrosis.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

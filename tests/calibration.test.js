@@ -122,6 +122,16 @@ import {
   solveKidney,
   vasoconstrictorActivation,
 } from '../src/models/hepatorenal.js';
+import { UrinaryObstructionScene } from '../src/scenes/renal/scenes/urinaryObstruction/UrinaryObstructionScene.js';
+import {
+  CAPSULE_GIVE,
+  KIDNEY,
+  KIDNEY_VOLUME,
+  PELVIS_VOLUME,
+  RETAINED_LOAD as URINARY_RETAINED_LOAD,
+  THINNED_BELOW,
+  solveUrinaryObstruction,
+} from '../src/models/urinaryObstruction.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1547,4 +1557,96 @@ test('calibration: a directional loss is plainly directional and an even one has
   const angles = HIP_DIRECTIONS.filter((entry) => entry.angle !== null).map((entry) => entry.angle);
   assert.equal(new Set(angles).size, angles.length);
   assert.equal(angles.length, 3);
+});
+
+// --- urinary obstruction ---------------------------------------------------
+
+test('calibration: the urinary tract scene is built from the volumes the model was given', () => {
+  // Defends `atlas-proportions`. The model's semi-axes are the landmark
+  // kidney builder's own, so the picture and the arithmetic are the same organ.
+  // Read off the meshes rather than off a constant somebody copied.
+  const scene = new UrinaryObstructionScene({});
+  scene.build();
+  scene.setModelControl('level', 'none');
+  scene.setProgress(0);
+
+  const { cortex, pelvis } = scene.kidneys.left;
+  cortex.geometry.computeBoundingBox();
+  pelvis.geometry.computeBoundingBox();
+
+  const drawnOuter = cortex.geometry.boundingBox.max.toArray();
+  const drawnPelvis = pelvis.geometry.boundingBox.max.toArray();
+  for (let axis = 0; axis < 3; axis += 1) {
+    // The cortex is warped, so its bounding box is a little larger than its
+    // semi-axis. What must hold is the proportion the model was given.
+    assert.ok(
+      Math.abs(drawnOuter[axis] / KIDNEY.outer[axis] - 1) < 0.12,
+      `the capsule is drawn at the semi-axis the model has on ${axis}`
+    );
+    assert.ok(
+      Math.abs(drawnPelvis[axis] / KIDNEY.pelvis[axis] - 1) < 0.12,
+      `and the collecting system on ${axis}`
+    );
+  }
+
+  assert.ok(KIDNEY_VOLUME > PELVIS_VOLUME * 10, 'the collecting system is a small part of the organ at rest');
+  scene.dispose();
+});
+
+test('calibration: the capsule takes only a minority share of what backs up', () => {
+  // Defends `retained-load-and-capsule-give`. The claim these two constants
+  // carry is not either of their values — it is that the room comes out of the
+  // parenchyma, which is a claim about their ratio. So the ratio is what is
+  // fixed here, and either constant may move as long as it holds.
+  for (const backPressure of [0.25, 0.5, 1]) {
+    const solved = solveUrinaryObstruction(backPressure, { level: 'mid-ureter' });
+    const share = solved.capsuleGained / solved.retainedVolume;
+    assert.ok(share < 0.3, `${backPressure}: the capsule took ${share} of it, which is not a minority`);
+    assert.ok(share > 0, `${backPressure}: but it is not a rigid box either`);
+  }
+
+  // And the load is not so large that the collecting system reaches the capsule,
+  // which would leave nothing for the parenchyma to be drawn as.
+  const full = solveUrinaryObstruction(1, { level: 'mid-ureter' });
+  assert.ok(full.kidneys.left.parenchymaRatio > 0.25, 'there is still a parenchyma to see');
+  assert.ok(URINARY_RETAINED_LOAD > 0 && CAPSULE_GIVE > 0);
+});
+
+test('calibration: a distended stretch is plainly distended and an undistended one is plainly not', () => {
+  // Defends `dilation-factors`. Unlike the kidney, the tract's calibres are
+  // drawn values rather than solved ones, so what is defended is that they are
+  // legible: the step at the blockage has to be unmistakable on screen.
+  const solved = solveUrinaryObstruction(1, { level: 'mid-ureter' });
+  const above = solved.stretch('left-mid-ureter').ratio;
+  const below = solved.stretch('left-lower-ureter').ratio;
+  assert.equal(below, 1, 'below it is at its resting calibre');
+  assert.ok(above > 1.6, `${above} is not a step anybody would see`);
+  assert.ok(above < 3, 'and not one that stops reading as a ureter');
+
+  const bladder = solveUrinaryObstruction(1, { level: 'bladder-outlet' }).stretch('bladder');
+  assert.ok(bladder.ratio > 1.2 && bladder.ratio < 1.8, 'the bladder is fuller and still a bladder');
+});
+
+test('calibration: the thinned threshold fires where the drawing changes and nowhere else', () => {
+  // Defends `thinned-below`. A reporting threshold for the copy, and the one
+  // thing it must not become is a grade — so what is fixed is that it tracks
+  // the drawing rather than naming a stage.
+  assert.ok(THINNED_BELOW > 0.7 && THINNED_BELOW < 1, 'it fires below rest and above nothing');
+
+  // It is false with nothing above the blockage, at any amount.
+  for (const backPressure of [0.5, 1]) {
+    assert.equal(solveUrinaryObstruction(backPressure, { level: 'none' }).parenchymaThinned, false);
+  }
+
+  // And it turns over exactly where the ratio crosses it, rather than at a
+  // point of its own.
+  let crossed = null;
+  for (let step = 0; step <= 40; step += 1) {
+    const backPressure = step / 40;
+    const solved = solveUrinaryObstruction(backPressure, { level: 'mid-ureter' });
+    const expected = solved.kidneys.left.parenchymaRatio < THINNED_BELOW;
+    assert.equal(solved.parenchymaThinned, expected, `${backPressure}: the flag is the ratio and nothing else`);
+    if (expected && crossed === null) crossed = backPressure;
+  }
+  assert.ok(crossed !== null && crossed > 0, 'and it is not already true at rest');
 });

@@ -70,6 +70,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'acl-injury',
   'rotator-cuff-tear',
   'hip-osteoarthritis',
+  'urinary-obstruction',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -445,6 +446,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '1 つの方向だけ層を失わせ、2 つの中心が離れて反対側が広く見えることを確認。',
     ['ONE SHARED CENTRE', 'A DIRECTION', 'THE FAR SIDE'],
     ['共有された中心', '1 つの方向', '反対側']
+  ),
+  'urinary-obstruction': presentation(
+    'Move the blockage down the tract; watch one kidney fill, then both, and the tissue between thin.',
+    '閉塞を尿路の下方へ動かし、腎が 1 つ、次に両方満たされ、あいだの組織が薄くなることを確認。',
+    ['FIVE PLACES', 'ONE KIDNEY OR TWO', 'THE ROOM IT TOOK'],
+    ['5 つの場所', '腎は 1 つか 2 つか', '奪われた場所']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

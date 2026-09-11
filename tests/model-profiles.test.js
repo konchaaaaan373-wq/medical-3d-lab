@@ -205,6 +205,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'hip-osteoarthritis': MECHANISM_LEVEL.ILLUSTRATIVE,
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
     'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
+    'urinary-obstruction': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 
