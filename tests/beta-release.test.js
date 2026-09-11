@@ -332,7 +332,13 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // The bypass this replaces: `RELEASE_CHANNEL !== 'beta'` fell through to
   // "anything that is not a prototype", so editing one string would have
   // published twelve disease models — with their numbers — past every check.
-  assert.deepEqual(Object.keys(RELEASE_POLICIES), ['beta']);
+  //
+  // Registering a second policy does not weaken that, and the list is no longer
+  // pinned by name: what is pinned is that **the channel in force is `beta`**,
+  // and that a registered-but-unselected policy publishes nothing by existing.
+  assert.equal(RELEASE_CHANNEL, 'beta');
+  assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy']);
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');

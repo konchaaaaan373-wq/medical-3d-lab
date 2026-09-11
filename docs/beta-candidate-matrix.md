@@ -21,9 +21,10 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 心臓の解剖 `heart-anatomy` | ✅ 14 構造＋血管 37 | — | — | 1280 / 844 | **候補 2 本・未採用** | ①asset が release gate 未通過 ②公開判断記録なし — **どちらも承認**（→ `docs/decisions/`） |
 
-**この 1 件だけが「承認待ち」です。** ただし承認だけでは足りません——
-`formatValidation` gate は errors 0・warnings 0 でしか通らず、候補 2 本は 408 件と 33 件の
-縮退頂点法線を持ちます。**法線を再計算した派生ファイル（新 hash）を作る判断**が要ります。
+**この 1 件だけが現 β の「承認待ち」です。** validator の問題は**解決済み**——
+派生ファイルで **0 errors / 0 warnings**、見た目も部位数も不変です
+（[`HEART-ASSET-ADOPTION.md`](decisions/HEART-ASSET-ADOPTION.md)）。
+残るのは**採用判断と NLM 条件の確認**で、どちらも repo の外の話です。
 
 ## C. 次期 β 候補 — 技術的には統合済み
 
@@ -42,6 +43,12 @@ Deep Research 後の製品戦略では、Medical 3D Lab の差別化は**病態�
 **5 件とも asset は procedural**です——外部 asset のライセンス問題も、adoption 判断も、
 attribution 義務も**ありません**。心臓解剖を止めているものが、この 5 件には存在しません。
 
+**次期 β の release policy は実装済みです**（`src/catalog/release.js` の
+`nextBetaPublicationProblems`、channel `next-beta`）。明示的 allowlist で、
+「`reviewed` なら自動公開」にはしていません。**現在 `RELEASE_CHANNEL` は `beta` のままで、
+登録しただけでは何も公開されません。** 適用手順は
+[`NEXT-BETA-APPLY.md`](decisions/NEXT-BETA-APPLY.md)。
+
 ## D. 開発中
 
 残り 41 シーン（alpha 26・prototype 14・reviewed 1）。preview では全部動きます
@@ -50,25 +57,46 @@ Claude② が正常臓器を、Claude③ が病態を増やし続けている先
 
 ---
 
-## 公開までの距離（近い順）
+## 公開までの距離
 
-**「作りたい順」ではなく、blocker の数と重さで並べています。**
+**blocker の種類を混ぜていません。** 4 つは性質が違い、必要な人も時間も違います。
 
-| | scene | 残っているもの | 重さ |
-| --- | --- | --- | --- |
-| 1 | **`amyloid-beta`** | policy 判断＋レビューを現行基準で取り直す。**外部 asset なし・certainty 表示済み・7 段完成** | 軽 |
-| 2 | **`heart-failure`** | policy 判断＋レビューを現行基準で。reference implementation で最も作り込まれている | 軽 |
-| 3 | **`copd`** | policy 判断＋**再レビュー**（`stale`）。8 段・frame/focus 完備 | 中 |
-| 4 | **`asthma`** | policy 判断＋再レビュー。375 のみ確認済み、844 未確認 | 中 |
-| 5 | **`myocardial-ischemia`** | policy 判断＋**レビュー未実施**（`pending`）。色の誤認可否が未判断 | 中 |
-| 6 | **`heart-anatomy`** | **承認 2 件＋派生ファイル作成**。外部 asset・ライセンス・NLM 条件・validator 失敗 | **重** |
+- **実装不足** — Claude① / ② / ③ が書けば終わるもの
+- **review 待ち** — 医学レビュアーの判断
+- **policy 対象外** — release policy の判断（近藤さん）
+- **asset / legal 待ち** — 外部データ・法務
 
-**いちばん近いのは心臓の解剖ではありません。** 心臓解剖は外部 asset を抱えており、
-法務・派生ファイル・2 種類の承認が要ります。一方 1〜5 は procedural で、
-**必要なのは release policy の判断と医学レビューだけ**です。
+### Published
 
-policy を「解剖のみ」から「解剖＋レビュー済み病態」へ広げる判断が下りれば、
-**`amyloid-beta` と `heart-failure` は実装作業なしで公開へ進めます。**
+| scene | |
+| --- | --- |
+| `brain-anatomy` | 現 β で公開中。臨床レビューは `pending` のまま公開しています（既定の判断） |
+
+### Next release candidates
+
+| # | scene | 実装不足 | review 待ち | policy | asset / legal | 距離 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **`amyloid-beta`** | なし | ⚠️ `legacy-unversioned` → 現行基準で取り直す | 次期 β へ切替 | なし | **最短** |
+| 2 | **`heart-failure`** | なし | ⚠️ `legacy-unversioned` → 同上 | 次期 β へ切替 | なし | **最短** |
+| 3 | **`copd`** | なし | ⚠️ **`stale`** → 再レビュー | 次期 β へ切替 | なし | 短 |
+| 4 | **`myocardial-ischemia`** | なし | ❌ `pending`（未実施）＋**色の誤認可否**が未判断 | 候補に 1 行追加＋切替 | なし | 中 |
+| 5 | **`heart-anatomy`** | **派生 asset の採用作業**（技術は解決済み） | 解剖・臨床とも未実施 | 現 β の候補 | ❌ **NLM 条件未確認・改変表示・採用判断** | **最長** |
+
+**1〜3 に実装作業はありません。** `NEXT_BETA_CANDIDATE_STATUS` が返す blocker は各 2 件
+（臨床レビューと公開判断記録）だけで、どちらも記録です。
+
+**4 は候補一覧に未登録**です。実装は揃っているので、レビューが返れば
+`NEXT_BETA_CANDIDATES` に 1 行足すだけで候補になります（`asthma` も同じ状態）。
+
+**5 だけが性質の違う待ちです。** 外部データ・ライセンス・法務が絡み、
+これらは Medical 3D Lab の中では解決できません。
+
+### 順位が入れ替わった理由
+
+前回 `heart-anatomy` を最長としたのは validator が通らなかったためですが、
+**技術的には解決しました**（派生 asset で 0 errors / 0 warnings、見た目は不変）。
+それでも最長のままなのは、残りが **NLM 条件の確認と採用判断**だからです——
+実装で縮められない距離です。
 
 ---
 

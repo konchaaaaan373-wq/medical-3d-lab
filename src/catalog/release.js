@@ -70,6 +70,7 @@ import { STATUS_IDS } from './taxonomy.js';
 import { assetById, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
 import { clinicalReviewForScene, hasCurrentClinicalReview } from './clinicalReview.js';
 import { sceneRevisionPin } from './modelRevisions.js';
+import { PATIENT_GUIDES } from '../data/patientGuides.js';
 import {
   CLINICAL_INTENDED_USES,
   MECHANISM_LEVEL,
@@ -114,6 +115,46 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
  * substituted for it in the meantime.
  */
 export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-anatomy']);
+
+/**
+ * The next release, which is a different question from the current one.
+ *
+ * The current beta publishes anatomy and nothing else, and that is why most of
+ * this catalogue reports "not one of the scenes this release opens" rather than
+ * a failure. The next one is meant to carry the thing this product is actually
+ * for — a disease, with a professional view and a patient explanation of the
+ * same solved state — so it cannot reuse `betaPublicationProblems`, which
+ * refuses any scene whose model claims a mechanism.
+ *
+ * **It is an allowlist, not a rule about status.** "Anything marked reviewed
+ * gets published" is one mislabelled scene away from publishing a model nobody
+ * decided to publish, and `reviewed` is a status a scene can reach without
+ * anyone deciding it should be public. A scene is a candidate here because
+ * somebody named it here.
+ *
+ * Nothing on this channel is open today: every candidate below still fails at
+ * least one of the checks in `nextBetaPublicationProblems`, and the failures
+ * are the work list rather than an error. Registering a name is not publishing
+ * it — that is the same distinction `BETA_ANATOMY_CANDIDATES` draws.
+ */
+export const NEXT_BETA_CANDIDATES = Object.freeze([
+  // Already published on the current channel; listed so the next release is a
+  // superset rather than a replacement, and so the anatomy a disease points at
+  // is never absent from the release the disease is in.
+  'brain-anatomy',
+  'amyloid-beta',
+  'heart-failure',
+  // Behind the first two only by its review being stale rather than absent.
+  'copd-hyperinflation',
+]);
+
+/**
+ * Publication decisions for the next channel. Empty, and that is the point:
+ * every candidate above fails on this until somebody records one.
+ *
+ * @type {readonly object[]}
+ */
+export const NEXT_BETA_PUBLICATION_DECISIONS = Object.freeze([]);
 
 /**
  * Maturity a scene needs before the beta will open it.
@@ -483,6 +524,146 @@ export function betaPublicationProblems(candidate, {
 }
 
 /**
+ * Why this scene is not open on the **next** release. Empty means open.
+ *
+ * Same shape as `betaPublicationProblems` and deliberately not the same
+ * function. The two channels answer different questions, and the difference is
+ * one line: this one does not require the scene's model to claim structure and
+ * nothing more, because a disease scene exists to claim a mechanism. Every
+ * other bar is the same or higher.
+ *
+ * **A current clinical review is required here, and is not on the current
+ * channel.** The beta publishes anatomy whose review is honestly labelled
+ * `pending` on screen; a scene that solves a mechanism and explains it to a
+ * patient cannot be published on "pending". `stale` is refused for the same
+ * reason it is refused on the beta, and `legacy-unversioned` is refused because
+ * a review nobody can point at is not a review.
+ *
+ * The rest is the beta's list, unchanged: a registered candidate, a model
+ * profile, released assets with their obligations discharged, a publication
+ * decision pinned to both the asset hashes and the scene revision, and a
+ * recorded scope. It fails closed on each.
+ *
+ * @param {object|string|null} candidate
+ * @param {object} [options]
+ * @returns {string[]}
+ */
+export function nextBetaPublicationProblems(candidate, {
+  fileExists,
+  profiles,
+  resolveScene = sceneById,
+  resolveAsset = assetById,
+  resolveReview = clinicalReviewForScene,
+  resolveRevision = sceneRevisionPin,
+  hasReview = hasCurrentClinicalReview,
+  decisions = NEXT_BETA_PUBLICATION_DECISIONS,
+  candidates = NEXT_BETA_CANDIDATES,
+  guides = PATIENT_GUIDES,
+} = {}) {
+  const id = typeof candidate === 'string' ? candidate : candidate?.id;
+  const problems = [];
+
+  if (!candidates.includes(id)) {
+    return [`"${id ?? '(no id)'}" is not one of the scenes the next release opens`];
+  }
+
+  const scene = resolveScene(id);
+  if (!scene) return [`"${id}" is not registered in the catalogue`];
+
+  if (!STATUS_IDS.includes(scene.status)) {
+    problems.push(`status "${scene.status}" is not a status the taxonomy defines`);
+  } else if (scene.status === BETA_EXCLUDED_STATUS) {
+    problems.push('is a Prototype, whose shape and motion are provisional by definition');
+  }
+
+  // A scene has to say what kind of claim it makes before it can be published
+  // on the strength of it. This channel allows a mechanism; it does not allow
+  // an unregistered one.
+  const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
+  if (!profile) {
+    problems.push('has no model profile, so what it claims is not registered anywhere');
+  }
+
+  const assetIds = profile?.assets ?? [];
+  for (const candidateId of profileCandidateAssets(profile)) {
+    problems.push(
+      `rests on candidate asset "${candidateId}", which is under examination and has passed no asset release gate`
+    );
+  }
+  for (const assetId of assetIds) {
+    const asset = resolveAsset(assetId);
+    if (!asset) {
+      problems.push(`names asset "${assetId}", which is not in the asset manifest`);
+      continue;
+    }
+    problems.push(...assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists }));
+  }
+
+  // The bar this channel adds. `hasCurrentClinicalReview` is the same predicate
+  // a publication decision's clinical role is checked against, so a scene and a
+  // decision cannot disagree about whether a review exists.
+  const review = resolveReview(scene);
+  if (!hasReview(scene)) {
+    const state = review?.reviewStatus ?? 'no record';
+    problems.push(
+      `its clinical review is "${state}", and this release explains a mechanism to a patient, ` +
+        'which a scene cannot do on a review that is not current'
+    );
+  }
+
+  // Both halves of the experience this release exists for. A disease scene
+  // without a patient explanation is the professional half only, which is the
+  // thing the next beta is not.
+  if (scene.disease && !guides[id]) {
+    problems.push('has no patient explanation, and a disease on this release is published with both views or neither');
+  }
+
+  const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
+  if (decision) {
+    const recorded = decision.assetRevisions ?? {};
+    for (const assetId of assetIds) {
+      const asset = resolveAsset(assetId);
+      const current = asset?.output?.sha256;
+      if (!(assetId in recorded)) {
+        problems.push(`the publication decision does not cover asset "${assetId}"`);
+      } else if (!current || recorded[assetId] !== current) {
+        problems.push(
+          `the publication decision was taken against ${assetId}@${recorded[assetId]}, and the manifest now ` +
+            `records ${current ?? 'no hash'}`
+        );
+      }
+    }
+    for (const assetId of Object.keys(recorded)) {
+      if (!assetIds.includes(assetId)) {
+        problems.push(`the publication decision names asset "${assetId}", which the scene no longer uses`);
+      }
+    }
+    const pin = decision.sceneRevision;
+    const current = resolveRevision(scene);
+    if (!pin || typeof pin !== 'object') {
+      problems.push('the publication decision is not pinned to a scene revision');
+    } else if (!current) {
+      problems.push('the scene has no entry in the model-card revision registry to pin a decision to');
+    } else if (pin.cardRevision !== current.cardRevision || pin.modelDigest !== current.modelDigest) {
+      problems.push(
+        `the publication decision was taken against scene revision ${pin.cardRevision}@${pin.modelDigest}, and the ` +
+          `registry now records ${current.cardRevision}@${current.modelDigest}`
+      );
+    }
+  }
+
+  return problems;
+}
+
+/** Every next-release candidate with the reasons it is not open yet. */
+export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
+  NEXT_BETA_CANDIDATES.map((id) =>
+    Object.freeze({ sceneId: id, open: nextBetaPublicationProblems(id).length === 0, problems: Object.freeze(nextBetaPublicationProblems(id)) })
+  )
+);
+
+/**
  * The publication policy for each channel that has one.
  *
  * A channel with no entry here opens nothing. That is the whole design: a
@@ -494,6 +675,10 @@ export function betaPublicationProblems(candidate, {
  */
 export const RELEASE_POLICIES = Object.freeze({
   beta: betaPublicationProblems,
+  // Registered, and not selected: `RELEASE_CHANNEL` is still `beta`, so nothing
+  // about what the product publishes changes by this existing. Switching the
+  // channel is a release decision and is made in one place.
+  'next-beta': nextBetaPublicationProblems,
 });
 
 /**
