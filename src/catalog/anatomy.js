@@ -307,6 +307,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: bone ends rather than shafts — heads, bases, styloids and joint surfaces — the capsules and ligaments, the saddle shape of the thumb’s carpometacarpal joint, the flexor sheaths and which tendon is which, the extensor retinaculum and hoods, the ulnar nerve and artery in their own canal, and the intrinsic muscles. No joint bends, which is the first thing a grip or a tendon-excursion scene would need',
   },
   {
+    organ: 'foot',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/footAnatomy — tibia, fibula, talus, calcaneus, navicular, cuboid, cuneiforms, the metatarsals and all three rows of phalanges, the plantar fascia, the spring ligament, the Achilles, tibialis posterior and peroneal tendons, the deltoid and lateral ligaments, and the ankle and subtalar joints, selectable by name; tests/organ-parts-anatomy.test.js — the navicular rides higher than the cuboid so the arch is an arch, the plantar fascia runs from the heel to the metatarsal heads and passes below the top of that arch, the talus sits between the leg above and the calcaneus below with a joint space at each boundary, the lateral malleolus reaches lower than the medial one, the deltoid is one sheet where the lateral side is three separate bands, and there are five metatarsals, five proximal phalanges, four middle phalanges and five distal phalanges',
+    next: 'A3: joint surfaces rather than blocks — the dome of the talus, the three subtalar facets, the mortise itself — the capsules, the three cuneiforms separately so the transverse arch can be seen, the sesamoids, the fat pad, the tarsal tunnel, the intrinsic muscles, and the blood supply of the talus. Nothing bears weight and nothing bends, which is the first two things an arch-collapse or a gait scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

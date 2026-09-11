@@ -1194,6 +1194,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/handAnatomy/index.js'),
   },
   {
+    id: 'foot-anatomy',
+    slug: 'foot-anatomy',
+    titleEn: 'Interactive foot and ankle anatomy',
+    titleJa: '触れて学ぶ足・足関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'foot',
+    organs: ['foot'],
+    disease: null,
+    conditions: ['foot anatomy', 'ankle', 'plantar fascia', 'talus', 'subtalar joint', 'medial arch', '足の解剖', '足関節', '足底腱膜', '距骨', '距骨下関節', '内側縦アーチ'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/foot-anatomy.md',
+    modelProfile: 'foot-anatomy-procedural-atlas',
+    description:
+      'A foot is an arch, not a plate: high on the inside, low on the outside, and held from spreading by a band slung from the heel to the toes.',
+    descriptionJa:
+      '足は板ではなくアーチです。内側が高く外側が低く、踵から中足骨頭へ張る足底腱膜がその広がりを止めています。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/footAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

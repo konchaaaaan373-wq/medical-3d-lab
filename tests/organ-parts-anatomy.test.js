@@ -42,6 +42,13 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  ARCH,
+  MEDIAL as FOOT_MEDIAL,
+  RAYS as FOOT_RAYS,
+  raySegment as footSegment,
+  buildFoot,
+} from '../src/scenes/musculoskeletal/organs/foot.js';
+import {
   CARPALS,
   RADIAL as HAND_RADIAL,
   RAYS,
@@ -2003,4 +2010,75 @@ test('the wrist is eight bones in an arch, with a lid and ten things under it', 
     const centre = at(id);
     assert.ok(centre.distanceTo(new THREE.Vector3(...spec.at)) < 0.08, `${id} is where the table puts it`);
   }
+});
+
+// --- the foot and ankle -----------------------------------------------------
+
+test('a foot is an arch with a bowstring under it, and a bone in a socket', () => {
+  // The arch is a relationship between bones rather than a bone, so it is the
+  // easiest thing in this model to lose without noticing. Everything below is
+  // a way of noticing.
+  const foot = buildFoot();
+  foot.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of foot.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Towards the big toe. Read the wrong way round, the foot is a left one. */
+  const medially = (point) => point.x * FOOT_MEDIAL;
+
+  // The arch: high on the inside, low on the outside.
+  assert.ok(at('navicular').y > at('cuboid').y + 1, 'the navicular rides higher than the cuboid');
+  assert.ok(medially(at('navicular')) > medially(at('cuboid')), 'and it is the one on the inside');
+
+  // The bowstring, under the whole of it.
+  const fascia = box('plantar-fascia');
+  assert.ok(fascia.min.z < box('calcaneus').min.z + 2.5, 'the band starts back at the heel');
+  assert.ok(fascia.max.z > 13, 'and runs forward to the heads of the metatarsals');
+  assert.ok(fascia.max.y < ARCH.summit[1], 'passing below the summit of the arch the whole way');
+  assert.ok(box('spring-ligament').max.y > fascia.max.y, 'and the short sling sits above it');
+
+  // A bone in a socket, with a second joint under it.
+  const talus = box('talus');
+  assert.ok(talus.min.y > box('calcaneus').max.y - 0.6, 'the talus sits on the heel bone');
+  assert.ok(talus.max.y < box('tibia').max.y, 'with the leg above it');
+  const ankle = box('ankle-joint');
+  const subtalar = box('subtalar-joint');
+  assert.ok(ankle.min.y > talus.max.y - 0.3, 'the ankle joint is at the top of the talus');
+  assert.ok(subtalar.max.y < talus.min.y + 0.3, 'and the subtalar joint at the bottom of it');
+  assert.ok(subtalar.max.y < ankle.min.y, 'one below the other, which is the point of naming both');
+
+  // The two malleoli are not the same length, and that asymmetry is the claim.
+  assert.ok(box('fibula').min.y < box('tibia').min.y, 'the lateral malleolus reaches lower than the medial one');
+  assert.ok(medially(at('fibula')) < 0, 'and the fibula is the lateral bone');
+
+  // One sheet inside, three bands outside.
+  assert.equal(foot.meshesFor('deltoid-ligament').length, 1, 'the deltoid is one sheet');
+  assert.equal(foot.meshesFor('lateral-ligaments').length, 3, 'the lateral side is three bands');
+  assert.ok(medially(at('deltoid-ligament')) > 0, 'the deltoid is on the inside');
+  for (const mesh of foot.meshesFor('lateral-ligaments')) {
+    const band = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+    assert.ok(medially(band) < 0, 'and every lateral band is on the outside');
+  }
+
+  // Five rays, and one of them is a great toe.
+  assert.equal(foot.meshesFor('metatarsals').length, 5, 'five metatarsals');
+  assert.equal(foot.meshesFor('proximal-phalanges').length, 5, 'five proximal phalanges');
+  assert.equal(foot.meshesFor('middle-phalanges').length, 4, 'four middle phalanges — the great toe has none');
+  assert.equal(foot.meshesFor('distal-phalanges').length, 5, 'five distal phalanges');
+  assert.equal(footSegment(FOOT_RAYS[0], 'middle'), null, 'and the table is where that is written down');
+  for (const ray of FOOT_RAYS) {
+    let previous = null;
+    for (const bone of ['metatarsal', 'proximal', 'middle', 'distal']) {
+      const segment = footSegment(ray, bone);
+      if (!segment) continue;
+      if (previous) assert.ok(segment.from[2] > previous[2], `${ray.id}: the ${bone} is in front of the one before it`);
+      previous = segment.to;
+    }
+  }
+  // And nothing goes through the ground it stands on.
+  const all = new THREE.Box3().setFromObject(foot.object);
+  assert.ok(all.min.y >= 0, 'the whole foot is above the ground line it stands on');
 });

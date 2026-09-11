@@ -1126,5 +1126,27 @@
       "Seven cords stand for the nine flexor tendons and which tendon is which is not represented; the sheaths, the extensor retinaculum and hoods, the thumb’s extensors and the ulnar nerve and artery are not drawn.",
       "No cross-sectional area or pressure is represented, so nothing here supports any claim about the tunnel being narrow enough to matter."
     ]
+  },
+  {
+    "sceneId": "foot-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of the bones of the foot and ankle, the two joints of the hindfoot, and what holds the medial arch up. No weight-bearing, no joint movement, no gait, no blood supply, no disease."
+    ],
+    "sources": [
+      "docs/model-cards/foot-anatomy.md",
+      "docs/model-evidence/foot-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing bears weight and no joint bends, so the windlass mechanism the copy describes — toe extension tightening the fascia and raising the arch — is described and not shown.",
+      "Bones are smooth blocks and shafts: joint surfaces, capsules, the sesamoids, the fat pad under the heel and the tarsal tunnel are not drawn, and the three cuneiforms are drawn as one block so the wedge shape that makes the transverse arch is described rather than shown.",
+      "The blood supply of the talus — the reason that bone is spoken about the way it is — is not represented at all.",
+      "No ligament strength or order of failure is represented, so nothing here supports any claim about which band tears first beyond what the copy states in words."
+    ]
   }
 ]
