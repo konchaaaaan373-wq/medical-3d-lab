@@ -1134,6 +1134,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/respiratory/scenes/larynxAnatomy/index.js'),
   },
   {
+    id: 'oral-anatomy',
+    slug: 'oral-anatomy',
+    titleEn: 'Interactive mouth and tongue anatomy',
+    titleJa: '触れて学ぶ口腔・舌の解剖',
+    system: 'gastrointestinal',
+    organ: 'mouth',
+    organs: ['mouth', 'tongue'],
+    disease: null,
+    conditions: ['oral anatomy', 'tongue', 'salivary glands', 'palatine tonsil', 'frenulum', 'parotid duct', '口腔の解剖', '舌', '唾液腺', '口蓋扁桃', '舌小帯', '耳下腺管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/oral-anatomy.md',
+    modelProfile: 'oral-anatomy-procedural-atlas',
+    description:
+      'A line across the tongue divides two parts with different nerves, and three pairs of glands outside the mouth open into it at places nowhere near themselves.',
+    descriptionJa:
+      '舌を横切る1本の線が、神経支配の異なる2つの部分を分けます。口腔の外にある3対の唾液腺は、それぞれ腺から遠く離れた位置に開口します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/gastrointestinal/scenes/oralAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

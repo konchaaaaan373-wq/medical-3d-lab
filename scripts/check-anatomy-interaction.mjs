@@ -143,6 +143,9 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Into an open mouth: the roof, the row of papillae across the tongue, the
+  // tongue itself, and a parotid gland out at the side. Read off a render.
+  'oral-anatomy': [[0.49, 0.36], [0.625, 0.444], [0.44, 0.56], [0.49, 0.52]],
   // Down the midline of a tall, narrow organ: the soft palate, the pharynx
   // behind the mouth, the thyroid cartilage and the trachea. Read off a render.
   'larynx-anatomy': [[0.48, 0.19], [0.49, 0.33], [0.49, 0.52], [0.5, 0.76]],

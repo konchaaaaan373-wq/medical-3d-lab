@@ -577,6 +577,50 @@ trachea  oesophagus  recurrent-laryngeal-nerve
 
 ---
 
+## `oral-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 19 |
+| tags | `roof` `bone` `tongue` `floor` `gland` |
+| views | `whole` `from-the-side` `tongue` `underneath` `glands` `sagittal` |
+| bounds | 4.84 × 4.44 × 6.82 |
+
+```
+lips  upper-teeth  lower-teeth  mandible
+hard-palate  soft-palate  palatoglossal-arch  palatine-tonsil
+tongue-oral-part  tongue-root  vallate-papillae  lingual-tonsil
+floor-of-mouth  lingual-frenulum
+sublingual-gland  submandibular-gland  submandibular-duct  parotid-gland  parotid-duct
+```
+
+**anchors** — `SITES`: `tongueTip` `sulcus` `fauces` `caruncle`
+`parotidOpening` `tonsil` `vallecula`。
+高さは `LEVELS`（`palate` `upperTeeth` `lowerTeeth` `tongueSurface` `floor`
+`jawBase`）、面としては `archHalfWidth(z)`・`SULCUS_Z`・
+`JAW_DISPLAY_OPENING`（表示値）。
+
+**病態候補**: 口内炎・アフタ、口腔癌（舌・口腔底）、扁桃炎・扁桃周囲膿瘍、
+唾石症（顎下腺）、耳下腺炎（流行性耳下腺炎）、シェーグレン症候群、
+舌小帯短縮症、口蓋裂、舌痛症・味覚障害。
+
+**動かしてよいもの**: `palatine-tonsil` と `lingual-tonsil` の大きさ、
+`tongue-oral-part` / `tongue-root` の表面（潰瘍・腫瘤）、
+各腺の大きさ、各導管の口径と内容（唾石）、`soft-palate` の左右差、
+`lingual-frenulum` の付着位置。
+
+**変えてはいけない関係**:
+- **舌は `SULCUS_Z` で 2 つに分かれます。** 有郭乳頭列はその線の上にあり、
+  表面でこの境界を示す唯一の目印です。乳頭列だけを動かさないでください
+- **導管の開口部は腺の位置ではありません。** 耳下腺管は上顎歯列の高さへ、
+  顎下腺管は舌小帯の脇へ開きます。ここが崩れるとシーンの主張が消えます
+- 口蓋扁桃は**口蓋舌弓の後方**のくぼみにあります
+- 歯列・下顎骨・口腔底はすべて `archHalfWidth(z)` の 1 本の弓に従います
+- **`JAW_DISPLAY_OPENING` は表示値です。** 開口量・咬合関係を
+  このモデルから出さないでください。歯列は帯であって歯ではありません
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

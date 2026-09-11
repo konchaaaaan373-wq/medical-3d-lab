@@ -554,6 +554,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of the pharynx and larynx in the midline, placed from standard descriptive anatomy: the pharynx as one lumen named in three lengths, the larynx occupying the middle of its front wall below the inlet with a piriform gutter on each side, two pairs of folds separated by the ventricle, the cricoid as the one complete ring, and the recurrent laryngeal nerves reaching the larynx from below in the tracheo-oesophageal groove. No dimension, angle or calibre is a measurement, the glottis is drawn at one fixed display opening, and nothing in the scene moves.',
   },
   {
+    profileId: 'oral-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of the mouth, placed from standard descriptive anatomy: the tongue in two parts meeting at the sulcus terminalis with the vallate papillae lying along it, the palatine tonsil in the bed behind the palatoglossal arch, and the three pairs of salivary glands with the parotid duct crossing the cheek to the upper molar region and the submandibular duct running forward under the tongue to the caruncle beside the frenulum. The jaw is drawn open by a declared display amount because a closed mouth shows nothing; no dimension, angle or gland volume is a measurement, teeth are drawn as bands rather than as teeth, and nothing in the scene moves.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
