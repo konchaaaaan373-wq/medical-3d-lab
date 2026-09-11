@@ -27,6 +27,7 @@ import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskelet
 import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
 import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
 import { NASAL as EYE_NASAL, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
+import { MEDIAL as EAR_MEDIAL, buildEar } from '../src/scenes/sensory/organs/ear.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1170,4 +1171,75 @@ test('the eye is three coats around three transparent things', () => {
     assert.ok(box(id).min.z < -1.5, `and comes from behind the eye`);
     assert.ok(box(id).max.z < sclera.max.z, 'inserting behind the front of the globe');
   }
+});
+
+// --- the ear ----------------------------------------------------------------
+
+test('the ear is one chain: air, then bone, then fluid', () => {
+  // An ear is a route, so what is checked is the order along it and the three
+  // joins that make it a chain rather than three collections of parts.
+  const ear = buildEar();
+  ear.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(ear.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  /** Into the head. Read the wrong way round, the ear is inside out. */
+  const inwards = (point) => point.x * EAR_MEDIAL;
+
+  // The route, outside in. Every step is further in than the one before it.
+  const route = [
+    'auricle',
+    'external-auditory-canal',
+    'tympanic-membrane',
+    'middle-ear-cavity',
+    'vestibule',
+    'vestibulocochlear-nerve',
+  ];
+  for (let i = 1; i < route.length; i += 1) {
+    assert.ok(
+      inwards(at(route[i])) > inwards(at(route[i - 1])),
+      `${route[i]} is deeper than ${route[i - 1]}`
+    );
+  }
+
+  // The canal ends at the drum, and the drum is drawn inwards at its centre —
+  // which is what makes the umbo a landmark and not just a word.
+  const canal = box('external-auditory-canal');
+  const drum = box('tympanic-membrane');
+  assert.ok(canal.intersectsBox(drum) || Math.abs(inwards(canal.max) - inwards(drum.min)) < 0.1, 'the canal ends at the drum');
+  const umbo = ear.anchorPoints.umbo;
+  assert.ok(Math.abs(inwards(umbo) - inwards(drum.max)) < 0.05, 'the umbo is the drum’s most medial point');
+
+  // Three bones, meeting in order, and only the last of them in the window.
+  assert.ok(box('malleus').intersectsBox(drum), 'the malleus is attached to the drum');
+  assert.ok(box('malleus').intersectsBox(box('incus')), 'the malleus meets the incus');
+  assert.ok(box('incus').intersectsBox(box('stapes')), 'the incus meets the stapes');
+  assert.ok(!box('malleus').intersectsBox(box('stapes')), 'and the malleus does not reach the stapes');
+  const window_ = ear.anchorPoints.ovalWindow;
+  assert.ok(box('stapes').distanceToPoint(window_) < 0.06, 'the stapes sits in the oval window');
+  assert.ok(box('malleus').distanceToPoint(window_) > 0.1, 'and nothing else does');
+  const cavity = box('middle-ear-cavity');
+  for (const id of ['malleus', 'incus', 'stapes']) {
+    assert.ok(cavity.intersectsBox(box(id)), `the ${id} crosses the air space`);
+  }
+
+  // The tube leaves the cavity forwards, downwards and inwards — which is the
+  // whole of why a throat and an ear are connected.
+  const tube = box('eustachian-tube');
+  assert.ok(tube.min.y < cavity.min.y, 'the Eustachian tube runs down from the cavity');
+  assert.ok(tube.max.z > cavity.max.z, 'and forwards');
+  assert.ok(inwards(tube.max) > inwards(cavity.max), 'and towards the midline');
+
+  // The inner ear: a spiral that tapers, and three loops in three planes.
+  const cochlea = box('cochlea');
+  assert.ok(inwards(at('cochlea')) > inwards(at('vestibule')), 'the cochlea is deeper than the vestibule');
+  const spiral = cochlea.getSize(new THREE.Vector3());
+  assert.ok(spiral.y > 0.6 && spiral.z > 0.6, 'the cochlea is a coil and not a straight tube');
+
+  assert.equal(ear.canalMeshes.length, 3, 'three canals, drawn as one structure');
+  const planes = ear.canalMeshes.map((mesh) => {
+    const size = new THREE.Box3().setFromObject(mesh).getSize(new THREE.Vector3());
+    // The axis a loop turns about is the one it is thinnest along.
+    return [size.x, size.y, size.z].indexOf(Math.min(size.x, size.y, size.z));
+  });
+  assert.equal(new Set(planes).size, 3, 'and each of the three lies in a different plane');
 });

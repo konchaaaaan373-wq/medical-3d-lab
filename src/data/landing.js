@@ -37,6 +37,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'shoulder-anatomy',
   'hip-anatomy',
   'eye-anatomy',
+  'ear-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -179,6 +180,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '眼の中を見る。3つの膜、虹彩の奥の水晶体、そして眼底。',
     ['RETINA', 'LENS', 'FUNDUS'],
     ['網膜', '水晶体', '眼底']
+  ),
+  'ear-anatomy': presentation(
+    'Follow one sound in: air to a drum, bone across a gap, then fluid.',
+    '音の通り道をたどる。空気から鼓膜へ、骨で渡り、そして液体へ。',
+    ['OSSICLES', 'COCHLEA', 'CHAIN'],
+    ['耳小骨', '蝸牛', '伝達経路']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

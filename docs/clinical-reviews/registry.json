@@ -862,5 +862,30 @@
       "No cataract, glaucoma, detachment or maculopathy is represented in any form, and nothing here is anyone's eye.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, laser or surgery."
     ]
+  },
+  {
+    "sceneId": "ear-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right ear — auricle and canal, drum, cavity and ossicles, Eustachian tube, cochlea, vestibule, semicircular canals and the vestibulocochlear nerve — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/ear-anatomy.md",
+      "docs/model-evidence/ear-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Everything medial to the tympanic membrane is drawn far larger than life so that each part can be seen and selected; no size relation across the drum may be read off the model.",
+      "No length, calibre, angle or turn-count is a measurement.",
+      "Nothing in the scene moves: the drum does not vibrate, the ossicular chain does not conduct, and no fluid is represented.",
+      "The temporal bone and mastoid air cells, the facial nerve, the two ossicular muscles, the ampullae, the round window membrane and the internal structure of the cochlea are not drawn.",
+      "No otitis, perforation, ossicular disruption, vertigo or hearing loss is represented in any form, and nothing here is anyone's ear.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any procedure."
+    ]
   }
 ]

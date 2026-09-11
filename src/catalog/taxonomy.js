@@ -66,6 +66,7 @@ export const ORGANS = [
   { id: 'uterus', system: 'reproductive', label: 'Uterus', labelJa: '子宮' },
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
   { id: 'eye', system: 'sensory', label: 'Eye', labelJa: '眼' },
+  { id: 'ear', system: 'sensory', label: 'Ear', labelJa: '耳' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

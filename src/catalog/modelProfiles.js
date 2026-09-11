@@ -450,6 +450,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code as a right eye: the three coats are shells of revolution with real walls rather than nested balls, so a section shows three layers; the cornea is a steeper dome on its own centre, set into the sclera at the limbus; a flat iris ring carries the pupil as the black disc an opening looks like; the lens sits behind it and the ciliary ring around it; the anterior chamber and the vitreous body are drawn as bodies because a space cannot otherwise be pointed at; the optic disc, macula and optic nerve sit on and behind the back wall, and four rectus straps run from one origin behind the eye to the sclera in front of the equator. No state and no mechanism: no accommodation, no pupillary reflex, no eye movement and no pressure. **No radius, thickness, angle or distance is a measurement, and the three coats are drawn far thicker than they are** so each can be seen and selected — no thickness may be read off the model. The eyelids, conjunctiva, lacrimal apparatus, oblique muscles, suspensory fibres, retinal layers and vessels, optic cup and orbit are not drawn.',
   },
   {
+    profileId: 'ear-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as a right ear laid out along one line: an auricle shell with a scooped concha, the canal drawn as the passage it is with a turn in it, a drum as a shallow cone with its apex medial, an air cavity drawn as a body, three ossicles as small bones meeting in order from the umbo to the oval window, a Eustachian tube leaving forwards and downwards, and a cochlear spiral of two and a half tapering turns with a vestibule and three canals in three planes beside it. No state and no mechanism: nothing vibrates, nothing conducts and there is no fluid. **No length, calibre, angle or turn-count is a measurement, and everything medial to the drum is drawn far larger than life** (`DEEP_EAR_VISUAL_SCALE`) so that each part can be seen and selected — no size relation across the drum may be read off the model. The temporal bone, mastoid air cells, facial nerve, ossicular muscles, ampullae, endolymph and perilymph and the organ of Corti are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

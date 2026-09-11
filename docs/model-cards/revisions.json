@@ -421,5 +421,18 @@
     "cardRevision": 4,
     "modelDigest": "ce012f6382aeb7da",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "ear-anatomy",
+    "card": "docs/model-cards/ear-anatomy.md",
+    "modelSources": [
+      "src/data/earAnatomyScene.js",
+      "src/scenes/sensory/organs/ear.js",
+      "src/scenes/sensory/scenes/earAnatomy/EarAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "782fa436b70be62b",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
