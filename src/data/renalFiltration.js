@@ -507,6 +507,13 @@ export const DISCLAIMER_SHORT_JA = '定常状態の教育モデル｜クレア�
 export const RELATED = {
   scenes: [
     {
+      slug: 'kidney-anatomy',
+      label: 'Kidney anatomy — the parts, at organ scale',
+      labelJa: '腎臓の解剖 — 臓器のスケールで見る各部',
+      why: '**A different model.** The kidney here is one term in a circulation; there it is an organ with named parts.',
+      whyJa: '**別のモデルです。** ここでの腎臓は循環のなかの 1 項ですが、向こうは部位を名前で指せる臓器です。',
+    },
+    {
       slug: 'hepatorenal-syndrome',
       label: 'A kidney losing filtration for a reason outside it',
       labelJa: '腎臓の外に理由がある腎機能低下',

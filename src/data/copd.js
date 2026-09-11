@@ -412,14 +412,14 @@ export const RELATED = {
       whyJa: '狭窄を分岐気道のネットワークとして解きます。「吐き切れるか」を解くこのモデルとは別の問いです。',
     },
     {
-      // The normal lung this build has. When a named-structure lung atlas
-      // lands, this is the row that points at it instead — one row, in one
-      // file, and `App.js` drops it automatically while the gate holds it back.
-      slug: 'breathing-lungs',
-      label: 'A lung breathing normally',
-      labelJa: '正常な呼吸',
-      why: 'The same organ without the obstruction, drawn for the movement rather than for the mechanics.',
-      whyJa: '閉塞のない同じ臓器を、力学ではなく動きを見るために描いたものです。',
+      // The named-structure lung atlas this file was waiting for. It replaces
+      // the `breathing-lungs` prototype row, which is what the note here said
+      // to do the day such an atlas landed.
+      slug: 'lung-anatomy',
+      label: 'Lung anatomy — lobes, segments and the airway tree by name',
+      labelJa: '肺の解剖 — 葉・区域・気道を名前で',
+      why: '**A different model.** Structure you can point at and name; it has no breath and no obstruction.',
+      whyJa: '**別のモデルです。** 名前で指せる構造を持ちますが、呼吸も閉塞もありません。',
     },
   ],
   note:

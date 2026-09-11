@@ -498,6 +498,20 @@ export const DISCLAIMER_SHORT_JA = '概念モデル｜循環の機序のみ・�
 export const RELATED = {
   scenes: [
     {
+      slug: 'kidney-anatomy',
+      label: 'Kidney anatomy — the parts, at organ scale',
+      labelJa: '腎臓の解剖 — 臓器のスケールで見る各部',
+      why: '**A different model.** The kidney here is one term in a circulation; there it is an organ with named parts.',
+      whyJa: '**別のモデルです。** ここでの腎臓は循環のなかの 1 項ですが、向こうは部位を名前で指せる臓器です。',
+    },
+    {
+      slug: 'liver-anatomy',
+      label: 'Liver anatomy — the segments and what separates them',
+      labelJa: '肝臓の解剖 — 区域と、その境目',
+      why: '**A different model.** Named segments and their planes; no resistance, no pressure, no flow.',
+      whyJa: '**別のモデルです。** 名前の付いた区域と切断面を持ちますが、抵抗も圧も流れもありません。',
+    },
+    {
       slug: 'portal-hypertension',
       label: 'The liver on its own',
       labelJa: '肝臓だけを見る',

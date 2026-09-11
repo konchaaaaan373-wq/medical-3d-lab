@@ -424,6 +424,13 @@ export const DISCLAIMER_SHORT_JA =
 export const RELATED = {
   scenes: [
     {
+      slug: 'liver-anatomy',
+      label: 'Liver anatomy — the segments and what separates them',
+      labelJa: '肝臓の解剖 — 区域と、その境目',
+      why: '**A different model.** Named segments and their planes; no resistance, no pressure, no flow.',
+      whyJa: '**別のモデルです。** 名前の付いた区域と切断面を持ちますが、抵抗も圧も流れもありません。',
+    },
+    {
       slug: 'hepatorenal-syndrome',
       label: 'What this does to the rest of the circulation',
       labelJa: '循環の残りの部分に何が起きるか',

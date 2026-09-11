@@ -407,11 +407,14 @@ export const RELATED = {
       whyJa: '狭くなった気道を「1 つの肺が吐き切れるか」として解きます。問いが違います。',
     },
     {
-      slug: 'breathing-lungs',
-      label: 'A lung breathing normally',
-      labelJa: '正常な呼吸',
-      why: 'The same organ without a stimulus acting on it, drawn for the movement rather than for the airway tree.',
-      whyJa: '刺激のかかっていない同じ臓器を、気道樹ではなく動きを見るために描いたものです。',
+      // The named-structure lung atlas this file was waiting for. It replaces
+      // the `breathing-lungs` prototype row, which is what the note here said
+      // to do the day such an atlas landed.
+      slug: 'lung-anatomy',
+      label: 'Lung anatomy — lobes, segments and the airway tree by name',
+      labelJa: '肺の解剖 — 葉・区域・気道を名前で',
+      why: '**A different model.** Structure you can point at and name; it has no breath and no obstruction.',
+      whyJa: '**別のモデルです。** 名前で指せる構造を持ちますが、呼吸も閉塞もありません。',
     },
   ],
   note:

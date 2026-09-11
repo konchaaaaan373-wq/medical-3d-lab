@@ -181,6 +181,49 @@ export const SCENE_MANIFEST = [
       '5つの肺葉、18本の区域気管支とそれに伴走する区域動脈、そして区域の「間」を走る静脈を、すべて名前で選択できます。',
     tags: ['anatomy', 'interactive', 'segments'],
     relatedScenes: ['copd-hyperinflation'],
+    related: {
+      scenes: [
+        {
+          slug: 'copd',
+          label: 'COPD — why a full lung cannot empty in time',
+          labelJa: 'COPD — 膨らんだ肺が吐ききれなくなるまで',
+          why: '**A different model.** Airways and a diaphragm that move with the breath; this atlas does not breathe.',
+          whyJa: '**別のモデルです。** 呼吸に合わせて動く気道と横隔膜を持ちます。このアトラスは呼吸しません。',
+        },
+        {
+          slug: 'asthma',
+          label: 'Asthma — why the same lung is not narrowed evenly',
+          labelJa: '喘息 — 同じ肺のなかで狭くなり方がそろわない',
+          why: '**A different model.** The airway tree carries a per-region state; the atlas carries names only.',
+          whyJa: '**別のモデルです。** 気道樹が場所ごとの状態を持ちます。アトラスが持つのは名前だけです。',
+        },
+        {
+          slug: 'pulmonary-edema',
+          label: 'Pulmonary edema — when pressure pushes fluid into the air spaces',
+          labelJa: '肺水腫 — 圧が水分を空気の側へ押し出すとき',
+          why: '**A different model.** It solves a pressure and a flooded fraction; neither exists in this atlas.',
+          whyJa: '**別のモデルです。** 圧と浸水した割合を解きます。どちらもこのアトラスにはありません。',
+        },
+        {
+          slug: 'pneumonia',
+          label: 'Pneumonia — a region that fills and stops taking part',
+          labelJa: '肺炎 — 詰まって換気から外れる領域',
+          why: '**A different model.** One region is consolidated and shunts; the atlas has no gas exchange at all.',
+          whyJa: '**別のモデルです。** 1 つの領域が硬化しシャントします。アトラスにガス交換はありません。',
+        },
+        {
+          slug: 'pulmonary-embolism',
+          label: 'Pulmonary embolism — perfusion lost while ventilation stays',
+          labelJa: '肺塞栓症 — 換気は残り、血流だけが失われる',
+          why: '**A different model.** It separates ventilation from perfusion; this atlas draws neither.',
+          whyJa: '**別のモデルです。** 換気と血流を分けて扱います。このアトラスはどちらも描きません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
     load: () => import('../scenes/respiratory/scenes/lungAnatomy/index.js'),
   },
   {
@@ -440,6 +483,28 @@ export const SCENE_MANIFEST = [
       'Couinaudの8区域を、IVをIVa・IVbに分けた9つの部分として選べます。区域の「間」を走る肝静脈と、「内部」を走る門脈枝の違いを示します。',
     tags: ['anatomy', 'interactive', 'segments'],
     relatedScenes: ['portal-hypertension'],
+    related: {
+      scenes: [
+        {
+          slug: 'portal-hypertension',
+          label: 'Portal hypertension — when the liver is hard to flow through',
+          labelJa: '門脈圧亢進症 — 肝臓が流れにくくなるとき',
+          why: '**A different model.** A resistance and a pressure the atlas has no place for; its segments are shape, not flow.',
+          whyJa: '**別のモデルです。** アトラスが持たない抵抗と圧を解きます。区域は形であって流れではありません。',
+        },
+        {
+          slug: 'hepatorenal-syndrome',
+          label: 'Hepatorenal syndrome — the liver read through the kidney',
+          labelJa: '肝腎症候群 — 肝臓の変化を腎臓側から読む',
+          why: '**A different model, and two organs.** It couples a circulation to a kidney; nothing here is that couple.',
+          whyJa: '**別のモデルで、臓器も 2 つです。** 循環と腎臓を連成させます。ここにその連成はありません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
     load: () => import('../scenes/hepatobiliary/scenes/liverAnatomy/index.js'),
   },
   {
@@ -547,6 +612,32 @@ export const SCENE_MANIFEST = [
       '1枚のシェルとしての皮質、7つの髄質錐体とそのあいだの腎柱、各腎乳頭を包む小腎杯から腎盂・尿管へ至る集合系を表示します。',
     tags: ['anatomy', 'interactive', 'collecting-system'],
     relatedScenes: ['renal-filtration'],
+    related: {
+      scenes: [
+        {
+          slug: 'renal-filtration',
+          // A real part of this kidney, drawn larger — the other kind of
+          // scale change from the brain's schematic. `relatedContract.js`.
+          transitionType: 'scale-change',
+          scaleRelationship: 'magnified-detail',
+          label: 'Filtration — one nephron, and what it can hide',
+          labelJa: '濾過 — ネフロン 1 本と、それが隠せてしまうもの',
+          why: '**A different model, and a different scale.** One nephron, not this kidney magnified.',
+          whyJa: '**別のモデルで、縮尺も違います。** ネフロン 1 本であって、この腎臓を拡大したものではありません。',
+        },
+        {
+          slug: 'hepatorenal-syndrome',
+          label: 'Hepatorenal syndrome — a kidney failing for a reason outside it',
+          labelJa: '肝腎症候群 — 腎臓の外に理由がある腎不全',
+          why: '**A different model.** The kidney here is one term in a circulation, not an organ you can name parts of.',
+          whyJa: '**別のモデルです。** ここでの腎臓は循環のなかの 1 項で、部位を名前で指せる臓器ではありません。',
+        },
+      ],
+      note:
+        '**None of these is this atlas later.** Each is a separate schematic model with its own geometry, built to show a mechanism rather than a specimen. Nothing is deformed, cut or joined to resemble the other, and no measurement crosses between them.',
+      noteJa:
+        '**どれも「このアトラスのその後」ではありません。** それぞれ独自の形状を持つ別の模式モデルで、標本ではなく仕組みを見せるために作られています。片方をもう片方に似せるための変形・切断・接合はしていませんし、計測値がまたいで使われることもありません。',
+    },
     load: () => import('../scenes/renal/scenes/kidneyAnatomy/index.js'),
   },
   {

@@ -103,18 +103,32 @@ test('scope: the links carry the sentence that says they are other models', () =
   }
 });
 
-test('related: every scene that offers a route declares it in exactly one place', () => {
+test('related: every scene that offers a route declares it in exactly one place', async () => {
   // Two declarations for one scene is how the shell comes to offer a route the
   // scope panel does not, or the other way round. The app reads the scene's own
   // metadata first and the catalogue entry only as a fallback, so a scene that
   // set both would have a silent winner.
+  //
+  // The fallback exists for one reason, and it is the reason — not a list of
+  // scene names. **A route is catalogue information**, and a scene whose data
+  // file is a pinned model source cannot gain one there without moving the
+  // file's digest: that asks for a model-card revision for a change that
+  // revised no model, and on a published scene it makes the publication
+  // decision stale and closes it. Those scenes declare on the catalogue entry.
+  // Everything else declares on its own meta.
+  const { default: revisions } = await import('../docs/model-cards/revisions.json', { with: { type: 'json' } });
+  const pinned = new Set(revisions.flatMap((entry) => entry.modelSources ?? []));
+
   for (const scene of SCENE_MANIFEST) {
-    const fromCatalogue = Boolean(scene.related);
-    if (!fromCatalogue) continue;
-    // The catalogue fallback exists for one reason: a scene whose model sources
-    // are pinned to a published decision must not have to touch them to gain a
-    // route. Only the published atlas qualifies today.
-    assert.equal(scene.id, 'brain-anatomy', `${scene.id}: use the scene's own meta.related`);
+    if (!scene.related) continue;
+    const record = revisions.find((entry) => entry.sceneId === scene.id);
+    assert.ok(
+      record && (record.modelSources ?? []).some((source) => pinned.has(source)),
+      `${scene.id}: declares a route on the catalogue but has no pinned model source — use meta.related`
+    );
+    const module = await scene.load();
+    const meta = module.default?.meta ?? module.Scene?.meta ?? null;
+    assert.ok(!meta?.related, `${scene.id}: declared in both places; the catalogue one would lose silently`);
   }
 });
 
