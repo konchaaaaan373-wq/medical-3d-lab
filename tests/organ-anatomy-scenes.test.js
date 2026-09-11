@@ -14,6 +14,7 @@ import { BladderAnatomyScene } from '../src/scenes/renal/scenes/bladderAnatomy/B
 import { BiliaryAnatomyScene } from '../src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js';
 import { EsophagusAnatomyScene } from '../src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js';
 import { AdrenalAnatomyScene } from '../src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js';
+import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -48,6 +49,7 @@ const SCENES = [
   { id: 'biliary-anatomy', Scene: BiliaryAnatomyScene, minimum: 10 },
   { id: 'esophagus-anatomy', Scene: EsophagusAnatomyScene, minimum: 10 },
   { id: 'adrenal-anatomy', Scene: AdrenalAnatomyScene, minimum: 9 },
+  { id: 'uterus-anatomy', Scene: UterusAnatomyScene, minimum: 10 },
 ];
 
 const built = new Map();
@@ -340,6 +342,7 @@ const DETAIL_VIEWS = new Set([
   'adrenal-anatomy:left-gland',
   'esophagus-anatomy:crossing',
   'esophagus-anatomy:hiatus',
+  'uterus-anatomy:adnexa',
 ]);
 
 /**

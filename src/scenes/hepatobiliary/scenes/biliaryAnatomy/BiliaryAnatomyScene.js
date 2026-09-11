@@ -25,7 +25,7 @@ import {
  */
 
 /** How the shared duodenal loop is brought into this scene's frame. */
-const DUODENUM_SCALE = 0.85;
+const DUODENUM_SCALE = 0.72;
 /** Where the loop's own descending limb sits, in its own coordinates. */
 const DUODENUM_LIMB = Object.freeze([-1.78, 0.2, 0]);
 

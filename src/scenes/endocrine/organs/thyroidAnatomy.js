@@ -33,8 +33,14 @@ import { tissueMaterial, wallMaterial } from '../../shared/materials.js';
 /** Which way the patient's left is (`docs/architecture-rules.md` rule 5). */
 const LEFT = 1;
 
-/** Half the distance between the two lobes' centres. */
-const LOBE_OFFSET = 0.36;
+/**
+ * Half the distance between the two lobes' centres.
+ *
+ * Set against the trachea's radius rather than chosen: at 0.36 the two lobes
+ * stood beside the airway with daylight between them and it, which is the one
+ * thing the shape of this gland is not.
+ */
+const LOBE_OFFSET = 0.29;
 
 /**
  * One lobe of the gland, hollowed where the trachea presses on it.
@@ -44,7 +50,7 @@ const LOBE_OFFSET = 0.36;
 export function thyroidLobeGeometry(sign) {
   return shapedSphere({
     detail: 7,
-    scale: [0.31, 0.62, 0.35],
+    scale: [0.31, 0.62, 0.42],
     warp: (v) => {
       // Superior pole tapers, inferior pole is blunt.
       const up = smoothstep(-0.1, 1, v.y);

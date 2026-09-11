@@ -156,7 +156,11 @@ export function buildEsophagusParts({ colors = {}, opacity = 0.95, offset = [0, 
     ]),
     { radius: () => 0.22, steps: 30, radial: 18 }
   );
-  const tracheaMaterial = wallMaterial({ color: colors.trachea ?? '#cfd6dd', opacity: 0.82 });
+  // Half-transparent from the start. It is in front of the whole cervical and
+  // upper thoracic oesophagus, and at 0.82 it hid the subject and the first
+  // constriction with it — a scene whose opening frame does not show the organ
+  // it is named after.
+  const tracheaMaterial = wallMaterial({ color: colors.trachea ?? '#cfd6dd', opacity: 0.5 });
   const trachea = new THREE.Mesh(tracheaSurface.geometry, tracheaMaterial);
   trachea.name = 'trachea';
   disposables.push(tracheaSurface, tracheaMaterial);

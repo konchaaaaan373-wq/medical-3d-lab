@@ -33,7 +33,7 @@ export const SPLEEN_PART_IDS = Object.freeze(['superior-segment', 'inferior-segm
 /**
  * @param {{ colors?: Record<string, string>, opacity?: number, detail?: number }} [options]
  */
-export function buildSpleenParts({ colors = {}, opacity = 0.94, detail = 7 } = {}) {
+export function buildSpleenParts({ colors = {}, opacity = 0.94, detail = 8 } = {}) {
   const object = new THREE.Group();
   object.name = 'spleen-parts';
   const disposables = [];
@@ -43,6 +43,9 @@ export function buildSpleenParts({ colors = {}, opacity = 0.94, detail = 7 } = {
     scale: [...SPLEEN_SCALE],
     cacheKey: 'spleen',
     detail,
+    // The notched superior border is the finest feature on this organ, and the
+    // field is what a carve can see of it.
+    samples: 24000,
     opacity,
     parts: [
       {
@@ -119,7 +122,7 @@ export function buildSpleenParts({ colors = {}, opacity = 0.94, detail = 7 } = {
     smoothCurve([
       [hilum.x + medial * 1.45, hilum.y - 0.44, -0.02],
       [hilum.x + medial * 0.98, hilum.y - 0.33, 0.0],
-      [hilum.x + medial * 0.6, hilum.y - 0.24, 0.02],
+      [hilum.x + medial * 0.16, hilum.y - 0.16, 0.03],
     ]),
     { radius: (u) => 0.16 * (1 - 0.55 * u), steps: 30, radial: 14 }
   );

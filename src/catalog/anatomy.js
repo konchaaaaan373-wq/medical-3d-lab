@@ -134,9 +134,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'uterus',
-    level: 'A1',
-    evidence: 'tests/organ-anatomy.test.js — the endometrium stays inside the wall across the whole cycle',
-    next: 'A2: fundus, body, isthmus and cervix, with endometrium and myometrium as separate parts',
+    level: 'A2',
+    evidence:
+      'scenes/reproductive/scenes/uterusAnatomy — fundus, body, isthmus and cervix, the cavity and cervical canal, both fallopian tubes and both ovaries, selectable by name; tests/organ-parts-anatomy.test.js — the four wall parts in order, each corner of the triangular cavity an opening into it, each tube starting at its own corner and widest between its ends, and each ovary near its tube without touching it; tests/organ-anatomy.test.js — the endometrium stays inside the wall across the whole cycle',
+    next: 'A3: endometrium, myometrium and perimetrium as separate layers, the tube’s four named lengths and the fimbriae, the ligaments, the fornices and the transformation zone, and the ureter crossing beneath the uterine artery. The organ is drawn upright rather than anteverted and anteflexed',
   },
   {
     organ: 'esophagus',

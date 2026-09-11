@@ -220,8 +220,8 @@
       "src/scenes/endocrine/scenes/thyroidAnatomy/ThyroidAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "17639b07032758e8",
+    "cardRevision": 4,
+    "modelDigest": "d716a6124bb4ead1",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -234,8 +234,8 @@
       "src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "10378e60f2988cc3",
+    "cardRevision": 4,
+    "modelDigest": "228737f900fafaa3",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -260,8 +260,8 @@
       "src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "aec68aa793a5b219",
+    "cardRevision": 4,
+    "modelDigest": "2539d5a04fb16321",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -273,8 +273,8 @@
       "src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "f2caa13847ff95af",
+    "cardRevision": 3,
+    "modelDigest": "26a27d56cfce4070",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -288,6 +288,19 @@
     ],
     "cardRevision": 2,
     "modelDigest": "ccf2d8a71ef8a832",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "uterus-anatomy",
+    "card": "docs/model-cards/uterus-anatomy.md",
+    "modelSources": [
+      "src/data/uterusAnatomyScene.js",
+      "src/scenes/reproductive/organs/uterusParts.js",
+      "src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "b878e93b7c56fcd7",
     "cardUpdatedAt": "2026-09-11"
   }
 ]

@@ -711,6 +711,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/muscleContraction/index.js'),
   },
   {
+    id: 'uterus-anatomy',
+    slug: 'uterus-anatomy',
+    titleEn: 'Interactive uterine anatomy',
+    titleJa: '触れて学ぶ子宮の解剖',
+    system: 'reproductive',
+    organ: 'uterus',
+    organs: ['uterus'],
+    disease: null,
+    conditions: ['uterus anatomy', 'uterine cavity', 'fallopian tube', '子宮解剖', '子宮腔', '卵管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/uterus-anatomy.md',
+    modelProfile: 'uterus-anatomy-procedural-atlas',
+    description:
+      'Fundus, body, isthmus and cervix, a tube reaching towards each ovary without touching it \u2014 then fade the wall and the cavity is a flattened triangle, not a bag.',
+    descriptionJa:
+      '子宮底・体部・峡部・頸部と、卵巣に触れずに向かい合う左右の卵管を示します。子宮壁を薄くすると、内腔が袋ではなく扁平な三角形であることが見えます。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/reproductive/scenes/uterusAnatomy/index.js'),
+  },
+  {
     id: 'uterine-cycle',
     slug: 'uterine-cycle',
     titleEn: 'Endometrial cycle',

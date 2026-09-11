@@ -595,5 +595,30 @@
       "Nothing is secreted or solved in this scene; the two time courses are `adrenal-response`.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning adrenalectomy, venous sampling or biopsy."
     ]
+  },
+  {
+    "sceneId": "uterus-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built uterine parts, cavity and cervical canal, fallopian tubes and ovaries, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/uterus-anatomy.md",
+      "docs/model-evidence/uterus-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The uterus is drawn upright rather than in its usual anteverted, anteflexed position.",
+      "The cavity is a flat patch with no thickness, and the endometrium lining it is not drawn as tissue.",
+      "Endometrium, myometrium and perimetrium are not separated, and nothing here changes with the cycle.",
+      "The fallopian tube is one structure with a changing calibre: its named lengths and the fimbriae are not separately selectable.",
+      "Follicles, corpora lutea, ligaments, fornices, the transformation zone and the vessels are not drawn.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning hysteroscopy, device insertion, surgery or any obstetric decision."
+    ]
   }
 ]

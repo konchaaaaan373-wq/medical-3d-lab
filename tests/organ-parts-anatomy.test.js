@@ -19,6 +19,7 @@ import {
   esophagusCalibre,
 } from '../src/scenes/gastrointestinal/organs/esophagusParts.js';
 import { ADRENAL_LAYERS, ADRENAL_SITES, buildAdrenalParts } from '../src/scenes/endocrine/organs/adrenalAnatomy.js';
+import { CAVITY_CORNERS, buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -510,4 +511,70 @@ test('each adrenal layer encloses the next, and the two glands are not mirror im
   const right = box('right-zona-glomerulosa').getSize(new THREE.Vector3());
   const left = box('left-zona-glomerulosa').getSize(new THREE.Vector3());
   assert.ok(left.y < right.y, `the left gland is the flatter of the two (${left.y.toFixed(2)} vs ${right.y.toFixed(2)})`);
+});
+
+// --- uterus ----------------------------------------------------------------
+
+test('the uterine cavity is a triangle whose corners are the openings into it', () => {
+  const uterus = buildUterusParts();
+  const at = (id) => centre(uterus.mesh(id));
+
+  // The wall, in order from the top, narrowing to the cervix.
+  assert.ok(at('fundus').y > at('body').y, 'the fundus is above the body');
+  assert.ok(at('body').y > at('isthmus').y, 'the isthmus is below the body');
+  assert.ok(at('isthmus').y > at('cervix').y, 'the cervix is below the isthmus');
+  const width = (id) => new THREE.Box3().setFromObject(uterus.mesh(id)).getSize(new THREE.Vector3()).x;
+  assert.ok(width('cervix') < width('fundus'), 'the cervix is narrower than the fundus');
+
+  // Every corner of the patch is an opening, and every opening is at a corner.
+  const patch = new THREE.Box3().setFromObject(uterus.mesh('uterine-cavity'));
+  for (const [id, corner] of Object.entries(CAVITY_CORNERS)) {
+    const point = new THREE.Vector3(...corner);
+    assert.ok(patch.distanceToPoint(point) < 0.02, `${id} is a corner of the cavity`);
+  }
+  assert.equal(patientSide(new THREE.Vector3(...CAVITY_CORNERS['left-tubal-ostium'])), 'left', 'the left ostium');
+
+  const reaches = (id, corner) =>
+    new THREE.Box3().setFromObject(uterus.mesh(id)).distanceToPoint(new THREE.Vector3(...CAVITY_CORNERS[corner]));
+  assert.ok(reaches('right-fallopian-tube', 'right-tubal-ostium') < 0.05, 'the right tube starts at its own corner');
+  assert.ok(reaches('left-fallopian-tube', 'left-tubal-ostium') < 0.05, 'the left tube starts at its own corner');
+  assert.ok(reaches('cervical-canal', 'internal-os') < 0.05, 'the cervical canal starts at the lower corner');
+
+  for (const side of ['right', 'left']) {
+    // The tube is widest between its ends, which is where fertilisation and an
+    // ectopic pregnancy happen — so it is the one thing about its shape that is
+    // worth checking.
+    const tube = uterus.mesh(`${side}-fallopian-tube`);
+    const position = tube.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    const spread = new Map();
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i);
+      const key = Math.round(Math.abs(vertex.x) * 10);
+      spread.set(key, Math.max(spread.get(key) ?? 0, Math.abs(vertex.z)));
+    }
+    const bands = [...spread.entries()].sort((a, b) => a[0] - b[0]).map(([, value]) => value);
+    const widest = bands.indexOf(Math.max(...bands));
+    assert.ok(widest > 0 && widest < bands.length - 1, `the ${side} tube is widest between its ends`);
+
+    // And the ovary it reaches towards is not joined to it. Measured between
+    // the two surfaces, not between their bounding boxes: two boxes overlap
+    // whenever one object reaches past another, which says nothing about
+    // whether they touch.
+    const ovaryMesh = uterus.mesh(`${side}-ovary`);
+    ovaryMesh.updateMatrixWorld(true);
+    const ovaryCentre = centre(ovaryMesh);
+    const ovaryPosition = ovaryMesh.geometry.attributes.position;
+    let ovaryRadius = 0;
+    for (let i = 0; i < ovaryPosition.count; i += 1) {
+      ovaryRadius = Math.max(ovaryRadius, vertex.fromBufferAttribute(ovaryPosition, i).add(ovaryMesh.position).distanceTo(ovaryCentre));
+    }
+    let nearest = Infinity;
+    for (let i = 0; i < position.count; i += 1) {
+      nearest = Math.min(nearest, vertex.fromBufferAttribute(position, i).distanceTo(ovaryCentre));
+    }
+    const gap = nearest - ovaryRadius;
+    assert.ok(gap > 0.01, `the ${side} ovary is near its tube but not joined to it (gap ${gap.toFixed(3)})`);
+    assert.ok(gap < 0.6, `the ${side} ovary is still near its tube (gap ${gap.toFixed(3)})`);
+  }
 });

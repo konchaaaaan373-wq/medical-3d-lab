@@ -64,10 +64,16 @@ export function spleenWarp(v) {
   // enlarged spleen is recognised by on examination, so they are cut deep
   // enough to survive being seen from the front — shallower, the organ was
   // an ovoid that could have been anything.
+  //
+  // Widened and shallowed on 2026-09-11. At 0.17 deep over a width of 0.006 the
+  // notch is a crease rather than a notch: carved into two segments and lit, the
+  // superior half came out visibly banded, because a radial dip that sharp is
+  // steeper than the surface around it can be sampled. Wider and shallower reads
+  // as the same feature and shades cleanly.
   for (const at of [0.3, 0.58]) {
     const d = y - at;
     v.multiplyScalar(
-      1 - 0.17 * Math.exp(-(d * d) / 0.006) * Math.exp(-Math.pow((x + 0.4 * MEDIAL) / 0.7, 2))
+      1 - 0.12 * Math.exp(-(d * d) / 0.012) * Math.exp(-Math.pow((x + 0.4 * MEDIAL) / 0.7, 2))
     );
   }
 

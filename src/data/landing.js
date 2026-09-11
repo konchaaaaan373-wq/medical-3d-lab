@@ -29,6 +29,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'biliary-anatomy',
   'esophagus-anatomy',
   'adrenal-anatomy',
+  'uterus-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -216,6 +217,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '3層の皮質と、その内側にある神経系の組織。',
     ['ZONES', 'MEDULLA', 'KIDNEY'],
     ['皮質3層', '髄質', '腎臓']
+  ),
+  'uterus-anatomy': presentation(
+    'Fade the wall: the cavity is a flattened triangle, not a bag.',
+    '子宮壁を薄くすると、内腔は袋ではなく扁平な三角形。',
+    ['PARTS', 'CAVITY', 'ADNEXA'],
+    ['部位', '内腔', '付属器']
   ),
   'lung-anatomy': presentation(
     'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',
