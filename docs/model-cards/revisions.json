@@ -299,8 +299,8 @@
       "src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "b878e93b7c56fcd7",
+    "cardRevision": 3,
+    "modelDigest": "1bb105933040c088",
     "cardUpdatedAt": "2026-09-11"
   }
 ]
