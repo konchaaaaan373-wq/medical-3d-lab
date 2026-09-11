@@ -2200,6 +2200,92 @@ export const ACL_EVIDENCE = defineEvidence('acl-injury', [
   },
 ]);
 
+export const CUFF_EVIDENCE = defineEvidence('rotator-cuff-tear', [
+  {
+    id: 'the-cuff-holds-rather-than-lifts',
+    claim:
+      'The rotator cuff does not lift the arm. Its four tendons make a sleeve round the head of the humerus and hold it on its socket while the large muscle over the shoulder moves the limb.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard shoulder anatomy and standard descriptions of the cuff as a head depressor and stabiliser rather than an elevator.',
+    validation: 'physiology: the cuff holds the head on its socket rather than lifting the arm',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-facing-pair-centres-it',
+    claim:
+      'The tendon in front and the tendons behind pull against one another across the sleeve, and that pairing is what keeps the head centred — so a tear that spares it can leave the head exactly where it was.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the transverse force couple — subscapularis in front against infraspinatus and teres minor behind — and of cuff tears that spare it leaving the head centred.',
+    validation: 'physiology: a tear that spares the facing pair leaves the head where it was',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-head-rises-when-the-pair-goes',
+    claim:
+      'When the tear reaches the pair, the head is no longer held centred and rides up towards the arch above it.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of superior migration of the humeral head with large cuff tears involving the couple. The direction is textbook; how far, and in whom, is not claimed here.',
+    validation: 'physiology: the head rises only once the pair has stopped holding it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'size-is-the-wrong-first-question',
+    claim:
+      'Because of that pairing, how much of the top tendon has gone does not by itself decide whether the head is centred: the same complete defect has the head centred or not, depending on what the tear has reached.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'A consequence of the two claims above, and the standard clinical distinction between tears that spare the couple and tears that do not.',
+    validation: 'physiology: the same complete defect is two pictures, depending on the pair',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'containment-shares',
+    claim:
+      'How the job of holding the head on its socket is divided between the tendon over the top and the pair facing each other across the sleeve, and how much of it has to be left before the head stays put.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, calibrated so that a complete tear of the top tendon with the pair intact leaves the head centred and a tear that reaches the pair does not. That behaviour is the claim; the numbers are how this model produces it.',
+    note:
+      'A calibration of a behaviour, not a measured contribution. No percentage the scene prints is anybody’s, and the threshold is not a point at which anything happens in a person.',
+    validation: 'calibration: a complete tear sparing the pair keeps the head centred, and one reaching it does not',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'a-share-of-a-drawn-gap',
+    claim: 'How far the head rises, reported as a fraction of the gap drawn under the arch.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The gap is the shoulder atlas’s `SUBACROMIAL_DISPLAY_GAP`, which the atlas itself declares a display value: in life the space is a few millimetres against a head of several centimetres, and drawn to scale the tendon under the arch is a line nobody can see.',
+    note:
+      'Illustrative, and imported from the atlas rather than typed here so the two cannot drift. **A share of an opened-up gap is not an acromiohumeral distance and is not millimetres**, and no position on screen is a measurement.',
+    validation: 'calibration: the rise is a share of the atlas’s own display gap',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'one-number-for-the-pair',
+    claim: 'The pair is one number in this model rather than two tendons with courses of their own.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Which of them a tear reaches, how far round it goes, and what a partial involvement of one does are not things a single share can carry.',
+    note:
+      'A lit pair on screen marks which side of a threshold the model is on. It is not a statement about any particular tendon, and nothing in this model distinguishes them.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-moves-an-arm',
+    claim: 'Nothing in this model moves an arm, and nothing in it is anything a person experiences.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the reason the scene can say what it says without saying more: the shoulder is drawn at one position, with the arm at the side.',
+    note:
+      'Pain, weakness, the arc of movement and range are all outside the model. A head sitting higher on screen is where the model says it can sit, not a shoulder failing to lift.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2217,4 +2303,5 @@ export const EVIDENCE_REGISTRIES = [
   GOITRE_EVIDENCE,
   KNEE_OA_EVIDENCE,
   ACL_EVIDENCE,
+  CUFF_EVIDENCE,
 ];

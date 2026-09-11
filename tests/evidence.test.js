@@ -12,6 +12,7 @@ import {
   CONFIDENCE,
   GOITRE_EVIDENCE,
   COPD_EVIDENCE,
+  CUFF_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
   KNEE_OA_EVIDENCE,
@@ -66,6 +67,7 @@ const FILE_LAYERS = {
   'multinodular-goitre-physiology.test.js': LAYER.EXTERNAL,
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
+  'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -87,6 +89,7 @@ const DOSSIERS = {
   'multinodular-goitre': 'docs/model-evidence/multinodular-goitre.md',
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
   'acl-injury': 'docs/model-evidence/acl-injury.md',
+  'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -228,6 +231,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'multinodular-goitre',
       'knee-osteoarthritis',
       'acl-injury',
+      'rotator-cuff-tear',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -251,6 +255,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(GOITRE_EVIDENCE.length >= 8);
   assert.ok(KNEE_OA_EVIDENCE.length >= 8);
   assert.ok(ACL_EVIDENCE.length >= 8);
+  assert.ok(CUFF_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

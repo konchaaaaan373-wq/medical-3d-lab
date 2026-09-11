@@ -48,6 +48,9 @@ import {
   SEPARATES_ABOVE,
   solveAclInjury,
 } from '../src/models/aclInjury.js';
+import { HOLDS_ABOVE, RISE_MAX, SHARE, solveRotatorCuffTear } from '../src/models/rotatorCuffTear.js';
+import { SUBACROMIAL_DISPLAY_GAP } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
+import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
 import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
@@ -1454,4 +1457,44 @@ test('calibration: the tibia travels visibly without leaving the femur', () => {
     Math.abs(solveAclInjury({ disruption: 1, secondaryRestraint: 0 }).translationFraction - MAX_TRANSLATION) < 1e-9,
     'and nothing holding it at all is the whole of it'
   );
+});
+
+test('calibration: a complete tear sparing the pair keeps the head centred, and one reaching it does not', () => {
+  // Defends `containment-shares`. Three numbers — two shares and a threshold —
+  // were chosen so that the behaviour is what the descriptions say: the top
+  // tendon can be gone across its width with the head still centred, and the
+  // head rises when the tear reaches the pair. **The behaviour is the claim.**
+  assert.ok(SHARE.couple > SHARE.supraspinatus, 'the pair is the larger part of the job');
+  assert.ok(
+    Math.abs(SHARE.couple - HOLDS_ABOVE) < 1e-9,
+    'and the threshold is exactly what the pair alone provides, which is what makes the two statements one'
+  );
+
+  assert.equal(solveRotatorCuffTear({ tear: 1, couple: 1 }).centred, true);
+  assert.equal(solveRotatorCuffTear({ tear: 1, couple: 0.9 }).centred, false);
+  assert.equal(solveRotatorCuffTear({ tear: 0, couple: 1 }).riseFraction, 0);
+});
+
+test('calibration: the rise is a share of the atlas’s own display gap', () => {
+  // Defends `a-share-of-a-drawn-gap`. The gap the rise is a fraction of is the
+  // shoulder atlas's, imported rather than retyped — because the number this
+  // scene reports a share of has to be the one the atlas actually drew, and
+  // because the atlas's own comment is why it is reported as a share at all.
+  assert.ok(RISE_MAX > 0 && RISE_MAX < 1, 'the head never reaches the arch');
+  assert.ok(SUBACROMIAL_DISPLAY_GAP > 0);
+
+  const scene = new RotatorCuffTearScene({});
+  scene.build();
+  scene.setProgress(1);
+  scene.setModelControl('couple', 0);
+  assert.ok(
+    Math.abs(scene.rise() - scene.solved.riseFraction * scene.displayGap) < 1e-9,
+    'the drawn rise is that fraction of the room the drawing actually left'
+  );
+  assert.ok(scene.rise() < scene.displayGap, 'and it stays inside it');
+  // And that room is what the atlas's display gap produced, rather than a
+  // number this scene chose: the acromion's height was set to leave one.
+  assert.ok(scene.displayGap > SUBACROMIAL_DISPLAY_GAP, 'the arch stands clear of the head');
+  assert.ok(scene.displayGap < SUBACROMIAL_DISPLAY_GAP * 6, 'and not by an unrelated amount');
+  scene.dispose();
 });
