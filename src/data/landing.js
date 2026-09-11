@@ -30,6 +30,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'portal-hypertension',
   'hepatorenal-syndrome',
   'biliary-obstruction',
+  'achalasia',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -187,6 +188,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
     ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
     ['コンソリデーション', '換気', 'シャント']
+  ),
+  achalasia: presentation(
+    'Take away the wave and the ring together; watch swallows stop clearing, and then watch what collects take over the pushing.',
+    '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
+    ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
+    ['蠕動波', '括約筋', '貯留']
   ),
   'biliary-obstruction': presentation(
     'Put the same blockage in three different places; watch which segments end up behind it and which do not.',

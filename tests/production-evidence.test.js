@@ -45,6 +45,7 @@ test('migrated production evidence and the existing model registries share one c
       'pneumonia-consolidation',
       'pulmonary-embolism',
       'biliary-obstruction',
+      'achalasia',
     ]
   );
 });

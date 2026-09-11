@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
+  ACHALASIA_EVIDENCE,
   ASSERTABLE,
   ASTHMA_EVIDENCE,
   BILIARY_EVIDENCE,
@@ -52,6 +53,7 @@ const FILE_LAYERS = {
   'portal-haemodynamics.test.js': LAYER.EXTERNAL,
   'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
   'biliary-physiology.test.js': LAYER.EXTERNAL,
+  'achalasia-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -66,6 +68,7 @@ const DOSSIERS = {
   'pneumonia-consolidation': 'docs/model-evidence/pneumonia.md',
   'pulmonary-embolism': 'docs/model-evidence/pulmonary-embolism.md',
   'biliary-obstruction': 'docs/model-evidence/biliary-obstruction.md',
+  achalasia: 'docs/model-evidence/achalasia.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -200,6 +203,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'pneumonia-consolidation',
       'pulmonary-embolism',
       'biliary-obstruction',
+      'achalasia',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -214,6 +218,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   // and two pieces of physiology on top of it; padding the registry to match a
   // count would mean writing claims the model does not make.
   assert.ok(BILIARY_EVIDENCE.length >= 6);
+  assert.ok(ACHALASIA_EVIDENCE.length >= 6);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

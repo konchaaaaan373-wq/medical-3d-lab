@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  CAPACITY_ML as ACHALASIA_CAPACITY_ML,
+  REFERENCE as ACHALASIA_REFERENCE,
+  solveAchalasia,
+} from '../src/models/achalasia.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -992,5 +997,34 @@ test('calibration: one occlusion resistance means the same thing at every site',
     distal.bileDeliveredFraction.toFixed(4),
     ampullary.bileDeliveredFraction.toFixed(4),
     'a blockage at the papilla and one just above it cost the bile path the same'
+  );
+});
+
+test('calibration: a normal swallow clears and a failed one balances inside the organ', () => {
+  // Defends `swallow-conductance` and `column-cross-section`. Two numbers were
+  // chosen together: what the sphincter passes per millimetre of mercury, and
+  // the cross-section a retained column stands in. They were chosen so that a
+  // normal swallow clears with room to spare, a failed one settles somewhere a
+  // human oesophagus has room for, and a complete failure has nowhere to settle.
+  // That they still do is a property of the choice, not a finding — and no
+  // figure here is a manometric value or a threshold.
+  const normal = solveAchalasia({ relaxationFailure: 0, peristalticVigour: 1 });
+  assert.equal(normal.retainedVolumeMl, 0, 'a normal swallow leaves nothing behind');
+
+  const balanced = solveAchalasia({ relaxationFailure: 0.74, peristalticVigour: 0.3 });
+  assert.ok(balanced.balanced, 'the middle of the range settles');
+  assert.ok(
+    balanced.retainedVolumeMl > 5 && balanced.retainedVolumeMl < ACHALASIA_CAPACITY_ML,
+    `it settles at ${balanced.retainedVolumeMl} mL, inside a ${ACHALASIA_CAPACITY_ML} mL organ`
+  );
+  assert.ok(
+    balanced.columnHeightCm < ACHALASIA_REFERENCE.lengthCm,
+    `and at ${balanced.columnHeightCm} cm, inside a ${ACHALASIA_REFERENCE.lengthCm} cm one`
+  );
+
+  assert.equal(
+    solveAchalasia({ relaxationFailure: 1, peristalticVigour: 0 }).balanced,
+    false,
+    'and a complete failure has nowhere to settle'
   );
 });

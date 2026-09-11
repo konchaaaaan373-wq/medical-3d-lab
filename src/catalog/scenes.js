@@ -299,6 +299,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
+    id: 'achalasia',
+    slug: 'achalasia',
+    titleEn: 'Achalasia',
+    titleJa: 'アカラシア',
+    system: 'gastrointestinal',
+    organ: 'esophagus',
+    organs: ['esophagus'],
+    disease: 'achalasia',
+    conditions: ['achalasia', 'oesophageal achalasia', 'esophageal achalasia', 'impaired LES relaxation', 'aperistalsis', 'アカラシア', '食道アカラシア', '下部食道括約筋弛緩不全', '蠕動消失'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/achalasia.md',
+    modelProfile: 'achalasia-swallow-transport',
+    description:
+      'One swallow model: why a wave that stops travelling and a ring that does not let go retain what was swallowed, and why the column that collects is what settles where it stops.',
+    descriptionJa:
+      '1 つの嚥下モデル。途中で伝わらなくなる波と、緩まない輪が飲み込んだものを貯留させる理由と、溜まった液柱自体が落ち着き先を決める仕組みを示します。',
+    tags: ['gastrointestinal', 'motility', 'time-to-balance'],
+    load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
+  },
+  {
     id: 'biliary-obstruction',
     slug: 'biliary-obstruction',
     titleEn: 'Biliary obstruction',

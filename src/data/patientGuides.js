@@ -1282,6 +1282,136 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Achalasia — the third shape a walk in this file takes.
+   *
+   * The lung scenes walk a severity, the nephron and the biliary tree walk a
+   * list of alternatives, and this one walks a **balance being found**: nothing
+   * changes for several swallows, then something accumulates, then the thing
+   * that accumulated takes over the work. That is the disease, and it is why
+   * the scene is worth animating rather than drawing.
+   *
+   * **Two failures, named apart.** The walk gives the wave and the ring a step
+   * each before showing them together, because a reader who meets them as one
+   * thing has learned the wrong lesson: the model says a tight ring with a good
+   * wave and a relaxed ring with no wave behave differently, and neither is the
+   * pair. The scene's controls let a reader take one away; the walk shows why
+   * they would want to.
+   *
+   * **The model's own answers.** At the middle of the axis 38 mL is standing in
+   * the oesophagus, the column is 6.4 cm tall, and every swallow still gets
+   * through — because of what is already there. At the end, 132 mL, a column
+   * the height of the organ, and nothing gets through at all, because a column
+   * that tall is worth about sixteen millimetres of mercury and the ring holds
+   * twenty-five.
+   *
+   * What it refuses: no cause, no test, no operation, no risk. The model has a
+   * ring and a wave and no reason for either, and the marked steps say so.
+   */
+  achalasia: Object.freeze({
+    title: 'Why a swallow can stop on the way down',
+    titleJa: '飲み込んだものが、途中で止まってしまう理由',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'normal',
+        frame: 'whole',
+        focus: ['wave', 'sphincter'],
+        certainty: 'established',
+        title: 'A swallow is carried, and then let through',
+        titleJa: '嚥下は「運ばれて」「通される」',
+        body: 'A squeeze travels down the tube behind what you swallowed, and the ring of muscle at the bottom lets go as it arrives. Both have to happen.',
+        bodyJa: '飲み込んだものの後ろを、収縮が管を下って進みます。それが届くのに合わせて、下端の筋肉の輪が緩みます。両方が要ります。',
+        look: 'Watch the narrowing travel from the top all the way down, and the ring open as it gets there.',
+        lookJa: '狭まりが上から下まで進むのと、そこに届いたときに輪が開くのを見てください。',
+      },
+      {
+        progress: 0.35,
+        stage: 'aperistaltic',
+        // Nothing is retained yet, and that is the content of this step: the
+        // wave has already stopped travelling the whole way and swallows still
+        // get through.
+        frame: 'whole',
+        focus: ['wave'],
+        certainty: 'established',
+        title: 'First the squeeze stops travelling',
+        titleJa: 'まず、収縮が最後まで届かなくなります',
+        body: 'A failing squeeze does not push more gently. It stops partway down, so nothing arrives at the bottom behind what you swallowed — and for a while, swallows still get through anyway.',
+        bodyJa: '弱った収縮は「やさしく押す」のではありません。途中で止まってしまい、飲み込んだものの後ろから何も届かなくなります。それでもしばらくは、嚥下は通過できます。',
+        look: 'Watch how far down the narrowing gets before it fades. It is no longer reaching the bottom.',
+        lookJa: '狭まりがどこまで下りてから消えるかを見てください。もう下端には届いていません。',
+      },
+      {
+        progress: 0.5,
+        stage: 'retaining',
+        frame: 'ring',
+        focus: ['retained', 'sphincter'],
+        certainty: 'established',
+        title: 'Then the ring stops letting go, and something collects',
+        titleJa: '次に輪が緩まなくなり、たまり始めます',
+        body: 'With the ring staying tight, swallows stop getting through — so what was swallowed stands in the tube. And what stands there presses down on the ring with its own weight.',
+        bodyJa: '輪が締まったままになると、嚥下は通過しなくなり、飲み込んだものが管の中に立ったまま残ります。そして、そこに溜まったものが、自らの重みで輪を押します。',
+        look: 'The tube below has widened and is holding a column. Watch its top, not the bottom — that is what is new.',
+        lookJa: '下側の管が広がり、内容物を抱えています。下端ではなく、その上端を見てください。それが新しく起きたことです。',
+      },
+      {
+        progress: 0.65,
+        stage: 'balanced',
+        frame: 'ring',
+        focus: ['retained', 'sphincter'],
+        certainty: 'established',
+        title: 'What collected starts doing the pushing',
+        titleJa: 'たまったものが、押す役を引き継ぎます',
+        body: 'The taller the column, the harder it presses. It stops growing when its own weight is enough to get each swallow through — so swallowing works again, from a tube that is now holding a lot.',
+        bodyJa: '液柱が高いほど、押す力は強くなります。1 回ぶんの嚥下を通せるだけの重みになったところで、増えるのは止まります。つまり嚥下はまた通るようになります——大量に抱えた管から、ですが。',
+        look: 'Swallows are getting through again. Notice what it took: the column is most of the way up the tube.',
+        lookJa: '嚥下はまた通っています。ただし、その代償を見てください。液柱は管のかなりの高さまで来ています。',
+      },
+      {
+        progress: 1,
+        stage: 'failed',
+        frame: 'ring',
+        focus: ['retained', 'sphincter'],
+        certainty: 'established',
+        title: 'Past a point, there is not enough height to be had',
+        titleJa: 'ある点を越えると、必要な高さが足りません',
+        body: 'A column can only be as tall as the tube it stands in, and that is worth less pressure than the ring holds. Past a point, nothing the tube can collect is enough.',
+        bodyJa: '液柱は、立っている管の高さまでしかなれません。その高さぶんの圧は、輪が締めている力に届きません。ある点を越えると、どれだけ溜めても足りなくなります。',
+        look: 'The tube is full to the top and nothing is getting through. It cannot press any harder than this.',
+        lookJa: '管は上まで満ちていますが、何も通っていません。これ以上強く押すことはできません。',
+      },
+      {
+        progress: 1,
+        stage: 'failed',
+        // The model has a ring and a wave and no reason for either.
+        frame: 'ring',
+        focus: ['retained', 'sphincter'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'Why the muscle stops working is not on this screen',
+        titleJa: 'なぜ筋肉がそうなるのかは、この画面にありません',
+        body: 'Something has to go wrong with the nerve supply for both of these to fail together. What that is, and why, is a separate question this picture does not contain.',
+        bodyJa: 'この 2 つが同時に起きるには、神経の側に何かが起きている必要があります。それが何で、なぜなのかは別の問題で、この絵には含まれていません。',
+        look: 'There are no nerves in this picture. What is drawn is a squeeze, a ring, and what is left in between.',
+        lookJa: 'この絵に神経は描かれていません。描かれているのは収縮と輪、そのあいだに残ったものだけです。',
+      },
+      {
+        progress: 1,
+        stage: 'failed',
+        frame: 'ring',
+        focus: ['retained', 'sphincter'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What people notice, and how slowly',
+        titleJa: '気づくこと、その現れ方の遅さ',
+        body: 'Food feeling as though it stops, bringing things back up, and discomfort behind the breastbone are described, often over a long time. How much differs greatly.',
+        bodyJa: '食べ物がつかえる感じ、戻してしまうこと、胸骨の裏の不快感が語られます。長い時間をかけて現れることが多く、程度は人によって大きく違います。',
+        look: 'Nothing new is drawn for this step. The screen shows a tube, not a person, and it has no days in it.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面にあるのは管であって人ではなく、日数もありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

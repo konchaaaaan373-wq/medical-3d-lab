@@ -82,6 +82,16 @@
     "cardUpdatedAt": "2026-09-01"
   },
   {
+    "sceneId": "achalasia",
+    "card": "docs/model-cards/achalasia.md",
+    "modelSources": [
+      "src/models/achalasia.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "155d95ed453fea94",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "biliary-obstruction",
     "card": "docs/model-cards/biliary-obstruction.md",
     "modelSources": [

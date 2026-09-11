@@ -28,6 +28,8 @@ import { STAGES as RENAL_STAGES, CONTROLS as RENAL_CONTROLS } from '../src/data/
 import { RenalFiltrationScene } from '../src/scenes/renal/scenes/renalFiltration/RenalFiltrationScene.js';
 import { STAGES as BILIARY_STAGES, MODEL_CONTROLS as BILIARY_CONTROLS } from '../src/data/biliaryObstruction.js';
 import { BiliaryObstructionScene } from '../src/scenes/hepatobiliary/scenes/biliaryObstruction/BiliaryObstructionScene.js';
+import { STAGES as ACHALASIA_STAGES, MODEL_CONTROLS as ACHALASIA_CONTROLS } from '../src/data/achalasia.js';
+import { AchalasiaScene } from '../src/scenes/gastrointestinal/scenes/achalasia/AchalasiaScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -119,6 +121,23 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new BiliaryObstructionScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The oesophagus, which walks a **balance being found**: nothing, then
+   * something accumulating, then the thing that accumulated doing the work.
+   * Neither a severity nor a list of alternatives — the third shape.
+   */
+  {
+    id: 'achalasia',
+    stages: ACHALASIA_STAGES,
+    controls: ACHALASIA_CONTROLS,
+    scene: () => {
+      const scene = new AchalasiaScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new AchalasiaScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];

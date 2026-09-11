@@ -1314,6 +1314,101 @@ export const PULMONARY_EDEMA_EVIDENCE = defineEvidence('pulmonary-edema', [
  * claim with a real external source: standard surgical and radiological anatomy
  * of the extrahepatic biliary tree.
  */
+/**
+ * Achalasia — two failures, and a column that takes over the pushing.
+ *
+ * The external claims here are about what a swallow needs and what a standing
+ * column is worth. What this repository chose is the conductance across the
+ * ring and the cross-section that column stands in, and — separately from the
+ * model — the mapping from the scene's axis onto the two failures.
+ */
+export const ACHALASIA_EVIDENCE = defineEvidence('achalasia', [
+  {
+    id: 'swallow-needs-both',
+    claim:
+      'A swallow arriving in the stomach needs two things: a peristaltic wave to carry it down, and a lower oesophageal sphincter that relaxes as it arrives. Losing either costs something; losing both is the picture achalasia is named for.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard gastrointestinal physiology of deglutition, and standard descriptions of achalasia as the loss of both swallow-induced sphincter relaxation and oesophageal peristalsis.',
+    validation: 'physiology: a swallow gets through when the wave outpushes the ring, and not otherwise',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'relaxation-opens-as-well-as-lowers',
+    claim:
+      'A sphincter that relaxes is a wider way through as well as a lower pressure to beat, so a bolus can fall through a relaxed one on very little driving pressure.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard physiology of sphincter relaxation. The direction is textbook; how much of the conductance the model gives back with relaxation is a calibration here.',
+    validation: 'physiology: a swallow gets through when the wave outpushes the ring, and not otherwise',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'column-supplies-pressure',
+    claim:
+      'A column of retained fluid weighs on what is below it, so a retained oesophagus is not simply an accumulating one: what collects supplies pressure of its own and the system settles where that makes up the difference.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Hydrostatics. A column of height h exerts ρgh at its base.',
+    validation: 'physiology: what is retained supplies pressure of its own',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'column-has-a-ceiling',
+    claim:
+      'That balance has a limit set by the organ: a column the height of the whole oesophagus is worth roughly sixteen millimetres of mercury, which is less than the sphincter holds at rest. Past a point no balance exists inside the oesophagus at all.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Hydrostatics again, against a textbook resting sphincter tone of some tens of millimetres of mercury. 22 cm of water is about 16 mmHg.',
+    validation: 'physiology: the column cannot be taller than the organ, so the balance has a limit',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'feeble-wave-stops-travelling',
+    claim:
+      'A failing peristaltic wave is not a vigorous one turned down. It stops propagating, so nothing arrives at the sphincter — a different picture from a gentle push, and the one a reader has to recognise.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of failed and fragmented peristalsis, in which the wave does not traverse the oesophageal body. How far a given vigour reaches is this model\u2019s own shape.',
+    validation: 'physiology: a feeble wave stops travelling rather than pushing gently',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'swallow-conductance',
+    claim:
+      'What the sphincter passes per millimetre of mercury during the window it is open, and how much of that is left when it does not let go at all.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, not a measurement: the values were calibrated so that a normal swallow clears with room to spare and a failed one balances inside a human oesophagus.',
+    note:
+      'Not a measurement of a sphincter, an aperture or anybody. Nothing the model reports is an integrated relaxation pressure or any manometric value, and no figure in it is a threshold.',
+    validation: 'calibration: a normal swallow clears and a failed one balances inside the organ',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'column-cross-section',
+    claim:
+      'The cross-section a retained column is taken to stand in, which turns a volume into a height and therefore into a pressure.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen by this repository so that the capacity of the model oesophagus is a plausible retained volume. It is a single number standing for a tube that in reality dilates as it fills.',
+    note:
+      'An illustrative cross-section. The oesophagus on screen widening is a volume the model solved, not a calibre it computed, and no diameter follows from anything here.',
+    validation: 'calibration: a normal swallow clears and a failed one balances inside the organ',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'axis-moves-both',
+    claim:
+      'The scene\u2019s axis moves the two failures together, through a deliberately non-linear mapping that puts the band in which a column can still balance a swallow across the middle of its travel.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A presentation decision, not a finding. One loss produces both failures, but in a person they do not move in step, and this model has no time in it to move them through.',
+    note:
+      'The direction this scene is known to mislead. A reader dragging the axis is not watching a patient progress and is not watching the two failures in any real proportion; each is a control of its own precisely so that the pairing can be taken apart.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const BILIARY_EVIDENCE = defineEvidence('biliary-obstruction', [
   {
     id: 'segment-order',
@@ -1595,4 +1690,5 @@ export const EVIDENCE_REGISTRIES = [
   PNEUMONIA_EVIDENCE,
   PULMONARY_EMBOLISM_EVIDENCE,
   BILIARY_EVIDENCE,
+  ACHALASIA_EVIDENCE,
 ];
