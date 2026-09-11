@@ -339,5 +339,359 @@
       "The model contains no changing cardiac output, vasoactive response, vascular recruitment, RV geometry, RV-pulmonary artery coupling, oxygenation, carbon dioxide, infarction or treatment.",
       "The underperfused-ventilation and relative-resistance outputs are model indices, not VD/VT, measured PVR, pulmonary artery pressure, RV function, clinical category or risk score."
     ]
+  },
+  {
+    "sceneId": "lung-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gross anatomy, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/lung-anatomy.md",
+      "docs/model-evidence/lung-anatomy.md",
+      "tests/lung-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js",
+      "docs/medical-notes.md"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Airway calibres, lengths and branching angles are drawn to read clearly and are not measured; the right-to-left main bronchus difference is understated.",
+      "Bronchopulmonary segment boundaries are the definition applied (the lung nearest one segmental bronchus) rather than a specimen traced, so they are smooth where real ones are not.",
+      "No pleura, lymphatics, bronchial circulation or alveoli are modelled, and nothing in the scene is solved.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning bronchoscopy, biopsy, resection or localisation."
+    ]
+  },
+  {
+    "sceneId": "liver-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built Couinaud segmentation, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/liver-anatomy.md",
+      "docs/model-evidence/liver-anatomy.md",
+      "tests/liver-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The outer form is a warped ellipsoid with a liver's proportions: no porta hepatis notch, no bare area, no ligamentous attachments.",
+      "No biliary duct system and no hepatic artery are drawn, and the gallbladder carries no volume.",
+      "Segment volume shares are reference proportions used to check the partition, not a measurement of any individual liver.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning resection, donor evaluation, ablation or volumetry."
+    ]
+  },
+  {
+    "sceneId": "kidney-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built renal parenchyma and collecting system, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/kidney-anatomy.md",
+      "docs/model-evidence/kidney-anatomy.md",
+      "tests/kidney-anatomy.test.js",
+      "tests/organ-anatomy-scenes.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No renal artery or vein is drawn at any level, so nothing vascular can be read from this scene.",
+      "Schematic where the model card says so: the renal sinus is not carved out, the seven pyramids are one coronal row rather than an anterior and a posterior one, and the corticomedullary junction is the capsule scaled rather than a surface of its own.",
+      "Only one kidney is partitioned; the other is a landmark shape declared as a single unpartitioned structure.",
+      "The ureter's calibre and course are illustrative and its three normal narrowings are not modelled.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning biopsy, nephrostomy, stone localisation or stenting."
+    ]
+  },
+  {
+    "sceneId": "stomach-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gastric regions, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/stomach-anatomy.md",
+      "docs/model-evidence/stomach-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The regions are drawn as rings of one tube: the cardia becomes a collar all the way round, and the incisura angularis is present only as the narrowing that goes with it.",
+      "No wall layers, rugae, gastric glands or volumes are modelled, and no gastric emptying occurs in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning endoscopy, biopsy or resection."
+    ]
+  },
+  {
+    "sceneId": "intestine-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built colonic parts, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/intestine-anatomy.md",
+      "docs/model-evidence/intestine-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths, loop counts and positions are illustrative; no dimension can be read from this model.",
+      "Jejunum and ileum are one structure because no boundary between them is modelled, and where the caecum ends is schematic because no ileum is drawn arriving.",
+      "No appendix, ileocaecal valve, rectum, anal canal, mesentery, taenia coli or wall layer is modelled.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning colonoscopy, resection or stoma siting."
+    ]
+  },
+  {
+    "sceneId": "pancreas-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built pancreatic parts, duct and islets, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pancreas-anatomy.md",
+      "docs/model-evidence/pancreas-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Islet number and size are illustrative and stand for an arrangement, not a count: they must not be read as a quantity of endocrine tissue.",
+      "No uncinate process, accessory duct, common bile duct, ampulla or papilla is modelled, and no vessel is drawn.",
+      "Nothing is secreted or solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning ERCP, biopsy, resection or staging."
+    ]
+  },
+  {
+    "sceneId": "thyroid-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built thyroid lobes, isthmus, pyramidal lobe, parathyroid glands and recurrent laryngeal nerves, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/thyroid-anatomy.md",
+      "docs/model-evidence/thyroid-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Parathyroid positions are plausible rather than fixed, and four is the usual number rather than the only one: they must not be read as where to look.",
+      "The pyramidal lobe is drawn every time although it is present in roughly half of people.",
+      "The recurrent laryngeal nerves' course below the neck is not modelled, so the difference between the two sides is not shown.",
+      "No vessel, cartilage ring, strap muscle, fascia or lymph node is drawn, and nothing is secreted or solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning thyroidectomy, parathyroid exploration, nerve monitoring or biopsy."
+    ]
+  },
+  {
+    "sceneId": "spleen-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built splenic arterial segments and hilar vessels, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/spleen-anatomy.md",
+      "docs/model-evidence/spleen-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The segment plane is flat and passes through the hilum; real boundaries are neither flat nor identical between people, and two segments is the usual number rather than the only one.",
+      "Red and white pulp are not drawn, and no capsule, trabecula or short gastric vessel is modelled.",
+      "Nothing flows or is solved in this scene.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning splenectomy, partial splenectomy or embolisation."
+    ]
+  },
+  {
+    "sceneId": "bladder-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built bladder wall parts, trigone and orifices, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/bladder-anatomy.md",
+      "docs/model-evidence/bladder-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The trigone is a flat patch with no thickness, and the mucosal folds it is smooth by contrast with are not drawn.",
+      "The bladder is drawn at one fixed degree of filling; nothing fills or empties in this scene.",
+      "The ureters' oblique intramural course, the sphincters, the detrusor's layers and the urachal remnant are not modelled.",
+      "The urethra is drawn the same for everyone: male and female urethral anatomy differ and neither is represented.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning cystoscopy, catheterisation, resection or stenting."
+    ]
+  },
+  {
+    "sceneId": "biliary-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built gallbladder parts and bile-duct tree with its duodenal outlet, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/biliary-anatomy.md",
+      "docs/model-evidence/biliary-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Calibres, lengths and angles are drawn to be legible; only the order of the junctions is claimed.",
+      "The liver is not drawn, so the hepatic ducts begin at the edge of the model.",
+      "The common bile duct runs in front of the duodenum and the pancreatic head rather than behind and through them.",
+      "The spiral valve, the sphincter of Oddi, Hartmann's pouch, the minor papilla and the common channel are not modelled, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning cholecystectomy, ERCP, stenting or any biliary procedure."
+    ]
+  },
+  {
+    "sceneId": "esophagus-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built oesophageal parts, the three constrictions and the structures that make them, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/esophagus-anatomy.md",
+      "docs/model-evidence/esophagus-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths, calibres and angles are drawn to be legible; no distance from the incisors is given or implied, and none may be read off the model.",
+      "The middle constriction is drawn as one although it is often counted as two (aortic and bronchial).",
+      "Muscle layers, the upper and lower oesophageal sphincters, the diaphragmatic crura, the vagus nerves and the submucosal venous plexus are not drawn, so nothing here shows why reflux is resisted or how varices form.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning endoscopy, dilatation, stenting or any oesophageal procedure."
+    ]
+  },
+  {
+    "sceneId": "adrenal-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built adrenal cortical zones and medulla on both sides, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/adrenal-anatomy.md",
+      "docs/model-evidence/adrenal-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The zone thicknesses are drawn so that three zones can be told apart and are not the real proportions; only their order from the capsule inwards is claimed.",
+      "No capsule, vessel or nerve is drawn, and the medulla's chromaffin cells and their sympathetic supply are not represented.",
+      "Nothing is secreted or solved in this scene; the two time courses are `adrenal-response`.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning adrenalectomy, venous sampling or biopsy."
+    ]
+  },
+  {
+    "sceneId": "uterus-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built uterine parts, cavity and cervical canal, fallopian tubes and ovaries, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/uterus-anatomy.md",
+      "docs/model-evidence/uterus-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The uterus is drawn upright rather than in its usual anteverted, anteflexed position.",
+      "The cavity is a flat patch with no thickness, and the endometrium lining it is not drawn as tissue.",
+      "Endometrium, myometrium and perimetrium are not separated, and nothing here changes with the cycle.",
+      "The fallopian tube is one structure with a changing calibre: its named lengths and the fimbriae are not separately selectable.",
+      "Follicles, corpora lutea, ligaments, fornices, the transformation zone and the vessels are not drawn.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning hysteroscopy, device insertion, surgery or any obstetric decision."
+    ]
+  },
+  {
+    "sceneId": "prostate-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built prostatic zones, urethra, ejaculatory ducts and seminal vesicles with their bladder and rectal relations, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/prostate-anatomy.md",
+      "docs/model-evidence/prostate-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The zone proportions are drawn so four zones can be told apart and are not the real ones: no volume, ratio or zone size may be read off the model.",
+      "Zone boundaries are surfaces of revolution and planes; real ones are neither, and they vary between people and with age.",
+      "The capsule, the neurovascular bundles, the sphincters, the prostatic utricle, the periurethral glands and Denonvilliers' fascia are not drawn.",
+      "Benign enlargement and cancer are not represented in any form, and nothing here is anyone's prostate.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning biopsy, resection, radiotherapy or surgery."
+    ]
+  },
+  {
+    "sceneId": "male-tract-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built male genital route from testis to external urethral orifice, with the prostate and erectile columns it passes through, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/male-tract-anatomy.md",
+      "docs/model-evidence/male-tract-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths and calibres are drawn to be legible; the vas deferens in particular is drawn far shorter and straighter than it is.",
+      "The epididymis is one tube of three named lengths; the single coiled duct inside it is not modelled and head, body and tail are not separately selectable.",
+      "One side of a paired route is drawn.",
+      "The scrotum, the spermatic cord's coverings and vessels, the seminiferous tubules, the sphincters, the bulbourethral glands and the erectile mechanism are not drawn, and nothing here changes state.",
+      "The prostate here is one undivided translucent gland; its zones are `prostate-anatomy`.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning vasectomy, catheterisation, surgery or any fertility decision."
+    ]
   }
 ]

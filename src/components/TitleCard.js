@@ -1,7 +1,50 @@
 import { el } from '../utils/dom.js';
 import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
+import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
+import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
+import '../styles/scene-pairing.css';
+
+
+/**
+ * The link between an anatomy scene and the disease that happens in it.
+ *
+ * The pairing is declared once, in the catalogue, on both ends — so this needs
+ * no list of its own and no scene has to know it is paired. Which end is which
+ * is read off the scene rather than declared twice: the row with a `disease` is
+ * what goes wrong, the row without one is the anatomy it goes wrong in.
+ *
+ * It is here rather than in a surface of its own because the journey it exists
+ * for is "look at the liver, then look at what portal hypertension does to it,
+ * then come back" — and coming back is the half that gets lost when the link
+ * lives on a landing page the reader has already left.
+ *
+ * Release-gated like every other route: a link to a model this build will not
+ * open is a trapdoor, so on a locked build there is no link rather than a link
+ * to a "TO BE UPDATED" page.
+ */
+function pairedSceneLinks(meta) {
+  const related = relatedScenesFor(meta.id).filter(sceneOpen);
+  if (related.length === 0) return null;
+  // Which end this scene is, read from the catalogue rather than from the
+  // scene's own metadata: a scene's `META` describes what it draws, and whether
+  // there is a disease in it is a catalogue fact.
+  const isDisease = Boolean(sceneById(meta.id)?.disease);
+
+  return el('nav', { class: 'title-pairing', 'aria-label': 'Related model / 関連モデル' }, [
+    el('p', { class: 'title-pairing-lead' }, [
+      el('span', { class: 'lang-en', text: isDisease ? 'The anatomy behind it' : 'What goes wrong here' }),
+      el('span', { class: 'lang-ja', text: isDisease ? 'この病態が起きる場所の解剖' : 'この臓器で起きること' }),
+    ]),
+    ...related.map((scene) =>
+      el('a', { class: 'title-pairing-link', href: sceneRoute(scene) }, [
+        el('span', { class: 'lang-en', text: scene.titleEn ?? scene.title ?? scene.id }),
+        el('span', { class: 'lang-ja', text: scene.titleJa ?? scene.titleEn ?? scene.id }),
+      ])
+    ),
+  ]);
+}
 
 /** Top-left identity block. Sized to survive a 1080x1350 crop for social posts. */
 export function createTitleCard(meta) {
@@ -55,5 +98,6 @@ export function createTitleCard(meta) {
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),
     ]),
+    pairedSceneLinks(meta),
   ]);
 }

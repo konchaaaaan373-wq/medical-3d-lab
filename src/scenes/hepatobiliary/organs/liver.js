@@ -37,38 +37,147 @@ import {
  * seen. That is a visualisation choice, not a property of liver.
  */
 
-/** The outer shape, unchanged: a wedge with a bulky right lobe. */
+/**
+ * How big a liver is, in this repository's units.
+ *
+ * One unit is about 5.5 cm, which is the scale every other organ is drawn at
+ * (a kidney is 11 cm and two units tall). A liver is roughly 22 cm across, 15
+ * cm from the dome of the right lobe to its inferior border, and 11 cm from
+ * front to back — so 3.7 : 2.6 : 2.0 in these units.
+ *
+ * **It used to be 3.7 : 1.3 : 1.9**, which is a liver half its own height: the
+ * flat visceral surface was made by crushing the whole lower half of the
+ * organ, so what was left was deeper than it was tall. That is most of why it
+ * read as a sausage rather than a liver, and it is why the gallbladder hanging
+ * off it looked like a second organ — the gallbladder was the right size and
+ * the liver was not.
+ */
+export const LIVER_SCALE = [2.3, 1.42, 1.0];
+
+/**
+ * Where the gallbladder fossa is, as `[x, z]` on the unit sphere.
+ *
+ * Exported because the gallbladder has to hang *in* it, and a gallbladder
+ * positioned by a coordinate typed beside it floats away the moment the liver's
+ * shape changes — which is exactly what happened when the liver was given its
+ * proper height.
+ */
+export const GALLBLADDER_FOSSA = Object.freeze([-0.5, 0.42]);
+
+/**
+ * How far the warp slides the organ along x, on the unit sphere.
+ *
+ * Exported because anything positioned from a place *on* the liver has to know
+ * about it: the gallbladder fossa is declared in the sphere's coordinates and
+ * the finished organ is not where the sphere was.
+ */
+export const MIDLINE_SHIFT = 0.17;
+
+/**
+ * The outer shape: a blunt, tall right lobe tapering to a thin left one.
+ *
+ * ## What was wrong with it
+ *
+ * A sphere tapers to a point at *both* ends. Scaled long and warped a little,
+ * that is a rugby ball, and the rendered liver was one: the tallest part was
+ * in the middle and the right lobe came to a tip as surely as the left. A
+ * liver does the opposite — the right lobe is the bulk of the organ and its
+ * lateral border is nearly a wall, and only the left lobe tapers.
+ *
+ * So the cross-section along the long axis is *designed* here rather than
+ * inherited from the sphere: blunt on the right, tapering to a rounded tip on
+ * the left. Everything else — the wedge in profile, the flat visceral surface,
+ * the falciform groove, the gallbladder fossa — is applied on top of that
+ * silhouette rather than fighting it.
+ *
+ * ## What it still is not
+ *
+ * Not a specimen and not a scan. There is no porta hepatis notch, no bare
+ * area, no ligamentous attachment and no caudate process; the inferior border
+ * is an edge rather than the notched margin a liver actually has.
+ */
 export function liverWarp(v) {
   const { x, y, z } = v;
 
-  // The left lobe thins to an edge towards the patient's left (screen right).
-  // Without this the liver is a dome, and a dome is a mushroom.
-  const left = smoothstep(-0.25, 1, x);
-  v.y *= 1 - 0.56 * left;
-  v.z *= 1 - 0.6 * left;
-  v.x += 0.16 * left;
+  // The warp runs on the **unit** sphere: `shapedSphere` and `surfaceSamples`
+  // both apply `LIVER_SCALE` after it. Every threshold below is therefore in
+  // units of the sphere, not of the finished organ.
+  /** Along the long axis: -1 at the patient's right, +1 at the left. */
+  const u = Math.max(-1, Math.min(1, x));
 
-  // The superior surface is domed on the right and falls away to the left,
-  // which is what gives a liver its wedge profile from the front.
-  if (v.y > 0) v.y *= 1 - 0.3 * left;
+  // --- the silhouette from the front --------------------------------------
+  //
+  // `sphere` is the cross-section the unit sphere would have here; `designed`
+  // is the one a liver has. Dividing gives what to multiply the section by,
+  // clamped because the ratio is unbounded at the poles and a pole is one
+  // point.
+  const sphere = Math.sqrt(Math.max(1e-6, 1 - u * u));
+  const designed =
+    u <= 0
+      ? // Right: fuller than a sphere for most of the lobe, then rounding off.
+        // Pushed further than this it stops being blunt and becomes a wall,
+        // and the organ reads as a loaf.
+        Math.pow(Math.max(0, 1 - Math.pow(-u, 2.8)), 0.4)
+      : // Left: a steady taper to a tip that closes vertically, so the end is
+        // rounded rather than a blade.
+        Math.pow(Math.max(0, 1 - Math.pow(u, 2.0)), 0.55);
+  const profile = Math.min(2.2, designed / sphere);
+  v.y *= profile;
+  v.z *= profile;
 
-  // Visceral (inferior) surface: flat, not round.
-  if (v.y < -0.24) v.y = lerp(v.y, -0.3, 0.78);
+  const left = smoothstep(-0.25, 0.95, x);
+
+  // The left lobe is about a quarter of the organ, not half of it. A sphere is
+  // symmetric about its middle and a liver is not: the falciform groove sits
+  // well to the left of centre, and the right lobe is the bulk.
+  v.x -= 0.52 * left * left;
+
+  // It is also thinner front-to-back than it is tall — it is a flap. Thinned
+  // harder than this the segments carved out of it come out as slivers, and a
+  // sliver renders as a fin with a notch in it rather than as a lobe.
+  v.z *= 1 - 0.14 * left;
+
+  // The superior surface is domed over the right lobe and falls away to the
+  // left, which is what gives a liver its wedge profile from the front.
+  v.y *= 1 - 0.36 * left * smoothstep(-0.1, 0.25, v.y);
+
+  // Visceral (inferior) surface: flat, not round — but flattened *at* the
+  // organ's own floor rather than by pulling the whole underside up to the
+  // middle, which is what used to take half the height with it.
+  //
+  // **Blended, not switched.** Written as `if (v.y < threshold)` this leaves a
+  // crease exactly where the condition flips, and the ripple below makes the
+  // crease wander: the rendered inferior border came out as a ruffled band
+  // running the length of the organ. A smoothstep has no such edge.
+  const floor = -0.68 + 0.26 * left;
+  v.y = lerp(v.y, floor, 0.55 * smoothstep(floor + 0.55, floor + 0.02, v.y));
 
   // Falciform ligament: the groove that divides segment IV from II and III.
   // It is **not** the division between the right and left liver — that is
   // Cantlie's line, well to the right of this, and the commonest mistake about
   // liver anatomy. The groove is on the surface; the division is a plane.
   const groove = Math.exp(-Math.pow((x - 0.24) / 0.11, 2)) * smoothstep(-0.15, 0.45, y);
-  v.multiplyScalar(1 - 0.17 * groove);
+  v.multiplyScalar(1 - 0.15 * groove);
 
-  // Gallbladder fossa, on the underside of the right lobe.
-  if (v.y < -0.1) v.y += 0.16 * bump(x, z, { atY: -0.5, atZ: 0.42, spreadY: 0.3, spreadZ: 0.34 });
+  // Gallbladder fossa, on the underside of the right lobe. Faded in over the
+  // lower half rather than switched on below a line, for the same reason.
+  v.y +=
+    0.18 *
+    smoothstep(-0.12, -0.45, v.y) *
+    bump(x, z, { atY: GALLBLADDER_FOSSA[0], atZ: GALLBLADDER_FOSSA[1], spreadY: 0.3, spreadZ: 0.34 });
 
-  v.multiplyScalar(1 + 0.016 * ripple(x, y, z, 2.7, 0.9));
+  v.multiplyScalar(1 + 0.011 * ripple(x, y, z, 2.7, 0.9));
+
+  // Sit the organ where the repository's midline convention expects it.
+  //
+  // The left lobe was shortened above, which moved the whole organ leftwards
+  // about the sphere's centre — and with it the falciform groove and Cantlie's
+  // line, until the left-medial segments straddled x = 0 and IVa read as right
+  // liver. This is a translation of everything, so the anatomical frame, the
+  // carve and the volume shares are untouched: it moves where the liver is,
+  // not what it is.
+  v.x += MIDLINE_SHIFT;
 }
-
-export const LIVER_SCALE = [1.85, 0.92, 0.95];
 
 /** Muted, and close together: eight segments of one organ, not eight organs. */
 export const SEGMENT_COLORS = {
@@ -217,11 +326,30 @@ export function buildLiver({
       rightLobe: new THREE.Vector3(-1.8, 0.8, 0.6),
       leftLobe: new THREE.Vector3(1.5, 0.35, 0.5),
       porta: new THREE.Vector3(-0.15, -0.75, 0.7),
+      /**
+       * The floor of the gallbladder fossa, measured on the parenchyma.
+       *
+       * A scene hangs the gallbladder here rather than at a coordinate of its
+       * own, so the two stay together whatever the liver's shape is.
+       */
+      gallbladderFossa: undersideAt(
+        segments,
+        (GALLBLADDER_FOSSA[0] + MIDLINE_SHIFT) * LIVER_SCALE[0],
+        GALLBLADDER_FOSSA[1] * LIVER_SCALE[2]
+      ),
       cava: frame.toLocal(CAVA).add(new THREE.Vector3(0, 0.55, -0.4)),
       // Derived from the plane it names rather than typed beside it. Written by
       // hand at x 0.35 it was nearest segment VIII — the right anterior
       // superior segment, on the far side of Cantlie's line from the ligament.
-      falciform: frame.toLocal(PLANES.falciform.through).add(new THREE.Vector3(0, 0.75, 0.35)),
+      //
+      // Its height is derived too, and for the same kind of reason: written as
+      // a fixed 0.75 above the plane it ended up *inside* the organ the moment
+      // the liver was given its proper height, which is a label buried in the
+      // thing it points at. `domeAbove` measures where the superior surface
+      // actually is at the ligament and clears it.
+      falciform: domeAbove(segments, frame.toLocal(PLANES.falciform.through), 0.3).add(
+        new THREE.Vector3(0, 0, 0.35)
+      ),
     },
     /** Which segment a point in the liver's own coordinates falls in. */
     segmentAt(local) {
@@ -261,6 +389,57 @@ export function buildLiver({
       for (const item of disposables) item.dispose?.();
     },
   };
+}
+
+/**
+ * A point clear of the superior surface, above a place on the organ.
+ *
+ * For anchoring a label to a landmark whose height is a consequence of the
+ * shape rather than a number of its own: the falciform ligament runs over the
+ * dome, and where the dome is depends on how tall the liver is drawn.
+ *
+ * @param {Array<{geometry: THREE.BufferGeometry}>} parts the parenchyma
+ * @param {THREE.Vector3} at a point in the liver's own coordinates
+ * @param {number} clearance how far above the surface to sit
+ */
+function domeAbove(parts, at, clearance) {
+  const vertex = new THREE.Vector3();
+  let top = at.y;
+  for (const part of parts) {
+    const position = part.geometry.attributes.position;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i);
+      // A column around the landmark, not the whole organ: the dome over the
+      // ligament is lower than the dome over the right lobe.
+      if (Math.abs(vertex.x - at.x) > 0.28) continue;
+      if (vertex.y > top) top = vertex.y;
+    }
+  }
+  return new THREE.Vector3(at.x, top + clearance, at.z);
+}
+
+/**
+ * The lowest point of the parenchyma near a place on it.
+ *
+ * The counterpart of `domeAbove`, for something that hangs underneath rather
+ * than sits on top.
+ *
+ * @param {Array<{geometry: THREE.BufferGeometry}>} parts
+ * @param {number} x
+ * @param {number} z
+ */
+function undersideAt(parts, x, z) {
+  const vertex = new THREE.Vector3();
+  let bottom = Infinity;
+  for (const part of parts) {
+    const position = part.geometry.attributes.position;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i);
+      if (Math.abs(vertex.x - x) > 0.3 || Math.abs(vertex.z - z) > 0.3) continue;
+      if (vertex.y < bottom) bottom = vertex.y;
+    }
+  }
+  return new THREE.Vector3(x, Number.isFinite(bottom) ? bottom : 0, z);
 }
 
 /**

@@ -1,0 +1,250 @@
+import * as THREE from 'three';
+import {
+  carvePart,
+  partCentroid,
+  planeThrough,
+  radialField,
+  scaledField,
+  shellBetween,
+  surfaceSamples,
+} from '../geometry/carve.js';
+import { tissueMaterial } from '../materials.js';
+
+/**
+ * Cut a solid organ into the named parts anatomy divides it into.
+ *
+ * `tubeParts.js` does this for the organs that are a tube on a path — stomach,
+ * colon, pancreas, bile duct. This does it for the organs that are a *lump*:
+ * a warp of the unit sphere, cut by planes. The liver and the kidney each grew
+ * their own copy of this loop before it was written down; nothing here is new
+ * machinery, it is the loop those two already run, in one place, so that an
+ * organ can be divided without a new file of carving code every time.
+ *
+ * **The division is the caller's claim, not this file's.** What is passed in is
+ * where each plane runs and which side of it each part keeps, and that belongs
+ * beside the organ it refers to.
+ *
+ * ## Planes point at what is discarded
+ *
+ * Same convention as `planeThrough`: a part keeps everything *behind* its
+ * planes. `{ through, normal }` are in the organ's own coordinates — the ones
+ * the finished mesh is in, after `scale` — so a plane reads as "through the
+ * hilum, facing up" rather than as a fraction of a bounding box.
+ *
+ * ## A part can be the outside of the organ rather than a wedge of it
+ *
+ * `radial: { from, to }` narrows a part to a band of the organ's own radius,
+ * in the same units `carveLayers` uses. It is here for one arrangement and was
+ * added for it: the prostate's **peripheral zone is the outside** of the gland
+ * and its **transition and central zones are the inside**, and no set of planes
+ * says that. With `from > 0` the part is the shell between the two surfaces,
+ * still cut by whatever planes it declares.
+ *
+ * That is the whole extension. Anything that needs more than "an inner region
+ * and the region outside it" wants its own builder, not another option here.
+ */
+
+/**
+ * @param {{
+ *   warp: (v: THREE.Vector3) => void,
+ *   scale: [number, number, number],
+ *   parts: Array<{
+ *     id: string,
+ *     color?: string,
+ *     opacity?: number,
+ *     planes?: Array<{ through: [number, number, number], normal: [number, number, number] }>,
+ *     radial?: { from?: number, to?: number },
+ *     at?: [number, number, number],
+ *   }>,
+ *   detail?: number,
+ *   inset?: number,
+ *   samples?: number,
+ *   cacheKey?: string,
+ *   color?: string,
+ *   opacity?: number,
+ *   roughness?: number,
+ *   material?: (part: object) => THREE.Material,
+ * }} options
+ * @returns {{ parts: Array<object>, part: (id: string) => object, field: object,
+ *             bounds: THREE.Box3, object: THREE.Group, dispose: () => void }}
+ */
+export function carveNamedParts({
+  warp,
+  scale,
+  parts,
+  detail = 7,
+  inset = 0.004,
+  samples = 16000,
+  cacheKey,
+  color = '#b3565c',
+  opacity = 1,
+  roughness = 0.5,
+  material,
+}) {
+  const points = surfaceSamples(warp, scale, samples);
+  const bounds = new THREE.Box3();
+  const probe = new THREE.Vector3();
+  for (let i = 0; i < points.length; i += 3) {
+    bounds.expandByPoint(probe.set(points[i], points[i + 1], points[i + 2]));
+  }
+  const field = radialField(points, bounds.getCenter(new THREE.Vector3()));
+
+  const object = new THREE.Group();
+  const disposables = [];
+  const built = [];
+
+  for (const part of parts) {
+    const planes = (part.planes ?? []).map(({ through, normal }) =>
+      planeThrough(new THREE.Vector3(...through), new THREE.Vector3(...normal))
+    );
+    // Found, not written down. A carve is star-shaped about its centre, and a
+    // centre that is outside its own part produces a different solid rather
+    // than a smaller one — which is the failure that looks like a modelling
+    // mistake and is not one.
+    const found = partCentroid({ field, bounds, planes, samples: 7000, seed: 11 });
+    const centre = found ? found.centroid : new THREE.Vector3(...(part.at ?? [0, 0, 0]));
+
+    const band = part.radial ?? {};
+    const to = band.to ?? 1;
+    const from = band.from ?? 0;
+    const surfaceAt = (fraction) =>
+      carvePart({
+        field: fraction >= 1 ? field : scaledField(field, fraction),
+        // A shell and the solid inside it have to be carved about the same
+        // point, or their two surfaces are two different organs.
+        centre: from > 0 ? field.centre.clone() : centre,
+        planes,
+        detail,
+        // Two parts that share a cut would otherwise z-fight along it.
+        inset: planes.length ? inset : 0,
+        cacheKey: cacheKey ? `${cacheKey}:${samples}:${fraction}` : null,
+      });
+
+    let geometry = surfaceAt(to);
+    if (from > 0) {
+      const inner = surfaceAt(from);
+      const shell = shellBetween(geometry, inner);
+      geometry.dispose();
+      inner.dispose();
+      geometry = shell;
+    }
+    const partMaterial =
+      material?.(part) ??
+      tissueMaterial({
+        color: part.color ?? color,
+        roughness,
+        opacity: part.opacity ?? opacity,
+        emissiveIntensity: 0.05,
+      });
+    const mesh = new THREE.Mesh(geometry, partMaterial);
+    mesh.name = part.id;
+    object.add(mesh);
+    disposables.push(geometry, partMaterial);
+    built.push({ ...part, mesh, geometry, material: partMaterial, centre, planes });
+  }
+
+  const index = new Map(built.map((part) => [part.id, part]));
+  return {
+    object,
+    parts: built,
+    part: (id) => index.get(id),
+    field,
+    bounds,
+    dispose() {
+      for (const item of disposables) item.dispose?.();
+    },
+  };
+}
+
+/**
+ * Cut a solid organ into concentric layers.
+ *
+ * The other way an organ divides. A cortex is not a wedge of an organ, it is
+ * the *outside* of it, continuous all the way round — and cutting it into
+ * wedges to make the arithmetic work would invent a boundary the organ does
+ * not have. `shellBetween` is what makes a layer one part; this is the loop
+ * around it, which the kidney's cortex already ran.
+ *
+ * Layers are given as fractions of the organ's own radius in each direction, so
+ * "the outer fifth" follows the shape rather than an ellipsoid the organ is not.
+ * The innermost layer may start at 0, and then it is a solid rather than a shell.
+ *
+ * @param {{
+ *   warp: (v: THREE.Vector3) => void,
+ *   scale: [number, number, number],
+ *   layers: Array<{ id: string, from: number, to: number, color?: string, opacity?: number }>,
+ *   detail?: number,
+ *   samples?: number,
+ *   cacheKey?: string,
+ *   roughness?: number,
+ *   material?: (layer: object) => THREE.Material,
+ * }} options
+ */
+export function carveLayers({
+  warp,
+  scale,
+  layers,
+  detail = 6,
+  samples = 12000,
+  cacheKey,
+  roughness = 0.5,
+  material,
+}) {
+  const points = surfaceSamples(warp, scale, samples);
+  const bounds = new THREE.Box3();
+  const probe = new THREE.Vector3();
+  for (let i = 0; i < points.length; i += 3) {
+    bounds.expandByPoint(probe.set(points[i], points[i + 1], points[i + 2]));
+  }
+  const centre = bounds.getCenter(new THREE.Vector3());
+  const field = radialField(points, centre);
+
+  const object = new THREE.Group();
+  const disposables = [];
+  const built = [];
+
+  const surfaceAt = (fraction) =>
+    carvePart({
+      field: fraction >= 1 ? field : scaledField(field, fraction),
+      centre,
+      detail,
+      cacheKey: cacheKey ? `${cacheKey}:${samples}:${fraction}` : null,
+    });
+
+  for (const layer of layers) {
+    const outer = surfaceAt(layer.to);
+    let geometry = outer;
+    if (layer.from > 0) {
+      const inner = surfaceAt(layer.from);
+      geometry = shellBetween(outer, inner);
+      outer.dispose();
+      inner.dispose();
+    }
+    const layerMaterial =
+      material?.(layer) ??
+      tissueMaterial({
+        color: layer.color ?? '#b3565c',
+        roughness,
+        opacity: layer.opacity ?? 1,
+        emissiveIntensity: 0.05,
+      });
+    const mesh = new THREE.Mesh(geometry, layerMaterial);
+    mesh.name = layer.id;
+    object.add(mesh);
+    disposables.push(geometry, layerMaterial);
+    built.push({ ...layer, mesh, geometry, material: layerMaterial });
+  }
+
+  const index = new Map(built.map((layer) => [layer.id, layer]));
+  return {
+    object,
+    layers: built,
+    layer: (id) => index.get(id),
+    field,
+    bounds,
+    centre,
+    dispose() {
+      for (const item of disposables) item.dispose?.();
+    },
+  };
+}

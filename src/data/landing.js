@@ -18,6 +18,21 @@
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
   'heart-anatomy',
+  'lung-anatomy',
+  'liver-anatomy',
+  'kidney-anatomy',
+  'stomach-anatomy',
+  'intestine-anatomy',
+  'pancreas-anatomy',
+  'thyroid-anatomy',
+  'spleen-anatomy',
+  'bladder-anatomy',
+  'biliary-anatomy',
+  'esophagus-anatomy',
+  'adrenal-anatomy',
+  'uterus-anatomy',
+  'prostate-anatomy',
+  'male-tract-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -151,6 +166,96 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '前負荷・後負荷・収縮性を変え、PVループと肺うっ血を確認。',
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
+  ),
+  'stomach-anatomy': presentation(
+    'Pick the antrum, then fade the wall to the sphincter it empties through.',
+    '前庭部を選び、壁を透かして、その先の幽門括約筋を見る。',
+    ['FUNDUS', 'BODY', 'PYLORUS'],
+    ['胃底部', '胃体部', '幽門']
+  ),
+  'intestine-anatomy': presentation(
+    'Fade the small bowel and the colon is left as the frame it is.',
+    '小腸を薄くすると、結腸が枠として残る。',
+    ['CAECUM', 'FLEXURES', 'SIGMOID'],
+    ['盲腸', '結腸曲', 'S状結腸']
+  ),
+  'pancreas-anatomy': presentation(
+    'Head, neck, body, tail — then one duct running the length of all four.',
+    '頭部・頸部・体部・尾部、そして4つを貫く1本の膵管。',
+    ['PARTS', 'DUCT', 'ISLETS'],
+    ['部位', '膵管', '膵島']
+  ),
+  'thyroid-anatomy': presentation(
+    'Fade the gland and find the four parathyroids and the two nerves behind it.',
+    '甲状腺を薄くして、その背面の副甲状腺4つと左右の反回神経を見つける。',
+    ['LOBES', 'PARATHYROID', 'NERVE'],
+    ['葉', '副甲状腺', '反回神経']
+  ),
+  'spleen-anatomy': presentation(
+    'Two territories, and the artery that divides before it reaches the hilum.',
+    '2つの支配領域と、脾門の手前で分かれる脾動脈。',
+    ['SEGMENTS', 'ARTERY', 'VEIN'],
+    ['区域', '動脈', '静脈']
+  ),
+  'bladder-anatomy': presentation(
+    'Fade the wall and find the trigone, with an opening at each of its corners.',
+    '壁を薄くして、3つの角に開口部をもつ膀胱三角を見つける。',
+    ['WALL', 'TRIGONE', 'ORIFICES'],
+    ['膀胱壁', '膀胱三角', '開口部']
+  ),
+  'biliary-anatomy': presentation(
+    'Follow bile from two hepatic ducts to one papilla, past the gallbladder on the way.',
+    '左右の肝管から1つの乳頭まで、胆嚢を経由して胆汁の道をたどる。',
+    ['GALLBLADDER', 'DUCTS', 'PAPILLA'],
+    ['胆嚢', '胆管', '乳頭']
+  ),
+  'esophagus-anatomy': presentation(
+    'Three places the tube is narrow, and what makes each one narrow.',
+    '食道が狭くなる3か所と、それぞれを狭くしている構造。',
+    ['PARTS', 'CONSTRICTIONS', 'NEIGHBOURS'],
+    ['部位', '狭窄部', '周囲の構造']
+  ),
+  'adrenal-anatomy': presentation(
+    'Three layers of cortex, and inside them a piece of nervous system.',
+    '3層の皮質と、その内側にある神経系の組織。',
+    ['ZONES', 'MEDULLA', 'KIDNEY'],
+    ['皮質3層', '髄質', '腎臓']
+  ),
+  'uterus-anatomy': presentation(
+    'Fade the wall: the cavity is a flattened triangle, not a bag.',
+    '子宮壁を薄くすると、内腔は袋ではなく扁平な三角形。',
+    ['PARTS', 'CAVITY', 'ADNEXA'],
+    ['部位', '内腔', '付属器']
+  ),
+  'prostate-anatomy': presentation(
+    'Which zone: the outside a finger reaches, or the inside round the urethra.',
+    'どの領域か——指が届く外側か、尿道を取り巻く内側か。',
+    ['ZONES', 'URETHRA', 'DUCTS'],
+    ['領域', '尿道', '射精管']
+  ),
+  'male-tract-anatomy': presentation(
+    'One continuous channel from testis to outside, with a gland part way along it.',
+    '精巣から外尿道口まで、途中に腺を挟んだ1本の管。',
+    ['ROUTE', 'DUCTS', 'URETHRA'],
+    ['経路', '導管', '尿道']
+  ),
+  'lung-anatomy': presentation(
+    'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',
+    '肺葉を選び、実質を薄くして、その区域を換気する区域気管支を選ぶ。',
+    ['LOBES', 'SEGMENTS', 'VESSELS'],
+    ['肺葉', '肺区域', '血管']
+  ),
+  'liver-anatomy': presentation(
+    'Couinaud’s eight segments, IV split in two: the veins run between them, the portal branches inside them.',
+    'Couinaudの8区域（IVは2つに分割）。肝静脈は区域の「間」を、門脈枝は「内部」を走る。',
+    ['SEGMENTS', 'OUTFLOW', 'INFLOW']  ,
+    ['区域', '流出', '流入']
+  ),
+  'kidney-anatomy': presentation(
+    'Fade the cortex to the pyramids, then follow one papilla out to the ureter.',
+    '皮質を薄くして錐体を見て、1つの腎乳頭から尿管までをたどる。',
+    ['CORTEX', 'PYRAMIDS', 'CALYCES'],
+    ['皮質', '錐体', '腎杯']
   ),
   'brain-anatomy': presentation(
     'Select gyri and sulci, then reveal the insula and deep nuclei in place.',

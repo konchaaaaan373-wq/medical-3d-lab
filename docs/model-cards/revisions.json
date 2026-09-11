@@ -146,5 +146,198 @@
     "cardRevision": 2,
     "modelDigest": "cf008ab5bb6d5cfa",
     "cardUpdatedAt": "2026-09-06"
+  },
+  {
+    "sceneId": "lung-anatomy",
+    "card": "docs/model-cards/lung-anatomy.md",
+    "modelSources": [
+      "src/data/lungAnatomyScene.js",
+      "src/scenes/respiratory/scenes/lungAnatomy/LungAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 6,
+    "modelDigest": "02fee49c2e0ce9cc",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "liver-anatomy",
+    "card": "docs/model-cards/liver-anatomy.md",
+    "modelSources": [
+      "src/data/liverAnatomyScene.js",
+      "src/scenes/hepatobiliary/scenes/liverAnatomy/LiverAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 6,
+    "modelDigest": "d99c671d328390e7",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "kidney-anatomy",
+    "card": "docs/model-cards/kidney-anatomy.md",
+    "modelSources": [
+      "src/data/kidneyAnatomyScene.js",
+      "src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 6,
+    "modelDigest": "f11981076e8ace71",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "stomach-anatomy",
+    "card": "docs/model-cards/stomach-anatomy.md",
+    "modelSources": [
+      "src/data/stomachAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/stomachParts.js",
+      "src/scenes/gastrointestinal/scenes/stomachAnatomy/StomachAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 5,
+    "modelDigest": "42f783c3320d69b4",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "intestine-anatomy",
+    "card": "docs/model-cards/intestine-anatomy.md",
+    "modelSources": [
+      "src/data/intestineAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/colonParts.js",
+      "src/scenes/gastrointestinal/scenes/intestineAnatomy/IntestineAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 6,
+    "modelDigest": "ca0a46c596aac74e",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "pancreas-anatomy",
+    "card": "docs/model-cards/pancreas-anatomy.md",
+    "modelSources": [
+      "src/data/pancreasAnatomyScene.js",
+      "src/scenes/hepatobiliary/organs/pancreasParts.js",
+      "src/scenes/hepatobiliary/scenes/pancreasAnatomy/PancreasAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 5,
+    "modelDigest": "5e7cd792e9326c5b",
+    "cardUpdatedAt": "2026-09-10"
+  },
+  {
+    "sceneId": "thyroid-anatomy",
+    "card": "docs/model-cards/thyroid-anatomy.md",
+    "modelSources": [
+      "src/data/thyroidAnatomyScene.js",
+      "src/scenes/endocrine/organs/thyroidAnatomy.js",
+      "src/scenes/endocrine/scenes/thyroidAnatomy/ThyroidAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "d716a6124bb4ead1",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "spleen-anatomy",
+    "card": "docs/model-cards/spleen-anatomy.md",
+    "modelSources": [
+      "src/data/spleenAnatomyScene.js",
+      "src/scenes/hematologic/organs/spleen.js",
+      "src/scenes/hematologic/organs/spleenParts.js",
+      "src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "228737f900fafaa3",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "bladder-anatomy",
+    "card": "docs/model-cards/bladder-anatomy.md",
+    "modelSources": [
+      "src/data/bladderAnatomyScene.js",
+      "src/scenes/renal/organs/bladderParts.js",
+      "src/scenes/renal/scenes/bladderAnatomy/BladderAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "4a527138692ce438",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "biliary-anatomy",
+    "card": "docs/model-cards/biliary-anatomy.md",
+    "modelSources": [
+      "src/data/biliaryAnatomyScene.js",
+      "src/scenes/hepatobiliary/organs/biliaryTree.js",
+      "src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 5,
+    "modelDigest": "9bed2f3cec4eaa58",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "esophagus-anatomy",
+    "card": "docs/model-cards/esophagus-anatomy.md",
+    "modelSources": [
+      "src/data/esophagusAnatomyScene.js",
+      "src/scenes/gastrointestinal/organs/esophagusParts.js",
+      "src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "26a27d56cfce4070",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "adrenal-anatomy",
+    "card": "docs/model-cards/adrenal-anatomy.md",
+    "modelSources": [
+      "src/data/adrenalAnatomyScene.js",
+      "src/scenes/endocrine/organs/adrenalAnatomy.js",
+      "src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "f852f6a923915377",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "uterus-anatomy",
+    "card": "docs/model-cards/uterus-anatomy.md",
+    "modelSources": [
+      "src/data/uterusAnatomyScene.js",
+      "src/scenes/reproductive/organs/uterusParts.js",
+      "src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 6,
+    "modelDigest": "6e55a57076f108fc",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "prostate-anatomy",
+    "card": "docs/model-cards/prostate-anatomy.md",
+    "modelSources": [
+      "src/data/prostateAnatomyScene.js",
+      "src/scenes/reproductive/organs/prostateAnatomy.js",
+      "src/scenes/reproductive/scenes/prostateAnatomy/ProstateAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "fd2907bf9d7f99b8",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "male-tract-anatomy",
+    "card": "docs/model-cards/male-tract-anatomy.md",
+    "modelSources": [
+      "src/data/maleTractAnatomyScene.js",
+      "src/scenes/reproductive/organs/maleTract.js",
+      "src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "2427496d6a66f7a7",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

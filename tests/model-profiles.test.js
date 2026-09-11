@@ -148,6 +148,24 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
   assert.deepEqual(levels, {
     'brain-anatomy': MECHANISM_LEVEL.NONE,
     'heart-anatomy': MECHANISM_LEVEL.NONE,
+    // Organs whose anatomy is built in code rather than loaded from an
+    // atlas. Same claim shape as the brain's — structure, no state — and the
+    // geometry basis below is where the difference is recorded.
+    'lung-anatomy': MECHANISM_LEVEL.NONE,
+    'liver-anatomy': MECHANISM_LEVEL.NONE,
+    'kidney-anatomy': MECHANISM_LEVEL.NONE,
+    'stomach-anatomy': MECHANISM_LEVEL.NONE,
+    'intestine-anatomy': MECHANISM_LEVEL.NONE,
+    'pancreas-anatomy': MECHANISM_LEVEL.NONE,
+    'thyroid-anatomy': MECHANISM_LEVEL.NONE,
+    'spleen-anatomy': MECHANISM_LEVEL.NONE,
+    'bladder-anatomy': MECHANISM_LEVEL.NONE,
+    'biliary-anatomy': MECHANISM_LEVEL.NONE,
+    'esophagus-anatomy': MECHANISM_LEVEL.NONE,
+    'adrenal-anatomy': MECHANISM_LEVEL.NONE,
+    'uterus-anatomy': MECHANISM_LEVEL.NONE,
+    'prostate-anatomy': MECHANISM_LEVEL.NONE,
+    'male-tract-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,

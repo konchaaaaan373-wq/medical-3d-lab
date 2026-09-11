@@ -20,12 +20,58 @@ import {
   validateCatalog,
   resolveSceneId,
 } from '../src/catalog/index.js';
+import { relatedScenesFor } from '../src/catalog/index.js';
 import { namesScene, resolveRoute, sameRoute, slugOf } from '../src/app/router.js';
 
 test('the catalogue is internally consistent', () => {
   // One assertion covering ids, slugs, organs, systems, statuses and loaders —
   // the message names whatever is actually wrong.
   assert.deepEqual(validateCatalog(), []);
+});
+
+test('a paired scene can be reached and left again', () => {
+  // The journey this pairing exists for: look at the anatomy, open what goes
+  // wrong with it, and come back. A link with no way back is a trapdoor, so
+  // both ends are declared and `validateCatalog` refuses one that is not —
+  // this checks the pairing that survives that, and what it pairs.
+  const paired = SCENES.filter((scene) => scene.relatedScenes.length > 0);
+  assert.ok(paired.length >= 6, 'the six organ anatomy scenes are paired with something');
+
+  for (const scene of paired) {
+    for (const other of relatedScenesFor(scene.id)) {
+      assert.ok(
+        relatedScenesFor(other.id).some((back) => back.id === scene.id),
+        `${scene.id} → ${other.id} has no way back`
+      );
+      assert.equal(other.system, scene.system, `${scene.id} → ${other.id} stays in one system`);
+      assert.notEqual(other.id, scene.id);
+      // One end is the anatomy and the other is what happens in it — a
+      // disease for three of the pairs and normal physiology for the other
+      // three. That is how a surface knows which of the two it is offering
+      // without being told: `anatomy` is a tag the anatomy scenes carry.
+      const isAnatomy = (entry) => entry.tags.includes('anatomy');
+      assert.notEqual(
+        isAnatomy(other),
+        isAnatomy(scene),
+        `${scene.id} and ${other.id} are both ${isAnatomy(scene) ? 'anatomy' : 'dynamic'} scenes`
+      );
+      // And they share the organ, so the reader is not sent somewhere else.
+      assert.ok(
+        other.organs.some((organ) => scene.organs.includes(organ)),
+        `${scene.id} and ${other.id} share no organ`
+      );
+    }
+  }
+
+  // The three the first wave is built around, by name.
+  for (const [anatomy, disease] of [
+    ['lung-anatomy', 'copd-hyperinflation'],
+    ['liver-anatomy', 'portal-hypertension'],
+    ['kidney-anatomy', 'renal-filtration'],
+  ]) {
+    assert.deepEqual(relatedScenesFor(anatomy).map((scene) => scene.id), [disease]);
+    assert.deepEqual(relatedScenesFor(disease).map((scene) => scene.id), [anatomy]);
+  }
 });
 
 test('scene ids and slugs are unique', () => {

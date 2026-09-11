@@ -56,6 +56,20 @@
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
+ *   --points <list> where to click, as "fx,fy fx,fy …" in canvas fractions.
+ *                   The default four are placed for a solid mass filling the
+ *                   frame. An organ with a real gap down the middle — two lungs
+ *                   with a mediastinum between them — needs its own four, and
+ *                   moving the model to satisfy a fixed grid would be the
+ *                   check deciding the anatomy.
+ *   --empty <fx,fy> a point that is background, for the check that a click on
+ *                   nothing clears the card. The default is at the left edge,
+ *                   clear of the title card above it and of the console along
+ *                   the bottom: the bottom-left corner this used to use is
+ *                   *behind* the console, so the click never reached the canvas
+ *                   and the check could only pass when the card was already
+ *                   empty — which it was, until a scene came along whose clicks
+ *                   all landed on something.
  *   --shots <dir>   write screenshots here
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
@@ -75,6 +89,79 @@ const value = (name, fallback = null) => {
 const distDir = value('--dist', 'dist');
 const sceneSlug = value('--scene', 'brain-anatomy');
 const shotsDir = value('--shots');
+const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
+
+/**
+ * Where to click on each organ, when the caller does not say.
+ *
+ * `DEFAULT_POINTS` is a cluster around the middle of the frame, which is right
+ * for a brain and wrong for most organs: two lungs have a mediastinum between
+ * them, two kidneys have the spine, a stomach is a J with its own hole in it.
+ * On those, all four default clicks land on background and the run reports
+ * "the picking may be broken" — about a scene whose picking is fine.
+ *
+ * These are read off a render of each scene's opening view at this script's own
+ * viewport, and each one is named for what it is on. They are re-measured when
+ * a scene's opening pose or its geometry moves; a point that stops hitting is a
+ * question about the render, not a number to nudge.
+ */
+const SCENE_POINTS = {
+  // Two lungs and the airway between them, not one mass.
+  'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
+  // Right lobe, left lobe, the inferior third, and the gallbladder below it.
+  'liver-anatomy': [[0.35, 0.40], [0.66, 0.45], [0.45, 0.62], [0.42, 0.75]],
+  // One kidney, the other, and twice on the opened one.
+  'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
+  // Fundus, body, antrum, and the duodenum it empties into.
+  'stomach-anatomy': [[0.62, 0.33], [0.59, 0.45], [0.53, 0.62], [0.40, 0.82]],
+  // The colon frame, clockwise from the ascending limb.
+  'intestine-anatomy': [[0.35, 0.44], [0.49, 0.24], [0.69, 0.50], [0.52, 0.76]],
+  // Head, neck, body, tail — the gland runs across the frame.
+  'pancreas-anatomy': [[0.34, 0.52], [0.45, 0.48], [0.56, 0.45], [0.66, 0.40]],
+  // Two lobes clasping a trachea, with the isthmus across the front of it.
+  'thyroid-anatomy': [[0.44, 0.48], [0.57, 0.48], [0.50, 0.56], [0.50, 0.25]],
+  // The two segments, and the pancreatic tail off to the medial side.
+  'spleen-anatomy': [[0.54, 0.29], [0.54, 0.69], [0.60, 0.20], [0.32, 0.57]],
+  // Apex, body, neck, and a ureter arriving behind.
+  'bladder-anatomy': [[0.50, 0.37], [0.50, 0.51], [0.50, 0.63], [0.42, 0.20]],
+  // Gallbladder, common bile duct, a hepatic duct, and the bowel it opens into.
+  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.45, 0.66], [0.60, 0.74]],
+  // The tube runs down the middle; the trachea is half-transparent in front of
+  // its upper end, so a click there lands on the trachea.
+  'esophagus-anatomy': [[0.48, 0.60], [0.49, 0.80], [0.48, 0.25], [0.487, 0.45]],
+  // A gland and its kidney, on each side.
+  'adrenal-anatomy': [[0.365, 0.36], [0.635, 0.36], [0.35, 0.62], [0.645, 0.62]],
+  // Fundus, body, cervix, and a tube on its way to an ovary.
+  'uterus-anatomy': [[0.50, 0.33], [0.50, 0.50], [0.50, 0.66], [0.33, 0.36]],
+  // The gland, a seminal vesicle above it, and the rectum behind.
+  'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
+  // The route runs bottom-left to middle and then forward.
+  'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
+};
+
+const clickPoints = (() => {
+  const raw = value('--points');
+  if (!raw) return SCENE_POINTS[sceneSlug] ?? DEFAULT_POINTS;
+  const points = raw
+    .trim()
+    .split(/\s+/)
+    .map((pair) => pair.split(',').map(Number));
+  if (!points.length || points.some((point) => point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1)))) {
+    console.error('--points takes "fx,fy fx,fy …" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return points;
+})();
+const emptyPoint = (() => {
+  const raw = value('--empty');
+  if (!raw) return [0.03, 0.45];
+  const point = raw.split(',').map(Number);
+  if (point.length !== 2 || point.some((n) => !(n >= 0 && n <= 1))) {
+    console.error('--empty takes "fx,fy" with each fraction between 0 and 1');
+    process.exit(1);
+  }
+  return point;
+})();
 
 const die = (message) => {
   console.error(message);
@@ -200,8 +287,6 @@ const shot = async (name) => {
 try {
   const url = flag('--preview') ? `${base}?preview=1#/${sceneSlug}` : `${base}#/${sceneSlug}`;
   await page.goto(url, { waitUntil: 'networkidle' });
-  // The consent question is a one-time overlay and would sit over the canvas.
-  await page.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
 
   // A locked route answers with the plain "to be updated" page, which has no
   // canvas and never will. Saying so beats a thirty-second timeout that reads
@@ -222,6 +307,25 @@ try {
   });
   observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
   if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
+
+  // The consent question is a one-time overlay and it sits over the canvas —
+  // over the lower middle of it, which is where the clicks below go.
+  //
+  // It is dismissed *here*, after the scene is ready, and not right after
+  // `goto`. Carving an organ is synchronous: the lung holds the main thread for
+  // about seventeen seconds, during which the page paints ten frames and no
+  // click is actionable. A five-second attempt before that timed out, was
+  // swallowed by its own `catch`, and left the banner standing over the model —
+  // so the run reported "the picking may be broken" about a banner. It looked
+  // like a flake because a warm re-run builds fast enough to get the click in.
+  // The fix is to ask at a moment the page can answer, not to wait longer.
+  const consent = page.locator('.consent-banner button').last();
+  if (await consent.count()) {
+    await consent.click({ timeout: 15000 }).catch(() => {
+      problems.push('the consent banner would not close, and it covers the part of the canvas clicked below');
+    });
+    await page.waitForTimeout(300);
+  }
 
   const canvas = page.locator('canvas').first();
   const box = await canvas.boundingBox();
@@ -290,19 +394,36 @@ try {
   const emptyPoint = emptyPoints[0] ?? [0.04, 0.94];
 
   // 1. A click on the model names a structure, in both languages, with a path.
-  for (const [fx, fy] of modelPoints.slice(0, 4)) {
+  //    The last point that *hit* is remembered, because a point that misses
+  //    clears the selection: with a miss last, everything below was testing
+  //    what happens to a selection that is not there, and reporting it as the
+  //    scene losing one.
+  let lastHitPoint = null;
+  for (const [fx, fy] of clickPoints) {
     const hit = await clickAt(fx, fy);
     if (hit.en === EMPTY) continue;
+    lastHitPoint = [fx, fy];
     observed.structures.push(hit);
     if (!hit.ja || hit.ja === '部位を選択してください') problems.push(`"${hit.en}" has no Japanese name`);
     if (!hit.where.includes('›')) problems.push(`"${hit.en}" is named without a place in the hierarchy`);
   }
   if (observed.structures.length < 3) {
-    problems.push(`only ${observed.structures.length} click(s) resolved to a structure; the picking may be broken`);
+    problems.push(
+      `only ${observed.structures.length} of ${clickPoints.length} click(s) resolved to a structure. ` +
+        'Either the picking is broken or the points are not on this organ — look at the screenshot ' +
+        'before believing the first one, and see SCENE_POINTS at the top of this file.'
+    );
   }
   await shot('brain-selection');
 
-  const pinned = observed.structures.at(-1);
+  // Everything below pins a structure and watches what happens to it. With
+  // nothing pinned there is nothing to watch, and going on used to produce a
+  // TypeError that buried the sentence above it. Thrown rather than returned,
+  // because the catch below is already the place that turns "this step could
+  // not run" into a finding without discarding the ones already collected.
+  if (!lastHitPoint) throw new Error('no structure was ever selected, so nothing below could be checked');
+  if ((await read()).en === EMPTY) await clickAt(lastHitPoint[0], lastHitPoint[1]);
+  const pinned = await read();
 
   // 2. A drag is not a click. Orbiting away from the pinned structure and
   //    releasing over another one must not reselect.
@@ -360,17 +481,17 @@ try {
     }
 
     // And the other direction: selecting a row selects that structure.
-    // A row a reader could actually click. `leaves` counts every structure in
-    // the tree, and most of them are inside collapsed branches at any moment —
-    // which branch is open depends on what was selected, so picking the third
-    // row by position picked a hidden one as soon as the camera framed the
-    // model differently and a different gyrus came under the pointer. The
-    // claim being checked is "selecting a row selects that structure", and that
-    // needs a row on screen, not the third row in the document.
-    const visibleLeaves = page.locator('.anatomy-tree-leaf:visible');
-    const visibleCount = await visibleLeaves.count();
-    if (!visibleCount) problems.push('every row in the part tree is inside a collapsed branch');
-    const row = visibleLeaves.nth(Math.min(2, Math.max(0, visibleCount - 1)));
+    //
+    // A *visible* row. The tree opens the branch the selection is in and
+    // leaves the rest closed, so on an organ with more branches than the brain
+    // the third leaf in the DOM is inside a collapsed one — and clicking a row
+    // nobody can see is not the interaction being checked.
+    const openLeaves = page.locator('.anatomy-tree-leaf:visible');
+    const openCount = await openLeaves.count();
+    if (!openCount) problems.push('every row of the part tree is inside a collapsed branch');
+    // `Math.max(0, …)` so a tree with no open row asks for row 0 and fails on
+    // the assertion above rather than on `nth(-1)`.
+    const row = openLeaves.nth(Math.min(2, Math.max(0, openCount - 1)));
     const rowName = (await row.locator('.lang-en').first().textContent()).trim();
     at('selecting a structure from the part tree');
     await row.click();

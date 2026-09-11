@@ -212,6 +212,226 @@ export const MODEL_PROFILES = Object.freeze([
       'The review registry forbids diagnosis, lesion localisation, operative planning and navigation.',
   },
   {
+    profileId: 'lung-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code from a declared division scheme — two pleural surfaces carved by the oblique and horizontal '+
+      'fissures, the eighteen bronchopulmonary segments as the lung nearest each segmental bronchus — not traced from a '+
+      'specimen and not registered to an atlas. It has no state and no mechanism. Calibres, branch angles and the '+
+      'right-to-left main bronchus ratio are drawn to read clearly rather than measured, so the ordering is the claim '+
+      'and the magnitudes are not; operative and procedural planning are prohibited for that reason.',
+  },
+  {
+    profileId: 'liver-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one procedurally shaped liver on the planes Couinaud’s scheme names, with the hepatic '+
+      'veins drawn on those same planes and the portal pedicles inside the parts. The divisions are the claim; the outer '+
+      'form is a warped ellipsoid with a liver’s proportions and carries no porta hepatis notch, no bare area and no bile '+
+      'ducts. No state and no mechanism, and no resection or donor planning of any kind.',
+  },
+  {
+    profileId: 'kidney-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: the cortex as one shell between the capsule and a scaled corticomedullary junction, the inside '+
+      'partitioned into seven pyramids and the cortical columns between them, and a collecting system drawn out from each '+
+      'papilla. Schematic where the model card says so — the sinus is not carved out, the pyramids are one coronal row '+
+      'rather than two, and no renal artery is drawn. No state and no mechanism.',
+  },
+  {
+    profileId: 'stomach-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one procedural tube — the stomach\u2019s own path along the greater curvature and the '+
+      'calibre profile that already names fundus, body, incisura, antrum and pyloric canal \u2014 into those named lengths, '+
+      'with the cardia found from where the oesophagus ends. No state and no mechanism. The parts are rings of the tube, '+
+      'so the cardia is drawn as a collar and the incisura angularis only as the narrowing that goes with it; there are no '+
+      'wall layers, no rugae and no volumes.',
+  },
+  {
+    profileId: 'intestine-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the colon\u2019s own frame at its own corners, measured along the path rather than assumed '+
+      'from control-point spacing. No state and no mechanism. Lengths, loop counts and positions are illustrative; the '+
+      'small bowel is one structure because nothing in the model marks where jejunum becomes ileum; and there is no '+
+      'appendix, rectum, anal canal, mesentery, taenia coli or wall layer.',
+  },
+  {
+    profileId: 'spleen-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the spleen\u2019s own shape at a transverse plane through the hilum into the two territories the splenic artery\u2019s terminal branches supply, with those vessels drawn meeting the organ at the hilum it declares. No state and no mechanism. The plane is flat and real segment boundaries are neither flat nor identical between people; two segments is the usual number rather than the only one. Red and white pulp are histology and are not drawn.',
+  },
+  {
+    profileId: 'bladder-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the same bladder shape the urinary-tract scene draws into apex, body, fundus and neck, with the trigone drawn as a flat patch of lining between the two ureteric orifices and the internal urethral orifice. No state and no mechanism. The bladder is drawn at one fixed degree of filling, the trigone has no thickness, mucosal folds and sphincters are not drawn, and the ureters\u2019 oblique intramural course is described but not modelled.',
+  },
+  {
+    profileId: 'biliary-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: the gallbladder as one tube of falling calibre cut into fundus, body and neck, and the ducts as tubes joining in the order anatomy gives them \u2014 hepatic ducts to common hepatic, cystic to common bile, common bile and pancreatic to one papilla. No state and no mechanism. Calibres, lengths and angles are drawn to be legible and none is a measurement; what is claimed is the order of the junctions. The liver is not drawn, the common bile duct runs in front of the duodenum and pancreas rather than behind and through them, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.',
+  },
+  {
+    profileId: 'esophagus-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: one tube on a path, cut into cervical, thoracic and abdominal parts, with three narrowings in its calibre profile and a ring marking each at the profile\u2019s own minimum. The structures that make each narrowing \u2014 trachea, aortic arch, left main bronchus, diaphragmatic hiatus \u2014 are drawn beside them. No state and no mechanism. Lengths, calibres and angles are drawn to be legible and none is a measurement; no distance from the incisors is given or implied. Muscle layers, the sphincters, the crura, the vagus nerves and the venous plexus are not drawn.',
+  },
+  {
+    profileId: 'adrenal-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting each gland into four concentric shells \u2014 three cortical zones and the medulla \u2014 with the right gland pyramidal and the left crescentic, each on its own kidney. No state and no mechanism. **The zone thicknesses are drawn so that three zones can be told apart, not to scale**: in life the cortex is about nine tenths of the gland and the glomerulosa is a thin rim inside its capsule. No capsule, vessel or nerve is drawn.',
+  },
+  {
+    profileId: 'uterus-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting a pear-shaped warp into fundus, body, isthmus and cervix, with the cavity drawn as a flat triangular patch between the two tubal ostia and the internal os, a tube of changing calibre on each side and an ovary near but not joined to each. No state and no mechanism. The organ is drawn upright rather than anteverted and anteflexed; the cavity has no thickness; endometrium, myometrium and perimetrium are not separated; follicles, ligaments, fornices, the transformation zone and the vessels are not drawn.',
+  },
+  {
+    profileId: 'prostate-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one chestnut-shaped warp into McNeal\u2019s four zones: a coronal plane takes the anterior fibromuscular stroma off the front, a scaled copy of the gland\u2019s own surface separates the inner gland from the peripheral zone (which is therefore a shell rather than a wedge), and an oblique plane through the verumontanum divides that inner gland into transition and central. The urethra, both ejaculatory ducts, both seminal vesicles and vasa, the bladder neck and the rectum are drawn around them. No state and no mechanism. **The zone proportions are drawn so four zones can be told apart and are not the real ones**; zone boundaries are surfaces of revolution and planes where real ones are neither; no volume may be read off the model, and the capsule, neurovascular bundles, sphincters, prostatic utricle and Denonvilliers\u2019 fascia are not drawn.',
+  },
+  {
+    profileId: 'male-tract-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as one chain: each segment\u2019s curve begins where the last one ends, read from the curve rather than typed twice, so testis \u2192 epididymis \u2192 vas \u2192 ejaculatory duct \u2192 prostatic, membranous and spongy urethra cannot come apart. No state and no mechanism. Lengths and calibres are drawn to be legible and none is a measurement \u2014 the vas is far shorter and straighter than it is, and the epididymal duct inside the epididymis is not modelled. One side of a paired route is drawn. The scrotum, the spermatic cord\u2019s coverings and vessels, the seminiferous tubules, the sphincters, the bulbourethral glands and the erectile mechanism are not drawn.',
+  },
+  {
+    profileId: 'thyroid-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code: two lobe warps hollowed against a drawn trachea, an isthmus and a pyramidal lobe, with four '+
+      'parathyroid glands behind the gland and a recurrent laryngeal nerve on each side in the tracheo-oesophageal '+
+      'groove. No state and no mechanism. What is claimed is arrangement, not dimension \u2014 no measurement is made, '+
+      'parathyroid positions are plausible rather than fixed, the pyramidal lobe is drawn although it is present in '+
+      'roughly half of people, and the nerves\u2019 course below the neck is not modelled.',
+  },
+  {
+    profileId: 'pancreas-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting the pancreas\u2019s own axis, at the calibre profile that names head, neck, body and tail, '+
+      'into those four, with the main duct along the same axis. No state and no mechanism. The islets are placed '+
+      'pseudo-randomly from a fixed seed and claim only that endocrine tissue is scattered through the exocrine \u2014 '+
+      'neither their number nor their size is a measurement. No uncinate process, accessory duct, bile duct or papilla '+
+      'is modelled.',
+  },
+  {
     profileId: 'amyloid-beta-aggregation-illustration',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
