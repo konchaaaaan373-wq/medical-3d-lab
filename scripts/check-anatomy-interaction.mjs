@@ -421,12 +421,18 @@ try {
   };
   const modelPoints = [];
   const emptyPoints = [];
-  for (const fy of [0.30, 0.40, 0.50, 0.60, 0.20]) {
-    for (const fx of [0.30, 0.42, 0.54, 0.66, 0.20]) {
-      if (modelPoints.length >= 6 && emptyPoints.length >= 1) break;
+  // Worked outwards from the middle rather than across a coarse grid. A grid
+  // of five columns spanning 0.30–0.66 is still an assumption — that the
+  // subject is wide — and a spine, a hand or a standing skeleton is not: they
+  // are a couple of frame-percent across at the middle, and every sample
+  // missed. "The model is not drawn" was then reported for a model that was
+  // drawn, centred, and perfectly clickable.
+  for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+    for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
+      if (modelPoints.length >= 6 && emptyPoints.length >= 2) break;
       const hit = await overModel(fx, fy);
       if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
-      if (!hit && emptyPoints.length < 1) emptyPoints.push([fx, fy]);
+      if (!hit && emptyPoints.length < 6) emptyPoints.push([fx, fy]);
     }
   }
   await restPointer();
@@ -438,7 +444,17 @@ try {
     );
   }
   const atModel = (index) => modelPoints[index % modelPoints.length];
-  const emptyPoint = emptyPoints[0] ?? [0.04, 0.94];
+  // The farthest miss from the middle of what was found, not the first one: a
+  // near miss beside a narrow subject is background now and may not be after a
+  // drag, and the point is used to check that clicking nothing clears.
+  const centre = modelPoints.reduce(
+    (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
+    [0, 0]
+  );
+  const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
+  const emptyPoint = emptyPoints.length
+    ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
+    : [0.04, 0.94];
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -482,13 +498,15 @@ try {
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
-  // Orbit back to where the sweep happened. The drag turned the model, and
-  // every check below clicks a point that had something under it *before* the
-  // turn — which is only still true if the camera is put back. A dense organ
-  // survives that by luck; a scene of small scattered markers does not.
-  await page.mouse.move(box.x + box.width * 0.62, box.y + box.height * 0.5);
+  // Orbit back to where the sweep happened, by **exactly reversing the drag**.
+  // Every check below clicks a point that had something under it *before* the
+  // turn, which is only still true if the camera is put back. Approximately
+  // back was enough for a dense organ and not for a narrow one: a spine is a
+  // few frame-percent wide, and a few pixels of leftover rotation moved every
+  // one of those points off it.
+  await page.mouse.move(box.x + box.width * dragToX, box.y + box.height * dragToY);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width * 0.35, box.y + box.height * 0.55, { steps: 20 });
+  await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY, { steps: 20 });
   await page.mouse.up();
   await restPointer();
   if (afterDrag.en !== pinned.en) {
@@ -1045,7 +1063,16 @@ try {
   // the button works, which is the whole thing worth knowing here.
   //
   // Each press gets its own page, because a working retry navigates.
+  //
+  // **Only for a scene that loads the atlas.** Most scenes in this repository
+  // are procedural and fetch nothing: blocking a URL they never request leaves
+  // them loading normally, and every assertion below then reports a missing
+  // error state, a missing message and a missing retry button for a scene that
+  // has nothing to fail. Checked by counting the aborts rather than by naming
+  // the scene, so a second atlas scene is covered without editing this.
   const atlas = 'assets/brain/brain.glb';
+  let atlasAborts = 0;
+  let atlasScene = true;
   const recoveryRuns = [
     ['click', async (button) => { await button.click(); }],
     ['Enter', async (button) => { await button.focus(); await button.press('Enter'); }],
@@ -1056,7 +1083,13 @@ try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const failing = await context.newPage();
     let blockAtlas = true;
-    await failing.route(`**/${atlas}`, (route) => (blockAtlas ? route.abort('failed') : route.continue()));
+    await failing.route(`**/${atlas}`, (route) => {
+      if (blockAtlas) {
+        atlasAborts += 1;
+        return route.abort('failed');
+      }
+      return route.continue();
+    });
     await failing.goto(url, { waitUntil: 'domcontentloaded' });
     await failing.locator('.consent-banner button').last().click({ timeout: 5000 }).catch(() => {});
     await failing.waitForFunction(
@@ -1064,6 +1097,12 @@ try {
       null,
       { timeout: 60000 }
     ).catch(() => {});
+    if (!atlasAborts) {
+      atlasScene = false;
+      notes.push('this scene loads no atlas, so there is no failed load to recover from');
+      await context.close();
+      break;
+    }
 
     const failed = await failing.evaluate(() => ({
       state: window.__app?.scene?.getAnatomyStatus?.().state ?? null,
@@ -1152,7 +1191,7 @@ try {
   //     screen without opening anything — but "should" is what this checks.
   //     The consent card is a declared transient overlay, so the overlap it
   //     causes is recorded rather than counted as a defect.
-  for (const [width, height] of [[844, 390], [375, 667]]) {
+  for (const [width, height] of atlasScene ? [[844, 390], [375, 667]] : []) {
     const context = await browser.newContext({ viewport: { width, height } });
     const small = await context.newPage();
     await small.route(`**/${atlas}`, (route) => route.abort('failed'));
