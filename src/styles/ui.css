@@ -3262,6 +3262,24 @@
   overflow: hidden;
 }
 
+/* Neither of these may be shrunk to fit the column.
+ *
+ * `.top-left` is a flex column and its children shrink by default, and both of
+ * these clip their overflow — so at 844x390, where the title card takes 95px of
+ * a 102px column, the onward panel was squeezed to **2px** and its 32px toggle
+ * was clipped out of it, painted under the console and clickable by nothing.
+ * A reader on a landscape phone had no way back to the anatomy.
+ *
+ * Same rule, same reason as `.rail.is-anatomy:not(.is-anatomy-docked) >
+ * .anatomy-panel` above: a flex item that overflows its box is not a smaller
+ * item, it is a broken one. It keeps its height and the column scrolls, which
+ * `.top-left` is already set up to do.
+ */
+.model-scope,
+.related-scenes {
+  flex: none;
+}
+
 /* ---------- where else this subject is shown ----------
    Same shape as the scope panel above it and the same width, because they read
    as a pair: what the model does not represent, and where the rest is. That
