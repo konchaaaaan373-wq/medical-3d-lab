@@ -528,6 +528,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code from one `spineAt` curve, so the column bends once rather than three times in three places that happen to line up: cervical forward, thoracic back, lumbar forward, with body size growing downwards and a fused sacral wedge at the bottom. Each region is a stack of simplified vertebrae drawn as one structure; **one lumbar level is drawn in full and stays in the column, in its place, at the same scale** — body, two pedicles, two laminae, four facets and a spinous process, with the disc below it as a separate annulus and nucleus. The canal is drawn as a body behind the vertebral bodies for the whole column, the cord runs down it and stops at a named height, the cauda equina continues below as loose strands, and one pair of roots leaves beneath the pedicles of the detailed level. No state and no mechanism: nothing moves and nothing bends. **No height, width, angle or curve is a measurement.** The ribs, the ligaments, the muscles, the foramina as openings, the ligamentum flavum, the epidural fat and veins, the coccyx and the roots of every other level are not drawn.',
   },
   {
+    profileId: 'nose-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of one nasal cavity and its four paranasal sinuses, placed from standard descriptive anatomy: three turbinates on the lateral wall with the meatus of the same name beneath each, the maxillary ostium high on the sinus’s medial wall opening into the middle meatus, the nasolacrimal duct opening into the inferior meatus, and the olfactory region confined to the roof. No dimension, angle or sinus volume is a measurement, no individual variation is represented, and nothing in the scene moves or swells.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

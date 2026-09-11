@@ -258,6 +258,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the ribs and their joints, the ligaments of the column including the ligamentum flavum, the intervertebral foramina as openings rather than gaps, the epidural fat and venous plexus, the coccyx, and the roots of every level rather than one pair. Nothing bends, which is the first thing a movement or instability scene would need',
   },
   {
+    organ: 'nose',
+    level: 'A2',
+    evidence:
+      'scenes/respiratory/scenes/noseAnatomy — external nose, nasal vestibule, septum, lateral nasal wall, hard palate, all three turbinates, all three meatuses, maxillary sinus and its ostium, frontal sinus, ethmoid air cells, sphenoid sinus, nasolacrimal duct, olfactory region and nasopharynx, selectable by name; tests/organ-parts-anatomy.test.js — the three shelves stack in order on one wall and each gutter lies below the shelf it is named for and above the next, the maxillary ostium leaves the sinus well above its floor and ends inside the middle meatus, the tear duct ends inside the inferior meatus and nowhere else, the olfactory patch sits on the roof above every turbinate, and the cavity runs from nostril to choana without the septum crossing into it',
+    next: 'A3: the uncinate process, ethmoid bulla and hiatus semilunaris that shape the middle meatus, the frontal recess as a drawn channel, the anterior and posterior ethmoid groups separated by where they drain, the sphenoethmoidal recess, the cribriform plate and olfactory bulb, and the left cavity. Nothing here swells, which is the first thing an obstruction scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

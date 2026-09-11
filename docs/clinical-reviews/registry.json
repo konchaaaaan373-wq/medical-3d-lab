@@ -1016,5 +1016,27 @@
       "No herniation, stenosis, fracture or deformity is represented in any form, and nothing here is anyone’s spine.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, level counting on an image, or planning any injection, instrumentation or surgery."
     ]
+  },
+  {
+    "sceneId": "nose-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of one nasal cavity and the four paranasal sinuses, and where each sinus and the tear duct open into it. No airflow, no mucociliary clearance, no turbinate swelling, no disease."
+    ],
+    "sources": [
+      "docs/model-cards/nose-anatomy.md",
+      "docs/model-evidence/nose-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "The middle meatus is drawn as a plain gutter: the uncinate process, ethmoid bulla and hiatus semilunaris that actually shape it are not modelled, so the arrangement within the ostiomeatal complex cannot be read off this model.",
+      "Only the right cavity, its turbinates and its sinuses are drawn; the left is absent, and no normal variation (deviated septum, absent frontal sinus, concha bullosa) is represented.",
+      "The frontal and ethmoid drainage channels are described in the copy and not drawn as geometry.",
+      "Nothing swells: the hourly turbinate cycle the copy describes is not animated."
+    ]
   }
 ]
