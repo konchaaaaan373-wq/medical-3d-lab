@@ -421,6 +421,9 @@ const DETAIL_VIEWS = new Set([
   'ear-anatomy:ossicles',
   'ear-anatomy:outer-ear',
   'eye-anatomy:fundus',
+  // Down the axis from behind: it sees the length of the nerve rather than the
+  // eye, and measuring the reserve against it makes every other view tiny.
+  'eye-anatomy:posterior',
   'eye-anatomy:sagittal-section',
   'eye-anatomy:muscles',
 ]);

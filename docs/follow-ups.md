@@ -449,6 +449,31 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
 
+### F-49 subject が横に長いシーンは phone 幅で極端に小さくなる — P2（Claude① / framing）
+
+**再現条件.** `minHorizontalAspect` が 1 を超えるシーンを 375×667 で開くと、
+対象が frame の 1/3 以下になります。実測（2026-09-11、`?preview=1`）:
+
+| scene | reserve | phone での対象の見かけ幅 |
+| --- | --- | --- |
+| `eye-anatomy` | 1.6 → 1.15 に下げた | 375px 中およそ 120px |
+| `ear-anatomy` | 1.4 | 375px 中およそ 130px |
+| `knee-anatomy` | 0.45 | frame をほぼ満たす（問題なし） |
+
+reserve は「その距離で subject が frame の幅を満たす aspect」なので、
+narrow viewport では定義どおり引きます。問題は、**奥行きが幅を決めている
+subject**（眼球：視神経と外眼筋が後方へ伸びる）でも同じ扱いになることです。
+軸に平行な bounds／bounding sphere では、正面から見て奥行きでしかないものが
+「幅」として効きます。
+
+- Claude② 側でやったこと: 眼の視神経と直筋を短くし、`posterior` view を
+  reserve の測定対象から外して 1.6 → 1.15。耳は形状上これ以上詰められません
+- **最小要求（Claude① へ）**: framing が subject の幅を測るとき、
+  **その view の視線方向に投影した幅**を使えれば、奥行きの長いシーンが
+  narrow viewport で不当に縮みません。共通機能なので Claude② 側では
+  実装していません
+- 完了の定義: `ear-anatomy` が phone 幅で frame の半分以上を占めること
+
 ### F-45 患者向け説明の「画面のどこを見るか」を UI が出していない — P2（代表病態）
 
 `src/data/patientGuides.js` の各 step は `title`（どこが変わるか）・

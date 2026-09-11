@@ -377,8 +377,8 @@
       "src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "ce012f6382aeb7da",
+    "cardRevision": 5,
+    "modelDigest": "dc382678f28069ca",
     "cardUpdatedAt": "2026-09-11"
   },
   {

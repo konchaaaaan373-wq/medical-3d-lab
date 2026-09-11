@@ -249,9 +249,9 @@ export function buildEyeball({ colors = {}, opacity = 1 } = {}) {
   const nerve = new TubeSurface(
     smoothCurve([
       [NASAL * 0.3, 0, -0.86],
-      [NASAL * 0.42, 0.01, -1.2],
-      [NASAL * 0.62, 0.03, -1.8],
-      [NASAL * 0.84, 0.06, -2.4],
+      [NASAL * 0.4, 0.01, -1.12],
+      [NASAL * 0.56, 0.03, -1.5],
+      [NASAL * 0.72, 0.05, -1.86],
     ]),
     { radius: (u) => 0.18 + 0.05 * smoothstep(0.7, 0, u), steps: 30, radial: 16 }
   );
@@ -265,7 +265,7 @@ export function buildEyeball({ colors = {}, opacity = 1 } = {}) {
   // equator. Which one is which is a question about direction, so each is drawn
   // between a named origin and a named insertion rather than by eye.
   const rectus = (id, insertion, color) => {
-    const origin = [NASAL * 0.34, 0, -2.1];
+    const origin = [NASAL * 0.3, 0, -1.62];
     const middle = [
       origin[0] * 0.4 + insertion[0] * 0.6,
       origin[1] * 0.3 + insertion[1] * 0.7,
