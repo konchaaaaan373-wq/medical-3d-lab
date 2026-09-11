@@ -2039,8 +2039,12 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 
   // The bowstring, under the whole of it.
   const fascia = box('plantar-fascia');
-  assert.ok(fascia.min.z < box('calcaneus').min.z + 2.5, 'the band starts back at the heel');
-  assert.ok(fascia.max.z > 13, 'and runs forward to the heads of the metatarsals');
+  // Measured against the bones rather than against a number: the foot is laid
+  // out in centimetres and drawn at `WORLD_SCALE`, so a literal here would be
+  // in neither unit.
+  assert.ok(fascia.min.z < box('calcaneus').min.z + 2.0, 'the band starts back at the heel');
+  assert.ok(fascia.max.z > box('cuneiforms').max.z, 'and runs forward past the tarsus into the forefoot');
+  assert.ok(fascia.max.z > box('metatarsals').getCenter(new THREE.Vector3()).z, 'to the heads of the metatarsals');
   assert.ok(fascia.max.y < ARCH.summit[1], 'passing below the summit of the arch the whole way');
   assert.ok(box('spring-ligament').max.y > fascia.max.y, 'and the short sling sits above it');
 

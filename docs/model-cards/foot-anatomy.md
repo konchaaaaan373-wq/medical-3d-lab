@@ -77,6 +77,12 @@ phalanges.
   (`docs/architecture-rules.md` rule 1).
 - **Screen-left is the patient's right** (`docs/architecture-rules.md` rule 5);
   in this right foot medial is `+x`, from one `MEDIAL` constant.
+- **The foot is laid out in centimetres and drawn at `WORLD_SCALE`.** The shared
+  viewer clamps the camera to 55 units from its target, and a foot seen from the
+  side is nearly thirty units long: at life scale the framing asks for more
+  distance than the viewer will give and the toes are cropped on a phone, with
+  no error anywhere. The layout stays in the unit the anatomy is known in and
+  the finished group is scaled. See F-51 in `docs/follow-ups.md`.
 
 ## 7. What it must never be used for
 
