@@ -50,6 +50,11 @@ import {
   MODEL_CONTROLS as GOITRE_CONTROLS,
 } from '../src/data/multinodularGoitre.js';
 import { MultinodularGoitreScene } from '../src/scenes/endocrine/scenes/multinodularGoitre/MultinodularGoitreScene.js';
+import {
+  STAGES as KNEE_STAGES,
+  MODEL_CONTROLS as KNEE_CONTROLS,
+} from '../src/data/kneeOsteoarthritis.js';
+import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -234,6 +239,24 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new MultinodularGoitreScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The knee, whose walk is a correction rather than a progression: the step
+   * that matters most turns the reader to look at the compartment that is
+   * *fine*, because "the cartilage wore out" is a sentence about a joint and
+   * this is not one.
+   */
+  {
+    id: 'knee-osteoarthritis',
+    stages: KNEE_STAGES,
+    controls: KNEE_CONTROLS,
+    scene: () => {
+      const scene = new KneeOsteoarthritisScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new KneeOsteoarthritisScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];

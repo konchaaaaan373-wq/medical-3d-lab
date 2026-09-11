@@ -2230,6 +2230,118 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Knee osteoarthritis.
+   *
+   * The walk is a correction. Three steps take one compartment down to nothing
+   * while the other keeps its layer, and the fourth turns the reader to look at
+   * that other side — because "the cartilage wore out" is a sentence about a
+   * joint, and this is not one.
+   *
+   * The fifth spreads the same loss evenly, at the same position on the axis,
+   * so that confined and even are seen as two pictures rather than two amounts.
+   */
+  'knee-osteoarthritis': Object.freeze({
+    title: 'Which part of the knee lost its layer',
+    titleJa: '膝のどの部分が、層を失ったのか',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'intact',
+        frame: 'knee',
+        focus: ['cartilage', 'meniscus'],
+        certainty: 'established',
+        title: 'Nothing in a working knee is bone against bone',
+        titleJa: '働いている膝に、骨と骨が当たる場所はありません',
+        body: 'Each bone end is covered by a smooth layer, and on each side a wedge sits between them. The two bones never touch each other.',
+        bodyJa: 'それぞれの骨端はなめらかな層に覆われ、左右それぞれの側で、その間に楔が挟まっています。2 つの骨が触れ合うことはありません。',
+        look: 'The pale blue films over the bone ends are that layer. The cream wedges beside them are the two menisci.',
+        lookJa: '骨端を覆う淡い青色の膜がその層です。その脇にあるクリーム色の楔が 2 つの半月板です。',
+      },
+      {
+        progress: 0.55,
+        stage: 'thinning',
+        frame: 'joint-line',
+        focus: ['cartilage'],
+        certainty: 'established',
+        title: 'One side is losing it, and the other is not',
+        titleJa: '片側だけが失われ、もう片側は残ります',
+        body: 'The layer goes from one half of the joint. As those two surfaces come together, the wedge between them has one way to go, and it is squeezed outward.',
+        bodyJa: '関節の片側の半分から層が失われていきます。その 2 つの面が近づくと、間の楔には行き場が 1 つしかなく、外へ押し出されます。',
+        look: 'Follow the colour on that side. The wedge beside it has already begun to move out of the joint.',
+        lookJa: 'その側の色を追ってください。脇の楔はすでに関節の外へ動き始めています。',
+      },
+      {
+        progress: 1,
+        stage: 'gone',
+        frame: 'joint-line',
+        focus: ['cartilage', 'osteophyte'],
+        certainty: 'established',
+        title: 'On that side the two surfaces now meet',
+        titleJa: 'その側では、2 つの面が接します',
+        body: 'With nothing left between them the bones are drawn touching, and new bone has grown at the rim of that half of the joint.',
+        bodyJa: '間に何も残っていないため、骨は接して描かれます。そして関節のその半分の辺縁に、新しい骨ができています。',
+        look: 'The pale swelling at the edge is that new bone. It is at that rim, and only that one.',
+        lookJa: '縁にある淡い膨らみがその新生骨です。その辺縁だけにあります。',
+      },
+      {
+        progress: 1,
+        stage: 'gone',
+        frame: 'both',
+        focus: ['other'],
+        certainty: 'established',
+        title: 'The other half of the same joint still has its own',
+        titleJa: '同じ関節のもう半分は、まだ保たれています',
+        body: 'This is what "worn out" misses. It is not the knee that has lost its layer; it is one compartment of it, and the other is as it was.',
+        bodyJa: '「すり減った」という言い方では、ここが抜け落ちます。層を失ったのは膝ではなく、その片方の区画であって、もう一方は元のままです。',
+        look: 'Look across to the other side. The film is intact, the wedge has not moved, and the rim is smooth.',
+        lookJa: '反対側を見てください。膜は保たれ、楔も動いておらず、縁もなめらかです。',
+      },
+      {
+        progress: 1,
+        stage: 'gone',
+        frame: 'both',
+        focus: ['other'],
+        // The same amount lost, spread evenly: a different picture rather than
+        // a worse one.
+        controls: { confinement: 0 },
+        certainty: 'established',
+        title: 'Spread evenly, the same amount is a different picture',
+        titleJa: '同じ量でも、均等なら別の像になります',
+        body: 'Take the same loss and share it between both halves. Nothing about the amount has changed, and yet there is no longer a side to point at.',
+        bodyJa: '同じだけの消失を両側で分け合わせてみます。量は何も変わっていませんが、もう「こちら側」と指せる場所はありません。',
+        look: 'Both films have gone and both rims have swollen. Compare it with the step before, not with the first one.',
+        lookJa: '両方の膜が失われ、両方の縁が膨らんでいます。最初の段階ではなく、1 つ前と見比べてください。',
+      },
+      {
+        progress: 1,
+        stage: 'gone',
+        frame: 'knee',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and how loosely it follows the picture',
+        titleJa: '気づくこと、そして絵との結びつきの緩さ',
+        body: 'Pain with use, stiffness after sitting, and a knee that feels different are described. How much of any of it there is does not follow closely from how much layer is left.',
+        bodyJa: '動かしたときの痛み、座ったあとのこわばり、膝の感じが変わることなどが語られます。その程度は、残っている層の量から近く決まるわけではありません。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and no weight on this knee.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、この膝に体重もかかっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'gone',
+        frame: 'knee',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'What this picture does not contain',
+        titleJa: 'この絵に含まれていないもの',
+        body: 'No weight, no walking and no time. The slider is how much is gone, not how long it took, and nothing here shows why it went from one side.',
+        bodyJa: '体重も歩行も時間もありません。スライダーは「どれだけ失われたか」であって経過時間ではなく、なぜ片側から失われたのかも示していません。',
+        look: 'The numbers are shares of the layer this drawing started with, and nothing else.',
+        lookJa: '画面の数値は、この絵が最初に持っていた層に対する割合であって、それ以外ではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'knee-osteoarthritis',
+    slug: 'knee-osteoarthritis',
+    titleEn: 'Knee osteoarthritis',
+    titleJa: '膝関節症',
+    system: 'musculoskeletal',
+    organ: 'knee',
+    organs: ['knee'],
+    disease: 'knee-osteoarthritis',
+    conditions: ['knee osteoarthritis', 'medial compartment osteoarthritis', 'meniscal extrusion', 'osteophyte', '膝関節症', '変形性膝関節症', '内側型', '半月板逸脱', '骨棘'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/knee-osteoarthritis.md',
+    modelProfile: 'knee-osteoarthritis-compartment',
+    description:
+      'A knee does not wear out; a compartment does. One side loses its layer while the other keeps its own, and what follows \u2014 the meniscus squeezed out, the new bone at the rim \u2014 goes with the side rather than with the joint.',
+    descriptionJa:
+      '膝は「すり減る」のではなく、片方の区画が失われます。一方が層を失っても他方は保たれ、その後に起きること——押し出される半月板、辺縁の新生骨——は関節全体ではなく「その側」に付いて回ります。',
+    tags: ['musculoskeletal', 'compartment-scenario', 'geometric-model'],
+    load: () => import('../scenes/musculoskeletal/scenes/kneeOsteoarthritis/index.js'),
+  },
+  {
     id: 'multinodular-goitre',
     slug: 'multinodular-goitre',
     titleEn: 'Multinodular goitre',

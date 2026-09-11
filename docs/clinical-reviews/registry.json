@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "knee-osteoarthritis",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of compartmental knee osteoarthritis, prepared for future clinical sign-off: what is left of the layer on each side and what follows on the side that lost it"
+    ],
+    "sources": [
+      "docs/model-cards/knee-osteoarthritis.md",
+      "docs/model-evidence/knee-osteoarthritis.md",
+      "tests/knee-osteoarthritis-model.test.js",
+      "src/models/kneeOsteoarthritis.js"
+    ],
+    "unresolvedLimitations": [
+      "The fraction the model reports is of its own drawn layer and is not a joint space width. Joint space width is millimetres between bone surfaces on a weight-bearing radiograph and includes the meniscus; nothing here is measured, weight-bearing or millimetres.",
+      "There is no pain, stiffness, function or anything a person can do anywhere in the model, and nothing in it makes any of them follow from how much layer is left.",
+      "There is no loading in the model at all, so the loop by which uneven loss loads the worn side harder is left open rather than represented.",
+      "The joint is drawn in extension and nothing in the scene moves; a knee's compartments load differently through the range and none of that is here.",
+      "Marginal bone is drawn as a swelling of the rim. Where osteophytes grow, in what shape and in what order is not in the model, and no size on screen is a grade."
+    ]
+  },
+  {
     "sceneId": "multinodular-goitre",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

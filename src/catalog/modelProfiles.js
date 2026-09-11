@@ -648,6 +648,24 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'knee-osteoarthritis-compartment',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of what is left of a drawn articular layer in each compartment of one knee, and what ' +
+      'follows on the side that lost it: a meniscus pushed out from between converging surfaces, and marginal bone ' +
+      'past a threshold. The card says the fraction it reports is of the model\'s own drawn layer and is ' +
+      'emphatically not a radiographic joint space width, and that the model contains no pain, no loading, no time ' +
+      'and no treatment — including the loop by which uneven loss loads the worn side harder, which it explicitly ' +
+      'does not close.@ ',
+  },
+  {
     profileId: 'multinodular-goitre-direction',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
