@@ -1,76 +1,96 @@
 # β 候補 matrix
 
-β 代表デモの候補の現状表です。**同じ情報を他の handoff へ写さないでください**——ここが 1 枚の現状です。
-全 45 シーンのうち、代表 journey A〜F が通る 13 件を載せます。
+現状 1 枚です。**同じ情報を他の handoff へ写さないでください。**
+値は実装から取っています（`SCENE_MANIFEST.status` / `PATIENT_GUIDES` /
+`attributionForScene` / `betaPublicationProblems` / `clinical-reviews/registry.json`）。
 
-値は実装から生成しています（`SCENE_MANIFEST.status` / `PATIENT_GUIDES` / `attributionForScene` /
-`betaPublicationProblems`）。**production 公開は `brain-anatomy` の 1 件のみ**で、この表のどの行もそれを変えていません。
+**3 つを混同しないための表です** ——「現 β で公開」「次期 β 候補」「開発中」。
+`production` 公開は **`brain-anatomy` の 1 件のみ**で、この表はそれを変えていません。
 
-| scene | 解剖 | 病態 | 患者説明 | 実機確認 | 臨床レビュー | asset / license | production gate | blocker（gate の言い分） |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| **心臓** 心臓の解剖 `heart-anatomy` | ✅ | — | — | 1280 / 844 | 未 | **候補（未採用）** | 閉 | 候補 asset 2 本が release gate 未通過；公開判断記録なし（承認） |
-| 心不全 `heart-failure` | — | ✅ | ✅ | 1280 / 844 | 済 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 心筋虚血 `myocardial-ischemia` | — | ✅ | ✅ | 1280 / 375 / 844 | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| **脳** 脳の解剖 `brain-anatomy` | ✅ | — | — | 1280 / 375 / 844 | 未 | released | **公開中** | —（公開中） |
-| アミロイドβ `amyloid-beta` | — | ✅ | ✅ | 1280 / 375 / 844 | 済 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| **肺** 肺の解剖 `lung-anatomy` | ✅ | — | — | 1280 / 375 / 844 | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| COPD `copd` | — | ✅ | ✅ | 1280 / 375 / 844 | 済 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 喘息 `asthma` | — | ✅ | ✅ | 1280 / 375 | 済 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| **肝・腎** 肝臓の解剖 `liver-anatomy` | ✅ | — | — | 1280 / 375 | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 門脈圧亢進症 `portal-hypertension` | — | ✅ | ✅ | 1280 / 375 | 済 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 肝腎症候群 `hepatorenal-syndrome` | — | ✅ | ✅ | 1280 / 375 | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 腎臓の解剖 `kidney-anatomy` | ✅ | — | — | — | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
-| 腎濾過 `renal-filtration` | — | ✅ | ✅ | — | 未 | procedural | 閉 | β の対象外（anatomy-only ADR） |
+---
 
-- **患者説明** — contract 準拠のガイドがあるか。13 件すべて `tests/guide-contract.test.js` が測ります
-- **実機確認** — その journey を実ブラウザで通した viewport。`—` は未実施であって、失敗ではありません
-- **臨床レビュー** — `status` が `reviewed` / `production` か。**署名は代筆していません**
-- **production gate** — `betaPublicationProblems()` の結果そのもの
+## A. 現 β で公開しているもの
 
-## gate が閉じている理由は 2 種類しかありません
+| scene | 状態 | asset | 残り |
+| --- | --- | --- | --- |
+| 脳の解剖 `brain-anatomy` | **公開中** | released（CC BY-SA 4.0、attribution 実体あり） | 解剖・臨床レビューは `pending` のまま公開している（既定の判断） |
 
-**ほとんどは「β の対象外」です。** 現行 β は解剖のみを公開する ADR
-（`docs/architecture/adr-2026-09-08-anatomy-only-beta.md`）なので、病態シーンと、
-`BETA_ANATOMY_CANDIDATES` に入っていない解剖シーンは**落ちているのではなく対象外**です。
-これは実装の残件ではありません。
+## B. 現 β の公開候補 — 判断待ちはここだけ
 
-**実際に判断待ちなのは `heart-anatomy` の 1 件だけです**——候補 asset 2 本が asset release gate を
-通っておらず、この release の公開判断記録がありません。どちらも承認であって実装ではありません。
+| scene | 解剖 | 病態 | 患者説明 | 実機確認 | asset / license | blocker |
+| --- | --- | --- | --- | --- | --- | --- |
+| 心臓の解剖 `heart-anatomy` | ✅ 14 構造＋血管 37 | — | — | 1280 / 844 | **候補 2 本・未採用** | ①asset が release gate 未通過 ②公開判断記録なし — **どちらも承認**（→ `docs/decisions/`） |
 
-## この表に出てこないもの
+**この 1 件だけが「承認待ち」です。** ただし承認だけでは足りません——
+`formatValidation` gate は errors 0・warnings 0 でしか通らず、候補 2 本は 408 件と 33 件の
+縮退頂点法線を持ちます。**法線を再計算した派生ファイル（新 hash）を作る判断**が要ります。
 
-残り 32 シーン（prototype 14・alpha 18）は代表 journey に含めていません。preview では全部見えます
+## C. 次期 β 候補 — 技術的には統合済み
+
+Deep Research 後の製品戦略では、Medical 3D Lab の差別化は**病態＋professional/patient**にあります。
+下の 5 件は**実装が揃っており、現 release policy（anatomy-only）の対象外であるだけ**です。
+**「失敗している」のではありません。**
+
+| scene | model profile | patient guide | pro/patient 往復 | 解剖への行き先 | mobile | 臨床レビュー | blocker |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 心不全 `heart-failure` | ✅ mechanistic | ✅ 6 段 | ✅ | ✅ 解剖・虚血 | 1280 / 844 | ⚠️ `legacy-unversioned` | **現 policy 対象外**＋レビューを現行基準で取り直す |
+| 心筋虚血 `myocardial-ischemia` | ✅ mechanistic | ✅ 6 段 | ✅ | ✅ 解剖・心不全 | 1280 / 375 / 844 | ❌ `pending` | **現 policy 対象外**＋レビュー未実施 |
+| アミロイドβ `amyloid-beta` | ✅ illustrative | ✅ 7 段（certainty 付） | ✅ | ✅ 脳解剖（別スケール明示） | 1280 / 375 / 844 | ⚠️ `legacy-unversioned` | **現 policy 対象外**＋レビューを現行基準で |
+| COPD `copd` | ✅ mechanistic | ✅ 8 段 | ✅ | ✅ 肺解剖 | 1280 / 375 / 844 | ⚠️ **`stale`（再レビュー必要）** | **現 policy 対象外**＋再レビュー |
+| 喘息 `asthma` | ✅ mechanistic | ✅ 8 段 | ✅ | ✅ 肺解剖・COPD | 1280 / 375 | ⚠️ **`stale`** | **現 policy 対象外**＋再レビュー |
+
+**5 件とも asset は procedural**です——外部 asset のライセンス問題も、adoption 判断も、
+attribution 義務も**ありません**。心臓解剖を止めているものが、この 5 件には存在しません。
+
+## D. 開発中
+
+残り 41 シーン（alpha 26・prototype 14・reviewed 1）。preview では全部動きます
 （`npm run dev` は無条件、build は `?preview=1`）。
+Claude② が正常臓器を、Claude③ が病態を増やし続けている先です。
+
+---
+
+## 公開までの距離（近い順）
+
+**「作りたい順」ではなく、blocker の数と重さで並べています。**
+
+| | scene | 残っているもの | 重さ |
+| --- | --- | --- | --- |
+| 1 | **`amyloid-beta`** | policy 判断＋レビューを現行基準で取り直す。**外部 asset なし・certainty 表示済み・7 段完成** | 軽 |
+| 2 | **`heart-failure`** | policy 判断＋レビューを現行基準で。reference implementation で最も作り込まれている | 軽 |
+| 3 | **`copd`** | policy 判断＋**再レビュー**（`stale`）。8 段・frame/focus 完備 | 中 |
+| 4 | **`asthma`** | policy 判断＋再レビュー。375 のみ確認済み、844 未確認 | 中 |
+| 5 | **`myocardial-ischemia`** | policy 判断＋**レビュー未実施**（`pending`）。色の誤認可否が未判断 | 中 |
+| 6 | **`heart-anatomy`** | **承認 2 件＋派生ファイル作成**。外部 asset・ライセンス・NLM 条件・validator 失敗 | **重** |
+
+**いちばん近いのは心臓の解剖ではありません。** 心臓解剖は外部 asset を抱えており、
+法務・派生ファイル・2 種類の承認が要ります。一方 1〜5 は procedural で、
+**必要なのは release policy の判断と医学レビューだけ**です。
+
+policy を「解剖のみ」から「解剖＋レビュー済み病態」へ広げる判断が下りれば、
+**`amyloid-beta` と `heart-failure` は実装作業なしで公開へ進めます。**
+
+---
 
 ## 各 agent へ返すもの
 
-統合で見つかったもののうち、Claude① の担当外のものだけです。
-
 **Work — 行き先が 2 つの surface から出ています。** 同じルートを、タイトルカードの
-pairing（`TitleCard.js` + `entry.relatedScenes`）と、行き先パネル
-（`RelatedScenesPanel` + `meta.related`）の両方が出しています。宣言が 2 本あるので、
-片方だけを直すと画面が食い違います。
+pairing（`TitleCard.js` + `entry.relatedScenes`）と行き先パネル
+（`RelatedScenesPanel` + `meta.related`）の両方が出しています。
 
 | | 件数 | scene |
 | --- | --- | --- |
 | 両方が宣言 | 3 | `lung-anatomy` `liver-anatomy` `kidney-anatomy` |
-| pairing のみ | 9 | `copd` `portal-hypertension` `renal-filtration` `stomach-anatomy` ほか |
+| pairing のみ | 9 | `copd` `portal-hypertension` `renal-filtration` ほか |
 | パネルのみ | 1 | `brain-anatomy` |
 
-**どちらを正本にするかは外枠 UI の判断**なので、Claude① では消していません。
-パネル側は「別のモデルです」という一文と scale 種別（`transitionType` /
-`scaleRelationship`）を運びます——pairing はルートだけです。統合するなら、
-**その一文を落とさない側**を残してください。
+**どちらを正本にするかは外枠 UI の判断**なので Claude① では消していません。
+パネル側は「別のモデルです」の一文と scale 種別を運びます——統合するなら**その一文を落とさない側**を。
 
-**Work — F-81（`verify:ui` が横方向 clip を見ていない）は今回もう 1 件出しました。**
-844×390 で `.related-scenes` が 2px に潰れ、32px の toggle が clip されて
-console の下に描かれ、誰も押せませんでした（`flex: none` で解決）。
+**Work — F-81（横 clip 検出）。** 844×390 で `.related-scenes` が 2px に潰れ、
+32px の toggle が clip されて console の下に描かれ、誰も押せませんでした（`flex: none` で解決）。
 `npm test` も `verify:ui` も `verify:anatomy` も**前後どちらも緑**です。
-再現条件と期待条件は [`b8-handoff.md`](b8-handoff.md) の Work セクションにあります。
+再現条件は [`b8-handoff.md`](b8-handoff.md)。
 
-**Claude② / Claude③ へ返す重大問題は、今回ありません。** geometry も solver も
-guide data もそのまま動きました。`biliaryTree.js` は両 branch が書いていて
-Claude② 版が superset だったのでそちらを採り、`buildBiliaryTree` の part id は
-両消費者とも同じです。COPD / 喘息が指していた `breathing-lungs` の行は、
-Claude③ 自身が「名前付き肺アトラスが来たら差し替える」と書いていたので
-`lung-anatomy` に差し替えました。
+**Claude② / Claude③ へ返す重大問題はありません。** 今回の追加取り込み（膝・肩・股関節）も
+衝突は `revisions.json` の 1 件のみでした。
