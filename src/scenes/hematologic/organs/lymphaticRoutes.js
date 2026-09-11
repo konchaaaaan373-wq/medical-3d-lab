@@ -38,10 +38,12 @@ export const LEFT = 1;
  *
  * **A display size.** A node group is a dozen nodes of a few millimetres
  * against a trunk of half a metre; drawn to scale they are invisible. Each
- * group is drawn as a handful of beads large enough to see and click.
+ * group is drawn as a handful of beads large enough to see and click — and
+ * "and click" is the part that set this number: at a sixth of a unit the beads
+ * were about ten pixels across and a click landed on one only sometimes.
  * **No node size or count may be read off this model.**
  */
-export const NODE_DISPLAY_SIZE = 0.16;
+export const NODE_DISPLAY_SIZE = 0.26;
 
 /** The points the scene and the pathology layer hang things on. */
 export const SITES = Object.freeze({
@@ -86,7 +88,7 @@ export function buildLymphaticRoutes({ colors = {} } = {}) {
    * Each group is one structure: "the axillary nodes" is what a reader asks
    * about and what a report names, not the fourth node from the top.
    */
-  const group = (id, centre, spread, color, count = 6) => {
+  const group = (id, centre, spread, color, count = 5) => {
     const material = mucosaMaterial({ color: colors[id] ?? color });
     disposables.push(material);
     const meshes = [];
