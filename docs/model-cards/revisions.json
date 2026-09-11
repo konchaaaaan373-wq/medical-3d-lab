@@ -518,5 +518,17 @@
     "cardRevision": 3,
     "modelDigest": "634bb8b4b3b18786",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "foot-anatomy",
+    "card": "docs/model-cards/foot-anatomy.md",
+    "modelSources": [
+      "src/scenes/musculoskeletal/organs/foot.js",
+      "src/data/footAnatomyScene.js",
+      "src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "b618f2654f6fea49",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

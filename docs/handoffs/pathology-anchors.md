@@ -713,6 +713,55 @@ flexor-tendons  median-nerve  extensor-tendons  thenar-muscles
 
 ---
 
+## `foot-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 20 |
+| tags | `leg` `tarsus` `rays` `arch` `soft` `joint` |
+| views | `whole` `from-outside` `from-above` `the-arch` `the-ankle` `ligaments` |
+| bounds | 7.9 × 13.9 × 27.8 |
+
+```
+tibia  fibula
+talus  calcaneus  navicular  cuboid  cuneiforms
+metatarsals  proximal-phalanges  middle-phalanges  distal-phalanges
+plantar-fascia  spring-ligament
+achilles-tendon  tibialis-posterior-tendon  peroneal-tendons
+deltoid-ligament  lateral-ligaments
+ankle-joint  subtalar-joint
+```
+
+**anchors** — `SITES`: `archSummit` `heelInsertion` `ankle` `subtalar`
+`lateralMalleolus` `medialMalleolus` `halluxTip`。
+表としては `RAYS`（5 本の ray。母趾の `middle` は `null`）、
+`raySegment(ray, bone)`、`TARSALS`（足根骨の位置と大きさ。`y` がアーチそのもの）、
+`ARCH`（`heel` / `forefoot` / `summit`）、`GROUND`、`MEDIAL`。
+
+**病態候補**: 足底腱膜炎、外側靭帯損傷（足関節捻挫）、扁平足・
+後脛骨筋腱機能不全、距骨骨折・距骨壊死、踵骨骨折、外反母趾、
+アキレス腱断裂、変形性足関節症。
+
+**動かしてよいもの**: `TARSALS` の `y`（アーチ高——扁平足）、
+`plantar-fascia` の厚みと踵付着部、`lateral-ligaments` の連続性、
+`tibialis-posterior-tendon` の太さと連続性、`achilles-tendon` の連続性、
+各関節の隙間、`RAYS[0]` の方向（外反母趾）。
+
+**変えてはいけない関係**:
+- **舟状骨は立方骨より高い位置**にあります。この高さの差がアーチそのもので、
+  揃えるとアーチが消えます
+- **足底腱膜は `ARCH.summit` より下**を、踵から中足骨頭まで通ります。
+  アーチの上に通したら弦ではなくなります
+- 距骨は**下腿と踵骨の間**にあり、その上下に 1 つずつ関節があります。
+  内返し・外返しは下の関節（距骨下関節）で起こります
+- **外果は内果より下**まで達します。この非対称が外側捻挫の理由です
+- **内側は 1 枚、外側は 3 本**です。外側を 1 枚にしないでください
+- **中節骨は 4 本です**（母趾には中節骨がありません）
+- **荷重も運動もありません。** windlass 機構・アーチ低下・歩行は
+  このモデルからは主張できません。距骨の血行も描いていません
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

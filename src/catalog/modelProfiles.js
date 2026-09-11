@@ -590,6 +590,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of a right hand and wrist, placed from standard descriptive anatomy: eight carpal bones in two rows with the pisiform palmar to the triquetrum and the hook of the hamate and the scaphoid tubercle as the two pillars of the carpal arch, the flexor retinaculum spanning them, and the carpal tunnel between arch and band carrying nine flexor tendons with the median nerve most palmar; five rays with the thumb shorter, angled and carrying two phalanges where the others carry three. No bone length, joint angle or tunnel dimension is a measurement, bones are drawn as smooth blocks and shafts without their ends, and nothing in the scene moves.',
   },
   {
+    profileId: 'foot-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of a right foot and ankle, placed from standard descriptive anatomy: the talus held in a mortise by the tibia above and the two malleoli, with the lateral one reaching further distally; the subtalar joint beneath it; a medial longitudinal arch in which the navicular rides high and the cuboid low; the plantar fascia running from the calcaneal tuberosity to the metatarsal heads and the spring ligament under the head of the talus; one deltoid sheet medially against three separate lateral bands; and five rays with the great toe carrying two phalanges where the others carry three. No bone length, arch height, joint angle or ligament strength is a measurement, bones are drawn as smooth blocks and shafts without their joint surfaces, and nothing in the scene moves or bears weight.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
