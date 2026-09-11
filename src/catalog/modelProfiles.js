@@ -567,6 +567,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Procedural gross anatomy of the mouth, placed from standard descriptive anatomy: the tongue in two parts meeting at the sulcus terminalis with the vallate papillae lying along it, the palatine tonsil in the bed behind the palatoglossal arch, and the three pairs of salivary glands with the parotid duct crossing the cheek to the upper molar region and the submandibular duct running forward under the tongue to the caruncle beside the frenulum. The jaw is drawn open by a declared display amount because a closed mouth shows nothing; no dimension, angle or gland volume is a measurement, teeth are drawn as bands rather than as teeth, and nothing in the scene moves.',
   },
   {
+    profileId: 'pelvic-floor-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Procedural gross anatomy of the female pelvic floor, placed from standard descriptive anatomy: the levator ani as one sheet from the back of the pubis along the tendinous arch to the ischial spine, named in three parts front to back, with its two sides stopping short of the midline anteriorly so that the urogenital hiatus between them transmits the urethra and the vagina; the puborectalis as a sling passing behind the anorectal junction; and the perineal body between the vagina and the anal canal. The bones are drawn as the ring the floor spans rather than as hip bones. No dimension, angle or thickness is a measurement and nothing in the scene contracts.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

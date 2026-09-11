@@ -293,6 +293,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the intrinsic and extrinsic muscles and the midline septum, the filiform, fungiform and foliate papillae, the lingual and hypoglossal nerves and the boundary between their territories, and the vessels. The tongue does not move, which is the first thing a swallowing or a speech scene would need',
   },
   {
+    organ: 'pelvic-floor',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/pelvicFloorAnatomy — pelvic ring, sacrum, coccyx, obturator internus, tendinous arch, pubococcygeus, iliococcygeus, coccygeus, puborectalis, urogenital hiatus, perineal body, perineal membrane, external anal sphincter, urethra, vagina, rectum and anal canal, selectable by name; tests/organ-parts-anatomy.test.js — the three slices of the levator sheet run front to back without overlapping and all hang from the same origin line the tendinous arch is drawn along, the two sides stop short of the midline in front so the hiatus between them is a real gap, the urethra and the vagina pass through that gap and the bowel does not, the puborectalis passes behind the anorectal junction, and the perineal body lies between the vagina in front and the anal canal behind',
+    next: 'A3: the hip bones as bones rather than as a ring, the subdivisions of the levator, the fascia and the ligaments that suspend the viscera, the pudendal nerve and the vessels, the internal anal sphincter, and the bladder and uterus above. Nothing contracts and nothing descends, which is the first two things a continence or a prolapse scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

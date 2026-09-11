@@ -1154,6 +1154,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/oralAnatomy/index.js'),
   },
   {
+    id: 'pelvic-floor-anatomy',
+    slug: 'pelvic-floor-anatomy',
+    titleEn: 'Interactive pelvic floor anatomy',
+    titleJa: '触れて学ぶ骨盤底の解剖',
+    system: 'musculoskeletal',
+    organ: 'pelvic-floor',
+    organs: ['pelvic-floor'],
+    disease: null,
+    conditions: ['pelvic floor', 'levator ani', 'puborectalis', 'urogenital hiatus', 'perineal body', '骨盤底', '肛門挙筋', '恥骨直腸筋', '尿生殖裂孔', '会陰体'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pelvic-floor-anatomy.md',
+    modelProfile: 'pelvic-floor-anatomy-procedural-atlas',
+    description:
+      'A sheet of muscle with a gap in the front of it, and one part that is not a sheet at all but a sling passing behind the bowel.',
+    descriptionJa:
+      '前方に隙間のある筋のシートと、シートではなく腸管の後方を回る吊り輪。骨盤底の要点はこの2つです。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/pelvicFloorAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

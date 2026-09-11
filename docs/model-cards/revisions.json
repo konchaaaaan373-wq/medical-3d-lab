@@ -535,5 +535,17 @@
     "cardRevision": 3,
     "modelDigest": "fc9fd0176bf6f732",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "pelvic-floor-anatomy",
+    "card": "docs/model-cards/pelvic-floor-anatomy.md",
+    "modelSources": [
+      "src/scenes/musculoskeletal/organs/pelvicFloor.js",
+      "src/data/pelvicFloorAnatomyScene.js",
+      "src/scenes/musculoskeletal/scenes/pelvicFloorAnatomy/PelvicFloorAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "93196e0ac817d870",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

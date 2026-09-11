@@ -42,6 +42,11 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  HIATUS_BACK_T,
+  levatorOrigin,
+  buildPelvicFloor,
+} from '../src/scenes/musculoskeletal/organs/pelvicFloor.js';
+import {
   JAW_DISPLAY_OPENING,
   LEVELS as ORAL_LEVELS,
   SULCUS_Z,
@@ -1821,4 +1826,70 @@ test('the tongue is two parts, and a duct opens nowhere near its gland', () => {
   // The smallest pair is the one that opens where it sits.
   const sublingual = box('sublingual-gland');
   assert.ok(sublingual.distanceToPoint(caruncle) < 1.2, 'the sublingual glands are where their saliva arrives');
+});
+
+// --- the pelvic floor -------------------------------------------------------
+
+test('the pelvic floor is a sheet with a real gap in it, and a sling behind the bowel', () => {
+  // Two things make this anatomy what it is: a hole in the front of the sheet
+  // that nothing closes, and one part of the sheet that is a sling rather than
+  // a sheet. Both are measured here, because both are easy to draw away.
+  const pelvis = buildPelvicFloor();
+  pelvis.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of pelvis.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+
+  // One sheet, three slices, front to back and not on top of one another.
+  const slices = ['pubococcygeus', 'iliococcygeus', 'coccygeus'];
+  for (let i = 1; i < slices.length; i += 1) {
+    const ahead = box(slices[i - 1]).getCenter(new THREE.Vector3());
+    const behind = box(slices[i]).getCenter(new THREE.Vector3());
+    assert.ok(behind.z < ahead.z, `${slices[i]} is behind ${slices[i - 1]}`);
+  }
+  // And all of them hang from the line the tendinous arch is drawn along.
+  const arch = box('tendinous-arch');
+  for (const id of slices) {
+    assert.ok(box(id).intersectsBox(arch) || box(id).max.y > arch.min.y, `${id} reaches the arch it hangs from`);
+  }
+  const originMid = new THREE.Vector3(...levatorOrigin(0.5, 1));
+  assert.ok(arch.distanceToPoint(originMid) < 0.2, 'the arch is drawn along the sheet’s own origin line');
+
+  // The gap. Its edges are the sheet's medial edges, so it cannot be widened
+  // without moving the sheet.
+  const hiatus = box('urogenital-hiatus');
+  const sheet = box('pubococcygeus');
+  assert.ok(hiatus.max.x < sheet.max.x, 'the gap is inside the sheet that bounds it');
+  assert.ok(HIATUS_BACK_T > 0 && HIATUS_BACK_T < 1, 'and it ends part way back along the sheet');
+
+  // What goes through it, and what does not.
+  for (const id of ['urethra', 'vagina']) {
+    const viscus = box(id);
+    assert.ok(viscus.max.x < hiatus.max.x + 0.05, `the ${id} is within the width of the gap`);
+    assert.ok(
+      viscus.max.z < hiatus.max.z + 0.05 && viscus.min.z > hiatus.min.z - 0.05,
+      `and within its depth`
+    );
+  }
+  assert.ok(box('anal-canal').max.z < hiatus.min.z, 'the bowel does not go through the urogenital gap');
+
+  // A sling, not a ring: behind the bowel, and reaching the pubis on both sides.
+  const sling = box('puborectalis');
+  const anal = box('anal-canal');
+  assert.ok(sling.min.z < anal.min.z, 'the sling passes behind the bowel');
+  assert.ok(sling.max.z > box('urogenital-hiatus').max.z - 0.4, 'and comes forward to the pubis');
+  assert.ok(sling.max.x > 0.5 && sling.min.x < -0.5, 'on both sides');
+  assert.ok(sling.min.y > box('external-anal-sphincter').min.y, 'and it is above the sphincter below it');
+
+  // The knot between the two halves of the perineum.
+  const body = pelvis.anchorPoints.perinealBody;
+  assert.ok(body.z < box('vagina').min.z, 'the perineal body is behind the vagina');
+  assert.ok(body.z > anal.max.z, 'and in front of the anal canal');
+
+  // And the frame the whole thing is slung inside.
+  const ring = box('pelvic-ring');
+  assert.ok(ring.min.x < sheet.min.x && ring.max.x > sheet.max.x, 'the ring is outside the sheet');
+  assert.ok(ring.containsPoint(originMid) || ring.distanceToPoint(originMid) < 0.6, 'which the sheet hangs from');
 });

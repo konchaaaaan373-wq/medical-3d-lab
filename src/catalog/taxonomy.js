@@ -78,6 +78,7 @@ export const ORGANS = [
   { id: 'pharynx', system: 'respiratory', label: 'Pharynx', labelJa: '咽頭' },
   { id: 'mouth', system: 'gastrointestinal', label: 'Mouth and tongue', labelJa: '口腔・舌' },
   { id: 'tongue', system: 'gastrointestinal', label: 'Tongue', labelJa: '舌' },
+  { id: 'pelvic-floor', system: 'musculoskeletal', label: 'Pelvic floor', labelJa: '骨盤底' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
