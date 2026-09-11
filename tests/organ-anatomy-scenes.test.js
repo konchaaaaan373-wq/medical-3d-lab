@@ -19,6 +19,7 @@ import { ProstateAnatomyScene } from '../src/scenes/reproductive/scenes/prostate
 import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js';
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
+import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -58,6 +59,7 @@ const SCENES = [
   { id: 'male-tract-anatomy', Scene: MaleTractAnatomyScene, minimum: 12 },
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
+  { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
 ];
 
 const built = new Map();
@@ -363,6 +365,10 @@ const DETAIL_VIEWS = new Set([
   'shoulder-anatomy:socket',
   'shoulder-anatomy:cuff-only',
   'shoulder-anatomy:arch',
+  // Cut open in one, the femur hidden in another, every bone gone in the third.
+  'hip-anatomy:coronal-section',
+  'hip-anatomy:socket',
+  'hip-anatomy:ligaments-only',
 ]);
 
 /**

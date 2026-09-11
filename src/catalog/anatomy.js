@@ -202,6 +202,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the joint capsule with its other glenohumeral ligaments, the subacromial and subcoracoid bursae, deltoid and the remaining scapular muscles as bellies rather than straps, the conoid and trapezoid as separate ligaments, and the axillary vessels and the brachial plexus. Nothing here moves, which is the first thing a shoulder scene beyond anatomy would need',
   },
   {
+    organ: 'hip',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/hipAnatomy — hip bone, acetabulum and labrum, articular cartilage, femoral head, neck, both trochanters and shaft, the ligament of the head, the three capsular ligaments and the gluteus medius and iliopsoas tendons, selectable by name; tests/organ-parts-anatomy.test.js — the socket rim reaches past the equator of the head so the cup grips rather than cradles, the labrum rings that rim, the neck holds the head lateral to and above the shaft, gluteus medius ends on the greater trochanter and iliopsoas on the lesser, the iliofemoral ligament crosses the front of the joint and the ischiofemoral the back, and the ligament of the head runs inside the socket',
+    next: 'A3: the joint capsule itself with the three ligaments as thickenings of it, the acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels up the neck and the sciatic nerve behind. Nothing here moves, which is the first thing a hip scene beyond anatomy would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

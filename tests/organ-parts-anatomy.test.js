@@ -25,6 +25,7 @@ import { buildProstateZones } from '../src/scenes/reproductive/organs/prostateAn
 import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
 import { ATTACHMENTS, MEDIAL, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
 import { MEDIAL as SHOULDER_MEDIAL, buildShoulderJoint } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
+import { MEDIAL as HIP_MEDIAL, buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -1005,4 +1006,91 @@ test('the shoulder’s socket is small, and four tendons make up for it', () => 
   assert.ok(sling.max.y < centre.y, 'the inferior glenohumeral ligament is below the head');
   assert.ok(sling.intersectsBox(labrum), 'reaching the lower rim of the socket');
   assert.ok(sling.intersectsBox(box('humeral-shaft')) || sling.intersectsBox(headBox), 'and the neck of the humerus');
+});
+
+// --- the hip ----------------------------------------------------------------
+
+test('the hip’s socket grips past the widest part of the head', () => {
+  // The claim the whole scene is built on, and the one thing that separates
+  // this joint from the shoulder. A dish cradles a ball; a cup holds it.
+  const hip = buildHipJoint();
+  hip.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(hip.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+  // How far out towards the leg a point is. Medial is +x here, so lateral is
+  // the other way, and a sign read the wrong way round makes every one of the
+  // assertions below quietly true of a mirrored hip.
+  const outward = (point) => -point.x * HIP_MEDIAL;
+
+  const head = box('femoral-head');
+  const socket = box('acetabulum');
+  const centre = hip.anchorPoints.femoralHead;
+
+  // Head and socket share a centre — that is what a congruent ball-and-socket
+  // joint is, and it is why the hip turns in every direction about one point.
+  assert.ok(
+    hip.anchorPoints.acetabulum.distanceTo(centre) < 1e-9,
+    'the ball and the cup are drawn about the same point'
+  );
+
+  // The rim reaches past the equator: the most lateral part of the socket is
+  // lateral of the centre of the head, so the head cannot come straight out.
+  const rim = box('acetabular-labrum');
+  const rimReach = Math.max(outward(rim.min), outward(rim.max));
+  assert.ok(rimReach > outward(centre), 'the rim reaches past the middle of the head — a cup, not a dish');
+  assert.ok(
+    rimReach < Math.max(outward(head.min), outward(head.max)),
+    'and not so far that it swallows the head the neck has to come out of'
+  );
+
+  // And the labrum rings the mouth of the cup rather than sitting beside it.
+  const rimSize = rim.getSize(new THREE.Vector3());
+  assert.ok(rimSize.y > 0.6 && rimSize.z > 0.6, 'the labrum is a ring, not a patch');
+  assert.ok(rimSize.x < rimSize.y * 0.4, 'lying in the plane of the socket’s mouth');
+
+  // The neck holds the head out to the side of the shaft. Nothing about the
+  // hip's weak point makes sense until that is true.
+  const neck = at('femoral-neck');
+  const shaft = at('femoral-shaft');
+  const trochanter = at('greater-trochanter');
+  assert.ok(outward(centre) < outward(neck) && outward(neck) < outward(trochanter), 'head, then neck, then trochanter, going outwards');
+  assert.ok(centre.y > shaft.y, 'and the head is above the shaft it hands the load to');
+  assert.ok(box('femoral-neck').intersectsBox(head), 'the neck meets the head');
+  assert.ok(box('femoral-neck').intersectsBox(box('greater-trochanter')), 'and the trochanter at the other end');
+  assert.ok(at('lesser-trochanter').y < trochanter.y, 'the lesser trochanter is the lower of the two');
+  assert.ok(at('lesser-trochanter').z < trochanter.z, 'and lies behind it');
+
+  // Two tendons, two trochanters, and they are not interchangeable.
+  assert.ok(box('gluteus-medius-tendon').intersectsBox(box('greater-trochanter')), 'gluteus medius ends on the greater trochanter');
+  assert.ok(!box('gluteus-medius-tendon').intersectsBox(box('lesser-trochanter')), 'and not on the lesser');
+  assert.ok(box('iliopsoas-tendon').intersectsBox(box('lesser-trochanter')), 'iliopsoas ends on the lesser trochanter');
+
+  // The three capsular ligaments come from three different parts of the hip
+  // bone and cross the joint on three different sides.
+  assert.ok(at('iliofemoral-ligament').z > centre.z, 'the iliofemoral ligament crosses the front');
+  assert.ok(at('pubofemoral-ligament').z > centre.z, 'the pubofemoral ligament crosses the front, below');
+  assert.ok(at('pubofemoral-ligament').y < at('iliofemoral-ligament').y, 'below the iliofemoral');
+  assert.ok(at('ischiofemoral-ligament').z < centre.z, 'the ischiofemoral ligament crosses behind');
+  for (const id of ['iliofemoral-ligament', 'pubofemoral-ligament', 'ischiofemoral-ligament']) {
+    const band = box(id);
+    assert.ok(outward(band.min) > outward(centre), `the ${id} reaches the femur`);
+    assert.ok(outward(band.max) < outward(centre), `and comes from the hip bone`);
+  }
+
+  // The ligament of the head is the one inside: it stays within the socket.
+  const inside = box('ligament-of-the-head');
+  assert.ok(socket.containsBox(inside), 'the ligament of the head is inside the socket');
+  assert.ok(inside.intersectsBox(head), 'and reaches the head it is named for');
+
+  // The cartilage lines both surfaces: the ball nearly all over, the cup on the
+  // inside. The two layers are between the two bones and nowhere else.
+  const cartilage = new Map(hip.cartilageMeshes.map((mesh) => [mesh.name, new THREE.Box3().setFromObject(mesh)]));
+  const glaze = cartilage.get('femoral-cartilage');
+  assert.ok(glaze.containsBox(head), 'the head is glazed all over — it lives inside a cup');
+  const lining = cartilage.get('acetabular-cartilage');
+  assert.ok(socket.containsBox(lining), 'and the cup is lined on its inside, not coated on its outside');
+
+  // The socket is cut into the hip bone rather than sitting next to it.
+  assert.ok(box('hip-bone').intersectsBox(socket), 'the acetabulum is part of the hip bone');
+  assert.ok(at('hip-bone').y > centre.y, 'whose weight comes down from above');
 });

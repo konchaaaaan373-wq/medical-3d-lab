@@ -351,8 +351,21 @@
       "src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
+    "cardRevision": 4,
+    "modelDigest": "e029e8c9f79bebe5",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "hip-anatomy",
+    "card": "docs/model-cards/hip-anatomy.md",
+    "modelSources": [
+      "src/data/hipAnatomyScene.js",
+      "src/scenes/musculoskeletal/organs/hipJoint.js",
+      "src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
     "cardRevision": 3,
-    "modelDigest": "9e1178f3b1fd07ac",
+    "modelDigest": "4b9a0d651116f6cb",
     "cardUpdatedAt": "2026-09-11"
   }
 ]

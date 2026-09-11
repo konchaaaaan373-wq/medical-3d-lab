@@ -721,5 +721,30 @@
       "No tear, impingement, instability or degeneration is represented in any form, and nothing here is anyone's shoulder.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, cuff repair, stabilisation or arthroplasty."
     ]
+  },
+  {
+    "sceneId": "hip-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right hip, standing — bones, acetabulum and labrum, articular cartilage, the ligament of the head, three capsular ligaments and two tendons — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/hip-anatomy.md",
+      "docs/model-evidence/hip-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement, the neck-shaft angle included: it is drawn to read.",
+      "The joint is drawn at one position, standing, and nothing in the scene moves: no ligament tightens or slackens.",
+      "The joint capsule itself is not drawn; the three ligaments are drawn as separate bands where in life they are thickenings of it, and the iliofemoral ligament is drawn as one band where it has two limbs.",
+      "The acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels of the head and neck and the sciatic nerve are not drawn.",
+      "No fracture, arthritis, impingement, dysplasia or dislocation is represented in any form, and nothing here is anyone's hip.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any injection, arthroscopy, fixation or arthroplasty."
+    ]
   }
 ]

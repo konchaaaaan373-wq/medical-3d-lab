@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { shapedSphere, smoothstep } from '../../shared/geometry/shapes.js';
-import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
+import { TubeSurface, flattenTube, smoothCurve } from '../../shared/geometry/tube.js';
 import { mineralMaterial, tissueMaterial, wallMaterial } from '../../shared/materials.js';
 
 /**
@@ -86,38 +86,6 @@ export function buildShoulderJoint({ colors = {}, opacity = 1 } = {}) {
     return mesh;
   };
 
-  /**
-   * Squeeze a tube's **cross-section** along one axis, leaving its path alone.
-   *
-   * A cuff tendon is a sheet wrapped round the head, and a round rod of the
-   * same width reads as a cable tie. The obvious way to flatten one — scale the
-   * finished geometry about its own centre — is wrong the moment the tube
-   * travels along the axis being squeezed: it halves the tendon's *run* rather
-   * than its thickness, and teres minor stopped short of the tubercle it ends
-   * on. Each ring is moved towards the point on the curve it belongs to
-   * instead, so every tendon keeps both ends where they were put.
-   */
-  const flattenAcross = (surface, axis, factor) => {
-    const position = surface.geometry.attributes.position;
-    const { points, steps, radial, capStart } = surface;
-    const offset = new THREE.Vector3();
-    const squeeze = (index, centre) => {
-      offset.fromBufferAttribute(position, index).sub(centre);
-      offset[axis] *= factor;
-      offset.add(centre);
-      position.setXYZ(index, offset.x, offset.y, offset.z);
-    };
-    for (let i = 0; i <= steps; i += 1) {
-      for (let j = 0; j <= radial; j += 1) squeeze(i * (radial + 1) + j, points[i]);
-    }
-    const capSize = radial + 2;
-    for (let k = 0; k < position.count - capStart; k += 1) {
-      squeeze(capStart + k, points[k < capSize ? 0 : steps]);
-    }
-    position.needsUpdate = true;
-    surface.geometry.computeVertexNormals();
-  };
-
   /** A cord between points, optionally flattened across its run. */
   const cord = (
     id,
@@ -132,7 +100,7 @@ export function buildShoulderJoint({ colors = {}, opacity = 1 } = {}) {
       steps,
       radial,
     });
-    if (flatten !== 1) flattenAcross(surface, axis, flatten);
+    if (flatten !== 1) flattenTube(surface, axis, flatten);
     const built = material({ color: colors[id] ?? color, opacity: cordOpacity });
     disposables.push(surface, built);
     const mesh = add(id, new THREE.Mesh(surface.geometry, built));

@@ -721,6 +721,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/shoulderAnatomy/index.js'),
   },
   {
+    id: 'hip-anatomy',
+    slug: 'hip-anatomy',
+    titleEn: 'Interactive hip anatomy',
+    titleJa: '触れて学ぶ股関節の解剖',
+    system: 'musculoskeletal',
+    organ: 'hip',
+    organs: ['hip', 'bone'],
+    disease: null,
+    conditions: ['hip anatomy', 'acetabulum', 'femoral neck', 'labrum', 'iliofemoral ligament', '股関節解剖', '臼蓋', '大腿骨頸部', '関節唇'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/hip-anatomy.md',
+    modelProfile: 'hip-anatomy-procedural-atlas',
+    description:
+      'A socket that grips past the widest part of the head, and a neck that holds the head out to the side of the bone carrying the weight.',
+    descriptionJa:
+      '骨頭の最大径より先まで達する臼蓋と、荷重を支える骨幹から骨頭を側方に離して支える頸部を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/musculoskeletal/scenes/hipAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

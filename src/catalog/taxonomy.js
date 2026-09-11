@@ -61,6 +61,7 @@ export const ORGANS = [
   // node rather than one lumped 'joints', because nobody looks for 'joints'.
   { id: 'knee', system: 'musculoskeletal', label: 'Knee joint', labelJa: '膝関節' },
   { id: 'shoulder', system: 'musculoskeletal', label: 'Shoulder joint', labelJa: '肩関節' },
+  { id: 'hip', system: 'musculoskeletal', label: 'Hip joint', labelJa: '股関節' },
   { id: 'uterus', system: 'reproductive', label: 'Uterus', labelJa: '子宮' },
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },

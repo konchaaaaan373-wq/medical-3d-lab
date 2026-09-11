@@ -309,3 +309,35 @@ export function coilCurve({
 
   return smoothCurve(points, { tension: 0.5 });
 }
+
+/**
+ * Squeeze a tube's **cross-section** along one axis, leaving its path alone.
+ *
+ * A cuff tendon or a collateral ligament is a flat band, and a round rod of the
+ * same width reads as a dowel somebody glued on. The obvious way to flatten one — scale the
+ * finished geometry about its own centre — is wrong the moment the tube
+ * travels along the axis being squeezed: it halves the tendon's *run* rather
+ * than its thickness, and teres minor stopped short of the tubercle it ends
+ * on. Each ring is moved towards the point on the curve it belongs to
+ * instead, so every tendon keeps both ends where they were put.
+ */
+export function flattenTube(surface, axis, factor) {
+  const position = surface.geometry.attributes.position;
+  const { points, steps, radial, capStart } = surface;
+  const offset = new THREE.Vector3();
+  const squeeze = (index, centre) => {
+    offset.fromBufferAttribute(position, index).sub(centre);
+    offset[axis] *= factor;
+    offset.add(centre);
+    position.setXYZ(index, offset.x, offset.y, offset.z);
+  };
+  for (let i = 0; i <= steps; i += 1) {
+    for (let j = 0; j <= radial; j += 1) squeeze(i * (radial + 1) + j, points[i]);
+  }
+  const capSize = radial + 2;
+  for (let k = 0; k < position.count - capStart; k += 1) {
+    squeeze(capStart + k, points[k < capSize ? 0 : steps]);
+  }
+  position.needsUpdate = true;
+  surface.geometry.computeVertexNormals();
+}
