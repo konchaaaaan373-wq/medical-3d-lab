@@ -75,21 +75,23 @@ test('every representative disease has a patient explanation in three parts', ()
   }
 });
 
-test('the patient copy names something the product actually renders', () => {
-  // "Where to look" is only useful if it points at a label the screen carries.
-  // Each of these appears in the scene's own read-out list or in its 3D.
-  const named = {
-    'copd-hyperinflation': ['Expiratory time', 'Inspiratory capacity'],
-    'portal-hypertension': ['Portal pressure', 'Intrahepatic resistance', 'Bypassing liver tissue'],
-    'renal-filtration': ['GFR', 'Single-nephron GFR', 'Plasma creatinine'],
-  };
-  for (const [disease, labels] of Object.entries(named)) {
-    const copy = patientGuideFor(disease).steps.map((step) => step.look).join(' ');
-    for (const label of labels) {
-      assert.ok(copy.includes(label), `${disease}: the guide never sends the reader to "${label}"`);
-    }
-  }
-});
+/*
+ * "The patient copy names a read-out the product renders" used to live here.
+ *
+ * It asserted that COPD's, portal hypertension's and renal filtration's "where
+ * to look" lines named labels like "Expiratory time" and "Portal pressure".
+ * All three guides were since rewritten to point at the 3D instead — the
+ * lungs, the airways, the diaphragm, the tuft and the tube — and to carry
+ * `frame`/`focus` so the camera goes there. That is the direction the patient
+ * view exists to go: it reduces numbers rather than naming them, so holding the
+ * copy to a read-out label would hold it to what it was rewritten to stop
+ * doing.
+ *
+ * The claim underneath it — a step points at something the screen carries — is
+ * now held for **all thirteen** guides by `tests/guide-contract.test.js`, which
+ * checks every step's `frame` against the framings its scene actually offers.
+ * That is a stronger check over more guides, so this one is not replaced.
+ */
 
 test('the patient register does not stray into treatment, prognosis or the person', () => {
   const forbidden = [

@@ -3,33 +3,53 @@ import assert from 'node:assert/strict';
 
 import { PATIENT_GUIDES } from '../src/data/patientGuides.js';
 import { guideProblems, guideStepProblems } from '../src/data/guideContract.js';
-import { STAGES as HEART_FAILURE_STAGES } from '../src/data/heartFailure.js';
-import { STAGES as ISCHEMIA_STAGES } from '../src/data/myocardialIschemia.js';
-import { STAGES as AMYLOID_STAGES } from '../src/data/amyloidBeta.js';
-import { HeartFailureScene } from '../src/scenes/cardiovascular/scenes/heartFailure/HeartFailureScene.js';
-import { MyocardialIschemiaScene } from '../src/scenes/cardiovascular/scenes/myocardialIschemia/MyocardialIschemiaScene.js';
+import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 
 /**
- * The same promises, held for both diseases by one set of rules.
+ * The same promises, held for every disease by one set of rules.
  *
  * The heart-failure guide worked the shape out; `src/data/guideContract.js` is
  * that shape written down, and this is where each guide is measured against it.
- * A third disease adds a row here rather than a file.
+ *
+ * **The list is the catalogue, not a list kept here.** It used to name three
+ * diseases, and ten more guides arrived with the scenes that needed them —
+ * every one of them unchecked, because nothing added their row. A guide is now
+ * covered the moment its scene exists, and a disease that ships a guide without
+ * a scene fails rather than going quiet.
+ *
+ * Guides are keyed by scene **id**, which is not always the slug (`copd` is
+ * `copd-hyperinflation` here), so the lookup accepts either.
  */
 
-const GUIDES = [
-  {
-    id: 'heart-failure',
-    stages: HEART_FAILURE_STAGES,
-    framings: Object.keys(new HeartFailureScene({}).getGuideFramings()),
-  },
-  {
-    id: 'myocardial-ischemia',
-    stages: ISCHEMIA_STAGES,
-    framings: Object.keys(new MyocardialIschemiaScene({}).getGuideFramings()),
-  },
-  { id: 'amyloid-beta', stages: AMYLOID_STAGES, framings: [] },
-];
+/** The stages and guide framings a scene actually offers, read from the scene. */
+async function sceneContract(id) {
+  const entry = SCENE_MANIFEST.find((scene) => scene.id === id || scene.slug === id);
+  if (!entry) return null;
+  const module = await entry.load();
+  const Scene = module.default
+    ?? module.Scene
+    ?? Object.values(module).find((value) => typeof value === 'function' && value.meta);
+  const stages = Scene?.meta?.stages ?? [];
+  // Framings come from an instance because that is where the scene computes
+  // them; a scene with none simply has none.
+  let framings = [];
+  try {
+    framings = Object.keys(new Scene({}).getGuideFramings?.() ?? {});
+  } catch {
+    framings = [];
+  }
+  return { id, stages, framings };
+}
+
+const GUIDES = (await Promise.all(Object.keys(PATIENT_GUIDES).map(sceneContract))).filter(Boolean);
+
+test('guide contract: every authored guide belongs to a scene in the catalogue', () => {
+  const orphans = Object.keys(PATIENT_GUIDES).filter(
+    (id) => !GUIDES.some((guide) => guide.id === id)
+  );
+  assert.deepEqual(orphans, [], 'a guide whose scene does not exist can never be shown');
+  assert.ok(GUIDES.length >= 13, `every guide is measured, not a hand-kept few (${GUIDES.length})`);
+});
 
 for (const { id, stages, framings } of GUIDES) {
   test(`guide contract: ${id} keeps every promise the shape makes`, () => {
@@ -47,10 +67,13 @@ for (const { id, stages, framings } of GUIDES) {
     assert.deepEqual(marked, steps.slice(steps.length - marked.length), `${id}: and they are the last ones`);
     for (const step of marked) {
       // Its "where to look" line has to say what the screen is *not* showing.
-      // Wording differs — one says nothing new is drawn, another says the
-      // picture cannot tell you this — but every one of them is a denial, and a
-      // step that quietly pointed at something would be the failure.
-      assert.match(step.lookJa, /ありません/, `${step.stage}: ${step.lookJa}`);
+      // Wording differs a lot — 「何も新しく描かれていません」「この画面にはありません」
+      // 「神経は描かれていません」 — so what is matched is the polite negative
+      // itself, which is the denial. Matching 「ありません」 alone was matching
+      // three guides' habits: 「描かれていません」 is the same denial and was
+      // failing. A step that quietly pointed at something is the failure here,
+      // and an affirmative "where to look" line has no 〜ません in it.
+      assert.match(step.lookJa, /ません/, `${step.stage}: ${step.lookJa}`);
       assert.equal(step.frame, marked[0].frame, `${step.stage}: shows nothing the step before it did not`);
     }
   });
