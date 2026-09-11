@@ -391,3 +391,32 @@ export const DISCLAIMER_SHORT =
   'Conceptual model — no ventilation, no gravity. The threshold shown is this reference lung’s, not a person’s.';
 export const DISCLAIMER_SHORT_JA =
   '概念モデル｜換気も重力も扱っていません。表示される閾値はこの基準肺のもので、個人の値ではありません。';
+
+/**
+ * The neighbours, and the sentence that has to travel with them.
+ *
+ * The pneumonia scene fills the same air spaces with something else and stops
+ * before the blood values; this model does not stop there. Heart failure is
+ * where the pressure on this scene's own axis comes from — and it is a
+ * different model, solving a heart, with no number passing between them.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'pneumonia',
+      label: 'Pneumonia: the same sacs, filled differently',
+      labelJa: '肺炎：同じ袋が別のもので埋まる',
+      why: 'Air spaces filled by inflammation instead of water, in a model that stops before the blood values.',
+      whyJa: '空気の場所を埋めるのが水ではなく炎症です。血液の値までは扱わないモデルです。',
+    },
+    {
+      slug: 'heart-failure',
+      label: 'Heart failure: where the pressure comes from',
+      labelJa: '心不全：その圧はどこから来るのか',
+      why: 'A separate model of the heart behind the pressure this scene takes as its axis. No value passes between them.',
+      whyJa: 'このシーンが軸にしている圧の手前にある、心臓の別モデルです。値のやり取りはありません。',
+    },
+  ],
+  note: 'These are separate models, not stages of one lung. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 つの肺の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

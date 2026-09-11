@@ -16,6 +16,7 @@ import { el } from '../utils/dom.js';
  *   guide: {title:string,titleJa:string,steps:any[]},
  *   setProgress:(value:number)=>void,
  *   setFraming?:(framing:string|null, focus:string[]|null)=>void,
+ *   setModelState?:(state:{controls?:object|null, compare?:boolean|null})=>void,
  *   onExit:()=>void,
  *   onPresentationChange?:(enabled:boolean)=>void,
  * }} options
@@ -46,7 +47,14 @@ const CERTAINTY_COPY = Object.freeze({
   }),
 });
 
-export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit, onPresentationChange }) {
+export function createPatientGuidePanel({
+  guide,
+  setProgress,
+  setFraming,
+  setModelState,
+  onExit,
+  onPresentationChange,
+}) {
   let index = 0;
   let presenting = false;
   let ownsFullscreen = false;
@@ -235,6 +243,10 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
   function setIndex(nextIndex) {
     index = Math.max(0, Math.min(guide.steps.length - 1, nextIndex));
     const step = guide.steps[index];
+    // The model state first, then where on the axis, then where to look: a
+    // control change re-solves the model, and the axis position has to be the
+    // last word on it rather than something the re-solve overwrote.
+    stateFor(step);
     setProgress(step.progress ?? 0);
     pointAt(step);
     render();
@@ -250,6 +262,25 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
    */
   function pointAt(step) {
     setFraming?.(step?.frame ?? null, step?.focus ?? null);
+  }
+
+  /**
+   * Put the model into the state this step is about — where the step says so.
+   *
+   * The third kind of change a step can ask for, and the only one that touches
+   * the physiology. A respiratory explanation opens on an ordinary lung and
+   * then narrows its airways: that difference is a model control, not a camera
+   * angle and not a position on the progression axis, and a step that does not
+   * name one leaves the model exactly as it found it.
+   *
+   * `compare` is presentation in the same call because it is the same question
+   * asked of the scene — what is on screen beside this model — and the scene
+   * owns both answers. It puts a *second* model on screen; it changes nothing
+   * about this one.
+   */
+  function stateFor(step) {
+    if (!step?.controls && step?.compare === undefined) return;
+    setModelState?.({ controls: step.controls ?? null, compare: step.compare ?? null });
   }
 
   function setPresentation(enabled) {
@@ -395,7 +426,19 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
      * forward and back from there, and every one of those *is* a change,
      * because they asked for it.
      *
-     * @param {{ progress?: number }} [where] the model's current position
+     * **Where a guide's steps also name a model state, the position is not the
+     * whole answer.** Two steps can sit at the same place on the axis and be
+     * about two different models — an ordinary lung and the same lung with
+     * narrowed airways — and "the last step at or before here" then picks
+     * whichever of them happens to be written second. So when the caller says
+     * what the model's controls currently are, the step that describes *that*
+     * model is the one opened on; and when none of them does, the group is
+     * opened at its first step and the model is put into the state that step is
+     * about, because a caption describing something that is not on screen is
+     * worse than a model that moved when the mode opened.
+     *
+     * @param {{ progress?: number, controls?: Record<string, number> }} [where]
+     *   the model's current position, and the model controls it is currently at
      */
     reset(where = {}) {
       setPresentation(false);
@@ -404,14 +447,40 @@ export function createPatientGuidePanel({ guide, setProgress, setFraming, onExit
         setIndex(0);
         return;
       }
-      let at = 0;
-      for (const [index, step] of guide.steps.entries()) {
-        if ((step.progress ?? 0) <= progress + 1e-6) at = index;
+      const reachable = guide.steps
+        .map((step, index) => ({ step, index }))
+        .filter(({ step }) => (step.progress ?? 0) <= progress + 1e-6);
+      if (!reachable.length) {
+        setIndex(0);
+        return;
+      }
+      let at = reachable[reachable.length - 1].index;
+      if (where.controls) {
+        const describesCurrentLung = ({ step }) =>
+          !step.controls ||
+          Object.entries(step.controls).every(
+            ([id, value]) => Math.abs((where.controls[id] ?? NaN) - value) < 1e-9
+          );
+        const matching = reachable.filter(describesCurrentLung);
+        if (matching.length) {
+          at = matching[matching.length - 1].index;
+        } else {
+          // Nothing here describes the model on screen. Open at the first step of
+          // the furthest group reached and let it put the model where its words
+          // say the model is.
+          const furthest = reachable[reachable.length - 1].step.progress ?? 0;
+          at = reachable.find(({ step }) => (step.progress ?? 0) === furthest).index;
+          stateFor(guide.steps[at]);
+        }
       }
       // Show that step without driving the model back to its exact position:
       // the reader is somewhere between two steps and the explanation should
       // describe where they are, not snap them to the nearest caption.
       index = at;
+      // Deliberately no `stateFor` here. Opening the explanation on the state
+      // the clinician is already looking at must not re-solve their model to
+      // the one this step happens to describe — the step is being chosen to
+      // fit the model, not the other way round.
       pointAt(guide.steps[index]);
       render();
     },

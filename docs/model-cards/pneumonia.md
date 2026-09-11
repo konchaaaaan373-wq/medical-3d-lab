@@ -129,7 +129,38 @@ persisting perfusion, bounded HPV diversion, finite 0–1 outputs for any input
 and — in `tests/pneumonia-scene.test.js` — that the scene's slider never drives
 the solver past the 60% teaching range.
 
-## 16. Revision identity
+## 16. Who it is said to, and where it stops
+
+There is now a patient-facing explanation of this scene
+(`src/data/patientGuides.js`, id `pneumonia-consolidation`). It walks the same
+four stages this card describes and it stops where this model stops.
+
+**Six steps, and the last two are marked.** Steps one to four say what the model
+solves: every region getting both air and blood, one region's air spaces filling,
+blood continuing past that region, and diversion that is partial. Step five says
+that how much oxygen reaches a person is *not* something this screen works out —
+because section 12 of this card says it must not be — and step six, about cough,
+fever and effortful breathing, is marked `associated` rather than told as a
+consequence. Both marked steps say on screen that they are not drawn from the
+model.
+
+**No step names an organism, an antibiotic or an image**, and no step gives a
+percentage: the fractions this model produces are fractions of twelve
+illustrative units, and section 11 is clear about how easily those read as
+measurements.
+
+**Onward scenes are declared, with the sentence that has to travel with them.**
+`RELATED` in `src/data/pneumonia.js` points at the embolism scene — the same
+mismatch in the opposite direction — and at the oedema scene, which fills the
+same air spaces with something else and *does* solve the blood values this
+model excludes. The note carried with both links says they are separate models
+and that no value passes between them.
+
+`tests/respiratory-guides.test.js` holds the pairing, the marks and the copy
+limits; `scripts/check-patient-explanation.mjs` drives the walk in a browser and
+fails when a step points at something the reader cannot see.
+
+## 17. Revision identity
 
 `docs/model-cards/revisions.json` binds this card to `src/models/pneumonia.js`
 and `src/data/pneumonia.js`. A change to either must revise this card before its

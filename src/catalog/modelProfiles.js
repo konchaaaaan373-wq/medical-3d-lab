@@ -573,6 +573,41 @@ export const MODEL_PROFILES = Object.freeze([
       'or an imaging score, and the vasoconstriction strength is an illustrative constant.',
   },
   {
+    profileId: 'achalasia-swallow-transport',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'One swallow delivered against a sphincter whose relaxation and a wave whose propagation both fail, run swallow ' +
+      'after swallow until what leaves matches what arrives. The retained column supplies pressure of its own, so the ' +
+      'balance is found rather than stated — and past a point no balance exists inside the organ, which the model ' +
+      'reports instead of a height it has no room for. The card says it is not manometry, identifies no cause, and ' +
+      'carries no regurgitation, aspiration, pain, nutrition, risk or treatment; the conductance and the column ' +
+      'cross-section are calibration constants and no figure is a threshold.',
+  },
+  {
+    profileId: 'biliary-obstruction-site',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Four resistances in series from the liver to the duodenum with a secretion that falls against back-pressure ' +
+      'and stops at a ceiling, plus a pancreatic path sharing only the sphincter and a gallbladder as a compliant ' +
+      'dead end. What a blockage does is decided by the resistance still downstream of each node, so the answer is ' +
+      'the site rather than the severity. The card says it carries no bilirubin, no stone, no inflammation, no ' +
+      'diagnosis and no time course; the resistances are calibration constants and no figure is a threshold.',
+  },
+  {
     profileId: 'pulmonary-embolism-dead-space',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

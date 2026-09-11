@@ -24,7 +24,8 @@
     "assets:measure": "node scripts/measure-candidate-surfaces.mjs",
     "assets:validate": "node scripts/validate-candidate-gltf.mjs",
     "verify:recipe-report": "node scripts/check-heart-recipe-report.mjs",
-    "verify:disease": "node scripts/check-disease-interaction.mjs"
+    "verify:disease": "node scripts/check-disease-interaction.mjs",
+    "verify:patient": "node scripts/check-patient-explanation.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

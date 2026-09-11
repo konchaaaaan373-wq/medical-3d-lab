@@ -10,6 +10,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
 } from '../../../../data/pulmonaryEmbolism.js';
 import { solvePulmonaryEmbolism } from '../../../../models/pulmonaryEmbolism.js';
@@ -37,6 +38,7 @@ export class PulmonaryEmbolismScene {
     subtitle: 'Twelve parallel vascular territories · ventilation continues beyond obstructed flow',
     subtitleJa: '12本の並列肺血管領域 ｜ 血流が遮断された先でも換気は続く',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,

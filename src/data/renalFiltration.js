@@ -494,3 +494,28 @@ export const DISCLAIMER_JA =
 
 export const DISCLAIMER_SHORT = 'Steady-state educational model — the creatinine is where it is heading, not where it is.';
 export const DISCLAIMER_SHORT_JA = '定常状態の教育モデル｜クレアチニンは「向かう値」であり、現在値ではありません。';
+
+/**
+ * The neighbours, and the sentence that has to travel with them.
+ *
+ * The hepatorenal scene is the closest and the most likely confusion: it is
+ * also a kidney losing filtration, and it is **a different kidney**. It has no
+ * tubule in it at all — no sodium handling, no urine, no concentrating — and
+ * this one has no liver and no systemic circulation. Neither is a stage of the
+ * other and no value passes between them.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'hepatorenal-syndrome',
+      label: 'A kidney losing filtration for a reason outside it',
+      labelJa: '腎臓の外に理由がある腎機能低下',
+      why: 'The circulation, solved with the liver — and a kidney with no tubule in it, which is not the nephron here.',
+      whyJa: '肝臓と一緒に解かれた循環です。尿細管を持たない腎臓であり、ここのネフロンとは別物です。',
+    },
+  ],
+  note:
+    'These are separate models, not stages of one patient. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa:
+    'いずれも別々のモデルであり、1 人の患者の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

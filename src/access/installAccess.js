@@ -125,6 +125,18 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
    * state in detail. See `restoreGuideSession`.
    */
   let movedByGuide = false;
+  /**
+   * Everything beyond the progression axis a step may have moved — the model
+   * controls and whether a reference model is on screen beside this one.
+   *
+   * Captured once, when the mode opens, and put back when it closes. The
+   * progression axis is deliberately **not** put back when the guide walked it
+   * (`movedByGuide`): where the conversation arrived is the state the clinician
+   * now wants the numbers for. The controls are different — a step that made
+   * the airways narrow to show what narrow airways do was illustrating a
+   * mechanism, not choosing the lung the clinician came in with.
+   */
+  let stateSnapshot = null;
 
   const lock = el('span', { class: 'feature-lock', 'aria-hidden': 'true', text: '🔒' });
   const button = el('button', {
@@ -179,14 +191,25 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
       /**
        * Where the explanation is looking, which is not what it is explaining.
        *
-       * A step that turns attention from the ventricle to the vessels behind it
-       * needs a different picture of the same solved state — the pulmonary
-       * veins run away from the opening view and were pressed against the top
-       * edge. The camera and the labels move; the model does not, which is why
-       * this is separate from `setProgress` and why `movedByGuide` is untouched
-       * by it.
+       * A step that turns attention from the ventricle to the vessels behind
+       * it, or from the whole lung to one airway, needs a different picture of
+       * the same solved state. The camera and the labels move; the model does
+       * not, which is why this is separate from `setProgress` and why
+       * `movedByGuide` is untouched by it.
        */
       setFraming: (framing, focus) => app.guideView?.apply?.(framing ?? null, { focus }),
+      /**
+       * And where a step *does* change the model.
+       *
+       * A respiratory explanation opens on an ordinary lung and then narrows
+       * its airways, because that is the mechanism. That is a model change, it
+       * goes through the scene's public setters, and the read-outs re-derive
+       * from it — which is the whole reason it is a third callback and not
+       * folded into either of the two above.
+       */
+      setModelState: (state) => {
+        if (app.guideState?.apply?.(state)) movedByGuide = true;
+      },
       onExit: closeGuide,
       onPresentationChange: (enabled) => {
         ui.classList.toggle('is-patient-presentation', enabled && open);
@@ -224,11 +247,21 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     // without inventing a second physiology or a second set of read-outs.
     app.setDataView?.(false);
 
+    stateSnapshot = app.guideState?.capture?.() ?? null;
+    const controlsNow = Object.fromEntries(
+      (stateSnapshot?.modelControls ?? []).map(({ id, value }) => [id, value])
+    );
+
     open = true;
     emitAppEvent('guide:open', { fullscreen: false });
     // Opened where the model already is, so the explanation describes the state
-    // on screen instead of resetting it to the first caption.
-    guidePanel.reset({ progress: sessionSnapshot.progress });
+    // on screen instead of resetting it to the first caption — the controls as
+    // well as the position, because two steps can sit at the same place on the
+    // axis and be about two different lungs.
+    guidePanel.reset({
+      progress: sessionSnapshot.progress,
+      controls: controlsNow,
+    });
     ui.classList.add('is-patient-guide');
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
@@ -245,7 +278,24 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
 
     const snapshot = sessionSnapshot;
     sessionSnapshot = null;
+    // The controls, the comparison and the camera were the explanation's; the
+    // position on the progression axis, once the explanation walked it, is the
+    // conversation's and stays. Restoring the session first would put the axis
+    // back too, so the axis is set afterwards from the same decision.
+    const state = stateSnapshot;
+    stateSnapshot = null;
+    // Where the conversation got to, read before anything is put back.
+    const walkedTo = app.playback?.value;
+    if (state) app.guideState?.restore?.(state);
     restoreGuideSession(snapshot, app.playback, { movedByGuide });
+    // `restoreSessionState` puts the whole session back, the axis included, so a
+    // position the explanation walked to has to be re-applied after it. This is
+    // the same decision `restoreGuideSession` makes, said once more because the
+    // controls and the axis are restored by two different helpers.
+    if (movedByGuide && Number.isFinite(walkedTo)) {
+      app.playback.pause();
+      app.playback.set(walkedTo);
+    }
     movedByGuide = false;
     // The explanation's camera goes back with it. The state it walked to stays;
     // where it was looking from does not, because that was the explanation's.

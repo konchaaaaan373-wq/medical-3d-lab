@@ -10,6 +10,7 @@ import {
   PALETTE,
   PROGRESS_LABEL,
   RANGE,
+  RELATED,
   STAGES,
 } from '../../../../data/pneumonia.js';
 import {
@@ -39,6 +40,7 @@ export class PneumoniaScene {
     subtitle: 'Twelve regional units · perfusion persists where alveolar ventilation is lost',
     subtitleJa: '12領域の肺モデル ｜ 肺胞換気を失った領域にも灌流が残る',
     stages: STAGES,
+    related: RELATED,
     legend: LEGEND,
     range: RANGE,
     progressLabel: PROGRESS_LABEL,
@@ -198,6 +200,35 @@ export class PneumoniaScene {
         emphasis: true,
       },
     ];
+  }
+
+  /**
+   * The one framing a guided explanation asks for here.
+   *
+   * The scene's own shot is right for the whole lung, and this scene's label
+   * for the consolidated region hangs *below* the geometry it points at — which
+   * is fine until a patient explanation opens, at which point the console takes
+   * the bottom of the frame and takes that label with it. Two of the six steps
+   * are about that region, so they ask for a shot that keeps it in the clear
+   * band: the same line of sight, a little further back, aimed lower.
+   *
+   * Measured rather than guessed — `scripts/check-patient-explanation.mjs`
+   * projects the anchors through the reader's own camera and fails when one
+   * lands under the console.
+   *
+   * @type {Readonly<Record<string, {target: THREE.Vector3, distance: number, direction: THREE.Vector3}>>}
+   */
+  static guideFramings = Object.freeze({
+    lower: Object.freeze({
+      target: new THREE.Vector3(0, -0.8, 0),
+      distance: 10.4,
+      direction: new THREE.Vector3(0.6, 0.55, 9.4).normalize(),
+    }),
+  });
+
+  /** Framings a guided explanation may ask for. Presentation only. */
+  getGuideFramings() {
+    return PneumoniaScene.guideFramings;
   }
 
   getAnnotations() {

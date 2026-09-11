@@ -109,3 +109,31 @@ export const DISCLAIMER_JA =
   '肺塞栓による血管閉塞を並列血管で表した教育用モデルです。表示する指標はVD/VT、肺動脈圧、右室機能、画像上の血栓量、リスク分類、治療推奨ではありません。';
 export const DISCLAIMER_SHORT = 'Conceptual perfusion model — not diagnosis, risk scoring or treatment guidance.';
 export const DISCLAIMER_SHORT_JA = '灌流の概念モデルであり、診断・重症度判定・治療支援ではありません。';
+
+/**
+ * The neighbours, and the sentence that has to travel with them.
+ *
+ * The pneumonia scene is the mirror of this one: there the blood reaches lung
+ * the air cannot, here the air reaches lung the blood cannot. Reading them one
+ * after the other is the point of the pair.
+ */
+export const RELATED = {
+  scenes: [
+    {
+      slug: 'pneumonia',
+      label: 'Pneumonia: the opposite mismatch',
+      labelJa: '肺炎：逆向きの不一致',
+      why: 'Blood arriving where air cannot, rather than air arriving where blood cannot.',
+      whyJa: '空気の来ない場所に血液が届く状態です。こことは向きが逆です。',
+    },
+    {
+      slug: 'copd',
+      label: 'COPD: air that does not get out',
+      labelJa: 'COPD：吐き切れない空気',
+      why: 'A lung whose problem is emptying rather than where the blood goes.',
+      whyJa: '血流の行き先ではなく、吐き切れるかどうかが問題になる肺です。',
+    },
+  ],
+  note: 'These are separate models, not stages of one lung. Nothing computed here is carried into them, and nothing they show is carried back.',
+  noteJa: 'いずれも別々のモデルであり、1 つの肺の段階ではありません。ここで計算した値は持ち込まれず、向こうの値もここへは入りません。',
+};

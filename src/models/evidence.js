@@ -1301,6 +1301,214 @@ export const PULMONARY_EDEMA_EVIDENCE = defineEvidence('pulmonary-edema', [
 ]);
 
 /** @see src/models/pneumonia.js, docs/model-evidence/pneumonia.md */
+/**
+ * Biliary obstruction — a model whose whole content is an ordering.
+ *
+ * Almost nothing here is a measurement. What the scene asserts is topology and
+ * two pieces of physiology on top of it: that a secretion working against a
+ * back-pressure gives way, and that pressure at a point is the flow times the
+ * resistance still downstream. Everything else — which site affects what — is
+ * arithmetic once the order of the segments is accepted.
+ *
+ * The order is therefore the only thing that has to be right, and it is the one
+ * claim with a real external source: standard surgical and radiological anatomy
+ * of the extrahepatic biliary tree.
+ */
+/**
+ * Achalasia — two failures, and a column that takes over the pushing.
+ *
+ * The external claims here are about what a swallow needs and what a standing
+ * column is worth. What this repository chose is the conductance across the
+ * ring and the cross-section that column stands in, and — separately from the
+ * model — the mapping from the scene's axis onto the two failures.
+ */
+export const ACHALASIA_EVIDENCE = defineEvidence('achalasia', [
+  {
+    id: 'swallow-needs-both',
+    claim:
+      'A swallow arriving in the stomach needs two things: a peristaltic wave to carry it down, and a lower oesophageal sphincter that relaxes as it arrives. Losing either costs something; losing both is the picture achalasia is named for.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard gastrointestinal physiology of deglutition, and standard descriptions of achalasia as the loss of both swallow-induced sphincter relaxation and oesophageal peristalsis.',
+    validation: 'physiology: a swallow gets through when the wave outpushes the ring, and not otherwise',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'relaxation-opens-as-well-as-lowers',
+    claim:
+      'A sphincter that relaxes is a wider way through as well as a lower pressure to beat, so a bolus can fall through a relaxed one on very little driving pressure.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard physiology of sphincter relaxation. The direction is textbook; how much of the conductance the model gives back with relaxation is a calibration here.',
+    validation: 'physiology: a swallow gets through when the wave outpushes the ring, and not otherwise',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'column-supplies-pressure',
+    claim:
+      'A column of retained fluid weighs on what is below it, so a retained oesophagus is not simply an accumulating one: what collects supplies pressure of its own and the system settles where that makes up the difference.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Hydrostatics. A column of height h exerts ρgh at its base.',
+    validation: 'physiology: what is retained supplies pressure of its own',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'column-has-a-ceiling',
+    claim:
+      'That balance has a limit set by the organ: a column the height of the whole oesophagus is worth roughly sixteen millimetres of mercury, which is less than the sphincter holds at rest. Past a point no balance exists inside the oesophagus at all.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Hydrostatics again, against a textbook resting sphincter tone of some tens of millimetres of mercury. 22 cm of water is about 16 mmHg.',
+    validation: 'physiology: the column cannot be taller than the organ, so the balance has a limit',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'feeble-wave-stops-travelling',
+    claim:
+      'A failing peristaltic wave is not a vigorous one turned down. It stops propagating, so nothing arrives at the sphincter — a different picture from a gentle push, and the one a reader has to recognise.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of failed and fragmented peristalsis, in which the wave does not traverse the oesophageal body. How far a given vigour reaches is this model\u2019s own shape.',
+    validation: 'physiology: a feeble wave stops travelling rather than pushing gently',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'swallow-conductance',
+    claim:
+      'What the sphincter passes per millimetre of mercury during the window it is open, and how much of that is left when it does not let go at all.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, not a measurement: the values were calibrated so that a normal swallow clears with room to spare and a failed one balances inside a human oesophagus.',
+    note:
+      'Not a measurement of a sphincter, an aperture or anybody. Nothing the model reports is an integrated relaxation pressure or any manometric value, and no figure in it is a threshold.',
+    validation: 'calibration: a normal swallow clears and a failed one balances inside the organ',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'column-cross-section',
+    claim:
+      'The cross-section a retained column is taken to stand in, which turns a volume into a height and therefore into a pressure.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen by this repository so that the capacity of the model oesophagus is a plausible retained volume. It is a single number standing for a tube that in reality dilates as it fills.',
+    note:
+      'An illustrative cross-section. The oesophagus on screen widening is a volume the model solved, not a calibre it computed, and no diameter follows from anything here.',
+    validation: 'calibration: a normal swallow clears and a failed one balances inside the organ',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'axis-moves-both',
+    claim:
+      'The scene\u2019s axis moves the two failures together, through a deliberately non-linear mapping that puts the band in which a column can still balance a swallow across the middle of its travel.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A presentation decision, not a finding. One loss produces both failures, but in a person they do not move in step, and this model has no time in it to move them through.',
+    note:
+      'The direction this scene is known to mislead. A reader dragging the axis is not watching a patient progress and is not watching the two failures in any real proportion; each is a control of its own precisely so that the pairing can be taken apart.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
+export const BILIARY_EVIDENCE = defineEvidence('biliary-obstruction', [
+  {
+    id: 'segment-order',
+    claim:
+      'Right and left hepatic ducts join to form the common hepatic duct; the cystic duct joins that to form the common bile duct; the common bile duct meets the main pancreatic duct at the major duodenal papilla. The gallbladder opens off the tree through the cystic duct and is not on the path from liver to duodenum.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard surgical and radiological anatomy of the extrahepatic biliary tree.',
+    validation:
+      'physiology: a blockage off the bile path does not reduce what reaches the gut',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'pressure-is-downstream-resistance',
+    claim:
+      'In a series path at steady flow, the pressure at a point is the flow times the resistance still downstream of it. A resistance inserted at one point therefore pressurises every point above it and no point below it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Hydraulics. ΔP = Q·R, applied to a path in series.',
+    validation:
+      'physiology: a blockage on the bile path raises the pressure above it and not below it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'shared-sphincter',
+    claim:
+      'The sphincter at the papilla is the only resistance the biliary and pancreatic paths have in common, so it is the only site at which one blockage obstructs both.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard anatomy of the hepatopancreatic ampulla. Where the two ducts open separately — one of several described arrangements — this does not hold, and the model card says so.',
+    validation: 'physiology: only a blockage at the shared sphincter reaches the pancreatic duct',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'secretory-pressure-ceiling',
+    claim:
+      'Hepatic bile secretion is not a pump: it falls as the pressure in the ducts rises and ceases at a maximum secretory pressure of a few tens of centimetres of water. A complete obstruction therefore produces a bounded pressure and a flow approaching zero.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard biliary physiology for continuous secretion and for a maximum biliary secretory pressure in the region of twenty-five to thirty centimetres of water. The direction and the existence of a ceiling are textbook; the exact value is a calibration here.',
+    validation: 'physiology: secretion gives way against pressure, so a complete blockage is bounded',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'gallbladder-time-constant',
+    claim:
+      'Whether a gallbladder keeps up with the duct beside it is a question about the cystic duct\u2019s resistance times the gallbladder\u2019s compliance, against the time a meal takes — not about an equilibrium, which any finite resistance eventually reaches.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The time constant of a compliant reservoir behind a resistance, τ = R·C. The same relation the obstructed-lung model is built on.',
+    validation: 'physiology: a gallbladder keeps up with the duct on a time constant, not on an equilibrium',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'common-channel-assumption',
+    claim:
+      'This model gives the common bile duct and the main pancreatic duct a shared channel at the papilla, so that an ampullary blockage obstructs both. That arrangement is one of several described; where the two open separately it does not hold.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'Descriptions of the hepatopancreatic ampulla differ, and the proportion of people with a true common channel is reported variously. This model assumes one and cannot represent the alternative.',
+    note:
+      'The direction this model is known to get wrong. Its ampullary case is right for a common channel and wrong for a separate opening, and it has no way to be told which it is looking at.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'schematic-tree',
+    claim:
+      'The tree this scene is drawn on is schematic. Its calibres, lengths and angles are chosen to be legible, and the model asserts the order of the segments rather than their sizes.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The biliary atlas\u2019s own builder, used here as it stands. Its header says PROTOTYPE — NOT ANATOMICALLY VALIDATED.',
+    note:
+      'An illustrative geometry. Nothing on screen is a duct diameter, a duct length or a measurement of anybody, and a dilated segment is a pressure the model solved rather than a calibre it computed.',
+    validation: 'calibration: the open biliary tree lands on an ordinary resting pressure',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'duct-resistances',
+    claim:
+      'The four resistances are the numbers that put an unobstructed common bile duct near ten centimetres of water at an ordinary bile flow, with nearly all of the normal resistance in the sphincter.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, not a measurement: the four values were calibrated so that an unobstructed common bile duct lands near ten centimetres of water at an ordinary bile flow.',
+    note:
+      'Not a measurement of a duct, of a sphincter or of anybody. No pressure this model reports is a threshold, and the only thing the values are chosen to reproduce is an ordinary resting state.',
+    validation: 'calibration: the open biliary tree lands on an ordinary resting pressure',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'occlusion-resistance',
+    claim:
+      'What a complete blockage adds to a resistance is one number used at every site, so that "complete" means the same thing wherever the blockage is.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose so that a complete blockage delivers almost nothing through the resistance it sits in. Added rather than multiplied precisely so that it is site-independent.',
+    note:
+      'Not a stone, not a stricture and not a degree of stenosis. It says how much resistance a complete blockage stands for in this model, and nothing about what produced one.',
+    validation: 'calibration: one occlusion resistance means the same thing at every site',
+    layer: LAYER.CALIBRATION,
+  },
+]);
+
 export const PNEUMONIA_EVIDENCE = defineEvidence('pneumonia-consolidation', [
   {
     id: 'shunt-definition',
@@ -1481,4 +1689,6 @@ export const EVIDENCE_REGISTRIES = [
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
   PULMONARY_EMBOLISM_EVIDENCE,
+  BILIARY_EVIDENCE,
+  ACHALASIA_EVIDENCE,
 ];

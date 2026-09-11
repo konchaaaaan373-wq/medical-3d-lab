@@ -109,9 +109,9 @@
       "src/models/pulmonaryEdema.js",
       "src/data/pulmonaryEdema.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "8815703fb151d470",
-    "cardUpdatedAt": "2026-09-03"
+    "cardRevision": 5,
+    "modelDigest": "194489b7a2f3cd2c",
+    "cardUpdatedAt": "2026-09-11"
   },
   {
     "sceneId": "myocardial-ischemia",
@@ -132,9 +132,9 @@
       "src/models/pneumonia.js",
       "src/data/pneumonia.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "6745c661d97cd049",
-    "cardUpdatedAt": "2026-09-06"
+    "cardRevision": 3,
+    "modelDigest": "2d65f69551066cf5",
+    "cardUpdatedAt": "2026-09-11"
   },
   {
     "sceneId": "pulmonary-embolism",
@@ -143,9 +143,9 @@
       "src/models/pulmonaryEmbolism.js",
       "src/data/pulmonaryEmbolism.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "cf008ab5bb6d5cfa",
-    "cardUpdatedAt": "2026-09-06"
+    "cardRevision": 3,
+    "modelDigest": "ec21bac12525a747",
+    "cardUpdatedAt": "2026-09-11"
   },
   {
     "sceneId": "lung-anatomy",
@@ -338,6 +338,26 @@
     ],
     "cardRevision": 3,
     "modelDigest": "2427496d6a66f7a7",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "achalasia",
+    "card": "docs/model-cards/achalasia.md",
+    "modelSources": [
+      "src/models/achalasia.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "155d95ed453fea94",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "biliary-obstruction",
+    "card": "docs/model-cards/biliary-obstruction.md",
+    "modelSources": [
+      "src/models/biliaryObstruction.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "f3fa13dfdf54fa95",
     "cardUpdatedAt": "2026-09-11"
   }
 ]

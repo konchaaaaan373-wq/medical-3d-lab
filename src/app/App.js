@@ -1126,6 +1126,40 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     return true;
   }
 
+  /**
+   * Put the model into the state a guided explanation's step is about.
+   *
+   * **This one does change the model**, which is exactly why it is not part of
+   * `applyGuideFraming`. A respiratory guide's opening step is an ordinary lung
+   * and its second step is the same lung with narrowed airways; the difference
+   * between them is a model control, not a camera. So the two live apart and a
+   * reader of a step can tell which kind of change it asks for.
+   *
+   * It goes through the scene's public setters — the same ones the stepped
+   * walk-through and the model-control panel use — so there is no private path
+   * into the physiology and every read-out re-derives from the solved state.
+   *
+   * @param {{controls?: Record<string, number>|null, compare?: boolean|null}} step
+   * @returns {boolean} whether anything moved
+   */
+  function applyGuideState({ controls = null, compare = null } = {}) {
+    let moved = false;
+    if (controls && scene.setModelControl) {
+      for (const [id, value] of Object.entries(controls)) {
+        scene.setModelControl(id, value);
+        moved = true;
+      }
+      scene.settleModel?.();
+      modelControls?.sync(scene.getModelControls?.() ?? []);
+      refreshModelReadouts();
+    }
+    if (compare !== null && scene.setComparison && Boolean(compare) !== comparing) {
+      setComparison(Boolean(compare));
+      moved = true;
+    }
+    return moved;
+  }
+
   function seek(value) {
     playback.pause();
     playback.set(value);
@@ -1550,6 +1584,22 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
     },
     related,
+    /**
+     * A guided explanation's *model* state, kept apart from its camera so that
+     * the two kinds of step are distinguishable from outside as well as in.
+     * `capture()` / `restore()` are the same session helpers every other mode
+     * that drives the model uses.
+     */
+    guideState: {
+      apply: applyGuideState,
+      capture: () => captureSessionState({ playback, viewer, scene, comparing }),
+      restore: (state) => {
+        if (!state) return;
+        restoreSessionState(state, { playback, viewer, scene, setComparison });
+        modelControls?.sync(scene.getModelControls?.() ?? []);
+        refreshModelReadouts();
+      },
+    },
     inspection: {
       panel: inspectionPanel,
       setOpen: setInspectionOpen,
