@@ -830,6 +830,24 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'multinodular-goitre-direction',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of an enlarging nodular thyroid: the volume added is turned into a distance the gland\'s ' +
+      'face advances, and the direction chosen decides how much of that distance moves the airway and how much ' +
+      'narrows it, plus how far the gland reaches back past the recurrent laryngeal nerve and the parathyroid ' +
+      'glands. The card says it carries no thyroid function of any kind — no hormone, no TSH, no uptake, no ' +
+      'autonomy — no malignancy, no symptom, no time and no treatment, and that the nerve relation in it is ' +
+      'anatomy rather than injury.@ ',
+  },
+  {
     profileId: 'uterine-fibroid-location',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

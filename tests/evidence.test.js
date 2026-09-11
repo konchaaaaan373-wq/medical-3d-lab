@@ -9,6 +9,7 @@ import {
   BOWEL_OBSTRUCTION_EVIDENCE,
   CIRCULATION_EVIDENCE,
   CONFIDENCE,
+  GOITRE_EVIDENCE,
   COPD_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
@@ -60,6 +61,7 @@ const FILE_LAYERS = {
   'prostatic-enlargement-physiology.test.js': LAYER.EXTERNAL,
   'bowel-obstruction-physiology.test.js': LAYER.EXTERNAL,
   'uterine-fibroid-physiology.test.js': LAYER.EXTERNAL,
+  'multinodular-goitre-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -78,6 +80,7 @@ const DOSSIERS = {
   'benign-prostatic-enlargement': 'docs/model-evidence/benign-prostatic-enlargement.md',
   'bowel-obstruction': 'docs/model-evidence/bowel-obstruction.md',
   'uterine-fibroid': 'docs/model-evidence/uterine-fibroid.md',
+  'multinodular-goitre': 'docs/model-evidence/multinodular-goitre.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -216,6 +219,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'benign-prostatic-enlargement',
       'bowel-obstruction',
       'uterine-fibroid',
+      'multinodular-goitre',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -236,6 +240,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(PROSTATIC_ENLARGEMENT_EVIDENCE.length >= 6);
   assert.ok(BOWEL_OBSTRUCTION_EVIDENCE.length >= 8);
   assert.ok(UTERINE_FIBROID_EVIDENCE.length >= 8);
+  assert.ok(GOITRE_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

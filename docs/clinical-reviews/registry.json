@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "multinodular-goitre",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of an enlarging nodular thyroid by direction, prepared for future clinical sign-off: whether the airway is displaced or narrowed, and what the gland reaches behind it"
+    ],
+    "sources": [
+      "docs/model-cards/multinodular-goitre.md",
+      "docs/model-evidence/multinodular-goitre.md",
+      "tests/multinodular-goitre-model.test.js",
+      "src/models/multinodularGoitre.js"
+    ],
+    "unresolvedLimitations": [
+      "There is no thyroid function of any kind in the model. A goitre of any shape here may be euthyroid, overactive or underactive, and nothing about the shape says which; the scene exists partly to refuse that inference.",
+      "Nothing in this model is a measurement. The lobe's volume and depth and the airway's calibre are measured off the thyroid atlas, whose own proportions are drawn to be legible, and the width across the airway is reported against the model's own resting width rather than as a tracheal diameter.",
+      "The nerve and parathyroid relation is anatomy and not injury. Nothing in the model says a nerve is damaged or at risk, or that a parathyroid gland has stopped working.",
+      "The four directions and how much of each meets a boundary are this repository's reading of four standard pictures. A real goitre goes several ways at once and the four are not exclusive.",
+      "The thoracic inlet is a structure the scene adds, because the atlas has no skeleton. There is no malignancy, no cytology, no symptom, no time and no treatment anywhere in the model."
+    ]
+  },
+  {
     "sceneId": "uterine-fibroid",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
