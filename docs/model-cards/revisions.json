@@ -302,5 +302,31 @@
     "cardRevision": 6,
     "modelDigest": "6e55a57076f108fc",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "prostate-anatomy",
+    "card": "docs/model-cards/prostate-anatomy.md",
+    "modelSources": [
+      "src/data/prostateAnatomyScene.js",
+      "src/scenes/reproductive/organs/prostateAnatomy.js",
+      "src/scenes/reproductive/scenes/prostateAnatomy/ProstateAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "fd2907bf9d7f99b8",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "male-tract-anatomy",
+    "card": "docs/model-cards/male-tract-anatomy.md",
+    "modelSources": [
+      "src/data/maleTractAnatomyScene.js",
+      "src/scenes/reproductive/organs/maleTract.js",
+      "src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "2427496d6a66f7a7",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

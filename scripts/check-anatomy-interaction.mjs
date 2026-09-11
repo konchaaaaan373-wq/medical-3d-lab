@@ -132,6 +132,10 @@ const SCENE_POINTS = {
   'adrenal-anatomy': [[0.365, 0.36], [0.635, 0.36], [0.35, 0.62], [0.645, 0.62]],
   // Fundus, body, cervix, and a tube on its way to an ovary.
   'uterus-anatomy': [[0.50, 0.33], [0.50, 0.50], [0.50, 0.66], [0.33, 0.36]],
+  // The gland, a seminal vesicle above it, and the rectum behind.
+  'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
+  // The route runs bottom-left to middle and then forward.
+  'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
 };
 
 const clickPoints = (() => {

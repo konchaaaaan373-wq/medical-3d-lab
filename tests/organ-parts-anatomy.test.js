@@ -21,6 +21,8 @@ import {
 import { CORTEX_SHARE_OF_GLAND, ZONE_DISPLAY_BANDS, ADRENAL_SITES, buildAdrenalParts } from '../src/scenes/endocrine/organs/adrenalAnatomy.js';
 import { CAVITY_CORNERS, buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
 import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
+import { buildProstateZones } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
+import { buildMaleTract } from '../src/scenes/reproductive/organs/maleTract.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -655,4 +657,117 @@ test('the uterus is shown leaning forward over the bladder, not standing upright
   assert.ok(at('bladder').z > fundus.z, 'the bladder is in front of the uterus');
   assert.ok(at('rectum').z < cervix.z, 'the rectum is behind it');
   scene.dispose();
+});
+
+// --- prostate ---------------------------------------------------------------
+
+test('the prostate’s peripheral zone is the outside and the other two are the inside', () => {
+  // The division prostate disease turns on. Cancer arises mostly in the zone a
+  // finger reaches; benign enlargement in the zone round the urethra. Nothing
+  // about the outside of the gland tells them apart, so the arrangement is the
+  // whole claim — and the proportions deliberately are not.
+  const prostate = buildProstateZones();
+  prostate.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(prostate.mesh(id));
+  const at = (id) => box(id).getCenter(new THREE.Vector3());
+
+  const peripheral = box('peripheral-zone');
+  // The gland is the four together; the two inner zones are inside that, and
+  // the peripheral zone reaches further out than either in every direction it
+  // covers. It does *not* enclose them in front, because in front of them is
+  // the anterior stroma — which is the arrangement, not a gap.
+  const gland = new THREE.Box3().union(peripheral).union(box('anterior-fibromuscular-stroma'));
+  for (const inner of ['transition-zone', 'central-zone']) {
+    assert.ok(gland.containsBox(box(inner)), `the ${inner} is inside the gland`);
+    assert.ok(peripheral.min.z < box(inner).min.z, `the peripheral zone is behind the ${inner}`);
+    assert.ok(peripheral.min.x < box(inner).min.x, `and lateral to it`);
+    assert.ok(peripheral.min.y < box(inner).min.y, `and below it`);
+  }
+  // And it is the zone on the rectal side.
+  const rectum = at('rectum');
+  for (const other of ['transition-zone', 'central-zone', 'anterior-fibromuscular-stroma']) {
+    assert.ok(
+      peripheral.min.z < box(other).min.z,
+      `the peripheral zone reaches nearer the rectum than the ${other}`
+    );
+  }
+  assert.ok(rectum.z < peripheral.min.z, 'and the rectum is behind all of it');
+  assert.ok(at('bladder-neck').y > peripheral.max.y - 0.2, 'the bladder neck sits on top of the gland');
+
+  // The stroma is the front, and it is the only zone in front of the plane.
+  assert.ok(at('anterior-fibromuscular-stroma').z > at('peripheral-zone').z, 'the stroma is anterior');
+
+  // Inside: transition in front of and below central, which is what puts the
+  // one that enlarges against the urethra and the other around the ducts.
+  assert.ok(at('transition-zone').z > at('central-zone').z, 'the transition zone is in front of the central');
+  assert.ok(at('transition-zone').y < at('central-zone').y, 'and below it');
+
+  // The urethra goes through the gland, not past it.
+  const urethra = box('prostatic-urethra');
+  assert.ok(urethra.min.y < peripheral.min.y && urethra.max.y > peripheral.max.y, 'the urethra spans the gland');
+  assert.ok(box('transition-zone').containsPoint(prostate.urethraCurve.getPointAt(0.45)), 'and through the transition zone');
+
+  // Both ejaculatory ducts end on the verumontanum, inside the central zone.
+  const verumontanum = prostate.anchorPoints.verumontanum;
+  for (const side of ['right', 'left']) {
+    const duct = box(`${side}-ejaculatory-duct`);
+    assert.ok(duct.distanceToPoint(verumontanum) < 0.05, `the ${side} ejaculatory duct ends at the verumontanum`);
+    assert.ok(duct.intersectsBox(box('central-zone')), `and runs inside the central zone`);
+    // Formed where the vas meets the vesicle, above and behind the gland.
+    assert.ok(
+      box(`${side}-vas-deferens`).intersectsBox(duct),
+      `the ${side} vas deferens reaches the duct it forms`
+    );
+    assert.equal(patientSide(at(`${side}-seminal-vesicle`)), side, `the ${side} seminal vesicle`);
+    assert.ok(at(`${side}-seminal-vesicle`).y > peripheral.max.y, `and it sits above the gland`);
+  }
+});
+
+// --- the male genital tract -------------------------------------------------
+
+test('the male tract is one chain, and every link in it meets the next', () => {
+  // The whole claim of that scene. Each segment's curve starts where the last
+  // one ends, so this walks the declared route and checks the geometry agrees.
+  const tract = buildMaleTract();
+  tract.object.updateMatrixWorld(true);
+  const box = (id) => new THREE.Box3().setFromObject(tract.mesh(id));
+
+  for (let i = 1; i < tract.route.length; i += 1) {
+    assert.ok(
+      box(tract.route[i - 1]).intersectsBox(box(tract.route[i])),
+      `${tract.route[i - 1]} meets ${tract.route[i]}`
+    );
+  }
+
+  // The epididymis is on the back of the testis, not beside it.
+  const testis = box('testis');
+  const epididymis = box('epididymis');
+  assert.ok(epididymis.getCenter(new THREE.Vector3()).z < testis.getCenter(new THREE.Vector3()).z, 'the epididymis is posterior');
+  assert.ok(epididymis.min.y < testis.min.y, 'and it reaches below the lower pole, where it turns into the vas');
+
+  // The genital route ends inside the gland; the urinary one starts above it.
+  const prostate = box('prostate');
+  assert.ok(prostate.containsPoint(tract.anchorPoints.verumontanum), 'the ejaculatory duct ends inside the prostate');
+  const prostatic = box('prostatic-urethra');
+  assert.ok(prostatic.max.y > prostate.max.y - 0.1, 'the prostatic urethra begins at the top of the gland');
+  assert.ok(prostatic.min.y < prostate.min.y + 0.15, 'and reaches its apex');
+
+  // The membranous part is the shortest of the three lengths.
+  const span = (id) => {
+    const size = box(id).getSize(new THREE.Vector3());
+    return Math.max(size.x, size.y, size.z);
+  };
+  assert.ok(
+    span('membranous-urethra') < span('prostatic-urethra') && span('membranous-urethra') < span('spongy-urethra'),
+    'the membranous urethra is the shortest of the three'
+  );
+
+  // And the spongy part runs inside the column named for carrying it.
+  assert.ok(box('corpus-spongiosum').containsBox(box('spongy-urethra')), 'the spongy urethra is inside the spongiosum');
+  for (const side of ['right', 'left']) {
+    assert.ok(
+      !box(`${side}-corpus-cavernosum`).containsBox(box('spongy-urethra')),
+      `and not inside the ${side} cavernosum`
+    );
+  }
 });

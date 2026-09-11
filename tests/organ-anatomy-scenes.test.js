@@ -15,6 +15,8 @@ import { BiliaryAnatomyScene } from '../src/scenes/hepatobiliary/scenes/biliaryA
 import { EsophagusAnatomyScene } from '../src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js';
 import { AdrenalAnatomyScene } from '../src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js';
 import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
+import { ProstateAnatomyScene } from '../src/scenes/reproductive/scenes/prostateAnatomy/ProstateAnatomyScene.js';
+import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -50,6 +52,8 @@ const SCENES = [
   { id: 'esophagus-anatomy', Scene: EsophagusAnatomyScene, minimum: 10 },
   { id: 'adrenal-anatomy', Scene: AdrenalAnatomyScene, minimum: 9 },
   { id: 'uterus-anatomy', Scene: UterusAnatomyScene, minimum: 10 },
+  { id: 'prostate-anatomy', Scene: ProstateAnatomyScene, minimum: 12 },
+  { id: 'male-tract-anatomy', Scene: MaleTractAnatomyScene, minimum: 12 },
 ];
 
 const built = new Map();
@@ -343,6 +347,9 @@ const DETAIL_VIEWS = new Set([
   'esophagus-anatomy:crossing',
   'esophagus-anatomy:hiatus',
   'uterus-anatomy:adnexa',
+  'prostate-anatomy:vesicles',
+  'male-tract-anatomy:testis',
+  'male-tract-anatomy:junction',
 ]);
 
 /**

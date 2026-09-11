@@ -30,6 +30,18 @@ import { tissueMaterial } from '../materials.js';
  * planes. `{ through, normal }` are in the organ's own coordinates — the ones
  * the finished mesh is in, after `scale` — so a plane reads as "through the
  * hilum, facing up" rather than as a fraction of a bounding box.
+ *
+ * ## A part can be the outside of the organ rather than a wedge of it
+ *
+ * `radial: { from, to }` narrows a part to a band of the organ's own radius,
+ * in the same units `carveLayers` uses. It is here for one arrangement and was
+ * added for it: the prostate's **peripheral zone is the outside** of the gland
+ * and its **transition and central zones are the inside**, and no set of planes
+ * says that. With `from > 0` the part is the shell between the two surfaces,
+ * still cut by whatever planes it declares.
+ *
+ * That is the whole extension. Anything that needs more than "an inner region
+ * and the region outside it" wants its own builder, not another option here.
  */
 
 /**
@@ -41,6 +53,7 @@ import { tissueMaterial } from '../materials.js';
  *     color?: string,
  *     opacity?: number,
  *     planes?: Array<{ through: [number, number, number], normal: [number, number, number] }>,
+ *     radial?: { from?: number, to?: number },
  *     at?: [number, number, number],
  *   }>,
  *   detail?: number,
@@ -90,15 +103,31 @@ export function carveNamedParts({
     // mistake and is not one.
     const found = partCentroid({ field, bounds, planes, samples: 7000, seed: 11 });
     const centre = found ? found.centroid : new THREE.Vector3(...(part.at ?? [0, 0, 0]));
-    const geometry = carvePart({
-      field,
-      centre,
-      planes,
-      detail,
-      // Two parts that share a cut would otherwise z-fight along it.
-      inset: planes.length ? inset : 0,
-      cacheKey: cacheKey ? `${cacheKey}:${samples}` : null,
-    });
+
+    const band = part.radial ?? {};
+    const to = band.to ?? 1;
+    const from = band.from ?? 0;
+    const surfaceAt = (fraction) =>
+      carvePart({
+        field: fraction >= 1 ? field : scaledField(field, fraction),
+        // A shell and the solid inside it have to be carved about the same
+        // point, or their two surfaces are two different organs.
+        centre: from > 0 ? field.centre.clone() : centre,
+        planes,
+        detail,
+        // Two parts that share a cut would otherwise z-fight along it.
+        inset: planes.length ? inset : 0,
+        cacheKey: cacheKey ? `${cacheKey}:${samples}:${fraction}` : null,
+      });
+
+    let geometry = surfaceAt(to);
+    if (from > 0) {
+      const inner = surfaceAt(from);
+      const shell = shellBetween(geometry, inner);
+      geometry.dispose();
+      inner.dispose();
+      geometry = shell;
+    }
     const partMaterial =
       material?.(part) ??
       tissueMaterial({

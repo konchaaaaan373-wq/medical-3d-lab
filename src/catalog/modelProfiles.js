@@ -369,6 +369,32 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code by cutting a pear-shaped warp into fundus, body, isthmus and cervix, with the cavity drawn as a flat triangular patch between the two tubal ostia and the internal os, a tube of changing calibre on each side and an ovary near but not joined to each. No state and no mechanism. The organ is drawn upright rather than anteverted and anteflexed; the cavity has no thickness; endometrium, myometrium and perimetrium are not separated; follicles, ligaments, fornices, the transformation zone and the vessels are not drawn.',
   },
   {
+    profileId: 'prostate-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code by cutting one chestnut-shaped warp into McNeal\u2019s four zones: a coronal plane takes the anterior fibromuscular stroma off the front, a scaled copy of the gland\u2019s own surface separates the inner gland from the peripheral zone (which is therefore a shell rather than a wedge), and an oblique plane through the verumontanum divides that inner gland into transition and central. The urethra, both ejaculatory ducts, both seminal vesicles and vasa, the bladder neck and the rectum are drawn around them. No state and no mechanism. **The zone proportions are drawn so four zones can be told apart and are not the real ones**; zone boundaries are surfaces of revolution and planes where real ones are neither; no volume may be read off the model, and the capsule, neurovascular bundles, sphincters, prostatic utricle and Denonvilliers\u2019 fascia are not drawn.',
+  },
+  {
+    profileId: 'male-tract-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as one chain: each segment\u2019s curve begins where the last one ends, read from the curve rather than typed twice, so testis \u2192 epididymis \u2192 vas \u2192 ejaculatory duct \u2192 prostatic, membranous and spongy urethra cannot come apart. No state and no mechanism. Lengths and calibres are drawn to be legible and none is a measurement \u2014 the vas is far shorter and straighter than it is, and the epididymal duct inside the epididymis is not modelled. One side of a paired route is drawn. The scrotum, the spermatic cord\u2019s coverings and vessels, the seminiferous tubules, the sphincters, the bulbourethral glands and the erectile mechanism are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

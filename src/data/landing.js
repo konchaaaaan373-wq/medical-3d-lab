@@ -30,6 +30,8 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'esophagus-anatomy',
   'adrenal-anatomy',
   'uterus-anatomy',
+  'prostate-anatomy',
+  'male-tract-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -223,6 +225,18 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '子宮壁を薄くすると、内腔は袋ではなく扁平な三角形。',
     ['PARTS', 'CAVITY', 'ADNEXA'],
     ['部位', '内腔', '付属器']
+  ),
+  'prostate-anatomy': presentation(
+    'Which zone: the outside a finger reaches, or the inside round the urethra.',
+    'どの領域か——指が届く外側か、尿道を取り巻く内側か。',
+    ['ZONES', 'URETHRA', 'DUCTS'],
+    ['領域', '尿道', '射精管']
+  ),
+  'male-tract-anatomy': presentation(
+    'One continuous channel from testis to outside, with a gland part way along it.',
+    '精巣から外尿道口まで、途中に腺を挟んだ1本の管。',
+    ['ROUTE', 'DUCTS', 'URETHRA'],
+    ['経路', '導管', '尿道']
   ),
   'lung-anatomy': presentation(
     'Pick a lobe, then fade it and pick the segmental bronchus that ventilates it.',

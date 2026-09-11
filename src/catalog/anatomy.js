@@ -182,8 +182,10 @@ export const ORGAN_ANATOMY = Object.freeze([
   },
   {
     organ: 'prostate',
-    level: 'A0',
-    next: 'A1: seated below the bladder around the urethra, with the correct relations. Then A2: peripheral, central and transition zones — the split every prostate question turns on',
+    level: 'A2',
+    evidence:
+      'scenes/reproductive/scenes/prostateAnatomy — peripheral, transition and central zones and the anterior fibromuscular stroma, the prostatic urethra and verumontanum, both ejaculatory ducts, seminal vesicles and vasa, with the bladder neck above and the rectum behind, selectable by name; tests/organ-parts-anatomy.test.js — the peripheral zone is the shell behind, lateral to and below both inner zones and the one nearest the rectum, the transition zone is anterior and inferior to the central, the urethra spans the gland and passes through the transition zone, and both ejaculatory ducts end at the verumontanum inside the central zone',
+    next: 'A3: the capsule and the neurovascular bundles, the internal and external sphincters, the urethral crest and sinuses, the prostatic utricle and Denonvilliers’ fascia. The zone proportions are drawn so four zones can be told apart and are not the real ones — no volume may be read off the model',
   },
   {
     organ: 'whole-body',

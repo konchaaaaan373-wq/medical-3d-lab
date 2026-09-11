@@ -620,5 +620,54 @@
       "Follicles, corpora lutea, ligaments, fornices, the transformation zone and the vessels are not drawn.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning hysteroscopy, device insertion, surgery or any obstetric decision."
     ]
+  },
+  {
+    "sceneId": "prostate-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "procedurally built prostatic zones, urethra, ejaculatory ducts and seminal vesicles with their bladder and rectal relations, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/prostate-anatomy.md",
+      "docs/model-evidence/prostate-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "The zone proportions are drawn so four zones can be told apart and are not the real ones: no volume, ratio or zone size may be read off the model.",
+      "Zone boundaries are surfaces of revolution and planes; real ones are neither, and they vary between people and with age.",
+      "The capsule, the neurovascular bundles, the sphincters, the prostatic utricle, the periurethral glands and Denonvilliers' fascia are not drawn.",
+      "Benign enlargement and cancer are not represented in any form, and nothing here is anyone's prostate.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning biopsy, resection, radiotherapy or surgery."
+    ]
+  },
+  {
+    "sceneId": "male-tract-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built male genital route from testis to external urethral orifice, with the prostate and erectile columns it passes through, bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/male-tract-anatomy.md",
+      "docs/model-evidence/male-tract-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "Lengths and calibres are drawn to be legible; the vas deferens in particular is drawn far shorter and straighter than it is.",
+      "The epididymis is one tube of three named lengths; the single coiled duct inside it is not modelled and head, body and tail are not separately selectable.",
+      "One side of a paired route is drawn.",
+      "The scrotum, the spermatic cord's coverings and vessels, the seminiferous tubules, the sphincters, the bulbourethral glands and the erectile mechanism are not drawn, and nothing here changes state.",
+      "The prostate here is one undivided translucent gland; its zones are `prostate-anatomy`.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning vasectomy, catheterisation, surgery or any fertility decision."
+    ]
   }
 ]
