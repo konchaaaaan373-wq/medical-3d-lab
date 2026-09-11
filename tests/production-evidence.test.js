@@ -44,6 +44,7 @@ test('migrated production evidence and the existing model registries share one c
       'pulmonary-edema',
       'pneumonia-consolidation',
       'pulmonary-embolism',
+      'biliary-obstruction',
     ]
   );
 });

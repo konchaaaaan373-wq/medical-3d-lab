@@ -4,6 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import {
   ASSERTABLE,
   ASTHMA_EVIDENCE,
+  BILIARY_EVIDENCE,
   CIRCULATION_EVIDENCE,
   CONFIDENCE,
   COPD_EVIDENCE,
@@ -50,6 +51,7 @@ const FILE_LAYERS = {
   'respiratory-physiology.test.js': LAYER.EXTERNAL,
   'portal-haemodynamics.test.js': LAYER.EXTERNAL,
   'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
+  'biliary-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -63,6 +65,7 @@ const DOSSIERS = {
   'pulmonary-edema': 'docs/model-evidence/pulmonary-edema.md',
   'pneumonia-consolidation': 'docs/model-evidence/pneumonia.md',
   'pulmonary-embolism': 'docs/model-evidence/pulmonary-embolism.md',
+  'biliary-obstruction': 'docs/model-evidence/biliary-obstruction.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -196,6 +199,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'pulmonary-edema',
       'pneumonia-consolidation',
       'pulmonary-embolism',
+      'biliary-obstruction',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -206,6 +210,10 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(PULMONARY_EDEMA_EVIDENCE.length >= 8);
   assert.ok(PNEUMONIA_EVIDENCE.length >= 8);
   assert.ok(PULMONARY_EMBOLISM_EVIDENCE.length >= 8);
+  // Shorter than the others on purpose. This model's content is an ordering
+  // and two pieces of physiology on top of it; padding the registry to match a
+  // count would mean writing claims the model does not make.
+  assert.ok(BILIARY_EVIDENCE.length >= 6);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

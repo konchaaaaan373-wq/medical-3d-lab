@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  DEFAULT_CONTROLS as BILIARY_DEFAULTS,
+  REFERENCE as BILIARY_REFERENCE,
+  solveBiliaryObstruction,
+} from '../src/models/biliaryObstruction.js';
+import {
   BASELINE_INTERSTITIAL_VOLUME_ML as EDEMA_BASELINE_WATER_ML,
   INTERSTITIUM as EDEMA_INTERSTITIUM,
   LYMPHATICS as EDEMA_LYMPHATICS,
@@ -946,4 +951,46 @@ test('calibration: diversion reduces the shunt without abolishing it', () => {
   assert.equal(fullyFlooded.floodedFraction, 1, 'the test needs a completely flooded lung');
   assert.ok(fullyFlooded.shuntFraction > 0.5, `shunt was ${fullyFlooded.shuntFraction.toFixed(2)}`);
   assert.ok(fullyFlooded.shuntFraction < 0.85, 'but diversion keeps it short of the whole output');
+});
+
+test('calibration: the open biliary tree lands on an ordinary resting pressure', () => {
+  // Defends `duct-resistances`. The four resistances were chosen to put an
+  // unobstructed common bile duct near ten centimetres of water at an ordinary
+  // bile flow, with nearly all of the normal resistance in the sphincter. That
+  // they still do is a property of the choice, not a finding — and no pressure
+  // this model reports is a threshold for anything.
+  const open = solveBiliaryObstruction();
+  const cbd = open.pressure['common-bile-duct'];
+  assert.ok(cbd > 4 && cbd < 12, `the resting common bile duct drifted to ${cbd} cmH2O`);
+  assert.ok(
+    open.pressure['common-hepatic-duct'] - cbd < 1,
+    'nearly all of the normal resistance is supposed to be the sphincter, so the ducts sit close together'
+  );
+  const pancreatic = open.pressure['pancreatic-duct'];
+  assert.ok(pancreatic > cbd, `the pancreatic duct is supposed to sit higher: ${pancreatic} vs ${cbd}`);
+  // And the gallbladder keeps up with a meal when nothing is blocking it.
+  assert.ok(
+    open.gallbladderTimeConstantMin < BILIARY_REFERENCE.gallbladderWindowMin / 3,
+    `τ ${open.gallbladderTimeConstantMin} min against a ${BILIARY_REFERENCE.gallbladderWindowMin} min window`
+  );
+});
+
+test('calibration: one occlusion resistance means the same thing at every site', () => {
+  // Defends `occlusion-resistance`. It is added rather than multiplied so that
+  // "complete" is site-independent — a stone is the same stone wherever it
+  // lodges — and the number is large enough that a complete blockage delivers
+  // almost nothing through the resistance it sits in. Neither is a measurement
+  // of a stone, a stricture or a degree of stenosis.
+  assert.ok(BILIARY_DEFAULTS.occlusionResistance > 500, BILIARY_DEFAULTS.occlusionResistance);
+  const distal = solveBiliaryObstruction({ site: 'common-bile-duct', completeness: 1 });
+  const ampullary = solveBiliaryObstruction({ site: 'ampulla', completeness: 1 });
+  assert.ok(distal.bileDeliveredFraction < 0.1, distal.bileDeliveredFraction);
+  assert.ok(ampullary.pancreaticDeliveredFraction < 0.1, ampullary.pancreaticDeliveredFraction);
+  // The same addition at two sites leaves the bile path in the same state,
+  // because the resistance it was added to is downstream of the same segments.
+  assert.equal(
+    distal.bileDeliveredFraction.toFixed(4),
+    ampullary.bileDeliveredFraction.toFixed(4),
+    'a blockage at the papilla and one just above it cost the bile path the same'
+  );
 });

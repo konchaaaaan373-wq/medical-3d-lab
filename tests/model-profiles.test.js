@@ -155,6 +155,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'portal-hypertension': MECHANISM_LEVEL.MECHANISTIC,
     'hepatorenal-syndrome': MECHANISM_LEVEL.MECHANISTIC,
     'renal-filtration': MECHANISM_LEVEL.MECHANISTIC,
+    'biliary-obstruction': MECHANISM_LEVEL.MECHANISTIC,
   });
 });
 

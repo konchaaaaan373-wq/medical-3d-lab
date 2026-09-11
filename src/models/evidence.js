@@ -1301,6 +1301,119 @@ export const PULMONARY_EDEMA_EVIDENCE = defineEvidence('pulmonary-edema', [
 ]);
 
 /** @see src/models/pneumonia.js, docs/model-evidence/pneumonia.md */
+/**
+ * Biliary obstruction — a model whose whole content is an ordering.
+ *
+ * Almost nothing here is a measurement. What the scene asserts is topology and
+ * two pieces of physiology on top of it: that a secretion working against a
+ * back-pressure gives way, and that pressure at a point is the flow times the
+ * resistance still downstream. Everything else — which site affects what — is
+ * arithmetic once the order of the segments is accepted.
+ *
+ * The order is therefore the only thing that has to be right, and it is the one
+ * claim with a real external source: standard surgical and radiological anatomy
+ * of the extrahepatic biliary tree.
+ */
+export const BILIARY_EVIDENCE = defineEvidence('biliary-obstruction', [
+  {
+    id: 'segment-order',
+    claim:
+      'Right and left hepatic ducts join to form the common hepatic duct; the cystic duct joins that to form the common bile duct; the common bile duct meets the main pancreatic duct at the major duodenal papilla. The gallbladder opens off the tree through the cystic duct and is not on the path from liver to duodenum.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard surgical and radiological anatomy of the extrahepatic biliary tree.',
+    validation:
+      'physiology: a blockage off the bile path does not reduce what reaches the gut',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'pressure-is-downstream-resistance',
+    claim:
+      'In a series path at steady flow, the pressure at a point is the flow times the resistance still downstream of it. A resistance inserted at one point therefore pressurises every point above it and no point below it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Hydraulics. ΔP = Q·R, applied to a path in series.',
+    validation:
+      'physiology: a blockage on the bile path raises the pressure above it and not below it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'shared-sphincter',
+    claim:
+      'The sphincter at the papilla is the only resistance the biliary and pancreatic paths have in common, so it is the only site at which one blockage obstructs both.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard anatomy of the hepatopancreatic ampulla. Where the two ducts open separately — one of several described arrangements — this does not hold, and the model card says so.',
+    validation: 'physiology: only a blockage at the shared sphincter reaches the pancreatic duct',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'secretory-pressure-ceiling',
+    claim:
+      'Hepatic bile secretion is not a pump: it falls as the pressure in the ducts rises and ceases at a maximum secretory pressure of a few tens of centimetres of water. A complete obstruction therefore produces a bounded pressure and a flow approaching zero.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard biliary physiology for continuous secretion and for a maximum biliary secretory pressure in the region of twenty-five to thirty centimetres of water. The direction and the existence of a ceiling are textbook; the exact value is a calibration here.',
+    validation: 'physiology: secretion gives way against pressure, so a complete blockage is bounded',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'gallbladder-time-constant',
+    claim:
+      'Whether a gallbladder keeps up with the duct beside it is a question about the cystic duct\u2019s resistance times the gallbladder\u2019s compliance, against the time a meal takes — not about an equilibrium, which any finite resistance eventually reaches.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The time constant of a compliant reservoir behind a resistance, τ = R·C. The same relation the obstructed-lung model is built on.',
+    validation: 'physiology: a gallbladder keeps up with the duct on a time constant, not on an equilibrium',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'common-channel-assumption',
+    claim:
+      'This model gives the common bile duct and the main pancreatic duct a shared channel at the papilla, so that an ampullary blockage obstructs both. That arrangement is one of several described; where the two open separately it does not hold.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'Descriptions of the hepatopancreatic ampulla differ, and the proportion of people with a true common channel is reported variously. This model assumes one and cannot represent the alternative.',
+    note:
+      'The direction this model is known to get wrong. Its ampullary case is right for a common channel and wrong for a separate opening, and it has no way to be told which it is looking at.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'schematic-tree',
+    claim:
+      'The tree this scene is drawn on is schematic. Its calibres, lengths and angles are chosen to be legible, and the model asserts the order of the segments rather than their sizes.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The biliary atlas\u2019s own builder, used here as it stands. Its header says PROTOTYPE — NOT ANATOMICALLY VALIDATED.',
+    note:
+      'An illustrative geometry. Nothing on screen is a duct diameter, a duct length or a measurement of anybody, and a dilated segment is a pressure the model solved rather than a calibre it computed.',
+    validation: 'calibration: the open biliary tree lands on an ordinary resting pressure',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'duct-resistances',
+    claim:
+      'The four resistances are the numbers that put an unobstructed common bile duct near ten centimetres of water at an ordinary bile flow, with nearly all of the normal resistance in the sphincter.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose, not a measurement: the four values were calibrated so that an unobstructed common bile duct lands near ten centimetres of water at an ordinary bile flow.',
+    note:
+      'Not a measurement of a duct, of a sphincter or of anybody. No pressure this model reports is a threshold, and the only thing the values are chosen to reproduce is an ordinary resting state.',
+    validation: 'calibration: the open biliary tree lands on an ordinary resting pressure',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'occlusion-resistance',
+    claim:
+      'What a complete blockage adds to a resistance is one number used at every site, so that "complete" means the same thing wherever the blockage is.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose so that a complete blockage delivers almost nothing through the resistance it sits in. Added rather than multiplied precisely so that it is site-independent.',
+    note:
+      'Not a stone, not a stricture and not a degree of stenosis. It says how much resistance a complete blockage stands for in this model, and nothing about what produced one.',
+    validation: 'calibration: one occlusion resistance means the same thing at every site',
+    layer: LAYER.CALIBRATION,
+  },
+]);
+
 export const PNEUMONIA_EVIDENCE = defineEvidence('pneumonia-consolidation', [
   {
     id: 'shunt-definition',
@@ -1481,4 +1594,5 @@ export const EVIDENCE_REGISTRIES = [
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
   PULMONARY_EMBOLISM_EVIDENCE,
+  BILIARY_EVIDENCE,
 ];

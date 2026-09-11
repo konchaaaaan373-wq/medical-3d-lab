@@ -82,6 +82,16 @@
     "cardUpdatedAt": "2026-09-01"
   },
   {
+    "sceneId": "biliary-obstruction",
+    "card": "docs/model-cards/biliary-obstruction.md",
+    "modelSources": [
+      "src/models/biliaryObstruction.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "f3fa13dfdf54fa95",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "renal-filtration",
     "card": "docs/model-cards/renal-filtration.md",
     "modelSources": [

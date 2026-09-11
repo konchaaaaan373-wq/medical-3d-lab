@@ -1144,6 +1144,144 @@ export const PATIENT_GUIDES = Object.freeze({
       },
     ]),
   }),
+  /**
+   * Biliary obstruction — four places, not four stages.
+   *
+   * Built on the shape the renal walk worked out, because the disease has the
+   * same shape: the site is a **choice** and the axis is how complete the
+   * blockage is. A reader who moves from the cystic duct to the common bile
+   * duct has changed the question, and every step that changes the site leaves
+   * the axis exactly where it was, which
+   * `tests/pathology-guides.test.js` holds.
+   *
+   * **The model's own answers are what the copy says.** With the cystic duct
+   * blocked, the flow to the gut is unchanged to six decimal places and the
+   * duct pressures do not move at all — the gallbladder is simply cut off, and
+   * that is the whole visible content. With the common bile duct blocked, every
+   * segment above it is pressurised, the gallbladder with them, and the
+   * pancreatic duct is untouched. Only at the papilla does one blockage take
+   * both, because that is the only resistance the two paths share.
+   *
+   * **What it refuses is most of what the words mean in a clinic.** The model
+   * has pressures and flows and no pigment, no stone, no inflammation and no
+   * time. So no step names jaundice, a stone, an operation or a test, and the
+   * marked steps at the end say on screen that what a person notices is not
+   * drawn from this.
+   */
+  'biliary-obstruction': Object.freeze({
+    title: 'Where a blockage sits decides what it does',
+    titleJa: 'どこで詰まるかが、何が起きるかを決めます',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'patent',
+        controls: { site: 'none' },
+        frame: 'whole',
+        focus: ['gallbladder', 'papilla'],
+        certainty: 'established',
+        title: 'Bile leaves the liver and runs to the gut',
+        titleJa: '胆汁は肝臓を出て、腸へ向かいます',
+        body: 'The liver makes bile all the time. It runs down a tube into the gut, and a small bag hangs off the side of that tube along the way.',
+        bodyJa: '肝臓はつねに胆汁を作っています。胆汁は管を下って腸へ入り、その途中で、管の脇に小さな袋がぶら下がっています。',
+        look: 'Follow the stream from the top of the screen to the bottom. The bag beside it is on a side branch, not on the way.',
+        lookJa: '画面の上から下へ、流れを目で追ってください。脇の袋は本道ではなく枝の先にあります。',
+      },
+      {
+        progress: 0.5,
+        stage: 'partial',
+        // The axis moves and the site is entered for the first time. From here
+        // every change of site happens with the axis standing still, so the
+        // three blockages are compared like for like.
+        controls: { site: 'common-bile-duct' },
+        frame: 'lower',
+        focus: ['commonBile', 'papilla'],
+        certainty: 'established',
+        title: 'Narrow the main tube part of the way',
+        titleJa: '本道を途中まで狭くします',
+        body: 'Most blockages are partial for a while. Less gets through, and what cannot get through backs up behind — so the pressure above starts to rise before anything is fully shut.',
+        bodyJa: '多くの閉塞は、しばらくは部分的です。通る量が減り、通れない分は手前にたまります。完全に閉じる前から、上流の圧は上がり始めます。',
+        look: 'The stream past the narrowing has thinned. The tube above it has begun to widen.',
+        lookJa: '狭くなった先の流れが細くなりました。その上の管は広がり始めています。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        controls: { site: 'common-bile-duct' },
+        frame: 'lower',
+        focus: ['commonBile', 'gallbladder'],
+        certainty: 'established',
+        title: 'The main tube, blocked all the way',
+        titleJa: '本道が完全に詰まる',
+        body: 'Nothing gets past now, so everything above the blockage fills and widens — the bag included, because it is still connected to what is filling.',
+        bodyJa: '今度は先へ進めないため、閉塞の上流はすべて満ちて広がります。袋もつながったままなので、一緒に広がります。',
+        look: 'Watch how far up the widening reaches. Everything above the block is in it, and nothing below is.',
+        lookJa: '広がりがどこまで上に達しているかを見てください。閉塞より上はすべて含まれ、下は含まれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        // The contrast, and the reason it comes after the main tube rather
+        // than before it: what a blockage here does is best seen against what
+        // one on the path just did. The axis has not moved.
+        controls: { site: 'cystic-duct' },
+        frame: 'upper',
+        focus: ['gallbladder', 'cystic'],
+        certainty: 'established',
+        title: 'Now put the same blockage on the side branch',
+        titleJa: '同じ閉塞を、枝のほうに置きます',
+        body: 'A different place, not a worse one. The bag is cut off — and what runs down the main tube to the gut does not change at all, because the bag was never on the way.',
+        bodyJa: '別の場所であって、悪化した状態ではありません。袋は切り離されますが、本道を下って腸へ届く分はまったく変わりません。袋はもともと本道になかったからです。',
+        look: 'The stream into the bag has stopped. Look at the main tube below it — it is running exactly as it was.',
+        lookJa: '袋へ入る流れが止まりました。その下の本道を見てください。先ほどとまったく同じように流れています。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        controls: { site: 'ampulla' },
+        frame: 'lower',
+        focus: ['papilla', 'pancreaticDuct'],
+        certainty: 'established',
+        title: 'And the shared doorway at the end',
+        titleJa: '最後に、共有の出口',
+        body: 'A third place, at the very end. Another tube arrives from a different organ and leaves through the same doorway, so blocking it stops both at once.',
+        bodyJa: '3 つめは、いちばん端です。別の臓器から来る管が同じ出口を使っているため、ここが詰まると両方が同時に止まります。',
+        look: 'Two streams arrive at the bottom of the screen, not one. Watch both stop, which did not happen a moment ago.',
+        lookJa: '画面の下には、1 本ではなく 2 本の流れが届いています。両方が止まるのを見てください。前の段階では起きなかったことです。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        // The model has pressures and flows and no pigment at all.
+        controls: { site: 'ampulla' },
+        frame: 'lower',
+        focus: ['papilla', 'pancreaticDuct'],
+        certainty: 'established',
+        educationalOnly: true,
+        title: 'What backs up here is not what is measured in a clinic',
+        titleJa: 'ここでたまるものと、外来で測るものは別です',
+        body: 'Bile carries a colouring that the body normally sends out this way. Where it goes when this route closes is a separate question, and this picture has none of it in it.',
+        bodyJa: '胆汁には、体が普段この経路で送り出している色素が含まれています。この道が閉じたときにそれがどこへ行くかは別の問題で、この絵には含まれていません。',
+        look: 'There is no colour in this picture and no blood. What is drawn is a pressure and a flow.',
+        lookJa: 'この絵に色素も血液もありません。描かれているのは圧と流れです。',
+      },
+      {
+        progress: 1,
+        stage: 'complete',
+        controls: { site: 'ampulla' },
+        frame: 'lower',
+        focus: ['papilla', 'pancreaticDuct'],
+        certainty: 'associated',
+        educationalOnly: true,
+        title: 'What people notice depends on where it is',
+        titleJa: '気づくことは、どこで詰まったかによります',
+        body: 'Discomfort after eating, and a change in the colour of the skin or eyes, are described with blockages of this kind. Which of them appear depends on the place, and varies between people.',
+        bodyJa: '食後の不快感や、皮膚や目の色の変化が、この種の閉塞で語られます。どれが現れるかは場所によって異なり、人によっても違います。',
+        look: 'Nothing new is drawn for this step. The screen shows tubes and what runs through them, not a person.',
+        lookJa: 'この段階で新しく描かれるものはありません。画面が示すのは管と、その中を流れるものであって、人ではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

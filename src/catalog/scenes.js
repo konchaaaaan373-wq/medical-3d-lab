@@ -299,6 +299,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/hepatobiliary/scenes/portalHypertension/index.js'),
   },
   {
+    id: 'biliary-obstruction',
+    slug: 'biliary-obstruction',
+    titleEn: 'Biliary obstruction',
+    titleJa: '胆道閉塞',
+    system: 'hepatobiliary',
+    organ: 'gallbladder',
+    organs: ['gallbladder', 'liver', 'pancreas'],
+    disease: 'biliary-obstruction',
+    conditions: ['biliary obstruction', 'gallstone', 'choledocholithiasis', 'cystic duct obstruction', 'ampullary obstruction', '胆道閉塞', '胆石', '総胆管結石', '胆嚢管閉塞', '乳頭部閉塞'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/biliary-obstruction.md',
+    modelProfile: 'biliary-obstruction-site',
+    description:
+      'Four resistances from the liver to the gut: why a blockage in the cystic duct, the common bile duct and the papilla do three different things, and why only the last of them reaches the pancreatic duct.',
+    descriptionJa:
+      '肝臓から腸までを 4 つの抵抗として解き、胆嚢管・総胆管・乳頭部の閉塞が三者三様に異なる結果をもたらす理由と、膵管に及ぶのが最後の一つだけである理由を示します。',
+    tags: ['hepatobiliary', 'obstruction', 'scenario-model'],
+    load: () => import('../scenes/hepatobiliary/scenes/biliaryObstruction/index.js'),
+  },
+  {
     id: 'hepatorenal-syndrome',
     slug: 'hepatorenal-syndrome',
     titleEn: 'Hepatorenal syndrome — the haemodynamic mechanism',

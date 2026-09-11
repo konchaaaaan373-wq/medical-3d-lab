@@ -29,6 +29,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'asthma-heterogeneity',
   'portal-hypertension',
   'hepatorenal-syndrome',
+  'biliary-obstruction',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -186,6 +187,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
     ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
     ['コンソリデーション', '換気', 'シャント']
+  ),
+  'biliary-obstruction': presentation(
+    'Put the same blockage in three different places; watch which segments end up behind it and which do not.',
+    '同じ閉塞を 3 か所に置き替え、どの区間が上流になり、どの区間はならないのかを確認。',
+    ['SITE', 'PRESSURE', 'WHAT DRAINS'],
+    ['部位', '内圧', '流出']
   ),
   'pulmonary-embolism': presentation(
     'Obstruct parallel pulmonary vessels; watch perfusion fall while ventilation persists and relative PVR rises.',

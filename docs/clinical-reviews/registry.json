@@ -182,6 +182,28 @@
     ]
   },
   {
+    "sceneId": "biliary-obstruction",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "four-resistance duct model of biliary outflow, prepared for future clinical sign-off: which segments a blockage at a named site puts behind it, and which it leaves alone"
+    ],
+    "sources": [
+      "docs/model-cards/biliary-obstruction.md",
+      "docs/model-evidence/biliary-obstruction.md",
+      "tests/biliary-obstruction-model.test.js",
+      "src/models/biliaryObstruction.js"
+    ],
+    "unresolvedLimitations": [
+      "The resistances are calibration constants chosen to put an unobstructed common bile duct near ten centimetres of water at an ordinary bile flow. They are not measurements, and no figure in the model is a threshold.",
+      "The model carries no bilirubin, jaundice, pain, inflammation, infection, stone or enzyme, and no diagnosis follows from it. Cholecystitis, cholangitis and pancreatitis are named nowhere in it.",
+      "Every state is an equilibrium. The model cannot show a duct dilating over days or a gallbladder filling over hours; its only time is the cystic duct's time constant, which is a ratio.",
+      "A common channel at the papilla is one of several anatomical arrangements. Where the two ducts open separately, the ampullary case does not behave as this model shows."
+    ]
+  },
+  {
     "sceneId": "hepatorenal-syndrome",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
