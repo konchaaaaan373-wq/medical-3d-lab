@@ -212,22 +212,6 @@ production バンドルにはそもそも入りません。
 - 完了の定義: `docs/clinical-reviews/registry.json` が `reviewed` になり、
   `tests/clinical-reviews.test.js` が通る。それまで患者モードは開きません。
 
-### F-41 腎濾過（`renal-filtration`）の患者説明をどの situation で書くか — P2（病態説明の展開）
-
-このシーンだけ患者説明を書いていません。理由は書けなかったからではなく、
-**軸の意味が situation によって変わる**からです。ステージは `intact` /
-`compensating` / `established` という総称で、「何が代償しているか」は
-`situation`（prerenal ほか）が決めます。1 本の患者説明はどれか 1 つを選んで
-「これはその状況の話です」と言わなければならず、それは書く前に決める判断です。
-
-- 決めること: どの situation を代表として歩くか。あるいは situation ごとに
-  複数の guide を持てるようにするか（`patientGuideFor(sceneId)` は 1 対 1 です）。
-- 付随して: `situation` は文字列の制御で、`guideModelStateProblems()` は数値しか
-  検証できません。step が situation を選べるようにするなら、選択肢を持つ制御の
-  検証を足す必要があります。
-- 完了の定義: 代表 situation を決めて `docs/model-cards/renal-filtration.md` に
-  1 行書き、guide を足して `tests/pathology-guides.test.js` に行を追加。
-
 ### F-42 Pulse Physiology Engine の PoC は未実行 — P3（病態説明の展開）
 
 [`docs/pulse-engine-poc.md`](pulse-engine-poc.md) に調べたことを全部書きました。
@@ -244,6 +228,47 @@ conda-forge には存在しません。したがって CDM のフィールド名
   condition を 2 段階の severity で与えて、エンジン自身の出力一覧を印字する。
 - 完了の定義: フィールド名・単位・出力・実行方法を `pulse-engine-poc.md` に
   実測で書き換える。それまで統合の判断はしません。
+
+
+### F-45 胆道閉塞・アカラシアの臨床レビュー — P1（病態の量産）
+
+新しいモデルを 2 つ足しました。どちらも `alpha` / レビュー `pending` で、
+患者モードは閉じています。レビューアが確かめるべき問いは model card の
+**§11 Where it will mislead** と evidence dossier の §2・§3 です。
+
+- 胆道閉塞（`biliary-obstruction`）:
+  - 4 抵抗の較正値。非閉塞の総胆管が約 10 cmH₂O になるよう選んでいますが、
+    「正常値」として読まれないか。
+  - **共通管の仮定**（`common-channel-assumption`）。乳頭部閉塞が膵管にも
+    及ぶという主張は共通管を前提にしています。別々に開口する型では成り立ちません。
+  - 胆嚢管の時定数（R·C）を「食事の 1 時間」と比べる扱いが妥当か。
+    平衡だけでは行き止まりの胆嚢は切り離せない、という判断です。
+- アカラシア（`achalasia`）:
+  - **軸が 2 つの障害を同時に動かすこと**、およびその対応づけが非線形であること
+    （`axis-moves-both`）。液柱が差を埋められる範囲が狭いための措置ですが、
+    「進行」に見えないか。
+  - 括約筋のコンダクタンスが弛緩に比例して上がる扱い。これが「輪は開くが波がない」
+    状態でほとんど貯留しない結果を生んでいます。
+  - 5 つのステージが、モデルが実際に到達する 5 つの区別できる状態になっているか
+    （`tests/achalasia-model.test.js` が位置は固定していますが、区別の妥当性は
+    臨床判断です）。
+- 完了の定義: `docs/clinical-reviews/registry.json` が `reviewed` になり、
+  `tests/clinical-reviews.test.js` が通る。
+
+### F-46 胆道・食道の正常解剖シーンはまだ main にない — P2（病態の量産）
+
+`biliary-obstruction` は `buildBiliaryTree` を、`achalasia` は
+`buildEsophagusParts` を Claude② の branch
+`claude/organ-expansion-implementation-jsd7j6` から**そのまま**持ってきています
+（`src/scenes/shared/anatomy/tubeParts.js` も同様）。1 文字も変えていません。
+
+- いま起きること: `RELATED` が `biliary-anatomy` と `esophagus-anatomy` を
+  指していますが、この branch にそのシーンはありません。`App.js` の公開ゲートが
+  存在しないシーンへのリンクを落とすので壊れはしませんが、**リンクは出ません**。
+- Claude② の branch がマージされた時点で、リンクは自動的に出ます。行を足す必要も
+  slug を書き換える必要もありません。
+- 確認すること: マージ時に 3 ファイルが重複しないこと（同一内容なので衝突は
+  しないはずですが、`tubeParts.js` は両方が新規追加する形になります）。
 
 ---
 
@@ -461,6 +486,21 @@ route intercept で答えています（`paid-content` にはこのリポジト�
 - 決めること: 本物のセッションで 1 度だけ通す経路を用意するか、現状の分担で
   よしとするか。
 
+
+### F-47 アカラシアの軸マッピングは較正ではなく演出 — P2（病態の量産）
+
+`AchalasiaScene.FAILURE_CURVE` は、軸の位置を 2 つの障害パラメータへ写す
+折れ線です。角（0.64 と 0.84）は「液柱が差を埋められる帯」の実際の端で、
+モデルから読み取っています。**帯が狭いのは物理です**——食道の全長ぶんの液柱でも
+約 16 mmHg にしかならず、括約筋は 25 mmHg 締めているためです。
+
+- 残る判断: この対応づけを演出として持ち続けるか、帯そのものを広げる方向に
+  モデルを変えるか（たとえば食道が充満に伴って拡張し、同じ高さでより多くを
+  抱えるようにする）。後者は「太さ」を持たないという現在の設計を変えます。
+- いまの扱い: evidence registry の `axis-moves-both` に
+  `CONFIDENCE.UNCERTAIN` として記録し、model card §11・§13 と scope panel の
+  cautions に書いてあります。テストは角がモデルの帯の中にあることを固定します。
+
 ---
 
 ## E. その他
@@ -496,6 +536,14 @@ PR 本文の「`npm test` — 1390/1390」は初版時点の数値です（最�
 ## Resolved
 
 （解決した項目を `F-xx — 日付 — 何で閉じたか` の 1 行で移す）
+
+- F-41 — 2026-09-11 — 腎濾過の患者説明を書いた。代表 situation を 1 つ選ぶのではなく、
+  **4 つを軸を止めたまま並べる**形にした（`normal` → `prerenal` → `tubularInjury`
+  → `nephrotic` → `obstruction`、機序が変わる step では軸が動かない）。
+  `situation` のような `kind: 'choice'` の制御を `guideModelState.js` が理解するように
+  なり、`tests/pathology-guides.test.js` の scenario 規則が
+  「機序を切り替える step は軸を動かさない」を固定している。ベースラインかどうかは
+  モデルに問い合わせて判定する（軸が何も動かさない選択肢がベースライン）。
 
 - F-34 — 2026-09-08 — 初回に group しか開かず、部位名が 1 件も見えなかった件。
   最初の枝だけを構造が出るまで開くようにしました（全 271 の一括展開はせず、
