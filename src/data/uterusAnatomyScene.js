@@ -24,6 +24,8 @@ export const UTERUS_SCENE_COLORS = Object.freeze({
   'right-ovary': '#e0cdb4',
   'left-ovary': '#e0cdb4',
   vagina: '#c9909b',
+  bladder: '#c8a6b8',
+  rectum: '#c68f72',
 });
 
 export const UTERUS_NATURAL_COLORS = Object.freeze({
@@ -38,6 +40,8 @@ export const UTERUS_NATURAL_COLORS = Object.freeze({
   'right-ovary': '#dccbb6',
   'left-ovary': '#dccbb6',
   vagina: '#c2929c',
+  bladder: '#c8a6b8',
+  rectum: '#c08a72',
 });
 
 export const UTERUS_COLOR_MODES = Object.freeze([
@@ -185,6 +189,44 @@ export function uterusStructureCopy() {
       '卵胞・黄体・卵巣の各靱帯は描いていません。'
     ),
     [
+      'bladder',
+      {
+        name: 'Urinary bladder',
+        nameJa: '膀胱',
+        hierarchy: ['Neighbours', 'Bladder', 'Bladder'],
+        hierarchyJa: ['周囲の構造', '膀胱', '膀胱'],
+        description:
+          'In front of and below the uterus. The body of the uterus normally leans forward over it — which is what "anteverted" means, and it cannot be seen without something to lean over.',
+        descriptionJa:
+          '子宮の前下方にあります。子宮体部は通常この上に前傾しており、それが「前傾」という言葉の意味です。前に何もなければ、傾いていること自体が読めません。',
+        note: 'Context only: the same bladder shape `bladder-anatomy` draws, at one fixed filling and with no parts named here.',
+        noteJa:
+          '位置関係を示すためだけの表示です。`bladder-anatomy` と同じ形を、蓄尿量を固定して描いており、ここでは部位名を付けていません。',
+        colorKey: 'bladder',
+        legendKey: 'neighbour',
+        tags: ['neighbour'],
+      },
+    ],
+    [
+      'rectum',
+      {
+        name: 'Rectum',
+        nameJa: '直腸',
+        hierarchy: ['Neighbours', 'Rectum', 'Rectum'],
+        hierarchyJa: ['周囲の構造', '直腸', '直腸'],
+        description:
+          'Behind the uterus. The pouch between the two is the lowest point of the peritoneal cavity in a standing woman, which is why fluid and disease collect there.',
+        descriptionJa:
+          '子宮の背側にあります。両者の間の窩は立位での腹膜腔の最低点にあたり、液体や病変がここに溜まりやすいのはそのためです。',
+        note: 'Context only: a plain tube. The recto-uterine pouch itself is not drawn as a structure, and neither is the peritoneum.',
+        noteJa:
+          '位置関係を示すためだけの表示です。単純な管として描いており、ダグラス窩そのものも腹膜も構造としては描いていません。',
+        colorKey: 'rectum',
+        legendKey: 'neighbour',
+        tags: ['neighbour'],
+      },
+    ],
+    [
       'vagina',
       {
         name: 'Vagina',
@@ -223,7 +265,7 @@ export const UTERUS_ANATOMY_META = Object.freeze({
     { key: 'wall', label: 'Fundus, body, isthmus, cervix', labelJa: '子宮底・体部・峡部・頸部' },
     { key: 'inside', label: 'Cavity and cervical canal', labelJa: '子宮腔・頸管', activeFrom: 0.35 },
     { key: 'adnexa', label: 'Tubes and ovaries', labelJa: '卵管・卵巣' },
-    { key: 'neighbour', label: 'Vagina', labelJa: '腟' },
+    { key: 'neighbour', label: 'Vagina, bladder and rectum', labelJa: '腟・膀胱・直腸' },
   ],
   stages: [
     {
@@ -231,8 +273,8 @@ export const UTERUS_ANATOMY_META = Object.freeze({
       name: 'The organ and what is beside it',
       nameJa: '子宮と付属器',
       at: 0,
-      summary: 'Fundus, body, isthmus and cervix, with a tube on each side reaching towards — but not touching — an ovary.',
-      summaryJa: '子宮底・体部・峡部・頸部と、左右の卵管、そして卵管が触れずに向かい合う卵巣です。',
+      summary: 'Fundus, body, isthmus and cervix, leaning forward over the bladder, with a tube on each side reaching towards — but not touching — an ovary.',
+      summaryJa: '子宮底・体部・峡部・頸部が膀胱の上に前傾しています。左右の卵管と、卵管が触れずに向かい合う卵巣も示しています。',
     },
     {
       id: 'cavity',
@@ -248,9 +290,9 @@ export const UTERUS_ANATOMY_META = Object.freeze({
   range: { start: 'Outside', startJa: '外形', end: 'The cavity', endJa: '内腔' },
   progressLabel: { label: 'Wall transparency', labelJa: '子宮壁の透過' },
   disclaimer:
-    'EDUCATIONAL GROSS-ANATOMY MODEL — Shape is schematic and no dimension is measured. The uterus is drawn **upright**, not anteverted and anteflexed as it usually lies. The cavity is a flat patch with no thickness; endometrium, myometrium and perimetrium are not separated; follicles, ligaments, fornices, the transformation zone and the vessels are not drawn, and nothing here changes with the cycle.',
+    'EDUCATIONAL GROSS-ANATOMY MODEL — Shape is schematic and no dimension is measured. The organ is shown **anteverted**, leaning forward over the bladder; **anteflexion — the further bend between body and cervix — is not modelled**, and a retroverted uterus is a normal variant this scene does not show. The cavity is a flat patch with no thickness; endometrium, myometrium and perimetrium are not separated; follicles, ligaments, fornices, the transformation zone and the vessels are not drawn, and nothing here changes with the cycle.',
   disclaimerJa:
-    '教育用肉眼解剖モデル：形状は模式的で、いずれの寸法も実測値ではありません。子宮は通常の前傾前屈位ではなく、**直立位**で描いています。子宮腔は厚みのない面として描いており、内膜・筋層・漿膜は分けていません。卵胞・靱帯・腟円蓋・移行帯・血管は描いておらず、周期による変化も表現していません。',
+    '教育用肉眼解剖モデル：形状は模式的で、いずれの寸法も実測値ではありません。子宮は膀胱の上に前傾した**前傾位**で表示していますが、**体部と頸部の間の前屈は表現していません**。後傾子宮という正常変異も、このシーンでは示していません。子宮腔は厚みのない面として描いており、内膜・筋層・漿膜は分けていません。卵胞・靱帯・腟円蓋・移行帯・血管は描いておらず、周期による変化も表現していません。',
   disclaimerShort: 'Educational gross anatomy — not for clinical use',
   disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });

@@ -24,6 +24,7 @@ export const BILIARY_SCENE_COLORS = Object.freeze({
   'pancreatic-duct': '#57bda4',
   'major-duodenal-papilla': '#c8603f',
   duodenum: '#d99a7c',
+  'pancreatic-head': '#deb18c',
 });
 
 export const BILIARY_NATURAL_COLORS = Object.freeze({
@@ -38,6 +39,7 @@ export const BILIARY_NATURAL_COLORS = Object.freeze({
   'pancreatic-duct': '#b7c8c1',
   'major-duodenal-papilla': '#c08878',
   duodenum: '#d0947f',
+  'pancreatic-head': '#deb18c',
 });
 
 export const BILIARY_COLOR_MODES = Object.freeze([
@@ -142,10 +144,10 @@ export function biliaryStructureCopy() {
       'common-bile-duct',
       'Common bile duct',
       '総胆管',
-      'Below the cystic junction. Everything — liver and gallbladder — is now in one duct, so an obstruction here causes jaundice *and* a gallbladder that distends behind it.',
-      '胆嚢管合流部より下流の管です。肝臓と胆嚢の両方の胆汁が1本になっているため、ここでの閉塞は黄疸を起こし、同時にその手前の胆嚢が腫大します。',
-      'Its course behind the first part of the duodenum and through the head of the pancreas is not drawn: here it runs in front of them.',
-      '十二指腸球部の背側を通り膵頭部を貫く走行は表現していません。ここではその腹側を通るように描いています。'
+      'Below the cystic junction. Everything — liver and gallbladder — is now in one duct, so an obstruction here causes jaundice *and* a gallbladder that distends behind it. It descends **behind** the first part of the duodenum and through the back of the pancreatic head, which is why a mass in that head obstructs it.',
+      '胆嚢管合流部より下流の管です。肝臓と胆嚢の両方の胆汁が1本になっているため、ここでの閉塞は黄疸を起こし、同時にその手前の胆嚢が腫大します。十二指腸球部の**背側**を下行し、膵頭部の背側を貫きます。膵頭部の腫瘤がこの管を閉塞させるのは、この位置関係によります。',
+      'Drawn where it runs, so it is behind the bowel and inside the gland for much of its course. Use the "Ducts alone" viewpoint, or the slider, to see it — it is not moved forward to be seen.',
+      '実際の走行のまま描いているため、走行の多くが腸管の背側・膵実質の内部にあります。見るときは「胆道だけを見る」視点かスライダーを使ってください。見やすくするために手前へ動かすことはしていません。'
     ),
     duct(
       'pancreatic-duct',
@@ -176,6 +178,24 @@ export function biliaryStructureCopy() {
       },
     ],
     [
+      'pancreatic-head',
+      {
+        name: 'Head of the pancreas',
+        nameJa: '膵頭部',
+        hierarchy: ['Neighbours', 'Pancreas', 'Head'],
+        hierarchyJa: ['周囲の臓器', '膵臓', '膵頭部'],
+        description:
+          'Sits inside the duodenal C, behind the bowel. The common bile duct runs through the back of it on its way to the papilla, and the pancreatic duct runs through it the other way — which is why one mass here can obstruct both.',
+        descriptionJa:
+          '十二指腸のC字の内側、腸管の背側にあります。総胆管は乳頭へ向かう途中でこの背側を貫き、主膵管は逆向きにこれを貫きます。1つの腫瘤が両方を閉塞させうるのはこのためです。',
+        note: 'Context only: one lump standing for the head. The uncinate process is not drawn, and the whole gland is `pancreas-anatomy`.',
+        noteJa: '位置関係を示すためだけの表示です。膵頭部を1つの塊で代表させており、鉤状突起は描いていません。膵臓の全体は `pancreas-anatomy` にあります。',
+        colorKey: 'pancreatic-head',
+        legendKey: 'neighbour',
+        tags: ['neighbour'],
+      },
+    ],
+    [
       'duodenum',
       {
         name: 'Duodenum',
@@ -183,11 +203,11 @@ export function biliaryStructureCopy() {
         hierarchy: ['Neighbours', 'Duodenum', 'Duodenum'],
         hierarchyJa: ['周囲の臓器', '十二指腸', '十二指腸'],
         description:
-          'The C the bile arrives in. It is drawn because "where does bile go" has no answer without it.',
+          'The C the bile arrives in, with the pancreatic head inside it. Its second part is a little to the patient’s right of the midline, and the papilla is on the wall facing the midline — so the duct reaches it from behind and from the pancreatic side.',
         descriptionJa:
-          '胆汁が到達するC字型の管です。「胆汁はどこへ行くのか」に答えるには不可欠なので描いています。',
-        note: 'Context only: one tube of constant calibre, the same loop the pancreas scenes borrow.',
-        noteJa: '位置関係を示すためだけの表示です。膵臓のシーンが用いているのと同じ、口径一定のループです。',
+          '胆汁が到達するC字型の管で、その内側に膵頭部が収まります。下行部は正中よりやや右側にあり、乳頭は正中側を向いた壁にあります。そのため総胆管は背側・膵側から乳頭に達します。',
+        note: 'Context only: one tube of constant calibre, the same loop the pancreas scenes borrow. It is drawn in front of the common bile duct because that is where it is; "Ducts alone" removes it.',
+        noteJa: '位置関係を示すためだけの表示です。膵臓のシーンが用いているのと同じ、口径一定のループです。総胆管の腹側に描いているのは実際にそうだからで、「胆道だけを見る」で非表示にできます。',
         colorKey: 'duodenum',
         legendKey: 'neighbour',
         tags: ['neighbour'],
@@ -212,7 +232,7 @@ export const BILIARY_ANATOMY_META = Object.freeze({
   legend: [
     { key: 'gallbladder', label: 'Gallbladder', labelJa: '胆嚢' },
     { key: 'duct', label: 'Bile and pancreatic ducts', labelJa: '胆管・膵管' },
-    { key: 'neighbour', label: 'Duodenum', labelJa: '十二指腸' },
+    { key: 'neighbour', label: 'Duodenum and pancreatic head', labelJa: '十二指腸・膵頭部' },
   ],
   stages: [
     {
@@ -229,17 +249,17 @@ export const BILIARY_ANATOMY_META = Object.freeze({
       nameJa: '2つの管が開く場所',
       at: 1,
       summary:
-        'The duodenum fades: the common bile duct and the main pancreatic duct arrive at the same papilla.',
+        'The duodenum and the pancreatic head fade: the common bile duct comes down behind them and meets the main pancreatic duct at the same papilla.',
       summaryJa:
-        '十二指腸を薄くすると、総胆管と主膵管が同じ乳頭に到達しているのが見えます。',
+        '十二指腸と膵頭部を薄くすると、その背側を下ってきた総胆管が、主膵管と同じ乳頭で合流しているのが見えます。',
     },
   ],
   range: { start: 'Whole tree', startJa: '胆道全体', end: 'The outlet', endJa: '出口' },
-  progressLabel: { label: 'Duodenum transparency', labelJa: '十二指腸の透過' },
+  progressLabel: { label: 'Duodenum and pancreatic head', labelJa: '十二指腸・膵頭部の透過' },
   disclaimer:
-    'EDUCATIONAL GROSS-ANATOMY MODEL — Calibres, lengths and angles are drawn to be legible and none is a measurement. What is claimed is the order of the junctions. The liver is not drawn; the common bile duct runs in front of the duodenum and pancreas rather than behind and through them; the spiral valve, the sphincter of Oddi, Hartmann’s pouch and the minor papilla are not modelled, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.',
+    'EDUCATIONAL GROSS-ANATOMY MODEL — Calibres, lengths and angles are drawn to be legible and none is a measurement. What is claimed is the order of the junctions. The liver is not drawn; the spiral valve, the sphincter of Oddi, Hartmann’s pouch and the minor papilla are not modelled, and the well-known variations in cystic and hepatic duct anatomy are drawn one way only.',
   disclaimerJa:
-    '教育用肉眼解剖モデル：口径・長さ・角度は見やすさのために描いたもので、いずれも実測値ではありません。主張しているのは合流の順序です。肝臓は描いておらず、総胆管は十二指腸・膵頭部の背側ではなく腹側を通しています。らせんヒダ・Oddi括約筋・ハルトマン嚢・小十二指腸乳頭は表現しておらず、胆嚢管や肝管の走行の個人差も1通りでのみ描いています。',
+    '教育用肉眼解剖モデル：口径・長さ・角度は見やすさのために描いたもので、いずれも実測値ではありません。主張しているのは合流の順序です。肝臓は描いていません。らせんヒダ・Oddi括約筋・ハルトマン嚢・小十二指腸乳頭は表現しておらず、胆嚢管や肝管の走行の個人差も1通りでのみ描いています。',
   disclaimerShort: 'Educational gross anatomy — not for clinical use',
   disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });

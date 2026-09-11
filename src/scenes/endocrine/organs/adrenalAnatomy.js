@@ -36,38 +36,72 @@ import { tissueMaterial } from '../../shared/materials.js';
 export const ADRENAL_SCALE = Object.freeze([0.58, 0.44, 0.48]);
 
 /**
- * The cortical zones and the medulla, as fractions of the gland's own radius.
+ * What the anatomy says about how much of the gland each layer is.
  *
- * Ordered from the capsule inwards, which is the order they are named in and
- * the order their products run in: salt, sugar, sex, then catecholamines.
- *
- * **Drawn to be distinguishable, not to scale.** In life the cortex is about
- * nine tenths of the gland and the glomerulosa is a thin rim inside its
- * capsule; three zones at their real thicknesses are three lines on a screen.
+ * Kept apart from the bands below because it is a different kind of number:
+ * this one is about the organ, and `ZONE_DISPLAY_BANDS` is about the screen.
+ * Nothing in this file's geometry is built from these — they exist so that the
+ * copy and the tests have the real proportions to refer to, and so that the
+ * display bands can be checked against them and found to be different on
+ * purpose.
  */
-export const ADRENAL_LAYERS = Object.freeze([
+export const CORTEX_SHARE_OF_GLAND = 0.9;
+
+/**
+ * Where each layer is drawn, as fractions of the gland's own radius.
+ *
+ * **These are presentation values, not dimensions of the organ**
+ * (`CLAUDE.md`: keep clinical and presentation parameters apart, and name them
+ * so a reader can tell which is which). Ordered from the capsule inwards, which
+ * is the order the layers are named in and the order their products run in:
+ * salt, sugar, sex, then catecholamines. **That order is the claim.**
+ *
+ * At the real proportions the cortex is about nine tenths of the gland and the
+ * glomerulosa is a thin rim inside its capsule, so three zones drawn to scale
+ * are three lines on a screen and cannot be pointed at. The bands below spread
+ * them so that each is a surface a reader can select — a visual emphasis in the
+ * layer view, and nothing the organ's shape is claiming.
+ */
+export const ZONE_DISPLAY_BANDS = Object.freeze([
   { id: 'zona-glomerulosa', from: 0.86, to: 1 },
   { id: 'zona-fasciculata', from: 0.68, to: 0.86 },
   { id: 'zona-reticularis', from: 0.54, to: 0.68 },
   { id: 'adrenal-medulla', from: 0, to: 0.54 },
 ]);
 
-/** A flattened cap: a ridge along the top, spreading below. */
+/**
+ * The right gland: a flattened three-sided cap, tapering to a ridge along the
+ * top. Pyramidal is the word every description uses, and a cone is what it has
+ * to read as from the front.
+ */
 function adrenalWarp(v) {
   const up = smoothstep(-0.2, 1, v.y);
-  v.x *= 1 - 0.55 * up;
-  v.z *= 1 - 0.55 * up;
-  v.y = v.y * 0.72 + 0.12;
+  v.x *= 1 - 0.72 * up;
+  v.z *= 1 - 0.72 * up;
+  // A ridge rather than a dome: the apex is a line across the gland, not a
+  // point, which is what makes the silhouette triangular instead of rounded.
+  v.y = v.y * 0.72 + 0.12 + 0.14 * up * Math.exp(-Math.pow(v.z / 0.45, 2));
 }
 
 /**
- * The left gland is crescentic rather than pyramidal: scooped on its inferior
- * surface where it sits against the kidney's medial border.
+ * The left gland is **crescentic**, not pyramidal: it lies along the medial
+ * border of its kidney rather than capping it, so it is longer, flatter, and
+ * scooped deeply on its inferior surface.
+ *
+ * The difference has to be legible from the front, because that is the view the
+ * scene opens on and the shapes are the reason both kidneys are drawn. The
+ * scoop was 0.26 deep and read as the same cone with a dent; at 0.52 across a
+ * wider span the silhouette is a crescent.
  */
 function leftAdrenalWarp(v) {
-  adrenalWarp(v);
-  const low = smoothstep(0.1, -1, v.y);
-  v.y += 0.26 * low * Math.exp(-Math.pow(v.x / 0.75, 2));
+  const up = smoothstep(-0.2, 1, v.y);
+  // Wider and lower than the right, and without the ridge.
+  v.x *= 1 - 0.34 * up;
+  v.z *= 1 - 0.5 * up;
+  v.y = v.y * 0.56 + 0.06;
+  v.x *= 1.22;
+  const low = smoothstep(0.15, -1, v.y);
+  v.y += 0.52 * low * Math.exp(-Math.pow(v.x / 0.5, 2));
 }
 
 /** Where each gland sits, and which kidney it caps. */
@@ -91,7 +125,7 @@ export function buildAdrenalParts({ colors = {}, opacity = 0.96, detail = 6 } = 
       scale: [...ADRENAL_SCALE],
       cacheKey: `adrenal:${site.side}`,
       detail,
-      layers: ADRENAL_LAYERS.map((layer) => ({
+      layers: ZONE_DISPLAY_BANDS.map((layer) => ({
         ...layer,
         color: colors[layer.id] ?? '#e8c88a',
         opacity,

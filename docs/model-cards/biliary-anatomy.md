@@ -20,8 +20,8 @@ The first model in this repository in which a bile duct exists. The
 **gallbladder** is one tube of falling calibre cut into **fundus**, **body** and
 **neck**; the **right** and **left hepatic ducts** meet to form the **common
 hepatic duct**; the **cystic duct** joins it to make the **common bile duct**;
-that and the **main pancreatic duct** arrive together at the **major duodenal
-papilla** on the wall of the **duodenum**. **11 structures are selectable.**
+that descends behind the **duodenum** and through the back of the **pancreatic
+head** to meet the **main pancreatic duct** at the **major duodenal papilla**. **12 structures are selectable.**
 
 The order is the content. A stone in the cystic duct and a stone in the common
 bile duct are the same stone in two places and two different illnesses, and
@@ -33,13 +33,19 @@ which is which is decided by what has already joined the duct above it.
   read a duct diameter off this model.
 - **The liver is not drawn.** The two hepatic ducts begin at the edge of the
   model. The segments they drain are `liver-anatomy`.
-- **The common bile duct runs in front.** In life it passes *behind* the first
-  part of the duodenum and *through* the head of the pancreas. Here it runs in
-  front of both, because a duct hidden inside another organ cannot be pointed
-  at. This is the largest single departure in the model.
+- **The common bile duct is where it is.** It descends *behind* the first part
+  of the duodenum and *through* the back of the pancreatic head, and it reaches
+  the papilla on the posteromedial wall of the second part. An earlier version
+  of this scene ran it in front of both so that it could be clicked on; that is
+  changing the anatomy to suit the camera, and it also threw away the reason a
+  mass in the pancreatic head obstructs a bile duct. A structure that is hidden
+  is shown by moving the *view*, not the structure — see §6.
 - **One variant of many.** Cystic duct length and insertion, and the pattern in
   which the hepatic ducts join, vary widely and are among the reasons biliary
   surgery is careful. Only one arrangement is drawn.
+- **The pancreatic head is one lump.** It is drawn because the duct runs through
+  it; the uncinate process is not modelled and the whole gland is
+  `pancreas-anatomy`.
 - **Not present:** the spiral valve of Heister, Hartmann's pouch, the sphincter
   of Oddi, the common channel, the minor duodenal papilla, the cystic artery and
   Calot's triangle, and any intrahepatic duct.
@@ -57,14 +63,24 @@ from there to the cystic junction; the cystic duct reaches the same junction
 from the gallbladder's neck; the common bile duct runs from there to the
 papilla; the pancreatic duct reaches the same papilla. Those are held in
 `tests/organ-parts-anatomy.test.js`, and the naming through the anatomy contract
-in `tests/organ-anatomy-scenes.test.js`.
+in `tests/organ-anatomy-scenes.test.js`. The duct's course is held there too:
+part of it lies inside the pancreatic head, in that head's posterior half, and
+the papilla is on the wall of the descending limb that faces the midline.
 
 No dimension here is a measurement.
 
 ## 6. Presentation choices
 
-- **The duodenum fades rather than leaves.** The papilla is a marker on its
-  wall, and a marker on a wall that is not there is a dot in space.
+- **The hidden duct is shown by taking the view apart, not the anatomy.** Three
+  mechanisms, in the order the project applies them: a **"Ducts alone"**
+  viewpoint that hides everything tagged `neighbour`; the slider, which fades
+  the duodenum and the pancreatic head to a hint; and isolation on the duct
+  itself from the list. A **"The papilla, from behind"** viewpoint comes at the
+  outlet from the side the duct arrives from.
+- **The duodenum and the head fade rather than leave** on the slider. The
+  papilla is a marker on the bowel's wall, and a marker on a wall that is not
+  there is a dot in space — and what the duct's course *means* is which side of
+  those two it is on.
 - **The duodenum's placement is derived from the papilla**, not typed beside it:
   the shared loop is positioned from the point the tree declares, so moving the
   tree moves the bowel it opens into.

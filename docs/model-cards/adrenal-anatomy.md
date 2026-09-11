@@ -27,11 +27,14 @@ in which four nested shells can be read.
 
 ## 3. What it is not
 
-- **The zone thicknesses are not the real proportions.** They are drawn so that
-  three zones can be told apart on a screen. In life the cortex is about nine
-  tenths of the gland and the glomerulosa is a thin rim inside its capsule;
-  drawn to scale, the three zones would be three lines. **Only their order is
-  claimed.**
+- **The zone thicknesses are a display setting, not a dimension.** They live in
+  `ZONE_DISPLAY_BANDS`, named as presentation values and kept apart from
+  `CORTEX_SHARE_OF_GLAND`, which is what the anatomy says (about nine tenths)
+  and which no geometry is built from. Drawn to scale the three zones would be
+  three lines nobody could point at; the bands spread them so each is a surface
+  in the layer view. **Only their order is claimed**, and a test checks that the
+  bands are visibly different from the real proportions rather than quietly
+  standing in for them.
 - **Not measured.** No dimension here is a measurement.
 - **Not present:** the capsule, the arterial supply and the single draining
   vein on each side (which differ between the two, and that difference matters
@@ -60,6 +63,10 @@ No dimension here is a measurement.
   surface.
 - **Every layer is drawn double-sided**, because a shell that has been opened is
   being looked at from inside.
+- **The two glands are shaped to be told apart from the front.** The right is a
+  three-sided cap with a ridge along its top; the left is longer, flatter and
+  scooped underneath. The first version of both was the same cone with a dent in
+  one of them, which is a difference only a test could see.
 - **The kidneys are context**, excluded from the framing subject. They are drawn
   for one reason and the copy gives it.
 - **Colour separates the three zones and the medulla**; "Natural tissue" puts

@@ -260,8 +260,8 @@
       "src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "2539d5a04fb16321",
+    "cardRevision": 5,
+    "modelDigest": "9bed2f3cec4eaa58",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -286,8 +286,8 @@
       "src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "ccf2d8a71ef8a832",
+    "cardRevision": 3,
+    "modelDigest": "f852f6a923915377",
     "cardUpdatedAt": "2026-09-11"
   },
   {
@@ -299,8 +299,8 @@
       "src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "1bb105933040c088",
+    "cardRevision": 6,
+    "modelDigest": "6e55a57076f108fc",
     "cardUpdatedAt": "2026-09-11"
   }
 ]

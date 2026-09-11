@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { OrganAnatomyScene } from '../../../shared/anatomy/OrganAnatomyScene.js';
-import { ADRENAL_LAYERS, ADRENAL_SITES, buildAdrenalParts } from '../../organs/adrenalAnatomy.js';
+import { ZONE_DISPLAY_BANDS, ADRENAL_SITES, buildAdrenalParts } from '../../organs/adrenalAnatomy.js';
 import {
   ADRENAL_ANATOMY_META,
   ADRENAL_COLOR_MODES,
@@ -33,10 +33,10 @@ export class AdrenalAnatomyScene extends OrganAnatomyScene {
   /**
    * Two glands side by side and nothing between them: the subject is wide and
    * flat, and the widest whole-organ view fills the frame's width at an aspect
-   * of 1.13. The single-gland
+   * of 1.22 (the coronal section). The single-gland
    * views need far more and crop on purpose.
    */
-  static framing = { minHorizontalAspect: 1.2 };
+  static framing = { minHorizontalAspect: 1.3 };
 
   /** The kidneys are drawn so the two glands' shapes mean something. */
   static contextTags = ['neighbour'];
@@ -105,7 +105,7 @@ export class AdrenalAnatomyScene extends OrganAnatomyScene {
     // Outside in, one layer at a time. Four nested shells cannot be read in any
     // other order: the outermost has to go before the next one is a surface.
     const fadeAt = [0.18, 0.42, 0.66, null];
-    ADRENAL_LAYERS.forEach((layer, index) => {
+    ZONE_DISPLAY_BANDS.forEach((layer, index) => {
       const ghostAt = fadeAt[index];
       for (const site of ADRENAL_SITES) {
         declare(`${site.side}-${layer.id}`, ghostAt === null ? {} : { ghostAt, ghostOpacity: 0.1 });

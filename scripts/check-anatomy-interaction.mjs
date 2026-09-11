@@ -124,7 +124,7 @@ const SCENE_POINTS = {
   // Apex, body, neck, and a ureter arriving behind.
   'bladder-anatomy': [[0.50, 0.37], [0.50, 0.51], [0.50, 0.63], [0.42, 0.20]],
   // Gallbladder, common bile duct, a hepatic duct, and the bowel it opens into.
-  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.516, 0.675], [0.652, 0.80]],
+  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.45, 0.66], [0.60, 0.74]],
   // The tube runs down the middle; the trachea is half-transparent in front of
   // its upper end, so a click there lands on the trachea.
   'esophagus-anatomy': [[0.48, 0.60], [0.49, 0.80], [0.48, 0.25], [0.487, 0.45]],

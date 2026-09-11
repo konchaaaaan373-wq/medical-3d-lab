@@ -20,14 +20,19 @@ Inside it is the **uterine cavity** — a flattened triangle, with a
 **cervical canal** leaving its lower corner. On each side a **fallopian tube**
 runs from an upper corner, narrow then wide then open, reaching towards but not
 joined to an **ovary**. The **vagina** is a short cuff around the cervix.
-**11 structures are selectable.**
+The **bladder** in front and the
+**rectum** behind are drawn so that "leaning forward" has something to lean over.
+**13 structures are selectable.**
 
 ## 3. What it is not
 
-- **The organ is drawn upright.** A uterus normally lies anteverted and
-  anteflexed — tipped forward on the bladder and bent forward on itself. Drawn
-  straight up, "above" and "below" are unambiguous, which is what a scene about
-  which part is which needs. This is a real departure.
+- **Anteflexion is not modelled.** The organ is *built* upright — its own
+  boundaries are horizontal planes in its own frame — and *shown* anteverted,
+  leaning forward over the bladder, which is where a uterus lies. That tilt is a
+  single rigid rotation, so it stands for anteversion; the further forward bend
+  between body and cervix is not there.
+- **A retroverted uterus is a normal variant this scene does not show.** One
+  orientation is drawn, and it is the common one.
 - **The cavity is a region, not a bag.** It is a flat patch with no thickness,
   because a flattened slit is what it is; the endometrium lining it is not drawn
   as tissue here.
@@ -64,7 +69,9 @@ No dimension here is a measurement.
   will be looking at its back.
 - **The gap between the tube and the ovary is drawn, not closed.** It is a real
   feature of this anatomy and the copy names what it implies.
-- **The vagina is context**, excluded from the framing subject.
+- **The vagina, bladder and rectum are context**, excluded from the framing
+  subject. An "In the pelvis, from the left" viewpoint is where the orientation
+  is read; the bladder and the rectum name it as the view they prefer.
 - **Colour separates the four wall parts**; "Natural tissue" puts one uterine
   colour back.
 

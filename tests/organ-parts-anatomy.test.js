@@ -18,8 +18,9 @@ import {
   buildEsophagusParts,
   esophagusCalibre,
 } from '../src/scenes/gastrointestinal/organs/esophagusParts.js';
-import { ADRENAL_LAYERS, ADRENAL_SITES, buildAdrenalParts } from '../src/scenes/endocrine/organs/adrenalAnatomy.js';
+import { CORTEX_SHARE_OF_GLAND, ZONE_DISPLAY_BANDS, ADRENAL_SITES, buildAdrenalParts } from '../src/scenes/endocrine/organs/adrenalAnatomy.js';
 import { CAVITY_CORNERS, buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
+import { UterusAnatomyScene } from '../src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js';
 
 /**
  * The three organs that were one tube each, now cut into named parts.
@@ -424,6 +425,47 @@ test('the bile ducts join in the order that decides what an obstruction does', (
   assert.ok(confluence.y > cystic.y, 'the cystic junction is below the confluence');
   assert.ok(cystic.y > papilla.y, 'the papilla is below the cystic junction');
 
+  // The duct is where it is, not where it is easy to see. Both of these were
+  // wrong on purpose once — the duct ran in front of the bowel and the gland so
+  // that it could be clicked on — and both are what the arrangement explains.
+  const sample = (id, count = 60) => {
+    const mesh = tree.mesh(id);
+    const position = mesh.geometry.attributes.position;
+    const points = [];
+    const point = new THREE.Vector3();
+    for (let i = 0; i < position.count; i += Math.max(1, Math.floor(position.count / count))) {
+      points.push(point.fromBufferAttribute(position, i).clone());
+    }
+    return points;
+  };
+  const bowel = new THREE.Box3().setFromObject(tree.mesh('pancreatic-head'));
+  const duct = sample('common-bile-duct');
+  // Through the back of the pancreatic head: some of its course is inside it.
+  assert.ok(
+    duct.some((point) => bowel.containsPoint(point)),
+    'the common bile duct passes through the pancreatic head'
+  );
+  // And through its posterior half. Measured on the duct's axis rather than on
+  // its surface: a tube of this calibre straddles any plane its centre is near.
+  const inside = duct.filter((point) => bowel.containsPoint(point));
+  const headCentre = centre(tree.mesh('pancreatic-head'));
+  const axisZ = inside.reduce((total, point) => total + point.z, 0) / inside.length;
+  assert.ok(
+    axisZ < headCentre.z,
+    `and through its posterior half rather than its front (${axisZ.toFixed(3)} vs ${headCentre.z.toFixed(3)})`
+  );
+
+  // The papilla opens on the wall of the descending limb that faces the
+  // pancreatic head, which is the side the duct arrives from.
+  assert.ok(
+    papilla.x > tree.sites.descendingLimb.x,
+    'the papilla is on the wall facing the midline and the pancreatic head'
+  );
+  assert.ok(
+    Math.abs(papilla.distanceTo(tree.sites.descendingLimb) - tree.sites.descendingLimbRadius) < 1e-6,
+    'and it is on that wall rather than inside the lumen'
+  );
+
   // The gallbladder runs fundus to neck, and the neck is its narrowest part.
   const parts = ['gallbladder-fundus', 'gallbladder-body', 'gallbladder-neck'];
   const widths = parts.map((id) => new THREE.Box3().setFromObject(tree.mesh(id)).getSize(new THREE.Vector3()).z);
@@ -484,16 +526,16 @@ test('each adrenal layer encloses the next, and the two glands are not mirror im
   const box = (id) => new THREE.Box3().setFromObject(glands.mesh(id));
 
   for (const { side } of ADRENAL_SITES) {
-    const boxes = ADRENAL_LAYERS.map((layer) => box(`${side}-${layer.id}`));
+    const boxes = ZONE_DISPLAY_BANDS.map((layer) => box(`${side}-${layer.id}`));
     for (let i = 1; i < boxes.length; i += 1) {
       assert.ok(
         boxes[i - 1].containsBox(boxes[i]),
-        `${side}: ${ADRENAL_LAYERS[i - 1].id} encloses ${ADRENAL_LAYERS[i].id}`
+        `${side}: ${ZONE_DISPLAY_BANDS[i - 1].id} encloses ${ZONE_DISPLAY_BANDS[i].id}`
       );
     }
     // The one that is not cortex is inside all three that are.
     const medulla = box(`${side}-adrenal-medulla`);
-    for (const zone of ADRENAL_LAYERS.slice(0, 3)) {
+    for (const zone of ZONE_DISPLAY_BANDS.slice(0, 3)) {
       assert.ok(box(`${side}-${zone.id}`).containsBox(medulla), `${side}: the medulla is inside ${zone.id}`);
     }
   }
@@ -506,11 +548,23 @@ test('each adrenal layer encloses the next, and the two glands are not mirror im
     assert.ok(gland.y > kidney.y, `the ${side} gland is above its kidney`);
   }
 
-  // Not mirrored: the left is scooped underneath where it lies along the
-  // kidney's medial border, so it is the shallower of the two.
+  // Not mirrored, and the difference has to be legible from the front: the
+  // right is a cap on its kidney and pyramidal, the left lies along its
+  // kidney's medial border and is a crescent — longer, flatter, scooped
+  // underneath. Measured on the silhouette, which is what a reader sees.
   const right = box('right-zona-glomerulosa').getSize(new THREE.Vector3());
   const left = box('left-zona-glomerulosa').getSize(new THREE.Vector3());
-  assert.ok(left.y < right.y, `the left gland is the flatter of the two (${left.y.toFixed(2)} vs ${right.y.toFixed(2)})`);
+  assert.ok(left.y < right.y * 0.8, `the left gland is clearly the flatter (${left.y.toFixed(2)} vs ${right.y.toFixed(2)})`);
+  assert.ok(left.x > right.x, `and the wider (${left.x.toFixed(2)} vs ${right.x.toFixed(2)})`);
+
+  // The display bands are not the proportions, and are not pretending to be.
+  // The cortex is about nine tenths of the gland; the bands give it a bit over
+  // half the radius, which is a visual emphasis and is named as one.
+  const cortexBand = 1 - ZONE_DISPLAY_BANDS.at(-1).to;
+  assert.ok(
+    cortexBand < CORTEX_SHARE_OF_GLAND * 0.75,
+    `the display bands are visibly not the real proportions (${cortexBand.toFixed(2)} vs ${CORTEX_SHARE_OF_GLAND})`
+  );
 });
 
 // --- uterus ----------------------------------------------------------------
@@ -577,4 +631,28 @@ test('the uterine cavity is a triangle whose corners are the openings into it', 
     assert.ok(gap > 0.01, `the ${side} ovary is near its tube but not joined to it (gap ${gap.toFixed(3)})`);
     assert.ok(gap < 0.6, `the ${side} ovary is still near its tube (gap ${gap.toFixed(3)})`);
   }
+});
+
+// --- how the uterus is shown ------------------------------------------------
+
+test('the uterus is shown leaning forward over the bladder, not standing upright', () => {
+  // §7 of the working rules, and the reason this test is here rather than in
+  // the builder: the organ is *built* upright, because its own boundaries are
+  // horizontal planes in its own frame, and it is *shown* anteverted. The
+  // orientation is a property of the scene, so the scene is what is checked.
+  const scene = new UterusAnatomyScene({});
+  scene.build();
+  scene.root.updateMatrixWorld(true);
+  const at = (id) => new THREE.Box3().setFromObject(scene.byId.get(id).meshes[0]).getCenter(new THREE.Vector3());
+
+  const fundus = at('fundus');
+  const cervix = at('cervix');
+  assert.ok(fundus.y > cervix.y, 'the fundus is still the top');
+  assert.ok(fundus.z > cervix.z + 0.5, `the fundus leans forward of the cervix (${(fundus.z - cervix.z).toFixed(2)})`);
+  assert.ok(at('vagina').z < cervix.z, 'and the vagina runs down and back from it');
+
+  // And it leans over something: the bladder in front, the rectum behind.
+  assert.ok(at('bladder').z > fundus.z, 'the bladder is in front of the uterus');
+  assert.ok(at('rectum').z < cervix.z, 'the rectum is behind it');
+  scene.dispose();
 });

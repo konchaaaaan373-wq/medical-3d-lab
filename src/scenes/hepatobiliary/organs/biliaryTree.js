@@ -21,15 +21,30 @@ import { tissueMaterial, wallMaterial } from '../../shared/materials.js';
  * layout: every other point below is placed relative to it, and the junctions
  * are read from the curves rather than typed twice.
  *
+ * ## The common bile duct goes where it goes
+ *
+ * It descends **behind** the first part of the duodenum and through the back of
+ * the **pancreatic head**, and it reaches the duodenum's second part on its
+ * posteromedial wall. An earlier version of this file ran it in front of both,
+ * so that it could be clicked on — which is changing the anatomy to suit the
+ * camera, and it is not how this project shows a structure that is hidden. The
+ * scene has a viewpoint that takes the neighbours away and a slider that fades
+ * them; the duct stays where it is.
+ *
+ * That relationship is the reason a mass in the pancreatic head obstructs the
+ * bile duct, so drawing it the easy way also threw away the one thing the
+ * arrangement explains.
+ *
  * ## What is schematic, and it is most of it
  *
  * PROTOTYPE — NOT ANATOMICALLY VALIDATED. Calibres, lengths and angles are
- * drawn to be legible. What the model claims is **order**: right and left
- * hepatic ducts join to make the common hepatic duct; the cystic duct joins
- * that to make the common bile duct; the common bile duct meets the main
- * pancreatic duct and the two open into the duodenum together. That order is
- * what decides which obstruction causes which picture, and it is what the
- * tests fix.
+ * drawn to be legible. What the model claims is **order** and **which side of
+ * what**: right and left hepatic ducts join to make the common hepatic duct;
+ * the cystic duct joins that to make the common bile duct; the common bile duct
+ * passes behind the duodenum and through the pancreatic head to meet the main
+ * pancreatic duct, and the two open into the duodenum together. That order is
+ * what decides which obstruction causes which picture, and it is what the tests
+ * fix.
  */
 
 /** Where the two hepatic ducts meet. Everything else is placed from here. */
@@ -38,8 +53,30 @@ export const CONFLUENCE = Object.freeze([0, 0.9, 0]);
 /** Where the cystic duct joins the common hepatic duct. */
 export const CYSTIC_JUNCTION = Object.freeze([-0.15, 0.05, 0]);
 
-/** Where the common bile duct and the pancreatic duct open into the duodenum. */
-export const PAPILLA = Object.freeze([0.33, -1.02, -0.2]);
+/**
+ * The centre of the duodenum's descending limb, and how wide it is.
+ *
+ * The second part of the duodenum lies a little to the patient's **right** of
+ * the midline, with its concavity facing the midline — which is where the
+ * pancreatic head sits. The papilla below is derived from these two numbers
+ * rather than typed beside them, so the opening stays on the wall when the
+ * bowel moves.
+ */
+export const DESCENDING_LIMB = Object.freeze([-0.42, -1.02, -0.3]);
+export const DESCENDING_LIMB_RADIUS = 0.144;
+
+/**
+ * Where the common bile duct and the pancreatic duct open into the duodenum:
+ * the **posteromedial** wall of the second part, facing the pancreatic head.
+ */
+export const PAPILLA = Object.freeze([
+  DESCENDING_LIMB[0] + DESCENDING_LIMB_RADIUS,
+  DESCENDING_LIMB[1],
+  DESCENDING_LIMB[2],
+]);
+
+/** Where the pancreatic head sits: inside the duodenal C, behind the bowel. */
+export const PANCREATIC_HEAD = Object.freeze([0.18, -0.95, -0.3]);
 
 /** The gallbladder's axis, fundus first. */
 export const GALLBLADDER_PATH = Object.freeze([
@@ -150,23 +187,58 @@ export function buildBiliaryTree({ colors = {}, opacity = 0.95 } = {}) {
     0.055,
     '#6aa86f'
   );
+  // Down and **back**: behind the first part of the duodenum, then through the
+  // back of the pancreatic head, reaching the second part on its posteromedial
+  // wall. Both of those structures are drawn, and both are in front of it.
   const commonBile = duct(
     'common-bile-duct',
-    [cystic.toArray(), [-0.02, -0.5, -0.06], [0.16, -0.88, -0.16], papilla.toArray()],
+    [
+      cystic.toArray(),
+      [-0.14, -0.34, -0.14],
+      [-0.17, -0.6, -0.34],
+      [-0.24, -0.85, -0.38],
+      papilla.toArray(),
+    ],
     0.09,
     '#2f6b45'
   );
-  // The pancreatic duct arrives from the patient's left and joins it at the end.
+  // The pancreatic duct arrives from the patient's left, through the head, and
+  // joins it at the end.
   const pancreaticDuct = duct(
     'pancreatic-duct',
     [
-      [1.35, -1.28, -0.28],
-      [0.82, -1.16, -0.24],
+      [1.2, -1.02, -0.32],
+      [0.6, -1.0, -0.32],
+      [0.08, -1.0, -0.32],
       papilla.toArray(),
     ],
     0.055,
     '#57bda4'
   );
+
+  // The pancreatic head, inside the duodenal C and behind the bowel. It is
+  // built here rather than in the scene because the duct's course *through* it
+  // is a claim this file makes, and a claim needs the two things it is about in
+  // one place.
+  const headGeometry = shapedSphere({
+    detail: 5,
+    scale: [0.46, 0.38, 0.3],
+    warp: (v) => {
+      // Scooped on the side the duodenal C wraps round it.
+      const outward = -v.x;
+      if (outward > 0) v.x -= 0.26 * outward * Math.exp(-Math.pow(v.y / 0.8, 2));
+    },
+  });
+  const headMaterial = tissueMaterial({
+    color: colors['pancreatic-head'] ?? '#deb18c',
+    roughness: 0.5,
+    opacity: 0.9,
+  });
+  const pancreaticHead = new THREE.Mesh(headGeometry, headMaterial);
+  pancreaticHead.position.set(...PANCREATIC_HEAD);
+  pancreaticHead.name = 'pancreatic-head';
+  disposables.push(headGeometry, headMaterial);
+  object.add(pancreaticHead);
 
   // Where the two open into the duodenum together.
   const papillaGeometry = shapedSphere({ detail: 3, scale: [0.1, 0.085, 0.09] });
@@ -183,6 +255,7 @@ export function buildBiliaryTree({ colors = {}, opacity = 0.95 } = {}) {
 
   const index = new Map([
     ...gallbladder.parts.map((part) => [part.id, part.mesh]),
+    ['pancreatic-head', pancreaticHead],
     [rightHepatic.id, rightHepatic.mesh],
     [leftHepatic.id, leftHepatic.mesh],
     [commonHepatic.id, commonHepatic.mesh],
@@ -202,6 +275,12 @@ export function buildBiliaryTree({ colors = {}, opacity = 0.95 } = {}) {
       confluence: confluence.clone(),
       cystic: cystic.clone(),
       papilla: papilla.clone(),
+    },
+    /** Where the neighbours go, so a scene places them from the tree. */
+    sites: {
+      descendingLimb: new THREE.Vector3(...DESCENDING_LIMB),
+      descendingLimbRadius: DESCENDING_LIMB_RADIUS,
+      pancreaticHead: new THREE.Vector3(...PANCREATIC_HEAD),
     },
     /** Where along the gallbladder's axis a point lies. */
     along: (point) => nearestU(gallbladderCurve, point, 200),
