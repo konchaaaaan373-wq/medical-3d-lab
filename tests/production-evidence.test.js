@@ -60,6 +60,7 @@ test('migrated production evidence and the existing model registries share one c
       'retinal-detachment',
       'cataract',
       'bppv',
+      'pressure-injury',
     ]
   );
 });

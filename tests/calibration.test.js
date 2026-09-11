@@ -162,6 +162,14 @@ import { LENS as CATARACT_LENS, PUPILS as CATARACT_PUPILS, solveCataract } from 
 import { BppvScene } from '../src/scenes/sensory/scenes/bppv/BppvScene.js';
 import { SITES as EAR_SITES, buildEar } from '../src/scenes/sensory/organs/ear.js';
 import {
+  DEPTHS as PRESSURE_DEPTHS,
+  LAYERS as PRESSURE_LAYERS,
+  REACH as PRESSURE_REACH,
+  TRAPPED as PRESSURE_TRAPPED,
+  solvePressureInjury,
+} from '../src/models/pressureInjury.js';
+import { BLOCK as SKIN_BLOCK, LAYER_DISPLAY_THICKNESS, buildSkinBlock } from '../src/scenes/integumentary/organs/skinBlock.js';
+import {
   CANAL as BPPV_CANAL,
   CANALS as BPPV_CANALS,
   DRIVES_ABOVE as BPPV_DRIVES_ABOVE,
@@ -1949,4 +1957,61 @@ test('calibration: the head’s path takes the level loop from nothing to nearly
 
   // The other loop must not do the same thing, or the comparison is empty.
   assert.ok(solveBppv(0, { canal: 'posterior' }).drives, 'the posterior loop holds it from the start');
+});
+
+
+// --- tissue under a load ----------------------------------------------------
+
+test('calibration: the profile’s depths are the skin atlas’s own, floor included', () => {
+  // Defends `the-atlas-depths-and-the-floor-the-bone-sits-at`. The model may not
+  // import `three`, so the depths are copied — and if they drifted, the bars
+  // would be drawn beside layers they are not about.
+  for (const key of ['surface', 'epidermisFloor', 'dermisFloor', 'subcutisFloor']) {
+    assert.equal(PRESSURE_DEPTHS[key], LAYER_DISPLAY_THICKNESS[key], `${key} is the atlas's own`);
+  }
+  assert.equal(PRESSURE_DEPTHS.bone, LAYER_DISPLAY_THICKNESS.subcutisFloor, 'the prominence begins at the block’s floor');
+
+  // And each named depth falls inside the slab the atlas draws for it.
+  const block = buildSkinBlock({});
+  const bounds = {};
+  for (const id of ['epidermis', 'dermis', 'subcutaneous-tissue']) {
+    const attribute = block.mesh(id).geometry.attributes.position;
+    let low = Infinity;
+    let high = -Infinity;
+    for (let i = 1; i < attribute.count * 3; i += 3) {
+      low = Math.min(low, attribute.array[i]);
+      high = Math.max(high, attribute.array[i]);
+    }
+    bounds[id] = [low, high];
+  }
+  const inside = { epidermis: 'epidermis', dermis: 'dermis', subcutis: 'subcutaneous-tissue' };
+  for (const layer of PRESSURE_LAYERS) {
+    const slab = inside[layer.id];
+    if (!slab) continue;
+    assert.ok(layer.at > bounds[slab][0] && layer.at < bounds[slab][1], `${layer.id} sits inside the slab it names`);
+  }
+  // The deep interface is the one depth that is not a slab: it is the place
+  // where the block meets what the scene puts under it.
+  const deep = PRESSURE_LAYERS.at(-1);
+  assert.ok(deep.at > PRESSURE_DEPTHS.bone, 'the deep interface is above the prominence’s apex');
+  assert.ok(deep.at - PRESSURE_DEPTHS.bone < 0.1, 'and against it');
+  assert.ok(SKIN_BLOCK.width > 0, 'and the block it is measured in is the atlas’s');
+  block.dispose?.();
+});
+
+test('calibration: the calibrations deliver the deep peak the claim needs', () => {
+  // Defends `reach-and-trapped-are-chosen`. Neither number is measured, so what
+  // is fixed here is their consequence: over a prominence the deep interface is
+  // the peak and plainly so, and over soft tissue it is plainly not.
+  assert.ok(PRESSURE_TRAPPED > 1, 'trapped tissue has to be squeezed harder than tissue under the load alone');
+  assert.ok(PRESSURE_REACH > 0.4 && PRESSURE_REACH < 2, 'and a squeeze has to reach across the block without flattening it');
+
+  const caught = solvePressureInjury(1, { ground: 'bony-prominence' });
+  assert.equal(caught.worstAt, 'deep-interface');
+  assert.ok(caught.againstTheSurface > 1.2, `${caught.againstTheSurface} has to read as a deeper peak, not a tie`);
+  assert.ok(caught.layer('epidermis').share < 0.85, 'and the skin must not be near the peak, or the bars read as flat');
+
+  const soft = solvePressureInjury(1, { ground: 'soft-tissue' });
+  assert.equal(soft.worstAt, 'epidermis');
+  assert.ok(soft.layer('deep-interface').share < 0.25, 'and the other shape has to be plainly the other shape');
 });

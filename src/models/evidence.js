@@ -3151,6 +3151,149 @@ export const BPPV_EVIDENCE = defineEvidence('bppv', [
   },
 ]);
 
+export const PRESSURE_INJURY_EVIDENCE = defineEvidence('pressure-injury', [
+  {
+    id: 'trapped-tissue-is-squeezed-from-both-sides',
+    claim:
+      'Tissue lying between a load at the surface and a bone underneath is deformed from above and from below at once, so the profile of deformation against depth has its peak at that interface rather than at the skin.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of pressure injury as deformation of soft tissue between an external surface and underlying bone.',
+    validation: 'physiology: over a prominence the worst of it is deep, not at the skin',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'over-soft-tissue-it-fades-downwards',
+    claim:
+      'With no prominence beneath it, the squeeze decays downwards from the surface and the skin at the top takes the most of it. The picture a reader arrives with is one of the two the model has.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of a load applied at one surface with nothing resisting it from the other side.',
+    validation: 'physiology: over soft tissue the squeeze fades downwards from the skin',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'two-shapes-rather-than-two-amounts',
+    claim:
+      'The two grounds differ in the shape of the profile, not in its size: over bone the skin is squeezed **less** while the deep layer is squeezed far more, which no single amount could do.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the two terms: the deep term is present or absent, and each term is normalised against the profile it is part of.',
+    validation: 'physiology: the two grounds are two shapes, not two amounts',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-profile-capped-at-its-surface-cannot-make-the-claim',
+    claim:
+      'The arithmetic is deliberately not clamped. A model whose deformation could never exceed its surface value could not represent an injury that begins deep, so the deep term has to be able to carry the profile above it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A design consequence, and the reason the model is written the way it is: the clamped version was written first and flattened both ends of the profile into the same value.',
+    validation: 'physiology: a profile whose peak could not exceed its surface is refused',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'how-hard-never-changes-which-depth',
+    claim:
+      'The axis is a magnitude. Which depth takes the most of it is settled by what lies underneath, and pressing harder changes the amount without changing the answer.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the load entering both terms as a common factor.',
+    validation: 'physiology: how hard the surface is pressed changes the amount, never the answer',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-atlas-depths-and-the-floor-the-bone-sits-at',
+    claim:
+      'The depths of the named layers, and the depth the second term decays from, which is the block’s own floor.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Taken from `LAYER_DISPLAY_THICKNESS` in `src/scenes/integumentary/organs/skinBlock.js`, so the profile and the block drawn beside it are the same block.',
+    note:
+      '**Illustrative, and the atlas says so of itself**: it declares its layer thicknesses deliberately not to scale, with the epidermis drawn some twenty times too thick because a line cannot carry what a reader needs to see in it. No thickness or ratio may be read off any of this.',
+    validation: 'calibration: the profile’s depths are the skin atlas’s own, floor included',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'reach-and-trapped-are-chosen',
+    claim:
+      'How far a squeeze reaches from the surface it is applied at, and how much harder trapped tissue is squeezed than tissue directly under the load.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrations this repository chose so both shapes are legible across the range: too short a reach and nothing at the top reaches the bottom, too long and the two peaks merge into one flat block.',
+    note:
+      '**Neither is a ratio anybody measured.** What they have to deliver is that the deep peak exists and is the larger one, which is what the tests fix — the consequence rather than the values.',
+    validation: 'calibration: the calibrations deliver the deep peak the claim needs',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-stage-is-produced-or-implied',
+    claim:
+      'This model does not stage a pressure injury and cannot be made to. No output here is a stage, a grade or a threshold.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in this model. Staging rests on what tissue is visible and what has been lost; this model has neither, and a geometry could not be a stage.',
+    note:
+      'The read-out prints "not in this model" where a stage would go rather than omitting the row, because an absent row reads as an oversight and this absence is the claim. `tests/pressure-injury-physiology.test.js` searches the whole output for a field that reads as a stage.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'nothing-happens-to-the-tissue-but-deformation',
+    claim:
+      'Tissue deforms in this model and nothing else happens to it: no death, no loss, no depth of loss, no ulcer and no wound.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Nothing converts a deformation into an injury, and a threshold at which one became the other would be a claim this model has no basis for.',
+    note:
+      'The scene colours the longest bar and nothing else, so that a reader sees which depth is squeezed most rather than a patch of damaged tissue.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'deform-is-not-a-mechanical-quantity',
+    claim:
+      'The number each depth carries is unscaled and comparative. It is not a stress, a strain, a pressure, a modulus or a displacement.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision: the two terms are shapes chosen to be the two shapes, and no mechanics was solved to obtain them.',
+    note:
+      'Each depth is reported as a share of the profile’s own peak, so the numbers compare depths inside one picture. Comparing them between two grounds, or between two positions on the axis, is not supported.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-prominence-is-a-structure-the-scene-adds',
+    claim:
+      'The bone under the load is drawn by this scene, not by the anatomy it stands on.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A property of the atlas: `buildSkinBlock()` is a specimen of skin and has no skeleton in it.',
+    note:
+      'Its apex is placed at the block’s own floor so the thing drawn and the thing computed are the same thing, and the visual mapping declares that the scene added it. **Nothing about its shape or size is a bone in anybody.**',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-time-no-blood-and-no-person',
+    claim:
+      'There is no duration, no relief, no perfusion, no ischaemia, no inflammation and no repair, and no temperature, moisture, friction or continence. There is no person, no body position and no support surface.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Everything that makes this subject a matter of hours and of care is outside a model whose axis is how hard a surface is pressed.',
+    note:
+      '**The axis is how hard, not how long.** A reader who takes a position on it for an elapsed time is reading something that is not there, which is why the progress label names the load rather than a duration.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'four-depths-standing-for-a-continuum',
+    claim:
+      'The profile is continuous and only four named depths are reported from it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A presentation decision: the four are the layers a reader can name, and a curve with no names on it would not answer the question the scene asks.',
+    note:
+      'Nothing about there being four is a count of layers, and the deep interface is a place rather than a tissue.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -3176,4 +3319,5 @@ export const EVIDENCE_REGISTRIES = [
   RETINAL_DETACHMENT_EVIDENCE,
   CATARACT_EVIDENCE,
   BPPV_EVIDENCE,
+  PRESSURE_INJURY_EVIDENCE,
 ];

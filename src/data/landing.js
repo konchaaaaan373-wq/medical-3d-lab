@@ -76,6 +76,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'retinal-detachment',
   'cataract',
   'bppv',
+  'pressure-injury',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -487,6 +488,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '頭を後ろへ倒し、何も動かせなかったループが動かし始めるのを確認。',
     ['THREE PLANES', 'GRAVITY IN OR ALONG', 'NO EYE HERE'],
     ['3 つの平面', '平面内か法線方向か', '眼は扱いません']
+  ),
+  'pressure-injury': presentation(
+    'Put a bone under the load and watch the longest bar move to the bottom of the block.',
+    '荷重の下に骨を置き、最も長い棒がブロックの下端へ移るのを確認。',
+    ['NOT ALWAYS THE SKIN', 'TWO GROUNDS', 'NEVER A STAGE'],
+    ['皮膚とは限らない', '2 つの下地', 'stage は扱いません']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

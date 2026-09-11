@@ -720,6 +720,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/sensory/scenes/bppv/index.js'),
   },
   {
+    id: 'pressure-injury',
+    slug: 'pressure-injury',
+    titleEn: 'Tissue under a load',
+    titleJa: '荷重下の組織',
+    system: 'integumentary',
+    organ: 'skin',
+    organs: ['skin'],
+    disease: 'pressure-injury',
+    conditions: ['pressure injury', 'pressure ulcer', 'deep tissue injury', 'bony prominence', 'tissue deformation', '褥瘡', '圧迫', '深部組織損傷', '骨突出部', '組織の変形'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pressure-injury.md',
+    modelProfile: 'pressure-injury-depth-profile',
+    description:
+      'A load at the surface is felt at every depth but not equally, and tissue caught between that load and a bone underneath is squeezed hardest at the interface — which is deep. The tidy story that runs downwards from the skin is the one this model exists to unseat.',
+    descriptionJa:
+      '表面への荷重はどの深さにも及びますが均等ではなく、荷重と下の骨に挟まれた組織が最も強く圧迫されるのはその境界、すなわち深部です。皮膚から下へ順に進むという分かりやすい説明を、このモデルは崩すために存在します。',
+    tags: ['integumentary', 'depth-profile', 'geometric-model'],
+    load: () => import('../scenes/integumentary/scenes/pressureInjury/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

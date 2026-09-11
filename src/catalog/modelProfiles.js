@@ -955,6 +955,24 @@ export const MODEL_PROFILES = Object.freeze([
       'derived**: the model contains no nystagmus, no symptom and no manoeuvre.@ ',
   },
   {
+    profileId: 'pressure-injury-depth-profile',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the skin atlas\'s own display depths: a load decays downwards from the surface, and over ' +
+      'a prominence a second term decays upwards from the block\'s floor, so the profile can have its peak at the deep ' +
+      'interface rather than at the skin. Each named depth is reported as a share of that profile\'s own peak. The card ' +
+      'says the two terms are shapes chosen to be the two shapes and not a mechanics, that the atlas declares its layer ' +
+      'thicknesses deliberately not to scale, that the prominence is a structure the scene adds, and that the model ' +
+      'contains no stress, no strain, no blood, no time and no damage of any kind and **does not stage anything**.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

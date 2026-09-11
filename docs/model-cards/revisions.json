@@ -713,5 +713,15 @@
     "cardRevision": 2,
     "modelDigest": "dc6000671eca6342",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "pressure-injury",
+    "card": "docs/model-cards/pressure-injury.md",
+    "modelSources": [
+      "src/models/pressureInjury.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "02523d525fd23bd8",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

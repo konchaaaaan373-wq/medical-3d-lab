@@ -22,6 +22,7 @@ import {
   RETINAL_DETACHMENT_EVIDENCE,
   CATARACT_EVIDENCE,
   BPPV_EVIDENCE,
+  PRESSURE_INJURY_EVIDENCE,
   KNEE_OA_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
@@ -78,6 +79,7 @@ const FILE_LAYERS = {
   'retinal-detachment-physiology.test.js': LAYER.EXTERNAL,
   'cataract-physiology.test.js': LAYER.EXTERNAL,
   'bppv-physiology.test.js': LAYER.EXTERNAL,
+  'pressure-injury-physiology.test.js': LAYER.EXTERNAL,
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
@@ -107,6 +109,7 @@ const DOSSIERS = {
   'retinal-detachment': 'docs/model-evidence/retinal-detachment.md',
   'cataract': 'docs/model-evidence/cataract.md',
   'bppv': 'docs/model-evidence/bppv.md',
+  'pressure-injury': 'docs/model-evidence/pressure-injury.md',
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
   'acl-injury': 'docs/model-evidence/acl-injury.md',
   'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
@@ -260,6 +263,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'retinal-detachment',
       'cataract',
       'bppv',
+      'pressure-injury',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -291,6 +295,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(RETINAL_DETACHMENT_EVIDENCE.length >= 8);
   assert.ok(CATARACT_EVIDENCE.length >= 8);
   assert.ok(BPPV_EVIDENCE.length >= 8);
+  assert.ok(PRESSURE_INJURY_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

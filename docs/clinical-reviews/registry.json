@@ -1499,5 +1499,34 @@
       "There is no cause, no recurrence, and nothing about which ear is affected in anybody.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "pressure-injury",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of how hard each named depth of a drawn skin block is squeezed under a surface load, over soft tissue and over a bony prominence, and which of those depths takes the most of it"
+    ],
+    "sources": [
+      "docs/model-cards/pressure-injury.md",
+      "docs/model-evidence/pressure-injury.md",
+      "tests/pressure-injury-physiology.test.js",
+      "tests/pressure-injury-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the two profiles, the copy and the Japanese terminology is not yet recorded.",
+      "No depth, fraction or profile is a measurement. The layer depths are this repository’s skin atlas’s display values, which that atlas declares are deliberately not to scale.",
+      "The model does not stage a pressure injury and cannot be made to. No output is a stage, a grade or a threshold, and staging rests on visible tissue and tissue loss that this model does not have.",
+      "Deformation here is an unscaled number comparing depths inside one picture. It is not a stress, a strain, a pressure or a displacement, and it may not be compared between the two grounds or between two positions on the axis.",
+      "Nothing in the model damages tissue: there is no death, no loss, no ulcer and no wound, and no output converts deformation into an injury.",
+      "The two terms of the profile are shapes chosen to be the two shapes, not a mechanics. REACH and TRAPPED are calibrations no one measured; the tests fix the consequence, not the values.",
+      "There is no time, no duration and no relief — the axis is how hard the surface is loaded, not how long it has been.",
+      "There is no blood, no perfusion, no ischaemia, no inflammation and no repair, and no temperature, moisture, friction or continence.",
+      "The bony prominence is a structure the scene adds: the skin atlas is a specimen with no skeleton in it.",
+      "There is no person, no body position and no support surface, and nothing here is a risk assessment.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]
