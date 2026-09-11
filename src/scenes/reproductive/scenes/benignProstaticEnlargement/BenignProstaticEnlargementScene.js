@@ -145,6 +145,14 @@ export class BenignProstaticEnlargementScene {
     // window to read.
     this.glandExtentY = { top: 0.58, bottom: -0.58 };
     this.channelWindow = { neckU: 0.12, apexU: 0.88 };
+    /** The points the labels hang from, as objects rather than as values. */
+    this.anchorVectors = {
+      transition: new THREE.Vector3(),
+      peripheral: new THREE.Vector3(),
+      central: new THREE.Vector3(),
+      urethra: new THREE.Vector3(),
+      bladderNeck: new THREE.Vector3(),
+    };
   }
 
   build() {
@@ -381,6 +389,7 @@ export class BenignProstaticEnlargementScene {
 
     this.lumen.refresh((u) => this.lumenRadiusAt(u));
     this.paintLumen();
+    this.updateAnchors();
   }
 
   // --- what the interface reads --------------------------------------------
@@ -414,24 +423,35 @@ export class BenignProstaticEnlargementScene {
     return VISUAL_MAPPING;
   }
 
-  getAnnotations() {
+  /**
+   * Where every label hangs, written into the vectors the layer is holding.
+   *
+   * The label layer takes each annotation's `position` once and reads that same
+   * vector every frame, so an anchor that moves has to be moved rather than
+   * re-returned. Only one here does — the peripheral zone's, which rides out on
+   * the gland as it grows — and handing it over as a copy left its label inside
+   * the organ it names.
+   */
+  updateAnchors() {
     const anchors = this.zones?.anchorPoints;
-    if (!anchors) return [];
-    const outer = this.solved.outerRadiusRatio;
-    const positions = {
-      transition: new THREE.Vector3(-0.85, 0.45, 0.6),
-      peripheral: new THREE.Vector3(1.2 * outer, -0.35, -0.55),
-      central: new THREE.Vector3(-1.05, 0.85, -0.5),
-      // Beside the middle of the channel rather than below the gland: at the
-      // framing the channel steps use, a label hung under the organ lands
-      // behind the console and the step points at something off screen.
-      urethra: new THREE.Vector3(-1.0, -0.05, 0.6),
-      bladderNeck: anchors.bladderNeck.clone().add(new THREE.Vector3(-1.05, 0.5, 0.4)),
-    };
-    return ANNOTATIONS.flatMap((annotation) => {
-      const position = positions[annotation.anchor];
-      return position ? [{ ...annotation, position: position.clone() }] : [];
-    });
+    if (!anchors) return;
+    const { anchorVectors } = this;
+    anchorVectors.transition.set(-0.85, 0.45, 0.6);
+    anchorVectors.peripheral.set(1.2 * this.solved.outerRadiusRatio, -0.35, -0.55);
+    anchorVectors.central.set(-1.05, 0.85, -0.5);
+    // Beside the middle of the channel rather than below the gland: at the
+    // framing the channel steps use, a label hung under the organ lands behind
+    // the console and the step points at something off screen.
+    anchorVectors.urethra.set(-1.0, -0.05, 0.6);
+    anchorVectors.bladderNeck.copy(anchors.bladderNeck).add(new THREE.Vector3(-1.05, 0.5, 0.4));
+  }
+
+  getAnnotations() {
+    if (!this.zones) return [];
+    return ANNOTATIONS.map((annotation) => ({
+      ...annotation,
+      position: this.anchorVectors[annotation.anchor],
+    }));
   }
 
   getMetrics() {

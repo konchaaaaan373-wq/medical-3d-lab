@@ -66,7 +66,22 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'hepatorenal-syndrome',
   'biliary-obstruction',
   'benign-prostatic-enlargement',
+  'uterine-fibroid',
+  'multinodular-goitre',
+  'knee-osteoarthritis',
+  'acl-injury',
+  'rotator-cuff-tear',
+  'hip-osteoarthritis',
+  'urinary-obstruction',
+  'lobar-collapse',
+  'lumbar-disc-herniation',
+  'retinal-detachment',
+  'cataract',
+  'bppv',
+  'pressure-injury',
+  'breast-lesion',
   'achalasia',
+  'bowel-obstruction',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -435,11 +450,101 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
     ['コンソリデーション', '換気', 'シャント']
   ),
+  'bowel-obstruction': presentation(
+    'Move the blockage from the jejunum to the sigmoid; watch how much bowel is above it change.',
+    '閉塞部位を小腸から S 状結腸まで動かし、上流の腸の量がどう変わるかを確認。',
+    ['WHERE IT IS', 'WHAT IS ABOVE IT', 'THE WIDEST PART'],
+    ['閉塞の場所', 'その上流にある腸', '最も太い部分']
+  ),
   achalasia: presentation(
     'Take away the wave and the ring together; watch swallows stop clearing, and then watch what collects take over the pushing.',
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'hip-osteoarthritis': presentation(
+    'Take the layer away in one direction; watch the two centres come apart and the far side open.',
+    '1 つの方向だけ層を失わせ、2 つの中心が離れて反対側が広く見えることを確認。',
+    ['ONE SHARED CENTRE', 'A DIRECTION', 'THE FAR SIDE'],
+    ['共有された中心', '1 つの方向', '反対側']
+  ),
+  'urinary-obstruction': presentation(
+    'Move the blockage down the tract; watch one kidney fill, then both, and the tissue between thin.',
+    '閉塞を尿路の下方へ動かし、腎が 1 つ、次に両方満たされ、あいだの組織が薄くなることを確認。',
+    ['FIVE PLACES', 'ONE KIDNEY OR TWO', 'THE ROOM IT TOOK'],
+    ['5 つの場所', '腎は 1 つか 2 つか', '奪われた場所']
+  ),
+  'lobar-collapse': presentation(
+    'Block one bronchus; watch the lobe shrink rather than darken, and the room it left go somewhere.',
+    '気管支を 1 本塞ぎ、肺葉が黒くなるのではなく縮み、空いた場所がどこかへ行くことを確認。',
+    ['SMALLER, NOT DENSER', 'WHO TAKES THE ROOM', 'THE MIDDLE MOVES'],
+    ['濃くならず小さく', '場所を引き受けるのは誰か', '正中が動く']
+  ),
+  'lumbar-disc-herniation': presentation(
+    'Send the material three ways; watch the ring give at one point and the reaching happen at another.',
+    '物質を 3 方向へ進ませ、輪が破れる点と、何かに届く点が別であることを確認。',
+    ['THREE DIRECTIONS', 'THE RING, ONCE', 'REACHING IS SEPARATE'],
+    ['3 つの方向', '輪は一度だけ', '「届く」は別の話']
+  ),
+  'retinal-detachment': presentation(
+    'Start the separation in five places; watch a small one take the macula and a large one miss it.',
+    '剥離を 5 か所から始め、小さな剥離が黄斑を含み、大きな剥離が含まないことを確認。',
+    ['FIVE STARTS', 'AREA SAYS LITTLE', 'MACULA IN OR OUT'],
+    ['5 つの起点', '面積では分からない', '黄斑は内か外か']
+  ),
+  'cataract': presentation(
+    'Put the cloud in three places and open the pupil; watch which one is in the way change.',
+    '混濁を 3 か所に置いて瞳孔を開き、どちらが通り道にあるかが入れ替わるのを確認。',
+    ['THREE PLACES', 'TWO APERTURES', 'BIG IS NOT IN THE WAY'],
+    ['3 つの場所', '2 つの開口部', '広い＝邪魔とは限らない']
+  ),
+  'bppv': presentation(
+    'Take the head back and watch a loop that could drive nothing begin to.',
+    '頭を後ろへ倒し、何も動かせなかったループが動かし始めるのを確認。',
+    ['THREE PLANES', 'GRAVITY IN OR ALONG', 'NO EYE HERE'],
+    ['3 つの平面', '平面内か法線方向か', '眼は扱いません']
+  ),
+  'pressure-injury': presentation(
+    'Put a bone under the load and watch the longest bar move to the bottom of the block.',
+    '荷重の下に骨を置き、最も長い棒がブロックの下端へ移るのを確認。',
+    ['NOT ALWAYS THE SKIN', 'TWO GROUNDS', 'NEVER A STAGE'],
+    ['皮膚とは限らない', '2 つの下地', 'stage は扱いません']
+  ),
+  'breast-lesion': presentation(
+    'Run a marker out along one duct and then another; watch the distance to the drainage route fall, then rise.',
+    'ある乳管系に沿って外へ、次に別の乳管系で同じことを。流出経路までの距離が縮み、そして伸びるのを確認。',
+    ['FIVE PLACES', 'FURTHER IS NOT NEARER', 'NOTHING SPREADS'],
+    ['5 つの場所', '先は近くではない', '何も広がりません']
+  ),
+  'rotator-cuff-tear': presentation(
+    'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',
+    '上の腱を全幅まで裂き、対が失われるまで骨頭が中央に留まることを確認。',
+    ['A SLEEVE', 'THE FACING PAIR', 'WHERE THE HEAD SITS'],
+    ['袖としての腱板', '向かい合う 2 本', '骨頭の位置']
+  ),
+  'acl-injury': presentation(
+    'Take the ligament from intact to two ends; watch what is left holding the tibia.',
+    '靱帯を正常から 2 つの断端まで変え、脛骨を支えているものが何になるかを確認。',
+    ['THREE STATES', 'WHAT IS LEFT', 'WHO HOLDS IT'],
+    ['3 つの状態', '残っている制動', '支えているもの']
+  ),
+  'knee-osteoarthritis': presentation(
+    'Wear one compartment of a knee and leave the other; watch what follows the side.',
+    '膝の片方の区画だけを消耗させ、その側に何が続くかを確認。',
+    ['ONE COMPARTMENT', 'THE MENISCUS', 'THE RIM'],
+    ['1 つの区画', '半月板', '辺縁']
+  ),
+  'multinodular-goitre': presentation(
+    'Send the same goitre four ways; watch how much of it moves the airway and how much presses on it.',
+    '同じ甲状腺腫を 4 方向へ伸ばし、そのうちどれだけが気道を動かし、どれだけが圧迫するかを確認。',
+    ['FOUR DIRECTIONS', 'MOVED AND NARROWED', 'WHAT IS BEHIND'],
+    ['4 つの方向', '偏位と狭窄の割合', '後方にあるもの']
+  ),
+  'uterine-fibroid': presentation(
+    'Put the same fibroid at three depths in the wall; watch what each one reaches.',
+    '同じ筋腫を壁の 3 つの深さに置き、それぞれが何に届くかを確認。',
+    ['THREE DEPTHS', 'THE CAVITY', 'THE OUTLINE'],
+    ['3 つの深さ', '子宮腔', '外形']
   ),
   'benign-prostatic-enlargement': presentation(
     'Grow the transition zone; watch the gland grow far less and the outside become a rim.',

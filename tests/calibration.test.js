@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {
   CAPACITY_ML as ACHALASIA_CAPACITY_ML,
   REFERENCE as ACHALASIA_REFERENCE,
@@ -11,6 +12,47 @@ import {
   solveProstaticEnlargement,
 } from '../src/models/prostaticEnlargement.js';
 import { INNER_GLAND_FRACTION } from '../src/scenes/reproductive/organs/prostateAnatomy.js';
+import {
+  SEGMENTS as GUT_SEGMENTS,
+  RETAINED_LOAD,
+  SITES as OBSTRUCTION_SITES,
+  solveBowelObstruction,
+} from '../src/models/bowelObstruction.js';
+import { buildColon, buildDuodenum, buildSmallIntestine, colonCalibre } from '../src/scenes/gastrointestinal/organs/intestine.js';
+import { buildColonParts } from '../src/scenes/gastrointestinal/organs/colonParts.js';
+import {
+  DIAMETER_RANGE as FIBROID_DIAMETERS,
+  LOCATIONS as FIBROID_LOCATIONS,
+  UTERUS as FIBROID_UTERUS,
+  solveUterineFibroid,
+} from '../src/models/uterineFibroid.js';
+import { buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
+import {
+  BURDEN_RANGE as GOITRE_BURDEN,
+  DIRECTIONS as GOITRE_DIRECTIONS,
+  FACE_AREA,
+  THYROID,
+  solveMultinodularGoitre,
+} from '../src/models/multinodularGoitre.js';
+import { buildThyroidParts } from '../src/scenes/endocrine/organs/thyroidAnatomy.js';
+import {
+  EXTRUSION_PER_LOSS,
+  KNEE,
+  solveKneeOsteoarthritis,
+} from '../src/models/kneeOsteoarthritis.js';
+import { CONDYLE_SITES, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
+import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
+import {
+  MAX_TRANSLATION,
+  RESTRAINT,
+  SEPARATES_ABOVE,
+  solveAclInjury,
+} from '../src/models/aclInjury.js';
+import { HOLDS_ABOVE, RISE_MAX, SHARE, solveRotatorCuffTear } from '../src/models/rotatorCuffTear.js';
+import { SUBACROMIAL_DISPLAY_GAP } from '../src/scenes/musculoskeletal/organs/shoulderJoint.js';
+import { DIRECTIONS as HIP_DIRECTIONS, HIP, SPILL, solveHipOsteoarthritis } from '../src/models/hipOsteoarthritis.js';
+import { buildHipJoint } from '../src/scenes/musculoskeletal/organs/hipJoint.js';
+import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
 import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
@@ -80,6 +122,66 @@ import {
   solveKidney,
   vasoconstrictorActivation,
 } from '../src/models/hepatorenal.js';
+import { UrinaryObstructionScene } from '../src/scenes/renal/scenes/urinaryObstruction/UrinaryObstructionScene.js';
+import {
+  CAPSULE_GIVE,
+  KIDNEY,
+  KIDNEY_VOLUME,
+  PELVIS_VOLUME,
+  RETAINED_LOAD as URINARY_RETAINED_LOAD,
+  THINNED_BELOW,
+  solveUrinaryObstruction,
+} from '../src/models/urinaryObstruction.js';
+import { LobarCollapseScene } from '../src/scenes/respiratory/scenes/lobarCollapse/LobarCollapseScene.js';
+import { LOBE_VOLUME_SHARES } from '../src/scenes/respiratory/organs/lungAnatomy.js';
+import {
+  LOBES as COLLAPSE_LOBES,
+  MIDLINE_FACE,
+  RESIDUAL as COLLAPSE_RESIDUAL,
+  TAKEN_BY_REST,
+  solveLobarCollapse,
+} from '../src/models/lobarCollapse.js';
+import { buildSpine } from '../src/scenes/musculoskeletal/organs/spine.js';
+import {
+  ANNULUS_BEHIND as DISC_ANNULUS_BEHIND,
+  MAX_REACH as DISC_MAX_REACH,
+  NUCLEUS_HALF_DEPTH as DISC_NUCLEUS_HALF_DEPTH,
+  TARGETS as DISC_TARGETS,
+  solveLumbarDiscHerniation,
+} from '../src/models/lumbarDiscHerniation.js';
+import { RetinalDetachmentScene } from '../src/scenes/sensory/scenes/retinalDetachment/RetinalDetachmentScene.js';
+import { SITES as EYE_SITES, buildEyeball } from '../src/scenes/sensory/organs/eyeball.js';
+import {
+  GLOBE as RD_GLOBE,
+  MAX_ARC as RD_MAX_ARC,
+  MAX_LIFT as RD_MAX_LIFT,
+  ORIGINS as RD_ORIGINS,
+  solveRetinalDetachment,
+} from '../src/models/retinalDetachment.js';
+import { LENS as CATARACT_LENS, PUPILS as CATARACT_PUPILS, solveCataract } from '../src/models/cataract.js';
+import { BppvScene } from '../src/scenes/sensory/scenes/bppv/BppvScene.js';
+import { SITES as EAR_SITES, buildEar } from '../src/scenes/sensory/organs/ear.js';
+import {
+  DEPTHS as PRESSURE_DEPTHS,
+  LAYERS as PRESSURE_LAYERS,
+  REACH as PRESSURE_REACH,
+  TRAPPED as PRESSURE_TRAPPED,
+  solvePressureInjury,
+} from '../src/models/pressureInjury.js';
+import { BLOCK as SKIN_BLOCK, LAYER_DISPLAY_THICKNESS, buildSkinBlock } from '../src/scenes/integumentary/organs/skinBlock.js';
+import {
+  COURSES as BREAST_COURSES,
+  PARTS as BREAST_PARTS,
+  solveBreastLesion,
+} from '../src/models/breastLesion.js';
+import { DISPLAY_COUNTS as BREAST_DISPLAY_COUNTS, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
+import {
+  CANAL as BPPV_CANAL,
+  CANALS as BPPV_CANALS,
+  DRIVES_ABOVE as BPPV_DRIVES_ABOVE,
+  MAX_PITCH as BPPV_MAX_PITCH,
+  solveBppv,
+} from '../src/models/bppv.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1084,4 +1186,913 @@ test('calibration: the channel narrows visibly across the walk without closing',
     previous = solved.urethralLumenFraction;
   }
   assert.equal(solveProstaticEnlargement().urethralLumenFraction, 1, 'and an unenlarged gland is unnarrowed');
+});
+
+test('calibration: the bowel obstruction model is measured off the atlas’s own gut', () => {
+  // Defends `drawn-proportions`. The model's lengths and calibres are not
+  // anatomy and do not claim to be: they are the proportions the intestinal
+  // atlas draws, so that the arithmetic and the picture are the same gut.
+  //
+  // What this defends is that agreement and the ordering it produces. It is
+  // not a check that either is right about a person, and it never could be.
+  const small = buildSmallIntestine({});
+  const colon = buildColon({});
+  const duodenum = buildDuodenum({});
+  const parts = buildColonParts({});
+
+  const smallLength = small.curve.getLength();
+  const colonLength = colon.curve.getLength();
+  const total = smallLength + colonLength + duodenum.curve.getLength();
+
+  // The coil carries two of the model's segments, split where the scene splits
+  // it, so the two are checked as one length.
+  const drawn = {
+    duodenum: duodenum.curve.getLength() / total,
+    'proximal-small-bowel': (smallLength * 0.4) / total,
+    'distal-small-bowel': (smallLength * 0.6) / total,
+  };
+  for (const part of parts.parts) drawn[part.id] = ((part.to - part.from) * colonLength) / total;
+
+  // Calibres against the caecum's, from the profile the colon is built from.
+  const calibre = colonCalibre(0);
+  const caecumPart = parts.parts.find((part) => part.id === 'caecum');
+  const caecumRadius = calibre((caecumPart.from + caecumPart.to) / 2);
+  const drawnRadius = { duodenum: 0.2 / caecumRadius * 1.15, 'proximal-small-bowel': 0.21 / caecumRadius * 1.15 };
+  drawnRadius['distal-small-bowel'] = drawnRadius['proximal-small-bowel'];
+  for (const part of parts.parts) {
+    drawnRadius[part.id] = calibre((part.from + part.to) / 2) / caecumRadius;
+  }
+
+  for (const segment of GUT_SEGMENTS) {
+    assert.ok(
+      Math.abs(segment.lengthShare - drawn[segment.id]) < 0.01,
+      `${segment.id}: the model has ${segment.lengthShare} of the gut, the atlas draws ${drawn[segment.id]?.toFixed(4)}`
+    );
+    assert.ok(
+      Math.abs(segment.restingRadius - drawnRadius[segment.id]) < 0.02,
+      `${segment.id}: the model has a calibre of ${segment.restingRadius}, the atlas draws ${drawnRadius[segment.id]?.toFixed(3)}`
+    );
+  }
+
+  // The ordering the model actually claims, held directly.
+  const colonSegments = GUT_SEGMENTS.filter((segment) => parts.parts.some((part) => part.id === segment.id));
+  assert.equal(colonSegments[0].id, 'caecum');
+  for (let at = 1; at < colonSegments.length; at += 1) {
+    assert.ok(
+      colonSegments[at].restingRadius < colonSegments[at - 1].restingRadius,
+      `${colonSegments[at].id} is narrower than the part before it`
+    );
+  }
+
+  small.dispose();
+  colon.dispose();
+  duodenum.dispose();
+  parts.dispose();
+});
+
+test('calibration: a complete blockage distends the bowel visibly at every site without doubling it', () => {
+  // Defends `retained-load`. One number says how much arrives above a blockage,
+  // as a multiple of the whole gut's resting volume. It was chosen so that the
+  // distension is plain at every one of the four sites and never runs away.
+  //
+  // That it still behaves that way is a property of the choice. Nothing here is
+  // millilitres, and no figure in it is a threshold.
+  assert.ok(RETAINED_LOAD > 0);
+
+  for (const site of OBSTRUCTION_SITES.filter((candidate) => candidate.blocks)) {
+    for (const valveCompetence of [0, 1]) {
+      const solved = solveBowelObstruction({ site: site.id, completeness: 1, valveCompetence });
+      assert.ok(
+        solved.radiusRatio > 1.12,
+        `${site.id} (valve ${valveCompetence}): ${solved.radiusRatio.toFixed(2)}× is not a visible distension`
+      );
+      assert.ok(
+        solved.radiusRatio < 2,
+        `${site.id} (valve ${valveCompetence}): ${solved.radiusRatio.toFixed(2)}× has run away`
+      );
+    }
+  }
+
+  // And a patent gut is drawn at its resting calibre, exactly.
+  assert.equal(solveBowelObstruction({ site: 'none', completeness: 1 }).radiusRatio, 1);
+});
+
+test('calibration: the fibroid model is measured off the atlas’s own uterus', () => {
+  // Defends `atlas-proportions`. The wall's depth, the cavity's area and the
+  // organ's volume are not anatomy: they are this repository's drawn uterus,
+  // measured off its meshes so that the arithmetic and the picture are the same
+  // organ. What is defended is that agreement, never that either is right about
+  // a person.
+  const uterus = buildUterusParts({});
+
+  // The organ's volume, by the divergence theorem over its closed wall parts.
+  const signedVolume = (geometry) => {
+    const position = geometry.attributes.position;
+    const index = geometry.index;
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    let total = 0;
+    const count = index ? index.count : position.count;
+    for (let at = 0; at < count; at += 3) {
+      const [i, j, k] = index
+        ? [index.getX(at), index.getX(at + 1), index.getX(at + 2)]
+        : [at, at + 1, at + 2];
+      a.fromBufferAttribute(position, i);
+      b.fromBufferAttribute(position, j);
+      c.fromBufferAttribute(position, k);
+      total += a.dot(b.clone().cross(c)) / 6;
+    }
+    return Math.abs(total);
+  };
+  const volume = ['fundus', 'body', 'isthmus', 'cervix'].reduce(
+    (sum, id) => sum + signedVolume(uterus.mesh(id).geometry),
+    0
+  );
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.volume - volume) < 0.01,
+    `the model has ${FIBROID_UTERUS.volume}, the atlas draws ${volume.toFixed(4)}`
+  );
+
+  // The wall's depth at the body, from the cavity plane (z = 0) to the serosa.
+  const body = uterus.mesh('body');
+  body.geometry.computeBoundingBox();
+  const depth = body.geometry.boundingBox.max.z;
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.wallDepth - depth) < 0.01,
+    `the model has a wall of ${FIBROID_UTERUS.wallDepth}, the atlas draws ${depth.toFixed(4)}`
+  );
+
+  // The cavity is a triangle, so its area is half the cross product of two of
+  // its edges — read off the mesh rather than off the corner constants.
+  const cavity = uterus.mesh('uterine-cavity').geometry.attributes.position;
+  const corner = (at) => new THREE.Vector3().fromBufferAttribute(cavity, at);
+  const area = corner(1).sub(corner(0)).cross(corner(2).sub(corner(0))).length() / 2;
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.cavityArea - area) < 0.01,
+    `the model has a cavity of ${FIBROID_UTERUS.cavityArea}, the atlas draws ${area.toFixed(4)}`
+  );
+
+  uterus.dispose();
+});
+
+test('calibration: each of the three names behaves the way its description says', () => {
+  // Defends `three-chosen-depths`. Three fractions of the wall's depth were
+  // chosen so that each standard name does what its description says across the
+  // range the scene offers. That they still do is a property of the choice.
+  const { min, max } = FIBROID_DIAMETERS;
+  const at = (location, diameter) => solveUterineFibroid({ location, diameter });
+
+  // Shallow: against the cavity throughout, and never out through the surface.
+  assert.equal(at('submucosal', min).reachesCavity, true);
+  assert.equal(at('submucosal', max).reachesSerosa, false);
+  assert.ok(at('submucosal', max).cavityContactFraction > 0.5, 'and it takes most of the cavity');
+
+  // Deep: past the surface throughout, and never into the cavity.
+  assert.ok(at('subserosal', min * 1.3).reachesSerosa, true);
+  assert.equal(at('subserosal', max).reachesCavity, false);
+
+  // Middle: crosses from neither to both *inside* the range, which is what
+  // makes it worth a third name rather than a midpoint.
+  assert.equal(at('intramural', min).reachesCavity, false);
+  assert.equal(at('intramural', min).reachesSerosa, false);
+  assert.equal(at('intramural', max).reachesCavity, true);
+  assert.equal(at('intramural', max).reachesSerosa, true);
+  const crossing = at('intramural', max).reachesCavityAt;
+  assert.ok(crossing > min && crossing < max, `it crosses at ${crossing.toFixed(3)}, inside the range`);
+
+  // And every location is a location the scene offers.
+  for (const location of FIBROID_LOCATIONS) {
+    assert.equal(solveUterineFibroid({ location: location.id }).controls.location, location.id);
+  }
+});
+
+test('calibration: the goitre model is measured off the atlas’s own gland and airway', () => {
+  // Defends `atlas-and-face-area`. Three of the four numbers are the atlas's
+  // own, measured off its meshes so that the arithmetic and the picture are the
+  // same gland; the fourth turns a volume into a distance and is a calibration.
+  const thyroid = buildThyroidParts({});
+  const lobe = thyroid.mesh('left-lobe');
+  lobe.updateMatrixWorld(true);
+
+  const position = lobe.geometry.attributes.position;
+  const index = lobe.geometry.index;
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  let volume = 0;
+  const count = index ? index.count : position.count;
+  for (let step = 0; step < count; step += 3) {
+    const [i, j, k] = index
+      ? [index.getX(step), index.getX(step + 1), index.getX(step + 2)]
+      : [step, step + 1, step + 2];
+    a.fromBufferAttribute(position, i);
+    b.fromBufferAttribute(position, j);
+    c.fromBufferAttribute(position, k);
+    volume += a.dot(b.clone().cross(c)) / 6;
+  }
+  assert.ok(
+    Math.abs(THYROID.lobeVolume - Math.abs(volume)) < 0.01,
+    `the model has a lobe of ${THYROID.lobeVolume}, the atlas draws ${Math.abs(volume).toFixed(4)}`
+  );
+
+  lobe.geometry.computeBoundingBox();
+  const box = lobe.geometry.boundingBox;
+  const depth = box.max.z - box.min.z;
+  assert.ok(
+    Math.abs(THYROID.lobeDepth - depth) < 0.01,
+    `the model has a lobe ${THYROID.lobeDepth} deep, the atlas draws ${depth.toFixed(4)}`
+  );
+
+  const trachea = thyroid.mesh('trachea');
+  trachea.geometry.computeBoundingBox();
+  const radius = trachea.geometry.boundingBox.max.x;
+  assert.ok(
+    Math.abs(THYROID.tracheaRadius - radius) < 0.01,
+    `the model has an airway of ${THYROID.tracheaRadius}, the atlas draws ${radius.toFixed(4)}`
+  );
+
+  // The one that is not measured: chosen so the burdens the scene offers move
+  // and narrow things visibly without running away.
+  assert.ok(FACE_AREA > 0);
+  const largest = solveMultinodularGoitre({ direction: 'medial', burden: GOITRE_BURDEN.max });
+  assert.ok(largest.deviationRadii > 1 && largest.deviationRadii < 4, largest.deviationRadii);
+
+  thyroid.dispose();
+});
+
+test('calibration: one of the four directions narrows the airway and the others displace it', () => {
+  // Defends `four-directions`. Twelve coefficients were chosen as a reading of
+  // four standard pictures. What is defended is the *ordering* they produce —
+  // exactly one direction is confined — and never the sizes.
+  const confined = GOITRE_DIRECTIONS.filter((direction) => direction.confined > 0.5);
+  assert.equal(confined.length, 1, 'exactly one direction meets a boundary that will not move');
+  assert.equal(confined[0].id, 'retrosternal');
+
+  const narrowed = [];
+  for (const direction of GOITRE_DIRECTIONS) {
+    if (direction.id === 'none') continue;
+    const solved = solveMultinodularGoitre({ direction: direction.id, burden: GOITRE_BURDEN.max });
+    if (solved.airwayEffect === 'narrowed') narrowed.push(direction.id);
+    assert.ok(solved.tracheaWidthFraction > 0.08, `${direction.id}: it never closes`);
+  }
+  assert.deepEqual(narrowed, ['retrosternal'], 'and exactly one of them narrows the airway');
+
+  // Each direction is a different picture rather than a different amount.
+  const signatures = new Set(
+    GOITRE_DIRECTIONS.filter((direction) => direction.id !== 'none').map((direction) => {
+      const solved = solveMultinodularGoitre({ direction: direction.id, burden: GOITRE_BURDEN.max });
+      return `${solved.deviationRadii.toFixed(2)}/${solved.tracheaWidthFraction.toFixed(2)}/${solved.behindFraction.toFixed(2)}`;
+    })
+  );
+  assert.equal(signatures.size, 4, 'the four directions produce four different pictures');
+});
+
+test('calibration: the knee model thins the atlas’s own drawn layer', () => {
+  // Defends `drawn-layer-not-a-joint-space`. The layer this model reports a
+  // fraction of is the atlas's, so the arithmetic and the picture are the same
+  // knee. What is defended is that agreement — never that either is a
+  // measurement, and emphatically never that the fraction is a joint space.
+  assert.ok(
+    Math.abs(KNEE.compartmentSeparation - (CONDYLE_SITES.medial[0] - CONDYLE_SITES.lateral[0]) / 0.84) < 0.2,
+    'the compartments are as far apart as the atlas puts them'
+  );
+
+  const knee = buildKneeJoint({});
+  // The layer really is four meshes and not one coat, which is what makes a
+  // compartment expressible at all.
+  assert.equal(knee.cartilageMeshes.length, 4);
+  const names = knee.cartilageMeshes.map((mesh) => mesh.name).sort();
+  assert.deepEqual(names, [
+    'lateral-condylar-cartilage',
+    'lateral-plateau-cartilage',
+    'medial-condylar-cartilage',
+    'medial-plateau-cartilage',
+  ]);
+  knee.dispose();
+
+  // Thinning it to nothing brings the cap back onto the bone it was inflated
+  // from, and leaving it alone leaves it where the atlas put it.
+  const scene = new KneeOsteoarthritisScene({});
+  assert.equal(scene.capScaleFor(1), 1);
+  assert.ok(Math.abs(scene.capScaleFor(0) - 1 / (1 + KNEE.condylarLayer)) < 1e-9);
+});
+
+test('calibration: the meniscus is visibly pushed out without leaving the joint', () => {
+  // Defends `extrusion-coefficient`. One number says how far a meniscus is
+  // pushed per unit of layer lost. It was chosen so the movement is plain
+  // across the range the scene walks and the wedge stays in the joint.
+  assert.ok(EXTRUSION_PER_LOSS > 0);
+  const gone = solveKneeOsteoarthritis({ side: 'medial', loss: 1, confinement: 1 });
+  assert.ok(gone.medial.meniscalExtrusion > 0.3, `${gone.medial.meniscalExtrusion} is not visible`);
+  assert.ok(gone.medial.meniscalExtrusion < 1, 'and it has not left the joint');
+  assert.equal(solveKneeOsteoarthritis({ side: 'none' }).medial.meniscalExtrusion, 0);
+});
+
+test('calibration: the ordering holds and the crossover falls where the ligament fails', () => {
+  // Defends `restraint-split`. Two numbers divide the restraint between the
+  // ligament and everything else. They are a reading of the word "primary",
+  // and what is defended is the ordering they produce and where the two cross
+  // — never the numbers themselves.
+  assert.ok(RESTRAINT.acl > RESTRAINT.secondary * 3, 'the ligament is the primary one by some margin');
+  assert.ok(Math.abs(RESTRAINT.acl + RESTRAINT.secondary - 1) < 1e-9, 'and between them they are all of it');
+
+  // The two cross over at about the point the cord stops being continuous, so
+  // "it is discontinuous" and "the others are carrying it" arrive together
+  // rather than at two unrelated places on the axis.
+  const crossover = 1 - RESTRAINT.secondary / RESTRAINT.acl;
+  assert.ok(
+    Math.abs(crossover - SEPARATES_ABOVE) < 0.06,
+    `the crossover is at ${crossover.toFixed(2)} and the cord fails at ${SEPARATES_ABOVE}`
+  );
+  assert.equal(solveAclInjury({ disruption: SEPARATES_ABOVE + 0.01 }).secondaryCarriesIt, true);
+});
+
+test('calibration: the tibia travels visibly without leaving the femur', () => {
+  // Defends `drawn-travel`. One number says how far forward this model lets the
+  // bone sit. It was chosen so the movement is plain and the joint stays a
+  // joint — and it is a fraction of a drawn plateau, not a millimetre.
+  assert.ok(MAX_TRANSLATION > 0.15, 'visible');
+  assert.ok(MAX_TRANSLATION < 0.45, 'and not off the end of the plateau');
+  assert.equal(solveAclInjury({ disruption: 0 }).translationFraction, 0);
+  assert.ok(
+    Math.abs(solveAclInjury({ disruption: 1, secondaryRestraint: 0 }).translationFraction - MAX_TRANSLATION) < 1e-9,
+    'and nothing holding it at all is the whole of it'
+  );
+});
+
+test('calibration: a complete tear sparing the pair keeps the head centred, and one reaching it does not', () => {
+  // Defends `containment-shares`. Three numbers — two shares and a threshold —
+  // were chosen so that the behaviour is what the descriptions say: the top
+  // tendon can be gone across its width with the head still centred, and the
+  // head rises when the tear reaches the pair. **The behaviour is the claim.**
+  assert.ok(SHARE.couple > SHARE.supraspinatus, 'the pair is the larger part of the job');
+  assert.ok(
+    Math.abs(SHARE.couple - HOLDS_ABOVE) < 1e-9,
+    'and the threshold is exactly what the pair alone provides, which is what makes the two statements one'
+  );
+
+  assert.equal(solveRotatorCuffTear({ tear: 1, couple: 1 }).centred, true);
+  assert.equal(solveRotatorCuffTear({ tear: 1, couple: 0.9 }).centred, false);
+  assert.equal(solveRotatorCuffTear({ tear: 0, couple: 1 }).riseFraction, 0);
+});
+
+test('calibration: the rise is a share of the atlas’s own display gap', () => {
+  // Defends `a-share-of-a-drawn-gap`. The gap the rise is a fraction of is the
+  // shoulder atlas's, imported rather than retyped — because the number this
+  // scene reports a share of has to be the one the atlas actually drew, and
+  // because the atlas's own comment is why it is reported as a share at all.
+  assert.ok(RISE_MAX > 0 && RISE_MAX < 1, 'the head never reaches the arch');
+  assert.ok(SUBACROMIAL_DISPLAY_GAP > 0);
+
+  const scene = new RotatorCuffTearScene({});
+  scene.build();
+  scene.setProgress(1);
+  scene.setModelControl('couple', 0);
+  assert.ok(
+    Math.abs(scene.rise() - scene.solved.riseFraction * scene.displayGap) < 1e-9,
+    'the drawn rise is that fraction of the room the drawing actually left'
+  );
+  assert.ok(scene.rise() < scene.displayGap, 'and it stays inside it');
+  // And that room is what the atlas's display gap produced, rather than a
+  // number this scene chose: the acromion's height was set to leave one.
+  assert.ok(scene.displayGap > SUBACROMIAL_DISPLAY_GAP, 'the arch stands clear of the head');
+  assert.ok(scene.displayGap < SUBACROMIAL_DISPLAY_GAP * 6, 'and not by an unrelated amount');
+  scene.dispose();
+});
+
+test('calibration: the hip model thins the layer the atlas’s own radii leave', () => {
+  // Defends `a-drawn-layer-not-a-joint-space`. The layer every fraction in this
+  // scene is a fraction of is the difference between the head the atlas draws
+  // and the socket it draws — so the arithmetic and the picture are the same
+  // hip. **It is an illustrative layer and the fraction is not a joint space.**
+  const hip = buildHipJoint({});
+  const head = hip.mesh('femoral-head');
+  head.geometry.computeBoundingBox();
+  // The fovea is carved out of the medial face, so the radius is read from the
+  // side the socket's roof is on rather than from the widest span.
+  const drawnHeadRadius = head.geometry.boundingBox.max.y;
+  assert.ok(
+    Math.abs(HIP.headRadius - drawnHeadRadius) < 0.01,
+    `the model has a head of ${HIP.headRadius}, the atlas draws ${drawnHeadRadius.toFixed(3)}`
+  );
+  assert.ok(HIP.socketRadius > HIP.headRadius, 'and the socket is the larger of the two');
+  assert.ok(HIP.layer > 0.02 && HIP.layer < 0.2, `${HIP.layer} is a layer rather than a cavity`);
+  hip.dispose();
+});
+
+test('calibration: a directional loss is plainly directional and an even one has no direction at all', () => {
+  // Defends `four-patterns-and-a-spill`. The angles are a reading of three
+  // described patterns and the spill says how much of a directional loss
+  // reaches the rest of the surface. What is defended is the behaviour: a
+  // direction that is unmistakably a direction, and a surface that is not left
+  // untouched away from it.
+  assert.ok(SPILL > 0 && SPILL < 0.35, 'some of it reaches the rest, and not most of it');
+
+  const directional = solveHipOsteoarthritis({ direction: 'superolateral', loss: 1 });
+  assert.ok(
+    directional.at.superolateral.gapFraction < 0.1 && directional.at.medial.gapFraction > 1.2,
+    'the two ends of the joint are in opposite states'
+  );
+  assert.ok(
+    directional.remainingAt(directional.narrowest.angle + Math.PI) < 1,
+    'and the far side has lost a little of its layer too'
+  );
+
+  const even = solveHipOsteoarthritis({ direction: 'concentric', loss: 1 });
+  assert.equal(even.offsetFraction, 0, 'the even pattern has no direction in it at all');
+
+  // Every direction the scene offers is one the model knows, and the three that
+  // have an angle are distinct.
+  const angles = HIP_DIRECTIONS.filter((entry) => entry.angle !== null).map((entry) => entry.angle);
+  assert.equal(new Set(angles).size, angles.length);
+  assert.equal(angles.length, 3);
+});
+
+// --- urinary obstruction ---------------------------------------------------
+
+test('calibration: the urinary tract scene is built from the volumes the model was given', () => {
+  // Defends `atlas-proportions`. The model's semi-axes are the landmark
+  // kidney builder's own, so the picture and the arithmetic are the same organ.
+  // Read off the meshes rather than off a constant somebody copied.
+  const scene = new UrinaryObstructionScene({});
+  scene.build();
+  scene.setModelControl('level', 'none');
+  scene.setProgress(0);
+
+  const { cortex, pelvis } = scene.kidneys.left;
+  cortex.geometry.computeBoundingBox();
+  pelvis.geometry.computeBoundingBox();
+
+  const drawnOuter = cortex.geometry.boundingBox.max.toArray();
+  const drawnPelvis = pelvis.geometry.boundingBox.max.toArray();
+  for (let axis = 0; axis < 3; axis += 1) {
+    // The cortex is warped, so its bounding box is a little larger than its
+    // semi-axis. What must hold is the proportion the model was given.
+    assert.ok(
+      Math.abs(drawnOuter[axis] / KIDNEY.outer[axis] - 1) < 0.12,
+      `the capsule is drawn at the semi-axis the model has on ${axis}`
+    );
+    assert.ok(
+      Math.abs(drawnPelvis[axis] / KIDNEY.pelvis[axis] - 1) < 0.12,
+      `and the collecting system on ${axis}`
+    );
+  }
+
+  assert.ok(KIDNEY_VOLUME > PELVIS_VOLUME * 10, 'the collecting system is a small part of the organ at rest');
+  scene.dispose();
+});
+
+test('calibration: the capsule takes only a minority share of what backs up', () => {
+  // Defends `retained-load-and-capsule-give`. The claim these two constants
+  // carry is not either of their values — it is that the room comes out of the
+  // parenchyma, which is a claim about their ratio. So the ratio is what is
+  // fixed here, and either constant may move as long as it holds.
+  for (const backPressure of [0.25, 0.5, 1]) {
+    const solved = solveUrinaryObstruction(backPressure, { level: 'mid-ureter' });
+    const share = solved.capsuleGained / solved.retainedVolume;
+    assert.ok(share < 0.3, `${backPressure}: the capsule took ${share} of it, which is not a minority`);
+    assert.ok(share > 0, `${backPressure}: but it is not a rigid box either`);
+  }
+
+  // And the load is not so large that the collecting system reaches the capsule,
+  // which would leave nothing for the parenchyma to be drawn as.
+  const full = solveUrinaryObstruction(1, { level: 'mid-ureter' });
+  assert.ok(full.kidneys.left.parenchymaRatio > 0.25, 'there is still a parenchyma to see');
+  assert.ok(URINARY_RETAINED_LOAD > 0 && CAPSULE_GIVE > 0);
+});
+
+test('calibration: a distended stretch is plainly distended and an undistended one is plainly not', () => {
+  // Defends `dilation-factors`. Unlike the kidney, the tract's calibres are
+  // drawn values rather than solved ones, so what is defended is that they are
+  // legible: the step at the blockage has to be unmistakable on screen.
+  const solved = solveUrinaryObstruction(1, { level: 'mid-ureter' });
+  const above = solved.stretch('left-mid-ureter').ratio;
+  const below = solved.stretch('left-lower-ureter').ratio;
+  assert.equal(below, 1, 'below it is at its resting calibre');
+  assert.ok(above > 1.6, `${above} is not a step anybody would see`);
+  assert.ok(above < 3, 'and not one that stops reading as a ureter');
+
+  const bladder = solveUrinaryObstruction(1, { level: 'bladder-outlet' }).stretch('bladder');
+  assert.ok(bladder.ratio > 1.2 && bladder.ratio < 1.8, 'the bladder is fuller and still a bladder');
+});
+
+test('calibration: the thinned threshold fires where the drawing changes and nowhere else', () => {
+  // Defends `thinned-below`. A reporting threshold for the copy, and the one
+  // thing it must not become is a grade — so what is fixed is that it tracks
+  // the drawing rather than naming a stage.
+  assert.ok(THINNED_BELOW > 0.7 && THINNED_BELOW < 1, 'it fires below rest and above nothing');
+
+  // It is false with nothing above the blockage, at any amount.
+  for (const backPressure of [0.5, 1]) {
+    assert.equal(solveUrinaryObstruction(backPressure, { level: 'none' }).parenchymaThinned, false);
+  }
+
+  // And it turns over exactly where the ratio crosses it, rather than at a
+  // point of its own.
+  let crossed = null;
+  for (let step = 0; step <= 40; step += 1) {
+    const backPressure = step / 40;
+    const solved = solveUrinaryObstruction(backPressure, { level: 'mid-ureter' });
+    const expected = solved.kidneys.left.parenchymaRatio < THINNED_BELOW;
+    assert.equal(solved.parenchymaThinned, expected, `${backPressure}: the flag is the ratio and nothing else`);
+    if (expected && crossed === null) crossed = backPressure;
+  }
+  assert.ok(crossed !== null && crossed > 0, 'and it is not already true at rest');
+});
+
+// --- lobar collapse --------------------------------------------------------
+
+test('calibration: the lobar collapse model and the lung atlas divide a lung the same way', () => {
+  // Defends `atlas-lobe-shares`. The model may not import `three`, so the lobe
+  // shares are copied rather than imported — and a copy that nothing compares
+  // is a copy that drifts. This is the comparison.
+  for (const lobe of COLLAPSE_LOBES) {
+    assert.equal(
+      lobe.share,
+      LOBE_VOLUME_SHARES[lobe.id],
+      `${lobe.id}: the model and the atlas disagree about how much of a lung it is`
+    );
+  }
+  assert.equal(COLLAPSE_LOBES.length, Object.keys(LOBE_VOLUME_SHARES).length, 'and about how many lobes there are');
+
+  // Shares are per side, so each lung's lobes come to one.
+  for (const side of ['right', 'left']) {
+    const total = COLLAPSE_LOBES.filter((lobe) => lobe.side === side).reduce((sum, lobe) => sum + lobe.share, 0);
+    assert.ok(Math.abs(total - 1) < 1e-9, `${side}: its lobes come to ${total} of a lung`);
+  }
+});
+
+test('calibration: both halves of the answer are visible at the top of the axis', () => {
+  // Defends `how-the-room-divides` and `the-face-the-shift-is-spread-over`.
+  // Neither constant carries a claim on its own; what they carry together is
+  // that a reader can see both destinations at once. A split near either end
+  // tells half the story, and a shift of a few pixels tells none of it.
+  assert.ok(TAKEN_BY_REST > 0.35 && TAKEN_BY_REST < 0.85, 'neither destination takes nearly all of it');
+
+  const solved = solveLobarCollapse(1, { bronchus: 'right-lower' });
+  assert.ok(solved.takenByTheRest > 0 && solved.takenByTheHemithorax > 0);
+
+  // The rest of the lung expands enough to read as expansion.
+  const expanded = solved.lobes.filter((lobe) => lobe.expanded);
+  assert.ok(expanded.length > 0, 'something visibly took the room');
+  assert.ok(expanded.every((lobe) => lobe.volumeRatio > 1.08), 'and by enough to see');
+
+  // The shift is a legible fraction of a lung's own width rather than a few
+  // pixels of something the reader has no reference for.
+  assert.ok(solved.shift > 0.18, `${solved.shift} is a shift nobody can read`);
+  assert.ok(solved.shift < 0.8, 'and not one that puts the middle inside a lung');
+  assert.ok(MIDLINE_FACE > 0, 'the face is an area, not a sign');
+});
+
+test('calibration: a fully collapsed lobe is still a shape there is something to point at', () => {
+  // Defends `a-residual-so-there-is-something-to-point-at`. Chosen away from
+  // zero, and the reason is drawing rather than physiology: a lobe scaled to
+  // nothing is a lobe the scene has deleted.
+  assert.ok(COLLAPSE_RESIDUAL > 0.05 && COLLAPSE_RESIDUAL < 0.3, 'small, and not nothing');
+
+  const scene = new LobarCollapseScene({});
+  scene.build();
+  scene.setModelControl('bronchus', 'right-lower');
+  scene.setProgress(1);
+  const lobe = scene.lobeById.get('right-lower').mesh;
+  assert.ok(lobe.scale.x > 0.3, `${lobe.scale.x} of its size is not a shape anybody can point at`);
+  assert.ok(lobe.scale.x < 0.7, 'and it is unmistakably smaller than it was');
+  assert.equal(lobe.visible, true, 'the scene draws it rather than removing it');
+  scene.dispose();
+});
+
+// --- lumbar disc displacement ----------------------------------------------
+
+test('calibration: the disc model and the spine atlas measure the same column', () => {
+  // Defends `atlas-clearances`. The model may not import `three`, so the
+  // distances are copied out of the atlas — and a copy nothing compares drifts.
+  const spine = buildSpine({});
+  const nucleus = spine.mesh('nucleus-pulposus');
+  const annulus = spine.mesh('annulus-fibrosus');
+  nucleus.geometry.computeBoundingBox();
+  annulus.geometry.computeBoundingBox();
+
+  const halfDepth = nucleus.geometry.boundingBox.max.z;
+  assert.ok(Math.abs(halfDepth - DISC_NUCLEUS_HALF_DEPTH) < 0.01, `${halfDepth} against ${DISC_NUCLEUS_HALF_DEPTH}`);
+
+  // The ring left behind the nucleus, posteriorly: from the nucleus's own back
+  // to the annulus's, both in the disc's frame.
+  const nucleusBack = nucleus.position.z - halfDepth;
+  const annulusBack = annulus.position.z - annulus.geometry.boundingBox.max.z;
+  const behind = nucleusBack - annulusBack;
+  assert.ok(Math.abs(behind - DISC_ANNULUS_BEHIND) < 0.01, `${behind} of ring against ${DISC_ANNULUS_BEHIND}`);
+
+  // And the clearance to each thing a direction names, measured to the nearest
+  // vertex of that structure and reduced by the nucleus's own half-depth.
+  const nearest = (mesh) => {
+    const attribute = mesh.geometry.attributes.position;
+    const point = new THREE.Vector3();
+    let best = Infinity;
+    for (let i = 0; i < attribute.count; i += 1) {
+      point.fromBufferAttribute(attribute, i).add(mesh.position);
+      best = Math.min(best, point.distanceTo(nucleus.position));
+    }
+    return best;
+  };
+  const toCanal = nearest(spine.mesh('spinal-canal')) - halfDepth;
+  assert.ok(Math.abs(toCanal - DISC_TARGETS.canal.clearance) < 0.05, `${toCanal} to the canal`);
+  const toRoot = nearest(spine.rootMeshes[0]) - halfDepth - DISC_TARGETS['root-shoulder'].width;
+  assert.ok(Math.abs(toRoot - DISC_TARGETS['root-shoulder'].clearance) < 0.05, `${toRoot} to the root`);
+
+  spine.dispose?.();
+});
+
+test('calibration: every direction arrives before the top of the axis, and the far one arrives last', () => {
+  // Defends `how-far-the-axis-goes`. The constant carries no claim of its own;
+  // what it has to deliver is that three directions are comparable on one axis.
+  const arrival = (direction) => {
+    for (let step = 0; step <= 100; step += 1) {
+      if (solveLumbarDiscHerniation(step / 100, { direction }).touching) return step / 100;
+    }
+    return null;
+  };
+  const near = arrival('posterolateral');
+  const canal = arrival('central');
+  const far = arrival('far-lateral');
+  for (const [name, value] of [['posterolateral', near], ['central', canal], ['far-lateral', far]]) {
+    assert.ok(value !== null && value < 1, `${name} never arrives within the axis`);
+    assert.ok(value > 0.2, `${name} arrives too early to show anything before it`);
+  }
+  assert.ok(far > near && far > canal, 'the furthest thing is reached last');
+  assert.ok(DISC_MAX_REACH > 0);
+});
+
+// --- retinal detachment ----------------------------------------------------
+
+test('calibration: the detachment model and the eye atlas measure the same globe', () => {
+  // Defends `atlas-globe-and-angles`. The model may not import `three`, so the
+  // globe and the angles are copied — and the scene's own direction table is
+  // what makes those angles true. All three have to agree.
+  const eye = buildEyeball({});
+  const macula = new THREE.Vector3(...EYE_SITES.fovea).normalize();
+  for (const origin of RD_ORIGINS.filter((o) => o.toMacula !== null)) {
+    const direction = RetinalDetachmentScene.ORIGIN_DIRECTION[origin.id];
+    assert.ok(direction, `${origin.id} has a direction in the scene`);
+    const degrees = (direction.angleTo(macula) * 180) / Math.PI;
+    assert.ok(
+      Math.abs(degrees - origin.toMacula) < 6,
+      `${origin.id}: the scene aims ${degrees}° from the macula where the model says ${origin.toMacula}°`
+    );
+  }
+  assert.ok(RD_GLOBE.retina[0] < RD_GLOBE.choroid[1], 'the retina sits inside the layer it separates from');
+  eye.dispose?.();
+});
+
+test('calibration: a peripheral separation arrives late and a posterior one at once', () => {
+  // Defends `how-far-the-arc-goes`. The constant carries no claim; what it has
+  // to deliver is a long span where a peripheral separation has not reached the
+  // macula, and an arrival before the axis runs out.
+  const arrival = (origin) => {
+    for (let step = 0; step <= 100; step += 1) {
+      if (solveRetinalDetachment(step / 100, { origin }).maculaInside) return step / 100;
+    }
+    return null;
+  };
+  for (const origin of ['superior', 'temporal', 'inferior']) {
+    const when = arrival(origin);
+    assert.ok(when !== null && when <= 1, `${origin} never arrives within the axis`);
+    assert.ok(when > 0.6, `${origin} arrives at ${when}, too early to show a span without it`);
+  }
+  assert.ok(arrival('posterior') < 0.2, 'and a posterior start is inside almost at once');
+  assert.ok(RD_MAX_ARC > 0);
+});
+
+test('calibration: the drawn lift is far larger than the atlas’s own coat spacing, and says so', () => {
+  // Defends `the-lift-is-drawn-not-measured`. What must hold is the gap between
+  // the two: the drawn height has to be unmistakably not the real spacing, so
+  // nobody can read it as one.
+  const coatGap = RD_GLOBE.choroid[1] - RD_GLOBE.retina[0];
+  assert.ok(coatGap < 0.02, `the atlas's own spacing is ${coatGap}, which is invisible`);
+  assert.ok(RD_MAX_LIFT > coatGap * 8, 'so the drawn lift is much larger, and cannot be read as the spacing');
+  assert.ok(RD_MAX_LIFT < 0.25, 'while still leaving the sheet on a globe rather than beside one');
+});
+
+// --- lens opacity ----------------------------------------------------------
+
+test('calibration: the cataract model and the eye atlas measure the same lens', () => {
+  // Defends `atlas-lens-and-pupil`. The model may not import `three`, so the
+  // lens and the pupil are copied out of the atlas.
+  const eye = buildEyeball({});
+  const lens = eye.mesh('lens');
+  const pupil = eye.mesh('pupil');
+  lens.geometry.computeBoundingBox();
+  pupil.geometry.computeBoundingBox();
+  assert.ok(Math.abs(lens.geometry.boundingBox.max.x - CATARACT_LENS.radius) < 0.01, 'the lens radius');
+  assert.ok(
+    Math.abs(pupil.geometry.boundingBox.max.x - CATARACT_LENS.drawnPupilRadius) < 0.01,
+    'and the pupil the atlas draws'
+  );
+  eye.dispose?.();
+});
+
+test('calibration: the two apertures produce the reversal the scene exists for', () => {
+  // Defends `the-bands-and-the-two-apertures`. Neither the bands nor the pupil
+  // sizes carry a claim on their own; what they have to deliver together is
+  // that opening the aperture swaps which opacity is in the way. That is what
+  // is fixed here, so any of the values may move as long as it still holds.
+  const rimNarrow = solveCataract(1, { kind: 'cortical', pupil: 'narrow' });
+  const rimWide = solveCataract(1, { kind: 'cortical', pupil: 'wide' });
+  const patchNarrow = solveCataract(1, { kind: 'posterior-subcapsular', pupil: 'narrow' });
+  const patchWide = solveCataract(1, { kind: 'posterior-subcapsular', pupil: 'wide' });
+
+  assert.ok(patchNarrow.inPath > rimNarrow.inPath + 0.4, 'the small patch plainly wins at a small aperture');
+  assert.ok(rimWide.inPath > patchWide.inPath + 0.2, 'and the rim plainly wins at a wide one');
+  assert.ok(rimNarrow.ofTheLens > patchNarrow.ofTheLens * 4, 'while the rim is much the larger cloud throughout');
+
+  // The middle band has to sit inside the narrow aperture entirely, or the
+  // "all of it" case the scene opens on is not available.
+  assert.ok(Math.abs(solveCataract(1, { kind: 'nuclear', pupil: 'narrow' }).inPath - 1) < 1e-9);
+  assert.ok(CATARACT_PUPILS.wide < 1, 'and the wide aperture is still inside the lens');
+});
+
+// --- particles in a semicircular canal --------------------------------------
+
+test('calibration: the canal model and the ear atlas use the same planes and the same loop', () => {
+  // Defends `atlas-canal-planes`. The model may not import `three`, so the
+  // planes and the loop are copied — and the scene builds its own frame from
+  // the same normals. All three have to describe one labyrinth.
+  const ear = buildEar({});
+  const scene = new BppvScene({});
+  scene.build();
+
+  for (const entry of BPPV_CANALS.filter((c) => c.normal)) {
+    const mesh = ear.canalMeshes.find((m) => m.name.startsWith(entry.id));
+    assert.ok(mesh, `${entry.id}: the atlas draws this loop`);
+
+    // Every vertex of the atlas's tube lies about the model's plane, and about
+    // the model's radius from the loop's centre in it.
+    const attribute = mesh.geometry.attributes.position;
+    const normal = new THREE.Vector3(...entry.normal).normalize();
+    const centre = new THREE.Vector3(...EAR_SITES.vestibule);
+    const point = new THREE.Vector3();
+    let minRadius = Infinity;
+    let maxRadius = 0;
+    for (let i = 0; i < attribute.count; i += 7) {
+      point.fromBufferAttribute(attribute, i).sub(centre);
+      const inPlane = point.clone().addScaledVector(normal, -point.dot(normal));
+      minRadius = Math.min(minRadius, inPlane.length());
+      maxRadius = Math.max(maxRadius, inPlane.length());
+    }
+    assert.ok(
+      Math.abs((minRadius + maxRadius) / 2 - BPPV_CANAL.radius) < 0.08,
+      `${entry.id}: the drawn loop is ${(minRadius + maxRadius) / 2} across against ${BPPV_CANAL.radius}`
+    );
+    // And the scene puts a point at the model's angle on that same loop.
+    const drawn = scene.pointOnLoop(entry.normal, 0).sub(centre);
+    assert.ok(Math.abs(drawn.dot(normal) - 0.12) < 1e-9, `${entry.id}: the scene's loop lies in the atlas's plane`);
+  }
+
+  scene.dispose();
+  ear.dispose?.();
+});
+
+test('calibration: the head’s path takes the level loop from nothing to nearly all of it', () => {
+  // Defends `the-heads-path-is-chosen`. The rotation carries no claim of its
+  // own; what it has to deliver is that the scene can show a loop going from
+  // driving nothing to driving something. That is what is fixed.
+  assert.ok(solveBppv(0, { canal: 'lateral' }).inPlane < BPPV_DRIVES_ABOVE, 'it begins holding nothing');
+  const most = Math.max(...[0.25, 0.5, 0.75, 1].map((head) => solveBppv(head, { canal: 'lateral' }).inPlane));
+  assert.ok(most > 0.9, `${most} is not enough of it to read as a plane holding gravity`);
+  assert.ok(BPPV_MAX_PITCH > 60 && BPPV_MAX_PITCH < 180, 'and the head goes back rather than over');
+
+  // The other loop must not do the same thing, or the comparison is empty.
+  assert.ok(solveBppv(0, { canal: 'posterior' }).drives, 'the posterior loop holds it from the start');
+});
+
+
+// --- tissue under a load ----------------------------------------------------
+
+test('calibration: the profile’s depths are the skin atlas’s own, floor included', () => {
+  // Defends `the-atlas-depths-and-the-floor-the-bone-sits-at`. The model may not
+  // import `three`, so the depths are copied — and if they drifted, the bars
+  // would be drawn beside layers they are not about.
+  for (const key of ['surface', 'epidermisFloor', 'dermisFloor', 'subcutisFloor']) {
+    assert.equal(PRESSURE_DEPTHS[key], LAYER_DISPLAY_THICKNESS[key], `${key} is the atlas's own`);
+  }
+  assert.equal(PRESSURE_DEPTHS.bone, LAYER_DISPLAY_THICKNESS.subcutisFloor, 'the prominence begins at the block’s floor');
+
+  // And each named depth falls inside the slab the atlas draws for it.
+  const block = buildSkinBlock({});
+  const bounds = {};
+  for (const id of ['epidermis', 'dermis', 'subcutaneous-tissue']) {
+    const attribute = block.mesh(id).geometry.attributes.position;
+    let low = Infinity;
+    let high = -Infinity;
+    for (let i = 1; i < attribute.count * 3; i += 3) {
+      low = Math.min(low, attribute.array[i]);
+      high = Math.max(high, attribute.array[i]);
+    }
+    bounds[id] = [low, high];
+  }
+  const inside = { epidermis: 'epidermis', dermis: 'dermis', subcutis: 'subcutaneous-tissue' };
+  for (const layer of PRESSURE_LAYERS) {
+    const slab = inside[layer.id];
+    if (!slab) continue;
+    assert.ok(layer.at > bounds[slab][0] && layer.at < bounds[slab][1], `${layer.id} sits inside the slab it names`);
+  }
+  // The deep interface is the one depth that is not a slab: it is the place
+  // where the block meets what the scene puts under it.
+  const deep = PRESSURE_LAYERS.at(-1);
+  assert.ok(deep.at > PRESSURE_DEPTHS.bone, 'the deep interface is above the prominence’s apex');
+  assert.ok(deep.at - PRESSURE_DEPTHS.bone < 0.1, 'and against it');
+  assert.ok(SKIN_BLOCK.width > 0, 'and the block it is measured in is the atlas’s');
+  block.dispose?.();
+});
+
+test('calibration: the calibrations deliver the deep peak the claim needs', () => {
+  // Defends `reach-and-trapped-are-chosen`. Neither number is measured, so what
+  // is fixed here is their consequence: over a prominence the deep interface is
+  // the peak and plainly so, and over soft tissue it is plainly not.
+  assert.ok(PRESSURE_TRAPPED > 1, 'trapped tissue has to be squeezed harder than tissue under the load alone');
+  assert.ok(PRESSURE_REACH > 0.4 && PRESSURE_REACH < 2, 'and a squeeze has to reach across the block without flattening it');
+
+  const caught = solvePressureInjury(1, { ground: 'bony-prominence' });
+  assert.equal(caught.worstAt, 'deep-interface');
+  assert.ok(caught.againstTheSurface > 1.2, `${caught.againstTheSurface} has to read as a deeper peak, not a tie`);
+  assert.ok(caught.layer('epidermis').share < 0.85, 'and the skin must not be near the peak, or the bars read as flat');
+
+  const soft = solvePressureInjury(1, { ground: 'soft-tissue' });
+  assert.equal(soft.worstAt, 'epidermis');
+  assert.ok(soft.layer('deep-interface').share < 0.25, 'and the other shape has to be plainly the other shape');
+});
+
+
+// --- a place in a breast ----------------------------------------------------
+
+test('calibration: the lesion model and the breast atlas use the same courses', () => {
+  // Defends `the-atlas-courses-and-the-route`. The model may not import `three`,
+  // so the courses are sampled off the atlas and baked in — and a course that
+  // had drifted would put the marker beside the duct it names rather than on it.
+  const breast = buildBreast({});
+  const point = new THREE.Vector3();
+  const near = new THREE.Vector3();
+
+  for (const course of BREAST_COURSES.filter((entry) => entry.duct !== null)) {
+    const mesh = breast.ductMeshes.find((candidate) => candidate.name === `lactiferous-duct-${course.duct}`);
+    assert.ok(mesh, `${course.id}: the atlas draws this duct`);
+    const attribute = mesh.geometry.attributes.position;
+
+    // Every point the model walks lies within the drawn tube: for each, the
+    // nearest vertex of the atlas's own duct is no further than its calibre.
+    for (const along of [0, 0.25, 0.5, 0.75, 1]) {
+      point.set(...solveBreastLesion(along, { site: course.id }).at);
+      let least = Infinity;
+      for (let i = 0; i < attribute.count; i += 1) {
+        near.fromBufferAttribute(attribute, i);
+        least = Math.min(least, near.distanceTo(point));
+      }
+      assert.ok(least < 0.1, `${course.id} at ${along}: ${least} off the duct the atlas draws`);
+    }
+
+    // And the lobules the model carries are the ones hanging off that duct.
+    for (const [j, lobule] of course.lobules.entries()) {
+      const drawn = breast.lobuleMeshes.find(
+        (candidate) => candidate.name === `lobule-${course.duct}-${j}`
+      );
+      assert.ok(drawn, `${course.id}: lobule ${j} is drawn`);
+      assert.ok(drawn.position.distanceTo(new THREE.Vector3(...lobule)) < 1e-3, `${course.id}: lobule ${j} is where the atlas put it`);
+    }
+  }
+
+  // The tail's course is the tail the atlas draws, and the route is that course.
+  const tail = BREAST_COURSES.find((entry) => entry.id === 'axillary-tail');
+  const tailMesh = breast.mesh('axillary-tail');
+  assert.ok(tailMesh, 'the atlas draws the tail');
+  const tailAttribute = tailMesh.geometry.attributes.position;
+  for (const along of [0, 0.5, 1]) {
+    point.set(...solveBreastLesion(along, { site: 'axillary-tail' }).at);
+    let least = Infinity;
+    for (let i = 0; i < tailAttribute.count; i += 1) {
+      near.fromBufferAttribute(tailAttribute, i);
+      least = Math.min(least, near.distanceTo(point));
+    }
+    assert.ok(least < 0.3, `the tail at ${along}: ${least} off the tail the atlas draws`);
+  }
+  assert.ok(tail.points.length >= 8);
+  assert.equal(BREAST_DISPLAY_COUNTS.lobulesPerDuct, tail ? BREAST_COURSES[0].lobules.length : 0);
+  breast.dispose?.();
+});
+
+test('calibration: the part boundaries put the lobular end where the lobules are', () => {
+  // Defends `where-the-parts-are-divided`. The two thresholds carry no claim of
+  // their own; what they have to deliver is that the part called the lobular
+  // end is the part the atlas hangs its lobules off.
+  assert.ok(BREAST_PARTS.largeUntil > 0 && BREAST_PARTS.largeUntil < BREAST_PARTS.terminalUntil);
+  assert.ok(BREAST_PARTS.terminalUntil < 1);
+
+  for (const course of BREAST_COURSES.filter((entry) => entry.duct !== null)) {
+    const large = solveBreastLesion(BREAST_PARTS.largeUntil - 0.01, { site: course.id });
+    const lobular = solveBreastLesion(1, { site: course.id });
+    assert.equal(large.inTissue, 'large-duct');
+    assert.equal(lobular.inTissue, 'lobular-end');
+    // The end is against the lobules; the large duct is nowhere near them.
+    assert.ok(lobular.toLobule < 0.25, `${course.id}: the end is at the lobules (${lobular.toLobule})`);
+    assert.ok(large.toLobule > 0.6, `${course.id}: and the large duct is not (${large.toLobule})`);
+  }
 });

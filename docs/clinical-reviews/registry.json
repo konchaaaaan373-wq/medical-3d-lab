@@ -206,6 +206,29 @@
     ]
   },
   {
+    "sceneId": "bowel-obstruction",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "series-path model of mechanical bowel obstruction, prepared for future clinical sign-off: what the site of a blockage decides about the bowel above and below it"
+    ],
+    "sources": [
+      "docs/model-cards/bowel-obstruction.md",
+      "docs/model-evidence/bowel-obstruction.md",
+      "tests/bowel-obstruction-model.test.js",
+      "src/models/bowelObstruction.js"
+    ],
+    "unresolvedLimitations": [
+      "The lengths and calibres are the intestinal atlas's drawn proportions, not anatomical ones. What is claimed is the ordering — that the caecum is the widest part of the large bowel — and not the ratios.",
+      "The wall tension figure is an index rather than a tension or a pressure. It compares segments inside one picture; comparing the number between two scenarios is not something the model supports, and no value in it is a threshold.",
+      "There is no time and no rate anywhere in the model. The axis is how completely the path is blocked, not how long it has been blocked, and nothing in it is hours.",
+      "There is no ischaemia, no strangulation, no perforation and no risk of any of them, no cause, no fluid shift and no treatment. Symptoms are outside the model entirely.",
+      "The drawn gut ends at the sigmoid: there is no rectum and no anal canal, so a blockage there has nothing below it on screen."
+    ]
+  },
+  {
     "sceneId": "achalasia",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
@@ -225,6 +248,144 @@
       "Nothing here is manometry. No value the model reports is an integrated relaxation pressure, a classification subtype or a measured tracing, and the model identifies no cause.",
       "The axis moves the two failures together because one loss produces both. In a person they do not move in step, and the model has no time in it to move them through.",
       "The mapping from the axis to the two parameters is deliberately non-linear so the band in which a column can still balance a swallow is visible. A reviewer should check that the stages land where the copy says they do."
+    ]
+  },
+  {
+    "sceneId": "hip-osteoarthritis",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of hip osteoarthritis by direction of joint space loss, prepared for future clinical sign-off: what is left of the layer round the socket and how far the two centres have come apart"
+    ],
+    "sources": [
+      "docs/model-cards/hip-osteoarthritis.md",
+      "docs/model-evidence/hip-osteoarthritis.md",
+      "tests/hip-osteoarthritis-model.test.js",
+      "src/models/hipOsteoarthritis.js"
+    ],
+    "unresolvedLimitations": [
+      "The fractions reported are of a layer this repository drew and are not joint space widths. Joint space width is millimetres between bone surfaces on a weight-bearing radiograph in a direction somebody chose; nothing here is measured, weight-bearing or millimetres.",
+      "There is no pain, stiffness, limp, range or anything a person can do anywhere in the model, and nothing in it makes any of them follow from how much layer is left.",
+      "There is no loading in the model at all, so the loop by which where the ball sits changes what it loads is left open rather than represented.",
+      "Four patterns stand for a continuum of directions, and the space is drawn as a ring in one plane. A hip is not a disc.",
+      "Cysts, sclerosis, osteophytes, dysplasia, impingement, avascular necrosis, every grading system and every treatment are outside the model, as are time, progression and cause."
+    ]
+  },
+  {
+    "sceneId": "rotator-cuff-tear",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of a supraspinatus tear, prepared for future clinical sign-off: what is left holding the humeral head on its socket and whether that keeps it centred"
+    ],
+    "sources": [
+      "docs/model-cards/rotator-cuff-tear.md",
+      "docs/model-evidence/rotator-cuff-tear.md",
+      "tests/rotator-cuff-tear-model.test.js",
+      "src/models/rotatorCuffTear.js"
+    ],
+    "unresolvedLimitations": [
+      "The rise is a fraction of the shoulder atlas's subacromial display gap, which the atlas declares to be a value opened up so the tendon could be seen. It is not an acromiohumeral distance and it is not millimetres.",
+      "The facing pair is one number rather than two tendons. Which of them is involved, and how far round, is not represented.",
+      "Nothing in the model moves an arm. There is no pain, no weakness, no arc of movement and no range anywhere in it.",
+      "Impingement as a syndrome, the bursa, tendinopathy, calcium, retraction, muscle quality and cuff tear arthropathy are all outside the model, as are cause, time, healing and every treatment.",
+      "The tendons the scene does not redraw stay where the atlas put them while the head moves: they are context and are not re-solved."
+    ]
+  },
+  {
+    "sceneId": "acl-injury",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of an anterior cruciate ligament injury, prepared for future clinical sign-off: the ligament's own state and what is left restraining the tibia"
+    ],
+    "sources": [
+      "docs/model-cards/acl-injury.md",
+      "docs/model-evidence/acl-injury.md",
+      "tests/acl-injury-model.test.js",
+      "src/models/aclInjury.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing in the model is a Lachman test, an anterior drawer or a pivot shift. Those are manoeuvres a person performs and grade by what they feel; there is no examiner in this model and nothing in the scene is being tested.",
+      "The distance reported is a fraction of a tibial plateau this repository drew. It is not millimetres and not a side-to-side difference.",
+      "How the restraint divides between the ligament and everything else is this repository's reading of the word primary. The model claims the ordering and never the split.",
+      "The collateral ligaments and the tendon across the front are context and are not re-solved when the tibia moves; only the two cruciates follow it.",
+      "There is no mechanism of injury, no pain, no swelling, no giving way, no rotation, no healing and no treatment anywhere in the model."
+    ]
+  },
+  {
+    "sceneId": "knee-osteoarthritis",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of compartmental knee osteoarthritis, prepared for future clinical sign-off: what is left of the layer on each side and what follows on the side that lost it"
+    ],
+    "sources": [
+      "docs/model-cards/knee-osteoarthritis.md",
+      "docs/model-evidence/knee-osteoarthritis.md",
+      "tests/knee-osteoarthritis-model.test.js",
+      "src/models/kneeOsteoarthritis.js"
+    ],
+    "unresolvedLimitations": [
+      "The fraction the model reports is of its own drawn layer and is not a joint space width. Joint space width is millimetres between bone surfaces on a weight-bearing radiograph and includes the meniscus; nothing here is measured, weight-bearing or millimetres.",
+      "There is no pain, stiffness, function or anything a person can do anywhere in the model, and nothing in it makes any of them follow from how much layer is left.",
+      "There is no loading in the model at all, so the loop by which uneven loss loads the worn side harder is left open rather than represented.",
+      "The joint is drawn in extension and nothing in the scene moves; a knee's compartments load differently through the range and none of that is here.",
+      "Marginal bone is drawn as a swelling of the rim. Where osteophytes grow, in what shape and in what order is not in the model, and no size on screen is a grade."
+    ]
+  },
+  {
+    "sceneId": "multinodular-goitre",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of an enlarging nodular thyroid by direction, prepared for future clinical sign-off: whether the airway is displaced or narrowed, and what the gland reaches behind it"
+    ],
+    "sources": [
+      "docs/model-cards/multinodular-goitre.md",
+      "docs/model-evidence/multinodular-goitre.md",
+      "tests/multinodular-goitre-model.test.js",
+      "src/models/multinodularGoitre.js"
+    ],
+    "unresolvedLimitations": [
+      "There is no thyroid function of any kind in the model. A goitre of any shape here may be euthyroid, overactive or underactive, and nothing about the shape says which; the scene exists partly to refuse that inference.",
+      "Nothing in this model is a measurement. The lobe's volume and depth and the airway's calibre are measured off the thyroid atlas, whose own proportions are drawn to be legible, and the width across the airway is reported against the model's own resting width rather than as a tracheal diameter.",
+      "The nerve and parathyroid relation is anatomy and not injury. Nothing in the model says a nerve is damaged or at risk, or that a parathyroid gland has stopped working.",
+      "The four directions and how much of each meets a boundary are this repository's reading of four standard pictures. A real goitre goes several ways at once and the four are not exclusive.",
+      "The thoracic inlet is a structure the scene adds, because the atlas has no skeleton. There is no malignancy, no cytology, no symptom, no time and no treatment anywhere in the model."
+    ]
+  },
+  {
+    "sceneId": "uterine-fibroid",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of one uterine fibroid by location in the wall, prepared for future clinical sign-off: what the depth at which it sits decides"
+    ],
+    "sources": [
+      "docs/model-cards/uterine-fibroid.md",
+      "docs/model-evidence/uterine-fibroid.md",
+      "tests/uterine-fibroid-model.test.js",
+      "src/models/uterineFibroid.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing in this model is a measurement. The wall's depth, the cavity's area and the organ's volume are measured off the uterine atlas, whose own proportions are drawn to be legible rather than to scale, and no centimetre or millilitre follows from any of it.",
+      "Bleeding, pain, pressure symptoms, fertility and pregnancy are outside the model entirely, and nothing in it makes any of them follow from size. That they do not follow from size in any simple way is why the scene is about location.",
+      "The uterus is not redrawn around the fibroid: the model has no tissue mechanics and does not work out how an organ takes the shape of what is inside it.",
+      "The three depths are this repository's reading of three standard names, and the boundaries between those names are not sharp. There is exactly one fibroid, and most uteruses that have them have several.",
+      "There is no time, no growth, no hormone, no degeneration, no sarcoma and no treatment anywhere in the model."
     ]
   },
   {
@@ -1169,6 +1330,232 @@
       "The figure is one representative adult of no particular sex, age or size; no length, proportion, joint angle or bone count is a measurement.",
       "Nothing moves and nothing bears weight, and cartilage, ligaments, muscle and every soft tissue are absent.",
       "Each structure’s note names the scene that actually models that region, because the detail is deliberately not here."
+    ]
+  },
+  {
+    "sceneId": "urinary-obstruction",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of a urinary tract blocked at one of five named levels: which drawn stretches lie above the blockage, how many kidneys do, and what thickness of parenchyma is left beside a collecting system that has filled inside a capsule that barely yields"
+    ],
+    "sources": [
+      "docs/model-cards/urinary-obstruction.md",
+      "docs/model-evidence/urinary-obstruction.md",
+      "tests/urinary-obstruction-physiology.test.js",
+      "tests/urinary-obstruction-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five levels, the copy and the Japanese terminology is not yet recorded.",
+      "No volume, calibre, thickness or ratio is a measurement. Every one is measured off this repository's own kidney, ureter and bladder builders, whose proportions are drawn to be legible.",
+      "The parenchymal thickness is reported against this model's own resting thickness and is not a cortical thickness on any scan. A real kidney thins unevenly; this one thins evenly.",
+      "The model contains no kidney function of any kind — no filtration, no creatinine, no urine output, no recovery and no loss — and nothing in it is coupled to renal-filtration.",
+      "The model does not grade hydronephrosis. No output is a grade, a stage or a threshold.",
+      "There is no cause of the obstruction, no time, no symptom, no infection and no treatment; the axis is how much has backed up rather than how long it has been there.",
+      "The obstruction is drawn on the left in every one-sided level because it has to be drawn somewhere; the side carries no claim.",
+      "The ureter is drawn as three equal named stretches of one tube so that 'above the blockage' can be said; they are divisions of a drawing and none has a length.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "lobar-collapse",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a conservation model of one lobe losing its air: what is left of its volume, how much of the room it vacated the remaining lobes of the same lung take, and how far the midline is drawn across by the remainder"
+    ],
+    "sources": [
+      "docs/model-cards/lobar-collapse.md",
+      "docs/model-evidence/lobar-collapse.md",
+      "tests/lobar-collapse-physiology.test.js",
+      "tests/lobar-collapse-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the six arrangements, the copy and the Japanese terminology is not yet recorded.",
+      "No volume, distance or ratio is a measurement. The lobe shares are this repository's lung atlas's own, and each lobe is reported against its own resting volume.",
+      "The midline shift is a volume spread over a face this repository chose. It is not a tracheal deviation, not a mediastinal shift anybody measured, and not millimetres.",
+      "How the vacated room divides between the rest of the lung and the hemithorax is a calibration chosen so both halves of the answer are legible; it is not a measured proportion.",
+      "The remaining lobes expand in proportion to what each already had. A real lung does not expand evenly, and neither the shape nor the direction of compensatory expansion is claimed.",
+      "A fully collapsed lobe is still drawn at an eighth of its volume so that there is something left to point at; that eighth is not a measured residual volume.",
+      "The model contains no gas exchange of any kind — no oxygen, shunt, saturation, blood flow or hypoxic vasoconstriction — and says nothing about what anybody's blood is doing.",
+      "There is no cause of the obstruction, no time, no breathing cycle, no recovery, no symptom and no treatment.",
+      "The model does not grade collapse and does not read a chest radiograph. No output is a sign, a degree or a threshold.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "lumbar-disc-herniation",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of displaced lumbar disc material: how far it has gone along a chosen direction, whether the drawn annulus still closes behind it, and whether the drawn material overlaps the drawn spinal canal or nerve root"
+    ],
+    "sources": [
+      "docs/model-cards/lumbar-disc-herniation.md",
+      "docs/model-evidence/lumbar-disc-herniation.md",
+      "tests/lumbar-disc-herniation-physiology.test.js",
+      "tests/lumbar-disc-herniation-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the three directions, the copy and the Japanese terminology is not yet recorded.",
+      "No distance, fraction or state is a measurement. Every distance is measured off this repository’s spine atlas, which declares itself not anatomically validated.",
+      "The containment states `intact` and `breached` are NOT the radiological classification. Bulge, protrusion, extrusion and sequestration are defined on measured geometry this model does not have.",
+      "Overlap between two drawn shapes is not root contact in anybody, is not a radiological finding, and is not a cause of anything.",
+      "The model contains no symptom or sign of any kind. Sciatica, numbness, weakness and reflex change are not outputs and cannot be read off any number here.",
+      "The atlas draws one pair of roots at this level, leaving above the disc, so the traversing/exiting root distinction is unavailable and is not claimed.",
+      "There is no imaging of any kind: no plane, no sequence, no measurement, and no canal or foraminal stenosis ratio.",
+      "There is no time, no cause, no mechanism of injury, no inflammation, no treatment, no natural history and no resorption.",
+      "Past the width of what it meets the model stops measuring; it does not push a root aside, deform it, or follow it.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "retinal-detachment",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of retinal separation as a round patch on the eye atlas’s globe: how far it reaches from a chosen origin, what share of the drawn retina that is, and whether the macula lies inside it"
+    ],
+    "sources": [
+      "docs/model-cards/retinal-detachment.md",
+      "docs/model-evidence/retinal-detachment.md",
+      "tests/retinal-detachment-physiology.test.js",
+      "tests/retinal-detachment-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five origins, the copy and the Japanese terminology is not yet recorded.",
+      "No angle, area or height is a measurement. The globe, its coats and the macula’s position are this repository’s own eye atlas’s.",
+      "The height the retina is drawn lifted is illustrative and much larger than the atlas’s own coat spacing; at the real spacing a separation is a few pixels. It says separated, not how high.",
+      "The model contains no vision of any kind and says nothing about what anybody can see.",
+      "The model contains no prognosis. Nothing here says what recovers, how much, or whether the macula being inside changes that.",
+      "macula-on and macula-off are two pictures, not two stages; nothing says one becomes the other.",
+      "There is no cause and no kind: no tear, traction, exudate, myopia or trauma.",
+      "There is no time, no fluid, no gravity and no surgery. The inferior origin behaves exactly like the superior one.",
+      "The separation is drawn as a circular patch spreading evenly from one point; a real detachment is neither.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "cataract",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of lens opacity: which band of the drawn lens has clouded, how much of the drawn pupil that band stands in, and how that share changes with the aperture"
+    ],
+    "sources": [
+      "docs/model-cards/cataract.md",
+      "docs/model-evidence/cataract.md",
+      "tests/cataract-physiology.test.js",
+      "tests/cataract-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the three places, the two apertures, the copy and the Japanese terminology is not yet recorded.",
+      "No radius, area or fraction is a measurement. The lens and the pupil are this repository’s own eye atlas’s, and both shares are shares of drawn circles.",
+      "The share reported is an area inside a drawn aperture. It is not a transmission, not a loss, and not a measure of sight.",
+      "The model contains no vision of any kind — no acuity, contrast sensitivity, glare, colour or refraction — and nothing converts its output into any of those.",
+      "The model contains no indication for treatment and no output of it is a threshold for one.",
+      "There is no light physics: nothing is scattered, refracted or absorbed. A ray either crosses the clouded area or does not.",
+      "The two pupil sizes are two apertures, not two light levels; nothing says what made the pupil that size.",
+      "The three places are three arrangements, not three stages, and nothing says one becomes another.",
+      "Each opacity is an even band at one depth, and the depth is carried for the drawing only; a real opacity is neither even nor confined to a band.",
+      "There is no time, no progression and no cause: no age, steroid, diabetes or trauma.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "bppv",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of loose particles in a semicircular canal: how much of gravity lies in a chosen canal’s plane for a given head position, where in the loop a particle would settle, and whether that path runs towards the ampulla"
+    ],
+    "sources": [
+      "docs/model-cards/bppv.md",
+      "docs/model-evidence/bppv.md",
+      "tests/bppv-physiology.test.js",
+      "tests/bppv-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the two loops, the head’s path, the copy and the Japanese terminology is not yet recorded.",
+      "No angle, distance or share is a measurement. The canals’ planes and the loop’s radius are this repository’s own ear atlas’s.",
+      "NO EYE MOVEMENT IS DERIVED. Nothing in this model is an eye, a muscle or a direction of gaze, and no output of it is a nystagmus.",
+      "There is no symptom, no vertigo, no latency, no duration, no fatigue and no repositioning manoeuvre or its effect.",
+      "The model is quasi-static: the particle is drawn where it would end up, with no inertia, no fluid, no drag, no cupula and no time.",
+      "The head’s path is one chosen rotation and its extent is a calibration; it is not the angle of any named manoeuvre and no point on the axis is a step of one.",
+      "In this drawing the posterior loop answers a turn either way identically, because the atlas draws one ear and the turn is symmetric about that loop’s plane. Only the lateral loop makes the two turns different pictures. That is a property of the drawing.",
+      "The particle is drawn as a single body; real otoconia are many, and nothing here says how many or whether they move together.",
+      "There is no cause, no recurrence, and nothing about which ear is affected in anybody.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "pressure-injury",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of how hard each named depth of a drawn skin block is squeezed under a surface load, over soft tissue and over a bony prominence, and which of those depths takes the most of it"
+    ],
+    "sources": [
+      "docs/model-cards/pressure-injury.md",
+      "docs/model-evidence/pressure-injury.md",
+      "tests/pressure-injury-physiology.test.js",
+      "tests/pressure-injury-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the two profiles, the copy and the Japanese terminology is not yet recorded.",
+      "No depth, fraction or profile is a measurement. The layer depths are this repository’s skin atlas’s display values, which that atlas declares are deliberately not to scale.",
+      "The model does not stage a pressure injury and cannot be made to. No output is a stage, a grade or a threshold, and staging rests on visible tissue and tissue loss that this model does not have.",
+      "Deformation here is an unscaled number comparing depths inside one picture. It is not a stress, a strain, a pressure or a displacement, and it may not be compared between the two grounds or between two positions on the axis.",
+      "Nothing in the model damages tissue: there is no death, no loss, no ulcer and no wound, and no output converts deformation into an injury.",
+      "The two terms of the profile are shapes chosen to be the two shapes, not a mechanics. REACH and TRAPPED are calibrations no one measured; the tests fix the consequence, not the values.",
+      "There is no time, no duration and no relief — the axis is how hard the surface is loaded, not how long it has been.",
+      "There is no blood, no perfusion, no ischaemia, no inflammation and no repair, and no temperature, moisture, friction or continence.",
+      "The bony prominence is a structure the scene adds: the skin atlas is a specimen with no skeleton in it.",
+      "There is no person, no body position and no support surface, and nothing here is a risk assessment.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
+  },
+  {
+    "sceneId": "breast-lesion",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of where a place sits in a drawn breast: its position along one of the atlas’s own duct systems or along its axillary tail, which part of that system the position is in, and how far that point is from the drainage route the atlas draws"
+    ],
+    "sources": [
+      "docs/model-cards/breast-lesion.md",
+      "docs/model-evidence/breast-lesion.md",
+      "tests/breast-lesion-physiology.test.js",
+      "tests/breast-lesion-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the five places, the copy and the Japanese terminology is not yet recorded.",
+      "No distance or position is a measurement. Every course, point and distance is sampled off this repository’s breast atlas, which declares itself not anatomically validated and its duct and lobule counts to be display counts.",
+      "Nothing in the model spreads, travels or is carried anywhere. No output is a spread, a nodal status or a risk of either, and the drainage route is drawn because the gland drains that way.",
+      "The marker is a place and has no size: no diameter, no volume, no growth, no margin and no shape. It is drawn at one fixed size at every position on every course.",
+      "The model produces no stage and no grade. Staging rests on size, on nodes and on what is elsewhere in a person, none of which this model has, and no probability or prognosis is computed.",
+      "The part names `large-duct`, `terminal-duct` and `lobular-end` are places on a drawn course. They are NOT histological types and must not be read as ductal or lobular carcinoma or as any classification.",
+      "The gland has one drainage route in this picture, the one the atlas draws. A breast has more than one; their absence here is a property of the drawing.",
+      "Four of the atlas’s eight duct systems are offered, and the quadrant names say where each happens to point rather than dividing the breast into quadrants. Neither the choice of courses nor the baseline says anything about where lesions occur in people.",
+      "There is no biology of any kind: no cell type, no receptor, no histology, no in-situ or invasive distinction and no cause.",
+      "There is no imaging, no examination, no screening, no biopsy and no treatment.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
   },
   {

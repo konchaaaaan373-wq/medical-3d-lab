@@ -35,6 +35,41 @@ import {
   MODEL_CONTROLS as PROSTATE_CONTROLS,
 } from '../src/data/benignProstaticEnlargement.js';
 import { BenignProstaticEnlargementScene } from '../src/scenes/reproductive/scenes/benignProstaticEnlargement/BenignProstaticEnlargementScene.js';
+import {
+  STAGES as BOWEL_STAGES,
+  MODEL_CONTROLS as BOWEL_CONTROLS,
+} from '../src/data/bowelObstruction.js';
+import { BowelObstructionScene } from '../src/scenes/gastrointestinal/scenes/bowelObstruction/BowelObstructionScene.js';
+import {
+  STAGES as FIBROID_STAGES,
+  MODEL_CONTROLS as FIBROID_CONTROLS,
+} from '../src/data/uterineFibroid.js';
+import { UterineFibroidScene } from '../src/scenes/reproductive/scenes/uterineFibroid/UterineFibroidScene.js';
+import {
+  STAGES as GOITRE_STAGES,
+  MODEL_CONTROLS as GOITRE_CONTROLS,
+} from '../src/data/multinodularGoitre.js';
+import { MultinodularGoitreScene } from '../src/scenes/endocrine/scenes/multinodularGoitre/MultinodularGoitreScene.js';
+import {
+  STAGES as KNEE_STAGES,
+  MODEL_CONTROLS as KNEE_CONTROLS,
+} from '../src/data/kneeOsteoarthritis.js';
+import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
+import {
+  STAGES as ACL_STAGES,
+  MODEL_CONTROLS as ACL_CONTROLS,
+} from '../src/data/aclInjury.js';
+import { AclInjuryScene } from '../src/scenes/musculoskeletal/scenes/aclInjury/AclInjuryScene.js';
+import {
+  STAGES as CUFF_STAGES,
+  MODEL_CONTROLS as CUFF_CONTROLS,
+} from '../src/data/rotatorCuffTear.js';
+import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
+import {
+  STAGES as HIP_STAGES,
+  MODEL_CONTROLS as HIP_CONTROLS,
+} from '../src/data/hipOsteoarthritis.js';
+import { HipOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/hipOsteoarthritis/HipOsteoarthritisScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -167,6 +202,130 @@ const GUIDES = [
     visualMapping: new BenignProstaticEnlargementScene({}).getVisualMapping(),
     stateFields: null,
   },
+  /**
+   * The gut, which is the nephron's and the biliary tree's shape again: the
+   * site is a choice and the axis is how complete. What is new is that two of
+   * its steps *move the site* at the same position on the axis, so the reader
+   * is shown two obstructions rather than two amounts of one.
+   */
+  {
+    id: 'bowel-obstruction',
+    stages: BOWEL_STAGES,
+    controls: BOWEL_CONTROLS,
+    scene: () => {
+      const scene = new BowelObstructionScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new BowelObstructionScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The uterus, whose walk is the plainest statement of the scenario shape so
+   * far: the *size* stays where it is while the location moves twice, so the
+   * one number that does not distinguish the three stays on screen beside two
+   * entirely different pictures.
+   */
+  {
+    id: 'uterine-fibroid',
+    stages: FIBROID_STAGES,
+    controls: FIBROID_CONTROLS,
+    scene: () => {
+      const scene = new UterineFibroidScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new UterineFibroidScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The thyroid, whose walk ends on a refusal rather than on a finding: the
+   * last step says the shape does not tell you how the gland is working, which
+   * is the inference a picture of a thyroid invites and the one thing this
+   * scene most needs to deny.
+   */
+  {
+    id: 'multinodular-goitre',
+    stages: GOITRE_STAGES,
+    controls: GOITRE_CONTROLS,
+    scene: () => {
+      const scene = new MultinodularGoitreScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new MultinodularGoitreScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The knee, whose walk is a correction rather than a progression: the step
+   * that matters most turns the reader to look at the compartment that is
+   * *fine*, because "the cartilage wore out" is a sentence about a joint and
+   * this is not one.
+   */
+  {
+    id: 'knee-osteoarthritis',
+    stages: KNEE_STAGES,
+    controls: KNEE_CONTROLS,
+    scene: () => {
+      const scene = new KneeOsteoarthritisScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new KneeOsteoarthritisScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The ligament, whose walk is about a structure rather than a place: three
+   * states of one cord, and then the question of what is holding the bone
+   * instead. Its last step is a refusal — nobody is examining this knee.
+   */
+  {
+    id: 'acl-injury',
+    stages: ACL_STAGES,
+    controls: ACL_CONTROLS,
+    scene: () => {
+      const scene = new AclInjuryScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new AclInjuryScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The shoulder, whose walk spends three steps arriving at a non-event — the
+   * tendon is gone across its width and the head has not moved — and only then
+   * takes the pair away. The surprise is the content.
+   */
+  {
+    id: 'rotator-cuff-tear',
+    stages: CUFF_STAGES,
+    controls: CUFF_CONTROLS,
+    scene: () => {
+      const scene = new RotatorCuffTearScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new RotatorCuffTearScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The hip, which is the knee's counterpart and is built to be read against
+   * it: a compartment there, a direction here. Its walk changes the direction
+   * twice at the same position on the axis, and ends by taking the direction
+   * away altogether.
+   */
+  {
+    id: 'hip-osteoarthritis',
+    stages: HIP_STAGES,
+    controls: HIP_CONTROLS,
+    scene: () => {
+      const scene = new HipOsteoarthritisScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new HipOsteoarthritisScene({}).getVisualMapping(),
+    stateFields: null,
+  },
 ];
 
 for (const guide of GUIDES) {
@@ -203,15 +362,32 @@ for (const guide of GUIDES) {
     const scene = guide.scene ? guide.scene() : null;
     if (!scene) return;
     scene.build?.();
-    const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a]));
     // A `compare` a step set stays set until another step changes it, so this
-    // walks the guide in order rather than asking each step in isolation.
+    // walks the guide in order rather than asking each step in isolation — and
+    // it walks the *scene* with it, because a label can depend on the state:
+    // the bowel scene draws "the wall carrying the most" only where one stretch
+    // stands out, which is true after a step has moved the blockage into the
+    // colon and not before. Asking the scene in its opening state would have
+    // passed that step for the wrong reason, or failed it for one.
     let comparing = false;
     for (const step of PATIENT_GUIDES[id].steps) {
       if (step.compare !== undefined) comparing = step.compare;
+      if (typeof step.progress === 'number') scene.setProgress?.(step.progress);
+      for (const [control, value] of Object.entries(step.controls ?? {})) {
+        scene.setModelControl?.(control, value);
+      }
+      const annotations = new Map((scene.getAnnotations?.() ?? []).map((a) => [a.id, a]));
       for (const focusId of step.focus ?? []) {
         const annotation = annotations.get(focusId);
         assert.ok(annotation, `${step.stage}: points at "${focusId}", which the scene does not draw`);
+        // A scene may also answer that it is not drawing a label right now —
+        // the bowel scene does, for the one that names the wall carrying the
+        // most, which is only true of a picture where one stretch stands out.
+        assert.notEqual(
+          annotation.isDrawn?.(),
+          false,
+          `${step.stage}: points at "${focusId}", which the scene is not drawing in this state`
+        );
         const range = annotation.range ?? [0, 1];
         assert.ok(
           step.progress >= range[0] - 1e-9 && step.progress <= range[1] + 1e-9,

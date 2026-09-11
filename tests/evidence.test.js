@@ -3,20 +3,35 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
   ACHALASIA_EVIDENCE,
+  ACL_EVIDENCE,
   ASSERTABLE,
   ASTHMA_EVIDENCE,
   BILIARY_EVIDENCE,
+  BOWEL_OBSTRUCTION_EVIDENCE,
   CIRCULATION_EVIDENCE,
   CONFIDENCE,
+  GOITRE_EVIDENCE,
   COPD_EVIDENCE,
+  CUFF_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
+  HIP_OA_EVIDENCE,
+  URINARY_OBSTRUCTION_EVIDENCE,
+  LOBAR_COLLAPSE_EVIDENCE,
+  LUMBAR_DISC_EVIDENCE,
+  RETINAL_DETACHMENT_EVIDENCE,
+  CATARACT_EVIDENCE,
+  BPPV_EVIDENCE,
+  PRESSURE_INJURY_EVIDENCE,
+  BREAST_LESION_EVIDENCE,
+  KNEE_OA_EVIDENCE,
   PULMONARY_EDEMA_EVIDENCE,
   PNEUMONIA_EVIDENCE,
   PULMONARY_EMBOLISM_EVIDENCE,
   LAYER,
   PORTAL_EVIDENCE,
   PROSTATIC_ENLARGEMENT_EVIDENCE,
+  UTERINE_FIBROID_EVIDENCE,
   defineEvidence,
 } from '../src/models/evidence.js';
 
@@ -56,6 +71,21 @@ const FILE_LAYERS = {
   'biliary-physiology.test.js': LAYER.EXTERNAL,
   'achalasia-physiology.test.js': LAYER.EXTERNAL,
   'prostatic-enlargement-physiology.test.js': LAYER.EXTERNAL,
+  'bowel-obstruction-physiology.test.js': LAYER.EXTERNAL,
+  'uterine-fibroid-physiology.test.js': LAYER.EXTERNAL,
+  'multinodular-goitre-physiology.test.js': LAYER.EXTERNAL,
+  'urinary-obstruction-physiology.test.js': LAYER.EXTERNAL,
+  'lobar-collapse-physiology.test.js': LAYER.EXTERNAL,
+  'lumbar-disc-herniation-physiology.test.js': LAYER.EXTERNAL,
+  'retinal-detachment-physiology.test.js': LAYER.EXTERNAL,
+  'cataract-physiology.test.js': LAYER.EXTERNAL,
+  'bppv-physiology.test.js': LAYER.EXTERNAL,
+  'pressure-injury-physiology.test.js': LAYER.EXTERNAL,
+  'breast-lesion-physiology.test.js': LAYER.EXTERNAL,
+  'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
+  'acl-injury-physiology.test.js': LAYER.EXTERNAL,
+  'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
+  'hip-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -72,6 +102,21 @@ const DOSSIERS = {
   'biliary-obstruction': 'docs/model-evidence/biliary-obstruction.md',
   achalasia: 'docs/model-evidence/achalasia.md',
   'benign-prostatic-enlargement': 'docs/model-evidence/benign-prostatic-enlargement.md',
+  'bowel-obstruction': 'docs/model-evidence/bowel-obstruction.md',
+  'uterine-fibroid': 'docs/model-evidence/uterine-fibroid.md',
+  'multinodular-goitre': 'docs/model-evidence/multinodular-goitre.md',
+  'urinary-obstruction': 'docs/model-evidence/urinary-obstruction.md',
+  'lobar-collapse': 'docs/model-evidence/lobar-collapse.md',
+  'lumbar-disc-herniation': 'docs/model-evidence/lumbar-disc-herniation.md',
+  'retinal-detachment': 'docs/model-evidence/retinal-detachment.md',
+  'cataract': 'docs/model-evidence/cataract.md',
+  'bppv': 'docs/model-evidence/bppv.md',
+  'pressure-injury': 'docs/model-evidence/pressure-injury.md',
+  'breast-lesion': 'docs/model-evidence/breast-lesion.md',
+  'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
+  'acl-injury': 'docs/model-evidence/acl-injury.md',
+  'rotator-cuff-tear': 'docs/model-evidence/rotator-cuff-tear.md',
+  'hip-osteoarthritis': 'docs/model-evidence/hip-osteoarthritis.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -208,6 +253,21 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'biliary-obstruction',
       'achalasia',
       'benign-prostatic-enlargement',
+      'bowel-obstruction',
+      'uterine-fibroid',
+      'multinodular-goitre',
+      'knee-osteoarthritis',
+      'acl-injury',
+      'rotator-cuff-tear',
+      'hip-osteoarthritis',
+      'urinary-obstruction',
+      'lobar-collapse',
+      'lumbar-disc-herniation',
+      'retinal-detachment',
+      'cataract',
+      'bppv',
+      'pressure-injury',
+      'breast-lesion',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -226,6 +286,21 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   // Shorter for the same reason: this model is geometry, and a registry padded
   // past what the geometry asserts would be claims nobody could defend.
   assert.ok(PROSTATIC_ENLARGEMENT_EVIDENCE.length >= 6);
+  assert.ok(BOWEL_OBSTRUCTION_EVIDENCE.length >= 8);
+  assert.ok(UTERINE_FIBROID_EVIDENCE.length >= 8);
+  assert.ok(GOITRE_EVIDENCE.length >= 8);
+  assert.ok(KNEE_OA_EVIDENCE.length >= 8);
+  assert.ok(ACL_EVIDENCE.length >= 8);
+  assert.ok(CUFF_EVIDENCE.length >= 8);
+  assert.ok(HIP_OA_EVIDENCE.length >= 8);
+  assert.ok(URINARY_OBSTRUCTION_EVIDENCE.length >= 8);
+  assert.ok(LOBAR_COLLAPSE_EVIDENCE.length >= 8);
+  assert.ok(LUMBAR_DISC_EVIDENCE.length >= 8);
+  assert.ok(RETINAL_DETACHMENT_EVIDENCE.length >= 8);
+  assert.ok(CATARACT_EVIDENCE.length >= 8);
+  assert.ok(BPPV_EVIDENCE.length >= 8);
+  assert.ok(PRESSURE_INJURY_EVIDENCE.length >= 8);
+  assert.ok(BREAST_LESION_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

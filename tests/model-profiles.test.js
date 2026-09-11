@@ -199,7 +199,22 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'renal-filtration': MECHANISM_LEVEL.MECHANISTIC,
     'biliary-obstruction': MECHANISM_LEVEL.MECHANISTIC,
     'benign-prostatic-enlargement': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'uterine-fibroid': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'multinodular-goitre': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'knee-osteoarthritis': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'acl-injury': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'rotator-cuff-tear': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'hip-osteoarthritis': MECHANISM_LEVEL.ILLUSTRATIVE,
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
+    'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
+    'urinary-obstruction': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'lobar-collapse': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'lumbar-disc-herniation': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'retinal-detachment': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'cataract': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'bppv': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'pressure-injury': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'breast-lesion': MECHANISM_LEVEL.ILLUSTRATIVE,
   });
 });
 
