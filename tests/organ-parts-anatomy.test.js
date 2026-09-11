@@ -42,6 +42,12 @@ import {
   buildSpine,
 } from '../src/scenes/musculoskeletal/organs/spine.js';
 import {
+  JAW_DISPLAY_OPENING,
+  LEVELS as ORAL_LEVELS,
+  SULCUS_Z,
+  buildOralCavity,
+} from '../src/scenes/gastrointestinal/organs/oralCavity.js';
+import {
   GLOTTIS_DISPLAY_GAP,
   LEVELS as LARYNX_LEVELS,
   pharynxFrontAt,
@@ -1734,4 +1740,85 @@ test('the larynx and pharynx sort one shared space back into two', () => {
     assert.ok(nerve.max.y > L.vocalFold - 0.2, 'reaching the larynx from below');
     assert.ok(nerve.min.y < L.cricoidBase, 'and coming from below to do it');
   }
+});
+
+// --- the mouth and the tongue -----------------------------------------------
+
+test('the tongue is two parts, and a duct opens nowhere near its gland', () => {
+  // The scene makes two claims. One is a boundary that nothing on the surface
+  // shows except a row of papillae; the other is that three glands outside the
+  // mouth deliver into it somewhere else entirely. Both are measured here.
+  const mouth = buildOralCavity();
+  mouth.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of mouth.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const sideBox = (id, side) => new THREE.Box3().setFromObject(mouth.meshesFor(id)[side]);
+
+  // Two parts of one tongue, meeting on one line and not overlapping.
+  const front = box('tongue-oral-part');
+  const root = box('tongue-root');
+  assert.ok(Math.abs(front.min.z - SULCUS_Z) < 1e-6, 'the oral part ends at the sulcus');
+  assert.ok(Math.abs(root.max.z - SULCUS_Z) < 1e-6, 'and the root begins there');
+
+  // And the only thing on the surface that marks that line.
+  const papillae = box('vallate-papillae');
+  assert.ok(papillae.max.z > SULCUS_Z && papillae.min.z < SULCUS_Z + 0.42, 'the papillae lie on the boundary');
+  assert.ok(box('lingual-tonsil').max.z < SULCUS_Z, 'the lingual tonsil is behind it, on the root');
+  assert.ok(papillae.min.y > front.min.y, 'and the papillae are on the surface, not inside the tongue');
+
+  // The tongue sits between the roof above and the floor below.
+  assert.ok(front.max.y < box('hard-palate').min.y, 'the tongue is below the palate');
+  assert.ok(front.min.y > box('floor-of-mouth').min.y, 'and above the floor of the mouth');
+
+  // The jaw is drawn open by exactly the amount the constant declares — so the
+  // display value cannot drift away from what is drawn.
+  const opening = box('upper-teeth').min.y - box('lower-teeth').max.y;
+  assert.ok(
+    Math.abs(opening - JAW_DISPLAY_OPENING) < 0.1,
+    `the two rows are apart by the declared display opening (${opening.toFixed(2)})`
+  );
+  assert.ok(box('mandible').min.y < box('lower-teeth').min.y, 'the jaw is below the teeth standing in it');
+  assert.ok(box('mandible').min.z < box('lower-teeth').min.z - 1, 'and reaches back behind them, as its rami do');
+  assert.ok(box('lower-teeth').max.x < box('upper-teeth').max.x, 'and the lower arch is inside the upper one');
+
+  // A doorway, with a tonsil in the bed behind each side of its frame.
+  for (const side of [0, 1]) {
+    const arch = sideBox('palatoglossal-arch', side);
+    const tonsil = sideBox('palatine-tonsil', side);
+    assert.ok(arch.max.y > box('soft-palate').min.y, 'the arch starts up under the soft palate');
+    assert.ok(arch.min.y < front.max.y, 'and ends down beside the tongue');
+    assert.ok(tonsil.max.z < arch.max.z, 'the tonsil is behind its arch');
+    assert.ok(Math.sign(tonsil.getCenter(new THREE.Vector3()).x) === Math.sign(arch.getCenter(new THREE.Vector3()).x),
+      'and on the same side as it');
+  }
+
+  // The claim about the glands: each duct starts in its own gland and ends
+  // somewhere else entirely.
+  const caruncle = mouth.anchorPoints.caruncle;
+  const parotidOpening = mouth.anchorPoints.parotidOpening;
+  for (const side of [0, 1]) {
+    const submandibular = sideBox('submandibular-gland', side);
+    const submandibularDuct = sideBox('submandibular-duct', side);
+    assert.ok(submandibularDuct.intersectsBox(submandibular), 'the submandibular duct starts at its gland');
+    assert.ok(submandibularDuct.max.z > submandibular.max.z + 2, 'and runs a long way forwards from it');
+
+    const parotid = sideBox('parotid-gland', side);
+    const parotidDuct = sideBox('parotid-duct', side);
+    assert.ok(parotidDuct.intersectsBox(parotid), 'the parotid duct starts at its gland');
+    assert.ok(parotidDuct.max.z > parotid.max.z + 2, 'and runs forwards across the cheek');
+    assert.ok(parotid.max.z < box('lower-teeth').min.z, 'the parotid gland itself is behind the teeth');
+  }
+  // Where each of them arrives.
+  assert.ok(
+    Math.abs(parotidOpening.y - box('upper-teeth').min.y) < 0.5,
+    'the parotid duct opens level with the upper teeth'
+  );
+  assert.ok(caruncle.y < box('lower-teeth').min.y, 'and the submandibular one under the tongue');
+  assert.ok(box('lingual-frenulum').distanceToPoint(caruncle) < 1.1, 'beside the frenulum');
+  // The smallest pair is the one that opens where it sits.
+  const sublingual = box('sublingual-gland');
+  assert.ok(sublingual.distanceToPoint(caruncle) < 1.2, 'the sublingual glands are where their saliva arrives');
 });

@@ -970,5 +970,27 @@
       "The cricothyroid membrane is a landmark only; no route, depth, angle or technique is represented and the scene must not be used to plan one.",
       "The muscles of the larynx and pharynx, the joints between the cartilages, the tongue, the thyroid gland and the lower course of the left recurrent laryngeal nerve are not drawn, and the two nerves are drawn alike where in life they differ."
     ]
+  },
+  {
+    "sceneId": "oral-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of the mouth, the two parts of the tongue and where the three pairs of salivary glands open. No chewing, no swallowing, no tongue movement, no dentition, no disease."
+    ],
+    "sources": [
+      "docs/model-cards/oral-anatomy.md",
+      "docs/model-evidence/oral-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "The jaw is drawn open by a fixed display amount (JAW_DISPLAY_OPENING); it is a position rather than a change of shape, but no opening or occlusal relationship may be read off the model.",
+      "Both rows of teeth are drawn as continuous bands following the arch: no individual tooth, root, crown shape, number or eruption stage is represented.",
+      "The muscles of the tongue, floor and jaw, the joint of the jaw, and the lingual, hypoglossal and facial nerves are not drawn, so nothing here supports any claim about movement or about the course of a nerve.",
+      "The ducts are drawn to the point they open at, not as openings; the vallate papillae are nine standing for eight to twelve, and no other papillae are drawn."
+    ]
   }
 ]

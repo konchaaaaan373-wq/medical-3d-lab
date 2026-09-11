@@ -279,6 +279,20 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the muscular wall and the constrictors, the tongue and the valleculae, the palatoglossal and palatopharyngeal arches, the rest of the lymphoid ring, the openings of the Eustachian tubes, and the upper oesophageal sphincter. Nothing here moves, which is the first thing a swallowing scene would need',
   },
   {
+    organ: 'mouth',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/oralAnatomy — lips, hard and soft palate, both palatoglossal arches, both palatine tonsils, upper and lower dental arches, mandible, the tongue in its two parts with the vallate papillae between them, the lingual tonsil, the floor of the mouth, the frenulum, and all three pairs of salivary glands with the parotid and submandibular ducts, selectable by name; tests/organ-parts-anatomy.test.js — the tongue is drawn in two parts meeting at the sulcus with the row of vallate papillae on that line and nothing else marking it, the lingual tonsil lies behind it, each duct starts at its own gland and ends at the opening its copy names, the parotid opening is level with the upper teeth while its gland is behind the jaw, the submandibular opening is beside the frenulum while its gland is under the jaw, and the tongue sits between the palate above and the floor below',
+    next: 'A3: the muscles of the tongue, floor and jaw, the joint of the jaw and the condyle, the lingual and hypoglossal nerves and the facial nerve in the parotid, the openings of the ducts as openings, the cheeks, the palatopharyngeal arch, and individual teeth. The jaw is drawn open at a fixed display position and nothing moves, which is the first thing a chewing or swallowing scene would need',
+  },
+  {
+    organ: 'tongue',
+    level: 'A2',
+    evidence:
+      'scenes/gastrointestinal/scenes/oralAnatomy — the tongue drawn in two parts, oral and root, meeting at the sulcus terminalis, with the row of vallate papillae lying along that line and the lingual tonsil behind it, all selectable by name; tests/organ-parts-anatomy.test.js — the two parts meet at SULCUS_Z and do not overlap, the papillae lie on that boundary and nothing else marks it, and the lingual tonsil is behind it on the root',
+    next: 'A3: the intrinsic and extrinsic muscles and the midline septum, the filiform, fungiform and foliate papillae, the lingual and hypoglossal nerves and the boundary between their territories, and the vessels. The tongue does not move, which is the first thing a swallowing or a speech scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

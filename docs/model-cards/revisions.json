@@ -482,5 +482,17 @@
     "cardRevision": 3,
     "modelDigest": "4ccd73d3a83e0dc9",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "oral-anatomy",
+    "card": "docs/model-cards/oral-anatomy.md",
+    "modelSources": [
+      "src/scenes/gastrointestinal/organs/oralCavity.js",
+      "src/data/oralAnatomyScene.js",
+      "src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js"
+    ],
+    "cardRevision": 3,
+    "modelDigest": "fc9fd0176bf6f732",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
