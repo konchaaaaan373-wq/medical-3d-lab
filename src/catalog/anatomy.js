@@ -209,6 +209,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the joint capsule itself with the three ligaments as thickenings of it, the acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the retinacular vessels up the neck and the sciatic nerve behind. Nothing here moves, which is the first thing a hip scene beyond anatomy would need',
   },
   {
+    organ: 'eye',
+    level: 'A2',
+    evidence:
+      'scenes/sensory/scenes/eyeAnatomy — sclera, choroid and retina as shells with walls, cornea, iris, pupil, lens and ciliary body, the anterior chamber and vitreous body, the optic disc, macula and optic nerve, and all four rectus muscles, selectable by name; tests/organ-parts-anatomy.test.js — the three coats nest outside-in without touching, the cornea is more steeply curved than the globe and meets it at the limbus, the lens sits behind the iris and never through it, the anterior chamber lies between cornea and iris, the optic disc is nasal to the macula and the macula is at the posterior pole, and the four recti reach the globe from four directions',
+    next: 'A3: the retinal layers and the central retinal vessels, the optic cup, the posterior chamber and the trabecular meshwork the aqueous actually drains through, the suspensory fibres of the lens, the oblique muscles, the eyelids, conjunctiva and lacrimal apparatus, and the orbit around it. Nothing here moves, which is the first thing an accommodation or pupillary scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

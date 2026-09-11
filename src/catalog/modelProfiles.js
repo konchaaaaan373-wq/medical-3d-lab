@@ -437,6 +437,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code as a right hip, standing: one hip bone as a plate turned so its socket faces out and down, the acetabulum as a lathed shell swept past ninety degrees so its rim grips beyond the equator of the head, a labral ring placed from that same sweep, a femoral head with a fovea on a neck held out to the side, both trochanters and the shaft, one cartilage structure drawn as two translucent copies lining the two surfaces, the ligament of the head across the floor of the socket, the three capsular ligaments and the gluteus medius and iliopsoas tendons. No state and no mechanism: nothing moves and the joint is drawn at one position. **No length, angle, thickness or attachment footprint is a measurement, the neck-shaft angle included** — it is drawn to read. The joint capsule itself, the acetabular notch and transverse ligament, the horseshoe shape of the acetabular cartilage, the bursae, the remaining hip muscles, the vessels of the head and neck and the sciatic nerve are not drawn.',
   },
   {
+    profileId: 'eye-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code as a right eye: the three coats are shells of revolution with real walls rather than nested balls, so a section shows three layers; the cornea is a steeper dome on its own centre, set into the sclera at the limbus; a flat iris ring carries the pupil as the black disc an opening looks like; the lens sits behind it and the ciliary ring around it; the anterior chamber and the vitreous body are drawn as bodies because a space cannot otherwise be pointed at; the optic disc, macula and optic nerve sit on and behind the back wall, and four rectus straps run from one origin behind the eye to the sclera in front of the equator. No state and no mechanism: no accommodation, no pupillary reflex, no eye movement and no pressure. **No radius, thickness, angle or distance is a measurement, and the three coats are drawn far thicker than they are** so each can be seen and selected — no thickness may be read off the model. The eyelids, conjunctiva, lacrimal apparatus, oblique muscles, suspensory fibres, retinal layers and vessels, optic cup and orbit are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

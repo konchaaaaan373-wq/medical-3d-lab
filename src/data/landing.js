@@ -36,6 +36,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'knee-anatomy',
   'shoulder-anatomy',
   'hip-anatomy',
+  'eye-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -172,6 +173,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '断面で、臼蓋の縁が骨頭の最大径を越えていることを確認。',
     ['SOCKET', 'NECK', 'SECTION'],
     ['臼蓋', '頸部', '断面']
+  ),
+  'eye-anatomy': presentation(
+    'Look into an eye: the coats, the lens behind the iris, and the fundus.',
+    '眼の中を見る。3つの膜、虹彩の奥の水晶体、そして眼底。',
+    ['RETINA', 'LENS', 'FUNDUS'],
+    ['網膜', '水晶体', '眼底']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

@@ -27,6 +27,7 @@ export const SYSTEMS = [
   { id: 'hematologic', label: 'Hematologic & lymphatic', labelJa: '血液・リンパ' },
   { id: 'musculoskeletal', label: 'Musculoskeletal', labelJa: '筋骨格' },
   { id: 'reproductive', label: 'Reproductive', labelJa: '生殖器' },
+  { id: 'sensory', label: 'Special senses', labelJa: '感覚器' },
   { id: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
@@ -64,6 +65,7 @@ export const ORGANS = [
   { id: 'hip', system: 'musculoskeletal', label: 'Hip joint', labelJa: '股関節' },
   { id: 'uterus', system: 'reproductive', label: 'Uterus', labelJa: '子宮' },
   { id: 'prostate', system: 'reproductive', label: 'Prostate', labelJa: '前立腺' },
+  { id: 'eye', system: 'sensory', label: 'Eye', labelJa: '眼' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

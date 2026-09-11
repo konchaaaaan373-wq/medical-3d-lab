@@ -20,6 +20,7 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { EyeAnatomyScene } from '../src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js';
 import {
   GROUP_ID_PREFIX,
   anatomyContractProblems,
@@ -60,6 +61,7 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'eye-anatomy', Scene: EyeAnatomyScene, minimum: 15 },
 ];
 
 const built = new Map();
@@ -369,6 +371,9 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'eye-anatomy:fundus',
+  'eye-anatomy:sagittal-section',
+  'eye-anatomy:muscles',
 ]);
 
 /**

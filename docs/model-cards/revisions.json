@@ -408,5 +408,18 @@
     "cardRevision": 3,
     "modelDigest": "4b9a0d651116f6cb",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "eye-anatomy",
+    "card": "docs/model-cards/eye-anatomy.md",
+    "modelSources": [
+      "src/data/eyeAnatomyScene.js",
+      "src/scenes/sensory/organs/eyeball.js",
+      "src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 4,
+    "modelDigest": "ce012f6382aeb7da",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]
