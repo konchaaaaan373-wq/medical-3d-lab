@@ -921,6 +921,23 @@ export const MODEL_PROFILES = Object.freeze([
       'vision, no prognosis, no cause, no time and no gravity.@ ',
   },
   {
+    profileId: 'cataract-aperture',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model over the eye atlas\'s own lens and pupil: a chosen kind of opacity occupies a named band of ' +
+      'the lens, a chosen aperture is a disc over it, and the model reports the intersection as a share of the aperture. ' +
+      'The card says the share is an area in a drawn hole and not a transmission, a loss or any measure of sight, that ' +
+      'the two apertures are two sizes rather than two light levels, and that the model contains no vision, no light ' +
+      'physics, no cause, no time and no indication for any treatment.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

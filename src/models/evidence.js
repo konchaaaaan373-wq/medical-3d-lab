@@ -2885,6 +2885,139 @@ export const RETINAL_DETACHMENT_EVIDENCE = defineEvidence('retinal-detachment', 
   },
 ]);
 
+export const CATARACT_EVIDENCE = defineEvidence('cataract', [
+  {
+    id: 'only-what-is-behind-the-opening',
+    claim:
+      'Light reaches the back of the eye through the pupil, so only the part of the lens behind that opening is in the way of anything.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the pupil as the aperture through which light reaches the retina.',
+    validation: 'physiology: only the part of the lens behind the opening is in the way of anything',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'three-places-in-the-lens',
+    claim:
+      'Nuclear, cortical and posterior subcapsular opacity are three distinct locations within the lens, not three degrees of one.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the three as distinct sites of lens opacity.',
+    validation: 'physiology: a clear lens is clear, and three places are not three stages',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'area-in-the-lens-is-not-area-in-the-path',
+    claim:
+      'How much of the lens has clouded does not say how much of the light\'s way it stands in: a cloud over most of the lens can stand in none of a small pupil, and one over a twelfth of it can stand in most.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'The geometry of two concentric discs, over the atlas\'s own lens and pupil.',
+    validation: 'physiology: how much of the lens has clouded does not say how much is in the way',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-aperture-decides-which-matters',
+    claim:
+      'Opening the pupil changes which part of the lens is in use, and so reverses which of two opacities stands in more of the light\'s way — without either opacity changing.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'A consequence of the same geometry: the intersection of a fixed band with a growing disc.',
+    validation: 'physiology: opening the pupil reverses which one is in the way',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-lens-and-pupil',
+    claim:
+      'The lens\'s radius across the light\'s way and the pupil the atlas draws, from which both shares are computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Measured off `buildEyeball()` in `src/scenes/sensory/organs/eyeball.js`, so the picture and the arithmetic are the same eye.',
+    note:
+      'Illustrative. Both shares are shares of drawn circles. **No radius or area here is a measurement of anybody.**',
+    validation: 'calibration: the cataract model and the eye atlas measure the same lens',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-bands-and-the-two-apertures',
+    claim:
+      'The inner and outer radii of each named opacity, and the two pupil sizes.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Calibrations this repository chose: the bands are a reading of where the three named opacities sit, and the apertures were chosen so that one of them contains the middle alone and the other most of the lens.',
+    note:
+      'What the numbers have to deliver is the reversal — with a smaller spread between the apertures, or overlapping bands, the scene would have nothing to show. The reversal is what a test fixes, not the values.',
+    validation: 'calibration: the two apertures produce the reversal the scene exists for',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'the-share-is-not-a-transmission',
+    claim:
+      'The share this model reports is an area inside a drawn aperture. It is not a transmission, not an attenuation and not a loss of anything.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. There is no light physics in this model: nothing is scattered, refracted or absorbed, and a ray either crosses the clouded area or does not.',
+    note:
+      'A percentage beside a clouded lens will be read as a percentage of light. It is a percentage of a hole.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-vision-is-produced-or-implied',
+    claim:
+      'What anybody can see is not represented here in any form and cannot be inferred from either share.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. No acuity, no contrast sensitivity, no glare, no colour and no refraction.',
+    note:
+      'The read-out prints "not in this model" where sight would go rather than omitting the row, because an absent row reads as an oversight and this absence is the claim.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-indication-for-anything',
+    claim:
+      'Nothing here says when a lens should be replaced, treated or left alone, and no output is a threshold for any of that.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and a firm one: a share rising towards a hundred per cent invites exactly that reading.',
+    note:
+      'The decision rests on things this model has none of — what somebody needs to do, what they can see, and what they want.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'two-apertures-are-not-two-light-levels',
+    claim:
+      'The pupil is a hole of a chosen size here. Nothing says what made it that size or what it is responding to.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision: this model has no light in it, so it cannot have a response to light in it either.',
+    note:
+      'A reader who takes the wide pupil for darkness and the narrow one for daylight is reading something that is not there.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'an-even-band-at-one-depth',
+    claim:
+      'Each opacity is an even band of the lens at a single depth, and the depth is carried for the drawing alone.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Nothing in the arithmetic depends on the depth, and a real opacity is neither even nor confined to a band.',
+    note:
+      'The model is a comparison of two areas seen along the axis. Depth would matter to a model of light, and there is no light here.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'no-time-and-no-cause',
+    claim:
+      'Age, steroid, diabetes and trauma are not represented, and nothing here says one place becomes another or that any of them progresses.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. The axis is how opaque one place is, not how far along anybody is.',
+    note:
+      'Three places in a list read as three stages. They are not, and nothing in the model connects them.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2908,4 +3041,5 @@ export const EVIDENCE_REGISTRIES = [
   LOBAR_COLLAPSE_EVIDENCE,
   LUMBAR_DISC_EVIDENCE,
   RETINAL_DETACHMENT_EVIDENCE,
+  CATARACT_EVIDENCE,
 ];

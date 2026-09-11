@@ -678,6 +678,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/sensory/scenes/retinalDetachment/index.js'),
   },
   {
+    id: 'cataract',
+    slug: 'cataract',
+    titleEn: 'Lens opacity',
+    titleJa: '水晶体混濁',
+    system: 'sensory',
+    organ: 'eye',
+    organs: ['eye'],
+    disease: 'cataract',
+    conditions: ['cataract', 'lens opacity', 'nuclear sclerosis', 'cortical opacity', 'posterior subcapsular', 'pupil aperture', '白内障', '水晶体混濁', '核硬化', '皮質混濁', '後嚢下混濁'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/cataract.md',
+    modelProfile: 'cataract-aperture',
+    description:
+      'Light only passes through the part of the lens behind the pupil, so a cloud over most of the lens can stand in none of the light’s way while one over a twelfth of it fills it — and opening the pupil reverses which is which.',
+    descriptionJa:
+      '光は瞳孔の後ろにある部分しか通らないため、水晶体の大部分を覆う混濁が通り道の外にあることも、1/12 の混濁が通り道を埋めることもあります。瞳孔が開くと、この関係は入れ替わります。',
+    tags: ['sensory', 'position-scenario', 'geometric-model'],
+    load: () => import('../scenes/sensory/scenes/cataract/index.js'),
+  },
+  {
     id: 'rotator-cuff-tear',
     slug: 'rotator-cuff-tear',
     titleEn: 'Rotator cuff tear',

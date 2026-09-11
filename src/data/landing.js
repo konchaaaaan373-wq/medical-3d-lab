@@ -74,6 +74,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'lobar-collapse',
   'lumbar-disc-herniation',
   'retinal-detachment',
+  'cataract',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -473,6 +474,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '剥離を 5 か所から始め、小さな剥離が黄斑を含み、大きな剥離が含まないことを確認。',
     ['FIVE STARTS', 'AREA SAYS LITTLE', 'MACULA IN OR OUT'],
     ['5 つの起点', '面積では分からない', '黄斑は内か外か']
+  ),
+  'cataract': presentation(
+    'Put the cloud in three places and open the pupil; watch which one is in the way change.',
+    '混濁を 3 か所に置いて瞳孔を開き、どちらが通り道にあるかが入れ替わるのを確認。',
+    ['THREE PLACES', 'TWO APERTURES', 'BIG IS NOT IN THE WAY'],
+    ['3 つの場所', '2 つの開口部', '広い＝邪魔とは限らない']
   ),
   'rotator-cuff-tear': presentation(
     'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',

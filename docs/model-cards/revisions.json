@@ -693,5 +693,15 @@
     "cardRevision": 2,
     "modelDigest": "01a17b62bd311e3c",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "cataract",
+    "card": "docs/model-cards/cataract.md",
+    "modelSources": [
+      "src/models/cataract.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "e11f73cd0ea26199",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

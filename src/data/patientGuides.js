@@ -3059,6 +3059,105 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Lens opacity.
+   *
+   * The walk is a reversal. Two clouds, one much larger than the other, and a
+   * pupil that changes which of them is in the way — so the steps put the big
+   * one in front of a small opening, then the small one, then open the opening
+   * and let the first become the answer.
+   */
+  'cataract': Object.freeze({
+    title: 'Which cloud is in the way, and why that changes',
+    titleJa: 'どちらの混濁が通り道にあるのか、そしてそれが変わる理由',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'clear',
+        frame: 'front',
+        focus: ['lens', 'aperture'],
+        certainty: 'established',
+        title: 'Light comes through an opening that changes size',
+        titleJa: '光は、大きさの変わる開口部を通ります',
+        body: 'Only the part of the lens behind the opening is in the way of anything. The rest of it is beside the light’s path, not in it.',
+        bodyJa: '開口部の後ろにある部分だけが、光の通り道にあります。それ以外の部分は通り道の外にあり、妨げにはなりません。',
+        look: 'The bright circle is the opening. Everything outside it is lens that light is not going through.',
+        lookJa: '明るい円が開口部です。その外側は、光が通っていない水晶体です。',
+      },
+      {
+        progress: 0.5,
+        stage: 'clouding',
+        frame: 'lens',
+        focus: ['opacity', 'aperture'],
+        // The larger cloud, entirely outside a small opening.
+        controls: { kind: 'cortical', pupil: 'narrow' },
+        certainty: 'established',
+        title: 'A large cloud, entirely outside the opening',
+        titleJa: '大きな混濁でも、開口部の外にあります',
+        body: 'Most of the lens has clouded here, around the rim. None of it is behind the opening, so none of it is in the light’s way.',
+        bodyJa: 'ここでは水晶体の大部分が、周辺部で濁っています。しかしそのどれも開口部の後ろにはなく、光の通り道にはありません。',
+        look: 'A lot of the lens is pale. None of it is inside the bright circle.',
+        lookJa: '水晶体の広い範囲が淡くなっていますが、明るい円の内側には入っていません。',
+      },
+      {
+        progress: 1,
+        stage: 'in-the-way',
+        frame: 'lens',
+        focus: ['opacity', 'aperture'],
+        // A twelfth of the lens, and most of the same opening.
+        controls: { kind: 'posterior-subcapsular', pupil: 'narrow' },
+        certainty: 'established',
+        title: 'A much smaller one that fills it',
+        titleJa: 'ずっと小さな混濁が、開口部を埋めます',
+        body: 'This cloud is a fraction of the size of the last. It sits at the middle, which is exactly where the opening is, so almost all of it is in the way.',
+        bodyJa: 'この混濁は、いま見たものよりずっと小さなものです。しかし中心にあり、そこはちょうど開口部の位置なので、そのほとんどが通り道にあります。',
+        look: 'Much less of the lens is pale, and nearly all of it is inside the bright circle.',
+        lookJa: '淡くなっている範囲はずっと狭いのに、そのほぼ全部が明るい円の内側にあります。',
+      },
+      {
+        progress: 1,
+        stage: 'in-the-way',
+        frame: 'lens',
+        focus: ['opacity', 'aperture'],
+        // The opening changes, and the answer changes with it.
+        controls: { kind: 'cortical', pupil: 'wide' },
+        certainty: 'established',
+        title: 'Open the opening and the answer swaps',
+        titleJa: '開口部が広がると、答えが入れ替わります',
+        body: 'Neither cloud has changed. The opening is wider, so more of the lens is being used — and the one at the rim is now in the way after all.',
+        bodyJa: 'どちらの混濁も変わっていません。開口部が広がって使われる水晶体の範囲が増えたため、周辺部の混濁が今度は通り道に入っています。',
+        look: 'The bright circle is bigger, and the pale rim is now inside part of it.',
+        lookJa: '明るい円が大きくなり、淡い周辺部の一部がその内側に入りました。',
+      },
+      {
+        progress: 1,
+        stage: 'in-the-way',
+        frame: 'front',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and why it varies',
+        titleJa: '人が気づくこと、そしてそれが人によって違う理由',
+        body: 'Haze, glare around lights, and a difference between bright and dim places are described. Which of them anybody notices is said to depend on where the cloud is.',
+        bodyJa: 'かすみ、光の周りのまぶしさ、明るい場所と暗い場所での見え方の違いなどが語られます。どれに気づくかは、混濁の場所によると言われます。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing in it is a symptom.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、症状も描かれていません。',
+      },
+      {
+        progress: 1,
+        stage: 'in-the-way',
+        frame: 'front',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'This picture is areas, not light',
+        titleJa: 'この絵が示しているのは面積であって、光ではありません',
+        body: 'The percentages here are how much of a circle sits inside another circle. Nothing in this picture is light, and nothing in it is what anybody can see.',
+        bodyJa: 'ここに出る割合は、ある円が別の円の内側にどれだけあるかという値です。この絵に光はなく、「何が見えるか」もありません。',
+        look: 'Where sight would be listed, the screen says it is not in this model — rather than leaving the line out.',
+        lookJa: '見え方が並ぶはずの場所には、行を省くのではなく「このモデルにはありません」と表示されています。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

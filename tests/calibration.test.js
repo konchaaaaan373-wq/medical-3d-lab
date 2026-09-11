@@ -158,6 +158,7 @@ import {
   ORIGINS as RD_ORIGINS,
   solveRetinalDetachment,
 } from '../src/models/retinalDetachment.js';
+import { LENS as CATARACT_LENS, PUPILS as CATARACT_PUPILS, solveCataract } from '../src/models/cataract.js';
 
 /**
  * **Layer 3 — calibration behaviour. What this repository chose, still doing
@@ -1847,4 +1848,42 @@ test('calibration: the drawn lift is far larger than the atlas’s own coat spac
   assert.ok(coatGap < 0.02, `the atlas's own spacing is ${coatGap}, which is invisible`);
   assert.ok(RD_MAX_LIFT > coatGap * 8, 'so the drawn lift is much larger, and cannot be read as the spacing');
   assert.ok(RD_MAX_LIFT < 0.25, 'while still leaving the sheet on a globe rather than beside one');
+});
+
+// --- lens opacity ----------------------------------------------------------
+
+test('calibration: the cataract model and the eye atlas measure the same lens', () => {
+  // Defends `atlas-lens-and-pupil`. The model may not import `three`, so the
+  // lens and the pupil are copied out of the atlas.
+  const eye = buildEyeball({});
+  const lens = eye.mesh('lens');
+  const pupil = eye.mesh('pupil');
+  lens.geometry.computeBoundingBox();
+  pupil.geometry.computeBoundingBox();
+  assert.ok(Math.abs(lens.geometry.boundingBox.max.x - CATARACT_LENS.radius) < 0.01, 'the lens radius');
+  assert.ok(
+    Math.abs(pupil.geometry.boundingBox.max.x - CATARACT_LENS.drawnPupilRadius) < 0.01,
+    'and the pupil the atlas draws'
+  );
+  eye.dispose?.();
+});
+
+test('calibration: the two apertures produce the reversal the scene exists for', () => {
+  // Defends `the-bands-and-the-two-apertures`. Neither the bands nor the pupil
+  // sizes carry a claim on their own; what they have to deliver together is
+  // that opening the aperture swaps which opacity is in the way. That is what
+  // is fixed here, so any of the values may move as long as it still holds.
+  const rimNarrow = solveCataract(1, { kind: 'cortical', pupil: 'narrow' });
+  const rimWide = solveCataract(1, { kind: 'cortical', pupil: 'wide' });
+  const patchNarrow = solveCataract(1, { kind: 'posterior-subcapsular', pupil: 'narrow' });
+  const patchWide = solveCataract(1, { kind: 'posterior-subcapsular', pupil: 'wide' });
+
+  assert.ok(patchNarrow.inPath > rimNarrow.inPath + 0.4, 'the small patch plainly wins at a small aperture');
+  assert.ok(rimWide.inPath > patchWide.inPath + 0.2, 'and the rim plainly wins at a wide one');
+  assert.ok(rimNarrow.ofTheLens > patchNarrow.ofTheLens * 4, 'while the rim is much the larger cloud throughout');
+
+  // The middle band has to sit inside the narrow aperture entirely, or the
+  // "all of it" case the scene opens on is not available.
+  assert.ok(Math.abs(solveCataract(1, { kind: 'nuclear', pupil: 'narrow' }).inPath - 1) < 1e-9);
+  assert.ok(CATARACT_PUPILS.wide < 1, 'and the wide aperture is still inside the lens');
 });

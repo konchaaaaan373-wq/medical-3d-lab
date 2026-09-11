@@ -1442,5 +1442,34 @@
       "The separation is drawn as a circular patch spreading evenly from one point; a real detachment is neither.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "cataract",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a geometric model of lens opacity: which band of the drawn lens has clouded, how much of the drawn pupil that band stands in, and how that share changes with the aperture"
+    ],
+    "sources": [
+      "docs/model-cards/cataract.md",
+      "docs/model-evidence/cataract.md",
+      "tests/cataract-physiology.test.js",
+      "tests/cataract-model.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the three places, the two apertures, the copy and the Japanese terminology is not yet recorded.",
+      "No radius, area or fraction is a measurement. The lens and the pupil are this repository’s own eye atlas’s, and both shares are shares of drawn circles.",
+      "The share reported is an area inside a drawn aperture. It is not a transmission, not a loss, and not a measure of sight.",
+      "The model contains no vision of any kind — no acuity, contrast sensitivity, glare, colour or refraction — and nothing converts its output into any of those.",
+      "The model contains no indication for treatment and no output of it is a threshold for one.",
+      "There is no light physics: nothing is scattered, refracted or absorbed. A ray either crosses the clouded area or does not.",
+      "The two pupil sizes are two apertures, not two light levels; nothing says what made the pupil that size.",
+      "The three places are three arrangements, not three stages, and nothing says one becomes another.",
+      "Each opacity is an even band at one depth, and the depth is carried for the drawing only; a real opacity is neither even nor confined to a band.",
+      "There is no time, no progression and no cause: no age, steroid, diabetes or trauma.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]
