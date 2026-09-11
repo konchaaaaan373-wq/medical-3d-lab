@@ -51,6 +51,7 @@ test('migrated production evidence and the existing model registries share one c
       'uterine-fibroid',
       'multinodular-goitre',
       'knee-osteoarthritis',
+      'acl-injury',
     ]
   );
 });

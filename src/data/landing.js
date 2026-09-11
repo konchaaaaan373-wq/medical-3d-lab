@@ -67,6 +67,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'uterine-fibroid',
   'multinodular-goitre',
   'knee-osteoarthritis',
+  'acl-injury',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -436,6 +437,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'acl-injury': presentation(
+    'Take the ligament from intact to two ends; watch what is left holding the tibia.',
+    '靱帯を正常から 2 つの断端まで変え、脛骨を支えているものが何になるかを確認。',
+    ['THREE STATES', 'WHAT IS LEFT', 'WHO HOLDS IT'],
+    ['3 つの状態', '残っている制動', '支えているもの']
   ),
   'knee-osteoarthritis': presentation(
     'Wear one compartment of a knee and leave the other; watch what follows the side.',

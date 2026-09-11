@@ -55,6 +55,11 @@ import {
   MODEL_CONTROLS as KNEE_CONTROLS,
 } from '../src/data/kneeOsteoarthritis.js';
 import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
+import {
+  STAGES as ACL_STAGES,
+  MODEL_CONTROLS as ACL_CONTROLS,
+} from '../src/data/aclInjury.js';
+import { AclInjuryScene } from '../src/scenes/musculoskeletal/scenes/aclInjury/AclInjuryScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -257,6 +262,23 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new KneeOsteoarthritisScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The ligament, whose walk is about a structure rather than a place: three
+   * states of one cord, and then the question of what is holding the bone
+   * instead. Its last step is a refusal — nobody is examining this knee.
+   */
+  {
+    id: 'acl-injury',
+    stages: ACL_STAGES,
+    controls: ACL_CONTROLS,
+    scene: () => {
+      const scene = new AclInjuryScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new AclInjuryScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];

@@ -830,6 +830,24 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'acl-injury-restraint',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of one ligament in three states and of what is left of the restraint to the tibia sliding ' +
+      'forward: the ligament\'s share falls as it is disrupted and drops to nothing once it is no longer ' +
+      'continuous, the secondary restraints keep their share, and the tibia sits forward by a fraction of the ' +
+      'drawn plateau. The card says nothing in it is a Lachman test, an anterior drawer or a pivot shift, that ' +
+      'there is no examiner in the model, and that it contains no mechanism of injury, no symptom, no rotation, no ' +
+      'time and no treatment.@ ',
+  },
+  {
     profileId: 'knee-osteoarthritis-compartment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
