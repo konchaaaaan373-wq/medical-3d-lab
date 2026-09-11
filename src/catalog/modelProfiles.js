@@ -648,6 +648,24 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'hip-osteoarthritis-direction',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of a sphere in a shell: the drawn articular layer is lost in a chosen direction, the ball ' +
+      'settles that way by what has gone, and the space between the two bones is computed round the socket from ' +
+      'the resulting eccentricity — closing where the layer went and appearing to widen opposite. The pattern with ' +
+      'no direction leaves the centres shared. The card says the fractions it reports are of a layer this ' +
+      'repository drew and are emphatically not radiographic joint space widths, and that the model contains no ' +
+      'pain, no loading, no time and no treatment.@ ',
+  },
+  {
     profileId: 'rotator-cuff-tear-containment',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

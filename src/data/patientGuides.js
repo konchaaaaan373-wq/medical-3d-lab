@@ -2506,6 +2506,117 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * Hip osteoarthritis.
+   *
+   * The walk is built as the knee's counterpart. A knee loses a compartment; a
+   * hip loses a direction, and the half of that picture nobody expects is the
+   * far side, where the space is *wider* than it was. The last model step turns
+   * the direction off altogether, so that "evenly" is seen as a different
+   * picture rather than a milder one.
+   */
+  'hip-osteoarthritis': Object.freeze({
+    title: 'One centre, and what happens when it is two',
+    titleJa: '1 つの中心と、それが 2 つになったとき',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'shared',
+        frame: 'hip',
+        focus: ['space', 'head'],
+        certainty: 'established',
+        title: 'The ball and the socket share a centre',
+        titleJa: '球と受け皿は中心を共有しています',
+        body: 'A ball sits in a cup, and the middle of one is the middle of the other. The space between them is the same thickness the whole way round.',
+        bodyJa: '球が受け皿にはまり、片方の中心がもう片方の中心でもあります。そのあいだの空間は、全周で同じ厚さです。',
+        look: 'The coloured band between the two bones is that space. Follow it round: it does not change.',
+        lookJa: '2 つの骨のあいだの色のついた帯がその空間です。ぐるりと追ってください。変わりません。',
+      },
+      {
+        progress: 0.55,
+        stage: 'parting',
+        frame: 'socket',
+        focus: ['space'],
+        certainty: 'established',
+        title: 'The layer goes in one direction, and the ball follows it',
+        titleJa: '層は 1 方向で失われ、球はそちらへ沈みます',
+        body: 'It does not go evenly. Where it goes, the ball settles that way — and the two middles that used to be one point are no longer the same point.',
+        bodyJa: '層は均等には失われません。失われた方向へ球が沈み、かつては 1 点だった 2 つの中心が、もう同じ点ではなくなります。',
+        look: 'The band has gone thin and red on one side. Note which side, and keep looking at the other.',
+        lookJa: '帯は片側で薄く赤くなっています。どちら側かを覚えて、反対側も見ておいてください。',
+      },
+      {
+        progress: 1,
+        stage: 'closed',
+        frame: 'socket',
+        focus: ['space', 'opposite'],
+        certainty: 'established',
+        title: 'Closed on one side, and wider on the other',
+        titleJa: '片側は閉じ、反対側は広くなります',
+        body: 'The far side is wider than it started. Nothing was added there: the ball moved away from a wall whose own layer is still where it was.',
+        bodyJa: '反対側は元より広くなっています。そこに何かが加わったのではありません。層が残っている壁から、球が離れていっただけです。',
+        look: 'Two colours on one band. The thin one is where the layer went; the thick one is where the ball came from.',
+        lookJa: '1 本の帯に 2 つの色があります。薄いほうが層の失われた側、厚いほうが球が離れていった側です。',
+      },
+      {
+        progress: 1,
+        stage: 'closed',
+        frame: 'round',
+        focus: ['space'],
+        // The direction moves, at the same position on the axis: a different
+        // pattern rather than a different amount.
+        controls: { direction: 'medial' },
+        certainty: 'established',
+        title: 'Send it the other way and the picture turns over',
+        titleJa: '方向を変えると、像は裏返ります',
+        body: 'The same amount is gone. All that changed is which way, and the thin side and the wide side have swapped places.',
+        bodyJa: '失われた量は同じです。変わったのは方向だけで、薄い側と広い側が入れ替わっています。',
+        look: 'Compare it with the step before rather than with the first one. The band is the same band.',
+        lookJa: '最初ではなく 1 つ前と見比べてください。帯は同じ帯です。',
+      },
+      {
+        progress: 1,
+        stage: 'closed',
+        frame: 'round',
+        focus: ['space'],
+        controls: { direction: 'concentric' },
+        certainty: 'established',
+        title: 'Take the direction away and nothing moves',
+        titleJa: '方向がなくなれば、何も動きません',
+        body: 'If the layer goes evenly there is nowhere thinner for the ball to settle towards. The space closes all the way round and the two centres stay one.',
+        bodyJa: '層が全周で均等に失われれば、球が沈む先はどこにもありません。空間は全周で狭くなり、2 つの中心は 1 つのままです。',
+        look: 'The whole band is thin now, and there is no wide side anywhere on it.',
+        lookJa: 'いまや帯全体が薄く、広い側はどこにもありません。',
+      },
+      {
+        progress: 1,
+        stage: 'closed',
+        frame: 'hip',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and how loosely it follows',
+        titleJa: '気づくこと、そして絵との結びつきの緩さ',
+        body: 'Pain in the groin, stiffness first thing, and trouble with socks and stairs are described. How much of any of it there is does not follow closely from the picture.',
+        bodyJa: '鼠径部の痛み、朝のこわばり、靴下や階段に困ることなどが語られます。その程度は、この絵から近く決まるわけではありません。',
+        look: 'Nothing new is drawn for this step. There is no person here and no weight on this joint.',
+        lookJa: 'この段階で新しく描かれるものはありません。ここに人はおらず、この関節に体重もかかっていません。',
+      },
+      {
+        progress: 1,
+        stage: 'closed',
+        frame: 'hip',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'What this picture does not contain',
+        titleJa: 'この絵に含まれていないもの',
+        body: 'No weight, no walking and no time. The band is a share of the layer this drawing started with, and why it went one way rather than another is not shown.',
+        bodyJa: '体重も歩行も時間もありません。帯はこの絵が最初に持っていた層に対する割合であり、なぜ一方向へ失われたのかも示していません。',
+        look: 'The numbers are shares of that layer, and nothing else.',
+        lookJa: '画面の数値はその層に対する割合であって、それ以外ではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

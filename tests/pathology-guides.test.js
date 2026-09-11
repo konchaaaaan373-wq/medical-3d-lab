@@ -65,6 +65,11 @@ import {
   MODEL_CONTROLS as CUFF_CONTROLS,
 } from '../src/data/rotatorCuffTear.js';
 import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotatorCuffTear/RotatorCuffTearScene.js';
+import {
+  STAGES as HIP_STAGES,
+  MODEL_CONTROLS as HIP_CONTROLS,
+} from '../src/data/hipOsteoarthritis.js';
+import { HipOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/hipOsteoarthritis/HipOsteoarthritisScene.js';
 
 /**
  * The disease explanations, held to the same promises the cardiac ones are.
@@ -301,6 +306,24 @@ const GUIDES = [
       return scene;
     },
     visualMapping: new RotatorCuffTearScene({}).getVisualMapping(),
+    stateFields: null,
+  },
+  /**
+   * The hip, which is the knee's counterpart and is built to be read against
+   * it: a compartment there, a direction here. Its walk changes the direction
+   * twice at the same position on the axis, and ends by taking the direction
+   * away altogether.
+   */
+  {
+    id: 'hip-osteoarthritis',
+    stages: HIP_STAGES,
+    controls: HIP_CONTROLS,
+    scene: () => {
+      const scene = new HipOsteoarthritisScene({});
+      scene.build();
+      return scene;
+    },
+    visualMapping: new HipOsteoarthritisScene({}).getVisualMapping(),
     stateFields: null,
   },
 ];
