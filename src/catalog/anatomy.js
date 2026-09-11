@@ -321,6 +321,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A2 for this scene is not the goal: it is an overview by design, and every region that deserves named parts has its own scene. What would improve it is the regions that still have none — the skull as bones rather than one shell, the thorax as a cage with costal cartilages, and the elbow. Nothing here moves or bears weight',
   },
   {
+    organ: 'neck',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/neckAnatomy — twenty-three named structures selectable by name: the surface, four muscle groups, the cervical vertebrae, the hyoid, the laryngeal cartilages, the trachea, the oesophagus, the thyroid lobes, the isthmus, the parathyroids, the carotid sheath and its three contents, the internal and external carotids, the deep cervical nodes, the two vagus nerves, the two recurrent laryngeal nerves, the subclavian arteries and the aortic arch; tests/organ-parts-anatomy.test.js — the gullet lies behind the airway and leans left, the thyroid lobes touch the airway and do not enter it, the artery is medial to the vein and the vagus behind both inside the sheath, the external carotid runs in front of the internal, the recurrent nerves both end in the tracheo-oesophageal groove at the cricoid but turn at different heights, and the left turns lower than the right',
+    next: 'A3: the thyroid’s own arteries and veins, the superior laryngeal nerve, the phrenic nerve and the brachial plexus, the lymph node levels as named regions rather than one chain, the fascial planes as separate layers, and the individual muscle bellies rather than four groups. Nothing moves, which is the first thing a swallowing or an airway scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

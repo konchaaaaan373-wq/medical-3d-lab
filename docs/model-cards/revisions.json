@@ -583,5 +583,18 @@
     "cardRevision": 4,
     "modelDigest": "0443b3f8582b5981",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "neck-anatomy",
+    "card": "docs/model-cards/neck-anatomy.md",
+    "modelSources": [
+      "src/data/neckAnatomyScene.js",
+      "src/scenes/regional/organs/neck.js",
+      "src/scenes/regional/scenes/neckAnatomy/NeckAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "17652d9a3c2da60f",
+    "cardUpdatedAt": "2026-09-11"
   }
 ]

@@ -33,6 +33,19 @@ import {
   reteWave as SKIN_RETE,
   buildSkinBlock,
 } from '../src/scenes/integumentary/organs/skinBlock.js';
+import {
+  DISPLAY as NECK_DISPLAY,
+  LEFT as NECK_LEFT,
+  LEVELS as NECK_LEVELS,
+  SHEATH as NECK_SHEATH,
+  WORLD_SCALE as NECK_SCALE,
+  airwayAt,
+  buildNeck,
+  grooveAt,
+  oesophagusAt,
+  sheathAt,
+  sheathContentAt,
+} from '../src/scenes/regional/organs/neck.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2092,6 +2105,178 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('a neck is a stack in the middle, a bundle each side, and two nerves that differ', () => {
+  // Every claim this scene makes is about what is next to what, so that is the
+  // whole of what there is to check — and the one it exists for is an
+  // asymmetry: the two recurrent laryngeal nerves end in the same place and do
+  // not get there the same way.
+  const neck = buildNeck();
+  neck.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of neck.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const sideBox = (id, side) => {
+    const meshes = neck.meshesFor(id);
+    assert.equal(meshes.length, 2, `${id} is a pair`);
+    const wanted = meshes.find((mesh) => mesh.name.endsWith(side === NECK_LEFT ? 'left' : 'right'));
+    return new THREE.Box3().setFromObject(wanted);
+  };
+  const points = (id, side) => {
+    const meshes = side === undefined ? neck.meshesFor(id) : [
+      neck.meshesFor(id).find((mesh) => mesh.name.endsWith(side === NECK_LEFT ? 'left' : 'right')),
+    ];
+    const out = [];
+    for (const mesh of meshes) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()));
+      }
+    }
+    return out;
+  };
+
+  // 1. The gullet is behind the airway, and leans to the patient's left.
+  for (const y of [NECK_LEVELS.cricoid - 1, NECK_LEVELS.isthmus, NECK_LEVELS.sternalNotch]) {
+    assert.ok(oesophagusAt(y).z < airwayAt(y).z, `the gullet is behind the airway at ${y}`);
+  }
+  assert.ok(
+    oesophagusAt(NECK_LEVELS.sternalNotch).x * NECK_LEFT >
+      oesophagusAt(NECK_LEVELS.cricoid).x * NECK_LEFT,
+    'and further to the patient’s left the lower it goes'
+  );
+
+  // 2. Each thyroid lobe touches the air column and no part of it is inside.
+  for (const side of [NECK_LEFT, -NECK_LEFT]) {
+    let nearest = Infinity;
+    for (const point of points('thyroid-lobe', side)) {
+      const at = airwayAt(point.y / NECK_SCALE);
+      const gap =
+        Math.hypot(point.x / NECK_SCALE, point.z / NECK_SCALE - at.z) - at.radius;
+      assert.ok(gap > -1e-6, 'no part of a lobe is inside the airway');
+      nearest = Math.min(nearest, gap);
+    }
+    assert.ok(nearest < 0.12, 'and the lobe is pressed against it rather than floating off it');
+  }
+  // The isthmus joins the two lobes rather than reaching past them.
+  const isthmus = box('thyroid-isthmus');
+  assert.ok(
+    isthmus.max.x < sideBox('thyroid-lobe', NECK_LEFT).max.x &&
+      isthmus.min.x > sideBox('thyroid-lobe', -NECK_LEFT).min.x,
+    'the isthmus stops inside both lobes'
+  );
+  assert.ok(
+    isthmus.intersectsBox(sideBox('thyroid-lobe', NECK_LEFT)) &&
+      isthmus.intersectsBox(sideBox('thyroid-lobe', -NECK_LEFT)),
+    'and reaches both of them'
+  );
+
+  // 3. Inside the sheath: artery medial, vein lateral and larger, vagus behind.
+  for (const side of [NECK_LEFT, -NECK_LEFT]) {
+    const y = NECK_LEVELS.cricoid;
+    const artery = sheathContentAt(y, side, 'artery');
+    const vein = sheathContentAt(y, side, 'vein');
+    const vagus = sheathContentAt(y, side, 'nerve');
+    assert.ok(Math.abs(artery[0]) < Math.abs(vein[0]), 'the artery is medial to the vein');
+    assert.ok(
+      NECK_SHEATH.contents.vein.radius > NECK_SHEATH.contents.artery.radius,
+      'the vein is the larger of the two'
+    );
+    assert.ok(vagus[2] < artery[2] && vagus[2] < vein[2], 'and the vagus is behind both');
+    // All three are inside the sheath they are named as being in.
+    const centre = sheathAt(y, side);
+    for (const [name, point, radius] of [
+      ['artery', artery, NECK_SHEATH.contents.artery.radius],
+      ['vein', vein, NECK_SHEATH.contents.vein.radius],
+      ['vagus', vagus, NECK_SHEATH.contents.nerve.radius],
+    ]) {
+      const across = Math.abs(point[0] - centre[0]) + radius;
+      const deep = Math.abs(point[2] - centre[2]) + radius;
+      assert.ok(across <= NECK_SHEATH.radius, `the ${name} fits across the sheath`);
+      assert.ok(
+        deep <= NECK_SHEATH.radius * NECK_SHEATH.depthFactor,
+        `and the ${name} fits through its depth`
+      );
+    }
+  }
+
+  // 4. Above the division the external carotid runs in front of the internal.
+  for (const side of [NECK_LEFT, -NECK_LEFT]) {
+    const internal = sideBox('internal-carotid-artery', side);
+    const external = sideBox('external-carotid-artery', side);
+    assert.ok(external.max.z > internal.max.z, 'the external carotid is the anterior one');
+    assert.ok(
+      Math.abs(external.getCenter(new THREE.Vector3()).x) <
+        Math.abs(internal.getCenter(new THREE.Vector3()).x),
+      'and the medial one'
+    );
+    assert.ok(
+      internal.intersectsBox(sideBox('common-carotid-artery', side)) &&
+        external.intersectsBox(sideBox('common-carotid-artery', side)),
+      'both start on the artery they divide from'
+    );
+  }
+
+  // 5. **The scene's subject.** Both recurrent nerves end in the groove between
+  // the airway and the gullet at the cricoid; the left turns far lower.
+  for (const side of [NECK_LEFT, -NECK_LEFT]) {
+    const nerve = points('recurrent-laryngeal-nerve', side);
+    const top = nerve.reduce((best, point) => (point.y > best.y ? point : best), nerve[0]);
+    const groove = new THREE.Vector3(...grooveAt(top.y / NECK_SCALE, side)).multiplyScalar(NECK_SCALE);
+    assert.ok(
+      top.distanceTo(groove) < 0.4,
+      'the nerve ends in the tracheo-oesophageal groove on its own side'
+    );
+    assert.ok(
+      Math.abs(top.y / NECK_SCALE - NECK_LEVELS.cricoid) < 1,
+      'at about the level of the cricoid'
+    );
+  }
+  const lowest = (id, side) =>
+    points(id, side).reduce((best, point) => Math.min(best, point.y), Infinity);
+  assert.ok(
+    lowest('recurrent-laryngeal-nerve', NECK_LEFT) <
+      lowest('recurrent-laryngeal-nerve', -NECK_LEFT) - 1,
+    'the left nerve turns well below the right — which is the whole point'
+  );
+  // And each turns below the vessel it is said to turn round.
+  assert.ok(
+    lowest('recurrent-laryngeal-nerve', -NECK_LEFT) <
+      sideBox('subclavian-artery', -NECK_LEFT).getCenter(new THREE.Vector3()).y,
+    'the right nerve passes under the subclavian artery'
+  );
+  assert.ok(
+    lowest('recurrent-laryngeal-nerve', NECK_LEFT) <
+      box('aortic-arch').getCenter(new THREE.Vector3()).y,
+    'the left nerve passes under the arch'
+  );
+
+  // 6. The parathyroids are behind the gland, not in front of it.
+  const beads = points('parathyroid-gland');
+  for (const bead of beads) {
+    const at = airwayAt(bead.y / NECK_SCALE);
+    assert.ok(bead.z / NECK_SCALE < at.z, 'a parathyroid lies behind the air column');
+  }
+  const beadLeft = beads.filter((bead) => bead.x * NECK_LEFT > 0);
+  assert.ok(beadLeft.length > 0 && beadLeft.length < beads.length, 'two on each side');
+  assert.ok(
+    Math.max(...beads.map((bead) => bead.z)) <
+      sideBox('thyroid-lobe', NECK_LEFT).getCenter(new THREE.Vector3()).z,
+    'and behind the middle of the lobe it sits on'
+  );
+
+  // 7. The display enlargements are declared, and they are enlargements.
+  assert.ok(NECK_DISPLAY.recurrentRadius > 0, 'the nerve is drawn at a declared radius');
+  assert.ok(
+    NECK_DISPLAY.vagusRadius > NECK_DISPLAY.recurrentRadius,
+    'the vagus is drawn thicker than the nerve that branches from it'
+  );
+
+  neck.dispose();
+});
 
 test('the skeleton is a column with two girdles joined to it in different ways', () => {
   // This scene claims an arrangement and nothing about the shape of any bone,

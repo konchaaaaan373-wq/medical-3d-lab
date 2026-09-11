@@ -619,6 +619,19 @@ export const MODEL_PROFILES = Object.freeze([
       'A procedural whole-body skeleton at overview scale, proportioned from standard descriptive anatomy for a representative adult of about 170 cm: one continuous axial column from skull to sacrum with twelve pairs of ribs of which the lower ones do not reach the sternum, a shoulder girdle attached to the trunk only through the sternoclavicular joint with the scapula held by muscle, and a pelvic girdle locked to the sacrum. No bone is modelled as a bone: every one is a smooth shaft or block without joint surfaces, processes, sutures or foramina, and no length, proportion or bone count is a measurement.',
   },
   {
+    profileId: 'neck-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code from four shared boundary functions rather than from written coordinates: `neckSection` gives the outside of the neck, `airwayAt` gives the air column, `oesophagusAt` gives the gullet, and `sheathAt` / `sheathContentAt` give the bundle on each side and the three things inside it. The relationships the scene exists to show are therefore properties of the model and not coincidences: each thyroid lobe’s medial hollow **is** the trachea’s surface, taken from the same function that builds the trachea; the tracheo-oesophageal groove the recurrent nerve climbs is derived from the airway and the gullet that form it; and the artery is medial, the vein lateral and the vagus behind them because one table of offsets says so once for both sides. **The two recurrent laryngeal nerves are written separately, not mirrored**: the right turns round the subclavian artery at the root of the neck and the left carries on into the chest and turns round the aortic arch, which is why the top of the chest is drawn at all. The common carotids are likewise asymmetric at their origins. No state and no mechanism: nothing is swallowed, nothing pulses, nothing contracts. **No length, calibre, angle or distance is a measurement**, and the parathyroids and both nerves are drawn larger than life so they can be seen and clicked — the amount is declared in `DISPLAY` in the builder. Muscles are drawn as four groups, not individual bellies. The brachial plexus, the phrenic and superior laryngeal nerves, the thyroid’s own vessels, the lymph node levels, the fascial planes and the skin are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

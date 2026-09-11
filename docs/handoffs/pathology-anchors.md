@@ -1,9 +1,10 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-11。対象は 2026-09 に追加した 12 シーンです——
-前立腺・男性生殖路・膝・肩・股、そして眼・耳・皮膚・リンパ節・全身リンパ路・
-乳房・脊柱。既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した
-分だけ**を書きます。
+Last updated: 2026-09-11。対象は 2026-09 に追加した 20 シーンです——
+前立腺・男性生殖路・膝・肩・股、眼・耳・皮膚・リンパ節・全身リンパ路・乳房・
+脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、そして頸部。
+既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した分だけ**を
+書きます。
 
 このファイルは **足場の目録** です。病態ロジックはここには一切ありません。
 Claude② は病態を実装しません——病態が触ってよいものと、触ると嘘になるものを
@@ -799,6 +800,61 @@ pelvis  femur  patella  tibia-and-fibula  foot-bones
 - **脚は仙骨に固定**されています。この左右の対比がシーンの主張そのものです
 - 上位肋骨は胸骨に届き、下位肋骨は届きません
 - **どの骨も、その骨のモデルではありません。** 形を根拠にしないでください
+
+---
+
+## `neck-anatomy` — 頸部（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 23 |
+| tags | `envelope` `muscle` `skeleton` `viscera` `gland` `sheath` `nerve` `thorax` |
+| views | `whole` `contents` `recurrent-nerves` `thyroid-bed` `sheath` `from-behind` `sagittal` |
+| bounds | 10.0 × 11.3 × 7.2（world unit。1 cm = `WORLD_SCALE` = 0.62） |
+
+```
+neck-surface  sternocleidomastoid  strap-muscles  scalene-muscles  posterior-neck-muscles
+cervical-vertebrae  hyoid-bone  laryngeal-cartilage  trachea  oesophagus
+thyroid-lobe  thyroid-isthmus  parathyroid-gland
+carotid-sheath  common-carotid-artery  internal-carotid-artery  external-carotid-artery
+internal-jugular-vein  deep-cervical-node
+vagus-nerve  recurrent-laryngeal-nerve  subclavian-artery  aortic-arch
+```
+
+**anchors** — `SITES`: `prominence` `cricoid` `isthmus` `thyroidLobe`
+`nerveEntry` `bifurcation` `aorticTurn` `subclavianTurn`
+（`anchorPoints` は world unit、`SITES` は cm）。
+関数としては `neckSection(y)`・`airwayAt(y)`・`oesophagusAt(y)`・
+`grooveAt(y, side)`・`sheathAt(y, side)`・`sheathContentAt(y, side, key)`、
+表としては `LEVELS`（cm 単位の高さ）・`SHEATH`・`DISPLAY`・`WORLD_SCALE`。
+
+**このシーンが持っている病態の足場**:
+- **甲状腺**: `thyroid-lobe` / `thyroid-isthmus` の体積（びまん性腫大・結節）。
+  嚥下時挙上は**このシーンにはありません**——動きを主張するなら、
+  まず気道と腺の連結を動かす仕組みが要ります
+- **反回神経**: `recurrent-laryngeal-nerve` は左右が別々に書かれています。
+  片側麻痺の「原因の高さ」（頸部 vs 胸部）を指せる唯一のシーンです。
+  ただし**声帯そのものはここにありません**——結果（嗄声・声帯麻痺）は
+  `larynx-anatomy` 側の構造です。2 シーンにまたがる主張になります
+- **リンパ節**: `deep-cervical-node` は 1 本の鎖です。転移の「レベル」を
+  主張するなら、**まずレベル I〜VI を構造として分ける必要があります**
+- **頸動脈**: `common-carotid-artery` の分岐部（`SITES.bifurcation`）は
+  プラーク・狭窄の定位置ですが、**内腔は描いていません**。狭窄率を主張するなら
+  内腔が要ります
+- **上皮小体**: `parathyroid-gland` は 4 個・典型位置・**実物より大きい**。
+  腺腫の局在を主張してはいけません
+
+**変えてはいけない関係**:
+- **食道は気道の後ろ**です。前に出さないでください
+- **鞘の中の 3 つの順序**（動脈が内側・静脈が外側・迷走神経が後方）は
+  `SHEATH.contents` 1 か所が決めています。個別に動かさないでください
+- **左の反回神経は右より低いところで回ります。** これがこのシーンの主題です。
+  左右を同じ形にした瞬間、シーンは何も言わなくなります
+- **甲状腺葉の内側面は気管の表面そのもの**です（`clearAirway`）。
+  葉を気管から離したり、気管の中へ入れたりしないでください
+- **大動脈弓と鎖骨下動脈は文脈**です（`contextTags`）。縦隔を足さないでください
+- `DISPLAY` の拡大（上皮小体・迷走神経・反回神経）は**寸法ではありません**。
+  病態側で大きさを主張しないでください
 
 ---
 

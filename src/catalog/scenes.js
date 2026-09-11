@@ -1234,6 +1234,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/skeletonOverview/index.js'),
   },
   {
+    id: 'neck-anatomy',
+    slug: 'neck-anatomy',
+    titleEn: 'Interactive neck anatomy',
+    titleJa: '触れて学ぶ頸部の解剖',
+    system: 'regional',
+    organ: 'neck',
+    organs: ['neck', 'thyroid', 'airway', 'esophagus'],
+    disease: null,
+    conditions: ['neck anatomy', 'carotid sheath', 'recurrent laryngeal nerve', 'thyroid gland', 'parathyroid', 'internal jugular vein', 'cervical lymph node', '頸部の解剖', '頸動脈鞘', '反回神経', '甲状腺', '上皮小体', '内頸静脈', '深頸リンパ節'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/neck-anatomy.md',
+    modelProfile: 'neck-anatomy-procedural-atlas',
+    description:
+      'What lies next to what in the neck: airway and gullet in the midline, the thyroid moulded onto the airway, a bundle of artery, vein and nerve on each side, and the two recurrent laryngeal nerves that reach the larynx by different roads.',
+    descriptionJa:
+      '頸部で何が何の隣にあるか——正中に前後して並ぶ気道と食道、気道に張りつく甲状腺、両側の動脈・静脈・神経の束、そして左右で異なる経路をたどって喉頭へ至る反回神経を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/regional/scenes/neckAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

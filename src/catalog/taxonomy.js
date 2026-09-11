@@ -29,6 +29,7 @@ export const SYSTEMS = [
   { id: 'reproductive', label: 'Reproductive', labelJa: '生殖器' },
   { id: 'sensory', label: 'Special senses', labelJa: '感覚器' },
   { id: 'integumentary', label: 'Skin', labelJa: '皮膚' },
+  { id: 'regional', label: 'Regional anatomy', labelJa: '局所解剖' },
   { id: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
@@ -82,6 +83,7 @@ export const ORGANS = [
   { id: 'hand', system: 'musculoskeletal', label: 'Hand and wrist', labelJa: '手・手関節' },
   { id: 'foot', system: 'musculoskeletal', label: 'Foot and ankle', labelJa: '足・足関節' },
   { id: 'skeleton', system: 'musculoskeletal', label: 'Skeleton (overview)', labelJa: '全身骨格（概観）' },
+  { id: 'neck', system: 'regional', label: 'Neck', labelJa: '頸部' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 

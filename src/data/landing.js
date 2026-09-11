@@ -50,6 +50,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'hand-anatomy',
   'foot-anatomy',
   'skeleton-overview',
+  'neck-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -270,6 +271,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '四肢は、どこで体幹につながっているのか。',
     ['COLUMN', 'GIRDLES', 'JOIN'],
     ['体軸', '肢帯', '付着']
+  ),
+  'neck-anatomy': presentation(
+    'Everything in a neck is next to everything else — and the two nerves that move the voice do not take the same road.',
+    '頸部ではすべてが隣り合っています。そして声を動かす2本の神経は、左右で違う道を通ります。',
+    ['SHEATH', 'THYROID', 'NERVES'],
+    ['血管神経束', '甲状腺', '反回神経']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',
