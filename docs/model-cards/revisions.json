@@ -361,6 +361,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "acl-injury",
+    "card": "docs/model-cards/acl-injury.md",
+    "modelSources": [
+      "src/models/aclInjury.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "2c9567d53b16146f",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "knee-osteoarthritis",
     "card": "docs/model-cards/knee-osteoarthritis.md",
     "modelSources": [

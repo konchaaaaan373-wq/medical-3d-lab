@@ -2342,6 +2342,112 @@ export const PATIENT_GUIDES = Object.freeze({
     ]),
   }),
 
+  /**
+   * ACL injury.
+   *
+   * The walk turns on one sentence: a torn ligament is a state of the same
+   * structure, not an intact one somewhere else. So the first three steps are
+   * the ligament itself — whole, thinned, in two pieces — and the fourth asks
+   * the reader to look at what is holding the bone instead.
+   */
+  'acl-injury': Object.freeze({
+    title: 'What was holding the bone, and what is holding it now',
+    titleJa: '何が骨を支えていたのか、そしていま支えているもの',
+    steps: Object.freeze([
+      {
+        progress: 0,
+        stage: 'intact',
+        frame: 'knee',
+        focus: ['acl', 'tibia'],
+        certainty: 'established',
+        title: 'The cord that stops the lower bone sliding forward',
+        titleJa: '下の骨が前へ滑るのを止めている索',
+        body: 'It runs from the back of the upper bone down to the front of the lower one. When the lower bone tries to go forward, this is what is in the way.',
+        bodyJa: '上の骨の後ろから、下の骨の前へ向かって走っています。下の骨が前へ出ようとするとき、行く手をふさいでいるのがこれです。',
+        look: 'The pale cord crossing the middle of the joint. Note where each end is fixed.',
+        lookJa: '関節の中央を斜めに横切る淡い色の索です。両端がどこに付いているかを見てください。',
+      },
+      {
+        progress: 0.5,
+        stage: 'stretched',
+        frame: 'notch',
+        focus: ['acl'],
+        certainty: 'established',
+        title: 'Stretched and thinner, and holding less',
+        titleJa: '伸びて細くなり、支える力が落ちます',
+        body: 'It is still one piece, and it is not where it was moved to — it is the same cord in a different condition. Part of what it was holding is already gone.',
+        bodyJa: 'まだ 1 本につながっていますが、どこかへ移されたのではありません。同じ索が別の状態になっているのです。支えていた力の一部はすでに失われています。',
+        look: 'Compare it with the step before: thinner, and sagging rather than taut.',
+        lookJa: '1 つ前と見比べてください。細くなり、張っているのではなく、たわんでいます。',
+      },
+      {
+        progress: 1,
+        stage: 'torn',
+        frame: 'notch',
+        focus: ['acl', 'gap'],
+        certainty: 'established',
+        title: 'Two ends, and a gap between them',
+        titleJa: '2 つの断端と、そのあいだの隙間',
+        body: 'Once it is no longer one piece it carries none of what it carried. That does not happen gradually: a cord that has parted stops holding, and stops all at once.',
+        bodyJa: '1 本につながらなくなると、それまで担っていたものを一切担わなくなります。それは徐々にではありません。切れた索は支えるのをやめ、しかも一度にやめます。',
+        look: 'A stump at each end. Nothing crosses the middle of the joint any more.',
+        lookJa: '両端に断端が残っています。もう関節の中央を横切るものはありません。',
+      },
+      {
+        progress: 1,
+        stage: 'torn',
+        frame: 'side',
+        focus: ['tibia'],
+        certainty: 'established',
+        title: 'So the lower bone sits further forward',
+        titleJa: 'その結果、下の骨は前に出た位置に座ります',
+        body: 'With less in the way it can rest further forward than it could. Seen from the side, the two bones are no longer stacked where they were.',
+        bodyJa: '行く手をふさぐものが減れば、より前の位置まで出られます。横から見ると、2 つの骨の重なり方が元とは違っています。',
+        look: 'From the side. Watch where the lower bone’s front edge is against the upper one.',
+        lookJa: '横から見ています。下の骨の前縁が、上の骨に対してどこにあるかを見てください。',
+      },
+      {
+        progress: 1,
+        stage: 'torn',
+        frame: 'knee',
+        focus: ['secondary'],
+        certainty: 'established',
+        title: 'What is holding it now, and how much of it there is',
+        titleJa: 'いま支えているものと、その量',
+        body: 'The wedges and the capsule were always holding a small part of it. Now they are holding all of what is left — and what is left is a small part of what there was.',
+        bodyJa: '楔と関節包は、もともとその一部を支えていました。いまは残っているものすべてを担っています。そしてその残りは、元の量のごく一部です。',
+        look: 'The lit wedges are what the picture is resting on. Read the first number beside them.',
+        lookJa: '光っている楔が、いまこの絵を支えているものです。その横の最初の数値を読んでください。',
+      },
+      {
+        progress: 1,
+        stage: 'torn',
+        frame: 'knee',
+        educationalOnly: true,
+        certainty: 'associated',
+        title: 'What people notice, and what is not on this screen',
+        titleJa: '気づくこと、そしてこの画面にないもの',
+        body: 'A knee that gives way turning, swelling soon after, and a feeling of not trusting it are described. None of it follows from anything drawn here.',
+        bodyJa: '方向を変えたときに膝が崩れること、その後の腫れ、信頼できない感じ、などが語られます。どれもここに描かれたものから導かれるわけではありません。',
+        look: 'Nothing new is drawn for this step. There is no person in this picture and nothing here is being tested.',
+        lookJa: 'この段階で新しく描かれるものはありません。この絵に人はおらず、ここで何かが検査されているのでもありません。',
+      },
+      {
+        progress: 1,
+        stage: 'torn',
+        frame: 'knee',
+        educationalOnly: true,
+        certainty: 'established',
+        title: 'Nobody is examining this knee',
+        titleJa: 'この膝を誰も診察していません',
+        body: 'The way a knee is checked by hand is a person pulling on it and judging what they feel. There is no hand here, no pull, and nothing on this screen is that.',
+        bodyJa: '膝を手で調べる方法は、人が引いてみて、その手ごたえを判断するものです。ここに手はなく、引く力もなく、この画面のどれもそれではありません。',
+        look: 'The distance shown is a share of this drawing. It is not a measurement of anyone’s knee.',
+        lookJa: '表示されている距離は、この絵の中での割合です。誰かの膝を測ったものではありません。',
+      },
+    ]),
+  }),
+
 });
 
 export const patientGuideFor = (sceneId) => PATIENT_GUIDES[sceneId] ?? null;

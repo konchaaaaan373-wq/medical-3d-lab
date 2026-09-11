@@ -2113,6 +2113,93 @@ export const KNEE_OA_EVIDENCE = defineEvidence('knee-osteoarthritis', [
   },
 ]);
 
+export const ACL_EVIDENCE = defineEvidence('acl-injury', [
+  {
+    id: 'the-thing-in-the-way',
+    claim:
+      'The anterior cruciate ligament runs from the back of the lateral femoral condyle forward and down to the front of the tibia, so it is the structure in the way when the tibia slides forward under the femur.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Standard knee anatomy for the ligament’s attachments and course.',
+    validation: 'physiology: the ligament runs the way an ACL runs, between the atlas’s own attachments',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'primary-and-secondary',
+    claim:
+      'It is the primary restraint to that movement, and the menisci, the capsule and the shape of the plateau are secondary ones — so with it intact they carry a small part, and with it gone they carry all of what is left.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of the ACL as the primary restraint to anterior tibial translation, with the menisci, capsule and plateau geometry as secondary restraints.',
+    validation: 'physiology: with the ligament gone the secondary restraints carry all of what is left',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-failed-cord-holds-nothing',
+    claim:
+      'A ligament that is no longer continuous carries none of the load it carried. It does not go on holding a fraction of it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Mechanics of a cord in tension: a discontinuous one transmits no tension across the discontinuity.',
+    validation: 'physiology: a discontinuous ligament holds nothing at all',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'less-restraint-is-more-travel',
+    claim:
+      'How far forward the tibia can sit follows how much of the restraint is missing, so losing the secondary restraints as well leaves it further forward than losing the ligament alone.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The direction is mechanics — less restraint, more travel — and is standard. **thin**: how much further, for any given loss, is not claimed here.',
+    validation: 'physiology: the less is holding it, the further forward it can sit',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'restraint-split',
+    claim:
+      'How the restraint to anterior translation is divided between the ligament and everything else when all of it is intact.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose as a reading of one word: the ligament is described as the *primary* restraint and the rest as secondary ones. The split was chosen so that the ordering holds and the crossover falls where the ligament stops being continuous.',
+    note:
+      'A calibration of an ordering, not a measured contribution. The model claims that the ligament is first and the rest second, and never the numbers; no percentage it prints is anybody’s.',
+    validation: 'calibration: the ordering holds and the crossover falls where the ligament fails',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'drawn-travel',
+    claim: 'The furthest forward this model lets the tibia sit, as a fraction of the drawn plateau’s depth.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Chosen by this repository so the travel is visible without the tibia leaving the femur. The plateau it is a fraction of is the knee atlas’s, drawn to be legible rather than measured.',
+    note:
+      'Illustrative. **It is not millimetres and not a side-to-side difference**, and no position on screen is a grade of anything.',
+    validation: 'calibration: the tibia travels visibly without leaving the femur',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-examiner',
+    claim:
+      'Nothing in this model is a Lachman test, an anterior drawer or a pivot shift, and no number in it is a grade.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one here: those are manoeuvres a person performs, under a load they choose, graded by what they feel. None of that is in a geometric model.',
+    note:
+      'The direction this scene would mislead. A tibia sitting forward on screen is where the model says it can sit; it is not somebody’s knee being examined, and there is no examiner anywhere in it.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'context-not-resolved',
+    claim:
+      'The collateral ligaments and the tendon across the front are drawn while the tibia moves, and they are not re-solved as it does.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Only the two cruciates are the subject, and solving the rest would be modelling a knee rather than a ligament.',
+    note:
+      'A reader watching the bone move is watching two cruciates follow it and everything else stay where it was. Nothing about what the collaterals do is in this model.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -2129,4 +2216,5 @@ export const EVIDENCE_REGISTRIES = [
   UTERINE_FIBROID_EVIDENCE,
   GOITRE_EVIDENCE,
   KNEE_OA_EVIDENCE,
+  ACL_EVIDENCE,
 ];

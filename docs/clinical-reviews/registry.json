@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "acl-injury",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of an anterior cruciate ligament injury, prepared for future clinical sign-off: the ligament's own state and what is left restraining the tibia"
+    ],
+    "sources": [
+      "docs/model-cards/acl-injury.md",
+      "docs/model-evidence/acl-injury.md",
+      "tests/acl-injury-model.test.js",
+      "src/models/aclInjury.js"
+    ],
+    "unresolvedLimitations": [
+      "Nothing in the model is a Lachman test, an anterior drawer or a pivot shift. Those are manoeuvres a person performs and grade by what they feel; there is no examiner in this model and nothing in the scene is being tested.",
+      "The distance reported is a fraction of a tibial plateau this repository drew. It is not millimetres and not a side-to-side difference.",
+      "How the restraint divides between the ligament and everything else is this repository's reading of the word primary. The model claims the ordering and never the split.",
+      "The collateral ligaments and the tendon across the front are context and are not re-solved when the tibia moves; only the two cruciates follow it.",
+      "There is no mechanism of injury, no pain, no swelling, no giving way, no rotation, no healing and no treatment anywhere in the model."
+    ]
+  },
+  {
     "sceneId": "knee-osteoarthritis",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
