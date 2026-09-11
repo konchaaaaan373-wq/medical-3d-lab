@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import {
   ACHALASIA_EVIDENCE,
+  ACL_EVIDENCE,
   ASSERTABLE,
   ASTHMA_EVIDENCE,
   BILIARY_EVIDENCE,
@@ -64,6 +65,7 @@ const FILE_LAYERS = {
   'uterine-fibroid-physiology.test.js': LAYER.EXTERNAL,
   'multinodular-goitre-physiology.test.js': LAYER.EXTERNAL,
   'knee-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
+  'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
@@ -84,6 +86,7 @@ const DOSSIERS = {
   'uterine-fibroid': 'docs/model-evidence/uterine-fibroid.md',
   'multinodular-goitre': 'docs/model-evidence/multinodular-goitre.md',
   'knee-osteoarthritis': 'docs/model-evidence/knee-osteoarthritis.md',
+  'acl-injury': 'docs/model-evidence/acl-injury.md',
 };
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -224,6 +227,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
       'uterine-fibroid',
       'multinodular-goitre',
       'knee-osteoarthritis',
+      'acl-injury',
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
@@ -246,6 +250,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
   assert.ok(UTERINE_FIBROID_EVIDENCE.length >= 8);
   assert.ok(GOITRE_EVIDENCE.length >= 8);
   assert.ok(KNEE_OA_EVIDENCE.length >= 8);
+  assert.ok(ACL_EVIDENCE.length >= 8);
 });
 
 test('every named test lives in a file whose layer matches the entry', () => {

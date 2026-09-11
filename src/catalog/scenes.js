@@ -573,6 +573,27 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/gastrointestinal/scenes/achalasia/index.js'),
   },
   {
+    id: 'acl-injury',
+    slug: 'acl-injury',
+    titleEn: 'ACL injury',
+    titleJa: '前十字靱帯損傷',
+    system: 'musculoskeletal',
+    organ: 'knee',
+    organs: ['knee'],
+    disease: 'anterior-cruciate-ligament-injury',
+    conditions: ['ACL injury', 'anterior cruciate ligament tear', 'anterior tibial translation', 'secondary restraint', '前十字靱帯損傷', 'ACL 損傷', '脛骨前方移動', '二次的制動'],
+    uses: ['education', 'clinical-learning'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/acl-injury.md',
+    modelProfile: 'acl-injury-restraint',
+    description:
+      'A torn ligament is a different state of the same structure, not an intact one somewhere else. With the primary restraint gone, the secondary ones carry all of what is left \u2014 which is a small part of what there was.',
+    descriptionJa:
+      '断裂した靱帯は、同じ構造の別の状態であって、正常な靱帯が別の場所にあるのではありません。主要な制動が失われると、残りのすべてを副次的な制動が担いますが、それは元の量のごく一部です。',
+    tags: ['musculoskeletal', 'injury-state', 'geometric-model'],
+    load: () => import('../scenes/musculoskeletal/scenes/aclInjury/index.js'),
+  },
+  {
     id: 'knee-osteoarthritis',
     slug: 'knee-osteoarthritis',
     titleEn: 'Knee osteoarthritis',

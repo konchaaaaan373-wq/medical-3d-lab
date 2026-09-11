@@ -43,6 +43,12 @@ import {
 import { CONDYLE_SITES, buildKneeJoint } from '../src/scenes/musculoskeletal/organs/kneeJoint.js';
 import { KneeOsteoarthritisScene } from '../src/scenes/musculoskeletal/scenes/kneeOsteoarthritis/KneeOsteoarthritisScene.js';
 import {
+  MAX_TRANSLATION,
+  RESTRAINT,
+  SEPARATES_ABOVE,
+  solveAclInjury,
+} from '../src/models/aclInjury.js';
+import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
   solveBiliaryObstruction,
@@ -1416,4 +1422,36 @@ test('calibration: the meniscus is visibly pushed out without leaving the joint'
   assert.ok(gone.medial.meniscalExtrusion > 0.3, `${gone.medial.meniscalExtrusion} is not visible`);
   assert.ok(gone.medial.meniscalExtrusion < 1, 'and it has not left the joint');
   assert.equal(solveKneeOsteoarthritis({ side: 'none' }).medial.meniscalExtrusion, 0);
+});
+
+test('calibration: the ordering holds and the crossover falls where the ligament fails', () => {
+  // Defends `restraint-split`. Two numbers divide the restraint between the
+  // ligament and everything else. They are a reading of the word "primary",
+  // and what is defended is the ordering they produce and where the two cross
+  // — never the numbers themselves.
+  assert.ok(RESTRAINT.acl > RESTRAINT.secondary * 3, 'the ligament is the primary one by some margin');
+  assert.ok(Math.abs(RESTRAINT.acl + RESTRAINT.secondary - 1) < 1e-9, 'and between them they are all of it');
+
+  // The two cross over at about the point the cord stops being continuous, so
+  // "it is discontinuous" and "the others are carrying it" arrive together
+  // rather than at two unrelated places on the axis.
+  const crossover = 1 - RESTRAINT.secondary / RESTRAINT.acl;
+  assert.ok(
+    Math.abs(crossover - SEPARATES_ABOVE) < 0.06,
+    `the crossover is at ${crossover.toFixed(2)} and the cord fails at ${SEPARATES_ABOVE}`
+  );
+  assert.equal(solveAclInjury({ disruption: SEPARATES_ABOVE + 0.01 }).secondaryCarriesIt, true);
+});
+
+test('calibration: the tibia travels visibly without leaving the femur', () => {
+  // Defends `drawn-travel`. One number says how far forward this model lets the
+  // bone sit. It was chosen so the movement is plain and the joint stays a
+  // joint — and it is a fraction of a drawn plateau, not a millimetre.
+  assert.ok(MAX_TRANSLATION > 0.15, 'visible');
+  assert.ok(MAX_TRANSLATION < 0.45, 'and not off the end of the plateau');
+  assert.equal(solveAclInjury({ disruption: 0 }).translationFraction, 0);
+  assert.ok(
+    Math.abs(solveAclInjury({ disruption: 1, secondaryRestraint: 0 }).translationFraction - MAX_TRANSLATION) < 1e-9,
+    'and nothing holding it at all is the whole of it'
+  );
 });
