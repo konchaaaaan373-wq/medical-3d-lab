@@ -1758,6 +1758,95 @@ export const PROSTATIC_ENLARGEMENT_EVIDENCE = defineEvidence('benign-prostatic-e
   },
 ]);
 
+export const BOWEL_OBSTRUCTION_EVIDENCE = defineEvidence('bowel-obstruction', [
+  {
+    id: 'divides-the-path',
+    claim:
+      'The gut is one path in series, so a mechanical blockage divides it in two: the bowel above it keeps receiving and cannot pass anything on, and the bowel below it receives nothing and collapses. The place the picture changes is the transition point, and it is what identifies the level of the blockage.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard surgical descriptions of mechanical bowel obstruction: dilatation proximal to the point, collapse distal to it, the transition point as the radiological and operative landmark.',
+    validation: 'physiology: a blockage fills what is above it and empties what is below it',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'site-decides-how-much-is-above',
+    claim:
+      'How far the bowel above a blockage distends depends on how much bowel there is above it, because the same delivered volume spread over a shorter length has to go further into each part of it. A high blockage therefore distends a short length a great deal and leaves most of the gut empty; a low one distends much more bowel, less.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Conservation of volume applied to the series path above. The clinical counterpart — proximal obstruction with little visible distension, distal obstruction with a great deal — is a standard description.',
+    validation: 'physiology: the same amount over a shorter length distends it further',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'closed-loop-at-a-competent-valve',
+    claim:
+      'An ileocaecal valve that holds turns a colonic obstruction into a segment shut at both ends: nothing can decompress back into the ileum, so the colon between the valve and the blockage takes all of it and distends much further than it would with the small bowel sharing.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard descriptions of closed-loop large bowel obstruction with a competent ileocaecal valve. The direction is textbook; how competent a given valve is, and for how long, is not something this model claims.',
+    validation: 'physiology: a valve that holds shuts a colonic blockage in at both ends',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'laplace-favours-the-widest',
+    claim:
+      'Wall tension follows calibre as well as distending pressure: T = P·r for a cylinder. So at one pressure it is the widest part of the distended bowel whose wall carries the most — in the large bowel the caecum, which is neither the blockage nor next to it.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Laplace’s law for a cylinder, and the standard description of the caecum as the segment that distends most in large bowel obstruction.',
+    validation: 'physiology: at one pressure the widest distended part carries the most wall tension',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'drawn-proportions',
+    claim:
+      'The length and calibre each named stretch of gut has in the model, from which every ratio the scene reports is computed.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'The intestinal atlas’s drawn proportions, measured off its own curves and chosen there to be legible rather than to scale. In a person the small bowel is several times the length of the colon and much narrower than these make it.',
+    note:
+      'Illustrative proportions, not anatomy. What the model claims is the *ordering* — that the caecum is the widest part of the large bowel and the sigmoid the narrowest — and not the ratios. No length, calibre or volume here may be read as a measurement.',
+    validation: 'calibration: the bowel obstruction model is measured off the atlas’s own gut',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'retained-load',
+    claim:
+      'How much the gut delivers into the obstructed length, as a multiple of the whole gut’s resting luminal volume, and therefore how far the bowel above a blockage is drawn distended.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose: the value was calibrated so that a complete blockage distends the bowel above it visibly at every one of the four sites and never past about twice its resting calibre.',
+    note:
+      'A calibration, not a secretion. Nothing in the model is millilitres, and the distension it produces is a ratio against the model’s own resting calibre rather than a diameter anyone could measure.',
+    validation: 'calibration: a complete blockage distends the bowel visibly at every site without doubling it',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'same-load-at-every-site',
+    claim:
+      'The model takes the same amount to arrive above the blockage wherever the blockage is, on the grounds that most of what fills an obstructed bowel enters above the duodenum.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A simplification, and the figure is this repository’s. Secretion, absorption and how much any of it varies with the level of the blockage are all outside the model.',
+    note:
+      'It is why the wall tension index may not be compared between two scenarios: the number is built on a retained load this repository chose and a single distending pressure. What it supports is comparing segments inside one picture, which is what the read-out reports.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'held-bowel-stays-resting',
+    claim:
+      'Small bowel held back by a competent valve is drawn at its resting calibre and stays there for as long as the reader looks at it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A consequence of having no time in the model. In a person a valve does not hold indefinitely and the bowel above it does not stay at rest; what happens next is a sequence, and this model has no sequence in it.',
+    note:
+      'The direction this scene is known to mislead. A resting small bowel on screen is the model saying the volume has not reached it, not a claim that it never will.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1770,4 +1859,5 @@ export const EVIDENCE_REGISTRIES = [
   BILIARY_EVIDENCE,
   ACHALASIA_EVIDENCE,
   PROSTATIC_ENLARGEMENT_EVIDENCE,
+  BOWEL_OBSTRUCTION_EVIDENCE,
 ];

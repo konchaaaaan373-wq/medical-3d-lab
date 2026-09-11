@@ -51,6 +51,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'biliary-obstruction',
   'benign-prostatic-enlargement',
   'achalasia',
+  'bowel-obstruction',
   'breathing-lungs',
   'body-overview',
   'liver-portal-flow',
@@ -322,6 +323,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '肺胞性コンソリデーションを広げ、換気が低下しても灌流が残る過程を確認。',
     ['CONSOLIDATION', 'VENTILATION', 'SHUNT'],
     ['コンソリデーション', '換気', 'シャント']
+  ),
+  'bowel-obstruction': presentation(
+    'Move the blockage from the jejunum to the sigmoid; watch how much bowel is above it change.',
+    '閉塞部位を小腸から S 状結腸まで動かし、上流の腸の量がどう変わるかを確認。',
+    ['WHERE IT IS', 'WHAT IS ABOVE IT', 'THE WIDEST PART'],
+    ['閉塞の場所', 'その上流にある腸', '最も太い部分']
   ),
   achalasia: presentation(
     'Take away the wave and the ring together; watch swallows stop clearing, and then watch what collects take over the pushing.',

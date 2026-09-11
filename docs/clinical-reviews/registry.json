@@ -206,6 +206,29 @@
     ]
   },
   {
+    "sceneId": "bowel-obstruction",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "series-path model of mechanical bowel obstruction, prepared for future clinical sign-off: what the site of a blockage decides about the bowel above and below it"
+    ],
+    "sources": [
+      "docs/model-cards/bowel-obstruction.md",
+      "docs/model-evidence/bowel-obstruction.md",
+      "tests/bowel-obstruction-model.test.js",
+      "src/models/bowelObstruction.js"
+    ],
+    "unresolvedLimitations": [
+      "The lengths and calibres are the intestinal atlas's drawn proportions, not anatomical ones. What is claimed is the ordering — that the caecum is the widest part of the large bowel — and not the ratios.",
+      "The wall tension figure is an index rather than a tension or a pressure. It compares segments inside one picture; comparing the number between two scenarios is not something the model supports, and no value in it is a threshold.",
+      "There is no time and no rate anywhere in the model. The axis is how completely the path is blocked, not how long it has been blocked, and nothing in it is hours.",
+      "There is no ischaemia, no strangulation, no perforation and no risk of any of them, no cause, no fluid shift and no treatment. Symptoms are outside the model entirely.",
+      "The drawn gut ends at the sigmoid: there is no rectum and no anal canal, so a blockage there has nothing below it on screen."
+    ]
+  },
+  {
     "sceneId": "achalasia",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
