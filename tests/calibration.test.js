@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {
   CAPACITY_ML as ACHALASIA_CAPACITY_ML,
   REFERENCE as ACHALASIA_REFERENCE,
@@ -19,6 +20,13 @@ import {
 } from '../src/models/bowelObstruction.js';
 import { buildColon, buildDuodenum, buildSmallIntestine, colonCalibre } from '../src/scenes/gastrointestinal/organs/intestine.js';
 import { buildColonParts } from '../src/scenes/gastrointestinal/organs/colonParts.js';
+import {
+  DIAMETER_RANGE as FIBROID_DIAMETERS,
+  LOCATIONS as FIBROID_LOCATIONS,
+  UTERUS as FIBROID_UTERUS,
+  solveUterineFibroid,
+} from '../src/models/uterineFibroid.js';
+import { buildUterusParts } from '../src/scenes/reproductive/organs/uterusParts.js';
 import {
   DEFAULT_CONTROLS as BILIARY_DEFAULTS,
   REFERENCE as BILIARY_REFERENCE,
@@ -1181,4 +1189,94 @@ test('calibration: a complete blockage distends the bowel visibly at every site 
 
   // And a patent gut is drawn at its resting calibre, exactly.
   assert.equal(solveBowelObstruction({ site: 'none', completeness: 1 }).radiusRatio, 1);
+});
+
+test('calibration: the fibroid model is measured off the atlas’s own uterus', () => {
+  // Defends `atlas-proportions`. The wall's depth, the cavity's area and the
+  // organ's volume are not anatomy: they are this repository's drawn uterus,
+  // measured off its meshes so that the arithmetic and the picture are the same
+  // organ. What is defended is that agreement, never that either is right about
+  // a person.
+  const uterus = buildUterusParts({});
+
+  // The organ's volume, by the divergence theorem over its closed wall parts.
+  const signedVolume = (geometry) => {
+    const position = geometry.attributes.position;
+    const index = geometry.index;
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const c = new THREE.Vector3();
+    let total = 0;
+    const count = index ? index.count : position.count;
+    for (let at = 0; at < count; at += 3) {
+      const [i, j, k] = index
+        ? [index.getX(at), index.getX(at + 1), index.getX(at + 2)]
+        : [at, at + 1, at + 2];
+      a.fromBufferAttribute(position, i);
+      b.fromBufferAttribute(position, j);
+      c.fromBufferAttribute(position, k);
+      total += a.dot(b.clone().cross(c)) / 6;
+    }
+    return Math.abs(total);
+  };
+  const volume = ['fundus', 'body', 'isthmus', 'cervix'].reduce(
+    (sum, id) => sum + signedVolume(uterus.mesh(id).geometry),
+    0
+  );
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.volume - volume) < 0.01,
+    `the model has ${FIBROID_UTERUS.volume}, the atlas draws ${volume.toFixed(4)}`
+  );
+
+  // The wall's depth at the body, from the cavity plane (z = 0) to the serosa.
+  const body = uterus.mesh('body');
+  body.geometry.computeBoundingBox();
+  const depth = body.geometry.boundingBox.max.z;
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.wallDepth - depth) < 0.01,
+    `the model has a wall of ${FIBROID_UTERUS.wallDepth}, the atlas draws ${depth.toFixed(4)}`
+  );
+
+  // The cavity is a triangle, so its area is half the cross product of two of
+  // its edges — read off the mesh rather than off the corner constants.
+  const cavity = uterus.mesh('uterine-cavity').geometry.attributes.position;
+  const corner = (at) => new THREE.Vector3().fromBufferAttribute(cavity, at);
+  const area = corner(1).sub(corner(0)).cross(corner(2).sub(corner(0))).length() / 2;
+  assert.ok(
+    Math.abs(FIBROID_UTERUS.cavityArea - area) < 0.01,
+    `the model has a cavity of ${FIBROID_UTERUS.cavityArea}, the atlas draws ${area.toFixed(4)}`
+  );
+
+  uterus.dispose();
+});
+
+test('calibration: each of the three names behaves the way its description says', () => {
+  // Defends `three-chosen-depths`. Three fractions of the wall's depth were
+  // chosen so that each standard name does what its description says across the
+  // range the scene offers. That they still do is a property of the choice.
+  const { min, max } = FIBROID_DIAMETERS;
+  const at = (location, diameter) => solveUterineFibroid({ location, diameter });
+
+  // Shallow: against the cavity throughout, and never out through the surface.
+  assert.equal(at('submucosal', min).reachesCavity, true);
+  assert.equal(at('submucosal', max).reachesSerosa, false);
+  assert.ok(at('submucosal', max).cavityContactFraction > 0.5, 'and it takes most of the cavity');
+
+  // Deep: past the surface throughout, and never into the cavity.
+  assert.ok(at('subserosal', min * 1.3).reachesSerosa, true);
+  assert.equal(at('subserosal', max).reachesCavity, false);
+
+  // Middle: crosses from neither to both *inside* the range, which is what
+  // makes it worth a third name rather than a midpoint.
+  assert.equal(at('intramural', min).reachesCavity, false);
+  assert.equal(at('intramural', min).reachesSerosa, false);
+  assert.equal(at('intramural', max).reachesCavity, true);
+  assert.equal(at('intramural', max).reachesSerosa, true);
+  const crossing = at('intramural', max).reachesCavityAt;
+  assert.ok(crossing > min && crossing < max, `it crosses at ${crossing.toFixed(3)}, inside the range`);
+
+  // And every location is a location the scene offers.
+  for (const location of FIBROID_LOCATIONS) {
+    assert.equal(solveUterineFibroid({ location: location.id }).controls.location, location.id);
+  }
 });

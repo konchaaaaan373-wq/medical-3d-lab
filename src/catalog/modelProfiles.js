@@ -648,6 +648,23 @@ export const MODEL_PROFILES = Object.freeze([
       'cross-section are calibration constants and no figure is a threshold.',
   },
   {
+    profileId: 'uterine-fibroid-location',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.ILLUSTRATIVE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'A geometric model of one sphere at a chosen depth in a schematic uterine wall: what it reaches, how much of ' +
+      'the flattened cavity it presses into, how far past the serosa it stands, and the organ volume — which is ' +
+      'identical at every location, and is reported for that reason. The card says it carries no bleeding, no ' +
+      'pain, no pressure symptoms, no fertility, no time, no hormone and no treatment, and that the wall\'s depth, ' +
+      'the cavity\'s area and the organ\'s volume are measured off the uterine atlas rather than off anybody.@ ',
+  },
+  {
     profileId: 'benign-prostatic-enlargement-zonal',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
