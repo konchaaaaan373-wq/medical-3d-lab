@@ -11,6 +11,7 @@
 | model profile | `amyloid-beta-aggregation-illustration` — mechanism level **illustrative** |
 | 臨床レビューの現状 | **legacy-unversioned**（historical review role not recorded under the current registry standard） |
 | 患者説明 | 7 段 |
+| 患者説明のタイトル | 「アミロイドβとは何か、何が分かっていて何が分かっていないか」 |
 | 実画面 | `docs/screenshots/b10-amyloid/` |
 | 詳細シート | [amyloid-beta-patient-7-steps.md](../amyloid-beta-patient-7-steps.md) — 段ごとの根拠はこちら |
 
@@ -99,8 +100,8 @@
 
 ## 既存の根拠
 
-- [`docs/model-cards/amyloid-beta.md`](../../docs/model-cards/amyloid-beta.md)
-- [`docs/model-evidence/amyloid-beta.md`](../../docs/model-evidence/amyloid-beta.md)
+- [`docs/model-cards/amyloid-beta.md`](../../model-cards/amyloid-beta.md)
+- [`docs/model-evidence/amyloid-beta.md`](../../model-evidence/amyloid-beta.md)
 - model profile `amyloid-beta-aggregation-illustration` — `src/catalog/modelProfiles.js`
 - 患者向けの文：`src/data/patientGuides.js`
 

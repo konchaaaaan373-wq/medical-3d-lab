@@ -11,6 +11,7 @@
 | model profile | `heart-failure-elastance-loop` — mechanism level **mechanistic** |
 | 臨床レビューの現状 | **legacy-unversioned**（historical review role not recorded under the current registry standard） |
 | 患者説明 | 6 段 |
+| 患者説明のタイトル | 「心臓の働きが弱くなる仕組み（HFrEF の一例）」 |
 | 実画面 | `docs/screenshots/b8-patient/` |
 | 詳細シート | [heart-failure-patient-6-steps.md](../heart-failure-patient-6-steps.md) — 段ごとの根拠はこちら |
 
@@ -90,8 +91,8 @@
 
 ## 既存の根拠
 
-- [`docs/model-cards/heart-failure.md`](../../docs/model-cards/heart-failure.md)
-- [`docs/model-evidence/heart-failure.md`](../../docs/model-evidence/heart-failure.md)
+- [`docs/model-cards/heart-failure.md`](../../model-cards/heart-failure.md)
+- [`docs/model-evidence/heart-failure.md`](../../model-evidence/heart-failure.md)
 - model profile `heart-failure-elastance-loop` — `src/catalog/modelProfiles.js`
 - 患者向けの文：`src/data/patientGuides.js`
 

@@ -11,6 +11,7 @@
 | model profile | `copd-time-constant-units` — mechanism level **mechanistic** |
 | 臨床レビューの現状 | **stale**（external clinical reviewer; personal identity not recorded in the repository） |
 | 患者説明 | 8 段 |
+| 患者説明のタイトル | 「息を吐きにくくなると、何が起きるのか」 |
 | 実画面 | `docs/screenshots/b13/` |
 
 ---
@@ -121,8 +122,8 @@
 
 ## 既存の根拠
 
-- [`docs/model-cards/copd.md`](../../docs/model-cards/copd.md)
-- [`docs/model-evidence/copd.md`](../../docs/model-evidence/copd.md)
+- [`docs/model-cards/copd.md`](../../model-cards/copd.md)
+- [`docs/model-evidence/copd.md`](../../model-evidence/copd.md)
 - model profile `copd-time-constant-units` — `src/catalog/modelProfiles.js`
 - 患者向けの文：`src/data/patientGuides.js`
 

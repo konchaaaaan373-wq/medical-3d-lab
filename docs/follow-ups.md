@@ -1479,6 +1479,29 @@ route intercept で答えています（`paid-content` にはこのリポジト�
   `CONFIDENCE.UNCERTAIN` として記録し、model card §11・§13 と scope panel の
   cautions に書いてあります。テストは角がモデルの帯の中にあることを固定します。
 
+### F-87 main push の CI run #396 が runner を得ずに失敗した — P2
+
+`claude/beta-scene-integration` を `main` へマージした push（`5bbb6c0`）で
+自動起動した CI run #396（`34590134882`）が **2 秒で failure** になりました。
+
+- **コードの失敗ではありません。** job `test-and-build` は `runner_id: 0` /
+  `runner_name: ""` のまま completed になっており、**step が 1 つも実行されていません**。
+  ログは 404 で、実行された step が無いので出力もありません。
+  `npm ci` 以降のどの step にも到達していません。
+- **同じ tree はローカルで全緑です**（マージ前後の両方で確認）:
+  `npm test` 2067/2067・production build 成功・`verify:site` 成功（publishes 1）・
+  `revisions:check` 成功。
+- **手動 rerun はしていません。** ユーザーの明示指示により、原因の記録だけを行い、
+  release 作業は止めていません。
+- 確かめ方: 次に `main` へ push が起きたときの run が runner を取得して step を
+  実行するか。取得できていれば環境側の一時障害として閉じます。連続して
+  `runner_id: 0` で終わるなら、Actions の runner 供給か workflow の
+  `runs-on: ubuntu-latest` 側の問題として調べます。
+- 完了の定義: `main` の CI run が step を実行したうえで結論を出す（緑でも赤でもよい。
+  **見るべきは「実行されたか」であって「通ったか」ではありません**）。
+
+---
+
 ---
 
 ## E. その他
