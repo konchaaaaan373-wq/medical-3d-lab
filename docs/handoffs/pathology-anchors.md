@@ -621,6 +621,52 @@ sublingual-gland  submandibular-gland  submandibular-duct  parotid-gland  paroti
 
 ---
 
+## `pelvic-floor-anatomy`
+
+| | |
+| --- | --- |
+| 構造 | 17 |
+| tags | `frame` `muscle` `space` `perineum` `viscus` |
+| views | `whole` `from-above` `from-below` `the-sling` `the-gap` `sagittal` |
+| bounds | 9.82 × 7.03 × 7.55 |
+
+```
+pelvic-ring  sacrum  coccyx  obturator-internus
+tendinous-arch  pubococcygeus  iliococcygeus  coccygeus  puborectalis
+urogenital-hiatus
+perineal-body  perineal-membrane  external-anal-sphincter
+urethra  vagina  rectum  anal-canal
+```
+
+**anchors** — `SITES`: `hiatus` `anorectalJunction` `perinealBody`
+`urethraThroughFloor` `vaginaThroughFloor` `ischialSpine`。
+面としては `levatorOrigin(t, side)` と `levatorInsertion(t, side)`（骨盤底の
+シートを張る 2 本の線）、`HIATUS_BACK_T`、`FRAME`。
+
+**病態候補**: 骨盤臓器脱（膀胱瘤・子宮脱・直腸瘤）、腹圧性尿失禁、
+便失禁、会陰裂傷、分娩時の骨盤底損傷、恥骨直腸筋の奇異性収縮
+（排便障害）、慢性骨盤痛。
+
+**動かしてよいもの**: `levatorInsertion` の内側縁の位置（裂孔の広さ）、
+各シートの厚みと `sag`、`puborectalis` のつくる角度、
+`urethra` / `vagina` / `rectum` の位置と下垂、`perineal-body` の大きさ、
+`external-anal-sphincter` の太さ。
+
+**変えてはいけない関係**:
+- **裂孔は実在する隙間です。** 左右のシートの内側縁（`levatorInsertion`）が
+  その縁であり、表示上の隙間ではありません。ここを塞がないでください
+- **尿道と腟は裂孔を通り、腸管は通りません。** 腸管は吊り輪の後方の
+  自分自身の隙間を通ります。この非対称がシーンの主張です
+- **恥骨直腸筋は腸管の後方**を回ります。前方を通したらシートになります
+- 会陰体は**腟の後方・肛門管の前方**です
+- 肛門挙筋の各部は 1 枚のシートの区画で、すべて `levatorOrigin` から
+  吊り下がります。1 つだけ別の線に付け替えないでください
+- **骨は枠であって骨のモデルではありません。** 腸骨翼・寛骨臼・閉鎖孔は
+  ありません。骨の形を根拠にする病態を載せないでください
+- **何も収縮せず、下垂もしません。** 直腸肛門角は 1 つの固定値です
+
+---
+
 ## 検証
 
 - `npm test` — カタログ整合性、model profile、各シーンの構造配置

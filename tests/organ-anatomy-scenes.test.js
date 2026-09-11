@@ -20,6 +20,7 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { PelvicFloorAnatomyScene } from '../src/scenes/musculoskeletal/scenes/pelvicFloorAnatomy/PelvicFloorAnatomyScene.js';
 import { OralAnatomyScene } from '../src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js';
 import { LarynxAnatomyScene } from '../src/scenes/respiratory/scenes/larynxAnatomy/LarynxAnatomyScene.js';
 import { NoseAnatomyScene } from '../src/scenes/respiratory/scenes/noseAnatomy/NoseAnatomyScene.js';
@@ -70,6 +71,7 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'pelvic-floor-anatomy', Scene: PelvicFloorAnatomyScene, minimum: 15 },
   { id: 'oral-anatomy', Scene: OralAnatomyScene, minimum: 17 },
   { id: 'larynx-anatomy', Scene: LarynxAnatomyScene, minimum: 17 },
   { id: 'nose-anatomy', Scene: NoseAnatomyScene, minimum: 17 },
@@ -409,6 +411,8 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'pelvic-floor-anatomy:the-sling',
+  'pelvic-floor-anatomy:the-gap',
   'oral-anatomy:underneath',
   'oral-anatomy:glands',
   'larynx-anatomy:from-above',

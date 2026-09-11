@@ -142,6 +142,9 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // A wing, the bowel coming down through the ring, the front of the ring, and
+  // the sheet itself last, because that is the one the re-click has to find.
+  'pelvic-floor-anatomy': [[0.625, 0.278], [0.535, 0.311], [0.5, 0.52], [0.458, 0.4]],
   // Into an open mouth: the roof, the row of papillae across the tongue, the
   // tongue itself, and a parotid gland out at the side. Read off a render.
   'oral-anatomy': [[0.49, 0.36], [0.625, 0.444], [0.44, 0.56], [0.49, 0.52]],

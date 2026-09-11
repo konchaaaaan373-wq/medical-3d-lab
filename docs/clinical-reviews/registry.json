@@ -992,5 +992,27 @@
       "The muscles of the tongue, floor and jaw, the joint of the jaw, and the lingual, hypoglossal and facial nerves are not drawn, so nothing here supports any claim about movement or about the course of a nerve.",
       "The ducts are drawn to the point they open at, not as openings; the vallate papillae are nine standing for eight to twelve, and no other papillae are drawn."
     ]
+  },
+  {
+    "sceneId": "pelvic-floor-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "Gross anatomy of the female pelvic floor: what the sheet is attached to, where the gap in it is, what passes through it, and where the sling runs. No contraction, no descent, no pressure, no childbirth, no disease and no procedure."
+    ],
+    "sources": [
+      "docs/model-cards/pelvic-floor-anatomy.md",
+      "docs/model-evidence/pelvic-floor-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "The bones are a frame, not a model: there is no iliac wing, no acetabulum and no obturator foramen, and the two hip bones and the symphysis are not separated.",
+      "Nothing contracts and nothing descends; the anorectal angle the puborectalis exists to make is drawn at one fixed value that is not a measurement.",
+      "The subdivisions of the levator, the fascia and the ligaments that suspend the viscera, the pudendal nerve, the vessels and the internal anal sphincter are not drawn.",
+      "Only a female pelvis is drawn, and nothing in the scene supports any claim about childbirth, continence, prolapse or any procedure."
+    ]
   }
 ]

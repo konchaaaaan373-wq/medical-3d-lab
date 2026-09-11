@@ -45,6 +45,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'nose-anatomy',
   'larynx-anatomy',
   'oral-anatomy',
+  'pelvic-floor-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -238,6 +239,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '舌はなぜ2つの部分に分かれるのか。唾液は実際どこから出てくるのか。',
     ['SULCUS', 'PAPILLAE', 'DUCTS'],
     ['分界溝', '有郭乳頭', '導管']
+  ),
+  'pelvic-floor-anatomy': presentation(
+    'What is the pelvic floor actually shaped like, and what goes through it?',
+    '骨盤底はどんな形をしていて、何がそこを通るのか。',
+    ['HIATUS', 'SLING', 'FUNNEL'],
+    ['裂孔', '吊り輪', '漏斗']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',
