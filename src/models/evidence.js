@@ -1936,6 +1936,94 @@ export const UTERINE_FIBROID_EVIDENCE = defineEvidence('uterine-fibroid', [
   },
 ]);
 
+export const GOITRE_EVIDENCE = defineEvidence('multinodular-goitre', [
+  {
+    id: 'the-neck-is-soft-but-the-inlet-is-not',
+    claim:
+      'A goitre enlarging in the neck mostly displaces the airway rather than narrowing it, because everything around it will move. The thoracic inlet is the exception: it is a ring of bone, and a gland that has followed the airway down into it has nowhere to push, so the same amount of tissue narrows the airway instead.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source:
+      'Standard descriptions of multinodular goitre: tracheal deviation in the neck, compression where the gland is retrosternal, and the thoracic inlet as the level at which a goitre is confined.',
+    validation: 'physiology: the airway is pushed aside where the neck is soft and narrowed where it is not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'volume-is-the-same-in-every-direction',
+    claim:
+      'A given amount of nodular tissue makes the gland the same size whichever way it has gone, so how large the gland has become says nothing about what it is against.',
+    confidence: CONFIDENCE.ESTABLISHED,
+    source: 'Arithmetic of additive volumes: the direction a volume is added in does not change the volume.',
+    validation: 'physiology: the same amount of gland is the same size in every direction',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-posterior-structures-are-passed-not-approached',
+    claim:
+      'The recurrent laryngeal nerve runs in the groove behind the gland and the parathyroid glands lie against its posterior surface, so an enlargement that goes backwards does not approach them: it passes them, and they end up on or inside the thing that was in front of them.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard thyroid surgical anatomy of the tracheo-oesophageal groove and the posterior parathyroid glands. The direction is textbook; the parathyroids’ positions vary more than almost anything else in the neck, which is why a surgeon looks for them.',
+    validation: 'physiology: a backward enlargement passes the nerve and the parathyroids rather than approaching them',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'two-lobes-round-one-airway',
+    claim:
+      'The gland is wrapped round the front and sides of the airway, so a trachea pushed equally from both sides does not move: deviation needs one side to lead.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard thyroid anatomy — two lobes joined by an isthmus across the front of the trachea — and the standard observation that tracheal deviation follows asymmetric enlargement.',
+    validation: 'physiology: a trachea pushed equally from both sides does not move',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'atlas-and-face-area',
+    claim:
+      'The lobe’s volume and depth, the airway’s calibre, and the area the added tissue is taken to come out through — which together turn a volume into the distance the gland’s face advances.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'The first three are measured off this repository’s thyroid atlas; the face area is a calibration chosen so that the range of burdens the scene offers produces displacements and narrowings that are visible without being absurd.',
+    note:
+      'A calibration, not a measurement. No volume here is a millilitre, no distance is a centimetre, and the width across the airway is reported against this model’s own resting width rather than as a tracheal diameter.',
+    validation: 'calibration: the goitre model is measured off the atlas’s own gland and airway',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'four-directions',
+    claim:
+      'How much of each direction’s advance is aimed at the airway, how much of that meets a boundary that will not move, and how much goes back past the posterior structures.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Twelve numbers chosen by this repository as a reading of four standard pictures. Nothing was measured and no source gives them.',
+    note:
+      'Illustrative coefficients. What the model claims is the *ordering* they produce — that one direction narrows and the others displace — and never the sizes. A real goitre goes several ways at once, and the four are not exclusive.',
+    validation: 'calibration: one of the four directions narrows the airway and the others displace it',
+    layer: LAYER.CALIBRATION,
+  },
+  {
+    id: 'no-function-anywhere',
+    claim:
+      'There is no thyroid function in this model. A goitre of any shape in it may be euthyroid, overactive or underactive, and nothing about the shape says which.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision, and the sharpest one in the scene: morphology does not determine function, and a picture that let a reader infer it would be teaching something false.',
+    note:
+      'The direction this scene would mislead if it did not say so. No hormone, no TSH, no uptake and no autonomy appear anywhere, and no shape on screen is a functional state.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-relation-is-not-an-injury',
+    claim:
+      'The nerve and the parathyroid glands are lit when the gland reaches back past them. That is where they are, not what has happened to them.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'A scope decision. Whether a nerve is stretched, invaded, displaced intact or untouched is not something a volume and a direction can tell you, and this model contains nothing about any of it.',
+    note:
+      'The second direction this scene could mislead. Nothing in it says a nerve is damaged, at risk or anything else about it, and nothing says a parathyroid gland has stopped working.',
+    layer: LAYER.EXTERNAL,
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
   COPD_EVIDENCE,
@@ -1950,4 +2038,5 @@ export const EVIDENCE_REGISTRIES = [
   PROSTATIC_ENLARGEMENT_EVIDENCE,
   BOWEL_OBSTRUCTION_EVIDENCE,
   UTERINE_FIBROID_EVIDENCE,
+  GOITRE_EVIDENCE,
 ];

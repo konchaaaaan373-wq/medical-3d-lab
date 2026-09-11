@@ -49,6 +49,7 @@ test('migrated production evidence and the existing model registries share one c
       'benign-prostatic-enlargement',
       'bowel-obstruction',
       'uterine-fibroid',
+      'multinodular-goitre',
     ]
   );
 });

@@ -361,6 +361,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "multinodular-goitre",
+    "card": "docs/model-cards/multinodular-goitre.md",
+    "modelSources": [
+      "src/models/multinodularGoitre.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "f4ade682ad27c70a",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "uterine-fibroid",
     "card": "docs/model-cards/uterine-fibroid.md",
     "modelSources": [
