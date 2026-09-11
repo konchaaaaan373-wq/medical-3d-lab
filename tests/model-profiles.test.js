@@ -201,6 +201,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'multinodular-goitre': MECHANISM_LEVEL.ILLUSTRATIVE,
     'knee-osteoarthritis': MECHANISM_LEVEL.ILLUSTRATIVE,
     'acl-injury': MECHANISM_LEVEL.ILLUSTRATIVE,
+    'rotator-cuff-tear': MECHANISM_LEVEL.ILLUSTRATIVE,
     achalasia: MECHANISM_LEVEL.MECHANISTIC,
     'bowel-obstruction': MECHANISM_LEVEL.MECHANISTIC,
   });

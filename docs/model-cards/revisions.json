@@ -361,6 +361,16 @@
     "cardUpdatedAt": "2026-09-11"
   },
   {
+    "sceneId": "rotator-cuff-tear",
+    "card": "docs/model-cards/rotator-cuff-tear.md",
+    "modelSources": [
+      "src/models/rotatorCuffTear.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "cebbe6e9bf13bcd7",
+    "cardUpdatedAt": "2026-09-11"
+  },
+  {
     "sceneId": "acl-injury",
     "card": "docs/model-cards/acl-injury.md",
     "modelSources": [

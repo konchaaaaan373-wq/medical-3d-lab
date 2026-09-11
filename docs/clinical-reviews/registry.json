@@ -251,6 +251,29 @@
     ]
   },
   {
+    "sceneId": "rotator-cuff-tear",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "geometric model of a supraspinatus tear, prepared for future clinical sign-off: what is left holding the humeral head on its socket and whether that keeps it centred"
+    ],
+    "sources": [
+      "docs/model-cards/rotator-cuff-tear.md",
+      "docs/model-evidence/rotator-cuff-tear.md",
+      "tests/rotator-cuff-tear-model.test.js",
+      "src/models/rotatorCuffTear.js"
+    ],
+    "unresolvedLimitations": [
+      "The rise is a fraction of the shoulder atlas's subacromial display gap, which the atlas declares to be a value opened up so the tendon could be seen. It is not an acromiohumeral distance and it is not millimetres.",
+      "The facing pair is one number rather than two tendons. Which of them is involved, and how far round, is not represented.",
+      "Nothing in the model moves an arm. There is no pain, no weakness, no arc of movement and no range anywhere in it.",
+      "Impingement as a syndrome, the bursa, tendinopathy, calcium, retraction, muscle quality and cuff tear arthropathy are all outside the model, as are cause, time, healing and every treatment.",
+      "The tendons the scene does not redraw stay where the atlas put them while the head moves: they are context and are not re-solved."
+    ]
+  },
+  {
     "sceneId": "acl-injury",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

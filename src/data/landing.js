@@ -68,6 +68,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'multinodular-goitre',
   'knee-osteoarthritis',
   'acl-injury',
+  'rotator-cuff-tear',
   'achalasia',
   'bowel-obstruction',
   'breathing-lungs',
@@ -437,6 +438,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '波と輪を同時に失わせ、嚥下が通過しなくなり、やがて溜まったもの自体が押す役を引き継ぐ過程を確認。',
     ['THE WAVE', 'THE RING', 'WHAT IS LEFT'],
     ['蠕動波', '括約筋', '貯留']
+  ),
+  'rotator-cuff-tear': presentation(
+    'Tear the top tendon across its width; watch the head stay centred until the pair goes too.',
+    '上の腱を全幅まで裂き、対が失われるまで骨頭が中央に留まることを確認。',
+    ['A SLEEVE', 'THE FACING PAIR', 'WHERE THE HEAD SITS'],
+    ['袖としての腱板', '向かい合う 2 本', '骨頭の位置']
   ),
   'acl-injury': presentation(
     'Take the ligament from intact to two ends; watch what is left holding the tibia.',
