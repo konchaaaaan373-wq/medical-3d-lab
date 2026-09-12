@@ -97,6 +97,8 @@ export function credentialModePolicy(mode) {
  *   onSwitchMode: (mode: CredentialMode) => void,
  *   onForgotPassword: (email: string) => void,
  *   onEmailInput?: (email: string) => void,
+ *   pendingConfirmation?: string|null,
+ *   onResendConfirmation?: (email: string) => void,
  * }} options
  */
 export function credentialForm({
@@ -109,6 +111,8 @@ export function credentialForm({
   onSwitchMode,
   onForgotPassword,
   onEmailInput = () => {},
+  pendingConfirmation = null,
+  onResendConfirmation = () => {},
 }) {
   const policy = credentialModePolicy(mode);
   const busy = Boolean(loading);
@@ -197,6 +201,29 @@ export function credentialForm({
         on: { click: () => onSwitchMode(policy.switchTo) },
       }),
     ]),
+    // Only after a sign-up this browser just made came back without a session —
+    // which is only when the project confirms addresses by email. Somebody
+    // whose mail went missing otherwise has no route but to register the same
+    // address a second time.
+    pendingConfirmation
+      ? el('div', { class: 'access-confirmation-pending' }, [
+          el('p', {
+            class: 'access-copy lang-en',
+            text: `No confirmation email at ${pendingConfirmation}? Check spam, or send it again.`,
+          }),
+          el('p', {
+            class: 'access-copy lang-ja',
+            text: `${pendingConfirmation} に確認メールが届かないときは、迷惑メールを確認するか、もう一度送信してください。`,
+          }),
+          el('button', {
+            class: 'access-text-button access-resend-confirmation',
+            type: 'button',
+            disabled: busy ? '' : null,
+            text: 'Resend confirmation email / 確認メールを再送',
+            on: { click: () => onResendConfirmation(pendingConfirmation) },
+          }),
+        ])
+      : null,
     policy.offersPasswordReset
       ? el('button', {
           class: 'access-text-button access-forgot',

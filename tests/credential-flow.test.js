@@ -20,6 +20,7 @@ import {
   credentialForm,
   credentialModePolicy,
 } from '../src/access/credentialForm.js';
+import { readFileSync } from 'node:fs';
 import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const noop = () => {};
@@ -181,8 +182,73 @@ test('credential form: an in-flight request cannot be submitted a second time', 
   assert.deepEqual(calls.submitted, [], 'a double submit would be a second signUp call');
 });
 
+test('credential form: resending is offered only while a sign-up awaits confirmation', () => {
+  // The route back for somebody whose confirmation mail went missing. Offering
+  // it unconditionally would be a button that does nothing on a project that
+  // does not confirm addresses, so it appears only once a sign-up has actually
+  // come back without a session.
+  const idle = mount();
+  assert.equal(findByClass(idle.root, 'access-resend-confirmation').length, 0);
+
+  const waiting = mount({ pendingConfirmation: 'new@example.test' });
+  const [resend] = findByClass(waiting.root, 'access-resend-confirmation');
+  assert.ok(resend, 'a pending confirmation offers a resend');
+  assert.match(findByClass(waiting.root, 'access-confirmation-pending')[0].children[1].textContent, /new@example\.test/);
+});
+
+test('credential form: resending uses the address that was signed up with', () => {
+  // Not whatever is in the field now — the person may have started retyping.
+  const calls = [];
+  const restore = installFakeDocument();
+  let root;
+  try {
+    root = credentialForm({
+      mode: CREDENTIAL_MODE.SIGN_IN,
+      pendingConfirmation: 'signed-up@example.test',
+      onSubmit: noop,
+      onSwitchMode: noop,
+      onForgotPassword: noop,
+      onResendConfirmation: (email) => calls.push(email),
+    });
+  } finally {
+    restore();
+  }
+  const [email] = findByClass(root, 'access-input');
+  email.value = 'something-else@example.test';
+  findByClass(root, 'access-resend-confirmation')[0].click();
+  assert.deepEqual(calls, ['signed-up@example.test']);
+});
+
 test('credential form: notice and error are announced, not just drawn', () => {
   const { root } = mount({ notice: 'confirm your address', error: 'that did not work' });
   assert.equal(findByClass(root, 'access-form-message')[0].getAttribute('role'), 'status');
   assert.equal(findByClass(root, 'access-error')[0].getAttribute('role'), 'alert');
+});
+
+test('account dialog: nothing after `return api` is a declaration that does not hoist', () => {
+  // `createAccessManager` puts its whole implementation after `return api`, so
+  // only hoisted declarations ever come into existence. A `const` arrow there
+  // stays in the temporal dead zone for the life of the manager, and the call
+  // site throws `ReferenceError` instead of running.
+  //
+  // That is not hypothetical: `billingNotice` was written that way and is
+  // called on the signed-in branch of `dialogContent`, so opening the account
+  // dialog while signed in threw and rendered nothing. It is invisible to
+  // every test that cannot sign in, which is every test that is not a browser.
+  const source = readFileSync(new URL('../src/access/AccessManager.js', import.meta.url), 'utf8');
+  const tail = source.slice(source.indexOf('\n  return api;'));
+  assert.ok(tail.length > 0, 'the manager still returns its api before its implementation');
+
+  // Function-body level only: a `const` inside one of those functions is
+  // indented further and is perfectly fine.
+  const stranded = tail
+    .split('\n')
+    .filter((line) => /^ {2}(const|let|var) /.test(line))
+    .map((line) => line.trim());
+
+  assert.deepEqual(
+    stranded,
+    [],
+    `unreachable declaration(s) after \`return api\` — make these \`function\` declarations:\n${stranded.join('\n')}`
+  );
 });

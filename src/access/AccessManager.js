@@ -6,6 +6,7 @@ import {
   isPasswordRecovery,
   getSession,
   requestPasswordReset,
+  resendSignUpConfirmation,
   signIn,
   signOut,
   signUp,
@@ -56,6 +57,10 @@ export function createAccessManager({ ui }) {
     // without this, switching mode — or any refresh landing mid-typing —
     // empties a field the person had already filled in.
     credentialEmail: '',
+    // The address a sign-up is waiting on confirmation for, or null. Set only
+    // when Supabase answered a sign-up without a session, which is the only
+    // situation where resending is a thing that exists.
+    pendingConfirmationEmail: null,
     error: '',
     notice: '',
   };
@@ -192,6 +197,7 @@ export function createAccessManager({ ui }) {
     state.deletionMode = false;
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
+    state.pendingConfirmationEmail = null;
     state.error = '';
     state.notice = '';
   }
@@ -298,6 +304,7 @@ export function createAccessManager({ ui }) {
     // Reopening the dialog starts the conversation again, on the sign-in side.
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
+    state.pendingConfirmationEmail = null;
     render();
     requestAnimationFrame(() => {
       if (focusTarget?.isConnected) focusTarget.focus();
@@ -683,12 +690,16 @@ export function createAccessManager({ ui }) {
             // with, and keep the address they just typed.
             state.notice = '確認メールを送信しました。確認後にログインしてください。';
             state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
+            // Remembering the address is what makes resending offerable at all,
+            // and it is the same address the form is already showing.
+            state.pendingConfirmationEmail = email;
             return;
           }
         } else {
           await signIn(email, password);
         }
         state.credentialEmail = '';
+        state.pendingConfirmationEmail = null;
         await refresh();
       } catch (error) {
         state.error = error.message || policy.failure;
@@ -713,7 +724,10 @@ export function createAccessManager({ ui }) {
       try {
         state.loading = true;
         notify();
-        const redirect = new URL(`${window.location.origin}${window.location.pathname}`);
+        const redirect = new URL(confirmationRedirect());
+        // `?account=recovery` is what a *reload* mid-recovery has to go on: the
+        // tokens arrive in the fragment and are scrubbed the moment they are
+        // read. `isPasswordRecovery` is the other half of that pair.
         redirect.searchParams.set('account', 'recovery');
         await requestPasswordReset(address, redirect.href);
         // Deliberately neutral: Supabase does not disclose whether an account
@@ -727,9 +741,29 @@ export function createAccessManager({ ui }) {
       }
     };
 
+    const resendConfirmation = async (address) => {
+      state.notice = '';
+      state.error = '';
+      try {
+        state.loading = true;
+        notify();
+        await resendSignUpConfirmation(address, confirmationRedirect());
+        state.notice = '確認メールを再送しました。/ Confirmation email sent again.';
+      } catch (error) {
+        // Supabase rate-limits this; "too many requests" is the message that
+        // actually helps, so it is shown rather than flattened into a generic.
+        state.error = error.message || '確認メールを再送できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
     return credentialForm({
       mode: state.credentialMode,
       email: state.credentialEmail,
+      pendingConfirmation: state.pendingConfirmationEmail,
+      onResendConfirmation: resendConfirmation,
       loading: state.loading,
       notice: state.notice,
       error: state.error,
@@ -837,6 +871,11 @@ export function createAccessManager({ ui }) {
       state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
       state.error ? el('p', { class: 'access-error', text: state.error }) : null,
     ].filter(Boolean));
+  }
+
+  /** Where Supabase should send the browser back to after an emailed link. */
+  function confirmationRedirect() {
+    return `${window.location.origin}${window.location.pathname}`;
   }
 
   function cleanRecoveryQuery() {
@@ -958,8 +997,19 @@ export function createAccessManager({ ui }) {
     ]);
   }
 
-  /** Why paid plans cannot be bought here, or null when they can. */
-  const billingNotice = () => saleBlockedNotice({ billingConfigured: state.billingConfigured });
+  /**
+   * Why paid plans cannot be bought here, or null when they can.
+   *
+   * A function declaration, not a `const` arrow, and that is load-bearing:
+   * everything in this tail sits after `return api`, so only hoisted
+   * declarations ever come into existence. As a `const` this stayed in the
+   * temporal dead zone for the life of the manager, and `dialogContent` calls
+   * it on the signed-in branch — so opening the account dialog while signed in
+   * threw `ReferenceError: billingNotice is not defined` and rendered nothing.
+   */
+  function billingNotice() {
+    return saleBlockedNotice({ billingConfigured: state.billingConfigured });
+  }
 
   async function checkout(plan) {
     const blocked = saleBlockedNotice({ billingConfigured: state.billingConfigured });

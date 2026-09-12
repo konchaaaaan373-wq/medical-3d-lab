@@ -96,6 +96,14 @@ Two smaller flow rules worth keeping:
   otherwise empties a field the person had already filled in.
 - **Sign-up that needs email confirmation returns to sign-in**, carrying the
   address, because signing in is the next thing that person does after the mail.
+- **And offers to send that mail again.** `resendSignUpConfirmation`
+  (`POST /auth/v1/resend`) appears only after a sign-up came back without a
+  session — which is only when the project confirms addresses — so it is
+  self-gating: it shows up exactly when it applies and never otherwise, without
+  the code needing to know the project's configuration. The address is the one
+  the person just typed, so there is nothing to enumerate. Without it, a
+  confirmation mail that went missing left registering the same address again
+  as the only way forward.
 
 `tests/credential-flow.test.js` holds this down. The form is a pure view
 precisely so that it can be tested: `AccessManager` reads `import.meta.env` at
@@ -125,11 +133,33 @@ credential regression is caught when a candidate is validated rather than on
 the PR that introduced it — and `tests/credential-flow.test.js` is what covers
 the form's shape on every push in between.
 
+**`createAccessManager` puts its whole implementation after `return api`,** so
+only hoisted declarations in that tail ever come into existence. A `const`
+arrow there stays in the temporal dead zone for the life of the manager and
+throws `ReferenceError` at its call site. `billingNotice` was written that way
+and is called on the signed-in branch of `dialogContent`, so opening the account
+dialog while signed in rendered nothing — on `main` as well. It is now a
+`function` declaration, and `tests/credential-flow.test.js` fails if any
+non-hoisting declaration appears in that tail again. No test that cannot sign in
+can see this class of bug, which is why the browser check drives a sign-up that
+returns a session and watches for uncaught errors on the account view.
+
 It drives Enter through both modes to `/auth/v1/token?grant_type=password` and
 `/auth/v1/signup`, checks the password `autocomplete` each mode asks for,
 native validation refusing an empty submit before any network call, focus
 staying in the dialog across a rebuild, Escape still closing it afterwards, and
 the layout at 1280 px and 390 px.
+
+It also drives **both ways a Supabase project can be configured** — a sign-up
+answered with a session (signs straight in, nothing pending) and one answered
+without (says a confirmation was sent, returns to sign-in keeping the address,
+offers the resend) — so whichever is live, the other is known to work when it
+becomes live. And it drives **password recovery up to the inbox**: landing on
+`#access_token=…&type=recovery`, the tokens leaving the address bar
+immediately, the choose-a-password form appearing, Enter reaching
+`PUT /auth/v1/user`, and a reload mid-recovery still getting that form from
+`?account=recovery` alone. What is left of `F-20` is only whether the mail
+arrives.
 
 **The keyboard-containment check carries a control, and needs one.** "The
 dialog swallowed the keystroke" and "nothing was listening anyway" are the same

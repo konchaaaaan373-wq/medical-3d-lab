@@ -115,17 +115,40 @@ const browser = await chromium.launch({
   headless: !flag('--headed'),
 });
 
-/** Open a page with Supabase stubbed, recording what the form asked for. */
-async function openPage(viewport) {
+/**
+ * A Supabase session, shaped the way `normaliseSession` reads one.
+ *
+ * @param {string} email
+ */
+const sessionBody = (email) => JSON.stringify({
+  access_token: 'stub-access-token',
+  refresh_token: 'stub-refresh-token',
+  expires_in: 3600,
+  user: { id: '00000000-0000-4000-8000-000000000000', email },
+});
+
+/**
+ * Open a page with Supabase stubbed, recording what the form asked for.
+ *
+ * `auth` decides what a given endpoint answers, so one run can be driven down
+ * the confirmation-required branch and another down the session-returned one.
+ * Returning nothing falls through to a 400, which is what keeps the dialog on
+ * screen to be measured instead of navigating away.
+ *
+ * @param {{width:number,height:number}} viewport
+ * @param {{ auth?: (path: string, request: import('playwright').Request) => object|null }} [options]
+ */
+async function openPage(viewport, { auth } = {}) {
   const page = await browser.newPage({ viewport });
   const calls = [];
   const errors = [];
-  // Any host: the build decides which, and a failing response is what keeps the
-  // UI on screen to be measured rather than navigating away.
+  // Any host: the build decides which.
   await page.route('**/auth/v1/**', async (route) => {
     const url = new URL(route.request().url());
-    calls.push(`${url.pathname}${url.search}`);
-    await route.fulfill({
+    const path = `${url.pathname}${url.search}`;
+    calls.push(path);
+    const reply = auth?.(path, route.request()) ?? null;
+    await route.fulfill(reply ?? {
       status: 400, contentType: 'application/json',
       body: JSON.stringify({ msg: 'stubbed by verify:auth' }),
     });
@@ -278,6 +301,134 @@ try {
   }
 
   if (configured) {
+    // ---- Sign-up, both ways the project can be configured ----------------
+    //
+    // Which of these is live depends on whether the Supabase project confirms
+    // addresses by email, which this cannot know. Both are driven here so the
+    // branch that is not live is still known to work when it becomes live.
+    step = 'signing up where the project confirms addresses';
+    {
+      const { page, calls } = await openPage({ width: 1280, height: 900 }, {
+        auth: (path) => (path.includes('/auth/v1/signup')
+          // Supabase answers a confirmation-required sign-up with the user and
+          // no token at all, which is what `normaliseSession` reads as "no
+          // session yet".
+          ? { status: 200, contentType: 'application/json',
+              body: JSON.stringify({ id: 'stub', email: 'waiting@example.test' }) }
+          : null),
+      });
+      await page.goto(base, { waitUntil: 'networkidle' });
+      await page.click('.account-trigger');
+      await page.waitForSelector('.access-credentials');
+      await page.click('.access-switch-mode');
+      await page.waitForSelector('.access-credentials.is-signup');
+      await page.fill('.access-credentials input[name=email]', 'waiting@example.test');
+      await page.fill('.access-credentials input[name=password]', 'a-long-enough-one');
+      await page.press('.access-credentials input[name=password]', 'Enter');
+      await page.waitForTimeout(800);
+
+      const text = await page.locator('.access-dialog').textContent();
+      check('a sign-up awaiting confirmation says so', /確認メール|confirmation/i.test(text), text.slice(0, 90));
+      check('and returns to sign-in, which is what happens next',
+        (await page.locator('.access-credentials.is-signin').count()) === 1);
+      check('and keeps the address that was signed up with',
+        (await page.inputValue('.access-credentials input[name=email]')) === 'waiting@example.test');
+
+      // The gap this closes: without it, a confirmation mail that went missing
+      // leaves registering the same address again as the only way forward.
+      const resend = page.locator('.access-resend-confirmation');
+      check('and offers to send the confirmation again', (await resend.count()) === 1);
+      if (await resend.count()) {
+        const before = calls.length;
+        await resend.click();
+        await page.waitForTimeout(600);
+        check('resending asks Supabase to resend',
+          calls.slice(before).some((u) => u.includes('/auth/v1/resend')), calls.slice(before).join(', '));
+      }
+      await page.close();
+    }
+
+    step = 'signing up where the project returns a session';
+    {
+      const { page, errors } = await openPage({ width: 1280, height: 900 }, {
+        auth: (path) => (path.includes('/auth/v1/signup')
+          ? { status: 200, contentType: 'application/json', body: sessionBody('instant@example.test') }
+          : null),
+      });
+      await page.goto(base, { waitUntil: 'networkidle' });
+      await page.click('.account-trigger');
+      await page.waitForSelector('.access-credentials');
+      await page.click('.access-switch-mode');
+      await page.waitForSelector('.access-credentials.is-signup');
+      await page.fill('.access-credentials input[name=email]', 'instant@example.test');
+      await page.fill('.access-credentials input[name=password]', 'a-long-enough-one');
+      await page.press('.access-credentials input[name=password]', 'Enter');
+      await page.waitForTimeout(1200);
+
+      check('a sign-up that returns a session signs in',
+        (await page.locator('.access-user-email').count()) === 1);
+      check('and the credential form gives way to the account',
+        (await page.locator('.access-credentials').count()) === 0);
+      check('and no resend is offered, because nothing is pending',
+        (await page.locator('.access-resend-confirmation').count()) === 0);
+      // The signed-in branch of the dialog is the one no test that cannot sign
+      // in ever reaches, and it threw for the life of the product on a
+      // `const` declared after `return api`. Watch it explicitly.
+      check('the signed-in account view renders without throwing',
+        errors.length === 0, errors.join(' | '));
+      await page.close();
+    }
+
+    // ---- Password recovery, everything up to the inbox -------------------
+    //
+    // The mail itself needs a real inbox (F-20). What the link lands on does
+    // not, and that is the half with the moving parts: Supabase returns the
+    // tokens in the URL fragment, which this app has to read before its own
+    // router sees it as a scene name, and scrub before it can be screenshotted.
+    step = 'landing on a recovery link';
+    {
+      const updates = [];
+      const { page, calls } = await openPage({ width: 1280, height: 900 }, {
+        auth: (path, request) => {
+          if (path.includes('/auth/v1/user') && request.method() === 'PUT') {
+            updates.push(path);
+            return { status: 200, contentType: 'application/json',
+                     body: JSON.stringify({ id: 'stub', email: 'reset@example.test' }) };
+          }
+          return null;
+        },
+      });
+      await page.goto(
+        `${base}#access_token=stub-recovery-token&refresh_token=stub-r&expires_in=3600&type=recovery`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForSelector('.access-recovery', { timeout: 15000 });
+      check('a recovery link opens the choose-a-password form', true);
+      check('the tokens are scrubbed from the address bar',
+        !page.url().includes('stub-recovery-token'), page.url());
+
+      step = 'submitting a new password with Enter';
+      const fields = page.locator('.access-recovery input[type=password]');
+      await fields.nth(0).fill('a-brand-new-password');
+      await fields.nth(1).fill('a-brand-new-password');
+      await fields.nth(1).press('Enter');
+      await page.waitForTimeout(900);
+      check('Enter submits the new password', updates.length > 0, calls.join(', '));
+      await page.close();
+    }
+
+    step = 'reloading in the middle of a recovery';
+    {
+      const { page } = await openPage({ width: 1280, height: 900 });
+      // What is left in the address bar once the fragment has been scrubbed —
+      // and therefore all a reload has to go on.
+      await page.goto(`${base}?account=recovery`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(900);
+      check('a reload mid-recovery still gets the password form, not a sign-in',
+        (await page.locator('.access-recovery').count()) === 1);
+      await page.close();
+    }
+
     // ---- Layout, at the two ends of the matrix ----------------------------
     for (const [label, viewport] of [
       ['desktop', { width: 1280, height: 900 }],
