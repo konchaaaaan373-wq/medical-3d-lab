@@ -81,3 +81,50 @@ jobs:
           path: viewport-evidence/
           if-no-files-found: warn
           retention-days: 3
+
+  # The account dialog is the one surface `npm test` structurally cannot reach:
+  # `AccessManager` reads `import.meta.env` at module load, so under
+  # `node --test` it is permanently "not configured" and never builds a
+  # credential form at all. Three defects shipped through that gap — Enter
+  # submitting nothing, the dialog losing the keyboard whenever it re-rendered,
+  # and a sign-in heading over a body saying no account access exists.
+  #
+  # Chromium only, and here rather than in `ci.yml`, because this repository
+  # deliberately keeps browsers out of ordinary PR pushes
+  # (`tests/viewports.test.js` holds that line). The cost is that a credential
+  # regression is caught at candidate time rather than on the PR that caused
+  # it; `tests/credential-flow.test.js` covers the form's shape on every push.
+  auth-flow:
+    name: auth flow (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "${PR_HEAD_SHA}" || "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Not secrets, and deliberately not a real project: the host does not
+      # resolve and the check stubs every auth request in the browser. They
+      # exist only because a build with no Supabase configured contains no
+      # credential form to drive — which is the other surface the check covers.
+      - name: Build with a stub account configuration
+        env:
+          VITE_SUPABASE_URL: https://stub.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: stub-publishable-key
+        run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:auth

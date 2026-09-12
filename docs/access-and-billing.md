@@ -102,13 +102,45 @@ precisely so that it can be tested: `AccessManager` reads `import.meta.env` at
 module load, so under `node --test` it is permanently "not configured" and never
 builds a credential form at all.
 
-Unit tests cannot see a layout or a browser behaviour, so the flow was also
-driven in Chromium at 1280 px and 390 px — Enter reaching
-`/auth/v1/token?grant_type=password` and `/auth/v1/signup` respectively, native
-validation blocking an empty submit before any network call, no sideways scroll
-and no console errors. Build with `VITE_SUPABASE_URL` /
-`VITE_SUPABASE_PUBLISHABLE_KEY` set to reach the form at all; without them the
-dialog correctly shows its "not configured on this deployment" branch.
+Unit tests cannot see a layout or a browser behaviour, so the rest is
+`scripts/check-auth-flow.mjs`, run by the `auth-flow` job in
+`final-browser-validation.yml` and by hand as:
+
+```bash
+VITE_SUPABASE_URL=https://stub.invalid \
+VITE_SUPABASE_PUBLISHABLE_KEY=stub npm run build
+npm run verify:auth
+```
+
+The env vars are not secrets and not a real project — the host does not resolve
+and the script stubs every auth request. They exist because a build with no
+Supabase configured does not contain a credential form at all; run `npm run
+verify:auth` against an ordinary build and it checks that surface instead (the
+neutral heading, the explanation, no form).
+
+It runs at candidate time, not on every push: this repository deliberately
+keeps browsers out of ordinary PR CI, and `tests/viewports.test.js` asserts
+that `ci.yml` never installs Playwright. The cost of that trade is real — a
+credential regression is caught when a candidate is validated rather than on
+the PR that introduced it — and `tests/credential-flow.test.js` is what covers
+the form's shape on every push in between.
+
+It drives Enter through both modes to `/auth/v1/token?grant_type=password` and
+`/auth/v1/signup`, checks the password `autocomplete` each mode asks for,
+native validation refusing an empty submit before any network call, focus
+staying in the dialog across a rebuild, Escape still closing it afterwards, and
+the layout at 1280 px and 390 px.
+
+**The keyboard-containment check carries a control, and needs one.** "The
+dialog swallowed the keystroke" and "nothing was listening anyway" are the same
+observation from outside. An earlier version of this check ran on the landing
+page, where no scene is mounted and `bindKeyboard` is never called — it passed
+whether or not the dialog contained anything. So it now runs on a real scene
+route and presses `h` twice with the dialog shut first, which must toggle
+`#ui.is-hidden`; only then is the same key pressed with the dialog open, where
+it must do nothing. Reverting the focus restore in `render()` makes five of
+these checks fail, including `is-hidden=true` on that one — which is what a
+regression guard has to be able to show.
 
 The one part no automated check reaches is the password-reset email round-trip,
 which needs a real inbox — that is `F-20` in [`follow-ups.md`](follow-ups.md).

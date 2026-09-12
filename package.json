@@ -16,6 +16,7 @@
     "revisions:check": "node scripts/adopt-revisions.js",
     "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
     "verify:ui": "node scripts/check-viewports.mjs",
+    "verify:auth": "node scripts/check-auth-flow.mjs",
     "cards": "node scripts/render-social-cards.mjs",
     "cards:check": "node scripts/check-social-cards.js",
     "verify:anatomy": "node scripts/check-anatomy-interaction.mjs",
