@@ -23,6 +23,7 @@ import './styles/locked.css';
 import './styles/telemetry.css';
 import './styles/legal.css';
 import './styles/product-shell-b6.css';
+import './styles/browser-first-release-polish.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
