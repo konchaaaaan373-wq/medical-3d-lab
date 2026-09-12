@@ -92,16 +92,17 @@ source = source.replace(
   "chromium.launch({ headless: !headed, executablePath: process.env.CHROME_PATH || undefined })"
 );
 
-// Tighten the phone usability audit without duplicating the large browser
-// harness in a second file. Page overflow is not enough: a control row can hide
-// actions inside its own horizontal scroller while the document still fits.
+// Tighten phone usability without duplicating the large browser harness here.
+// Page overflow is insufficient: a control row can hide actions inside its own
+// scroller, and a giant bottom console can technically fit while leaving too
+// little of the actual 3D model to inspect.
 source = source.replace(
   "      navTriggerVisible: visible('.global-nav-trigger'),\n      canvasHit,",
   `      navTriggerVisible: visible('.global-nav-trigger'),\n      buttonRow: (() => {\n        const node = document.querySelector('.button-row');\n        if (!node) return null;\n        return {\n          clientWidth: node.clientWidth,\n          scrollWidth: node.scrollWidth,\n          overflow: Math.max(0, node.scrollWidth - node.clientWidth),\n        };\n      })(),\n      canvasHit,`
 );
 source = source.replace(
   "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');",
-  "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');\n      if ((proGeometry.buttonRow?.overflow ?? 0) > 1) issues.push(`button row hides controls by ${Math.round(proGeometry.buttonRow.overflow)}px`);"
+  "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');\n      if ((proGeometry.buttonRow?.overflow ?? 0) > 1) issues.push(`button row hides controls by ${Math.round(proGeometry.buttonRow.overflow)}px`);\n      if (device.id === 'phone' && target.id !== 'brain-anatomy' && (proGeometry.console?.height ?? 0) > device.height * 0.28) issues.push(`console takes ${Math.round((proGeometry.console.height / device.height) * 100)}% of phone height`);"
 );
 writeFileSync(runtimePath, source);
 
