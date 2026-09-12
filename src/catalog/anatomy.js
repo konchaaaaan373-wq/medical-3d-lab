@@ -321,6 +321,20 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A2 for this scene is not the goal: it is an overview by design, and every region that deserves named parts has its own scene. What would improve it is the regions that still have none — the skull as bones rather than one shell, the thorax as a cage with costal cartilages, and the elbow. Nothing here moves or bears weight',
   },
   {
+    organ: 'neck',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/neckAnatomy — twenty-three named structures selectable by name: the surface, four muscle groups, the cervical vertebrae, the hyoid, the laryngeal cartilages, the trachea, the oesophagus, the thyroid lobes, the isthmus, the parathyroids, the carotid sheath and its three contents, the internal and external carotids, the deep cervical nodes, the two vagus nerves, the two recurrent laryngeal nerves, the subclavian arteries and the aortic arch; tests/organ-parts-anatomy.test.js — the gullet lies behind the airway and leans left, the thyroid lobes touch the airway and do not enter it, the artery is medial to the vein and the vagus behind both inside the sheath, the external carotid runs in front of the internal, the recurrent nerves both end in the tracheo-oesophageal groove at the cricoid but turn at different heights, and the left turns lower than the right',
+    next: 'A3: the thyroid’s own arteries and veins, the superior laryngeal nerve, the phrenic nerve and the brachial plexus, the lymph node levels as named regions rather than one chain, the fascial planes as separate layers, and the individual muscle bellies rather than four groups. Nothing moves, which is the first thing a swallowing or an airway scene would need',
+  },
+  {
+    organ: 'elbow',
+    level: 'A2',
+    evidence:
+      'scenes/musculoskeletal/scenes/elbowAnatomy — twenty-one named structures selectable by name: the humerus with its trochlea, capitellum and two epicondyles; the olecranon with its trochlear notch, the ulna, the radial head and the radius; articular cartilage and one capsule over both joints; the ulnar and radial collateral ligaments and the annular ligament; the biceps and triceps tendons and the two common muscle origins; the ulnar and median nerves and the brachial artery; tests/organ-parts-anatomy.test.js — the trochlea is a waisted spool and the capitellum is lateral to it on the same axis, the ulna’s notch touches the spool and no part of it lies inside, the notch wraps past half a circle, both collateral ligaments start on the joint axis, the annular ligament reaches the ulna at both ends and is not attached to the radius, the ulnar nerve passes behind the medial epicondyle, and in the cubital fossa the biceps tendon, the artery and the median nerve lie in that order from the thumb side inwards',
+    next: 'A3: the interosseous membrane, which is how load actually reaches the elbow from the hand; the lateral ulnar collateral ligament as its own band; the fat pads and the synovium, which is what an effusion is seen by; the growth plates; the individual forearm muscles rather than two common origins; and the branches of each nerve. Nothing bends or rotates, which is the first thing a movement or instability scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

@@ -1576,6 +1576,47 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 将来 disclaimer にマークアップらしき文字列が入っても注入にはなりません。
 `**` を含む全シーン（前立腺・子宮・副腎・膝・肩・股ほか）が同時に直っています。
 
+### F-93 `section` が 1 平面しかないので、水平断が「断面」ではなく「半身」になる — P3（shared / OrganAnatomyScene）
+
+**再現条件.** `neck-anatomy` に水平断の viewpoint を置いたときに出ました。
+`views[].section` は `new THREE.Plane(normal, constant)` 1 枚を
+`material.clippingPlanes` に入れる実装（`OrganAnatomyScene._setSection`）なので、
+残るのは**平面の片側全部**です。正中断では残る半分の奥行きが浅く、切断面が
+そのまま絵になります。**水平断では残る側が頸部の全長になり**、切断面の向こうに
+体が奥へ伸びていく「トンネル」が写ります。カメラを断面に垂直へ寄せても、
+奥行きが 5 world unit 以上あるため断面が主役になりません。
+
+**分かっていること**:
+- `neck-anatomy` では峡部の高さの水平断を 4 回撮り直して諦め、正中断
+  （`sagittal`）に差し替えました。正中断は読めます
+- `hand-anatomy` の `across-the-tunnel`（手根管の断面）でも同じことを試し、
+  同じ理由で外しました。手根管の遠位縁で切ると**前腕が丸ごと残り**、
+  切断面の向こうへ手根骨と腱が続いていきます。いまは切らずに、
+  トンネルの外の軟部（母指球筋・伸筋腱）を `outside-tunnel` タグで
+  伏せる形にしています
+- 既存シーンで `section` を使っているものはすべて正中断か前額断で、
+  どちらも「残る側が浅い」向きです。この制約に当たったのは今回が初めてです
+- 平面 1 枚である必然性はありません。`clippingPlanes` は配列で、three は
+  複数平面の AND を取ります（`material.clipIntersection = false` が既定）
+
+**どう確かめるか / どう決めるか**:
+- `section` を `{ normal, constant }` 1 個だけでなく配列も受けるようにし、
+  **スラブ（2 平面）**を書けるようにするかどうか。
+  例: `[{ normal: [0, 1, 0], constant: -a }, { normal: [0, -1, 0], constant: b }]`
+- 断面の切り口を塗る（capping）まで踏み込むかは別問題です。いまも切り口は
+  開いたままで、殻の内側が見えます。これは既存シーンでも同じで、
+  許容されている表現です
+
+**完了の定義**: どちらかが満たされたとき。
+(a) `section` がスラブを表現でき、`neck-anatomy` に水平断の viewpoint が戻る。
+(b) 「断面は 1 平面のみ」と決め、**水平断を置かない**ことを
+`docs/organ-3d-playbook.md` に書く。
+
+**宛先**: shared / OrganAnatomyScene の所有者。Claude② 側では直していません
+——`_setSection` は全解剖シーンが載っている共有実装です。
+
+---
+
 ### F-92 色モードを切り替えて部位タブへ戻ると、木の選択マークが消えるシーンがある — P2（AnatomyPanel / shared）
 
 **再現条件.** `npm run verify:anatomy -- --scene foot-anatomy --preview`

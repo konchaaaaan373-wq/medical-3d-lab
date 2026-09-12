@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { clamp, lerp, shapedSphere, smoothstep } from '../../shared/geometry/shapes.js';
-import { TubeSurface, smoothCurve } from '../../shared/geometry/tube.js';
+import { TubeSurface, flattenTube, smoothCurve } from '../../shared/geometry/tube.js';
 import { mineralMaterial, mucosaMaterial, tissueMaterial, wallMaterial } from '../../shared/materials.js';
 
 /**
@@ -223,10 +223,16 @@ export function buildOralCavity({ colors = {}, opacity = 1 } = {}) {
         points.push([x, y - dip, 3.5 - 0.28 * Math.abs(Math.sin(a))]);
       }
       const surface = new TubeSurface(smoothCurve(points, { closed: true }), {
-        radius: (t) => 0.2 + 0.12 * Math.abs(Math.cos(2 * Math.PI * t)),
+        // Fullest in the middle of each lip and thinnest at the corners, where
+        // the two of them meet and run back into the cheek.
+        radius: (t) => 0.22 + 0.26 * Math.abs(Math.cos(2 * Math.PI * t)),
         steps: 72,
         radial: 16,
       });
+      // **Flattened front to back.** A lip is a pad, not a cord: drawn round it
+      // is a ring of rubber at the front of the mouth, and the thing that makes
+      // it read as a lip is that it is deeper up and down than it is thick.
+      flattenTube(surface, 'z', 0.44);
       disposables.push(surface);
       return surface.geometry;
     })(),

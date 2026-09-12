@@ -78,6 +78,11 @@ the palate above and the floor below, and the tonsil behind the arch.
   is; the two rows of teeth, the mandible under them and the floor slung between
   them all follow it, so they cannot disagree
   (`docs/architecture-rules.md` rule 1).
+- **The lips are pads, not a cord.** They are one closed loop round the
+  aperture — fullest in the middle of each lip, thinnest at the corners where
+  the two meet — flattened front to back so that they are deeper up and down
+  than they are thick. Drawn round, the same loop reads as a ring of rubber at
+  the front of the mouth rather than as a lip.
 - **The mandible is drawn with its rami.** Without them a mandible is a
   horseshoe, and a horseshoe is not what anybody recognises as a jaw — and the
   parotid gland would have nothing to lie against.

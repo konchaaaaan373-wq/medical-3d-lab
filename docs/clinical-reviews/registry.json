@@ -1557,5 +1557,63 @@
       "There is no imaging, no examination, no screening, no biopsy and no treatment.",
       "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
     ]
+  },
+  {
+    "sceneId": "neck-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built neck — the wrapping, the midline viscera, the thyroid and parathyroids, the carotid sheath and its contents, and the asymmetric course of the two recurrent laryngeal nerves — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/neck-anatomy.md",
+      "docs/model-evidence/neck-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, calibre, angle or distance is a measurement, and the whole region is drawn as one representative arrangement.",
+      "The parathyroid glands, the vagus nerves and the recurrent laryngeal nerves are drawn larger than life so that they can be seen and selected; no size may be read off them.",
+      "Each recurrent laryngeal nerve is drawn as one cord on the usual course. In life the nerve branches before entering the larynx, may pass in front of or behind the inferior thyroid artery, and on the right may not recur at all.",
+      "Muscles are drawn as four groups rather than as individual bellies, and the triangles of the neck are not drawn.",
+      "The brachial plexus, the phrenic nerve, the superior laryngeal nerve, the thyroid’s own arteries and veins, the vertebral artery and the spinal cord are not drawn.",
+      "The lymph nodes are drawn as one chain of five on each side at one size; the levels are not drawn or labelled, and no node is enlarged, normal or abnormal.",
+      "The aortic arch and the subclavian arteries are drawn only as far as the recurrent nerves need in order to turn round them; this is not a model of the mediastinum.",
+      "Nothing moves: swallowing, laryngeal elevation, the thyroid’s movement with the airway, arterial pulsation and muscle contraction are not represented.",
+      "No goitre, nodule, tumour, node metastasis, nerve palsy or vascular disease is represented in any form, and nothing here is anyone’s neck.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning any puncture, central line, nerve block, airway procedure or operation."
+    ]
+  },
+  {
+    "sceneId": "elbow-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built right elbow — the distal humerus and its two articular surfaces, the proximal radius and ulna, the capsule and cartilage, the three ligaments, the two tendons and two common origins, and the nerves and artery crossing the joint — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/elbow-anatomy.md",
+      "docs/model-evidence/elbow-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, angle, thickness or attachment footprint is a measurement, and the joint is drawn as one representative right elbow.",
+      "Nothing moves: flexion, extension, pronation, supination and the spin of the radial head are described and not shown.",
+      "The articular cartilage is drawn thicker than life so that it can be seen and selected; no thickness may be read off it.",
+      "The capitellum is drawn as a whole sphere, where in life it has no articular surface posteriorly.",
+      "Muscles are drawn as two common origins rather than as individual bellies, and no muscle belly is drawn.",
+      "The interosseous membrane, which is how load reaches the elbow from the hand, is not drawn at all.",
+      "The growth plates, the bursae, the fat pads, the synovium, the veins of the cubital fossa, the bicipital aponeurosis and the lateral ulnar collateral ligament are not drawn.",
+      "Each nerve is drawn as one cord on the usual course; branches are not drawn, and an ulnar nerve that slips forward over the epicondyle in flexion is not represented.",
+      "No fracture, dislocation, subluxation, epicondylitis, effusion, nerve entrapment or arthritis is represented in any form, and nothing here is anyone’s elbow.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning or performing any puncture, line, nerve block, reduction, injection or operation."
+    ]
   }
 ]
