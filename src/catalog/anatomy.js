@@ -335,6 +335,27 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the interosseous membrane, which is how load actually reaches the elbow from the hand; the lateral ulnar collateral ligament as its own band; the fat pads and the synovium, which is what an effusion is seen by; the growth plates; the individual forearm muscles rather than two common origins; and the branches of each nerve. Nothing bends or rotates, which is the first thing a movement or instability scene would need',
   },
   {
+    organ: 'thorax',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/thoraxAnatomy — twenty-three named structures selectable by name: the three parts of the sternum, the ribs, the costal cartilages and the thoracic vertebrae; the intercostal spaces and the vessels and nerve under each rib; the diaphragm; the parietal pleura and the costodiaphragmatic recess; both lungs; the mediastinum as a space, with the heart, pericardium, trachea and main bronchi and the oesophagus in it; the aorta, the venae cavae and the pulmonary arteries; and the phrenic and vagus nerves; tests/organ-parts-anatomy.test.js — every rib ends lower at the front than it starts at the back, the lower costal cartilages turn up instead of reaching the sternum, the neurovascular bundle lies below the rib it belongs to, no part of either lung lies inside the mediastinum and the left lung is the one the mediastinum takes a bite out of, the lung bases stop above the floor of the pleural cavity, the right main bronchus is wider, shorter and more upright than the left, and at each hilum the phrenic nerve passes in front and the vagus behind',
+    next: 'A3: the three layers of intercostal muscle, the visceral pleura and the fluid between the layers, the azygos vein and the pulmonary veins, the branches of the arch, the thoracic duct and the sympathetic chain, and the diaphragm’s three openings as openings rather than as described levels. Nothing breathes, which is the first thing a ventilation or a mechanics scene would need',
+  },
+  {
+    organ: 'abdomen',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/abdomenAnatomy — twenty-four named structures selectable by name: the wall, the rectus straps, the lumbar vertebrae and psoas; the peritoneal cavity, the greater omentum and the mesentery; the retroperitoneum; the liver, stomach, spleen, small bowel and colon; the pancreas, duodenum, kidneys, adrenals and ureters; and the aorta, inferior vena cava, coeliac trunk, superior mesenteric vessels, inferior mesenteric artery and renal vessels; tests/organ-parts-anatomy.test.js — every structure the copy calls intraperitoneal lies in front of peritoneumBackAt and every retroperitoneal one lies behind it, the pancreas and the duodenum each have parts on both sides of that line, the right kidney is lower than the left, the cava is to the patient’s right of the aorta, the three ventral branches leave at three descending levels, the superior mesenteric artery passes in front of the third part of the duodenum, and each ureter runs down the front of psoas',
+    next: 'A3: the two layers of peritoneum and the lesser sac behind the stomach, the fascial layers of the retroperitoneum that actually decide where a leak goes, the three flat muscles of the wall and the inguinal canal, the gallbladder and biliary tree, the caecum and appendix, the portal vein, and the branches of each artery. Nothing peristalses, which is the first thing an obstruction or an ischaemia scene would need',
+  },
+  {
+    organ: 'pelvis',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/pelvisAnatomy — twenty-two named structures selectable by name: the pelvic ring and the symphysis; the levator sling and the one gap in it; the pelvic peritoneum and the pouch; the bladder, ureters and urethra; the rectum, anal canal and sigmoid colon; the common, internal and external iliac vessels; and both sets of reproductive organs, drawn as two sets because no body has both; tests/organ-parts-anatomy.test.js — each ureter passes below the point the crossing structure passes through, and both the uterine artery and the vas deferens are drawn from that same point; the three passages lie inside the gap in the floor and every organ resting in the true pelvis lies above the sling around it; the peritoneal pouch is the lowest point the peritoneum reaches; the bladder lies in front of the rectum and the pouch between them; and the two sets occupy the same region without either being displaced to make room for the other',
+    next: 'A3: the three parts of the levator sling and both anal sphincters as their own structures rather than one sheet, the perineal body, the pelvic fascia and the ligaments that suspend the uterus, the veins beside every artery, the pelvic nerves and the lymphatics, and the difference between a male and a female bony ring. Nothing contracts, fills or empties, which is the first thing a continence or a prolapse scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

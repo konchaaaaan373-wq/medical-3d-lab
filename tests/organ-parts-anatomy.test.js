@@ -53,6 +53,42 @@ import {
   collateralOrigin,
   trochleaRadiusAt,
 } from '../src/scenes/musculoskeletal/organs/elbowJoint.js';
+import {
+  AIRWAY,
+  LEFT as THORAX_LEFT,
+  LEVELS as THORAX_LEVELS,
+  WORLD_SCALE as THORAX_SCALE,
+  bronchusPath,
+  buildThorax,
+  mediastinumSection,
+  ribPath,
+} from '../src/scenes/regional/organs/thorax.js';
+import {
+  LEFT as ABDOMEN_LEFT,
+  LEVELS as ABDOMEN_LEVELS,
+  WORLD_SCALE as ABDOMEN_SCALE,
+  aortaAt,
+  buildAbdomen,
+  cavaAt,
+  isRetroperitoneal,
+  kidneyAt,
+  peritoneumBackAt,
+  psoasAt,
+} from '../src/scenes/regional/organs/abdomen.js';
+import {
+  FEMALE_SET as PELVIS_FEMALE_SET,
+  LEFT as PELVIS_LEFT,
+  LEVELS as PELVIS_LEVELS,
+  MALE_SET as PELVIS_MALE_SET,
+  UNDER_THE_BRIDGE,
+  WORLD_SCALE as PELVIS_SCALE,
+  bridgeAt,
+  buildPelvis,
+  edgeOfHiatus,
+  floorAt,
+  inHiatus,
+  pelvisSection,
+} from '../src/scenes/regional/organs/pelvis.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2112,6 +2148,358 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('a pelvis is a funnel with one gap, and one crossing that has two names', () => {
+  // The scene's subject is a crossing that is the same in both sets of organs,
+  // so the test is that the model cannot make the claim for one set and not the
+  // other — both crossing structures come from the same point, and the ureter
+  // is written under it.
+  const pelvis = buildPelvis();
+  pelvis.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of pelvis.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of pelvis.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(PELVIS_SCALE));
+      }
+    }
+    return out;
+  };
+
+  // 1. **The crossing.** The ureter passes below the bridge point on each side,
+  //    and both crossing structures pass through it.
+  for (const side of [PELVIS_LEFT, -PELVIS_LEFT]) {
+    const bridge = bridgeAt(side);
+    const nearest = (id) =>
+      points(id)
+        .filter((p) => p.x * side > 0)
+        .reduce((best, p) =>
+          Math.hypot(p.x - bridge[0], p.z - bridge[2]) < Math.hypot(best.x - bridge[0], best.z - bridge[2])
+            ? p
+            : best
+        );
+    assert.ok(
+      nearest('ureters').y < bridge[1] - UNDER_THE_BRIDGE * 0.4,
+      'the ureter passes under the bridge'
+    );
+    // Both of them, from the same point — one claim, not two.
+    for (const id of ['uterine-artery', 'vas-deferens']) {
+      const crossing = nearest(id);
+      assert.ok(
+        Math.hypot(crossing.x - bridge[0], crossing.y - bridge[1], crossing.z - bridge[2]) < 0.7,
+        `the ${id} passes through the bridge point`
+      );
+      assert.ok(crossing.y > nearest('ureters').y, `and over the ureter, not under it`);
+    }
+  }
+
+  // 2. **One gap, and only the passages are in it.** Everything else in the
+  //    true pelvis rests on the sheet around it.
+  const at = pelvisSection(PELVIS_LEVELS.floorLevel);
+  for (const id of ['urethra', 'anal-canal', 'vagina']) {
+    const low = points(id).reduce((best, p) => (p.y < best.y ? p : best));
+    assert.ok(inHiatus(low.x, low.z), `the ${id} passes through the gap`);
+  }
+  for (const id of ['bladder', 'prostate', 'uterus']) {
+    for (const p of points(id)) {
+      if (inHiatus(p.x, p.z)) continue;
+      assert.ok(p.y >= floorAt(p.x, p.z) - 1e-6, `no part of the ${id} is below the sling`);
+    }
+  }
+  // The gap really is a gap: the sheet starts outside it on every ray.
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+    const from = edgeOfHiatus(a, at);
+    const x = Math.cos(a) * from * at.halfWidth * 0.94;
+    const z = at.centreZ + Math.sin(a) * from * at.halfDepth * 0.94;
+    assert.ok(!inHiatus(x, z), 'the sheet begins where the gap ends');
+  }
+
+  // 3. The pouch is the lowest point the peritoneum reaches.
+  const pouch = box('peritoneal-pouch');
+  assert.ok(
+    pouch.min.y < box('pelvic-peritoneum').min.y + 1e-6,
+    'the pouch is the lowest part of the peritoneum'
+  );
+  // And it lies between the bladder in front and the rectum behind.
+  assert.ok(box('bladder').max.z > pouch.max.z, 'the bladder is in front of the pouch');
+  assert.ok(box('rectum').min.z < pouch.min.z, 'and the rectum behind it');
+
+  // 4. Neither set is displaced to make room for the other: each is where it
+  //    would be on its own, and the two overlap in the region between the
+  //    bladder and the rectum — which is exactly why no body has both.
+  const female = box('uterus');
+  const male = box('prostate').union(box('seminal-vesicles'));
+  assert.ok(female.intersectsBox(male), 'the two sets occupy the same region');
+  for (const id of [...PELVIS_FEMALE_SET, ...PELVIS_MALE_SET]) {
+    assert.ok(pelvis.meshesFor(id).length > 0, `${id} is drawn`);
+  }
+
+  pelvis.dispose();
+});
+
+test('an abdomen sorts into one bag and what is behind it, and two organs straddle the line', () => {
+  // The scene makes one claim about every organ in it — which side of the
+  // peritoneum it is on — so the test is that claim, checked against the same
+  // function the geometry is built from. A label that disagrees with the
+  // geometry is the failure this is here to catch.
+  const abdomen = buildAbdomen();
+  abdomen.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of abdomen.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of abdomen.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(ABDOMEN_SCALE));
+      }
+    }
+    return out;
+  };
+  const share = (id, wanted) => {
+    const all = points(id);
+    const matching = all.filter((p) => isRetroperitoneal(p.x, p.y, p.z) === wanted);
+    return matching.length / all.length;
+  };
+
+  // 1. **The claim.** Everything the copy calls intraperitoneal is in front of
+  //    the line, and everything it calls retroperitoneal is behind it.
+  //
+  //    "Wholly" is 96% of the surface rather than all of it, and the missing
+  //    few per cent are the model's own thickness: a vessel is a tube with a
+  //    wall, and its path is a smoothed curve that overshoots slightly between
+  //    the points it is written from, so a little of its far surface can sit
+  //    across a line its centre never approaches. The straddling organs below
+  //    are at 45–90%, so nothing here is near the threshold by accident.
+  const WHOLLY = 0.96;
+  for (const id of ['liver', 'stomach', 'spleen', 'small-bowel']) {
+    assert.ok(share(id, false) >= WHOLLY, `the ${id} is in the bag`);
+  }
+  for (const id of ['kidneys', 'adrenal-glands', 'ureters', 'aorta', 'inferior-vena-cava']) {
+    assert.ok(share(id, true) >= WHOLLY, `the ${id} is behind the bag`);
+  }
+
+  // 2. **The two that straddle it** are built to straddle it, not labelled to.
+  for (const id of ['pancreas', 'duodenum']) {
+    const behind = share(id, true);
+    assert.ok(behind > 0.45, `most of the ${id} is behind the bag`);
+    assert.ok(behind < 0.9, `and some of it is in the bag`);
+  }
+
+  // 3. The colon is the clearest case: two lengths fixed, two hanging.
+  const lengths = abdomen.meshesFor('colon');
+  assert.equal(lengths.length, 4, 'the colon is drawn in four lengths');
+  const behindShare = lengths.map((mesh) => {
+    const position = mesh.geometry.attributes.position;
+    const v = new THREE.Vector3();
+    let behind = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      const p = mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(ABDOMEN_SCALE);
+      if (isRetroperitoneal(p.x, p.y, p.z)) behind += 1;
+    }
+    return behind / position.count;
+  });
+  assert.equal(
+    behindShare.filter((f) => f > 0.9).length,
+    2,
+    'two of the four lengths are behind the bag'
+  );
+  assert.equal(
+    behindShare.filter((f) => f < 0.1).length,
+    2,
+    'and two of them are in it'
+  );
+
+  // 4. The right kidney is lower than the left, because the liver is above it.
+  assert.ok(
+    kidneyAt(-ABDOMEN_LEFT)[1] < kidneyAt(ABDOMEN_LEFT)[1] - 0.5,
+    'the right kidney sits lower than the left'
+  );
+  // And both lie on psoas rather than floating behind it.
+  for (const side of [ABDOMEN_LEFT, -ABDOMEN_LEFT]) {
+    const on = psoasAt(kidneyAt(side)[1], side);
+    assert.ok(Math.abs(kidneyAt(side)[0]) > Math.abs(on[0]), 'the kidney is lateral to psoas');
+    assert.ok(kidneyAt(side)[2] > on[2], 'and in front of it');
+  }
+
+  // 5. The cava is to the patient's right of the aorta — they are not both in
+  //    the midline, and which is which decides every approach to the back wall.
+  assert.ok(
+    cavaAt(0)[0] * ABDOMEN_LEFT < 0 && aortaAt(0)[0] * ABDOMEN_LEFT > 0,
+    'the cava is to the right of the midline and the aorta to the left'
+  );
+
+  // 6. Three ventral branches at three descending levels, all off the aorta.
+  assert.ok(ABDOMEN_LEVELS.coeliac > ABDOMEN_LEVELS.sma, 'the coeliac trunk leaves above the superior mesenteric');
+  assert.ok(ABDOMEN_LEVELS.sma > ABDOMEN_LEVELS.ima, 'and that above the inferior mesenteric');
+  for (const [id, level] of [
+    ['coeliac-trunk', ABDOMEN_LEVELS.coeliac],
+    ['superior-mesenteric-vessels', ABDOMEN_LEVELS.sma],
+    ['inferior-mesenteric-artery', ABDOMEN_LEVELS.ima],
+  ]) {
+    const root = new THREE.Vector3(...aortaAt(level)).multiplyScalar(ABDOMEN_SCALE);
+    assert.ok(box(id).distanceToPoint(root) < 0.5, `the ${id} starts on the aorta`);
+  }
+
+  // 7. The superior mesenteric artery passes **in front of** the third part of
+  //    the duodenum, which is the most-drawn relationship in the region.
+  const atLevel = (id) =>
+    points(id).reduce((best, p) =>
+      Math.abs(p.y - ABDOMEN_LEVELS.duodenumThird) < Math.abs(best.y - ABDOMEN_LEVELS.duodenumThird)
+        ? p
+        : best
+    );
+  assert.ok(
+    atLevel('superior-mesenteric-vessels').z > atLevel('duodenum').z,
+    'the superior mesenteric artery crosses in front of the third part of the duodenum'
+  );
+
+  // 8. The bag's back wall and the retroperitoneum's front wall are one
+  //    surface, which is what makes every claim above decidable.
+  for (const y of [2, 0, -2, -4]) {
+    const back = peritoneumBackAt(y);
+    assert.ok(isRetroperitoneal(0, y, back - 0.1), 'just behind the line is behind the bag');
+    assert.ok(!isRetroperitoneal(0, y, back + 0.1), 'and just in front of it is in the bag');
+  }
+
+  abdomen.dispose();
+});
+
+test('a chest is two bags, and everything else fits in the slab between them', () => {
+  // The claims are all about where things are relative to each other, so that
+  // is the whole of what there is to check — and three of them are the scene's
+  // reason to exist: the ribs slope, the left lung's notch is the mediastinum,
+  // and the two nerves pass the same root on opposite faces.
+  const thorax = buildThorax();
+  thorax.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of thorax.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of thorax.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(THORAX_SCALE));
+      }
+    }
+    return out;
+  };
+
+  // 1. **Every rib ends lower than it starts.** A space counted at the front is
+  //    not the space counted at the back, and that is a fact about all twelve.
+  for (let i = 0; i < 12; i += 1) {
+    for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+      const start = ribPath(i, 0, side);
+      const end = ribPath(i, 1, side);
+      assert.ok(end[1] < start[1] - 0.4, `rib ${i + 1} ends lower at the front than it starts`);
+      assert.ok(end[2] > start[2], 'and further forward');
+      assert.ok(Math.abs(ribPath(i, 0.5, side)[0]) > Math.abs(start[0]), 'having gone round the side');
+    }
+  }
+  // The lower cartilages turn up instead of reaching the sternum.
+  const sternum = box('sternal-body').union(box('manubrium')).union(box('xiphoid-process'));
+  assert.ok(box('costal-cartilages').intersectsBox(sternum), 'the upper cartilages reach the sternum');
+
+  // 2. The bundle is under the rib it belongs to, which is why a needle is
+  //    aimed at the top of a space.
+  for (let i = 0; i < 6; i += 1) {
+    for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+      const onRib = ribPath(i, 0.5, side);
+      const below = ribPath(i, 0.5, side);
+      below[1] -= 0.42;
+      assert.ok(below[1] < onRib[1], 'the bundle runs below its rib');
+      assert.ok(below[1] > ribPath(i + 1, 0.5, side)[1], 'and above the next rib down');
+    }
+  }
+
+  // 3. **The left lung's notch is the mediastinum.** No part of either lung is
+  //    inside the slab, and the slab takes more from the left than the right.
+  for (const id of ['left-lung', 'right-lung']) {
+    for (const point of points(id)) {
+      const at = mediastinumSection(point.y);
+      if (point.z > at.front || point.z < at.back) continue;
+      assert.ok(
+        Math.abs(point.x - at.centreX) > at.halfWidth - 1e-3,
+        `no part of the ${id} lies inside the mediastinum`
+      );
+    }
+  }
+  const slab = mediastinumSection(THORAX_LEVELS.heartCentre);
+  assert.ok(slab.centreX * THORAX_LEFT > 0, 'the slab sits to the patient’s left of the midline');
+  // **The bite is bigger on the left**, and that is the whole of why the two
+  // lungs differ in shape. Measured where the slab is widest, against the part
+  // of each lung that is at the slab's own depth — in front of it and behind it
+  // a lung legitimately reaches the midline and the right one crosses it.
+  const medialEdge = (id) => {
+    const near = points(id).filter(
+      (p) =>
+        Math.abs(p.y - THORAX_LEVELS.heartCentre) < 1.2 && p.z < slab.front && p.z > slab.back
+    );
+    assert.ok(near.length > 0, `${id} has something at the heart's own level and depth`);
+    return Math.min(...near.map((p) => Math.abs(p.x)));
+  };
+  assert.ok(
+    medialEdge('left-lung') > medialEdge('right-lung') + 1.5,
+    'the left lung is held further from the midline than the right — its notch'
+  );
+
+  // 4. Each lung's base stops above the floor of its own cavity.
+  for (const id of ['left-lung', 'right-lung']) {
+    const lung = box(id);
+    assert.ok(
+      lung.min.y / THORAX_SCALE > THORAX_LEVELS.recessFloor + 0.8,
+      `the ${id} stops above the bottom of the cavity`
+    );
+  }
+  assert.ok(
+    box('costodiaphragmatic-recess').min.y < box('left-lung').min.y,
+    'and the recess goes below where the lung stops'
+  );
+
+  // 5. The two sides of the airway differ, and it is one table that says so.
+  assert.ok(AIRWAY.right.radius > AIRWAY.left.radius, 'the right main bronchus is the wider');
+  assert.ok(AIRWAY.right.run < AIRWAY.left.run, 'and the shorter');
+  assert.ok(AIRWAY.right.spread < AIRWAY.left.spread, 'and the more upright');
+
+  // 6. **The scene's subject.** At each hilum the phrenic passes in front and
+  //    the vagus behind.
+  for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+    const hilum = bronchusPath(side, 1);
+    const nearest = (id) =>
+      points(id)
+        .filter((p) => p.x * side > 0)
+        .reduce((best, p) => (Math.abs(p.y - hilum[1]) < Math.abs(best.y - hilum[1]) ? p : best));
+    const phrenic = nearest('phrenic-nerve');
+    const vagus = nearest('vagus-nerve');
+    assert.ok(phrenic.z > hilum[2], 'the phrenic nerve passes in front of the root of the lung');
+    assert.ok(vagus.z < hilum[2], 'and the vagus behind it');
+  }
+
+  // 7. The gullet is behind everything, all the way down.
+  for (const y of [THORAX_LEVELS.carina, THORAX_LEVELS.hilum, THORAX_LEVELS.heartCentre]) {
+    const at = (id) =>
+      points(id).reduce((best, p) => (Math.abs(p.y - y) < Math.abs(best.y - y) ? p : best));
+    assert.ok(at('oesophagus').z < at('trachea-and-bronchi').z + 2, 'the gullet is behind the airway');
+  }
+  assert.ok(box('oesophagus').max.z < box('heart').min.z + 1e-6, 'and behind the heart');
+
+  thorax.dispose();
+});
 
 test('an elbow is one axis with a hinge on one end of it and a pivot on the other', () => {
   // Everything this scene claims is a claim about one line. What is checked is

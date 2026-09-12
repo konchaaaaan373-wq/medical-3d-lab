@@ -759,5 +759,44 @@
     "cardRevision": 3,
     "modelDigest": "b05edb07c3d69a20",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "thorax-anatomy",
+    "card": "docs/model-cards/thorax-anatomy.md",
+    "modelSources": [
+      "src/data/thoraxAnatomyScene.js",
+      "src/scenes/regional/organs/thorax.js",
+      "src/scenes/regional/scenes/thoraxAnatomy/ThoraxAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "b95a864c1b28aca2",
+    "cardUpdatedAt": "2026-09-12"
+  },
+  {
+    "sceneId": "abdomen-anatomy",
+    "card": "docs/model-cards/abdomen-anatomy.md",
+    "modelSources": [
+      "src/data/abdomenAnatomyScene.js",
+      "src/scenes/regional/organs/abdomen.js",
+      "src/scenes/regional/scenes/abdomenAnatomy/AbdomenAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "5846ec4777d5d41f",
+    "cardUpdatedAt": "2026-09-12"
+  },
+  {
+    "sceneId": "pelvis-anatomy",
+    "card": "docs/model-cards/pelvis-anatomy.md",
+    "modelSources": [
+      "src/data/pelvisAnatomyScene.js",
+      "src/scenes/regional/organs/pelvis.js",
+      "src/scenes/regional/scenes/pelvisAnatomy/PelvisAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "723369b58bff058b",
+    "cardUpdatedAt": "2026-09-12"
   }
 ]

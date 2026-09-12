@@ -52,6 +52,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'skeleton-overview',
   'neck-anatomy',
   'elbow-anatomy',
+  'thorax-anatomy',
+  'abdomen-anatomy',
+  'pelvis-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -299,6 +302,24 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '1本の軸の上に2つの関節。側副靱帯はどちらも軸そのものから起こるので、曲げても緩みません。',
     ['HINGE', 'PIVOT', 'NERVE'],
     ['蝶番', '回旋', '尺骨神経']
+  ),
+  'thorax-anatomy': presentation(
+    'Two bags take nearly the whole chest. Everything else has to fit in the slab left between them.',
+    '2つの胸膜腔が胸腔のほとんどを占めます。それ以外のすべては、間に残された縦隔に収まるほかありません。',
+    ['CAGE', 'PLEURA', 'MEDIASTINUM'],
+    ['胸郭', '胸膜腔', '縦隔']
+  ),
+  'abdomen-anatomy': presentation(
+    'In the bag, or behind it? One line sorts every organ in an abdomen.',
+    '袋の中か、袋の後ろか。腹部の臓器は、この1本の線ですべて分かれます。',
+    ['THE BAG', 'BEHIND IT', 'THE LINE'],
+    ['腹膜腔', '後腹膜', '境界']
+  ),
+  'pelvis-anatomy': presentation(
+    'One gap in one muscle, and one crossing that has two names.',
+    '1つの筋にある1つの裂孔と、2つの名前をもつ1つの交差。',
+    ['THE FLOOR', 'THE POUCH', 'THE BRIDGE'],
+    ['骨盤底', 'ダグラス窩', '尿管の交差']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

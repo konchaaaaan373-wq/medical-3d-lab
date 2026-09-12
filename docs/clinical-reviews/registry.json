@@ -1615,5 +1615,93 @@
       "No fracture, dislocation, subluxation, epicondylitis, effusion, nerve entrapment or arthritis is represented in any form, and nothing here is anyone’s elbow.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning or performing any puncture, line, nerve block, reduction, injection or operation."
     ]
+  },
+  {
+    "sceneId": "thorax-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built chest — the cage and its spaces, the diaphragm, the two pleural cavities and the recess no lung reaches, both lungs, and the mediastinum with the heart, airway, gullet, great vessels and two nerves in it — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/thorax-anatomy.md",
+      "docs/model-evidence/thorax-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, calibre, angle, rib spacing or volume is a measurement, and the size of the costodiaphragmatic recess is not a capacity.",
+      "Nothing moves: breathing, rib elevation, diaphragmatic descent and the heartbeat are not represented, and no pressure, volume or compliance exists anywhere in the model.",
+      "The lungs are silhouettes in their place; the lobes and fissures are named and not separated, and the bronchopulmonary segments are in lung-anatomy.",
+      "The heart is an outline in its place, with no chamber, valve, coronary vessel or wall.",
+      "The three layers of intercostal muscle are not drawn, and the intercostal bundle is drawn as one cord on the usual course; in life the order varies, the bundle is less sheltered posteriorly, and collateral branches run along the lower border of the space.",
+      "The visceral pleura and the film of fluid between the layers, which is what actually holds a lung out against the wall, are not drawn.",
+      "The azygos vein, the pulmonary veins, every branch of the aorta, the bronchial tree below the main bronchi, the thoracic duct, the sympathetic chain, the thymus, the breast and the muscles of the chest wall are not drawn.",
+      "The diaphragm’s three openings are described rather than drawn as openings.",
+      "No pneumothorax, effusion, consolidation, collapse, infarct, tumour, fracture or mediastinal shift is represented in any form, and nothing here is anyone’s chest.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, rib or space counting on an image, or planning or performing any puncture, drain, line, compression, incision or operation."
+    ]
+  },
+  {
+    "sceneId": "abdomen-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built abdomen — the wall, the peritoneal bag and its folds, the retroperitoneum, and the organs and vessels sorted onto one side of the peritoneum or the other — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/abdomen-anatomy.md",
+      "docs/model-evidence/abdomen-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, calibre, angle or volume is a measurement, and the region is drawn as one representative arrangement.",
+      "Nothing moves: digestion, peristalsis, filling and emptying are not represented, and no pressure exists anywhere in the model.",
+      "Every organ is an outline in its place. The liver, kidney, pancreas, stomach, colon and adrenal each have their own scene, and nothing about their internal structure is drawn here.",
+      "The two layers of peritoneum, the lesser sac behind the stomach and the omental foramen into it are not drawn, and in a woman the peritoneal cavity is not quite closed, which is not represented.",
+      "The fascial layers of the retroperitoneum, which are what decide where a leak actually spreads, are not drawn.",
+      "The three flat muscles of the abdominal wall, the linea alba, the rectus sheath and the inguinal canal are not drawn.",
+      "The gallbladder and biliary tree, the caecum, appendix and rectum, the portal vein, the lymphatics and nodes and the nerves are not drawn.",
+      "Every artery here is drawn without its branches, and accessory renal arteries, which are common, are not drawn.",
+      "No obstruction, ischaemia, stone, aneurysm, hernia, inflammation or tumour is represented in any form, and nothing here is anyone’s abdomen.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, interpreting an image, or planning or performing any incision, puncture, drain or operation."
+    ]
+  },
+  {
+    "sceneId": "pelvis-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built pelvis — the ring, the levator sling and its gap, the peritoneum and its lowest point, the bladder, ureters, rectum and vessels, and both sets of reproductive organs shown one at a time — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pelvis-anatomy.md",
+      "docs/model-evidence/pelvis-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "One model carries both sets of reproductive organs and no body has both; this is a declared display arrangement, not an anatomy.",
+      "The bony ring is drawn as one funnel and the difference between a male and a female ring, which is a real and useful difference, is not represented.",
+      "Nothing moves: filling, emptying, sphincter action and contraction of the floor are not represented, and no pressure exists anywhere in the model.",
+      "The bladder is drawn empty, so the change in its position and its relationship to the peritoneum when full is described and not shown.",
+      "No length, calibre, angle or volume is a measurement, and the size of the peritoneal pouch is not a capacity.",
+      "Every organ is an outline in its place; bladder-anatomy, uterus-anatomy, prostate-anatomy and pelvic-floor-anatomy are those structures at their own scale.",
+      "The three parts of the levator sling, both anal sphincters, the perineal body and the pelvic fascia are not drawn.",
+      "The ligaments that suspend the uterus, the pelvic nerves, the lymphatics, the veins beside every artery and every branch of every artery are not drawn.",
+      "The position of the uterus varies a great deal between people and with a full bladder; one position is drawn.",
+      "No prolapse, incontinence, obstruction, fibroid, enlargement, tumour or fracture is represented in any form, and nothing here is anyone’s pelvis.",
+      "The scene must not be used for any examination, for diagnosis, treatment or dose selection, prognosis, or for planning or performing any puncture, catheter, incision or operation."
+    ]
   }
 ]

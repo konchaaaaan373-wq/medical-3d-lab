@@ -1,8 +1,8 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-11。対象は 2026-09 に追加した 21 シーンです——
+Last updated: 2026-09-12。対象は 2026-09 に追加した 25 シーンです——
 前立腺・男性生殖路・膝・肩・股、眼・耳・皮膚・リンパ節・全身リンパ路・乳房・
-脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、そして頸部と肘関節。
+脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、頸部と肘関節、そして胸部・腹部・骨盤。
 既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した分だけ**を
 書きます。
 
@@ -914,6 +914,164 @@ ulnar-nerve  median-nerve  brachial-artery
 - **肘窩は外側から腱・動脈・神経の順**です
 - `articular-cartilage` の厚みは**実物より厚く**描いています。寸法として
   使わないでください
+
+---
+
+## `thorax-anatomy` — 胸部（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 23 |
+| tags | `cage` `space` `floor` `pleura` `lung` `mediastinum` `heart` `airway` `vessel` `nerve` |
+| views | `whole` `cage` `lungs-in-place` `mediastinum` `hilum` `recess` `from-behind` |
+| bounds | 11.5 × 8.9 × 8.3（world unit。1 cm = `WORLD_SCALE` = 0.4） |
+
+```
+manubrium  sternal-body  xiphoid-process  ribs  costal-cartilages  thoracic-vertebrae
+intercostal-space  intercostal-bundle  diaphragm
+parietal-pleura  costodiaphragmatic-recess  right-lung  left-lung
+mediastinum  heart  pericardium  trachea-and-bronchi  oesophagus
+aorta  venae-cavae  pulmonary-arteries  phrenic-nerve  vagus-nerve
+```
+
+**anchors** — `SITES`: `sternalAngle` `jugularNotch` `carina` `hilumLeft`
+`hilumRight` `apexBeat` `costophrenicAngle` `oesophagealHiatus` `aorticHiatus`
+`cavalOpening`（`anchorPoints` は world unit、`SITES` は cm）。
+関数としては `chestSection(y)`・`ribPath(i, t, side)`・`ribBoneFraction(i)`・
+`mediastinumSection(y)`・`bronchusPath(side, t)`・`diaphragmAt(x, z)`、
+表としては `LEVELS`・`RIB_LEVELS`・`AIRWAY`・`WORLD_SCALE`。
+
+**このシーンが持っている病態の足場**:
+- **気胸・胸水**: `parietal-pleura` と `costodiaphragmatic-recess` が
+  「胸膜腔は左右別」「肺は洞に届かない」の 2 点を構造として持っています。
+  ただし**呼吸も圧も存在しません**——虚脱や貯留を主張するなら、
+  まず容積と圧を持つ仕組みが要ります
+- **無気肺・区域の主張**: `right-lung` / `left-lung` はシルエットです。
+  **葉も区域も分けていません。** 葉単位・区域単位の主張は `lung-anatomy` 側です
+- **縦隔偏位**: `mediastinum` は空間として描かれており、「肺でないものが
+  ここに収まる」ことは言えますが、**偏位は動きなので表現できません**
+- **肋間穿刺・ドレーン**: `intercostal-space` と `intercostal-bundle` が
+  「束は肋骨の下」を持っています。**手技の主張は model card が禁止しています**
+- **横隔神経麻痺**: `phrenic-nerve` は左右あり、肺門の前を通ります。
+  頸部由来であることは `neck-anatomy` 側と連続します
+- **心タンポナーデ**: `pericardium` はありますが、**圧もコンプライアンスも
+  ありません。** 「伸びない袋」という性質は説明にとどまっています
+
+**変えてはいけない関係**:
+- **肋骨は前へ行くほど下がります。** 12 本すべてで成り立ちます
+- **左肺の心切痕は `mediastinumSection` そのもの**です（`clearMediastinum`）。
+  切痕を「描いて」はいけません
+- **肺は自分の側へ押し出します。** 縦隔の中心で振り分けると、左肺の一部が
+  右胸腔に出ます（実際に一度そうなりました）
+- **横隔神経は肺門の前、迷走神経は後ろ**です。入れ替えた瞬間、
+  シーンは何も言わなくなります
+- **食道は常に後ろ**です（気道の後ろ、心臓の後ろ）
+- **大動脈弓・鎖骨下動脈は `neck-anatomy` 側にもあります。** 2 シーンで
+  同じ血管を別に描いており、**どちらも「その血管のモデル」ではありません**
+
+---
+
+## `abdomen-anatomy` — 腹部（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 24 |
+| tags | `wall` `cavity` `behind-the-bag` `in-the-bag` `gut` `organ` `vessel` `urinary` |
+| views | `whole` `wall` `in-the-bag` `behind-the-bag` `transpyloric` `great-vessels` `from-behind` |
+| bounds | 10.9 × 7.5 × 8.6（world unit。1 cm = `WORLD_SCALE` = 0.4） |
+
+```
+abdominal-wall  rectus-abdominis  lumbar-vertebrae  psoas-muscle
+peritoneal-cavity  greater-omentum  mesentery  retroperitoneum
+liver  stomach  spleen  small-bowel  colon
+pancreas  duodenum  kidneys  adrenal-glands  ureters
+aorta  inferior-vena-cava  coeliac-trunk  superior-mesenteric-vessels
+inferior-mesenteric-artery  renal-vessels
+```
+
+**anchors** — `SITES`: `transpyloric` `coeliac` `sma` `duodenalCrossing`
+`hilumLeft` `hilumRight` `bifurcation` `ureterCrossing`。関数としては
+`abdomenSection(y)`・**`peritoneumBackAt(y)`**・`isRetroperitoneal(x, y, z)`・
+`aortaAt(y)`・`cavaAt(y)`・`psoasAt(y, side)`・`kidneyAt(side)`、
+表としては `LEVELS`・`GREAT_VESSELS`・`KIDNEYS`・`WORLD_SCALE`。
+
+**`isRetroperitoneal` は病態側からも使えます。** 「この病変は袋の中か後ろか」は
+このシーンが答えられる唯一の問いであり、同時に最も価値のある問いです。
+
+**このシーンが持っている病態の足場**:
+- **後腹膜出血・液体貯留**: `retroperitoneum` は空間として存在します。
+  ただし**筋膜層を描いていません**——広がり方の主張はできません
+- **腸閉塞**: `small-bowel` は1つの塊で、**内腔も壁もありません。** 拡張も
+  蠕動も表現できません。腸管そのものの主張は消化管側のシーンへ
+- **上腸間膜動脈**: `superior-mesenteric-vessels` は十二指腸第3部の前を通ります。
+  SMA症候群の舞台ですが、**角度も距離も実測値ではありません**
+- **腎・尿管**: `kidneys` / `ureters` / `psoas-muscle` が「腎は大腰筋の上、
+  尿管はその前面」を持っています。結石の位置は指せますが、
+  **3か所の生理的狭窄部は描いていません**
+- **大動脈瘤**: `aorta` は後腹膜にあります。「破裂が腔ではなく空間へ広がる」
+  という主張の足場はありますが、**径も壁もありません**
+
+**変えてはいけない関係**:
+- **`peritoneumBackAt` は 1 本です。** 腹膜腔の後壁と後腹膜の前壁は同じ面であり、
+  別々に書いた瞬間、このシーンの主張はすべて判定不能になります
+- **膵臓と十二指腸は境界をまたぎます。** 片側に寄せないでください
+- **結腸は 4 区間のうち 2 つが後腹膜**です。これが体内で最も明快な例です
+- **右腎は左腎より低い**です（上に肝臓があるため）
+- **下大静脈は患者の右、大動脈は左**です
+- **腎と尿管は大腰筋の「前」**です。大腰筋はそれより深い位置にあります
+
+---
+
+## `pelvis-anatomy` — 骨盤（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 22 |
+| tags | `bone` `floor` `peritoneum` `urinary` `gut` `vessel` `female` `male` |
+| views | `shared` `floor` `pouch` `female` `male` `bridge` `from-behind` |
+| bounds | 9.5 × 6.7 × 5.3（world unit。1 cm = `WORLD_SCALE` = 0.42） |
+
+```
+pelvic-ring  pubic-symphysis  levator-ani  levator-hiatus
+pelvic-peritoneum  peritoneal-pouch
+bladder  ureters  urethra  rectum  anal-canal  sigmoid-colon
+common-iliac-arteries  internal-iliac-artery  external-iliac-vessels
+uterus  ovaries-and-tubes  vagina  uterine-artery
+prostate  seminal-vesicles  vas-deferens
+```
+
+**anchors** — `SITES`: `promontory` `symphysis` `bridge` `hiatus` `pouch`
+`bladderNeck`。関数としては `pelvisSection(y)`・**`floorAt(x, z)`**・
+`inHiatus(x, z)`・`edgeOfHiatus(angle, at)`・**`bridgeAt(side)`**・
+`ureterPath(side, t)`、表としては `LEVELS`・`HIATUS`・`FEMALE_SET`・`MALE_SET`・
+`UNDER_THE_BRIDGE`・`WORLD_SCALE`。
+
+**⚠ このシーンは男女両方の生殖器を含みます。** `FEMALE_SET` と `MALE_SET` が
+その一覧で、**両方をもつ身体は存在しません。** 病態を載せるときは、
+**必ずどちらか一方の tag を hide してください。** 共存させるために位置を
+変えてはおらず、両者は実際に重なります（テストがそれを確認しています）。
+
+**このシーンが持っている病態の足場**:
+- **尿管損傷**: `bridgeAt` が「尿管は下、交差する構造は上」を 1 か所で決めています。
+  骨盤内手術での尿管損傷の機序を指せますが、**走行のばらつきは表現していません**
+- **骨盤臓器脱**: `levator-ani` と `levator-hiatus` があります。ただし
+  **骨盤底は収縮せず、裂孔は変化しません。** 下垂を主張するには機構が要ります。
+  挙筋の 3 部分は `pelvic-floor-anatomy` 側です
+- **腹水・膿瘍・出血**: `peritoneal-pouch` が「腹腔の最低点」を持っています。
+  `abdomen-anatomy` の腹膜腔と連続する主張として使えます
+- **前立腺肥大**: `prostate` は輪郭のみで、**内部を貫く尿道も領域区分もありません。**
+  肥大の種類を分けるのは `prostate-anatomy` 側です
+- **膀胱**: `bladder` は**空虚な状態**です。充満による位置変化——恥骨上穿刺が
+  腹腔を避けられる理由——は説明にとどまっています
+
+**変えてはいけない関係**:
+- **`bridgeAt` は 1 点です。** 子宮動脈と精管を別々の点から生成した瞬間、
+  「同じ交差の 2 つの名前」という主張が消えます
+- **裂孔は本物の穴**です（`edgeOfHiatus`）。中の頂点を下げて凹ませると、
+  穴ではなく漏斗になります（実際に一度そうなりました）
+- **腹膜は骨盤底に届きません。** 膀胱下部・直腸下部は袋の外です
+- **陥凹は腹腔の最低点**で、膀胱の後ろ・直腸の前です
+- **外腸骨動脈は骨盤内に何も供給しません。** 通過するだけです
 
 ---
 
