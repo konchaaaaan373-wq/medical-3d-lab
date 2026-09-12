@@ -53,6 +53,16 @@ import {
   collateralOrigin,
   trochleaRadiusAt,
 } from '../src/scenes/musculoskeletal/organs/elbowJoint.js';
+import {
+  AIRWAY,
+  LEFT as THORAX_LEFT,
+  LEVELS as THORAX_LEVELS,
+  WORLD_SCALE as THORAX_SCALE,
+  bronchusPath,
+  buildThorax,
+  mediastinumSection,
+  ribPath,
+} from '../src/scenes/regional/organs/thorax.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2112,6 +2122,131 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('a chest is two bags, and everything else fits in the slab between them', () => {
+  // The claims are all about where things are relative to each other, so that
+  // is the whole of what there is to check — and three of them are the scene's
+  // reason to exist: the ribs slope, the left lung's notch is the mediastinum,
+  // and the two nerves pass the same root on opposite faces.
+  const thorax = buildThorax();
+  thorax.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of thorax.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of thorax.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(THORAX_SCALE));
+      }
+    }
+    return out;
+  };
+
+  // 1. **Every rib ends lower than it starts.** A space counted at the front is
+  //    not the space counted at the back, and that is a fact about all twelve.
+  for (let i = 0; i < 12; i += 1) {
+    for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+      const start = ribPath(i, 0, side);
+      const end = ribPath(i, 1, side);
+      assert.ok(end[1] < start[1] - 0.4, `rib ${i + 1} ends lower at the front than it starts`);
+      assert.ok(end[2] > start[2], 'and further forward');
+      assert.ok(Math.abs(ribPath(i, 0.5, side)[0]) > Math.abs(start[0]), 'having gone round the side');
+    }
+  }
+  // The lower cartilages turn up instead of reaching the sternum.
+  const sternum = box('sternal-body').union(box('manubrium')).union(box('xiphoid-process'));
+  assert.ok(box('costal-cartilages').intersectsBox(sternum), 'the upper cartilages reach the sternum');
+
+  // 2. The bundle is under the rib it belongs to, which is why a needle is
+  //    aimed at the top of a space.
+  for (let i = 0; i < 6; i += 1) {
+    for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+      const onRib = ribPath(i, 0.5, side);
+      const below = ribPath(i, 0.5, side);
+      below[1] -= 0.42;
+      assert.ok(below[1] < onRib[1], 'the bundle runs below its rib');
+      assert.ok(below[1] > ribPath(i + 1, 0.5, side)[1], 'and above the next rib down');
+    }
+  }
+
+  // 3. **The left lung's notch is the mediastinum.** No part of either lung is
+  //    inside the slab, and the slab takes more from the left than the right.
+  for (const id of ['left-lung', 'right-lung']) {
+    for (const point of points(id)) {
+      const at = mediastinumSection(point.y);
+      if (point.z > at.front || point.z < at.back) continue;
+      assert.ok(
+        Math.abs(point.x - at.centreX) > at.halfWidth - 1e-3,
+        `no part of the ${id} lies inside the mediastinum`
+      );
+    }
+  }
+  const slab = mediastinumSection(THORAX_LEVELS.heartCentre);
+  assert.ok(slab.centreX * THORAX_LEFT > 0, 'the slab sits to the patient’s left of the midline');
+  // **The bite is bigger on the left**, and that is the whole of why the two
+  // lungs differ in shape. Measured where the slab is widest, against the part
+  // of each lung that is at the slab's own depth — in front of it and behind it
+  // a lung legitimately reaches the midline and the right one crosses it.
+  const medialEdge = (id) => {
+    const near = points(id).filter(
+      (p) =>
+        Math.abs(p.y - THORAX_LEVELS.heartCentre) < 1.2 && p.z < slab.front && p.z > slab.back
+    );
+    assert.ok(near.length > 0, `${id} has something at the heart's own level and depth`);
+    return Math.min(...near.map((p) => Math.abs(p.x)));
+  };
+  assert.ok(
+    medialEdge('left-lung') > medialEdge('right-lung') + 1.5,
+    'the left lung is held further from the midline than the right — its notch'
+  );
+
+  // 4. Each lung's base stops above the floor of its own cavity.
+  for (const id of ['left-lung', 'right-lung']) {
+    const lung = box(id);
+    assert.ok(
+      lung.min.y / THORAX_SCALE > THORAX_LEVELS.recessFloor + 0.8,
+      `the ${id} stops above the bottom of the cavity`
+    );
+  }
+  assert.ok(
+    box('costodiaphragmatic-recess').min.y < box('left-lung').min.y,
+    'and the recess goes below where the lung stops'
+  );
+
+  // 5. The two sides of the airway differ, and it is one table that says so.
+  assert.ok(AIRWAY.right.radius > AIRWAY.left.radius, 'the right main bronchus is the wider');
+  assert.ok(AIRWAY.right.run < AIRWAY.left.run, 'and the shorter');
+  assert.ok(AIRWAY.right.spread < AIRWAY.left.spread, 'and the more upright');
+
+  // 6. **The scene's subject.** At each hilum the phrenic passes in front and
+  //    the vagus behind.
+  for (const side of [THORAX_LEFT, -THORAX_LEFT]) {
+    const hilum = bronchusPath(side, 1);
+    const nearest = (id) =>
+      points(id)
+        .filter((p) => p.x * side > 0)
+        .reduce((best, p) => (Math.abs(p.y - hilum[1]) < Math.abs(best.y - hilum[1]) ? p : best));
+    const phrenic = nearest('phrenic-nerve');
+    const vagus = nearest('vagus-nerve');
+    assert.ok(phrenic.z > hilum[2], 'the phrenic nerve passes in front of the root of the lung');
+    assert.ok(vagus.z < hilum[2], 'and the vagus behind it');
+  }
+
+  // 7. The gullet is behind everything, all the way down.
+  for (const y of [THORAX_LEVELS.carina, THORAX_LEVELS.hilum, THORAX_LEVELS.heartCentre]) {
+    const at = (id) =>
+      points(id).reduce((best, p) => (Math.abs(p.y - y) < Math.abs(best.y - y) ? p : best));
+    assert.ok(at('oesophagus').z < at('trachea-and-bronchi').z + 2, 'the gullet is behind the airway');
+  }
+  assert.ok(box('oesophagus').max.z < box('heart').min.z + 1e-6, 'and behind the heart');
+
+  thorax.dispose();
+});
 
 test('an elbow is one axis with a hinge on one end of it and a pivot on the other', () => {
   // Everything this scene claims is a claim about one line. What is checked is

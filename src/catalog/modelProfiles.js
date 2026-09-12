@@ -645,6 +645,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code from one axis. `HINGE` is the flexion axis, `trochleaRadiusAt(x)` is how far the humeral articular surface is from it at each point along it, and everything articular is derived from those two: the trochlea is lathed about the axis, the cartilage on it is lathed about the same radius, the ulna’s trochlear notch is **pressed onto that surface** by `clearTrochlea` so the concavity it grips with *is* the spool, and the capitellum sits at the axis’ lateral end. `collateralOrigin(side)` puts both collateral ligaments on the axis itself, which is why the model can claim that neither slackens as the elbow bends — it is a property of the construction rather than a coincidence between two written coordinates. The annular ligament is drawn as an open ring reaching the ulna at both ends and the radius at neither, which is what holds a radial head in place. No state and no mechanism: the joint is drawn extended and **nothing bends, turns or spins**. **No length, angle, thickness or attachment footprint is a measurement**, and the articular cartilage is drawn thicker than life so that it can be seen and clicked. Muscles are drawn as two common origins rather than individual bellies. The interosseous membrane, the growth plates, the bursae, the fat pads, the synovium, the veins of the cubital fossa, the bicipital aponeurosis and the lateral ulnar collateral ligament are not drawn.',
   },
   {
+    profileId: 'thorax-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code from four shared boundary functions rather than from written coordinates. `chestSection(y)` is the outline of the chest at each height; **every rib is a run round it** rather than a drawn curve, so the slope that makes a rib cage a cage is one number per level, and the costal cartilages continue from the same run. `mediastinumSection(y)` is the slab left between the two pleural cavities, and **both lungs are pressed out of it** by `clearMediastinum`, so the left lung’s cardiac notch is the mediastinum’s own boundary rather than a notch anybody drew — it cannot drift from what is inside it. `diaphragmAt(x, z)` is the height of the dome: the diaphragm is built from it, each lung’s base rests on it, and the recess the lung never reaches is what is left between it and the wall. The difference between the two main bronchi is one table of three numbers. **The two nerves are the third subject**: the phrenic is placed in front of each hilum and the vagus behind it, from the same hilum point, so the one relationship that separates them cannot be lost. No state and no mechanism: **nothing breathes, the ribs do not rise, the diaphragm does not descend and the heart does not beat**, and no pressure, volume or compliance exists anywhere in the model. **No length, calibre, angle, rib spacing or volume is a measurement.** The lungs are silhouettes in their place and not an atlas — the lobes and fissures are named and not separated, which `lung-anatomy` does; the heart is an outline with no chamber, valve or coronary vessel. The intercostal muscles, the visceral pleura, the azygos vein, the pulmonary veins, every branch of the aorta, the bronchial tree below the main bronchi, the thoracic duct, the sympathetic chain and the thymus are not drawn.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

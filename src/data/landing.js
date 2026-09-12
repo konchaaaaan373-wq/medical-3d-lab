@@ -52,6 +52,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'skeleton-overview',
   'neck-anatomy',
   'elbow-anatomy',
+  'thorax-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -299,6 +300,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '1本の軸の上に2つの関節。側副靱帯はどちらも軸そのものから起こるので、曲げても緩みません。',
     ['HINGE', 'PIVOT', 'NERVE'],
     ['蝶番', '回旋', '尺骨神経']
+  ),
+  'thorax-anatomy': presentation(
+    'Two bags take nearly the whole chest. Everything else has to fit in the slab left between them.',
+    '2つの胸膜腔が胸腔のほとんどを占めます。それ以外のすべては、間に残された縦隔に収まるほかありません。',
+    ['CAGE', 'PLEURA', 'MEDIASTINUM'],
+    ['胸郭', '胸膜腔', '縦隔']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

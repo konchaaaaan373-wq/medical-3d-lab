@@ -1615,5 +1615,34 @@
       "No fracture, dislocation, subluxation, epicondylitis, effusion, nerve entrapment or arthritis is represented in any form, and nothing here is anyone’s elbow.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, or planning or performing any puncture, line, nerve block, reduction, injection or operation."
     ]
+  },
+  {
+    "sceneId": "thorax-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built chest — the cage and its spaces, the diaphragm, the two pleural cavities and the recess no lung reaches, both lungs, and the mediastinum with the heart, airway, gullet, great vessels and two nerves in it — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/thorax-anatomy.md",
+      "docs/model-evidence/thorax-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "No length, calibre, angle, rib spacing or volume is a measurement, and the size of the costodiaphragmatic recess is not a capacity.",
+      "Nothing moves: breathing, rib elevation, diaphragmatic descent and the heartbeat are not represented, and no pressure, volume or compliance exists anywhere in the model.",
+      "The lungs are silhouettes in their place; the lobes and fissures are named and not separated, and the bronchopulmonary segments are in lung-anatomy.",
+      "The heart is an outline in its place, with no chamber, valve, coronary vessel or wall.",
+      "The three layers of intercostal muscle are not drawn, and the intercostal bundle is drawn as one cord on the usual course; in life the order varies, the bundle is less sheltered posteriorly, and collateral branches run along the lower border of the space.",
+      "The visceral pleura and the film of fluid between the layers, which is what actually holds a lung out against the wall, are not drawn.",
+      "The azygos vein, the pulmonary veins, every branch of the aorta, the bronchial tree below the main bronchi, the thoracic duct, the sympathetic chain, the thymus, the breast and the muscles of the chest wall are not drawn.",
+      "The diaphragm’s three openings are described rather than drawn as openings.",
+      "No pneumothorax, effusion, consolidation, collapse, infarct, tumour, fracture or mediastinal shift is represented in any form, and nothing here is anyone’s chest.",
+      "The scene must not be used for diagnosis, treatment or dose selection, prognosis, rib or space counting on an image, or planning or performing any puncture, drain, line, compression, incision or operation."
+    ]
   }
 ]

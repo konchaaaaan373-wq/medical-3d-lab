@@ -1589,6 +1589,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/musculoskeletal/scenes/elbowAnatomy/index.js'),
   },
   {
+    id: 'thorax-anatomy',
+    slug: 'thorax-anatomy',
+    titleEn: 'Interactive chest anatomy',
+    titleJa: '触れて学ぶ胸部の解剖',
+    system: 'regional',
+    organ: 'thorax',
+    organs: ['thorax', 'lungs', 'heart', 'airway', 'esophagus'],
+    disease: null,
+    conditions: ['chest anatomy', 'thorax', 'mediastinum', 'pleural cavity', 'costodiaphragmatic recess', 'intercostal space', 'phrenic nerve', 'sternal angle', '胸部の解剖', '胸郭', '縦隔', '胸膜腔', '肋骨横隔膜洞', '肋間', '横隔神経', '胸骨角'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/thorax-anatomy.md',
+    modelProfile: 'thorax-anatomy-procedural-atlas',
+    description:
+      'Two pleural cavities take almost the whole chest, and everything that is not lung has to fit in the slab left between them: the ribs and the spaces between them, the diaphragm under it all, and the heart, airway, gullet, great vessels and two nerves crowded into the middle.',
+    descriptionJa:
+      '2つの胸膜腔が胸腔の大半を占め、肺でないものはすべてその間に残された縦隔に収まります。肋骨とその間の肋間、底をなす横隔膜、そして中央に密集する心臓・気道・食道・大血管・2本の神経を示します。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/regional/scenes/thoraxAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

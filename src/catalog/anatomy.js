@@ -335,6 +335,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the interosseous membrane, which is how load actually reaches the elbow from the hand; the lateral ulnar collateral ligament as its own band; the fat pads and the synovium, which is what an effusion is seen by; the growth plates; the individual forearm muscles rather than two common origins; and the branches of each nerve. Nothing bends or rotates, which is the first thing a movement or instability scene would need',
   },
   {
+    organ: 'thorax',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/thoraxAnatomy — twenty-three named structures selectable by name: the three parts of the sternum, the ribs, the costal cartilages and the thoracic vertebrae; the intercostal spaces and the vessels and nerve under each rib; the diaphragm; the parietal pleura and the costodiaphragmatic recess; both lungs; the mediastinum as a space, with the heart, pericardium, trachea and main bronchi and the oesophagus in it; the aorta, the venae cavae and the pulmonary arteries; and the phrenic and vagus nerves; tests/organ-parts-anatomy.test.js — every rib ends lower at the front than it starts at the back, the lower costal cartilages turn up instead of reaching the sternum, the neurovascular bundle lies below the rib it belongs to, no part of either lung lies inside the mediastinum and the left lung is the one the mediastinum takes a bite out of, the lung bases stop above the floor of the pleural cavity, the right main bronchus is wider, shorter and more upright than the left, and at each hilum the phrenic nerve passes in front and the vagus behind',
+    next: 'A3: the three layers of intercostal muscle, the visceral pleura and the fluid between the layers, the azygos vein and the pulmonary veins, the branches of the arch, the thoracic duct and the sympathetic chain, and the diaphragm’s three openings as openings rather than as described levels. Nothing breathes, which is the first thing a ventilation or a mechanics scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

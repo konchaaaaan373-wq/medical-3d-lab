@@ -759,5 +759,18 @@
     "cardRevision": 3,
     "modelDigest": "b05edb07c3d69a20",
     "cardUpdatedAt": "2026-09-11"
+  },
+  {
+    "sceneId": "thorax-anatomy",
+    "card": "docs/model-cards/thorax-anatomy.md",
+    "modelSources": [
+      "src/data/thoraxAnatomyScene.js",
+      "src/scenes/regional/organs/thorax.js",
+      "src/scenes/regional/scenes/thoraxAnatomy/ThoraxAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "b95a864c1b28aca2",
+    "cardUpdatedAt": "2026-09-12"
   }
 ]

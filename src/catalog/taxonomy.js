@@ -85,6 +85,7 @@ export const ORGANS = [
   { id: 'skeleton', system: 'musculoskeletal', label: 'Skeleton (overview)', labelJa: '全身骨格（概観）' },
   { id: 'neck', system: 'regional', label: 'Neck', labelJa: '頸部' },
   { id: 'elbow', system: 'musculoskeletal', label: 'Elbow joint', labelJa: '肘関節' },
+  { id: 'thorax', system: 'regional', label: 'Chest', labelJa: '胸部' },
   { id: 'whole-body', system: 'systemic', label: 'Whole body', labelJa: '全身' },
 ];
 
