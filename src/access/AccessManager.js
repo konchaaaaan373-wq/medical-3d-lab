@@ -812,7 +812,6 @@ export function createAccessManager({ ui }) {
     return el('form', {
       class: 'access-auth access-recovery',
       method: 'post',
-      action: '',
       'aria-label': 'Choose a new password / 新しいパスワードを設定',
       on: { submit: finishRecovery },
     }, [

@@ -158,11 +158,15 @@ export function credentialForm({
 
   return el('form', {
     class: `access-auth access-credentials is-${policy.mode}`,
-    // Supabase is the origin that receives these; nothing is posted anywhere by
-    // the document itself. `novalidate` is deliberately absent — the browser's
-    // own check on `required` / `type=email` is wanted here.
+    // `preventDefault` is the first line of the submit handler, so the document
+    // never actually posts anything — Supabase is what receives these. `method`
+    // is still POST rather than the GET default: if a native submit ever did
+    // escape, credentials belong in a request body and never in a URL, where
+    // they would reach history, referrers and access logs. An empty `action` is
+    // invalid HTML, so it is absent; absent already means "this URL".
+    // `novalidate` is deliberately absent too — the browser's own check on
+    // `required` / `type=email` is wanted here.
     method: 'post',
-    action: '',
     'aria-label': policy.submitLabel,
     on: { submit },
   }, [
