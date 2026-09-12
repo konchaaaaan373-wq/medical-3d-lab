@@ -1,40 +1,37 @@
 # Deploy configuration.
 #
-# Two things live here, and nothing else: the origin the site is published at,
-# and the schedule of the one function that has to run whether or not anybody
-# visits. Build command, publish directory and the rest of the function
-# settings stay where they already are in the Netlify site configuration —
-# this file does not restate them, so it cannot silently override a setting
-# nobody meant to change here.
-#
-# The origin still lives in the deploy rather than in `src/` (the code takes it
-# from the environment and guesses nothing without it, per
-# `docs/discoverability.md`). What changed is that the deploy now states it in
-# the repository: moving the domain is a commit that is reviewed, tested and
-# rolled back like any other, instead of a value somebody has to remember to
-# retype into a dashboard — and remembering was the failure the domain-change
-# checklist in `docs/release-runbook.md` exists to prevent.
+# Production keeps only the canonical origin and scheduled billing repair.
+# Everything browser-QA-related below is scoped to Deploy Previews and is
+# temporary for PR #55.
 
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
 
-# A preview deploy is not the site.
-#
-# Given the production origin it would tell a crawler that the preview *is*
-# production; given its own it would advertise an address that disappears when
-# the branch does. So it declares neither: with the variable empty the build
-# still emits every scene page — they are useful without JavaScript, which is
-# most of why they exist — but omits canonical and Open Graph URLs and skips
-# the sitemap, which is what `docs/discoverability.md` asks for whenever the
-# origin is not known.
+# A preview deploy is not the site. It has no canonical production URL and, for
+# this review branch, compiles the existing preview-only release unlock so the
+# five publication candidates can be exercised without changing production.
+[context.deploy-preview]
+  command = "npm run build && node scripts/run-netlify-browser-audit.mjs"
+
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
+  VITE_ALLOW_PREVIEW = "1"
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
 
+# Real Chromium for the browser-first audit. This plugin exists only in deploy
+# previews; production does not install or run it.
+[[context.deploy-preview.plugins]]
+  package = "netlify-plugin-chromium"
+  [context.deploy-preview.plugins.inputs]
+    setChromePathInEnv = true
+    failBuildOnError = false
+
+# Read dist/browser-audit/report.json after the build command has driven the
+# scenes and expose its exact per-scene result in Netlify's Deploy Summary.
+[[context.deploy-preview.plugins]]
+  package = "./plugins/netlify-browser-audit-status"
+
 [functions."scheduled-billing-reconcile"]
-  # Keep the production repair schedule in Netlify's deployment manifest as
-  # well as the function export. The manifest is the authoritative fallback
-  # when build-time function metadata discovery changes.
   schedule = "17 * * * *"
