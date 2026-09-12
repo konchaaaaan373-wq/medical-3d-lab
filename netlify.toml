@@ -14,11 +14,11 @@
 # production; given its own it would advertise an address that disappears when
 # the branch does. So it declares neither. For this review branch only, preview
 # builds also compile the existing preview capability and run real Chromium
-# against the five release candidates. The screenshots are written under dist/
-# so the deploy itself is the review packet. The publication manifest and the
-# production build remain untouched.
+# against the five release candidates. Browser/test failures are written into
+# dist/browser-audit and deployed rather than trapping the useful diagnosis in
+# a private build log. The product build itself still fails normally.
 [context.deploy-preview]
-  command = "npm i --no-save --package-lock=false playwright-core && npm test && npm run build && node -e \"const fs=require('fs');const p='scripts/audit-release-candidates.mjs';let s=fs.readFileSync(p,'utf8');s=s.replace('chromium.launch({ headless: !headed })','chromium.launch({ headless: !headed, executablePath: process.env.CHROME_PATH })');fs.writeFileSync(p,s)\" && node scripts/audit-release-candidates.mjs --dist dist --out dist/browser-audit"
+  command = "npm run build && node scripts/run-netlify-browser-audit.mjs"
 
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
@@ -28,14 +28,14 @@
   VITE_SITE_URL = ""
 
 # Netlify's Chromium integration installs a build-time browser and exports its
-# executable as CHROME_PATH. Playwright-core provides only the automation API;
-# the deploy does not try to apt-install browser dependencies or download a
-# second browser. This block is temporary and will be removed before merge.
+# executable as CHROME_PATH. Failure is soft here because the wrapper records a
+# browser-install fallback and diagnostic logs in the deployed review packet.
+# This block is temporary and will be removed before merge.
 [[plugins]]
   package = "netlify-plugin-chromium"
   [plugins.inputs]
     setChromePathInEnv = true
-    failBuildOnError = true
+    failBuildOnError = false
 
 [functions."scheduled-billing-reconcile"]
   # Keep the production repair schedule in Netlify's deployment manifest as
