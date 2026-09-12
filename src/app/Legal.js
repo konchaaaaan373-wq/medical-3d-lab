@@ -99,8 +99,8 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
           el('span', { class: 'lang-ja', text: 'モデル' }),
         ]),
         el('a', { href: '#/trust' }, [
-          el('span', { class: 'lang-en', text: 'Model trust' }),
-          el('span', { class: 'lang-ja', text: '医学的信頼性' }),
+          el('span', { class: 'lang-en', text: 'Model information' }),
+          el('span', { class: 'lang-ja', text: 'モデル情報' }),
         ]),
       ]),
       el('div', { class: 'legal-nav-actions' }, [accountButton, languageToggle.element]),
