@@ -1673,5 +1673,35 @@
       "No obstruction, ischaemia, stone, aneurysm, hernia, inflammation or tumour is represented in any form, and nothing here is anyone’s abdomen.",
       "The scene must not be used for diagnosis, treatment or dose selection, prognosis, interpreting an image, or planning or performing any incision, puncture, drain or operation."
     ]
+  },
+  {
+    "sceneId": "pelvis-anatomy",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a procedurally built pelvis — the ring, the levator sling and its gap, the peritoneum and its lowest point, the bladder, ureters, rectum and vessels, and both sets of reproductive organs shown one at a time — with bilingual labels and selection behaviour prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/pelvis-anatomy.md",
+      "docs/model-evidence/pelvis-anatomy.md",
+      "tests/organ-anatomy-scenes.test.js",
+      "tests/organ-parts-anatomy.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the label set and the Japanese terminology is not yet recorded.",
+      "One model carries both sets of reproductive organs and no body has both; this is a declared display arrangement, not an anatomy.",
+      "The bony ring is drawn as one funnel and the difference between a male and a female ring, which is a real and useful difference, is not represented.",
+      "Nothing moves: filling, emptying, sphincter action and contraction of the floor are not represented, and no pressure exists anywhere in the model.",
+      "The bladder is drawn empty, so the change in its position and its relationship to the peritoneum when full is described and not shown.",
+      "No length, calibre, angle or volume is a measurement, and the size of the peritoneal pouch is not a capacity.",
+      "Every organ is an outline in its place; bladder-anatomy, uterus-anatomy, prostate-anatomy and pelvic-floor-anatomy are those structures at their own scale.",
+      "The three parts of the levator sling, both anal sphincters, the perineal body and the pelvic fascia are not drawn.",
+      "The ligaments that suspend the uterus, the pelvic nerves, the lymphatics, the veins beside every artery and every branch of every artery are not drawn.",
+      "The position of the uterus varies a great deal between people and with a full bladder; one position is drawn.",
+      "No prolapse, incontinence, obstruction, fibroid, enlargement, tumour or fracture is represented in any form, and nothing here is anyone’s pelvis.",
+      "The scene must not be used for any examination, for diagnosis, treatment or dose selection, prognosis, or for planning or performing any puncture, catheter, incision or operation."
+    ]
   }
 ]

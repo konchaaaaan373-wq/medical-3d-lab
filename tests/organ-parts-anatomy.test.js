@@ -75,6 +75,20 @@ import {
   peritoneumBackAt,
   psoasAt,
 } from '../src/scenes/regional/organs/abdomen.js';
+import {
+  FEMALE_SET as PELVIS_FEMALE_SET,
+  LEFT as PELVIS_LEFT,
+  LEVELS as PELVIS_LEVELS,
+  MALE_SET as PELVIS_MALE_SET,
+  UNDER_THE_BRIDGE,
+  WORLD_SCALE as PELVIS_SCALE,
+  bridgeAt,
+  buildPelvis,
+  edgeOfHiatus,
+  floorAt,
+  inHiatus,
+  pelvisSection,
+} from '../src/scenes/regional/organs/pelvis.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2134,6 +2148,101 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('a pelvis is a funnel with one gap, and one crossing that has two names', () => {
+  // The scene's subject is a crossing that is the same in both sets of organs,
+  // so the test is that the model cannot make the claim for one set and not the
+  // other — both crossing structures come from the same point, and the ureter
+  // is written under it.
+  const pelvis = buildPelvis();
+  pelvis.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of pelvis.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of pelvis.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(PELVIS_SCALE));
+      }
+    }
+    return out;
+  };
+
+  // 1. **The crossing.** The ureter passes below the bridge point on each side,
+  //    and both crossing structures pass through it.
+  for (const side of [PELVIS_LEFT, -PELVIS_LEFT]) {
+    const bridge = bridgeAt(side);
+    const nearest = (id) =>
+      points(id)
+        .filter((p) => p.x * side > 0)
+        .reduce((best, p) =>
+          Math.hypot(p.x - bridge[0], p.z - bridge[2]) < Math.hypot(best.x - bridge[0], best.z - bridge[2])
+            ? p
+            : best
+        );
+    assert.ok(
+      nearest('ureters').y < bridge[1] - UNDER_THE_BRIDGE * 0.4,
+      'the ureter passes under the bridge'
+    );
+    // Both of them, from the same point — one claim, not two.
+    for (const id of ['uterine-artery', 'vas-deferens']) {
+      const crossing = nearest(id);
+      assert.ok(
+        Math.hypot(crossing.x - bridge[0], crossing.y - bridge[1], crossing.z - bridge[2]) < 0.7,
+        `the ${id} passes through the bridge point`
+      );
+      assert.ok(crossing.y > nearest('ureters').y, `and over the ureter, not under it`);
+    }
+  }
+
+  // 2. **One gap, and only the passages are in it.** Everything else in the
+  //    true pelvis rests on the sheet around it.
+  const at = pelvisSection(PELVIS_LEVELS.floorLevel);
+  for (const id of ['urethra', 'anal-canal', 'vagina']) {
+    const low = points(id).reduce((best, p) => (p.y < best.y ? p : best));
+    assert.ok(inHiatus(low.x, low.z), `the ${id} passes through the gap`);
+  }
+  for (const id of ['bladder', 'prostate', 'uterus']) {
+    for (const p of points(id)) {
+      if (inHiatus(p.x, p.z)) continue;
+      assert.ok(p.y >= floorAt(p.x, p.z) - 1e-6, `no part of the ${id} is below the sling`);
+    }
+  }
+  // The gap really is a gap: the sheet starts outside it on every ray.
+  for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+    const from = edgeOfHiatus(a, at);
+    const x = Math.cos(a) * from * at.halfWidth * 0.94;
+    const z = at.centreZ + Math.sin(a) * from * at.halfDepth * 0.94;
+    assert.ok(!inHiatus(x, z), 'the sheet begins where the gap ends');
+  }
+
+  // 3. The pouch is the lowest point the peritoneum reaches.
+  const pouch = box('peritoneal-pouch');
+  assert.ok(
+    pouch.min.y < box('pelvic-peritoneum').min.y + 1e-6,
+    'the pouch is the lowest part of the peritoneum'
+  );
+  // And it lies between the bladder in front and the rectum behind.
+  assert.ok(box('bladder').max.z > pouch.max.z, 'the bladder is in front of the pouch');
+  assert.ok(box('rectum').min.z < pouch.min.z, 'and the rectum behind it');
+
+  // 4. Neither set is displaced to make room for the other: each is where it
+  //    would be on its own, and the two overlap in the region between the
+  //    bladder and the rectum — which is exactly why no body has both.
+  const female = box('uterus');
+  const male = box('prostate').union(box('seminal-vesicles'));
+  assert.ok(female.intersectsBox(male), 'the two sets occupy the same region');
+  for (const id of [...PELVIS_FEMALE_SET, ...PELVIS_MALE_SET]) {
+    assert.ok(pelvis.meshesFor(id).length > 0, `${id} is drawn`);
+  }
+
+  pelvis.dispose();
+});
 
 test('an abdomen sorts into one bag and what is behind it, and two organs straddle the line', () => {
   // The scene makes one claim about every organ in it — which side of the

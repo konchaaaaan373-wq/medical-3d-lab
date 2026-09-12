@@ -785,5 +785,18 @@
     "cardRevision": 2,
     "modelDigest": "5846ec4777d5d41f",
     "cardUpdatedAt": "2026-09-12"
+  },
+  {
+    "sceneId": "pelvis-anatomy",
+    "card": "docs/model-cards/pelvis-anatomy.md",
+    "modelSources": [
+      "src/data/pelvisAnatomyScene.js",
+      "src/scenes/regional/organs/pelvis.js",
+      "src/scenes/regional/scenes/pelvisAnatomy/PelvisAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "723369b58bff058b",
+    "cardUpdatedAt": "2026-09-12"
   }
 ]

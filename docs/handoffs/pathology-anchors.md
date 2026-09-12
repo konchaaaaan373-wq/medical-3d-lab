@@ -1,8 +1,8 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-12。対象は 2026-09 に追加した 23 シーンです——
+Last updated: 2026-09-12。対象は 2026-09 に追加した 25 シーンです——
 前立腺・男性生殖路・膝・肩・股、眼・耳・皮膚・リンパ節・全身リンパ路・乳房・
-脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、頸部と肘関節、そして胸部と腹部。
+脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、頸部と肘関節、そして胸部・腹部・骨盤。
 既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した分だけ**を
 書きます。
 
@@ -1019,6 +1019,59 @@ inferior-mesenteric-artery  renal-vessels
 - **右腎は左腎より低い**です（上に肝臓があるため）
 - **下大静脈は患者の右、大動脈は左**です
 - **腎と尿管は大腰筋の「前」**です。大腰筋はそれより深い位置にあります
+
+---
+
+## `pelvis-anatomy` — 骨盤（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 22 |
+| tags | `bone` `floor` `peritoneum` `urinary` `gut` `vessel` `female` `male` |
+| views | `shared` `floor` `pouch` `female` `male` `bridge` `from-behind` |
+| bounds | 9.5 × 6.7 × 5.3（world unit。1 cm = `WORLD_SCALE` = 0.42） |
+
+```
+pelvic-ring  pubic-symphysis  levator-ani  levator-hiatus
+pelvic-peritoneum  peritoneal-pouch
+bladder  ureters  urethra  rectum  anal-canal  sigmoid-colon
+common-iliac-arteries  internal-iliac-artery  external-iliac-vessels
+uterus  ovaries-and-tubes  vagina  uterine-artery
+prostate  seminal-vesicles  vas-deferens
+```
+
+**anchors** — `SITES`: `promontory` `symphysis` `bridge` `hiatus` `pouch`
+`bladderNeck`。関数としては `pelvisSection(y)`・**`floorAt(x, z)`**・
+`inHiatus(x, z)`・`edgeOfHiatus(angle, at)`・**`bridgeAt(side)`**・
+`ureterPath(side, t)`、表としては `LEVELS`・`HIATUS`・`FEMALE_SET`・`MALE_SET`・
+`UNDER_THE_BRIDGE`・`WORLD_SCALE`。
+
+**⚠ このシーンは男女両方の生殖器を含みます。** `FEMALE_SET` と `MALE_SET` が
+その一覧で、**両方をもつ身体は存在しません。** 病態を載せるときは、
+**必ずどちらか一方の tag を hide してください。** 共存させるために位置を
+変えてはおらず、両者は実際に重なります（テストがそれを確認しています）。
+
+**このシーンが持っている病態の足場**:
+- **尿管損傷**: `bridgeAt` が「尿管は下、交差する構造は上」を 1 か所で決めています。
+  骨盤内手術での尿管損傷の機序を指せますが、**走行のばらつきは表現していません**
+- **骨盤臓器脱**: `levator-ani` と `levator-hiatus` があります。ただし
+  **骨盤底は収縮せず、裂孔は変化しません。** 下垂を主張するには機構が要ります。
+  挙筋の 3 部分は `pelvic-floor-anatomy` 側です
+- **腹水・膿瘍・出血**: `peritoneal-pouch` が「腹腔の最低点」を持っています。
+  `abdomen-anatomy` の腹膜腔と連続する主張として使えます
+- **前立腺肥大**: `prostate` は輪郭のみで、**内部を貫く尿道も領域区分もありません。**
+  肥大の種類を分けるのは `prostate-anatomy` 側です
+- **膀胱**: `bladder` は**空虚な状態**です。充満による位置変化——恥骨上穿刺が
+  腹腔を避けられる理由——は説明にとどまっています
+
+**変えてはいけない関係**:
+- **`bridgeAt` は 1 点です。** 子宮動脈と精管を別々の点から生成した瞬間、
+  「同じ交差の 2 つの名前」という主張が消えます
+- **裂孔は本物の穴**です（`edgeOfHiatus`）。中の頂点を下げて凹ませると、
+  穴ではなく漏斗になります（実際に一度そうなりました）
+- **腹膜は骨盤底に届きません。** 膀胱下部・直腸下部は袋の外です
+- **陥凹は腹腔の最低点**で、膀胱の後ろ・直腸の前です
+- **外腸骨動脈は骨盤内に何も供給しません。** 通過するだけです
 
 ---
 

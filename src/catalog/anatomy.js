@@ -349,6 +349,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the two layers of peritoneum and the lesser sac behind the stomach, the fascial layers of the retroperitoneum that actually decide where a leak goes, the three flat muscles of the wall and the inguinal canal, the gallbladder and biliary tree, the caecum and appendix, the portal vein, and the branches of each artery. Nothing peristalses, which is the first thing an obstruction or an ischaemia scene would need',
   },
   {
+    organ: 'pelvis',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/pelvisAnatomy — twenty-two named structures selectable by name: the pelvic ring and the symphysis; the levator sling and the one gap in it; the pelvic peritoneum and the pouch; the bladder, ureters and urethra; the rectum, anal canal and sigmoid colon; the common, internal and external iliac vessels; and both sets of reproductive organs, drawn as two sets because no body has both; tests/organ-parts-anatomy.test.js — each ureter passes below the point the crossing structure passes through, and both the uterine artery and the vas deferens are drawn from that same point; the three passages lie inside the gap in the floor and every organ resting in the true pelvis lies above the sling around it; the peritoneal pouch is the lowest point the peritoneum reaches; the bladder lies in front of the rectum and the pouch between them; and the two sets occupy the same region without either being displaced to make room for the other',
+    next: 'A3: the three parts of the levator sling and both anal sphincters as their own structures rather than one sheet, the perineal body, the pelvic fascia and the ligaments that suspend the uterus, the veins beside every artery, the pelvic nerves and the lymphatics, and the difference between a male and a female bony ring. Nothing contracts, fills or empties, which is the first thing a continence or a prolapse scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

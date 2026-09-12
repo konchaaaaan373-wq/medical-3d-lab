@@ -671,6 +671,19 @@ export const MODEL_PROFILES = Object.freeze([
       'Built in code around one function. `peritoneumBackAt(y)` is how far back the peritoneal bag reaches at each height, and **it is the boundary of two structures at once**: the back wall of the peritoneal cavity and the front wall of the retroperitoneum are the same surface, so nothing in the model can be in both or in neither. Every organ is then held on one side of it by `keepSideOfPeritoneum`, which is why the claim the scene makes about each organ is a property of the geometry rather than a label. The pancreas and the duodenum are the two that straddle it and are built to: the tail of one and the first part of the other cross to the front. `abdomenSection(y)` is the outline of the abdomen and the wall, the rectus straps, the cavity and the retroperitoneum are all measured from it. `aortaAt(y)` places the aorta and **all three ventral branches and both renal arteries leave from it**, so a branch cannot start off its own vessel, and `psoasAt(y, side)` is the shelf both the kidney and the ureter are placed against. No state and no mechanism: **nothing is digested, nothing peristalses, no organ fills or empties and no pressure exists anywhere.** **No length, calibre, angle or volume is a measurement.** Every organ is an outline in its place and none is an atlas — the liver, kidney, pancreas, stomach, colon and adrenal each have their own scene at their own scale. The two layers of peritoneum, the lesser sac, the retroperitoneal fascial layers, the flat muscles of the wall, the inguinal canal, the biliary tree, the caecum and appendix, the portal vein, the lymphatics and the nerves are not drawn.',
   },
   {
+    profileId: 'pelvis-anatomy-procedural-atlas',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'Built in code around two functions and one point. `floorAt(x, z)` is the height of the levator sling — the floor is built from it, the gap is cut in it, every organ in the true pelvis is held above it, and the perineum is measured down from it — so the boundary between pelvis and perineum is one surface rather than several that agree. `pelvisSection(y)` is the bony funnel, and the ring, the floor and the peritoneum are all measured from it. **`bridgeAt(side)` is the scene’s subject**: the ureter is written to pass below it, and both the uterine artery and the vas deferens are written to pass through it, so the model cannot make the crossing claim for one set of organs and not the other. Both sets are drawn, and **no body has both**: everything else is the same in both sexes and is drawn once, the scene opens on those shared parts, and each set has a viewpoint that shows it with the other put away. That is declared in `FEMALE_SET` and `MALE_SET`, in the model card and in the scene disclaimer, and **nothing about either set’s position is changed to make them coexist**. No state and no mechanism: **nothing fills or empties, no sphincter opens or closes, the floor does not contract and no pressure exists anywhere** — the bladder is drawn empty, so the one thing that makes its position interesting is described and not shown. **No length, calibre, angle or volume is a measurement**, and the size of the pouch is not a capacity. Every organ is an outline in its place and none is an atlas: bladder-anatomy, uterus-anatomy, prostate-anatomy and pelvic-floor-anatomy are those structures.',
+  },
+  {
     profileId: 'thyroid-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

@@ -54,6 +54,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'elbow-anatomy',
   'thorax-anatomy',
   'abdomen-anatomy',
+  'pelvis-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -313,6 +314,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '袋の中か、袋の後ろか。腹部の臓器は、この1本の線ですべて分かれます。',
     ['THE BAG', 'BEHIND IT', 'THE LINE'],
     ['腹膜腔', '後腹膜', '境界']
+  ),
+  'pelvis-anatomy': presentation(
+    'One gap in one muscle, and one crossing that has two names.',
+    '1つの筋にある1つの裂孔と、2つの名前をもつ1つの交差。',
+    ['THE FLOOR', 'THE POUCH', 'THE BRIDGE'],
+    ['骨盤底', 'ダグラス窩', '尿管の交差']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

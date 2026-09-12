@@ -1629,6 +1629,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/regional/scenes/abdomenAnatomy/index.js'),
   },
   {
+    id: 'pelvis-anatomy',
+    slug: 'pelvis-anatomy',
+    titleEn: 'Interactive pelvic anatomy',
+    titleJa: '触れて学ぶ骨盤の解剖',
+    system: 'regional',
+    organ: 'pelvis',
+    organs: ['pelvis', 'bladder', 'uterus', 'prostate', 'ureter'],
+    disease: null,
+    conditions: ['pelvic anatomy', 'levator ani', 'pouch of Douglas', 'rectovesical pouch', 'ureter', 'uterine artery', 'vas deferens', 'water under the bridge', '骨盤の解剖', '肛門挙筋', 'ダグラス窩', '直腸膀胱窩', '尿管', '子宮動脈', '精管'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/pelvis-anatomy.md',
+    modelProfile: 'pelvis-anatomy-procedural-atlas',
+    description:
+      'A funnel with a floor, and three things that go through it. One crossing has two names: the ureter passes under the uterine artery in one set of organs and under the vas deferens in the other, at the same place.',
+    descriptionJa:
+      '骨盤底をもつ漏斗と、そこを通る3つの通路。1つの交差に2つの名前があります——尿管は、一方の組では子宮動脈の下を、もう一方では精管の下を、同じ場所で通ります。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/regional/scenes/pelvisAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',
