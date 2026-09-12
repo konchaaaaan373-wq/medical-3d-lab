@@ -1,22 +1,15 @@
 # Deploy configuration.
 #
-# Two things live here, and nothing else in production: the origin the site is
-# published at, and the schedule of the one function that has to run whether or
-# not anybody visits. The deploy-preview override below is temporary QA plumbing
-# for the browser-first release-candidate pass; production is unchanged.
+# Production keeps only the canonical origin and scheduled billing repair.
+# Everything browser-QA-related below is scoped to Deploy Previews and is
+# temporary for PR #55.
 
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
 
-# A preview deploy is not the site.
-#
-# Given the production origin it would tell a crawler that the preview *is*
-# production; given its own it would advertise an address that disappears when
-# the branch does. So it declares neither. For this review branch only, preview
-# builds also compile the existing preview capability and run real Chromium
-# against the five release candidates. Browser/test failures are written into
-# dist/browser-audit and deployed rather than trapping the useful diagnosis in
-# a private build log. The product build itself still fails normally.
+# A preview deploy is not the site. It has no canonical production URL and, for
+# this review branch, compiles the existing preview-only release unlock so the
+# five publication candidates can be exercised without changing production.
 [context.deploy-preview]
   command = "npm run build && node scripts/run-netlify-browser-audit.mjs"
 
@@ -27,18 +20,18 @@
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
 
-# Netlify's Chromium integration installs a build-time browser and exports its
-# executable as CHROME_PATH. Failure is soft here because the wrapper records a
-# browser-install fallback and diagnostic logs in the deployed review packet.
-# This block is temporary and will be removed before merge.
-[[plugins]]
+# Real Chromium for the browser-first audit. This plugin exists only in deploy
+# previews; production does not install or run it.
+[[context.deploy-preview.plugins]]
   package = "netlify-plugin-chromium"
-  [plugins.inputs]
+  [context.deploy-preview.plugins.inputs]
     setChromePathInEnv = true
     failBuildOnError = false
 
+# Read dist/browser-audit/report.json after the build command has driven the
+# scenes and expose its exact per-scene result in Netlify's Deploy Summary.
+[[context.deploy-preview.plugins]]
+  package = "./plugins/netlify-browser-audit-status"
+
 [functions."scheduled-billing-reconcile"]
-  # Keep the production repair schedule in Netlify's deployment manifest as
-  # well as the function export. The manifest is the authoritative fallback
-  # when build-time function metadata discovery changes.
   schedule = "17 * * * *"
