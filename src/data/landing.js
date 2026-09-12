@@ -53,6 +53,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'neck-anatomy',
   'elbow-anatomy',
   'thorax-anatomy',
+  'abdomen-anatomy',
   'heart-failure',
   'circulation',
   'myocardial-ischemia',
@@ -306,6 +307,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '2つの胸膜腔が胸腔のほとんどを占めます。それ以外のすべては、間に残された縦隔に収まるほかありません。',
     ['CAGE', 'PLEURA', 'MEDIASTINUM'],
     ['胸郭', '胸膜腔', '縦隔']
+  ),
+  'abdomen-anatomy': presentation(
+    'In the bag, or behind it? One line sorts every organ in an abdomen.',
+    '袋の中か、袋の後ろか。腹部の臓器は、この1本の線ですべて分かれます。',
+    ['THE BAG', 'BEHIND IT', 'THE LINE'],
+    ['腹膜腔', '後腹膜', '境界']
   ),
   'prostate-outflow': presentation(
     'Prostatic volume against the calibre of the urethra running through it.',

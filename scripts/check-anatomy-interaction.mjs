@@ -143,6 +143,8 @@ const SCENE_POINTS = {
   'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
+  // Across the front of the belly: the midline, the liver on the patient’s right, the stomach on the left, and the bowel below.
+  'abdomen-anatomy': [[0.5, 0.46], [0.44, 0.4], [0.56, 0.44], [0.5, 0.58]],
   // Across the front of the chest: the sternum, a lung on each side of it, and lower down the heart.
   'thorax-anatomy': [[0.5, 0.44], [0.44, 0.5], [0.56, 0.5], [0.5, 0.6]],
   // Down the joint in the midline: shaft, hinge and the two forearm bones under it.

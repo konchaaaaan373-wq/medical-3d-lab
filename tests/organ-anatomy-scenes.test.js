@@ -20,6 +20,7 @@ import { MaleTractAnatomyScene } from '../src/scenes/reproductive/scenes/maleTra
 import { KneeAnatomyScene } from '../src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js';
 import { ShoulderAnatomyScene } from '../src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js';
 import { HipAnatomyScene } from '../src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js';
+import { AbdomenAnatomyScene } from '../src/scenes/regional/scenes/abdomenAnatomy/AbdomenAnatomyScene.js';
 import { ThoraxAnatomyScene } from '../src/scenes/regional/scenes/thoraxAnatomy/ThoraxAnatomyScene.js';
 import { ElbowAnatomyScene } from '../src/scenes/musculoskeletal/scenes/elbowAnatomy/ElbowAnatomyScene.js';
 import { NeckAnatomyScene } from '../src/scenes/regional/scenes/neckAnatomy/NeckAnatomyScene.js';
@@ -77,6 +78,7 @@ const SCENES = [
   { id: 'knee-anatomy', Scene: KneeAnatomyScene, minimum: 15 },
   { id: 'shoulder-anatomy', Scene: ShoulderAnatomyScene, minimum: 18 },
   { id: 'hip-anatomy', Scene: HipAnatomyScene, minimum: 13 },
+  { id: 'abdomen-anatomy', Scene: AbdomenAnatomyScene, minimum: 18 },
   { id: 'thorax-anatomy', Scene: ThoraxAnatomyScene, minimum: 18 },
   { id: 'elbow-anatomy', Scene: ElbowAnatomyScene, minimum: 16 },
   { id: 'neck-anatomy', Scene: NeckAnatomyScene, minimum: 18 },
@@ -423,6 +425,9 @@ const DETAIL_VIEWS = new Set([
   'hip-anatomy:coronal-section',
   'hip-anatomy:socket',
   'hip-anatomy:ligaments-only',
+  'abdomen-anatomy:transpyloric',
+  'abdomen-anatomy:great-vessels',
+  'abdomen-anatomy:wall',
   'thorax-anatomy:hilum',
   'thorax-anatomy:recess',
   'thorax-anatomy:mediastinum',

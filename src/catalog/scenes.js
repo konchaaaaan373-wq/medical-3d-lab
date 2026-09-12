@@ -1609,6 +1609,26 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/regional/scenes/thoraxAnatomy/index.js'),
   },
   {
+    id: 'abdomen-anatomy',
+    slug: 'abdomen-anatomy',
+    titleEn: 'Interactive abdominal anatomy',
+    titleJa: '触れて学ぶ腹部の解剖',
+    system: 'regional',
+    organ: 'abdomen',
+    organs: ['abdomen', 'kidney', 'pancreas', 'colon', 'small-intestine'],
+    disease: null,
+    conditions: ['abdominal anatomy', 'peritoneum', 'retroperitoneum', 'transpyloric plane', 'superior mesenteric artery', 'renal vessels', 'psoas', '腹部の解剖', '腹膜腔', '後腹膜', '幽門横断面', '上腸間膜動脈', '腎動静脈', '大腰筋'],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/abdomen-anatomy.md',
+    modelProfile: 'abdomen-anatomy-procedural-atlas',
+    description:
+      'One question sorts an abdomen: is an organ inside the peritoneal bag, hanging on a fold and able to move, or behind it and fixed to the back wall? The pancreas and the duodenum straddle the line, and two of the four lengths of colon are on each side of it.',
+    descriptionJa:
+      '腹部は1つの問いで分けられます——その臓器は腹膜腔の中で間膜に吊られ可動なのか、後方で後壁に固定されているのか。膵臓と十二指腸はこの境界をまたぎ、結腸は4区間のうち2つずつが両側に分かれます。',
+    tags: ['anatomy', 'interactive'],
+    load: () => import('../scenes/regional/scenes/abdomenAnatomy/index.js'),
+  },
+  {
     id: 'bone-remodeling',
     slug: 'bone-remodeling',
     titleEn: 'Bone remodelling',

@@ -342,6 +342,13 @@ export const ORGAN_ANATOMY = Object.freeze([
     next: 'A3: the three layers of intercostal muscle, the visceral pleura and the fluid between the layers, the azygos vein and the pulmonary veins, the branches of the arch, the thoracic duct and the sympathetic chain, and the diaphragm’s three openings as openings rather than as described levels. Nothing breathes, which is the first thing a ventilation or a mechanics scene would need',
   },
   {
+    organ: 'abdomen',
+    level: 'A2',
+    evidence:
+      'scenes/regional/scenes/abdomenAnatomy — twenty-four named structures selectable by name: the wall, the rectus straps, the lumbar vertebrae and psoas; the peritoneal cavity, the greater omentum and the mesentery; the retroperitoneum; the liver, stomach, spleen, small bowel and colon; the pancreas, duodenum, kidneys, adrenals and ureters; and the aorta, inferior vena cava, coeliac trunk, superior mesenteric vessels, inferior mesenteric artery and renal vessels; tests/organ-parts-anatomy.test.js — every structure the copy calls intraperitoneal lies in front of peritoneumBackAt and every retroperitoneal one lies behind it, the pancreas and the duodenum each have parts on both sides of that line, the right kidney is lower than the left, the cava is to the patient’s right of the aorta, the three ventral branches leave at three descending levels, the superior mesenteric artery passes in front of the third part of the duodenum, and each ureter runs down the front of psoas',
+    next: 'A3: the two layers of peritoneum and the lesser sac behind the stomach, the fascial layers of the retroperitoneum that actually decide where a leak goes, the three flat muscles of the wall and the inguinal canal, the gallbladder and biliary tree, the caecum and appendix, the portal vein, and the branches of each artery. Nothing peristalses, which is the first thing an obstruction or an ischaemia scene would need',
+  },
+  {
     organ: 'whole-body',
     level: 'A1',
     bench: true,

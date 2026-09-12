@@ -63,6 +63,18 @@ import {
   mediastinumSection,
   ribPath,
 } from '../src/scenes/regional/organs/thorax.js';
+import {
+  LEFT as ABDOMEN_LEFT,
+  LEVELS as ABDOMEN_LEVELS,
+  WORLD_SCALE as ABDOMEN_SCALE,
+  aortaAt,
+  buildAbdomen,
+  cavaAt,
+  isRetroperitoneal,
+  kidneyAt,
+  peritoneumBackAt,
+  psoasAt,
+} from '../src/scenes/regional/organs/abdomen.js';
 import { buildLymphNode } from '../src/scenes/hematologic/organs/lymphNode.js';
 import { LEFT as LYMPH_LEFT, buildLymphaticRoutes } from '../src/scenes/hematologic/organs/lymphaticRoutes.js';
 import { MEDIAL as BREAST_MEDIAL, buildBreast } from '../src/scenes/reproductive/organs/breast.js';
@@ -2122,6 +2134,138 @@ test('a foot is an arch with a bowstring under it, and a bone in a socket', () =
 });
 
 // --- the skeleton, whole ----------------------------------------------------
+
+test('an abdomen sorts into one bag and what is behind it, and two organs straddle the line', () => {
+  // The scene makes one claim about every organ in it — which side of the
+  // peritoneum it is on — so the test is that claim, checked against the same
+  // function the geometry is built from. A label that disagrees with the
+  // geometry is the failure this is here to catch.
+  const abdomen = buildAbdomen();
+  abdomen.object.updateMatrixWorld(true);
+  const box = (id) => {
+    const bounds = new THREE.Box3();
+    for (const mesh of abdomen.meshesFor(id)) bounds.union(new THREE.Box3().setFromObject(mesh));
+    return bounds;
+  };
+  const points = (id) => {
+    const out = [];
+    for (const mesh of abdomen.meshesFor(id)) {
+      const position = mesh.geometry.attributes.position;
+      const v = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 1) {
+        out.push(mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(ABDOMEN_SCALE));
+      }
+    }
+    return out;
+  };
+  const share = (id, wanted) => {
+    const all = points(id);
+    const matching = all.filter((p) => isRetroperitoneal(p.x, p.y, p.z) === wanted);
+    return matching.length / all.length;
+  };
+
+  // 1. **The claim.** Everything the copy calls intraperitoneal is in front of
+  //    the line, and everything it calls retroperitoneal is behind it.
+  //
+  //    "Wholly" is 96% of the surface rather than all of it, and the missing
+  //    few per cent are the model's own thickness: a vessel is a tube with a
+  //    wall, and its path is a smoothed curve that overshoots slightly between
+  //    the points it is written from, so a little of its far surface can sit
+  //    across a line its centre never approaches. The straddling organs below
+  //    are at 45–90%, so nothing here is near the threshold by accident.
+  const WHOLLY = 0.96;
+  for (const id of ['liver', 'stomach', 'spleen', 'small-bowel']) {
+    assert.ok(share(id, false) >= WHOLLY, `the ${id} is in the bag`);
+  }
+  for (const id of ['kidneys', 'adrenal-glands', 'ureters', 'aorta', 'inferior-vena-cava']) {
+    assert.ok(share(id, true) >= WHOLLY, `the ${id} is behind the bag`);
+  }
+
+  // 2. **The two that straddle it** are built to straddle it, not labelled to.
+  for (const id of ['pancreas', 'duodenum']) {
+    const behind = share(id, true);
+    assert.ok(behind > 0.45, `most of the ${id} is behind the bag`);
+    assert.ok(behind < 0.9, `and some of it is in the bag`);
+  }
+
+  // 3. The colon is the clearest case: two lengths fixed, two hanging.
+  const lengths = abdomen.meshesFor('colon');
+  assert.equal(lengths.length, 4, 'the colon is drawn in four lengths');
+  const behindShare = lengths.map((mesh) => {
+    const position = mesh.geometry.attributes.position;
+    const v = new THREE.Vector3();
+    let behind = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      const p = mesh.localToWorld(v.fromBufferAttribute(position, i).clone()).divideScalar(ABDOMEN_SCALE);
+      if (isRetroperitoneal(p.x, p.y, p.z)) behind += 1;
+    }
+    return behind / position.count;
+  });
+  assert.equal(
+    behindShare.filter((f) => f > 0.9).length,
+    2,
+    'two of the four lengths are behind the bag'
+  );
+  assert.equal(
+    behindShare.filter((f) => f < 0.1).length,
+    2,
+    'and two of them are in it'
+  );
+
+  // 4. The right kidney is lower than the left, because the liver is above it.
+  assert.ok(
+    kidneyAt(-ABDOMEN_LEFT)[1] < kidneyAt(ABDOMEN_LEFT)[1] - 0.5,
+    'the right kidney sits lower than the left'
+  );
+  // And both lie on psoas rather than floating behind it.
+  for (const side of [ABDOMEN_LEFT, -ABDOMEN_LEFT]) {
+    const on = psoasAt(kidneyAt(side)[1], side);
+    assert.ok(Math.abs(kidneyAt(side)[0]) > Math.abs(on[0]), 'the kidney is lateral to psoas');
+    assert.ok(kidneyAt(side)[2] > on[2], 'and in front of it');
+  }
+
+  // 5. The cava is to the patient's right of the aorta — they are not both in
+  //    the midline, and which is which decides every approach to the back wall.
+  assert.ok(
+    cavaAt(0)[0] * ABDOMEN_LEFT < 0 && aortaAt(0)[0] * ABDOMEN_LEFT > 0,
+    'the cava is to the right of the midline and the aorta to the left'
+  );
+
+  // 6. Three ventral branches at three descending levels, all off the aorta.
+  assert.ok(ABDOMEN_LEVELS.coeliac > ABDOMEN_LEVELS.sma, 'the coeliac trunk leaves above the superior mesenteric');
+  assert.ok(ABDOMEN_LEVELS.sma > ABDOMEN_LEVELS.ima, 'and that above the inferior mesenteric');
+  for (const [id, level] of [
+    ['coeliac-trunk', ABDOMEN_LEVELS.coeliac],
+    ['superior-mesenteric-vessels', ABDOMEN_LEVELS.sma],
+    ['inferior-mesenteric-artery', ABDOMEN_LEVELS.ima],
+  ]) {
+    const root = new THREE.Vector3(...aortaAt(level)).multiplyScalar(ABDOMEN_SCALE);
+    assert.ok(box(id).distanceToPoint(root) < 0.5, `the ${id} starts on the aorta`);
+  }
+
+  // 7. The superior mesenteric artery passes **in front of** the third part of
+  //    the duodenum, which is the most-drawn relationship in the region.
+  const atLevel = (id) =>
+    points(id).reduce((best, p) =>
+      Math.abs(p.y - ABDOMEN_LEVELS.duodenumThird) < Math.abs(best.y - ABDOMEN_LEVELS.duodenumThird)
+        ? p
+        : best
+    );
+  assert.ok(
+    atLevel('superior-mesenteric-vessels').z > atLevel('duodenum').z,
+    'the superior mesenteric artery crosses in front of the third part of the duodenum'
+  );
+
+  // 8. The bag's back wall and the retroperitoneum's front wall are one
+  //    surface, which is what makes every claim above decidable.
+  for (const y of [2, 0, -2, -4]) {
+    const back = peritoneumBackAt(y);
+    assert.ok(isRetroperitoneal(0, y, back - 0.1), 'just behind the line is behind the bag');
+    assert.ok(!isRetroperitoneal(0, y, back + 0.1), 'and just in front of it is in the bag');
+  }
+
+  abdomen.dispose();
+});
 
 test('a chest is two bags, and everything else fits in the slab between them', () => {
   // The claims are all about where things are relative to each other, so that

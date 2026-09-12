@@ -1,8 +1,8 @@
 # Handoff — 正常解剖から病態へ（Claude② → Claude③）
 
-Last updated: 2026-09-12。対象は 2026-09 に追加した 22 シーンです——
+Last updated: 2026-09-12。対象は 2026-09 に追加した 23 シーンです——
 前立腺・男性生殖路・膝・肩・股、眼・耳・皮膚・リンパ節・全身リンパ路・乳房・
-脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、頸部と肘関節、そして胸部。
+脊柱、鼻副鼻腔・喉頭咽頭・口腔舌・骨盤底・全身骨格・手・足、頸部と肘関節、そして胸部と腹部。
 既存の臓器シーンは同じ契約に載っていますが、ここには**新しく足した分だけ**を
 書きます。
 
@@ -968,6 +968,57 @@ aorta  venae-cavae  pulmonary-arteries  phrenic-nerve  vagus-nerve
 - **食道は常に後ろ**です（気道の後ろ、心臓の後ろ）
 - **大動脈弓・鎖骨下動脈は `neck-anatomy` 側にもあります。** 2 シーンで
   同じ血管を別に描いており、**どちらも「その血管のモデル」ではありません**
+
+---
+
+## `abdomen-anatomy` — 腹部（局所解剖）
+
+| | |
+| --- | --- |
+| 構造 | 24 |
+| tags | `wall` `cavity` `behind-the-bag` `in-the-bag` `gut` `organ` `vessel` `urinary` |
+| views | `whole` `wall` `in-the-bag` `behind-the-bag` `transpyloric` `great-vessels` `from-behind` |
+| bounds | 10.9 × 7.5 × 8.6（world unit。1 cm = `WORLD_SCALE` = 0.4） |
+
+```
+abdominal-wall  rectus-abdominis  lumbar-vertebrae  psoas-muscle
+peritoneal-cavity  greater-omentum  mesentery  retroperitoneum
+liver  stomach  spleen  small-bowel  colon
+pancreas  duodenum  kidneys  adrenal-glands  ureters
+aorta  inferior-vena-cava  coeliac-trunk  superior-mesenteric-vessels
+inferior-mesenteric-artery  renal-vessels
+```
+
+**anchors** — `SITES`: `transpyloric` `coeliac` `sma` `duodenalCrossing`
+`hilumLeft` `hilumRight` `bifurcation` `ureterCrossing`。関数としては
+`abdomenSection(y)`・**`peritoneumBackAt(y)`**・`isRetroperitoneal(x, y, z)`・
+`aortaAt(y)`・`cavaAt(y)`・`psoasAt(y, side)`・`kidneyAt(side)`、
+表としては `LEVELS`・`GREAT_VESSELS`・`KIDNEYS`・`WORLD_SCALE`。
+
+**`isRetroperitoneal` は病態側からも使えます。** 「この病変は袋の中か後ろか」は
+このシーンが答えられる唯一の問いであり、同時に最も価値のある問いです。
+
+**このシーンが持っている病態の足場**:
+- **後腹膜出血・液体貯留**: `retroperitoneum` は空間として存在します。
+  ただし**筋膜層を描いていません**——広がり方の主張はできません
+- **腸閉塞**: `small-bowel` は1つの塊で、**内腔も壁もありません。** 拡張も
+  蠕動も表現できません。腸管そのものの主張は消化管側のシーンへ
+- **上腸間膜動脈**: `superior-mesenteric-vessels` は十二指腸第3部の前を通ります。
+  SMA症候群の舞台ですが、**角度も距離も実測値ではありません**
+- **腎・尿管**: `kidneys` / `ureters` / `psoas-muscle` が「腎は大腰筋の上、
+  尿管はその前面」を持っています。結石の位置は指せますが、
+  **3か所の生理的狭窄部は描いていません**
+- **大動脈瘤**: `aorta` は後腹膜にあります。「破裂が腔ではなく空間へ広がる」
+  という主張の足場はありますが、**径も壁もありません**
+
+**変えてはいけない関係**:
+- **`peritoneumBackAt` は 1 本です。** 腹膜腔の後壁と後腹膜の前壁は同じ面であり、
+  別々に書いた瞬間、このシーンの主張はすべて判定不能になります
+- **膵臓と十二指腸は境界をまたぎます。** 片側に寄せないでください
+- **結腸は 4 区間のうち 2 つが後腹膜**です。これが体内で最も明快な例です
+- **右腎は左腎より低い**です（上に肝臓があるため）
+- **下大静脈は患者の右、大動脈は左**です
+- **腎と尿管は大腰筋の「前」**です。大腰筋はそれより深い位置にあります
 
 ---
 
