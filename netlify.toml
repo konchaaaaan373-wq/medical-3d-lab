@@ -7,29 +7,27 @@
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
 
-# A preview deploy is not the site. It has no canonical production URL and, for
-# this review branch, compiles the existing preview-only release unlock so the
-# five publication candidates can be exercised without changing production.
+# The five publication candidates have completed their real-browser gate. The
+# next preview pass broadens the same desktop/phone interaction audit to one
+# representative scene from each remaining body system. This changes no public
+# release decision: the existing preview-only unlock is still the only way in.
 [context.deploy-preview]
   command = "npm run build && node scripts/run-netlify-browser-audit.mjs"
 
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
   VITE_ALLOW_PREVIEW = "1"
+  BROWSER_AUDIT_SET = "representatives"
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
 
-# Real Chromium for the browser-first audit. This plugin exists only in deploy
-# previews; production does not install or run it.
 [[context.deploy-preview.plugins]]
   package = "netlify-plugin-chromium"
   [context.deploy-preview.plugins.inputs]
     setChromePathInEnv = true
     failBuildOnError = false
 
-# Read dist/browser-audit/report.json after the build command has driven the
-# scenes and expose its exact per-scene result in Netlify's Deploy Summary.
 [[context.deploy-preview.plugins]]
   package = "./plugins/netlify-browser-audit-status"
 
