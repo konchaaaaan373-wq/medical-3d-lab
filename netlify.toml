@@ -18,7 +18,7 @@
 # so the deploy itself is the review packet. The publication manifest and the
 # production build remain untouched.
 [context.deploy-preview]
-  command = "npm i --no-save --package-lock=false playwright && npx playwright install chromium && npm test && npm run build && node scripts/audit-release-candidates.mjs --dist dist --out dist/browser-audit"
+  command = "npm i --no-save --package-lock=false playwright-core && npm test && npm run build && node -e \"const fs=require('fs');const p='scripts/audit-release-candidates.mjs';let s=fs.readFileSync(p,'utf8');s=s.replace('chromium.launch({ headless: !headed })','chromium.launch({ headless: !headed, executablePath: process.env.CHROME_PATH })');fs.writeFileSync(p,s)\" && node scripts/audit-release-candidates.mjs --dist dist --out dist/browser-audit"
 
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
@@ -26,6 +26,16 @@
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
+
+# Netlify's Chromium integration installs a build-time browser and exports its
+# executable as CHROME_PATH. Playwright-core provides only the automation API;
+# the deploy does not try to apt-install browser dependencies or download a
+# second browser. This block is temporary and will be removed before merge.
+[[plugins]]
+  package = "netlify-plugin-chromium"
+  [plugins.inputs]
+    setChromePathInEnv = true
+    failBuildOnError = true
 
 [functions."scheduled-billing-reconcile"]
   # Keep the production repair schedule in Netlify's deployment manifest as
