@@ -177,6 +177,47 @@
   gap: 8px;
 }
 
+/*
+ * The credential form submits one thing at a time, so its button owns the row.
+ * The delete-confirmation form keeps the two-button layout above (Cancel next
+ * to Delete), which is why this is a modifier and not a change to the row.
+ */
+.access-auth-actions.is-single {
+  display: block;
+}
+
+.access-auth-actions.is-single > .access-primary {
+  width: 100%;
+}
+
+/* Sign in ⇄ create account. Secondary to the submit button, but not hidden:
+ * it is the only route to the other half of the form. */
+.access-credentials-switch {
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.access-credentials-switch .access-switch-mode {
+  padding: 4px 2px;
+  text-align: center;
+}
+
+.access-credentials-switch .access-switch-mode:hover,
+.access-credentials-switch .access-switch-mode:focus-visible {
+  color: var(--ink);
+}
+
+.access-credentials .access-forgot {
+  align-self: center;
+  padding: 2px;
+}
+
+.access-text-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .access-primary,
 .access-secondary,
 .access-manage,

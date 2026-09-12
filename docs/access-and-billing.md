@@ -22,6 +22,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 
 - `src/access/policy.js` — pure entitlement vocabulary and subscription-status rules.
 - `src/access/auth.js` — small Supabase email/password auth client using the public REST API; no auth framework added.
+- `src/access/credentialForm.js` — the sign-in / create-account form, as a pure view plus the policy that separates the two modes.
 - `src/access/AccessManager.js` — account state, paywall, Checkout launch, Billing Portal launch and entitlement refresh.
 - `src/access/installAccess.js` — attaches paid modes around an already-built scene without changing the medical model.
 - `src/data/patientGuides.js` / `educationGuides.js` — server-bundled authored guides; the browser installer does not import them.
@@ -41,6 +42,60 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260906045116_billing_account_transaction_lock.sql` — orders deletion and billing writes on one per-user transaction lock while allowing reconciliation bookkeeping.
 - `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql` — records the immutable Stripe account that owns each Customer before missing objects can be accepted as deleted.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
+
+### Sign-in / create-account flow
+
+The account dialog is the only part of this layer a person touches before they
+have an account. It is reached from the `○ ログイン` control in the navigation on
+every surface, and it opens by itself when a locked mode is asked for.
+
+**The form has one mode at a time** — signing in, or creating an account — and
+says which in its heading, its button and its switch link. It opens on sign-in,
+and `credentialForm.js` keeps everything the two modes differ in
+(`credentialModePolicy`) in one place:
+
+| | Sign in | Create account |
+| --- | --- | --- |
+| Password `autocomplete` | `current-password` | `new-password` |
+| `Forgot password?` | shown | not shown — there is no password yet |
+| Failure fallback copy | `ログインできませんでした。` | `アカウントを作成できませんでした。` |
+
+It used to be one form with two equally weighted buttons over a single password
+field. That form could not be right about any row of that table, because it did
+not know which of the two people was in front of it — a person creating an
+account was offered the saved password for an account that did not exist yet,
+and a rejected registration reported that their *login* had failed.
+
+Both credential forms, and the password-recovery form, are real `<form>`
+elements with a `submit` handler. **Enter submits them**, and `required`,
+`minlength` and `type=email` are the browser's own first check rather than
+decoration. Until 2026-09 they were `<div>`s of `type="button"` buttons: typing
+an address and a password and pressing Enter did nothing at all, and the
+validation attributes never fired because nothing they hang off ever submitted.
+
+Two smaller flow rules worth keeping:
+
+- **The typed address survives a re-render.** `render()` rebuilds the dialog, so
+  the address is held in `state.credentialEmail` and seeded back. Switching mode
+  otherwise empties a field the person had already filled in.
+- **Sign-up that needs email confirmation returns to sign-in**, carrying the
+  address, because signing in is the next thing that person does after the mail.
+
+`tests/credential-flow.test.js` holds this down. The form is a pure view
+precisely so that it can be tested: `AccessManager` reads `import.meta.env` at
+module load, so under `node --test` it is permanently "not configured" and never
+builds a credential form at all.
+
+Unit tests cannot see a layout or a browser behaviour, so the flow was also
+driven in Chromium at 1280 px and 390 px — Enter reaching
+`/auth/v1/token?grant_type=password` and `/auth/v1/signup` respectively, native
+validation blocking an empty submit before any network call, no sideways scroll
+and no console errors. Build with `VITE_SUPABASE_URL` /
+`VITE_SUPABASE_PUBLISHABLE_KEY` set to reach the form at all; without them the
+dialog correctly shows its "not configured on this deployment" branch.
+
+The one part no automated check reaches is the password-reset email round-trip,
+which needs a real inbox — that is `F-20` in [`follow-ups.md`](follow-ups.md).
 
 ### Failure policy
 
