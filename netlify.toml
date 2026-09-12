@@ -7,17 +7,16 @@
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
 
-# The five publication candidates have completed their real-browser gate. The
-# next preview pass broadens the same desktop/phone interaction audit to one
-# representative scene from each remaining body system. This changes no public
-# release decision: the existing preview-only unlock is still the only way in.
+# Final publication-candidate pass. The broader cross-system representative
+# audit is green, so return to the five release candidates for the merge-facing
+# browser evidence. Production release decisions remain unchanged.
 [context.deploy-preview]
   command = "npm run build && node scripts/run-netlify-browser-audit.mjs"
 
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
   VITE_ALLOW_PREVIEW = "1"
-  BROWSER_AUDIT_SET = "representatives"
+  BROWSER_AUDIT_SET = "candidates"
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
