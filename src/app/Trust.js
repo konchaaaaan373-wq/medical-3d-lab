@@ -16,20 +16,20 @@ import { el, skipLink } from '../utils/dom.js';
  */
 const REVIEW_NOTES = {
   reviewed: {
-    en: 'A clinical reviewer signed a specific commit, and nothing inside the scope they reviewed has changed since. Limitations remain part of the attestation.',
-    ja: '特定コミットに対する臨床レビュー記録があり、その範囲のファイルはレビュー後に変更されていません。残る限界もレビュー記録の一部です。',
+    en: 'A clinical reviewer checked the recorded version. Files in the reviewed scope have not changed since.',
+    ja: '記録されたバージョンへの臨床レビューが完了しており、確認範囲のファイルはその後変更されていません。',
   },
   stale: {
-    en: 'A real review exists, but files inside the scope it recorded changed afterwards. It is history, not a current sign-off, and the changed paths are listed below.',
-    ja: '実際のレビュー記録はありますが、その範囲に含まれるファイルがレビュー後に変更されました。現在の署名ではなく履歴として扱い、変更されたパスを下に示します。',
+    en: 'A review exists, but files in its recorded scope changed afterwards. The changed paths are listed below.',
+    ja: 'レビュー記録はありますが、確認範囲のファイルがその後変更されています。変更されたパスを下に示します。',
   },
   pending: {
-    en: 'The model/evidence package exists, but no completed current-standard clinical sign-off is recorded.',
-    ja: 'モデル・証拠パッケージはありますが、現行基準の臨床レビュー完了記録はありません。',
+    en: 'The model and its supporting files exist, but no completed clinical review is recorded for the current version.',
+    ja: 'モデルと参照ファイルはありますが、現行版への臨床レビュー完了記録はありません。',
   },
   'legacy-unversioned': {
-    en: 'Evidence has been migrated to the current format without inventing a historical reviewer or commit.',
-    ja: '証拠パッケージは現行形式へ移行済みですが、過去のレビュアーやコミットを推測して補っていません。',
+    en: 'Supporting files use the current format, but no historical reviewer or reviewed version is recorded.',
+    ja: '参照ファイルは現行形式ですが、過去のレビュアーや確認済みバージョンの記録はありません。',
   },
   unrecorded: {
     en: 'No clinical review record exists for this scene at all.',
@@ -108,8 +108,8 @@ function trustCard(scene) {
         ]),
         el('div', { class: 'trust-card-badges' }, [
           el('span', { class: `trust-maturity is-${scene.status}` }, [
-            el('span', { class: 'lang-en', text: `Catalogue: ${maturity?.label ?? scene.status}` }),
-            el('span', { class: 'lang-ja', text: `カタログ: ${maturity?.labelJa ?? scene.status}` }),
+            el('span', { class: 'lang-en', text: `Status: ${maturity?.label ?? scene.status}` }),
+            el('span', { class: 'lang-ja', text: `公開状態: ${maturity?.labelJa ?? scene.status}` }),
           ]),
           reviewBadge(review),
         ]),
@@ -134,7 +134,7 @@ function trustCard(scene) {
     reviewMeta ? el('div', { class: 'trust-review-meta', text: reviewMeta }) : null,
     changedSinceReview(review),
     el('div', { class: 'trust-block' }, [
-      bilingual('Reviewed / prepared scope', 'レビュー・準備範囲', 'trust-label'),
+      bilingual('Review / preparation scope', '確認・準備範囲', 'trust-label'),
       el('ul', { class: 'trust-list' }, (record?.scope ?? []).map((item) => el('li', { text: item }))),
     ]),
     el('div', { class: 'trust-block' }, [
@@ -142,7 +142,7 @@ function trustCard(scene) {
       el('ul', { class: 'trust-list' }, (record?.unresolvedLimitations ?? []).map((item) => el('li', { text: item }))),
     ]),
     el('div', { class: 'trust-block' }, [
-      bilingual('Evidence package / audit trail', '証拠パッケージ / 監査記録', 'trust-label'),
+      bilingual('Source files', '参照ファイル', 'trust-label'),
       sourceLinks(record),
     ]),
   ]);
@@ -170,27 +170,27 @@ export function createTrust({ ui, accountButton = null }) {
     ]),
     el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('p', { class: 'trust-kicker' }, [
-        el('span', { class: 'lang-en', text: 'Medical model trust' }),
-        el('span', { class: 'lang-ja', text: '医学モデルの信頼性' }),
+        el('span', { class: 'lang-en', text: 'Model information' }),
+        el('span', { class: 'lang-ja', text: 'モデル情報' }),
       ]),
       el('h1', {}, [
-        el('span', { class: 'lang-en', text: 'Maturity and medical review are different claims.' }),
-        el('span', { class: 'lang-ja', text: '実装の成熟度と、医学レビューは別の情報です。' }),
+        el('span', { class: 'lang-en', text: 'Model status and medical review' }),
+        el('span', { class: 'lang-ja', text: 'モデルの公開状態と医学レビュー' }),
       ]),
       el('p', { class: 'trust-lead' }, [
         el('span', {
           class: 'lang-en',
-          text: 'Every public model shows both. Reviewed does not mean perfect; Pending does not mean useless. The point is to make the evidence boundary and remaining limitations inspectable before you rely on a teaching claim.',
+          text: 'For each model, we publish its implementation status, medical review, reviewed scope, unresolved limitations and source files.',
         }),
         el('span', {
           class: 'lang-ja',
-          text: '各公開モデルについて両方を表示します。Reviewedは「完全」を意味せず、Pendingも「使えない」を意味しません。何が確認済みで、何が限界として残るのかを、利用前に確認できることを重視しています。',
+          text: '各モデルの実装・公開状態、医学レビュー、確認範囲、未解決の限界、参照ファイルを掲載しています。',
         }),
       ]),
       el('div', { class: 'trust-principles' }, [
-        bilingual('Catalogue maturity = implementation/readiness', 'カタログ成熟度 = 実装・公開準備度'),
-        bilingual('Clinical review = versioned medical sign-off', '臨床レビュー = 特定コミットへの医学的署名'),
-        bilingual('Evidence package = claims + tests + limitations', '証拠パッケージ = 主張 + テスト + 限界'),
+        bilingual('Status: current implementation and availability', '公開状態：現在の実装と利用可否'),
+        bilingual('Medical review: reviewed version and date', '医学レビュー：確認したバージョンと日付'),
+        bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
       ]),
     ]),
     el('section', { class: 'trust-grid' }, PUBLIC_SCENES.map((scene) => trustCard(scene))),
@@ -219,6 +219,6 @@ export function createTrust({ ui, accountButton = null }) {
 
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = 'Medical 3D Lab — model trust';
+  document.title = 'Medical 3D Lab — model information';
   return { element };
 }

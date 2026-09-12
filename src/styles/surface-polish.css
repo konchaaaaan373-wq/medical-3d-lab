@@ -1,0 +1,616 @@
+/* Cross-surface visual language.
+ *
+ * The model is the visual subject. Public chrome uses one native type stack,
+ * ordinary font weights, square-ended labels and shallow surfaces. Status
+ * remains visible without turning every piece of metadata into a pill. */
+
+html[data-route='landing'],
+html[data-route='explorer'],
+html[data-route='trust'],
+html[data-route='legal'] {
+  font-family: var(--font);
+  font-weight: var(--weight-regular);
+}
+
+/* Landing ---------------------------------------------------------------- */
+
+.landing-nav {
+  border-radius: 5px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.landing-brand-mark {
+  background: transparent;
+  box-shadow: none;
+  font-weight: var(--weight-bold);
+}
+
+.landing-brand-mark i,
+.landing-eyebrow::before,
+.landing-demo-state.is-selected::before {
+  box-shadow: none;
+}
+
+.landing-brand-name,
+.landing-nav-link,
+.landing-button,
+.landing-model-info-link,
+.landing-method-link,
+.landing-external-link,
+.landing-neco-operator,
+.landing-footer-operator,
+.landing-demo-title,
+.landing-demo-controls legend,
+.landing-demo-state-label,
+.landing-demo-metric-label,
+.landing-demo-metric-value,
+.landing-demo-retry,
+.landing-method-heading h2,
+.landing-neco-heading h2,
+.landing-contact h2 {
+  font-weight: var(--weight-semibold);
+}
+
+.landing-eyebrow,
+.landing-section-kicker,
+.landing-demo-kicker {
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.landing-eyebrow::before {
+  width: 18px;
+  background: var(--landing-blood);
+}
+
+.landing-title {
+  max-width: 11em;
+  font-size: clamp(42px, 4.3vw, 64px);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.045em;
+}
+
+.landing-hero-summary,
+.landing-method-copy,
+.landing-neco-copy {
+  font-size: 16px;
+}
+
+.landing-button:hover,
+.landing-demo-state:hover {
+  transform: none;
+}
+
+.landing-button.primary {
+  box-shadow: none;
+}
+
+.landing-demo {
+  border-radius: 6px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+}
+
+.landing-demo-stage,
+.landing-demo.is-compact .landing-demo-stage {
+  border-radius: 5px 5px 0 0;
+}
+
+.landing-demo-state,
+.landing-demo-retry,
+.landing-demo-detail {
+  border-radius: 3px;
+}
+
+.landing-demo-case,
+.landing-demo-state-index {
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.035em;
+}
+
+.landing-demo-state.is-selected {
+  box-shadow: inset 2px 0 0 var(--landing-blood-bright);
+}
+
+/* Explorer --------------------------------------------------------------- */
+
+html[data-route='explorer'],
+html[data-route='explorer'] body {
+  font-family: var(--font);
+}
+
+html[data-route='explorer'] .explorer > .panel,
+.explorer-organ {
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(16, 47, 59, 0.055);
+}
+
+.explorer-header {
+  border-top-width: 2px;
+}
+
+.explorer-header::before {
+  display: none;
+}
+
+.explorer-header .eyebrow,
+.public-models-header .eyebrow {
+  color: var(--explorer-muted);
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.explorer-header .title,
+.explorer-use-lanes-title,
+.explorer-use-lane-title,
+.explorer-system-name,
+.explorer-organ-name,
+.explorer-scene-title,
+.public-models-brand,
+.public-model-link,
+.explorer-scene-kind,
+.explorer-scene-open,
+.explorer-use-badge,
+.explorer .status-badge {
+  font-weight: var(--weight-semibold);
+}
+
+.explorer-header .title {
+  letter-spacing: -0.035em;
+}
+
+.explorer-header .title .lang-ja,
+.explorer-use-lanes-title .lang-ja,
+.explorer-use-lane-title .lang-ja,
+.explorer-system-name .lang-ja,
+.explorer-organ-name .lang-en,
+.explorer-scene-title .lang-ja {
+  font-weight: var(--weight-medium);
+}
+
+.explorer-use-lane {
+  min-height: 0;
+  border-radius: 5px;
+  background: #f7faf9;
+}
+
+.explorer-use-lane.is-clinical {
+  background: #fbf8f1;
+}
+
+.explorer-use-lane-number {
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.035em;
+}
+
+.explorer-jump .scene-pill {
+  border-radius: 4px;
+  background: transparent;
+  font-weight: var(--weight-medium);
+}
+
+.explorer-organ-name .lang-en,
+.explorer-scene-kind {
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.explorer-organ-preview,
+.explorer-scene,
+.public-model-link,
+.public-models-focus .landing-demo-link {
+  border-radius: 5px;
+}
+
+.explorer-scene {
+  background: #f8faf9;
+}
+
+a.explorer-scene:hover,
+a.explorer-scene:focus-visible {
+  box-shadow: none;
+  transform: none;
+}
+
+.explorer-use-badge,
+.explorer .status-badge {
+  border-radius: 2px;
+}
+
+.public-models-focus .landing-demo {
+  box-shadow: 0 14px 36px rgba(16, 47, 59, 0.12);
+}
+
+html[data-route='explorer'] .public-models-actions .landing-model-action {
+  box-shadow: none;
+}
+
+.public-models-appbar {
+  margin-bottom: clamp(24px, 4vh, 38px);
+}
+
+/* Trust ------------------------------------------------------------------ */
+
+html[data-route='trust'] {
+  --ink: #1c2528;
+  --ink-dim: #425054;
+  --ink-faint: #657176;
+  --border: rgba(28, 37, 40, 0.16);
+  --accent: #315f66;
+  --panel: #ffffff;
+}
+
+.trust-page {
+  background: #f4f5f2;
+}
+
+.trust-nav {
+  min-height: 58px;
+  border-color: rgba(28, 37, 40, 0.12);
+  background: rgba(244, 245, 242, 0.96);
+}
+
+.trust-brand {
+  font-weight: var(--weight-semibold);
+}
+
+.trust-nav-links a {
+  font-size: 14px;
+}
+
+.trust-nav .account-trigger,
+.trust-nav .ui-toggle,
+.legal-nav .account-trigger,
+.legal-nav .ui-toggle,
+.explorer-header-actions .account-trigger,
+.explorer-header-actions .ui-toggle {
+  border-radius: 4px;
+  font-weight: var(--weight-semibold);
+}
+
+.trust-hero {
+  padding-top: clamp(48px, 7vw, 68px);
+  padding-bottom: 38px;
+}
+
+.trust-kicker {
+  margin-bottom: 12px;
+  color: #52686e;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+.trust-hero h1 {
+  max-width: 820px;
+  font-size: clamp(2.25rem, 5vw, 3.8rem);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.04em;
+  line-height: 1.08;
+}
+
+.trust-lead {
+  margin-top: 22px;
+  font-size: 16px;
+}
+
+.trust-principles {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 30px;
+  border-block: 1px solid rgba(28, 37, 40, 0.14);
+}
+
+.trust-principles > span {
+  min-width: 0;
+  padding: 14px 16px;
+  border-left: 1px solid rgba(28, 37, 40, 0.14);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.trust-principles > span:first-child {
+  border-left: 0;
+}
+
+.trust-principles > span::before {
+  content: none;
+}
+
+.trust-grid {
+  gap: 12px;
+}
+
+.trust-card {
+  padding: 28px;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.trust-card-title {
+  font-size: 1.4rem;
+  font-weight: var(--weight-semibold);
+}
+
+.trust-card-badges {
+  gap: 8px 14px;
+}
+
+.trust-maturity,
+.trust-review-badge {
+  min-height: 24px;
+  padding: 2px 0 2px 9px;
+  border: 0;
+  border-left: 2px solid #899694;
+  border-radius: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.trust-review-badge.is-reviewed {
+  border-color: #668675;
+  background: transparent;
+}
+
+.trust-review-badge.is-pending {
+  border-color: #a88957;
+  background: transparent;
+}
+
+.trust-review-badge.is-legacy-unversioned {
+  border-color: #8d8981;
+  background: transparent;
+}
+
+.trust-label {
+  font-size: 13px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.trust-source,
+.trust-review-meta {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+/* Legal ------------------------------------------------------------------ */
+
+html[data-route='legal'] {
+  --bg: #f4f6f5;
+  --ink: #18282d;
+  --ink-dim: #465c63;
+  --ink-faint: #607176;
+  --border: rgba(24, 40, 45, 0.16);
+  --accent: #075f6c;
+  --accent-hover: #054b56;
+  --panel: #ffffff;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+html[data-route='legal'] body,
+html[data-route='legal'] #ui {
+  color: var(--ink);
+  background: var(--bg);
+}
+
+.legal-page {
+  max-width: 920px;
+}
+
+.legal-nav {
+  min-height: 58px;
+  padding-bottom: 12px;
+}
+
+.legal-brand {
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.015em;
+}
+
+.legal-nav-links {
+  font-size: 14px;
+}
+
+.legal-tabs {
+  gap: 4px 22px;
+  margin: 20px 0 38px;
+  border-bottom: 1px solid var(--border);
+}
+
+.legal-tab {
+  min-height: 44px;
+  padding: 9px 0 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 13px;
+}
+
+.legal-tab.is-current {
+  border-color: var(--accent);
+  background: transparent;
+  color: var(--ink);
+}
+
+.legal-title {
+  margin-bottom: 12px;
+  font-size: clamp(30px, 5vw, 44px);
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.035em;
+}
+
+.legal-lead {
+  max-width: 48em;
+  margin-bottom: 10px;
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.legal-updated {
+  margin-bottom: 36px;
+  font-size: 13px;
+}
+
+.legal-heading {
+  font-size: 18px;
+  font-weight: var(--weight-semibold);
+}
+
+.legal-body p {
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.legal-disclosure dt,
+.legal-disclosure dd {
+  font-size: 15px;
+}
+
+.legal-disclosure dt {
+  font-weight: var(--weight-semibold);
+}
+
+.legal-disclosure dd {
+  color: var(--ink);
+}
+
+.legal-note,
+.legal-missing {
+  font-size: 13px;
+}
+
+.legal-missing {
+  color: #9f3030;
+}
+
+.landing-title .lang-ja,
+.public-models-header .title .lang-ja,
+.trust-hero h1 .lang-ja,
+.legal-title .lang-ja {
+  letter-spacing: -0.02em;
+}
+
+/* Existing scene shell --------------------------------------------------- */
+
+#ui[data-anatomy-shell='calm'] .title-card .title,
+#ui[data-anatomy-shell='calm'] .title-card .title-ja,
+#ui[data-anatomy-shell='calm'] .anatomy-shell-section-title,
+#ui[data-anatomy-shell='calm'] .usage-recording-title,
+.global-nav-organ-name,
+.global-nav-organ-name .lang-ja,
+.global-nav-current-label {
+  font-weight: var(--weight-semibold);
+}
+
+.global-nav-scene {
+  border-radius: 4px;
+}
+
+.global-nav-scene-name {
+  font-weight: var(--weight-regular);
+}
+
+#ui[data-anatomy-shell='calm'] .usage-recording-choice {
+  border-radius: 4px;
+  font-weight: var(--weight-semibold);
+}
+
+.anatomy-shell-gesture-hint {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  color: color-mix(in srgb, var(--ink-dim) 82%, transparent);
+  text-shadow: 0 1px 4px var(--page-ground), 0 0 12px var(--page-ground);
+}
+
+/* Studio and paper are pale renderer presets. A small opaque reading patch is
+   required here because the model can move behind this 11.5px instruction. */
+#ui[data-background='studio'] .anatomy-shell-gesture-hint,
+#ui[data-background='paper'] .anatomy-shell-gesture-hint {
+  padding: 4px 7px;
+  border: 1px solid rgba(38, 58, 66, 0.18);
+  border-radius: 3px;
+  background: #f4f6f5;
+  color: #263a42;
+  text-shadow: none;
+}
+
+/* Explorer chrome is light, but its live model well is near-black. Keep the
+   route's dark-teal ring outside the well and restore a luminous ring within. */
+html[data-route='explorer'] .public-models .landing-demo :focus-visible {
+  outline-color: #38e1ef;
+}
+
+@media (max-width: 720px) {
+  .landing-title {
+    font-size: clamp(30px, 9.4vw, 36px);
+    letter-spacing: -0.03em;
+  }
+
+  .landing-hero-summary,
+  .landing-method-copy,
+  .landing-neco-copy {
+    font-size: 15px;
+  }
+
+  .public-models-appbar {
+    margin-bottom: 18px;
+  }
+
+  .public-models-header .title {
+    font-size: clamp(28px, 8.4vw, 33px);
+  }
+
+  .trust-hero {
+    padding: 40px 18px 28px;
+  }
+
+  .trust-principles {
+    grid-template-columns: 1fr;
+  }
+
+  .trust-principles > span {
+    padding: 11px 0;
+    border-left: 0;
+    border-top: 1px solid rgba(28, 37, 40, 0.12);
+  }
+
+  .trust-principles > span:first-child {
+    border-top: 0;
+  }
+
+  .trust-card {
+    padding: 20px;
+  }
+
+  .legal-tabs {
+    column-gap: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .legal-nav-links {
+    order: 3;
+    width: 100%;
+  }
+
+  .legal-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 14px;
+  }
+}

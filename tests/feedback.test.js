@@ -115,14 +115,28 @@ test('feedback: the panel is keyboard-dismissable and announces itself', () => {
 
 test('consent: refusing is offered as plainly as accepting', () => {
   const source = read('src/components/ConsentBanner.js');
-  assert.match(source, /button\('denied'/);
-  assert.match(source, /button\('granted'/);
+  assert.match(source, /choice\('denied'/);
+  assert.match(source, /choice\('granted'/);
   // The refusal comes first in the DOM and neither is pre-selected.
-  assert.ok(source.indexOf("button('denied'") < source.indexOf("button('granted'"));
+  assert.ok(source.indexOf("choice('denied'") < source.indexOf("choice('granted'"));
+  assert.match(source, /'aria-pressed': 'false'/);
   assert.ok(!/checked/.test(source), 'nothing may be pre-ticked');
 });
 
-test('consent: the banner appears only while the question is unanswered', () => {
+test('consent: the setting remains available after the question is answered', () => {
   const source = read('src/components/ConsentBanner.js');
-  assert.match(source, /if \(telemetry\.consent !== 'unset'\) return null/);
+  assert.match(source, /class: 'usage-recording-settings'/);
+  assert.match(source, /const paint = \(state = telemetry\.consent\)/);
+  assert.match(source, /state === 'denied'/);
+  assert.match(source, /state === 'granted'/);
+  assert.doesNotMatch(source, /telemetry\.consent !== 'unset'\) return null/);
+});
+
+test('consent: the preference is mounted inside the information surface, not as a first-load banner', () => {
+  const observability = read('src/app/observability.js');
+  const anatomy = read('src/app/anatomyShellPresentation.js');
+  assert.match(observability, /querySelector\?\.\('\[data-usage-recording-slot\]'\)/);
+  assert.match(observability, /slot\.replaceChildren\(settings\.element\)/);
+  assert.match(anatomy, /'data-usage-recording-slot': ''/);
+  assert.doesNotMatch(observability, /ui\.append\(settings\.element\)/);
 });
