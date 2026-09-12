@@ -96,8 +96,8 @@
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
     display: flex;
     gap: 0;
-    font-size: 8.5px;
-    line-height: 1.2;
+    font-size: 10px;
+    line-height: 1.25;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-heading,
