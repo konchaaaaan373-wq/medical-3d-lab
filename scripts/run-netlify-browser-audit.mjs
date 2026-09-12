@@ -66,13 +66,7 @@ const readJson = (path) => {
   }
 };
 
-// Tests are a post-change safety net. They are captured, not allowed to hide the
-// browser evidence by preventing the preview from deploying.
 run('tests', 'npm', ['test']);
-
-// Playwright-core is only the automation API. Prefer Netlify's CHROME_PATH; if
-// the Chromium integration did not produce one, try Playwright's browser-only
-// install as a fallback and record the exact result.
 run('playwright-core-install', 'npm', [
   'install',
   '--no-save',
@@ -94,15 +88,16 @@ source = source.replace(
 
 // Tighten phone usability without duplicating the large browser harness here.
 // Page overflow is insufficient: a control row can hide actions inside its own
-// scroller, and a giant bottom console can technically fit while leaving too
-// little of the actual 3D model to inspect.
+// scroller, a giant bottom console can technically fit while leaving too little
+// model, and an over-aggressive compaction can silently remove the medical
+// model-limit notice. Measure all three on the rendered surface.
 source = source.replace(
   "      navTriggerVisible: visible('.global-nav-trigger'),\n      canvasHit,",
-  `      navTriggerVisible: visible('.global-nav-trigger'),\n      buttonRow: (() => {\n        const node = document.querySelector('.button-row');\n        if (!node) return null;\n        return {\n          clientWidth: node.clientWidth,\n          scrollWidth: node.scrollWidth,\n          overflow: Math.max(0, node.scrollWidth - node.clientWidth),\n        };\n      })(),\n      canvasHit,`
+  `      navTriggerVisible: visible('.global-nav-trigger'),\n      disclaimerVisible: visible('.disclaimer'),\n      buttonRow: (() => {\n        const node = document.querySelector('.button-row');\n        if (!node) return null;\n        return {\n          clientWidth: node.clientWidth,\n          scrollWidth: node.scrollWidth,\n          overflow: Math.max(0, node.scrollWidth - node.clientWidth),\n        };\n      })(),\n      canvasHit,`
 );
 source = source.replace(
   "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');",
-  "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');\n      if ((proGeometry.buttonRow?.overflow ?? 0) > 1) issues.push(`button row hides controls by ${Math.round(proGeometry.buttonRow.overflow)}px`);\n      if (device.id === 'phone' && target.id !== 'brain-anatomy' && (proGeometry.console?.height ?? 0) > device.height * 0.28) issues.push(`console takes ${Math.round((proGeometry.console.height / device.height) * 100)}% of phone height`);"
+  "      if (proGeometry.canvasHit === false) issues.push('rendered canvas is not reachable at its visual center');\n      if ((proGeometry.buttonRow?.overflow ?? 0) > 1) issues.push(`button row hides controls by ${Math.round(proGeometry.buttonRow.overflow)}px`);\n      if (device.id === 'phone' && target.id !== 'brain-anatomy' && (proGeometry.console?.height ?? 0) > device.height * 0.28) issues.push(`console takes ${Math.round((proGeometry.console.height / device.height) * 100)}% of phone height`);\n      if (device.id === 'phone' && target.id !== 'brain-anatomy' && !proGeometry.disclaimerVisible) issues.push('medical model-limit notice is not visible on phone');"
 );
 writeFileSync(runtimePath, source);
 
@@ -114,8 +109,6 @@ const auditOk = run(
 );
 rmSync(runtimePath, { force: true });
 
-// The audit script creates its richer index when Chromium completes the run.
-// If it failed before that point, publish a diagnostic landing page instead.
 if (!existsSync(join(outDir, 'index.html'))) {
   const esc = (value) =>
     String(value)
@@ -136,11 +129,6 @@ if (!existsSync(join(outDir, 'index.html'))) {
 
 writeFileSync(join(outDir, 'bootstrap.json'), `${JSON.stringify({ auditOk, chromePath: process.env.CHROME_PATH || null, stages }, null, 2)}\n`);
 
-// Preview-only metadata bridge. A marker's name is intentionally terse because
-// Netlify returns function names in the Deploy API. Example:
-//   qa-heart-failure-phone-i0-c146-b0
-// means zero browser issues, a 146px console and zero hidden-control overflow.
-// The tiny functions are generated during the build and are not source files.
 const functionsDir = join('netlify', 'functions');
 mkdirSync(functionsDir, { recursive: true });
 const marker = (name) => {
@@ -168,4 +156,3 @@ if (!Array.isArray(report)) {
 }
 
 console.log(`browser-audit wrapper completed; auditOk=${auditOk}`);
-// Intentionally no process.exit(1): diagnostics must be deployed for inspection.
