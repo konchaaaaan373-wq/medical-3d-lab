@@ -82,15 +82,22 @@
     gap: 5px;
   }
 
-  /* The title card already states the scene and the richer modes carry the
-   * explanatory prose. Keep the current state and controls over duplicated copy. */
+  /* The title card already states the scene and the richer modes carry the long
+   * explanatory prose. The short model-limit notice stays visible: compacting
+   * the interface must never make the medical caveat disappear. */
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja,
-  #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer,
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
+  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
     display: none !important;
+  }
+
+  #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer,
+  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
+    display: flex;
+    gap: 0;
+    font-size: 8.5px;
+    line-height: 1.2;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-heading,
