@@ -6,53 +6,36 @@
  * so the default professional observation surface keeps the interactive state
  * and removes copy that is already available in Data / Patient / guide modes.
  *
+ * A second class of scene has no separate Data surface at all. App keeps those
+ * scenes in `data` view so their only slider cannot become unreachable. Rather
+ * than special-case individual scene ids, `:has(.btn[data-control='data'])`
+ * distinguishes a real Data toggle from that single-view state. The same quiet
+ * observation surface therefore applies to every simple prototype that has no
+ * second reading layer.
+ *
  * Scope deliberately excludes anatomy, Patient, education, lessons and guided
  * story states. Those surfaces have different reading jobs.
  */
 
-#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
+#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console,
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
   width: min(920px, 100%);
   padding: 10px 14px 10px;
   gap: 7px;
 }
 
-#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-track {
+#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-track,
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-track {
   padding-top: 0;
   margin-bottom: 0;
 }
 
 /* Desktop keeps one quiet line of context. Full copy remains available in Data
- * view and the authored Patient explanation rather than permanently occupying
- * the model viewport. */
+ * view for multi-layer scenes and in the authored Patient explanation. */
 #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
-#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
-  -webkit-line-clamp: 1;
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
-  gap: 0;
-  font-size: 9.5px;
-  line-height: 1.3;
-}
-
-/* Amyloid-β has no separate metric/plot layer, so App correctly keeps its
- * progression slider reachable by calling the only view "data". Give that
- * single-view scene the same 3D-first text density without hiding the slider. */
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
-  width: min(920px, 100%);
-  padding: 10px 14px 10px;
-  gap: 7px;
-}
-
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-track {
-  padding-top: 0;
-  margin-bottom: 0;
-}
-
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
+#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja,
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
@@ -61,15 +44,18 @@
   line-height: 1.35;
 }
 
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer-full {
+/* A single-view scene has no richer Data reading surface, so use the short
+ * standing limitation notice even though App calls its only view `data`. */
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer-full {
   display: none;
 }
 
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer-short {
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer-short {
   display: block;
 }
 
-#ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
+#ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer,
+#ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
   gap: 0;
   font-size: 9.5px;
   line-height: 1.3;
@@ -77,23 +63,23 @@
 
 @media (max-width: 720px) {
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
     padding: 8px 10px 8px;
     gap: 5px;
   }
 
-  /* The title card already states the scene and the richer modes carry the long
+  /* The title card already states the scene and richer modes carry the long
    * explanatory prose. The short model-limit notice stays visible: compacting
    * the interface must never make the medical caveat disappear. */
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
     display: none !important;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
     display: flex;
     gap: 0;
     font-size: 10px;
@@ -101,25 +87,25 @@
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-heading,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-heading {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-heading {
     gap: 8px;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name,
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name-ja,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name-ja {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name,
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-name-ja {
     font-size: 15px;
     line-height: 1.18;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-progress-label,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-progress-label {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-progress-label {
     display: none;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .slider-row,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .slider-row {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .slider-row {
     gap: 8px;
   }
 
@@ -129,14 +115,14 @@
    * visible without a swipe and the console is still far shallower than before
    * the text compaction. */
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row {
     flex-wrap: wrap;
     overflow: visible;
     gap: 5px;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-gap,
-  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-gap {
+  #ui[data-view='data']:not([data-anatomy]):not(:has(.btn[data-control='data'])):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-gap {
     display: none;
   }
 }
