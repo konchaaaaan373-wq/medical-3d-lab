@@ -1,19 +1,9 @@
 # Deploy configuration.
 #
-# Two things live here, and nothing else: the origin the site is published at,
-# and the schedule of the one function that has to run whether or not anybody
-# visits. Build command, publish directory and the rest of the function
-# settings stay where they already are in the Netlify site configuration —
-# this file does not restate them, so it cannot silently override a setting
-# nobody meant to change here.
-#
-# The origin still lives in the deploy rather than in `src/` (the code takes it
-# from the environment and guesses nothing without it, per
-# `docs/discoverability.md`). What changed is that the deploy now states it in
-# the repository: moving the domain is a commit that is reviewed, tested and
-# rolled back like any other, instead of a value somebody has to remember to
-# retype into a dashboard — and remembering was the failure the domain-change
-# checklist in `docs/release-runbook.md` exists to prevent.
+# Two things live here, and nothing else in production: the origin the site is
+# published at, and the schedule of the one function that has to run whether or
+# not anybody visits. The deploy-preview override below is temporary QA plumbing
+# for the browser-first release-candidate pass; production is unchanged.
 
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
@@ -22,13 +12,17 @@
 #
 # Given the production origin it would tell a crawler that the preview *is*
 # production; given its own it would advertise an address that disappears when
-# the branch does. So it declares neither: with the variable empty the build
-# still emits every scene page — they are useful without JavaScript, which is
-# most of why they exist — but omits canonical and Open Graph URLs and skips
-# the sitemap, which is what `docs/discoverability.md` asks for whenever the
-# origin is not known.
+# the branch does. So it declares neither. For this review branch only, preview
+# builds also compile the existing preview capability and run real Chromium
+# against the five release candidates. The screenshots are written under dist/
+# so the deploy itself is the review packet. The publication manifest and the
+# production build remain untouched.
+[context.deploy-preview]
+  command = "npm i --no-save --package-lock=false playwright && npx playwright install chromium && npm test && npm run build && node scripts/audit-release-candidates.mjs --dist dist --out dist/browser-audit"
+
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
+  VITE_ALLOW_PREVIEW = "1"
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
