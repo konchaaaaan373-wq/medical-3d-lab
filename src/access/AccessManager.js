@@ -348,7 +348,52 @@ export function createAccessManager({ ui }) {
     renderAccountButton();
     if (modal.hidden) return;
     const dialog = modal.querySelector('.access-dialog');
+
+    // Rebuilding the dialog destroys whatever had focus, and left alone focus
+    // falls to <body> — outside the modal. Everything the modal gets from
+    // holding focus then stops: its own keydown handler never fires, so Escape
+    // no longer closes it and Tab is no longer trapped, and because that
+    // handler is also what calls `stopPropagation`, the scene's window-level
+    // shortcuts start acting on the model *behind* the open dialog (Space
+    // plays it, H hides the UI under it).
+    //
+    // This belongs here rather than in each handler that calls `notify()`:
+    // every rebuild loses focus, not just the ones somebody remembered to
+    // patch up afterwards.
+    const hadFocus = dialog.contains(document.activeElement);
+    const key = hadFocus ? focusKey(document.activeElement) : null;
     dialog.replaceChildren(...dialogContent());
+    if (hadFocus) restoreFocus(dialog, key);
+  }
+
+  /**
+   * A selector for the focused control that still means something once the
+   * dialog has been rebuilt from scratch.
+   *
+   * A named field is its own answer. Otherwise the *last* `access-` class: these
+   * controls are written base-then-modifier (`access-text-button
+   * access-switch-mode`), so the last one is the specific one — the first would
+   * match `access-forgot` just as happily and move focus to the wrong button.
+   */
+  function focusKey(node) {
+    if (!(node instanceof HTMLElement)) return null;
+    const escape = globalThis.CSS?.escape ?? ((value) => value);
+    const name = node.getAttribute('name');
+    if (name) return `[name="${escape(name)}"]`;
+    const marker = [...node.classList].filter((token) => token.startsWith('access-')).pop();
+    return marker ? `.${escape(marker)}` : null;
+  }
+
+  /**
+   * Put focus back where it was — or, if that control is gone or now disabled,
+   * anywhere still inside the dialog. Landing on the close button is a poor
+   * result; landing on `<body>` is a broken one.
+   */
+  function restoreFocus(dialog, key) {
+    const target =
+      (key ? dialog.querySelector(`${key}:not([disabled])`) : null) ??
+      dialog.querySelector('input:not([disabled]), button:not([disabled]), a[href]');
+    target?.focus({ preventScroll: true });
   }
 
   function paidAccessLabel() {
@@ -404,7 +449,10 @@ export function createAccessManager({ ui }) {
     // "Access & billing" over a password field does not tell anybody where they
     // are. When `required` is set the entitlement name stays: that answers the
     // more useful question, which is why they are being asked at all.
-    const credentials = !state.user && !recovery && !deleting && !required
+    // `authConfigured()` first: the early return below replaces the whole body
+    // with "account access is not configured on this deployment", and a dialog
+    // headed "Sign in" over that text describes a form that is not there.
+    const credentials = authConfigured() && !state.user && !recovery && !deleting && !required
       ? credentialModePolicy(state.credentialMode)
       : null;
     const titleEn = recovery

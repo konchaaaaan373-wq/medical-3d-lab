@@ -123,7 +123,11 @@ export function credentialForm({
     placeholder: 'email@example.com',
     'aria-label': 'Email / メールアドレス',
     required: '',
-    disabled: busy ? '' : null,
+    // Deliberately still enabled while a request is in flight. A disabled field
+    // cannot hold focus, so disabling it here drops the keyboard out of the
+    // dialog for the duration of the request — and it lets somebody start
+    // correcting the typo they have already spotted. A second submit is barred
+    // by the disabled button and by the `busy` guard below, not by this.
     // Re-rendering rebuilds this element, so the address has to be kept
     // somewhere that survives it — otherwise switching mode, or any refresh,
     // silently empties a field the person had already filled in.
@@ -140,7 +144,6 @@ export function credentialForm({
     'aria-label': 'Password / パスワード',
     minlength: String(MIN_PASSWORD_LENGTH),
     required: '',
-    disabled: busy ? '' : null,
   });
 
   const submit = (event) => {

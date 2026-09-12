@@ -73,6 +73,22 @@ decoration. Until 2026-09 they were `<div>`s of `type="button"` buttons: typing
 an address and a password and pressing Enter did nothing at all, and the
 validation attributes never fired because nothing they hang off ever submitted.
 
+**Focus is restored by `render()`, not by the handlers that move it.** Rebuilding
+the dialog destroys whatever had focus, and left alone focus falls to `<body>` —
+outside the modal. Everything the modal gets from holding focus then stops: its
+keydown handler never fires, so Escape no longer closes it and Tab is no longer
+trapped, and since that handler is also what calls `stopPropagation`, the
+scene's window-level shortcuts start acting on the model *behind* the open
+dialog. Every rebuild loses focus, so the restore lives in `render()` where all
+of them pass, rather than in whichever handler last remembered. For the same
+reason the credential inputs stay enabled while a request is in flight: a
+disabled field cannot hold focus. A second submit is barred by the disabled
+button and the `busy` guard instead.
+
+The heading follows the mode only when `authConfigured()` — otherwise the dialog
+body is the "not configured on this deployment" notice, and a heading reading
+"Sign in" would describe a form that is not there.
+
 Two smaller flow rules worth keeping:
 
 - **The typed address survives a re-render.** `render()` rebuilds the dialog, so
