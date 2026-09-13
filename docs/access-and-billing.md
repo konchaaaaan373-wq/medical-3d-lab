@@ -22,6 +22,7 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 
 - `src/access/policy.js` — pure entitlement vocabulary and subscription-status rules.
 - `src/access/auth.js` — small Supabase email/password auth client using the public REST API; no auth framework added.
+- `src/access/credentialForm.js` — the sign-in / create-account form, as a pure view plus the policy that separates the two modes.
 - `src/access/AccessManager.js` — account state, paywall, Checkout launch, Billing Portal launch and entitlement refresh.
 - `src/access/installAccess.js` — attaches paid modes around an already-built scene without changing the medical model.
 - `src/data/patientGuides.js` / `educationGuides.js` — server-bundled authored guides; the browser installer does not import them.
@@ -41,6 +42,138 @@ The distinction is intentional: **the model stays the source of truth; the paid 
 - `supabase/migrations/20260906045116_billing_account_transaction_lock.sql` — orders deletion and billing writes on one per-user transaction lock while allowing reconciliation bookkeeping.
 - `supabase/migrations/20260906050213_billing_stripe_account_provenance.sql` — records the immutable Stripe account that owns each Customer before missing objects can be accepted as deleted.
 - `.github/workflows/ci.yml` — runs the full medical/model test suite and build on every PR.
+
+### Sign-in / create-account flow
+
+The account dialog is the only part of this layer a person touches before they
+have an account. It is reached from the `○ ログイン` control in the navigation on
+every surface, and it opens by itself when a locked mode is asked for.
+
+**The form has one mode at a time** — signing in, or creating an account — and
+says which in its heading, its button and its switch link. It opens on sign-in,
+and `credentialForm.js` keeps everything the two modes differ in
+(`credentialModePolicy`) in one place:
+
+| | Sign in | Create account |
+| --- | --- | --- |
+| Password `autocomplete` | `current-password` | `new-password` |
+| `Forgot password?` | shown | not shown — there is no password yet |
+| Failure fallback copy | `ログインできませんでした。` | `アカウントを作成できませんでした。` |
+
+It used to be one form with two equally weighted buttons over a single password
+field. That form could not be right about any row of that table, because it did
+not know which of the two people was in front of it — a person creating an
+account was offered the saved password for an account that did not exist yet,
+and a rejected registration reported that their *login* had failed.
+
+Both credential forms, and the password-recovery form, are real `<form>`
+elements with a `submit` handler. **Enter submits them**, and `required`,
+`minlength` and `type=email` are the browser's own first check rather than
+decoration. Until 2026-09 they were `<div>`s of `type="button"` buttons: typing
+an address and a password and pressing Enter did nothing at all, and the
+validation attributes never fired because nothing they hang off ever submitted.
+
+**Focus is restored by `render()`, not by the handlers that move it.** Rebuilding
+the dialog destroys whatever had focus, and left alone focus falls to `<body>` —
+outside the modal. Everything the modal gets from holding focus then stops: its
+keydown handler never fires, so Escape no longer closes it and Tab is no longer
+trapped, and since that handler is also what calls `stopPropagation`, the
+scene's window-level shortcuts start acting on the model *behind* the open
+dialog. Every rebuild loses focus, so the restore lives in `render()` where all
+of them pass, rather than in whichever handler last remembered. For the same
+reason the credential inputs stay enabled while a request is in flight: a
+disabled field cannot hold focus. A second submit is barred by the disabled
+button and the `busy` guard instead.
+
+The heading follows the mode only when `authConfigured()` — otherwise the dialog
+body is the "not configured on this deployment" notice, and a heading reading
+"Sign in" would describe a form that is not there.
+
+Two smaller flow rules worth keeping:
+
+- **The typed address survives a re-render.** `render()` rebuilds the dialog, so
+  the address is held in `state.credentialEmail` and seeded back. Switching mode
+  otherwise empties a field the person had already filled in.
+- **Sign-up that needs email confirmation returns to sign-in**, carrying the
+  address, because signing in is the next thing that person does after the mail.
+- **And offers to send that mail again.** `resendSignUpConfirmation`
+  (`POST /auth/v1/resend`) appears only after a sign-up came back without a
+  session — which is only when the project confirms addresses — so it is
+  self-gating: it shows up exactly when it applies and never otherwise, without
+  the code needing to know the project's configuration. The address is the one
+  the person just typed, so there is nothing to enumerate. Without it, a
+  confirmation mail that went missing left registering the same address again
+  as the only way forward.
+
+`tests/credential-flow.test.js` holds this down. The form is a pure view
+precisely so that it can be tested: `AccessManager` reads `import.meta.env` at
+module load, so under `node --test` it is permanently "not configured" and never
+builds a credential form at all.
+
+Unit tests cannot see a layout or a browser behaviour, so the rest is
+`scripts/check-auth-flow.mjs`, run by the `auth-flow` job in
+`final-browser-validation.yml` and by hand as:
+
+```bash
+VITE_SUPABASE_URL=https://stub.invalid \
+VITE_SUPABASE_PUBLISHABLE_KEY=stub npm run build
+npm run verify:auth
+```
+
+The env vars are not secrets and not a real project — the host does not resolve
+and the script stubs every auth request. They exist because a build with no
+Supabase configured does not contain a credential form at all; run `npm run
+verify:auth` against an ordinary build and it checks that surface instead (the
+neutral heading, the explanation, no form).
+
+It runs at candidate time, not on every push: this repository deliberately
+keeps browsers out of ordinary PR CI, and `tests/viewports.test.js` asserts
+that `ci.yml` never installs Playwright. The cost of that trade is real — a
+credential regression is caught when a candidate is validated rather than on
+the PR that introduced it — and `tests/credential-flow.test.js` is what covers
+the form's shape on every push in between.
+
+**`createAccessManager` puts its whole implementation after `return api`,** so
+only hoisted declarations in that tail ever come into existence. A `const`
+arrow there stays in the temporal dead zone for the life of the manager and
+throws `ReferenceError` at its call site. `billingNotice` was written that way
+and is called on the signed-in branch of `dialogContent`, so opening the account
+dialog while signed in rendered nothing — on `main` as well. It is now a
+`function` declaration, and `tests/credential-flow.test.js` fails if any
+non-hoisting declaration appears in that tail again. No test that cannot sign in
+can see this class of bug, which is why the browser check drives a sign-up that
+returns a session and watches for uncaught errors on the account view.
+
+It drives Enter through both modes to `/auth/v1/token?grant_type=password` and
+`/auth/v1/signup`, checks the password `autocomplete` each mode asks for,
+native validation refusing an empty submit before any network call, focus
+staying in the dialog across a rebuild, Escape still closing it afterwards, and
+the layout at 1280 px and 390 px.
+
+It also drives **both ways a Supabase project can be configured** — a sign-up
+answered with a session (signs straight in, nothing pending) and one answered
+without (says a confirmation was sent, returns to sign-in keeping the address,
+offers the resend) — so whichever is live, the other is known to work when it
+becomes live. And it drives **password recovery up to the inbox**: landing on
+`#access_token=…&type=recovery`, the tokens leaving the address bar
+immediately, the choose-a-password form appearing, Enter reaching
+`PUT /auth/v1/user`, and a reload mid-recovery still getting that form from
+`?account=recovery` alone. What is left of `F-20` is only whether the mail
+arrives.
+
+**The keyboard-containment check carries a control, and needs one.** "The
+dialog swallowed the keystroke" and "nothing was listening anyway" are the same
+observation from outside. An earlier version of this check ran on the landing
+page, where no scene is mounted and `bindKeyboard` is never called — it passed
+whether or not the dialog contained anything. So it now runs on a real scene
+route and presses `h` twice with the dialog shut first, which must toggle
+`#ui.is-hidden`; only then is the same key pressed with the dialog open, where
+it must do nothing. Reverting the focus restore in `render()` makes five of
+these checks fail, including `is-hidden=true` on that one — which is what a
+regression guard has to be able to show.
+
+The one part no automated check reaches is the password-reset email round-trip,
+which needs a real inbox — that is `F-20` in [`follow-ups.md`](follow-ups.md).
 
 ### Failure policy
 

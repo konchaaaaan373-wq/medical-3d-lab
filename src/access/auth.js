@@ -103,6 +103,31 @@ export async function signUp(email, password) {
 }
 
 /**
+ * Ask Supabase to send the sign-up confirmation email again.
+ *
+ * Only ever reached from a sign-up this browser just performed that came back
+ * without a session — which is to say, only when the project has email
+ * confirmation switched on. That is what makes it safe to offer: the address is
+ * one the person in front of it just typed, so there is nothing here to
+ * enumerate. Without it, somebody whose mail went missing has no route back
+ * except registering the same address again.
+ *
+ * Supabase rate-limits this endpoint; a refusal arrives as a normal error and
+ * is shown as one.
+ */
+export async function resendSignUpConfirmation(email, redirectTo) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  const url = new URL(`${AUTH_CONFIG.url}/auth/v1/resend`);
+  if (redirectTo) url.searchParams.set('redirect_to', redirectTo);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: headers(),
+    body: JSON.stringify({ type: 'signup', email }),
+  });
+  await json(response);
+}
+
+/**
  * Ask Supabase to send its standard recovery email.
  *
  * Supabase intentionally does not reveal whether the address exists, so the UI

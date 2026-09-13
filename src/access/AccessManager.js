@@ -6,6 +6,7 @@ import {
   isPasswordRecovery,
   getSession,
   requestPasswordReset,
+  resendSignUpConfirmation,
   signIn,
   signOut,
   signUp,
@@ -19,6 +20,12 @@ import {
   PLAN,
   PLAN_GRANTS,
 } from './policy.js';
+import {
+  CREDENTIAL_MODE,
+  MIN_PASSWORD_LENGTH,
+  credentialForm,
+  credentialModePolicy,
+} from './credentialForm.js';
 import { pricePresentation } from './pricing.js';
 import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
@@ -43,6 +50,17 @@ export function createAccessManager({ ui }) {
     loading: false,
     recoveryMode: false,
     deletionMode: false,
+    // Which of the two people the credential form is currently talking to.
+    // Returning visitors are the common case, so that is what it opens on.
+    credentialMode: CREDENTIAL_MODE.SIGN_IN,
+    // The address as typed. `render()` rebuilds the dialog from scratch, so
+    // without this, switching mode — or any refresh landing mid-typing —
+    // empties a field the person had already filled in.
+    credentialEmail: '',
+    // The address a sign-up is waiting on confirmation for, or null. Set only
+    // when Supabase answered a sign-up without a session, which is the only
+    // situation where resending is a thing that exists.
+    pendingConfirmationEmail: null,
     error: '',
     notice: '',
   };
@@ -177,6 +195,9 @@ export function createAccessManager({ ui }) {
     state.subscriptions = [];
     state.loading = false;
     state.deletionMode = false;
+    state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
+    state.credentialEmail = '';
+    state.pendingConfirmationEmail = null;
     state.error = '';
     state.notice = '';
   }
@@ -280,6 +301,10 @@ export function createAccessManager({ ui }) {
     required = null;
     state.notice = '';
     state.deletionMode = false;
+    // Reopening the dialog starts the conversation again, on the sign-in side.
+    state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
+    state.credentialEmail = '';
+    state.pendingConfirmationEmail = null;
     render();
     requestAnimationFrame(() => {
       if (focusTarget?.isConnected) focusTarget.focus();
@@ -330,7 +355,52 @@ export function createAccessManager({ ui }) {
     renderAccountButton();
     if (modal.hidden) return;
     const dialog = modal.querySelector('.access-dialog');
+
+    // Rebuilding the dialog destroys whatever had focus, and left alone focus
+    // falls to <body> — outside the modal. Everything the modal gets from
+    // holding focus then stops: its own keydown handler never fires, so Escape
+    // no longer closes it and Tab is no longer trapped, and because that
+    // handler is also what calls `stopPropagation`, the scene's window-level
+    // shortcuts start acting on the model *behind* the open dialog (Space
+    // plays it, H hides the UI under it).
+    //
+    // This belongs here rather than in each handler that calls `notify()`:
+    // every rebuild loses focus, not just the ones somebody remembered to
+    // patch up afterwards.
+    const hadFocus = dialog.contains(document.activeElement);
+    const key = hadFocus ? focusKey(document.activeElement) : null;
     dialog.replaceChildren(...dialogContent());
+    if (hadFocus) restoreFocus(dialog, key);
+  }
+
+  /**
+   * A selector for the focused control that still means something once the
+   * dialog has been rebuilt from scratch.
+   *
+   * A named field is its own answer. Otherwise the *last* `access-` class: these
+   * controls are written base-then-modifier (`access-text-button
+   * access-switch-mode`), so the last one is the specific one — the first would
+   * match `access-forgot` just as happily and move focus to the wrong button.
+   */
+  function focusKey(node) {
+    if (!(node instanceof HTMLElement)) return null;
+    const escape = globalThis.CSS?.escape ?? ((value) => value);
+    const name = node.getAttribute('name');
+    if (name) return `[name="${escape(name)}"]`;
+    const marker = [...node.classList].filter((token) => token.startsWith('access-')).pop();
+    return marker ? `.${escape(marker)}` : null;
+  }
+
+  /**
+   * Put focus back where it was — or, if that control is gone or now disabled,
+   * anywhere still inside the dialog. Landing on the close button is a poor
+   * result; landing on `<body>` is a broken one.
+   */
+  function restoreFocus(dialog, key) {
+    const target =
+      (key ? dialog.querySelector(`${key}:not([disabled])`) : null) ??
+      dialog.querySelector('input:not([disabled]), button:not([disabled]), a[href]');
+    target?.focus({ preventScroll: true });
   }
 
   function paidAccessLabel() {
@@ -381,20 +451,39 @@ export function createAccessManager({ ui }) {
         : required
           ? 'このモードを利用する'
           : 'Medical 3D Lab アカウント';
+    // Signed out with no particular mode being reached for, the dialog *is* the
+    // credential form, so its heading says which of the two is on screen —
+    // "Access & billing" over a password field does not tell anybody where they
+    // are. When `required` is set the entitlement name stays: that answers the
+    // more useful question, which is why they are being asked at all.
+    // `authConfigured()` first: the early return below replaces the whole body
+    // with "account access is not configured on this deployment", and a dialog
+    // headed "Sign in" over that text describes a form that is not there.
+    const credentials = authConfigured() && !state.user && !recovery && !deleting && !required
+      ? credentialModePolicy(state.credentialMode)
+      : null;
     const titleEn = recovery
       ? 'Choose a new password'
       : deleting
         ? 'Delete account'
         : required
           ? ENTITLEMENT_COPY[required]?.label ?? 'Access'
-          : 'Access & billing';
+          : credentials?.mode === CREDENTIAL_MODE.SIGN_UP
+            ? 'Create an account'
+            : credentials
+              ? 'Sign in'
+              : 'Access & billing';
     const titleJa = recovery
       ? '新しいパスワードを設定'
       : deleting
         ? 'アカウントを削除'
         : required
           ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権'
-          : '利用権・お支払い';
+          : credentials?.mode === CREDENTIAL_MODE.SIGN_UP
+            ? '新規登録'
+            : credentials
+              ? 'ログイン'
+              : '利用権・お支払い';
     const head = el('header', { class: 'access-head' }, [
       el('div', {}, [
         el('div', { class: 'access-kicker lang-en', text: kickerEn }),
@@ -564,52 +653,81 @@ export function createAccessManager({ ui }) {
     ].filter(Boolean));
   }
 
+  /**
+   * Sign in, or create an account.
+   *
+   * The form itself lives in `credentialForm.js` and is a pure view; this is
+   * the half that talks to Supabase and owns the state. What the two modes
+   * differ in — password `autocomplete`, the verb in a failure message,
+   * whether `Forgot password?` applies — is `credentialModePolicy`.
+   */
   function authForm() {
-    const email = el('input', { class: 'access-input', type: 'email', autocomplete: 'email', placeholder: 'email@example.com', required: '' });
-    const password = el('input', { class: 'access-input', type: 'password', autocomplete: 'current-password', placeholder: 'Password (8+ characters)', minlength: '8', required: '' });
-    const submit = async (mode) => {
+    const submitCredentials = async ({ mode, email, password }) => {
+      const policy = credentialModePolicy(mode);
       state.notice = '';
       state.error = '';
-      if (!email.value || password.value.length < 8) {
-        state.notice = 'メールアドレスと8文字以上のパスワードを入力してください。';
+      state.credentialEmail = email;
+
+      // A browser enforces `required` / `minlength` before it will fire submit,
+      // so this is the backstop rather than the first line — but it is the one
+      // that answers in both languages, and the one that still holds if the
+      // form is ever submitted programmatically.
+      if (!email || password.length < MIN_PASSWORD_LENGTH) {
+        state.notice = policy.incomplete;
         notify();
         return;
       }
+
       try {
         state.loading = true;
         notify();
-        if (mode === 'signup') {
-          const result = await signUp(email.value.trim(), password.value);
+        if (mode === CREDENTIAL_MODE.SIGN_UP) {
+          const result = await signUp(email, password);
           if (!result.session) {
+            // Confirmation is on: there is no session to refresh yet. The next
+            // thing this person does, after the mail, is sign in — so leave the
+            // dialog on that side rather than on the form they have finished
+            // with, and keep the address they just typed.
             state.notice = '確認メールを送信しました。確認後にログインしてください。';
+            state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
+            // Remembering the address is what makes resending offerable at all,
+            // and it is the same address the form is already showing.
+            state.pendingConfirmationEmail = email;
             return;
           }
         } else {
-          await signIn(email.value.trim(), password.value);
+          await signIn(email, password);
         }
+        state.credentialEmail = '';
+        state.pendingConfirmationEmail = null;
         await refresh();
       } catch (error) {
-        state.error = error.message || 'ログインできませんでした。';
+        state.error = error.message || policy.failure;
       } finally {
         state.loading = false;
         notify();
       }
     };
 
-    const forgot = async () => {
+    const forgotPassword = async (address) => {
       state.notice = '';
       state.error = '';
-      const address = email.value.trim();
+      state.credentialEmail = address;
       if (!address) {
         state.notice = 'パスワード再設定メールを送るメールアドレスを入力してください。';
         notify();
-        email.focus();
+        // `notify()` has just rebuilt the dialog, so the input to focus is the
+        // new one, not the one the click came from.
+        modal.querySelector?.('.access-credentials input[name="email"]')?.focus();
         return;
       }
       try {
         state.loading = true;
         notify();
-        const redirect = new URL(`${window.location.origin}${window.location.pathname}`);
+        const redirect = new URL(confirmationRedirect());
+        // `?account=recovery` is what a *reload* mid-recovery has to go on: the
+        // tokens arrive in the fragment and are scrubbed the moment they are
+        // read. `isPasswordRecovery` is the other half of that pair.
         redirect.searchParams.set('account', 'recovery');
         await requestPasswordReset(address, redirect.href);
         // Deliberately neutral: Supabase does not disclose whether an account
@@ -623,25 +741,46 @@ export function createAccessManager({ ui }) {
       }
     };
 
-    return el('div', { class: 'access-auth' }, [
-      el('p', { class: 'access-copy lang-en', text: 'Create one account to keep purchases on every device. Free models do not require an account.' }),
-      el('p', { class: 'access-copy lang-ja', text: '購入した利用権を端末間で共有するためのアカウントです。無料モデルはログイン不要です。' }),
-      email,
-      password,
-      el('div', { class: 'access-auth-actions' }, [
-        el('button', { class: 'access-primary', type: 'button', disabled: state.loading ? '' : null, text: 'Sign in / ログイン', on: { click: () => submit('signin') } }),
-        el('button', { class: 'access-secondary', type: 'button', disabled: state.loading ? '' : null, text: 'Create account / 新規登録', on: { click: () => submit('signup') } }),
-      ]),
-      el('button', {
-        class: 'access-text-button access-forgot',
-        type: 'button',
-        disabled: state.loading ? '' : null,
-        text: 'Forgot password? / パスワードを忘れた',
-        on: { click: forgot },
-      }),
-      state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
-      state.error ? el('p', { class: 'access-error', text: state.error }) : null,
-    ].filter(Boolean));
+    const resendConfirmation = async (address) => {
+      state.notice = '';
+      state.error = '';
+      try {
+        state.loading = true;
+        notify();
+        await resendSignUpConfirmation(address, confirmationRedirect());
+        state.notice = '確認メールを再送しました。/ Confirmation email sent again.';
+      } catch (error) {
+        // Supabase rate-limits this; "too many requests" is the message that
+        // actually helps, so it is shown rather than flattened into a generic.
+        state.error = error.message || '確認メールを再送できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return credentialForm({
+      mode: state.credentialMode,
+      email: state.credentialEmail,
+      pendingConfirmation: state.pendingConfirmationEmail,
+      onResendConfirmation: resendConfirmation,
+      loading: state.loading,
+      notice: state.notice,
+      error: state.error,
+      onSubmit: submitCredentials,
+      onSwitchMode: (mode) => {
+        state.credentialMode = mode;
+        state.notice = '';
+        state.error = '';
+        notify();
+      },
+      onForgotPassword: forgotPassword,
+      // Recorded without re-rendering: a render on every keystroke would
+      // replace the input the person is typing into.
+      onEmailInput: (value) => {
+        state.credentialEmail = value;
+      },
+    });
   }
 
   function passwordRecoveryForm() {
@@ -649,8 +788,8 @@ export function createAccessManager({ ui }) {
       class: 'access-input',
       type: 'password',
       autocomplete: 'new-password',
-      placeholder: 'New password (8+ characters)',
-      minlength: '8',
+      placeholder: `New password (${MIN_PASSWORD_LENGTH}+ characters)`,
+      minlength: String(MIN_PASSWORD_LENGTH),
       required: '',
     });
     const confirm = el('input', {
@@ -658,15 +797,17 @@ export function createAccessManager({ ui }) {
       type: 'password',
       autocomplete: 'new-password',
       placeholder: 'Confirm new password',
-      minlength: '8',
+      minlength: String(MIN_PASSWORD_LENGTH),
       required: '',
     });
 
-    const finishRecovery = async () => {
+    const finishRecovery = async (event) => {
+      event?.preventDefault?.();
+      if (state.loading) return;
       state.notice = '';
       state.error = '';
-      if (password.value.length < 8) {
-        state.notice = '8文字以上の新しいパスワードを入力してください。';
+      if (password.value.length < MIN_PASSWORD_LENGTH) {
+        state.notice = `${MIN_PASSWORD_LENGTH}文字以上の新しいパスワードを入力してください。`;
         notify();
         return;
       }
@@ -700,7 +841,14 @@ export function createAccessManager({ ui }) {
       notify();
     };
 
-    return el('div', { class: 'access-auth access-recovery' }, [
+    // A real `<form>`, for the same reason as the credential form: this is a
+    // password field, and Enter is how a password field gets submitted.
+    return el('form', {
+      class: 'access-auth access-recovery',
+      method: 'post',
+      'aria-label': 'Choose a new password / 新しいパスワードを設定',
+      on: { submit: finishRecovery },
+    }, [
       el('p', { class: 'access-copy lang-en', text: 'The recovery link has signed you in temporarily. Choose a new password to finish recovering this account.' }),
       el('p', { class: 'access-copy lang-ja', text: '再設定リンクによる一時的な認証が完了しています。新しいパスワードを設定してください。' }),
       password,
@@ -708,10 +856,9 @@ export function createAccessManager({ ui }) {
       el('div', { class: 'access-auth-actions' }, [
         el('button', {
           class: 'access-primary',
-          type: 'button',
+          type: 'submit',
           disabled: state.loading ? '' : null,
           text: 'Update password / パスワードを更新',
-          on: { click: finishRecovery },
         }),
         el('button', {
           class: 'access-secondary',
@@ -724,6 +871,11 @@ export function createAccessManager({ ui }) {
       state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
       state.error ? el('p', { class: 'access-error', text: state.error }) : null,
     ].filter(Boolean));
+  }
+
+  /** Where Supabase should send the browser back to after an emailed link. */
+  function confirmationRedirect() {
+    return `${window.location.origin}${window.location.pathname}`;
   }
 
   function cleanRecoveryQuery() {
@@ -845,8 +997,19 @@ export function createAccessManager({ ui }) {
     ]);
   }
 
-  /** Why paid plans cannot be bought here, or null when they can. */
-  const billingNotice = () => saleBlockedNotice({ billingConfigured: state.billingConfigured });
+  /**
+   * Why paid plans cannot be bought here, or null when they can.
+   *
+   * A function declaration, not a `const` arrow, and that is load-bearing:
+   * everything in this tail sits after `return api`, so only hoisted
+   * declarations ever come into existence. As a `const` this stayed in the
+   * temporal dead zone for the life of the manager, and `dialogContent` calls
+   * it on the signed-in branch — so opening the account dialog while signed in
+   * threw `ReferenceError: billingNotice is not defined` and rendered nothing.
+   */
+  function billingNotice() {
+    return saleBlockedNotice({ billingConfigured: state.billingConfigured });
+  }
 
   async function checkout(plan) {
     const blocked = saleBlockedNotice({ billingConfigured: state.billingConfigured });
