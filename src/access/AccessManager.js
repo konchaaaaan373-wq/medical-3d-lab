@@ -62,6 +62,10 @@ export function createAccessManager({ ui }) {
     // situation where resending is a thing that exists.
     pendingConfirmationEmail: null,
     error: '',
+    // Kept apart from `error`: whether a failed entitlement lookup is worth
+    // reporting depends on whether there was anything to look up. See
+    // `visibleAccessError`.
+    entitlementsError: '',
     notice: '',
   };
   const listeners = new Set();
@@ -186,6 +190,65 @@ export function createAccessManager({ ui }) {
     for (const listener of listeners) listener(value);
   }
 
+  /**
+   * What this dialog is, right now.
+   *
+   * Written out rather than nested inline because it is six cases deep, and
+   * the one that was missing is the ordinary one: signed in, on a deployment
+   * with no billing. Heading that "Access & billing" told somebody who had
+   * just logged in that they had arrived at a payment screen, which is what
+   * made signing in feel like being handed a bill. With nothing to sell, this
+   * panel is the account — so it says so.
+   *
+   * @param {{ recovery: boolean, deleting: boolean, credentials: object|null }} state
+   */
+  function dialogTitle({ recovery, deleting, credentials }) {
+    if (recovery) return { en: 'Choose a new password', ja: '新しいパスワードを設定' };
+    if (deleting) return { en: 'Delete account', ja: 'アカウントを削除' };
+    // Reaching for a specific locked mode: naming it answers the more useful
+    // question, which is why they are being asked for anything at all.
+    if (required) {
+      return {
+        en: ENTITLEMENT_COPY[required]?.label ?? 'Access',
+        ja: ENTITLEMENT_COPY[required]?.labelJa ?? '利用権',
+      };
+    }
+    if (credentials?.mode === CREDENTIAL_MODE.SIGN_UP) return { en: 'Create an account', ja: '新規登録' };
+    if (credentials) return { en: 'Sign in', ja: 'ログイン' };
+    if (state.user && !purchasable()) return { en: 'Account', ja: 'アカウント' };
+    return { en: 'Access & billing', ja: '利用権・お支払い' };
+  }
+
+  /**
+   * A failed entitlement lookup, when it is worth putting on screen.
+   *
+   * With no billing on this deployment there are no subscriptions to load, so
+   * the endpoint answering 500 is the expected outcome rather than news.
+   * Reporting it anyway put "Could not load access." directly under the notice
+   * explaining that purchases are not enabled yet — two alarming sentences for
+   * one ordinary state, on the first screen a person sees after signing in.
+   *
+   * Where billing *is* configured a failed lookup may mean a paid entitlement
+   * is missing, and that is still said.
+   */
+  function visibleAccessError() {
+    return state.billingConfigured ? state.entitlementsError : '';
+  }
+
+  /**
+   * Whether anything can actually be bought here.
+   *
+   * Deliberately narrower than `canSell`: a deployment blocked only by an
+   * incomplete commercial disclosure still describes its plans and says why
+   * the button does not take money, which is `legalReadiness.js`'s decision
+   * and stands. This is the case where there is no billing infrastructure at
+   * all, so every card would read "Setup required" and no price exists to put
+   * on one.
+   */
+  function purchasable() {
+    return authConfigured() && state.billingConfigured;
+  }
+
   function invalidateSessionState() {
     // Any getSession/entitlements response already in flight belongs to the
     // previous browser session and must never restore its paid grants.
@@ -243,6 +306,7 @@ export function createAccessManager({ ui }) {
     const generation = ++refreshGeneration;
     state.loading = true;
     state.error = '';
+    state.entitlementsError = '';
     notify();
     let reconciliationSucceeded = reconcile ? false : null;
     try {
@@ -255,14 +319,26 @@ export function createAccessManager({ ui }) {
         const endpoint = reconcile
           ? '/.netlify/functions/entitlements?reconcile=1'
           : '/.netlify/functions/entitlements';
-        const response = await authenticatedFetch(endpoint);
-        const data = await response.json().catch(() => ({}));
-        if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
-        if (!response.ok) throw new Error(data.error || 'Could not load access.');
-        state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
-        state.subscriptions = data.subscriptions ?? [];
-        state.user = data.user ?? state.user;
-        if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
+        // Caught here rather than by the outer handler so that "the paid
+        // entitlements could not be read" stays distinguishable from "the
+        // session could not be established". Only the first of those is
+        // routine on a deployment that sells nothing.
+        try {
+          const response = await authenticatedFetch(endpoint);
+          const data = await response.json().catch(() => ({}));
+          if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
+          if (!response.ok) throw new Error(data.error || 'Could not load access.');
+          state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
+          state.subscriptions = data.subscriptions ?? [];
+          state.user = data.user ?? state.user;
+          if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
+          state.entitlementsError = '';
+        } catch (error) {
+          // Free access is deliberately resilient to a billing outage: the
+          // grant is already `free` and no model depends on this call.
+          state.entitlementsError = error.message || 'Could not check access.';
+          state.grants = new Set(FREE);
+        }
       }
     } catch (error) {
       if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
@@ -462,28 +538,7 @@ export function createAccessManager({ ui }) {
     const credentials = authConfigured() && !state.user && !recovery && !deleting && !required
       ? credentialModePolicy(state.credentialMode)
       : null;
-    const titleEn = recovery
-      ? 'Choose a new password'
-      : deleting
-        ? 'Delete account'
-        : required
-          ? ENTITLEMENT_COPY[required]?.label ?? 'Access'
-          : credentials?.mode === CREDENTIAL_MODE.SIGN_UP
-            ? 'Create an account'
-            : credentials
-              ? 'Sign in'
-              : 'Access & billing';
-    const titleJa = recovery
-      ? '新しいパスワードを設定'
-      : deleting
-        ? 'アカウントを削除'
-        : required
-          ? ENTITLEMENT_COPY[required]?.labelJa ?? '利用権'
-          : credentials?.mode === CREDENTIAL_MODE.SIGN_UP
-            ? '新規登録'
-            : credentials
-              ? 'ログイン'
-              : '利用権・お支払い';
+    const { en: titleEn, ja: titleJa } = dialogTitle({ recovery, deleting, credentials });
     const head = el('header', { class: 'access-head' }, [
       el('div', {}, [
         el('div', { class: 'access-kicker lang-en', text: kickerEn }),
@@ -499,7 +554,6 @@ export function createAccessManager({ ui }) {
         head,
         el('p', { class: 'access-copy lang-en', text: 'The paywall UI is installed, but account access has not been configured on this deployment yet. Free models remain available.' }),
         el('p', { class: 'access-copy lang-ja', text: '課金UIは実装済みですが、このデプロイにはアカウント認証がまだ設定されていません。無料モデルはそのまま利用できます。' }),
-        planGrid(),
       ];
     }
 
@@ -539,7 +593,12 @@ export function createAccessManager({ ui }) {
             ]),
           ])
         : null,
-      planGrid(),
+      // Three cards all reading "Setup required" are not a price list, and on
+      // a deployment that sells nothing they are the bulk of what somebody
+      // sees the moment they finish signing in. The sentence above already
+      // says purchases are not enabled yet; the cards only repeat it three
+      // times in a form that looks like a shop.
+      purchasable() ? planGrid() : null,
       hasActiveSubscription() && state.billingConfigured
         ? el('button', {
             class: 'access-manage',
@@ -563,7 +622,9 @@ export function createAccessManager({ ui }) {
         },
       }),
       state.notice ? el('p', { class: 'access-form-message', text: state.notice }) : null,
-      state.error ? el('p', { class: 'access-error', text: state.error }) : null,
+      (state.error || visibleAccessError())
+        ? el('p', { class: 'access-error', text: state.error || visibleAccessError() })
+        : null,
     ].filter(Boolean);
   }
 
