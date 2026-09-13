@@ -3196,8 +3196,15 @@
  * own this, and a 40dvh console there would cover the subject it describes.
  */
 @media (max-width: 560px) and (orientation: portrait) {
+  /* 26dvh was 179px against a 177px bar: a ceiling that never touched it. What
+     the bar can give is decided by what its two columns must keep — the legend
+     is the key to the colours the slider is changing, so it is not allowed to
+     scroll away. Both columns stack their content from the top, so a ceiling
+     here spends the bottom of each: the left gives up the tail of "where this
+     can be seen next", the right gives up the feedback button, and the legend,
+     the title and the review badge all stay. */
   .top-bar {
-    max-height: 26dvh !important;
+    max-height: 20dvh !important;
   }
 
   .console {
