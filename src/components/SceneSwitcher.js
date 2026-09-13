@@ -132,7 +132,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     const isCurrent = group.id === currentGroup.id;
     const details = el('details', {
       class: `global-nav-system-section${isCurrent ? ' is-current' : ''}`,
-      open: '',
+      ...(isCurrent ? { open: '' } : {}),
     }, [
       el('summary', { class: 'global-nav-system-summary' }, [
         el('span', { class: 'global-nav-system-heading' }, [bilingual(group.label, group.labelJa)]),
@@ -183,8 +183,8 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
         el('div', { class: 'global-nav-panel-heading' }, [
           el('div', { class: 'global-nav-panel-title' }, [bilingual('Organs & models', '臓器・モデル')]),
           el('p', { class: 'global-nav-panel-intro' }, [bilingual(
-            'Browse by body system and organ.',
-            '身体の系統・臓器からモデルを探せます。'
+            'Choose a body system, then an organ and model.',
+            '身体の系統を選び、臓器・モデルへ進みます。'
           )]),
         ]),
         favoriteButton,
@@ -244,21 +244,12 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     trigger.hidden = true;
   }
 
-  const mobileSystems = globalThis.matchMedia?.('(max-width: 720px)') ?? null;
-  const applySystemViewport = () => {
-    if (!mobileSystems?.matches) {
-      systemDetails.forEach((details) => { details.open = true; });
-      return;
-    }
-    systemDetails.forEach((details) => {
-      details.open = details.classList.contains('is-current');
-    });
-  };
-  applySystemViewport();
-  mobileSystems?.addEventListener?.('change', applySystemViewport);
+  // One body system is open at a time on every viewport. This keeps a fourteen-
+  // system catalogue scannable on desktop and prevents scroll fatigue on a
+  // phone. The current system starts open so opening Models never loses place.
   for (const details of systemDetails) {
     details.addEventListener('toggle', () => {
-      if (!mobileSystems?.matches || !details.open) return;
+      if (!details.open) return;
       for (const other of systemDetails) {
         if (other !== details) other.open = false;
       }
@@ -342,7 +333,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     setBackgroundInert(open);
     if (open) {
       const currentSystem = systemDetails.find((details) => details.classList.contains('is-current'));
-      if (currentSystem) currentSystem.open = true;
+      if (currentSystem && !systemDetails.some((details) => details.open)) currentSystem.open = true;
       closeButton.focus?.();
       requestAnimationFrame(() => {
         panel.querySelector('.global-nav-scene.is-current')?.scrollIntoView?.({ block: 'nearest' });
