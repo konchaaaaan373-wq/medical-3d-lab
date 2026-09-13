@@ -75,6 +75,24 @@
   line-height: 1.3;
 }
 
+/* Live browser review on the Japanese Heart Failure surface exposed a stray
+ * serif-looking fallback in the medical limitation line. Keep all disease
+ * console copy on the same Japanese UI stack and remove Latin-style tracking
+ * from its compact controls. */
+html[lang='ja'] #ui .stage-summary.disclaimer,
+#ui[data-lang='ja'] .stage-summary.disclaimer,
+html[lang='ja'] #ui .button-row .btn,
+#ui[data-lang='ja'] .button-row .btn {
+  font-family: var(--font-ja, 'Hiragino Sans', 'Yu Gothic UI', 'Yu Gothic', 'Noto Sans JP', system-ui, sans-serif);
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+html[lang='ja'] #ui .button-row .btn,
+#ui[data-lang='ja'] .button-row .btn {
+  line-height: 1.35;
+}
+
 @media (max-width: 720px) {
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console,
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .console {
@@ -133,6 +151,11 @@
     flex-wrap: wrap;
     overflow: visible;
     gap: 5px;
+  }
+
+  #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row .btn,
+  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row .btn {
+    font-size: 11px;
   }
 
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-gap,
