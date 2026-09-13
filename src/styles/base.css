@@ -22,7 +22,18 @@
   --control-hover: rgba(46, 66, 100, 0.6);
   --radius: 10px;
   --shadow: 0 18px 46px rgba(0, 0, 0, 0.5);
-  --font: 'Inter', system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+  /* One native UI stack across the product. Inter was never bundled, so the
+     previous declaration changed shape by platform while several reading
+     routes declared a second stack of their own. Keep Japanese and Latin text
+     on the same metrics and use only weights the fallback fonts actually ship. */
+  --font: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'Hiragino Sans',
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic', 'Noto Sans JP',
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
 }
 
 * {

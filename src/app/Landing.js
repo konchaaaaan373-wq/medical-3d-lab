@@ -120,7 +120,7 @@ export function createLanding({
     }, [
       el('header', { class: 'landing-hero-heading' }, [
         el('div', { class: 'landing-hero-copy' }, [
-          el('p', { class: 'landing-eyebrow' }, dual('BETA', 'β版')),
+          el('p', { class: 'landing-eyebrow' }, dual('Public beta', '公開β')),
           el('h1', { class: 'landing-title' }, dual(
             '3D anatomical models of the human body',
             '人体の3D解剖モデル'
@@ -297,8 +297,8 @@ export function createPublicModelsExplorer({
         ]),
       ]),
       el('p', { class: 'eyebrow' }, dual(
-        models.length === 0 ? 'MODEL AVAILABILITY' : 'AVAILABLE MODEL',
-        models.length === 0 ? '公開状況' : '公開モデル'
+        models.length === 0 ? 'Publication status' : '3D anatomy model',
+        models.length === 0 ? '公開状況' : '3D解剖モデル'
       )),
       el('h1', { class: 'title' }, dual(heading[0], heading[1])),
       el('p', { class: 'subtitle' }, dual(summary[0], summary[1])),

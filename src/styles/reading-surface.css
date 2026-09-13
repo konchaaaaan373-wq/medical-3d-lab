@@ -110,9 +110,15 @@ html[data-route='locked'] #ui {
   border-radius: 4px;
 }
 
-html[data-route='trust'] :focus-visible {
-  /* The Trust page is a light surface; the luminous accent disappears on it. */
+html[data-route='trust'] :focus-visible,
+html[data-route='legal'] :focus-visible {
+  /* These reading pages are light surfaces; the luminous scene accent
+     disappears on them. */
   outline-color: #1c2528;
+}
+
+html[data-route='explorer'] :focus-visible {
+  outline-color: var(--explorer-accent-strong);
 }
 
 /* --------------------------------------------------------------------------
