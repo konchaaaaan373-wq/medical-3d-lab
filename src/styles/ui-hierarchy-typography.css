@@ -1,0 +1,367 @@
+/*
+ * Product typography + catalogue hierarchy.
+ *
+ * This is deliberately loaded last. The application accumulated several
+ * route-specific style layers while the model catalogue was growing; the
+ * product now needs one typography decision and one navigation hierarchy to be
+ * the final word without rewriting every older surface in the same change.
+ */
+
+:root {
+  --font-latin: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial,
+    system-ui, sans-serif;
+  --font-ja: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic',
+    'Noto Sans JP', 'Noto Sans CJK JP', system-ui, sans-serif;
+  --font: var(--font-latin);
+}
+
+html[lang='ja'] {
+  --font: var(--font-ja);
+}
+
+html[lang='en'] {
+  --font: var(--font-latin);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.lang-ja {
+  font-family: var(--font-ja);
+  font-kerning: normal;
+  line-break: strict;
+  letter-spacing: 0;
+}
+
+.lang-en,
+.landing-brand,
+.global-nav-brand,
+.global-nav-brand-mark {
+  font-family: var(--font-latin);
+}
+
+/* Japanese is not all-caps Latin copy. Remove the tracking that made short
+ * Japanese labels look mechanically spaced when they inherited eyebrow styles. */
+html[lang='ja'] .eyebrow,
+html[lang='ja'] .landing-eyebrow,
+html[lang='ja'] .landing-section-kicker,
+html[lang='ja'] .landing-demo-kicker,
+html[lang='ja'] .anatomy-location,
+html[lang='ja'] .anatomy-control-label,
+html[lang='ja'] .inspection-section-label {
+  letter-spacing: 0.015em;
+  text-transform: none;
+}
+
+/* Native UI fonts do not expose arbitrary 560/650/730/780 instances. Keep the
+ * visible product hierarchy on weights that render consistently on macOS,
+ * Windows and Japanese fallback fonts instead of relying on synthesized weight. */
+.landing-brand-name,
+.landing-brand-mark,
+.landing-nav-link,
+.landing-eyebrow,
+.landing-section-kicker,
+.landing-demo-kicker,
+.global-nav-brand-name,
+.global-nav-trigger-label,
+.global-nav-panel-title,
+.global-nav-system-heading,
+.global-nav-organ-name,
+.global-nav-kind-heading {
+  font-weight: 600;
+}
+
+.landing-title,
+.title,
+#ui[data-lang='ja'] .title-ja,
+#ui[data-lang='ja'] .stage-name-ja {
+  font-weight: 700;
+}
+
+html[lang='ja'] .landing-title {
+  letter-spacing: -0.035em;
+  line-height: 1.11;
+}
+
+html[lang='ja'] .landing-hero-summary,
+html[lang='ja'] .landing-method-copy,
+html[lang='ja'] .landing-neco-copy,
+html[lang='ja'] .subtitle,
+html[lang='ja'] .stage-summary-ja {
+  letter-spacing: 0;
+  line-height: 1.68;
+}
+
+/* ========================================================================== 
+   Model chooser: system → organ → model kind → model/use
+   --------------------------------------------------------------------------
+   The catalogue already owns this hierarchy. The drawer now exposes it rather
+   than flattening every system into one long organ list. Hierarchy is carried
+   by type, spacing and rules — not by a pile of cards or pills.
+   ========================================================================== */
+
+.global-nav-panel {
+  max-height: min(78vh, 760px);
+}
+
+.global-nav-panel-head {
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.global-nav-panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.global-nav-panel-title {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.global-nav-panel-intro {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--ink-faint);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.global-nav-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  align-items: start;
+  gap: 0 24px;
+  padding: 2px 4px 8px 0;
+}
+
+.global-nav-system-section {
+  min-width: 0;
+  padding: 11px 0 15px 12px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+}
+
+.global-nav-system-section.is-current {
+  border-left-color: color-mix(in srgb, var(--accent) 58%, var(--border));
+}
+
+.global-nav-system-heading {
+  margin: 0 0 8px;
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.global-nav-system-section.is-current > .global-nav-system-heading {
+  color: var(--accent);
+}
+
+.global-nav-system-organs {
+  display: grid;
+  gap: 5px;
+}
+
+.global-nav-organ {
+  padding: 7px 0 9px;
+}
+
+.global-nav-organ + .global-nav-organ {
+  border-top: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+}
+
+.global-nav-organ-name,
+.global-nav-organ-name .lang-ja {
+  margin: 0 8px 5px 6px;
+  color: var(--ink-dim);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.global-nav-organ.is-current > .global-nav-organ-name,
+.global-nav-organ.is-current > .global-nav-organ-name .lang-ja {
+  color: var(--ink);
+}
+
+.global-nav-kind-group + .global-nav-kind-group {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 44%, transparent);
+}
+
+.global-nav-kind-head {
+  margin: 0 8px 4px;
+}
+
+.global-nav-kind-heading {
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  line-height: 1.3;
+}
+
+.global-nav-kind-note {
+  margin: 2px 0 0;
+  color: color-mix(in srgb, var(--ink-faint) 86%, transparent);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.global-nav-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.global-nav-scene {
+  min-height: 48px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  align-items: center;
+}
+
+.global-nav-scene-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.global-nav-scene-name,
+.global-nav-scene-name .lang-ja {
+  display: block;
+  color: inherit;
+  font-size: 13.5px;
+  line-height: 1.35;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.global-nav-scene-meta,
+.global-nav-scene-meta .lang-ja {
+  display: block;
+  color: var(--ink-faint);
+  font-size: 10.8px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.global-nav-scene.is-current {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.global-nav-scene.is-current .global-nav-scene-meta {
+  color: var(--ink-dim);
+}
+
+.global-nav-current-label {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+html[lang='ja'] .global-nav-current-label {
+  line-height: 1.35;
+}
+
+@media (max-width: 980px) {
+  .global-nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .global-nav-panel {
+    width: min(92vw, 410px);
+  }
+
+  .global-nav-panel-intro {
+    font-size: 11px;
+    line-height: 1.45;
+  }
+
+  .global-nav-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .global-nav-system-section {
+    padding: 10px 0 12px 10px;
+  }
+
+  .global-nav-system-section + .global-nav-system-section {
+    border-top: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+  }
+
+  .global-nav-system-heading {
+    font-size: 12.5px;
+  }
+
+  .global-nav-organ-name,
+  .global-nav-organ-name .lang-ja {
+    font-size: 13.5px;
+  }
+
+  .global-nav-scene {
+    min-height: 50px;
+  }
+
+  .global-nav-scene-name,
+  .global-nav-scene-name .lang-ja {
+    font-size: 14px;
+  }
+
+  .global-nav-scene-meta,
+  .global-nav-scene-meta .lang-ja {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 430px) {
+  .global-nav-brand-full {
+    display: none;
+  }
+
+  .global-nav-brand-compact {
+    display: inline;
+  }
+
+  .global-nav-current-label {
+    font-size: 11px;
+  }
+
+  .global-nav-trigger {
+    min-width: 64px;
+    padding-inline: 8px;
+  }
+
+  .global-nav-trigger-label {
+    font-size: 11.5px;
+  }
+}
+
+@media (max-height: 650px) and (max-width: 720px) {
+  .global-nav-panel-intro,
+  .global-nav-kind-note {
+    display: none;
+  }
+
+  .global-nav-system-section {
+    padding-top: 7px;
+    padding-bottom: 8px;
+  }
+
+  .global-nav-organ {
+    padding-top: 5px;
+    padding-bottom: 6px;
+  }
+}
