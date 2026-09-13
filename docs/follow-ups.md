@@ -151,11 +151,40 @@ included 2,000 分/月**を消費します。**2026-09 分は使い切ってお�
 `workflow_dispatch` のみ。定期実行は `verify-live` の 1 日 1 回だけです。
 **つまり消費しているのは run の「本数」であって、1 本あたりの無駄ではありません。**
 
-- 選択肢: ①リセットを待つ（無料）②Payment information / Budgets and alerts で
-  従量課金を有効にする ③`verify-live` を毎日から週次に落とす（削減幅は小さい）
+**方針は決まりました（2026-09-13）: リセットを待ちます。** 従量課金の有効化も
+self-hosted runner も、今回は行いません。
+
+**したがって 10/1 前後まで CI は赤のままです**（dashboard の表示は「18 日後に
+リセット」、metered usage の期間は 9/1〜9/29）。この間、全 job が 3〜4 秒で
+`runner_id: 0`・ログ 404 で失敗します。**これはツリーの問題ではありません。**
+赤を見て原因調査を始める前にここを読んでください。`ci.yml` が実行する全ステップ
+——`npm test` / `revisions:check` / `build` / `budget` / `verify:site` /
+`cards:check`——は 2026-09-13 時点でローカル全緑を確認済みです。
+
+検討して見送った案も残しておきます（再検討のたびに導出し直さないために）:
+
+- **期間限定で public にする**案は**採りません**。public にした瞬間から private に
+  戻すまでの間の clone / fork / スクレイピング / 検索インデックス / アーカイブは
+  **回収できず**、公開されるのは HEAD ではなく履歴全体です。そして守る対象である
+  患者説明ガイド 29 本と教材モジュールは**すでにリポジトリに入っています**。
+  つまり「期間限定の public」は「公開しない」ではなく「短く公開する」であり、
+  private を選んだ理由そのものを無効化します
+- **self-hosted runner**（GitHub の従量課金対象外なので private でも無制限）は
+  有効な選択肢ですが、Mac が起動していないと CI が動かないという新しい failure mode と、
+  macOS/Linux 差分（`playwright install --with-deps` は Linux 専用など）の
+  workflow 調整を持ち込みます
+
+**無制限 Actions で可能になること**（将来の判断材料）: ブラウザ駆動の検証
+`verify:ui` / `verify:auth` / `verify:anatomy` / `verify:disease` / `verify:patient`
+の 5 本は、**現在すべて CI の外**です（後ろ 3 本はどの workflow からも走りません）。
+ユニットテスト 2402 件が全緑の状態で、ブラウザ検証だけが実バグを 2 件
+（`billingNotice` の TDZ、ダイアログのフォーカストラップ）見つけた実績があります。
+ただし PR CI でブラウザを起動しない方針は `tests/viewports.test.js` が守っており、
+変更は方針判断です。
+
+- 再検討のきっかけ: リセット後に再び使い切る / ブラウザ検証を自動化したくなる
 - 確かめ方: <https://github.com/settings/billing> の **Usage** タブで
   リポジトリ別・workflow 別の内訳を見る（Overview の "Usage by repository" は上位 5 件）
-- 完了の定義: どの方針で運用するかが決まり、ここに 1 行記録される
 
 ### F-21 旧ドメインからのリダイレクト未確認 — P2（ドメイン切替）
 
