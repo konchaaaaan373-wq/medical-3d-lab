@@ -252,3 +252,23 @@ test('account dialog: nothing after `return api` is a declaration that does not 
     `unreachable declaration(s) after \`return api\` — make these \`function\` declarations:\n${stranded.join('\n')}`
   );
 });
+
+test('unconfirmed email: recognised by code, and by message as a fallback', async () => {
+  // The realistic failure now that production confirms addresses: somebody
+  // signs up, the mail is lost or delayed, they come back later and try to
+  // sign in. Before this they were told "Email not confirmed" in English and
+  // given no way to ask for the mail again — the resend only existed in the
+  // same session as the sign-up.
+  const { isUnconfirmedEmail } = await import('../src/access/auth.js');
+
+  assert.equal(isUnconfirmedEmail({ code: 'email_not_confirmed' }), true, 'the code is the contract');
+  assert.equal(isUnconfirmedEmail({ message: 'Email not confirmed' }), true, 'wording is the fallback');
+  assert.equal(isUnconfirmedEmail({ message: 'Please confirm your email address' }), true);
+
+  // A wrong password must not be mistaken for it: offering to resend a
+  // confirmation would send somebody after the wrong thing entirely.
+  assert.equal(isUnconfirmedEmail({ message: 'Invalid login credentials' }), false);
+  assert.equal(isUnconfirmedEmail({ code: 'invalid_credentials' }), false);
+  assert.equal(isUnconfirmedEmail(null), false);
+  assert.equal(isUnconfirmedEmail({}), false);
+});

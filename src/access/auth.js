@@ -62,6 +62,9 @@ async function json(response) {
   if (!response.ok) {
     const error = new Error(body.error_description || body.msg || body.message || 'Authentication failed');
     error.status = response.status;
+    // Kept so callers can branch on *why* rather than on the wording of a
+    // message Supabase is free to change. See `isUnconfirmedEmail`.
+    error.code = body.error_code ?? body.code ?? null;
     throw error;
   }
   return body;
@@ -100,6 +103,23 @@ export async function signUp(email, password) {
   const session = normaliseSession(data);
   if (session) store(session);
   return { session, user: data.user ?? null };
+}
+
+/**
+ * Was this sign-in refused because the address was never confirmed?
+ *
+ * It matters because the way out is not a better password — it is the
+ * confirmation mail, which may never have arrived. Somebody in this state who
+ * is only told "Email not confirmed" has nowhere to go but to register the
+ * same address a second time, which is the gap the resend exists to close.
+ *
+ * Checks the code first and the message only as a fallback: `error_code` is
+ * the contract, the wording is not.
+ */
+export function isUnconfirmedEmail(error) {
+  if (!error) return false;
+  if (error.code === 'email_not_confirmed') return true;
+  return /email not confirmed|confirm your email/i.test(String(error.message ?? ''));
 }
 
 /**
