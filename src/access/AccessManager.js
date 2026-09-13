@@ -4,6 +4,7 @@ import {
   authenticatedFetch,
   consumePasswordRecoveryRedirect,
   isPasswordRecovery,
+  isUnconfirmedEmail,
   getSession,
   requestPasswordReset,
   resendSignUpConfirmation,
@@ -763,7 +764,19 @@ export function createAccessManager({ ui }) {
         state.pendingConfirmationEmail = null;
         await refresh();
       } catch (error) {
-        state.error = error.message || policy.failure;
+        // Refused because the address was never confirmed. The way out is the
+        // confirmation mail, not another attempt at the password — so say that
+        // in both languages rather than passing Supabase's English through,
+        // and put the resend back within reach. Until this, the resend existed
+        // only in the same session as the sign-up: somebody who closed the tab
+        // and came back to a mail that never arrived had no route at all,
+        // which is exactly the situation it was built for.
+        if (isUnconfirmedEmail(error)) {
+          state.error = 'メールアドレスの確認が完了していません。確認メールのリンクを開いてください。 / This address has not been confirmed yet — open the link in the confirmation email.';
+          state.pendingConfirmationEmail = email;
+        } else {
+          state.error = error.message || policy.failure;
+        }
       } finally {
         state.loading = false;
         notify();
