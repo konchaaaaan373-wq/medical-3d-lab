@@ -192,6 +192,29 @@ export function credentialForm({
         text: busy ? policy.busyLabel : policy.submitLabel,
       }),
     ]),
+    // Shown when creating an account, because that is the moment being agreed
+    // to. A statement with links rather than a required checkbox: the account
+    // itself is free, and a tick-box adds friction without adding consent that
+    // the act of registering does not already carry. If an explicit tick is
+    // ever wanted, this is the place it goes.
+    policy.mode === CREDENTIAL_MODE.SIGN_UP
+      ? el('p', { class: 'access-legal-consent' }, [
+          el('span', { class: 'lang-en' }, [
+            'By creating an account you agree to the ',
+            el('a', { class: 'access-legal-link', href: '#/terms', text: 'Terms' }),
+            ' and the ',
+            el('a', { class: 'access-legal-link', href: '#/privacy', text: 'Privacy Policy' }),
+            '.',
+          ]),
+          el('span', { class: 'lang-ja' }, [
+            '登録することで',
+            el('a', { class: 'access-legal-link', href: '#/terms', text: '利用規約' }),
+            'と',
+            el('a', { class: 'access-legal-link', href: '#/privacy', text: 'プライバシーポリシー' }),
+            'に同意したものとみなします。',
+          ]),
+        ])
+      : null,
     el('div', { class: 'access-credentials-switch' }, [
       el('button', {
         class: 'access-text-button access-switch-mode',

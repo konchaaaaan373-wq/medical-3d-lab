@@ -429,6 +429,95 @@ try {
       await page.close();
     }
 
+    // ---- Managing an account that already exists -------------------------
+    step = 'managing a signed-in account';
+    {
+      const signedIn = (path, request) => {
+        if (path.includes('/auth/v1/token')) {
+          return { status: 200, contentType: 'application/json', body: sessionBody('holder@example.test') };
+        }
+        if (path.includes('/auth/v1/user') && request.method() === 'PUT') {
+          return { status: 200, contentType: 'application/json', body: JSON.stringify({ id: 'stub', email: 'holder@example.test' }) };
+        }
+        return null;
+      };
+      const { page, calls } = await openPage({ width: 1100, height: 950 }, { auth: signedIn });
+      await page.goto(base, { waitUntil: 'networkidle' });
+      await page.click('.account-trigger');
+      await page.waitForSelector('.access-credentials');
+
+      // Agreeing belongs to registering, so it appears there and only there.
+      check('sign-in is not asked to agree to anything', (await page.locator('.access-legal-consent').count()) === 0);
+      await page.click('.access-switch-mode');
+      await page.waitForSelector('.access-credentials.is-signup');
+      check('creating an account presents the terms', (await page.locator('.access-legal-consent').count()) === 1);
+      const legal = await page.locator('.access-legal-consent a').evaluateAll((links) => links.map((a) => a.getAttribute('href')));
+      check('and links to both documents',
+        legal.includes('#/terms') && legal.includes('#/privacy'), legal.join(', '));
+
+      await page.click('.access-switch-mode');
+      await page.waitForSelector('.access-credentials.is-signin');
+      await page.fill('.access-credentials input[name=email]', 'holder@example.test');
+      await page.fill('.access-credentials input[name=password]', 'the-old-password');
+      await page.press('.access-credentials input[name=password]', 'Enter');
+      await page.waitForSelector('.access-user-email', { timeout: 15000 });
+
+      step = 'changing a password from the account';
+      await page.click('.access-change-password');
+      await page.waitForSelector('.access-change-form');
+      await page.fill('input[name=current-password]', 'the-old-password');
+      await page.fill('input[name=new-password]', 'a-brand-new-one');
+      await page.fill('input[name=confirm-password]', 'DIFFERENT-one');
+      const beforeMismatch = calls.length;
+      await page.press('input[name=confirm-password]', 'Enter');
+      await page.waitForTimeout(400);
+      check('mismatched passwords never reach the network', calls.length === beforeMismatch);
+      // The regression this exists for: reporting the mismatch through
+      // `state.notice` rebuilt the form and emptied every field, so being told
+      // about the one mistake cost everything that was already right.
+      check('and the fields already filled in survive being told',
+        (await page.inputValue('input[name=current-password]')) === 'the-old-password'
+        && (await page.inputValue('input[name=new-password]')) === 'a-brand-new-one');
+
+      const beforeChange = calls.length;
+      await page.fill('input[name=confirm-password]', 'a-brand-new-one');
+      await page.press('input[name=confirm-password]', 'Enter');
+      await page.waitForSelector('.access-user-email', { timeout: 15000 });
+      const changed = calls.slice(beforeChange).join(' | ');
+      // The current password is proved before the new one is set, so a session
+      // left open cannot be used to lock its owner out of their own account.
+      check('the current password is proved before the new one is set',
+        /\/auth\/v1\/token/.test(changed) && /\/auth\/v1\/user/.test(changed), changed);
+
+      step = 'changing the address on the account';
+      await page.click('.access-change-email');
+      await page.waitForSelector('.access-change-form');
+      const beforeEmail = calls.length;
+      await page.fill('input[name=new-email]', 'moved@example.test');
+      await page.press('input[name=new-email]', 'Enter');
+      await page.waitForSelector('.access-user-email', { timeout: 15000 });
+      check('the move is requested of Supabase',
+        calls.slice(beforeEmail).some((u) => u.includes('/auth/v1/user')), calls.slice(beforeEmail).join(' | '));
+      // Nothing has moved until the link in the new address is opened. Saying
+      // "changed" here would leave somebody believing an address had moved
+      // when it had not, which is how an account becomes unreachable.
+      const emailNotice = (await page.locator('.access-form-message').allTextContents()).join('');
+      check('and is reported as sent, not as done',
+        /確認メール|Confirmation sent/.test(emailNotice) && !/変更しました/.test(emailNotice), emailNotice.slice(0, 60));
+
+      step = 'signing out in another tab';
+      await page.evaluate(() => {
+        localStorage.removeItem('medical3dlab.auth.v1');
+        // `storage` is what a real other tab would raise; it never fires in the
+        // tab that made the change, which is why this has to be synthesised.
+        window.dispatchEvent(new StorageEvent('storage', { key: 'medical3dlab.auth.v1', newValue: null }));
+      });
+      await page.waitForSelector('.access-credentials', { timeout: 15000 });
+      check('another tab signing out signs this one out too',
+        (await page.locator('.access-user-email').count()) === 0);
+      await page.close();
+    }
+
     // ---- Layout, at the two ends of the matrix ----------------------------
     for (const [label, viewport] of [
       ['desktop', { width: 1280, height: 900 }],

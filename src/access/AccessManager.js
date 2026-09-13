@@ -3,8 +3,11 @@ import {
   authConfigured,
   authenticatedFetch,
   consumePasswordRecoveryRedirect,
+  changeEmail,
+  changePassword,
   isPasswordRecovery,
   isUnconfirmedEmail,
+  onExternalSessionChange,
   getSession,
   requestPasswordReset,
   resendSignUpConfirmation,
@@ -62,6 +65,9 @@ export function createAccessManager({ ui }) {
     // when Supabase answered a sign-up without a session, which is the only
     // situation where resending is a thing that exists.
     pendingConfirmationEmail: null,
+    // Which account-management form is open, if any: 'password' | 'email'.
+    // Kept as one field because they are alternatives, never both at once.
+    accountEdit: null,
     error: '',
     // Kept apart from `error`: whether a failed entitlement lookup is worth
     // reporting depends on whether there was anything to look up. See
@@ -101,6 +107,15 @@ export function createAccessManager({ ui }) {
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       installLifecycleRefresh();
+      // Signing out in one tab used to leave every other tab signed in: the
+      // in-memory fallback that keeps the session usable where storage is
+      // denied cannot tell an empty read from another tab having just cleared
+      // it. On a shared machine that made "log out" a promise the product did
+      // not keep.
+      onExternalSessionChange(() => {
+        invalidateSessionState();
+        refresh();
+      });
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -206,6 +221,8 @@ export function createAccessManager({ ui }) {
   function dialogTitle({ recovery, deleting, credentials }) {
     if (recovery) return { en: 'Choose a new password', ja: '新しいパスワードを設定' };
     if (deleting) return { en: 'Delete account', ja: 'アカウントを削除' };
+    if (state.accountEdit === 'password') return { en: 'Change password', ja: 'パスワードを変更' };
+    if (state.accountEdit === 'email') return { en: 'Change email', ja: 'メールアドレスを変更' };
     // Reaching for a specific locked mode: naming it answers the more useful
     // question, which is why they are being asked for anything at all.
     if (required) {
@@ -262,6 +279,7 @@ export function createAccessManager({ ui }) {
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
+    state.accountEdit = null;
     state.error = '';
     state.notice = '';
   }
@@ -382,6 +400,7 @@ export function createAccessManager({ ui }) {
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
+    state.accountEdit = null;
     render();
     requestAnimationFrame(() => {
       if (focusTarget?.isConnected) focusTarget.focus();
@@ -560,6 +579,8 @@ export function createAccessManager({ ui }) {
 
     if (recovery) return [head, passwordRecoveryForm()];
     if (state.deletionMode) return [head, accountDeletionForm()];
+    if (state.user && state.accountEdit === 'password') return [head, passwordChangeForm()];
+    if (state.user && state.accountEdit === 'email') return [head, emailChangeForm()];
     if (!state.user) return [head, authForm()];
 
     return [
@@ -608,6 +629,20 @@ export function createAccessManager({ ui }) {
             on: { click: openPortal },
           })
         : null,
+      el('div', { class: 'access-account-actions' }, [
+        el('button', {
+          class: 'access-text-button access-change-password',
+          type: 'button',
+          text: 'Change password / パスワードを変更',
+          on: { click: () => openAccountEdit('password') },
+        }),
+        el('button', {
+          class: 'access-text-button access-change-email',
+          type: 'button',
+          text: 'Change email / メールアドレスを変更',
+          on: { click: () => openAccountEdit('email') },
+        }),
+      ]),
       el('button', {
         class: 'access-delete-account',
         type: 'button',
@@ -627,6 +662,202 @@ export function createAccessManager({ ui }) {
         ? el('p', { class: 'access-error', text: state.error || visibleAccessError() })
         : null,
     ].filter(Boolean);
+  }
+
+  /**
+   * Refuse a field without re-rendering.
+   *
+   * Reporting these through `state.notice` looked right and was not: `notify()`
+   * rebuilds the dialog, so saying "the passwords do not match" emptied every
+   * field the person had just filled in, including the two that were fine.
+   * They then had to retype all of it to find out whether they had fixed the
+   * one thing that was wrong.
+   *
+   * The browser already has a way to say this in place. Using it also keeps
+   * passwords out of `state` — nothing here is worth remembering across a
+   * render, and a plaintext password is the last thing that should be.
+   */
+  function refuseField(field, message) {
+    field.setCustomValidity?.(message);
+    field.reportValidity?.();
+    // Cleared on the next keystroke, or the field stays invalid after the fix.
+    field.addEventListener('input', () => field.setCustomValidity?.(''), { once: true });
+  }
+
+  function openAccountEdit(mode) {
+    state.accountEdit = mode;
+    state.notice = '';
+    state.error = '';
+    notify();
+  }
+
+  function closeAccountEdit({ notice = '' } = {}) {
+    state.accountEdit = null;
+    state.notice = notice;
+    state.error = '';
+    notify();
+  }
+
+  /** Cancel, shared by both account-management forms. */
+  function cancelEditButton() {
+    return el('button', {
+      class: 'access-secondary',
+      type: 'button',
+      disabled: state.loading ? '' : null,
+      text: 'Cancel / 戻る',
+      on: { click: () => closeAccountEdit() },
+    });
+  }
+
+  /**
+   * Change the password of a signed-in account.
+   *
+   * Reachable only from here. Before this the only way to change a password
+   * was to sign out and use the recovery mail, which is a strange thing to ask
+   * of somebody who is signed in and knows their password.
+   *
+   * The current one is required: `changePassword` proves it before setting the
+   * new one, so a session left open cannot be used to lock its owner out.
+   */
+  function passwordChangeForm() {
+    const current = el('input', {
+      class: 'access-input', type: 'password', name: 'current-password',
+      autocomplete: 'current-password', placeholder: 'Current password',
+      'aria-label': 'Current password / 現在のパスワード', required: '',
+    });
+    const next = el('input', {
+      class: 'access-input', type: 'password', name: 'new-password',
+      autocomplete: 'new-password', placeholder: `New password (${MIN_PASSWORD_LENGTH}+ characters)`,
+      'aria-label': 'New password / 新しいパスワード',
+      minlength: String(MIN_PASSWORD_LENGTH), required: '',
+    });
+    const confirm = el('input', {
+      class: 'access-input', type: 'password', name: 'confirm-password',
+      autocomplete: 'new-password', placeholder: 'Confirm new password',
+      'aria-label': 'Confirm new password / 新しいパスワード（確認）',
+      minlength: String(MIN_PASSWORD_LENGTH), required: '',
+    });
+
+    const submit = async (event) => {
+      event?.preventDefault?.();
+      if (state.loading) return;
+      state.notice = '';
+      state.error = '';
+      if (next.value.length < MIN_PASSWORD_LENGTH) {
+        refuseField(next, `${MIN_PASSWORD_LENGTH}文字以上にしてください。`);
+        return;
+      }
+      if (next.value !== confirm.value) {
+        refuseField(confirm, '入力したパスワードが一致しません。');
+        return;
+      }
+      try {
+        state.loading = true;
+        notify();
+        await changePassword(state.user?.email, current.value, next.value);
+        await refresh();
+        closeAccountEdit({ notice: 'Password changed. / パスワードを変更しました。' });
+        return;
+      } catch (error) {
+        state.error = error.message || 'パスワードを変更できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return el('form', {
+      class: 'access-auth access-change-form',
+      method: 'post',
+      'aria-label': 'Change password / パスワードを変更',
+      on: { submit },
+    }, [
+      el('p', { class: 'access-copy lang-en', text: 'Enter your current password, then choose a new one.' }),
+      el('p', { class: 'access-copy lang-ja', text: '現在のパスワードを入力してから、新しいパスワードを設定してください。' }),
+      current,
+      next,
+      confirm,
+      el('div', { class: 'access-auth-actions' }, [
+        cancelEditButton(),
+        el('button', {
+          class: 'access-primary', type: 'submit',
+          disabled: state.loading ? '' : null,
+          text: state.loading ? 'Saving… / 変更中…' : 'Change password / 変更する',
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', role: 'status', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', role: 'alert', text: state.error }) : null,
+    ].filter(Boolean));
+  }
+
+  /**
+   * Move the account to a different address.
+   *
+   * Nothing has changed when this succeeds — Supabase mails the new address
+   * and the move completes when that link is opened. So the wording is "check
+   * your mail", never "done": telling somebody their address had changed when
+   * it had not is how an account becomes unreachable.
+   */
+  function emailChangeForm() {
+    const address = el('input', {
+      class: 'access-input', type: 'email', name: 'new-email',
+      autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false',
+      placeholder: 'new@example.com',
+      'aria-label': 'New email address / 新しいメールアドレス', required: '',
+    });
+
+    const submit = async (event) => {
+      event?.preventDefault?.();
+      if (state.loading) return;
+      state.notice = '';
+      state.error = '';
+      const wanted = String(address.value ?? '').trim();
+      if (!wanted) {
+        state.notice = '新しいメールアドレスを入力してください。';
+        notify();
+        return;
+      }
+      if (wanted === state.user?.email) {
+        state.notice = 'すでにそのアドレスです。';
+        notify();
+        return;
+      }
+      try {
+        state.loading = true;
+        notify();
+        await changeEmail(wanted, confirmationRedirect());
+        closeAccountEdit({
+          notice: `${wanted} に確認メールを送信しました。リンクを開くと変更が完了します。 / Confirmation sent — the change completes when you open the link.`,
+        });
+        return;
+      } catch (error) {
+        state.error = error.message || 'メールアドレスを変更できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return el('form', {
+      class: 'access-auth access-change-form',
+      method: 'post',
+      'aria-label': 'Change email / メールアドレスを変更',
+      on: { submit },
+    }, [
+      el('p', { class: 'access-copy lang-en', text: `Signed in as ${state.user?.email ?? ''}. The change takes effect when you open the link sent to the new address.` }),
+      el('p', { class: 'access-copy lang-ja', text: `現在のアドレスは ${state.user?.email ?? ''} です。新しいアドレスに届くリンクを開いた時点で変更が完了します。` }),
+      address,
+      el('div', { class: 'access-auth-actions' }, [
+        cancelEditButton(),
+        el('button', {
+          class: 'access-primary', type: 'submit',
+          disabled: state.loading ? '' : null,
+          text: state.loading ? 'Sending… / 送信中…' : 'Send confirmation / 確認メールを送信',
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', role: 'status', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', role: 'alert', text: state.error }) : null,
+    ].filter(Boolean));
   }
 
   function accountDeletionForm() {
@@ -880,14 +1111,15 @@ export function createAccessManager({ ui }) {
       if (state.loading) return;
       state.notice = '';
       state.error = '';
+      // Refused in place rather than through `state.notice`: a rebuild here
+      // emptied both fields, so being told they did not match cost the person
+      // everything they had typed.
       if (password.value.length < MIN_PASSWORD_LENGTH) {
-        state.notice = `${MIN_PASSWORD_LENGTH}文字以上の新しいパスワードを入力してください。`;
-        notify();
+        refuseField(password, `${MIN_PASSWORD_LENGTH}文字以上にしてください。`);
         return;
       }
       if (password.value !== confirm.value) {
-        state.notice = '入力したパスワードが一致しません。';
-        notify();
+        refuseField(confirm, '入力したパスワードが一致しません。');
         return;
       }
 

@@ -249,6 +249,90 @@ export async function updatePassword(password) {
   return data?.user ?? null;
 }
 
+/**
+ * Change the password of a signed-in account, proving the current one first.
+ *
+ * Supabase will change a password on nothing but a live session, which is not
+ * enough: a session left open on a shared machine would let anybody lock its
+ * owner out of their own account. So the current password is proved the only
+ * way a browser can prove it — by exchanging it for a token — and the new one
+ * is set on the session that comes back.
+ *
+ * Re-authenticating also rotates the session, which is the right outcome
+ * anyway: the credentials just changed.
+ */
+export async function changePassword(email, currentPassword, newPassword) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  try {
+    await signIn(email, currentPassword);
+  } catch (error) {
+    // Told apart from a failure to *set* the new password, because the two
+    // have different remedies and only this one is the person's own mistake.
+    const failure = new Error('現在のパスワードが違います。 / That is not the current password.');
+    failure.cause = error;
+    failure.currentPasswordRejected = true;
+    throw failure;
+  }
+  return updatePassword(newPassword);
+}
+
+/**
+ * Ask Supabase to move the account to a new address.
+ *
+ * Nothing changes when this resolves. Supabase emails the new address and the
+ * move happens when that link is opened, so the UI must say "check your mail"
+ * rather than "done" — reporting success here would leave somebody believing
+ * they had changed an address they had not.
+ */
+export async function changeEmail(newEmail, redirectTo) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  const session = await getSession();
+  if (!session?.access_token) throw new Error('Please sign in first.');
+
+  const url = new URL(`${AUTH_CONFIG.url}/auth/v1/user`);
+  if (redirectTo) url.searchParams.set('redirect_to', redirectTo);
+  const response = await fetch(url, {
+    method: 'PUT',
+    headers: headers(session.access_token),
+    body: JSON.stringify({ email: newEmail }),
+  });
+  await json(response);
+}
+
+/**
+ * Notice a sign-in or sign-out that happened in another tab.
+ *
+ * `storage` fires only in the tabs that did *not* make the change, which is
+ * exactly the set that needs telling. Without this, signing out in one tab
+ * left every other tab signed in: `readStored` falls back to the in-memory
+ * `volatileSession` when storage reads empty — deliberately, so a browser that
+ * refuses persistent storage still works — and that fallback cannot tell
+ * "storage was denied" from "another tab just cleared it".
+ *
+ * Returns an unsubscribe function.
+ */
+export function onExternalSessionChange(listener) {
+  const target = globalThis.window;
+  if (!target?.addEventListener) return () => {};
+  const onStorage = (event) => {
+    if (event.key !== null && event.key !== STORAGE_KEY) return;
+    // `key: null` is a whole-storage clear, which counts too.
+    let next = null;
+    try {
+      next = JSON.parse(event.newValue ?? 'null');
+    } catch {
+      next = null;
+    }
+    // Adopt the other tab's answer, including the in-memory copy: this is the
+    // one case where an empty read is authoritative rather than a fallback.
+    volatileSession = next;
+    sessionGeneration += 1;
+    listener(next);
+  };
+  target.addEventListener('storage', onStorage);
+  return () => target.removeEventListener?.('storage', onStorage);
+}
+
 export function signOut() {
   const session = readStored();
   store(null);

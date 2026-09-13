@@ -227,6 +227,34 @@
   margin: 0;
 }
 
+/* Agreeing is part of registering, so it sits with the form rather than in a
+ * footer nobody reads. Small, but not hidden: the links must be reachable. */
+.access-legal-consent {
+  margin: 2px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.access-legal-consent .access-legal-link {
+  color: var(--ink-dim);
+  text-underline-offset: 2px;
+}
+
+/* Managing the account, below the account itself and above deleting it. */
+.access-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.access-account-actions .access-text-button:hover,
+.access-account-actions .access-text-button:focus-visible {
+  color: var(--ink);
+}
+
 .access-credentials .access-forgot {
   align-self: center;
   padding: 2px;
