@@ -172,8 +172,19 @@ it must do nothing. Reverting the focus restore in `render()` makes five of
 these checks fail, including `is-hidden=true` on that one — which is what a
 regression guard has to be able to show.
 
-The one part no automated check reaches is the password-reset email round-trip,
-which needs a real inbox — that is `F-20` in [`follow-ups.md`](follow-ups.md).
+Which sign-up branch a deployment is actually on is a project setting, not a
+fact about this code, and `npm run verify:live-auth -- <origin>` reads it:
+it pulls the Supabase origin and publishable key out of the *deployed* bundle
+(not this checkout, so a build made with different environment variables shows
+up rather than hides) and asks GoTrue's public `/auth/v1/settings` whether
+addresses are auto-confirmed. It only ever issues GETs — no sign-up, no reset
+request, no account, no mail — because asking a live auth service to send mail
+is a side effect on real people's inboxes.
+
+The one part no automated check reaches is therefore the email round-trip
+itself, which needs a real inbox — `F-20` in [`follow-ups.md`](follow-ups.md).
+Run `verify:live-auth` first: if the project auto-confirms, no confirmation
+mail exists at all, so the only mail to go looking for is the reset one.
 
 ### Failure policy
 

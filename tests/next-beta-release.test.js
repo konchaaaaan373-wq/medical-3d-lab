@@ -144,7 +144,7 @@ test('next-beta: a disease is published with both views or neither', () => {
     assert.ok(PATIENT_GUIDES[id], `${id} is a disease candidate with no patient explanation`);
   }
 
-  const withoutGuide = nextBetaPublicationProblems('heart-failure', { guides: {} });
+  const withoutGuide = nextBetaPublicationProblems('heart-failure', { authoredGuideIds: [] });
   assert.ok(
     withoutGuide.some((problem) => /no patient explanation/.test(problem)),
     'a disease with no patient explanation is refused'
