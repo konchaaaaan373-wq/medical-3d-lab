@@ -3178,6 +3178,41 @@
   }
 }
 
+/*
+ * A narrow portrait phone is the case the rule above does not catch, because
+ * its problem is not height. Measured on `amyloid-beta` at 390x690: the
+ * navigation took 52px, the cards 177px and the console 299px, leaving the
+ * model 130px of 690 — 19% of the frame — and the scene's own 3D labels then
+ * landed in that one clear strip, which is what "the panels are covering it"
+ * turns out to be. 690px is not a short viewport, so nothing above fires; the
+ * stack is what spends the screen, not the height.
+ *
+ * So cap the two stacks rather than hide what they say: nothing is lost, the
+ * rest of a long stage summary moves under the reader's thumb, and the model
+ * keeps a band worth turning. The stacks in the top bar already scrolled and
+ * already carried the `has-more` fade; the read-out scrolled nowhere and had
+ * no cue, so capping it first cut a sentence flat mid-word — `App.js` now
+ * marks it too. Held to portrait: in landscape the height rules above already
+ * own this, and a 40dvh console there would cover the subject it describes.
+ */
+@media (max-width: 560px) and (orientation: portrait) {
+  .top-bar {
+    max-height: 26dvh !important;
+  }
+
+  .console {
+    max-height: 40dvh !important;
+  }
+
+  /* The controls are the last thing that may be scrolled out of reach, so the
+     prose above them is what gives: the console is already a flex column, and
+     this is the only child in it that can absorb a cap. */
+  .stage-readout {
+    min-height: 0 !important;
+    overflow-y: auto !important;
+  }
+}
+
 /* ---------- model charts ----------
    The general case of the pressure-volume panel: same box, same type scale,
    whatever the scene's model happens to plot inside it. */
@@ -3638,6 +3673,7 @@
    matters most on the short windows where the clipping happens. */
 .rail.has-more,
 .top-left.has-more,
+.stage-readout.has-more,
 .inspection-panel.has-more {
   mask-image: linear-gradient(to bottom, #000 calc(100% - 20px), transparent 100%);
 }

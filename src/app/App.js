@@ -959,6 +959,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // On a phone the display panel docks just above the console. Only the console
   // knows how tall it is, and it differs by scene.
   publishHeight(consoleElement, ui, '--console-height');
+  // And on a narrow portrait phone the read-out is what gives, so that the
+  // controls under it stay in reach and the model keeps a band (see the
+  // responsive visibility policy in ui.css). A stage summary cut flat there
+  // reads as a sentence that ends mid-word, which is the same failure the rail
+  // and the left stack already answer with this cue.
+  markScrollable(stageReadout.element);
 
   // The model panels go on the left, where there is room for them: the rail
   // already carries the legend and the read-out, and stacking four panels
