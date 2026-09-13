@@ -25,6 +25,7 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
+import './styles/ui-hierarchy-typography.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
@@ -126,192 +127,81 @@ async function boot() {
   if (route.kind === 'legal') {
     document.documentElement.dataset.route = 'legal';
     const { createLegal } = await import('./app/Legal.js');
-    createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
+    createLegal({ ui, documentId: route.documentId, accountButton: access.accountButton });
     void observe({ ui, surface: 'landing' });
     void accessReady;
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
-      if (!sameRoute(window.location.hash, `#/${route.docId}`)) window.location.reload();
+      if (resolveRoute(window.location.hash).kind !== 'legal') window.location.reload();
     });
     return;
   }
 
   if (route.kind === 'explorer' || route.kind === 'lab') {
-    document.documentElement.dataset.route = 'explorer';
+    document.documentElement.dataset.route = route.kind;
     const { createExplorer } = await import('./app/Explorer.js');
     createExplorer({
       ui,
       accountButton: access.accountButton,
       scope: route.kind === 'lab' ? 'lab' : 'public',
     });
-    void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
+    void observe({ ui, surface: 'explorer' });
     void accessReady;
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
-      const next = resolveRoute(window.location.hash);
-      if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
+      const next = resolveRoute(window.location.hash).kind;
+      if (next !== route.kind) window.location.reload();
     });
     return;
   }
 
   document.documentElement.dataset.route = 'scene';
+  const [{ createApp }, { installAccess }] = await Promise.all([
+    import('./app/App.js'),
+    import('./access/install.js'),
+  ]);
 
-  // LanguageToggle normally applies this later inside createApp(). A renderer
-  // or atlas failure can happen before that point, so seed the same persisted
-  // preference before any scene work.
-  const sceneLanguage = readUiLanguagePreference();
-  ui.dataset.lang = sceneLanguage;
-  document.documentElement.setAttribute('lang', sceneLanguage);
-
-  const veil = document.createElement('div');
-  veil.className = 'loading';
-  veil.setAttribute('lang', sceneLanguage);
-  veil.innerHTML = [
-    `<span>${sceneLanguage === 'en' ? 'Loading 3D model' : '3Dモデルを読み込んでいます'}</span>`,
-    '<span class="loading-bar"></span>',
-  ].join('');
-  document.body.append(veil);
-
-  const fallbackStartedAt = Date.now();
-  const elapsedSinceNavigation = () =>
-    typeof performance?.now === 'function' ? performance.now() : Date.now() - fallbackStartedAt;
-
-  try {
-    const [{ createApp }, { installAccess }, { resolveSceneId }] = await Promise.all([
-      import('./app/App.js'),
-      import('./access/installAccess.js'),
-      import('./app/sceneRegistry.js'),
-    ]);
-    const app = await createApp({
-      stage,
-      ui,
-      /**
-       * Keep the shared recovery contract from the current integration tree.
-       * AnatomyPanel owns its retry/status UI; the shell supplies the action.
-       */
-      onRetryModel: () => window.location.reload(),
+  const observability = await observe({ ui, surface: 'scene' });
+  const reporter = observability?.reporter ?? null;
+  const scene = await createApp({
+    stage,
+    ui,
+    onRetryModel: () => window.location.reload(),
+  }).catch((error) => {
+    const classification = classifySceneStartFailure(error);
+    reporter?.capture(error, {
+      handled: classification.kind !== 'unexpected',
+      scene: route.sceneId,
+      device: observability?.deviceClass,
+      reason: classification.reason,
+      fallbackShown: true,
     });
-    installAccess({ app, access, ui, sceneId: resolveSceneId() });
-    void accessReady;
+    throw error;
+  });
 
-    // The shared anatomy implementation owns the actual panel and its state.
-    // Work only opts its presentation adapter in when that real panel exists.
-    let anatomyPresentation = null;
-    if (ui.querySelector('.anatomy-panel')) {
-      ui.dataset.anatomy = 'yes';
-      const { mountAnatomyShellPresentation } = await import('./app/anatomyShellPresentation.js');
-      anatomyPresentation = mountAnatomyShellPresentation({ ui });
-    }
+  installAccess({
+    ui,
+    sceneId: route.sceneId,
+    app: scene,
+    access,
+    reporter,
+  });
+  installUiShortcutGuard({ ui });
 
-    // Model shortcuts live at window level. UI controls retain their native and
-    // component-local behavior, while their key events stop before the model.
-    const removeUiShortcutGuard = installUiShortcutGuard({ ui });
+  void accessReady;
+  window.addEventListener('hashchange', () => {
+    if (isInPageAnchor(window.location.hash)) return;
+    const next = resolveRoute(window.location.hash);
+    if (!sameRoute(route, next)) window.location.reload();
+  });
 
-    installFinalPagehideCleanup({ cleanup: () => {
-      removeUiShortcutGuard();
-      anatomyPresentation?.destroy?.();
-      delete ui.dataset.anatomy;
-    } });
-
-    // createApp() already means the scene shell is ready. Optional reporting
-    // must never keep the loading veil over a usable model.
-    const readyElapsedMs = elapsedSinceNavigation();
-    requestAnimationFrame(() => {
-      veil.classList.add('is-done');
-      setTimeout(() => veil.remove(), 500);
-    });
-
-    settleOptionalService(
-      observe({
-        ui,
-        surface: 'scene',
-        sceneId: route.sceneId,
-        placement: 'rail',
-      }),
-      (observability) => reportSceneStart(
-        observability,
-        app,
-        route.sceneId,
-        () => readyElapsedMs
-      ),
-      (reportError) => console.warn('scene observability unavailable', reportError)
-    );
-  } catch (error) {
-    console.error(error);
-    veil.remove();
-    const failureReason = rendererFailureReason(error);
-    const [{ createSceneFailureFallback }, { createPublicDiagnosticCopyControl }] = await Promise.all([
-      import('./app/SceneFailureFallback.js'),
-      import('./app/publicDiagnosticCopyControl.js'),
-    ]);
-    const fallback = createSceneFailureFallback({
-      ui,
-      sceneId: route.sceneId,
-      reason: failureReason,
-    });
-    const diagnostic = createPublicDiagnosticCopyControl({
-      getContext: () => ({
-        modelId: route.sceneId,
-        language: ui.dataset.lang ?? 'ja',
-        state: failureReason,
-      }),
-    });
-    fallback.element.querySelector('.scene-fallback-card')?.append(diagnostic.element);
-
-    installFinalPagehideCleanup({ cleanup: () => {
-      diagnostic.dispose?.();
-      fallback.destroy?.();
-    } });
-
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      window.location.reload();
-    });
-
-    settleOptionalService(
-      observe({
-        ui,
-        surface: 'fallback',
-        sceneId: route.sceneId,
-        askConsent: false,
-      }),
-      (observability) => observability?.reporter.captureRendererFailure(error, {
-        scene: route.sceneId,
-        device: observability.deviceClass,
-        reason: failureReason,
-        fallbackShown: true,
-      }),
-      (reportError) => console.warn('fallback observability unavailable', reportError)
-    );
-  }
+  await settleOptionalService(observability?.ready);
+  installFinalPagehideCleanup({ access, observability, scene });
 }
 
 function rendererFailureReason(error) {
-  return classifySceneStartFailure(error);
-}
-
-async function reportSceneStart(observability, app, sceneId, elapsedSinceNavigation) {
-  if (!observability) return;
-  const { telemetry, deviceClass } = observability;
-  telemetry.record('model.start', { scene: sceneId, surface: 'scene', device: deviceClass });
-
-  const elapsedMs = elapsedSinceNavigation();
-  const { evaluateStartup } = await import('./app/performanceBudget.js');
-  const startup = evaluateStartup(elapsedMs, deviceClass);
-  telemetry.record('model.ready', {
-    scene: sceneId,
-    device: deviceClass,
-    elapsedMs: startup.elapsedMs,
-    withinBudget: startup.withinBudget,
-  });
-
-  app?.viewer?.onQuality?.((transition, report) => {
-    telemetry.record('model.quality', {
-      scene: sceneId,
-      device: deviceClass,
-      tier: transition.to,
-      direction: transition.direction,
-      ...(report.meanFps == null ? {} : { meanFps: report.meanFps }),
-    });
-  });
+  const message = String(error?.message ?? error ?? '').toLowerCase();
+  if (message.includes('webgl') || message.includes('context')) return 'webgl';
+  if (message.includes('shader')) return 'shader';
+  return 'unknown';
 }
