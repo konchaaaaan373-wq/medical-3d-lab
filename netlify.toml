@@ -29,6 +29,8 @@
 # origin is not known.
 [context.deploy-preview.environment]
   VITE_SITE_URL = ""
+  # Temporary browser-QA capability. Remove before this PR is made merge-ready.
+  VITE_ALLOW_PREVIEW = "1"
 
 [context.branch-deploy.environment]
   VITE_SITE_URL = ""
