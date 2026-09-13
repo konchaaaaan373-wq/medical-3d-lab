@@ -1,0 +1,114 @@
+/*
+ * Scalable model chooser layout.
+ *
+ * Systems form one stable index on every viewport. Exactly one system expands;
+ * organs and models live inside it. This avoids a masonry-like mega-menu on a
+ * desktop and prevents fourteen fully expanded systems from becoming a long
+ * phone scroll.
+ */
+
+.global-nav-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 2px 4px 8px 0;
+}
+
+.global-nav-system-section {
+  min-width: 0;
+  padding: 0;
+  border-left: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 58%, transparent);
+}
+
+.global-nav-system-section:last-child {
+  border-bottom: 0;
+}
+
+.global-nav-system-section.is-current {
+  border-left: 0;
+}
+
+.global-nav-system-summary {
+  min-height: 42px;
+  margin: 0;
+  padding: 7px 8px 7px 4px;
+  border-radius: 7px;
+}
+
+.global-nav-system-section[open] > .global-nav-system-summary {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.global-nav-system-section.is-current > .global-nav-system-summary {
+  color: var(--accent);
+}
+
+.global-nav-system-organs {
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 4px 20px;
+  padding: 4px 8px 12px 15px;
+}
+
+.global-nav-organ {
+  min-width: 0;
+  padding: 7px 0 9px;
+}
+
+.global-nav-organ + .global-nav-organ {
+  border-top: 0;
+}
+
+@media (max-width: 1040px) {
+  .global-nav-list {
+    display: flex;
+    gap: 0;
+  }
+
+  .global-nav-system-organs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .global-nav-list {
+    display: flex;
+    gap: 0;
+  }
+
+  .global-nav-system-section {
+    padding: 0;
+  }
+
+  .global-nav-system-section + .global-nav-system-section {
+    border-top: 0;
+  }
+
+  .global-nav-system-summary {
+    min-height: 44px;
+    margin: 0;
+    padding: 7px 8px 7px 3px;
+  }
+
+  .global-nav-system-organs {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 3px 4px 9px 10px;
+  }
+
+  .global-nav-organ + .global-nav-organ {
+    border-top: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+  }
+}
+
+@media (max-height: 650px) and (max-width: 720px) {
+  .global-nav-system-section {
+    padding: 0;
+  }
+
+  .global-nav-system-summary {
+    min-height: 40px;
+  }
+}
