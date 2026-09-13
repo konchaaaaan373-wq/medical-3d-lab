@@ -61,8 +61,14 @@
  * every scene this file does not open, so no chunk is emitted for it, and
  * `npm run verify:site` walks `dist/` to prove it.
  *
- * None of that is secrecy. **The repository is public**: anybody may read,
- * build and run the whole catalogue. This decides what the product offers and
+ * **None of that is secrecy, and this gate must never be used as if it were.**
+ * The repository is private — a decision about the cost of CI on a private
+ * repo and about the authored guides being the product that is meant to be
+ * sold, not a security boundary. It is not one: anybody with read access can
+ * build and run the whole catalogue, the production bundle is served to
+ * everybody, and visibility can change with one setting. So the rule is the
+ * same as it would be in the open — **do not put anything behind this that
+ * would be a problem to read.** This decides what the product offers and
  * delivers, not what a reader can find — see `docs/beta-release.md`.
  */
 import { SCENES, sceneById } from './index.js';

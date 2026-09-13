@@ -16,7 +16,7 @@ Last updated: 2026-09-12
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-100 です
+  次に追加する番号は F-101 です
 - 各項目は「何が未解決か」「どう確かめるか / どう決めるか」「完了の定義」を持つ
 - 解決したら削除ではなく、末尾の **Resolved** に 1 行で移す（何を根拠に閉じたかを残す）
 - 優先度は **P1**（公開前に潰す）/ **P2**（次の PR 群で）/ **P3**（機会があれば）
@@ -130,6 +130,32 @@ Supabase の Site URL / Redirect URLs は新 origin
   Project Settings → **Auth** の Custom SMTP（本番では独自 SMTP を設定するのが前提）。
 - ここだけは受信箱が要るため自動化していません。**認証サービスに送信させるのは
   実在の人の受信箱への副作用**なので、検証スクリプトは GET しか行いません。
+
+### F-100 private repo の Actions 無料枠 2,000 分が CI の制約になる — P2（2026-09-13）
+
+**リポジトリは private で運用する**と所有者が決めました（2026-09-13）。
+public なら Actions は無料・無制限ですが、private では **GitHub Free の
+included 2,000 分/月**を消費します。**2026-09 分は使い切っており**
+（`2,000 min used / 2,000 min included`）、**リセットまで 18 日**。
+この間 CI は runner が割り当てられず、全 job が 3〜4 秒で失敗します
+——コードの問題ではありません。
+
+判断の理由は 2 つで、どちらも private を支持します: CI コストは
+「待つ / 払う」で解決できる一方、`patientGuides.js` と `educationGuides.js` は
+**課金対象そのもの**で、public にすると売る予定の成果物がそのまま複製可能になります。
+
+現在の workflow はすでに絞ってあります——`ci.yml` は 1 job
+（以前は 10 job で、trust matrix を `npm test` に畳んだ経緯がコメントにあります）、
+`cache: npm` 済み、`concurrency` で古い run を cancel。ブラウザ系
+（`final-browser-validation` / `webkit-lifecycle-diagnostic`）は
+`workflow_dispatch` のみ。定期実行は `verify-live` の 1 日 1 回だけです。
+**つまり消費しているのは run の「本数」であって、1 本あたりの無駄ではありません。**
+
+- 選択肢: ①リセットを待つ（無料）②Payment information / Budgets and alerts で
+  従量課金を有効にする ③`verify-live` を毎日から週次に落とす（削減幅は小さい）
+- 確かめ方: <https://github.com/settings/billing> の **Usage** タブで
+  リポジトリ別・workflow 別の内訳を見る（Overview の "Usage by repository" は上位 5 件）
+- 完了の定義: どの方針で運用するかが決まり、ここに 1 行記録される
 
 ### F-21 旧ドメインからのリダイレクト未確認 — P2（ドメイン切替）
 
