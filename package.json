@@ -13,6 +13,7 @@
     "budget": "node scripts/check-bundle-budget.js",
     "verify:site": "node scripts/check-site-output.js",
     "verify:live": "node scripts/check-live-site.mjs",
+    "verify:live-auth": "node scripts/check-live-auth.mjs",
     "revisions:check": "node scripts/adopt-revisions.js",
     "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
     "verify:ui": "node scripts/check-viewports.mjs",

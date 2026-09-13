@@ -70,7 +70,11 @@ import { STATUS_IDS } from './taxonomy.js';
 import { assetById, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
 import { clinicalReviewForScene, hasCurrentClinicalReview } from './clinicalReview.js';
 import { sceneRevisionPin } from './modelRevisions.js';
-import { PATIENT_GUIDES } from '../data/patientGuides.js';
+// The ids only, never the guides themselves: this module is reachable from the
+// browser's eager entry (`main.js` → `releaseGate.js` → here), and importing
+// the payload put 220 kB of authored prose in front of every first paint. See
+// `patientGuideIndex.js`.
+import { PATIENT_GUIDE_SCENE_IDS } from '../data/patientGuideIndex.js';
 import {
   CLINICAL_INTENDED_USES,
   MECHANISM_LEVEL,
@@ -573,7 +577,7 @@ export function nextBetaPublicationProblems(candidate, {
   hasReview = hasCurrentClinicalReview,
   decisions = NEXT_BETA_PUBLICATION_DECISIONS,
   candidates = NEXT_BETA_DISEASE_CANDIDATES,
-  guides = PATIENT_GUIDES,
+  authoredGuideIds = PATIENT_GUIDE_SCENE_IDS,
   inherits = betaPublicationProblems,
 } = {}) {
   const id = typeof candidate === 'string' ? candidate : candidate?.id;
@@ -636,7 +640,7 @@ export function nextBetaPublicationProblems(candidate, {
   // Both halves of the experience this release exists for. A disease scene
   // without a patient explanation is the professional half only, which is the
   // thing the next beta is not.
-  if (scene.disease && !guides[id]) {
+  if (scene.disease && !authoredGuideIds.includes(id)) {
     problems.push('has no patient explanation, and a disease on this release is published with both views or neither');
   }
 

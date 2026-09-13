@@ -342,7 +342,18 @@ export function createFrameBudgetMonitor({
  * a single dependency that big is a decision to revisit, not a line to widen.
  */
 export const BUNDLE_BUDGET_KB = {
-  /** The JS the landing page must download before it can render. */
+  /**
+   * The JS the landing page must download before it can render.
+   *
+   * This sits close to its limit, and the reason is worth knowing before you
+   * add a static import to anything `main.js` already reaches: the entry is
+   * mostly the catalogue and the release gate, and the gate is one import away
+   * from large authored data. It measured 134.7 kB for a while because
+   * `release.js` imported the patient guides to answer a boolean, which pulled
+   * the guides and the COPD/asthma teaching data in behind them.
+   * `tests/eager-entry-graph.test.js` now names the payloads that must stay
+   * lazy, so that mistake fails as itself rather than as a number.
+   */
   entry: 90,
   /** The single largest lazily-loaded JS chunk (a scene, or the renderer). */
   largestChunk: 260,
