@@ -1,3 +1,5 @@
+@import './ui-hierarchy-typography.css';
+
 /*
  * Browser-first release-candidate polish.
  *
@@ -123,11 +125,8 @@
     gap: 8px;
   }
 
-  /* The first browser pass forced one row and hid 137–266px of controls behind
-   * horizontal scrolling. That optimised height at the cost of discoverability.
-   * Let the existing responsive control design wrap instead: every action is
-   * visible without a swipe and the console is still far shallower than before
-   * the text compaction. */
+  /* Do not trade height for hidden actions. Every control remains visible on a
+   * phone; wrapping is cheaper than making people discover horizontal scroll. */
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row,
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row {
     flex-wrap: wrap;
