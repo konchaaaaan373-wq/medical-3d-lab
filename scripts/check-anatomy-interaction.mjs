@@ -583,11 +583,35 @@ try {
   //    clears the selection: with a miss last, everything below was testing
   //    what happens to a selection that is not there, and reporting it as the
   //    scene losing one.
+  //
+  //    A measured point that misses is re-aimed once before it counts against
+  //    the scene. The table is measured on the frame the scene opens at, and
+  //    these clicks move it: selecting a structure that names a
+  //    `preferredView` takes the scene there, so a point measured fourth can
+  //    be background by the time the first three have been pressed. Putting
+  //    the scene back is not available either — the opening frame was fitted
+  //    with the consent banner up, and by now it is gone, so "reset the
+  //    display" re-frames to a composition the points were never measured
+  //    against. The male tract reported two of four that way, on a table
+  //    every point of which had just been measured on the model.
+  //
+  //    What the check is for is whether a click on the organ resolves to the
+  //    structure the panel then names. So a miss is re-aimed at a point the
+  //    scene says is over the model *now*, and the re-aiming is reported: a
+  //    table that has genuinely gone stale still shows up, as four notes.
   let lastHitPoint = null;
   for (const [fx, fy] of clickPoints) {
-    const hit = await clickAt(fx, fy);
-    if (hit.en === EMPTY) continue;
-    lastHitPoint = [fx, fy];
+    let hit = await clickAt(fx, fy);
+    let at = [fx, fy];
+    if (hit.en === EMPTY) {
+      const live = await liveModelPoint();
+      if (!live) continue;
+      notes.push(`the measured point ${fx},${fy} is background now — the scene has moved since it was measured`);
+      at = live;
+      hit = await clickAt(live[0], live[1]);
+      if (hit.en === EMPTY) continue;
+    }
+    lastHitPoint = at;
     observed.structures.push(hit);
     if (!hit.ja || hit.ja === '部位を選択してください') problems.push(`"${hit.en}" has no Japanese name`);
     if (!hit.where.includes('›')) problems.push(`"${hit.en}" is named without a place in the hierarchy`);
@@ -657,9 +681,18 @@ try {
   // the frame: not every scene has anything in the middle. The drainage map's
   // centre is a body outline drawn too faint to be clickable, so a centre click
   // there reports the selection failing to come back when nothing is wrong.
+  //
+  //    Asked for again rather than remembered: the click that recorded
+  //    `lastHitPoint` may itself have taken the scene to that structure's
+  //    preferred view, in which case the point it was recorded at is now
+  //    background. That is how the nose came to report "a structure could not
+  //    be selected again after clearing" about a scene that selects perfectly
+  //    well — and then three more failures downstream of the selection it had
+  //    just been denied.
+  const reselectPoint = (await liveModelPoint()) ?? lastHitPoint;
   await page.mouse.click(
-    box.x + box.width * lastHitPoint[0],
-    box.y + box.height * lastHitPoint[1]
+    box.x + box.width * reselectPoint[0],
+    box.y + box.height * reselectPoint[1]
   );
   await page.waitForTimeout(350);
   await restPointer();
