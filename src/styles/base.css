@@ -151,6 +151,21 @@ body {
   transition: opacity 400ms ease;
 }
 
+/* The departure veil, raised when a link takes the reader off a surface that
+   is rendering a model. It has to cover *everything*, because anything left
+   showing is still answering for the URL that has already changed.
+
+   `.loading` sits at 20, which is above the fixed scene navigation (15) and
+   below every overlay in the product: `.reel-chrome` 30, the floating feedback
+   trigger 35, `.consent-banner` / `.access-modal` / `.landing-nav` / the phone
+   anatomy sheet 40, `.feedback-overlay` 60, `.skip-link` 100. The phone
+   anatomy sheet was the one that mattered — it is the model's own structure
+   list, opaque and full-width, and it stayed up and pressable for the whole
+   departure. 120 clears the measured ceiling with room under it. */
+.loading[data-leaving] {
+  z-index: 120;
+}
+
 .loading.is-done {
   opacity: 0;
   pointer-events: none;

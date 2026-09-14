@@ -31,6 +31,7 @@ import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
   installFinalPagehideCleanup,
+  leaveForReload,
   installUiShortcutGuard,
   settleOptionalService,
   readUiLanguagePreference,
@@ -128,9 +129,11 @@ async function boot() {
     });
     void observabilityReady;
     void accessReady;
+    // The landing hero is a live model, so leaving must cover it — the same
+    // reason the scene shell does. `leaveForReload` explains why.
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'landing') window.location.reload();
+      if (resolveRoute(window.location.hash).kind !== 'landing') leaveForReload();
     });
     return;
   }
@@ -171,10 +174,11 @@ async function boot() {
     });
     void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
     void accessReady;
+    // Same for the catalogue: its organ cards mount real previews.
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
       const next = resolveRoute(window.location.hash);
-      if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
+      if (next.kind !== route.kind || next.kind === 'scene') leaveForReload();
     });
     return;
   }
