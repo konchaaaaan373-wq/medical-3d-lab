@@ -288,7 +288,15 @@ export function createAccessManager({ ui }) {
     if (lifecycleRefreshInstalled) return;
     lifecycleRefreshInstalled = true;
     const refreshVisibleAccount = () => {
-      if (state.user && document.visibilityState !== 'hidden') void refresh();
+      if (!state.user || document.visibilityState === 'hidden') return;
+      // Not while an account form is open. `refresh()` notifies, `notify()`
+      // rebuilds the dialog, and these forms hold their values nowhere but in
+      // their own inputs — deliberately, since two of the three are passwords.
+      // Without this, alt-tabbing to a password manager and back emptied every
+      // field, and so did the five-minute timer. Entitlements can wait the
+      // minute it takes to fill in a form; they are re-read on close anyway.
+      if (state.accountEdit || state.deletionMode || state.recoveryMode) return;
+      void refresh();
     };
     window.addEventListener('focus', refreshVisibleAccount);
     document.addEventListener('visibilitychange', refreshVisibleAccount);
@@ -677,11 +685,17 @@ export function createAccessManager({ ui }) {
    * passwords out of `state` — nothing here is worth remembering across a
    * render, and a plaintext password is the last thing that should be.
    */
-  function refuseField(field, message) {
+  function refuseField(field, message, group = [field]) {
     field.setCustomValidity?.(message);
     field.reportValidity?.();
-    // Cleared on the next keystroke, or the field stays invalid after the fix.
-    field.addEventListener('input', () => field.setCustomValidity?.(''), { once: true });
+    // Cleared by editing *any* field involved, not only the one flagged: a
+    // mismatch is as easily fixed by correcting the first password as the
+    // second, and clearing only on the flagged field left it permanently
+    // invalid — native validation then blocked the submit and re-showed "they
+    // do not match" on two fields that now matched.
+    for (const member of group) {
+      member.addEventListener('input', () => field.setCustomValidity?.(''));
+    }
   }
 
   function openAccountEdit(mode) {
@@ -748,7 +762,7 @@ export function createAccessManager({ ui }) {
         return;
       }
       if (next.value !== confirm.value) {
-        refuseField(confirm, '入力したパスワードが一致しません。');
+        refuseField(confirm, '入力したパスワードが一致しません。', [next, confirm]);
         return;
       }
       try {
@@ -799,6 +813,11 @@ export function createAccessManager({ ui }) {
    * it had not is how an account becomes unreachable.
    */
   function emailChangeForm() {
+    const current = el('input', {
+      class: 'access-input', type: 'password', name: 'current-password',
+      autocomplete: 'current-password', placeholder: 'Current password',
+      'aria-label': 'Current password / 現在のパスワード', required: '',
+    });
     const address = el('input', {
       class: 'access-input', type: 'email', name: 'new-email',
       autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false',
@@ -812,20 +831,21 @@ export function createAccessManager({ ui }) {
       state.notice = '';
       state.error = '';
       const wanted = String(address.value ?? '').trim();
+      // In place, for the same reason as the password forms: routing these
+      // through `state.notice` rebuilds the dialog and erases the address that
+      // was just typed, which is the regression `refuseField` exists to stop.
       if (!wanted) {
-        state.notice = '新しいメールアドレスを入力してください。';
-        notify();
+        refuseField(address, '新しいメールアドレスを入力してください。');
         return;
       }
       if (wanted === state.user?.email) {
-        state.notice = 'すでにそのアドレスです。';
-        notify();
+        refuseField(address, 'すでにそのアドレスです。');
         return;
       }
       try {
         state.loading = true;
         notify();
-        await changeEmail(wanted, confirmationRedirect());
+        await changeEmail(state.user?.email, current.value, wanted, confirmationRedirect());
         closeAccountEdit({
           notice: `${wanted} に確認メールを送信しました。リンクを開くと変更が完了します。 / Confirmation sent — the change completes when you open the link.`,
         });
@@ -846,6 +866,7 @@ export function createAccessManager({ ui }) {
     }, [
       el('p', { class: 'access-copy lang-en', text: `Signed in as ${state.user?.email ?? ''}. The change takes effect when you open the link sent to the new address.` }),
       el('p', { class: 'access-copy lang-ja', text: `現在のアドレスは ${state.user?.email ?? ''} です。新しいアドレスに届くリンクを開いた時点で変更が完了します。` }),
+      current,
       address,
       el('div', { class: 'access-auth-actions' }, [
         cancelEditButton(),
@@ -1119,7 +1140,7 @@ export function createAccessManager({ ui }) {
         return;
       }
       if (password.value !== confirm.value) {
-        refuseField(confirm, '入力したパスワードが一致しません。');
+        refuseField(confirm, '入力したパスワードが一致しません。', [password, confirm]);
         return;
       }
 
