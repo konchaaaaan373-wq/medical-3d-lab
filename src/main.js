@@ -25,6 +25,7 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
+import './styles/patient-consultation.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';

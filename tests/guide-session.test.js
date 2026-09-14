@@ -1,7 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Playback } from '../src/utils/Playback.js';
-import { captureGuideSession, restoreGuideSession } from '../src/access/guideSession.js';
+import { beginGuideSession, captureGuideSession, restoreGuideSession } from '../src/access/guideSession.js';
+
+test('paid guide session: opening pauses a moving model without losing its state', () => {
+  const playback = new Playback();
+  playback.set(0.42);
+  playback.play();
+
+  const snapshot = beginGuideSession(playback);
+
+  assert.deepEqual(snapshot, { progress: 0.42, playing: true });
+  assert.equal(playback.value, 0.42);
+  assert.equal(playback.playing, false, 'the guide caption cannot drift away from a playing model');
+
+  restoreGuideSession(snapshot, playback);
+  assert.equal(playback.value, 0.42);
+  assert.equal(playback.playing, true, 'closing without taking a step restores the clinician state');
+});
 
 test('paid guide session: a paused model returns to the exact progression it had', () => {
   const playback = new Playback();
