@@ -15,6 +15,13 @@ export function readUiLanguagePreference(storageRef = globalThis.localStorage) {
   }
 }
 
+/** How long a departure may last before the veil is assumed to be wrong. */
+export const DEPARTURE_BACKSTOP_MS = 30_000;
+
+/** Whether a departure is already under way in this document. */
+export const isLeaving = (doc = globalThis.document) =>
+  Boolean(doc?.querySelector?.('.loading[data-leaving]'));
+
 /**
  * Leave the current page by reloading, without lying about where you are.
  *
@@ -32,29 +39,33 @@ export function readUiLanguagePreference(storageRef = globalThis.localStorage) {
  * still loading". It was reported as exactly that.
  *
  * So the outgoing document is covered first, in the same task as the event, and
- * the reload is asked for after. The veil is `.loading` — the one the scene
- * boot already paints, so the two are visually one wait rather than two — but
- * its wording is about leaving rather than about a model, because the next page
- * may be a locked model, an index or a legal document.
+ * the reload is asked for after.
  *
- * ## The two ways this went wrong when it was first written
+ * ## Why there is no state here beyond the veil itself
  *
- * **It could strand the page.** The veil was appended and never removed, and
- * nothing released the latch. A reload that does not commit — the reader goes
- * Back, or the document is restored from the back/forward cache — left the old
- * document alive under an opaque, click-swallowing "Opening" with no reload
- * pending. A `pageshow` restore now takes it down; `installFinalPagehideCleanup`
- * below is the same page's other half of that contract.
+ * Two earlier versions of this carried a latch and an event subscription, and
+ * between them produced seven defects — every one of them a way for the latch
+ * and reality to disagree. There is no flag now: the veil in the document *is*
+ * the state, `isLeaving()` reads it, and every call re-asks for the reload.
+ * `reload()` loads whatever the address bar says at the moment it is called, so
+ * the newest destination is always the one that commits.
  *
- * **It let the first destination win.** The latch made a second `hashchange`
- * a no-op, so pressing Back during a slow departure was swallowed and the
- * original target still committed — the address bar and the page disagreeing.
- * A second call now re-asks: `reload()` loads whatever the address bar says
- * *now*, so the newest destination is the one that commits. What the latch
- * still prevents is a second veil stacking on the first.
+ * Stranding is handled by a backstop rather than by enumerating events. A
+ * reload can fail to commit with no event at all — the reader presses Stop, or
+ * goes Back, which in a hash router is a same-document traversal and fires no
+ * `pageshow`. The previous version subscribed only to a persisted `pageshow`
+ * and therefore covered the one case it had not been asked about. So: if this
+ * document is still running after `DEPARTURE_BACKSTOP_MS`, the reload is not
+ * coming and the veil comes down.
+ *
+ * The backstop is deliberately long, and its failure mode is the reason. If it
+ * fires during a genuinely slow load the reader sees the old page again —
+ * which is exactly the behaviour that existed before this function, never
+ * worse. A short timeout would trade a rare stranding for a common one.
  *
  * @param {{doc?: Document, windowRef?: Window, reload?: () => void,
- *   language?: 'en'|'ja'}} [options]
+ *   language?: 'en'|'ja', backstopMs?: number,
+ *   setTimer?: (fn: () => void, ms: number) => any}} [options]
  * @returns {boolean} whether this call is the one that raised the veil
  */
 export function leaveForReload({
@@ -62,14 +73,18 @@ export function leaveForReload({
   windowRef = globalThis.window,
   reload = () => windowRef?.location?.reload(),
   language = readUiLanguagePreference(),
+  backstopMs = DEPARTURE_BACKSTOP_MS,
+  setTimer = (fn, ms) => globalThis.setTimeout?.(fn, ms),
 } = {}) {
   if (!doc?.body) {
     reload();
     return true;
   }
 
-  // Already leaving. Ask again anyway — see "It let the first destination win".
-  if (doc.querySelector?.('.loading[data-leaving]')) {
+  // Already leaving: do not stack a second veil, but do ask again. Swallowing
+  // the later call is how the *first* destination used to win while the
+  // address bar showed the last one.
+  if (isLeaving(doc)) {
     reload();
     return false;
   }
@@ -89,15 +104,20 @@ export function leaveForReload({
   ].join('');
   doc.body.append(veil);
 
-  const dismissOnRestore = (event) => {
-    // A non-persisted `pageshow` is this document's own first load and has
-    // nothing to undo. A persisted one means the reload never happened and we
-    // are back where we started, with a veil over a live page.
-    if (!event?.persisted) return;
+  const takeDown = () => {
     veil.remove?.();
-    windowRef?.removeEventListener?.('pageshow', dismissOnRestore);
+    windowRef?.removeEventListener?.('pageshow', onRestore);
   };
-  windowRef?.addEventListener?.('pageshow', dismissOnRestore);
+  // A persisted `pageshow` is the back/forward cache handing this document
+  // back: the reload never happened and the page is live again. A
+  // non-persisted one is this document's own first load and has nothing to
+  // undo. Either way the backstop below is what makes stranding impossible;
+  // this only makes the common restore instant.
+  const onRestore = (event) => {
+    if (event?.persisted) takeDown();
+  };
+  windowRef?.addEventListener?.('pageshow', onRestore);
+  setTimer(takeDown, backstopMs);
 
   reload();
   return true;

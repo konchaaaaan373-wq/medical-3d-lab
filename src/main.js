@@ -31,6 +31,7 @@ import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
   installFinalPagehideCleanup,
+  isLeaving,
   leaveForReload,
   installUiShortcutGuard,
   settleOptionalService,
@@ -133,7 +134,9 @@ async function boot() {
     // reason the scene shell does. `leaveForReload` explains why.
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'landing') leaveForReload();
+      // `isLeaving()` for the same reason as the scene shell: once the veil is
+      // up, coming back here is still a navigation that has to be re-asked.
+      if (isLeaving() || resolveRoute(window.location.hash).kind !== 'landing') leaveForReload();
     });
     return;
   }
@@ -178,7 +181,7 @@ async function boot() {
     window.addEventListener('hashchange', () => {
       if (isInPageAnchor(window.location.hash)) return;
       const next = resolveRoute(window.location.hash);
-      if (next.kind !== route.kind || next.kind === 'scene') leaveForReload();
+      if (isLeaving() || next.kind !== route.kind || next.kind === 'scene') leaveForReload();
     });
     return;
   }

@@ -5,7 +5,7 @@ import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
-import { leaveForReload } from './sceneShellBridge.js';
+import { isLeaving, leaveForReload } from './sceneShellBridge.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1564,7 +1564,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // note on it — a browser paints the outgoing document until the incoming
     // one commits, and a model left on screen under a new URL reads as the
     // answer to the link that was followed.
-    if (!sameRoute(window.location.hash, currentHash)) leaveForReload();
+    //
+    // `isLeaving()` first, because `currentHash` is where this page started and
+    // never moves. Once a departure is under way the page is already going; the
+    // only question left is where to, and going *back* to where we started is
+    // the one navigation `sameRoute` would refuse to re-ask for — which left
+    // the first destination committing under the wrong address bar.
+    if (isLeaving() || !sameRoute(window.location.hash, currentHash)) leaveForReload();
   });
 
   // Exposed for debugging and for automated screenshots.

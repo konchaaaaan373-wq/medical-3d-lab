@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { leaveForReload } from '../src/app/sceneShellBridge.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { isLeaving, leaveForReload } from '../src/app/sceneShellBridge.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -40,6 +40,16 @@ function fakeDocument() {
     },
   };
   return doc;
+}
+
+/** A controllable clock, so the backstop can be fired without waiting for it. */
+function fakeClock() {
+  const pending = [];
+  return {
+    setTimer: (fn, ms) => { pending.push({ fn, ms }); return pending.length; },
+    pending,
+    run: () => { for (const { fn } of pending.splice(0)) fn(); },
+  };
 }
 
 /** A window that only has to remember who is listening for `pageshow`. */
@@ -122,7 +132,8 @@ test('leaving a scene: a second destination is the one that commits', () => {
 test('leaving a scene: a restored page is not left stranded under the veil', () => {
   const doc = fakeDocument();
   const windowRef = fakeWindow();
-  leaveForReload({ doc, windowRef, reload: () => {} });
+  const clock = fakeClock();
+  leaveForReload({ doc, windowRef, reload: () => {}, setTimer: clock.setTimer });
   assert.equal(doc.body.children.length, 1);
 
   // This document's own first load has nothing to undo.
@@ -130,11 +141,51 @@ test('leaving a scene: a restored page is not left stranded under the veil', () 
   assert.equal(doc.body.children.length, 1, 'a fresh load is not a restore');
 
   // A restore means the reload never happened: the page is live again, and an
-  // opaque click-swallowing veil over it with no reload pending is worse than
-  // the stale model this whole change exists to remove.
+  // opaque click-swallowing veil over it is worse than the stale model this
+  // whole change exists to remove.
   windowRef.emit('pageshow', { persisted: true });
   assert.equal(doc.body.children.length, 0, 'the veil comes down');
-  assert.equal(windowRef.listeners.get('pageshow')?.size ?? 0, 0, 'and stops listening');
+  assert.equal(isLeaving(doc), false, 'and the document stops reporting a departure');
+});
+
+test('leaving a scene: a reload that never commits cannot strand the page', () => {
+  const doc = fakeDocument();
+  const windowRef = fakeWindow();
+  const clock = fakeClock();
+  leaveForReload({ doc, windowRef, reload: () => {}, setTimer: clock.setTimer });
+
+  // The failure this backstop exists for fires *no event at all*: the reader
+  // presses Stop, or goes Back — which in a hash router is a same-document
+  // traversal, so there is no `pageshow` to hear. An earlier version listened
+  // only for a persisted `pageshow` and so covered every case but that one.
+  assert.equal(clock.pending.length, 1, 'a backstop is armed');
+  assert.ok(clock.pending[0].ms >= 20_000, 'and it is long enough not to cut a slow load short');
+
+  clock.run();
+  assert.equal(doc.body.children.length, 0, 'the veil comes down on its own');
+  assert.equal(isLeaving(doc), false);
+});
+
+test('leaving a scene: the backstop can only ever restore the old behaviour', () => {
+  // If it fires during a genuinely slow load the reader sees the page they
+  // were already on — which is what happened before this function existed. It
+  // is bounded to be no worse than the bug, which is what allows it to be a
+  // blunt timer rather than a state machine.
+  const doc = fakeDocument();
+  const clock = fakeClock();
+  leaveForReload({ doc, windowRef: fakeWindow(), reload: () => {}, setTimer: clock.setTimer });
+  clock.run();
+  assert.equal(doc.body.children.length, 0);
+
+  // And a later navigation still works: nothing is latched shut.
+  let reloads = 0;
+  assert.equal(
+    leaveForReload({ doc, windowRef: fakeWindow(), reload: () => { reloads += 1; },
+      setTimer: clock.setTimer }),
+    true,
+    'the next departure raises its own veil'
+  );
+  assert.equal(reloads, 1);
 });
 
 test('leaving a scene: the veil covers every overlay in the product', () => {
@@ -144,19 +195,28 @@ test('leaving a scene: the veil covers every overlay in the product', () => {
   const veilZ = Number(leaving[1].match(/z-index:\s*(\d+)/)?.[1]);
   assert.ok(Number.isFinite(veilZ), 'and that rule sets a z-index');
 
-  // Anything painted above it stays on screen answering for a URL that has
-  // already changed. The phone anatomy sheet (40) was the one that mattered:
-  // the model's own structure list, opaque, full-width and still pressable.
-  const sheets = ['base.css', 'reading-surface.css', 'telemetry.css', 'access.css',
-    'anatomy-panel.css', 'landing.css', 'reel.css', 'navigation.css', 'ui.css'];
+  // Every stylesheet, read off the directory. This was a list of nine written
+  // by hand, which covered nine of the fourteen sheets that declare a z-index
+  // and none of the ones nobody has written yet — while the commit message
+  // claimed it walked them all.
+  const dir = new URL('../src/styles/', import.meta.url);
+  const sheets = readdirSync(dir).filter((name) => name.endsWith('.css'));
+  assert.ok(sheets.length >= 20, `expected the whole stylesheet directory, saw ${sheets.length}`);
+
+  // Anything painted above the veil stays on screen answering for a URL that
+  // has already changed. The phone anatomy sheet (40) was the one that
+  // mattered: the model's own structure list, opaque and still pressable.
+  let checked = 0;
   for (const sheet of sheets) {
     for (const [, value] of read(`src/styles/${sheet}`).matchAll(/z-index:\s*(\d+)/g)) {
+      checked += 1;
       assert.ok(
         Number(value) <= veilZ,
         `${sheet} paints something at z-index ${value}, above the departure veil at ${veilZ}`
       );
     }
   }
+  assert.ok(checked >= 14, `expected to have measured every declared z-index, saw ${checked}`);
 });
 
 test('leaving a scene: the surfaces that render a model all use it', () => {
@@ -168,6 +228,17 @@ test('leaving a scene: the surfaces that render a model all use it', () => {
   const withModels = handlers.filter((body) => /leaveForReload\(\)/.test(body));
   assert.ok(withModels.length >= 2, 'landing and the catalogue both leave through the helper');
   assert.match(main, /import \{[\s\S]*?leaveForReload[\s\S]*?\} from '\.\/app\/sceneShellBridge\.js'/);
+});
+
+test('leaving a scene: a departure already under way is always re-asked', () => {
+  // Going back to where the page started is the one navigation the route
+  // comparison refuses — `currentHash` is the mount hash and never moves — so
+  // without this the first destination committed under the wrong address bar.
+  for (const [path, count] of [['src/app/App.js', 1], ['src/main.js', 2]]) {
+    const source = read(path);
+    const guards = [...source.matchAll(/if \(isLeaving\(\)[^)]*\)[^;]*leaveForReload\(\)/g)];
+    assert.equal(guards.length, count, `${path} guards every departure with isLeaving()`);
+  }
 });
 
 test('leaving a scene: with no document to cover, it still leaves', () => {
