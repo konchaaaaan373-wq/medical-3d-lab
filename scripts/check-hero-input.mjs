@@ -205,7 +205,10 @@ async function driveKeyboard() {
     await sleep(600);
 
     const card = page.locator('.landing-demo-structure').first();
-    const named = async () => (await card.innerText()).replace(/\s+/g, ' ').trim();
+    const named = async () =>
+    (await page.locator('.landing-demo-structure-body').first().innerText())
+      .replace(/\s+/g, ' ')
+      .trim();
 
     // Tab from the top of the document rather than focusing the element
     // directly: a control a reader cannot reach is not reachable, however well
@@ -257,8 +260,33 @@ async function driveKeyboard() {
     }
     if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-2-turned.png') });
 
+    // The way out. A reader who found a part on the small model arrives at the
+    // full one already looking at it — or the hand-off is a link that opens a
+    // whole brain and asks them to find it again.
+    await page.keyboard.press('Enter');
+    await sleep(400);
+    const carried = await named();
+    const href = await page.locator('.landing-demo-structure-link').first().getAttribute('href');
+    await page.locator('.landing-demo-structure-link').first().click();
+    await page.waitForSelector('.anatomy-panel', { timeout: 120_000 });
+    await sleep(2500);
+    const arrivedAt = await page.evaluate(() => {
+      const name = document.querySelector('.anatomy-panel-name.lang-ja')
+        ?? document.querySelector('.anatomy-panel-name');
+      return (name?.textContent ?? '').trim();
+    });
+    if (!arrivedAt) {
+      problems.push(`hand-off: the full model named nothing after following ${href}`);
+    } else if (!carried.startsWith(arrivedAt)) {
+      problems.push(
+        `hand-off: the hero named "${carried}" and the full model opened on "${arrivedAt}"`
+      );
+    }
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-3-handoff.png') });
+
     observed.push({
       device: 'keyboard (desktop)',
+      handedOver: arrivedAt,
       tapped: pinned,
       afterRotate: afterTurning,
       afterReturnDrag: '—',
@@ -294,7 +322,10 @@ async function drive(context, name, id) {
   const card = page.locator('.landing-demo-structure').first();
   const canvas = page.locator('.landing-demo-viewport canvas').first();
   const state = () => card.getAttribute('data-state');
-  const named = async () => (await card.innerText()).replace(/\s+/g, ' ').trim();
+  const named = async () =>
+    (await page.locator('.landing-demo-structure-body').first().innerText())
+      .replace(/\s+/g, ' ')
+      .trim();
   const centre = async () => {
     const box = await canvas.boundingBox();
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
@@ -418,7 +449,8 @@ for (const record of observed) {
   if (record.device.startsWith('keyboard')) {
     console.log(
       `  ${record.device}: Tab reaches the model, Enter named "${record.tapped}", ` +
-        `Escape cleared it, and after turning Enter named "${record.afterRotate}"`
+        `Escape cleared it, after turning Enter named "${record.afterRotate}", ` +
+        `and the card's link opened the full model on "${record.handedOver}"`
     );
     continue;
   }
@@ -437,6 +469,7 @@ if (problems.length) {
 }
 console.log(
   '  ok    a tap names a structure, a drag turns the model without naming one, the page ' +
-    'keeps its scroll and pinch, the card never takes the touch, and a keyboard can reach ' +
-    'the model, name what is in front of it and let go again'
+    'keeps its scroll and pinch, the card never takes the touch, a keyboard can reach the ' +
+    'model, name what is in front of it and let go again, and the card hands that structure ' +
+    'to the full model'
 );

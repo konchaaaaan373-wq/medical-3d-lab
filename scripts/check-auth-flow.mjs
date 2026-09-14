@@ -55,11 +55,11 @@
  *                    (default: the first model in the public manifest)
  *   --headed         show the browser
  */
-import { createServer } from 'node:http';
-import { existsSync, readFileSync } from 'node:fs';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 import { PUBLIC_MODELS } from '../src/catalog/publicManifest.js';
 
 const argv = process.argv.slice(2);
@@ -72,12 +72,6 @@ const value = (name, fallback) => {
 const DIST = resolve(value('--dist', 'dist'));
 const SCENE = value('--scene', PUBLIC_MODELS[0]?.sceneId ?? 'brain-anatomy');
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
-  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2',
-  '.glb': 'model/gltf-binary', '.txt': 'text/plain', '.xml': 'application/xml',
-};
 
 if (!existsSync(join(DIST, 'index.html'))) {
   console.error(`No build at ${DIST}. Run \`npm run build\` first.`);
@@ -93,22 +87,12 @@ const check = (name, ok, detail = '') => {
   if (!ok) problems.push(`${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-const server = createServer((request, response) => {
-  const url = new URL(request.url, 'http://localhost');
-  // Contain the served path to DIST: this serves whatever is asked for.
-  const wanted = normalize(join(DIST, decodeURIComponent(url.pathname)));
-  const inside = wanted === DIST || wanted.startsWith(`${DIST}${sep}`);
-  const file = inside && existsSync(wanted) && extname(wanted) ? wanted : join(DIST, 'index.html');
-  try {
-    response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
-    response.end(readFileSync(file));
-  } catch {
-    response.writeHead(404);
-    response.end('not found');
-  }
-});
-await new Promise((ready) => server.listen(0, ready));
-const base = `http://127.0.0.1:${server.address().port}/`;
+// The shared static server, so the containment rule and the media types are
+// one thing rather than eight. This file's own copy served an extensionless
+// path as the shell and everything else verbatim; `serveDist` falls back to the
+// shell for anything that is not a file in the build, which is the same answer
+// for every request this check makes.
+const { base, close: closeServer } = await serveDist(DIST);
 
 const browser = await chromium.launch({
   executablePath: chromiumExecutable(),
@@ -552,7 +536,7 @@ try {
   console.error(`\nwhile ${step}:\n${error.message}`);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
 
 console.log(`Auth flow — ${configured ? 'configured build' : 'unconfigured build'}, ${checked} checks`);

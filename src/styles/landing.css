@@ -448,8 +448,9 @@ html[data-route='landing'] {
   left: 22px;
   bottom: 18px;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
-  gap: 10px;
+  gap: 7px;
   max-width: min(24rem, calc(100% - 44px));
   padding: 9px 13px;
   border: 1px solid rgba(176, 198, 229, 0.2);
@@ -492,6 +493,34 @@ html[data-route='landing'] {
   /* The structure's own colour in the model, so the card and the highlighted
      mesh are recognisably the same part. */
   background: var(--landing-structure-color, rgba(176, 198, 229, 0.55));
+}
+
+/* The card is a caption and takes no pointer events; its way out is a control
+   and must take them back, or it is a link nobody can click. */
+.landing-demo-structure-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.landing-demo-structure-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  color: var(--landing-cyan, #38e1ef);
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(56, 225, 239, 0.4);
+  pointer-events: auto;
+}
+
+.landing-demo-structure-link[hidden] { display: none; }
+
+.landing-demo-structure-link:hover,
+.landing-demo-structure-link:focus-visible {
+  border-bottom-color: var(--landing-cyan, #38e1ef);
 }
 
 .landing-demo-structure-text {

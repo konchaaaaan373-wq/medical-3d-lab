@@ -4,7 +4,7 @@ import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './scene
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
-import { isInPageAnchor, sameRoute } from './router.js';
+import { isInPageAnchor, sameRoute, structureOf } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1615,6 +1615,31 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     },
     charts: chartById,
   };
+
+  /**
+   * The structure the route opened on, if it named one.
+   *
+   * This is the other half of the landing hero's name card: a reader who found
+   * a part on the small model arrives here already looking at it, rather than
+   * being handed a whole brain and asked to find it again.
+   *
+   * Done last, after every panel is subscribed, so the selection is drawn by
+   * all of them rather than by whichever happened to exist yet. Two actions and
+   * no more: **select** it, and **bring it into view** — the same pair the
+   * panel's own "go to" offers. It deliberately does not *reveal* it, which
+   * changes the layer and the viewpoint: a link may say where to look, not
+   * rearrange the model on arrival.
+   *
+   * An id the model does not have is a stale or hand-typed link, and the model
+   * opens normally rather than failing: nothing is selected, and the panel
+   * says what it always says when nothing is.
+   */
+  const openingStructure = isAnatomyScene ? structureOf(window.location.hash) : null;
+  if (openingStructure) {
+    if (scene.selectStructure?.(openingStructure)) focusOnStructure(openingStructure);
+    else console.info('scene: the route named a structure this model does not have', openingStructure);
+  }
+
   return window.__app;
 }
 

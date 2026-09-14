@@ -37,20 +37,30 @@ const MIME = Object.freeze({
 /**
  * Start a server over one built site.
  *
+ * `mounts` maps a URL prefix to a directory outside the build. It exists for
+ * one real case and should stay that narrow: candidate 3D assets live in the
+ * repository and are deliberately **not** copied into a build, so a check that
+ * drives them has to serve them from where they are. Each mount is contained
+ * the same way the build is.
+ *
  * @param {string} distDir
+ * @param {{mounts?: Record<string, string>}} [options]
  * @returns {Promise<{base: string, close: () => void}>} `base` ends in `/`
  */
-export async function serveDist(distDir) {
+export async function serveDist(distDir, { mounts = {} } = {}) {
   const root = resolve(distDir);
   if (!existsSync(root)) throw new Error(`No build at "${distDir}"`);
+  const mounted = Object.entries(mounts).map(([prefix, dir]) => [prefix, resolve(dir)]);
 
-  /** The file a URL names, or null when it escapes the build. */
+  /** The file a URL names, or null when it escapes what is being served. */
   const fileFor = (urlPath) => {
-    const decoded = decodeURIComponent(urlPath.split('?')[0]);
-    const candidate = resolve(root, `.${normalize(decoded)}`);
-    // `startsWith(root + sep)`, not `startsWith(root)`: a sibling directory
-    // whose name begins with the build's name is not inside the build.
-    if (candidate !== root && !candidate.startsWith(root + sep)) return null;
+    const decoded = decodeURIComponent(urlPath.split('?')[0].split('#')[0]);
+    const mount = mounted.find(([prefix]) => decoded.startsWith(prefix));
+    const base = mount ? mount[1] : root;
+    const candidate = resolve(base, `.${normalize(decoded)}`);
+    // `startsWith(base + sep)`, not `startsWith(base)`: a sibling directory
+    // whose name begins with the served one's is not inside it.
+    if (candidate !== base && !candidate.startsWith(base + sep)) return null;
     if (existsSync(candidate) && statSync(candidate).isDirectory()) {
       const index = join(candidate, 'index.html');
       return existsSync(index) ? index : null;

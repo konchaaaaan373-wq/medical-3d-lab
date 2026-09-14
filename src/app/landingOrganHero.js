@@ -83,18 +83,33 @@ export function createLandingOrganHero({
   const structureNameJa = el('strong', { class: 'landing-demo-structure-name lang-ja' });
   const structureWhereEn = el('span', { class: 'landing-demo-structure-where lang-en' });
   const structureWhereJa = el('span', { class: 'landing-demo-structure-where lang-ja' });
+  /**
+   * The way out of the hero and into the model, carrying what was picked.
+   *
+   * Outside the `aria-hidden` card body on purpose. The card's text is hidden
+   * from assistive technology because the live region below says the same thing
+   * once; a *focusable* element inside a hidden subtree, though, is a link a
+   * keyboard can reach and a screen reader cannot explain. So the link sits
+   * beside that body with a label of its own, which names the structure rather
+   * than saying "more" — a link is read on its own, out of the order it sits in.
+   */
+  const structureLink = el('a', { class: 'landing-demo-structure-link', href: '#/' });
+  structureLink.hidden = true;
+
   const structureReadout = el('div', {
     class: 'landing-demo-structure',
     dataset: { state: 'hint' },
-    'aria-hidden': 'true',
   }, [
-    structureSwatch,
-    el('div', { class: 'landing-demo-structure-text' }, [
-      structureNameEn,
-      structureNameJa,
-      structureWhereEn,
-      structureWhereJa,
+    el('div', { class: 'landing-demo-structure-body', 'aria-hidden': 'true' }, [
+      structureSwatch,
+      el('div', { class: 'landing-demo-structure-text' }, [
+        structureNameEn,
+        structureNameJa,
+        structureWhereEn,
+        structureWhereJa,
+      ]),
     ]),
+    structureLink,
   ]);
   structureReadout.hidden = true;
 
@@ -248,12 +263,14 @@ export function createLandingOrganHero({
     structureReadout.hidden = !ready || !namedStructures;
     if (structureReadout.hidden) {
       structureReadout.dataset.state = 'hint';
+      structureLink.hidden = true;
       announce(null);
       return;
     }
 
     if (!structure) {
       structureReadout.dataset.state = 'hint';
+      structureLink.hidden = true;
       const [hintEn, hintJa] = isCoarse() ? STRUCTURE_HINT.coarse : STRUCTURE_HINT.fine;
       structureNameEn.textContent = hintEn;
       structureNameJa.textContent = hintJa;
@@ -283,8 +300,34 @@ export function createLandingOrganHero({
     } else {
       structureSwatch.style.removeProperty('--landing-structure-color');
     }
+    // Offered on the pin only. A hover is a preview, and a link that appears
+    // and disappears under a moving pointer is a link nobody can click.
+    renderStructureLink(structure.pinned ? structure : null);
     // Announced on the pin only. See the note on `structureAnnouncement`.
     announce(structure.pinned ? structure : null);
+  }
+
+  /**
+   * Point the way out at one structure.
+   *
+   * The id is the scene's own, carried as it was given: the hero does not know
+   * what an atlas id looks like and must not decide.
+   *
+   * @param {{id?:string|number, name?:string, nameJa?:string}|null} structure
+   */
+  function renderStructureLink(structure) {
+    const id = structure?.id;
+    const route = selected.route ?? sceneRouteFor(selected.sceneId);
+    if (id == null || !route) {
+      structureLink.hidden = true;
+      return;
+    }
+    structureLink.hidden = false;
+    structureLink.setAttribute('href', `${route}?structure=${encodeURIComponent(String(id))}`);
+    structureLink.replaceChildren(...dual(
+      `Open ${structure.name ?? structure.nameJa ?? 'this structure'} in the full model →`,
+      `${structure.nameJa ?? structure.name ?? 'この部位'}を詳しく見る →`
+    ));
   }
 
   /**
@@ -418,6 +461,12 @@ export function createLandingOrganHero({
   ]);
 
   showViewportState('idle');
+
+  /** The route a scene is reached at, or null when it is not one the release opens. */
+  function sceneRouteFor(sceneId) {
+    const scene = sceneById(sceneId);
+    return scene ? sceneRoute(scene) : null;
+  }
 
   /** Repaint every label for the organ now on screen. */
   function render() {

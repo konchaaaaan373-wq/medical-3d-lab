@@ -34,10 +34,11 @@
  *   --diagnostics-dir <dir>  record lifecycle/network events for a targeted run
  *   --diagnostics-wait-detail  wait for Explorer detail to settle in a direct-open control
  */
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
 import { chromiumExecutable } from './lib/browser.mjs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { serveDist } from './lib/serve-dist.mjs';
 
 import {
   INLINE_LINK_EXEMPTION,
@@ -139,47 +140,7 @@ if (!browserType) {
 
 // --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8',
-  '.xml': 'application/xml; charset=utf-8',
-};
-
-const root = resolve(distDir);
-
-/** Resolve a URL path inside the build, refusing anything that escapes it. */
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-
-const server = createServer((request, response) => {
-  // Every route in this product is a hash, so a path that is not a file is the
-  // application shell — the same single-page fallback a static host does.
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
-});
-
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/`;
+const { base, close: closeServer } = await serveDist(distDir);
 
 // --- the measurement, run inside the page ----------------------------------
 
@@ -1431,7 +1392,7 @@ try {
   await captureB1Evidence(browser);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
 
 // --- report ----------------------------------------------------------------

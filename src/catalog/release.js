@@ -256,6 +256,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'a drag that ends over another structure does not reselect',
         'a drag that ends where it began does not select either — the press is measured by how far the pointer ever got from it, not only by where it let go',
         'a keyboard reaches the model with Tab, names the structure in the middle of the frame with Enter, and lets go of it with Escape; turning the model with the arrows and asking again names a different structure',
+        'a route may carry the structure it opens on, and the model opens selected on it rather than on its authored pose alone',
         'switching colour mode does not change the selection',
         'applying a named viewpoint does not change the selection',
         'the part tree lists 271 structures, and selection agrees in both directions',

@@ -1362,6 +1362,21 @@ test('landing hero: the picked structure is named on the model, in both language
       'the same name is never announced twice'
     );
 
+    // The way out of the hero, carrying what was picked. A hover offers no
+    // link: one that appears and disappears under a moving pointer is a link
+    // nobody can click.
+    const link = findByClass(hero.element, 'landing-demo-structure-link')[0];
+    assert.ok(link, 'the card has a way into the full model');
+    options.onStructureChange({ id: 17, name: 'Hippocampus', nameJa: '海馬', pinned: false });
+    assert.equal(link.hidden, true, 'a preview is not an offer');
+    options.onStructureChange({ id: 17, name: 'Hippocampus', nameJa: '海馬', pinned: true });
+    assert.equal(link.hidden, false);
+    assert.equal(link.getAttribute('href'), '#/brain-anatomy?structure=17');
+    assert.match(collectText(link).join(' '), /海馬を詳しく見る/, 'the link names what it opens');
+    // Outside the aria-hidden body: a link a keyboard can reach and a screen
+    // reader cannot explain is worse than no link.
+    assert.equal(link.parentElement.getAttribute('aria-hidden'), null);
+
     // Two structures can carry one name — the atlas has a middle temporal gyrus
     // in each hemisphere — so pinning the other one is a new announcement.
     options.onStructureChange({ id: 17, name: 'Middle temporal gyrus', nameJa: '中側頭回', pinned: true });

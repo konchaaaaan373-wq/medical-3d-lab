@@ -169,6 +169,12 @@ a rendering check, not an anatomical one.
 **Interactions**
 
 - A click on the model pins a structure and the panel names it.
+- **A route can open on a structure**: `#/brain-anatomy?structure=<id>` selects
+  that structure and brings it into view, which is how the landing hero hands a
+  reader over to the full model already looking at the part they found. It
+  deliberately does not *reveal* it — a link may say where to look, not
+  rearrange the model on arrival — and an id this atlas does not have opens the
+  model normally with nothing selected.
 - **So does a keyboard, with no pointer anywhere**: Tab reaches the 3D
   viewport, the focused viewport draws the spot Enter will ask about, Enter
   names the structure drawn there, Escape lets go of it, and turning the model

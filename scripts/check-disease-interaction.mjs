@@ -31,28 +31,25 @@
  * Options: the scene slugs to drive, as arguments, after an optional output
  * directory for the screenshots.
  */
-import { createReadStream, existsSync, mkdirSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
+import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 
 const distDir = resolve('dist');
 const outDir = process.argv[2] ?? '/tmp/disease-shots';
 mkdirSync(outDir, { recursive: true });
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.glb': 'model/gltf-binary', '.wasm': 'application/wasm', '.md': 'text/markdown', '.txt': 'text/plain' };
-const server = createServer((req, res) => {
-  const path = decodeURIComponent(req.url.split('?')[0]);
-  let file = resolve(distDir, `.${normalize(path)}`);
-  if (!existsSync(file) || path === '/') file = join(distDir, 'index.html');
-  res.writeHead(200, { 'content-type': MIME[extname(file)] ?? 'application/octet-stream' });
-  createReadStream(file).pipe(res);
-});
-await new Promise((r) => server.listen(0, r));
-const base = `http://127.0.0.1:${server.address().port}`;
+// One static server, shared with every other browser check. This file used to
+// carry its own, and that copy had no containment check at all: any path that
+// resolved outside the build was served. See `lib/serve-dist.mjs`.
+const { base: origin, close: closeServer } = await serveDist(distDir);
+const base = origin.replace(/\/$/, '');
 
 const SLUGS = process.argv.slice(3);
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
+// Same resolver as every other browser check; `CHROMIUM_PATH` still wins.
+const browser = await chromium.launch({ executablePath: chromiumExecutable(chromium) });
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 const state = () =>
@@ -152,4 +149,4 @@ for (const slug of SLUGS) {
 }
 
 await browser.close();
-server.close();
+closeServer();
