@@ -16,6 +16,61 @@ export function readUiLanguagePreference(storageRef = globalThis.localStorage) {
 }
 
 /**
+ * Leave the current page by reloading, without lying about where you are.
+ *
+ * Changing the hash away from a 3D scene reloads: the scene owns a renderer, a
+ * GPU context and an animation loop, and a fresh document is the one way to be
+ * sure none of it survives into the next one. What the reload does *not* do is
+ * clear the screen. A browser keeps painting the outgoing document until the
+ * incoming one commits, so for the whole of that wait — a fresh bundle parse,
+ * and for a scene an atlas measured in megabytes — the previous model is still
+ * there, under the new URL.
+ *
+ * That is not a cosmetic delay, it is a wrong answer. Following a link from the
+ * brain to `#/copd` leaves the brain on screen with `#/copd` in the address
+ * bar, which reads as "that link opened the brain" rather than as "this is
+ * still loading". It was reported as exactly that.
+ *
+ * So the outgoing document is covered first, in the same task as the event, and
+ * the reload is asked for after. The veil is `.loading` — the one the scene
+ * boot already paints, so the two are visually one wait rather than two — but
+ * its wording is about leaving rather than about a model, because the next page
+ * may be a locked model, an index or a legal document.
+ *
+ * Single-flight: a `hashchange` can arrive more than once before a document is
+ * replaced, and asking twice would stack veils and reload twice.
+ *
+ * @param {{doc?: Document, reload?: () => void, language?: 'en'|'ja'}} [options]
+ * @returns {boolean} whether this call is the one that started the departure
+ */
+export function leaveForReload({
+  doc = globalThis.document,
+  reload = () => globalThis.window?.location?.reload(),
+  language = readUiLanguagePreference(),
+} = {}) {
+  if (!doc?.body) {
+    reload();
+    return true;
+  }
+  if (doc.querySelector?.('.loading[data-leaving]')) return false;
+
+  const veil = doc.createElement('div');
+  veil.className = 'loading';
+  veil.setAttribute('data-leaving', '');
+  veil.setAttribute('lang', language);
+  // `role="status"` rather than an alert: a reader who followed a link is not
+  // being warned, they are being told the page heard them.
+  veil.setAttribute('role', 'status');
+  veil.innerHTML = [
+    `<span>${language === 'en' ? 'Opening' : '移動しています'}</span>`,
+    '<span class="loading-bar"></span>',
+  ].join('');
+  doc.body.append(veil);
+  reload();
+  return true;
+}
+
+/**
  * A single-flight manual retry. Reload-based retries naturally leave the page;
  * an in-place shared model retry may return a promise, in which case the gate
  * re-opens only after that attempt settles. Repeated activations while it is in

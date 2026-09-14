@@ -5,6 +5,7 @@ import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { isInPageAnchor, sameRoute } from './router.js';
+import { leaveForReload } from './sceneShellBridge.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1558,7 +1559,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // somebody used a skip link would throw away the camera, the progression
     // and any model controls they had set.
     if (isInPageAnchor(window.location.hash)) return;
-    if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
+    // `leaveForReload` rather than `location.reload()` directly: the reload is
+    // still what happens, but the model is taken off the screen first. See the
+    // note on it — a browser paints the outgoing document until the incoming
+    // one commits, and a model left on screen under a new URL reads as the
+    // answer to the link that was followed.
+    if (!sameRoute(window.location.hash, currentHash)) leaveForReload();
   });
 
   // Exposed for debugging and for automated screenshots.
