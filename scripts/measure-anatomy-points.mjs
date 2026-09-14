@@ -19,14 +19,14 @@
  * That happened: the day the organ scenes started being fitted to the visible
  * band, all thirty-seven scenes moved and the table had to be remeasured. By
  * hand that is thirty-seven screenshots and a hundred and fifty guesses; here
- * it is a grid of clicks, read back through the product's own panel.
+ * it is a grid of hovers, read back through the product's own panel.
  *
  * ## What makes a point worth keeping
  *
  * Four things, in order:
  *
  *  1. it resolves to a structure at all;
- *  2. it is **inside** that structure, not on its edge — checked by clicking
+ *  2. it is **inside** that structure, not on its edge — checked by sampling
  *     four points around it and requiring the same answer. The first version
  *     skipped this and put two of the elbow's points on nerves a few pixels
  *     wide: they resolved while measuring and missed when the camera ease
@@ -192,11 +192,25 @@ for (const slug of scenes) {
       await page.waitForTimeout(250);
     }
 
+    /**
+     * What is under a point, asked by **hovering** rather than by clicking.
+     *
+     * This clicked, and a click selects. Selecting a structure that names a
+     * `preferredView` takes the scene to that viewpoint — which may hide whole
+     * tags — so the sweep was moving the model it was measuring, from its own
+     * first hit onwards. Every sample after that was taken of a different
+     * picture, and `inside()` re-sampled under a third one: twenty of the
+     * thirty-seven scenes came back with fewer than four points, nineteen of
+     * them scenes that declare a preferred view. "Many hits, none of them
+     * inside anything" is what that looks like from here.
+     *
+     * The card reads `selected ?? hovered`, and nothing is ever selected here,
+     * so hovering answers the same question and moves nothing. It is also what
+     * `check-anatomy-interaction.mjs` does when it looks for the model.
+     */
     const nameAt = async (fx, fy) => {
-      await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
-      await page.waitForTimeout(90);
-      await page.mouse.move(box.x + 4, box.y + 4);
-      await page.waitForTimeout(60);
+      await page.mouse.move(box.x + box.width * fx, box.y + box.height * fy);
+      await page.waitForTimeout(110);
       const name = (await page.locator('.anatomy-panel-name.lang-en').textContent()).trim();
       return name && name !== EMPTY ? name : null;
     };
