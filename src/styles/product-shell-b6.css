@@ -921,7 +921,7 @@
      in the sheet the Parts button opens, which already carries this same
      summary into the dialog with it. One way in, not a second one invented
      beside it. */
-  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'] .anatomy-panel-summary {
+  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-summary {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -930,21 +930,21 @@
     padding-bottom: 7px;
   }
 
-  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'] .anatomy-panel-heading {
+  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-heading {
     flex: 1 1 auto;
     min-width: 0;
   }
 
-  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'] .anatomy-panel-actions {
+  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-actions {
     flex: 0 0 auto;
     display: contents;
   }
 
-  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'] .anatomy-panel-action {
+  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-action {
     display: none;
   }
 
-  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'] .anatomy-panel-open {
+  #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-open {
     flex: 0 0 auto;
     min-height: 44px;
     padding: 0 14px;
