@@ -58,8 +58,8 @@ clearly. Pointing at a mesh previews its exact name; clicking or tapping pins
 it.
 
 **Turning the model is not choosing a structure.** A release counts as a tap
-only if it lands where the press began *and* the pointer did not travel far in
-between. The second half is what a touch screen needs: the model is turned by
+only if it lands where the press began *and* the pointer never got far from
+there while it was down. The second half is what a touch screen needs: the model is turned by
 swiping across it, and a swipe out and back ends exactly where it started — so
 measured by distance alone it stood still, and letting go named whatever had
 rotated under the thumb. Until 2026-09-14 that is what happened, on this scene

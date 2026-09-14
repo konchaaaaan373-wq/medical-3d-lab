@@ -1105,6 +1105,25 @@ test('landing hero viewport: the scene names the structure under the pointer, pi
       'a lightweight builder has no named parts and must not offer any'
     );
 
+    // A scene whose anatomy surface throws is a scene without names, not a
+    // failed model — and it must not be left half-installed either, with the
+    // frame hook stepping a scene the error path disposed.
+    class ThrowingScene extends UnnamedScene {
+      onAnatomySelection() { throw new Error('the atlas has no metadata yet'); }
+    }
+    const throwing = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => ThrowingScene,
+      onStateChange: (state, detail) => states.push([state, detail]),
+    });
+    await throwing.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(states.at(-1), ['ready', { named: false }], 'the model still arrives');
+    assert.equal(throwing.detailScene, 'brain-anatomy');
+    assert.equal(throwing.structure, null);
+    throwing.destroy();
+
     // A published scene without the anatomy surface is not broken; it simply
     // has no names, and the hero must be able to tell the two apart.
     const plain = mountLandingOrganViewport(new FakeElement('div'), {
@@ -1188,10 +1207,9 @@ test('landing hero: the picked structure is named on the model, in both language
       pinned: true,
     });
     assert.equal(readout.dataset.state, 'pinned');
-    const [nameEn] = findByClass(readout, 'landing-demo-structure-name');
     const names = findByClass(readout, 'landing-demo-structure-name');
     const wheres = findByClass(readout, 'landing-demo-structure-where');
-    assert.equal(nameEn.getAttribute('lang'), 'en');
+    assert.equal(names[0].getAttribute('lang'), 'en');
     assert.equal(names[0].textContent, 'Hippocampus');
     assert.equal(names[1].textContent, '海馬');
     assert.equal(names[1].getAttribute('lang'), 'ja');
@@ -1203,6 +1221,51 @@ test('landing hero: the picked structure is named on the model, in both language
       'the card carries the structure’s own colour in the model'
     );
     assert.match(collectText(announcement).join(' '), /選択中: 海馬/);
+
+    // A pointer crossing the model while something is pinned redraws the card
+    // with the same name. Replacing a live region's children announces it
+    // again even when the words are identical, so the announcement has to be
+    // left alone — otherwise a reader hears the pinned name once per structure
+    // the pointer passes over, which is the failure this region was split out
+    // of the card to avoid.
+    const announcementBefore = announcement.children[0];
+    for (let crossing = 0; crossing < 4; crossing += 1) {
+      options.onStructureChange({
+        name: 'Hippocampus',
+        nameJa: '海馬',
+        breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+        breadcrumbJa: '左 › 側頭葉 › 海馬体',
+        color: '#8fd4c1',
+        pinned: true,
+      });
+    }
+    assert.equal(
+      announcement.children[0],
+      announcementBefore,
+      'the same name is never announced twice'
+    );
+
+    // Two structures can carry one name — the atlas has a middle temporal gyrus
+    // in each hemisphere — so pinning the other one is a new announcement.
+    options.onStructureChange({ id: 17, name: 'Middle temporal gyrus', nameJa: '中側頭回', pinned: true });
+    const leftAnnouncement = announcement.children[0];
+    options.onStructureChange({ id: 218, name: 'Middle temporal gyrus', nameJa: '中側頭回', pinned: true });
+    assert.notEqual(
+      announcement.children[0],
+      leftAnnouncement,
+      'the same name on a different structure is announced again'
+    );
+
+    // A structure that reports no colour clears the swatch rather than wearing
+    // the previous structure's: the swatch is what ties the card to the mesh.
+    options.onStructureChange({ name: 'Fornix', nameJa: '脳弓', pinned: true });
+    assert.equal(
+      findByClass(readout, 'landing-demo-structure-swatch')[0]
+        .style.getPropertyValue('--landing-structure-color'),
+      '',
+      'a structure with no colour does not inherit the last one'
+    );
+    assert.match(collectText(announcement).join(' '), /選択中: 脳弓/);
 
     // Nothing selected: back to the invitation, and the announcement is dropped.
     options.onStructureChange(null);

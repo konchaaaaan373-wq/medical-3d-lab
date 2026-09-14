@@ -235,7 +235,15 @@ export class OrganAnatomyScene {
       if (hit) this.selectStructure(hit.object.userData.structureId);
       else this.clearSelection();
     };
-    this._pointerLeave = () => this._setHovered(null);
+    // The press ends here too. A drag that wanders off the canvas is released
+    // where the canvas never hears it, so without this the press stays open and
+    // the next release it does hear — from a press that began somewhere else
+    // entirely — is measured against a point the reader left long ago. Nothing
+    // is lost by closing it: a tap does not leave the canvas.
+    this._pointerLeave = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
     this._pointerCancel = () => {
       tap.cancel();
       this._setHovered(null);

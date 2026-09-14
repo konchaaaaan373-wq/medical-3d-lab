@@ -237,7 +237,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 15, modelDigest: 'c74112e33009be20' }),
+    sceneRevision: Object.freeze({ cardRevision: 17, modelDigest: '8acae735c36b35c5' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -279,6 +279,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     }),
     evidence: Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
+      // What a finger gets, which is not what a pointer gets: it is where the
+      // out-and-back press was found, and it is re-runnable.
+      'scripts/check-hero-touch.mjs',
+      'tests/tap-gesture.test.js',
       'src/app/anatomyContract.js',
       'src/components/AnatomyPanel.js',
       'tests/anatomy-contract.test.js',

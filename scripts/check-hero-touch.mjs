@@ -38,11 +38,11 @@
  *   --shots <dir>  save one screenshot per device and step
  *   --headed       show the browser
  */
-import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 
 // --- arguments -------------------------------------------------------------
 
@@ -83,42 +83,10 @@ if (!chromium) {
   );
 }
 
-// --- serving the build (same shape as check-anatomy-interaction.mjs) -------
+// --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.glb': 'model/gltf-binary',
-  '.wasm': 'application/wasm',
-  '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8',
-};
-
-const root = resolve(distDir);
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-
-const server = createServer((request, response) => {
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
-});
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/${preview ? '?preview=1' : ''}`;
+const { base: origin, close: closeServer } = await serveDist(distDir);
+const base = `${origin}${preview ? '?preview=1' : ''}`;
 
 // --- the finger ------------------------------------------------------------
 
@@ -197,132 +165,168 @@ try {
     }
     const id = name.toLowerCase().replace(/\s+/g, '-');
     const context = await browser.newContext({ ...descriptor, isMobile: true, hasTouch: true });
-    const page = await context.newPage();
-    page.on('pageerror', (error) => problems.push(`${name}: page error: ${error.message}`));
-    const cdp = await context.newCDPSession(page);
-    const shot = async (step) => {
-      if (shotsDir) await page.screenshot({ path: join(shotsDir, `${id}-${step}.png`) });
-    };
-
-    await page.goto(base, { waitUntil: 'load' });
-    await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
-    await sleep(600);
-
-    const card = page.locator('.landing-demo-structure').first();
-    const canvas = page.locator('.landing-demo-viewport canvas').first();
-    const state = () => card.getAttribute('data-state');
-    const named = async () => (await card.innerText()).replace(/\s+/g, ' ').trim();
-    const centre = async () => {
-      const box = await canvas.boundingBox();
-      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    };
-    const record = { device: name };
-
-    // 1. A tap names a structure. Nothing hovered first: a finger cannot.
-    if ((await state()) !== 'hint') problems.push(`${name}: the ready model does not invite a tap`);
-    await finger(cdp, [await centre()]);
-    await sleep(400);
-    record.tapped = await named();
-    if ((await state()) !== 'pinned') problems.push(`${name}: a tap did not name a structure`);
-    await shot('1-tap');
-
-    // 2. Turning the model is not choosing something else.
-    const before = await canvas.screenshot();
-    const from = await centre();
-    await finger(cdp, [{ x: from.x - 60, y: from.y }, { x: from.x + 70, y: from.y + 6 }]);
-    await sleep(400);
-    record.afterRotate = await named();
-    if (!record.afterRotate || record.afterRotate !== record.tapped) {
-      problems.push(`${name}: a rotate drag changed the name to "${record.afterRotate}"`);
+    try {
+      await drive(context, name, id);
+    } catch (error) {
+      // One device that throws is one device's finding. Without this the loop
+      // unwinds, the remaining devices are never driven, and CI shows a stack
+      // trace where the list of what actually broke should be.
+      problems.push(`${name}: the drive could not finish — ${error.message}`);
+    } finally {
+      await context.close();
     }
-    if ((await canvas.screenshot()).equals(before)) {
-      problems.push(`${name}: a horizontal drag did not turn the model`);
-    }
-    await shot('2-rotate');
-
-    // 3. And neither is turning it back. This is the case the mouse hides: the
-    //    release lands on the press, so by displacement alone it stood still.
-    const at = await centre();
-    await finger(cdp, [at, { x: at.x + 110, y: at.y }, { x: at.x + 1, y: at.y + 1 }]);
-    await sleep(400);
-    record.afterReturnDrag = await named();
-    if (record.afterReturnDrag !== record.tapped) {
-      problems.push(
-        `${name}: a drag that returned to where it began selected "${record.afterReturnDrag}"`
-      );
-    }
-
-    // 4. A vertical swipe belongs to the page. The hero is inside an article.
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await sleep(200);
-    const swipe = await centre();
-    await finger(cdp, [swipe, { x: swipe.x, y: swipe.y - 220 }], { steps: 18 });
-    await sleep(500);
-    record.scrolledBy = await page.evaluate(() => Math.round(window.scrollY));
-    if (record.scrolledBy <= 0) {
-      problems.push(`${name}: a vertical swipe over the model did not scroll the page`);
-    }
-
-    // 5. A pinch is the page's too, by the same `touch-action`. Recorded rather
-    //    than asserted about the model: what it must not do is throw.
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await sleep(300);
-    await pinch(cdp, await centre());
-    await sleep(500);
-    record.viewportScale = await page.evaluate(() => window.visualViewport?.scale ?? null);
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await shot('3-pinch');
-
-    // 6. The card is a caption, not a control: it must not take the touch, and
-    //    it must not sit on top of the action underneath the hero.
-    record.geometry = await page.evaluate(() => {
-      const node = document.querySelector('.landing-demo-structure');
-      const stage = document.querySelector('.landing-demo-stage');
-      const action = document.querySelector('.landing-cta');
-      const rect = node.getBoundingClientRect();
-      const stageRect = stage.getBoundingClientRect();
-      const actionRect = action?.getBoundingClientRect() ?? null;
-      const under = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
-      return {
-        shareOfStage: Number((rect.height / stageRect.height).toFixed(2)),
-        hitAtCentre: under?.tagName?.toLowerCase() ?? null,
-        overlapsAction: actionRect
-          ? !(rect.bottom < actionRect.top || rect.top > actionRect.bottom)
-          : false,
-      };
-    });
-    if (record.geometry.hitAtCentre !== 'canvas') {
-      problems.push(`${name}: the card takes the touch (${record.geometry.hitAtCentre})`);
-    }
-    if (record.geometry.overlapsAction) problems.push(`${name}: the card covers the call to action`);
-    if (record.geometry.shareOfStage > 0.34) {
-      problems.push(`${name}: the card covers ${record.geometry.shareOfStage * 100}% of the model`);
-    }
-
-    // 7. Tapping past the model puts the card back to its invitation.
-    const box = await canvas.boundingBox();
-    await finger(cdp, [{ x: box.x + 8, y: box.y + 8 }]);
-    await sleep(400);
-    if ((await state()) !== 'hint') problems.push(`${name}: tapping empty space did not clear the name`);
-
-    const overflow = await page.evaluate(
-      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
-    );
-    if (overflow > 1) problems.push(`${name}: the page scrolls sideways by ${overflow}px`);
-
-    observed.push(record);
-    await context.close();
   }
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
+}
+
+/**
+ * Everything one device is asked to do.
+ *
+ * @param {any} context
+ * @param {string} name the device as Playwright names it
+ * @param {string} id the same, as a filename
+ */
+async function drive(context, name, id) {
+  const page = await context.newPage();
+  page.on('pageerror', (error) => problems.push(`${name}: page error: ${error.message}`));
+  const cdp = await context.newCDPSession(page);
+  const shot = async (step) => {
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, `${id}-${step}.png`) });
+  };
+
+  await page.goto(base, { waitUntil: 'load' });
+  await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
+  await sleep(600);
+
+  const card = page.locator('.landing-demo-structure').first();
+  const canvas = page.locator('.landing-demo-viewport canvas').first();
+  const state = () => card.getAttribute('data-state');
+  const named = async () => (await card.innerText()).replace(/\s+/g, ' ').trim();
+  const centre = async () => {
+    const box = await canvas.boundingBox();
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  };
+  const record = { device: name };
+
+  // 1. A tap names a structure. Nothing hovered first: a finger cannot.
+  if ((await state()) !== 'hint') problems.push(`${name}: the ready model does not invite a tap`);
+  await finger(cdp, [await centre()]);
+  await sleep(400);
+  record.tapped = await named();
+  if ((await state()) !== 'pinned') problems.push(`${name}: a tap did not name a structure`);
+  await shot('1-tap');
+
+  // 2. Turning the model is not choosing something else.
+  const before = await canvas.screenshot();
+  const from = await centre();
+  await finger(cdp, [{ x: from.x - 60, y: from.y }, { x: from.x + 70, y: from.y + 6 }]);
+  await sleep(400);
+  record.afterRotate = await named();
+  if (!record.afterRotate || record.afterRotate !== record.tapped) {
+    problems.push(`${name}: a rotate drag changed the name to "${record.afterRotate}"`);
+  }
+  if ((await canvas.screenshot()).equals(before)) {
+    problems.push(`${name}: a horizontal drag did not turn the model`);
+  }
+  await shot('2-rotate');
+
+  // 3. And neither is turning it back. This is the case the mouse hides: the
+  //    release lands on the press, so by displacement alone it stood still.
+  const at = await centre();
+  await finger(cdp, [at, { x: at.x + 110, y: at.y }, { x: at.x + 1, y: at.y + 1 }]);
+  await sleep(400);
+  record.afterReturnDrag = await named();
+  if (record.afterReturnDrag !== record.tapped) {
+    problems.push(
+      `${name}: a drag that returned to where it began selected "${record.afterReturnDrag}"`
+    );
+  }
+  // The regression this check exists for. Its screenshot is the one a reader
+  // of a failed run needs most: a bad selection and a raycast landing on a
+  // neighbouring mesh read the same in a message and not in a picture.
+  await shot('3-return-drag');
+
+  // 4. A vertical swipe belongs to the page. The hero is inside an article.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await sleep(200);
+  const swipe = await centre();
+  await finger(cdp, [swipe, { x: swipe.x, y: swipe.y - 220 }], { steps: 18 });
+  await sleep(500);
+  record.scrolledBy = await page.evaluate(() => Math.round(window.scrollY));
+  if (record.scrolledBy <= 0) {
+    problems.push(`${name}: a vertical swipe over the model did not scroll the page`);
+  }
+
+  // 5. A pinch is the page's too, by the same `touch-action`. Recorded rather
+  //    than asserted about the model: what it must not do is throw.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await sleep(300);
+  await pinch(cdp, await centre());
+  await sleep(500);
+  record.viewportScale = await page.evaluate(() => window.visualViewport?.scale ?? null);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot('4-pinch');
+
+  // 6. The card is a caption, not a control: it must not take the touch, and
+  //    it must not sit on top of the action underneath the hero.
+  record.geometry = await page.evaluate(() => {
+    const node = document.querySelector('.landing-demo-structure');
+    const stage = document.querySelector('.landing-demo-stage');
+    const action = document.querySelector('.landing-cta');
+    // A card that is absent or hidden measures as a zero-sized box at the
+    // origin, and every question below then answers about the top-left corner
+    // of the page: "the card takes the touch (html)" for a card that is not
+    // there. Say the true thing instead.
+    if (!node || !stage) return { missing: true };
+    const rect = node.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return { hidden: true };
+    const stageRect = stage.getBoundingClientRect();
+    const actionRect = action?.getBoundingClientRect() ?? null;
+    const under = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return {
+      shareOfStage: Number((rect.height / stageRect.height).toFixed(2)),
+      hitAtCentre: under?.tagName?.toLowerCase() ?? null,
+      overlapsAction: actionRect
+        ? !(rect.bottom < actionRect.top || rect.top > actionRect.bottom)
+        : false,
+    };
+  });
+  if (record.geometry.missing || record.geometry.hidden) {
+    problems.push(
+      `${name}: the name card is ${record.geometry.missing ? 'not in the page' : 'not shown'} ` +
+        'on a ready model that reports named structures'
+    );
+  } else if (record.geometry.hitAtCentre !== 'canvas') {
+    problems.push(`${name}: the card takes the touch (${record.geometry.hitAtCentre})`);
+  }
+  if (record.geometry.overlapsAction) problems.push(`${name}: the card covers the call to action`);
+  if (record.geometry.shareOfStage > 0.34) {
+    problems.push(`${name}: the card covers ${record.geometry.shareOfStage * 100}% of the model`);
+  }
+
+  // 7. Tapping past the model puts the card back to its invitation.
+  const box = await canvas.boundingBox();
+  await finger(cdp, [{ x: box.x + 8, y: box.y + 8 }]);
+  await sleep(400);
+  if ((await state()) !== 'hint') problems.push(`${name}: tapping empty space did not clear the name`);
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+  );
+  if (overflow > 1) problems.push(`${name}: the page scrolls sideways by ${overflow}px`);
+
+  observed.push(record);
 }
 
 console.log(`Landing hero under a finger — ${observed.length} device viewport(s), emulated touch`);
 for (const record of observed) {
-  console.log(`  ${record.device}: tap named "${record.tapped}"; ` +
-    `after a rotate "${record.afterRotate}"; after a rotate-and-return "${record.afterReturnDrag}"; ` +
-    `swipe scrolled ${record.scrolledBy}px; pinch left the page at ${record.viewportScale}×`);
+  console.log(
+    `  ${record.device}: tap named "${record.tapped}"; ` +
+      `after a rotate "${record.afterRotate}"; after a rotate-and-return "${record.afterReturnDrag}"; ` +
+      `swipe scrolled ${record.scrolledBy}px; pinch left the page at ${record.viewportScale}×`
+  );
 }
 console.log('  note: emulated touch on desktop Chromium. Not a device pass — see docs/follow-ups.md F-101.');
 

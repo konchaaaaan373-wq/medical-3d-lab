@@ -164,6 +164,17 @@ export function createLandingOrganHero({
    * value is what lets that pick survive the `ready` that follows it.
    */
   let shownStructure = null;
+  /**
+   * The last thing announced, so the same name is never announced twice.
+   *
+   * The card is redrawn on every pick, and while a structure is pinned that
+   * includes every hover the pointer generates crossing the model. Replacing an
+   * `aria-live` region's children is an announcement even when the words are
+   * identical, so without this a reader who pins a structure and then moves the
+   * pointer hears its name once per structure they pass over — the failure the
+   * live region was split out to avoid, arriving by the other door.
+   */
+  let announced = '';
 
   const STRUCTURE_HINT = Object.freeze([
     'Click a coloured structure to see its anatomical name.',
@@ -184,6 +195,10 @@ export function createLandingOrganHero({
    *          color?:string, pinned?:boolean}|null} structure
    */
   function showStructure(structure) {
+    // Ending the hero ends the viewport, which reports that it is no longer
+    // naming anything. `showViewportState` already refuses to draw after that;
+    // this is the same rule for the same reason.
+    if (destroyed) return;
     shownStructure = structure ?? null;
     renderStructure();
   }
@@ -194,7 +209,7 @@ export function createLandingOrganHero({
     structureReadout.hidden = !ready || !namedStructures;
     if (structureReadout.hidden) {
       structureReadout.dataset.state = 'hint';
-      structureAnnouncement.replaceChildren();
+      announce(null);
       return;
     }
 
@@ -205,7 +220,7 @@ export function createLandingOrganHero({
       structureWhereEn.textContent = '';
       structureWhereJa.textContent = '';
       structureSwatch.style.removeProperty('--landing-structure-color');
-      structureAnnouncement.replaceChildren();
+      announce(null);
       return;
     }
 
@@ -220,12 +235,33 @@ export function createLandingOrganHero({
       structure.breadcrumbJa,
       [structure.sideJa, structure.regionJa, structure.categoryNameJa]
     );
+    // Cleared rather than left behind when a structure reports no colour: the
+    // swatch exists to tie the card to the highlighted mesh, and the previous
+    // structure's colour beside this one's name says the opposite of that.
     if (structure.color) {
       structureSwatch.style.setProperty('--landing-structure-color', structure.color);
+    } else {
+      structureSwatch.style.removeProperty('--landing-structure-color');
     }
     // Announced on the pin only. See the note on `structureAnnouncement`.
+    announce(structure.pinned ? structure : null);
+  }
+
+  /**
+   * Say a pinned structure's name once.
+   *
+   * @param {{name?:string, nameJa?:string}|null} structure
+   */
+  function announce(structure) {
+    const name = structure ? structure.name ?? structure.nameJa ?? '' : '';
+    // Keyed by id as well as name, because a name is not unique: the atlas has
+    // a middle temporal gyrus in each hemisphere and calls both of them that.
+    // Keyed on the name alone, pinning the other one would announce nothing.
+    const key = structure ? `${structure.id ?? ''}\u0000${name}` : '';
+    if (key === announced) return;
+    announced = key;
     structureAnnouncement.replaceChildren(
-      ...(structure.pinned
+      ...(name
         ? dual(
             `Selected: ${structure.name ?? structure.nameJa ?? ''}`,
             `選択中: ${structure.nameJa ?? structure.name ?? ''}`

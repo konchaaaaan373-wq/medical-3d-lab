@@ -1429,10 +1429,6 @@ html[data-route='landing'] {
     min-height: 250px;
   }
 
-  .landing-demo-drag-hint {
-    max-width: 44%;
-  }
-
   .landing-hero-actions {
     gap: 6px;
     padding-right: 72px;

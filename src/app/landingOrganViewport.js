@@ -95,6 +95,12 @@ export function mountLandingOrganViewport(container, {
   /** Assigned once the viewer exists; a no-op before that and after disposal. */
   let emitStructure = () => {};
 
+  /** What the surfaces are told, pin first. One shape, written once. */
+  const currentStructure = () => {
+    const structure = pinnedStructure ?? hoveredStructure;
+    return structure ? { ...structure, pinned: Boolean(pinnedStructure) } : null;
+  };
+
   const setLifecycle = (state, detail = {}) => {
     if (disposed && state !== 'disposed') return;
     lifecycle = state;
@@ -115,8 +121,9 @@ export function mountLandingOrganViewport(container, {
     targetOrganId = null;
     targetSceneId = null;
     releaseLoadingDetail();
+    // `releaseDetail` lets the structures go: they are only ever bound to a
+    // detail scene, so there is no path where they outlive one.
     releaseDetail();
-    releaseStructures();
     releaseModel();
     for (const timer of attemptTimers) clearTimeout(timer);
     attemptTimers.clear();
@@ -275,9 +282,8 @@ export function mountLandingOrganViewport(container, {
     emitStructure = () => {
       if (disposed) return;
       if (!viewer.running && inView && document.visibilityState !== 'hidden') renderOnce();
-      const structure = pinnedStructure ?? hoveredStructure;
       try {
-        onStructureChange(structure ? { ...structure, pinned: Boolean(pinnedStructure) } : null);
+        onStructureChange(currentStructure());
       } catch (error) {
         console.error('landing organ structure', error);
       }
@@ -571,7 +577,18 @@ export function mountLandingOrganViewport(container, {
         allowAutoRotate = SceneClass.allowAutoRotate !== false;
         detailFrame = viewer.onFrame((dt) => scene.update(dt));
         cleanups.push(() => detailFrame?.());
-        const named = bindStructures(scene);
+        // Its own try: a scene that cannot report its names is a scene without
+        // names, not a failed model. Letting this throw here would land in the
+        // catch below with `detail` and the frame hook already installed, which
+        // unwinds neither — a disposed scene stepped on every frame behind an
+        // error message.
+        let named = false;
+        try {
+          named = bindStructures(scene);
+        } catch (error) {
+          console.error('landing organ structure bind', error);
+          releaseStructures({ notify: false });
+        }
 
         applyOpeningPose();
         renderOnce();
@@ -723,8 +740,7 @@ export function mountLandingOrganViewport(container, {
       },
       /** The named part the reader is pointing at, pin first. */
       get structure() {
-        const structure = pinnedStructure ?? hoveredStructure;
-        return structure ? { ...structure, pinned: Boolean(pinnedStructure) } : null;
+        return currentStructure();
       },
       get state() {
         return lifecycle;

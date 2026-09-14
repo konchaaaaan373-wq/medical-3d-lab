@@ -406,11 +406,29 @@ export class BrainAnatomyScene {
       if (hit) this.selectStructure(hit.object.userData.atlasId);
       else this.clearSelection();
     };
-    this._pointerLeave = () => this._setHovered(null);
+    // The press ends here too. A drag that wanders off the canvas is released
+    // where the canvas never hears it, so without this the press stays open and
+    // the next release it does hear — from a press that began somewhere else
+    // entirely — is measured against a point the reader left long ago. Nothing
+    // is lost by closing it: a tap does not leave the canvas.
+    this._pointerLeave = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
+    // The browser can take a gesture away mid-press — a pinch, or a swipe the
+    // page claims under `touch-action` — and then there is no `pointerup` at
+    // all. Without this the press stays open, and the next release the canvas
+    // sees without a press of its own is measured against a point the reader
+    // touched some time ago.
+    this._pointerCancel = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
     canvas.addEventListener('pointerdown', this._pointerDown);
     canvas.addEventListener('pointermove', this._pointerMove);
     canvas.addEventListener('pointerup', this._pointerUp);
     canvas.addEventListener('pointerleave', this._pointerLeave);
+    canvas.addEventListener('pointercancel', this._pointerCancel);
     canvas.style.cursor = 'grab';
   }
 
@@ -1195,6 +1213,7 @@ export class BrainAnatomyScene {
     canvas?.removeEventListener('pointermove', this._pointerMove);
     canvas?.removeEventListener('pointerup', this._pointerUp);
     canvas?.removeEventListener('pointerleave', this._pointerLeave);
+    canvas?.removeEventListener('pointercancel', this._pointerCancel);
     this.listeners.clear();
     this.hoverListeners.clear();
     this.statusListeners.clear();

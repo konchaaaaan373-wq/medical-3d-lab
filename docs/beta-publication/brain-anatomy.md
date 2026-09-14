@@ -12,12 +12,12 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-14 (re-taken after a press that returns to where it began stopped counting as a click) |
+| **Decided at** | 2026-09-14 (re-taken after a press that returns to where it began stopped counting as a click, and again after review corrected how that is measured) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **15**, source digest `c74112e33009be20` |
-| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
+| **Scene revision** | model card revision **17**, source digest `8acae735c36b35c5` |
+| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
 [`src/catalog/release.js`](../../src/catalog/release.js). Re-export the mesh and
@@ -92,6 +92,27 @@ tap thrown away is the worse failure of the two.
 **No physical phone has run this.** Emulated touch is the same event path on
 desktop hardware; it is not a device pass (F-101).
 
+**Revision 15 → 16.** Review of revision 15 found that the first reading of
+"did not travel far" was the *length of the path*, which grows with how long a
+press lasts rather than how far it went: a contact patch rolls a fraction of a
+pixel per event, so a deliberate press on a small structure at 120 Hz totalled
+tens of pixels without the finger leaving a two-pixel neighbourhood, and the tap
+was thrown away. It is the greatest distance from the press point now, which
+does not accumulate. The same review found the brain scene never listened for
+`pointercancel`, so a press the browser took away — a pinch, a swipe the page
+claims — stayed open in the tracker; it is wired, on both scenes. So is
+`pointerleave`, which is the same hole by the other door: a drag that wanders
+off the canvas is released where the canvas never hears it, and the press it
+left open would be what the *next* release was measured against. Nothing is
+lost by closing it, because a tap does not leave the canvas.
+
+**And the rule itself is now declared as a model source.** Lifting it into
+`tapGesture.js` had moved what a click selects *outside* the digest this record
+is pinned to, so a later change to it would not have closed this gate — the one
+thing the pin exists to do. All 31 anatomy entries in
+[`revisions.json`](../model-cards/revisions.json) declare the shared file, and
+`tests/tap-gesture.test.js` fails if one of them stops.
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -102,6 +123,13 @@ Driven in a real browser (Chromium, 1280×800, production build) by
 [`scripts/check-anatomy-interaction.mjs`](../../scripts/check-anatomy-interaction.mjs)
 — `npm run verify:anatomy`. Re-running it is how this record is re-verified;
 that is why the evidence is a script rather than a stored image.
+
+Since revision 15 a second drive checks the same model **under a finger** —
+[`scripts/check-hero-touch.mjs`](../../scripts/check-hero-touch.mjs),
+`npm run verify:hero-touch` — at the iPhone 13, Pixel 5 and iPad Mini viewports
+with touch emulation. It is where the out-and-back press was found. It drives
+the landing hero, which is this atlas in a smaller frame, and it is **not** a
+device pass: emulated touch on desktop Chromium, no iOS Safari, no hardware.
 
 **Structures** — the scene reports **271 selectable structures** drawn from 397
 meshes. Four clicks on the rendered mesh each resolved to a named structure
@@ -147,7 +175,8 @@ a rendering check, not an anatomical one.
 - **A drag is not a click**: orbiting from one structure and releasing over
   another leaves the pinned selection unchanged — and so does orbiting away and
   back, which releases on the spot it started from. Both are measured now: how
-  far the release is from the press, and how far the pointer went in between.
+  far the release is from the press, and how far the pointer ever got from it
+  while it was down.
 - Switching colour mode (Colour map ↔ Natural anatomy) does not change which
   structure is selected.
 - Applying a named viewpoint does not change it either, and neither leaves more
