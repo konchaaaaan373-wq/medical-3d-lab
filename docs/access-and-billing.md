@@ -157,8 +157,15 @@ offers the resend) — so whichever is live, the other is known to work when it
 becomes live. And it drives **password recovery up to the inbox**: landing on
 `#access_token=…&type=recovery`, the tokens leaving the address bar
 immediately, the choose-a-password form appearing, Enter reaching
-`PUT /auth/v1/user`, and a reload mid-recovery still getting that form from
-`?account=recovery` alone. What is left of `F-20` is only whether the mail
+`PUT /auth/v1/user`, and a reload mid-recovery still getting that form — from
+`?account=recovery` plus the session the fragment left in storage, which is
+what a real reload has. The flag alone is not enough and deliberately so: it
+outlives the session that minted it, so a bookmark, a restored tab, an
+hour-old link or anybody simply typing `/?account=recovery` is told the reset
+is no longer valid rather than handed a password form that could only fail
+after they filled it in. The same check holds the flag to a second rule: it
+never replaces the route, so reloading a scene mid-recovery reloads that scene
+with the dialog over it. What is left of `F-20` is only whether the mail
 arrives.
 
 **The keyboard-containment check carries a control, and needs one.** "The

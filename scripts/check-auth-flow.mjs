@@ -531,13 +531,148 @@ try {
 
     step = 'reloading in the middle of a recovery';
     {
-      const { page } = await openPage({ width: 1280, height: 900 });
-      // What is left in the address bar once the fragment has been scrubbed —
-      // and therefore all a reload has to go on.
-      await page.goto(`${base}?account=recovery`, { waitUntil: 'networkidle' });
-      await page.waitForTimeout(900);
+      // `loadUser` writes the identity back into the stored session, so a real
+      // reload has one. The stub has to answer that call for the same reason.
+      const recovered = (path, request) => (
+        path.includes('/auth/v1/user') && request.method() === 'GET'
+          ? {
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000', email: 'reset@example.test' }),
+          }
+          : null
+      );
+      const { page } = await openPage({ width: 1280, height: 900 }, { auth: recovered });
+      // Arrive the way the mail does: tokens in the fragment, flag in the query.
+      await page.goto(
+        `${base}?account=recovery#access_token=recovery-token&refresh_token=r&expires_in=3600&type=recovery`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForSelector('.access-recovery', { timeout: 15000 });
+
+      // Walk to a scene the way a person does, then reload. `page.goto` cannot
+      // do the second half: the target differs from the current URL only in
+      // its fragment, so it is a same-document navigation and the app never
+      // boots again — which is exactly the thing under test.
+      await page.evaluate((slug) => { window.location.hash = `#/${slug}`; }, SCENE);
+      await page.waitForTimeout(400);
+      // Same origin, so the session the fragment left behind is still in
+      // storage, and `?account=recovery` is all that is left in the address
+      // bar to say what the person was in the middle of.
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1400);
       check('a reload mid-recovery still gets the password form, not a sign-in',
         (await page.locator('.access-recovery').count()) === 1);
+      // The flag stays in the query until the password is set or the recovery
+      // cancelled, and it used to force the landing page on every load. Closing
+      // the dialog and carrying on therefore meant every later reload of a
+      // scene URL dropped back to the landing page, with no way out but
+      // finishing the recovery or editing the address bar by hand.
+      check('and does not throw away the route it reloaded',
+        (await page.evaluate(() => document.documentElement.dataset.route)) === 'scene',
+        await page.evaluate(() => document.documentElement.dataset.route));
+
+      // Cancelling has to take the query with it, or the next reload puts the
+      // same form straight back.
+      await page.click('.access-recovery .access-secondary');
+      await page.waitForTimeout(400);
+      check('cancelling a recovery clears the flag from the URL',
+        !page.url().includes('account=recovery'), page.url());
+      await page.close();
+    }
+
+    step = 'a confirmation link arriving on top of an abandoned reset';
+    {
+      // Both signals are read on the same page load, and an abandoned reset
+      // leaves `?account=recovery` in the query until it is finished or
+      // cancelled. The fragment is the newer and the more specific of the two,
+      // and it used to lose: a confirmation link opened "choose a new
+      // password" with "your email address is confirmed" printed underneath.
+      const recovered = (path, request) => (
+        path.includes('/auth/v1/user') && request.method() === 'GET'
+          ? {
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000', email: 'new@example.test' }),
+          }
+          : null
+      );
+      const { page } = await openPage({ width: 1100, height: 900 }, { auth: recovered });
+      await page.goto(
+        `${base}?account=recovery#access_token=signup-token&refresh_token=r&expires_in=3600&type=signup`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForTimeout(1400);
+      const text = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('a confirmation link is not answered with a password form',
+        (await page.locator('.access-recovery').count()) === 0, text.slice(0, 80));
+      check('and says the address was confirmed',
+        /確認しました|is confirmed/.test(text), text.slice(0, 90));
+      // Outvoting the flag for one page load is not outvoting it: left in the
+      // query, it is all the next reload has to read — and by then there is a
+      // real session behind it, so the password form comes back and the
+      // session gate cannot tell the difference.
+      check('and takes the outvoted flag out of the URL',
+        !page.url().includes('account=recovery'), page.url());
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1200);
+      check('so a reload after confirming does not become a password reset',
+        (await page.locator('.access-recovery').count()) === 0);
+      await page.close();
+    }
+
+    step = 'signing out elsewhere while a recovery is pending';
+    {
+      // `recoveryMode` deliberately outlives the dialog, so it has to be
+      // cleared wherever the session ends rather than only where the person
+      // presses Cancel. Signing out in another tab used to leave the flag and
+      // the query behind: "choose a new password" stayed on screen for
+      // somebody with no identity, and the next reload put it back.
+      const recovered = (path, request) => (
+        path.includes('/auth/v1/user') && request.method() === 'GET'
+          ? {
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000', email: 'reset@example.test' }),
+          }
+          : null
+      );
+      const { page } = await openPage({ width: 1100, height: 900 }, { auth: recovered });
+      await page.goto(
+        `${base}?account=recovery#access_token=recovery-token&refresh_token=r&expires_in=3600&type=recovery`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForSelector('.access-recovery', { timeout: 15000 });
+      await page.evaluate(() => {
+        localStorage.removeItem('medical3dlab.auth.v1');
+        // Never fires in the tab that made the change, so it is synthesised.
+        window.dispatchEvent(new StorageEvent('storage', { key: 'medical3dlab.auth.v1', newValue: null }));
+      });
+      await page.waitForTimeout(700);
+      check('signing out elsewhere takes the password form down with it',
+        (await page.locator('.access-recovery').count()) === 0);
+      check('and takes the recovery flag out of the URL',
+        !page.url().includes('account=recovery'), page.url());
+      await page.close();
+    }
+
+    step = 'the recovery flag with no recovery session behind it';
+    {
+      // The query flag outlives the session that minted it: it survives in a
+      // bookmark, in a restored tab, and in an hour-old link — and anybody at
+      // all can type the URL. Every one of those was handed "choose a new
+      // password", and could only be told after submitting it that the
+      // recovery session had expired.
+      const { page } = await openPage({ width: 1100, height: 900 });
+      await page.goto(`${base}?account=recovery`, { waitUntil: 'networkidle' });
+      await page.waitForTimeout(1400);
+      const text = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('a stale recovery flag does not open a password form that cannot work',
+        (await page.locator('.access-recovery').count()) === 0, text.slice(0, 80));
+      check('and says the reset is no longer valid',
+        /有効期限|no longer valid/i.test(text), text.slice(0, 90));
+      check('and clears the flag so a reload does not ask again',
+        !page.url().includes('account=recovery'), page.url());
       await page.close();
     }
 

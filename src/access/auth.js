@@ -264,8 +264,12 @@ export function consumeAuthRedirect({ location, history } = {}) {
  * reloaded mid-recovery got the ordinary sign-in dialog while holding a valid
  * recovery session.
  *
- * Answering true is not permission to change a password. It decides which
- * dialog opens; `updatePassword` still requires a live recovery session.
+ * Answering true is a *request*, not an answer. It says this page load is
+ * about a password reset; it does not say there is a session to reset one
+ * with, and the caller asks `getSession()` before opening the form — the query
+ * flag outlives the session that minted it, so a bookmark, a restored tab, an
+ * hour-old link, or anybody simply typing `/?account=recovery` all answer true
+ * here with nothing behind them. `updatePassword` keeps its own check anyway.
  *
  * @param {{ consumedRecoveryHash: boolean, search?: string }} signals
  */
