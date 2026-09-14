@@ -441,7 +441,7 @@ try {
         }
         return null;
       };
-      const { page, calls } = await openPage({ width: 1100, height: 950 }, { auth: signedIn });
+      const { page, calls, errors } = await openPage({ width: 1100, height: 950 }, { auth: signedIn });
       await page.goto(base, { waitUntil: 'networkidle' });
       await page.click('.account-trigger');
       await page.waitForSelector('.access-credentials');
@@ -483,27 +483,54 @@ try {
       await page.fill('input[name=confirm-password]', 'a-brand-new-one');
       await page.press('input[name=confirm-password]', 'Enter');
       await page.waitForSelector('.access-user-email', { timeout: 15000 });
-      const changed = calls.slice(beforeChange).join(' | ');
-      // The current password is proved before the new one is set, so a session
-      // left open cannot be used to lock its owner out of their own account.
+      const changed = calls.slice(beforeChange);
+      // Order is the whole claim. Asserting only that both endpoints were
+      // called would still pass if the re-authentication moved *after* the
+      // password was set, which is the arrangement that proves nothing.
+      const proved = changed.findIndex((u) => u.includes('/auth/v1/token'));
+      const set = changed.findIndex((u) => u.includes('/auth/v1/user'));
       check('the current password is proved before the new one is set',
-        /\/auth\/v1\/token/.test(changed) && /\/auth\/v1\/user/.test(changed), changed);
+        proved >= 0 && set >= 0 && proved < set, changed.join(' | '));
 
       step = 'changing the address on the account';
       await page.click('.access-change-email');
       await page.waitForSelector('.access-change-form');
       const beforeEmail = calls.length;
+      // The password set a moment ago: moving the address proves it too.
+      await page.fill('input[name=current-password]', 'a-brand-new-one');
       await page.fill('input[name=new-email]', 'moved@example.test');
       await page.press('input[name=new-email]', 'Enter');
       await page.waitForSelector('.access-user-email', { timeout: 15000 });
-      check('the move is requested of Supabase',
-        calls.slice(beforeEmail).some((u) => u.includes('/auth/v1/user')), calls.slice(beforeEmail).join(' | '));
+      const moved = calls.slice(beforeEmail);
+      const provedForMove = moved.findIndex((u) => u.includes('/auth/v1/token'));
+      const requested = moved.findIndex((u) => u.includes('/auth/v1/user'));
+      // Whoever controls the address controls password recovery, so moving it
+      // is the stronger takeover — it is proved before it is requested.
+      check('the move is requested, and the password proved first',
+        provedForMove >= 0 && requested >= 0 && provedForMove < requested, moved.join(' | '));
       // Nothing has moved until the link in the new address is opened. Saying
       // "changed" here would leave somebody believing an address had moved
       // when it had not, which is how an account becomes unreachable.
       const emailNotice = (await page.locator('.access-form-message').allTextContents()).join('');
       check('and is reported as sent, not as done',
         /確認メール|Confirmation sent/.test(emailNotice) && !/変更しました/.test(emailNotice), emailNotice.slice(0, 60));
+
+      step = 'a background refresh while a form is open';
+      await page.click('.access-change-password');
+      await page.waitForSelector('.access-change-form');
+      await page.fill('input[name=current-password]', 'a-brand-new-one');
+      await page.fill('input[name=new-password]', 'another-new-one');
+      // What alt-tabbing to a password manager and back does. `refresh()`
+      // notifies, `notify()` rebuilds, and these fields live nowhere else.
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await page.waitForTimeout(700);
+      check('a background refresh does not empty a form being filled in',
+        (await page.inputValue('input[name=current-password]')) === 'a-brand-new-one'
+        && (await page.inputValue('input[name=new-password]')) === 'another-new-one');
+      await page.click('.access-change-form .access-secondary');
+      await page.waitForSelector('.access-user-email');
+
+      check('no uncaught errors while managing the account', errors.length === 0, errors.join(' | '));
 
       step = 'signing out in another tab';
       await page.evaluate(() => {
@@ -515,6 +542,40 @@ try {
       await page.waitForSelector('.access-credentials', { timeout: 15000 });
       check('another tab signing out signs this one out too',
         (await page.locator('.access-user-email').count()) === 0);
+
+      // The other half of that, and the harder half to observe. A tab rotating
+      // its token writes the same key, and treating that as a sign-out tore
+      // down paid modes and open forms roughly hourly.
+      //
+      // "Is it still signed in?" cannot see this: the `refresh()` that follows
+      // puts the session straight back, so that question answers yes either
+      // way — an earlier version of this check asserted exactly that and
+      // passed with the guard removed. What does not come back is the state
+      // the teardown discarded, so the form is the instrument.
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.click('.account-trigger');
+      await page.waitForSelector('.access-credentials');
+      await page.fill('.access-credentials input[name=email]', 'holder@example.test');
+      await page.fill('.access-credentials input[name=password]', 'the-old-password');
+      await page.press('.access-credentials input[name=password]', 'Enter');
+      await page.waitForSelector('.access-user-email', { timeout: 15000 });
+      await page.click('.access-change-password');
+      await page.waitForSelector('.access-change-form');
+      await page.fill('input[name=current-password]', 'mid-typing');
+
+      await page.evaluate(() => {
+        const raw = localStorage.getItem('medical3dlab.auth.v1');
+        const rotated = JSON.stringify({ ...JSON.parse(raw), access_token: 'a-rotated-token' });
+        localStorage.setItem('medical3dlab.auth.v1', rotated);
+        window.dispatchEvent(new StorageEvent('storage', {
+          key: 'medical3dlab.auth.v1', newValue: rotated,
+        }));
+      });
+      await page.waitForTimeout(900);
+      check('another tab rotating its token leaves this one alone',
+        (await page.locator('.access-change-form').count()) === 1
+        && (await page.inputValue('input[name=current-password]')) === 'mid-typing',
+        `form open: ${await page.locator('.access-change-form').count()}`);
       await page.close();
     }
 
