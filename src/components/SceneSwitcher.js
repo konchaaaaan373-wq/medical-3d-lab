@@ -1,16 +1,23 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
+import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
-import { compactSceneLabel, scenesByOrganForNavigation } from '../app/sceneNavigationModel.js';
+import {
+  compactSceneLabel,
+  navigationKindGroups,
+  navigationUseLabel,
+  scenesByOrganForNavigation,
+} from '../app/sceneNavigationModel.js';
 
 /**
  * Fixed product-shell navigation for a 3D scene.
  *
- * `groups` is already projected by `sceneRegistry`. This component never widens
- * that set. The visual hierarchy is deliberately flatter than the catalogue:
- * organ heading + model rows, with the anatomy/pathophysiology distinction only
- * when one organ actually contains both kinds.
+ * `groups` is already projected by `sceneRegistry`, so this component never
+ * widens the release boundary. The visible hierarchy mirrors the catalogue:
+ * body system → organ → anatomy/physiology or disease/pathophysiology → model.
+ * Patient explanation is shown only when the same versioned review gate used by
+ * the product permits it.
  */
 export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const scenes = groups.flatMap((group) => group.scenes);
@@ -23,7 +30,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const isLab = currentScene.status === 'prototype';
   const currentOrgan = organById(currentScene.organ);
   const currentShort = compactSceneLabel(currentScene);
-  const organGroups = scenesByOrganForNavigation(scenes, organById);
 
   const ui = document.getElementById('ui');
   ui?.classList.add('has-global-scene-nav');
@@ -38,7 +44,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   let open = false;
   const inertBefore = new Map();
   const FOCUSABLE =
-    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
+    'summary,a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
     'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
   const trigger = el(
@@ -85,6 +91,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
 
   const sceneLink = (scene) => {
     const isCurrent = scene.id === currentScene.id;
+    const use = navigationUseLabel(scene, activeUsesForSceneEntry(scene));
     return el(
       'a',
       {
@@ -93,7 +100,10 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
         'aria-current': isCurrent ? 'page' : null,
       },
       [
-        bilingual(scene.label, scene.labelJa, 'global-nav-scene-name'),
+        el('span', { class: 'global-nav-scene-copy' }, [
+          bilingual(scene.label, scene.labelJa, 'global-nav-scene-name'),
+          bilingual(use.en, use.ja, 'global-nav-scene-meta'),
+        ]),
         isCurrent
           ? el('span', { class: 'global-nav-current-check', 'aria-hidden': 'true', text: '✓' })
           : null,
@@ -101,33 +111,45 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     );
   };
 
-  const kindGroup = (label, scenesForKind, showHeading) => {
-    if (!scenesForKind.length) return null;
-    return el('div', { class: 'global-nav-kind-group' }, [
-      showHeading
-        ? el('h3', { class: 'global-nav-kind-heading' }, [bilingual(label.en, label.ja)])
-        : null,
-      ...scenesForKind.map((scene) => sceneLink(scene)),
-    ].filter(Boolean));
-  };
+  const kindGroup = (kind) =>
+    el('div', { class: `global-nav-kind-group is-${kind.id}` }, [
+      el('h4', { class: 'global-nav-kind-heading' }, [bilingual(kind.label, kind.labelJa)]),
+      ...kind.scenes.map((scene) => sceneLink(scene)),
+    ]);
 
-  const organSection = (organ) => {
-    const foundationKind = { en: 'Anatomy / physiology', ja: '解剖・生理' };
-    const pathologyKind = { en: 'Pathophysiology', ja: '病態' };
-    return el(
+  const organSection = (organ) =>
+    el(
       'section',
       { class: `global-nav-organ${organ.id === currentScene.organ ? ' is-current' : ''}` },
       [
-        el('h2', { class: 'global-nav-organ-name' }, [bilingual(organ.label, organ.labelJa)]),
-        el('div', { class: 'global-nav-scenes' }, [
-          kindGroup(foundationKind, organ.foundation, organ.hasBothKinds),
-          kindGroup(pathologyKind, organ.pathophysiology, organ.hasBothKinds),
-        ].filter(Boolean)),
+        el('h3', { class: 'global-nav-organ-name' }, [bilingual(organ.label, organ.labelJa)]),
+        el('div', { class: 'global-nav-scenes' }, navigationKindGroups(organ).map(kindGroup)),
       ]
     );
+
+  const systemDetails = [];
+  const systemSection = (group) => {
+    const organs = scenesByOrganForNavigation(group.scenes, organById);
+    const isCurrent = group.id === currentGroup.id;
+    const details = el('details', {
+      class: `global-nav-system-section${isCurrent ? ' is-current' : ''}`,
+      ...(isCurrent ? { open: '' } : {}),
+    }, [
+      el('summary', { class: 'global-nav-system-summary' }, [
+        el('span', {
+          class: 'global-nav-system-heading',
+          role: 'heading',
+          'aria-level': '2',
+        }, [bilingual(group.label, group.labelJa)]),
+        el('span', { class: 'global-nav-system-chevron', 'aria-hidden': 'true', text: '⌄' }),
+      ]),
+      el('div', { class: 'global-nav-system-organs' }, organs.map(organSection)),
+    ]);
+    systemDetails.push(details);
+    return details;
   };
 
-  const list = el('div', { class: 'global-nav-list' }, organGroups.map(organSection));
+  const list = el('div', { class: 'global-nav-list' }, groups.map(systemSection));
 
   // Shelf navigation is useful, but it must not outrank choosing a model. Keep
   // it as compact footer navigation. The public beta never exposes Lab here.
@@ -159,11 +181,17 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       hidden: '',
       role: 'dialog',
       'aria-modal': 'true',
-      'aria-label': 'Models / モデル',
+      'aria-label': 'Organs and models / 臓器・モデル',
     },
     [
       el('div', { class: 'global-nav-panel-head' }, [
-        el('div', { class: 'global-nav-panel-title' }, [bilingual('Models', 'モデル')]),
+        el('div', { class: 'global-nav-panel-heading' }, [
+          el('div', { class: 'global-nav-panel-title' }, [bilingual('Organs & models', '臓器・モデル')]),
+          el('p', { class: 'global-nav-panel-intro' }, [bilingual(
+            'Choose a body system, then an organ and model.',
+            '身体の系統を選び、臓器・モデルへ進みます。'
+          )]),
+        ]),
         favoriteButton,
         closeButton,
       ]),
@@ -194,12 +222,20 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
 
   const organEn = currentOrgan?.label ?? currentGroup.label;
   const organJa = currentOrgan?.labelJa ?? currentGroup.labelJa;
+  const sceneEn = currentShort.en && currentShort.en !== organEn ? currentShort.en : '';
+  const sceneJa = currentShort.ja && currentShort.ja !== organJa ? currentShort.ja : '';
+  const breadcrumb = (parts, lang) => {
+    const visible = parts.filter(Boolean);
+    const children = [];
+    visible.forEach((part, index) => {
+      if (index) children.push(el('span', { class: 'global-nav-current-separator', 'aria-hidden': 'true', text: '›' }));
+      children.push(el('span', { class: 'global-nav-current-part', text: part }));
+    });
+    return el('span', { class: `global-nav-current-label lang-${lang}` }, children);
+  };
   const currentLocation = el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
-    bilingual(
-      currentShort.en && currentShort.en !== organEn ? `${organEn} · ${currentShort.en}` : organEn,
-      currentShort.ja && currentShort.ja !== organJa ? `${organJa} · ${currentShort.ja}` : organJa,
-      'global-nav-current-label'
-    ),
+    breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
+    breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
   ]);
 
   const element = el(
@@ -215,6 +251,18 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
 
   if (!hasChoices) {
     trigger.hidden = true;
+  }
+
+  // One body system is open at a time on every viewport. This keeps a fourteen-
+  // system catalogue scannable on desktop and prevents scroll fatigue on a
+  // phone. The current system starts open so opening Models never loses place.
+  for (const details of systemDetails) {
+    details.addEventListener('toggle', () => {
+      if (!details.open) return;
+      for (const other of systemDetails) {
+        if (other !== details) other.open = false;
+      }
+    });
   }
 
   function renderLibrary(library = readSceneLibrary()) {
@@ -292,8 +340,16 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     backdrop.hidden = !open;
     trigger.setAttribute('aria-expanded', String(open));
     setBackgroundInert(open);
-    if (open) closeButton.focus?.();
-    else if (restoreFocus && trigger.isConnected) trigger.focus?.();
+    if (open) {
+      const currentSystem = systemDetails.find((details) => details.classList.contains('is-current'));
+      if (currentSystem && !systemDetails.some((details) => details.open)) currentSystem.open = true;
+      closeButton.focus?.();
+      requestAnimationFrame(() => {
+        panel.querySelector('.global-nav-scene.is-current')?.scrollIntoView?.({ block: 'nearest' });
+      });
+    } else if (restoreFocus && trigger.isConnected) {
+      trigger.focus?.();
+    }
   }
 
   favoriteButton.addEventListener('click', () => {

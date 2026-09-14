@@ -4,7 +4,7 @@
  * changes, not only the words.
  *
  *   VITE_ALLOW_PREVIEW=1 npm run build
- *   npm run verify:patient
+ *   npm run verify:patient -- --preview
  *
  * ## Why this exists as a script rather than as a note
  *
@@ -22,10 +22,11 @@
  * different pictures of one state are a thing this product does on purpose and
  * an accidental re-solve would be indistinguishable from it.
  *
- * It also checks the two boundaries the mode itself is for: the expert controls
- * are gone while a patient is being explained to, and closing the explanation
- * hands the clinician back their own lung — with the position the conversation
- * walked to kept, because that is the state they now want the numbers for.
+ * It also checks the boundaries the mode itself is for: a playing model pauses
+ * before a fixed caption appears, expert controls are gone, compact phone/tablet
+ * layouts remain readable, and closing hands the clinician back their own lung —
+ * with the position the conversation walked to kept, because that is the state
+ * they now want the numbers for.
  *
  * ## Standing in for the paid plumbing
  *
@@ -191,6 +192,7 @@ const readState = () =>
       camera: app.viewer.camera.position.toArray(),
       target: app.viewer.controls.target.toArray(),
       progress: app.playback.value,
+      playing: app.playback.playing,
       controls: (app.scene.getModelControls?.() ?? []).map(({ id, value }) => [id, value]),
       // Keyed by row id, because this check quotes a few of them back and the
       // scene hands them out as an ordered list for a panel to render.
@@ -228,6 +230,8 @@ const readState = () =>
 const moved = (a, b) => a.some((value, index) => Math.abs(value - b[index]) > 1e-3);
 const sameControls = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
+await page.evaluate(() => window.__app.playback.play());
+await page.waitForTimeout(80);
 const clinician = await readState();
 
 const patientButton = page.locator('.patient-mode-button');
@@ -236,6 +240,75 @@ if (!(await patientButton.count())) {
 } else {
   await patientButton.click();
   await page.waitForSelector('#ui.is-patient-guide .patient-guide', { timeout: 10000 });
+
+  if (await page.evaluate(() => window.__app.playback.playing)) {
+    problems.push('opening a patient explanation did not pause the playing model, so its fixed caption can drift');
+  }
+
+  const layoutViewports = [
+    { name: 'desktop', width: 1280, height: 800 },
+    { name: 'tablet portrait', width: 768, height: 1024 },
+    { name: 'phone portrait', width: 375, height: 812 },
+    { name: 'short phone portrait', width: 375, height: 667 },
+    { name: 'very short phone portrait', width: 375, height: 568 },
+    { name: 'phone landscape', width: 844, height: 390 },
+  ];
+
+  for (const viewport of layoutViewports) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await page.waitForTimeout(180);
+    const layout = await page.evaluate(() => {
+      const box = (selector) => {
+        const rect = document.querySelector(selector)?.getBoundingClientRect();
+        return rect ? { top: rect.top, right: rect.right, bottom: rect.bottom, left: rect.left, width: rect.width, height: rect.height } : null;
+      };
+      return {
+        horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        console: box('.console'),
+        step: box('.patient-guide-step'),
+        topBar: getComputedStyle(document.querySelector('.top-bar')).display,
+        sceneNav: getComputedStyle(document.querySelector('.global-scene-nav')).display,
+      };
+    });
+
+    if (layout.horizontalOverflow > 1) {
+      problems.push(`${viewport.name}: page overflows horizontally by ${Math.round(layout.horizontalOverflow)}px`);
+    }
+    if (!layout.console || !layout.step) {
+      problems.push(`${viewport.name}: consultation panel or current-step region is missing`);
+      continue;
+    }
+    if (
+      layout.console.left < -1 ||
+      layout.console.top < -1 ||
+      layout.console.right > viewport.width + 1 ||
+      layout.console.bottom > viewport.height + 1
+    ) {
+      problems.push(`${viewport.name}: consultation panel escapes the viewport`);
+    }
+    if (layout.step.height < 64) {
+      problems.push(`${viewport.name}: only ${Math.round(layout.step.height)}px remains for the current explanation`);
+    }
+    if (layout.topBar !== 'none' || layout.sceneNav !== 'none') {
+      problems.push(`${viewport.name}: expert shell remains visible in patient presentation`);
+    }
+
+    const shortLandscape = viewport.height <= 460 && viewport.width / viewport.height >= 1.5;
+    const compactSheet = viewport.width <= 900 && !shortLandscape;
+    if (compactSheet) {
+      if (layout.console.left > 20 || viewport.width - layout.console.right > 20) {
+        problems.push(`${viewport.name}: compact consultation sheet is not anchored to both sides`);
+      }
+      if (layout.console.top < viewport.height * 0.38) {
+        problems.push(`${viewport.name}: consultation sheet leaves too little of the 3D model visible`);
+      }
+    } else if (layout.console.left < viewport.width * 0.48) {
+      problems.push(`${viewport.name}: consultation rail takes more than half of the model width`);
+    }
+  }
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.waitForTimeout(250);
 
   // Where the panel chose to open. It is not always step one: a guide opens on
   // the step that describes the model the clinician is already looking at, and
@@ -385,6 +458,9 @@ if (!(await patientButton.count())) {
   }
   if (after.dataView !== clinician.dataView) {
     problems.push('closing the explanation did not give the read-outs back');
+  }
+  if (after.playing) {
+    problems.push('a guide that moved the model resumed playback after closing');
   }
   if (shotsDir) await page.screenshot({ path: join(shotsDir, `${sceneSlug}-patient-99-closed.png`) });
 }

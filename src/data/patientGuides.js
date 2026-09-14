@@ -237,7 +237,7 @@ export const PATIENT_GUIDES = Object.freeze({
         title: 'The wall thickens',
         titleJa: '壁が厚くなる',
         body:
-          'In conditions where a high **pressure** load is held for a long time, the muscle can grow thicker. '
+          'In conditions where a high pressure load is held for a long time, the muscle can grow thicker. '
           + 'The room inside stays about the same. This is not where every heart failure begins.',
         bodyJa:
           '高い圧の負担が長く続く病態では、心筋が厚くなることがあります。中の広さはあまり変わりません。'
@@ -294,7 +294,7 @@ export const PATIENT_GUIDES = Object.freeze({
         titleJa: '圧は肺のほうへ伝わる',
         body:
           'As the pressure needed to fill the left ventricle rises, that pressure carries back through the left '
-          + 'atrium into the vessels that bring blood **from the lungs to the heart**.',
+          + 'atrium into the vessels that bring blood from the lungs to the heart.',
         bodyJa:
           '左心室を満たすのに要る圧が上がると、その圧は左心房を通じて、肺から心臓へ血液が戻ってくる側の'
           + '血管へ伝わります。',

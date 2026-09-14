@@ -25,8 +25,10 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
+import './styles/patient-consultation.css';
 // Last, and deliberately: it is the one place that owns the 44 px touch floor
-// for phone widths, and it has to outrank every surface sheet that compacts.
+// for phone widths, and it has to outrank every surface sheet that compacts —
+// the consultation view above included.
 import './styles/phone-touch-targets.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';

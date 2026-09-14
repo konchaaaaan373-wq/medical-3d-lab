@@ -1,7 +1,12 @@
 import { SCENE_MANIFEST } from '../catalog/scenes.js';
-import { clinicalReviewForScene } from '../catalog/clinicalReview.js';
 import { patientGuideFor } from '../data/patientGuides.js';
 import { educationGuideFor } from '../data/educationGuides.js';
+import {
+  activeUsesForSceneEntry,
+  patientUseEnabledForScene,
+  professionalUseStatusReady,
+  professionalUseSurfaceReady,
+} from './sceneUses.js';
 
 /**
  * Product capabilities are declared on the scene manifest itself, but the
@@ -18,8 +23,6 @@ import { educationGuideFor } from '../data/educationGuides.js';
  * product modes; there is no second paid-scene list to edit.
  */
 
-const PAID_READY_STATUSES = new Set(['reviewed', 'production']);
-
 const FREE_ONLY = Object.freeze({
   core: 'free',
   basicExplanation: 'free',
@@ -27,13 +30,9 @@ const FREE_ONLY = Object.freeze({
   education: false,
 });
 
-function hasVersionedClinicalReview(scene) {
-  return clinicalReviewForScene(scene)?.reviewStatus === 'reviewed';
-}
-
 function featureSet(scene, { requireClinicalReview = true } = {}) {
-  if (!scene || !PAID_READY_STATUSES.has(scene.status)) return FREE_ONLY;
-  if (requireClinicalReview && !hasVersionedClinicalReview(scene)) return FREE_ONLY;
+  if (!professionalUseStatusReady(scene)) return FREE_ONLY;
+  if (requireClinicalReview && !professionalUseSurfaceReady(scene)) return FREE_ONLY;
   const patient = scene.access?.patient === true;
   const education = scene.access?.education === true;
   if (!patient && !education) return FREE_ONLY;
@@ -114,32 +113,22 @@ export function authoredFeaturesForScene(sceneOrId) {
 /**
  * Whether "patient explanation" may be shown as a use a reader can act on.
  *
- * The catalogue declares the contexts a scene is *intended* for. Patient
- * explanation is the one of them that is safety-gated: it becomes visible on a
- * card, and selectable in the explorer's use filter, under exactly the rule the
- * paid patient mode uses — a reviewed/production model with a versioned clinical
- * review of the current lineage. An unreviewed alpha model is never presented
- * as intended for a patient, however it is declared.
- *
  * @param {string|{id?:string,status?:string,uses?:string[]}} sceneOrId
  */
 export function patientUseEnabled(sceneOrId) {
-  const scene = sceneFor(sceneOrId);
-  if (!scene || !(scene.uses ?? []).includes('patient')) return false;
-  return PAID_READY_STATUSES.has(scene.status) && hasVersionedClinicalReview(scene);
+  return patientUseEnabledForScene(sceneFor(sceneOrId));
 }
 
 /**
  * The declared uses a surface may present today: every non-patient context as
- * declared, and patient explanation only when `patientUseEnabled`.
+ * declared, and patient explanation only when the current clinical-review gate
+ * permits it.
  *
  * @param {string|{id?:string,status?:string,uses?:string[]}} sceneOrId
  * @returns {string[]}
  */
 export function activeUsesForScene(sceneOrId) {
-  const scene = sceneFor(sceneOrId);
-  const declared = scene?.uses ?? ['education'];
-  return declared.filter((use) => use !== 'patient' || patientUseEnabled(scene));
+  return activeUsesForSceneEntry(sceneFor(sceneOrId));
 }
 
 /**
