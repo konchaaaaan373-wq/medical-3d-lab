@@ -108,9 +108,16 @@ const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
  *
  * **The whole table was re-measured on 2026-09-14**, when the organ scenes
  * started answering `getSubjectBounds()` in the shape the framing reads and
- * every model moved into the band the parts panel leaves. The measurement is a
- * grid of clicks over each scene's opening view, keeping four that land on
- * different structures and far enough apart to be four tests rather than one.
+ * every model moved into the band the parts panel leaves. Re-measuring is a
+ * command rather than an afternoon with a screenshot:
+ *
+ *   VITE_ALLOW_PREVIEW=1 npm run build
+ *   npm run points:anatomy -- --preview
+ *
+ * It clicks a grid over each scene's opening view and keeps four points that
+ * land on different structures, far enough apart to be four tests, and
+ * **inside** what they hit rather than on its edge — `measure-anatomy-points.mjs`
+ * says why that last one is not optional.
  */
 const SCENE_POINTS = {
   // Trachea, Right upper lobe, Left upper lobe, Right middle lobe.
