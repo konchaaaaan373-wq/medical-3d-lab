@@ -113,7 +113,12 @@ export function createAccessManager({ ui }) {
       // password" with "that link has expired" underneath, and submitting it
       // failed with "your recovery session has expired": the same
       // contradiction this notice table was written to remove, in reverse.
-      state.recoveryMode = redirect !== 'error' && isPasswordRecovery({
+      //
+      // Only a request, at this point. Whether it becomes `state.recoveryMode`
+      // is settled below, once there is an answer about the session — see
+      // `recoveryLapsed`. `authConfigured()` because a deployment with no
+      // account backend has no recovery to be in the middle of.
+      const recoveryRequested = redirect !== 'error' && authConfigured() && isPasswordRecovery({
         consumedRecoveryHash: redirect === 'recovery',
         search: window.location.search,
       });
@@ -220,12 +225,31 @@ export function createAccessManager({ ui }) {
       // Never a pricing view. Somebody who forgot their password is no more
       // expressing interest in the plans than somebody confirming an address;
       // the first version of this fix exempted only one of them.
-      // The query flag outlives the fragment, so leaving it behind would put
-      // somebody back in front of the same unusable form on the next reload.
-      if (redirect === 'error') cleanRecoveryQuery();
-      if (state.recoveryMode || redirectNotice) open(null, { asPricingView: false });
-      if (redirectNotice) {
-        state.notice = redirectNotice;
+      //
+      // `recoveryMode` is settled only now, because a form offering to choose
+      // a new password is a promise that there is an account to change it on.
+      // The query flag outlives the session that minted it — it survives in a
+      // bookmark, in a restored tab, and in an hour-old link, and anybody at
+      // all can simply visit `/?account=recovery`. Every one of those got the
+      // form, and every one of them could only be told afterwards that the
+      // recovery session had expired.
+      //
+      // The session, not `state.user`: `updatePassword` needs the access token
+      // and nothing else, and `loadUser` is best-effort by design — one failed
+      // `GET /auth/v1/user` would otherwise turn a perfectly good reset link
+      // into "no longer valid", with the flag cleared so a reload could not
+      // even retry.
+      const recoverySession = recoveryRequested ? await getSession() : null;
+      state.recoveryMode = Boolean(recoverySession?.access_token);
+      const recoveryLapsed = recoveryRequested && !state.recoveryMode;
+      // The flag has to go with it, or the next reload asks the same question
+      // and gets the same answer.
+      if (redirect === 'error' || recoveryLapsed) cleanRecoveryQuery();
+      const notice = redirectNotice
+        || (recoveryLapsed ? 'パスワード再設定の有効期限が切れています。もう一度お試しください。 / That password reset is no longer valid — please request a new link.' : '');
+      if (state.recoveryMode || notice) open(null, { asPricingView: false });
+      if (notice) {
+        state.notice = notice;
         notify();
       }
       return api;
@@ -347,6 +371,14 @@ export function createAccessManager({ ui }) {
     state.subscriptions = [];
     state.loading = false;
     state.deletionMode = false;
+    // A pending recovery is over too. Every caller of this means the same
+    // thing — signed out here, signed out in another tab, account deleted,
+    // recovery cancelled — and there is no session left to set a password on.
+    // Leaving the flag set kept "choose a new password" on screen for somebody
+    // with no identity, where submitting it could only fail; leaving the query
+    // behind put the same form back on the next reload.
+    state.recoveryMode = false;
+    cleanRecoveryQuery();
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
@@ -366,7 +398,11 @@ export function createAccessManager({ ui }) {
       // Without this, alt-tabbing to a password manager and back emptied every
       // field, and so did the five-minute timer. Entitlements can wait the
       // minute it takes to fill in a form; they are re-read on close anyway.
-      if (state.accountEdit || state.deletionMode || state.recoveryMode) return;
+      // `!modal.hidden`, because this is about a form being on screen, not
+      // about a flag being set. `recoveryMode` outlives the dialog on purpose —
+      // an interrupted recovery is still pending — and without this the first
+      // reset link of the page's life switched the refresh off for good.
+      if (!modal.hidden && (state.accountEdit || state.deletionMode || state.recoveryMode)) return;
       void refresh();
     };
     window.addEventListener('focus', refreshVisibleAccount);
@@ -1245,9 +1281,9 @@ export function createAccessManager({ ui }) {
 
     const cancelRecovery = () => {
       signOut();
-      state.recoveryMode = false;
+      // Clearing the flag and the query is `invalidateSessionState`'s job now,
+      // so that the three other ways a session ends do it as well.
       invalidateSessionState();
-      cleanRecoveryQuery();
       notify();
     };
 
@@ -1290,6 +1326,10 @@ export function createAccessManager({ ui }) {
 
   function cleanRecoveryQuery() {
     const clean = new URL(window.location.href);
+    // Called from every path that ends a session, most of which never had the
+    // flag. Rewriting the URL anyway would drop `history.state` on each of
+    // them for no reason.
+    if (!clean.searchParams.has('account')) return;
     clean.searchParams.delete('account');
     history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }
