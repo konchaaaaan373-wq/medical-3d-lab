@@ -202,9 +202,13 @@ export async function loadUser() {
   // listener, and no confirmation for somebody who had just confirmed their
   // address. "Best effort" has to mean it.
   try {
-    const generation = sessionGeneration;
     const session = await getSession();
     if (!session?.access_token) return null;
+    // Read *after* `getSession()`, which may have rotated the token and bumped
+    // this itself. Captured before, the guard fired on the manager's own
+    // refresh and threw away the identity it had just fetched — leaving the
+    // session with no user, which is the state this function exists to repair.
+    const generation = sessionGeneration;
     const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/user`, {
       headers: headers(session.access_token),
     });
