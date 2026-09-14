@@ -130,7 +130,8 @@ test('auth redirect: only the types this app can receive are adopted as a sessio
 });
 
 test('auth redirect: an unadoptable fragment is still scrubbed, and still not stored', async () => {
-  const { consumeAuthRedirect } = await import('../src/access/auth.js');
+  const { consumeAuthRedirect, getSession, signOut } = await import('../src/access/auth.js');
+  signOut();
   let replaced = '';
   const location = {
     hash: '#access_token=live-token&expires_in=3600&type=magiclink',
@@ -140,4 +141,6 @@ test('auth redirect: an unadoptable fragment is still scrubbed, and still not st
 
   assert.equal(consumeAuthRedirect({ location, history }), 'magiclink');
   assert.equal(replaced.includes('live-token'), false, 'scrubbing is unconditional');
+  // The half the name promised and the test did not check: adopting is not.
+  assert.equal(await getSession(), null, 'an unadoptable type grants no session');
 });

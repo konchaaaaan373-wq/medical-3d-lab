@@ -106,7 +106,14 @@ export function createAccessManager({ ui }) {
       // them in the address bar of a scene page — and so into history, into any
       // screenshot, and into the URL somebody copies to share the model.
       const redirect = consumeAuthRedirect();
-      state.recoveryMode = isPasswordRecovery({
+      // A failed link is not a recovery session. Reset mails are sent with
+      // `?account=recovery` in `redirect_to`, so an *expired* one lands on
+      // `/?account=recovery#error=otp_expired` — and the query half of
+      // `isPasswordRecovery` said yes to it. That opened "choose a new
+      // password" with "that link has expired" underneath, and submitting it
+      // failed with "your recovery session has expired": the same
+      // contradiction this notice table was written to remove, in reverse.
+      state.recoveryMode = redirect !== 'error' && isPasswordRecovery({
         consumedRecoveryHash: redirect === 'recovery',
         search: window.location.search,
       });
@@ -138,8 +145,13 @@ export function createAccessManager({ ui }) {
       // untouched, so telling somebody signed in to sign in is an instruction
       // they cannot act on and implies a session was destroyed when it was not.
       const UNHANDLED_REDIRECT = 'このリンクは利用できませんでした。 / That link could not be used.';
+      // `Object.hasOwn`, because the key is a `type` taken straight from the
+      // URL: plain property access reads inherited ones, so `type=constructor`
+      // put `function Object() { [native code] }` on screen as the notice, and
+      // `type=__proto__` put `[object Object]`. `??` never fires on those —
+      // they are not nullish.
       const redirectNotice = redirect
-        ? REDIRECT_NOTICE[redirect] ?? UNHANDLED_REDIRECT
+        ? (Object.hasOwn(REDIRECT_NOTICE, redirect) ? REDIRECT_NOTICE[redirect] : UNHANDLED_REDIRECT)
         : '';
 
       // `refresh()` waits for the identity, because a fragment carries tokens
@@ -208,6 +220,9 @@ export function createAccessManager({ ui }) {
       // Never a pricing view. Somebody who forgot their password is no more
       // expressing interest in the plans than somebody confirming an address;
       // the first version of this fix exempted only one of them.
+      // The query flag outlives the fragment, so leaving it behind would put
+      // somebody back in front of the same unusable form on the next reload.
+      if (redirect === 'error') cleanRecoveryQuery();
       if (state.recoveryMode || redirectNotice) open(null, { asPricingView: false });
       if (redirectNotice) {
         state.notice = redirectNotice;

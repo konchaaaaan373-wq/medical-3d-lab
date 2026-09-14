@@ -452,8 +452,11 @@ try {
         (await page.evaluate(() => document.documentElement.dataset.route)) === 'landing',
         await page.evaluate(() => document.documentElement.dataset.route));
       // The token is real, so the person is signed in — and known by name.
-      const signedInAs = await page.locator('.access-user-email')
-        .textContent({ timeout: 2000 }).catch(() => '(no account row)');
+      // Waited for rather than sampled: the previous version paused 1500ms and
+      // then allowed 2s, which is a race with slow CI rather than a check.
+      const signedInAs = await page.waitForSelector('.access-user-email', { timeout: 15000 })
+        .then((row) => row.textContent())
+        .catch(() => '(no account row)');
       check('and is signed in as the confirmed address',
         signedInAs === 'confirmed@example.test', signedInAs);
       await page.close();
@@ -485,7 +488,7 @@ try {
       await page.close();
     }
 
-    step = 'landing on a recovery link';
+    step = 'landing on a recovery link that still works';
     {
       // The regression guard for the notice table. A catch-all branch once
       // swallowed `recovery`, so a valid password-reset link rendered "that
@@ -501,6 +504,28 @@ try {
       const recoveryText = await page.locator('.access-dialog').textContent();
       check('a recovery link is not told it could not be used',
         !/利用できませんでした|could not be used|期限切れ/.test(recoveryText), recoveryText.slice(0, 90));
+      await page.close();
+    }
+
+    step = 'landing on a recovery link that has expired';
+    {
+      // The realistic failure: reset mails carry `?account=recovery` in
+      // `redirect_to`, so an expired one arrives with the query flag set and
+      // an error fragment. The query half of `isPasswordRecovery` said yes to
+      // that, opening "choose a new password" over "this link has expired".
+      const { page } = await openPage({ width: 1100, height: 900 });
+      await page.goto(
+        `${base}?account=recovery#error=access_denied&error_code=otp_expired`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForTimeout(1400);
+      const text = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('an expired reset link does not open the choose-a-password form',
+        (await page.locator('.access-recovery').count()) === 0, text.slice(0, 80));
+      check('and says the link expired instead', /期限切れ|expired/i.test(text), text.slice(0, 80));
+      // Otherwise the next reload puts the same unusable form back.
+      check('and clears the recovery flag from the URL',
+        !page.url().includes('account=recovery'), page.url());
       await page.close();
     }
 
