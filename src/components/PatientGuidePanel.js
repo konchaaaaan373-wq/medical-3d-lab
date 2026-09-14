@@ -64,9 +64,13 @@ export function createPatientGuidePanel({
     el('span', { class: 'lang-ja', text: guide.titleJa }),
   ]);
   const counter = el('span', { class: 'patient-guide-counter', 'aria-live': 'polite' });
-  const heading = el('h3', { class: 'patient-guide-heading' });
+  const heading = el('h2', { class: 'patient-guide-heading' });
   const body = el('p', { class: 'patient-guide-copy' });
-  const dots = el('div', { class: 'patient-guide-dots', 'aria-label': 'Explanation steps' });
+  const dots = el('div', {
+    class: 'patient-guide-dots',
+    role: 'group',
+    'aria-label': 'Explanation steps / 説明のステップ',
+  });
 
   const presentation = el('button', {
     class: 'patient-guide-presentation',
@@ -86,14 +90,14 @@ export function createPatientGuidePanel({
     type: 'button',
     hidden: fullscreenAvailable ? null : '',
     'aria-pressed': 'false',
-    'aria-label': 'Full-screen patient presentation',
+    'aria-label': 'Full-screen patient presentation / 患者説明を全画面表示',
     on: { click: toggleFullscreen },
   });
 
   const handoutButton = el('button', {
     class: 'patient-guide-handout-button',
     type: 'button',
-    'aria-label': 'Print patient handout',
+    'aria-label': 'Print patient handout / 患者向け資料を印刷',
     on: { click: () => window.print() },
   }, [
     el('span', { class: 'lang-en', text: 'Handout' }),
@@ -115,7 +119,7 @@ export function createPatientGuidePanel({
   const close = el('button', {
     class: 'patient-guide-close',
     type: 'button',
-    'aria-label': 'Close patient explanation',
+    'aria-label': 'Close patient explanation / 患者説明を閉じる',
     text: '×',
     on: { click: closePanel },
   });
@@ -170,7 +174,7 @@ export function createPatientGuidePanel({
 
   const element = el('section', {
     class: 'patient-guide',
-    'aria-label': 'Patient explanation',
+    'aria-label': 'Patient explanation / 患者説明',
     tabindex: '-1',
   }, [
     el('div', { class: 'patient-guide-head' }, [title, presentation, fullscreen, handoutButton, counter, close]),
@@ -386,7 +390,7 @@ export function createPatientGuidePanel({
         el('button', {
           class: `patient-guide-dot${dotIndex <= index ? ' is-active' : ''}${dotIndex === index ? ' is-current' : ''}`,
           type: 'button',
-          'aria-label': `Step ${dotIndex + 1} of ${guide.steps.length}`,
+          'aria-label': `Step ${dotIndex + 1} of ${guide.steps.length} / ${guide.steps.length}段階中${dotIndex + 1}段階`,
           'aria-current': dotIndex === index ? 'step' : null,
           on: { click: () => setIndex(dotIndex) },
         })
