@@ -108,6 +108,10 @@ below the arch rather than at the root of the neck.
   scene's subject.
 - **Screen-left is the patient's right** (`docs/architecture-rules.md` rule 5);
   every paired structure comes from one `LEFT` constant.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

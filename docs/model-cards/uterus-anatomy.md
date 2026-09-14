@@ -74,6 +74,10 @@ No dimension here is a measurement.
   is read; the bladder and the rectum name it as the view they prefer.
 - **Colour separates the four wall parts**; "Natural tissue" puts one uterine
   colour back.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

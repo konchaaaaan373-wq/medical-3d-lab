@@ -46,6 +46,7 @@ import {
   treeLeaves,
   treeNodes,
 } from '../src/app/anatomyContract.js';
+import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js';
 
 /**
  * The three organ anatomy scenes, held to the same rule the brain is held to.
@@ -371,7 +372,7 @@ test('the kidney names parts only on the side it actually partitioned', () => {
 test('a scene can say what it is about, which is not everything it draws', () => {
   for (const entry of SCENES) {
     const scene = sceneFor(entry);
-    const subject = scene.getSubjectBounds();
+    const subject = scene.getSubjectBox();
     assert.ok(!subject.isEmpty(), `${entry.id}: has a subject`);
     const size = subject.getSize(new THREE.Vector3());
     assert.ok(size.x > 0 && size.y > 0 && size.z > 0, `${entry.id}: with an extent`);
@@ -379,16 +380,101 @@ test('a scene can say what it is about, which is not everything it draws', () =>
     // Measured in world space, not in whatever local frame the meshes were
     // built in: an organ placed away from the origin has to come back where it
     // was put, and `Box3.expandByObject` does not refresh its parents.
-    const everything = scene.getSubjectBounds({ excludeTags: [] });
+    const everything = scene.getSubjectBox({ excludeTags: [] });
     assert.ok(everything.containsBox(subject), `${entry.id}: the subject is part of the scene`);
   }
 
   // The kidney is the one that has to narrow: it draws the whole tract, and a
   // frame that fits the bladder makes the organ it is named after too small.
   const kidney = sceneFor(SCENES.find((entry) => entry.id === 'kidney-anatomy'));
-  const subject = kidney.getSubjectBounds().getSize(new THREE.Vector3());
-  const everything = kidney.getSubjectBounds({ excludeTags: [] }).getSize(new THREE.Vector3());
+  const subject = kidney.getSubjectBox().getSize(new THREE.Vector3());
+  const everything = kidney.getSubjectBox({ excludeTags: [] }).getSize(new THREE.Vector3());
   assert.ok(subject.y < everything.y * 0.6, 'the kidney subject is much shorter than the tract it drains into');
+});
+
+test('the subject is handed over in the shape the framing actually reads', () => {
+  // The failure this exists for was silent. `fitPoseToSafeArea` and
+  // `orbitLimitsForSubject` both read `centre` and `corners` and return their
+  // input untouched for anything else — and every procedural organ scene used
+  // to hand them a `Box3`. Nothing threw, nothing logged: the scenes simply
+  // never got the fit the brain and the heart get, and the model sat wherever
+  // the authored pose left it while the docked panel covered a third of it.
+  const scene = new KidneyAnatomyScene({});
+  scene.build();
+
+  const bounds = scene.getSubjectBounds();
+  assert.ok(bounds?.centre, 'the subject has a centre');
+  assert.equal(bounds.corners.length, 8, 'and the eight corners the framing projects');
+
+  const pose = {
+    position: new THREE.Vector3(0, 0, 6),
+    target: new THREE.Vector3(0, 0, 0),
+  };
+  const fitted = fitPoseToSafeArea(pose, {
+    bounds,
+    aspect: 1.6,
+    fovDegrees: 42,
+    insets: { right: 0.27, top: 0.08, bottom: 0.12 },
+  });
+  assert.ok(
+    fitted.target.distanceTo(pose.target) > 1e-6,
+    'the fit moves the camera onto the subject rather than leaving the pose alone'
+  );
+
+  const limits = orbitLimitsForSubject(bounds, { minDistance: 1, maxDistance: 2 });
+  assert.ok(limits.maxDistance > 2, 'and the orbit limits are opened to the subject it is given');
+
+  scene.dispose();
+});
+
+test('a cut viewpoint is framed against what the cut leaves, not the whole organ', () => {
+  const scene = new KidneyAnatomyScene({});
+  scene.build();
+  const whole = scene.getSubjectBox().clone();
+
+  assert.ok(scene.setAnatomyView('coronal-section'), 'the kidney offers its coronal cut');
+  const cut = scene.getSubjectBox();
+  assert.ok(scene.sectionPlane, 'that viewpoint cuts');
+  // The plane keeps the half its normal points into — the same side a click is
+  // accepted from — so nothing beyond it is left to frame.
+  assert.ok(
+    scene.sectionPlane.distanceToPoint(cut.min) >= -1e-6 || scene.sectionPlane.distanceToPoint(cut.max) >= -1e-6,
+    'what is left is on the kept side'
+  );
+  assert.ok(whole.getSize(new THREE.Vector3()).z > cut.getSize(new THREE.Vector3()).z + 1e-6,
+    'and the cut is shallower than the uncut organ');
+  assert.ok(
+    cut.getCenter(new THREE.Vector3()).z < whole.getCenter(new THREE.Vector3()).z - 1e-6,
+    'so the frame centres on the face of the cut rather than between the two halves'
+  );
+
+  scene.setAnatomyView(scene.constructor.views[0].id);
+  assert.ok(scene.getSubjectBox().getSize(new THREE.Vector3()).z > cut.getSize(new THREE.Vector3()).z,
+    'and leaving the cut view gives the whole organ back');
+  scene.dispose();
+});
+
+test('a viewpoint that takes a side away does not frame the side it took', () => {
+  const scene = new IntestineAnatomyScene({});
+  scene.build();
+  const view = (scene.constructor.views ?? []).find((candidate) => candidate.hideTags?.length);
+  assert.ok(view, 'the intestine has a viewpoint that hides part of what it draws');
+
+  const whole = scene.getSubjectBox().clone();
+  scene.setAnatomyView(view.id);
+  const shown = scene.getSubjectBox();
+  assert.ok(whole.containsBox(shown), 'what is framed is part of what the scene draws');
+  const hidden = scene.structures.filter((structure) =>
+    structure.tags.some((tag) => view.hideTags.includes(tag))
+  );
+  assert.ok(hidden.length, 'the viewpoint really does hide structures');
+  const box = new THREE.Box3();
+  for (const structure of hidden) for (const mesh of structure.meshes) box.expandByObject(mesh);
+  assert.ok(
+    !shown.containsBox(box),
+    'and the frame is not still reserving room for the structures it hid'
+  );
+  scene.dispose();
 });
 
 /**
@@ -525,7 +611,7 @@ test('the width a scene reserves is the width its subject actually needs', () =>
     const scene = sceneFor(entry);
     const reserve = entry.Scene.framing?.minHorizontalAspect;
     assert.ok(reserve, `${entry.id}: declares the frame shape it needs`);
-    const box = scene.getSubjectBounds();
+    const box = scene.getSubjectBox();
 
     // Close-ups crop on purpose; the reserve is measured against the views that
     // are meant to show the whole organ, which are the ones the scene opens on.
@@ -542,6 +628,21 @@ test('the width a scene reserves is the width its subject actually needs', () =>
       reserve <= widest * 1.35,
       `${entry.id}: and not far more than it needs (${reserve} vs ${widest.toFixed(2)})`
     );
+  }
+});
+
+test('every scene can be left', () => {
+  // One scene was checked here and thirty-nine were not, and the kidney threw
+  // on the way out: its landmark builder has no `dispose`, the organ's own
+  // teardown called one anyway, and the exception landed before a single
+  // geometry had been released. Nothing in a unit test saw it because nothing
+  // disposed that scene, and nothing on screen showed it either — the reader
+  // had already navigated away.
+  for (const entry of SCENES) {
+    const scene = new entry.Scene({});
+    scene.build();
+    assert.doesNotThrow(() => scene.dispose(), `${entry.id}: disposes`);
+    assert.equal(scene.listeners.size, 0, `${entry.id}: and lets go of its listeners`);
   }
 });
 

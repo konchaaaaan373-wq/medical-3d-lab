@@ -69,6 +69,10 @@ and groin height, with the axillary ones furthest from the midline.
   nodes" is what a reader asks about and what a report names.
 - **The routes appear with the slider**, so the first thing a reader sees is
   where the nodes are rather than a web of lines.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

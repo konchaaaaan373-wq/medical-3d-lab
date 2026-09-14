@@ -151,7 +151,8 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 病態・生理のモデルは開発を続けますが、β には出しません。
 それ以外はルートもカタログのカードも「TO BE UPDATED / 準備中」で止めています。
 
-**心臓の解剖シーン（`heart-anatomy`）はまだ存在しません。**
+**心臓の解剖シーン（`heart-anatomy`）は存在しますが、まだ公開できません**
+——候補 asset が asset release gate を通っておらず、公開判断記録もありません。
 だからといって心臓の病態シーンを代わりに公開しません——
 病態モデルはラベルを変えた解剖モデルではないからです。
 心臓が公開に入るのは `heart-anatomy` が下のゲートを通った日で、

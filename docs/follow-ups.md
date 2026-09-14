@@ -1,6 +1,6 @@
 # Follow-ups — 残課題台帳
 
-Last updated: 2026-09-12
+Last updated: 2026-09-14
 
 マージ済みの変更が**まだ確かめていないこと・決めていないこと・先送りしたこと**を、
 別のセッションや別の人がそのまま拾えるように 1 か所に置く台帳です。
@@ -16,7 +16,7 @@ Last updated: 2026-09-12
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-101 です
+  次に追加する番号は F-103 です
 - 各項目は「何が未解決か」「どう確かめるか / どう決めるか」「完了の定義」を持つ
 - 解決したら削除ではなく、末尾の **Resolved** に 1 行で移す（何を根拠に閉じたかを残す）
 - 優先度は **P1**（公開前に潰す）/ **P2**（次の PR 群で）/ **P3**（機会があれば）
@@ -1909,7 +1909,32 @@ structure」を出し、再実行では通ることがありました。**再実
 （`readPixels` で「モデルがそこにあるか」を確かめる道は使えません。
 `preserveDrawingBuffer: false` なので合成後は 0,0,0,0 が返ります。）
 
-### F-44 パネルが隠す右 1/4 を framing が考慮していない — P2（臓器解剖 6 シーン）
+### F-44 パネルが隠す右 1/4 を framing が考慮していない — 解決（2026-09-14 / 臓器解剖 30 シーン）
+
+**解決しました。`framing.js` は変えていません——受け渡す形が違っていただけでした。**
+
+`fitPoseToSafeArea()` と `orbitLimitsForSubject()` は `bounds.centre` と
+`bounds.corners` を読み、**それ以外を渡されたときはポーズをそのまま返します**。
+脳と心臓はその形を返し、`OrganAnatomyScene#getSubjectBounds()` は `THREE.Box3` を
+返していました。つまり臓器解剖の 30 シーンは、例外も警告も出さないまま
+**安全域フィットと orbit 制限の両方から静かに外れていた**のであって、
+補正が足りなかったのではなく一度も適用されていませんでした。
+
+- `getSubjectBox()`（`Box3`、測定と test 用）と `getSubjectBounds()`
+  （`{centre, corners}`、framing が読む形）に分けました。ポーズは 1 つも
+  動かしていません
+- ついでに、**視点が隠した構造と切り取った半分を subject から外しました**。
+  冠状断の腎は、切られて存在しない前半分を含む箱で framing されていたため、
+  残った 2 つの断面が左右の端に寄って真ん中が空いていました
+- 受入: 1440×900 の `#/pancreas-anatomy` で膵尾部がパネルに入らないこと
+  （F-44 の完了の定義）を before/after で確認。`docs/screenshots/pub-b1/`
+- 固定: `tests/organ-anatomy-scenes.test.js`
+  「the subject is handed over in the shape the framing actually reads」が
+  **フィットが実際にポーズを動かすこと**を見張ります（`Box3` に戻すと落ちます）
+- 副作用: `scripts/check-anatomy-interaction.mjs` の `SCENE_POINTS` は
+  旧 framing のレンダーから読んだ座標だったので、37 シーンぶん測り直しました
+
+以下は解決前の記録です。
 
 **Claude① 宛の引き継ぎです。`framing.js` / `App.js` / `Viewer` は Claude① の所有
 なので、こちらからは触っていません。**
@@ -2021,11 +2046,66 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
   （まだ足していません。Claude① / Claude② の所有文書のため）。
 
 
+### F-101 切断ビューに断面が無い——肺と肝の「切断」が読めない — P1（公開の前提 / 臓器解剖）
+
+**B1（肺・肝・腎を β に載せる）の唯一の残り障害です。公開ゲートではなく
+描画の Definition of Done（architecture rule 6）で止まっています。**
+
+`_setSection()` は three.js の clipping plane で切ります。clipping は
+**断面を塞ぎません**。腎ではそれで成立します——皮質シェルの内側に錐体・腎柱・
+腎杯が詰まっているので、切り口の向こうに見えるものがあります。`OrganAnatomyScene`
+のコメントが「far wall を描くと錐体が点線になる」ため描かないと決めているのも
+その前提です。**中が空のシェルでは前提が崩れます。**
+
+- 実測（`docs/screenshots/pub-b1/`、1280×720）:
+  - `liver-anatomy:transverse-section` — 区域が開いたシェルとして見え、
+    門脈枝が宙に浮いた棒切れになります。**修正前は "settled" すらせず**
+    （塗られた画素が閾値に届かない）、framing 修正後に撮れるようになって
+    初めて中身が見えました
+  - `lung-anatomy:coronal-section` — 半透明の半ドームと、切られた血管の束
+  - `kidney-anatomy:coronal-section` — 錐体が放射状に読めます。**これは成立**
+- **判断が要ります**（engineering では決められません）:
+  1. 断面を描く（stencil でキャップを 1 枚、または構造ごとに色付きキャップ）。
+     30 シーン全部の切断ビューが変わります
+  2. 肺と肝から「切断」視点を外す（手・頸部で既にやっている「見せるものが
+     無いなら切らない」の踏襲）。機能の後退です
+  3. そのまま公開し、記録に残す。**推奨しません**——「見えない精度は精度ではない」
+- 完了の定義: 肺と肝の切断ビューが、読者に「切った臓器」として読めること。
+  測り方は `npm run shots:anatomy -- --scene <slug>` の断面 2 枚を見ること
+- 関連: `docs/organ-3d-playbook.md` §E・§F はキャップの作り方を持っていますが、
+  それは**ビルド時に carve した断面**の話で、実行時 clipping には届いていません
+
+### F-102 腎シーンを離れると例外が出ていた — 対応済み（2026-09-14 / 臓器解剖）
+
+`KidneyAnatomyScene` の `buildOrgan().dispose` が、`dispose` を持たない
+landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼んでいました。
+**`#/kidney-anatomy` から離れるたびに TypeError で、`disposeObject(this.root)` に
+到達する前に落ちていた**ので、そのシーンの GPU リソースは 1 つも解放されて
+いませんでした。画面には何も出ません——読者はもうページを離れています。
+
+- 直し: `landmark.dispose?.()`（bladder と同じ扱い）
+- なぜ 1 年近く残ったか: dispose の test が肝臓 1 シーンだけを見ていました。
+  `tests/organ-anatomy-scenes.test.js`「every scene can be left」が
+  **40 シーンすべて**を build して dispose するようにしました（実際に落とせることを確認）
+
 ---
 
 ## Resolved
 
 （解決した項目を `F-xx — 日付 — 何で閉じたか` の 1 行で移す）
+
+- F-44（§E・パネルと framing） — 2026-09-14 — `OrganAnatomyScene#getSubjectBounds()`
+  が `Box3` を返しており、`fitPoseToSafeArea` / `orbitLimitsForSubject` は
+  `{centre, corners}` 以外を渡されると入力をそのまま返すので、臓器解剖 30 シーンは
+  安全域フィットに一度も入っていませんでした。形を合わせ、視点が隠した構造と
+  切り取った半分を subject から外して解決。1440×900 の `#/pancreas-anatomy` で
+  膵尾部がパネルに入らないことを before/after で確認（`docs/screenshots/pub-b1/`）。
+  `framing.js` は変更していません。
+
+- F-102 — 2026-09-14 — 腎シーンの `dispose` が、`dispose` を持たない landmark
+  ビルダーの `dispose()` を呼んで TypeError になり、geometry が 1 つも解放されて
+  いませんでした。`landmark.dispose?.()` に直し、dispose の test を 40 シーン全部へ
+  広げました。
 
 - F-98 — 2026-09-13 — 新規登録のメール確認は **有効（`Confirm email` = ON）** でした。
   Supabase プロジェクト "Medical 3D Lab" の `main`（PRODUCTION）ブランチ、

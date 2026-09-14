@@ -93,6 +93,10 @@ threshold by accident.
   every paired structure comes from one `LEFT` constant.
 - **Laid out in centimetres and scaled once** (`WORLD_SCALE`), because the
   shared viewer clamps the camera (`docs/follow-ups.md` F-90).
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

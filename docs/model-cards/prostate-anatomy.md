@@ -73,6 +73,10 @@ No dimension here is a measurement.
   floating — which is the whole of why it can obstruct.
 - **Colour separates the four zones**; "Natural tissue" puts glandular colour
   back and leaves the anterior stroma distinguishable, because it is not gland.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

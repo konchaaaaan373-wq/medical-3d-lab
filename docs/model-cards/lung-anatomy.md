@@ -89,6 +89,10 @@ What is not held: any individual airway or vessel dimension.
 - **The section view cuts.** It is deliberately different from the slider's
   fade and from a viewpoint that removes one lung, and a reader is meant to be
   able to tell the three apart.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

@@ -79,6 +79,10 @@ has one to cross. **Do not read a length or a ratio off this model.**
 - **A viewpoint takes the small bowel away entirely**, which is different from
   fading it, and is labelled as its own view.
 - **Colour separates the parts**; "Natural tissue" puts one bowel colour back.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

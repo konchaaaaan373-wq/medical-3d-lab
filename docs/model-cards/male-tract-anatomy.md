@@ -68,6 +68,10 @@ No dimension here is a measurement.
   subject, so the route is what the frame is set on.
 - **Colour runs along the route**; "Natural tissue" puts one set of tissue
   colours back.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

@@ -90,6 +90,10 @@ No dimension here is a measurement.
 - **Screen-left is the patient's right** (`docs/architecture-rules.md` rule 5),
   so in this right knee the medial side is `+x` and the fibula is at `−x`. Every
   side in the builder is derived from one `MEDIAL` constant.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

@@ -453,13 +453,25 @@ export class OrganAnatomyScene {
    * named after too small to point at. A scene can narrow this by tagging what
    * is context; by default it is everything drawn.
    *
-   * Offered because the shared framing works from an authored pose and an
-   * aspect ratio, and a bounds-aware framing needs this. It costs one pass
-   * over the meshes and is computed on demand.
+   * **It is also not the same thing at every viewpoint.** A viewpoint can take
+   * a side away and it can cut the organ open, and both change what there is to
+   * frame: the coronal view of the kidney is a cut through both organs, and a
+   * box around the *uncut* pair describes a subject half of which is no longer
+   * drawn. Measured against it, the camera stood far enough back for the whole
+   * pair and centred on a point between them — so the remaining halves sat at
+   * the two edges of the frame with the middle of the picture empty. So a
+   * hidden structure is left out here, and what a cut has taken away is taken
+   * away here too.
+   *
+   * Isolation deliberately does not narrow it. The reader asking to see one
+   * structure alone has not asked the camera to move, and a frame that dived at
+   * every isolate and pulled back at every "show all" would be answering a
+   * question about the part tree with a camera move.
    *
    * @param {{ excludeTags?: string[] }} [options]
+   * @returns {THREE.Box3} never empty while anything is drawn
    */
-  getSubjectBounds({ excludeTags = this.constructor.contextTags ?? [] } = {}) {
+  getSubjectBox({ excludeTags = this.constructor.contextTags ?? [] } = {}) {
     // `Box3.expandByObject` refreshes a mesh's own world matrix and not its
     // parents', so a scene that has not rendered yet reports every organ at the
     // origin: the kidney came back the right size in the wrong place, which is
@@ -468,9 +480,42 @@ export class OrganAnatomyScene {
     const box = new THREE.Box3();
     for (const structure of this.structures) {
       if (structure.tags.some((tag) => excludeTags.includes(tag))) continue;
+      if (structure.tags.some((tag) => this.hiddenTags.has(tag))) continue;
       for (const mesh of structure.meshes) box.expandByObject(mesh);
     }
-    return box.isEmpty() ? new THREE.Box3().setFromObject(this.root) : box;
+    if (box.isEmpty()) return new THREE.Box3().setFromObject(this.root);
+    return this.sectionPlane ? clipBoxToHalfSpace(box, this.sectionPlane) : box;
+  }
+
+  /**
+   * The subject in the shape the framing asks for: a centre and eight corners.
+   *
+   * `src/app/framing.js` projects those corners onto the camera's own axes,
+   * which is how a subject that is not a sphere gets a frame that is not built
+   * around one. It reads `bounds.centre` and `bounds.corners` and **leaves the
+   * pose untouched for anything else it is handed** — which is what this used
+   * to hand it. Every procedural organ scene therefore opted out, silently, of
+   * both the safe-area fit and the orbit limits that the brain and the heart
+   * get: the authored pose was used as-is, so the model sat where the pose put
+   * it rather than in the band the header, the console and the docked parts
+   * panel leave for it.
+   *
+   * `null` when nothing is drawn, which the caller reads as "do not move the
+   * camera" rather than as a subject at the origin.
+   *
+   * @param {{ excludeTags?: string[] }} [options]
+   * @returns {{centre: THREE.Vector3, corners: THREE.Vector3[]}|null}
+   */
+  getSubjectBounds(options) {
+    const box = this.getSubjectBox(options);
+    if (box.isEmpty()) return null;
+    const corners = [];
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      }
+    }
+    return { centre: box.getCenter(new THREE.Vector3()), corners };
   }
 
   getAnatomyViews() {
@@ -708,4 +753,47 @@ function clonePose(view) {
     position: new THREE.Vector3(...view.position),
     target: new THREE.Vector3(...(view.target ?? [0, 0, 0])),
   };
+}
+
+/**
+ * The box around what is left of `box` on the kept side of `plane`.
+ *
+ * A clipping plane keeps the half-space the plane's normal points into — the
+ * same side `_getStructureAt` accepts a hit from — and the region that leaves
+ * is a convex solid whose corners are the box corners that survived plus the
+ * points where the plane crosses the box's edges. Taking the box of exactly
+ * those points is the cut's own extent rather than an estimate of it, for any
+ * plane: the section planes in use are axis-aligned today, and a diagonal one
+ * would be framed just as correctly without anybody remembering this.
+ *
+ * The result is an outer bound of the cut *geometry*, not of the box: it can be
+ * larger than what the cut actually leaves. That is the right way round for
+ * framing, which must not crop the subject.
+ *
+ * A cut that removes the whole subject returns the box unchanged. There is
+ * nothing to frame in that case and the pose the viewpoint authored is a better
+ * answer than an empty box at the origin.
+ */
+function clipBoxToHalfSpace(box, plane) {
+  const corners = [];
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+    }
+  }
+  const kept = corners.filter((corner) => plane.distanceToPoint(corner) >= 0);
+  // The twelve edges, as index pairs into the corner order built above.
+  const EDGES = [
+    [0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3],
+    [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7],
+  ];
+  for (const [a, b] of EDGES) {
+    const from = corners[a];
+    const to = corners[b];
+    const dFrom = plane.distanceToPoint(from);
+    const dTo = plane.distanceToPoint(to);
+    if ((dFrom >= 0) === (dTo >= 0)) continue;
+    kept.push(from.clone().lerp(to, dFrom / (dFrom - dTo)));
+  }
+  return kept.length ? new THREE.Box3().setFromPoints(kept) : box;
 }

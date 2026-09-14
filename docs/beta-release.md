@@ -16,7 +16,10 @@
 病態・生理のモデルは開発を続けますが、このβには出しません。
 
 現在公開しているのは **`brain-anatomy` の 1 件**です。
-`heart-anatomy` は候補として登録済みですが、**シーンがまだ存在しません**。
+`heart-anatomy` は候補として登録済みで、**シーンは存在します**（`alpha`）。
+開かない理由は 2 つで、どちらもゲートが返します——読み込んでいる 2 本の GLB が
+`devAssets.js` の候補 asset で asset release gate を通っていないこと、
+この release の公開判断記録が無いことです。
 
 ```
 node -e "import('./src/catalog/release.js').then(m=>console.log(
@@ -85,7 +88,7 @@ build / CI（`npm run verify:site`）が確認します——ブラウザで動�
 低心拍出・心筋虚血を——数値ごと——公開する、という理由づけでした。
 それは逆です。**病態モデルはラベルを変えた解剖モデルではありません。**
 
-`heart-anatomy` が未登録・不合格のあいだ、βは臓器 1 つを開いてそう言います。
+`heart-anatomy` が不合格のあいだ、βは臓器 1 つを開いてそう言います。
 Landing の hero も「心臓を見る」を出しません（`src/data/landingHero.js` の
 `HERO_ROTATION` が公開集合で絞ります）。心臓が戻るのは `heart-anatomy` が
 上の 5 条件を通った日で、そのとき hero・カタログ・クロール面・カードは

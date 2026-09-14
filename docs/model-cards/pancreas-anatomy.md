@@ -64,6 +64,10 @@ No dimension here is a measurement.
   are the subject first and the duct and islets come up through them.
 - **Colour separates the four parts**; "Natural tissue" puts one glandular
   colour back and takes the islets down to tissue as well.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
 
 ## 7. What it must never be used for
 

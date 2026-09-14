@@ -1,6 +1,6 @@
 # Public release roadmap
 
-Last updated: 2026-09-06
+Last updated: 2026-09-14
 
 This is the ordered source of truth for taking Medical 3D Lab from a working
 model catalogue to a trustworthy public product. It records release gates, not
@@ -73,7 +73,10 @@ less.
 
 - [ ] Build `heart-anatomy` — an anatomy scene of its own, procedural or
   asset-backed, through the gates in `beta-release.md` §1. Until it passes, the
-  beta opens the brain alone; nothing stands in for it.
+  beta opens the brain alone; nothing stands in for it. The scene now exists and
+  is `alpha`; what it still lacks is an asset that has passed the asset release
+  gate (it loads two candidate GLBs from `devAssets.js`) and a publication
+  decision.
 
 - [~] Test current Safari, Chrome and Firefox plus real iPhone and Android
   devices, including 320–430 px widths and landscape. The matrix is declared in
@@ -113,6 +116,43 @@ less.
   in CI. **Remaining:** the three judgement calls in §4, which are a
   clinician's to settle rather than an engineer's; two of them are recorded in
   the heart-failure model card under *what could be misread*.
+
+### 1Z. Opening the anatomy layer organ by organ
+
+**Nothing here is open yet, and the order is a plan rather than a promise.**
+Thirty-seven procedural organ anatomy scenes clear every condition in
+`beta-release.md` §1 except two: they are not in `BETA_ANATOMY_CANDIDATES`, and
+no publication decision has been taken for them. Neither is a formality — the
+first is a scope decision (the current beta is the brain and the heart, ADR
+2026-09-08) and the second is a record of somebody having *looked*.
+
+The looking is the part that is not cheap, and the first batch is what proved
+it. `npm run verify:anatomy` passed on all three of `lung-anatomy`,
+`liver-anatomy` and `kidney-anatomy`; rendering them at their own viewpoints
+then found three defects that no unit test and no interaction check could see
+(F-44, F-101, F-102 in [`follow-ups.md`](follow-ups.md)). **A batch is not
+ready because the gate would open. It is ready when the renders have been
+looked at.**
+
+| Batch | Scenes | State |
+| --- | --- | --- |
+| B1 | `lung-anatomy`, `liver-anatomy`, `kidney-anatomy` | Framing and teardown defects fixed; **held by F-101** — the cut viewpoints of the lung and the liver have no section face |
+| B2 | `stomach`, `esophagus`, `intestine`, `biliary`, `pancreas` | Not started |
+| B3 | `eye`, `ear`, `skin` | Not started |
+| B4 | `knee`, `shoulder`, `hip`, `elbow`, `hand`, `foot`, `spine` | Not started |
+| B5 | `thyroid`, `adrenal`, `spleen`, `lymph-node` | Not started |
+| B6 | `bladder`, `uterus`, `prostate`, `male-tract`, `breast`, `pelvic-floor` | Not started |
+| B7 | `nose`, `larynx`, `oral`, `neck`, `thorax`, `abdomen`, `pelvis` | Not started |
+| — | `skeleton-overview`, `lymphatic-drainage` | Held: A1 in [`../src/catalog/anatomy.js`](../src/catalog/anatomy.js), below the A2 the product requires |
+
+Per scene, opening one means: add it to `BETA_ANATOMY_CANDIDATES`; run
+`npm run verify:anatomy -- --scene <slug> --preview` and
+`npm run shots:anatomy -- --scene <slug> --preview` and **look at the images**;
+write `docs/beta-publication/<slug>.md`; record the decision pinned to the
+scene revision; regenerate the link-preview cards (the site card prints the
+published count, so every card moves); update `tests/beta-release.test.js` and
+`beta-release.md`. Widening the beta past the brain and the heart also needs
+the ADR amended or replaced — it is a scope decision, not a batch of records.
 
 ## Gate 2 — paid beta
 
