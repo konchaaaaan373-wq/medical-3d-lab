@@ -40,6 +40,7 @@
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  measure one scene (repeatable; default: all of them)
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
+ *   --dense         four times as many samples, for scenes made of thin parts
  *   --json <file>   also write the raw measurement, hits included
  */
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
@@ -123,13 +124,30 @@ const base = `http://127.0.0.1:${server.address().port}/`;
 
 // --- the measurement -------------------------------------------------------
 
-/** The grid, in fractions of the canvas. Coarse enough to be quick, fine enough to find a stomach. */
-const COLUMNS = 9;
-const ROWS = 7;
+/**
+ * The grid, in fractions of the canvas. Coarse enough to be quick, fine enough
+ * to find a stomach — and `--dense` for the scenes it is not fine enough for.
+ *
+ * A hand is tendons and phalanges, a foot is ligaments between small bones, a
+ * lymphatic network is ducts: on the coarse grid those scenes offer nine or
+ * ten hits, most of them a few pixels from a neighbour, and almost nothing
+ * survives the margin. Sampling four times as many points finds the middles.
+ */
+const DENSE = flag('--dense');
+const COLUMNS = DENSE ? 17 : 9;
+const ROWS = DENSE ? 13 : 7;
 const FIRST = { x: 0.14, y: 0.18 };
-const STEP = { x: 0.075, y: 0.095 };
-/** How far off a kept point is re-clicked to prove it is not on an edge. */
-const MARGIN = 0.012;
+const STEP = DENSE ? { x: 0.0375, y: 0.0475 } : { x: 0.075, y: 0.095 };
+/**
+ * How far off a kept point is re-clicked to prove it is not on an edge.
+ *
+ * Seven pixels at this viewport. Wider was tried and is wrong for what these
+ * scenes are made of — a hand is tendons and small bones, and asking every
+ * point to be 15 px clear of its neighbour left the hand with one usable
+ * point out of sixteen hits. It has to be bigger than the couple of pixels a
+ * camera ease moves and smaller than the structures being named.
+ */
+const MARGIN = 0.006;
 /** How far apart two kept points have to be to be two tests. */
 const APART = 0.1;
 const EMPTY = 'Select a structure on the model or in the list.';
@@ -149,13 +167,21 @@ for (const slug of scenes) {
       die(`The build does not open ${slug}: build with VITE_ALLOW_PREVIEW=1 and pass --preview.`);
     }
     await page.waitForFunction(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0, { timeout: 120000 });
-    // The camera eases into the viewpoint after the tree exists. Measuring
-    // through that ease is how a point ends up a few pixels off the structure
-    // it was measured on.
-    await page.waitForTimeout(2000);
 
     const box = await page.locator('canvas').first().boundingBox();
     if (!box) die(`${slug}: rendered no canvas`);
+
+    // The camera eases into the viewpoint after the tree exists. Measuring
+    // through that ease is how a point ends up a few pixels off the structure
+    // it was measured on, so this waits for two identical frames — the same
+    // definition of settled the check clicks against.
+    let previous = null;
+    for (let attempt = 0; attempt < 16; attempt += 1) {
+      const frame = await page.screenshot({ clip: box });
+      if (previous?.equals(frame)) break;
+      previous = frame;
+      await page.waitForTimeout(250);
+    }
 
     const nameAt = async (fx, fy) => {
       await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);

@@ -162,20 +162,20 @@ const SCENE_POINTS = {
   'abdomen-anatomy': [[0.215, 0.275], [0.74, 0.37], [0.74, 0.655], [0.365, 0.275]],
   // Parietal pleura, Left lung, Right lung, Mediastinum.
   'thorax-anatomy': [[0.29, 0.275], [0.365, 0.37], [0.215, 0.465], [0.29, 0.56]],
-  // Humerus, Median nerve, Ulnar nerve, Olecranon and trochlear notch.
-  'elbow-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.215, 0.465], [0.29, 0.56]],
+  // Humerus, Triceps tendon, Joint capsule, Articular cartilage.
+  'elbow-anatomy': [[0.365, 0.227], [0.328, 0.37], [0.365, 0.512], [0.328, 0.607]],
   // Surface of the neck, Posterior neck muscles, Sternocleidomastoid, Subclavian arteries.
   'neck-anatomy': [[0.29, 0.275], [0.44, 0.37], [0.74, 0.37], [0.29, 0.56]],
   // Skull, Lumbar spine, Mandible, Ribs.
   'skeleton-overview': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.37], [0.74, 0.56]],
-  // Tibialis posterior tendon, Middle phalanges, Cuneiforms, Proximal phalanges.
-  'foot-anatomy': [[0.515, 0.37], [0.74, 0.465], [0.365, 0.655], [0.74, 0.655]],
-  // Metacarpals, Flexor tendons, Distal phalanges, Carpal tunnel.
-  'hand-anatomy': [[0.365, 0.37], [0.74, 0.465], [0.29, 0.56], [0.74, 0.655]],
+  // Metatarsals at three points across the forefoot, and the talus.
+  'foot-anatomy': [[0.44, 0.702], [0.74, 0.465], [0.14, 0.512], [0.29, 0.607]],
+  // Metacarpals, Radius, Middle phalanges, Hamate.
+  'hand-anatomy': [[0.328, 0.417], [0.178, 0.37], [0.178, 0.56], [0.178, 0.702]],
   // Pelvic ring, Iliococcygeus, Pubococcygeus, Coccygeus.
   'pelvic-floor-anatomy': [[0.29, 0.275], [0.44, 0.465], [0.215, 0.56], [0.365, 0.56]],
-  // Hard palate, Lips, Upper teeth, Parotid glands.
-  'oral-anatomy': [[0.29, 0.18], [0.215, 0.275], [0.44, 0.275], [0.29, 0.37]],
+  // Lips, Mandible, Parotid glands, Lower teeth.
+  'oral-anatomy': [[0.215, 0.465], [0.44, 0.465], [0.59, 0.465], [0.29, 0.56]],
   // Nasopharynx, Hyoid bone, Epiglottis, Trachea.
   'larynx-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.37], [0.365, 0.56]],
   // Frontal sinus, Ethmoid air cells, Sphenoid sinus, Nasopharynx.
@@ -184,10 +184,10 @@ const SCENE_POINTS = {
   'spine-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.365, 0.56], [0.74, 0.56]],
   // Axillary nodes, Pectoralis major, Axillary tail, Skin.
   'breast-anatomy': [[0.215, 0.275], [0.365, 0.275], [0.29, 0.37], [0.515, 0.37]],
-  // Cervical nodes, Axillary nodes, Right lymphatic duct, Axillary nodes.
-  'lymphatic-drainage': [[0.34, 0.19], [0.292, 0.29], [0.34, 0.34], [0.436, 0.39]],
-  // Afferent vessels, Capsule, Efferent vessel, Capsule.
-  'lymph-node-anatomy': [[0.14, 0.465], [0.29, 0.465], [0.515, 0.56], [0.44, 0.465]],
+  // Cervical nodes, Thoracic duct, The long way up, Body outline.
+  'lymphatic-drainage': [[0.328, 0.227], [0.365, 0.417], [0.74, 0.512], [0.74, 0.655]],
+  // Capsule, at four points around the shell that faces the reader.
+  'lymph-node-anatomy': [[0.29, 0.465], [0.44, 0.465], [0.365, 0.56], [0.29, 0.655]],
   // Dermis, Epidermis, Subcutaneous tissue, Sebaceous gland.
   'skin-anatomy': [[0.215, 0.37], [0.365, 0.37], [0.29, 0.56], [0.74, 0.56]],
   // Auricle, External auditory canal, Vestibule, Vestibulocochlear nerve.
@@ -389,6 +389,36 @@ try {
   if (!box) die('the scene rendered no canvas');
 
   /**
+   * Wait for the model to stop moving before clicking a point on it.
+   *
+   * The part tree exists as soon as the structures do; the camera is still
+   * easing into the viewpoint for about a second after that, and the layer
+   * opacities with it. Clicking through the ease is how a point measured on a
+   * structure lands beside it — which is not a flake, it is two measurements
+   * of different frames, and it produced four failures about selection on the
+   * elbow that were really one about aim.
+   *
+   * Two identical screenshots is the same definition of "settled" the capture
+   * uses, so a point measured against a settled frame is clicked against one.
+   */
+  const settle = async (attempts = 16, gap = 250) => {
+    let previous = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const frame = await page.screenshot({ clip: box });
+      if (previous?.equals(frame)) return true;
+      previous = frame;
+      await page.waitForTimeout(gap);
+    }
+    return false;
+  };
+  if (!(await settle())) {
+    // Not fatal: a scene with something genuinely moving in it is a scene, not
+    // a defect. It is said out loud because every point below is then measured
+    // against a moving target.
+    notes.push('the view never stopped changing, so the points below were clicked at whatever frame they caught');
+  }
+
+  /**
    * The panel's summary, read without moving the pointer off the model.
    *
    * It used to move the pointer away first, because the card showed whatever
@@ -469,6 +499,20 @@ try {
       const hit = await overModel(fx, fy);
       if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
       if (!hit && emptyPoints.length < 6) emptyPoints.push([fx, fy]);
+    }
+  }
+  // A model drawn as a thin network — the thoracic duct and three node groups
+  // in a body silhouette — can genuinely fall between samples taken every six
+  // frame-percent. Look harder before concluding it is not there: the coarse
+  // pass is for speed, and speed is not a reason to report a model missing.
+  if (modelPoints.length < 4) {
+    for (let fy = 0.18; fy <= 0.78 && modelPoints.length < 4; fy += 0.03) {
+      for (let fx = bandCentre - 0.3; fx <= bandCentre + 0.3 && modelPoints.length < 4; fx += 0.03) {
+        const at = Math.min(0.96, Math.max(0.02, fx));
+        const hit = await overModel(at, fy);
+        if (hit) modelPoints.push([at, Number(fy.toFixed(3))]);
+        else if (emptyPoints.length < 6) emptyPoints.push([at, Number(fy.toFixed(3))]);
+      }
     }
   }
   await restPointer();
