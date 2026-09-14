@@ -51,7 +51,7 @@ No external asset, no imaging and no patient data.
 | **Claim** | Arteriole, venule and nerve all stop below the junction. |
 | **Source** | Standard histology; the epidermis is avascular and fed across the junction. |
 | **Implementation** | The vessel paths were lowered until their tops cleared the epidermal floor — a vessel drawn a little too high says the opposite of the fact the model exists to state. |
-| **Assumption** | One vessel of each kind stands for a plexus; the superficial and deep networks are not separately drawn. |
+| **Assumption** | One vessel of each kind stands for a plexus; the superficial and deep networks are not separately drawn. **The gap between the arteriole and the venule is a display value.** They were drawn on one course with the venule displaced 0.12, which is a fair description of a companion pair and left the artery invisible behind the vein from every viewpoint the scene offers; they are set apart across the block now, the venous side deeper. That the two run together is the claim; the distance is not. |
 | **Validation** | `tests/organ-parts-anatomy.test.js` — both vessels and the nerve stay below `epidermisFloor`. |
 
 ### 4. Two routes to the surface, and they are different
