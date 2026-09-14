@@ -1,0 +1,450 @@
+/*
+ * Product typography + catalogue hierarchy.
+ *
+ * Loaded last so the product has one final typography decision and one model
+ * navigation hierarchy without rewriting every older surface in the same pass.
+ */
+
+:root {
+  --font-latin: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial,
+    system-ui, sans-serif;
+  --font-ja: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic',
+    'Noto Sans JP', 'Noto Sans CJK JP', system-ui, sans-serif;
+  --font: var(--font-latin);
+}
+
+html[lang='ja'] {
+  --font: var(--font-ja);
+}
+
+html[lang='en'] {
+  --font: var(--font-latin);
+}
+
+body,
+button,
+input,
+select,
+textarea,
+.landing,
+.explorer,
+.trust-page,
+.legal-page {
+  font-family: var(--font);
+  font-kerning: normal;
+  text-rendering: optimizeLegibility;
+}
+
+.lang-ja {
+  font-family: var(--font-ja);
+  font-kerning: normal;
+  line-break: strict;
+  letter-spacing: 0;
+}
+
+.lang-en,
+.landing-brand,
+.global-nav-brand,
+.global-nav-brand-mark {
+  font-family: var(--font-latin);
+}
+
+/* Japanese is not all-caps Latin copy. Remove the tracking that made short
+ * labels look mechanically spaced when they inherited eyebrow styles. */
+html[lang='ja'] .eyebrow,
+html[lang='ja'] .landing-eyebrow,
+html[lang='ja'] .landing-section-kicker,
+html[lang='ja'] .landing-demo-kicker,
+html[lang='ja'] .anatomy-location,
+html[lang='ja'] .anatomy-control-label,
+html[lang='ja'] .inspection-section-label {
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+
+/* Native UI fonts render most consistently at real shipped weights. */
+.landing-brand-name,
+.landing-brand-mark,
+.landing-nav-link,
+.landing-eyebrow,
+.landing-section-kicker,
+.landing-demo-kicker,
+.global-nav-brand-name,
+.global-nav-trigger-label,
+.global-nav-panel-title,
+.global-nav-system-heading,
+.global-nav-organ-name,
+.global-nav-kind-heading {
+  font-weight: 600;
+}
+
+.landing-title,
+.title,
+#ui[data-lang='ja'] .title-ja,
+#ui[data-lang='ja'] .stage-name-ja {
+  font-weight: 700;
+}
+
+html[lang='ja'] .landing-title {
+  letter-spacing: -0.035em;
+  line-height: 1.11;
+}
+
+html[lang='ja'] .landing-hero-summary,
+html[lang='ja'] .landing-method-copy,
+html[lang='ja'] .landing-neco-copy,
+html[lang='ja'] .subtitle,
+html[lang='ja'] .stage-summary-ja {
+  letter-spacing: 0;
+  line-height: 1.68;
+}
+
+/* Live browser review exposed one serif-looking fallback in the compact disease
+ * disclaimer. Disease controls and caveats stay on the Japanese UI stack. */
+html[lang='ja'] #ui .stage-summary.disclaimer,
+#ui[data-lang='ja'] .stage-summary.disclaimer,
+html[lang='ja'] #ui .button-row .btn,
+#ui[data-lang='ja'] .button-row .btn {
+  font-family: var(--font-ja);
+  font-style: normal;
+  letter-spacing: 0;
+}
+
+html[lang='ja'] #ui .button-row .btn,
+#ui[data-lang='ja'] .button-row .btn {
+  line-height: 1.35;
+}
+
+/* ========================================================================== 
+   Model chooser: system → organ → kind → model / use
+   ========================================================================== */
+
+.global-nav-panel {
+  max-height: min(78vh, 760px);
+}
+
+.global-nav-panel-head {
+  align-items: flex-start;
+  gap: 10px;
+  padding-bottom: 10px;
+}
+
+.global-nav-panel-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.global-nav-panel-title {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.global-nav-panel-intro {
+  max-width: 720px;
+  margin: 4px 0 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.global-nav-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 8px 22px;
+  padding: 2px 4px 8px 0;
+}
+
+.global-nav-system-section {
+  min-width: 0;
+  padding: 6px 0 12px 11px;
+  border-left: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.global-nav-system-section.is-current {
+  border-left-color: color-mix(in srgb, var(--accent) 66%, var(--border));
+}
+
+.global-nav-system-summary {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 5px;
+  padding: 3px 7px 3px 1px;
+  color: var(--ink-dim);
+  cursor: pointer;
+  list-style: none;
+  border-radius: 6px;
+}
+
+.global-nav-system-summary::-webkit-details-marker {
+  display: none;
+}
+
+.global-nav-system-summary:hover,
+.global-nav-system-summary:focus-visible {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.global-nav-system-summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.global-nav-system-heading {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.global-nav-system-section.is-current > .global-nav-system-summary {
+  color: var(--accent);
+}
+
+.global-nav-system-chevron {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 140ms ease;
+}
+
+.global-nav-system-section[open] > .global-nav-system-summary .global-nav-system-chevron {
+  transform: rotate(180deg);
+}
+
+.global-nav-system-organs {
+  display: grid;
+  gap: 5px;
+}
+
+.global-nav-organ {
+  padding: 6px 0 8px;
+}
+
+.global-nav-organ + .global-nav-organ {
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.global-nav-organ-name,
+.global-nav-organ-name .lang-ja {
+  margin: 0 8px 6px 6px;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.global-nav-kind-group + .global-nav-kind-group {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 48%, transparent);
+}
+
+.global-nav-kind-heading {
+  margin: 0 8px 4px;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.global-nav-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.global-nav-scene {
+  min-height: 50px;
+  padding: 8px 9px;
+  border-radius: 7px;
+  align-items: center;
+}
+
+.global-nav-scene-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.global-nav-scene-name,
+.global-nav-scene-name .lang-ja {
+  display: block;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.35;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.global-nav-scene-meta,
+.global-nav-scene-meta .lang-ja {
+  display: block;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.global-nav-scene.is-current {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.global-nav-current-label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--ink-dim);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.global-nav-current-part {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.global-nav-current-separator {
+  flex: none;
+  color: var(--ink-faint);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+html[lang='ja'] .global-nav-current-label {
+  line-height: 1.35;
+}
+
+@media (max-width: 1040px) {
+  .global-nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .global-nav-panel {
+    width: min(92vw, 410px);
+  }
+
+  .global-nav-panel-intro {
+    font-size: 12px;
+  }
+
+  .global-nav-list {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .global-nav-system-section {
+    padding: 5px 0 7px 9px;
+  }
+
+  .global-nav-system-section + .global-nav-system-section {
+    border-top: 1px solid color-mix(in srgb, var(--border) 52%, transparent);
+  }
+
+  .global-nav-system-summary {
+    min-height: 44px;
+    margin-bottom: 2px;
+    padding: 7px 8px 7px 2px;
+  }
+
+  .global-nav-system-heading {
+    font-size: 13.5px;
+  }
+
+  .global-nav-organ-name,
+  .global-nav-organ-name .lang-ja {
+    font-size: 14px;
+  }
+
+  .global-nav-kind-heading {
+    font-size: 12px;
+  }
+
+  .global-nav-scene {
+    min-height: 52px;
+  }
+
+  .global-nav-scene-name,
+  .global-nav-scene-name .lang-ja {
+    font-size: 14px;
+  }
+
+  .global-nav-scene-meta,
+  .global-nav-scene-meta .lang-ja {
+    font-size: 12px;
+  }
+
+  #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row .btn,
+  #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row .btn {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 430px) {
+  .global-nav-brand-full {
+    display: none;
+  }
+
+  .global-nav-brand-compact {
+    display: inline;
+  }
+
+  .global-nav-current-label {
+    font-size: 12px;
+    gap: 3px;
+  }
+
+  .global-nav-current-separator {
+    font-size: 12px;
+  }
+
+  .global-nav-trigger {
+    min-width: 64px;
+    padding-inline: 8px;
+  }
+
+  .global-nav-trigger-label {
+    font-size: 12px;
+  }
+}
+
+@media (max-height: 650px) and (max-width: 720px) {
+  .global-nav-panel-intro {
+    display: none;
+  }
+
+  .global-nav-system-section {
+    padding-top: 3px;
+    padding-bottom: 5px;
+  }
+
+  .global-nav-system-summary {
+    min-height: 40px;
+  }
+
+  .global-nav-organ {
+    padding-top: 4px;
+    padding-bottom: 5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .global-nav-system-chevron {
+    transition: none;
+  }
+}
