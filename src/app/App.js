@@ -240,6 +240,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     };
   };
 
+  /**
+   * The width at which this product is one column — the same number the
+   * stylesheet lays the phone out at, so the framing and the layout cannot
+   * come to disagree about what a phone is.
+   */
+  const PHONE_WIDTH = 430;
+
   /** The scene's authored framing for the current view and window, before zoom. */
   const framedPose = (pose) => {
     const framed = framePose(
@@ -266,7 +273,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       // with vessels leaving it in every direction, and filling the band cut
       // every one of them off flush with an edge. It is a composition, so the
       // scene that knows what it is drawing owns it.
-      ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
+      //
+      // On a phone, a scene that does not say takes more of the band than it
+      // would on a desktop. The band is measured from a bounding *box*, and the
+      // box of a subject seen at an angle is larger than its silhouette — a
+      // margin that reads as composition across a window and as a small model
+      // down a 390 px column, where the band is half the screen to begin with.
+      // A scene that states its own coverage still gets it: this is the default
+      // for one that does not, not an override of one that does.
+      ...(bounds.coverage > 0
+        ? { coverage: bounds.coverage }
+        : viewer.container.clientWidth <= PHONE_WIDTH
+          ? { coverage: 0.92 }
+          : {}),
     }) : framed;
   };
 

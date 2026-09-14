@@ -528,6 +528,79 @@ try {
       check(`${label}: the mode switch is reachable`,
         box.switchW > 40 && box.switchH >= 20, JSON.stringify(box));
       check(`${label}: no console errors`, errors.length === 0, errors.join(' | '));
+
+      // A device pass on an iPhone read this dialog as an English form in a
+      // Japanese product, with text that sank into the background and a close
+      // button too small to hit. Each of those is measurable, and none of them
+      // was measured.
+      const dialog = await page.evaluate(() => {
+        const root = document.querySelector('.access-dialog');
+        const modal = root?.getBoundingClientRect();
+        const close = document.querySelector('.access-close')?.getBoundingClientRect();
+        const visibleText = (node) => {
+          const out = [];
+          for (const element of node.querySelectorAll('*')) {
+            if (getComputedStyle(element).display === 'none') continue;
+            for (const child of element.childNodes) {
+              if (child.nodeType === 3 && child.textContent.trim()) out.push(child.textContent.trim());
+            }
+          }
+          return out;
+        };
+        const relativeLuminance = (colour) => {
+          const [r, g, b] = colour.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+          const channel = (value) => {
+            const v = value / 255;
+            return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          };
+          return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+        };
+        const dialogLuminance = relativeLuminance(getComputedStyle(root).backgroundColor);
+        const contrastOf = (selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const ink = relativeLuminance(getComputedStyle(element).color);
+          const [light, dark] = ink > dialogLuminance ? [ink, dialogLuminance] : [dialogLuminance, ink];
+          return Number(((light + 0.05) / (dark + 0.05)).toFixed(2));
+        };
+        return {
+          lang: document.getElementById('ui')?.dataset.lang ?? null,
+          text: visibleText(root),
+          placeholders: [...root.querySelectorAll('input')].map((input) => input.placeholder),
+          modalInside: modal
+            ? modal.left >= -1 && modal.top >= -1 &&
+              modal.right <= window.innerWidth + 1 && modal.bottom <= window.innerHeight + 1
+            : null,
+          closeSize: close ? [Math.round(close.width), Math.round(close.height)] : null,
+          bodyOverflow: getComputedStyle(document.body).overflow,
+          contrast: {
+            copy: contrastOf('.access-copy.lang-ja'),
+            link: contrastOf('.access-text-button'),
+            close: contrastOf('.access-close'),
+          },
+        };
+      });
+
+      // The interface is Japanese unless somebody switched it, and so is this.
+      const bilingual = dialog.text.filter((line) => /[A-Za-z][^/]* \/ [ぁ-んァ-ヶ一-龠]/.test(line));
+      check(`${label}: no label carries both languages joined by a slash`,
+        bilingual.length === 0, bilingual.slice(0, 3).join(' | '));
+      const english = dialog.text.filter((line) => /^[\x20-\x7E]+$/.test(line) && /[A-Za-z]{4}/.test(line));
+      check(`${label}: the Japanese dialog is in Japanese`,
+        dialog.lang !== 'ja' || english.length === 0, english.slice(0, 4).join(' | '));
+      const asciiPlaceholders = dialog.placeholders.filter((value) => /^[\x20-\x7E]+$/.test(value ?? ''));
+      check(`${label}: the fields are labelled in the language on screen`,
+        dialog.lang !== 'ja' || asciiPlaceholders.length === 0, asciiPlaceholders.join(' | '));
+
+      check(`${label}: the dialog is inside the viewport`, dialog.modalInside === true);
+      check(`${label}: the close button is a target a finger can hit`,
+        Boolean(dialog.closeSize) && Math.min(...dialog.closeSize) >= 44, JSON.stringify(dialog.closeSize));
+      check(`${label}: the page behind the dialog does not scroll`,
+        dialog.bodyOverflow === 'hidden', dialog.bodyOverflow);
+      for (const [what, ratio] of Object.entries(dialog.contrast)) {
+        if (ratio == null) continue;
+        check(`${label}: the ${what} is readable (AA 4.5:1)`, ratio >= 4.5, `${ratio}:1`);
+      }
       await page.close();
     }
   }

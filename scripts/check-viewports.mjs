@@ -63,6 +63,23 @@ const value = (name, fallback = null) => {
 const values = (name) =>
   argv.reduce((all, item, at) => (item === name && argv[at + 1] ? [...all, argv[at + 1]] : all), []);
 
+/**
+ * The width at which this product lays a scene out as one column — the same
+ * number `product-shell-b6.css` and `App.js` use, so a run of this matrix and
+ * the layout it is measuring cannot disagree about what a phone is.
+ */
+const PHONE_LAYOUT_WIDTH = 430;
+
+/**
+ * What a control in the phone's bottom bar must measure.
+ *
+ * Higher than `MEASURED_TARGET.intent.scene` (32), which is the ambition for
+ * scene chrome at any size. A bar a thumb uses while the other hand holds the
+ * phone is the case that asks for the full 44, and it is what the device pass
+ * asked for by name.
+ */
+const PHONE_CONTROL_TARGET = 44;
+
 const distDir = value('--dist', 'dist');
 const jsonOut = value('--json');
 const onlyViewports = values('--viewport');
@@ -191,6 +208,14 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const visible = (element) => {
     const style = getComputedStyle(element);
     if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+    // A closed `<details>` is not on screen, and a browser says so by not
+    // painting it — but Chromium keeps the boxes its content last had, so
+    // `getBoundingClientRect` still answers with a rectangle. Measured as
+    // visible, the consent card inside the scene's information disclosure was
+    // reported as "clipped out of a panel that cannot scroll to it" on every
+    // run, about controls nobody could see at all. Whether that disclosure's
+    // *contents* behave is a question for a run that opens it.
+    if (element.closest('details:not([open])')) return false;
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   };
@@ -419,6 +444,77 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
   };
+}
+
+/**
+ * The phone layout of a 3D scene, measured rather than looked at.
+ *
+ * A device pass on an iPhone 13 found three things a screenshot shows and no
+ * assertion caught: a console two thirds of the width with its button row
+ * scrolling sideways, so the camera control was off the end of it; a selection
+ * card whose actions wrapped under that console; and the two of them together
+ * leaving the model a strip. The viewport matrix already measures overflow and
+ * target sizes — these are the questions it did not ask, and they are asked
+ * here rather than in a second harness.
+ *
+ * Runs on the scene surface at a phone width, which is where the layout the
+ * stylesheet writes for a phone actually applies.
+ *
+ * @param {{phoneWidth: number, target: number}} options
+ */
+function measurePhoneLayoutInPage({ phoneWidth, target }) {
+  const problems = [];
+  if (window.innerWidth > phoneWidth) return { skipped: true, problems };
+
+  const rect = (selector) => {
+    const node = document.querySelector(selector);
+    if (!node) return null;
+    const box = node.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 ? box : null;
+  };
+  const describe = (node) => {
+    const label = (node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+    return `${node.tagName.toLowerCase()}.${(node.className || '').toString().split(' ')[0]}${label ? ` "${label}"` : ''}`;
+  };
+  const inside = (box) =>
+    box.left >= -1 && box.top >= -1 &&
+    box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1;
+
+  const console_ = rect('.console');
+  const row = document.querySelector('.button-row');
+  const card = rect('.anatomy-panel');
+
+  if (console_ && !inside(console_)) {
+    problems.push(`the control bar is not inside the viewport (${Math.round(console_.left)}…${Math.round(console_.right)} of ${window.innerWidth})`);
+  }
+
+  if (row) {
+    // Every control in the bar, not the bar's own box: a row that scrolls
+    // sideways has a box inside the viewport and buttons outside it.
+    for (const button of row.querySelectorAll('button')) {
+      const box = button.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      if (!inside(box)) problems.push(`${describe(button)} is outside the viewport`);
+      else if (Math.min(box.width, box.height) + 0.5 < target) {
+        problems.push(`${describe(button)} is ${Math.round(box.width)}×${Math.round(box.height)}, under ${target}px`);
+      }
+    }
+    const rowBox = row.getBoundingClientRect();
+    if (row.scrollWidth > row.clientWidth + 1) {
+      problems.push(`the control bar scrolls sideways (${row.scrollWidth}px of content in ${Math.round(rowBox.width)}px)`);
+    }
+  }
+
+  // The selection card and the control bar are the two things that grew into
+  // each other on the device: the card's actions wrapped, and the bottom row
+  // went under the bar.
+  if (card && console_) {
+    const overlap = !(card.bottom <= console_.top || card.top >= console_.bottom ||
+      card.right <= console_.left || card.left >= console_.right);
+    if (overlap) problems.push('the selection card and the control bar overlap');
+  }
+
+  return { skipped: false, problems };
 }
 
 /**
@@ -1249,6 +1345,14 @@ try {
           interactiveSelector: INTERACTIVE_SELECTOR,
           overlays: TRANSIENT_OVERLAYS,
         });
+
+        if (surface.needsRenderer && measured.hasCanvas) {
+          const phone = await page.evaluate(measurePhoneLayoutInPage, {
+            phoneWidth: PHONE_LAYOUT_WIDTH,
+            target: PHONE_CONTROL_TARGET,
+          });
+          for (const problem of phone.problems) problems.push(`${where}: ${problem}`);
+        }
 
         if (measured.overflowPx > OVERFLOW_TOLERANCE_PX) {
           const what = viewport.reflow

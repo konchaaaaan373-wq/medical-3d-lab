@@ -36,6 +36,9 @@ import { PHONE_MAX_WIDTH, deviceClassForViewport } from './performanceBudget.js'
 export const VIEWPORTS = [
   { id: 'phone-320', label: 'Narrowest phone', width: 320, height: 568, reflow: true },
   { id: 'phone-375', label: 'Common phone', width: 375, height: 812 },
+  // The device the F-101 pass was run on, so a report about that phone and a
+  // run of this matrix are about the same width.
+  { id: 'phone-390', label: 'iPhone 13', width: 390, height: 844 },
   { id: 'phone-430', label: 'Large phone', width: 430, height: 932 },
   { id: 'phone-landscape', label: 'Phone, landscape', width: 932, height: 430, short: true },
   { id: 'tablet-768', label: 'Tablet', width: 768, height: 1024 },

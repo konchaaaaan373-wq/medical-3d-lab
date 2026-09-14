@@ -34,6 +34,7 @@ import { pricePresentation } from './pricing.js';
 import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
 import { emitAppEvent } from '../app/appEvents.js';
+import { inLanguage } from '../utils/language.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -528,7 +529,9 @@ export function createAccessManager({ ui }) {
     const closeButton = el('button', {
       class: 'access-close',
       type: 'button',
-      'aria-label': 'Close',
+      // One language, the one on screen: a screen reader announcing "Close" in
+      // a Japanese interface is the same defect as an English label in it.
+      'aria-label': inLanguage('Close', '閉じる'),
       text: '×',
       on: { click: close },
     });

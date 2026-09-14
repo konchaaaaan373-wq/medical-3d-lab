@@ -163,6 +163,22 @@
   outline-offset: 2px;
 }
 
+/* The title takes focus when this surface replaces a model that failed, so a
+   screen reader starts at what happened rather than at the top of a page that
+   changed under it. That focus stays — what goes is the ring the browser draws
+   around it afterwards for a reader who never asked for one: the heading is not
+   in the tab ring, and a blue rectangle around the heading of an error page
+   reads as a second error. `:focus-visible` still draws, so the ring is there
+   in exactly the case it means something. */
+.scene-fallback-title:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.scene-fallback-title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 @media (max-width: 620px) {
   .scene-fallback {
     align-items: start;
