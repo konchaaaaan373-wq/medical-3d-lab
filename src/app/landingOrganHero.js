@@ -60,6 +60,54 @@ export function createLandingOrganHero({
     href: '#/',
   });
 
+  /**
+   * The name of the part the reader is pointing at.
+   *
+   * The hero's whole claim is that the structures are *named* — colour-coded
+   * parts a reader can point at and be told what they are. Until this was here
+   * the hero highlighted the part under the pointer and then said nothing, so
+   * the one question the model exists to answer ("what did I just click?") was
+   * only answerable by opening the full model.
+   *
+   * Both languages are in the DOM and CSS hides one, exactly as the anatomy
+   * panel does it, so switching language costs no re-render and a screen reader
+   * is never handed Japanese inside an English document.
+   */
+  const structureSwatch = el('span', { class: 'landing-demo-structure-swatch', 'aria-hidden': 'true' });
+  const structureNameEn = el('strong', { class: 'landing-demo-structure-name lang-en' });
+  const structureNameJa = el('strong', { class: 'landing-demo-structure-name lang-ja' });
+  const structureWhereEn = el('span', { class: 'landing-demo-structure-where lang-en' });
+  const structureWhereJa = el('span', { class: 'landing-demo-structure-where lang-ja' });
+  const structureReadout = el('div', {
+    class: 'landing-demo-structure',
+    dataset: { state: 'hint' },
+    'aria-hidden': 'true',
+  }, [
+    structureSwatch,
+    el('div', { class: 'landing-demo-structure-text' }, [
+      structureNameEn,
+      structureNameJa,
+      structureWhereEn,
+      structureWhereJa,
+    ]),
+  ]);
+  structureReadout.hidden = true;
+
+  /**
+   * What a *pinned* structure is called, for assistive technology.
+   *
+   * Separate from the card above because a live region must not be driven by
+   * hover: a pointer crossing the model would otherwise queue an announcement
+   * per structure it passed over, and the reader would be read a list of
+   * everything they did not choose. Only a click reaches here.
+   */
+  const structureAnnouncement = el('p', {
+    class: 'landing-sr-only',
+    role: 'status',
+    'aria-live': 'polite',
+    'aria-atomic': 'true',
+  });
+
   const dragHint = el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
     el('span', { text: '↔' }),
     ...dual(
@@ -105,6 +153,87 @@ export function createLandingOrganHero({
     viewportRetry,
   ]);
 
+  /** Whether the model on screen has parts a reader can point at and name. */
+  let namedStructures = false;
+  /**
+   * The structure the card is naming.
+   *
+   * Kept rather than re-read from the DOM, because the card is redrawn from two
+   * directions — a pick and a change of load state — and a scene is allowed to
+   * open with a structure already pinned. Re-rendering from the remembered
+   * value is what lets that pick survive the `ready` that follows it.
+   */
+  let shownStructure = null;
+
+  const STRUCTURE_HINT = Object.freeze([
+    'Click a coloured structure to see its anatomical name.',
+    '色分けされた部位をクリックすると、解剖学的な名称が表示されます。',
+  ]);
+
+  /**
+   * Draw the name card.
+   *
+   * Three states, and they are deliberately different things: the model has no
+   * named parts (no card at all), it has them and none is chosen (the card
+   * invites the click), one is chosen (the card names it). Collapsing the first
+   * two would promise a name the model cannot give.
+   *
+   * @param {{name?:string, nameJa?:string, breadcrumb?:string, breadcrumbJa?:string,
+   *          side?:string, sideJa?:string, region?:string, regionJa?:string,
+   *          categoryName?:string, categoryNameJa?:string,
+   *          color?:string, pinned?:boolean}|null} structure
+   */
+  function showStructure(structure) {
+    shownStructure = structure ?? null;
+    renderStructure();
+  }
+
+  function renderStructure() {
+    const structure = shownStructure;
+    const ready = element.dataset.viewport === 'ready';
+    structureReadout.hidden = !ready || !namedStructures;
+    if (structureReadout.hidden) {
+      structureReadout.dataset.state = 'hint';
+      structureAnnouncement.replaceChildren();
+      return;
+    }
+
+    if (!structure) {
+      structureReadout.dataset.state = 'hint';
+      structureNameEn.textContent = STRUCTURE_HINT[0];
+      structureNameJa.textContent = STRUCTURE_HINT[1];
+      structureWhereEn.textContent = '';
+      structureWhereJa.textContent = '';
+      structureSwatch.style.removeProperty('--landing-structure-color');
+      structureAnnouncement.replaceChildren();
+      return;
+    }
+
+    structureReadout.dataset.state = structure.pinned ? 'pinned' : 'preview';
+    structureNameEn.textContent = structure.name ?? '';
+    structureNameJa.textContent = structure.nameJa ?? structure.name ?? '';
+    structureWhereEn.textContent = whereLine(
+      structure.breadcrumb,
+      [structure.side, structure.region, structure.categoryName]
+    );
+    structureWhereJa.textContent = whereLine(
+      structure.breadcrumbJa,
+      [structure.sideJa, structure.regionJa, structure.categoryNameJa]
+    );
+    if (structure.color) {
+      structureSwatch.style.setProperty('--landing-structure-color', structure.color);
+    }
+    // Announced on the pin only. See the note on `structureAnnouncement`.
+    structureAnnouncement.replaceChildren(
+      ...(structure.pinned
+        ? dual(
+            `Selected: ${structure.name ?? structure.nameJa ?? ''}`,
+            `選択中: ${structure.nameJa ?? structure.name ?? ''}`
+          )
+        : [])
+    );
+  }
+
   function showViewportState(state, detail = {}) {
     if (destroyed || state === 'disposed') return;
     const organ = organById(selected.organ);
@@ -133,6 +262,11 @@ export function createLandingOrganHero({
     if (canRetry) viewportRetry.removeAttribute('disabled');
     else viewportRetry.setAttribute('disabled', '');
     dragHint.hidden = state !== 'ready';
+    // Only a ready model reports whether it has named parts. A transient
+    // loading or error state must not be read as "this model has no names",
+    // which would take the card away and put it back on every retry.
+    if (state === 'ready') namedStructures = Boolean(detail.named);
+    renderStructure();
     element.setAttribute('aria-busy', String(state === 'loading' || Boolean(detail.delayed)));
   }
 
@@ -161,6 +295,8 @@ export function createLandingOrganHero({
     viewport,
     viewportStatus,
     compact && showIdentity ? el('header', { class: 'landing-demo-identity' }, [title]) : null,
+    structureReadout,
+    structureAnnouncement,
     compact ? null : el('header', { class: 'landing-demo-header' }, [
       el('div', {}, [
         kicker,
@@ -244,6 +380,9 @@ export function createLandingOrganHero({
     const entry = organs.find((candidate) => candidate.organ === organId);
     if (!entry || destroyed) return;
     selected = entry;
+    // A name belongs to the model it was read off. Carrying it across a swap
+    // would label the incoming organ with the outgoing organ's anatomy.
+    showStructure(null);
     render();
     if (!mountedViewport) return;
     try {
@@ -266,6 +405,7 @@ export function createLandingOrganHero({
         if (destroyed) return null;
         const instance = mountLandingOrganViewport(viewport, {
           onStateChange: showViewportState,
+          onStructureChange: showStructure,
           onDetailError: (error) => {
             try {
               void Promise.resolve(onRendererFailure(error, {
@@ -339,4 +479,20 @@ export function createLandingOrganHero({
       mountedViewport = null;
     },
   };
+}
+
+/**
+ * Where a structure sits, in one line.
+ *
+ * The breadcrumb the scene built is preferred; the parts are the fallback for a
+ * scene that reports them separately. Empty parts are dropped rather than
+ * printed as stray separators — a structure with no side is midline, not
+ * "· · cortex".
+ *
+ * @param {string|undefined} breadcrumb
+ * @param {(string|undefined)[]} parts
+ */
+function whereLine(breadcrumb, parts) {
+  if (breadcrumb?.trim()) return breadcrumb;
+  return parts.filter((part) => part?.trim()).join(' · ');
 }

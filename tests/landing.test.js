@@ -966,3 +966,257 @@ test('landing hero viewport: leaving the page ends an upgrade that is still load
     restoreDocument();
   }
 });
+
+/* The hero highlights the structure under the pointer and used to say nothing
+   about it. These two tests are the two halves of answering "what did I just
+   click?": the viewport has to carry the scene's answer out, and the hero has
+   to draw it — with a pinned click outranking a hover, because a pointer
+   crossing the model must not rewrite the name the reader chose. */
+test('landing hero viewport: the scene names the structure under the pointer, pin first', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  const hippocampus = {
+    id: 17,
+    name: 'Hippocampus',
+    nameJa: '海馬',
+    breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+    breadcrumbJa: '左 › 側頭葉 › 海馬体',
+    color: '#8fd4c1',
+  };
+  const thalamus = { id: 9, name: 'Thalamus', nameJa: '視床', breadcrumb: 'Left › Diencephalon' };
+
+  /** A scene shaped like the anatomy scenes: it publishes selection and hover. */
+  class NamedScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    static allowAutoRotate = false;
+    constructor() {
+      this.root = new THREE.Group();
+      this.root.name = 'named-brain';
+      this.ready = Promise.resolve();
+      this.selectionListeners = new Set();
+      this.hoverListeners = new Set();
+      this.released = 0;
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+    getAnatomySelection() { return null; }
+    getAnatomyHover() { return null; }
+    onAnatomySelection(listener) {
+      this.selectionListeners.add(listener);
+      return () => { this.released += 1; this.selectionListeners.delete(listener); };
+    }
+    onAnatomyHover(listener) {
+      this.hoverListeners.add(listener);
+      return () => { this.released += 1; this.hoverListeners.delete(listener); };
+    }
+    emitSelection(info) { for (const listener of this.selectionListeners) listener(info); }
+    emitHover(info) { for (const listener of this.hoverListeners) listener(info); }
+  }
+
+  /** A published scene with no anatomy surface at all — a real possibility. */
+  class UnnamedScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    constructor() {
+      this.root = new THREE.Group();
+      this.root.name = 'unnamed-organ';
+      this.ready = Promise.resolve();
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+
+  try {
+    const FakeViewer = createFakeViewerClass();
+    const seen = [];
+    const states = [];
+    let scene = null;
+    const mounted = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => {
+        const Scene = NamedScene;
+        return class extends Scene {
+          constructor(options) { super(options); scene = this; }
+        };
+      },
+      onStateChange: (state, detail) => states.push([state, detail]),
+      onStructureChange: (structure) => seen.push(structure),
+    });
+
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.detailScene, 'brain-anatomy');
+    assert.deepEqual(
+      states.at(-1),
+      ['ready', { named: true }],
+      'the hero is told the model has parts it can name'
+    );
+    assert.equal(mounted.structure, null, 'nothing is named until the reader points at something');
+
+    // A hover is a preview.
+    scene.emitHover(hippocampus);
+    assert.equal(seen.at(-1).name, 'Hippocampus');
+    assert.equal(seen.at(-1).nameJa, '海馬');
+    assert.equal(seen.at(-1).pinned, false);
+
+    // A click pins it, and a hover crossing something else no longer wins.
+    scene.emitSelection(hippocampus);
+    assert.equal(seen.at(-1).pinned, true);
+    scene.emitHover(thalamus);
+    assert.equal(seen.at(-1).name, 'Hippocampus', 'a pinned name outranks a hover');
+    assert.equal(mounted.structure.pinned, true);
+
+    // An anatomy scene opts out of auto-rotation, so nothing is animating: the
+    // frame that shows the highlight has to be asked for.
+    FakeViewer.instance.running = false;
+    const before = FakeViewer.instance.renderCount;
+
+    // Clicking empty space clears the pin, and the hover shows through again.
+    scene.emitSelection(null);
+    assert.ok(FakeViewer.instance.renderCount > before, 'a pick repaints a still frame');
+    assert.equal(seen.at(-1).name, 'Thalamus');
+    assert.equal(seen.at(-1).pinned, false);
+    scene.emitHover(null);
+    assert.equal(seen.at(-1), null);
+
+    // Swapping organs takes the name with the model it was read off.
+    scene.emitSelection(hippocampus);
+    const released = scene.released;
+    await mounted.setOrgan('heart', { upgradeSceneId: null });
+    assert.equal(seen.at(-1), null, 'the outgoing organ does not label the incoming one');
+    assert.ok(scene.released > released, 'the scene is let go of, not just forgotten');
+    assert.deepEqual(
+      states.at(-1),
+      ['ready', { named: false }],
+      'a lightweight builder has no named parts and must not offer any'
+    );
+
+    // A published scene without the anatomy surface is not broken; it simply
+    // has no names, and the hero must be able to tell the two apart.
+    const plain = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => UnnamedScene,
+      onStateChange: (state, detail) => states.push([state, detail]),
+    });
+    await plain.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(states.at(-1), ['ready', { named: false }]);
+    assert.equal(plain.structure, null);
+    plain.destroy();
+
+    mounted.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing hero: the picked structure is named on the model, in both languages', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  try {
+    let options = null;
+    const hero = createLandingOrganHero({
+      compact: true,
+      showOpenLink: false,
+      loadViewport: async () => ({
+        mountLandingOrganViewport(_container, mountOptions) {
+          options = mountOptions;
+          return {
+            async setOrgan() { options.onStateChange('loading', {}); },
+            destroy() {},
+          };
+        },
+      }),
+    });
+    await hero.mount();
+
+    const readout = findByClass(hero.element, 'landing-demo-structure')[0];
+    assert.ok(readout, 'the hero has somewhere to put the name');
+    assert.equal(readout.hidden, true, 'a model that is still loading names nothing');
+
+    // Ready, with named parts: the card invites the click rather than naming.
+    options.onStateChange('ready', { named: true });
+    assert.equal(readout.hidden, false);
+    assert.equal(readout.dataset.state, 'hint');
+    assert.match(collectText(readout).join(' '), /クリックすると、解剖学的な名称/);
+
+    // A hover is a preview of the name.
+    options.onStructureChange({
+      name: 'Hippocampus',
+      nameJa: '海馬',
+      breadcrumb: 'Left › Temporal lobe',
+      breadcrumbJa: '左 › 側頭葉',
+      color: '#8fd4c1',
+      pinned: false,
+    });
+    assert.equal(readout.dataset.state, 'preview');
+    const announcement = findByClass(hero.element, 'landing-sr-only')
+      .find((node) => node.getAttribute('aria-live') === 'polite');
+    assert.ok(announcement, 'a pinned name is announced');
+    assert.equal(
+      collectText(announcement).join(' ').trim(),
+      '',
+      'a hover must not queue an announcement per structure the pointer crosses'
+    );
+
+    // A click pins it. Both languages are in the DOM, tagged, and CSS hides one.
+    options.onStructureChange({
+      name: 'Hippocampus',
+      nameJa: '海馬',
+      breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+      breadcrumbJa: '左 › 側頭葉 › 海馬体',
+      color: '#8fd4c1',
+      pinned: true,
+    });
+    assert.equal(readout.dataset.state, 'pinned');
+    const [nameEn] = findByClass(readout, 'landing-demo-structure-name');
+    const names = findByClass(readout, 'landing-demo-structure-name');
+    const wheres = findByClass(readout, 'landing-demo-structure-where');
+    assert.equal(nameEn.getAttribute('lang'), 'en');
+    assert.equal(names[0].textContent, 'Hippocampus');
+    assert.equal(names[1].textContent, '海馬');
+    assert.equal(names[1].getAttribute('lang'), 'ja');
+    assert.equal(wheres[0].textContent, 'Left › Temporal lobe › Hippocampal formation');
+    assert.equal(wheres[1].textContent, '左 › 側頭葉 › 海馬体');
+    assert.equal(
+      findByClass(readout, 'landing-demo-structure-swatch')[0].style.getPropertyValue('--landing-structure-color'),
+      '#8fd4c1',
+      'the card carries the structure’s own colour in the model'
+    );
+    assert.match(collectText(announcement).join(' '), /選択中: 海馬/);
+
+    // Nothing selected: back to the invitation, and the announcement is dropped.
+    options.onStructureChange(null);
+    assert.equal(readout.dataset.state, 'hint');
+    assert.equal(collectText(announcement).join(' ').trim(), '');
+
+    // A model with no named parts offers no card at all — which is a different
+    // thing from a model whose parts are named and none is chosen.
+    options.onStateChange('ready', { named: false });
+    assert.equal(readout.hidden, true);
+    hero.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});

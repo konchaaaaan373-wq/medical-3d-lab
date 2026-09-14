@@ -434,6 +434,90 @@ html[data-route='landing'] {
   font-size: 15px;
 }
 
+/* The name card ------------------------------------------------------------
+   What the reader just clicked, named. It sits inside the picture because the
+   answer belongs next to the thing it answers about — a name in a panel below
+   the fold is a name the reader has to go looking for.
+
+   `pointer-events: none` is load-bearing: the card overlaps the model, and a
+   card that swallowed the drag would stop the reader turning the organ at
+   exactly the place they are most likely to try. */
+.landing-demo-structure {
+  position: absolute;
+  z-index: 4;
+  left: 22px;
+  bottom: 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: min(24rem, calc(100% - 44px));
+  padding: 9px 13px;
+  border: 1px solid rgba(176, 198, 229, 0.2);
+  border-left: 2px solid var(--landing-cyan, #38e1ef);
+  border-radius: 4px;
+  background: rgba(5, 8, 14, 0.84);
+  pointer-events: none;
+}
+
+.landing-demo-structure[hidden] { display: none; }
+
+/* Nothing picked yet: an invitation, not a name. It has to read as *less* than
+   a name, or the instruction is mistaken for the answer. */
+.landing-demo-structure[data-state='hint'] {
+  border-left-color: rgba(176, 198, 229, 0.28);
+  background: rgba(5, 8, 14, 0.66);
+}
+
+.landing-demo-structure[data-state='hint'] .landing-demo-structure-swatch { display: none; }
+
+.landing-demo-structure[data-state='hint'] .landing-demo-structure-name {
+  color: rgba(221, 229, 242, 0.72);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* A hover is a preview of a name, and the reader is meant to be able to tell
+   it from the one they pinned. */
+.landing-demo-structure[data-state='preview'] {
+  border-left-color: rgba(56, 225, 239, 0.45);
+}
+
+.landing-demo-structure-swatch {
+  flex: none;
+  width: 9px;
+  height: 9px;
+  margin-top: 6px;
+  border-radius: 2px;
+  /* The structure's own colour in the model, so the card and the highlighted
+     mesh are recognisably the same part. */
+  background: var(--landing-structure-color, rgba(176, 198, 229, 0.55));
+}
+
+.landing-demo-structure-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.landing-demo-structure-name {
+  color: var(--ink, #eaf2ff);
+  font-size: clamp(14px, 1.5vw, 17px);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.landing-demo-structure-where {
+  color: rgba(221, 229, 242, 0.62);
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: 0.03em;
+}
+
+.landing-demo-structure-where:empty { display: none; }
+
 .landing-sr-only {
   position: absolute;
   width: 1px;
@@ -989,6 +1073,16 @@ html[data-route='landing'] {
     padding-top: 6px;
   }
 
+  /* Both used to sit along the bottom edge, which is wide enough for them on a
+     desktop and not on a phone. The name is the content, so it keeps the foot
+     of the stage and the gesture hint goes to the top corner. */
+  .landing-demo-structure {
+    left: 14px;
+    right: 14px;
+    bottom: 14px;
+    max-width: none;
+  }
+
   .landing-nav {
     top: 6px;
     gap: 5px;
@@ -1038,9 +1132,15 @@ html[data-route='landing'] {
   .landing-demo-title { max-width: 12em; font-size: 24px; }
   .landing-demo-case { padding: 5px; font-size: 9px; }
 
+  /* Up to the top corner, out of the name card's way. Set here rather than
+     earlier in this breakpoint because this rule owns the hint's `bottom`, and
+     an override above it left the hint stretched between the two edges. */
   .landing-demo-drag-hint {
     right: 14px;
-    bottom: 14px;
+    top: 16px;
+    bottom: auto;
+    /* The name of the structure is already in the opposite corner. */
+    max-width: 42%;
     font-size: 10px;
   }
 
@@ -1330,7 +1430,7 @@ html[data-route='landing'] {
   }
 
   .landing-demo-drag-hint {
-    max-width: calc(100% - 28px);
+    max-width: 44%;
   }
 
   .landing-hero-actions {
