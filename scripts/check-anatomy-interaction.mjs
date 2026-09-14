@@ -429,16 +429,42 @@ try {
     await page.waitForTimeout(90);
     return (await canvas.evaluate((element) => element.style.cursor)) === 'pointer';
   };
+  /**
+   * The middle of the band, which is not the middle of the canvas.
+   *
+   * The parts panel is an overlay over the right of a wide window, and the
+   * scene frames the model into what it leaves — so "the middle" is at about
+   * 0.37 of the canvas, not 0.5. Sampling from 0.5 outwards found a wide
+   * organ anyway and missed every narrow one: the spine, the oesophagus, the
+   * hand, the standing skeleton and the lymphatic network all reported "the
+   * model is not drawn" for a model that was drawn and perfectly clickable.
+   * The panel is measured rather than assumed, so this follows the layout
+   * instead of being re-tuned behind it.
+   */
+  const bandCentre = await page.evaluate(() => {
+    const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
+    if (!canvasRect?.width) return 0.5;
+    const rail = document.querySelector('.rail')?.getBoundingClientRect();
+    const docked =
+      rail &&
+      rail.width &&
+      rail.left > canvasRect.left + canvasRect.width / 2 &&
+      rail.top < canvasRect.top + canvasRect.height / 2 &&
+      rail.bottom > canvasRect.top + canvasRect.height / 2;
+    const right = docked ? Math.min(rail.left, canvasRect.right) : canvasRect.right;
+    return Math.min(0.9, Math.max(0.1, (right - canvasRect.left) / 2 / canvasRect.width));
+  });
+
   const modelPoints = [];
   const emptyPoints = [];
-  // Worked outwards from the middle rather than across a coarse grid. A grid
-  // of five columns spanning 0.30–0.66 is still an assumption — that the
-  // subject is wide — and a spine, a hand or a standing skeleton is not: they
-  // are a couple of frame-percent across at the middle, and every sample
-  // missed. "The model is not drawn" was then reported for a model that was
-  // drawn, centred, and perfectly clickable.
+  // Worked outwards from the middle of that band rather than across a coarse
+  // grid. A grid of five columns spanning 0.30–0.66 is still an assumption —
+  // that the subject is wide — and a spine, a hand or a standing skeleton is
+  // not: they are a couple of frame-percent across at the middle, and every
+  // sample missed.
+  const spread = [0, -0.06, 0.06, -0.12, 0.12, -0.2, 0.2, -0.28];
   for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
-    for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
+    for (const fx of spread.map((offset) => Math.min(0.96, Math.max(0.02, bandCentre + offset)))) {
       if (modelPoints.length >= 6 && emptyPoints.length >= 2) break;
       const hit = await overModel(fx, fy);
       if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);

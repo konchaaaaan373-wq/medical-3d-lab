@@ -7,7 +7,10 @@ dist/
 .env.*
 !.env.example
 
-# Throwaway scripts used to drive the browser during a visual pass.
+# Throwaway scripts used to drive the browser during a visual pass. What they
+# write belongs in `*.local` (ignored above) or in a temporary directory
+# outside the repository — three measurement dumps reached a commit because
+# they were written beside the driver and matched nothing here.
 .*.mjs
 
 # The viewport matrix report, written by `npm run verify:ui --json`.
