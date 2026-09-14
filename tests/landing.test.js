@@ -250,11 +250,13 @@ test('landing: the published models are live organs, not a card index', () => {
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // Four open models, one viewport, and a chooser — which is the shape the
+    // Every open model, one viewport, and a chooser — which is the shape the
     // hero was written for and could not be tested in while one model was
     // open: "a chooser is drawn only when there is more than one thing to
-    // choose", and until now there was not.
-    assert.equal(PUBLIC_MANIFEST.count, 9);
+    // choose", and until now there was not. The count is written out so that
+    // opening a batch is an edit here too, next to the picture of the hero it
+    // changes.
+    assert.equal(PUBLIC_MANIFEST.count, 10);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1);
     assert.equal(controls.length, PUBLIC_MANIFEST.count);

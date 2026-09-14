@@ -63,13 +63,26 @@ export class SkinAnatomyScene extends OrganAnatomyScene {
       position: [-0.6, 5.2, 1.2],
       target: [-0.1, 0.6, 0.1],
     },
-    // Close on the follicle: gland into the follicle, follicle into the fat.
+    // The appendages on their own: gland into follicle, follicle into fat, and
+    // the sweat coil that opens somewhere else entirely.
+    //
+    // It used to hide nothing, and so was a viewpoint named for two structures
+    // that showed neither — both are inside three opaque slabs, so pressing it
+    // moved the camera a little and left the reader looking at the same block.
+    // The slider would have opened it, but a viewpoint that needs a second
+    // control before it means anything is not a viewpoint.
+    //
+    // Hiding only the layers was not enough either: the framing fits whatever
+    // is drawn, so with the vessels still in it this came out as `contents`
+    // from a slightly different angle — two viewpoints, one picture. What it
+    // hides is what it is not about.
     {
       id: 'follicle',
-      label: 'Follicle and sebaceous gland',
-      labelJa: '毛包と脂腺',
+      label: 'Follicle and glands',
+      labelJa: '毛包と腺',
       position: [-2.4, 1.9, 2.9],
       target: [-0.4, 0.2, 0.5],
+      hideTags: ['layer', 'supply'],
     },
     // Everything the layers were hiding, with the layers put away by tag.
     {

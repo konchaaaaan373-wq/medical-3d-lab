@@ -17,11 +17,17 @@
 範囲は臓器名では固定しません——**ゲートを通った解剖シーンから 1 つずつ**開きます
 （[ADR 2026-09-14](architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
 
-現在公開しているのは **9 件**です。脳に加えて、B1（肺・肝・腎）と
-B2（胃・食道・腸・胆道・膵）を 2026-09-14 に開きました。
+現在公開しているのは **10 件**です。脳に加えて、B1（肺・肝・腎）、
+B2（胃・食道・腸・胆道・膵）、B3（皮膚）を 2026-09-14 に開きました。
 記録は [`beta-publication/`](beta-publication/)、レンダーの証跡は
-[`screenshots/pub-b1/`](screenshots/pub-b1/) と
-[`screenshots/pub-b2/`](screenshots/pub-b2/) です。
+[`screenshots/pub-b1/`](screenshots/pub-b1/)、
+[`screenshots/pub-b2/`](screenshots/pub-b2/)、
+[`screenshots/pub-b3/`](screenshots/pub-b3/) です。
+
+**B3 は 3 件で始めて 1 件になりました。** 眼・耳・皮膚のどれも
+`verify:anatomy` を通りましたが、絵を見て眼と耳を外しています（F-109）。
+代わりに見つかったのは共有の framing で、**公開済み 9 件のうち 8 件・
+計 10 視点が枠から出ていました**（F-108）。
 
 **B2 が変えたのは「切断の描き方」です。** B1 で入れた断面は、中身のある臓器
 （肝・腎・膵）には正しく、**中空の臓器には嘘**でした——胃の冠状断が胃の輪郭を

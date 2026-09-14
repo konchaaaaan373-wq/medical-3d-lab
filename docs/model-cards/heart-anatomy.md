@@ -298,6 +298,14 @@ the Japanese names are deliberate but unreviewed.
   or zooming. The share is measured from pictures and is expected to be
   re-measured when the organ or the vessel subtree changes.
 
+  **The two numbers standing in the code today are not measurements.** The
+  shared fit stopped approximating a perspective camera with an orthographic
+  sum on 2026-09-14, which had been over-filling the band by about an eighth on
+  a subject as deep as this one; the shares were scaled by that much so the
+  composition the pictures were measured at survives the correction. They are
+  the first thing to check against pictures the next time this scene is
+  rendered — which is when its candidate assets pass the asset release gate.
+
   There are two of them, and the second one says why. On a frame taller than it
   is wide there is no panel down the side, so what runs out first is the
   subject's own shape — this heart is wider than it is tall. Measured at

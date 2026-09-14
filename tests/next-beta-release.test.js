@@ -43,6 +43,7 @@ test('next-beta: registering the policy changes nothing about what is published'
       'kidney-anatomy',
       'biliary-anatomy',
       'pancreas-anatomy',
+      'skin-anatomy',
     ]
   );
 });

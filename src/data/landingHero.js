@@ -122,6 +122,15 @@ export const HERO_ORGANS = Object.freeze([
     lineEn: 'Head, neck, body and tail, and a section that shows the duct running through the gland.',
     lineJa: '膵頭部・頸部・体部・尾部。断面では膵管が腺の中を走ります。',
   }),
+  Object.freeze({
+    organ: 'skin',
+    sceneId: 'skin-anatomy',
+    upgradeSceneId: 'skin-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'A block with its sides already cut: three layers, and two different routes out to the surface.',
+    lineJa: '側面を切り出した1ブロック。3つの層と、体表へ出る2つの経路。',
+  }),
 ]);
 
 /**

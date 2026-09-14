@@ -53,6 +53,24 @@ const B2_EVIDENCE = Object.freeze([
   'docs/screenshots/pub-b2/README.md',
 ]);
 
+/**
+ * What batch B3's one decision cites.
+ *
+ * B3 opened as three scenes and finished as one: the eye and the ear pass the
+ * interaction check and were held on what their renders showed (F-109), which
+ * is why the framing fix and the screenshots are part of this batch's evidence
+ * rather than a separate change.
+ */
+const B3_EVIDENCE = Object.freeze([
+  'scripts/check-anatomy-interaction.mjs',
+  'scripts/capture-anatomy-views.mjs',
+  'scripts/measure-anatomy-points.mjs',
+  'src/app/framing.js',
+  'tests/framing-subject.test.js',
+  'tests/organ-anatomy-scenes.test.js',
+  'docs/screenshots/pub-b3/README.md',
+]);
+
 const B1_EVIDENCE = Object.freeze([
   'scripts/check-anatomy-interaction.mjs',
   'scripts/capture-anatomy-views.mjs',
@@ -319,6 +337,32 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     unverified: Object.freeze([
       '4 of the 7 structures were not individually opened — the four recorded clicks land on three',
       'the gland is schematic and its duct is one channel standing for the main duct',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'no dimension is claimed',
+    ]),
+  }),
+  'skin-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Epidermis',
+        'Dermis',
+        'Subcutaneous tissue',
+        'Arteriole, selected from the tree and followed to its own viewpoint',
+        "the part tree's 10 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes — the block, the cut face, the surface, follicle and glands, and what goes through it',
+        'three of the five were changed because of what those renders showed, and the before and after of each is in docs/screenshots/pub-b3/',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B3_EVIDENCE,
+    unverified: Object.freeze([
+      'the four recorded click points resolve to fewer than four distinct structures: the block presents its epidermis to most of the frame',
+      '7 of the 10 structures were not individually opened',
+      "the sweat gland's coil is a displaced blob rather than a coil that reads as one, and the sebaceous gland is a single lobe",
+      'the layers are deliberately not to scale, and the gap drawn between the arteriole and the venule is a display value',
       'no clinical review — the registry records this scene as pending',
       'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
       'no dimension is claimed',

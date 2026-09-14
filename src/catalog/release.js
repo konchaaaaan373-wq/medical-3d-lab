@@ -150,6 +150,7 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'intestine-anatomy',
   'biliary-anatomy',
   'pancreas-anatomy',
+  'skin-anatomy',
 ]);
 
 /**
@@ -366,6 +367,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/pancreas-anatomy.md',
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: '6524d4694ca94e96' }),
+  }),
+  Object.freeze({
+    sceneId: 'skin-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B3 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/skin-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: 'a5928ea51c1db190' }),
   }),
 ]);
 

@@ -1305,15 +1305,13 @@ test('heart: the shared orbit floor stood between the framing and the camera', (
 
   const fitted = fitPoseToSafeArea(anterior, { bounds, aspect, fovDegrees, insets });
   const wanted = fitted.position.distanceTo(fitted.target);
-  assert.ok(
-    wanted < 5,
-    `the fit asks for a camera nearer than the shared floor (${wanted.toFixed(2)} < 5)`
-  );
-
-  // Which is the whole defect: with the shared limits the camera sits at five
-  // whatever the framing said, and the organ opens a fraction of the frame high.
   const shared = { minDistance: 5, maxDistance: 55 };
-  assert.equal(Math.max(shared.minDistance, wanted), 5, 'the shared floor overrules it');
+  // The whole organ asks for five and a whisker, having asked for 4.86 while
+  // the fit was an orthographic sum. It is not asserted against the floor —
+  // the two are within a hundredth of each other, and a test that turns on
+  // that is measuring arithmetic, not the defect. It is the close-up below
+  // that shows the floor in the way, and the floor is in the way of both.
+  assert.ok(wanted > 4 && wanted < 6, `the whole organ asks for about five (${wanted.toFixed(2)})`);
 
   // Measured from the subject instead, the floor is out of the way — of the
   // whole organ, and of one named structure, which is nearer still.
@@ -1323,6 +1321,11 @@ test('heart: the shared orbit floor stood between the framing and the camera', (
   const artery = built.getStructureBounds('VH_M_left_coronary_artery');
   const closeUp = fitPoseToSafeArea(anterior, { bounds: artery, aspect, fovDegrees, insets, coverage: 0.5 });
   const near = closeUp.position.distanceTo(closeUp.target);
+  // Which is the whole defect: with the shared limits the camera sits at five
+  // whatever the framing said, so "take me to this artery" stopped a long way
+  // short of the artery.
+  assert.ok(near < 5, `the fit asks for a camera nearer than the shared floor (${near.toFixed(2)} < 5)`);
+  assert.equal(Math.max(shared.minDistance, near), 5, 'the shared floor overrules it');
   assert.ok(
     limits.minDistance < near,
     `and out of the way of one structure too (${limits.minDistance.toFixed(2)} < ${near.toFixed(2)})`

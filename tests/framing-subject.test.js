@@ -121,6 +121,64 @@ test('framing: the subject lands inside the band the panels leave, and centred i
   assert.ok(Math.abs(centre.y - (band.bottom + band.top) / 2) < 0.02);
 });
 
+/**
+ * A cube, which is the shape that catches an orthographic fit on a perspective
+ * camera: its near face is as far in front of the centre as it is wide.
+ *
+ * The skin block is one — 3.2 across and 2.1 deep, framed from under four units
+ * away — and "the cut face" put the whole subcutaneous layer off the bottom of
+ * a frame the fit had just reported as fitting. Nothing in the app could see
+ * it: `tests/organ-anatomy-scenes.test.js` measures the *width* a scene needs,
+ * and this one overflowed downwards.
+ */
+const DEEP_SUBJECT = (() => {
+  const corners = [];
+  for (const x of [-1.6, 1.6]) {
+    for (const y of [-1.05, 1.05]) {
+      for (const z of [-1.6, 1.6]) corners.push(new Vector3(x, y, z));
+    }
+  }
+  return { centre: new Vector3(0, 0, 0), corners };
+})();
+
+test('framing: a subject as deep as it is wide still lands inside the band', () => {
+  // Including the inset sets that pan it: the pan moves a near corner further
+  // across the frame than it moves the centre, which is the second half of the
+  // same approximation and shows up on exactly these subjects.
+  for (const insets of [{ right: 0.275, top: 0.1 }, { right: 0.27, top: 0.09, bottom: 0.29 }, { left: 0.2, bottom: 0.3 }, {}]) {
+    const fitted = fitPoseToSafeArea(
+      { position: new Vector3(0.2, 0.4, 5.6), target: new Vector3(0.1, -0.05, 0) },
+      { bounds: DEEP_SUBJECT, aspect: BRAIN_ASPECT, fovDegrees: BRAIN_FOV, insets }
+    );
+    const band = {
+      left: -1 + 2 * (insets.left ?? 0),
+      right: 1 - 2 * (insets.right ?? 0),
+      bottom: -1 + 2 * (insets.bottom ?? 0),
+      top: 1 - 2 * (insets.top ?? 0),
+    };
+    for (const corner of DEEP_SUBJECT.corners) {
+      const { x, y } = projectPoint(fitted, corner);
+      assert.ok(x >= band.left && x <= band.right, `a near corner is inside the band horizontally (${x.toFixed(2)})`);
+      assert.ok(y >= band.bottom && y <= band.top, `a near corner is inside the band vertically (${y.toFixed(2)})`);
+    }
+  }
+});
+
+test('framing: fitting a deep subject does not throw the frame away', () => {
+  // The other half of the fix: pulling back far enough is easy, and pulling
+  // back too far is the "dashboard with a small model" this exists to stop.
+  const fitted = fitPoseToSafeArea(
+    { position: new Vector3(0.2, 0.4, 5.6), target: new Vector3(0.1, -0.05, 0) },
+    { bounds: DEEP_SUBJECT, aspect: BRAIN_ASPECT, fovDegrees: BRAIN_FOV, insets: {} }
+  );
+  let widest = 0;
+  for (const corner of DEEP_SUBJECT.corners) {
+    const { x, y } = projectPoint(fitted, corner);
+    widest = Math.max(widest, Math.abs(x), Math.abs(y));
+  }
+  assert.ok(widest > 0.6, `the subject still fills the frame it is given (${widest.toFixed(2)})`);
+});
+
 test('framing: fitting is a pan and a distance, never a rotation', () => {
   const fitted = fitPoseToSafeArea(BRAIN_LATERAL, {
     bounds: BRAIN_SUBJECT, aspect: BRAIN_ASPECT, fovDegrees: BRAIN_FOV, insets: { right: 0.27, bottom: 0.29 },

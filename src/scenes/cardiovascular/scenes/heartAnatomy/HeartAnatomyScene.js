@@ -35,8 +35,16 @@ import {
  * roots before they leave. Re-measure it if the organ or the vessel subtree
  * changes — it is a composition, not a constant of the anatomy, and nothing
  * medical is derived from it.
+ *
+ * Went 0.62 -> 0.70 with the shared default, and for the same reason: the fit
+ * stopped summing half-extents as if the camera were orthographic, which had
+ * been over-filling the band by about an eighth on a subject this deep. The
+ * number is scaled to hold the composition the pictures were measured at, not
+ * re-measured — **so it is the first thing to check against pictures the next
+ * time this scene is rendered**, which will be when its candidate assets pass
+ * the asset release gate.
  */
-const HEART_SUBJECT_COVERAGE = 0.62;
+const HEART_SUBJECT_COVERAGE = 0.7;
 
 /**
  * The same share on a frame that is taller than it is wide.
@@ -51,9 +59,11 @@ const HEART_SUBJECT_COVERAGE = 0.62;
  * the organ itself reaching an edge.
  *
  * It is the same kind of value as the one above and carries the same warning:
- * a composition measured from pictures, not a fact about the anatomy.
+ * a composition measured from pictures, not a fact about the anatomy — and the
+ * same note: 0.74 -> 0.83 is the shared framing's correction carried through,
+ * not a second measurement.
  */
-const HEART_SUBJECT_COVERAGE_PORTRAIT = 0.74;
+const HEART_SUBJECT_COVERAGE_PORTRAIT = 0.83;
 
 /**
  * Where "portrait" starts. The same threshold the shared framing already uses

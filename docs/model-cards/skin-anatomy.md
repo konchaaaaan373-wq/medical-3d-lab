@@ -40,7 +40,10 @@ below the epidermis. **10 structures are selectable.**
   the named sensory receptors, the lymphatics, the fibrous septa between fat
   lobules.
 - **One arteriole and one venule** stand for two plexuses that are not drawn
-  separately.
+  separately, and **the gap between them is a display value**: they are drawn
+  apart across the block, the venous side deeper, so that each can be seen and
+  selected. In life a companion artery and vein run against one another. **No
+  distance between these two vessels may be read off this model.**
 - **No disease**, and not anyone's skin.
 
 ## 4. Sources and licence
@@ -70,6 +73,11 @@ fat lobule is inside the subcutaneous compartment.
   itself, so a reader can point at either.
 - **The follicle and its hair are one structure**, because a hair is what a
   follicle produces and not a separate organ.
+- **A viewpoint hides what it is not about.** "Follicle and glands" takes the
+  layers *and* the vessels away; "what goes through it" takes only the layers.
+  Both had to: the appendages are inside three opaque slabs, so a viewpoint
+  named for them and hiding nothing was a picture of the block, and one hiding
+  only the layers was the other viewpoint from a slightly different angle.
 - **The frame follows the viewpoint.** The camera fits the organ into the part
   of the window nothing is covering — the parts panel is an overlay over the
   canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
@@ -91,5 +99,9 @@ planning any procedure. It carries no depth in millimetres and no threshold.
 
 **Catalog status:** `alpha`
 
-No clinical sign-off is recorded; the registry entry is `pending`, and the
-scene is not part of the public beta.
+No clinical sign-off is recorded and the registry entry is `pending`. The scene
+is in the **public beta** as of 2026-09-14 (batch B3) on an engineering
+acceptance only — see
+[`docs/beta-publication/skin-anatomy.md`](../beta-publication/skin-anatomy.md)
+for what that acceptance checked and what it did not. **No anatomist has looked
+at this geometry or these labels.**

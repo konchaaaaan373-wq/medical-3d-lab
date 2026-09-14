@@ -527,6 +527,38 @@ try {
     );
   }
   const atModel = (index) => modelPoints[index % modelPoints.length];
+  /**
+   * A point over the model **now**, rather than where it was at the opening.
+   *
+   * `modelPoints` is measured once, on the frame the scene opens at, and the
+   * checks below deliberately move the camera: selecting a structure takes the
+   * scene to that structure's `preferredView`, and a viewpoint may hide whole
+   * tags. On the skin block that is not a corner case — picking the arteriole
+   * from the tree switches to "what goes through it", which puts the three
+   * layers away, and every one of the four opening points is then background.
+   *
+   * A click on background clears the selection, so reusing a stale point does
+   * not merely miss: it empties the panel, and every check after it reads the
+   * instrument's own aim as a product defect. That is what "recolouring left 0
+   * rows marked selected" was on the skin — the recolouring was innocent and
+   * there had been nothing selected for three steps.
+   *
+   * So the point is asked for again. The measured ones are tried first, since
+   * they are usually still good and each costs one pointer move; then the same
+   * outward sweep the opening used, against whatever is on screen now.
+   */
+  const liveModelPoint = async (preferred = 0) => {
+    for (let i = 0; i < modelPoints.length; i += 1) {
+      const point = atModel(preferred + i);
+      if (await overModel(point[0], point[1])) return point;
+    }
+    for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+      for (const fx of spread.map((offset) => Math.min(0.96, Math.max(0.02, bandCentre + offset)))) {
+        if (await overModel(fx, fy)) return [fx, fy];
+      }
+    }
+    return null;
+  };
   // The farthest miss from the middle of what was found, not the first one: a
   // near miss beside a narrow subject is background now and may not be after a
   // drag, and the point is used to check that clicking nothing clears.
@@ -809,7 +841,15 @@ try {
   const pinnedName = async () =>
     (await page.locator('.anatomy-panel-name.lang-ja').first().textContent()).trim();
 
-  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  const labelPoint = await liveModelPoint(1);
+  if (!labelPoint) {
+    problems.push('nothing on screen is over the model by the time the label check runs');
+  }
+  await restPointer();
+  await page.mouse.click(
+    box.x + box.width * (labelPoint ?? atModel(1))[0],
+    box.y + box.height * (labelPoint ?? atModel(1))[1]
+  );
   await page.waitForTimeout(500);
   const pinnedForLabel = await pinnedName();
   const labelled = await labelTexts();
@@ -866,6 +906,12 @@ try {
   let settled = null;
   if (observed.colorModes.length > 1) {
     const beforeMode = await read();
+    // Said out loud, because "recolouring changed nothing" is also true of a
+    // panel that was already empty — and then the tree count below reads as a
+    // recolouring defect when the selection had been lost somewhere earlier.
+    if (beforeMode.en === EMPTY) {
+      problems.push('nothing was selected when the recolouring check ran, so it had nothing to preserve');
+    }
     await page.locator('.inspection-choice.inspection-mode').nth(1).click();
     await page.waitForTimeout(600);
     const afterMode = await read();
@@ -876,7 +922,7 @@ try {
     await tab('部位').click();
     await page.waitForTimeout(300);
     const stillOne = await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count();
-    if (observed.treeRows && stillOne !== 1) {
+    if (observed.treeRows && beforeMode.en !== EMPTY && stillOne !== 1) {
       problems.push(`recolouring left ${stillOne} rows marked selected in the tree`);
     }
     await tab('表示').click();

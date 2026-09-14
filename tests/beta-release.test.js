@@ -59,6 +59,7 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
       'intestine-anatomy',
       'biliary-anatomy',
       'pancreas-anatomy',
+      'skin-anatomy',
     ]
   );
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
@@ -94,11 +95,12 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
       'kidney-anatomy',
       'biliary-anatomy',
       'pancreas-anatomy',
+      'skin-anatomy',
     ]
   );
   assert.deepEqual(
     [...PUBLIC_MANIFEST.organs],
-    ['brain', 'lungs', 'stomach', 'esophagus', 'colon', 'liver', 'kidney', 'gallbladder', 'pancreas']
+    ['brain', 'lungs', 'stomach', 'esophagus', 'colon', 'liver', 'kidney', 'gallbladder', 'pancreas', 'skin']
   );
 });
 
@@ -467,6 +469,7 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
       'kidney-anatomy',
       'biliary-anatomy',
       'pancreas-anatomy',
+      'skin-anatomy',
     ]
   );
 

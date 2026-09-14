@@ -17,9 +17,9 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 19,
-    "modelDigest": "e70530f01379d8e2",
-    "cardUpdatedAt": "2026-09-10"
+    "cardRevision": 20,
+    "modelDigest": "2ee6da9104dd1c5a",
+    "cardUpdatedAt": "2026-09-14"
   },
   {
     "sceneId": "circulation",
@@ -534,8 +534,8 @@
       "src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "4eea63aaf72bc546",
+    "cardRevision": 6,
+    "modelDigest": "a5928ea51c1db190",
     "cardUpdatedAt": "2026-09-14"
   },
   {

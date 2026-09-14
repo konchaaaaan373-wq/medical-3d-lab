@@ -116,6 +116,10 @@ const BUILDERS = Object.freeze({
     const { buildPancreas } = await import('../scenes/hepatobiliary/organs/pancreas.js');
     return buildPancreas({});
   },
+  skin: async () => {
+    const { buildSkinBlock } = await import('../scenes/integumentary/organs/skinBlock.js');
+    return buildSkinBlock({});
+  },
   kidney: async (THREE) => {
     const { buildKidney } = await import('../scenes/renal/organs/kidney.js');
     const left = buildKidney({ side: 'left', opacity: 0.92 });
