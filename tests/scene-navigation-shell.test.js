@@ -125,7 +125,7 @@ test('scene navigation: the drawer names the same page the same way from every m
     );
 
   assert.deepEqual(labels(anatomy.element), labels(prototype.element));
-  assert.deepEqual(labels(anatomy.element), ['ホーム', 'モデル一覧', 'モデル情報', '実験モデル']);
+  assert.deepEqual(labels(anatomy.element), ['ホーム', '解剖モデル', 'モデル情報', '実験モデル']);
 });
 
 test('scene navigation: every model in scope is one link away', () => {
@@ -247,7 +247,12 @@ test('shell surfaces: every flat surface renders a route home', async () => {
 test('shell surfaces: no surface invents its own name for a shell destination', async () => {
   // The names these four pages used to use for the Explorer and for Lab. Each
   // was correct on the page that wrote it and wrong beside the next one.
-  const retired = ['Anatomy models', '解剖モデル', 'Browse public models', '公開モデルを見る',
+  // Names these pages used to use for the Explorer and for Lab. "All models /
+  // モデル一覧" is on the list too, and was briefly the official name: it is
+  // accurate in every scope, which is why it was chosen, and too general to
+  // stand beside the locked page's own "公開中のモデルを見る" without reading as a
+  // second destination. `shellDestinations.js` explains the trade.
+  const retired = ['All models', 'モデル一覧', 'Browse public models', '公開モデルを見る',
     'Public models', '公開モデル', 'Lab index', '実験モデル一覧', 'Model index', 'Experimental Lab', '実験室'];
 
   for (const [name, ui] of await renderFlatSurfaces()) {

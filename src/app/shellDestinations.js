@@ -26,7 +26,8 @@
  * exactly why it is an argument rather than an import.
  */
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
-import { MODEL_INFO_ROUTE } from '../catalog/publicManifest.js';
+import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { organById } from '../catalog/taxonomy.js';
 
 /**
  * @typedef {object} ShellDestination
@@ -42,16 +43,21 @@ import { MODEL_INFO_ROUTE } from '../catalog/publicManifest.js';
  * Home first: it is the one every surface must be able to reach, and a reader
  * looking for the way out looks at the start of a list, not the end.
  *
- * "All models / モデル一覧" rather than "Anatomy models / 解剖モデル": the
- * Explorer shows what the current scope opens, which is anatomy today and is
- * not anatomy in the Lab or after the beta. A name that is true in one scope
- * and wrong in the other is the drift this file exists to stop.
+ * "Anatomy models / 解剖モデル", not "All models / モデル一覧". The general name
+ * was the safer one to *write* — it stays true in the Lab and after the beta —
+ * but on the locked page it sat one line above "公開中のモデルを見る" and a list
+ * headed "いま見られるモデル", and three general names for one destination read
+ * as three destinations. The beta publishes anatomy and nothing else, so the
+ * specific name is both accurate and the one that stops the row competing with
+ * the page's own call to action. When the beta ends and the Explorer holds
+ * pathophysiology too, this line is what has to change — it is one line, and
+ * `tests/shell-navigation.test.js` will be the thing that notices.
  *
  * @type {ReadonlyArray<ShellDestination>}
  */
 export const SHELL_DESTINATIONS = Object.freeze([
   Object.freeze({ id: 'home', route: LANDING_ROUTE, en: 'Home', ja: 'ホーム' }),
-  Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'All models', ja: 'モデル一覧' }),
+  Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Anatomy models', ja: '解剖モデル' }),
   Object.freeze({
     id: 'model-info',
     route: MODEL_INFO_ROUTE,
@@ -123,4 +129,44 @@ export function shellDestinationProblems() {
     if (!destination.ja?.trim()) problems.push(`${where}: no Japanese label`);
   }
   return problems;
+}
+
+/**
+ * Where "go and look at something that works" should actually send somebody.
+ *
+ * The model index is the right answer when there is an index to look at. With
+ * exactly one model open — which is the public beta — it is a page holding one
+ * card, so sending a reader through it costs them a screen and tells them
+ * nothing. This returns the model itself in that case, named, so the button
+ * says what is on the other side of it.
+ *
+ * Derived from `PUBLIC_MANIFEST`, never from a list written here: the moment
+ * `heart-anatomy` opens, this becomes the index again with no edit. That is the
+ * same rule the Explorer's own beta copy follows, and the reason the locked
+ * page's prose was wrong — it said "the brain and the heart" over a beta that
+ * publishes one organ.
+ *
+ * @param {{models?: ReadonlyArray<object>}} [manifest]
+ * @returns {{route:string, en:string, ja:string, sceneId:string|null}}
+ */
+export function openModelDestination(manifest = PUBLIC_MANIFEST) {
+  const models = manifest?.models ?? [];
+  const index = {
+    route: EXPLORER_ROUTE,
+    en: 'Open the models that are ready',
+    ja: '公開中のモデルを見る',
+    sceneId: null,
+  };
+  if (models.length !== 1) return index;
+
+  const [only] = models;
+  const organ = organById(only.organId);
+  const organEn = organ?.label ?? only.organId;
+  const organJa = organ?.labelJa ?? only.organLabelJa ?? only.organId;
+  return {
+    route: only.route,
+    en: `Open the 3D ${organEn.toLowerCase()} model`,
+    ja: `${organJa}の3Dモデルを見る`,
+    sceneId: only.sceneId,
+  };
 }

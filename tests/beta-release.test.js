@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { PUBLIC_SCENES, SCENES, sceneById } from '../src/catalog/index.js';
+import { EXPLORER_ROUTE, ORGANS, PUBLIC_SCENES, SCENES, sceneById } from '../src/catalog/index.js';
 import { DEFAULT_SCENE_ID } from '../src/catalog/index.js';
 import {
   BETA_ANATOMY_CANDIDATES,
@@ -495,8 +495,10 @@ test('beta release: a locked deep link still answers as a page', () => {
     const surface = createLockedSurface({ ui, route: resolveRoute('#/copd') });
     const text = collect(surface.element).join(' ');
 
-    assert.match(text, /TO BE UPDATED/);
-    assert.match(text, /準備中/);
+    // "In development" rather than "TO BE UPDATED": the page is read by
+    // somebody who followed a link to a model, not by whoever is building it.
+    assert.match(text, /In development/);
+    assert.match(text, /開発中/);
     assert.match(text, /COPD/, 'the page says what the link pointed at');
 
     // Every link it offers has to be a route the beta actually opens.
@@ -505,7 +507,35 @@ test('beta release: a locked deep link still answers as a page', () => {
     for (const href of hrefs) {
       assert.equal(isRouteReleased(resolveRoute(href)), true, href);
     }
-    assert.ok(hrefs.includes('#/organs'), 'the way out is the open catalogue');
+    assert.ok(hrefs.includes(EXPLORER_ROUTE), 'the open catalogue is reachable from the header');
+
+    // The page's own explanation says nothing about what the beta publishes.
+    //
+    // It used to open with "the beta is the 3D anatomy of the brain and the
+    // heart" over a beta that publishes one organ. There is no sentence to keep
+    // in step now: the only thing on the page that names a published model is
+    // the button, and the button is generated from the manifest.
+    //
+    // Scoped to that paragraph on purpose. The scene's own description names its
+    // own organ — this COPD page says "12 単位の肺モデル" — and that is the
+    // subject the reader followed a link to, not a claim that it is open.
+    const explanation = findByClass(surface.element, 'locked-copy')
+      .flatMap((node) => collect(node))
+      .join(' ');
+    assert.ok(explanation.length > 0, 'the page explains itself');
+    const published = new Set(PUBLIC_MANIFEST.organs);
+    for (const organ of ORGANS) {
+      if (published.has(organ.id)) continue;
+      assert.equal(
+        explanation.includes(organ.labelJa),
+        false,
+        `the explanation names "${organ.labelJa}", which the manifest does not publish`
+      );
+    }
+    assert.ok(
+      hrefs.includes(PUBLIC_MANIFEST.models[0].route),
+      'and its primary action goes straight to the one model that is open'
+    );
   } finally {
     restoreDocument();
   }
@@ -519,7 +549,7 @@ test('beta release: the locked route names the surface even when it is not a sce
     const ui = new FakeElement('div');
     const surface = createLockedSurface({ ui, route: resolveRoute('#/lab') });
     const text = collect(surface.element).join(' ');
-    assert.match(text, /TO BE UPDATED/);
+    assert.match(text, /In development/);
     assert.match(text, /Experimental Lab/);
   } finally {
     restoreDocument();

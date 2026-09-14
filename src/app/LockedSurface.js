@@ -1,13 +1,7 @@
-import {
-  EXPLORER_ROUTE,
-  LANDING_ROUTE,
-  sceneById,
-  sceneRoute,
-  systemById,
-} from '../catalog/index.js';
-import { RELEASED_SCENES } from '../catalog/release.js';
+import { LANDING_ROUTE, sceneById, systemById } from '../catalog/index.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { shellNavAnchors } from '../components/ShellNav.js';
+import { openModelDestination } from './shellDestinations.js';
 import { el, skipLink } from '../utils/dom.js';
 
 /**
@@ -42,10 +36,8 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
   const titleEn = scene?.titleEn ?? (route.kind === 'lab' ? 'Experimental Lab' : 'Medical 3D Lab');
   const titleJa = scene?.titleJa ?? (route.kind === 'lab' ? '実験モデル' : 'Medical 3D Lab');
 
-  // Three open models to land on rather than one, so the page is a way in and
-  // not just a dead end. Anything released will do; the first three in
-  // catalogue order are the brain atlas and two of the heart models.
-  const suggestions = RELEASED_SCENES.slice(0, 3);
+  // Where "go and look at something that works" goes, named from the manifest.
+  const openModel = openModelDestination();
 
   const element = el('main', { class: 'locked-surface', role: 'main' }, [
     el('header', { class: 'locked-nav' }, [
@@ -64,8 +56,8 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
       'data-skip-target': '',
     }, [
       el('p', { class: 'locked-badge' }, [
-        el('span', { class: 'lang-en', text: 'TO BE UPDATED' }),
-        el('span', { class: 'lang-ja', text: 'TO BE UPDATED — 準備中' }),
+        el('span', { class: 'lang-en', text: 'In development' }),
+        el('span', { class: 'lang-ja', text: '開発中' }),
       ]),
       system
         ? el('p', { class: 'locked-system' }, dual(system.label, system.labelJa))
@@ -80,49 +72,46 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
             el('span', { class: 'lang-ja', text: scene.descriptionJa }),
           ])
         : null,
+      // Two sentences, and neither of them is about how this repository works.
+      //
+      // What stood here explained publication decisions, geometry provenance and
+      // that "everything on screen is a claim" — true, and addressed to us
+      // rather than to the person who followed a link to a model that is not
+      // ready. It also opened by saying the beta publishes "the brain and the
+      // heart", which was simply false: the beta publishes one organ. Nothing
+      // here states what is published any more, because the button below names
+      // it, and a button cannot drift from the manifest the way a sentence can.
       el('p', { class: 'locked-copy' }, [
         el('span', {
           class: 'lang-en',
           text:
-            'Medical 3D Lab is in beta, and the beta is the 3D anatomy of the brain and the heart. '
-            + 'The disease and physiology models — this one included — are still being built and are '
-            + 'not published yet. A model is opened once its geometry, its sources and its licence are '
-            + 'on the record and a publication decision names the exact file being served — not '
-            + 'before, because everything on screen is a claim.',
+            'This model is still in development. It opens once its medical content '
+            + 'and the licence of the material it is built from have been checked.',
         }),
         el('span', {
           class: 'lang-ja',
           text:
-            'Medical 3D Lab は現在β版で、公開しているのは脳と心臓の3D解剖モデルです。'
-            + 'このモデルを含む病態・生理のモデルは開発中で、まだ公開していません。'
-            + 'ジオメトリの出典とライセンスを記録し、実際に配信しているファイルに結びつけた'
-            + '公開判断が揃ってから公開します。画面に出るものはすべて主張だからです。',
+            'このモデルは現在開発中です。'
+            + '医学的内容と素材ライセンスの確認後に公開します。',
         }),
       ]),
+      // One way on, and one way back. There used to be four things here — this
+      // pair, a separate "Open now" list of three model links, and the shell row
+      // in the header — all of them offering some version of "go to the models".
+      // The primary one now goes to the model itself rather than by way of an
+      // index holding a single card; `openModelDestination` becomes the index
+      // again on its own when a second model opens.
       el('div', { class: 'locked-actions' }, [
-        link(EXPLORER_ROUTE, 'Open the models that are ready', '公開中のモデルを見る', 'locked-link primary'),
-        link(LANDING_ROUTE, 'Home', 'ホーム'),
+        link(openModel.route, openModel.en, openModel.ja, 'locked-link primary'),
+        link(LANDING_ROUTE, 'Home', 'ホームへ'),
       ]),
-      suggestions.length
-        ? el('div', { class: 'locked-suggestions' }, [
-            el('p', { class: 'locked-suggestions-title' }, dual('Open now', 'いま見られるモデル')),
-            el('ul', { class: 'locked-suggestion-list' }, suggestions.map((released) =>
-              el('li', {}, [
-                el('a', { class: 'locked-suggestion', href: sceneRoute(released) }, [
-                  el('span', { class: 'lang-en', text: released.titleEn }),
-                  el('span', { class: 'lang-ja', text: released.titleJa }),
-                ]),
-              ])
-            )),
-          ])
-        : null,
     ].filter(Boolean)),
   ]);
 
   ui.classList.add('has-locked-surface');
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = `${titleEn} — to be updated / 準備中`;
+  document.title = `${titleEn} — in development / 開発中`;
 
   return {
     element,
