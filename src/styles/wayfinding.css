@@ -262,3 +262,81 @@
   display: inline-flex;
   align-items: center;
 }
+
+/* --------------------------------------------------------------------------
+   Narrow headers: the row takes the space it needs
+   --------------------------------------------------------------------------
+   Three surfaces put the shell's links in a corner sized for the two they used
+   to hold. A third link does not fit there, and because each link is now
+   `nowrap`, what happens instead of a wrap is that flex shrinks every link
+   below its own text and the words run into one another. Measured on a preview
+   build at 320px: "モデル情報" and "実験モデル" overlapped outright.
+
+   Each of the three is answered the same way — stop the links shrinking, let
+   the row wrap, and give the row somewhere to wrap *into*.
+   -------------------------------------------------------------------------- */
+
+/* 1. The full Explorer. Its header actions are absolutely positioned into a
+      corner the header reserves 68px for; a second row there would be cut off
+      by the header's own `overflow: clip`. Narrow, it stops being a corner and
+      becomes the header's first row, which is where every other surface in the
+      product puts it. */
+@media (max-width: 720px) {
+  .explorer-header {
+    padding-top: 20px;
+  }
+
+  .explorer-header .explorer-header-actions {
+    position: static;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    /* 10px, not the desktop 14: measured at 375px the row is 306px of an
+       available 313, so a wider gap costs a second row on the commonest phone
+       for no gain. Below that it wraps, which is the point. */
+    gap: 6px 10px;
+    margin-bottom: 16px;
+  }
+}
+
+.explorer-header-actions > * {
+  flex: 0 0 auto;
+}
+
+/* 2. The locked page. `.locked-nav` is a flex row that never wrapped, so the
+      "links get their own row" rule below 640px could not take effect and the
+      links wrapped inside their own box instead — a cramped two-line block
+      wedged between the wordmark and the account controls. */
+.locked-nav {
+  flex-wrap: wrap;
+}
+
+/* 3. Trust hid its whole link row below 720px. That was survivable when the
+      row was a convenience; it is not now that the row is how a reader gets
+      home from this page — a phone was left with the wordmark and nothing
+      else. The row moves under the wordmark rather than disappearing. */
+@media (max-width: 720px) {
+  .trust-nav {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'brand actions'
+      'links links';
+    align-items: center;
+    row-gap: 4px;
+    padding-block: 10px;
+  }
+
+  .trust-brand {
+    grid-area: brand;
+  }
+
+  .trust-nav-actions {
+    grid-area: actions;
+  }
+
+  .trust-nav-links {
+    display: flex;
+    grid-area: links;
+    flex-wrap: wrap;
+    gap: 2px 16px;
+  }
+}

@@ -514,6 +514,13 @@ export function createExplorer({
   // rather than this element, so it lands past the search and the jump links.
   const element = el('main', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
     el('header', { class: 'panel explorer-header' }, [
+      // First in the DOM, not last. It is painted in the top-right corner by
+      // `position: absolute`, and a control that is visually first and last in
+      // the tab order is the focus-order failure WCAG 2.4.3 is about. It also
+      // lets the narrow layout drop the absolute positioning and let this row
+      // take the space it needs, instead of crushing its links into each other
+      // — measured at 320px, "モデル情報" and "実験モデル" overlapped.
+      headerActions,
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
       el('h1', { class: 'title' }, [
         el('span', { class: 'lang-en', text: headerTitle[0] }),
@@ -527,7 +534,6 @@ export function createExplorer({
       useLanes,
       search.element,
       jump,
-      headerActions,
     ]),
     libraryShelf,
     noResults,

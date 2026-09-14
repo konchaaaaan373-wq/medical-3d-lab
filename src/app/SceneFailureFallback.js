@@ -1,10 +1,5 @@
-import {
-  EXPLORER_ROUTE,
-  LAB_ROUTE,
-  LANDING_ROUTE,
-  sceneById,
-  statusById,
-} from '../catalog/index.js';
+import { sceneById, statusById } from '../catalog/index.js';
+import { shellNavLinks } from './shellDestinations.js';
 import { betaUnlocked } from './releaseGate.js';
 import { sceneFailureGuidance } from './sceneFailureGuidance.js';
 import { createManualRetry } from './sceneShellBridge.js';
@@ -88,11 +83,20 @@ export function createSceneFailureFallback({
         el('span', { class: 'lang-en', text: guidance.helpEn }),
         el('span', { class: 'lang-ja', text: guidance.helpJa }),
       ]),
+      // The reader is here because the 3D would not start, so this is the one
+      // surface where the way out matters most — and it was the last one still
+      // inventing its own names for it ("Browse public models", "実験室"). The
+      // shell's vocabulary is in `shellDestinations.js`; retry stays first
+      // because retrying is what this page is actually offering.
       el('div', { class: 'scene-fallback-actions' }, [
         retry,
-        link(EXPLORER_ROUTE, 'Browse public models', '公開モデルを見る', true),
-        link(LANDING_ROUTE, 'Home', 'ホーム'),
-        betaUnlocked() ? link(LAB_ROUTE, 'Experimental Lab', '実験室') : null,
+        ...shellNavLinks({ current: null, labUnlocked: betaUnlocked() }).map((destination) =>
+          // The model index is the emphasised one here, not the first one: this
+          // page's own sentence says model information and the public model
+          // list still work, and for several failure reasons there is no retry
+          // button above them to carry the emphasis instead.
+          link(destination.route, destination.en, destination.ja, destination.id === 'models')
+        ),
       ].filter(Boolean)),
     ]),
   ]);

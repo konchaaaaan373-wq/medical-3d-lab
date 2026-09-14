@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../src/catalog/index.js';
 import { MODEL_INFO_ROUTE } from '../src/catalog/publicManifest.js';
 import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
+import { shellNavLinks } from '../src/app/shellDestinations.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
@@ -147,4 +148,142 @@ test('scene navigation: every model in scope is one link away', () => {
   );
   assert.equal(current.length, 1, 'exactly one row is marked as where you already are');
   assert.equal(current[0].getAttribute('aria-current'), 'page');
+});
+
+/**
+ * The same invariant, measured on what the surfaces actually render.
+ *
+ * `shell-navigation.test.js` holds the vocabulary; it cannot tell whether a
+ * surface calls it. That gap was real: the scene-failure fallback — the page a
+ * reader meets when the 3D will not start, so the one where the way out matters
+ * most — kept its own names for two of these routes through the first pass, and
+ * the legal page's only check was that its source mentioned the helper, which
+ * its import line satisfies on its own.
+ */
+
+const renderFlatSurfaces = async () => {
+  const { createLegal } = await import('../src/app/Legal.js');
+  const { createTrust } = await import('../src/app/Trust.js');
+  const { createLockedSurface } = await import('../src/app/LockedSurface.js');
+  const { createSceneFailureFallback } = await import('../src/app/SceneFailureFallback.js');
+  const { resolveRoute } = await import('../src/app/router.js');
+  const { RELEASED_SCENES } = await import('../src/catalog/release.js');
+
+  const restore = installFakeDocument();
+  globalThis.document.documentElement = new FakeElement('html');
+  // `releaseGate.betaUnlocked()` reads `window.location.search`; with no window
+  // there is nothing to read and these surfaces cannot mount at all. An empty
+  // search is the locked answer, which is what the beta gives a reader.
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    location: { search: '', hash: '' },
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+  };
+  try {
+    const surfaces = [];
+    for (const [name, mount] of [
+      ['legal', (ui) => createLegal({ ui, docId: 'terms' })],
+      ['trust', (ui) => createTrust({ ui })],
+      ['locked', (ui) => createLockedSurface({ ui, route: resolveRoute('#/copd') })],
+      ['scene failure fallback', (ui) =>
+        createSceneFailureFallback({ ui, sceneId: RELEASED_SCENES[0].id })],
+    ]) {
+      const ui = new FakeElement('div');
+      await mount(ui);
+      surfaces.push([name, ui]);
+    }
+    return surfaces;
+  } finally {
+    restore();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+};
+
+const allHrefs = (root) => {
+  const found = [];
+  const visit = (node) => {
+    if (!(node instanceof FakeElement)) return;
+    const href = node.getAttribute?.('href');
+    if (node.tagName === 'A' && href) found.push(href);
+    node.children.forEach(visit);
+  };
+  visit(root);
+  return found;
+};
+
+/**
+ * The text of every link on the surface.
+ *
+ * Links only, deliberately. The rule is about what a *destination is called*,
+ * not about prose: the locked page's body explains that the beta publishes
+ * "脳と心臓の3D解剖モデル", which is a true sentence about the product and not a
+ * second name for the Explorer.
+ */
+const linkLabels = (root) => {
+  const labels = [];
+  const visit = (node, insideLink) => {
+    if (!(node instanceof FakeElement)) return;
+    const isLink = node.tagName === 'A';
+    if (isLink) labels.push('');
+    if (node.textContent && (insideLink || isLink)) {
+      labels[labels.length - 1] += node.textContent;
+    }
+    node.children.forEach((child) => visit(child, insideLink || isLink));
+  };
+  visit(root, false);
+  return labels;
+};
+
+test('shell surfaces: every flat surface renders a route home', async () => {
+  for (const [name, ui] of await renderFlatSurfaces()) {
+    assert.ok(
+      allHrefs(ui).includes(LANDING_ROUTE),
+      `${name} offers no route home — the wordmark is not one, it is a title`
+    );
+  }
+});
+
+test('shell surfaces: no surface invents its own name for a shell destination', async () => {
+  // The names these four pages used to use for the Explorer and for Lab. Each
+  // was correct on the page that wrote it and wrong beside the next one.
+  const retired = ['Anatomy models', '解剖モデル', 'Browse public models', '公開モデルを見る',
+    'Public models', '公開モデル', 'Lab index', '実験モデル一覧', 'Model index', 'Experimental Lab', '実験室'];
+
+  for (const [name, ui] of await renderFlatSurfaces()) {
+    for (const label of linkLabels(ui)) {
+      for (const retiredName of retired) {
+        assert.equal(
+          label.includes(retiredName),
+          false,
+          `${name} still offers a link called "${label}" — shellDestinations.js is meant to be the only namer`
+        );
+      }
+    }
+  }
+});
+
+test('shell surfaces: the scene-failure fallback offers the shell row, not its own', async () => {
+  const surfaces = await renderFlatSurfaces();
+  const [, fallback] = surfaces.find(([name]) => name === 'scene failure fallback');
+  const hrefs = allHrefs(fallback);
+
+  // `betaUnlocked()` is false under `node --test`, so Lab is withheld — which is
+  // the same answer the locked beta gives a reader in a browser.
+  assert.deepEqual(
+    hrefs,
+    shellNavLinks({ current: null, labUnlocked: false }).map((link) => link.route)
+  );
+});
+
+test('shell surfaces: a legal document offers model information, in the rendered page', async () => {
+  const surfaces = await renderFlatSurfaces();
+  const [, legal] = surfaces.find(([name]) => name === 'legal');
+  const modelInfo = shellNavLinks({ current: null }).find((link) => link.id === 'model-info');
+
+  assert.ok(allHrefs(legal).includes(modelInfo.route), 'the route is offered');
+  assert.ok(
+    linkLabels(legal).some((label) => label.includes(modelInfo.ja)),
+    'and it is called what the shell calls it'
+  );
 });

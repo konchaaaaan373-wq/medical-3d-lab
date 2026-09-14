@@ -64,13 +64,14 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
   assert.match(trust, /モデルの公開状態と医学レビュー/);
   assert.doesNotMatch(trust, /Maturity and medical review are different claims/);
   // The legal documents still reach model information — they just no longer
-  // spell the label themselves. `app/shellDestinations.js` owns the shell's
-  // vocabulary, so the check is that the page renders that row, not that this
-  // file happens to contain the words.
-  assert.match(legal, /shellNavAnchors/);
-  assert.ok(
-    shellNavLinks({ current: null }).some((link) => link.id === 'model-info'),
-    'a legal document offers model information'
+  // spell the label themselves; `app/shellDestinations.js` owns the shell's
+  // vocabulary now. Reading the source for the helper's name would be a check
+  // the import line alone passes, so what a legal page actually renders is
+  // asserted against the mounted DOM in `tests/scene-navigation-shell.test.js`.
+  // What is left here is this file's own subject: the page still says it.
+  assert.equal(
+    shellNavLinks({ current: null }).find((link) => link.id === 'model-info')?.ja,
+    'モデル情報'
   );
   assert.match(css, /\.legal-body p\s*\{[^}]*font-size:\s*16px/s);
 });
