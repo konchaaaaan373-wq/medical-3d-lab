@@ -900,6 +900,22 @@ try {
         // The close control is above the scrolling body, so a reader four
         // hundred rows down does not have to scroll back to leave.
         closeAboveBody: close.getBoundingClientRect().bottom <= body.getBoundingClientRect().top + 1,
+        // The sheet's own chrome, at a phone width. `check-viewports` measures
+        // the page as it stands and cannot open a dialog; these are the only
+        // controls on a phone that reach the three actions at all, and they
+        // shipped at 32px. The 271-row part tree is deliberately not here —
+        // `PHONE_TARGET.exemptions` says why it stays at the dense 32.
+        smallChrome: window.innerWidth > 430
+          ? []
+          : [...document.querySelectorAll(
+              '.anatomy-panel-action, .anatomy-panel-tab, .anatomy-panel-close, .anatomy-search-input'
+            )]
+            .filter((node) => !node.hidden)
+            .map((node) => [node, node.getBoundingClientRect()])
+            .filter(([, box]) => box.width > 0 && box.height > 0 && Math.min(box.width, box.height) + 0.5 < 44)
+            .map(([node, box]) =>
+              `${(node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 16) || node.className} ` +
+              `${Math.round(box.width)}×${Math.round(box.height)}`),
       };
     });
     if (opened.open !== 'open') problems.push('the Parts button did not open the sheet');
@@ -909,6 +925,9 @@ try {
     if (!opened.summaryOutsideBody) problems.push('the selection summary is inside the scrolling body');
     if (!opened.summaryUsable) problems.push('the selection summary is off screen or covered while the sheet is open');
     if (!opened.isolateUsable) problems.push('a main action is off screen or covered while the sheet is open');
+    if (opened.smallChrome?.length) {
+      problems.push(`the sheet's own controls are under 44px on a phone: ${opened.smallChrome.join('; ')}`);
+    }
     if (!opened.closeAboveBody) problems.push('the close control is inside the scrolling list rather than above it');
 
     // And the ring does not run off the end. Tab from the last stop and

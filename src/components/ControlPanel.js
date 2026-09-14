@@ -1,4 +1,5 @@
 import { el, ICONS } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 /** Social-friendly export sizes. Rendered off-screen, so the window can stay any size. */
 export const CAPTURE_PRESETS = [
@@ -68,8 +69,18 @@ export function createControlPanel({
     value: '0',
     // Not "disease progression": these scenes model a physical process
     // (aggregation, remodelling), not clinical severity.
-    'aria-label': meta.progressLabel?.label ?? 'Model progression',
+    // One language, the one on screen: the scene's data carries both.
+    'aria-label': inLanguage(
+      meta.progressLabel?.label ?? 'Model progression',
+      meta.progressLabel?.labelJa ?? 'モデルの進行'
+    ),
     on: { input: (event) => onSeek(Number(event.target.value) / 1000) },
+  });
+  onLanguageChange(() => {
+    slider.setAttribute(
+      'aria-label',
+      inLanguage(meta.progressLabel?.label ?? 'Model progression', meta.progressLabel?.labelJa ?? 'モデルの進行')
+    );
   });
 
   // Not "Play": the heart beats on its own the whole time, and calling this
@@ -77,7 +88,10 @@ export function createControlPanel({
   // axis — the remodelling trajectory — from Normal to HFrEF.
   const playButton = progressionEnabled ? button('play', ['Progression', '進行'], onToggle, 'utility') : null;
   if (playButton) {
-    playButton.element.title = 'Step through the remodelling stages automatically. The heart beats regardless.';
+    playButton.setTitle(
+      'Step through the remodelling stages automatically. The heart beats regardless.',
+      'リモデリングの段階を自動で進めます。心臓はそれとは無関係に拍動し続けます。'
+    );
   }
 
   // Only scenes that ship a guided sequence get the button.
@@ -150,7 +164,7 @@ export function createControlPanel({
    * pair costs, so the row still fits on one line.
    */
   const frameButton = button('frame', ['View', '視点'], onResetView, 'utility');
-  frameButton.element.title = 'Back to the framing the scene sets (also resets the zoom)';
+  frameButton.setTitle('Back to the framing the scene sets (also resets the zoom)', 'このシーンが決めた視点に戻す（ズームも戻ります）');
   const zoomOutButton = onZoom ? button('zoomOut', ['Zoom out', '縮小'], () => onZoom(-1), 'utility') : null;
   const zoomInButton = onZoom ? button('zoomIn', ['Zoom in', '拡大'], () => onZoom(1), 'utility') : null;
   const cameraGroup = onZoom
@@ -158,8 +172,8 @@ export function createControlPanel({
     : frameButton.element;
   if (onZoom) {
     for (const b of [zoomOutButton, frameButton, zoomInButton]) b.element.classList.add('compact');
-    zoomOutButton.element.title = 'Zoom out — see more of the surrounding vessels (−)';
-    zoomInButton.element.title = 'Zoom in — fill the frame with the chamber (+)';
+    zoomOutButton.setTitle('Zoom out — see more of the surrounding vessels (−)', '縮小 — 周囲の血管まで広く見る（−）');
+    zoomInButton.setTitle('Zoom in — fill the frame with the chamber (+)', '拡大 — 内腔で画面を満たす（＋）');
   }
 
   // One quiet entry to the advanced display surface. Keeping the panel closed
@@ -323,6 +337,9 @@ function createCaptureButton(onCapture) {
  * @param {[string, string]} labels [English, Japanese] — both are rendered and CSS picks one
  */
 function button(iconName, labels, onClick, variant = '') {
+  // What the `title` should say right now, in both languages. Starts as the
+  // label and is replaced by `setLabel` or by a scene's own `setTitle`.
+  let titles = [labels[0], labels[1]];
   const iconSpan = el('span', { class: 'btn-icon', html: ICONS[iconName] });
   const labelEn = el('span', { class: 'btn-label lang-en', text: labels[0] });
   const labelJa = el('span', { class: 'btn-label lang-ja', text: labels[1] });
@@ -331,7 +348,11 @@ function button(iconName, labels, onClick, variant = '') {
     {
       class: `btn ${variant}`.trim(),
       type: 'button',
-      title: labels[0],
+      // The label is in the DOM twice and CSS hides one; a `title` holds one
+      // string, so it holds the one on screen. Repainted below when the
+      // interface flips, because `inLanguage` answers for the moment it is
+      // called and the row outlives that moment.
+      title: inLanguage(labels[0], labels[1]),
       // A stable name for the control, which neither the label nor the title
       // is: a scene may retitle "Zoom in" to "Zoom in — fill the frame with the
       // chamber (+)", and the row's order changes with which controls a scene
@@ -342,6 +363,9 @@ function button(iconName, labels, onClick, variant = '') {
     },
     [iconSpan, labelEn, labelJa]
   );
+  onLanguageChange(() => {
+    element.title = inLanguage(titles[0], titles[1]);
+  });
   return {
     element,
     setIcon: (name) => {
@@ -350,7 +374,13 @@ function button(iconName, labels, onClick, variant = '') {
     setLabel: ([en, ja]) => {
       labelEn.textContent = en;
       labelJa.textContent = ja;
-      element.title = en;
+      titles = [en, ja];
+      element.title = inLanguage(en, ja);
+    },
+    /** A scene's own wording for this control, in both languages. */
+    setTitle: (en, ja) => {
+      titles = [en, ja];
+      element.title = inLanguage(en, ja);
     },
   };
 }

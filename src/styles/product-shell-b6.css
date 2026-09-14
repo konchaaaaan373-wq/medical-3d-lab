@@ -699,6 +699,17 @@
   font-size: 11.5px;
   white-space: nowrap;
 }
+/* Gone while the part sheet is open. The sheet is a modal at `z-index: 40` and
+   the hint is at 8, so today it is merely hidden behind it rather than printed
+   over it — but "how to rotate the model" is a first-use hint, and somebody who
+   has opened the part list is past first use. Leaving it there is one more
+   fixed element stacked under a dialog for no reason. `:has()` because the
+   state lives on the panel; a browser without it keeps today's behaviour, which
+   is not wrong, only untidy. */
+#ui:has(.anatomy-panel[data-sheet='open']) .anatomy-shell-gesture-hint {
+  display: none;
+}
+
 .anatomy-shell-gesture-hint .gesture-touch { display: none; }
 @media (pointer: coarse) {
   .anatomy-shell-gesture-hint .gesture-pointer { display: none; }
@@ -801,8 +812,10 @@
     font-size: 11px;
   }
 
+  /* 94px of console here, 14px off the bottom. Same reasoning as the portrait
+     block below; the numbers differ because the bar does. */
   .anatomy-shell-gesture-hint {
-    bottom: max(58px, calc(env(safe-area-inset-bottom) + 54px));
+    bottom: max(120px, calc(env(safe-area-inset-bottom) + 114px));
     font-size: 10px;
   }
 }
@@ -927,7 +940,10 @@
     align-items: center;
     flex-wrap: wrap;
     gap: 8px;
-    padding-bottom: 7px;
+    /* Both edges. With only the bottom set, the placeholder line — which is a
+       whole sentence rather than a name, and so wraps — sat flush against the
+       card's top edge and had the tops of its glyphs cut by it. */
+    padding-block: 8px 7px;
   }
 
   #ui[data-anatomy] .anatomy-panel[data-layout='sheet'][data-sheet='closed'] .anatomy-panel-heading {
@@ -949,6 +965,16 @@
     min-height: 44px;
     padding: 0 14px;
     justify-content: center;
+  }
+
+  /* The disclosure's top border separates it from the title *above* it. On a
+     phone the title has moved inside the disclosure, so there is nothing above
+     it to separate from and the border is a 59 px line floating over the model
+     with one end in mid-air. */
+  #ui[data-anatomy] .title-card .anatomy-shell-about,
+  #ui[data-anatomy-shell='calm'] .title-card .anatomy-shell-about {
+    margin-top: 0;
+    border-top: 0;
   }
 
   /* Chrome, not content: one short row under the card rather than a stack. */
@@ -1028,6 +1054,17 @@
   #ui[data-anatomy] .console .slider,
   #ui[data-anatomy-shell='calm'] .console .slider {
     width: 100%;
+  }
+
+  /* The first-use gesture hint floats over the model. On a phone the console
+     grew to the full width and a taller slider row, and the hint's 72px stayed
+     where it was — so the sentence telling somebody how to rotate the model was
+     printed across the slider they were meant to be able to see. It belongs
+     above the bar: 111px of console plus the 12px it stands off the bottom,
+     and a gap. `check-viewports.mjs` measures the two boxes against each other
+     so a console that grows again fails rather than reprints this. */
+  .anatomy-shell-gesture-hint {
+    bottom: max(136px, calc(env(safe-area-inset-bottom) + 130px));
   }
 }
 

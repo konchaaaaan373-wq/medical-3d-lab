@@ -8,6 +8,7 @@ import {
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
+import { inLanguage } from '../utils/language.js';
 
 /**
  * What a locked route answers with during the beta.
@@ -48,7 +49,7 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
 
   const element = el('main', { class: 'locked-surface', role: 'main' }, [
     el('header', { class: 'locked-nav' }, [
-      el('a', { class: 'locked-brand', href: LANDING_ROUTE, 'aria-label': 'Medical 3D Lab home' }, [
+      el('a', { class: 'locked-brand', href: LANDING_ROUTE, 'aria-label': inLanguage('Medical 3D Lab home', 'Medical 3D Lab トップ') }, [
         el('span', { class: 'locked-brand-name', text: 'Medical 3D Lab' }),
       ]),
       el('div', { class: 'locked-nav-actions' }, [accountButton, languageToggle.element]),

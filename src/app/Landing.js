@@ -8,6 +8,7 @@ import {
   PUBLIC_MANIFEST,
 } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { inLanguage } from '../utils/language.js';
 import {
   HERO_ORGANS,
   heroOrgansForModels,
@@ -96,7 +97,7 @@ export function createLanding({
 
   const element = el('main', { class: 'landing' }, [
     el('header', { class: 'landing-nav' }, [
-      el('a', { class: 'landing-brand', href: '#/', 'aria-label': 'Medical 3D Lab home' }, [
+      el('a', { class: 'landing-brand', href: '#/', 'aria-label': inLanguage('Medical 3D Lab home', 'Medical 3D Lab トップ') }, [
         el('span', { class: 'landing-brand-mark', 'aria-hidden': 'true' }, [
           el('span', { text: 'M' }),
           el('i'),

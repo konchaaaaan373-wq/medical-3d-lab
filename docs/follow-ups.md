@@ -501,12 +501,22 @@ viewport を駆動し、タップで固定・横ドラッグで回転（名前�
 | モデルが chrome に挟まれて主役でない | 上の 3 つで上帯を 149px → 106px に。加えて電話幅では被覆率 0.78 → 0.92（`App.js`。デスクトップの既定は変更なし） |
 | 日本語モードのログインが英語主体 | `Sign in / ログイン` 形式の併記を廃止し、言語ごとに 1 つの文言へ。placeholder と aria-label は画面の言語で書く |
 | ログインの文字コントラストが低い・閉じるが小さい | 説明文とリンクを `--ink-faint`（4.47:1）→ `--ink-dim` へ、閉じるは 34px → **44px**、ダイアログは `dvh` ＋ safe-area、背景スクロールを停止（`has-access-modal` は設定されていたのに**どの CSS も読んでいませんでした**） |
-| WebGL 失敗画面の `h1[tabindex="-1"]` に水色の枠が残る | `:focus:not(:focus-visible)` で枠だけ消す。focus 移動自体は維持 |
+| WebGL 失敗画面の `h1[tabindex="-1"]` に水色の枠が残る | **1 度目の修正は効いていませんでした。** `:focus:not(:focus-visible)` は「キーボード由来でない focus」だけを狙う書き方ですが、スクリプトから focus した見出しは Safari でも Chromium でも `:focus-visible` に一致するため、その規則は一度も適用されていません。`:focus` と `:focus-visible` の両方で `outline: none`。tab 順に入らない要素なので、キーボード利用者が失う focus 表示はありません（`reading-surface.css` の skip target と同じ扱い）。focus 移動自体は維持 |
+| モバイルで 44px 未満の操作が残っている（情報・設定横のボタン 36px、アカウント 38×40、ブランドリンク 24px、フッターのリンク 24px、スライダー 24px ほか） | 320〜430px の**すべての表示中の操作を 44×44px 以上**に。新しい `src/styles/phone-touch-targets.css` が 1 か所で持ち、`verify:ui` が各 surface × 320/375/390/430 で全操作を測って落とします |
+| 日本語表示中でもヘッダーのログインボタンが `aria-label="Sign in"` / `title="Sign in"` | 属性は 2 言語を持てないので画面の言語で書く。言語切り替えで塗り直すため `onLanguageChange()`（`src/utils/language.js`）を追加し、同じ欠陥だった scene のツールチップ・スライダーの `aria-label`・ブランドリンク・「UIを隠す」（**日本語しか無く、英語表示でも日本語が出ていました**）もまとめて直しました |
 
-自動化した分（`verify:ui` の `phone-390` を含む各幅で、操作バーと全ボタンが
-viewport 内・44px 以上・横スクロールなし・選択カードと操作バーが重ならない、
-`verify:auth` でダイアログの言語・コントラスト・閉じるボタン・背景スクロール）は
-これ以降 CI が見ます。
+自動化した分はこれ以降 CI が見ます。
+
+- `verify:ui` — 各 surface × 320/375/390/430 で、操作バーと全ボタンが viewport 内・
+  横スクロールなし・選択カードと操作バーが重ならない。加えて
+  **表示中のすべての操作が 44px 以上**（`PHONE_TARGET`、`src/app/viewports.js`）。
+  例外は 2 つだけで、どちらも理由を書いてあります——文中に置かれたリンク
+  （WCAG 2.5.8 の除外そのもの）と、Trust ページの出典リスト `.trust-source`
+  （1 ページに約 280 本ある読み物の参照であって操作ではない）
+- `verify:auth` — ダイアログの言語・コントラスト・閉じるボタン・背景スクロール
+- `npm run shots:phone` — 下の 5 状態を 390×844 で撮る
+  （`scripts/capture-phone-states.mjs`）。測定ではなく**目で見るための証拠**で、
+  判定はしません
 
 #### 何を返してもらえば直せるか
 
@@ -520,6 +530,85 @@ viewport 内・44px 以上・横スクロールなし・選択カードと操作
 - **現状**: iPhone 13 / Safari で「読み込み・表示・回転・拡縮・部位選択」を確認
   （上記）。**10 項目のうちタッチ判定・スクロール／ピンチの奪い合い・VoiceOver・
   横向き・親指の届きは未確認**。Android Chrome は未実施。
+
+#### 2 巡目（2026-09-14、deploy preview の独立確認）
+
+所有者が deploy preview を端末で見た 2 回目の報告。**1 巡目の修正のうち 1 件は
+効いていませんでした**——WebGL 失敗画面の focus 枠は
+`:focus:not(:focus-visible)` では消えず、実際には `:focus-visible` に一致して
+いました（上の表に記録）。**「直した」と書いたものが端末で直っていない例なので、
+ここに残します。**
+
+同時に指摘された残りも直しています。
+
+- モバイルで 44px 未満の操作（情報・設定横のボタン 36px、モデルメニューの
+  40×38px、ブランドリンク 24px）。実測すると報告の 3 件以外にも
+  フッターのリンク 24px、`#/organs` の appbar 32px、ロック画面の 4 件、
+  スライダー 24px、部位シートの操作・タブ・閉じる 32px がありました。
+  **320 / 375 / 390 / 430 の全 surface で 44px を下回る操作は 0 件**です
+  （例外 2 件は理由とともに `PHONE_TARGET.exemptions` と
+  `phone-touch-targets.css` に記録）
+- 日本語表示中のログインボタンの `aria-label` / `title` が英語。属性が
+  1 言語しか持てない箇所を横断して直し、`onLanguageChange()` で言語切り替えに
+  追随させました。**390×844 の全公開ルートで、日本語表示中に英語だけの
+  属性は 0 件**です
+- 撮影中に見つけて直した 3 件（報告には無かったもの）——
+  ジェスチャーヒント「指で回転・ピンチで拡大」が**操作バーの上に重なって
+  印字されていた**（操作バーが全幅・高くなったのに `bottom: 72px` のまま
+  だったため。`check-viewports` が 2 つの箱の重なりを測るようにしました。
+  横向き 844×390 でも重なっていたので、この判定だけは幅で止めません）、
+  未選択時の選択カードで文字の上端が切れていた（`padding-block` の上が
+  無かった）、情報・設定の上に 59px の罫線が浮いていた（タイトルが
+  disclosure の中へ移ったのに、その区切り線が残っていた）
+
+#### verify:ui に残る 6 件（最新 main と同一・今回のスコープ外）
+
+`origin/main` を `66bf192` で checkout してビルドし、同じ `verify:ui` を
+走らせて突き合わせました。
+
+| | main（`66bf192`） | この branch |
+| --- | --- | --- |
+| problems | **18** | **6** |
+
+この branch に残る 6 件は、**すべて main の 18 件の中にそのまま含まれます**
+（`phone-320 · Trust` と `desktop-1280 · Trust` それぞれの
+「focus ring never closed in 240 Tab presses」「1 visible control … never
+reached（`button.feedback-trigger`）」「44 / 46 visible link(s) … never
+reached（`a.trust-source`）」）。Trust ページの出典リンクが数百本あり、
+tab の巡回が 240 回で閉じないという既存の指摘で、**今回の変更が増やしたものは
+1 件もありません**。逆に main の 12 件——同意カードが 4 surface で
+パネルからはみ出して操作不能、`phone-430` の `.global-nav-brand` が
+24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
+この branch で解消しています。Trust の tab 巡回は別件として扱います。
+
+### F-109 eager entry の gzip が予算の 0.3 kB 手前 — P2（2026-09-14）
+
+`npm run budget` の `entry (eager JS)` が **89.7 kB / 90 kB**。最新 main でも
+**89.4 kB / 90 kB** で、この branch が足したのは 0.3 kB ですが、**残りは
+0.3 kB しかありません**。次に entry chunk へ何かが入れば、その変更が
+（原因でないのに）予算で落ちます。
+
+- 確かめ方: `npm run build && npm run budget`。
+- 完了の定義: entry から遅延できるものを 1 つ外して余裕を作るか、
+  予算の根拠（4G での初期表示）を測り直して数字を更新する。
+  **数字だけ上げるのは不可**——予算は端末の体験から来ています。
+
+### F-108 Trust ページの tab 巡回が 240 回で閉じない — P2（2026-09-14）
+
+`verify:ui` に main とこの branch の両方で残る 6 件。`#/trust` には
+`a.trust-source` が数百本あり、`phone-320` と `desktop-1280` の両方で
+「focus ring never closed in 240 Tab presses」「`button.feedback-trigger` に
+tab が届かない」「44〜46 本の `a.trust-source` に tab が届かない」が出ます。
+
+**この branch で増えたものではありません**（main `66bf192` の 18 件に
+そのまま含まれます）。原因の候補は 2 つで、どちらかを確かめる必要があります
+——(a) 巡回の上限 240 が単に足りない（出典が増え続けている）、
+(b) 浮いている `.feedback-trigger` が本当に巡回から外れている。
+(a) なら上限か測り方の問題で、(b) はページ側の不具合です。
+
+- 確かめ方: `npm run verify:ui -- --surface trust`。
+- 完了の定義: どちらなのかを切り分け、(a) なら上限の決め方を書き直し、
+  (b) なら `#/trust` 側を直す。**上限を黙って上げて緑にしない**。
 
 ### F-107 アカウント画面の文言がまだ「英語 / 日本語」の併記 — P2（2026-09-14）
 

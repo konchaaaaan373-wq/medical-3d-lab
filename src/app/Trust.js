@@ -1,4 +1,5 @@
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
+import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LANDING_ROUTE, PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
 import { isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
@@ -156,7 +157,7 @@ export function createTrust({ ui, accountButton = null }) {
   const element = el('main', { class: 'trust-page' }, [
     el('header', { class: 'trust-nav' }, [
       el('a', { class: 'trust-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-      el('nav', { class: 'trust-nav-links', 'aria-label': 'Trust navigation' }, [
+      el('nav', { class: 'trust-nav-links', 'aria-label': inLanguage('Trust navigation', '出典と根拠のナビゲーション') }, [
         el('a', { href: EXPLORER_ROUTE }, [
           el('span', { class: 'lang-en', text: 'Models' }),
           el('span', { class: 'lang-ja', text: 'モデル' }),

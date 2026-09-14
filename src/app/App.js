@@ -17,6 +17,7 @@ import {
 } from './inspection.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
@@ -928,18 +929,30 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     showLab: betaUnlocked(),
   });
 
+  // Both languages in the DOM, CSS hides one — this button had only the
+  // Japanese, so an English interface carried a button reading UIを隠す. The
+  // `title` is the other half of the same defect and holds the one on screen.
   const uiToggle = el('button', {
     class: 'ui-toggle',
     type: 'button',
-    title: 'Hide interface for capture (H)',
-    text: 'UIを隠す',
     on: {
       click: () => {
-        const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
+        paintUiToggle(ui.classList.toggle('is-hidden'));
       },
     },
   });
+
+  function paintUiToggle(hidden) {
+    uiToggle.replaceChildren(
+      el('span', { class: 'lang-en', text: hidden ? 'Show interface' : 'Hide interface' }),
+      el('span', { class: 'lang-ja', text: hidden ? 'UIを表示' : 'UIを隠す' })
+    );
+    uiToggle.title = hidden
+      ? inLanguage('Show the interface again (H)', 'UI を再表示する（H）')
+      : inLanguage('Hide interface for capture (H)', 'キャプチャ用に UI を隠す（H）');
+  }
+
+  onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
 
   // The rail is a shared scroll box: on a short or narrow window its contents
   // genuinely run past its edge, and a clipped panel reads as one that simply
@@ -1465,7 +1478,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     seek,
     resetModel: resetMedicalState,
     ui,
-    uiToggle,
+    paintUiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     zoomBy,
     exitReel: () => {
@@ -1696,7 +1709,7 @@ function tweenPose(viewer, pose, dt) {
  * Keyboard shortcuts: space = play/pause, R = reset model, H = hide UI, C = compare,
  * arrows = step, +/- = zoom, Escape = leave the social sequence.
  */
-function bindKeyboard({ playback, seek, resetModel, ui, uiToggle, toggleComparison, exitReel, zoomBy }) {
+function bindKeyboard({ playback, seek, resetModel, ui, paintUiToggle, toggleComparison, exitReel, zoomBy }) {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       exitReel?.();
@@ -1723,11 +1736,11 @@ function bindKeyboard({ playback, seek, resetModel, ui, uiToggle, toggleComparis
         resetModel();
         break;
       case 'h':
-      case 'H': {
-        const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
+      case 'H':
+        // The button is the one place that knows what it should read; the
+        // shortcut flips the same class and lets it repaint itself.
+        paintUiToggle(ui.classList.toggle('is-hidden'));
         break;
-      }
       case 'c':
       case 'C':
         toggleComparison?.();

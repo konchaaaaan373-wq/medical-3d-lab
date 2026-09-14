@@ -25,6 +25,9 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
+// Last, and deliberately: it is the one place that owns the 44 px touch floor
+// for phone widths, and it has to outrank every surface sheet that compacts.
+import './styles/phone-touch-targets.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';

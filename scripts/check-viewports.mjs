@@ -44,6 +44,7 @@ import {
   INLINE_LINK_EXEMPTION,
   MEASURED_TARGET,
   OVERFLOW_TOLERANCE_PX,
+  PHONE_TARGET,
   SURFACES,
   TARGET_EXEMPTIONS,
   TRANSIENT_OVERLAYS,
@@ -68,7 +69,7 @@ const values = (name) =>
  * number `product-shell-b6.css` and `App.js` use, so a run of this matrix and
  * the layout it is measuring cannot disagree about what a phone is.
  */
-const PHONE_LAYOUT_WIDTH = 430;
+const PHONE_LAYOUT_WIDTH = PHONE_TARGET.maxWidth;
 
 /**
  * What a control in the phone's bottom bar must measure.
@@ -78,7 +79,7 @@ const PHONE_LAYOUT_WIDTH = 430;
  * phone is the case that asks for the full 44, and it is what the device pass
  * asked for by name.
  */
-const PHONE_CONTROL_TARGET = 44;
+const PHONE_CONTROL_TARGET = PHONE_TARGET.floor;
 
 const distDir = value('--dist', 'dist');
 const jsonOut = value('--json');
@@ -219,6 +220,40 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   };
+
+  /**
+   * Attributes written in English while the interface is in Japanese.
+   *
+   * Everywhere else both languages are in the DOM and CSS hides one. An
+   * `aria-label`, a `title` and a `placeholder` hold one string, so each is a
+   * place where somebody has to remember to ask which language is on screen —
+   * and a device pass found a Japanese interface whose login button announced
+   * itself to a screen reader as "Sign in".
+   *
+   * Latin letters and no kana or kanji at all: a string that mixes them is a
+   * Japanese string containing a product name, which is not the defect.
+   */
+  function englishOnlyAttributes() {
+    if (document.getElementById('ui')?.dataset?.lang !== 'ja') return [];
+    // Proper nouns and file formats are the same word in both languages.
+    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|Medical 3D Lab)$/i;
+    const found = [];
+    const seen = new Set();
+    for (const element of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
+      if (!visible(element)) continue;
+      for (const attribute of ['aria-label', 'title', 'placeholder']) {
+        const value = element.getAttribute(attribute);
+        if (!value || !/[A-Za-z]/.test(value)) continue;
+        if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(value)) continue;
+        if (SAME_IN_BOTH.test(value.trim())) continue;
+        const key = `${attribute}=${value}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push(`${describe(element)} [${attribute}]="${value}"`);
+      }
+    }
+    return found;
+  }
 
   // --- horizontal overflow
   const overflowPx = doc.scrollWidth - doc.clientWidth;
@@ -443,6 +478,7 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
+    englishOnlyAttributes: englishOnlyAttributes(),
   };
 }
 
@@ -460,11 +496,22 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
  * Runs on the scene surface at a phone width, which is where the layout the
  * stylesheet writes for a phone actually applies.
  *
- * @param {{phoneWidth: number, target: number}} options
+ * The second question it asks is about the whole page, not the scene: at a
+ * phone width **every** visible control has to measure `target` in both
+ * dimensions. The 24px floor `measureInPage` enforces is WCAG 2.5.8 and applies
+ * at every width; this is the ambition for the width where a thumb is the only
+ * pointer, and the shipped CSS was answering it six different ways.
+ *
+ * @param {{phoneWidth: number, target: number, interactiveSelector: string,
+ *   exemptions: string[]}} options
  */
-function measurePhoneLayoutInPage({ phoneWidth, target }) {
+function measurePhoneLayoutInPage({ phoneWidth, target, interactiveSelector, exemptions }) {
   const problems = [];
-  if (window.innerWidth > phoneWidth) return { skipped: true, problems };
+  // "Two boxes must not sit on top of each other" and "the bar must be on
+  // screen" are true at every width, and the landscape phone — 844 wide — is
+  // exactly where the console and the gesture hint collided. Only the 44px
+  // sweep is about a phone's *width*, so only that is gated.
+  const narrow = window.innerWidth <= phoneWidth;
 
   const rect = (selector) => {
     const node = document.querySelector(selector);
@@ -488,14 +535,28 @@ function measurePhoneLayoutInPage({ phoneWidth, target }) {
     problems.push(`the control bar is not inside the viewport (${Math.round(console_.left)}…${Math.round(console_.right)} of ${window.innerWidth})`);
   }
 
+  // The first-use gesture hint floats over the model and is `pointer-events:
+  // none`, so no "control is covered" rule sees it — it just prints a sentence
+  // across whatever is behind it, which for one release was the slider.
+  const hint = rect('.anatomy-shell-gesture-hint');
+  if (hint && console_) {
+    const overlap = !(hint.bottom <= console_.top || hint.top >= console_.bottom ||
+      hint.right <= console_.left || hint.left >= console_.right);
+    if (overlap) problems.push('the gesture hint is printed over the control bar');
+  }
+
   if (row) {
     // Every control in the bar, not the bar's own box: a row that scrolls
     // sideways has a box inside the viewport and buttons outside it.
     for (const button of row.querySelectorAll('button')) {
       const box = button.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) continue;
+      // On screen at every width; 44px only at a phone's. A desktop bar draws
+      // the same controls at 36 deliberately — `TOUCH_TARGET.dense` — and
+      // asking a mouse for a thumb's target is how a real rule gets switched
+      // off for being noisy.
       if (!inside(box)) problems.push(`${describe(button)} is outside the viewport`);
-      else if (Math.min(box.width, box.height) + 0.5 < target) {
+      else if (narrow && Math.min(box.width, box.height) + 0.5 < target) {
         problems.push(`${describe(button)} is ${Math.round(box.width)}×${Math.round(box.height)}, under ${target}px`);
       }
     }
@@ -512,6 +573,37 @@ function measurePhoneLayoutInPage({ phoneWidth, target }) {
     const overlap = !(card.bottom <= console_.top || card.top >= console_.bottom ||
       card.right <= console_.left || card.left >= console_.right);
     if (overlap) problems.push('the selection card and the control bar overlap');
+  }
+
+  // --- every control on the page, not only the ones in the bar
+  if (!narrow) return { skipped: false, problems };
+  const exempt = (node) => exemptions.some((selector) => node.closest(selector));
+  // The same rule `measureInPage` uses: WCAG 2.5.8 exempts a link inside a
+  // sentence, because the line box already fixes its height and a 44px box
+  // around it would overlap the lines above and below.
+  const inlineInProse = (node) => {
+    if (node.tagName !== 'A') return false;
+    if (!getComputedStyle(node).display.startsWith('inline')) return false;
+    const parent = node.parentElement;
+    if (!parent) return false;
+    const own = (node.textContent ?? '').trim();
+    return (parent.textContent ?? '').trim().length > own.length + 4;
+  };
+  const small = [];
+  for (const node of document.querySelectorAll(interactiveSelector)) {
+    if (node.closest('details:not([open])')) continue;
+    const style = getComputedStyle(node);
+    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue;
+    const box = node.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) continue;
+    if (Math.min(box.width, box.height) + 0.5 >= target) continue;
+    if (exempt(node) || inlineInProse(node)) continue;
+    small.push(`${describe(node)} is ${Math.round(box.width)}×${Math.round(box.height)}`);
+  }
+  if (small.length) {
+    problems.push(
+      `${small.length} control(s) under ${target}px at a phone width\n    ${small.slice(0, 8).join('\n    ')}`
+    );
   }
 
   return { skipped: false, problems };
@@ -1346,12 +1438,30 @@ try {
           overlays: TRANSIENT_OVERLAYS,
         });
 
-        if (surface.needsRenderer && measured.hasCanvas) {
+        // Every surface, not only the ones with a canvas: the console and the
+        // selection card parts measure nothing when they are not on the page,
+        // and the target sweep is about the landing page and the footers too.
+        {
           const phone = await page.evaluate(measurePhoneLayoutInPage, {
             phoneWidth: PHONE_LAYOUT_WIDTH,
             target: PHONE_CONTROL_TARGET,
+            interactiveSelector: INTERACTIVE_SELECTOR,
+            // Both lists: what is exempt from the 24px floor at any width is
+            // exempt from the 44px ambition on a phone, and `PHONE_TARGET`
+            // adds the ones that are only exempt from the ambition.
+            exemptions: [
+              ...exemptionSelectors,
+              ...PHONE_TARGET.exemptions.map((exemption) => exemption.selector),
+            ],
           });
           for (const problem of phone.problems) problems.push(`${where}: ${problem}`);
+        }
+
+        if (measured.englishOnlyAttributes?.length) {
+          problems.push(
+            `${where}: ${measured.englishOnlyAttributes.length} attribute(s) in English while the ` +
+              `interface is Japanese\n    ${measured.englishOnlyAttributes.slice(0, 6).join('\n    ')}`,
+          );
         }
 
         if (measured.overflowPx > OVERFLOW_TOLERANCE_PX) {

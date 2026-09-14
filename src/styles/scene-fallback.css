@@ -166,17 +166,20 @@
 /* The title takes focus when this surface replaces a model that failed, so a
    screen reader starts at what happened rather than at the top of a page that
    changed under it. That focus stays — what goes is the ring the browser draws
-   around it afterwards for a reader who never asked for one: the heading is not
-   in the tab ring, and a blue rectangle around the heading of an error page
-   reads as a second error. `:focus-visible` still draws, so the ring is there
-   in exactly the case it means something. */
-.scene-fallback-title:focus:not(:focus-visible) {
-  outline: none;
-}
+   around it afterwards: the heading is not a control, it is not in the tab
+   ring, and a blue rectangle around the heading of an error page reads as a
+   second error.
 
+   Both states, not `:focus:not(:focus-visible)`. That narrower form was the
+   first attempt and it did not work on the device: a heading focused from
+   script matches `:focus-visible` in Safari and in Chromium, so the rule it
+   was meant to catch never applied and the ring stayed. Nothing is lost by
+   suppressing both — an element outside the tab ring has no focus ring a
+   keyboard user can be deprived of. Same treatment, same reason, as the skip
+   targets in `reading-surface.css`. */
+.scene-fallback-title:focus,
 .scene-fallback-title:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline: none;
 }
 
 @media (max-width: 620px) {
