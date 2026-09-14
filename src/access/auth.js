@@ -211,6 +211,40 @@ export function authRedirectFromHash(hash, nowSeconds = Math.floor(Date.now() / 
  * Unrecognised types are still consumed. A type this app has no opinion about
  * is not a reason to leave a live token in the address bar.
  */
+/**
+ * Ask Supabase who the stored token belongs to, and remember the answer.
+ *
+ * A session parsed out of a redirect fragment has no `user` — the fragment
+ * carries tokens and nothing else. Left that way it is a session that cannot
+ * say whose it is, which shows up twice: the dialog reports "your address is
+ * confirmed" above a signed-out form, and `onExternalSessionChange` in another
+ * tab reads the missing id as a *different* account and tears down whatever
+ * was open. Both stop once the identity is filled in.
+ *
+ * Best effort on purpose. Failing to resolve the name leaves the token working
+ * and the entitlement lookup will supply the identity a moment later; it is not
+ * a reason to refuse a session Supabase has just issued.
+ */
+export async function loadUser() {
+  const session = await getSession();
+  if (!session?.access_token) return null;
+  try {
+    const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/user`, {
+      headers: headers(session.access_token),
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    if (!user?.id) return null;
+    store({ ...session, user });
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+/** Redirect types this app knows how to be on the receiving end of. */
+const ADOPTABLE_REDIRECTS = new Set(['recovery', 'signup', 'email_change']);
+
 export function consumeAuthRedirect({ location, history } = {}) {
   const currentLocation = location ?? globalThis.location;
   const currentHistory = history ?? globalThis.history;
@@ -218,7 +252,14 @@ export function consumeAuthRedirect({ location, history } = {}) {
 
   const redirect = authRedirectFromHash(currentLocation.hash);
   if (!redirect) return null;
-  store(redirect.session);
+
+  // Scrubbing is unconditional — that is the whole point, and a type nobody
+  // here recognises is not a reason to leave a live token in the address bar.
+  // *Adopting* it is a different question: signing somebody in, possibly over
+  // a session they already had, on the strength of a link this app has no
+  // handling for is not something to do silently. Those land signed out, which
+  // is recoverable by signing in; the alternative is not.
+  if (ADOPTABLE_REDIRECTS.has(redirect.type)) store(redirect.session);
 
   if (currentHistory?.replaceState) {
     const clean = new URL(currentLocation.href);

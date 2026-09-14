@@ -57,7 +57,24 @@ boot().catch(async (error) => {
 
 async function boot() {
   const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
-  const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
+  // A Supabase redirect carries credentials in the fragment. It is not a route,
+  // and the account layer consumes and scrubs it moments from now — but the
+  // route is resolved here, first, so without this the fragment falls through
+  // to `resolveRoute`, which sends an unknown hash to the default scene.
+  // Somebody who had just confirmed their address therefore landed on a 3D
+  // model, and once the fragment was scrubbed to `#/` the address bar disagreed
+  // with what was on screen, which left the shell's Home link inert.
+  //
+  // Matched inline rather than by importing the parser: this runs before the
+  // account layer is loaded, and pulling `auth.js` into the entry chunk to
+  // answer one question would put the whole access layer in front of every
+  // first paint. `auth.js` owns what these fragments *mean*; this only needs to
+  // know that one is present.
+  const authRedirect = /[#&]access_token=/.test(window.location.hash)
+    && /[#&]type=/.test(window.location.hash);
+  const route = recoveryIntent || authRedirect
+    ? { kind: 'landing' }
+    : resolveRoute(window.location.hash);
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
