@@ -161,12 +161,21 @@ for (const slug of scenes) {
   try {
     const url = flag('--preview') ? `${base}?preview=1#/${slug}` : `${base}#/${slug}`;
     await page.goto(url, { waitUntil: 'networkidle' });
-    await page.locator('.consent-banner button').last().waitFor({ timeout: 20000 }).catch(() => {});
-    await page.locator('.consent-banner button').last().click({ timeout: 10000, noWaitAfter: true }).catch(() => {});
     if (await page.locator('.locked-copy').count()) {
       die(`The build does not open ${slug}: build with VITE_ALLOW_PREVIEW=1 and pass --preview.`);
     }
     await page.waitForFunction(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0, { timeout: 120000 });
+    // **After** the scene is ready, which is where the check dismisses it too.
+    // That is not a detail: the banner is an element, the framing is fitted to
+    // the band the elements leave, and dismissing it before the fit rather
+    // than after moves the model. Measured one way and clicked the other, the
+    // hand and the foot resolved one point in four — the same model, framed
+    // twice.
+    const consent = page.locator('.consent-banner button').last();
+    if (await consent.count()) {
+      await consent.click({ timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(300);
+    }
 
     const box = await page.locator('canvas').first().boundingBox();
     if (!box) die(`${slug}: rendered no canvas`);

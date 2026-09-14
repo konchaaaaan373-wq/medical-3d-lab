@@ -162,14 +162,15 @@ const SCENE_POINTS = {
   'abdomen-anatomy': [[0.215, 0.275], [0.74, 0.37], [0.74, 0.655], [0.365, 0.275]],
   // Parietal pleura, Left lung, Right lung, Mediastinum.
   'thorax-anatomy': [[0.29, 0.275], [0.365, 0.37], [0.215, 0.465], [0.29, 0.56]],
-  // Humerus, Triceps tendon, Joint capsule, Articular cartilage.
-  'elbow-anatomy': [[0.365, 0.227], [0.328, 0.37], [0.365, 0.512], [0.328, 0.607]],
+  // Humerus, Joint capsule, Articular cartilage, Olecranon and trochlear
+  // notch.
+  'elbow-anatomy': [[0.365, 0.227], [0.365, 0.512], [0.74, 0.512], [0.403, 0.607]],
   // Surface of the neck, Posterior neck muscles, Sternocleidomastoid, Subclavian arteries.
   'neck-anatomy': [[0.29, 0.275], [0.44, 0.37], [0.74, 0.37], [0.29, 0.56]],
   // Skull, Lumbar spine, Mandible, Ribs.
   'skeleton-overview': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.37], [0.74, 0.56]],
-  // Metatarsals at three points across the forefoot, and the talus.
-  'foot-anatomy': [[0.44, 0.702], [0.74, 0.465], [0.14, 0.512], [0.29, 0.607]],
+  // Navicular, Achilles tendon, Metatarsals, Proximal phalanges.
+  'foot-anatomy': [[0.328, 0.607], [0.74, 0.655], [0.477, 0.702], [0.59, 0.75]],
   // Metacarpals, Radius, Middle phalanges, Hamate.
   'hand-anatomy': [[0.328, 0.417], [0.178, 0.37], [0.178, 0.56], [0.178, 0.702]],
   // Pelvic ring, Iliococcygeus, Pubococcygeus, Coccygeus.
@@ -184,7 +185,9 @@ const SCENE_POINTS = {
   'spine-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.365, 0.56], [0.74, 0.56]],
   // Axillary nodes, Pectoralis major, Axillary tail, Skin.
   'breast-anatomy': [[0.215, 0.275], [0.365, 0.275], [0.29, 0.37], [0.515, 0.37]],
-  // Cervical nodes, Thoracic duct, The long way up, Body outline.
+  // Cervical nodes, Thoracic duct, The long way up, Body outline — a network
+  // this thin offers seven hits in two hundred and twenty-one samples, so
+  // three of these are placed by hand from them.
   'lymphatic-drainage': [[0.328, 0.227], [0.365, 0.417], [0.74, 0.512], [0.74, 0.655]],
   // Capsule, at four points around the shell that faces the reader.
   'lymph-node-anatomy': [[0.29, 0.465], [0.44, 0.465], [0.365, 0.56], [0.29, 0.655]],
