@@ -122,7 +122,13 @@ export function solveRetinalDetachment(extent, controls = {}) {
     halfAngle,
     /** How far the macula is from where it started, in degrees. */
     toMacula: origin.toMacula,
-    /** The detached cap, as a share of the whole retina. **Not an area anybody measured.** */
+    /**
+     * The detached cap, as a share of **the drawn globe**.
+     *
+     * Not a share of the retina: the retina stops short of the front of the eye,
+     * so a cap's share of the sphere is smaller than its share of the retina by
+     * a factor this model has no basis for. **Not an area anybody measured.**
+     */
     areaFraction,
     /**
      * **The question, answered by position rather than by size.** `off` means

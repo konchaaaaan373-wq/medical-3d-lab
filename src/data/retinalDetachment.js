@@ -86,7 +86,7 @@ export const ANNOTATIONS = [
 
 export const METRICS = [
   { id: 'macula', label: 'Is the macula inside the separation', labelJa: '黄斑は剥離範囲に入っているか', unit: '', emphasis: true },
-  { id: 'area', label: 'How much of the retina has come away', labelJa: '網膜のうち剥がれている割合', unit: '%', emphasis: true },
+  { id: 'area', label: 'How much of the drawn globe has come away', labelJa: '描かれた球のうち剥がれている割合', unit: '%', emphasis: true },
   { id: 'reach', label: 'How far it reaches from where it started', labelJa: '起点からの広がり', unit: '°' },
   { id: 'short', label: 'How much further it would have to reach', labelJa: '黄斑まであとどれだけ広がる必要があるか', unit: '°' },
   { id: 'vision', label: 'What anybody can see', labelJa: '本人に何が見えるか', unit: '' },
@@ -127,9 +127,9 @@ export const MODEL_SCOPE = {
         '**広さではなく位置。** 黄斑は眼軸上の後極にある 1 か所であり、周辺部はそこから約 80 度離れています。後極から始まった剥離はほぼ即座に黄斑を含み、周辺から始まった剥離は黄斑に届くまで大きく広がる必要があります。',
     },
     {
-      text: 'That the two facts are independent, which is what the read-out shows by printing them side by side: **a separation covering a twentieth of the retina can have the macula in it, and one covering nearly half can not.**',
+      text: 'That the two facts are independent, which is what the read-out shows by printing them side by side: **a separation covering a twentieth of the drawn globe can have the macula in it, and one covering nearly half can not.**',
       textJa:
-        'この 2 つは独立しており、読み出しはそれを並べて示します。**網膜の 1/20 の剥離でも黄斑を含むことがあり、半分近い剥離でも含まないことがあります。**',
+        'この 2 つは独立しており、読み出しはそれを並べて示します。**描かれた球の 1/20 の剥離でも黄斑を含むことがあり、半分近い剥離でも含まないことがあります。**',
     },
     {
       text: 'That macula-on and macula-off are **two pictures rather than two stages**. Nothing here says one becomes the other.',
@@ -161,9 +161,9 @@ export const MODEL_SCOPE = {
   ],
   cautions: [
     {
-      text: '**Nothing here is a measurement.** The globe, its coats and the macula’s position are this repository’s own eye atlas’s. The area is a spherical cap as a share of a sphere, and the degrees are degrees of that drawing.',
+      text: '**Nothing here is a measurement.** The globe, its coats and the macula’s position are this repository’s own eye atlas’s. The area is a spherical cap as a share of **a sphere** — and that is not the same as a share of the retina, which stops short of the front of the eye. The degrees are degrees of that drawing.',
       textJa:
-        '**ここにあるものはすべて実測値ではありません。** 眼球・各層・黄斑の位置は、このリポジトリ自身の眼のアトラスのものです。面積は球帽の球全体に対する割合であり、角度はその図の中の角度です。',
+        '**ここにあるものはすべて実測値ではありません。** 眼球・各層・黄斑の位置は、このリポジトリ自身の眼のアトラスのものです。面積は球帽の**球全体**に対する割合であり、網膜に対する割合ではありません（網膜は眼球の前方までは覆っていません）。角度はその図の中の角度です。',
     },
     {
       text: '**The height the retina is drawn lifted is illustrative and much larger than the atlas’s own gap between the coats.** Drawn at the real spacing a separation is a few pixels and invisible. The height says *separated*; it does not say *how high*.',

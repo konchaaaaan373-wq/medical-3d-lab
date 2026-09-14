@@ -1952,6 +1952,45 @@ test('calibration: the canal model and the ear atlas use the same planes and the
   ear.dispose?.();
 });
 
+test('calibration: the ampulla is an end this scene names, not one the atlas draws', () => {
+  // Defends `where-the-ampulla-is-put`. Every other constant in this model is
+  // measured off the ear atlas; this one could not be, because the atlas has no
+  // ampulla. So what is fixed here is first that this is still true — if a
+  // swelling is ever added to the loops, the angle should come from it rather
+  // than stay invented — and then only the consequence the chosen angles have
+  // to deliver.
+  const ear = buildEar({});
+  const named = [...ear.index.keys()];
+  assert.ok(
+    !named.some((id) => /ampulla/i.test(id)) && !ear.object.children.some((mesh) => /ampulla/i.test(mesh.name)),
+    `the atlas draws no ampulla to have measured: ${named.join(', ')}`
+  );
+  ear.dispose?.();
+
+  // Each loop has one, and they are not all at the same place on their loops —
+  // otherwise "towards it" would be one fact wearing three names.
+  const loops = BPPV_CANALS.filter((canal) => canal.normal);
+  assert.ok(loops.length >= 2);
+  for (const canal of loops) {
+    assert.ok(Number.isFinite(canal.ampullaAt), `${canal.id} has an ampulla on its loop`);
+  }
+  assert.equal(new Set(loops.map((canal) => canal.ampullaAt)).size, loops.length, 'and they are not the same angle');
+
+  // The consequence: the end has to be placed so that travel can run either
+  // towards it or away from it. An angle that made every journey "towards it"
+  // would be reporting the arithmetic's sign rather than anything about the arc.
+  const answers = new Set();
+  for (const canal of loops) {
+    for (const side of ['left', 'right']) {
+      for (const head of [0.25, 0.5, 0.75, 1]) {
+        const solved = solveBppv(head, { canal: canal.id, side });
+        if (solved.towardsAmpulla !== null) answers.add(solved.towardsAmpulla);
+      }
+    }
+  }
+  assert.deepEqual([...answers].sort(), [false, true], 'both directions are reachable across the scenarios offered');
+});
+
 test('calibration: the head’s path takes the level loop from nothing to nearly all of it', () => {
   // Defends `the-heads-path-is-chosen`. The rotation carries no claim of its
   // own; what it has to deliver is that the scene can show a loop going from

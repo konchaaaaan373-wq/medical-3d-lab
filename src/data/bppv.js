@@ -269,6 +269,21 @@ export const VISUAL_MAPPING = [
       '明るいことは「いま扱っている対象である」という意味です。そのループが働いている・傷んでいる・刺激されている・発火している、という意味ではありません。',
   },
   {
+    id: 'the-ampulla-is-a-structure-this-scene-adds',
+    target: 'the ampulla',
+    channel: 'geometry',
+    from: 'ampullaAt',
+    reading: 'illustrative',
+    claim:
+      'A body is drawn at one place on the lit loop and named the ampulla, so that "towards it" and "away from it" have something on screen to be about.',
+    claimJa:
+      '明るいループ上の 1 か所に球を描き、膨大部と名づけます。「そちらへ」「その反対へ」が、画面上の何かについての言い方になるようにするためです。',
+    notClaim:
+      '**The ear atlas has no ampulla in it**: it draws each canal as a plain loop of tube. Both the body and the angle it sits at are added here, and **neither is where an ampulla is in anybody** — nothing in the model depends on its being in one place rather than another.',
+    notClaimJa:
+      '**このリポジトリの耳のアトラスに膨大部はありません。** 各半規管は一様な管のループとして描かれています。球もその角度もこのシーンが付け加えたものであり、**どちらも実際の膨大部の位置ではありません。** モデルはその位置に依存していません。',
+  },
+  {
     id: 'nothing-stands-for-an-eye',
     target: 'the whole picture',
     channel: 'colour',

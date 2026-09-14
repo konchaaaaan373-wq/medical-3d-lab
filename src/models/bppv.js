@@ -60,13 +60,34 @@ export const CANAL = Object.freeze({
  * upright head, so upright gravity lies **along** it and can drive nothing.
  *
  * `ampullaAt` is where the ampulla sits on the loop, in radians, so that a
- * direction of travel can be named rather than signed.
+ * direction of travel can be named rather than signed. **Unlike the normals it
+ * is not measured off anything**: the ear atlas draws each canal as a plain
+ * loop of tube and has no ampulla in it at all, so both the angle here and the
+ * body the scene draws at it are added by this layer. See `AMPULLA_IS_ADDED`.
  */
 export const CANALS = Object.freeze([
   { id: 'none', normal: null, ampullaAt: 0 },
   { id: 'posterior', normal: Object.freeze([1, 0, 0]), ampullaAt: Math.PI * 0.35 },
   { id: 'lateral', normal: Object.freeze([0, 1, 0]), ampullaAt: Math.PI * 0.2 },
 ]);
+
+/**
+ * That the ampulla is a structure this layer adds, stated where a reader of the
+ * model will meet it.
+ *
+ * The ear atlas (`src/scenes/sensory/organs/ear.js`) draws the three canals as
+ * loops of tube with no swelling anywhere on them, so there is nothing in the
+ * anatomy for `ampullaAt` to have been measured from. The angles were **chosen**
+ * — one per canal, at a different place on each loop — and what they have to
+ * deliver is only that the loop has a named end, so that `towardsAmpulla` can
+ * report a direction as a fact about the arc rather than as the sign of a
+ * subtraction. `tests/calibration.test.js` fixes that consequence and checks
+ * that the atlas still has no ampulla to have used instead.
+ *
+ * **No angle here is where an ampulla is in anybody**, and nothing in this
+ * model depends on its being in one place rather than another.
+ */
+export const AMPULLA_IS_ADDED = true;
 
 /**
  * Where the particle sits when the canal's plane holds no gravity at all.
@@ -206,7 +227,9 @@ export function solveBppv(head, controls = {}) {
     travelFraction: drives ? Math.abs(travel) / Math.PI : 0,
     /**
      * Whether the path runs towards the ampulla or away from it. A fact about
-     * the arc — **not a direction of any response and not a nystagmus.**
+     * the arc — **not a direction of any response and not a nystagmus**, and a
+     * fact about an end this layer named rather than one the atlas draws
+     * (`AMPULLA_IS_ADDED`).
      *
      * `null` when the particle has not moved: a journey of no distance has no
      * direction, and reporting one would be the arithmetic's sign rather than

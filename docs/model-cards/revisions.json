@@ -690,9 +690,9 @@
     "modelSources": [
       "src/models/retinalDetachment.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "01a17b62bd311e3c",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 3,
+    "modelDigest": "648e223dbc1089eb",
+    "cardUpdatedAt": "2026-09-14"
   },
   {
     "sceneId": "cataract",
@@ -710,9 +710,9 @@
     "modelSources": [
       "src/models/bppv.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "dc6000671eca6342",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 3,
+    "modelDigest": "c1abbe035b48ddd8",
+    "cardUpdatedAt": "2026-09-14"
   },
   {
     "sceneId": "pressure-injury",

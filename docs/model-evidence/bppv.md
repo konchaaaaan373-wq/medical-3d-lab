@@ -29,6 +29,7 @@ publishers.
 | --- | --- | --- |
 | `atlas-canal-planes` | The normals of the three planes and the loop's radius | Illustrative, measured off `buildEar()`. The atlas puts the canals on three cardinal planes, which a real labyrinth does not |
 | `the-heads-path-is-chosen` | The rotation the axis carries the head through, and how far | Calibrated so the level loop goes from holding nothing to holding most of it. **Not the angle of any named manoeuvre**, and no point on the axis is a step of one |
+| `where-the-ampulla-is-put` | Where on each loop the ampulla sits — the end `towardsAmpulla` names a direction against | **The atlas draws no ampulla**: each canal is a plain loop of tube, so there was nothing to measure. Chosen so each loop has a named end, and so both directions of travel are reachable. The body drawn at that angle is added by the scene, and **no angle here is where an ampulla is in anybody** |
 
 ## 3. What this scene is known to mislead about
 
@@ -40,6 +41,7 @@ publishers.
 | `one-particle-standing-for-many` | One body reads as one otoconium | Nothing here is a count or a size |
 | `no-symptom-and-no-manoeuvre` | A head going back on an axis reads as a manoeuvre being performed | It is one rotation, chosen so the geometry is visible |
 | `three-cardinal-planes` | Tidy right angles read as anatomy | The atlas's own simplification. The claims are about *which* plane, not the angles between them |
+| `where-the-ampulla-is-put` | A labelled body on the loop reads as a structure the anatomy has | The scene added it, and the visual mapping says so. Nothing in the model depends on where it is |
 
 ## 4. What is outside the model entirely
 

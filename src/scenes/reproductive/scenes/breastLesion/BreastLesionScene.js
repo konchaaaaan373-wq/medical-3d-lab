@@ -39,6 +39,9 @@ import { MEDIAL, SITES, buildBreast } from '../../organs/breast.js';
  * cord joining a place to a drainage route reads as a conduit, which is the
  * very thing this model says is not there.
  */
+/** Whether a read-out value is a number, and so whether its unit belongs beside it. */
+const reads = (value) => String(value).trim() !== '' && Number.isFinite(Number(value));
+
 export class BreastLesionScene {
   static meta = {
     id: 'breast-lesion',
@@ -74,6 +77,15 @@ export class BreastLesionScene {
 
   /** How dim the structures that are not this scene's subject are drawn. */
   static ASIDE_OPACITY = 0.1;
+
+  /**
+   * How dim the seven duct systems the place is *not* on are drawn.
+   *
+   * Higher than `ASIDE_OPACITY`: they are not the backdrop but the rest of the
+   * family the lit one belongs to, and the claim is about which of them a place
+   * is on — which a reader cannot judge against ducts they cannot see.
+   */
+  static IDLE_DUCT_OPACITY = 0.32;
 
   /** How many beads the distance to the route is drawn as. */
   static BEADS = 10;
@@ -204,7 +216,7 @@ export class BreastLesionScene {
     for (const [name, material] of this.ductMaterials ?? []) {
       const lit = solved.duct !== null && name === `lactiferous-duct-${solved.duct}`;
       material.color.set(lit ? PALETTE.duct : PALETTE.idle);
-      material.opacity = lit ? 1 : 0.32;
+      material.opacity = lit ? 1 : BreastLesionScene.IDLE_DUCT_OPACITY;
       material.depthWrite = lit;
     }
 
@@ -276,7 +288,9 @@ export class BreastLesionScene {
       // Printed rather than omitted: the absence is the claim.
       spread: 'nothing spreads in this model',
     };
-    return METRICS.map((m) => ({ ...m, value: value[m.id] }));
+    // A unit belongs to a number. On the tail this row reads "on it" rather
+    // than a share, and a multiplication sign after those words is nonsense.
+    return METRICS.map((m) => ({ ...m, value: value[m.id], unit: reads(value[m.id]) ? m.unit : '' }));
   }
 
   dispose() {
