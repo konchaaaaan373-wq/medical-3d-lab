@@ -9,10 +9,14 @@
  *
  * ## Anatomy, and only anatomy
  *
- * The beta is the **3D anatomy of the brain and the heart**, and nothing else.
- * Looking at an organ and being able to name what you are looking at is the
- * product being published; the disease and physiology models keep being built
- * behind it.
+ * The beta is **3D anatomy**, and nothing else. Looking at an organ and being
+ * able to name what you are looking at is the product being published; the
+ * disease and physiology models keep being built behind it.
+ *
+ * The range is not a list of organ names. It is whichever anatomy scenes have
+ * passed the gate below, opened a batch at a time as each one is rendered and
+ * looked at (ADR 2026-09-14); today that is the brain, the lung, the liver and
+ * the kidney.
  *
  * This replaces the earlier rule, which opened every non-prototype scene under
  * the two organs. That rule reasoned: the heart has no anatomy-grade scene, so
@@ -119,12 +123,25 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
 /**
  * The scenes the beta would open **if they pass**.
  *
- * `heart-anatomy` is listed and does not exist yet. That is the shape this list
- * is meant to have: the target is written down, the gate below answers "no"
- * until the scene is built and its record filed, and nothing is quietly
- * substituted for it in the meantime.
+ * `heart-anatomy` is listed and is not open: it exists now, and it loads two
+ * candidate GLBs that have passed no asset release gate, so the gate below
+ * answers "no" and nothing is quietly substituted for it in the meantime. That
+ * is the shape this list is meant to have — the target written down, and the
+ * answer computed.
+ *
+ * The lung, the liver and the kidney were added on 2026-09-14, one batch, each
+ * with its own decision below (ADR 2026-09-14). **Being on this list is a
+ * statement of intent and nothing else**; adding an organ here does not open
+ * it, and the batch that added these three found three defects in the renders
+ * after every check had passed, which is the reason batches are small.
  */
-export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-anatomy']);
+export const BETA_ANATOMY_CANDIDATES = Object.freeze([
+  'brain-anatomy',
+  'heart-anatomy',
+  'lung-anatomy',
+  'liver-anatomy',
+  'kidney-anatomy',
+]);
 
 /**
  * The next release **adds to** this one rather than replacing it.
@@ -227,6 +244,31 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * somewhere in the repository must not expire a record it has nothing to do
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
+/**
+ * What batch B1's three decisions each exercised, and what each cites.
+ *
+ * One list rather than three copies: the same check ran over the three scenes,
+ * so three copies would only ever differ by a typo — and this array reaches
+ * the browser, which recomputes the gate from these records and does not need
+ * the same paragraph three times to do it.
+ */
+const B1_INTERACTIONS = Object.freeze([
+  'four measured points resolve to the structures the panel then names, in both languages',
+  'the part tree and the model agree in both directions',
+  'a drag that ends over another structure is not a click',
+  'isolate shows one structure, Show all restores the model',
+  'colour mode and viewpoint do not move the selection, and a hover does not rewrite it',
+]);
+
+const B1_EVIDENCE = Object.freeze([
+  'scripts/check-anatomy-interaction.mjs',
+  'scripts/capture-anatomy-views.mjs',
+  'src/scenes/shared/geometry/sectionFace.js',
+  'tests/section-face.test.js',
+  'tests/organ-anatomy-scenes.test.js',
+  'docs/screenshots/pub-b1/README.md',
+]);
+
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
@@ -300,6 +342,106 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
       'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
       'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
+    ]),
+  }),
+
+  /**
+   * Batch B1 — the lung, the liver and the kidney, 2026-09-14.
+   *
+   * Three procedural scenes, so `assetRevisions` is empty and means it: there
+   * is no third-party file under them and nothing to hash. What decides what
+   * these models are is their own code, and `sceneRevision` pins it —
+   * including the shared scene, which decides what a click selects and what a
+   * cut draws.
+   *
+   * Every automated check passed before any of this was written. Rendering
+   * them is what found the three defects the records name.
+   */
+  Object.freeze({
+    sceneId: 'lung-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/lung-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd002d75f9fed5b2b' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Trachea',
+        'Right upper lobe',
+        'Left upper lobe',
+        'Right middle lobe',
+        'the part tree\'s 83 rows, listed and matched against the model in both directions',
+      ]),
+      views: Object.freeze([
+        'all six viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+      evidence: B1_EVIDENCE,
+    unverified: Object.freeze([
+      '79 of the 83 structures were not individually opened, and no label was checked against an atlas',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'the segmental anatomy is schematic, and the cut face is not a radiological section',
+    ]),
+  }),
+
+  Object.freeze({
+    sceneId: 'liver-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/liver-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd5304fd53ba0d43f' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Segment VIII — right anterior superior',
+        'Segment II — left lateral superior',
+        'Segment VII — right posterior superior',
+        'Segment V — right anterior inferior',
+        'the part tree\'s 27 rows, listed and matched against the model in both directions',
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+      evidence: B1_EVIDENCE,
+    unverified: Object.freeze([
+      '23 of the 27 structures were not individually opened',
+      'nobody qualified has confirmed that what is drawn is Couinaud\'s division of a real liver',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'the visceral surface carries no porta hepatis, ligamentum teres or caval groove, and the cut face is not a CT slice',
+    ]),
+  }),
+
+  Object.freeze({
+    sceneId: 'kidney-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/kidney-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'b5df5595a0b6aab3' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Renal cortex, at two points on the opened kidney',
+        'Right kidney (the landmark side, which says so when it is selected)',
+        'Left ureter',
+        'the part tree\'s 32 rows, listed and matched against the model in both directions',
+      ]),
+      views: Object.freeze([
+        'all six viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+      evidence: B1_EVIDENCE,
+    unverified: Object.freeze([
+      '29 of the 32 structures were not individually opened — the four clicks land on three',
+      'seven pyramids is a common arrangement, not a constant, and no label was checked against an atlas',
+      'only the left kidney is modelled in parts; the right is a landmark shape and says so',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
     ]),
   }),
 ]);

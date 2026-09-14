@@ -454,6 +454,100 @@ test('a cut viewpoint is framed against what the cut leaves, not the whole organ
   scene.dispose();
 });
 
+test('a cut draws the face it leaves, in the colour of what was cut', () => {
+  const scene = new LiverAnatomyScene({});
+  scene.build();
+  assert.equal(scene.caps.length, 0, 'nothing is capped until something is cut');
+
+  assert.ok(scene.setAnatomyView('transverse-section'), 'the liver offers its transverse cut');
+  assert.ok(scene.caps.length >= 4, `the segments the plane crosses have faces (${scene.caps.length})`);
+
+  const plane = scene.sectionPlane;
+  scene.root.updateMatrixWorld(true);
+  const point = new THREE.Vector3();
+  for (const cap of scene.caps) {
+    const structure = scene.byId.get(cap.structureId);
+    assert.ok(structure, 'every face belongs to a structure');
+
+    for (const face of cap.faces) {
+      assert.ok(structure.meshes.includes(face.parent), 'the face rides the mesh it closes');
+      assert.ok(!scene.selectables.includes(face), 'and is not something a ray can select');
+
+      // On the plane — a face a millimetre off is a face that z-fights with
+      // the cut it is closing. The bias that keeps it off the clip test is
+      // measured in ten-thousandths of the model.
+      const position = face.geometry.attributes.position;
+      let area = 0;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 3) {
+        a.fromBufferAttribute(position, i).applyMatrix4(face.matrixWorld);
+        b.fromBufferAttribute(position, i + 1).applyMatrix4(face.matrixWorld);
+        c.fromBufferAttribute(position, i + 2).applyMatrix4(face.matrixWorld);
+        area += b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+      }
+      assert.ok(area > 0, `${cap.structureId}: the face has an area`);
+
+      for (let i = 0; i < position.count; i += 1) {
+        point.fromBufferAttribute(position, i).applyMatrix4(face.matrixWorld);
+        assert.ok(
+          Math.abs(plane.distanceToPoint(point)) < 0.01,
+          `${cap.structureId}: the face is on the plane, not near it`
+        );
+      }
+
+      assert.equal(
+        face.material.color.getHex(),
+        structure.meshes[0].userData.baseColor.getHex(),
+        `${cap.structureId}: the face is the colour of the part`
+      );
+    }
+
+    // Only the structures the plane crosses are capped.
+    const box = new THREE.Box3();
+    for (const mesh of structure.meshes) box.expandByObject(mesh);
+    assert.ok(
+      plane.distanceToPoint(box.min) * plane.distanceToPoint(box.max) <= 0,
+      `${cap.structureId}: is a structure the plane actually crosses`
+    );
+  }
+
+  const otherMode = scene.constructor.colorModes[1]?.id;
+  if (otherMode) {
+    scene.setAnatomyColorMode(otherMode);
+    const cap = scene.caps[0];
+    assert.equal(
+      cap.faces[0].material.color.getHex(),
+      scene.byId.get(cap.structureId).meshes[0].userData.baseColor.getHex(),
+      'switching colour mode repaints the cut face too'
+    );
+  }
+
+  // A fade is the reader asking to see through the tissue. The face is that
+  // tissue, so it fades with it rather than staying as the one solid thing.
+  const ghosted = scene.caps.find((cap) => scene.byId.get(cap.structureId).ghostAt != null);
+  if (ghosted) {
+    scene.setProgress(1);
+    for (let i = 0; i < 200; i += 1) scene.update(1 / 60);
+    const structure = scene.byId.get(ghosted.structureId);
+    assert.ok(
+      Math.abs(ghosted.faces[0].material.opacity - structure.currentOpacity) < 1e-6,
+      'the face is as solid as the structure it closes, and no more'
+    );
+  }
+
+  const capped = scene.caps.flatMap((cap) => cap.faces);
+  scene.setAnatomyView(scene.constructor.views[0].id);
+  assert.equal(scene.caps.length, 0, 'leaving the cut takes the faces with it');
+  assert.ok(capped.every((face) => !face.parent), 'and nothing is left in the scene graph');
+  let strays = 0;
+  scene.root.traverse((object) => { if (object.userData?.sectionCap) strays += 1; });
+  assert.equal(strays, 0, 'nothing of the cut is left riding the meshes');
+
+  scene.dispose();
+});
+
 test('a viewpoint that takes a side away does not frame the side it took', () => {
   const scene = new IntestineAnatomyScene({});
   scene.build();

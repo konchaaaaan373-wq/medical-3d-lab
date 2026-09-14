@@ -238,7 +238,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: one public model is the live brain, not a one-card index', () => {
+test('landing: the published models are live organs, not a card index', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -250,11 +250,17 @@ test('landing: one public model is the live brain, not a one-card index', () => 
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    assert.equal(PUBLIC_MANIFEST.count, 1);
+    // Four open models, one viewport, and a chooser — which is the shape the
+    // hero was written for and could not be tested in while one model was
+    // open: "a chooser is drawn only when there is more than one thing to
+    // choose", and until now there was not.
+    assert.equal(PUBLIC_MANIFEST.count, 4);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1);
-    assert.equal(controls.length, 0);
+    assert.equal(controls.length, PUBLIC_MANIFEST.count);
     assert.ok(links.some((link) => link.getAttribute('href') === '#/brain-anatomy'));
+    // The initial model is still the brain: more models add a choice, they do
+    // not change what a returning visitor is shown.
     assert.equal(mounted.organHero.organ, 'brain');
   } finally {
     restoreDocument();

@@ -155,8 +155,8 @@
       "src/scenes/respiratory/scenes/lungAnatomy/LungAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "6216da52a5e76532",
+    "cardRevision": 8,
+    "modelDigest": "d002d75f9fed5b2b",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -167,8 +167,8 @@
       "src/scenes/hepatobiliary/scenes/liverAnatomy/LiverAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "f56531f3de968fd2",
+    "cardRevision": 8,
+    "modelDigest": "d5304fd53ba0d43f",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -179,8 +179,8 @@
       "src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "daa995a5e7048938",
+    "cardRevision": 8,
+    "modelDigest": "b5df5595a0b6aab3",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -192,8 +192,8 @@
       "src/scenes/gastrointestinal/scenes/stomachAnatomy/StomachAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "eebc2cc0efe307d4",
+    "cardRevision": 7,
+    "modelDigest": "4a80987360d1bbf2",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -205,8 +205,8 @@
       "src/scenes/gastrointestinal/scenes/intestineAnatomy/IntestineAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "ec0108a905a4aab7",
+    "cardRevision": 8,
+    "modelDigest": "daf546e2310fba35",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -218,8 +218,8 @@
       "src/scenes/hepatobiliary/scenes/pancreasAnatomy/PancreasAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "0a3ff436505ed65a",
+    "cardRevision": 7,
+    "modelDigest": "f4888bf53e8f5a18",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -231,8 +231,8 @@
       "src/scenes/endocrine/scenes/thyroidAnatomy/ThyroidAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "584cf9e5e35f9df5",
+    "cardRevision": 6,
+    "modelDigest": "2b16ade2ea2a4985",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -245,8 +245,8 @@
       "src/scenes/hematologic/scenes/spleenAnatomy/SpleenAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "5437993c3450a12d",
+    "cardRevision": 6,
+    "modelDigest": "d2c001e477de0672",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -258,8 +258,8 @@
       "src/scenes/renal/scenes/bladderAnatomy/BladderAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "79df6a5e31ae31ed",
+    "cardRevision": 5,
+    "modelDigest": "3faa6968772706c5",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -271,8 +271,8 @@
       "src/scenes/hepatobiliary/scenes/biliaryAnatomy/BiliaryAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "b64ebb94a3adb1c7",
+    "cardRevision": 7,
+    "modelDigest": "b5459a3a5194c3dc",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -284,8 +284,8 @@
       "src/scenes/gastrointestinal/scenes/esophagusAnatomy/EsophagusAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "3cb5c6c31c50d770",
+    "cardRevision": 5,
+    "modelDigest": "de4bcf70e56529ab",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -297,8 +297,8 @@
       "src/scenes/endocrine/scenes/adrenalAnatomy/AdrenalAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "e3ad44dbee6c6897",
+    "cardRevision": 5,
+    "modelDigest": "2c42c96565d18ce6",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -310,8 +310,8 @@
       "src/scenes/reproductive/scenes/uterusAnatomy/UterusAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "41f06b556423f5b4",
+    "cardRevision": 8,
+    "modelDigest": "be8f3c310716d54a",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -323,8 +323,8 @@
       "src/scenes/reproductive/scenes/prostateAnatomy/ProstateAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "7f341aaa1bc803a2",
+    "cardRevision": 6,
+    "modelDigest": "28c673a784fa098c",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -336,8 +336,8 @@
       "src/scenes/reproductive/scenes/maleTractAnatomy/MaleTractAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "a5b861dc7f22e0db",
+    "cardRevision": 5,
+    "modelDigest": "9d591a6496bde02b",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -469,8 +469,8 @@
       "src/scenes/musculoskeletal/scenes/kneeAnatomy/KneeAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "42fedb9f460cd4ab",
+    "cardRevision": 5,
+    "modelDigest": "7b03924cbba253be",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -482,8 +482,8 @@
       "src/scenes/musculoskeletal/scenes/shoulderAnatomy/ShoulderAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "808dd0e4a3b199b4",
+    "cardRevision": 6,
+    "modelDigest": "c9c5704f3024e6ce",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -495,8 +495,8 @@
       "src/scenes/musculoskeletal/scenes/hipAnatomy/HipAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "9943d728ccc02a6c",
+    "cardRevision": 5,
+    "modelDigest": "bee9ae7a85f16aa6",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -508,8 +508,8 @@
       "src/scenes/sensory/scenes/eyeAnatomy/EyeAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "38f7c87baf31c986",
+    "cardRevision": 8,
+    "modelDigest": "1d01d85d06de0d7e",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -521,8 +521,8 @@
       "src/scenes/sensory/scenes/earAnatomy/EarAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "6c6895fb85f9279a",
+    "cardRevision": 5,
+    "modelDigest": "b0386c65f03e0894",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -534,8 +534,8 @@
       "src/scenes/integumentary/scenes/skinAnatomy/SkinAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "0cd62058510d4024",
+    "cardRevision": 4,
+    "modelDigest": "530803f67a9b9b80",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -547,8 +547,8 @@
       "src/scenes/hematologic/scenes/lymphNodeAnatomy/LymphNodeAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "6447646a33807222",
+    "cardRevision": 4,
+    "modelDigest": "aa3ec63ba810c0a1",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -560,8 +560,8 @@
       "src/scenes/hematologic/scenes/lymphaticDrainage/LymphaticDrainageScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "ad20b70e31c5c040",
+    "cardRevision": 5,
+    "modelDigest": "8bcee79ef5a0f0e8",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -573,8 +573,8 @@
       "src/scenes/reproductive/scenes/breastAnatomy/BreastAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "d86efe8fc9955f8e",
+    "cardRevision": 5,
+    "modelDigest": "11e4ab2501e8962f",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -586,8 +586,8 @@
       "src/scenes/musculoskeletal/scenes/spineAnatomy/SpineAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "62bd0c467a972d76",
+    "cardRevision": 5,
+    "modelDigest": "ece1eda0680128d6",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -743,8 +743,8 @@
       "src/scenes/regional/scenes/neckAnatomy/NeckAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "85a14bacdde5b8e9",
+    "cardRevision": 4,
+    "modelDigest": "1f7d2e51b9d9ddd1",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -756,8 +756,8 @@
       "src/scenes/musculoskeletal/scenes/elbowAnatomy/ElbowAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "4e9abcc1feaeaa62",
+    "cardRevision": 5,
+    "modelDigest": "dec3382909d68318",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -769,8 +769,8 @@
       "src/scenes/regional/scenes/thoraxAnatomy/ThoraxAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "171f5fad55ec7c65",
+    "cardRevision": 4,
+    "modelDigest": "ae2a91cdb83c4632",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -782,8 +782,8 @@
       "src/scenes/regional/scenes/abdomenAnatomy/AbdomenAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "30cfbdbf2d139e3d",
+    "cardRevision": 4,
+    "modelDigest": "3661520ba5c7a79b",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -795,8 +795,8 @@
       "src/scenes/regional/scenes/pelvisAnatomy/PelvisAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "8edbab7af3c50f9c",
+    "cardRevision": 4,
+    "modelDigest": "4a4f8cca593b8c02",
     "cardUpdatedAt": "2026-09-14"
   }
 ]

@@ -17,10 +17,14 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
-  'heart-anatomy',
+  // The four the beta opens lead, in the order they opened. `heart-anatomy`
+  // follows them rather than sitting second on the strength of its organ:
+  // a visitor who stops reading part way down has then seen only models they
+  // can open, which `tests/landing.test.js` holds.
   'lung-anatomy',
   'liver-anatomy',
   'kidney-anatomy',
+  'heart-anatomy',
   'stomach-anatomy',
   'intestine-anatomy',
   'pancreas-anatomy',

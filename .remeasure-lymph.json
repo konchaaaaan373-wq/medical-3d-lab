@@ -1,0 +1,68 @@
+{
+ "lymphatic-drainage": {
+  "hits": 9,
+  "all": [
+   {
+    "fx": 0.34,
+    "fy": 0.19,
+    "name": "Cervical nodes"
+   },
+   {
+    "fx": 0.388,
+    "fy": 0.19,
+    "name": "Cervical nodes"
+   },
+   {
+    "fx": 0.34,
+    "fy": 0.24,
+    "name": "Cervical nodes"
+   },
+   {
+    "fx": 0.292,
+    "fy": 0.29,
+    "name": "Axillary nodes"
+   },
+   {
+    "fx": 0.34,
+    "fy": 0.29,
+    "name": "Right lymphatic duct"
+   },
+   {
+    "fx": 0.34,
+    "fy": 0.34,
+    "name": "Right lymphatic duct"
+   },
+   {
+    "fx": 0.436,
+    "fy": 0.34,
+    "name": "Axillary nodes"
+   },
+   {
+    "fx": 0.292,
+    "fy": 0.39,
+    "name": "Axillary nodes"
+   },
+   {
+    "fx": 0.436,
+    "fy": 0.39,
+    "name": "Axillary nodes"
+   }
+  ],
+  "chosen": [
+   {
+    "fx": 0.34,
+    "fy": 0.19,
+    "name": "Cervical nodes"
+   },
+   {
+    "fx": 0.34,
+    "fy": 0.34,
+    "name": "Right lymphatic duct"
+   }
+  ],
+  "empty": {
+   "fx": 0.1,
+   "fy": 0.14
+  }
+ }
+}

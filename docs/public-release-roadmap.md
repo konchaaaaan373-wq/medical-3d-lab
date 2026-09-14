@@ -62,11 +62,14 @@ the model tests.
 
 ## Gate 1 — limited free beta
 
-**Scope, as of 2026-09-08: the beta is the 3D anatomy of the brain and the
-heart, and nothing else.** The disease and physiology models keep being built
-and are not published in it. An unfinished heart anatomy is never substituted
-for by a heart disease model — the beta opens the one organ that passed and
-says so. See [`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md)
+**Scope, as of 2026-09-14: the beta is 3D anatomy, opened one batch of organs
+at a time as each passes the gate** (ADR 2026-09-14, which keeps every other
+decision in ADR 2026-09-08). Today that is the brain, the lung, the liver and
+the kidney. The disease and physiology models keep being built and are not
+published in it. An unfinished heart anatomy is never substituted for by a
+heart disease model — the beta opens the organs that passed and says so. See
+[`architecture/adr-2026-09-14-anatomy-beta-by-organ.md`](architecture/adr-2026-09-14-anatomy-beta-by-organ.md),
+[`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md)
 and [`beta-release.md`](beta-release.md). The items below are unchanged: none of
 the browser, accessibility, performance or review work is waived by publishing
 less.
@@ -119,24 +122,32 @@ less.
 
 ### 1Z. Opening the anatomy layer organ by organ
 
-**Nothing here is open yet, and the order is a plan rather than a promise.**
-Thirty-seven procedural organ anatomy scenes clear every condition in
-`beta-release.md` §1 except two: they are not in `BETA_ANATOMY_CANDIDATES`, and
-no publication decision has been taken for them. Neither is a formality — the
-first is a scope decision (the current beta is the brain and the heart, ADR
-2026-09-08) and the second is a record of somebody having *looked*.
+**Three of these are open; the order of the rest is a plan rather than a
+promise.** Thirty-four procedural organ anatomy scenes still clear every
+condition in `beta-release.md` §1 except two: they are not in
+`BETA_ANATOMY_CANDIDATES`, and no publication decision has been taken for
+them. Neither is a formality — the
+first is a scope decision (ADR 2026-09-14: the range is whichever anatomy
+scenes have passed, opened a batch at a time) and the second is a record of
+somebody having *looked*.
 
 The looking is the part that is not cheap, and the first batch is what proved
 it. `npm run verify:anatomy` passed on all three of `lung-anatomy`,
 `liver-anatomy` and `kidney-anatomy`; rendering them at their own viewpoints
 then found three defects that no unit test and no interaction check could see
-(F-44, F-101, F-102 in [`follow-ups.md`](follow-ups.md)). **A batch is not
-ready because the gate would open. It is ready when the renders have been
-looked at.**
+(F-44, F-101, F-102 in [`follow-ups.md`](follow-ups.md)) — a model that was
+never fitted to the visible band, a cut that drew no face, and a scene that
+threw on the way out. **A batch is not ready because the gate would open. It
+is ready when the renders have been looked at.**
+
+Two of those three were in the scene every procedural organ shares, so every
+later batch starts from a better place than B1 did. Before B2, do F-103: the
+publication records' prose travels to first paint, and five more scenes of it
+is the wrong thing to spend a kilobyte on.
 
 | Batch | Scenes | State |
 | --- | --- | --- |
-| B1 | `lung-anatomy`, `liver-anatomy`, `kidney-anatomy` | Framing and teardown defects fixed; **held by F-101** — the cut viewpoints of the lung and the liver have no section face |
+| B1 | `lung-anatomy`, `liver-anatomy`, `kidney-anatomy` | **Open, 2026-09-14.** Three defects found in the renders and fixed first (F-44, F-101, F-102); records in [`beta-publication/`](beta-publication/) |
 | B2 | `stomach`, `esophagus`, `intestine`, `biliary`, `pancreas` | Not started |
 | B3 | `eye`, `ear`, `skin` | Not started |
 | B4 | `knee`, `shoulder`, `hip`, `elbow`, `hand`, `foot`, `spine` | Not started |

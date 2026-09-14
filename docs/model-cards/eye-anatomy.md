@@ -82,6 +82,11 @@ the sclera from its own side, from behind, inserting in front of the equator.
   of the window nothing is covering — the parts panel is an overlay over the
   canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
   organ open is framed on what it leaves rather than on the whole model.
+- **A cut draws the face it leaves.** The cross-section is computed from the
+  triangles the plane crosses and drawn in each structure's own colour, so a
+  cut part reads as solid tissue with a surface rather than as a shell seen
+  from the inside. It is the geometry of the model, not an illustration laid
+  over it: what the face shows is where the plane happens to fall.
 
 ## 7. What it must never be used for
 

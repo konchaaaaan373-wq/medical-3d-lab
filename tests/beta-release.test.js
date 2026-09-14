@@ -45,7 +45,10 @@ const brain = () => ({ ...sceneById('brain-anatomy') });
 
 test('beta release: the beta is anatomy, and it is not a list of organs', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual(
+    [...BETA_ANATOMY_CANDIDATES],
+    ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+  );
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -66,8 +69,12 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
 
   // What the beta actually ships today. Named so that opening or closing one is
   // a deliberate edit to the gate rather than a side effect of adding a scene.
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy']);
-  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain']);
+  // The heart is a candidate and is not here: it rests on candidate assets.
+  assert.deepEqual(
+    RELEASED_SCENES.map((scene) => scene.id),
+    ['brain-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+  );
+  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'lungs', 'liver', 'kidney']);
 });
 
 test('beta release: an unfinished heart is not published as a disease model instead', () => {
@@ -338,7 +345,10 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy']);
+  assert.deepEqual(
+    RELEASED_SCENES.map((scene) => scene.id),
+    ['brain-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+  );
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');

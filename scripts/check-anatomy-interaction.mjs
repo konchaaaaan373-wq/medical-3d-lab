@@ -101,99 +101,92 @@ const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
  * "the picking may be broken" — about a scene whose picking is fine.
  *
  * These are read off a render of each scene's opening view at this script's own
- * viewport, and each one is named for what it is on. They are re-measured when
- * a scene's opening pose or its geometry moves; a point that stops hitting is a
- * question about the render, not a number to nudge.
+ * viewport, and each one is named for what the click actually resolved to.
+ * They are re-measured when a scene's opening pose or its geometry moves; a
+ * point that stops hitting is a question about the render, not a number to
+ * nudge.
+ *
+ * **The whole table was re-measured on 2026-09-14**, when the organ scenes
+ * started answering `getSubjectBounds()` in the shape the framing reads and
+ * every model moved into the band the parts panel leaves. The measurement is a
+ * grid of clicks over each scene's opening view, keeping four that land on
+ * different structures and far enough apart to be four tests rather than one.
  */
 const SCENE_POINTS = {
-  // Two lungs and the airway between them, not one mass.
-  'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
-  // Right lobe, left lobe, the inferior third, and the gallbladder below it.
-  'liver-anatomy': [[0.35, 0.40], [0.66, 0.45], [0.45, 0.62], [0.42, 0.75]],
-  // One kidney, the other, and twice on the opened one.
-  'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
-  // Fundus, body, antrum, and the duodenum it empties into.
-  'stomach-anatomy': [[0.62, 0.33], [0.59, 0.45], [0.53, 0.62], [0.40, 0.82]],
-  // The colon frame, clockwise from the ascending limb.
-  'intestine-anatomy': [[0.35, 0.44], [0.49, 0.24], [0.69, 0.50], [0.52, 0.76]],
-  // Head, neck, body, tail — the gland runs across the frame.
-  'pancreas-anatomy': [[0.34, 0.52], [0.45, 0.48], [0.56, 0.45], [0.66, 0.40]],
-  // Two lobes clasping a trachea, with the isthmus across the front of it.
-  'thyroid-anatomy': [[0.44, 0.48], [0.57, 0.48], [0.50, 0.56], [0.50, 0.25]],
-  // The two segments, and the pancreatic tail off to the medial side.
-  'spleen-anatomy': [[0.54, 0.29], [0.54, 0.69], [0.60, 0.20], [0.32, 0.57]],
-  // Apex, body, neck, and a ureter arriving behind.
-  'bladder-anatomy': [[0.50, 0.37], [0.50, 0.51], [0.50, 0.63], [0.42, 0.20]],
-  // Gallbladder, common bile duct, a hepatic duct, and the bowel it opens into.
-  'biliary-anatomy': [[0.30, 0.58], [0.50, 0.36], [0.45, 0.66], [0.60, 0.74]],
-  // The tube runs down the middle; the trachea is half-transparent in front of
-  // its upper end, so a click there lands on the trachea.
-  'esophagus-anatomy': [[0.48, 0.60], [0.49, 0.80], [0.48, 0.25], [0.487, 0.45]],
-  // A gland and its kidney, on each side.
-  'adrenal-anatomy': [[0.365, 0.36], [0.635, 0.36], [0.35, 0.62], [0.645, 0.62]],
-  // Fundus, body, cervix, and a tube on its way to an ovary.
-  'uterus-anatomy': [[0.50, 0.33], [0.50, 0.50], [0.50, 0.66], [0.33, 0.36]],
-  // The gland, a seminal vesicle above it, and the rectum behind.
-  'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
-  // The route runs bottom-left to middle and then forward.
-  'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
-  // A femoral condyle, the other one, the patella between them, and a plateau.
-  'knee-anatomy': [[0.45, 0.37], [0.56, 0.37], [0.52, 0.44], [0.46, 0.56]],
-  // The head, the scapula behind it, the arch above, and the shaft below.
-  'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
-  // The pelvis, the socket, the head in it, and the femur below.
-  'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
-  // Into the funnel from in front: the midline, the ring on each side of it, and the floor below.
-  'pelvis-anatomy': [[0.5, 0.5], [0.44, 0.46], [0.56, 0.46], [0.5, 0.6]],
-  // Across the front of the belly: the midline, the liver on the patient’s right, the stomach on the left, and the bowel below.
-  'abdomen-anatomy': [[0.5, 0.46], [0.44, 0.4], [0.56, 0.44], [0.5, 0.58]],
-  // Across the front of the chest: the sternum, a lung on each side of it, and lower down the heart.
-  'thorax-anatomy': [[0.5, 0.44], [0.44, 0.5], [0.56, 0.5], [0.5, 0.6]],
-  // Down the joint in the midline: shaft, hinge and the two forearm bones under it.
-  'elbow-anatomy': [[0.5, 0.42], [0.5, 0.52], [0.46, 0.3], [0.54, 0.62]],
-  // Down the front of the neck: the larynx, the thyroid, and one side of it each way.
-  'neck-anatomy': [[0.5, 0.4], [0.5, 0.52], [0.44, 0.46], [0.56, 0.46]],
-  // Down the midline of a standing figure: skull, pelvis, leg, and the cage
-  // last, because that is the widest thing the re-click has to find again.
-  'skeleton-overview': [[0.5, 0.211], [0.486, 0.456], [0.486, 0.544], [0.5, 0.356]],
-  // Along the inside of the foot from the heel forward, and the leg last,
-  // because that is the widest thing the re-click has to find again.
-  'foot-anatomy': [[0.514, 0.511], [0.43, 0.57], [0.59, 0.28], [0.625, 0.533]],
-  // Down the back of the hand: a finger, the palm, the carpus, and the forearm
-  // last, because that is the widest thing the re-click has to find again.
-  'hand-anatomy': [[0.486, 0.644], [0.472, 0.7], [0.479, 0.5], [0.479, 0.278]],
-  // A wing, the bowel coming down through the ring, the front of the ring, and
-  // the sheet itself last, because that is the one the re-click has to find.
-  'pelvic-floor-anatomy': [[0.625, 0.278], [0.535, 0.311], [0.5, 0.52], [0.458, 0.4]],
-  // Into an open mouth: the roof, the row of papillae across the tongue, the
-  // tongue itself, and a parotid gland out at the side. Read off a render.
-  'oral-anatomy': [[0.49, 0.36], [0.625, 0.444], [0.44, 0.56], [0.49, 0.52]],
-  // Down the midline of a tall, narrow organ: the soft palate, the pharynx
-  // behind the mouth, the thyroid cartilage and the trachea. Read off a render.
-  'larynx-anatomy': [[0.48, 0.19], [0.49, 0.33], [0.49, 0.52], [0.5, 0.76]],
-  // The external nose in profile, the septum behind it, and the palate under
-  // both. Read off a render at the view the scene opens on.
-  'nose-anatomy': [[0.34, 0.58], [0.56, 0.44], [0.56, 0.71], [0.49, 0.58]],
-  // Down the column: neck, chest, low back and sacrum.
-  'spine-anatomy': [[0.5, 0.22], [0.5, 0.4], [0.5, 0.58], [0.5, 0.76]],
-  // The dome, the nipple on it, the axilla up to the left and the chest wall behind.
-  'breast-anatomy': [[0.52, 0.5], [0.52, 0.44], [0.36, 0.3], [0.66, 0.62]],
-  // The node beads, not the ducts: a duct is a few pixels wide and the body
-  // silhouette behind it is drawn too faint to be clickable at all, so a miss
-  // lands on nothing. Neck, both armpits, and the groin.
-  'lymphatic-drainage': [[0.53, 0.16], [0.41, 0.33], [0.59, 0.33], [0.45, 0.81]],
-  // The node itself, its inside, an afferent vessel on the left and the efferent on the right.
-  'lymph-node-anatomy': [[0.5, 0.47], [0.5, 0.42], [0.34, 0.4], [0.63, 0.52]],
-  // Down the cut face: epidermis, dermis, subcutis — and the hair off to the side.
-  'skin-anatomy': [[0.5, 0.36], [0.5, 0.48], [0.5, 0.62], [0.36, 0.33]],
-  // The auricle, the canal, the middle ear and the inner ear, left to right.
-  'ear-anatomy': [[0.3, 0.45], [0.44, 0.47], [0.57, 0.44], [0.66, 0.52]],
-  // The globe is a ball, so the useful points are inside its silhouette and off
-  // its centre: the sclera around the cornea, and the cornea itself, which sits
-  // in front of the iris and answers for every click through the middle.
-  // Read these off a render — they were once set from a frame taken before the
-  // scene's framing changed, and then two of the four fell past the edge.
-  'eye-anatomy': [[0.44, 0.35], [0.5, 0.62], [0.55, 0.45], [0.42, 0.52]],
+  // Trachea, Right upper lobe, Left upper lobe, Right middle lobe.
+  'lung-anatomy': [[0.365, 0.18], [0.29, 0.37], [0.44, 0.37], [0.215, 0.56]],
+  // Segment VIII — Right anterior superior, Segment II — Left lateral superior, Segment VII — Right posterior superior, Segment V — Right anterior inferior.
+  'liver-anatomy': [[0.365, 0.18], [0.44, 0.275], [0.215, 0.37], [0.29, 0.465]],
+  // Renal cortex, the cortex again on the other side of the opened kidney, Right kidney, Left ureter.
+  'kidney-anatomy': [[0.59, 0.37], [0.74, 0.465], [0.14, 0.56], [0.515, 0.56]],
+  // Abdominal oesophagus, Cardia, Pyloric canal, Body.
+  'stomach-anatomy': [[0.365, 0.18], [0.44, 0.37], [0.74, 0.465], [0.365, 0.56]],
+  // Small intestine (jejunum and ileum), Transverse colon, Sigmoid colon, Small intestine (jejunum and ileum).
+  'intestine-anatomy': [[0.29, 0.275], [0.44, 0.275], [0.365, 0.56], [0.29, 0.465]],
+  // Body, Tail, Neck, Head.
+  'pancreas-anatomy': [[0.44, 0.37], [0.59, 0.37], [0.74, 0.37], [0.14, 0.56]],
+  // Trachea, Right lobe, Left lobe, Pyramidal lobe.
+  'thyroid-anatomy': [[0.365, 0.18], [0.29, 0.275], [0.44, 0.275], [0.365, 0.465]],
+  // Superior segment, Inferior segment, Tail of the pancreas, Superior segment.
+  'spleen-anatomy': [[0.365, 0.18], [0.74, 0.37], [0.215, 0.465], [0.44, 0.275]],
+  // Left ureter, Apex, Body, Apex.
+  'bladder-anatomy': [[0.515, 0.18], [0.29, 0.275], [0.74, 0.37], [0.44, 0.275]],
+  // Right hepatic duct, Left hepatic duct, Cystic duct, Body.
+  'biliary-anatomy': [[0.29, 0.275], [0.515, 0.275], [0.29, 0.56], [0.14, 0.655]],
+  // Cricopharyngeal constriction, Thoracic part, Diaphragmatic constriction, Abdominal part.
+  'esophagus-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.56], [0.365, 0.655]],
+  // Right zona glomerulosa, Left zona glomerulosa, Right kidney, Left kidney.
+  'adrenal-anatomy': [[0.215, 0.465], [0.44, 0.56], [0.14, 0.655], [0.515, 0.655]],
+  // Rectum, Left fallopian tube, Body, Urinary bladder.
+  'uterus-anatomy': [[0.365, 0.37], [0.215, 0.465], [0.365, 0.56], [0.14, 0.655]],
+  // Bladder neck, Anterior fibromuscular stroma, Rectum, Left seminal vesicle.
+  'prostate-anatomy': [[0.29, 0.275], [0.74, 0.275], [0.515, 0.37], [0.44, 0.465]],
+  // Bladder, Prostate, Spongy urethra, Left corpus cavernosum.
+  'male-tract-anatomy': [[0.44, 0.18], [0.44, 0.37], [0.74, 0.465], [0.29, 0.56]],
+  // Femur (shaft), Quadriceps tendon, Lateral tibial plateau, Patellar tendon.
+  'knee-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.465], [0.365, 0.56]],
+  // Articular cartilage, Head of the humerus, Greater tubercle, Subscapularis tendon.
+  'shoulder-anatomy': [[0.29, 0.275], [0.74, 0.275], [0.215, 0.37], [0.365, 0.37]],
+  // Iliofemoral ligament, Greater trochanter, Ligament of the head of the femur, Neck of the femur.
+  'hip-anatomy': [[0.365, 0.275], [0.215, 0.37], [0.44, 0.37], [0.74, 0.37]],
+  // Pelvic ring, Sigmoid colon, Pubic symphysis, Levator ani.
+  'pelvis-anatomy': [[0.29, 0.275], [0.44, 0.275], [0.74, 0.37], [0.29, 0.465]],
+  // Abdominal wall, Rectus abdominis, Pancreas, Abdominal wall.
+  'abdomen-anatomy': [[0.215, 0.275], [0.74, 0.37], [0.74, 0.655], [0.365, 0.275]],
+  // Parietal pleura, Left lung, Right lung, Mediastinum.
+  'thorax-anatomy': [[0.29, 0.275], [0.365, 0.37], [0.215, 0.465], [0.29, 0.56]],
+  // Humerus, Median nerve, Ulnar nerve, Olecranon and trochlear notch.
+  'elbow-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.215, 0.465], [0.29, 0.56]],
+  // Surface of the neck, Posterior neck muscles, Sternocleidomastoid, Subclavian arteries.
+  'neck-anatomy': [[0.29, 0.275], [0.44, 0.37], [0.74, 0.37], [0.29, 0.56]],
+  // Skull, Lumbar spine, Mandible, Ribs.
+  'skeleton-overview': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.37], [0.74, 0.56]],
+  // Tibialis posterior tendon, Middle phalanges, Cuneiforms, Proximal phalanges.
+  'foot-anatomy': [[0.515, 0.37], [0.74, 0.465], [0.365, 0.655], [0.74, 0.655]],
+  // Metacarpals, Flexor tendons, Distal phalanges, Carpal tunnel.
+  'hand-anatomy': [[0.365, 0.37], [0.74, 0.465], [0.29, 0.56], [0.74, 0.655]],
+  // Pelvic ring, Iliococcygeus, Pubococcygeus, Coccygeus.
+  'pelvic-floor-anatomy': [[0.29, 0.275], [0.44, 0.465], [0.215, 0.56], [0.365, 0.56]],
+  // Hard palate, Lips, Upper teeth, Parotid glands.
+  'oral-anatomy': [[0.29, 0.18], [0.215, 0.275], [0.44, 0.275], [0.29, 0.37]],
+  // Nasopharynx, Hyoid bone, Epiglottis, Trachea.
+  'larynx-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.74, 0.37], [0.365, 0.56]],
+  // Frontal sinus, Ethmoid air cells, Sphenoid sinus, Nasopharynx.
+  'nose-anatomy': [[0.29, 0.275], [0.215, 0.465], [0.365, 0.465], [0.515, 0.465]],
+  // Cervical spine, Thoracic spine, Lumbar spine, Pedicles.
+  'spine-anatomy': [[0.365, 0.18], [0.365, 0.37], [0.365, 0.56], [0.74, 0.56]],
+  // Axillary nodes, Pectoralis major, Axillary tail, Skin.
+  'breast-anatomy': [[0.215, 0.275], [0.365, 0.275], [0.29, 0.37], [0.515, 0.37]],
+  // Cervical nodes, Axillary nodes, Right lymphatic duct, Axillary nodes.
+  'lymphatic-drainage': [[0.34, 0.19], [0.292, 0.29], [0.34, 0.34], [0.436, 0.39]],
+  // Afferent vessels, Capsule, Efferent vessel, Capsule.
+  'lymph-node-anatomy': [[0.14, 0.465], [0.29, 0.465], [0.515, 0.56], [0.44, 0.465]],
+  // Dermis, Epidermis, Subcutaneous tissue, Sebaceous gland.
+  'skin-anatomy': [[0.215, 0.37], [0.365, 0.37], [0.29, 0.56], [0.74, 0.56]],
+  // Auricle, External auditory canal, Vestibule, Vestibulocochlear nerve.
+  'ear-anatomy': [[0.14, 0.275], [0.29, 0.37], [0.44, 0.37], [0.365, 0.465]],
+  // Sclera, Choroid, Cornea, Pupil.
+  'eye-anatomy': [[0.365, 0.275], [0.74, 0.37], [0.29, 0.465], [0.74, 0.56]],
 };
 
 const clickPoints = (() => {

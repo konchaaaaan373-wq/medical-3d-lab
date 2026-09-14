@@ -353,8 +353,19 @@ export const BUNDLE_BUDGET_KB = {
    * the guides and the COPD/asthma teaching data in behind them.
    * `tests/eager-entry-graph.test.js` now names the payloads that must stay
    * lazy, so that mistake fails as itself rather than as a number.
+   *
+   * **90 → 91 on 2026-09-14, and it should go back.** Publishing the lung, the
+   * liver and the kidney added three publication decisions to `release.js`,
+   * and the browser recomputes the gate from them, so their text is in the
+   * entry: 89.2 kB became 90.4, and 90.1 after the records were tightened to
+   * what they have to say. One kilobyte is the honest price of three more
+   * models *today*, and it is the wrong shape for tomorrow — B2 is five more
+   * scenes and would spend another kilobyte on prose that first paint does not
+   * read. F-103 is the fix: the pin is what the browser needs, the essay is
+   * what CI and the reader need, and they do not have to travel together. Put
+   * this back to 90 when that lands.
    */
-  entry: 90,
+  entry: 91,
   /** The single largest lazily-loaded JS chunk (a scene, or the renderer). */
   largestChunk: 260,
   /** All CSS, which is loaded eagerly today. */

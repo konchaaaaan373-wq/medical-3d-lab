@@ -50,6 +50,33 @@ export const HERO_ORGANS = Object.freeze([
     lineEn: 'Rotate and zoom the heart to inspect the spatial relationship between its structures.',
     lineJa: '心臓を回転・拡大し、部位ごとの位置関係を確認できます。',
   }),
+  Object.freeze({
+    organ: 'lungs',
+    sceneId: 'lung-anatomy',
+    upgradeSceneId: 'lung-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Five lobes, the bronchi that fill them and the vessels that reach them, each one selectable by name.',
+    lineJa: '5 つの肺葉と、そこへ入る気管支・血管を、名前で個別に選択できます。',
+  }),
+  Object.freeze({
+    organ: 'liver',
+    sceneId: 'liver-anatomy',
+    upgradeSceneId: 'liver-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: "Couinaud's eight segments, drawn as the portal and hepatic veins divide them.",
+    lineJa: 'Couinaud の 8 区域を、門脈と肝静脈が分ける形で見られます。',
+  }),
+  Object.freeze({
+    organ: 'kidney',
+    sceneId: 'kidney-anatomy',
+    upgradeSceneId: 'kidney-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Cut it coronally and the cortex, the pyramids between the columns and the collecting system are on the face.',
+    lineJa: '冠状断で切ると、皮質・腎柱に挟まれた錐体・集合系が断面に出ます。',
+  }),
 ]);
 
 /**
