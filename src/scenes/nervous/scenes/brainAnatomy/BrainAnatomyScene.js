@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
+import { createTapTracker } from '../../../shared/anatomy/tapGesture.js';
 import { clamp, damp, smoothstep } from '../../../../utils/math.js';
 import {
   BRAIN_ANATOMICAL_PALETTE,
@@ -382,24 +383,25 @@ export class BrainAnatomyScene {
     if (!canvas) return;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    let down = null;
+    // See `tapGesture.js`: a tap is a release near the press *and* a pointer
+    // that did not travel in between. Displacement alone read the out-and-back
+    // drag that turns the model as standing still, which on a touch screen is
+    // how the model is turned.
+    const tap = createTapTracker();
 
     this._pointerDown = (event) => {
-      down = [event.clientX, event.clientY];
+      tap.begin(event.clientX, event.clientY);
       this._setHovered(null);
     };
     this._pointerMove = (event) => {
+      tap.move(event.clientX, event.clientY);
       if (event.buttons) return;
       const hit = this._pick(event);
       this._setHovered(hit?.object ?? null);
       canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
     this._pointerUp = (event) => {
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
-        down = null;
-        return;
-      }
-      down = null;
+      if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
       if (hit) this.selectStructure(hit.object.userData.atlasId);
       else this.clearSelection();

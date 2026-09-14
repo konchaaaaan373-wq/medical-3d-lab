@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-09 (re-taken after the label layer stopped waiting out a hide) |
+| **Decided at** | 2026-09-14 (re-taken after a press that returns to where it began stopped counting as a click) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **14**, source digest `3c3175a6da4b6944` |
+| **Scene revision** | model card revision **15**, source digest `c74112e33009be20` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
 
 The decision is pinned to **both** revisions in
@@ -74,6 +74,24 @@ structure off the screen. It still closes the gate, because the pin is not a
 judgement of how big a change is — it is a statement that this decision was
 taken about *this* version.
 
+**Revision 14 → 15.** What counts as a click changed, and this one a reader
+does feel. The release was measured against the press by distance alone, so a
+press that went out and came back had gone nowhere and was read as a click on
+whatever had rotated under the pointer in between. That is the ordinary way to
+turn the model on a touch screen — swipe across it, swipe back — and it was
+found by driving the landing hero with emulated touch (iPhone 13 / Pixel 5 /
+iPad Mini viewports, Chromium with `hasTouch` and real touch events): turning
+the brain and letting go pinned the pons, which nobody had chosen. A press is
+now a click only if it ends where it began **and** the pointer did not travel
+far in between, in one rule both anatomy scenes share
+([`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js),
+fixed by [`tests/tap-gesture.test.js`](../../tests/tap-gesture.test.js)). The
+looser bound on travel is deliberate: a finger is never perfectly still, and a
+tap thrown away is the worse failure of the two.
+
+**No physical phone has run this.** Emulated touch is the same event path on
+desktop hardware; it is not a device pass (F-101).
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -127,7 +145,9 @@ a rendering check, not an anatomical one.
 - A click on empty space clears the selection rather than leaving a stale card,
   and a structure can be selected again afterwards.
 - **A drag is not a click**: orbiting from one structure and releasing over
-  another leaves the pinned selection unchanged.
+  another leaves the pinned selection unchanged — and so does orbiting away and
+  back, which releases on the spot it started from. Both are measured now: how
+  far the release is from the press, and how far the pointer went in between.
 - Switching colour mode (Colour map ↔ Natural anatomy) does not change which
   structure is selected.
 - Applying a named viewpoint does not change it either, and neither leaves more

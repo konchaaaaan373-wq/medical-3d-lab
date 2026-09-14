@@ -230,14 +230,14 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-09',
+    decidedAt: '2026-09-14',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '3c3175a6da4b6944' }),
+    sceneRevision: Object.freeze({ cardRevision: 15, modelDigest: 'c74112e33009be20' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -254,6 +254,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'click pins a structure and the panel names it in both languages',
         'click on empty space clears, and a structure can be selected again',
         'a drag that ends over another structure does not reselect',
+        'a drag that ends where it began does not select either — the press is measured by how far the pointer travelled, not only by where it let go',
         'switching colour mode does not change the selection',
         'applying a named viewpoint does not change the selection',
         'the part tree lists 271 structures, and selection agrees in both directions',

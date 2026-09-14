@@ -3,6 +3,7 @@ import { buildAnatomyTree } from '../../../app/anatomyContract.js';
 import { createStudioLights } from '../lighting.js';
 import { disposeObject } from '../../../utils/dispose.js';
 import { clamp, damp, lerp, smoothstep } from '../../../utils/math.js';
+import { createTapTracker } from './tapGesture.js';
 
 /**
  * The machinery every procedurally built organ anatomy scene shares.
@@ -210,34 +211,33 @@ export class OrganAnatomyScene {
     if (!canvas) return;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    let down = null;
+    // A drag is how the reader turns the organ, and it must not also select
+    // whatever the pointer came to rest on. `tapGesture` measures both how far
+    // the release is from the press and how far the pointer went in between —
+    // the second is what a finger needs, because turning the model and turning
+    // it back is one press that ends exactly where it started.
+    const tap = createTapTracker();
 
     this._pointerDown = (event) => {
-      down = [event.clientX, event.clientY];
+      tap.begin(event.clientX, event.clientY);
       this._setHovered(null);
     };
     this._pointerMove = (event) => {
+      tap.move(event.clientX, event.clientY);
       if (event.buttons) return;
       const hit = this._pick(event);
       this._setHovered(hit?.object.userData.structureId ?? null);
       canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
     this._pointerUp = (event) => {
-      // A drag is how the reader turns the organ, and it must not also select
-      // whatever the pointer happened to come to rest on. Seven pixels is the
-      // same threshold the brain scene settled on.
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
-        down = null;
-        return;
-      }
-      down = null;
+      if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
       if (hit) this.selectStructure(hit.object.userData.structureId);
       else this.clearSelection();
     };
     this._pointerLeave = () => this._setHovered(null);
     this._pointerCancel = () => {
-      down = null;
+      tap.cancel();
       this._setHovered(null);
     };
 
