@@ -581,6 +581,71 @@ try {
       await page.close();
     }
 
+    step = 'a confirmation link arriving on top of an abandoned reset';
+    {
+      // Both signals are read on the same page load, and an abandoned reset
+      // leaves `?account=recovery` in the query until it is finished or
+      // cancelled. The fragment is the newer and the more specific of the two,
+      // and it used to lose: a confirmation link opened "choose a new
+      // password" with "your email address is confirmed" printed underneath.
+      const recovered = (path, request) => (
+        path.includes('/auth/v1/user') && request.method() === 'GET'
+          ? {
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000', email: 'new@example.test' }),
+          }
+          : null
+      );
+      const { page } = await openPage({ width: 1100, height: 900 }, { auth: recovered });
+      await page.goto(
+        `${base}?account=recovery#access_token=signup-token&refresh_token=r&expires_in=3600&type=signup`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForTimeout(1400);
+      const text = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('a confirmation link is not answered with a password form',
+        (await page.locator('.access-recovery').count()) === 0, text.slice(0, 80));
+      check('and says the address was confirmed',
+        /確認しました|is confirmed/.test(text), text.slice(0, 90));
+      await page.close();
+    }
+
+    step = 'signing out elsewhere while a recovery is pending';
+    {
+      // `recoveryMode` deliberately outlives the dialog, so it has to be
+      // cleared wherever the session ends rather than only where the person
+      // presses Cancel. Signing out in another tab used to leave the flag and
+      // the query behind: "choose a new password" stayed on screen for
+      // somebody with no identity, and the next reload put it back.
+      const recovered = (path, request) => (
+        path.includes('/auth/v1/user') && request.method() === 'GET'
+          ? {
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000000', email: 'reset@example.test' }),
+          }
+          : null
+      );
+      const { page } = await openPage({ width: 1100, height: 900 }, { auth: recovered });
+      await page.goto(
+        `${base}?account=recovery#access_token=recovery-token&refresh_token=r&expires_in=3600&type=recovery`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForSelector('.access-recovery', { timeout: 15000 });
+      await page.evaluate(() => {
+        localStorage.removeItem('medical3dlab.auth.v1');
+        // Never fires in the tab that made the change, so it is synthesised.
+        window.dispatchEvent(new StorageEvent('storage', { key: 'medical3dlab.auth.v1', newValue: null }));
+      });
+      await page.waitForTimeout(700);
+      check('signing out elsewhere takes the password form down with it',
+        (await page.locator('.access-recovery').count()) === 0);
+      check('and takes the recovery flag out of the URL',
+        !page.url().includes('account=recovery'), page.url());
+      await page.close();
+    }
+
     step = 'the recovery flag with no recovery session behind it';
     {
       // The query flag outlives the session that minted it: it survives in a

@@ -118,10 +118,19 @@ export function createAccessManager({ ui }) {
       // is settled below, once there is an answer about the session — see
       // `recoveryLapsed`. `authConfigured()` because a deployment with no
       // account backend has no recovery to be in the middle of.
-      const recoveryRequested = redirect !== 'error' && authConfigured() && isPasswordRecovery({
-        consumedRecoveryHash: redirect === 'recovery',
-        search: window.location.search,
-      });
+      //
+      // A fragment of any other type wins outright, rather than only `error`
+      // doing so. Both signals are read here, and the fragment is the newer
+      // and the more specific of the two: a stale `?account=recovery` left by
+      // an abandoned reset would otherwise make a confirmation link open
+      // "choose a new password", with "your email address is confirmed"
+      // printed underneath it.
+      const recoveryRequested = (!redirect || redirect === 'recovery')
+        && authConfigured()
+        && isPasswordRecovery({
+          consumedRecoveryHash: redirect === 'recovery',
+          search: window.location.search,
+        });
       // The other types need no dialog of their own: Supabase has already done
       // the thing the link was for, and the session it handed back is stored.
       // What is left is to say so — which matters most for `signup`, where the
