@@ -175,6 +175,24 @@ export class OrganAnatomyScene {
          * pays for it.
          */
         doubleSided: false,
+        /**
+         * A shell that stands for a hollow organ, not the boundary of a solid.
+         *
+         * It decides what a cut leaves. `sectionFace` computes the outline of
+         * the solid a closed mesh bounds, which is what a cut liver or kidney
+         * shows; run over a stomach it draws the whole silhouette in gastric
+         * pink and says the stomach is a lump of tissue. A cut bag shows a
+         * lumen, and the honest way to draw one with a wall that has no
+         * thickness is not to draw a face at all — the cut simply opens the
+         * bag, and what is behind it is the inside of the far wall.
+         *
+         * Per structure, because an organ is rarely all one or the other: the
+         * biliary scene is ducts around a solid pancreatic head, and the
+         * stomach's sphincter is a ring of muscle in a wall that is a surface.
+         * A scene whose parts are mostly hollow says so once with
+         * `static hollowByDefault = true` and overrides the exceptions.
+         */
+        hollow: this.constructor.hollowByDefault ?? false,
         ...structure,
         meshes,
         currentOpacity: 1,
@@ -638,6 +656,8 @@ export class OrganAnatomyScene {
     const ranked = new Map();
     const crossings = [];
     for (const structure of this.structures) {
+      // A hollow viscus is opened by a cut, not faced by one.
+      if (structure.hollow) continue;
       for (const mesh of structure.meshes) {
         if (!meshCrossesPlane(mesh, plane)) continue;
         mesh.geometry.computeBoundingSphere();
@@ -648,6 +668,7 @@ export class OrganAnatomyScene {
     crossings.forEach((entry, rank) => ranked.set(entry.mesh, rank));
 
     for (const structure of this.structures) {
+      if (structure.hollow) continue;
       const faces = [];
       for (const mesh of structure.meshes) {
         if (!ranked.has(mesh)) continue;

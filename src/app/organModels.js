@@ -71,6 +71,51 @@ const BUILDERS = Object.freeze({
     const { buildLiver } = await import('../scenes/hepatobiliary/organs/liver.js');
     return buildLiver(profile.liver);
   },
+  stomach: async () => {
+    const { buildStomach } = await import('../scenes/gastrointestinal/organs/stomach.js');
+    return buildStomach({});
+  },
+  esophagus: async () => {
+    const { buildEsophagus } = await import('../scenes/gastrointestinal/organs/stomach.js');
+    return buildEsophagus({});
+  },
+  colon: async (THREE) => {
+    // The colon frames the small bowel, and the pair is what makes the shape
+    // recognisable at thumbnail size — a colon alone reads as a loop of pipe.
+    const { buildColon, buildSmallIntestine } = await import('../scenes/gastrointestinal/organs/intestine.js');
+    const colon = buildColon({});
+    const small = buildSmallIntestine({});
+    const object = new THREE.Group();
+    object.name = 'bowel-preview';
+    object.add(colon.object, small.object);
+    return {
+      object,
+      dispose: () => {
+        colon.dispose?.();
+        small.dispose?.();
+      },
+    };
+  },
+  gallbladder: async (THREE) => {
+    const { buildGallbladder } = await import('../scenes/hepatobiliary/organs/liver.js');
+    const { buildBiliaryTree } = await import('../scenes/hepatobiliary/organs/biliaryTree.js');
+    const gallbladder = buildGallbladder({});
+    const tree = buildBiliaryTree({});
+    const object = new THREE.Group();
+    object.name = 'biliary-preview';
+    object.add(tree.object, gallbladder.object);
+    return {
+      object,
+      dispose: () => {
+        gallbladder.dispose?.();
+        tree.dispose?.();
+      },
+    };
+  },
+  pancreas: async () => {
+    const { buildPancreas } = await import('../scenes/hepatobiliary/organs/pancreas.js');
+    return buildPancreas({});
+  },
   kidney: async (THREE) => {
     const { buildKidney } = await import('../scenes/renal/organs/kidney.js');
     const left = buildKidney({ side: 'left', opacity: 0.92 });

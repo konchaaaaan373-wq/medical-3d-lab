@@ -153,12 +153,14 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 
 範囲は臓器名では固定しません——**ゲートを通った解剖シーンから、1 バッチずつ**
 開きます（[ADR 2026-09-14](docs/architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
-現在の公開は **4 件**（脳・肺・肝・腎）。順番は
+現在の公開は **9 件**（脳／肺・肝・腎／胃・食道・腸・胆道・膵）。順番は
 [`docs/public-release-roadmap.md`](docs/public-release-roadmap.md) §1Z が持ちます。
 
 **バッチを小さく保つ理由は、ゲートが通ることと「見たこと」が別だからです。**
 B1（肺・肝・腎）は `npm run verify:anatomy` が 3 件とも通ったあと、
-全視点をレンダリングして初めて欠陥が 3 つ出ました。
+全視点をレンダリングして初めて欠陥が 3 つ出ました。B2（胃ほか）でも同じで、
+**中空の臓器の断面が「肉の塊」になっていた**ことは、絵を見るまで誰も気づいて
+いませんでした。
 **新しい臓器を公開するときは、必ず実レンダリングを見てください**
 （`npm run shots:anatomy -- --scene <slug> --preview`）。
 

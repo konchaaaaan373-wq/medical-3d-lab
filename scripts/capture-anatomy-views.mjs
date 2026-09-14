@@ -34,6 +34,7 @@
  *   --mode <id>      only this colour mode (repeatable)
  *   --width <px>     viewport width (default: 1280)
  *   --height <px>    viewport height (default: 720)
+ *   --layer <0..1>   set the anatomical-layer slider before rendering
  *   --no-labels      turn the structure labels off before rendering
  *   --preview        unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed         show the browser
@@ -58,6 +59,7 @@ const sceneSlug = value('--scene', 'brain-anatomy');
 const outDir = value('--out', 'shots');
 const onlyViews = values('--view');
 const onlyModes = values('--mode');
+const layer = value('--layer') === null ? null : Number(value('--layer'));
 const width = Number(value('--width', '1280'));
 const height = Number(value('--height', '720'));
 
@@ -177,6 +179,30 @@ try {
 
   const box = await page.locator('canvas').first().boundingBox();
   if (!box) die('the scene rendered no canvas');
+
+  /**
+   * Put the anatomical-layer slider where the caller asked before shooting.
+   *
+   * Without this every set is the state the scene opens in, which for a scene
+   * whose structures arrive with depth is a picture of the outside of it. The
+   * oesophagus was the case that made it obvious: its "where the arch and
+   * bronchus cross" viewpoint is named after two structures that appear at a
+   * quarter of the way along the slider, so a set shot at rest showed a
+   * viewpoint with its subject missing — and nothing in the picture said why.
+   */
+  if (layer !== null) {
+    if (!(layer >= 0 && layer <= 1)) die('--layer takes a number between 0 and 1');
+    const slider = page.locator('.console .slider, .slider').first();
+    if (!(await slider.count())) die('the scene offers no anatomical-layer slider to set');
+    await slider.evaluate((element, value) => {
+      const max = Number(element.max || 1);
+      element.value = String(Math.round(value * max));
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, layer);
+    // The layer eases like everything else; the settle below still decides.
+    await page.waitForTimeout(600);
+  }
+
   const hideUi = () => page.locator('.ui-toggle[title^="Hide interface"]').click({ noWaitAfter: true });
 
   /**
@@ -294,7 +320,10 @@ try {
       await page.waitForTimeout(300);
     }
   }
-  console.log(`\n${sceneSlug} at ${width}x${height}: ${views.length} viewpoint(s) x ${modes.length} colour mode(s) -> ${outDir}`);
+  const at = layer === null ? 'the layer the scene opens at' : `layer ${layer}`;
+  console.log(
+    `\n${sceneSlug} at ${width}x${height}, ${at}: ${views.length} viewpoint(s) x ${modes.length} colour mode(s) -> ${outDir}`
+  );
   if (unsettled) die(`${unsettled} frame(s) never settled; the set is not comparable.`);
 } finally {
   await browser.close();

@@ -254,7 +254,7 @@ test('landing: the published models are live organs, not a card index', () => {
     // hero was written for and could not be tested in while one model was
     // open: "a chooser is drawn only when there is more than one thing to
     // choose", and until now there was not.
-    assert.equal(PUBLIC_MANIFEST.count, 4);
+    assert.equal(PUBLIC_MANIFEST.count, 9);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1);
     assert.equal(controls.length, PUBLIC_MANIFEST.count);

@@ -548,6 +548,36 @@ test('a cut draws the face it leaves, in the colour of what was cut', () => {
   scene.dispose();
 });
 
+test('a cut opens a hollow organ and faces a solid one', () => {
+  // The distinction the face has to make. `sectionFace` computes the outline
+  // of the solid a closed mesh bounds, which is the liver's cut and the
+  // kidney's — and run over a stomach it fills the silhouette with gastric
+  // pink and says the stomach is a lump of tissue. A bag is opened by a cut.
+  const stomach = new StomachAnatomyScene({});
+  stomach.build();
+  const wall = stomach.structures.find((structure) => structure.id === 'body');
+  assert.ok(wall?.hollow, 'the stomach wall says it is a wall');
+  const sphincter = stomach.structures.find((structure) => structure.id === 'pyloric-sphincter');
+  assert.equal(sphincter?.hollow, false, 'and the ring of muscle in it does not');
+
+  const section = (stomach.constructor.views ?? []).find((view) => view.section);
+  assert.ok(section, 'the stomach offers a cut');
+  stomach.setAnatomyView(section.id);
+  const capped = new Set(stomach.caps.map((cap) => cap.structureId));
+  assert.ok(!capped.has('body'), 'the cut opens the stomach rather than facing it');
+  assert.ok(stomach.sectionPlane, 'and it really is cut');
+  stomach.dispose();
+
+  // The same scene class, the other answer: the liver is a solid and its cut
+  // is faced. Both are read off the structure, not guessed from the organ.
+  const liver = new LiverAnatomyScene({});
+  liver.build();
+  assert.ok(liver.structures.every((structure) => structure.hollow === false), 'nothing in the liver is a bag');
+  liver.setAnatomyView('transverse-section');
+  assert.ok(liver.caps.length >= 4, 'so the cut leaves faces');
+  liver.dispose();
+});
+
 test('a viewpoint that takes a side away does not frame the side it took', () => {
   const scene = new IntestineAnatomyScene({});
   scene.build();

@@ -35,6 +35,15 @@ export class EsophagusAnatomyScene extends OrganAnatomyScene {
    * is almost nothing to reserve — the distances above were set by what it
    * takes to get the tube inside the frame at all.
    */
+  /**
+   * A tube standing for a tube: the oesophagus, the trachea and the bronchus
+   * are walls around a lumen, so a cut opens them rather than facing them.
+   * The arch and the diaphragm are the exceptions and say so where they are
+   * declared — a vessel cut across reads as a filled profile, which is how an
+   * atlas draws one, and a diaphragm is a sheet of muscle.
+   */
+  static hollowByDefault = true;
+
   static framing = { minHorizontalAspect: 0.15 };
 
   /** What crosses it and what it passes through. */
@@ -116,8 +125,8 @@ export class EsophagusAnatomyScene extends OrganAnatomyScene {
     // three that explain a narrowing arrive.
     declare('trachea', { ghostAt: 0.25, ghostOpacity: 0.15 });
     declare('left-main-bronchus', { revealAt: 0.25, preferredView: 'crossing' });
-    declare('aortic-arch', { revealAt: 0.25, preferredView: 'crossing' });
-    declare('diaphragm', { revealAt: 0.25, preferredView: 'hiatus' });
+    declare('aortic-arch', { revealAt: 0.25, preferredView: 'crossing', hollow: false });
+    declare('diaphragm', { revealAt: 0.25, preferredView: 'hiatus', hollow: false });
     declare('gastric-cardia', { revealAt: 0.25 });
 
     return { object: esophagus.object, structures, dispose: () => esophagus.dispose() };

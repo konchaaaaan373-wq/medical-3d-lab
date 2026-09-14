@@ -145,6 +145,11 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'lung-anatomy',
   'liver-anatomy',
   'kidney-anatomy',
+  'stomach-anatomy',
+  'esophagus-anatomy',
+  'intestine-anatomy',
+  'biliary-anatomy',
+  'pancreas-anatomy',
 ]);
 
 /**
@@ -272,6 +277,15 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
    *
    * Every automated check passed before any of this was written. Rendering
    * them is what found the three defects the records name.
+   *
+   * **Re-taken at revision 9, the same day.** Batch B2 taught the shared scene
+   * to tell a hollow organ from a solid one, which moved the digest these
+   * three are pinned to. None of the three has a hollow part, so the
+   * expectation was that nothing about them changed — and the expectation is
+   * not the evidence: all thirty-four frames were rendered again and compared
+   * against the ones in `docs/screenshots/pub-b1/after/`. Thirty-one came back
+   * byte-identical; the other three differ in at most three pixels on an
+   * anti-aliased edge, which is what a re-render of the same model costs.
    */
   Object.freeze({
     sceneId: 'lung-anatomy',
@@ -279,7 +293,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/lung-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd002d75f9fed5b2b' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'c209c6e201826bd1' }),
   }),
 
   Object.freeze({
@@ -288,7 +302,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd5304fd53ba0d43f' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '7d843562f120b03d' }),
   }),
 
   Object.freeze({
@@ -297,7 +311,61 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/kidney-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'b5df5595a0b6aab3' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '3a79255a4288c471' }),
+  }),
+
+  /**
+   * Batch B2 — the stomach, the oesophagus, the bowel, the biliary tree and
+   * the pancreas, 2026-09-14.
+   *
+   * Four of the five are hollow organs, and that is what this batch is about:
+   * a cut through a bag is not a cut through a liver, and the face that was
+   * right for B1 drew a stomach as a lump of tissue. What a cut leaves is now
+   * declared per structure — `docs/screenshots/pub-b2/` has the pair.
+   */
+  Object.freeze({
+    sceneId: 'stomach-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/stomach-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: '4189ddc2f7a1e73a' }),
+  }),
+
+  Object.freeze({
+    sceneId: 'esophagus-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/esophagus-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: 'ef5092fc12deef3c' }),
+  }),
+
+  Object.freeze({
+    sceneId: 'intestine-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/intestine-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '7db4ec7e25cc5140' }),
+  }),
+
+  Object.freeze({
+    sceneId: 'biliary-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/biliary-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'ea7cf6f5cca8686c' }),
+  }),
+
+  Object.freeze({
+    sceneId: 'pancreas-anatomy',
+    decidedAt: '2026-09-14',
+    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
+    record: 'docs/beta-publication/pancreas-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: '6524d4694ca94e96' }),
   }),
 ]);
 

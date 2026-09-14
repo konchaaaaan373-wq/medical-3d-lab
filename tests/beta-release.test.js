@@ -48,7 +48,18 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.deepEqual(
     [...BETA_ANATOMY_CANDIDATES],
-    ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+    [
+      'brain-anatomy',
+      'heart-anatomy',
+      'lung-anatomy',
+      'liver-anatomy',
+      'kidney-anatomy',
+      'stomach-anatomy',
+      'esophagus-anatomy',
+      'intestine-anatomy',
+      'biliary-anatomy',
+      'pancreas-anatomy',
+    ]
   );
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
@@ -73,9 +84,22 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
   // The heart is a candidate and is not here: it rests on candidate assets.
   assert.deepEqual(
     RELEASED_SCENES.map((scene) => scene.id),
-    ['brain-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+    [
+      'brain-anatomy',
+      'lung-anatomy',
+      'stomach-anatomy',
+      'esophagus-anatomy',
+      'intestine-anatomy',
+      'liver-anatomy',
+      'kidney-anatomy',
+      'biliary-anatomy',
+      'pancreas-anatomy',
+    ]
   );
-  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'lungs', 'liver', 'kidney']);
+  assert.deepEqual(
+    [...PUBLIC_MANIFEST.organs],
+    ['brain', 'lungs', 'stomach', 'esophagus', 'colon', 'liver', 'kidney', 'gallbladder', 'pancreas']
+  );
 });
 
 test('beta release: an unfinished heart is not published as a disease model instead', () => {
@@ -109,13 +133,24 @@ test('beta release: an unfinished heart is not published as a disease model inst
   // The old rule, run again here so that restoring it fails loudly. It opened
   // every non-prototype scene under the two organs, which is four disease
   // models and one anatomy model.
+  //
+  // It is no longer the *larger* set — the beta has since opened eight more
+  // organs — so what is checked is the thing that actually matters about it:
+  // every disease model it would open is refused, and the two sets are not the
+  // same set. Counting them was only ever a proxy for that.
   const oldRule = SCENES.filter(
     (scene) => BETA_ORGANS.includes(scene.organ) && scene.status !== 'prototype'
   );
-  assert.ok(oldRule.length > RELEASED_SCENES.length);
-  for (const scene of oldRule.filter((entry) => entry.disease)) {
+  const diseaseModels = oldRule.filter((entry) => entry.disease);
+  assert.ok(diseaseModels.length >= 3, 'the old rule really does reach disease models');
+  for (const scene of diseaseModels) {
     assert.equal(isSceneReleased(scene), false, `${scene.id} would open again under the organ filter`);
   }
+  assert.notDeepEqual(
+    oldRule.map((scene) => scene.id).sort(),
+    RELEASED_SCENES.map((scene) => scene.id).sort(),
+    'the organ filter is not what the gate does'
+  );
 });
 
 test('beta release: naming a scene does not open it — every failure closes the gate', () => {
@@ -422,7 +457,17 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
   assert.deepEqual(
     RELEASED_SCENES.map((scene) => scene.id),
-    ['brain-anatomy', 'lung-anatomy', 'liver-anatomy', 'kidney-anatomy']
+    [
+      'brain-anatomy',
+      'lung-anatomy',
+      'stomach-anatomy',
+      'esophagus-anatomy',
+      'intestine-anatomy',
+      'liver-anatomy',
+      'kidney-anatomy',
+      'biliary-anatomy',
+      'pancreas-anatomy',
+    ]
   );
 
   const brain = sceneById('brain-anatomy');

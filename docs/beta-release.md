@@ -17,10 +17,17 @@
 範囲は臓器名では固定しません——**ゲートを通った解剖シーンから 1 つずつ**開きます
 （[ADR 2026-09-14](architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
 
-現在公開しているのは **4 件**——`brain-anatomy`・`lung-anatomy`・`liver-anatomy`・
-`kidney-anatomy` です。肺・肝・腎は 2026-09-14 の B1 バッチで開きました
-（記録は [`beta-publication/`](beta-publication/)、レンダーの証跡は
-[`screenshots/pub-b1/`](screenshots/pub-b1/)）。
+現在公開しているのは **9 件**です。脳に加えて、B1（肺・肝・腎）と
+B2（胃・食道・腸・胆道・膵）を 2026-09-14 に開きました。
+記録は [`beta-publication/`](beta-publication/)、レンダーの証跡は
+[`screenshots/pub-b1/`](screenshots/pub-b1/) と
+[`screenshots/pub-b2/`](screenshots/pub-b2/) です。
+
+**B2 が変えたのは「切断の描き方」です。** B1 で入れた断面は、中身のある臓器
+（肝・腎・膵）には正しく、**中空の臓器には嘘**でした——胃の冠状断が胃の輪郭を
+まるごと塗りつぶし、袋を肉の塊として描いていました。壁に厚みが無いモデルで
+断面を描けば、内腔が実質になります。いまは構造ごとに宣言し、中空のものは
+「面を張らず開く」ようにしています。
 
 `heart-anatomy` は候補として登録済みで、**シーンは存在します**（`alpha`）。
 開かない理由は 2 つで、どちらもゲートが返します——読み込んでいる 2 本の GLB が

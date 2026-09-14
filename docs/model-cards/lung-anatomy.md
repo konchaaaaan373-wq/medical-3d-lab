@@ -93,11 +93,13 @@ What is not held: any individual airway or vessel dimension.
   of the window nothing is covering — the parts panel is an overlay over the
   canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
   organ open is framed on what it leaves rather than on the whole model.
-- **A cut draws the face it leaves.** The cross-section is computed from the
-  triangles the plane crosses and drawn in each structure's own colour, so a
-  cut part reads as solid tissue with a surface rather than as a shell seen
-  from the inside. It is the geometry of the model, not an illustration laid
-  over it: what the face shows is where the plane happens to fall.
+- **A cut draws the face it leaves, where there is one to draw.** For a solid
+  part the cross-section is computed from the triangles the plane crosses and
+  drawn in that part's own colour, so a cut segment reads as tissue with a
+  surface rather than as a shell seen from the inside. For a hollow one — a
+  stomach, a duct, a loop of bowel — the cut opens it instead: the wall here is
+  a surface with no thickness, and facing it would draw a lumen as a lump of
+  tissue. Which a part is, is declared by the scene rather than guessed.
 
 ## 7. What it must never be used for
 

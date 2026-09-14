@@ -43,6 +43,16 @@ const B1_INTERACTIONS = Object.freeze([
   'colour mode and viewpoint do not move the selection, and a hover does not rewrite it',
 ]);
 
+const B2_EVIDENCE = Object.freeze([
+  'scripts/check-anatomy-interaction.mjs',
+  'scripts/capture-anatomy-views.mjs',
+  'scripts/measure-anatomy-points.mjs',
+  'src/scenes/shared/geometry/sectionFace.js',
+  'tests/section-face.test.js',
+  'tests/organ-anatomy-scenes.test.js',
+  'docs/screenshots/pub-b2/README.md',
+]);
+
 const B1_EVIDENCE = Object.freeze([
   'scripts/check-anatomy-interaction.mjs',
   'scripts/capture-anatomy-views.mjs',
@@ -139,6 +149,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     }),
     evidence: B1_EVIDENCE,
     unverified: Object.freeze([
+      'the anatomical-layer slider was not driven: every frame was shot at the layer the scene opens at',
       '79 of the 83 structures were not individually opened, and no label was checked against an atlas',
       'no clinical review — the registry records this scene as pending',
       'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
@@ -162,6 +173,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     }),
     evidence: B1_EVIDENCE,
     unverified: Object.freeze([
+      'the anatomical-layer slider was not driven: every frame was shot at the layer the scene opens at',
       '23 of the 27 structures were not individually opened',
       'nobody qualified has confirmed that what is drawn is Couinaud\'s division of a real liver',
       'no clinical review — the registry records this scene as pending',
@@ -185,6 +197,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     }),
     evidence: B1_EVIDENCE,
     unverified: Object.freeze([
+      'the anatomical-layer slider was not driven: every frame was shot at the layer the scene opens at',
       '29 of the 32 structures were not individually opened — the four clicks land on three',
       'seven pyramids is a common arrangement, not a constant, and no label was checked against an atlas',
       'only the left kidney is modelled in parts; the right is a landmark shape and says so',
@@ -193,4 +206,122 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     ]),
   }),
 
+
+  /** Batch B2, 2026-09-14 — four hollow organs and one solid one. */
+  'stomach-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Abdominal oesophagus',
+        'Cardia',
+        'Pyloric antrum',
+        'Body',
+        "the part tree's 8 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes, and the coronal section before and after the cut stopped being faced (docs/screenshots/pub-b2/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B2_EVIDENCE,
+    unverified: Object.freeze([
+      '4 of the 8 structures were not individually opened, and no label was checked against an atlas',
+      'the five named regions differ by a few percent of lightness and are not visibly distinct at the opening camera',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'no dimension is claimed; the proportions are drawn to read clearly',
+    ]),
+  }),
+
+  'esophagus-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Cricopharyngeal constriction',
+        'Thoracic part',
+        'Aortic and bronchial constriction',
+        'Abdominal part',
+        "the part tree's 11 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes at the opening layer, and the crossing viewpoint again at layer 0.6, where the arch and the bronchus it is named after are drawn (docs/screenshots/pub-b2/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B2_EVIDENCE,
+    unverified: Object.freeze([
+      '7 of the 11 structures were not individually opened, and no label was checked against an atlas',
+      'whether the three constrictions sit where they sit in a person is an anatomist\'s judgement',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'no length or diameter is claimed',
+    ]),
+  }),
+
+  'intestine-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Small intestine, at two points on the coil',
+        'Transverse colon',
+        'Sigmoid colon',
+        "the part tree's 9 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes (docs/screenshots/pub-b2/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B2_EVIDENCE,
+    unverified: Object.freeze([
+      '5 of the 9 structures were not individually opened — the four recorded clicks land on three',
+      'the coil is schematic and self-intersects where it folds most tightly (F-88)',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+    ]),
+  }),
+
+  'biliary-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Right hepatic duct',
+        'Left hepatic duct',
+        'Cystic duct',
+        'Body of the gallbladder',
+        "the part tree's 12 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all six viewpoints in both colour modes (docs/screenshots/pub-b2/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B2_EVIDENCE,
+    unverified: Object.freeze([
+      '8 of the 12 structures were not individually opened, and no junction height was checked against an atlas',
+      'the coronal section removes the gallbladder, which sits in front of the plane',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'no calibre or length is claimed',
+    ]),
+  }),
+
+  'pancreas-anatomy': Object.freeze({
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Body',
+        'Tail',
+        'Head, at two points',
+        "the part tree's 7 rows, listed and matched against the model in both directions",
+      ]),
+      views: Object.freeze([
+        'all five viewpoints in both colour modes, and the opening view at 1440x900 with the interface up — this is the scene F-44 was reported against (docs/screenshots/pub-b1/panel-1440x900/)',
+      ]),
+      interactions: B1_INTERACTIONS,
+    }),
+    evidence: B2_EVIDENCE,
+    unverified: Object.freeze([
+      '4 of the 7 structures were not individually opened — the four recorded clicks land on three',
+      'the gland is schematic and its duct is one channel standing for the main duct',
+      'no clinical review — the registry records this scene as pending',
+      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
+      'no dimension is claimed',
+    ]),
+  }),
 });

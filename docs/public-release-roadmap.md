@@ -64,8 +64,9 @@ the model tests.
 
 **Scope, as of 2026-09-14: the beta is 3D anatomy, opened one batch of organs
 at a time as each passes the gate** (ADR 2026-09-14, which keeps every other
-decision in ADR 2026-09-08). Today that is the brain, the lung, the liver and
-the kidney. The disease and physiology models keep being built and are not
+decision in ADR 2026-09-08). Today that is nine models: the brain, and the
+organs B1 and B2 opened — lung, liver, kidney, stomach, oesophagus, bowel,
+biliary tree and pancreas. The disease and physiology models keep being built and are not
 published in it. An unfinished heart anatomy is never substituted for by a
 heart disease model — the beta opens the organs that passed and says so. See
 [`architecture/adr-2026-09-14-anatomy-beta-by-organ.md`](architecture/adr-2026-09-14-anatomy-beta-by-organ.md),
@@ -76,7 +77,7 @@ less.
 
 - [ ] Build `heart-anatomy` — an anatomy scene of its own, procedural or
   asset-backed, through the gates in `beta-release.md` §1. Until it passes, the
-  beta opens the brain alone; nothing stands in for it. The scene now exists and
+  beta opens the organs that passed and not the heart; nothing stands in for it. The scene now exists and
   is `alpha`; what it still lacks is an asset that has passed the asset release
   gate (it loads two candidate GLBs from `devAssets.js`) and a publication
   decision.
@@ -122,8 +123,8 @@ less.
 
 ### 1Z. Opening the anatomy layer organ by organ
 
-**Three of these are open; the order of the rest is a plan rather than a
-promise.** Thirty-four procedural organ anatomy scenes still clear every
+**Eight of these are open; the order of the rest is a plan rather than a
+promise.** Twenty-nine procedural organ anatomy scenes still clear every
 condition in `beta-release.md` §1 except two: they are not in
 `BETA_ANATOMY_CANDIDATES`, and no publication decision has been taken for
 them. Neither is a formality — the
@@ -141,14 +142,16 @@ threw on the way out. **A batch is not ready because the gate would open. It
 is ready when the renders have been looked at.**
 
 Two of those three were in the scene every procedural organ shares, so every
-later batch starts from a better place than B1 did. Before B2, do F-103: the
-publication records' prose travels to first paint, and five more scenes of it
-is the wrong thing to spend a kilobyte on.
+later batch starts from a better place than B1 did — and B2 found the next
+thing in the same place: a cut was being faced whether the part was solid or a
+bag, so the stomach's coronal section drew the whole organ as tissue. F-103
+was done before B2 and the entry is back under its old budget, which is what
+made a five-scene batch affordable.
 
 | Batch | Scenes | State |
 | --- | --- | --- |
 | B1 | `lung-anatomy`, `liver-anatomy`, `kidney-anatomy` | **Open, 2026-09-14.** Three defects found in the renders and fixed first (F-44, F-101, F-102); records in [`beta-publication/`](beta-publication/) |
-| B2 | `stomach`, `esophagus`, `intestine`, `biliary`, `pancreas` | Not started |
+| B2 | `stomach`, `esophagus`, `intestine`, `biliary`, `pancreas` | **Open, 2026-09-14.** The renders found that a cut through a hollow organ was being faced — a stomach drawn as a lump of tissue — and the fix is what the batch is about |
 | B3 | `eye`, `ear`, `skin` | Not started |
 | B4 | `knee`, `shoulder`, `hip`, `elbow`, `hand`, `foot`, `spine` | Not started |
 | B5 | `thyroid`, `adrenal`, `spleen`, `lymph-node` | Not started |
