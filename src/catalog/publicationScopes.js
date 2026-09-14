@@ -347,7 +347,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
       structures: Object.freeze([
         'Epidermis',
         'Dermis',
-        'Subcutaneous tissue',
+        'Subcutaneous tissue, at two of the four measured points',
         'Arteriole, selected from the tree and followed to its own viewpoint',
         "the part tree's 10 rows, listed and matched against the model in both directions",
       ]),
@@ -359,7 +359,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
     }),
     evidence: B3_EVIDENCE,
     unverified: Object.freeze([
-      'the four recorded click points resolve to fewer than four distinct structures: the block presents its epidermis to most of the frame',
+      'the four recorded click points resolve to three distinct structures, all of them layers: no measured point lands on an appendage or a vessel',
       '7 of the 10 structures were not individually opened',
       "the sweat gland's coil is a displaced blob rather than a coil that reads as one, and the sebaceous gland is a single lobe",
       'the layers are deliberately not to scale, and the gap drawn between the arteriole and the venule is a display value',

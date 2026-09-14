@@ -14,6 +14,7 @@ these pictures did.
 | **`after/skin/`** | every viewpoint, by structure, after the three fixes |
 | **`fit/after/`** | three published scenes re-framed by the fit correction (F-108) |
 | **`held/`** | why the eye and the ear are not in this batch |
+| **`framing-at-load/`** | a discrepancy found while fixing the check (F-110) |
 | **How** | `npm run shots:anatomy -- --scene <slug> --preview --out <dir>` at 1280×720, interface hidden |
 
 ## 1. The frame was cutting the block in half
@@ -86,7 +87,18 @@ Both scenes pass the interaction check. That is the third batch in a row where
 the gate was green and the picture was not — which is why the batches are
 small and why nothing is published before somebody looks.
 
-## 5. What these images are not
+## 5. One thing these pictures raised and did not settle
+
+`framing-at-load/nose-anatomy-load.png` and `--after-reset.png` are the same
+scene at the same viewpoint, one click and one press of "reset the display"
+apart, with no camera move between them. The model is plainly larger in the
+second. **The reader sees the first**, and so does every render in this
+directory and in `pub-b1/` and `pub-b2/` — the capture never selects anything —
+so what has been looked at is what is shipped. But the frame is being used less
+fully at load than the same framing code manages a moment later, and why is
+recorded rather than guessed at: F-110.
+
+## 6. What these images are not
 
 One engine, headless, on a desktop machine, at one device pixel ratio. They
 show composition, occlusion and whether a surface is closed. **They say

@@ -14,10 +14,12 @@ review of this model is **pending** and every surface says so.
 
 ## What was checked
 
-**The interaction contract, in a browser.** The measured click points resolve
-to the structure the panel then names, in both languages. The part tree's **10
-rows** and the model agree in both directions: selecting in 3D highlights the
-row and opens the branch it is in, and selecting a row selects that structure.
+**The interaction contract, in a browser.** The four measured click points
+resolve to the **epidermis**, the **dermis** and the **subcutaneous tissue**
+(twice) — three distinct structures, not four — each named in both languages,
+with no point needing to be re-aimed. The part tree's **10 rows** and the model
+agree in both directions: selecting in 3D highlights the row and opens the
+branch it is in, and selecting a row selects that structure.
 A drag that ends over a different structure is not read as a click. Isolate
 shows one structure and Show all restores the model. Neither colour mode nor
 viewpoint moves the selection, and a pointer crossing the model does not
@@ -51,8 +53,10 @@ in this scene and nothing to face.
   scale — the epidermis is drawn at about a quarter of the dermis where in life
   it is nearer a twentieth — and **no thickness, ratio or distance may be read
   off this model**, the gap between the two vessels included.
-- The four measured click points resolve to fewer than four distinct
-  structures: the block presents its epidermis to most of the frame.
+- The four measured click points resolve to three distinct structures, all of
+  them layers: the block presents its cut face to most of the frame, so no
+  measured point lands on an appendage or a vessel. The arteriole was reached
+  from the part tree instead.
 - 7 of the 10 structures were not individually opened.
 - The sweat gland's coil is a displaced blob rather than a coil that reads as
   one, and the sebaceous gland is a single lobe.
