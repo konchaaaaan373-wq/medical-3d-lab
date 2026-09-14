@@ -417,6 +417,27 @@ try {
       await page.close();
     }
 
+    step = 'landing on a confirmation link';
+    {
+      // What every new account does now that the project confirms addresses.
+      // The fragment used to fall through to the router, which sends an unknown
+      // hash to the default scene — so registration finished on a 3D model with
+      // a live access and refresh token still in the address bar.
+      const { page } = await openPage({ width: 1100, height: 900 });
+      await page.goto(
+        `${base}#access_token=live-access-token&refresh_token=live-refresh-token&expires_in=3600&type=signup`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForTimeout(1200);
+      check('a confirmation link leaves no access token in the URL',
+        !page.url().includes('live-access-token'), page.url());
+      check('and no refresh token either',
+        !page.url().includes('live-refresh-token'), page.url());
+      const text = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('and says the address is confirmed', /確認しました|confirmed/i.test(text), text.slice(0, 70));
+      await page.close();
+    }
+
     step = 'reloading in the middle of a recovery';
     {
       const { page } = await openPage({ width: 1280, height: 900 });
