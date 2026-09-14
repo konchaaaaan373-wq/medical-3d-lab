@@ -1,14 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  authRedirectFromHash,
-  consumeAuthRedirect,
-} from '../src/access/auth.js';
+import { consumeAuthRedirect } from '../src/access/auth.js';
+import { authRedirectFromHash } from '../src/access/authRedirect.js';
 
 test('auth redirect: a credentialled fragment is recognised, whatever it is for', () => {
   const hash = '#access_token=abc&refresh_token=def&expires_in=1800&type=recovery';
   assert.deepEqual(authRedirectFromHash(hash, 1000), {
     type: 'recovery',
+    errorCode: null,
     session: { access_token: 'abc', refresh_token: 'def', expires_at: 2800, user: null },
   });
 
@@ -84,4 +83,61 @@ test('auth redirect: a confirmation link leaves no token in the address bar', ()
   assert.equal(replaced, '/#/');
   assert.equal(replaced.includes('live-access'), false);
   assert.equal(replaced.includes('live-refresh'), false);
+});
+
+test('auth redirect: a link that failed is recognised, and carries no token', async () => {
+  const { authRedirectFromHash } = await import('../src/access/authRedirect.js');
+  // The commonest way an emailed link ends — expired, or already used. It looks
+  // nothing like the others: no `type`, no token, just `error`. It was the one
+  // case still falling through to the router, so somebody who clicked an
+  // expired confirmation got a 3D model with the error still in the URL.
+  const expired = authRedirectFromHash(
+    '#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired'
+  );
+  assert.equal(expired.type, 'error');
+  assert.equal(expired.errorCode, 'otp_expired');
+  assert.equal(expired.session, null, 'a failed link grants nothing');
+
+  // `error` without a code still counts: the point is not to read it as a route.
+  assert.equal(authRedirectFromHash('#error=server_error').type, 'error');
+});
+
+test('auth redirect: the failure reason is never taken from the URL as text', async () => {
+  const { authRedirectFromHash } = await import('../src/access/authRedirect.js');
+  // `error_description` is free text anybody who can get a link clicked may
+  // choose. Echoing it would put their words inside this product's own dialog,
+  // which is a phishing surface rather than an error message.
+  const crafted = authRedirectFromHash(
+    '#error=access_denied&error_code=otp_expired&error_description=Call+0800+000+000+to+restore+your+account'
+  );
+  assert.equal(crafted.errorCode, 'otp_expired');
+  assert.equal(
+    Object.values(crafted).some((value) => typeof value === 'string' && /0800/.test(value)),
+    false,
+    'nothing from error_description survives parsing'
+  );
+});
+
+test('auth redirect: only the types this app can receive are adopted as a session', async () => {
+  const { ADOPTABLE_REDIRECTS } = await import('../src/access/authRedirect.js');
+  // Pinned in both directions. Dropping a type here silently stops that link
+  // signing anybody in — for `recovery` that breaks password reset for every
+  // user — and adding one signs people in on a link with no handling behind it.
+  assert.deepEqual([...ADOPTABLE_REDIRECTS].sort(), ['email_change', 'recovery', 'signup']);
+  for (const type of ['magiclink', 'invite', 'error', 'unknown']) {
+    assert.equal(ADOPTABLE_REDIRECTS.has(type), false, `${type} must not be adopted`);
+  }
+});
+
+test('auth redirect: an unadoptable fragment is still scrubbed, and still not stored', async () => {
+  const { consumeAuthRedirect } = await import('../src/access/auth.js');
+  let replaced = '';
+  const location = {
+    hash: '#access_token=live-token&expires_in=3600&type=magiclink',
+    href: 'https://example.test/#access_token=live-token&type=magiclink',
+  };
+  const history = { replaceState(_s, _t, value) { replaced = value; } };
+
+  assert.equal(consumeAuthRedirect({ location, history }), 'magiclink');
+  assert.equal(replaced.includes('live-token'), false, 'scrubbing is unconditional');
 });

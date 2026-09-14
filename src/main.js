@@ -26,6 +26,7 @@ import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
+import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
@@ -65,14 +66,13 @@ async function boot() {
   // model, and once the fragment was scrubbed to `#/` the address bar disagreed
   // with what was on screen, which left the shell's Home link inert.
   //
-  // Matched inline rather than by importing the parser: this runs before the
-  // account layer is loaded, and pulling `auth.js` into the entry chunk to
-  // answer one question would put the whole access layer in front of every
-  // first paint. `auth.js` owns what these fragments *mean*; this only needs to
-  // know that one is present.
-  const authRedirect = /[#&]access_token=/.test(window.location.hash)
-    && /[#&]type=/.test(window.location.hash);
-  const route = recoveryIntent || authRedirect
+  // The real parser, not a regex that resembles it: the first version of this
+  // approximated the rule and disagreed with `authRedirectFromHash` about
+  // hashes beginning with `/`, which forced such a URL to the landing page
+  // while leaving its token in the address bar. `authRedirect.js` is pure and
+  // dependency-free precisely so this can be asked here, before the account
+  // layer loads, without dragging the account client into the entry chunk.
+  const route = recoveryIntent || looksLikeAuthRedirect(window.location.hash)
     ? { kind: 'landing' }
     : resolveRoute(window.location.hash);
   const open = routeOpen(route);
