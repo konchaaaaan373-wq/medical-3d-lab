@@ -617,7 +617,12 @@ export function createAccessManager({ ui }) {
         ? el('div', { class: 'access-billing-unavailable' }, [
             el('p', { class: 'access-copy lang-en', text: billingNotice().en }),
             el('p', { class: 'access-copy lang-ja', text: billingNotice().ja }),
-            el('a', { class: 'access-legal-link', href: '#/commerce' }, [
+            // New tab, for the same reason the consent links are: following a
+            // hash link reloads the app, which closes this dialog. Reading why
+            // purchases are unavailable should not cost somebody their place
+            // in their own account panel. Left same-tab when the consent links
+            // were changed, which was an oversight rather than a decision.
+            el('a', { class: 'access-legal-link', href: '#/commerce', target: '_blank', rel: 'noopener' }, [
               el('span', { class: 'lang-en', text: 'Commercial disclosure →' }),
               el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記 →' }),
             ]),
