@@ -417,8 +417,34 @@ export function mountLandingOrganViewport(container, {
         '-',
         '_',
         'Home',
+        'Enter',
+        'Escape',
       ];
       if (!supported.includes(key)) return;
+
+      // Naming a structure without a pointer. The arrows turn the model; this
+      // is how the reader then asks what is in front of them, so the question
+      // is asked of the middle of the frame — the one place a keyboard user can
+      // aim at, and the place the focused viewport marks.
+      //
+      // Deliberately not a camera move: `userMovedCamera` is left alone, so
+      // asking what this is does not quietly give up the opening pose.
+      //
+      // The default is only prevented once there is a model to ask. A page with
+      // no named structures has no business swallowing Escape.
+      if (key === 'Enter' || key === 'Escape') {
+        const canvas = viewer.renderer?.domElement;
+        if (!detail?.scene || !canvas) return;
+        event.preventDefault();
+        if (key === 'Escape') detail.scene.clearSelection?.();
+        else {
+          const rect = canvas.getBoundingClientRect();
+          detail.scene.selectAtCanvasPoint?.(rect.width / 2, rect.height / 2);
+        }
+        renderOnce();
+        return;
+      }
+
       event.preventDefault();
       viewer.controls.autoRotate = false;
 

@@ -7,8 +7,8 @@
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 17,
-    "modelDigest": "8acae735c36b35c5",
+    "cardRevision": 18,
+    "modelDigest": "a6f983478785382e",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -157,8 +157,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "bcd1abbd4ab583da",
+    "cardRevision": 10,
+    "modelDigest": "0d82bba7b8c4e7d2",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -170,8 +170,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "54496b33fbf0aa60",
+    "cardRevision": 10,
+    "modelDigest": "6650a673b299ba4c",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -183,8 +183,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "3867c764f4eae028",
+    "cardRevision": 10,
+    "modelDigest": "88e44c6d68fe6f3a",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -197,8 +197,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 8,
-    "modelDigest": "e59f2120f5a2299d",
+    "cardRevision": 9,
+    "modelDigest": "07a8a064e686b762",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -211,8 +211,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "fa3bd8888b761099",
+    "cardRevision": 10,
+    "modelDigest": "d52378b34e380e88",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -225,8 +225,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 8,
-    "modelDigest": "e954d4740fa7f982",
+    "cardRevision": 9,
+    "modelDigest": "85f3d178f908d8dc",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -239,8 +239,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "90b9f1e91d6e4e28",
+    "cardRevision": 8,
+    "modelDigest": "2f605aad251d5fe2",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -254,8 +254,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "5a85d83edb4efb19",
+    "cardRevision": 8,
+    "modelDigest": "8531b5b64dc8453c",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -268,8 +268,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "d4fe6ce4a3f2a870",
+    "cardRevision": 7,
+    "modelDigest": "8c0153506b870a28",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -282,8 +282,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 8,
-    "modelDigest": "7aa1cc4e5ffa3614",
+    "cardRevision": 9,
+    "modelDigest": "0b6e68ff7d26f991",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -296,8 +296,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "a46796c0321fdf30",
+    "cardRevision": 7,
+    "modelDigest": "2e37344273a230f1",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -310,8 +310,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "f26ce8719308abdd",
+    "cardRevision": 7,
+    "modelDigest": "002dcdf4c9defc9b",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -324,8 +324,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "e04b112ad7aaa797",
+    "cardRevision": 10,
+    "modelDigest": "1aab791b80d53531",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -338,8 +338,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "1c301454097b1ee5",
+    "cardRevision": 8,
+    "modelDigest": "e50ac99050dae67a",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -352,8 +352,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "ed746494999c4754",
+    "cardRevision": 7,
+    "modelDigest": "cf2a036a2348809e",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -486,8 +486,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "330cc9237ff464d1",
+    "cardRevision": 7,
+    "modelDigest": "a9455143ddd2f01e",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -500,8 +500,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "6e912dbb6949c8ec",
+    "cardRevision": 8,
+    "modelDigest": "1c8e6cf28e931fe4",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -514,8 +514,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "f114e4fbe2e81a45",
+    "cardRevision": 7,
+    "modelDigest": "fe8004847bbb6ff4",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -528,8 +528,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 9,
-    "modelDigest": "00c115e59a377483",
+    "cardRevision": 10,
+    "modelDigest": "5aa97793aa1d7a32",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -542,8 +542,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "e3962ed95c8e6716",
+    "cardRevision": 7,
+    "modelDigest": "411463651f63656e",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -556,8 +556,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "121bf6367bbc16e8",
+    "cardRevision": 6,
+    "modelDigest": "fe78cf538eeef996",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -570,8 +570,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "1f6fcf13affceb55",
+    "cardRevision": 6,
+    "modelDigest": "f246f4da3b26293a",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -584,8 +584,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "520eeaa8f32058b1",
+    "cardRevision": 7,
+    "modelDigest": "20f85c49ccf61824",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -598,8 +598,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "e1ea834387b6268b",
+    "cardRevision": 7,
+    "modelDigest": "4860ef8f4da303b5",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -612,8 +612,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "df5a1b6eb08aad82",
+    "cardRevision": 7,
+    "modelDigest": "7bd6704b78840cb0",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -770,8 +770,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "d66ca9f31c2e63d0",
+    "cardRevision": 6,
+    "modelDigest": "ffd52358ab1a237c",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -784,8 +784,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 6,
-    "modelDigest": "f20a17da34b35ad5",
+    "cardRevision": 7,
+    "modelDigest": "90041476c1afe8cd",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -798,8 +798,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "1e25d8f9dff26642",
+    "cardRevision": 6,
+    "modelDigest": "9a03eb08ea29cbbe",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -812,8 +812,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "0ac94b535aa938fe",
+    "cardRevision": 6,
+    "modelDigest": "757c502dab08f28f",
     "cardUpdatedAt": "2026-09-14"
   },
   {
@@ -826,8 +826,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "46ea5fb9049bbd3e",
+    "cardRevision": 6,
+    "modelDigest": "50478b1d5302105b",
     "cardUpdatedAt": "2026-09-14"
   }
 ]

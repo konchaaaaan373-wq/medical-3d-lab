@@ -237,7 +237,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 17, modelDigest: '8acae735c36b35c5' }),
+    sceneRevision: Object.freeze({ cardRevision: 18, modelDigest: 'a6f983478785382e' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -254,7 +254,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'click pins a structure and the panel names it in both languages',
         'click on empty space clears, and a structure can be selected again',
         'a drag that ends over another structure does not reselect',
-        'a drag that ends where it began does not select either — the press is measured by how far the pointer travelled, not only by where it let go',
+        'a drag that ends where it began does not select either — the press is measured by how far the pointer ever got from it, not only by where it let go',
+        'a keyboard reaches the model with Tab, names the structure in the middle of the frame with Enter, and lets go of it with Escape; turning the model with the arrows and asking again names a different structure',
         'switching colour mode does not change the selection',
         'applying a named viewpoint does not change the selection',
         'the part tree lists 271 structures, and selection agrees in both directions',
@@ -281,7 +282,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
       // What a finger gets, which is not what a pointer gets: it is where the
       // out-and-back press was found, and it is re-runnable.
-      'scripts/check-hero-touch.mjs',
+      'scripts/check-hero-input.mjs',
       'tests/tap-gesture.test.js',
       'src/app/anatomyContract.js',
       'src/components/AnatomyPanel.js',

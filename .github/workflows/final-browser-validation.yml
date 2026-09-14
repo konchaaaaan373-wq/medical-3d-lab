@@ -82,19 +82,19 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-  # The hero is the first thing a visitor touches and, on a phone, the only
-  # thing: the model is turned by swiping across it and a structure is named by
-  # tapping it. A pointer has a hover and a finger does not, and a press that
-  # goes out and comes back — how a model is turned and turned back — ends where
-  # it started, which is how a rotate once came to pin a structure nobody chose.
+  # The hero names what a reader picks, and how they pick it is not one thing.
+  # On a phone the model is turned by swiping across it and a structure is named
+  # by tapping it; with a keyboard there is no pointer at all. A press that goes
+  # out and comes back — how a model is turned and turned back — ends where it
+  # started, which is how a rotate once came to pin a structure nobody chose.
   # None of that is reachable from `node --test`, and the viewport matrix above
   # measures surfaces at rest rather than under a finger.
   #
   # Chromium with touch emulation, for the same reason as the job below: this
   # repository keeps browsers out of ordinary PR pushes. It is not a device
   # pass — no iOS Safari, no real hardware — and says so in its own output.
-  hero-touch:
-    name: landing hero under a finger (chromium)
+  hero-input:
+    name: landing hero under a finger and a keyboard (chromium)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -118,12 +118,12 @@ jobs:
       - run: npm run build
       - run: npm i --no-save playwright@1.62.1
       - run: npx playwright install --with-deps chromium
-      - run: npm run verify:hero-touch -- --shots hero-touch-shots
+      - run: npm run verify:hero-input -- --shots hero-input-shots
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: hero-touch-shots-attempt-${{ github.run_attempt }}
-          path: hero-touch-shots/
+          name: hero-input-shots-attempt-${{ github.run_attempt }}
+          path: hero-input-shots/
           if-no-files-found: ignore
           retention-days: 3
 

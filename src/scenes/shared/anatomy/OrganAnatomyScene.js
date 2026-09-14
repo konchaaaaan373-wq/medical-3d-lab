@@ -257,6 +257,35 @@ export class OrganAnatomyScene {
     canvas.style.cursor = 'grab';
   }
 
+  /**
+   * Select whatever is drawn at one point of the canvas.
+   *
+   * The pointer path is not the only way a reader arrives at a structure. A
+   * keyboard has no pointer at all, so the surface that asks "what is at the
+   * middle of the frame?" has to exist as a method rather than only as a
+   * response to a click — otherwise naming a structure is something only a
+   * mouse or a finger can do, and the model names nothing for anybody else.
+   *
+   * Coordinates are CSS pixels from the canvas's top-left corner, which is what
+   * a caller measuring its own viewport already has. A point with nothing drawn
+   * under it clears the selection, exactly as clicking the background does.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.structureId);
+  }
+
   _pick(event) {
     const canvas = this.viewer?.renderer?.domElement;
     if (!canvas || !this.selectables.length) return null;

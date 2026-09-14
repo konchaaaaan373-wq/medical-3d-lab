@@ -441,7 +441,14 @@ function createFakeViewerClass() {
     constructor() {
       FakeViewer.instance = this;
       this.running = false;
-      this.renderer = { domElement: { style: {} } };
+      // A real canvas has a box, and the keyboard path asks it for one: the
+      // middle of the frame is the only place a keyboard user can aim.
+      this.renderer = {
+        domElement: {
+          style: {},
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+        },
+      };
       this.scene = new THREE.Scene();
       this.camera = new THREE.PerspectiveCamera(42, 1.5, 0.1, 200);
       this.controls = {
@@ -1039,11 +1046,29 @@ test('landing hero viewport: the scene names the structure under the pointer, pi
     dispose() {}
   }
 
+  /** A scene that answers the point the keyboard asks about. */
+  let keyedScene = null;
+  const keyedSeen = [];
+  class KeyedScene extends NamedScene {
+    constructor(options) {
+      super(options);
+      keyedScene = this;
+      this.askedAt = [];
+    }
+    selectAtCanvasPoint(x, y) {
+      this.askedAt.push([x, y]);
+      this.emitSelection(thalamus);
+      return true;
+    }
+    clearSelection() { this.emitSelection(null); }
+  }
+
   try {
     const FakeViewer = createFakeViewerClass();
     const seen = [];
     const states = [];
     let scene = null;
+    const keyboardContainer = new FakeElement('div');
     const mounted = mountLandingOrganViewport(new FakeElement('div'), {
       ViewerClass: FakeViewer,
       builders: cubeBuilders,
@@ -1124,6 +1149,38 @@ test('landing hero viewport: the scene names the structure under the pointer, pi
     assert.equal(throwing.structure, null);
     throwing.destroy();
 
+    // A keyboard has no pointer, so the model is asked about the middle of the
+    // frame. Without this the card is reachable only by mouse or finger, and
+    // the one question the hero exists to answer has an input requirement.
+    const keyed = mountLandingOrganViewport(keyboardContainer, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => KeyedScene,
+      onStructureChange: (structure) => keyedSeen.push(structure),
+    });
+    await keyed.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    const press = (key) => {
+      let prevented = false;
+      for (const listener of keyboardContainer.listeners.get('keydown') ?? []) {
+        listener({ key, preventDefault: () => { prevented = true; } });
+      }
+      return prevented;
+    };
+
+    assert.equal(press('Enter'), true, 'Enter is the hero\'s, not the page\'s');
+    assert.deepEqual(
+      keyedScene.askedAt,
+      [[400, 300]],
+      'Enter asks about the middle of the canvas, which is where the aim is drawn'
+    );
+    assert.equal(keyedSeen.at(-1)?.name, 'Thalamus');
+    assert.equal(keyedSeen.at(-1)?.pinned, true);
+
+    assert.equal(press('Escape'), true);
+    assert.equal(keyedSeen.at(-1), null, 'Escape clears what Enter named');
+    keyed.destroy();
+
     // A published scene without the anatomy surface is not broken; it simply
     // has no names, and the hero must be able to tell the two apart.
     const plain = mountLandingOrganViewport(new FakeElement('div'), {
@@ -1139,6 +1196,66 @@ test('landing hero viewport: the scene names the structure under the pointer, pi
     plain.destroy();
 
     mounted.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+/* The hint used to promise "pinch to zoom" to everybody, and a phone cannot
+   keep that promise: the canvas hands pinches back to the page on purpose, so
+   the hero does not trap the scrolling and zooming of the page it sits in. The
+   card had the same problem in the other direction, telling a reader with a
+   finger to "click". */
+test('landing hero: the instructions describe the input the reader actually has', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  try {
+    const listeners = new Set();
+    const coarsePointer = {
+      matches: true,
+      addEventListener: (_type, handler) => listeners.add(handler),
+      removeEventListener: (_type, handler) => listeners.delete(handler),
+    };
+    let options = null;
+    const hero = createLandingOrganHero({
+      compact: true,
+      showOpenLink: false,
+      coarsePointer,
+      loadViewport: async () => ({
+        mountLandingOrganViewport(_container, mountOptions) {
+          options = mountOptions;
+          return { async setOrgan() { options.onStateChange('ready', { named: true }); }, destroy() {} };
+        },
+      }),
+    });
+    await hero.mount();
+
+    const hint = findByClass(hero.element, 'landing-demo-drag-hint')[0];
+    const card = findByClass(hero.element, 'landing-demo-structure')[0];
+    const gestures = () => collectText(hint).join(' ');
+
+    assert.match(gestures(), /タップ/, 'a finger taps');
+    assert.doesNotMatch(gestures(), /ピンチ/, 'a pinch belongs to the page here, and is not promised');
+    assert.match(collectText(card).join(' '), /タップすると/);
+
+    // The same page with a mouse: the wording follows the input, and it can
+    // change without a reload — a tablet gains a keyboard and a trackpad.
+    coarsePointer.matches = false;
+    for (const handler of listeners) handler();
+    assert.match(gestures(), /クリックで部位名/);
+    assert.match(collectText(card).join(' '), /クリックすると/);
+
+    // The screen-reader instructions carry the third input: no pointer at all.
+    const instructions = findByClass(hero.element, 'landing-sr-only')
+      .find((node) => node.getAttribute('id') === 'landing-demo-viewport-instructions');
+    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央の部位/);
+
+    hero.destroy();
+    assert.equal(listeners.size, 0, 'the hero stops listening when it ends');
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;

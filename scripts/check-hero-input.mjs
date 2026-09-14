@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 /**
- * Drives the landing hero with a finger and checks what the finger gets.
+ * Drives the landing hero with the inputs that are not a mouse.
  *
  *   npm run build
- *   npm run verify:hero-touch
+ *   npm run verify:hero-input
  *
  * ## Why this exists as a script rather than as a note
  *
- * The hero is the first thing a visitor touches, and on a phone it is the only
- * thing they touch: the model is turned by swiping across it and a structure is
- * named by tapping it. None of that is reachable from `node --test`, and none of
- * it is the same as the mouse. A pointer has a hover and a finger does not, so
- * the name card is only ever reached by a tap; `touch-action: pan-y pinch-zoom`
- * hands vertical swipes and pinches back to the page, so the model can only be
- * turned one way; and a press that goes out and comes back — which is how a
- * model is turned and turned back — ends where it started.
+ * The hero names the structure a reader picks, and how they pick it is not one
+ * thing. On a phone it is the only thing they touch: the model is turned by
+ * swiping across it and a structure is named by tapping it. With a keyboard
+ * there is no pointer at all, so the model is asked about the middle of the
+ * frame. Neither is reachable from `node --test`, and neither behaves like the
+ * mouse. A pointer has a hover and a finger does not, so the name card is only
+ * ever reached by a tap; `touch-action: pan-y pinch-zoom` hands vertical swipes
+ * and pinches back to the page, so the model can only be turned one way; and a
+ * press that goes out and comes back — which is how a model is turned and
+ * turned back — ends where it started.
  *
  * That last one is not hypothetical. It is what this check was written to catch,
  * and it caught it: releasing a rotate-and-return drag used to pin whatever had
@@ -29,7 +31,9 @@
  * viewport, DPR and `hasTouch`), not the same hardware and not the same engine.
  * It cannot see iOS Safari's tap delay, a finger's contact patch, a software
  * keyboard, or a thumb that covers the card it is trying to read. The manual
- * half stays manual and is recorded in `docs/follow-ups.md` (F-101).
+ * half stays manual and is recorded in `docs/follow-ups.md` (F-101). The
+ * keyboard half *is* a real keyboard driving a real browser, and is not
+ * emulating anything.
  *
  * Options:
  *   --dist <dir>   built site to serve (default: dist)
@@ -176,9 +180,96 @@ try {
       await context.close();
     }
   }
+  await driveKeyboard();
 } finally {
   await browser.close();
   closeServer();
+}
+
+/**
+ * The third input: no pointer at all.
+ *
+ * A keyboard cannot hover and cannot aim, so the model is asked about the
+ * middle of the frame and the focused viewport draws that spot. What this
+ * checks is that the reader can get there with the Tab key from the top of the
+ * page, that Enter names something, that Escape lets go of it, and that the aim
+ * is actually drawn — an aim nobody can see is not an aim.
+ */
+async function driveKeyboard() {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => problems.push(`keyboard: page error: ${error.message}`));
+  try {
+    await page.goto(base, { waitUntil: 'load' });
+    await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
+    await sleep(600);
+
+    const card = page.locator('.landing-demo-structure').first();
+    const named = async () => (await card.innerText()).replace(/\s+/g, ' ').trim();
+
+    // Tab from the top of the document rather than focusing the element
+    // directly: a control a reader cannot reach is not reachable, however well
+    // it behaves once focused.
+    let reached = false;
+    for (let press = 0; press < 30 && !reached; press += 1) {
+      await page.keyboard.press('Tab');
+      reached = await page.evaluate(() =>
+        document.activeElement?.classList?.contains('landing-demo-viewport') ?? false);
+    }
+    if (!reached) {
+      problems.push('keyboard: the 3D viewport is not reachable with the Tab key');
+      return;
+    }
+
+    // The aim, drawn only for keyboard focus.
+    const aim = await page.evaluate(() => {
+      const node = document.querySelector('.landing-demo-viewport');
+      const style = getComputedStyle(node, '::after');
+      return { content: style.content, width: style.width };
+    });
+    if (aim.content === 'none') problems.push('keyboard: the focused viewport draws no aim');
+
+    await page.keyboard.press('Enter');
+    await sleep(400);
+    const pinned = await named();
+    const state = await card.getAttribute('data-state');
+    if (state !== 'pinned') {
+      problems.push(`keyboard: Enter did not name the structure in the middle (${state})`);
+    }
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-1-enter.png') });
+
+    await page.keyboard.press('Escape');
+    await sleep(400);
+    if ((await card.getAttribute('data-state')) !== 'hint') {
+      problems.push('keyboard: Escape did not clear the name Enter gave');
+    }
+
+    // Turning the model with the arrows and asking again is the whole loop: a
+    // keyboard reader reaches a second structure by moving the model, not the
+    // pointer. It must name *something*, and it may well be something else.
+    for (let press = 0; press < 6; press += 1) await page.keyboard.press('ArrowLeft');
+    await sleep(400);
+    await page.keyboard.press('Enter');
+    await sleep(400);
+    const afterTurning = await named();
+    if ((await card.getAttribute('data-state')) !== 'pinned') {
+      problems.push('keyboard: Enter named nothing after the model was turned');
+    }
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-2-turned.png') });
+
+    observed.push({
+      device: 'keyboard (desktop)',
+      tapped: pinned,
+      afterRotate: afterTurning,
+      afterReturnDrag: '—',
+      scrolledBy: 0,
+      viewportScale: 1,
+    });
+  } catch (error) {
+    problems.push(`keyboard: the drive could not finish — ${error.message}`);
+  } finally {
+    await context.close();
+  }
 }
 
 /**
@@ -320,8 +411,17 @@ async function drive(context, name, id) {
   observed.push(record);
 }
 
-console.log(`Landing hero under a finger — ${observed.length} device viewport(s), emulated touch`);
+console.log(
+  `Landing hero under a finger and a keyboard — ${observed.length} run(s)`
+);
 for (const record of observed) {
+  if (record.device.startsWith('keyboard')) {
+    console.log(
+      `  ${record.device}: Tab reaches the model, Enter named "${record.tapped}", ` +
+        `Escape cleared it, and after turning Enter named "${record.afterRotate}"`
+    );
+    continue;
+  }
   console.log(
     `  ${record.device}: tap named "${record.tapped}"; ` +
       `after a rotate "${record.afterRotate}"; after a rotate-and-return "${record.afterReturnDrag}"; ` +
@@ -336,6 +436,7 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  '  ok    a tap names a structure, a drag turns the model without naming one, ' +
-    'the page keeps its scroll and pinch, and the card never takes the touch'
+  '  ok    a tap names a structure, a drag turns the model without naming one, the page ' +
+    'keeps its scroll and pinch, the card never takes the touch, and a keyboard can reach ' +
+    'the model, name what is in front of it and let go again'
 );

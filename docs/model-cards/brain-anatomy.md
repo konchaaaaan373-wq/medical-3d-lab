@@ -57,6 +57,13 @@ colours, with lower idle emission so lighting describes gyri and sulci more
 clearly. Pointing at a mesh previews its exact name; clicking or tapping pins
 it.
 
+**A structure can also be reached without a pointer.** `selectAtCanvasPoint()`
+names whatever is drawn at one point of the canvas, which is how a keyboard
+asks — there being no pointer to put anywhere, the question is asked of the
+middle of the frame. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there.
+
 **Turning the model is not choosing a structure.** A release counts as a tap
 only if it lands where the press began *and* the pointer never got far from
 there while it was down. The second half is what a touch screen needs: the model is turned by

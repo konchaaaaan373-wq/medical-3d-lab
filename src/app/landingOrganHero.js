@@ -28,7 +28,11 @@ const dual = (en, ja, className = '') => [
  *          onRendererFailure?: (error:Error, context:{organ:string, sceneId:string|null}) => void,
  *          now?: () => Date, organs?: typeof HERO_ORGANS,
  *          compact?: boolean, showOpenLink?: boolean,
- *          showIdentity?: boolean}} [options]
+ *          showIdentity?: boolean,
+ *          coarsePointer?: {matches:boolean, addEventListener?:Function,
+ *            removeEventListener?:Function}}} [options]
+ *   `coarsePointer` is the media query that decides which instructions are
+ *   true; injectable so a test can be a phone without being one.
  */
 export function createLandingOrganHero({
   loadViewport = () => import('./landingOrganViewport.js'),
@@ -38,6 +42,7 @@ export function createLandingOrganHero({
   compact = false,
   showOpenLink = true,
   showIdentity = true,
+  coarsePointer = globalThis.window?.matchMedia?.('(pointer: coarse)') ?? null,
 } = {}) {
   const featured = featuredHeroOrgan(now(), organs) ?? organs[0] ?? null;
   if (!featured) {
@@ -108,13 +113,39 @@ export function createLandingOrganHero({
     'aria-atomic': 'true',
   });
 
-  const dragHint = el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' }, [
-    el('span', { text: '↔' }),
-    ...dual(
-      'Drag to rotate · scroll or +− to zoom',
-      'ドラッグで回転・ピンチ／+−で拡大'
-    ),
-  ]);
+  /**
+   * What the gestures actually do, which is not the same on the two inputs.
+   *
+   * The hint used to promise "pinch to zoom" to everybody. On a touch screen
+   * that is not true and cannot be made true here: the canvas carries
+   * `touch-action: pan-y pinch-zoom` **on purpose**, so that a hero sitting in
+   * the middle of a page does not trap the page's own scrolling and zooming.
+   * A pinch therefore zooms the page, measurably — `npm run verify:hero-input`
+   * reports the visual viewport scale it leaves behind. An instruction that
+   * describes a different product is worse than no instruction.
+   */
+  const GESTURE_HINT = Object.freeze({
+    coarse: Object.freeze([
+      'Drag to turn · tap a structure to name it',
+      'ドラッグで回転・タップで部位名',
+    ]),
+    fine: Object.freeze([
+      'Drag to rotate · scroll or +− to zoom · click to name',
+      'ドラッグで回転・スクロール／+−で拡大・クリックで部位名',
+    ]),
+  });
+
+  /** Whether the reader is pointing with a finger. */
+  const isCoarse = () => Boolean(coarsePointer?.matches);
+
+  // Filled by `renderGestureHint`, which is the only thing that writes it.
+  const dragHint = el('div', { class: 'landing-demo-drag-hint', 'aria-hidden': 'true' });
+
+  function renderGestureHint() {
+    const [en, ja] = isCoarse() ? GESTURE_HINT.coarse : GESTURE_HINT.fine;
+    dragHint.replaceChildren(el('span', { text: '↔' }), ...dual(en, ja));
+  }
+  renderGestureHint();
 
   const viewport = el('div', {
     class: 'landing-demo-viewport',
@@ -124,8 +155,10 @@ export function createLandingOrganHero({
     'aria-describedby': 'landing-demo-viewport-instructions',
   }, [
     el('p', { class: 'landing-sr-only', id: 'landing-demo-viewport-instructions' }, dual(
-      'Use arrow keys to rotate, plus and minus to zoom, and Home to reset the view.',
+      'Use arrow keys to rotate, plus and minus to zoom, and Home to reset the view. '
+        + 'Press Enter to name the structure at the centre of the view, and Escape to clear it.',
       '矢印キーで回転、+／−で拡大縮小、Homeで初期視点に戻します。'
+        + 'Enterキーで画面中央の部位の名称を表示し、Escapeキーで解除します。'
     )),
   ]);
 
@@ -176,10 +209,16 @@ export function createLandingOrganHero({
    */
   let announced = '';
 
-  const STRUCTURE_HINT = Object.freeze([
-    'Click a coloured structure to see its anatomical name.',
-    '色分けされた部位をクリックすると、解剖学的な名称が表示されます。',
-  ]);
+  const STRUCTURE_HINT = Object.freeze({
+    coarse: Object.freeze([
+      'Tap a coloured structure to see its anatomical name.',
+      '色分けされた部位をタップすると、解剖学的な名称が表示されます。',
+    ]),
+    fine: Object.freeze([
+      'Click a coloured structure to see its anatomical name.',
+      '色分けされた部位をクリックすると、解剖学的な名称が表示されます。',
+    ]),
+  });
 
   /**
    * Draw the name card.
@@ -215,8 +254,9 @@ export function createLandingOrganHero({
 
     if (!structure) {
       structureReadout.dataset.state = 'hint';
-      structureNameEn.textContent = STRUCTURE_HINT[0];
-      structureNameJa.textContent = STRUCTURE_HINT[1];
+      const [hintEn, hintJa] = isCoarse() ? STRUCTURE_HINT.coarse : STRUCTURE_HINT.fine;
+      structureNameEn.textContent = hintEn;
+      structureNameJa.textContent = hintJa;
       structureWhereEn.textContent = '';
       structureWhereJa.textContent = '';
       structureSwatch.style.removeProperty('--landing-structure-color');
@@ -430,6 +470,15 @@ export function createLandingOrganHero({
 
   render();
 
+  // A reader can change input without reloading: a tablet gains a mouse, a
+  // laptop's touchscreen is used. The instructions follow.
+  const pointerChanged = () => {
+    if (destroyed) return;
+    renderGestureHint();
+    renderStructure();
+  };
+  coarsePointer?.addEventListener?.('change', pointerChanged);
+
   async function mount() {
     if (destroyed) return null;
     if (mountedViewport || mountPromise) return mountPromise;
@@ -511,6 +560,7 @@ export function createLandingOrganHero({
     mount,
     destroy() {
       destroyed = true;
+      coarsePointer?.removeEventListener?.('change', pointerChanged);
       mountedViewport?.destroy();
       mountedViewport = null;
     },

@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-14 (re-taken after a press that returns to where it began stopped counting as a click, and again after review corrected how that is measured) |
+| **Decided at** | 2026-09-14 (re-taken as the press rule changed, was corrected by review, and then gained a way in that needs no pointer) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **17**, source digest `8acae735c36b35c5` |
+| **Scene revision** | model card revision **18**, source digest `a6f983478785382e` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -106,6 +106,15 @@ off the canvas is released where the canvas never hears it, and the press it
 left open would be what the *next* release was measured against. Nothing is
 lost by closing it, because a tap does not leave the canvas.
 
+**Revision 17 → 18.** Naming a structure was something only a mouse or a
+finger could do: every route into the selection went through a pointer event, so
+a reader with a keyboard could turn the model and never be told what they were
+looking at. `selectAtCanvasPoint()` asks the same question of the same ray from
+a point rather than from an event, and the landing hero asks it of the middle of
+the frame on Enter, clearing on Escape. Nothing about *what* is at a point
+changed — this is a second door into the same room — but the scene's surface
+did, so the record is taken again.
+
 **And the rule itself is now declared as a model source.** Lifting it into
 `tapGesture.js` had moved what a click selects *outside* the digest this record
 is pinned to, so a later change to it would not have closed this gate — the one
@@ -124,12 +133,14 @@ Driven in a real browser (Chromium, 1280×800, production build) by
 — `npm run verify:anatomy`. Re-running it is how this record is re-verified;
 that is why the evidence is a script rather than a stored image.
 
-Since revision 15 a second drive checks the same model **under a finger** —
-[`scripts/check-hero-touch.mjs`](../../scripts/check-hero-touch.mjs),
-`npm run verify:hero-touch` — at the iPhone 13, Pixel 5 and iPad Mini viewports
-with touch emulation. It is where the out-and-back press was found. It drives
-the landing hero, which is this atlas in a smaller frame, and it is **not** a
-device pass: emulated touch on desktop Chromium, no iOS Safari, no hardware.
+Since revision 15 a second drive checks the same model **under the inputs that
+are not a mouse** — [`scripts/check-hero-input.mjs`](../../scripts/check-hero-input.mjs),
+`npm run verify:hero-input`: a finger at the iPhone 13, Pixel 5 and iPad Mini
+viewports with touch emulation, and a keyboard on the desktop viewport. It is
+where the out-and-back press was found. It drives the landing hero, which is
+this atlas in a smaller frame. The touch half is **not** a device pass —
+emulated touch on desktop Chromium, no iOS Safari, no hardware; the keyboard
+half is a real keyboard in a real browser.
 
 **Structures** — the scene reports **271 selectable structures** drawn from 397
 meshes. Four clicks on the rendered mesh each resolved to a named structure
@@ -158,6 +169,11 @@ a rendering check, not an anatomical one.
 **Interactions**
 
 - A click on the model pins a structure and the panel names it.
+- **So does a keyboard, with no pointer anywhere**: Tab reaches the 3D
+  viewport, the focused viewport draws the spot Enter will ask about, Enter
+  names the structure drawn there, Escape lets go of it, and turning the model
+  with the arrows and asking again names a different one. Driven in
+  `check-hero-input.mjs`, which was watched failing with the keys removed.
 - **A pointer crossing the model does not rewrite the pinned summary** or the
   controls beside it; hover previews only while nothing is pinned.
 - The tree answers the keyboard: one tab stop, arrows move focus without

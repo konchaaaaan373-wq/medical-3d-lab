@@ -1029,6 +1029,26 @@ html[data-route='landing'] {
   outline-offset: -4px;
 }
 
+/* What Enter will name.
+   A keyboard has no pointer, so the middle of the frame is where the model is
+   asked "what is this?" — and an aim nobody can see is not an aim. Drawn only
+   while the viewport holds keyboard focus, so it never appears for a reader who
+   is pointing at the model directly. */
+.landing-demo-viewport:focus-visible::after {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  left: 50%;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border: 1px solid rgba(56, 225, 239, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(3, 5, 10, 0.55);
+  pointer-events: none;
+}
+
 /* Responsive ------------------------------------------------------------- */
 
 @media (max-width: 1080px) {
