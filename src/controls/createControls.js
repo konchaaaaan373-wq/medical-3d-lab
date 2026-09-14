@@ -12,6 +12,35 @@ export function createControls(camera, domElement, { target, minDistance = 5, ma
   controls.rotateSpeed = 0.6;
   controls.zoomSpeed = 0.7;
   controls.enablePan = false; // panning mostly gets people lost in a single-subject scene
+  /**
+   * Zoom about the pointer, not about the orbit centre.
+   *
+   * The orbit centre is not where the subject is, and it is not supposed to be:
+   * `fitPoseToSafeArea` pans the camera and the target together so the subject
+   * sits in the band the header and the panels leave, which puts the target
+   * back near the middle of the canvas with the subject off to one side of it.
+   * A dolly along camera→target holds the *target* still, so the subject's
+   * offset from it — a fixed distance in world units — grows in pixels by
+   * exactly the zoom factor. Measured on the brain atlas at 1280x800: 177px off
+   * centre at the framing distance, 354px after one halving, and under the
+   * header a few steps later. That is the drift a device pass reported.
+   *
+   * `zoomToCursor` anchors the dolly on the pointer for a wheel and on the
+   * two-finger midpoint for a pinch (`_updateZoomParameters`, called from
+   * `_handleMouseWheel` and `_handleTouchMoveDollyPan`), which is what a reader
+   * zooming into one gyrus means by it. It moves `controls.target` as a
+   * consequence of that anchor — it has to, because holding a point under the
+   * pointer fixed *is* moving the orbit centre — but it never reads the model:
+   * nothing here re-frames, re-centres, or recomputes a target from a bounding
+   * box. Zooming out again retraces the same path.
+   *
+   * Independent of `enablePan`: the cursor-zoom branch adjusts the camera and
+   * the target directly rather than through the pan offset, so a scene that
+   * refuses panning still gets it. Zooms with no pointer behind them — the +/−
+   * buttons and keys — do not come through here; `zoomBy` in `App.js` anchors
+   * those on the centre of the visible band.
+   */
+  controls.zoomToCursor = true;
   controls.minDistance = minDistance;
   controls.maxDistance = maxDistance;
   // Keep the camera out of the poles so the scene never reads as "upside down".

@@ -1257,6 +1257,229 @@ try {
     if (shotsDir) await small.screenshot({ path: join(shotsDir, `brain-retry-${size}.png`) });
     await context.close();
   }
+
+  // 14. What a zoom holds still.
+  //
+  //     A device pass reported the brain sliding to a corner and under the
+  //     header as it was zoomed in. The cause was not the zoom but its pivot:
+  //     `fitPoseToSafeArea` pans camera and target together to sit the subject
+  //     in the band the panels leave, which leaves the orbit centre where the
+  //     subject is not — measured at 1280x800, 177px apart — and a dolly toward
+  //     the orbit centre magnifies that gap by the zoom factor.
+  //
+  //     `tests/zoom-anchor.test.js` pins the arithmetic. This drives the real
+  //     thing: a real wheel, a real pointer, the shipped OrbitControls, at the
+  //     two widths the layout differs at.
+  step = 'measuring what a zoom holds still';
+  for (const [width, height] of atlasScene ? [[1280, 800], [390, 844]] : []) {
+    const size = `${width}x${height}`;
+    const context = await browser.newContext({ viewport: { width, height } });
+    const zoomPage = await context.newPage();
+    await zoomPage.goto(url, { waitUntil: 'domcontentloaded' });
+    await zoomPage.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+      null,
+      { timeout: 60000 },
+    ).catch(() => {});
+    await zoomPage.locator('.consent-banner button').last().click({ timeout: 4000 }).catch(() => {});
+    await zoomPage.waitForTimeout(600);
+
+    /**
+     * Where the subject, a pinned structure and the subject's box are on
+     * screen, plus how much of that box is inside the band the fixed chrome
+     * leaves. All in page pixels, read from the live camera.
+     */
+    const read = () => zoomPage.evaluate(() => {
+      const app = window.__app;
+      const viewer = app.viewer;
+      const rect = viewer.renderer.domElement.getBoundingClientRect();
+      const to = (v) => {
+        const p = v.clone().project(viewer.camera);
+        return [rect.left + ((p.x + 1) / 2) * rect.width, rect.top + ((1 - p.y) / 2) * rect.height];
+      };
+      const bounds = app.scene.getSubjectBounds();
+      const pinned = window.__zoomProbeId ? app.scene.getStructureBounds(window.__zoomProbeId) : null;
+      const xs = bounds.corners.map((corner) => to(corner)[0]);
+      const ys = bounds.corners.map((corner) => to(corner)[1]);
+      const box = {
+        left: Math.min(...xs), right: Math.max(...xs),
+        top: Math.min(...ys), bottom: Math.max(...ys),
+      };
+      // The band, measured from the chrome itself rather than assumed: only an
+      // element that crosses the middle of the frame is an edge band, which is
+      // the same rule `safeAreaInsets` applies in the app.
+      const boxOf = (selector) => {
+        const node = document.querySelector(selector);
+        return node ? node.getBoundingClientRect() : null;
+      };
+      const w = rect.width;
+      const h = rect.height;
+      const nav = boxOf('.global-scene-nav');
+      const consoleBar = boxOf('.console');
+      const rail = boxOf('.rail');
+      const band = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      if (nav && nav.left < w / 2 && nav.right > w / 2) band.top = Math.max(band.top, nav.bottom);
+      if (consoleBar && consoleBar.left < w / 2 && consoleBar.right > w / 2) {
+        band.bottom = Math.min(band.bottom, consoleBar.top);
+      }
+      if (rail && rail.top < h / 2 && rail.bottom > h / 2) band.right = Math.min(band.right, rail.left);
+      const over = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+      const area = Math.max(1, (box.right - box.left) * (box.bottom - box.top));
+      return {
+        subject: to(bounds.centre),
+        pinned: pinned ? to(pinned.centre) : null,
+        distance: viewer.camera.position.distanceTo(viewer.controls.target),
+        visible:
+          (over(box.left, box.right, band.left, band.right) *
+            over(box.top, box.bottom, band.top, band.bottom)) / area,
+      };
+    });
+
+    /**
+     * Wait until the camera has actually stopped.
+     *
+     * Every measurement below has to start and end at rest, and "at rest" is
+     * not a length of time. The controls are damped, the app tweens the camera
+     * to a new framing whenever the bands move — answering the usage-data card
+     * moves them — and a reading taken part-way through either reports drift
+     * that is really just the tail of something else finishing. The first
+     * version of this check waited 600ms and reported 124px of drift at
+     * 1280x800 that a settled reading puts at 0.
+     *
+     * The whole pose, not just the distance: a re-frame moves the camera and
+     * the orbit centre together, which a distance alone cannot see.
+     */
+    const settle = async () => {
+      await zoomPage.waitForFunction(() => {
+        const viewer = window.__app.viewer;
+        const now = [...viewer.camera.position.toArray(), ...viewer.controls.target.toArray()];
+        const before = window.__zoomLast;
+        window.__zoomLast = now;
+        return Array.isArray(before) && now.every((value, at) => Math.abs(value - before[at]) < 1e-4);
+      }, null, { timeout: 20000, polling: 150 }).catch(() => {});
+      await zoomPage.evaluate(() => { delete window.__zoomLast; });
+    };
+
+    /** Wheel at a point, then let everything it started finish. */
+    const wheelAt = async (x, y, notches, direction) => {
+      await zoomPage.mouse.move(x, y);
+      for (let notch = 0; notch < notches; notch += 1) {
+        await zoomPage.mouse.wheel(0, direction * 120);
+        await zoomPage.waitForTimeout(90);
+      }
+      await settle();
+    };
+
+    const drift = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    /**
+     * How far the anchor may move, in page pixels.
+     *
+     * Measured, not guessed. Anchored, every case below reads exactly 0 at both
+     * widths; with `zoomToCursor` turned off — the shipped behaviour this
+     * replaces — the same four notches move it 34px at 1280x800 and 9px at
+     * 390x844, and five button steps move it 177px. Six sits clear of both, so
+     * a failure means the anchor is gone rather than that an engine rounds
+     * differently.
+     */
+    const DRIFT_PX = 6;
+
+    // (1) The pointer on the subject: zooming must not translate it.
+    await settle();
+    const start = await read();
+    await wheelAt(start.subject[0], start.subject[1], 4, -1);
+    const zoomedIn = await read();
+    if (zoomedIn.distance >= start.distance) {
+      problems.push(`[${size}] the wheel did not zoom the scene in`);
+    } else if (drift(zoomedIn.subject, start.subject) > DRIFT_PX) {
+      problems.push(
+        `[${size}] zooming on the subject moved it ${Math.round(drift(zoomedIn.subject, start.subject))}px ` +
+          'across the screen; a zoom should not translate what it is zooming',
+      );
+    }
+
+    // (5a) …and it is still in view afterwards, not under the header.
+    if (zoomedIn.visible < 0.25) {
+      problems.push(
+        `[${size}] after zooming in, only ${Math.round(zoomedIn.visible * 100)}% of the model is ` +
+          'outside the fixed chrome',
+      );
+    }
+
+    // (3) The same zoom backwards returns the same shot.
+    await wheelAt(start.subject[0], start.subject[1], 4, 1);
+    const returned = await read();
+    if (drift(returned.subject, start.subject) > DRIFT_PX) {
+      problems.push(
+        `[${size}] zooming out again left the model ${Math.round(drift(returned.subject, start.subject))}px ` +
+          'from where it started',
+      );
+    }
+    if (Math.abs(returned.distance / start.distance - 1) > 0.05) {
+      problems.push(
+        `[${size}] zooming in and back out changed the distance by ` +
+          `${Math.round((returned.distance / start.distance - 1) * 100)}%`,
+      );
+    }
+
+    // (2) A structure under the pointer stays under the pointer. Not the
+    //     subject's centre — a named part off to one side, which is what
+    //     "zoom in on this gyrus" actually is.
+    const pickedId = await zoomPage.evaluate(() => {
+      const app = window.__app;
+      const canvas = document.querySelector('canvas');
+      const box = canvas.getBoundingClientRect();
+      for (let radius = 0; radius <= 140; radius += 14) {
+        for (const [dx, dy] of [[0.9, -0.5], [-0.9, -0.5], [0.9, 0.5], [-0.9, 0.5], [1, 0], [0, 0]]) {
+          if (app.scene.selectAtCanvasPoint(box.width / 2 + dx * radius, box.height / 2 + dy * radius)) {
+            window.__zoomProbeId = app.scene.getAnatomySelection()?.id;
+            return window.__zoomProbeId;
+          }
+        }
+      }
+      return null;
+    });
+    if (pickedId == null) {
+      notes.push(`${size}: no structure could be pinned, so the pointer-anchored zoom was not measured`);
+    } else {
+      await settle();
+      const beforePointer = await read();
+      await wheelAt(beforePointer.pinned[0], beforePointer.pinned[1], 4, -1);
+      const afterPointer = await read();
+      if (drift(afterPointer.pinned, beforePointer.pinned) > DRIFT_PX) {
+        problems.push(
+          `[${size}] the structure under the pointer moved ` +
+            `${Math.round(drift(afterPointer.pinned, beforePointer.pinned))}px while zooming into it`,
+        );
+      }
+
+      // (4) …and nothing puts it back in the middle afterwards. A second
+      //     reading a beat later catches a re-frame, a resize observer or a
+      //     tween that decides to centre the model once the gesture is over.
+      await zoomPage.waitForTimeout(1600);
+      const settled = await read();
+      if (drift(settled.pinned, afterPointer.pinned) > DRIFT_PX) {
+        problems.push(
+          `[${size}] the close-up drifted ${Math.round(drift(settled.pinned, afterPointer.pinned))}px ` +
+            'on its own after the gesture ended — something is re-centring it',
+        );
+      }
+      // (5b) The model is still not entirely behind the chrome, zoomed in on
+      //      one part of it.
+      if (settled.visible < 0.15) {
+        problems.push(
+          `[${size}] zoomed into one structure, only ${Math.round(settled.visible * 100)}% of the model ` +
+            'is outside the fixed chrome',
+        );
+      }
+      notes.push(
+        `${size}: zoom holds its anchor (subject ${Math.round(drift(zoomedIn.subject, start.subject))}px, ` +
+          `pointer ${Math.round(drift(afterPointer.pinned, beforePointer.pinned))}px, ` +
+          `round trip ${Math.round(drift(returned.subject, start.subject))}px)`,
+      );
+    }
+    if (shotsDir) await zoomPage.screenshot({ path: join(shotsDir, `brain-zoom-${size}.png`) });
+    await context.close();
+  }
 } catch (error) {
   // A step that cannot complete is a finding, not a reason to throw away the
   // findings collected before it. Breaking the modal boundary made a later

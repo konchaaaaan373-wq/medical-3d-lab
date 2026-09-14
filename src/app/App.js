@@ -8,7 +8,15 @@ import { isInPageAnchor, sameRoute, structureOf } from './router.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect, fitPoseToSafeArea, orbitLimitsForSubject } from './framing.js';
+import {
+  bandCentreNdc,
+  distanceScaleForAspect,
+  dollyAboutNdc,
+  fitPoseToSafeArea,
+  framePose,
+  orbitLimitsForSubject,
+  shiftIntoBand,
+} from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -321,9 +329,34 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const applied = next / userZoom;
     userZoom = next;
 
-    const offset = viewer.camera.position.clone().sub(viewer.controls.target);
-    const distance = zoomed(offset.length() * applied, 1, viewer.controls);
-    viewer.camera.position.copy(viewer.controls.target).add(offset.setLength(distance));
+    // About the middle of what the reader can see, not about the orbit centre.
+    //
+    // A wheel and a pinch have a point behind them and `zoomToCursor` anchors
+    // on it; a button and a key do not. Dollying toward the target instead —
+    // which is what this did — walks the subject out of the frame, because the
+    // framing deliberately leaves the target where the subject is not: it pans
+    // camera and target together to sit the subject in the band the panels
+    // leave. Measured at 1280x800, the brain's centre sat 177px left of the
+    // target, and each halving of the distance doubled that. See
+    // `dollyAboutNdc`.
+    //
+    // The clamp is applied as a factor rather than by setting a distance, so
+    // camera and target stay on the same scale and the anchor stays fixed: at
+    // the limits the zoom simply stops short.
+    const before = viewer.camera.position.distanceTo(viewer.controls.target);
+    const factor = before > 0 ? zoomed(before * applied, 1, viewer.controls) / before : applied;
+    const insets = safeAreaInsets();
+    const moved = dollyAboutNdc(
+      { position: viewer.camera.position, target: viewer.controls.target },
+      {
+        ndc: bandCentreNdc(insets ?? {}),
+        factor,
+        aspect: viewer.camera.aspect,
+        fovDegrees: viewer.camera.fov,
+      }
+    );
+    viewer.camera.position.copy(moved.position);
+    viewer.controls.target.copy(moved.target);
     viewer.controls.update();
 
     // Keep the pending framing in step, so the next stage change or view toggle
@@ -468,7 +501,66 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     userZoom = clampZoom(actual / base);
     setShot(shotSource);
     syncZoomLimits();
+    rescueSubjectIfLost();
   });
+
+  /**
+   * Bring the subject back only when the reader has actually lost it.
+   *
+   * Zooming about the pointer is what a zoom means, and it lets somebody walk
+   * the subject off the edge — which is also what they mean, right until it is
+   * gone. So: nothing at all while any reasonable part of it is inside the band
+   * the panels leave, and when it does act, the smallest move on only the axes
+   * that are out. Never a re-centring — a reader who zoomed into one gyrus
+   * keeps their gyrus where they put it. `shiftIntoBand` owns that judgement
+   * and is tested on its own.
+   *
+   * Run when a gesture ends, never during one: correcting mid-pinch would fight
+   * the fingers doing it.
+   */
+  function rescueSubjectIfLost() {
+    const bounds = scene.getSubjectBounds?.();
+    const insets = safeAreaInsets();
+    if (!bounds?.corners?.length || !insets) return;
+
+    // The subject's box and the band, both in normalised device coordinates.
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const corner of bounds.corners) {
+      const point = rescueScratch.copy(corner).project(viewer.camera);
+      x0 = Math.min(x0, point.x); x1 = Math.max(x1, point.x);
+      y0 = Math.min(y0, point.y); y1 = Math.max(y1, point.y);
+    }
+    const band = {
+      x0: -1 + 2 * insets.left,
+      x1: 1 - 2 * insets.right,
+      y0: -1 + 2 * insets.bottom,
+      y1: 1 - 2 * insets.top,
+    };
+    const shift = shiftIntoBand({ x0, x1, y0, y1 }, band);
+    if (!shift) return;
+
+    // The shift is where the subject should appear; the camera moves the other
+    // way by the same amount, measured on the plane through the orbit centre.
+    const distance = viewer.camera.position.distanceTo(viewer.controls.target);
+    const halfHeight = distance * Math.tan((viewer.camera.fov * Math.PI) / 180 / 2);
+    const rightAxis = rescueRight.setFromMatrixColumn(viewer.camera.matrixWorld, 0).normalize();
+    const upAxis = rescueUp.setFromMatrixColumn(viewer.camera.matrixWorld, 1).normalize();
+    const pan = rescuePan
+      .copy(rightAxis).multiplyScalar(-shift.x * halfHeight * viewer.camera.aspect)
+      .addScaledVector(upAxis, -shift.y * halfHeight);
+
+    // Through the app's own camera tween, so it arrives the way every other
+    // camera move does rather than snapping. `shot` is set directly and
+    // `shotSource` is left alone: this is a nudge to where the reader already
+    // is, not the authored framing coming back.
+    shot.position.copy(viewer.camera.position).add(pan);
+    shot.target.copy(viewer.controls.target).add(pan);
+    view.active = true;
+  }
+  const rescueScratch = new THREE.Vector3();
+  const rescueRight = new THREE.Vector3();
+  const rescueUp = new THREE.Vector3();
+  const rescuePan = new THREE.Vector3();
 
   // --- UI -------------------------------------------------------------------
   const playback = new Playback({ duration: 26 });
