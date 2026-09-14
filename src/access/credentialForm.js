@@ -217,6 +217,11 @@ export function credentialForm({
         disabled: busy ? '' : null,
       }, dual(busy ? policy.busyLabel : policy.submitLabel)),
     ]),
+    // Opened in a new tab, not this one: the app answers a hashchange on the
+    // landing route by reloading itself, so following these in place threw
+    // away the address and password already typed — sending somebody to read
+    // what they are agreeing to should not cost them the form.
+    //
     // Shown when creating an account, because that is the moment being agreed
     // to. A statement with links rather than a required checkbox: the account
     // itself is free, and a tick-box adds friction without adding consent that
@@ -226,16 +231,16 @@ export function credentialForm({
       ? el('p', { class: 'access-legal-consent' }, [
           el('span', { class: 'lang-en' }, [
             'By creating an account you agree to the ',
-            el('a', { class: 'access-legal-link', href: '#/terms', text: 'Terms' }),
+            el('a', { class: 'access-legal-link', href: '#/terms', target: '_blank', rel: 'noopener', text: 'Terms' }),
             ' and the ',
-            el('a', { class: 'access-legal-link', href: '#/privacy', text: 'Privacy Policy' }),
+            el('a', { class: 'access-legal-link', href: '#/privacy', target: '_blank', rel: 'noopener', text: 'Privacy Policy' }),
             '.',
           ]),
           el('span', { class: 'lang-ja' }, [
             '登録することで',
-            el('a', { class: 'access-legal-link', href: '#/terms', text: '利用規約' }),
+            el('a', { class: 'access-legal-link', href: '#/terms', target: '_blank', rel: 'noopener', text: '利用規約' }),
             'と',
-            el('a', { class: 'access-legal-link', href: '#/privacy', text: 'プライバシーポリシー' }),
+            el('a', { class: 'access-legal-link', href: '#/privacy', target: '_blank', rel: 'noopener', text: 'プライバシーポリシー' }),
             'に同意したものとみなします。',
           ]),
         ])

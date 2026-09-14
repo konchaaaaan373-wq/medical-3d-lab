@@ -114,7 +114,13 @@ Supabase の Site URL / Redirect URLs は新 origin
   （`#access_token=…&type=recovery`）での着地、トークンが即座に URL から
   消えること、「新しいパスワードを設定」フォームが出ること、Enter で
   `PUT /auth/v1/user` に届くこと、そして**再設定の途中でリロードしても**
-  （`?account=recovery` だけを頼りに）同じフォームが出ることを実測します。
+  （`?account=recovery` と、フラグメントが保存したセッションを頼りに）
+  同じフォームが出ることを実測します。**2026-09-14 追記**: クエリのフラグは
+  それを発行したセッションより長く残る（ブックマーク・復元したタブ・
+  1 時間前のリンク・単に URL を打った人）ので、セッションが無いときは
+  フォームを出さず「有効期限が切れています」と言うようにしました。
+  フラグがルートを上書きすることもありません——シーンを開いたまま
+  リロードしても、そのシーンの上にダイアログが出ます。
   再設定フォームも `<form>` になり Enter で送信できます。
 - **残っているのは「メールが実際に届くか」の 1 点だけです。** リンクの着地先は
   上記が担保するので、確認すべきは受信と、リンクに載る origin が
@@ -2404,3 +2410,17 @@ reviewer most needs to check the wording of, because they are what a reader will
 otherwise fill in. Same shape as F-40 and F-45.
 
 *Raised by Claude③. For whoever owns clinical review.*
+
+### F-97 — the ledger's own `F-<n>` numbers are not unique
+
+`F-44` through `F-47` each appear three times in this file and `F-87` through
+`F-93` twice, written by different authors at different times. The ledger's
+rules say a number is never reassigned so that a conversation or a PR can point
+at one — which only works if a number names one item.
+
+Not fixed here, deliberately: renumbering is exactly what the rule forbids, and
+every duplicate is somebody else's entry. What would fix it is a convention for
+the next number (a note at the top saying what has been used), or a check that
+fails on a duplicate heading. Whoever owns this file should pick one.
+
+*Raised by Claude③ during the b4 audit. Records only — nothing is blocked.*

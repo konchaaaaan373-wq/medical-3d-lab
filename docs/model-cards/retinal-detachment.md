@@ -137,7 +137,7 @@ node --test tests/retinal-detachment-model.test.js
 node --test tests/calibration.test.js
 ```
 
-One physiology test puts a separation over a twentieth of the retina that has
+One physiology test puts a separation over a twentieth of the drawn globe that has
 the macula in it next to one over nearly half that does not, because that
 single comparison is the scene. A calibration test fixes that the drawn lift is
 many times the atlas's own coat spacing, so it can never be read as one.

@@ -67,11 +67,19 @@ starting it elsewhere would draw a journey a still head had already finished.
 
 ## 8. Constants and calibration
 
-Two, and neither is a measurement. The canal normals and the loop's radius are
+Three, and none is a measurement. The canal normals and the loop's radius are
 the ear atlas's own, re-measured by a calibration test against the atlas's own
 tube and the scene's own frame. The head's rotation and its extent were chosen
 so the level loop goes from holding nothing to holding most of it — **not the
 angle of any named manoeuvre**.
+
+The third is the ampulla's position on each loop. **The atlas has no ampulla in
+it** — it draws each canal as a plain loop of tube — so unlike the other two
+this one could not be measured off anything. It was chosen so each loop has a
+named end for `towardsAmpulla` to report a direction against, and a calibration
+test fixes only that consequence, along with the fact that the atlas still has
+nothing better to have used. **No angle here is where an ampulla is in
+anybody.**
 
 ## 9. Visual mapping
 
@@ -84,6 +92,10 @@ angle of any named manoeuvre**.
   calibration test measures that against the atlas's own tube.
 - The loop in question is lit and the others dimmed. **Lit means "this is the
   one in question"** — not active, damaged, stimulated or firing.
+- **The ampulla is a structure this scene adds.** The atlas draws no swelling
+  anywhere on the loops, so the body drawn and the angle it sits at are both
+  this layer's. It exists so that "towards it" has something on screen to be
+  about, and the visual mapping declares it.
 - **Nothing anywhere moves, turns or changes colour to stand for an eye
   movement**, because the model does not derive one.
 
@@ -96,6 +108,7 @@ angle of any named manoeuvre**.
   because the atlas draws one ear and the turn is symmetric about that loop's
   plane. Only the lateral loop makes the two turns different pictures.
 - One particle standing for many.
+- The ampulla is drawn by this scene rather than by the anatomy it stands on.
 
 ## 11. Where it will mislead
 

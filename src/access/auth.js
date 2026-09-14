@@ -6,6 +6,8 @@
  * Stripe secrets live in Netlify Functions.
  */
 
+import { ADOPTABLE_REDIRECTS, authRedirectFromHash } from './authRedirect.js';
+
 const STORAGE_KEY = 'medical3dlab.auth.v1';
 let volatileSession = null;
 let refreshInFlight = null;
@@ -166,53 +168,92 @@ export async function requestPasswordReset(email, redirectTo) {
 }
 
 /**
- * Parse the implicit-flow recovery fragment Supabase redirects back to a
- * client-only app. Kept pure so the routing/security edge case is unit-testable.
+ * Consume a Supabase redirect before the app treats the URL fragment as a
+ * Medical 3D Lab scene route. Tokens are persisted and removed from the address
+ * bar immediately so they cannot linger in screenshots or copied links.
+ *
+ * Returns the redirect's type — `recovery`, `signup`, `email_change`, … — or
+ * null when the fragment was an ordinary route. The caller decides what each
+ * one means; this only guarantees that none of them reaches the router with
+ * credentials still attached.
+ *
+ * Unrecognised types are still consumed. A type this app has no opinion about
+ * is not a reason to leave a live token in the address bar.
  */
-export function recoverySessionFromHash(hash, nowSeconds = Math.floor(Date.now() / 1000)) {
-  const raw = String(hash ?? '').replace(/^#/, '');
-  if (!raw || raw.startsWith('/')) return null;
-  const params = new URLSearchParams(raw);
-  if (params.get('type') !== 'recovery') return null;
-
-  const accessToken = params.get('access_token');
-  if (!accessToken) return null;
-  const expiresIn = Number(params.get('expires_in') || 3600);
-  return {
-    access_token: accessToken,
-    refresh_token: params.get('refresh_token') || null,
-    expires_at: Number(nowSeconds) + (Number.isFinite(expiresIn) ? expiresIn : 3600),
-    user: null,
-  };
+/**
+ * Ask Supabase who the stored token belongs to, and remember the answer.
+ *
+ * A session parsed out of a redirect fragment has no `user` — the fragment
+ * carries tokens and nothing else. Left that way it is a session that cannot
+ * say whose it is, which shows up twice: the dialog reports "your address is
+ * confirmed" above a signed-out form, and `onExternalSessionChange` in another
+ * tab reads the missing id as a *different* account and tears down whatever
+ * was open. Both stop once the identity is filled in.
+ *
+ * Best effort on purpose. Failing to resolve the name leaves the token working
+ * and the entitlement lookup will supply the identity a moment later; it is not
+ * a reason to refuse a session Supabase has just issued.
+ */
+export async function loadUser() {
+  // `getSession()` is inside the try because it can rotate the token, and that
+  // rotation is a network call which rejects on a dropped connection. Outside,
+  // a blip here rejected out of `AccessManager.init()` and took the rest of the
+  // account layer's startup with it: no entitlement read, no cross-tab
+  // listener, and no confirmation for somebody who had just confirmed their
+  // address. "Best effort" has to mean it.
+  try {
+    const session = await getSession();
+    if (!session?.access_token) return null;
+    // Read *after* `getSession()`, which may have rotated the token and bumped
+    // this itself. Captured before, the guard fired on the manager's own
+    // refresh and threw away the identity it had just fetched — leaving the
+    // session with no user, which is the state this function exists to repair.
+    const generation = sessionGeneration;
+    const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/user`, {
+      headers: headers(session.access_token),
+    });
+    if (!response.ok) return null;
+    const user = await response.json();
+    if (!user?.id) return null;
+    // The guard `refresh()` carries, for the same reason: a sign-out during the
+    // round-trip must not be undone by writing the captured token back after.
+    if (generation !== sessionGeneration) return null;
+    store({ ...session, user });
+    return user;
+  } catch {
+    return null;
+  }
 }
 
-/**
- * Consume a Supabase PASSWORD_RECOVERY redirect before the app treats the URL
- * fragment as a Medical 3D Lab scene route. Tokens are persisted and removed
- * from the address bar immediately so they cannot linger in screenshots/copies.
- */
-export function consumePasswordRecoveryRedirect({ location, history } = {}) {
+export function consumeAuthRedirect({ location, history } = {}) {
   const currentLocation = location ?? globalThis.location;
   const currentHistory = history ?? globalThis.history;
-  if (!currentLocation) return false;
+  if (!currentLocation) return null;
 
-  const session = recoverySessionFromHash(currentLocation.hash);
-  if (!session) return false;
-  store(session);
+  const redirect = authRedirectFromHash(currentLocation.hash);
+  if (!redirect) return null;
+
+  // Scrubbing is unconditional — that is the whole point, and a type nobody
+  // here recognises is not a reason to leave a live token in the address bar.
+  // *Adopting* it is a different question: signing somebody in, possibly over
+  // a session they already had, on the strength of a link this app has no
+  // handling for is not something to do silently. Those land signed out, which
+  // is recoverable by signing in; the alternative is not.
+  if (ADOPTABLE_REDIRECTS.has(redirect.type)) store(redirect.session);
 
   if (currentHistory?.replaceState) {
     const clean = new URL(currentLocation.href);
     clean.hash = '#/';
     currentHistory.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }
-  return true;
+  return redirect.type;
 }
 
 /**
  * Is this page load a password recovery?
  *
  * Two signals, and either one is enough. The hash carries the tokens and can
- * only be read once — `consumePasswordRecoveryRedirect` scrubs it immediately so
+ * only be read once — `consumeAuthRedirect` scrubs it immediately so
  * the tokens cannot linger in a screenshot or a copied URL. `?account=recovery`
  * is what is left in the address bar after that, and is therefore the only
  * signal a reload has.
@@ -223,8 +264,12 @@ export function consumePasswordRecoveryRedirect({ location, history } = {}) {
  * reloaded mid-recovery got the ordinary sign-in dialog while holding a valid
  * recovery session.
  *
- * Answering true is not permission to change a password. It decides which
- * dialog opens; `updatePassword` still requires a live recovery session.
+ * Answering true is a *request*, not an answer. It says this page load is
+ * about a password reset; it does not say there is a session to reset one
+ * with, and the caller asks `getSession()` before opening the form — the query
+ * flag outlives the session that minted it, so a bookmark, a restored tab, an
+ * hour-old link, or anybody simply typing `/?account=recovery` all answer true
+ * here with nothing behind them. `updatePassword` keeps its own check anyway.
  *
  * @param {{ consumedRecoveryHash: boolean, search?: string }} signals
  */
@@ -261,18 +306,26 @@ export async function updatePassword(password) {
  * Re-authenticating also rotates the session, which is the right outcome
  * anyway: the credentials just changed.
  */
-export async function changePassword(email, currentPassword, newPassword) {
-  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+async function reauthenticate(email, currentPassword) {
   try {
     await signIn(email, currentPassword);
   } catch (error) {
-    // Told apart from a failure to *set* the new password, because the two
-    // have different remedies and only this one is the person's own mistake.
+    // Only a refusal means the password was wrong. A rate limit, a 5xx or a
+    // dropped connection says nothing about what was typed, and reporting
+    // those as "that is not your password" sends somebody who typed it
+    // correctly off to recover an account that was never in trouble.
+    const refused = error?.status === 400 || error?.status === 401;
+    if (!refused) throw error;
     const failure = new Error('現在のパスワードが違います。 / That is not the current password.');
     failure.cause = error;
     failure.currentPasswordRejected = true;
     throw failure;
   }
+}
+
+export async function changePassword(email, currentPassword, newPassword) {
+  if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  await reauthenticate(email, currentPassword);
   return updatePassword(newPassword);
 }
 
@@ -284,8 +337,14 @@ export async function changePassword(email, currentPassword, newPassword) {
  * rather than "done" — reporting success here would leave somebody believing
  * they had changed an address they had not.
  */
-export async function changeEmail(newEmail, redirectTo) {
+export async function changeEmail(email, currentPassword, newEmail, redirectTo) {
   if (!authConfigured()) throw new Error('Account access is not configured yet.');
+  // Proved for the same reason `changePassword` proves it, and with more
+  // reason: whoever controls the address controls password recovery, so moving
+  // it is the stronger way to take an account over. A live session alone —
+  // which is all Supabase asks for — would let anyone at an unattended browser
+  // walk off with the account.
+  await reauthenticate(email, currentPassword);
   const session = await getSession();
   if (!session?.access_token) throw new Error('Please sign in first.');
 
@@ -323,9 +382,19 @@ export function onExternalSessionChange(listener) {
     } catch {
       next = null;
     }
-    // Adopt the other tab's answer, including the in-memory copy: this is the
-    // one case where an empty read is authoritative rather than a fallback.
+    // Adopt the other tab's answer either way: this is the one case where an
+    // empty read is authoritative rather than a fallback.
+    const before = volatileSession?.user?.id ?? null;
     volatileSession = next;
+
+    // But only *report* a change of account. Tabs rotate their tokens on their
+    // own schedule, and every rotation writes this key — telling the product
+    // about those would tear down an open paid guide and empty a half-typed
+    // account form roughly hourly, for nothing. The identity is what the
+    // product cares about; the token is bookkeeping.
+    const after = next?.user?.id ?? null;
+    if (before === after) return;
+
     sessionGeneration += 1;
     listener(next);
   };

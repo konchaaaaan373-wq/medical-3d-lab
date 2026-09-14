@@ -26,6 +26,7 @@ import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
 import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
+import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
@@ -56,8 +57,32 @@ boot().catch(async (error) => {
 });
 
 async function boot() {
-  const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
-  const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
+  // A Supabase redirect carries credentials in the fragment. It is not a route,
+  // and the account layer consumes and scrubs it moments from now — but the
+  // route is resolved here, first, so without this the fragment falls through
+  // to `resolveRoute`, which sends an unknown hash to the default scene.
+  // Somebody who had just confirmed their address therefore landed on a 3D
+  // model, and once the fragment was scrubbed to `#/` the address bar disagreed
+  // with what was on screen, which left the shell's Home link inert.
+  //
+  // The real parser, not a regex that resembles it: the first version of this
+  // approximated the rule and disagreed with `authRedirectFromHash` about
+  // hashes beginning with `/`, which forced such a URL to the landing page
+  // while leaving its token in the address bar. `authRedirect.js` is pure and
+  // dependency-free precisely so this can be asked here, before the account
+  // layer loads, without dragging the account client into the entry chunk.
+  //
+  // Only the fragment. `?account=recovery` — the flag a reload mid-recovery has
+  // to go on — used to force the landing page too, and that turned an
+  // interrupted recovery into a trap: the flag stays in the query until the
+  // password is set or the recovery cancelled, so closing the dialog and
+  // carrying on left every later reload of `#/brain-anatomy` dropping back to
+  // the landing page. A query flag is not a route the way a token fragment is;
+  // the hash beside it is still a perfectly good one, and the recovery dialog
+  // is a modal that opens over whatever it names.
+  const route = looksLikeAuthRedirect(window.location.hash)
+    ? { kind: 'landing' }
+    : resolveRoute(window.location.hash);
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);

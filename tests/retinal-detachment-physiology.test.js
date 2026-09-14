@@ -8,7 +8,7 @@ const STARTS = ORIGINS.filter((o) => o.toMacula !== null).map((o) => o.id);
 
 test('physiology: whether the macula is in it is decided by position, not by size', () => {
   // The claim the whole scene exists for. A separation covering a twentieth of
-  // the retina has the macula in it; one covering nearly half does not.
+  // the drawn globe has the macula in it; one covering nearly half does not.
   const small = at('posterior', 0.2);
   const large = at('superior', 0.8);
   assert.equal(small.macula, 'off', 'a small one at the back has it');

@@ -2,7 +2,8 @@ import { el } from '../utils/dom.js';
 import {
   authConfigured,
   authenticatedFetch,
-  consumePasswordRecoveryRedirect,
+  consumeAuthRedirect,
+  loadUser,
   changeEmail,
   changePassword,
   isPasswordRecovery,
@@ -101,12 +102,83 @@ export function createAccessManager({ ui }) {
       // persist the temporary recovery session, and scrub the tokens from the
       // visible URL immediately. Which signals count as recovery, and why there
       // are two, is `isPasswordRecovery`.
-      state.recoveryMode = isPasswordRecovery({
-        consumedRecoveryHash: consumePasswordRecoveryRedirect(),
-        search: window.location.search,
-      });
+      // Consumed for every type, not just recovery: a confirmation link is what
+      // a brand-new account follows, and leaving its tokens in the fragment put
+      // them in the address bar of a scene page — and so into history, into any
+      // screenshot, and into the URL somebody copies to share the model.
+      const redirect = consumeAuthRedirect();
+      // A failed link is not a recovery session. Reset mails are sent with
+      // `?account=recovery` in `redirect_to`, so an *expired* one lands on
+      // `/?account=recovery#error=otp_expired` — and the query half of
+      // `isPasswordRecovery` said yes to it. That opened "choose a new
+      // password" with "that link has expired" underneath, and submitting it
+      // failed with "your recovery session has expired": the same
+      // contradiction this notice table was written to remove, in reverse.
+      //
+      // Only a request, at this point. Whether it becomes `state.recoveryMode`
+      // is settled below, once there is an answer about the session — see
+      // `recoveryLapsed`. `authConfigured()` because a deployment with no
+      // account backend has no recovery to be in the middle of.
+      //
+      // A fragment of any other type wins outright, rather than only `error`
+      // doing so. Both signals are read here, and the fragment is the newer
+      // and the more specific of the two: a stale `?account=recovery` left by
+      // an abandoned reset would otherwise make a confirmation link open
+      // "choose a new password", with "your email address is confirmed"
+      // printed underneath it.
+      const recoveryRequested = (!redirect || redirect === 'recovery')
+        && authConfigured()
+        && isPasswordRecovery({
+          consumedRecoveryHash: redirect === 'recovery',
+          search: window.location.search,
+        });
+      // The other types need no dialog of their own: Supabase has already done
+      // the thing the link was for, and the session it handed back is stored.
+      // What is left is to say so — which matters most for `signup`, where the
+      // alternative is arriving on a 3D model with no sign that the address was
+      // ever confirmed. Held until after `open()`, which clears `state.notice`
+      // on the way in.
+      // Looked up rather than chained, because the chain had a catch-all at the
+      // end and `recovery` fell into it: a valid password-reset link told the
+      // person the link could not be used, directly under the form inviting
+      // them to choose a new password. A table makes an unhandled type a
+      // missing row rather than the wrong row.
+      //
+      // `recovery` maps to nothing on purpose — the dialog it opens says what
+      // happened in its own words, and a second sentence would only compete.
+      const REDIRECT_NOTICE = {
+        recovery: '',
+        signup: 'メールアドレスを確認しました。 / Your email address is confirmed.',
+        email_change: 'メールアドレスを変更しました。 / Your email address has been changed.',
+        // Expired, already used, or refused — the commonest ending for an
+        // emailed link. Deliberately says nothing about what to do next beyond
+        // asking again, because the reason is Supabase's and the remedy
+        // depends on which link it was.
+        error: 'このリンクは期限切れか、すでに使用済みです。もう一度お試しください。 / That link has expired or was already used — please request a new one.',
+      };
+      // Not "sign in again": an unadoptable type leaves an existing session
+      // untouched, so telling somebody signed in to sign in is an instruction
+      // they cannot act on and implies a session was destroyed when it was not.
+      const UNHANDLED_REDIRECT = 'このリンクは利用できませんでした。 / That link could not be used.';
+      // `Object.hasOwn`, because the key is a `type` taken straight from the
+      // URL: plain property access reads inherited ones, so `type=constructor`
+      // put `function Object() { [native code] }` on screen as the notice, and
+      // `type=__proto__` put `[object Object]`. `??` never fires on those —
+      // they are not nullish.
+      const redirectNotice = redirect
+        ? (Object.hasOwn(REDIRECT_NOTICE, redirect) ? REDIRECT_NOTICE[redirect] : UNHANDLED_REDIRECT)
+        : '';
 
-      await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
+      // `refresh()` waits for the identity, because a fragment carries tokens
+      // only and the entitlement lookup and first render both need to know
+      // whose session this is. The billing and catalogue reads do not, so they
+      // overlap it rather than queue behind a round-trip they never use.
+      const identified = redirect ? loadUser() : Promise.resolve();
+      await Promise.all([
+        identified.then(() => refresh()),
+        refreshBillingStatus(),
+        refreshPlanCatalog(),
+      ]);
       installLifecycleRefresh();
       // Signing out in one tab used to leave every other tab signed in: the
       // in-memory fallback that keeps the session usable where storage is
@@ -157,7 +229,47 @@ export function createAccessManager({ ui }) {
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
 
-      if (state.recoveryMode) open();
+      // Recovery needs the dialog to set a password. The other two open it only
+      // so the notice above is read rather than written to a panel nobody has
+      // asked for — a confirmation that arrives invisibly is not a confirmation.
+      // Never a pricing view. Somebody who forgot their password is no more
+      // expressing interest in the plans than somebody confirming an address;
+      // the first version of this fix exempted only one of them.
+      //
+      // `recoveryMode` is settled only now, because a form offering to choose
+      // a new password is a promise that there is an account to change it on.
+      // The query flag outlives the session that minted it — it survives in a
+      // bookmark, in a restored tab, and in an hour-old link, and anybody at
+      // all can simply visit `/?account=recovery`. Every one of those got the
+      // form, and every one of them could only be told afterwards that the
+      // recovery session had expired.
+      //
+      // The session, not `state.user`: `updatePassword` needs the access token
+      // and nothing else, and `loadUser` is best-effort by design — one failed
+      // `GET /auth/v1/user` would otherwise turn a perfectly good reset link
+      // into "no longer valid", with the flag cleared so a reload could not
+      // even retry.
+      const recoverySession = recoveryRequested ? await getSession() : null;
+      state.recoveryMode = Boolean(recoverySession?.access_token);
+      const recoveryLapsed = recoveryRequested && !state.recoveryMode;
+      // The flag has to go with it, or the next reload asks the same question
+      // and gets the same answer.
+      //
+      // Not only when it lapsed: *any* fragment that outvoted the flag above
+      // has to take it out of the query too, or the outvoting lasts exactly
+      // one page load. A confirmation link arriving on a stale
+      // `?account=recovery` showed the right thing and left the flag in the
+      // address bar — so the very next reload had nothing but the flag to
+      // read, and put the password form back with a real session behind it,
+      // which is the one combination the session gate cannot catch.
+      if ((redirect && redirect !== 'recovery') || recoveryLapsed) cleanRecoveryQuery();
+      const notice = redirectNotice
+        || (recoveryLapsed ? 'パスワード再設定の有効期限が切れています。もう一度お試しください。 / That password reset is no longer valid — please request a new link.' : '');
+      if (state.recoveryMode || notice) open(null, { asPricingView: false });
+      if (notice) {
+        state.notice = notice;
+        notify();
+      }
       return api;
     },
     has(entitlement) {
@@ -277,6 +389,14 @@ export function createAccessManager({ ui }) {
     state.subscriptions = [];
     state.loading = false;
     state.deletionMode = false;
+    // A pending recovery is over too. Every caller of this means the same
+    // thing — signed out here, signed out in another tab, account deleted,
+    // recovery cancelled — and there is no session left to set a password on.
+    // Leaving the flag set kept "choose a new password" on screen for somebody
+    // with no identity, where submitting it could only fail; leaving the query
+    // behind put the same form back on the next reload.
+    state.recoveryMode = false;
+    cleanRecoveryQuery();
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
@@ -289,7 +409,19 @@ export function createAccessManager({ ui }) {
     if (lifecycleRefreshInstalled) return;
     lifecycleRefreshInstalled = true;
     const refreshVisibleAccount = () => {
-      if (state.user && document.visibilityState !== 'hidden') void refresh();
+      if (!state.user || document.visibilityState === 'hidden') return;
+      // Not while an account form is open. `refresh()` notifies, `notify()`
+      // rebuilds the dialog, and these forms hold their values nowhere but in
+      // their own inputs — deliberately, since two of the three are passwords.
+      // Without this, alt-tabbing to a password manager and back emptied every
+      // field, and so did the five-minute timer. Entitlements can wait the
+      // minute it takes to fill in a form; they are re-read on close anyway.
+      // `!modal.hidden`, because this is about a form being on screen, not
+      // about a flag being set. `recoveryMode` outlives the dialog on purpose —
+      // an interrupted recovery is still pending — and without this the first
+      // reset link of the page's life switched the refresh off for good.
+      if (!modal.hidden && (state.accountEdit || state.deletionMode || state.recoveryMode)) return;
+      void refresh();
     };
     window.addEventListener('focus', refreshVisibleAccount);
     document.addEventListener('visibilitychange', refreshVisibleAccount);
@@ -374,12 +506,19 @@ export function createAccessManager({ ui }) {
     return { reconciliationSucceeded };
   }
 
-  function open(entitlement = null) {
+  function open(entitlement = null, { asPricingView = true } = {}) {
     required = entitlement;
     state.notice = '';
     // Where the purchase conversation starts. Which capability was being
     // reached for is the interesting part; who reached for it is not recorded.
-    emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    //
+    // Not every opening is that conversation. The dialog is also how an email
+    // confirmation is acknowledged, and counting those would put the whole of
+    // registration into the denominator of a funnel measuring interest in the
+    // plans — a number that then answers a different question than it claims.
+    if (asPricingView) {
+      emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    }
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : accountButton;
     modal.hidden = false;
     modal.classList.add('is-open');
@@ -612,7 +751,12 @@ export function createAccessManager({ ui }) {
         ? el('div', { class: 'access-billing-unavailable' }, [
             el('p', { class: 'access-copy lang-en', text: billingNotice().en }),
             el('p', { class: 'access-copy lang-ja', text: billingNotice().ja }),
-            el('a', { class: 'access-legal-link', href: '#/commerce' }, [
+            // New tab, for the same reason the consent links are: following a
+            // hash link reloads the app, which closes this dialog. Reading why
+            // purchases are unavailable should not cost somebody their place
+            // in their own account panel. Left same-tab when the consent links
+            // were changed, which was an oversight rather than a decision.
+            el('a', { class: 'access-legal-link', href: '#/commerce', target: '_blank', rel: 'noopener' }, [
               el('span', { class: 'lang-en', text: 'Commercial disclosure →' }),
               el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記 →' }),
             ]),
@@ -680,11 +824,17 @@ export function createAccessManager({ ui }) {
    * passwords out of `state` — nothing here is worth remembering across a
    * render, and a plaintext password is the last thing that should be.
    */
-  function refuseField(field, message) {
+  function refuseField(field, message, group = [field]) {
     field.setCustomValidity?.(message);
     field.reportValidity?.();
-    // Cleared on the next keystroke, or the field stays invalid after the fix.
-    field.addEventListener('input', () => field.setCustomValidity?.(''), { once: true });
+    // Cleared by editing *any* field involved, not only the one flagged: a
+    // mismatch is as easily fixed by correcting the first password as the
+    // second, and clearing only on the flagged field left it permanently
+    // invalid — native validation then blocked the submit and re-showed "they
+    // do not match" on two fields that now matched.
+    for (const member of group) {
+      member.addEventListener('input', () => field.setCustomValidity?.(''));
+    }
   }
 
   function openAccountEdit(mode) {
@@ -751,7 +901,7 @@ export function createAccessManager({ ui }) {
         return;
       }
       if (next.value !== confirm.value) {
-        refuseField(confirm, '入力したパスワードが一致しません。');
+        refuseField(confirm, '入力したパスワードが一致しません。', [next, confirm]);
         return;
       }
       try {
@@ -802,6 +952,11 @@ export function createAccessManager({ ui }) {
    * it had not is how an account becomes unreachable.
    */
   function emailChangeForm() {
+    const current = el('input', {
+      class: 'access-input', type: 'password', name: 'current-password',
+      autocomplete: 'current-password', placeholder: 'Current password',
+      'aria-label': 'Current password / 現在のパスワード', required: '',
+    });
     const address = el('input', {
       class: 'access-input', type: 'email', name: 'new-email',
       autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false',
@@ -815,20 +970,21 @@ export function createAccessManager({ ui }) {
       state.notice = '';
       state.error = '';
       const wanted = String(address.value ?? '').trim();
+      // In place, for the same reason as the password forms: routing these
+      // through `state.notice` rebuilds the dialog and erases the address that
+      // was just typed, which is the regression `refuseField` exists to stop.
       if (!wanted) {
-        state.notice = '新しいメールアドレスを入力してください。';
-        notify();
+        refuseField(address, '新しいメールアドレスを入力してください。');
         return;
       }
       if (wanted === state.user?.email) {
-        state.notice = 'すでにそのアドレスです。';
-        notify();
+        refuseField(address, 'すでにそのアドレスです。');
         return;
       }
       try {
         state.loading = true;
         notify();
-        await changeEmail(wanted, confirmationRedirect());
+        await changeEmail(state.user?.email, current.value, wanted, confirmationRedirect());
         closeAccountEdit({
           notice: `${wanted} に確認メールを送信しました。リンクを開くと変更が完了します。 / Confirmation sent — the change completes when you open the link.`,
         });
@@ -849,6 +1005,7 @@ export function createAccessManager({ ui }) {
     }, [
       el('p', { class: 'access-copy lang-en', text: `Signed in as ${state.user?.email ?? ''}. The change takes effect when you open the link sent to the new address.` }),
       el('p', { class: 'access-copy lang-ja', text: `現在のアドレスは ${state.user?.email ?? ''} です。新しいアドレスに届くリンクを開いた時点で変更が完了します。` }),
+      current,
       address,
       el('div', { class: 'access-auth-actions' }, [
         cancelEditButton(),
@@ -1122,7 +1279,7 @@ export function createAccessManager({ ui }) {
         return;
       }
       if (password.value !== confirm.value) {
-        refuseField(confirm, '入力したパスワードが一致しません。');
+        refuseField(confirm, '入力したパスワードが一致しません。', [password, confirm]);
         return;
       }
 
@@ -1144,9 +1301,9 @@ export function createAccessManager({ ui }) {
 
     const cancelRecovery = () => {
       signOut();
-      state.recoveryMode = false;
+      // Clearing the flag and the query is `invalidateSessionState`'s job now,
+      // so that the three other ways a session ends do it as well.
       invalidateSessionState();
-      cleanRecoveryQuery();
       notify();
     };
 
@@ -1189,6 +1346,10 @@ export function createAccessManager({ ui }) {
 
   function cleanRecoveryQuery() {
     const clean = new URL(window.location.href);
+    // Called from every path that ends a session, most of which never had the
+    // flag. Rewriting the URL anyway would drop `history.state` on each of
+    // them for no reason.
+    if (!clean.searchParams.has('account')) return;
     clean.searchParams.delete('account');
     history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }

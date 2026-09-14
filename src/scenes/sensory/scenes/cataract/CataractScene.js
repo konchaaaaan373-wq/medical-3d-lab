@@ -55,6 +55,9 @@ export class CataractScene {
   /** How solid everything that is not the lens is drawn. */
   static CONTEXT_OPACITY = 0.14;
 
+  /** How much of the lens is left, which is more: it is what the cloud is in. */
+  static LENS_OPACITY = 0.45;
+
   constructor({ viewer } = {}) {
     this.viewer = viewer ?? null;
     this.root = new THREE.Group();
@@ -81,8 +84,14 @@ export class CataractScene {
       mesh.material.opacity = CataractScene.CONTEXT_OPACITY;
       mesh.material.depthWrite = false;
     }
+    // The lens is the subject, so it is dimmed less than what surrounds it —
+    // enough to see a cloud inside it, not so much that it stops being a body.
     const lens = this.eye.mesh('lens');
-    if (lens) { lens.material.transparent = true; lens.material.opacity = 0.45; lens.material.depthWrite = false; }
+    if (lens) {
+      lens.material.transparent = true;
+      lens.material.opacity = CataractScene.LENS_OPACITY;
+      lens.material.depthWrite = false;
+    }
 
     // Three flat rings on one plane in front of the lens: the cloud, the
     // aperture's edge, and the part of the cloud inside it. Comparing two areas
