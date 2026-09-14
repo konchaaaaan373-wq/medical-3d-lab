@@ -452,8 +452,55 @@ try {
         (await page.evaluate(() => document.documentElement.dataset.route)) === 'landing',
         await page.evaluate(() => document.documentElement.dataset.route));
       // The token is real, so the person is signed in — and known by name.
+      const signedInAs = await page.locator('.access-user-email')
+        .textContent({ timeout: 2000 }).catch(() => '(no account row)');
       check('and is signed in as the confirmed address',
-        (await page.locator('.access-user-email').textContent().catch(() => '')) === 'confirmed@example.test');
+        signedInAs === 'confirmed@example.test', signedInAs);
+      await page.close();
+    }
+
+    step = 'landing on a link that has expired';
+    {
+      // The commonest ending for an emailed link, and the one case that still
+      // fell through to the router: no token, so nothing recognised it, and
+      // somebody who clicked an expired confirmation got a 3D model with the
+      // error still in the address bar.
+      const { page } = await openPage({ width: 1100, height: 900 });
+      await page.goto(
+        `${base}#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForTimeout(1200);
+      check('an expired link is scrubbed from the URL',
+        !page.url().includes('otp_expired'), page.url());
+      check('and does not land on a scene',
+        (await page.evaluate(() => document.documentElement.dataset.route)) === 'landing',
+        await page.evaluate(() => document.documentElement.dataset.route));
+      const expiredText = await page.locator('.access-dialog').textContent().catch(() => '');
+      check('and says the link expired', /期限切れ|expired/i.test(expiredText), expiredText.slice(0, 80));
+      // `error_description` is free text from the URL. Echoing it would put
+      // whatever a link's author wrote inside this product's own dialog.
+      check('and does not repeat the description from the URL',
+        !/invalid or has expired/i.test(expiredText), expiredText.slice(0, 80));
+      await page.close();
+    }
+
+    step = 'landing on a recovery link';
+    {
+      // The regression guard for the notice table. A catch-all branch once
+      // swallowed `recovery`, so a valid password-reset link rendered "that
+      // link could not be used" directly under the form inviting the person to
+      // choose a new password — told at once that the link worked and that it
+      // had not.
+      const { page } = await openPage({ width: 1100, height: 900 });
+      await page.goto(
+        `${base}#access_token=recovery-token&refresh_token=r&expires_in=3600&type=recovery`,
+        { waitUntil: 'networkidle' },
+      );
+      await page.waitForSelector('.access-recovery', { timeout: 15000 });
+      const recoveryText = await page.locator('.access-dialog').textContent();
+      check('a recovery link is not told it could not be used',
+        !/利用できませんでした|could not be used|期限切れ/.test(recoveryText), recoveryText.slice(0, 90));
       await page.close();
     }
 

@@ -116,22 +116,42 @@ export function createAccessManager({ ui }) {
       // alternative is arriving on a 3D model with no sign that the address was
       // ever confirmed. Held until after `open()`, which clears `state.notice`
       // on the way in.
-      const redirectNotice = redirect === 'signup'
-        ? 'メールアドレスを確認しました。 / Your email address is confirmed.'
-        : redirect === 'email_change'
-          ? 'メールアドレスを変更しました。 / Your email address has been changed.'
-          : redirect
-            // Scrubbed, deliberately not signed in, and said out loud: a link
-            // that quietly did nothing is worse than one that says it did not
-            // work, because the person is left waiting for something.
-            ? 'このリンクは利用できませんでした。ログインし直してください。 / That link could not be used — please sign in again.'
-            : '';
+      // Looked up rather than chained, because the chain had a catch-all at the
+      // end and `recovery` fell into it: a valid password-reset link told the
+      // person the link could not be used, directly under the form inviting
+      // them to choose a new password. A table makes an unhandled type a
+      // missing row rather than the wrong row.
+      //
+      // `recovery` maps to nothing on purpose — the dialog it opens says what
+      // happened in its own words, and a second sentence would only compete.
+      const REDIRECT_NOTICE = {
+        recovery: '',
+        signup: 'メールアドレスを確認しました。 / Your email address is confirmed.',
+        email_change: 'メールアドレスを変更しました。 / Your email address has been changed.',
+        // Expired, already used, or refused — the commonest ending for an
+        // emailed link. Deliberately says nothing about what to do next beyond
+        // asking again, because the reason is Supabase's and the remedy
+        // depends on which link it was.
+        error: 'このリンクは期限切れか、すでに使用済みです。もう一度お試しください。 / That link has expired or was already used — please request a new one.',
+      };
+      // Not "sign in again": an unadoptable type leaves an existing session
+      // untouched, so telling somebody signed in to sign in is an instruction
+      // they cannot act on and implies a session was destroyed when it was not.
+      const UNHANDLED_REDIRECT = 'このリンクは利用できませんでした。 / That link could not be used.';
+      const redirectNotice = redirect
+        ? REDIRECT_NOTICE[redirect] ?? UNHANDLED_REDIRECT
+        : '';
 
-      // Before `refresh()`, so the entitlement lookup and the first render both
-      // see a session that knows whose it is. A fragment carries tokens only.
-      if (redirect) await loadUser();
-
-      await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
+      // `refresh()` waits for the identity, because a fragment carries tokens
+      // only and the entitlement lookup and first render both need to know
+      // whose session this is. The billing and catalogue reads do not, so they
+      // overlap it rather than queue behind a round-trip they never use.
+      const identified = redirect ? loadUser() : Promise.resolve();
+      await Promise.all([
+        identified.then(() => refresh()),
+        refreshBillingStatus(),
+        refreshPlanCatalog(),
+      ]);
       installLifecycleRefresh();
       // Signing out in one tab used to leave every other tab signed in: the
       // in-memory fallback that keeps the session usable where storage is
@@ -185,7 +205,10 @@ export function createAccessManager({ ui }) {
       // Recovery needs the dialog to set a password. The other two open it only
       // so the notice above is read rather than written to a panel nobody has
       // asked for — a confirmation that arrives invisibly is not a confirmation.
-      if (state.recoveryMode || redirectNotice) open(null, { asPricingView: state.recoveryMode });
+      // Never a pricing view. Somebody who forgot their password is no more
+      // expressing interest in the plans than somebody confirming an address;
+      // the first version of this fix exempted only one of them.
+      if (state.recoveryMode || redirectNotice) open(null, { asPricingView: false });
       if (redirectNotice) {
         state.notice = redirectNotice;
         notify();

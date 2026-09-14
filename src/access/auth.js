@@ -6,6 +6,8 @@
  * Stripe secrets live in Netlify Functions.
  */
 
+import { ADOPTABLE_REDIRECTS, authRedirectFromHash } from './authRedirect.js';
+
 const STORAGE_KEY = 'medical3dlab.auth.v1';
 let volatileSession = null;
 let refreshInFlight = null;
@@ -166,39 +168,6 @@ export async function requestPasswordReset(email, redirectTo) {
 }
 
 /**
- * Parse the implicit-flow fragment Supabase redirects back to a client-only app.
- *
- * **Every** type, not only `recovery`. They all carry a real access token and a
- * real refresh token, and the reason those must not linger in the address bar
- * has nothing to do with which email they came from: a confirmation link is the
- * one a brand-new account follows, and it used to land on a scene with both
- * tokens still in the URL — in history, in any screenshot, and in the link
- * somebody copies to show a colleague the model they just opened.
- *
- * Kept pure so the routing/security edge case is unit-testable.
- */
-export function authRedirectFromHash(hash, nowSeconds = Math.floor(Date.now() / 1000)) {
-  const raw = String(hash ?? '').replace(/^#/, '');
-  if (!raw || raw.startsWith('/')) return null;
-  const params = new URLSearchParams(raw);
-  const type = params.get('type');
-  if (!type) return null;
-
-  const accessToken = params.get('access_token');
-  if (!accessToken) return null;
-  const expiresIn = Number(params.get('expires_in') || 3600);
-  return {
-    type,
-    session: {
-      access_token: accessToken,
-      refresh_token: params.get('refresh_token') || null,
-      expires_at: Number(nowSeconds) + (Number.isFinite(expiresIn) ? expiresIn : 3600),
-      user: null,
-    },
-  };
-}
-
-/**
  * Consume a Supabase redirect before the app treats the URL fragment as a
  * Medical 3D Lab scene route. Tokens are persisted and removed from the address
  * bar immediately so they cannot linger in screenshots or copied links.
@@ -226,24 +195,31 @@ export function authRedirectFromHash(hash, nowSeconds = Math.floor(Date.now() / 
  * a reason to refuse a session Supabase has just issued.
  */
 export async function loadUser() {
-  const session = await getSession();
-  if (!session?.access_token) return null;
+  // `getSession()` is inside the try because it can rotate the token, and that
+  // rotation is a network call which rejects on a dropped connection. Outside,
+  // a blip here rejected out of `AccessManager.init()` and took the rest of the
+  // account layer's startup with it: no entitlement read, no cross-tab
+  // listener, and no confirmation for somebody who had just confirmed their
+  // address. "Best effort" has to mean it.
   try {
+    const generation = sessionGeneration;
+    const session = await getSession();
+    if (!session?.access_token) return null;
     const response = await fetch(`${AUTH_CONFIG.url}/auth/v1/user`, {
       headers: headers(session.access_token),
     });
     if (!response.ok) return null;
     const user = await response.json();
     if (!user?.id) return null;
+    // The guard `refresh()` carries, for the same reason: a sign-out during the
+    // round-trip must not be undone by writing the captured token back after.
+    if (generation !== sessionGeneration) return null;
     store({ ...session, user });
     return user;
   } catch {
     return null;
   }
 }
-
-/** Redirect types this app knows how to be on the receiving end of. */
-const ADOPTABLE_REDIRECTS = new Set(['recovery', 'signup', 'email_change']);
 
 export function consumeAuthRedirect({ location, history } = {}) {
   const currentLocation = location ?? globalThis.location;
