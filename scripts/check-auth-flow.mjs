@@ -423,18 +423,37 @@ try {
       // The fragment used to fall through to the router, which sends an unknown
       // hash to the default scene — so registration finished on a 3D model with
       // a live access and refresh token still in the address bar.
-      const { page } = await openPage({ width: 1100, height: 900 });
+      const { page } = await openPage({ width: 1100, height: 900 }, {
+        auth: (path) => (path.includes('/auth/v1/user')
+          // Who the fragment's token belongs to. Without this the session knows
+          // only that it exists, and the dialog congratulates a signed-out form.
+          ? { status: 200, contentType: 'application/json',
+              body: JSON.stringify({ id: 'stub', email: 'confirmed@example.test' }) }
+          : null),
+      });
       await page.goto(
         `${base}#access_token=live-access-token&refresh_token=live-refresh-token&expires_in=3600&type=signup`,
         { waitUntil: 'networkidle' },
       );
-      await page.waitForTimeout(1200);
+      await page.waitForTimeout(1500);
       check('a confirmation link leaves no access token in the URL',
         !page.url().includes('live-access-token'), page.url());
       check('and no refresh token either',
         !page.url().includes('live-refresh-token'), page.url());
       const text = await page.locator('.access-dialog').textContent().catch(() => '');
       check('and says the address is confirmed', /確認しました|confirmed/i.test(text), text.slice(0, 70));
+
+      // The surface, not just the URL. The fragment is resolved as a route
+      // before the account layer scrubs it, so treating it as one landed
+      // somebody who had just confirmed their address on a 3D model — and once
+      // the hash became `#/`, the address bar disagreed with the screen and the
+      // shell's Home link had nowhere to go.
+      check('and lands on the landing page, not a scene',
+        (await page.evaluate(() => document.documentElement.dataset.route)) === 'landing',
+        await page.evaluate(() => document.documentElement.dataset.route));
+      // The token is real, so the person is signed in — and known by name.
+      check('and is signed in as the confirmed address',
+        (await page.locator('.access-user-email').textContent().catch(() => '')) === 'confirmed@example.test');
       await page.close();
     }
 

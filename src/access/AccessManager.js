@@ -3,6 +3,7 @@ import {
   authConfigured,
   authenticatedFetch,
   consumeAuthRedirect,
+  loadUser,
   changeEmail,
   changePassword,
   isPasswordRecovery,
@@ -119,7 +120,16 @@ export function createAccessManager({ ui }) {
         ? 'メールアドレスを確認しました。 / Your email address is confirmed.'
         : redirect === 'email_change'
           ? 'メールアドレスを変更しました。 / Your email address has been changed.'
-          : '';
+          : redirect
+            // Scrubbed, deliberately not signed in, and said out loud: a link
+            // that quietly did nothing is worse than one that says it did not
+            // work, because the person is left waiting for something.
+            ? 'このリンクは利用できませんでした。ログインし直してください。 / That link could not be used — please sign in again.'
+            : '';
+
+      // Before `refresh()`, so the entitlement lookup and the first render both
+      // see a session that knows whose it is. A fragment carries tokens only.
+      if (redirect) await loadUser();
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       installLifecycleRefresh();
@@ -175,7 +185,7 @@ export function createAccessManager({ ui }) {
       // Recovery needs the dialog to set a password. The other two open it only
       // so the notice above is read rather than written to a panel nobody has
       // asked for — a confirmation that arrives invisibly is not a confirmation.
-      if (state.recoveryMode || redirectNotice) open();
+      if (state.recoveryMode || redirectNotice) open(null, { asPricingView: state.recoveryMode });
       if (redirectNotice) {
         state.notice = redirectNotice;
         notify();
@@ -404,12 +414,19 @@ export function createAccessManager({ ui }) {
     return { reconciliationSucceeded };
   }
 
-  function open(entitlement = null) {
+  function open(entitlement = null, { asPricingView = true } = {}) {
     required = entitlement;
     state.notice = '';
     // Where the purchase conversation starts. Which capability was being
     // reached for is the interesting part; who reached for it is not recorded.
-    emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    //
+    // Not every opening is that conversation. The dialog is also how an email
+    // confirmation is acknowledged, and counting those would put the whole of
+    // registration into the denominator of a funnel measuring interest in the
+    // plans — a number that then answers a different question than it claims.
+    if (asPricingView) {
+      emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    }
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : accountButton;
     modal.hidden = false;
     modal.classList.add('is-open');
