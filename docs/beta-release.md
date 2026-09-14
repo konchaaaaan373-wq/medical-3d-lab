@@ -62,10 +62,18 @@ node -e "import('./src/catalog/release.js').then(m=>console.log(
 （`decidedBy.role` ∈ engineering / anatomy-expert / clinical）・いつ
 （`decidedAt`）・どの記録文書に対して（`record`）・何を確認したか
 （`scope.structures` / `views` / `interactions`）・証跡はどこか（`evidence`）・
-**何を確認していないか**（`unverified`）。`record` と `evidence` の実在は
-build / CI（`npm run verify:site`）が確認します——ブラウザで動く判定に
-`node:fs` は入れません。
+**何を確認していないか**（`unverified`）。
 実例は [`beta-publication/brain-anatomy.md`](beta-publication/brain-anatomy.md)。
+
+**記録は 2 つのファイルに分かれています**（F-103）。pin——誰が・いつ・どの
+revision に対して——は `release.js`、**何を確認したか**は
+[`../src/catalog/publicationScopes.js`](../src/catalog/publicationScopes.js)。
+ブラウザは pin だけでゲートを再計算し、本文は受け取りません。
+`record` と `evidence` の実在、そして**本文がそもそも在るか**は
+build / CI（`npm run verify:site`・`npm test`）が確認します——
+ブラウザで動く判定に `node:fs` は入れませんし、初回描画に公開 1 件あたり
+1 ページぶんの記録を載せることもしません。**検査は減っていません**：
+本文の無い決定は、ファイルシステムが見える場所すべてで落ちます。
 
 ### 2 つの revision に結びつける
 

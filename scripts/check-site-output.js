@@ -49,6 +49,7 @@ import { ASSET_MANIFEST } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { CRAWLABLE_SCENES, RELEASED_SCENES, betaPublicationProblems } from '../src/catalog/release.js';
+import { BETA_PUBLICATION_SCOPES } from '../src/catalog/publicationScopes.js';
 import { assetDeliveryProblems, requiredAssetIdsFor } from './asset-delivery.js';
 import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
@@ -201,11 +202,13 @@ problems.push(
   })
 );
 
-// The gate again, this time with a filesystem. In the browser a recorded path
-// is taken at its word; here a publication decision that cites a record or a
-// piece of evidence which does not exist is a build failure.
+// The gate again, this time with a filesystem **and with what each decision
+// says it checked**. The browser gets neither: it cannot stat a file, and the
+// scope record is deliberately not on its side of the wire (F-103). So this is
+// where a decision citing a record or a piece of evidence that does not exist,
+// or carrying no scope at all, becomes a build failure.
 for (const scene of RELEASED_SCENES) {
-  for (const problem of betaPublicationProblems(scene, { fileExists: existsSync })) {
+  for (const problem of betaPublicationProblems(scene, { fileExists: existsSync, scopes: BETA_PUBLICATION_SCOPES })) {
     problems.push(`${scene.id}: ${problem}`);
   }
 }

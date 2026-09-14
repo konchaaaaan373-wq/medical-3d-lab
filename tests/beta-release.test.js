@@ -25,6 +25,7 @@ import {
   isSceneReleased,
   resolveDevUnlock,
 } from '../src/catalog/release.js';
+import { BETA_PUBLICATION_SCOPES } from '../src/catalog/publicationScopes.js';
 import { PUBLIC_MANIFEST, publicManifestProblems } from '../src/catalog/publicManifest.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
@@ -205,9 +206,11 @@ test('beta release: naming a scene does not open it — every failure closes the
 test('publication decision: an incomplete record is not a decision', () => {
   const scene = sceneById('brain-anatomy');
   const decision = BETA_PUBLICATION_DECISIONS.find((entry) => entry.sceneId === 'brain-anatomy');
-  assert.deepEqual(publicationDecisionProblems(decision, scene, { fileExists }), []);
+  const scopes = BETA_PUBLICATION_SCOPES;
+  assert.deepEqual(publicationDecisionProblems(decision, scene, { fileExists, scopes }), []);
 
-  const without = (path, value) => {
+  /** Spoil one field of the decision itself — the part the browser checks. */
+  const withoutPin = (path, value) => {
     const next = structuredClone({ ...decision });
     const keys = path.split('.');
     const last = keys.pop();
@@ -215,10 +218,25 @@ test('publication decision: an incomplete record is not a decision', () => {
     for (const key of keys) target = target[key];
     if (value === undefined) delete target[last];
     else target[last] = value;
-    return publicationDecisionProblems(next, scene, { fileExists });
+    return publicationDecisionProblems(next, scene, { fileExists, scopes });
   };
 
-  const cases = [
+  /** Spoil one field of what it says it checked — the part the build checks. */
+  const withoutScope = (path, value) => {
+    const entry = structuredClone(scopes[decision.sceneId]);
+    const keys = path.split('.');
+    const last = keys.pop();
+    let target = entry;
+    for (const key of keys) target = target[key];
+    if (value === undefined) delete target[last];
+    else target[last] = value;
+    return publicationDecisionProblems(decision, scene, {
+      fileExists,
+      scopes: { ...scopes, [decision.sceneId]: entry },
+    });
+  };
+
+  const pinCases = [
     ['decidedAt', undefined, /no decision date/],
     ['decidedAt', '8 September 2026', /no decision date/],
     ['decidedBy', undefined, /does not say who took it/],
@@ -227,6 +245,13 @@ test('publication decision: an incomplete record is not a decision', () => {
     ['decidedBy.role', undefined, /is not one of/],
     ['record', undefined, /names no record document/],
     ['record', 'docs/beta-publication/does-not-exist.md', /which does not exist/],
+  ];
+  for (const [path, value, pattern] of pinCases) {
+    const problems = withoutPin(path, value);
+    assert.ok(problems.some((line) => pattern.test(line)), `${path}=${JSON.stringify(value)}: ${JSON.stringify(problems)}`);
+  }
+
+  const scopeCases = [
     ['scope', undefined, /records no scope/],
     ['scope.structures', [], /does not say what structures were checked/],
     ['scope.views', undefined, /does not say what views were checked/],
@@ -237,10 +262,19 @@ test('publication decision: an incomplete record is not a decision', () => {
     ['unverified', undefined, /does not state what it did not check/],
     ['unverified', ['', 'something'], /does not state what it did not check/],
   ];
-  for (const [path, value, pattern] of cases) {
-    const problems = without(path, value);
+  for (const [path, value, pattern] of scopeCases) {
+    const problems = withoutScope(path, value);
     assert.ok(problems.some((line) => pattern.test(line)), `${path}=${JSON.stringify(value)}: ${JSON.stringify(problems)}`);
   }
+
+  // A decision with nothing recorded about what it checked fails as loudly as
+  // one with an empty list in it. The map is asked for the decision's own id,
+  // so a record cannot borrow another scene's scope.
+  assert.ok(
+    publicationDecisionProblems(decision, scene, { fileExists, scopes: {} })
+      .some((line) => /no entry in the scope record/.test(line)),
+    'an absent scope entry is a problem'
+  );
 
   // The one claim a record must never be able to make about itself. The brain
   // atlas's clinical review is pending, so a record calling itself clinical is
@@ -248,19 +282,60 @@ test('publication decision: an incomplete record is not a decision', () => {
   assert.equal(DECISION_ROLES.includes('clinical'), true);
   const claimsClinical = { ...decision, decidedBy: { ...decision.decidedBy, role: 'clinical' } };
   assert.ok(
-    publicationDecisionProblems(claimsClinical, scene, { fileExists })
+    publicationDecisionProblems(claimsClinical, scene, { fileExists, scopes })
       .some((line) => /cannot promote itself to a sign-off/.test(line))
   );
   assert.deepEqual(
-    publicationDecisionProblems(claimsClinical, scene, { fileExists, hasReview: () => true }),
+    publicationDecisionProblems(claimsClinical, scene, { fileExists, scopes, hasReview: () => true }),
     [],
     'and it is fine once the review registry actually holds one'
   );
 
   // The record itself says it is engineering, and says what it did not check.
   assert.equal(decision.decidedBy.role, 'engineering');
-  assert.ok(decision.unverified.some((line) => /clinical review/i.test(line)));
-  assert.ok(decision.unverified.some((line) => /not individually opened/.test(line)));
+  const recorded = scopes[decision.sceneId];
+  assert.ok(recorded.unverified.some((line) => /clinical review/i.test(line)));
+  assert.ok(recorded.unverified.some((line) => /not individually opened/.test(line)));
+});
+
+test('publication decision: what it checked is recorded for every decision, and checked where it can be', () => {
+  // The tier this split rests on. The browser answers "is this scene open"
+  // from the pin; the prose is not on its side of the wire, because it is a
+  // kilobyte of first paint per batch and the pin already answers (F-103).
+  // Everything that *can* read the filesystem reads the scope record too, and
+  // this is the test that says every decision has one and every one is whole.
+  for (const decision of BETA_PUBLICATION_DECISIONS) {
+    const scene = sceneById(decision.sceneId);
+    assert.ok(scene, `${decision.sceneId} is a scene`);
+    assert.deepEqual(
+      publicationDecisionProblems(decision, scene, { fileExists, scopes: BETA_PUBLICATION_SCOPES }),
+      [],
+      `${decision.sceneId}: complete, with the filesystem and the scope record`
+    );
+
+    const recorded = BETA_PUBLICATION_SCOPES[decision.sceneId];
+    assert.ok(recorded, `${decision.sceneId}: has a scope entry`);
+    for (const path of recorded.evidence) {
+      assert.ok(fileExists(path), `${decision.sceneId}: cites ${path}, which exists`);
+    }
+    assert.ok(recorded.unverified.length, `${decision.sceneId}: says what it did not check`);
+  }
+
+  // And the scope record carries no entry for a decision nobody took: a stray
+  // annex would read as a record of a publication that never happened.
+  const decided = new Set(BETA_PUBLICATION_DECISIONS.map((entry) => entry.sceneId));
+  for (const sceneId of Object.keys(BETA_PUBLICATION_SCOPES)) {
+    assert.ok(decided.has(sceneId), `${sceneId} has a recorded scope but no decision`);
+  }
+
+  // Without the map the prose checks are skipped rather than assumed — the
+  // same tier `fileExists` is on, and the reason the entry stays under budget.
+  const decision = BETA_PUBLICATION_DECISIONS[0];
+  assert.deepEqual(
+    publicationDecisionProblems(decision, sceneById(decision.sceneId), {}),
+    [],
+    'a browser, with neither a filesystem nor the scope record, still reads the pin'
+  );
 });
 
 test('publication decision: the same mesh with a different part correspondence closes the beta', () => {
@@ -695,7 +770,10 @@ test('beta release: the crawlable surface and the in-scene navigator read the ga
   // The subject is the public tree, not the files near a registered asset.
   assert.match(siteCheck, /publicFiles,/);
   assert.match(siteCheck, /const publicFiles = existsSync\(publicDir\)/);
-  assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync \}\)/);
+  // With the filesystem **and** the scope record: both are things the browser
+  // cannot supply, and the build is where a decision is judged against them.
+  assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync, scopes: BETA_PUBLICATION_SCOPES \}\)/);
+  assert.match(siteCheck, /import \{ BETA_PUBLICATION_SCOPES \}/);
 
   const cardCheck = read('scripts/check-social-cards.js');
   assert.match(cardCheck, /CRAWLABLE_SCENES/);

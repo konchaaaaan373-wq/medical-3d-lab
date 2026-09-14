@@ -42,9 +42,13 @@
  *  4. no clinical-review record it has is `stale`, so a sign-off that has been
  *     overtaken is never shown as current;
  *  5. a publication decision exists that is complete — who decided, in what
- *     role, on what date, against what record, over what scope — and that is
- *     pinned to the exact asset revisions **and** the exact scene revision it
- *     was taken against.
+ *     role, on what date, against what record — and that is pinned to the
+ *     exact asset revisions **and** the exact scene revision it was taken
+ *     against. What that decision *checked* is recorded too, in
+ *     `publicationScopes.js`, and verified wherever the filesystem is
+ *     readable; it is deliberately not carried here, because the browser
+ *     answers this question from the pin and would otherwise download a page
+ *     of record per published model (F-103).
  *
  * A status nobody has defined, a missing model profile, an asset whose licence
  * is unknown, a decision taken against a file that has since changed: each of
@@ -244,31 +248,6 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * somewhere in the repository must not expire a record it has nothing to do
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
-/**
- * What batch B1's three decisions each exercised, and what each cites.
- *
- * One list rather than three copies: the same check ran over the three scenes,
- * so three copies would only ever differ by a typo — and this array reaches
- * the browser, which recomputes the gate from these records and does not need
- * the same paragraph three times to do it.
- */
-const B1_INTERACTIONS = Object.freeze([
-  'four measured points resolve to the structures the panel then names, in both languages',
-  'the part tree and the model agree in both directions',
-  'a drag that ends over another structure is not a click',
-  'isolate shows one structure, Show all restores the model',
-  'colour mode and viewpoint do not move the selection, and a hover does not rewrite it',
-]);
-
-const B1_EVIDENCE = Object.freeze([
-  'scripts/check-anatomy-interaction.mjs',
-  'scripts/capture-anatomy-views.mjs',
-  'src/scenes/shared/geometry/sectionFace.js',
-  'tests/section-face.test.js',
-  'tests/organ-anatomy-scenes.test.js',
-  'docs/screenshots/pub-b1/README.md',
-]);
-
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
@@ -280,69 +259,6 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
     sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '3c3175a6da4b6944' }),
-    /** What was actually exercised. Not a plan — a list of what was done. */
-    scope: Object.freeze({
-      structures: Object.freeze([
-        'Opercular part of inferior frontal gyrus',
-        'Supramarginal gyrus',
-        'Middle temporal gyrus',
-        'Superior temporal sulcus',
-      ]),
-      views: Object.freeze([
-        'left-lateral (applied by the interaction drive)',
-        'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
-      ]),
-      interactions: Object.freeze([
-        'click pins a structure and the panel names it in both languages',
-        'click on empty space clears, and a structure can be selected again',
-        'a drag that ends over another structure does not reselect',
-        'switching colour mode does not change the selection',
-        'applying a named viewpoint does not change the selection',
-        'the part tree lists 271 structures, and selection agrees in both directions',
-        'isolate shows one structure, hidden structures are not clickable, and Show all restores the model',
-        'a pointer crossing the model does not rewrite the pinned summary or its controls',
-        'the tree answers the keyboard: one tab stop, arrows move focus, Enter commits, and the keys do not reach the scene',
-        'every branch announces the expanded state it is drawn in, including one opened by a 3D selection',
-        'on a 375x667 phone the parts sheet opens, takes focus, closes on Escape, returns focus, and keeps the selection, the open branches and the scroll position',
-        'replacing the atlas clears the panels rather than leaving the old model named in them',
-        'a medial view draws the midline block rather than a hollow shell, and the layer slider still ghosts the enclosing white matter as depth is asked for',
-        'an annotation is drawn only where the structure it names is the first thing on the ray, and hiding one leaves the selection it names untouched',
-        'each annotation is anchored on the outside of its own structure rather than at the centre of its bounding box',
-        'a viewpoint is fitted to the band the header, console and docked panel leave, against the bounds of what is actually drawn',
-        'a structure can be found by either of its names and selected from the result, by the same id the tree and the model use',
-        'the search returns every match and says how many matched; the results answer the keyboard and mark the pinned structure',
-        'the search index is rebuilt when the atlas arrives or is replaced, and on a phone the first Escape clears the search rather than closing the sheet',
-        'the pinned structure is named on the model as well as in the panel, under the same occlusion rule and a per-frame limit',
-        'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
-        'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
-        'a hidden structure\'s own label goes with it rather than being held over what is behind it',
-      ]),
-    }),
-    evidence: Object.freeze([
-      'scripts/check-anatomy-interaction.mjs',
-      'src/app/anatomyContract.js',
-      'src/components/AnatomyPanel.js',
-      'tests/anatomy-contract.test.js',
-      'tests/brain-anatomy.test.js',
-      'tests/anatomy-colour-ui.test.js',
-      'docs/asset-qa/brain-atlas-glb.md',
-      'public/assets/brain/ATTRIBUTION.md',
-      'docs/screenshots/b3-1/README.md',
-      'docs/screenshots/f37/README.md',
-      'docs/screenshots/x1/README.md',
-      'docs/anatomy-review.md',
-    ]),
-    /** Stated, not implied. An empty list here would itself be a claim. */
-    unverified: Object.freeze([
-      '267 of the 271 selectable structures were not individually opened',
-      'no label was checked against a reference atlas — that is an anatomist\'s judgement',
-      'deep structures behind the anatomical-layer slider were not exercised',
-      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
-      'no clinical review — the registry records this scene as pending',
-      'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
-      'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
-      'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
-    ]),
   }),
 
   /**
@@ -364,26 +280,6 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/lung-anatomy.md',
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd002d75f9fed5b2b' }),
-    scope: Object.freeze({
-      structures: Object.freeze([
-        'Trachea',
-        'Right upper lobe',
-        'Left upper lobe',
-        'Right middle lobe',
-        'the part tree\'s 83 rows, listed and matched against the model in both directions',
-      ]),
-      views: Object.freeze([
-        'all six viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
-      ]),
-      interactions: B1_INTERACTIONS,
-    }),
-      evidence: B1_EVIDENCE,
-    unverified: Object.freeze([
-      '79 of the 83 structures were not individually opened, and no label was checked against an atlas',
-      'no clinical review — the registry records this scene as pending',
-      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
-      'the segmental anatomy is schematic, and the cut face is not a radiological section',
-    ]),
   }),
 
   Object.freeze({
@@ -393,27 +289,6 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'd5304fd53ba0d43f' }),
-    scope: Object.freeze({
-      structures: Object.freeze([
-        'Segment VIII — right anterior superior',
-        'Segment II — left lateral superior',
-        'Segment VII — right posterior superior',
-        'Segment V — right anterior inferior',
-        'the part tree\'s 27 rows, listed and matched against the model in both directions',
-      ]),
-      views: Object.freeze([
-        'all five viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
-      ]),
-      interactions: B1_INTERACTIONS,
-    }),
-      evidence: B1_EVIDENCE,
-    unverified: Object.freeze([
-      '23 of the 27 structures were not individually opened',
-      'nobody qualified has confirmed that what is drawn is Couinaud\'s division of a real liver',
-      'no clinical review — the registry records this scene as pending',
-      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
-      'the visceral surface carries no porta hepatis, ligamentum teres or caval groove, and the cut face is not a CT slice',
-    ]),
   }),
 
   Object.freeze({
@@ -423,26 +298,6 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/kidney-anatomy.md',
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'b5df5595a0b6aab3' }),
-    scope: Object.freeze({
-      structures: Object.freeze([
-        'Renal cortex, at two points on the opened kidney',
-        'Right kidney (the landmark side, which says so when it is selected)',
-        'Left ureter',
-        'the part tree\'s 32 rows, listed and matched against the model in both directions',
-      ]),
-      views: Object.freeze([
-        'all six viewpoints in both colour modes, and the opening view with the interface up (docs/screenshots/pub-b1/)',
-      ]),
-      interactions: B1_INTERACTIONS,
-    }),
-      evidence: B1_EVIDENCE,
-    unverified: Object.freeze([
-      '29 of the 32 structures were not individually opened — the four clicks land on three',
-      'seven pyramids is a common arrangement, not a constant, and no label was checked against an atlas',
-      'only the left kidney is modelled in parts; the right is a landmark shape and says so',
-      'no clinical review — the registry records this scene as pending',
-      'one engine, desktop, headless: no touch, Safari, Firefox, screen reader or phone layout',
-    ]),
   }),
 ]);
 
@@ -459,12 +314,34 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * one that matters most — a record cannot promote itself to a clinical sign-off
  * that the review registry does not have.
  *
+ * ## Two tiers, and `scopes` is on the second one
+ *
+ * A browser can check that a decision exists, that it names somebody in a role
+ * the registry supports, and that it is pinned to the revisions being served.
+ * It cannot check that the record document exists — that is what `fileExists`
+ * is for, and only the build and the tests pass it. **What a decision
+ * exercised is on that same tier**: `scopes` carries it, `npm test` and
+ * `npm run verify:site` pass it, and the checks below run in full there.
+ *
+ * Without `scopes` those checks are skipped rather than assumed — the same way
+ * a recorded path is taken at its word when nothing can stat it. The reason is
+ * weight, not doubt: the prose reaches the browser through the eager entry, it
+ * is a kilobyte of first paint per batch of three scenes, and the answer it
+ * produces there is one the pin already gives (F-103). A decision with no
+ * entry in `scopes`, or with an empty list in it, still fails everywhere that
+ * can see the filesystem, which is everywhere that publishes.
+ *
  * @param {object|null} decision
  * @param {object} scene
- * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean}} [options]
+ * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean,
+ *   scopes?: Record<string, {scope: object, evidence: string[], unverified: string[]}>}} [options]
  * @returns {string[]}
  */
-export function publicationDecisionProblems(decision, scene, { fileExists, hasReview = hasCurrentClinicalReview } = {}) {
+export function publicationDecisionProblems(
+  decision,
+  scene,
+  { fileExists, hasReview = hasCurrentClinicalReview, scopes } = {}
+) {
   const problems = [];
   if (!decision) return ['has no publication decision on file for this release'];
 
@@ -497,7 +374,15 @@ export function publicationDecisionProblems(decision, scene, { fileExists, hasRe
     problems.push(`the publication decision names the record "${decision.record}", which does not exist`);
   }
 
-  const scope = decision.scope;
+  if (!scopes) return problems;
+
+  const recorded = scopes[decision.sceneId] ?? null;
+  if (!recorded) {
+    problems.push('the publication decision has no entry in the scope record, so what was checked is written down nowhere');
+    return problems;
+  }
+
+  const scope = recorded.scope;
   if (!scope || typeof scope !== 'object') {
     problems.push('the publication decision records no scope — what was checked is not written down');
   } else {
@@ -508,10 +393,10 @@ export function publicationDecisionProblems(decision, scene, { fileExists, hasRe
     }
   }
 
-  if (!nonEmptyStrings(decision.evidence)) {
+  if (!nonEmptyStrings(recorded.evidence)) {
     problems.push('the publication decision cites no evidence');
   } else {
-    for (const path of decision.evidence) {
+    for (const path of recorded.evidence) {
       if (!isRepositoryPath(path)) problems.push(`the publication decision cites "${path}", which is not a repository path`);
       else if (!exists(path)) problems.push(`the publication decision cites "${path}", which does not exist`);
     }
@@ -519,7 +404,7 @@ export function publicationDecisionProblems(decision, scene, { fileExists, hasRe
 
   // Present, and allowed to be empty only by saying so — an absent field reads
   // as "nothing was left unchecked", which is a claim nobody made.
-  if (!Array.isArray(decision.unverified) || decision.unverified.some((line) => !nonEmptyString(line))) {
+  if (!Array.isArray(recorded.unverified) || recorded.unverified.some((line) => !nonEmptyString(line))) {
     problems.push('the publication decision does not state what it did not check');
   }
 
@@ -585,6 +470,7 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
  */
 export function betaPublicationProblems(candidate, {
   fileExists,
+  scopes,
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
@@ -644,7 +530,7 @@ export function betaPublicationProblems(candidate, {
   }
 
   const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
-  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview, scopes }));
   if (decision) {
     const recorded = decision.assetRevisions ?? {};
     for (const assetId of assetIds) {
@@ -717,6 +603,7 @@ export function betaPublicationProblems(candidate, {
  */
 export function nextBetaPublicationProblems(candidate, {
   fileExists,
+  scopes,
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
@@ -733,7 +620,7 @@ export function nextBetaPublicationProblems(candidate, {
 
   // Inherited. Whatever the current release publishes, this one publishes too,
   // on the record it already has — so the switch cannot take anything away.
-  if (inherits(candidate, { fileExists, profiles, resolveScene, resolveAsset, resolveReview, resolveRevision, hasReview }).length === 0) {
+  if (inherits(candidate, { fileExists, scopes, profiles, resolveScene, resolveAsset, resolveReview, resolveRevision, hasReview }).length === 0) {
     return [];
   }
 
@@ -793,7 +680,7 @@ export function nextBetaPublicationProblems(candidate, {
   }
 
   const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
-  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview, scopes }));
   if (decision) {
     const recorded = decision.assetRevisions ?? {};
     for (const assetId of assetIds) {
