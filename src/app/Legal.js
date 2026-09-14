@@ -1,6 +1,8 @@
-import { EXPLORER_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
+import { LANDING_ROUTE } from '../catalog/index.js';
 import { LEGAL_DOCUMENTS, LEGAL_UPDATED, legalDocument } from '../data/legal.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { shellNavAnchors } from '../components/ShellNav.js';
+import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
 
 /**
@@ -93,16 +95,11 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
   const element = el('main', { class: 'legal-page' }, [
     el('header', { class: 'legal-nav' }, [
       el('a', { class: 'legal-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-      el('nav', { class: 'legal-nav-links', 'aria-label': 'Site navigation' }, [
-        el('a', { href: EXPLORER_ROUTE }, [
-          el('span', { class: 'lang-en', text: 'Models' }),
-          el('span', { class: 'lang-ja', text: 'モデル' }),
-        ]),
-        el('a', { href: '#/trust' }, [
-          el('span', { class: 'lang-en', text: 'Model information' }),
-          el('span', { class: 'lang-ja', text: 'モデル情報' }),
-        ]),
-      ]),
+      // A legal document is not one of the shell's destinations, so it offers
+      // all of them — Home included, which this page used to leave to the
+      // wordmark alone.
+      el('nav', { class: 'legal-nav-links', 'aria-label': 'Site navigation / サイトナビゲーション' },
+        shellNavAnchors({ current: null, labUnlocked: betaUnlocked() })),
       el('div', { class: 'legal-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
     tabs,

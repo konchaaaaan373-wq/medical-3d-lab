@@ -7,6 +7,7 @@ import {
 } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { shellNavAnchors } from '../components/ShellNav.js';
 import { el, skipLink } from '../utils/dom.js';
 
 /**
@@ -51,6 +52,8 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
       el('a', { class: 'locked-brand', href: LANDING_ROUTE, 'aria-label': 'Medical 3D Lab home' }, [
         el('span', { class: 'locked-brand-name', text: 'Medical 3D Lab' }),
       ]),
+      el('nav', { class: 'locked-nav-links', 'aria-label': 'Site navigation / サイトナビゲーション' },
+        shellNavAnchors({ current: null, labUnlocked: false })),
       el('div', { class: 'locked-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
 

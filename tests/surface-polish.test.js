@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { shellNavLinks } from '../src/app/shellDestinations.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -62,7 +63,15 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
   assert.match(trust, /Model status and medical review/);
   assert.match(trust, /モデルの公開状態と医学レビュー/);
   assert.doesNotMatch(trust, /Maturity and medical review are different claims/);
-  assert.match(legal, /Model information/);
+  // The legal documents still reach model information — they just no longer
+  // spell the label themselves. `app/shellDestinations.js` owns the shell's
+  // vocabulary, so the check is that the page renders that row, not that this
+  // file happens to contain the words.
+  assert.match(legal, /shellNavAnchors/);
+  assert.ok(
+    shellNavLinks({ current: null }).some((link) => link.id === 'model-info'),
+    'a legal document offers model information'
+  );
   assert.match(css, /\.legal-body p\s*\{[^}]*font-size:\s*16px/s);
 });
 

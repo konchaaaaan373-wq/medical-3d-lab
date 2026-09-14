@@ -1,7 +1,8 @@
 import { el } from '../utils/dom.js';
-import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
+import { LANDING_ROUTE, organById } from '../catalog/index.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 import { compactSceneLabel, scenesByOrganForNavigation } from '../app/sceneNavigationModel.js';
+import { shellNavLinks } from '../app/shellDestinations.js';
 
 /**
  * Fixed product-shell navigation for a 3D scene.
@@ -10,6 +11,21 @@ import { compactSceneLabel, scenesByOrganForNavigation } from '../app/sceneNavig
  * that set. The visual hierarchy is deliberately flatter than the catalogue:
  * organ heading + model rows, with the anatomy/pathophysiology distinction only
  * when one organ actually contains both kinds.
+ *
+ * ## A model is not a trap
+ *
+ * A 3D model fills the window, so this header is the whole of the way out of
+ * it. Two things follow, and both were wrong before:
+ *
+ * 1. **The way home is labelled.** The brand was the only route back to the
+ *    landing page and it looked like a title, not a control. It is now an
+ *    explicit back control — an arrow, the wordmark, and the word "Home /
+ *    ホーム" wherever the header is wide enough to carry it.
+ * 2. **The drawer never disappears.** It used to be hidden whenever the scene
+ *    list held a single entry, which is exactly the public beta: one open
+ *    model meant a model screen with no navigation control on it at all. The
+ *    drawer carries the shelf links — every other page of the product — so it
+ *    is worth opening with one model in it, and it stays.
  */
 export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const scenes = groups.flatMap((group) => group.scenes);
@@ -129,26 +145,29 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const list = el('div', { class: 'global-nav-list' }, organGroups.map(organSection));
 
   // Shelf navigation is useful, but it must not outrank choosing a model. Keep
-  // it as compact footer navigation. The public beta never exposes Lab here.
-  const footerLinks = [
-    el('a', { class: 'global-nav-footer-link', href: isLab ? LAB_ROUTE : EXPLORER_ROUTE }, [
-      bilingual(isLab ? 'Lab index' : 'Model index', isLab ? '実験モデル一覧' : 'モデル一覧'),
-    ]),
-  ];
-  if (showLab) {
-    footerLinks.push(
-      el('a', {
-        class: 'global-nav-footer-link is-secondary',
-        href: isLab ? EXPLORER_ROUTE : LAB_ROUTE,
-      }, [
-        bilingual(isLab ? 'Public models' : 'Experimental Lab', isLab ? '公開モデル' : '実験モデル'),
-      ])
-    );
-  }
+  // it as compact footer navigation, in the shell's one vocabulary — the drawer
+  // used to rename the same two pages depending on the status of the scene it
+  // was opened from ("Lab index" here, "Model index" there), which made the way
+  // out read as a different way out on every model. The public beta never
+  // exposes Lab, so `showLab` is what decides whether it is offered at all.
+  //
+  // Home is in this list too, not only on the brand: a reader who opened the
+  // drawer looking for somewhere to go should not have to close it again to
+  // find the one destination they were most likely after.
   const footer = el('nav', {
     class: 'global-nav-footer',
-    'aria-label': 'Model lists / モデル一覧',
-  }, footerLinks);
+    'aria-label': 'Elsewhere in Medical 3D Lab / ほかのページ',
+  }, [
+    el('h2', { class: 'global-nav-footer-title' }, [bilingual('Elsewhere', 'ほかのページ')]),
+    el('div', { class: 'global-nav-footer-links' },
+      shellNavLinks({ current: null, labUnlocked: showLab }).map((destination, index) =>
+        el('a', {
+          class: `global-nav-footer-link${index === 0 ? ' is-primary' : ''}`,
+          href: destination.route,
+          'data-destination': destination.id,
+        }, [bilingual(destination.en, destination.ja)])
+      )),
+  ]);
 
   const panel = el(
     'div',
@@ -172,20 +191,26 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     ]
   );
 
+  // The brand is the way home, so it has to look like one. The wordmark alone
+  // read as the page's title: an arrow and the word "Home / ホーム" are what
+  // make it an offer rather than a label, and the accessible name says where it
+  // goes rather than what it is called.
   const brand = el(
     'a',
     {
       class: 'global-nav-brand',
       href: LANDING_ROUTE,
-      title: 'Medical 3D Lab — Home',
-      'aria-label': 'Medical 3D Lab — Home / トップ',
+      title: 'Home — Medical 3D Lab / ホームへ戻る',
+      'aria-label': 'Home — Medical 3D Lab / ホームへ戻る',
     },
     [
+      el('span', { class: 'global-nav-brand-back', 'aria-hidden': 'true', text: '←' }),
       el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
       el('span', { class: 'global-nav-brand-name' }, [
         el('span', { class: 'global-nav-brand-full', text: 'Medical 3D Lab' }),
         el('span', { class: 'global-nav-brand-compact', text: 'Medical 3D' }),
       ]),
+      bilingual('Home', 'ホーム', 'global-nav-brand-home'),
     ]
   );
 
@@ -199,6 +224,11 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     ),
   ]);
 
+  // `is-single` tells the stylesheet there is nothing to choose between, so the
+  // drawer can size itself to its content. It is not a reason to take the
+  // control away: the drawer is also where the rest of the product is listed,
+  // and a model screen with no navigation on it is the state this component
+  // exists to prevent.
   const element = el(
     'nav',
     {
@@ -207,10 +237,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     },
     [brand, currentLocation, trigger, backdrop, panel]
   );
-
-  if (!hasChoices) {
-    trigger.hidden = true;
-  }
 
   function renderLibrary(library = readSceneLibrary()) {
     const saved = library.favorites
@@ -279,7 +305,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   }
 
   function setOpen(next, { restoreFocus = false } = {}) {
-    if (!hasChoices && next) return;
     if (open === next) return;
     open = next;
     element.classList.toggle('is-open', open);

@@ -2,6 +2,7 @@ import { el, skipLink } from '../utils/dom.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { createClinicalReviewDetails } from '../components/ClinicalReviewDetails.js';
+import { shellNavAnchors } from '../components/ShellNav.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { hasOrganPreview, mountOrganPreview } from './organPreview.js';
 import '../styles/clinical-review.css';
@@ -9,7 +10,6 @@ import {
   EXPLORER_ROUTE,
   LAB_ROUTE,
   LAB_SCENES,
-  LANDING_ROUTE,
   PUBLIC_SCENES,
   organById,
   sceneById,
@@ -333,18 +333,15 @@ export function createExplorer({
     searchControls?.setLanguage(mode);
   });
 
+  // The shell's own destinations, in the shell's own words. Which one is
+  // missing says where you are, and Lab is offered only when the release gate
+  // has already opened it — during the beta it is a locked route.
   const headerActions = el('div', { class: 'explorer-header-actions' }, [
-    el('a', { class: 'explorer-shell-link', href: LANDING_ROUTE }, [
-      el('span', { class: 'lang-en', text: 'Home' }),
-      el('span', { class: 'lang-ja', text: 'ホーム' }),
-    ]),
-    // Lab is a locked route during the beta, so it is not offered from here.
-    beta
-      ? null
-      : el('a', { class: 'explorer-shell-link', href: isLab ? EXPLORER_ROUTE : LAB_ROUTE }, [
-          el('span', { class: 'lang-en', text: isLab ? 'Public models' : 'Lab' }),
-          el('span', { class: 'lang-ja', text: isLab ? '公開モデル' : '実験室' }),
-        ]),
+    ...shellNavAnchors({
+      current: isLab ? 'lab' : 'models',
+      labUnlocked: !beta,
+      className: 'explorer-shell-link',
+    }),
     accountButton,
     languageToggle.element,
   ]);

@@ -1,8 +1,4 @@
-import {
-  EXPLORER_ROUTE,
-  LAB_ROUTE,
-  LANDING_ROUTE,
-} from '../catalog/index.js';
+import { LANDING_ROUTE } from '../catalog/index.js';
 import {
   MODEL_INFO_ROUTE,
   PUBLIC_MANIFEST,
@@ -14,6 +10,7 @@ import {
 } from '../data/landingHero.js';
 import { NECO_LINKS } from '../data/necoLinks.js';
 import { createLandingOrganHero } from './landingOrganHero.js';
+import { shellNavAnchors } from '../components/ShellNav.js';
 import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
 
@@ -104,11 +101,12 @@ export function createLanding({
         ]),
         el('span', { class: 'landing-brand-name', text: 'Medical 3D Lab' }),
       ]),
-      el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation / 製品ナビゲーション' }, [
-        shellLink(EXPLORER_ROUTE, 'Anatomy models', '解剖モデル', 'landing-nav-link'),
-        shellLink(MODEL_INFO_ROUTE, 'Model information', 'モデル情報', 'landing-nav-link'),
-        betaUnlocked() ? shellLink(LAB_ROUTE, 'Experimental', '実験モデル', 'landing-nav-link') : null,
-      ]),
+      el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation / 製品ナビゲーション' },
+        shellNavAnchors({
+          current: 'home',
+          labUnlocked: betaUnlocked(),
+          className: 'landing-nav-link',
+        })),
       el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
     ]),
 
@@ -291,7 +289,13 @@ export function createPublicModelsExplorer({
       el('div', { class: 'public-models-appbar' }, [
         el('a', { class: 'public-models-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
         el('nav', { class: 'explorer-header-actions', 'aria-label': 'Model navigation / モデルナビゲーション' }, [
-          el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
+          // Home is named here rather than left to the wordmark: the brand is
+          // recognisable only once you already know it is a link.
+          ...shellNavAnchors({
+            current: 'models',
+            labUnlocked: betaUnlocked(),
+            className: 'explorer-shell-link',
+          }),
           accountButton,
           languageToggle.element,
         ]),

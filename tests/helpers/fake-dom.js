@@ -203,10 +203,32 @@ export class FakeElement {
   }
 }
 
-export function installFakeDocument() {
+/**
+ * A stand-in `document`.
+ *
+ * `elements` registers ids for `getElementById`, which components use to reach
+ * the one element they did not build (the `#ui` shell). Document-level event
+ * listeners are collected rather than dispatched: a component that closes its
+ * own dialog on a document `keydown` has to be able to *register* that without
+ * the test needing a real event loop.
+ */
+export function installFakeDocument({ elements = {} } = {}) {
   const previous = globalThis.document;
+  const byId = new Map(Object.entries(elements));
+  const listeners = new Map();
   globalThis.document = {
     createElement: (tagName) => new FakeElement(tagName),
+    getElementById: (id) => byId.get(id) ?? null,
+    registerElement: (id, node) => byId.set(id, node),
+    listeners,
+    addEventListener(type, listener) {
+      const forType = listeners.get(type) ?? new Set();
+      forType.add(listener);
+      listeners.set(type, forType);
+    },
+    removeEventListener(type, listener) {
+      listeners.get(type)?.delete(listener);
+    },
     /**
      * A text node, as far as anything here needs one.
      *
