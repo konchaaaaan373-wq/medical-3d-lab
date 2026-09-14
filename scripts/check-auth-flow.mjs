@@ -608,6 +608,16 @@ try {
         (await page.locator('.access-recovery').count()) === 0, text.slice(0, 80));
       check('and says the address was confirmed',
         /確認しました|is confirmed/.test(text), text.slice(0, 90));
+      // Outvoting the flag for one page load is not outvoting it: left in the
+      // query, it is all the next reload has to read — and by then there is a
+      // real session behind it, so the password form comes back and the
+      // session gate cannot tell the difference.
+      check('and takes the outvoted flag out of the URL',
+        !page.url().includes('account=recovery'), page.url());
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1200);
+      check('so a reload after confirming does not become a password reset',
+        (await page.locator('.access-recovery').count()) === 0);
       await page.close();
     }
 

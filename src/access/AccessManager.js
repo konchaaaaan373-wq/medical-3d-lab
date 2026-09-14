@@ -253,7 +253,15 @@ export function createAccessManager({ ui }) {
       const recoveryLapsed = recoveryRequested && !state.recoveryMode;
       // The flag has to go with it, or the next reload asks the same question
       // and gets the same answer.
-      if (redirect === 'error' || recoveryLapsed) cleanRecoveryQuery();
+      //
+      // Not only when it lapsed: *any* fragment that outvoted the flag above
+      // has to take it out of the query too, or the outvoting lasts exactly
+      // one page load. A confirmation link arriving on a stale
+      // `?account=recovery` showed the right thing and left the flag in the
+      // address bar — so the very next reload had nothing but the flag to
+      // read, and put the password form back with a real session behind it,
+      // which is the one combination the session gate cannot catch.
+      if ((redirect && redirect !== 'recovery') || recoveryLapsed) cleanRecoveryQuery();
       const notice = redirectNotice
         || (recoveryLapsed ? 'パスワード再設定の有効期限が切れています。もう一度お試しください。 / That password reset is no longer valid — please request a new link.' : '');
       if (state.recoveryMode || notice) open(null, { asPricingView: false });
