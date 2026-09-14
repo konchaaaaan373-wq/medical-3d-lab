@@ -86,6 +86,11 @@ export function leaveForReload({
   // address bar showed the last one.
   if (isLeaving(doc)) {
     reload();
+    // Re-arm. The backstop belongs to the departure, not to the first call
+    // that started it: without this the veil could come down 30s after the
+    // *first* navigation while a newer reload was still in flight, putting the
+    // old model back under the newest URL.
+    setTimer(() => doc.querySelector?.('.loading[data-leaving]')?.remove?.(), backstopMs);
     return false;
   }
 
@@ -98,11 +103,14 @@ export function leaveForReload({
   // `role="status"` rather than an alert: a reader who followed a link is not
   // being warned, they are being told the page heard them.
   veil.setAttribute('role', 'status');
+  // Appended empty, then filled. A live region announces *changes*, so one
+  // inserted with its text already in place is silent in most screen readers —
+  // which made the `role` above decorative rather than useful.
+  doc.body.append(veil);
   veil.innerHTML = [
     `<span>${language === 'en' ? 'Opening' : '移動しています'}</span>`,
     '<span class="loading-bar"></span>',
   ].join('');
-  doc.body.append(veil);
 
   const takeDown = () => {
     veil.remove?.();

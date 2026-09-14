@@ -188,6 +188,22 @@ async function boot() {
 
   document.documentElement.dataset.route = 'scene';
 
+  // The scene's own `hashchange` handler is installed by `createApp()`, which
+  // is on the far side of loading an atlas measured in megabytes. Until then a
+  // link changes the URL and *nothing happens at all* — no veil, no reload —
+  // and the model then renders under the new address.
+  //
+  // That window is exactly when somebody is waiting and looking for a way out,
+  // so it is the window the reported symptom fits best, and two rounds of this
+  // work went past it. `createApp()` installs its own listener later; both
+  // calling `leaveForReload` is harmless, because it does not stack veils and
+  // `reload()` twice on the same URL is one navigation.
+  const bootHash = window.location.hash;
+  window.addEventListener('hashchange', () => {
+    if (isInPageAnchor(window.location.hash)) return;
+    if (isLeaving() || !sameRoute(window.location.hash, bootHash)) leaveForReload();
+  });
+
   // LanguageToggle normally applies this later inside createApp(). A renderer
   // or atlas failure can happen before that point, so seed the same persisted
   // preference before any scene work.

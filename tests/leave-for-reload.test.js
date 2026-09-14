@@ -42,6 +42,15 @@ function fakeDocument() {
   return doc;
 }
 
+/**
+ * For tests that are not about the backstop.
+ *
+ * Not optional hygiene: left to the real `setTimeout`, five of these armed
+ * genuine 30-second timers and this file took 30s of wall clock for 2ms of
+ * assertions — on every `npm test` anybody ran.
+ */
+const noTimer = () => 0;
+
 /** A controllable clock, so the backstop can be fired without waiting for it. */
 function fakeClock() {
   const pending = [];
@@ -71,7 +80,7 @@ test('leaving a scene: the model is covered before the reload is asked for', () 
   const order = [];
   const reload = () => order.push(`reload (veils: ${doc.body.children.length})`);
 
-  assert.equal(leaveForReload({ doc, reload, language: 'ja' }), true);
+  assert.equal(leaveForReload({ doc, reload, language: 'ja', setTimer: noTimer }), true);
 
   assert.equal(doc.body.children.length, 1, 'a veil was added');
   assert.deepEqual(
@@ -83,7 +92,7 @@ test('leaving a scene: the model is covered before the reload is asked for', () 
 
 test('leaving a scene: the veil is the same one the scene boot paints', () => {
   const doc = fakeDocument();
-  leaveForReload({ doc, reload: () => {}, language: 'ja' });
+  leaveForReload({ doc, reload: () => {}, language: 'ja', setTimer: noTimer });
   const [veil] = doc.body.children;
 
   // `.loading` is `position: fixed; inset: 0; background: var(--bg)` with a
@@ -96,12 +105,12 @@ test('leaving a scene: the veil is the same one the scene boot paints', () => {
 
 test('leaving a scene: it says it is leaving, not that a model is loading', () => {
   const ja = fakeDocument();
-  leaveForReload({ doc: ja, reload: () => {}, language: 'ja' });
+  leaveForReload({ doc: ja, reload: () => {}, language: 'ja', setTimer: noTimer });
   assert.match(ja.body.children[0].innerHTML, /移動しています/);
   assert.equal(ja.body.children[0].getAttribute('lang'), 'ja');
 
   const en = fakeDocument();
-  leaveForReload({ doc: en, reload: () => {}, language: 'en' });
+  leaveForReload({ doc: en, reload: () => {}, language: 'en', setTimer: noTimer });
   assert.match(en.body.children[0].innerHTML, /Opening/);
   assert.equal(en.body.children[0].getAttribute('lang'), 'en');
 
@@ -117,9 +126,10 @@ test('leaving a scene: a second destination is the one that commits', () => {
   let reloads = 0;
   const reload = () => { reloads += 1; };
 
-  assert.equal(leaveForReload({ doc, windowRef, reload }), true);
-  assert.equal(leaveForReload({ doc, windowRef, reload }), false, 'the second caller did not raise the veil');
-  assert.equal(leaveForReload({ doc, windowRef, reload }), false);
+  assert.equal(leaveForReload({ doc, windowRef, reload, setTimer: noTimer }), true);
+  assert.equal(leaveForReload({ doc, windowRef, reload, setTimer: noTimer }), false,
+    'the second caller did not raise the veil');
+  assert.equal(leaveForReload({ doc, windowRef, reload, setTimer: noTimer }), false);
 
   // `reload()` loads whatever the address bar says *now*. Swallowing the later
   // calls — which the first version of this did — meant pressing Back during a
@@ -166,6 +176,26 @@ test('leaving a scene: a reload that never commits cannot strand the page', () =
   assert.equal(isLeaving(doc), false);
 });
 
+test('leaving a scene: the backstop belongs to the departure, not to the first call', () => {
+  const doc = fakeDocument();
+  const windowRef = fakeWindow();
+  const clock = fakeClock();
+
+  leaveForReload({ doc, windowRef, reload: () => {}, setTimer: clock.setTimer });
+  assert.equal(clock.pending.length, 1, 'the first departure arms one');
+
+  // A second navigation re-asks for the reload, so it must re-arm too.
+  // Otherwise the timer from the *first* one expires mid-flight and puts the
+  // old model back on screen under the newest URL — the bug, restored by its
+  // own safety net.
+  leaveForReload({ doc, windowRef, reload: () => {}, setTimer: clock.setTimer });
+  assert.equal(clock.pending.length, 2, 'and so does every one after it');
+
+  const [, later] = clock.pending;
+  later.fn();
+  assert.equal(doc.body.children.length, 0, 'the re-armed one takes the veil down');
+});
+
 test('leaving a scene: the backstop can only ever restore the old behaviour', () => {
   // If it fires during a genuinely slow load the reader sees the page they
   // were already on — which is what happened before this function existed. It
@@ -206,17 +236,42 @@ test('leaving a scene: the veil covers every overlay in the product', () => {
   // Anything painted above the veil stays on screen answering for a URL that
   // has already changed. The phone anatomy sheet (40) was the one that
   // mattered: the model's own structure list, opaque and still pressable.
-  let checked = 0;
+  let declarations = 0;
+  const sheetsWithZ = new Set();
   for (const sheet of sheets) {
     for (const [, value] of read(`src/styles/${sheet}`).matchAll(/z-index:\s*(\d+)/g)) {
-      checked += 1;
+      declarations += 1;
+      sheetsWithZ.add(sheet);
       assert.ok(
         Number(value) <= veilZ,
         `${sheet} paints something at z-index ${value}, above the departure veil at ${veilZ}`
       );
     }
   }
-  assert.ok(checked >= 14, `expected to have measured every declared z-index, saw ${checked}`);
+  // Counted separately, because the first version of this compared a
+  // declaration count against a sheet count and so pinned nothing at all.
+  assert.ok(sheetsWithZ.size >= 14, `only ${sheetsWithZ.size} stylesheets declared a z-index`);
+  assert.ok(declarations >= 30, `only ${declarations} z-index declarations were measured`);
+});
+
+test('leaving a scene: the boot window is covered too', () => {
+  const main = read('src/main.js');
+  const sceneBranch = main.slice(main.indexOf("dataset.route = 'scene'"));
+  // Sliced at the call, not at the first mention of the name: the guard's own
+  // comment says "createApp()", and cutting there left 85 characters to search.
+  const mountsAt = sceneBranch.indexOf('await createApp(');
+  assert.ok(mountsAt > 0, 'the scene branch mounts the app');
+  const beforeApp = sceneBranch.slice(0, mountsAt);
+
+  // The scene's own handler lives in `createApp()`, on the far side of loading
+  // a multi-megabyte atlas. Until this guard existed, a link clicked during
+  // that load changed the URL and did nothing at all, and the model then
+  // rendered under the new address — the reported symptom, untouched by two
+  // rounds of this work because both only looked at the loaded page.
+  assert.match(beforeApp, /addEventListener\('hashchange'/,
+    'a departure during scene boot is heard before createApp() mounts its own');
+  assert.match(beforeApp, /leaveForReload\(\)/);
+  assert.match(beforeApp, /isInPageAnchor/, 'and an in-page anchor is still not navigation');
 });
 
 test('leaving a scene: the surfaces that render a model all use it', () => {
@@ -234,7 +289,10 @@ test('leaving a scene: a departure already under way is always re-asked', () => 
   // Going back to where the page started is the one navigation the route
   // comparison refuses — `currentHash` is the mount hash and never moves — so
   // without this the first destination committed under the wrong address bar.
-  for (const [path, count] of [['src/app/App.js', 1], ['src/main.js', 2]]) {
+  // main.js: the landing handler, the catalogue handler, and the one installed
+  // at the top of the scene branch. App.js: the scene's own, installed by
+  // `createApp()` once the atlas is in.
+  for (const [path, count] of [['src/app/App.js', 1], ['src/main.js', 3]]) {
     const source = read(path);
     const guards = [...source.matchAll(/if \(isLeaving\(\)[^)]*\)[^;]*leaveForReload\(\)/g)];
     assert.equal(guards.length, count, `${path} guards every departure with isLeaving()`);
@@ -243,7 +301,7 @@ test('leaving a scene: a departure already under way is always re-asked', () => 
 
 test('leaving a scene: with no document to cover, it still leaves', () => {
   let reloads = 0;
-  assert.equal(leaveForReload({ doc: null, reload: () => { reloads += 1; } }), true);
+  assert.equal(leaveForReload({ doc: null, reload: () => { reloads += 1; }, setTimer: noTimer }), true);
   assert.equal(reloads, 1, 'navigation is the job; the veil is the courtesy');
 });
 
