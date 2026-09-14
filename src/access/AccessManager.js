@@ -2,7 +2,7 @@ import { el } from '../utils/dom.js';
 import {
   authConfigured,
   authenticatedFetch,
-  consumePasswordRecoveryRedirect,
+  consumeAuthRedirect,
   changeEmail,
   changePassword,
   isPasswordRecovery,
@@ -100,10 +100,26 @@ export function createAccessManager({ ui }) {
       // persist the temporary recovery session, and scrub the tokens from the
       // visible URL immediately. Which signals count as recovery, and why there
       // are two, is `isPasswordRecovery`.
+      // Consumed for every type, not just recovery: a confirmation link is what
+      // a brand-new account follows, and leaving its tokens in the fragment put
+      // them in the address bar of a scene page — and so into history, into any
+      // screenshot, and into the URL somebody copies to share the model.
+      const redirect = consumeAuthRedirect();
       state.recoveryMode = isPasswordRecovery({
-        consumedRecoveryHash: consumePasswordRecoveryRedirect(),
+        consumedRecoveryHash: redirect === 'recovery',
         search: window.location.search,
       });
+      // The other types need no dialog of their own: Supabase has already done
+      // the thing the link was for, and the session it handed back is stored.
+      // What is left is to say so — which matters most for `signup`, where the
+      // alternative is arriving on a 3D model with no sign that the address was
+      // ever confirmed. Held until after `open()`, which clears `state.notice`
+      // on the way in.
+      const redirectNotice = redirect === 'signup'
+        ? 'メールアドレスを確認しました。 / Your email address is confirmed.'
+        : redirect === 'email_change'
+          ? 'メールアドレスを変更しました。 / Your email address has been changed.'
+          : '';
 
       await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
       installLifecycleRefresh();
@@ -156,7 +172,14 @@ export function createAccessManager({ ui }) {
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
 
-      if (state.recoveryMode) open();
+      // Recovery needs the dialog to set a password. The other two open it only
+      // so the notice above is read rather than written to a panel nobody has
+      // asked for — a confirmation that arrives invisibly is not a confirmation.
+      if (state.recoveryMode || redirectNotice) open();
+      if (redirectNotice) {
+        state.notice = redirectNotice;
+        notify();
+      }
       return api;
     },
     has(entitlement) {

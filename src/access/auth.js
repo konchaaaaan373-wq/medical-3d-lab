@@ -166,53 +166,73 @@ export async function requestPasswordReset(email, redirectTo) {
 }
 
 /**
- * Parse the implicit-flow recovery fragment Supabase redirects back to a
- * client-only app. Kept pure so the routing/security edge case is unit-testable.
+ * Parse the implicit-flow fragment Supabase redirects back to a client-only app.
+ *
+ * **Every** type, not only `recovery`. They all carry a real access token and a
+ * real refresh token, and the reason those must not linger in the address bar
+ * has nothing to do with which email they came from: a confirmation link is the
+ * one a brand-new account follows, and it used to land on a scene with both
+ * tokens still in the URL — in history, in any screenshot, and in the link
+ * somebody copies to show a colleague the model they just opened.
+ *
+ * Kept pure so the routing/security edge case is unit-testable.
  */
-export function recoverySessionFromHash(hash, nowSeconds = Math.floor(Date.now() / 1000)) {
+export function authRedirectFromHash(hash, nowSeconds = Math.floor(Date.now() / 1000)) {
   const raw = String(hash ?? '').replace(/^#/, '');
   if (!raw || raw.startsWith('/')) return null;
   const params = new URLSearchParams(raw);
-  if (params.get('type') !== 'recovery') return null;
+  const type = params.get('type');
+  if (!type) return null;
 
   const accessToken = params.get('access_token');
   if (!accessToken) return null;
   const expiresIn = Number(params.get('expires_in') || 3600);
   return {
-    access_token: accessToken,
-    refresh_token: params.get('refresh_token') || null,
-    expires_at: Number(nowSeconds) + (Number.isFinite(expiresIn) ? expiresIn : 3600),
-    user: null,
+    type,
+    session: {
+      access_token: accessToken,
+      refresh_token: params.get('refresh_token') || null,
+      expires_at: Number(nowSeconds) + (Number.isFinite(expiresIn) ? expiresIn : 3600),
+      user: null,
+    },
   };
 }
 
 /**
- * Consume a Supabase PASSWORD_RECOVERY redirect before the app treats the URL
- * fragment as a Medical 3D Lab scene route. Tokens are persisted and removed
- * from the address bar immediately so they cannot linger in screenshots/copies.
+ * Consume a Supabase redirect before the app treats the URL fragment as a
+ * Medical 3D Lab scene route. Tokens are persisted and removed from the address
+ * bar immediately so they cannot linger in screenshots or copied links.
+ *
+ * Returns the redirect's type — `recovery`, `signup`, `email_change`, … — or
+ * null when the fragment was an ordinary route. The caller decides what each
+ * one means; this only guarantees that none of them reaches the router with
+ * credentials still attached.
+ *
+ * Unrecognised types are still consumed. A type this app has no opinion about
+ * is not a reason to leave a live token in the address bar.
  */
-export function consumePasswordRecoveryRedirect({ location, history } = {}) {
+export function consumeAuthRedirect({ location, history } = {}) {
   const currentLocation = location ?? globalThis.location;
   const currentHistory = history ?? globalThis.history;
-  if (!currentLocation) return false;
+  if (!currentLocation) return null;
 
-  const session = recoverySessionFromHash(currentLocation.hash);
-  if (!session) return false;
-  store(session);
+  const redirect = authRedirectFromHash(currentLocation.hash);
+  if (!redirect) return null;
+  store(redirect.session);
 
   if (currentHistory?.replaceState) {
     const clean = new URL(currentLocation.href);
     clean.hash = '#/';
     currentHistory.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }
-  return true;
+  return redirect.type;
 }
 
 /**
  * Is this page load a password recovery?
  *
  * Two signals, and either one is enough. The hash carries the tokens and can
- * only be read once — `consumePasswordRecoveryRedirect` scrubs it immediately so
+ * only be read once — `consumeAuthRedirect` scrubs it immediately so
  * the tokens cannot linger in a screenshot or a copied URL. `?account=recovery`
  * is what is left in the address bar after that, and is therefore the only
  * signal a reload has.
