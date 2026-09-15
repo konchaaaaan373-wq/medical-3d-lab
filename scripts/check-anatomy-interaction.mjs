@@ -570,6 +570,35 @@ try {
     }
     return null;
   };
+  /**
+   * A point that is background **now**, for the check that a click on nothing
+   * clears the card.
+   *
+   * The same staleness as `liveModelPoint`, from the other side. The models got
+   * larger when the framing stopped opening at a band it was about to abandon,
+   * and the foot's recorded empty point turned out to be on the Achilles
+   * tendon — reported as "a click on empty space left it selected", which is
+   * the product doing exactly the right thing with the wrong point.
+   *
+   * Four corners first, because they are where background survives a subject
+   * growing, then the recorded misses, then a sweep. `null` means the model
+   * genuinely covers everywhere this looked, which is a fact about the frame
+   * and not a defect.
+   */
+  const liveEmptyPoint = async () => {
+    const corners = [[0.04, 0.06], [0.04, 0.94], [0.96, 0.06], [0.96, 0.94], [0.5, 0.03], [0.5, 0.97]];
+    for (const point of [...corners, ...emptyPoints]) {
+      if (!(await overModel(point[0], point[1]))) return [point[0], point[1]];
+    }
+    for (let fy = 0.06; fy <= 0.94; fy += 0.08) {
+      for (let fx = 0.04; fx <= 0.96; fx += 0.08) {
+        const at = [Number(fx.toFixed(3)), Number(fy.toFixed(3))];
+        if (!(await overModel(at[0], at[1]))) return at;
+      }
+    }
+    return null;
+  };
+
   // The farthest miss from the middle of what was found, not the first one: a
   // near miss beside a narrow subject is background now and may not be after a
   // drag, and the point is used to check that clicking nothing clears.
@@ -736,24 +765,31 @@ try {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
   }
 
+  // A drag leaves the controls damping, and they go on moving the model for
+  // most of a second after the button comes up. Without this the point below is
+  // asked about one frame and clicked on another: the foot reported "a click on
+  // empty space left the Achilles tendon selected" about a point the scene had
+  // just said was background, because between the asking and the clicking the
+  // tendon drifted under it.
+  await settle(8, 200);
+
   // 3. Clicking the background clears rather than keeping a stale card.
   //    Confirmed to still be background first. The point was chosen before the
   //    drag, and beside a subject with a large open outline — a ring of lips
   //    around a mouth — a pixel that read as background then can be over the
   //    model now. Checking it again costs one pointer move and stops the check
   //    reporting the product for the instrument's own staleness.
-  if (await overModel(emptyPoint[0], emptyPoint[1])) {
-    for (const candidate of [[0.04, 0.94], [0.04, 0.06], [0.96, 0.94]]) {
-      if (!(await overModel(candidate[0], candidate[1]))) {
-        emptyPoint[0] = candidate[0];
-        emptyPoint[1] = candidate[1];
-        break;
-      }
-    }
-    await restPointer();
+  //    The three fallbacks this used were three corners, and it kept the stale
+  //    point when all three were taken — so a subject that had grown was
+  //    reported as the product failing to clear a selection.
+  const emptyNow = (await overModel(emptyPoint[0], emptyPoint[1])) ? await liveEmptyPoint() : emptyPoint;
+  await restPointer();
+  if (!emptyNow) {
+    notes.push('the model covers every point this looked at, so clicking nothing was not checked');
+  } else {
+    const afterEmpty = await clickAt(emptyNow[0], emptyNow[1]);
+    if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   }
-  const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
-  if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   // At a point that selected something during the sweep, not at the middle of
   // the frame: not every scene has anything in the middle. The drainage map's
   // centre is a body outline drawn too faint to be clickable, so a centre click
@@ -861,14 +897,17 @@ try {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
-    // clickable again. Clicked at a point that *did* select something earlier
-    // rather than at the middle of the frame — the middle of a drainage map is
-    // a body outline drawn too faint to be clickable at all, and a check that
-    // assumes every scene has something in the centre reports that as the
-    // model failing to come back.
+    // clickable again. Clicked at a point that is over the model *now* rather
+    // than at the middle of the frame — the middle of a drainage map is a body
+    // outline drawn too faint to be clickable at all, and a check that assumes
+    // every scene has something in the centre reports that as the model failing
+    // to come back. Asked for again rather than remembered, for the reason
+    // every other point here is: the clicks between then and now can have taken
+    // the scene to a structure's preferred view.
+    const restorePoint = (await liveModelPoint()) ?? lastHitPoint;
     await page.mouse.click(
-      box.x + box.width * lastHitPoint[0],
-      box.y + box.height * lastHitPoint[1]
+      box.x + box.width * restorePoint[0],
+      box.y + box.height * restorePoint[1]
     );
     await page.waitForTimeout(400);
     const afterRestore = await read();
