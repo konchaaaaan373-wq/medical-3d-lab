@@ -611,6 +611,49 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
 
+### F-116 `verify:anatomy --scene heart-anatomy` のクリック点が未較正 — P2（2026-09-15）
+
+`check-anatomy-interaction.mjs` が dev-assets を mount するようになり、
+**心臓シーンをこのドライブで初めて開けるようになりました**（それまでは
+「the drive stopped while opening the scene」で止まり、シーンが壊れている
+ように読めていました）。開けた結果、最初の実測が出ています:
+
+```
+Anatomy interaction — heart-anatomy, 46 selectable structures
+  structures named by click: Right ventricle / 右心室; Left ventricle / 左心室
+  part tree rows: 46
+  group hidden in one press: Heart / 心臓 (46 structures)
+1 problem(s):
+  - only 2 of 4 click(s) resolved to a structure.
+```
+
+`SCENE_POINTS` に `heart-anatomy` の項目が無く、既定の 4 点
+（`[[0.40,0.34],[0.60,0.32],[0.50,0.50],[0.50,0.42]]`）のうち 2 点が臓器の外に
+落ちています。**ピッキングが壊れているのではありません**——同じ 4 点のうち 2 点は
+右心室・左心室を正しく名指しています。
+
+- やること: レンダを見て 4 点を読み、`SCENE_POINTS['heart-anatomy']` に記録する
+  （他の 40 シーンと同じ形式。各行のコメントが「どこを指しているか」を書く規約）
+- 完了の定義: `npm run verify:anatomy -- --preview --scene heart-anatomy` が
+  `ok` で終わること
+- 注意: 心臓の候補 asset は git-ignored（`npm run assets:dev`）で、そこから
+  作ったレンダは**コミットしない**
+
+### F-115 グループ非表示は「見えている 1 段」しか畳まない — P3（2026-09-15）
+
+グループの表示/非表示は、そのブランチ配下の**葉をすべて**対象にします
+（左大脳半球なら 77 構造）。ただし**入れ子のブランチ自身のボタン**は、親を
+押した直後は `is-hidden` に塗られますが、親と子を交互に押したときの
+「部分的に隠れている」状態の見せ方は 1 段ぶんしか検証していません。
+
+- 実機でまだ見ていないこと: 3 段以上のツリー（`Left cerebral hemisphere ›
+  Telencephalon › ...`）で、子を隠してから親を押し、もう一度親を押したときに
+  子の元の状態へ戻るのか、それとも全部表示になるのか。**いまの実装は後者**
+  （親は配下すべてを一括で表示に戻す）で、これは「元に戻す」ではありません
+- 判断が要る点: 親の再押下を「配下すべて表示」と定義したままにするか、
+  読者が手で隠したものを保つか。ブラウザの検証は `verify:anatomy` の
+  5b ステップに 1 段ぶんだけ入っています
+
 ### F-110 ブラウザが初回描画で公開判断を毎回導出している — P2（2026-09-15）
 
 `RELEASED_SCENES = SCENES.filter(isSceneReleased)` はモジュール定数で、

@@ -436,28 +436,35 @@ test('anatomy tree: what is drawn, what is held and what is announced are one an
     // The bug this test exists for: `aria-expanded` was updated on the toggle
     // and left `false` on the treeitem, so assistive technology read every
     // branch as collapsed however the tree looked.
+    // By class, not by position. This read `children[0]` and `children[1]`, and
+    // broke the day a group row gained a second control — which is the same
+    // brittleness the panel's own docblock warns about, in the test rather than
+    // in the component.
+    const partOf = (branch, className) =>
+      branch.children.find((child) => child.classList?.contains(className));
     const agree = (branch) => {
-      const toggle = branch.children[0];
-      const children = branch.children[1];
+      const toggle = partOf(branch, 'anatomy-tree-group');
+      const children = partOf(branch, 'anatomy-tree-children');
       return (
         branch.getAttribute('aria-expanded') === toggle.getAttribute('aria-expanded') &&
         branch.getAttribute('aria-expanded') === String(!children.hidden)
       );
     };
+    const toggleOf = (branch) => partOf(branch, 'anatomy-tree-group');
     for (const branch of branches) assert.ok(agree(branch), branch.getAttribute('aria-label'));
 
     // Toggling by click, and by the branch being revealed for a 3D selection,
     // both go through the one writer.
     const top = branches[0];
-    top.children[0].click();
+    toggleOf(top).click();
     assert.ok(agree(top), 'after clicking the toggle');
-    top.children[0].click();
+    toggleOf(top).click();
     assert.ok(agree(top), 'after clicking it back');
 
     // A structure selected from the model opens the branch holding it, and that
     // branch has to announce what it now looks like.
     for (const branch of branches) {
-      if (branch.getAttribute('aria-expanded') === 'true') branch.children[0].click();
+      if (branch.getAttribute('aria-expanded') === 'true') toggleOf(branch).click();
     }
     scene.selectStructure(325);
     for (const branch of branches) assert.ok(agree(branch), 'after a selection revealed a branch');
@@ -1246,5 +1253,91 @@ test('anatomy contract: the search index follows the atlas, and ids keep their t
     assert.deepEqual(seen, [325], 'a number stays a number');
   } finally {
     restore();
+  }
+});
+
+test('anatomy tree: a group hides and shows everything under it, in one change', () => {
+  const scene = buildScene();
+  const { panel, restore } = mountTree(scene);
+  try {
+    const branches = findByClass(panel.element, 'anatomy-tree-branch');
+    const withControl = branches.filter((branch) =>
+      branch.children.some((child) => child.classList?.contains('anatomy-tree-visibility')),
+    );
+    assert.ok(withControl.length > 0, 'no group offers a way to hide what is under it');
+
+    const branch = withControl[0];
+    const control = branch.children.find((child) =>
+      child.classList?.contains('anatomy-tree-visibility'),
+    );
+    const leaves = findByClass(branch, 'anatomy-tree-leaf').map((row) => Number(row.dataset.structure));
+    assert.ok(leaves.length > 0, 'the group has nothing under it to hide');
+
+    // One press, not one per structure. The point of the batched setter.
+    let announcements = 0;
+    const stop = scene.onAnatomyVisibility(() => { announcements += 1; });
+    control.click();
+    const hidden = new Set(scene.getAnatomyVisibility().hidden);
+    for (const id of leaves) assert.ok(hidden.has(id), `${id} is still visible`);
+    assert.equal(announcements, 1, 'hiding a group announced itself once per structure');
+    assert.equal(control.getAttribute('aria-pressed'), 'true');
+
+    // And back, the same way.
+    control.click();
+    const after = new Set(scene.getAnatomyVisibility().hidden);
+    for (const id of leaves) assert.ok(!after.has(id), `${id} did not come back`);
+    assert.equal(announcements, 2);
+    assert.equal(control.getAttribute('aria-pressed'), 'false');
+    stop?.();
+  } finally {
+    panel.dispose();
+    restore();
+  }
+});
+
+test('anatomy tree: a partly hidden group folds the rest of the way', () => {
+  // "Get this out of the way" is what the press means. A group with one
+  // structure already hidden by hand must not spring open on the first press.
+  const scene = buildScene();
+  const { panel, restore } = mountTree(scene);
+  try {
+    const branch = findByClass(panel.element, 'anatomy-tree-branch').find((node) =>
+      node.children.some((child) => child.classList?.contains('anatomy-tree-visibility')),
+    );
+    const control = branch.children.find((child) =>
+      child.classList?.contains('anatomy-tree-visibility'),
+    );
+    const leaves = findByClass(branch, 'anatomy-tree-leaf').map((row) => Number(row.dataset.structure));
+    assert.ok(leaves.length > 1, 'this case needs a group with more than one structure');
+
+    scene.setStructureHidden(leaves[0], true);
+    assert.equal(control.getAttribute('aria-pressed'), 'false', 'partly hidden is not hidden');
+    assert.ok(control.classList.contains('is-partial'), 'and it says so');
+
+    control.click();
+    const hidden = new Set(scene.getAnatomyVisibility().hidden);
+    for (const id of leaves) assert.ok(hidden.has(id), `${id} survived the fold`);
+  } finally {
+    panel.dispose();
+    restore();
+  }
+});
+
+test('anatomy tree: a scene that cannot hide a group is not given the control', () => {
+  const scene = buildScene();
+  // The control is offered on the batched setter, not assumed from the tree
+  // having groups: hiding one structure at a time is the thing it exists to
+  // avoid, so a scene without the setter gets no button rather than a slow one.
+  delete Object.getPrototypeOf(scene).setStructuresHidden;
+  try {
+    const { panel, restore } = mountTree(scene);
+    try {
+      assert.equal(findByClass(panel.element, 'anatomy-tree-visibility').length, 0);
+    } finally {
+      panel.dispose();
+      restore();
+    }
+  } finally {
+    Object.getPrototypeOf(scene).setStructuresHidden = BrainAnatomyScene.prototype.setStructuresHidden;
   }
 });
