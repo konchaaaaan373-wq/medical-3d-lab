@@ -90,23 +90,38 @@ const value = (name, fallback = null) => {
 const distDir = value('--dist', 'dist');
 const sceneSlug = value('--scene', 'brain-anatomy');
 const shotsDir = value('--shots');
-const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
-
 /**
  * Where to click on each organ, when the caller does not say.
  *
- * `DEFAULT_POINTS` is a cluster around the middle of the frame, which is right
- * for a brain and wrong for most organs: two lungs have a mediastinum between
- * them, two kidneys have the spine, a stomach is a J with its own hole in it.
- * On those, all four default clicks land on background and the run reports
- * "the picking may be broken" — about a scene whose picking is fine.
- *
- * These are read off a render of each scene's opening view at this script's own
- * viewport, and each one is named for what it is on. They are re-measured when
- * a scene's opening pose or its geometry moves; a point that stops hitting is a
+ * An authored entry is a **tour**: four points read off a render of that
+ * scene's opening view at this script's own viewport, each named for the part
+ * it is on, so the run says "right ventricle, left ventricle, aortic arch,
+ * pulmonary trunk" and not just "four structures". They are re-measured when a
+ * scene's opening pose or its geometry moves; a point that stops hitting is a
  * question about the render, not a number to nudge.
+ *
+ * **A scene with no entry is not a scene with a problem.** There used to be a
+ * `DEFAULT_POINTS` cluster around the middle of the frame here, which is right
+ * for a brain and wrong for most organs — two lungs have a mediastinum between
+ * them, a stomach is a J with its own hole in it — so an uncalibrated scene had
+ * its clicks land on background and the run reported "the picking may be
+ * broken" about picking that was fine. `heart-anatomy` did exactly that the
+ * first time this drive could open it at all. The drive already asks the scene
+ * where the model is, by moving over a grid and watching the cursor, and it
+ * trusts that for its drag and its re-click; when there is no tour it clicks
+ * those measured points instead and says in a note that it did.
  */
 const SCENE_POINTS = {
+  // The brain's own tour. These four were the script's `DEFAULT_POINTS` — the
+  // cluster every other scene inherited and most of them missed with — and they
+  // are kept here because for *this* scene they are a calibration: a lateral
+  // view of a hemisphere does fill the middle of the frame, and these land on
+  // the frontal operculum, the supramarginal gyrus, the middle temporal gyrus
+  // and the superior temporal sulcus. `brain-anatomy` is the published scene,
+  // and its publication record names the parts this drive clicked, so it keeps
+  // a tour that names the same ones every run rather than whichever four points
+  // the drive happens to measure.
+  'brain-anatomy': [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]],
   // Two lungs and the airway between them, not one mass.
   'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
   // Right lobe, left lobe, the inferior third, and the gallbladder below it.
@@ -197,9 +212,10 @@ const SCENE_POINTS = {
   'eye-anatomy': [[0.44, 0.35], [0.5, 0.62], [0.55, 0.45], [0.42, 0.52]],
 };
 
-const clickPoints = (() => {
+/** The authored tour, or null when the drive should use what it measures. */
+const authoredPoints = (() => {
   const raw = value('--points');
-  if (!raw) return SCENE_POINTS[sceneSlug] ?? DEFAULT_POINTS;
+  if (!raw) return SCENE_POINTS[sceneSlug] ?? null;
   const points = raw
     .trim()
     .split(/\s+/)
@@ -448,6 +464,14 @@ try {
   //    clears the selection: with a miss last, everything below was testing
   //    what happens to a selection that is not there, and reporting it as the
   //    scene losing one.
+  const clickPoints = authoredPoints ?? modelPoints.slice(0, 4);
+  if (!authoredPoints) {
+    notes.push(
+      `no authored click tour for ${sceneSlug}; clicked ${clickPoints.length} point(s) measured to be over ` +
+        'the model. Add an entry to SCENE_POINTS to name what each click is on.'
+    );
+  }
+
   let lastHitPoint = null;
   for (const [fx, fy] of clickPoints) {
     const hit = await clickAt(fx, fy);
