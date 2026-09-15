@@ -74,7 +74,18 @@
 import { SCENES, sceneById } from './index.js';
 import { STATUS_IDS } from './taxonomy.js';
 import { assetById, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
-import { clinicalReviewForScene, hasCurrentClinicalReview } from './clinicalReview.js';
+// The states, not the notes. This module runs at first paint — `RELEASED_SCENES`
+// is a module constant, so opening any page evaluates the publication rule for
+// every scene — and the gate reads exactly one field, `reviewStatus`. Importing
+// `clinicalReview.js` for it put the whole registry in the entry chunk: every
+// scope, source and unresolved limitation any reviewer has written, 22.8 kB
+// gzipped, in front of a first paint that never shows one of them. The registry
+// is still the source of truth and `clinicalReviewStates.js` is generated from
+// it; see `scripts/review-states.js`.
+import {
+  clinicalReviewStateForScene,
+  hasCurrentClinicalReviewState,
+} from './clinicalReviewStates.js';
 import { sceneRevisionPin } from './modelRevisions.js';
 // The ids only, never the guides themselves: this module is reachable from the
 // browser's eager entry (`main.js` → `releaseGate.js` → here), and importing
@@ -329,7 +340,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean}} [options]
  * @returns {string[]}
  */
-export function publicationDecisionProblems(decision, scene, { fileExists, hasReview = hasCurrentClinicalReview } = {}) {
+export function publicationDecisionProblems(decision, scene, { fileExists, hasReview = hasCurrentClinicalReviewState } = {}) {
   const problems = [];
   if (!decision) return ['has no publication decision on file for this release'];
 
@@ -453,9 +464,9 @@ export function betaPublicationProblems(candidate, {
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
-  resolveReview = clinicalReviewForScene,
+  resolveReview = clinicalReviewStateForScene,
   resolveRevision = sceneRevisionPin,
-  hasReview = hasCurrentClinicalReview,
+  hasReview = hasCurrentClinicalReviewState,
   decisions = BETA_PUBLICATION_DECISIONS,
 } = {}) {
   const id = typeof candidate === 'string' ? candidate : candidate?.id;
@@ -585,9 +596,9 @@ export function nextBetaPublicationProblems(candidate, {
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
-  resolveReview = clinicalReviewForScene,
+  resolveReview = clinicalReviewStateForScene,
   resolveRevision = sceneRevisionPin,
-  hasReview = hasCurrentClinicalReview,
+  hasReview = hasCurrentClinicalReviewState,
   decisions = NEXT_BETA_PUBLICATION_DECISIONS,
   candidates = NEXT_BETA_DISEASE_CANDIDATES,
   authoredGuideIds = PATIENT_GUIDE_SCENE_IDS,
@@ -638,7 +649,7 @@ export function nextBetaPublicationProblems(candidate, {
     problems.push(...assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists }));
   }
 
-  // The bar this channel adds. `hasCurrentClinicalReview` is the same predicate
+  // The bar this channel adds. `hasCurrentClinicalReviewState` is the same predicate
   // a publication decision's clinical role is checked against, so a scene and a
   // decision cannot disagree about whether a review exists.
   const review = resolveReview(scene);
