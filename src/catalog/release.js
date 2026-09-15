@@ -322,11 +322,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
+      // Re-measured on 2026-09-15 and corrected. The first two of the four
+      // recorded here were wrong: the tour's points are canvas fractions, the
+      // layout moved under them over the week after they were written, and one
+      // point had come off the model entirely. `SCENE_POINTS` now names these
+      // four and `verify:anatomy` fails if a point names anything else — see
+      // docs/beta-publication/brain-anatomy.md, which states what was wrong
+      // rather than quietly showing the new values.
       structures: Object.freeze([
-        'Opercular part of inferior frontal gyrus',
         'Supramarginal gyrus',
+        'Circular sulcus of insula',
         'Middle temporal gyrus',
-        'Superior temporal sulcus',
+        'Angular gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
