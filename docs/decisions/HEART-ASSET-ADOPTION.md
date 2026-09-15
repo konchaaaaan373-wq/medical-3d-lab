@@ -35,9 +35,13 @@
 
 ### 判断欄
 
-- [ ] **adopt**  — asset manifest へ移し、release gate の審査に進める
+- [x] **adopt**  — asset manifest へ移し、release gate の審査に進める
 - [ ] **do not adopt** — 理由：
 - [ ] **hold** — 追加で要るもの：
+
+**判断者**: リポジトリ所有者（2026-09-15、「推奨で進めてください」）。
+実装は Claude Opus 5、role は `engineering`。
+**採用するのは派生ファイル**（`46d375e3…`）であって元ファイルではありません。
 
 ---
 
@@ -62,9 +66,13 @@
 
 ### 判断欄
 
-- [ ] **adopt**
+- [x] **adopt**
 - [ ] **do not adopt** — 理由：
 - [ ] **hold** — 追加で要るもの：
+
+**判断者**: 同上。採用するのは派生ファイル（`b971eec1…`）。
+2 ファイルは同時に採用します——心臓ファイルに大血管が無く、片方だけの採用は選択肢に
+ならないと本文が述べているとおりです。
 
 ---
 
@@ -333,11 +341,40 @@ reproducible: same sources in, same derived hashes out, sources untouched, valid
 | CC BY 4.0 | ✅ 2 record とも明記 |
 | NLM terms | ✅ license 申請不要。attribution・非 endorsement・version 明示で対応 |
 
-### Decision — 残り 3 件
+### Decision — 2026-09-15 の判断
 
-- [ ] **derived asset adoption** — 面積ゼロ三角形 820 本の削除を改変として受け入れるか
-- [ ] **anatomy review** — 解剖学者が形状・ラベル・日本語術語を見ていません
-- [ ] **publication decision** — この release の公開判断記録
+- [x] **derived asset adoption** — 面積ゼロ三角形 820 本の削除を改変として**受け入れる**。
+  根拠は本文が測っているとおり: **面積ゼロの三角形は何も描かない**ので、取り除いても
+  レンダリング結果は変わらず、頂点座標・頂点数・ノード名・階層・ontology id・
+  マテリアルは一致し、三角形の減少は削除数とちょうど一致します（`trianglesAccountedFor`）。
+  CC BY 4.0 は派生を許すので、**改変した旨の表示**を attribution で果たします。
+- [x] **折り返し 50 頂点で「最大面の法線を採る」** — この決め方を採用。折り目には
+  正解が無く（どちら側も実在する面）、**決定的に選ぶ**ことが再現性の条件です。
+  `assets:repair:verify` が 2 回実行で同一 hash を確認しています。
+- [ ] **anatomy review** — 解剖学者が形状・ラベル・日本語術語を見ていません。
+  **β 公開は止めません**: `anatomyExpertReview` は scene が `alpha` の間 `pending` で
+  gate を通り、脳も同じ状態で公開されています。同じ基準を心臓にも当てます。
+  `production` へ上げるときの条件としては残ります。
+- [ ] **publication decision** — この release の公開判断記録（`HEART-PUBLICATION-DECISION.md`）
+
+### NLM terms — 独立に裏づけを取りました（2026-09-15）
+
+上の表は「license 申請不要」と記録しています。**別経路で確認を試み、同じ結論に
+達しました**が、**一次情報には到達できていません**——この実行環境では
+`nlm.nih.gov` / `lhncbc.nlm.nih.gov` / `datadiscovery.nlm.nih.gov` がいずれも
+egress proxy にブロックされています。
+
+得られたのは二次情報の一致です: **2019 年 7 月に NLM Data License は
+Terms and Conditions に置き換えられ、取得に登録・ライセンス契約は不要**。
+VHP は public-domain library として説明されています。
+
+**したがって扱いは変えません**——`license.assessment` は `engineering` のままで、
+`legal` には上げません（CLAUDE.md「根拠が曖昧なら低い区分へ」）。そのうえで
+**安全側を採ります**: NLM の謝辞義務が「無い」と結論するのではなく、
+**あるものとして果たします**（`acknowledgment` obligation を attribution で discharge）。
+一次情報を読む必要が残る場合に人が開くべき URL:
+`https://www.nlm.nih.gov/research/visible/getting_data.html` と
+`https://www.nlm.nih.gov/databases/download.html`。
 
 **技術と法務の blocker は 1 件も残っていません。**
 
@@ -349,8 +386,13 @@ reproducible: same sources in, same derived hashes out, sources untouched, valid
 ②hash pin（公開判断が exact hash に結びつく）③公開判断との対応（上流が動いても判断が生き続ける）
 ④**上流の更新でシーンが勝手に変わらない**。
 
-- [ ] version pin 方式でよい（推奨）
+- [x] version pin 方式でよい（推奨）
 - [ ] 最新版に追従する
 - [ ] 別案：
+
+**2026-09-15 に採用。** 推奨どおり version pin です。**追従しない**ことがここでの
+安全側です——上流が動いたときに公開中のシーンが黙って変わるより、
+判断が結びついた exact hash のまま止まっているほうが、この製品の公開判断の
+仕組み（asset hash に結びついた記録）と整合します。
 
 UI 側は、使用 version・出典・改変内容を表示できるデータを保持しています（上の attribution 文面）。
