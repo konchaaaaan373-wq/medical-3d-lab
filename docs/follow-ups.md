@@ -2496,8 +2496,13 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
   `scripts/check-hero-input.mjs` が hero の chooser を読んで
   **公開中の臓器ごとに 1 回ずつ**キーボード操作を回すようにしました
   （`publishedOrgans()` が `.landing-demo-state[data-organ]` を列挙し、
-  chooser が無い＝公開 1 件なら従来どおり 1 回）。問題文にも撮影ファイル名にも
-  臓器名が入るので、どちらで落ちたか出力だけで分かります。
+  chooser が無い＝公開 1 件なら従来どおり 1 回）。問題文に臓器名が入るので、
+  どちらで落ちたか出力だけで分かります。
+  **⚠ この項目は当初「撮影ファイル名にも臓器名が入る」と書いていましたが、
+  誤りでした**——`--shots` の 3 枚は臓器によらず同じ名前で、2 つ目の臓器が
+  1 つ目を上書きしていました。レビュー（Codex, P2）が指摘し、PR #107 で
+  実際にそうしました（`keyboard-<organ>-1-enter.png`。実測 3 枚 → 6 枚）。
+  同 PR で、臓器を切り替えたあとの待ちも直しています（下記）。
   実測: **4 run → 5 run**。心臓の行が初めて現れました——
   `keyboard (desktop, heart): Tab reaches the model, Enter named "右心室 …",
   Escape cleared it, after turning Enter named "左心室 …", and the card's link
