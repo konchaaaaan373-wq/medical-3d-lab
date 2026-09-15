@@ -260,7 +260,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: '7128d8f57c861bfc' }),
+    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: '93a0f4f6cc4d2606' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.
@@ -282,6 +282,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
         'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
         'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
+        'the scene implements selectAtCanvasPoint, the pointerless way in the landing hero binds Enter to — held by tests/heart-anatomy.test.js and tests/organ-anatomy-scenes.test.js. **Not driven in a browser for this scene**: verify:hero-input only ever opens the first organ in the rotation, which is the brain',
       ]),
     }),
     evidence: Object.freeze([

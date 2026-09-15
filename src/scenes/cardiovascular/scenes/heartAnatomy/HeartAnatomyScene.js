@@ -445,6 +445,40 @@ export class HeartAnatomyScene {
     canvas.style.cursor = 'grab';
   }
 
+  /**
+   * Name whatever is drawn at one point of the canvas — **the way in that needs
+   * no pointer**.
+   *
+   * The landing hero binds Enter to this, and every other anatomy scene had it:
+   * the brain since its keyboard path was built, and all thirty-nine organ
+   * scenes from `OrganAnatomyScene`. The heart did not, and the call site is
+   * `scene.selectAtCanvasPoint?.(…)` — optional, so it was skipped in silence.
+   * That did not matter while the heart was withheld. It published on
+   * 2026-09-15 and joined the hero rotation the same day, so from then on a
+   * reader pressing Enter on the day the hero showed the heart got nothing, and
+   * nothing said why.
+   *
+   * It answers with the same structure a click at that point would give,
+   * through the same ray and the same visibility rules, so the two ways in
+   * cannot come to disagree about what is there. `x` and `y` are relative to
+   * the canvas, which is what the callers have.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.structureId);
+  }
+
   _pick(event) {
     const canvas = this.viewer?.renderer?.domElement;
     if (!canvas || !this.selectables.length) return null;
