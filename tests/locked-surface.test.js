@@ -123,3 +123,44 @@ test('the badge and the copy are written for the reader, not for the release pro
   assert.doesNotMatch(prose, /公開判断/);
   assert.doesNotMatch(prose, /主張だから/);
 });
+
+test('the page that answers a shared link is not the page with the smallest type', () => {
+  // Comments out first: a rule preceded by `/* ... *\/` has the comment glued
+  // to the front of its selector chunk, so an exact-name match silently misses
+  // exactly the rules somebody bothered to explain.
+  const sheet = readFileSync(new URL('../src/styles/locked.css', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
+
+  /**
+   * The `font-size` a class ends up with, in source order.
+   *
+   * Every rule whose selector list mentions the class, not the first one that
+   * looks right: `.locked-copy` is declared twice here, once in a group with
+   * `.locked-summary` and once on its own, and a regex anchored on
+   * `\n.locked-copy {` matches the group's second line and reads the wrong
+   * body. Later wins, which is the cascade at equal specificity.
+   */
+  const sizeOf = (className) => {
+    const sizes = [];
+    for (const [, selectors, body] of sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      const names = selectors.split(',').map((one) => one.trim());
+      if (!names.some((name) => name === className || name.startsWith(`${className}.`) || name.startsWith(`${className}:`))) continue;
+      // The last in the rule too, not the first: two `font-size` lines in one
+      // body is the same cascade question one level down, and reading the
+      // first of them reports a size the browser never uses.
+      const inRule = [...body.matchAll(/font-size:\s*([0-9.]+)px/g)].at(-1)?.[1];
+      if (inRule) sizes.push(Number(inRule));
+    }
+    assert.ok(sizes.length > 0, `${className}: no px font-size anywhere in the sheet`);
+    return sizes.at(-1);
+  };
+
+  // Prose and control labels only. The badge and the system eyebrow are 9.5px
+  // uppercase with letter-spacing, which is a label convention the whole
+  // product shares — raising those is a typographic decision about the app,
+  // not about this page, and F-113 holds it with the counts.
+  for (const className of ['.locked-copy', '.locked-link', '.locked-summary']) {
+    const size = sizeOf(className);
+    assert.ok(size >= 12, `${className} is ${size}px, below the 12px floor`);
+  }
+});
