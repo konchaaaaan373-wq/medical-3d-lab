@@ -1341,3 +1341,40 @@ test('anatomy tree: a scene that cannot hide a group is not given the control', 
     Object.getPrototypeOf(scene).setStructuresHidden = BrainAnatomyScene.prototype.setStructuresHidden;
   }
 });
+
+test('anatomy panel: Hide is offered only by a model that can hide', () => {
+  // The bug this exists for: `hideButton.hidden = !selection`, so the button
+  // appeared for any selection at all, while pressing it ran
+  // `scene.setStructureHidden?.(…)` — an optional call that is simply skipped
+  // when the method is absent. The thirty-nine organ scenes on
+  // `OrganAnatomyScene` have isolation and cuts but no hiding, so on every one
+  // of them "Hide" was a button that did nothing, with nothing to say why.
+  const actionOf = (panel, action) =>
+    findByClass(panel.element, 'anatomy-panel-action')
+      .find((button) => button.dataset?.action === action);
+
+  {
+    const mounted = mountPanel();
+    try {
+      mounted.scene.selectStructure(mounted.scene.selectables[0].userData.atlasId);
+      const hide = actionOf(mounted.panel, 'hide');
+      assert.ok(hide, 'the panel draws a hide action');
+      assert.equal(hide.hidden, false, 'a model that can hide is offered the control');
+    } finally {
+      mounted.restore();
+    }
+  }
+
+  {
+    const mounted = mountPanel();
+    try {
+      // The capability taken away, the way a scene without it presents itself.
+      mounted.scene.setStructureHidden = undefined;
+      mounted.scene.selectStructure(mounted.scene.selectables[0].userData.atlasId);
+      const hide = actionOf(mounted.panel, 'hide');
+      assert.equal(hide.hidden, true, 'a model that cannot hide must not offer the control');
+    } finally {
+      mounted.restore();
+    }
+  }
+});
