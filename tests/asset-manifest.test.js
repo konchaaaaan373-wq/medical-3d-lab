@@ -309,7 +309,22 @@ test('duplicate ids, an output path that is a URL, bad dates and a bad commit ar
   assert.ok(has(validateAssetManifest([meshFixture({ output: { path: 'https://cdn.invalid/x.glb', sha256: FIXTURE_HASH } })]), /output\.path must be repository-relative/));
   assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: 'September' } })]), /retrievedAt must be an ISO date or null/));
   assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: null } })]), /retrievedAt is null without a retrievedAtNote/));
-  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: 'abc' } })]), /introducedIn must be a 40-character commit/));
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: 'abc' } })]), /introducedIn must be a 40-character commit or null/));
+  // Null is the state between filing an entry and the squash merge that creates
+  // the commit it will name. It is legal only with a reason attached, the same
+  // shape `retrievedAt` uses, so that "we do not know" stays distinct from
+  // "nobody filled this in".
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: null } })]), /introducedIn is null without an introducedInNote/));
+  assert.equal(
+    has(
+      validateAssetManifest([
+        meshFixture({ source: { ...meshFixture().source, introducedIn: null, introducedInNote: 'filed in PR #123; the squash commit does not exist until it merges' } }),
+      ]),
+      /introducedIn/
+    ),
+    false,
+    'null with a reason is accepted'
+  );
 });
 
 test('repository paths are relative, inside the repository, and never URLs', () => {

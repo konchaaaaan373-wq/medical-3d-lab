@@ -81,6 +81,19 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 報告しましたが、実際は同意カードを閉じた直後のフレーミング tween が
 走っている最中でした。pose が止まるまで待つと 0px です。
 
+**git の履歴を測る前に、その clone が shallow でないか確かめる。**
+この環境の clone は既定で shallow です。`.git/shallow` に載っている境界 commit には
+親が無いので、**`git show --diff-filter=A` はその tree の全ファイルを「追加」と報告し**、
+`git merge-base --is-ancestor` は切れた履歴の向こう側に届きません。
+実例（F-120）: 「脳の `introducedIn` は main から到達できない」という指摘を受け、
+確かめたら確かに `NO` が返り、境界 commit が「brain.glb を追加している」ようにも
+見えました。**両方とも truncation の作り出した嘘**で、
+`git fetch --unshallow` して測り直すと元の記録が正しく、指摘に従っていれば
+無関係な commit を provenance に書き込むところでした。
+本当に誤っていたのは心臓の 1 件だけです。
+`git rev-parse --is-shallow-repository` が `true` を返すなら、
+その履歴からは何も結論しないでください。
+
 ### マージは小さく、頻繁に
 
 **1 件直したら 1 本出す。** PR を寝かせて複数の主題を積まないでください。
