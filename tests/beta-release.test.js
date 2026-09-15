@@ -18,6 +18,7 @@ import {
   DECISION_ROLES,
   RELEASE_POLICIES,
   anatomyClaimProblems,
+  betaPublicationGap,
   betaPublicationProblems,
   publicationDecisionProblems,
   sceneReleaseProblems,
@@ -767,5 +768,131 @@ test('beta release: the crawlable set is what is open AND what is public, in bot
   assert.ok(
     openedUp.every((scene) => scene.status !== 'prototype'),
     'and it never contains a Prototype, whatever the channel'
+  );
+});
+
+/**
+ * The gap survey, and the thing it must never become.
+ *
+ * `betaPublicationGap()` exists to say that the beta publishes two organs while
+ * thirty-seven finished ones wait on a record nobody wrote. That is a useful
+ * number and a dangerous one: a survey that can answer "this scene would be
+ * open if only it were listed" is one careless caller away from being the
+ * thing that decides publication. So the survey is held to reporting, and the
+ * gate is held to having no way to be talked out of the membership check.
+ */
+test('beta gap: the survey reports distance and never opens anything', () => {
+  const rows = betaPublicationGap();
+  assert.ok(rows.length > 0, 'there are finished anatomy scenes the beta does not open');
+
+  for (const row of rows) {
+    // Nothing on the list appears in the gap.
+    assert.ok(
+      !BETA_ANATOMY_CANDIDATES.includes(row.sceneId),
+      `${row.sceneId}: a published candidate is not a gap`
+    );
+
+    // Every row keeps the membership line, worded exactly as the gate words
+    // it, so the two can never drift into describing different refusals.
+    const fromTheGate = betaPublicationProblems(row.sceneId);
+    assert.ok(fromTheGate.length > 0, `${row.sceneId}: the gate opened a scene the survey calls a gap`);
+    assert.equal(
+      row.problems[0],
+      fromTheGate[0],
+      `${row.sceneId}: the survey and the gate word the membership refusal differently`
+    );
+
+    // A row is never empty: "nothing stands between this and publication" is
+    // not an answer this function is allowed to give.
+    assert.ok(row.problems.length > 0, `${row.sceneId}: the survey reported a scene as clear`);
+  }
+});
+
+test('beta gap: no option talks the gate out of the candidate list', () => {
+  // The survey needed the gate's body without its first line. The way that was
+  // *not* done is an injectable candidate list — `betaPublicationProblems(id,
+  // { candidates: [id] })` returning `[]` would be this module handing out the
+  // one answer it must never hand out.
+  //
+  // **The first version of this test could not fail.** It passed unrecognised
+  // options and asserted the answer was non-empty — but every scene in the gap
+  // is missing its decision record, so the gate refuses it twice over and a
+  // relaxed membership check is invisible behind the second refusal. Proved by
+  // giving the gate an injectable `candidates` list: the test stayed green
+  // while the hazard was present.
+  //
+  // So the scene is first given everything else it would need — a complete
+  // decision, pinned to its real scene revision — and the assertion is that
+  // membership alone still refuses it. Now the only thing holding the answer
+  // up is the line this test is about.
+  const subject = betaPublicationGap().find((row) => row.decisionIsAllThatIsLeft);
+  assert.ok(subject, 'a scene whose only remaining problem is the decision');
+
+  const scene = sceneById(subject.sceneId);
+  const decisions = [
+    {
+      sceneId: subject.sceneId,
+      decidedAt: '2026-09-15',
+      decidedBy: { name: 'a test', role: 'engineering' },
+      record: 'docs/beta-publication/heart-anatomy.md',
+      assetRevisions: {},
+      sceneRevision: sceneRevisionPin(scene),
+      scope: {
+        structures: ['a structure'],
+        views: ['a view'],
+        interactions: ['an interaction'],
+      },
+      evidence: ['tests/beta-release.test.js'],
+      unverified: ['everything; this decision is a test fixture'],
+    },
+  ];
+
+  // The fixture is only worth something if it satisfies the rest of the gate,
+  // so that is checked rather than assumed.
+  assert.deepEqual(
+    publicationDecisionProblems(decisions[0], scene, { fileExists: () => true }),
+    [],
+    'the fixture decision does not satisfy the decision check, so this test proves nothing'
+  );
+
+  for (const attempt of [
+    { candidates: [subject.sceneId] },
+    { BETA_ANATOMY_CANDIDATES: [subject.sceneId] },
+    { candidateList: [subject.sceneId] },
+    { scenes: [scene] },
+  ]) {
+    const problems = betaPublicationProblems(subject.sceneId, {
+      ...attempt,
+      decisions,
+      fileExists: () => true,
+    });
+    assert.deepEqual(
+      problems,
+      [`"${subject.sceneId}" is not one of the scenes this release opens`],
+      `${subject.sceneId} was opened by passing ${JSON.stringify(attempt)}`
+    );
+  }
+});
+
+test('beta gap: what is left is read from the gate, not guessed from a substring', () => {
+  const rows = betaPublicationGap();
+  for (const row of rows) {
+    if (!row.decisionIsAllThatIsLeft) continue;
+    // The claim is specific: the only thing the gate still says about this
+    // scene, once membership is set aside, is that nobody has decided. If some
+    // other failure were being folded into "just paperwork" this would catch
+    // it, because the expected line is generated by the decision check itself.
+    assert.deepEqual(
+      row.remaining,
+      publicationDecisionProblems(null, sceneById(row.sceneId)),
+      `${row.sceneId}: "the decision is all that is left" covers something else as well`
+    );
+  }
+
+  // And the survey is not vacuously optimistic: a row with nothing remaining
+  // must not report the decision as the only thing missing.
+  assert.ok(
+    rows.every((row) => !row.decisionIsAllThatIsLeft || row.remaining.length > 0),
+    'a row with no remaining problems claimed the decision is what is missing'
   );
 });

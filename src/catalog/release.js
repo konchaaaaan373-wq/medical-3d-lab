@@ -531,7 +531,35 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
  *   taken at its word, which is all a browser can do.
  * @returns {string[]}
  */
-export function betaPublicationProblems(candidate, {
+export function betaPublicationProblems(candidate, options = {}) {
+  const id = typeof candidate === 'string' ? candidate : candidate?.id;
+
+  // Membership is checked here and nowhere else, and there is no option that
+  // relaxes it. `betaPublicationGap` below reports on scenes that are *not*
+  // members, and it does so by calling the same body with this line prepended
+  // rather than by asking for it to be skipped — so nothing can ever ask this
+  // module whether a scene would be open if only it were listed and receive an
+  // empty answer.
+  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
+    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
+  }
+
+  return publicationRecordProblems(id, options);
+}
+
+/**
+ * The gate minus the one line that says whether the scene is on the list.
+ *
+ * Split out for `betaPublicationGap`, which needs to ask "and what else?" of a
+ * scene the release does not open. It is not exported: answering that question
+ * without the membership line attached is exactly the answer this module must
+ * not hand out.
+ *
+ * @param {string} id
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {string[]}
+ */
+function publicationRecordProblems(id, {
   fileExists,
   profiles,
   resolveScene = sceneById,
@@ -541,12 +569,7 @@ export function betaPublicationProblems(candidate, {
   hasReview = hasCurrentClinicalReviewState,
   decisions = BETA_PUBLICATION_DECISIONS,
 } = {}) {
-  const id = typeof candidate === 'string' ? candidate : candidate?.id;
   const problems = [];
-
-  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
-    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
-  }
 
   const scene = resolveScene(id);
   if (!scene) return [`"${id}" is not registered in the catalogue`];
@@ -635,6 +658,75 @@ export function betaPublicationProblems(candidate, {
 
   return problems;
 }
+
+/**
+ * The finished organ models the beta does not open, and what is left for each.
+ *
+ * **The number this exists to print: the beta publishes two organs, and it is
+ * not because the others are unfinished.** Thirty-seven scenes make an
+ * anatomy-only claim, all are `alpha`, and none rests on an external asset —
+ * so for most of them the entire distance to the public build is a record
+ * nobody has written, not geometry nobody has built. Read off
+ * `BETA_ANATOMY_CANDIDATES` alone that is invisible: a short list looks like a
+ * short list of *ready* scenes. This is the same move `anatomyGap()` makes for
+ * the A-scale — the gap is a number the test suite prints rather than a
+ * paragraph somebody has to remember.
+ *
+ * **Nothing here publishes anything, and nothing here reports a scene as
+ * ready.** Every row keeps the membership line, because being on the list is
+ * itself the decision: opening an organ to the public is a judgement about what
+ * this product claims, and it is taken by editing `BETA_ANATOMY_CANDIDATES`
+ * and filing a record under `docs/beta-publication/`, never by a survey
+ * concluding that the paperwork is the only thing missing. So `remaining`
+ * counts what is left *besides* that decision, and `decisionIsAllThatIsLeft`
+ * says only that — not that the decision should be taken.
+ *
+ * A scene qualifies for a row by making an anatomy claim and no more, read off
+ * its model profile exactly as the gate reads it. Nothing is matched by name:
+ * "it is called `…-anatomy`" is not a claim about what a scene asserts.
+ *
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {Array<{sceneId: string, status: string, problems: string[],
+ *   remaining: string[], decisionIsAllThatIsLeft: boolean}>}
+ */
+export function betaPublicationGap(options = {}) {
+  const { scenes = SCENES } = options;
+  return scenes
+    .filter((scene) => !BETA_ANATOMY_CANDIDATES.includes(scene.id))
+    .filter((scene) => anatomyClaimProblems(scene, options).length === 0)
+    .map((scene) => {
+      const remaining = publicationRecordProblems(scene.id, options);
+      return {
+        sceneId: scene.id,
+        status: scene.status,
+        problems: [notOnTheListLine(scene.id), ...remaining],
+        remaining,
+        // `[].every()` is true, and an empty `remaining` means the opposite
+        // of what this field would then say: the record is already filed and
+        // the list edit is the whole distance. That cannot happen today —
+        // every decision on file is for a scene on the list — so it is guarded
+        // rather than described, and `problems` still carries the real answer.
+        decisionIsAllThatIsLeft:
+          remaining.length > 0 && remaining.every(isMissingDecisionLine),
+      };
+    });
+}
+
+/** The one line every gap row carries, worded as the gate words it. */
+const notOnTheListLine = (id) => `"${id}" is not one of the scenes this release opens`;
+
+/**
+ * Whether a remaining line is only "no decision has been taken".
+ *
+ * Matched against what `publicationDecisionProblems` says for a missing
+ * record rather than by a substring guess, so that rewording the gate cannot
+ * quietly turn some other failure into "just paperwork".
+ */
+const MISSING_DECISION_LINES = Object.freeze(
+  publicationDecisionProblems(null, { id: '(none)', status: 'alpha' })
+);
+const isMissingDecisionLine = (line) => MISSING_DECISION_LINES.includes(line);
+
 
 /**
  * Why this scene is not open on the **next** release. Empty means open.
