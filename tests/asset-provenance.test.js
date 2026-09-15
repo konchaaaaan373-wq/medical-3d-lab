@@ -87,6 +87,23 @@ test('asset provenance: introducedIn names the commit that put the file on the d
         /\S/,
         `${where}: introducedIn is null without saying why`
       );
+
+      // And it expires by itself. Null says "there is no commit on the default
+      // branch to name yet" — the moment the file is on the default branch
+      // that has stopped being true, and without this the merge that makes it
+      // false is also the run that would have caught it, so a released asset
+      // could keep an unresolved provenance for good. CI runs on push to main,
+      // so the first run after the merge fails here and says which commit to
+      // write down.
+      const landed = git(
+        'log', '--diff-filter=A', '--format=%H', '-1', ref, '--', asset.output.path
+      );
+      assert.equal(
+        landed,
+        '',
+        `${where}: introducedIn is null, but ${asset.output.path} is on ${ref} as of ${landed} — ` +
+          'the commit it was waiting for exists now, so record it'
+      );
       continue;
     }
 
