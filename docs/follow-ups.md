@@ -338,6 +338,31 @@ conda-forge には存在しません。したがって CDM のフィールド名
 - 決め方の案: 全部を一度に開けるのではなく、**系統ごとに数件ずつ**。
   hero rotation は公開臓器が増えるとそのまま日替わりの幅が広がります
   （`HERO_ORGANS` が目標順を持っています）
+- **代表 1 件を実ブラウザで確認済み（2026-09-15）**。「37 件が記録待ちなだけ」は
+  ゲートが通ることしか言っていないので、実際に動くかを 1 件測りました。
+  `npm run verify:anatomy -- --scene lung-anatomy --preview`:
+
+  ```
+  Anatomy interaction — lung-anatomy, 83 selectable structures
+    structures named by click: 右上葉; 右中葉; 左上葉
+    viewpoints: 前面, 背面, 右外側, 左外側, 右肺・縦隔面, 前額断（切断）
+    colour modes: 肺葉・血管別, 通常解剖色
+    part tree rows: 83
+    group hidden in one press: Pulmonary vessels / 肺血管 (34 structures)
+    ok  the model and the tree name one structure; drag is not click;
+        isolate hides and restores; display choices do not move the selection
+  ```
+
+  脳・心臓と**同じドライブに同じように通ります**。1 件あたりの実測費用は
+  **2 分未満**でした（脳の 10 分は 3.9 MB のアトラス読み込みが理由で、
+  procedural な臓器には無い）。つまり 37 件でも数時間ではなく 1〜2 時間規模です。
+  ただし 2 点、記録に書くべき差があります:
+  - `labels on the model: none` — 脳は選択した構造の**ラベルがモデル上に出ます**が、
+    肺はこのアングルでは出ませんでした（F-40 と同じ「1 つのアンカー点が構造全体を
+    決める」問題）。公開記録の「確認していないこと」に書く対象です
+  - クリック点が `SCENE_POINTS` に未登録なので、いまの 3 件は
+    「その回たまたま当たった構造」です。心臓で F-118 として直したのと同じ較正が
+    公開する各シーンに要ります（測定値はスクリプトが出力します）
 - 完了の定義: オーナーが「どこまで開けるか」を決め、開けると決めた各シーンに
   browser 実測つきの `docs/beta-publication/<scene>.md` がある状態
 
