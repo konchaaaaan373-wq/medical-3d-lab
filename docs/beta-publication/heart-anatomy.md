@@ -12,7 +12,7 @@ clinician has judged this geometry or these labels**, and every surface says so
 | **Decided by** | Repository owner's approval of 2026-09-15; implemented by Claude Opus 5 |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
-| **Scene revision** | model card revision **22**, source digest `7128d8f57c861bfc` |
+| **Scene revision** | model card revision **23**, source digest `93a0f4f6cc4d2606` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -68,6 +68,18 @@ image.
   something else was already hiding shows that structure rather than blanking
   the model.
 - A drag is not a click, including a drag that ends where it began.
+- **The scene implements `selectAtCanvasPoint`**, the pointerless way in that
+  the landing hero binds Enter to, answering for a point through the same ray a
+  click uses. It was published without it on 2026-09-15 and joined the hero
+  rotation the same day, so until the revision this record is pinned to, Enter
+  on the heart's day did nothing and said nothing.
+
+  **This one is not a browser result.** `verify:hero-input` passes, but every
+  line it prints names a brain structure: the hero opens on the first organ in
+  the rotation and the drive never reaches the second. What holds this is
+  `tests/heart-anatomy.test.js` and `tests/organ-anatomy-scenes.test.js`, which
+  check every scene has the method — and F-121, which records that the hero
+  drive cannot yet exercise an organ it does not open on.
 - The two files were measured to share one whole-body coordinate frame; one
   offset and one uniform scale are applied to the pair.
 - No uncaught errors and no unexpected failed requests during the run.

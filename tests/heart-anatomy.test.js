@@ -1388,3 +1388,16 @@ test('heart: the opening view does not call itself the whole heart', () => {
   // Still names what it shows, in both languages.
   assert.ok(opening.label.length > 3 && opening.labelJa.length > 1);
 });
+
+test('heart: the model can be asked what is at a point, without a pointer', () => {
+  // The landing hero binds Enter to this, through an optional call, so a scene
+  // without the method fails silently. The heart published and joined the hero
+  // rotation on the same day while missing it — see the method's own comment.
+  // `tests/organ-anatomy-scenes.test.js` holds the same line for the thirty-nine
+  // scenes built on OrganAnatomyScene; this is the heart's own.
+  assert.equal(
+    typeof HeartAnatomyScene.prototype.selectAtCanvasPoint,
+    'function',
+    'the heart cannot be asked what is at a point, so the hero keyboard does nothing on its day'
+  );
+});

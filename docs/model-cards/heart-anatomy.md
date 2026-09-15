@@ -43,6 +43,15 @@ exactly what was removed — measured, in
 not asserted. `npm run assets:repair:verify` rebuilds these exact hashes from the
 pinned sources and reports the validator clean.
 
+**A structure can be reached without a pointer.** `selectAtCanvasPoint()` names
+whatever is drawn at one point of the canvas, which is how a keyboard asks —
+there being no pointer to put anywhere, the landing hero asks it of the middle
+of the frame on Enter. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there. Until 2026-09-15 this scene was
+the only anatomy scene without it, and the hero's call is optional — so on the
+day the hero showed the heart, Enter did nothing and said nothing.
+
 **No geometry was re-shaped and no anatomical judgement was made.** The sources
 stay pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js):
 adopting a derivative does not delete the record of what was examined.
