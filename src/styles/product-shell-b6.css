@@ -718,7 +718,10 @@
 
 @media (max-width: 720px) {
   .global-nav-brand-mark { display: none; }
-  .global-nav-brand { gap: 0; }
+  /* Was `gap: 0`, which was right when dropping the 3D mark left a bare
+     wordmark. The brand now starts with a back arrow, and an arrow welded to
+     the first letter of "Medical" reads as a typo rather than as "back". */
+  .global-nav-brand { gap: 6px; }
   #ui[data-anatomy-shell='calm'] .title-card {
     max-width: min(78vw, 292px);
     padding: 8px 11px 9px;

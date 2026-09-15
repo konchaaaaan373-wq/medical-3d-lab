@@ -154,6 +154,41 @@ export class FakeElement {
     return null;
   }
 
+  /**
+   * The first descendant matching a simple selector, or null.
+   *
+   * `#id`, `.class`, `.class.class` and a tag name — the same grammar
+   * `closest` accepts, for the same reason: the product's components ask for
+   * nothing more, and pretending to support more would invite a test that
+   * passes here and fails in a browser.
+   */
+  querySelector(selector) {
+    const [found] = this.querySelectorAll(selector);
+    return found ?? null;
+  }
+
+  /** Every descendant matching a simple selector, in document order. */
+  querySelectorAll(selector) {
+    const wanted = String(selector).trim();
+    const matches = (node) => {
+      if (wanted.startsWith('#')) return node.id === wanted.slice(1);
+      if (wanted.startsWith('.')) {
+        return wanted.slice(1).split('.').every((name) => node.classList.contains(name));
+      }
+      return node.tagName === wanted.toUpperCase();
+    };
+    const found = [];
+    const visit = (node) => {
+      for (const child of node.children) {
+        if (!(child instanceof FakeElement)) continue;
+        if (matches(child)) found.push(child);
+        visit(child);
+      }
+    };
+    visit(this);
+    return found;
+  }
+
   /** This element, or anything under it. */
   contains(node) {
     if (node === this) return true;
@@ -203,10 +238,31 @@ export class FakeElement {
   }
 }
 
-export function installFakeDocument() {
+/**
+ * A stand-in `document`.
+ *
+ * `elements` registers ids for `getElementById`, which components use to reach
+ * the one element they did not build (the `#ui` shell). Document-level event
+ * listeners are collected rather than dispatched: a component that closes its
+ * own dialog on a document `keydown` has to be able to *register* that without
+ * the test needing a real event loop.
+ */
+export function installFakeDocument({ elements = {} } = {}) {
   const previous = globalThis.document;
+  const byId = new Map(Object.entries(elements));
+  const listeners = new Map();
   globalThis.document = {
     createElement: (tagName) => new FakeElement(tagName),
+    getElementById: (id) => byId.get(id) ?? null,
+    listeners,
+    addEventListener(type, listener) {
+      const forType = listeners.get(type) ?? new Set();
+      forType.add(listener);
+      listeners.set(type, forType);
+    },
+    removeEventListener(type, listener) {
+      listeners.get(type)?.delete(listener);
+    },
     /**
      * A text node, as far as anything here needs one.
      *
