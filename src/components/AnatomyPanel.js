@@ -806,6 +806,7 @@ export function createAnatomyPanel({
     );
     showAllButton.hidden = isolated == null;
 
+    const canHide = typeof scene.setStructureHidden === 'function';
     const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
     const selectionHidden = Boolean(selection) && hidden.includes(selection.id);
     const drawn = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
@@ -821,7 +822,15 @@ export function createAnatomyPanel({
     // Offered when the structure is not on screen — which is the only time the
     // question "where is it?" cannot be answered by looking.
     revealButton.hidden = !selection || canSee;
-    hideButton.hidden = !selection;
+    // Offered only by a model that can actually hide. Every other control here
+    // is asked of the scene before it is drawn, and this one was not: it was
+    // shown whenever anything was selected, while `toggleHidden` reaches for
+    // `setStructureHidden` with an optional call. On the thirty-nine organ
+    // scenes built on `OrganAnatomyScene`, which has isolation and cuts but no
+    // hiding, that made "Hide" a button that did nothing at all — the reader
+    // presses it, the model does not change, and nothing says why. A control
+    // the model cannot honour is worse than a missing one.
+    hideButton.hidden = !selection || !canHide;
     hideButton.replaceChildren(
       el('span', { class: 'lang-en', text: selectionHidden ? 'Unhide' : 'Hide' }),
       el('span', { class: 'lang-ja', text: selectionHidden ? '再表示' : '非表示' })
