@@ -34,11 +34,29 @@ import {
 import { pricePresentation } from './pricing.js';
 import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
+import { withPreviewGrants } from './previewGrants.js';
 import { emitAppEvent } from '../app/appEvents.js';
 import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A fresh grant set, with the reviewer's grants folded in.
+ *
+ * Every path that decides access rebuilds this from scratch — startup, sign-in,
+ * sign-out, a successful entitlement lookup and two different failures — and a
+ * preview build has to survive all of them, so the fold happens at the
+ * assignment rather than once at startup. Written as one function because five
+ * bare `new Set(...)` assignments are five chances to add a sixth and forget;
+ * `tests/preview-grants.test.js` fails if one appears.
+ *
+ * In a production bundle `withPreviewGrants` adds nothing and Vite has already
+ * compiled the branch inside it to dead code.
+ *
+ * @param {Iterable<string>} [from]
+ */
+const grantSet = (from = FREE) => withPreviewGrants(new Set(from));
 
 /**
  * Account + entitlement state for the browser.
@@ -49,7 +67,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function createAccessManager({ ui }) {
   const state = {
     user: null,
-    grants: new Set(FREE),
+    // Through `grantSet` like every later assignment. Missed here first, and
+    // the surfaces stayed locked in a preview build until `init()` happened to
+    // rebuild them — which it does not do when billing is not configured.
+    grants: grantSet(),
     subscriptions: [],
     billingConfigured: false,
     planCatalog: {},
@@ -386,7 +407,7 @@ export function createAccessManager({ ui }) {
     // previous browser session and must never restore its paid grants.
     refreshGeneration += 1;
     state.user = null;
-    state.grants = new Set(FREE);
+    state.grants = grantSet();
     state.subscriptions = [];
     state.loading = false;
     state.deletionMode = false;
@@ -466,7 +487,7 @@ export function createAccessManager({ ui }) {
       const session = await getSession();
       if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       state.user = session?.user ?? null;
-      state.grants = new Set(FREE);
+      state.grants = grantSet();
       state.subscriptions = [];
       if (session) {
         const endpoint = reconcile
@@ -481,7 +502,7 @@ export function createAccessManager({ ui }) {
           const data = await response.json().catch(() => ({}));
           if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
           if (!response.ok) throw new Error(data.error || 'Could not load access.');
-          state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
+          state.grants = grantSet(data.entitlements ?? [ENTITLEMENT.FREE]);
           state.subscriptions = data.subscriptions ?? [];
           state.user = data.user ?? state.user;
           if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
@@ -490,14 +511,14 @@ export function createAccessManager({ ui }) {
           // Free access is deliberately resilient to a billing outage: the
           // grant is already `free` and no model depends on this call.
           state.entitlementsError = error.message || 'Could not check access.';
-          state.grants = new Set(FREE);
+          state.grants = grantSet();
         }
       }
     } catch (error) {
       if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       // Free access is deliberately resilient to billing/auth outages.
       state.error = error.message || 'Could not check access.';
-      state.grants = new Set(FREE);
+      state.grants = grantSet();
     } finally {
       if (generation === refreshGeneration) {
         state.loading = false;

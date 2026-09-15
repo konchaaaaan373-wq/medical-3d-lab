@@ -634,7 +634,7 @@ html.has-access-modal body {
   margin: 7px 0 0;
   display: flex;
   flex-direction: column;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.5;
   color: rgba(255, 205, 160, 0.9);
 }
@@ -650,12 +650,18 @@ html.has-access-modal body {
   color: var(--ink);
 }
 
+/* The patient guide renders at 12px today, but only because
+   `patient-consultation.css` raises it inside presentation mode. The base was
+   9.5px, so the same sentence dropped to the smallest type on the surface the
+   moment it was shown anywhere else. A floor that holds in one mode is not a
+   floor. */
 .patient-guide-boundary {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 1px;
-  font-size: 9.5px;
+  font-size: 12px;
+  line-height: 1.45;
   color: var(--ink-faint);
 }
 
@@ -790,9 +796,10 @@ html.has-access-modal body {
     margin-top: 5px;
   }
 
+  /* Narrow screens do not narrow what the model may be used for. Was 9px. */
   .patient-guide-boundary,
   .patient-guide-educational {
-    font-size: 9px;
+    font-size: 12px;
     line-height: 1.4;
   }
 

@@ -23,12 +23,9 @@
       ".patient-guide-counter": 10,
       ".patient-guide-look-label": 10,
       ".patient-guide-certainty": 10.5,
-      ".patient-guide-educational": 10.5,
-      ".patient-guide-boundary": 9.5,
       ".patient-guide-nav": 11,
       ".patient-guide-title": 10.5,
-      ".patient-guide-copy, .patient-guide-look-text": 11.5,
-      ".patient-guide-boundary, .patient-guide-educational": 9
+      ".patient-guide-copy, .patient-guide-look-text": 11.5
     },
     "anatomy-panel.css": {
       ".anatomy-panel-status": 11.5,
@@ -49,7 +46,6 @@
       ".education-guide-kind": 9,
       ".education-guide-reveal": 10.5,
       ".education-guide-reasoning-label": 9,
-      ".education-guide-boundary": 9.5,
       ".education-guide-nav": 11,
       ".education-mode-complete": 9
     },

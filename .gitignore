@@ -20,3 +20,4 @@ viewport-report.json
 # src/catalog/devAssets.js and fetched by `npm run assets:dev`; never committed —
 # a third-party binary does not belong in this repository.
 dev-assets/
+dist-preview
