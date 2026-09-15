@@ -16,7 +16,7 @@ Last updated: 2026-09-14
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-110 です（F-108 / F-109 は 2026-09-14 に採番済み）
+  次に追加する番号は F-111 です（F-108〜F-110 は採番済み）
 - 各項目は「何が未解決か」「どう確かめるか / どう決めるか」「完了の定義」を持つ
 - 解決したら削除ではなく、末尾の **Resolved** に 1 行で移す（何を根拠に閉じたかを残す）
 - 優先度は **P1**（公開前に潰す）/ **P2**（次の PR 群で）/ **P3**（機会があれば）
@@ -663,17 +663,33 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
 
-### F-109 eager entry の gzip が予算の 0.3 kB 手前 — P2（2026-09-14）
+### F-110 ブラウザが初回描画で公開判断を毎回導出している — P2（2026-09-15）
 
-`npm run budget` の `entry (eager JS)` が **89.7 kB / 90 kB**。最新 main でも
-**89.4 kB / 90 kB** で、この branch が足したのは 0.3 kB ですが、**残りは
-0.3 kB しかありません**。次に entry chunk へ何かが入れば、その変更が
-（原因でないのに）予算で落ちます。
+`RELEASED_SCENES = SCENES.filter(isSceneReleased)` はモジュール定数で、
+`isSceneReleased` → `sceneReleaseProblems` → `RELEASE_POLICIES.beta`
+＝ `betaPublicationProblems` です。つまり**どのページを開いても、初回描画時に
+全シーンぶんの公開判定が走ります**。答えは「公開シーン 1 件」という短い一覧
+なのに、そのために統治用データが entry chunk に居ます。
 
-- 確かめ方: `npm run build && npm run budget`。
-- 完了の定義: entry から遅延できるものを 1 つ外して余裕を作るか、
-  予算の根拠（4G での初期表示）を測り直して数字を更新する。
-  **数字だけ上げるのは不可**——予算は端末の体験から来ています。
+F-109 で臨床レビュー登録簿（98.5 kB）は外しましたが、まだ eager なのは：
+
+| | 生サイズ |
+| --- | --- |
+| `catalog/modelProfiles.js` | 102.3 kB |
+| `catalog/scenes.js` | 100.9 kB |
+| `catalog/assetManifest.js` | 50.8 kB |
+| `docs/model-cards/revisions.json` | 25.5 kB |
+
+**いま急ぐ必要はありません**（entry は 65.9 / 90 kB で 24 kB の余裕があります）。
+ただし方向としては、判定の**結果**を持つ `publicManifest.js` を初回描画の唯一の
+入口にし、判定の**導出**はビルド時か遅延経路へ寄せるのが筋です。
+
+- 確かめ方: `node scripts/review-states.js` と同じ要領で eager graph を測る
+  （F-109 の PR に使った手順が `scripts/review-states.js` の冒頭にあります）。
+- 完了の定義: **公開シーン一覧と `betaPublicationProblems` の答えが 1 件も
+  変わらないこと**を確かめたうえで、entry から統治用データを外す。
+  CLAUDE.md が `release.js` を公開判断の単一所有者と定めているので、
+  **ルールを動かす変更にしない**ことが条件です。
 
 ### F-107 アカウント画面の文言がまだ「英語 / 日本語」の併記 — P2（2026-09-14）
 
@@ -2320,6 +2336,41 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 ---
 
 ## Resolved
+
+- **F-109 eager entry の gzip が予算の手前** — 解決（2026-09-15）。**89.7 kB → 65.9 kB**
+  （予算 90 kB、余裕 0.3 kB → **24.1 kB**）。
+
+  原因は、**リリースゲートが enum 1 個のために臨床レビュー登録簿を丸ごと
+  eager に引き込んでいた**ことでした。`RELEASED_SCENES` はモジュール定数なので
+  **どのページを開いても初回描画時に全シーンの公開判定が走り**、その経路の
+  `release.js` が `clinicalReview.js` を import → `registry.json` 98.5 kB が
+  entry chunk に入ります。ゲートが読むのは `reviewStatus` だけで、残りの
+  **84 kB はレビュアーの散文**（`unresolvedLimitations` 60.9 kB、`scope` 12.8 kB、
+  `sources` 10.1 kB）——初回描画では 1 文字も表示されません。
+  JSON import からフィールドを 1 つだけ取り出すことはバンドラにできないので、
+  全部が付いてきていました。実測 **22.8 kB gzip、予算の 1/4**。F-99 と同じ形です。
+
+  直し方は、**登録簿を分割せず、状態だけを導出する**こと。
+  `src/catalog/clinicalReviewStates.js` を `registry.json` から生成し
+  （`npm run review-states -- --write`）、ゲートはそれを読みます。
+  散文は `clinicalReview.js` に残り、遅延 surface からのみ読まれます。
+  **authored な出典は 1 つのまま**で、ズレは
+  `tests/clinical-review-states.test.js` が落とします（生成物を再導出して
+  バイト一致を要求、両モジュールが同じ答えを返すこと、記録の無いシーンが
+  `reviewed` に倒れないこと、散文フィールドが紛れ込まないこと）。
+
+  **公開判断は変わっていません**: `RELEASED_SCENES` は `brain-anatomy` のまま、
+  `betaPublicationProblems('brain-anatomy')` は `[]`。
+  `verify:site` も「public manifest publishes 1」で一致。
+
+  再発防止は `tests/eager-entry-graph.test.js`。`MUST_STAY_LAZY` に
+  `clinicalReview.js` と `registry.json` を追加し、**walker が `.json` も辿る**
+  ようにしました（これまで JSON は不可視で、まさにこの経路を見逃していました）。
+  重い import を戻すと 2 件とも名指しで落ちることを確認済みです。
+
+  **残っている、より大きな論点は F-110 に分けました**——
+  `modelProfiles.js`（102 kB）と `assetManifest.js`（50.8 kB）が
+  いまも eager なのは、ブラウザが初回描画で公開判断を毎回導出しているためです。
 
 - **F-108 Trust ページの tab 巡回が閉じない** — 解決（2026-09-15）。
   **Trust ページの不具合ではなく、チェック側の欠陥でした。**

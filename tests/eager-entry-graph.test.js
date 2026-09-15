@@ -38,6 +38,14 @@ const MUST_STAY_LAZY = {
   'data/educationGuides.js': 'the paid lesson content',
   'data/copdTeaching.js': "COPD's causal story and lesson modules",
   'data/asthmaTeaching.js': "asthma's causal story and lesson modules",
+  // F-109, and the same mistake in a new place: the release gate imported
+  // `catalog/clinicalReview.js` to read one enum, and brought every scope,
+  // source and unresolved limitation any reviewer has written with it — 22.8 kB
+  // gzipped, a quarter of the entry budget, in front of a first paint that
+  // shows none of it. The states are now derived into
+  // `catalog/clinicalReviewStates.js`; the notes must stay lazy.
+  'catalog/clinicalReview.js': "the reviewers' notes — 84 kB of the 98.5 kB registry",
+  '../docs/clinical-reviews/registry.json': 'the clinical review registry itself',
 };
 
 /** Static `import ... from '...'` / `export ... from '...'`, never `import(...)`. */
@@ -57,10 +65,16 @@ function eagerGraph() {
   const walk = (file) => {
     if (seen.has(file)) return;
     seen.add(file);
+    // Data has no imports, and reading it as source finds quoted paths in it.
+    if (file.endsWith('.json')) return;
     for (const specifier of staticImports(file)) {
       if (!specifier.startsWith('.')) continue;      // bare: three, and CSS is not JS
       const target = resolve(dirname(file), specifier);
-      if (!target.endsWith('.js') || !existsSync(target)) continue;
+      // `.json` as well as `.js`, because a JSON import is a payload like any
+      // other and was the one this walk could not see: the clinical review
+      // registry rode into the entry chunk through a module the walk did
+      // follow, and the registry itself was invisible to it.
+      if (!/\.(js|json)$/.test(target) || !existsSync(target)) continue;
       walk(target);
     }
   };
