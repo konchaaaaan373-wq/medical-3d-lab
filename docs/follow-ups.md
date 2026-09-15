@@ -689,33 +689,6 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
 
 ## D. テスト・CI
 
-### F-116 ジェスチャーヒントの位置が、コンソールの高さを手で写した定数 — P2（2026-09-15）
-
-`.anatomy-shell-gesture-hint`（「指で回転・ピンチで拡大」）は `position: fixed` で、
-`bottom` に**コンソールの高さを手で書き写した px 値**を持っています。
-media query ごとに別の数字で、現在 3 か所:
-
-| 範囲 | いまの値 | 対応するコンソール |
-| --- | ---: | --- |
-| `max-width: 430px` | 152px | 128px + 12px |
-| `max-width: 720px` | 126px | 100px + 14px |
-| `max-height: 460px` かつ横長 | 120px | 96px + 14px |
-
-**コンソールの高さが変わるたびに、この 3 つを人手で直す必要があります。**
-そして実際に**2 回壊れています**——1 回目は「ヒントがスライダーの上に印字される」
-（ソースのコメントに経緯が残っています）、2 回目は F-115 の修正で注意書きが
-1 行増えたとき。どちらも `scripts/check-viewports.mjs` が捕まえました
-（**ユニットテストは 2501 件すべて緑のまま**でした）。
-
-つまり**検出はできていて、防止ができていません**。
-
-- **どう直すか**: コンソールが自分の高さを CSS custom property として公開し
-  （`ResizeObserver` → `--console-height`）、ヒントは
-  `bottom: calc(var(--console-height) + var(--console-offset) + 12px)` を使う。
-  そうすれば media query ごとの定数が 0 になります
-- **完了の定義**: `product-shell-b6.css` にコンソール高さ由来の px 定数が
-  1 つも無く、`verify:ui` が 16 viewport で緑
-
 ### F-114 離脱 veil のうち、実ブラウザで見ていない 2 経路 — P2（2026-09-15）
 
 `src/app/departure.js` が、ページが差し替わるあいだ画面を覆います
@@ -2427,6 +2400,36 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 ---
 
 ## Resolved
+
+- **F-116 ジェスチャーヒントの位置が、コンソールの高さを手で写した定数** — 解決
+  （2026-09-15）。**コンソールが自分の到達点を自分で公開するようにしました。**
+  `src/app/consoleReach.js` が `ResizeObserver` + `resize` +
+  `orientationchange` で「ビューポート下端からバーの上端までの距離」を測り、
+  `#ui` に `--console-reach` として書きます。ヒントは
+  `bottom: calc(var(--console-reach, 132px) + 12px)` の 1 行だけになり、
+  **media query ごとの px 定数 4 つが消えました**（`max-width: 720px` の 2 つ、
+  横長の 1 つ、`max-width: 430px` の 1 つ）。
+
+  高さ・下端からの浮き・safe-area inset の影響を**1 つの測定値**にまとめています
+  ——ヒントの側は「バーの上端がどこか」だけを知ればよく、そのうちどれが動いたかは
+  関係ないからです。バーが測れないとき（`display: none`、レイアウト前、
+  `ResizeObserver` の無い document、`node --test`）は**プロパティを消す**ので、
+  CSS 側の `var(--console-reach, 132px)` が効きます。0 を書くと
+  「バーはどこにも届いていない」という**正しい測定値で間違った答え**になります。
+
+  実測（Chromium、production ビルド）:
+
+  - **16 viewport**（320x568〜1280x800）で `--console-reach` が実測値と一致し、
+    クリアランスは**すべて 12px**。定数だった頃は 10〜18px とばらついていました
+  - **実行中にバーを伸ばす**と（128px → 151px）、`--console-reach` が
+    140px → 163px、ヒントが 152px → 175px と追随し、**クリアランスは 12px のまま**。
+    縮めると戻り、回転しても追随します。**これが 2 回壊れたクラスそのもの**です
+  - `verify:ui` 0 problems
+
+  `tests/console-reach.test.js` が 9 点を固定。うち 1 つは F-116 の完了定義
+  そのもので、**`.anatomy-shell-gesture-hint` の `bottom` に
+  `--console-reach` 以外の値が書かれたら落ちます**（全シート走査）。
+  7 通りのミューテーションで全部赤を確認済みです。
 
 - **F-115 390px のシーンに医学的注意書きが 1 つも出ていない** — 解決（2026-09-15）。
   原因は `src/styles/ui.css` の `@media (max-width: 720px)` で、`.disclaimer` が

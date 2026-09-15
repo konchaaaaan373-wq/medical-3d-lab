@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { watchConsoleReach } from './consoleReach.js';
 
 const SHELL_VALUE = 'calm';
 
@@ -152,6 +153,12 @@ export function mountAnatomyShellPresentation({
   ]);
   ui.append?.(gestureHint);
 
+  // The hint floats above the control bar, so it needs the bar's height and CSS
+  // cannot ask for it. Measured into `--console-reach` rather than copied into
+  // a px constant per media query, which is how it came to print across the bar
+  // twice (F-116).
+  const consoleReach = watchConsoleReach({ ui });
+
   const dismissHint = () => gestureHint?.remove?.();
   stage?.addEventListener?.('pointerdown', dismissHint, { once: true });
   stage?.addEventListener?.('wheel', dismissHint, { once: true, passive: true });
@@ -167,6 +174,7 @@ export function mountAnatomyShellPresentation({
       stage?.removeEventListener?.('touchstart', dismissHint);
       gestureHint?.remove?.();
       gestureHint = null;
+      consoleReach.destroy();
       narrow?.removeEventListener?.('change', applyWidth);
       for (const node of movable) restoreNode(node);
       for (const node of [...homeOf.keys()]) restoreNode(node);
