@@ -90,9 +90,11 @@ jobs:
   # None of that is reachable from `node --test`, and the viewport matrix above
   # measures surfaces at rest rather than under a finger.
   #
-  # Chromium with touch emulation, for the same reason as the job below: this
-  # repository keeps browsers out of ordinary PR pushes. It is not a device
-  # pass — no iOS Safari, no real hardware — and says so in its own output.
+  # Chromium with touch emulation, at candidate time rather than on every push:
+  # `ci.yml` now runs the viewport matrix per pull request, and this is the
+  # second browser job, whose cost is not yet worth paying per push. It is not a
+  # device pass — no iOS Safari, no real hardware — and says so in its own
+  # output. F-112 holds what would move it.
   hero-input:
     name: landing hero under a finger and a keyboard (chromium)
     runs-on: ubuntu-latest
@@ -134,11 +136,13 @@ jobs:
   # submitting nothing, the dialog losing the keyboard whenever it re-rendered,
   # and a sign-in heading over a body saying no account access exists.
   #
-  # Chromium only, and here rather than in `ci.yml`, because this repository
-  # deliberately keeps browsers out of ordinary PR pushes
-  # (`tests/viewports.test.js` holds that line). The cost is that a credential
-  # regression is caught at candidate time rather than on the PR that caused
-  # it; `tests/credential-flow.test.js` covers the form's shape on every push.
+  # Chromium only, and here rather than in `ci.yml`. `ci.yml` does run one
+  # browser check on every pull request now (the viewport matrix), so the reason
+  # is no longer "no browsers on pushes" — it is that this one needs a build
+  # with a stub Supabase configuration, which the ordinary build is not. The
+  # cost is that a credential regression is caught at candidate time rather than
+  # on the PR that caused it; `tests/credential-flow.test.js` covers the form's
+  # shape on every push. F-112 holds what would move it.
   auth-flow:
     name: auth flow (chromium)
     runs-on: ubuntu-latest

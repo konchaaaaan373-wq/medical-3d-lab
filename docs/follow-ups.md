@@ -762,25 +762,33 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
   そこに無いものは全シートで 12px 未満を許さない。(a) なら、
   なぜ 2 枚だけなのかがテストのコメントに書いてある
 
-### F-112 ブラウザ検証 5 本が CI の外にある — P2（2026-09-15）
+### F-112 ブラウザ検証のうち 4 本がまだ CI の外 — P2（2026-09-15）
 
-`verify:ui` / `verify:auth` / `verify:anatomy` / `verify:disease` /
-`verify:patient` は**どれも PR CI で走りません**（後ろ 3 本はどの workflow からも
-走りません）。private のあいだは Actions の分数が理由でしたが、**public になり
-その理由は消えました**（F-100）。
+**2026-09-15 に (b) を採りました: `verify:ui` だけを PR CI に入れる。**
+`ci.yml` に `verify-ui` job（Chromium 1 エンジン）が増えています。
+`tests/viewports.test.js` の方針テストは**消さずに書き換え**ました——
+「PR では一切ブラウザを起動しない」から
+**「1 エンジン・1 チェックだけ、毎 PR」**へ。
 
-理由が消えたことと、入れるべきことは別です。**ユニットテストが全緑のまま
-ブラウザ検証だけが実バグを見つけた実績が、少なくとも 4 件あります**——
-`billingNotice` の TDZ、ダイアログのフォーカストラップ、zoom のピボット（F-101 の
-device pass）、そして `walkTabOrder` の予算と診断の混線（F-108）。
-一方で **PR CI でブラウザを起動しない方針は `tests/viewports.test.js` が
-守っており**、外すのは方針判断です。所要時間（現在 `ci.yml` は 1 分強）と、
-ブラウザ検証が持ち込む flake をどう扱うかを決める必要があります。
+理由: public 化で分数の制約が消え（F-100）、残る問いは
+「その時間に見合うか」でした。**`npm test` が全緑のまま main に入り、
+ブラウザ検証だけが見つけた不具合が 4 件**あります——`billingNotice` の TDZ、
+ダイアログのフォーカストラップ、zoom の支点、`walkTabOrder` が大きいページを
+トラップと報告した件。**うち 2 件が `verify:ui` の検出**です。
 
-- **決めること**: (a) 現状維持、(b) `verify:ui` だけ PR CI に入れる、
-  (c) 5 本とも入れる、(d) `workflow_dispatch` + 夜間 1 回
-- **完了の定義**: どれかに決め、(b)〜(d) なら `tests/viewports.test.js` の方針
-  テストを新しい方針に合わせて書き換える（消すのではなく）
+費用も測ってあります: `verify:ui` はローカルで **229 秒**、既存の
+`test-and-build` は約 65 秒。**別 job にした**ので、ユニットテストの失敗が
+ブラウザのダウンロードを待たずに報告されます。
+
+**まだ外にある 4 本**（`verify:auth` / `verify:anatomy` / `verify:disease` /
+`verify:patient`）と **Firefox / WebKit** は candidate 時
+（`final-browser-validation.yml`）のままです。`verify:auth` は
+stub Supabase 設定でのビルドを必要とするので、通常ビルドでは動きません。
+
+- **再検討のきっかけ**: `verify-ui` job が flake を出し始める /
+  4 本のどれかが実バグを逃した / CI 時間が許容できなくなる
+- **完了の定義**: この項目は「4 本と 2 エンジンをどうするか」を持ち続けます。
+  動かすときは、同じように**方針テストを書き換えてから**動かす
 
 ### F-15 プレビューの e2e を CI に — P2（`#42`）
 

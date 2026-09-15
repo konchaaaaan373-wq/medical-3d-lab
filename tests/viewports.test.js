@@ -337,7 +337,42 @@ test('the viewport check supports every engine and the explicit final workflow d
     new URL('../.github/workflows/final-browser-validation.yml', import.meta.url),
     'utf8',
   );
-  assert.doesNotMatch(ci, /playwright install/, 'ordinary PR pushes do not start full browsers');
+  // What the workflow *runs*, with its comments off: a comment naming an engine
+  // is not a step starting one, and the comment above this job names the two
+  // that stay out.
+  const ciSteps = ci.replace(/#.*$/gm, '');
+
+  // Until 2026-09-15 this read "ordinary PR pushes do not start full browsers"
+  // and was held by `assert.doesNotMatch(ci, /playwright install/)`. The reason
+  // was Actions minutes on a private repository (F-100), not a view about
+  // browsers, and the repository is public now. The line moved rather than
+  // disappearing: **one engine, one check, on every pull request.**
+  assert.match(ciSteps, /playwright install --with-deps chromium/, 'PR CI drives Chromium');
+
+  // Named anywhere in those steps, not just straight after `--with-deps`: the
+  // first version anchored on that and let `--with-deps chromium firefox
+  // webkit` through untouched.
+  assert.doesNotMatch(
+    ciSteps,
+    /firefox|webkit/i,
+    'the other two engines stay at candidate time — three engines per push is a different decision'
+  );
+  assert.match(ciSteps, /npm run verify:ui/, 'and it is the viewport matrix that runs');
+  for (const other of ['verify:auth', 'verify:anatomy', 'verify:disease', 'verify:patient']) {
+    assert.doesNotMatch(
+      ciSteps,
+      new RegExp(`npm run ${other}`),
+      `${other} stays at candidate time; F-112 holds what would move it`
+    );
+  }
+
+  // The fast job stays fast. A failing unit test has to be reportable without
+  // waiting for a browser to download, which is why this is a second job and
+  // not four more minutes appended to the first.
+  const fastJob = ciSteps.slice(ciSteps.indexOf('  test-and-build:'), ciSteps.indexOf('  verify-ui:'));
+  assert.doesNotMatch(fastJob, /playwright/, 'test-and-build does not install a browser');
+  assert.match(ci, /\n  verify-ui:/, 'the browser check is its own job');
+
   assert.match(final, /workflow_dispatch:/, 'the full matrix requires an explicit candidate run');
   for (const engine of ['chromium', 'firefox', 'webkit']) {
     assert.ok(final.includes(engine), `the final workflow installs and runs ${engine}`);
