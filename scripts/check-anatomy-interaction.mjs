@@ -76,6 +76,7 @@
  */
 import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
@@ -412,14 +413,18 @@ try {
    * of different frames, and it produced four failures about selection on the
    * elbow that were really one about aim.
    *
-   * Two identical screenshots is the same definition of "settled" the capture
-   * uses, so a point measured against a settled frame is clicked against one.
+   * The same definition of "settled" the capture uses, and for the same reason
+   * it is a tolerance rather than an equality: SwiftShader's edge sampling
+   * jitters by a few dozen silhouette pixels indefinitely, so byte-equality
+   * reported "the view never stopped changing" about scene after scene that
+   * had (`lib/frames.mjs`). A point measured against a settled frame is
+   * clicked against one.
    */
   const settle = async (attempts = 16, gap = 250) => {
     let previous = null;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       const frame = await page.screenshot({ clip: box });
-      if (previous?.equals(frame)) return true;
+      if (previous && (await differingPixels(page, previous, frame)) <= settledPixels(box)) return true;
       previous = frame;
       await page.waitForTimeout(gap);
     }

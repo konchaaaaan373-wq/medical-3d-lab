@@ -41,6 +41,7 @@
  */
 import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
@@ -286,15 +287,21 @@ try {
   const captureSettled = async (path) => {
     const deadline = Date.now() + PATIENCE;
     let previous = null;
+    let closest = null;
     for (let attempt = 0; attempt < ATTEMPTS && Date.now() < deadline; attempt += 1) {
       const bytes = await page.screenshot({ clip: box });
-      if (previous?.equals(bytes) && (await paintedFraction(bytes)) > PAINTED_FRACTION) {
-        writeFileSync(path, bytes);
-        return attempt;
+      if (previous) {
+        const differing = await differingPixels(page, previous, bytes);
+        closest = closest === null ? differing : Math.min(closest, differing);
+        if (differing <= settledPixels(box) && (await paintedFraction(bytes)) > PAINTED_FRACTION) {
+          writeFileSync(path, bytes);
+          return attempt;
+        }
       }
       previous = bytes;
       await page.waitForTimeout(400);
     }
+    if (closest !== null) console.error(`    closest two frames still differed by ${closest} pixel(s)`);
     return null;
   };
 
