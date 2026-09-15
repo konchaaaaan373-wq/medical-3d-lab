@@ -1,11 +1,9 @@
 import {
-  EXPLORER_ROUTE,
   LANDING_ROUTE,
   sceneById,
-  sceneRoute,
   systemById,
 } from '../catalog/index.js';
-import { RELEASED_SCENES } from '../catalog/release.js';
+import { openModelDestination } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
@@ -15,9 +13,14 @@ import { inLanguage } from '../utils/language.js';
  *
  * A shared link to a disease model has to keep working as a link: somebody
  * arrives, and the page has to say what they were pointed at, that it is not
- * open yet, and where the models that *are* open live. An error page would do
- * none of those, and a silent redirect to the catalogue would lose the subject
- * they came for.
+ * open yet, and hand them one model that is. An error page would do none of
+ * those, and a silent redirect to the catalogue would lose the subject they
+ * came for.
+ *
+ * **One way out, and it is derived.** The page names no published model in its
+ * prose and keeps no list of them: `openModelDestination()` reads the public
+ * manifest, so what this page offers changes when the release changes and not
+ * when somebody remembers to edit a sentence here.
  *
  * Plain DOM, no WebGL: the whole point is that nothing is built here.
  *
@@ -42,10 +45,12 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
   const titleEn = scene?.titleEn ?? (route.kind === 'lab' ? 'Experimental Lab' : 'Medical 3D Lab');
   const titleJa = scene?.titleJa ?? (route.kind === 'lab' ? '実験モデル' : 'Medical 3D Lab');
 
-  // Three open models to land on rather than one, so the page is a way in and
-  // not just a dead end. Anything released will do; the first three in
-  // catalogue order are the brain atlas and two of the heart models.
-  const suggestions = RELEASED_SCENES.slice(0, 3);
+  // One way out, named by the manifest. This page used to offer three: a primary
+  // link to the Explorer, "Home", and a list headed "Open now" — which, with a
+  // single model released, was a list of one under a heading, pointing at the
+  // same place the primary link reached in two steps. Three controls for two
+  // destinations reads as three destinations.
+  const openModel = openModelDestination();
 
   const element = el('main', { class: 'locked-surface', role: 'main' }, [
     el('header', { class: 'locked-nav' }, [
@@ -61,10 +66,7 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
       tabindex: '-1',
       'data-skip-target': '',
     }, [
-      el('p', { class: 'locked-badge' }, [
-        el('span', { class: 'lang-en', text: 'TO BE UPDATED' }),
-        el('span', { class: 'lang-ja', text: 'TO BE UPDATED — 準備中' }),
-      ]),
+      el('p', { class: 'locked-badge' }, dual('In development', '開発中')),
       system
         ? el('p', { class: 'locked-system' }, dual(system.label, system.labelJa))
         : null,
@@ -78,49 +80,27 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
             el('span', { class: 'lang-ja', text: scene.descriptionJa }),
           ])
         : null,
-      el('p', { class: 'locked-copy' }, [
-        el('span', {
-          class: 'lang-en',
-          text:
-            'Medical 3D Lab is in beta, and the beta is the 3D anatomy of the brain and the heart. '
-            + 'The disease and physiology models — this one included — are still being built and are '
-            + 'not published yet. A model is opened once its geometry, its sources and its licence are '
-            + 'on the record and a publication decision names the exact file being served — not '
-            + 'before, because everything on screen is a claim.',
-        }),
-        el('span', {
-          class: 'lang-ja',
-          text:
-            'Medical 3D Lab は現在β版で、公開しているのは脳と心臓の3D解剖モデルです。'
-            + 'このモデルを含む病態・生理のモデルは開発中で、まだ公開していません。'
-            + 'ジオメトリの出典とライセンスを記録し、実際に配信しているファイルに結びつけた'
-            + '公開判断が揃ってから公開します。画面に出るものはすべて主張だからです。',
-        }),
-      ]),
+      // Two sentences, addressed to the reader. What stood here described the
+      // release process to itself — what a publication decision is, that
+      // everything on screen is a claim — and named the brain *and the heart*
+      // as published while the release opened only the brain. Both problems
+      // had the same shape: prose about the product, written by hand, next to
+      // a manifest that already knew the answer.
+      el('p', { class: 'locked-copy' }, dual(
+        'This model is still being built. It will open once its medical content and its asset licences have been checked.',
+        'このモデルは現在開発中です。医学的内容と素材ライセンスの確認後に公開します。'
+      )),
       el('div', { class: 'locked-actions' }, [
-        link(EXPLORER_ROUTE, 'Open the models that are ready', '公開中のモデルを見る', 'locked-link primary'),
-        link(LANDING_ROUTE, 'Home', 'ホーム'),
+        link(openModel.route, openModel.en, openModel.ja, 'locked-link primary'),
+        link(LANDING_ROUTE, 'Home', 'ホームへ'),
       ]),
-      suggestions.length
-        ? el('div', { class: 'locked-suggestions' }, [
-            el('p', { class: 'locked-suggestions-title' }, dual('Open now', 'いま見られるモデル')),
-            el('ul', { class: 'locked-suggestion-list' }, suggestions.map((released) =>
-              el('li', {}, [
-                el('a', { class: 'locked-suggestion', href: sceneRoute(released) }, [
-                  el('span', { class: 'lang-en', text: released.titleEn }),
-                  el('span', { class: 'lang-ja', text: released.titleJa }),
-                ]),
-              ])
-            )),
-          ])
-        : null,
     ].filter(Boolean)),
   ]);
 
   ui.classList.add('has-locked-surface');
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = `${titleEn} — to be updated / 準備中`;
+  document.title = `${titleEn} — in development / 開発中`;
 
   return {
     element,
