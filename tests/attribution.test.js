@@ -47,16 +47,25 @@ test('attribution: the heart does not credit the brain', () => {
   assert.ok(heart.some((entry) => /hubmap/i.test(entry.assetId)), 'it names the HuBMAP file it draws');
 });
 
-test('attribution: a candidate asset claims no licence decision', () => {
-  // The record has read a licence. The release gate has not assessed one, and
-  // printing an SPDX id would show a decision nobody has made.
+test('attribution: an adopted asset carries the decision a candidate could not', () => {
+  // This used to assert the opposite, and the assertion was right for what the
+  // heart then was: a candidate prints no SPDX id, no credit and no record,
+  // because the release gate had assessed nothing and showing a licence name
+  // would display a decision nobody had made. The heart was adopted on
+  // 2026-09-15, so the same rule now requires the other answer — and what must
+  // not happen is an adopted asset quietly keeping a candidate's blanks.
   const heart = attributionForScene('heart-anatomy');
-  const candidate = heart.find((entry) => !entry.released);
-  assert.ok(candidate, 'the heart asset is still a candidate');
-  assert.equal(candidate.licenseName, null);
-  assert.equal(candidate.credit, null);
-  assert.equal(candidate.record, null);
-  assert.match(candidate.note, /[Nn]ot adopted/, 'and it says so');
+  assert.ok(heart.length >= 2, 'both files the scene draws are credited');
+  for (const entry of heart) {
+    assert.equal(entry.released, true, `${entry.assetId} is still a candidate`);
+    assert.ok(entry.licenseName, `${entry.assetId} has no licence name`);
+    assert.ok(entry.credit, `${entry.assetId} has no credit line`);
+    assert.ok(entry.record, `${entry.assetId} names no record`);
+    assert.ok(entry.recordUrl, `${entry.assetId}: the record cannot be followed`);
+    // CC BY 4.0 asks a derivative to say it is one. The scene draws repaired
+    // files, and the credit a reader sees has to carry that.
+    assert.match(entry.credit, /Modified/, `${entry.assetId} does not say it was modified`);
+  }
 });
 
 test('attribution: every released asset a scene draws can be credited', () => {
@@ -100,11 +109,23 @@ test('attribution: a scene credits every asset it actually loads', async () => {
     new URL('../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js', import.meta.url),
     'utf8'
   );
-  const loaded = [...source.matchAll(/devAssetUrl\(\s*'([^']+)'/g)].map((match) => match[1]);
+  // Read off the served paths rather than off `devAssetUrl`, which is how the
+  // scene loaded these files while they were candidates. The question is the
+  // same one — is anything drawn that nobody is credited for — and it has to
+  // survive the files being adopted.
+  const loaded = [...source.matchAll(/assets\/heart\/([A-Za-z0-9_]+)\.glb/g)].map((match) => match[1]);
   assert.ok(loaded.length >= 2, 'the heart atlas loads more than one file');
+  const byFile = new Map(
+    ASSET_MANIFEST.filter((asset) => asset.output?.path?.includes('/heart/')).map((asset) => [
+      asset.output.path.split('/').pop().replace('.glb', ''),
+      asset.assetId,
+    ])
+  );
 
   const credited = new Set(attributionForScene('heart-anatomy').map((entry) => entry.assetId));
-  for (const assetId of loaded) {
+  for (const file of loaded) {
+    const assetId = byFile.get(file);
+    assert.ok(assetId, `${file}.glb is loaded but is in no manifest entry`);
     assert.ok(credited.has(assetId), `${assetId} is drawn but not credited`);
   }
 });

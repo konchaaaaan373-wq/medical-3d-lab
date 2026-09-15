@@ -166,6 +166,19 @@ export function assetDeliveryProblems({
     const notice = deliveryPathOf(asset.license?.decisionRecord);
     if (notice) accounted.set(notice, asset);
 
+    // So does a notice that discharges an obligation. The brain names the same
+    // file in both places, so for a while `decisionRecord` alone looked like
+    // the whole rule — but the two answer different questions. The decision
+    // record says why redistribution was judged allowed, and may well be a
+    // document that never ships; `satisfiedBy` is the thing a reader has to be
+    // *given*, and an obligation discharged by a file in `public/` is
+    // accounted for by exactly that file. The heart records the decision under
+    // docs/ and serves its attribution, which is the shape this missed.
+    for (const obligation of Array.isArray(asset.license?.obligations) ? asset.license.obligations : []) {
+      const served = deliveryPathOf(obligation?.satisfiedBy);
+      if (served) accounted.set(served, asset);
+    }
+
     const present = shipped.has(delivery);
     if (required.has(asset.assetId) && !present) {
       problems.push(`${asset.assetId}: a published model needs ${delivery}, and the build did not emit it`);

@@ -35,6 +35,13 @@ const CORRECT_PUBLIC = [
   'assets/brain/ATTRIBUTION.md',
   'assets/brain/draco/draco_decoder.wasm',
   'assets/brain/draco/draco_wasm_wrapper.js',
+  // The heart's two files and their notice. The notice is accounted for by the
+  // obligation it discharges rather than by a `decisionRecord` in `public/` —
+  // the heart records its licence decision under `docs/` — which is the case
+  // the brain could not show, because the brain names one file in both places.
+  'assets/heart/VH_M_Heart.glb',
+  'assets/heart/VH_M_Blood_Vasculature.glb',
+  'assets/heart/ATTRIBUTION.md',
   'social/brain-anatomy.png',
   'social/site.png',
   'social/cards.json',
@@ -68,6 +75,7 @@ test('asset delivery: the control — a correct build passes, shared files inclu
   // stops the check being tightened into something that fails on the decoder.
   for (const file of [
     'assets/brain/ATTRIBUTION.md', // the licence notice the manifest points at
+    'assets/heart/ATTRIBUTION.md', // a notice named by an obligation rather than by decisionRecord
     'assets/brain/draco/draco_decoder.wasm', // a declared shared runtime file
     'assets/brain/draco/draco_wasm_wrapper.js', // and its wrapper, declared too
     'social/site.png', // a link-preview card, owned by check-social-cards.js

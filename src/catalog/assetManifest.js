@@ -543,6 +543,477 @@ export const ASSET_MANIFEST = Object.freeze([
       derivativeTerms: 'ShareAlike: a modified redistribution must remain CC BY-SA 4.0 and keep the attribution.',
     },
   },
+  {
+    /**
+     * The heart file, **as modified here**.
+     *
+     * The source fails `formatValidation` with 408 degenerate vertex normals,
+     * and that gate takes 0 errors and 0 warnings at every scene status — so
+     * adopting the publisher's bytes could never open the release gate however
+     * carefully the failure was recorded. The two honest routes were a derived
+     * file or no heart in the beta; the derived file is what was decided, in
+     * docs/decisions/HEART-ASSET-ADOPTION.md, and this entry describes it.
+     *
+     * `output.sha256` is therefore *not* `sources[0].sha256`. That is the
+     * point of the entry: the thing shipped is a derivative, and the thing
+     * pinned is the derivative.
+     */
+    assetId: 'hubmap-vh-m-heart',
+    schemaVersion: 1,
+    kind: ASSET_KIND.MESH,
+    sourceType: ASSET_SOURCE_TYPE.REFERENCE_ATLAS,
+    format: 'glb',
+    organs: ['heart'],
+    structureScope:
+      'Gross cardiac anatomy as separately named surfaces: four chamber surfaces, the interventricular septum, ' +
+      'the four valves and five papillary muscles. No myocardial free wall, pericardium, chordae or conduction ' +
+      'system exists in the source, and none was added.',
+    source: {
+      name: 'HuBMAP Human Reference Atlas — 3D Reference Organ for Heart, Male v1.2 (VH_M_Heart.glb)',
+      url: 'https://github.com/hubmapconsortium/ccf-releases',
+      fileUrl:
+        'https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v1.2/models/VH_M_Heart.glb',
+      revision: 'b036a91aaf7234f462b1249d4a5f4fb0e982f412',
+      retrievedAt: '2026-09-09',
+      retrievedAtNote: null,
+      introducedAt: '2026-09-15',
+      introducedIn: 'a221a736c6d5d2a03739813bd7a53767b12d744f',
+    },
+    license: {
+      spdx: 'CC-BY-4.0',
+      url: 'https://creativecommons.org/licenses/by/4.0/',
+      attribution:
+        'Kristen Browne, HuBMAP Human Reference Atlas, 3D Reference Organ for Heart, Male v1.2 ' +
+        '(DOI 10.48539/HBM373.VSTV.568), CC BY 4.0. Modified: degenerate vertex normals repaired. ' +
+        'Derived from the Visible Human Male dataset, U.S. National Library of Medicine, NIH.',
+      redistribution: LICENSE_DECISION.ALLOWED,
+      commercialUse: LICENSE_DECISION.ALLOWED,
+      assessment: ASSESSMENT_BASIS.ENGINEERING,
+      assessedAt: '2026-09-15',
+      decisionRecord: 'docs/decisions/HEART-ASSET-ADOPTION.md',
+      decisionNote:
+        "The object's own upstream record states CC BY 4.0, which permits redistribution, commercial use and " +
+        'derivatives with attribution and an indication of change. The vasculature file was checked separately ' +
+        'rather than inferred from this one. Two limits are recorded rather than resolved: this is an engineering ' +
+        "reading of the publisher's stated licence, not a legal review, and the terms of the underlying Visible " +
+        'Human Male dataset were read only through secondary sources — the NLM pages are unreachable from the ' +
+        'environment this was assessed in. The NLM acknowledgment below is therefore given rather than reasoned away.',
+      obligations: [
+        {
+          id: 'attribution',
+          kind: OBLIGATION_KIND.ATTRIBUTION,
+          components: ['hubmap-ccf-heart'],
+          requirement: 'Credit the creator, the publisher, the DOI and the licence wherever the model is redistributed.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Served beside the asset; resolved into the scene by attributionForScene.',
+        },
+        {
+          id: 'modification-notice',
+          kind: OBLIGATION_KIND.ATTRIBUTION,
+          components: ['hubmap-ccf-heart'],
+          requirement:
+            'CC BY 4.0 requires a derivative to indicate that changes were made. The notice states which normals were ' +
+            'replaced, which triangles were removed, and that nothing else moved.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Same notice as the attribution.',
+        },
+        {
+          id: 'nlm-acknowledgment',
+          kind: OBLIGATION_KIND.ACKNOWLEDGMENT,
+          components: ['nlm-visible-human-male'],
+          requirement:
+            'Acknowledge the Visible Human Male dataset of the U.S. National Library of Medicine, NIH, as the source ' +
+            'the reference organ derives from. Assumed to be owed rather than concluded absent: NLM replaced its data ' +
+            'licence with Terms and Conditions in July 2019, but that reading rests on secondary sources here.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Same notice as the attribution.',
+        },
+      ],
+    },
+    components: [
+      {
+        id: 'hubmap-ccf-heart',
+        name: 'HuBMAP CCF — 3D Reference Organ for Heart, Male v1.2',
+        url: 'https://doi.org/10.48539/HBM373.VSTV.568',
+        license: 'CC-BY-4.0',
+        role: 'Every surface in the file: chambers, septum, valves and papillary muscles, with UBERON/FMA ids.',
+        additionalTerms:
+          'Creator Kristen Browne (ORCID 0000-0003-4066-7531); reviewer Shin Lin; publisher HuBMAP; funder NIH OT2OD026671.',
+      },
+      {
+        id: 'nlm-visible-human-male',
+        name: 'Visible Human Male (U.S. National Library of Medicine, NIH)',
+        url: 'https://www.nlm.nih.gov/research/visible/visible_human.html',
+        license: 'NLM Terms and Conditions',
+        role: 'The cadaveric imaging the reference organ was modelled from.',
+        additionalTerms:
+          'NLM replaced the Visible Human Data License with Terms and Conditions in July 2019 and no licence agreement ' +
+          'is required to obtain the data. Recorded from secondary sources: nlm.nih.gov was not reachable when this was ' +
+          'assessed, so the acknowledgment is given rather than reasoned away.',
+      },
+    ],
+    sources: [
+      {
+        path: 'https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v1.2/models/VH_M_Heart.glb',
+        sha256: 'b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70',
+        gitBlobSha: null,
+        bytes: 4071500,
+        verifiedAt: '2026-09-15T10:41:09Z',
+        note:
+          'Pinned and fetched by npm run assets:dev; the hash was re-verified on disk before the repair ran, and the ' +
+          'source is opened read-only by it. Not redistributed: what ships is the derived file below.',
+      },
+    ],
+    output: {
+      path: 'public/assets/heart/VH_M_Heart.glb',
+      sha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+      bytes: 4071496,
+    },
+    geometry: {
+      coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); shares the whole-body frame with the vasculature file',
+      units: 'glTF metres; the organ occupies x 0.124, y 0.105, z 0.105',
+      extent: 'x -0.043 to 0.081, y 0.423 to 0.529, z -0.015 to 0.090',
+      scaleNote:
+        'The scene applies one offset and one uniform scale to both files together at load, so no absolute size is claimed.',
+    },
+    pipeline: {
+      tools: ['Node (scripts/repair-candidate-gltf.mjs)'],
+      generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
+      steps: [
+        'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
+        'Here: 820 zero-area triangles and 4 exact duplicate faces removed, then the 408 degenerate vertex normals ' +
+          'replaced by the area-weighted mean of adjacent face normals, or at a fold by the largest adjacent face. ' +
+          'Vertex positions, vertex count, node names, hierarchy, ontology ids and materials are unchanged, and the ' +
+          'triangle count falls by exactly what was removed. Reproducible: npm run assets:repair:verify.',
+      ],
+    },
+    semanticParts: {
+      partIdSource: 'glTF node names carrying UBERON/FMA ontology ids, as published upstream',
+      mappingModule: 'src/data/heartAnatomy.js',
+      partCount: 14,
+    },
+    acceptedSimplifications: [
+      'Whether a chamber surface stands for the chamber cavity or for the wall around it is not established by the file, and is not asserted.',
+      'Ten of the vessel stumps are capped by the source; the caps are geometry, not anatomy.',
+    ],
+    knownDefects: [
+      'The source contains no myocardial free wall as a named part, so wall thickness cannot be read from it.',
+      'Five of the fourteen surfaces are not closed and manifold; enclosed volumes are reported only for the nine that are.',
+    ],
+    budget: {
+      triangles: 163295,
+      materials: 1,
+      textures: 0,
+      bytes: 4071496,
+      targetDevices: 'Desktop and current phones; counted with the vasculature file against the specimen-media bundle budget.',
+    },
+    qa: {
+      formatValidation: {
+        status: QA_STATUS.PASSED,
+        tool: 'Khronos glTF Validator (npm gltf-validator)',
+        toolVersion: '2.0.0-dev.3.10',
+        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+        checkedAt: '2026-09-15T10:42:00Z',
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        scope:
+          'The derived file, not the source. The source is INVALID with 408 ACCESSOR_VECTOR3_NON_UNIT errors and that ' +
+          'is recorded in docs/asset-qa/heart-hubmap-vh-m-heart.md; this gate is about what ships.',
+        reference: 'docs/asset-qa/measurements/normal-repair.json',
+      },
+      semanticIntegrity: {
+        status: QA_STATUS.PASSED,
+        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+        reference: 'tests/heart-anatomy.test.js',
+        scope:
+          'Fourteen meshes with fourteen distinct ontology ids, the part table the adapter reads, and the node names ' +
+          'and hierarchy held identical across the repair. A test of the file and the adapter, not of the anatomy.',
+      },
+      anatomyExpertReview: {
+        status: QA_STATUS.PENDING,
+        reference: 'docs/clinical-reviews/registry.json',
+        scope:
+          'No anatomist has judged this geometry, its labels or their Japanese terminology. The renders in ' +
+          'docs/asset-qa/heart-hubmap-vh-m-heart.md are an engineer looking at pictures.',
+      },
+      visualReview: {
+        status: QA_STATUS.PASSED,
+        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+        reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+        browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
+        viewport: '1280x800',
+        scene: 'heart-anatomy',
+        commit: '9f3c7769b25677452f699c91f431f8f18f9739fc',
+        reviewedAt: '2026-09-15',
+        scope:
+          'All six fixed viewpoints in both colour modes, and the interior with the chamber surfaces hidden. The ' +
+          'derived file draws the same 46 selectable structures as the source and is not distinguishable on screen.',
+      },
+      clinicianReview: {
+        status: QA_STATUS.PENDING,
+        reference: 'docs/clinical-reviews/registry.json',
+        scope: 'No clinician has reviewed this scene; the registry records it as pending and every surface says so.',
+      },
+    },
+    replacement: {
+      replaces: null,
+      rollback:
+        'git revert of the commit that added this file. The source stays pinned in src/catalog/devAssets.js and ' +
+        'npm run assets:repair rebuilds these exact bytes from it, so the derivative is reproducible rather than precious.',
+    },
+    release: {
+      status: RELEASE_STATUS.RELEASED,
+      note:
+        'Adopted on 2026-09-15 as a derived file, per docs/decisions/HEART-ASSET-ADOPTION.md. Releasable for an alpha ' +
+        'scene only: the expert and clinician reviews are pending, which is the same footing the brain atlas ships on.',
+    },
+    atlas: {
+      sourceObjectId:
+        'hubmapconsortium/ccf-releases: v1.2/models/VH_M_Heart.glb @ b036a91aaf7234f462b1249d4a5f4fb0e982f412 (HuBMAP HBM373.VSTV.568)',
+      derivativeTerms:
+        'CC BY 4.0: derivatives are permitted and must indicate that changes were made. No ShareAlike. The change is ' +
+        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json.',
+    },
+  },
+  {
+    /**
+     * The vasculature file, as modified here, and **the reason the heart scene
+     * needs two files at all**: the heart reference organ contains no great
+     * vessels, no coronary arteries and no cardiac veins. Those come from here,
+     * from the subtree the publisher itself groups as
+     * `VH_M_blood_vasculature_of_heart` — 37 of the file's 104 meshes. The
+     * other 67 are eye, abdominal and pelvic vessels: loaded, not drawn, and
+     * counted by the scene so the number is stated rather than hidden.
+     *
+     * Adopted with the heart file and not separately: the packet establishes
+     * that taking one without the other is not an option.
+     */
+    assetId: 'hubmap-vh-m-blood-vasculature',
+    schemaVersion: 1,
+    kind: ASSET_KIND.MESH,
+    sourceType: ASSET_SOURCE_TYPE.REFERENCE_ATLAS,
+    format: 'glb',
+    organs: ['heart'],
+    structureScope:
+      'The vessels of the heart: the great vessels and the arch branches, the coronary arteries, the cardiac veins ' +
+      'and the caval tributaries, as separately named surfaces with UBERON/FMA ids. The whole-body vessels in the ' +
+      'same file are outside the scope this scene draws.',
+    source: {
+      name: 'HuBMAP Human Reference Atlas — 3D Reference Organ for Blood Vasculature, Male v1.2 (VH_M_Blood_Vasculature.glb)',
+      url: 'https://github.com/hubmapconsortium/ccf-releases',
+      fileUrl:
+        'https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v1.2/models/VH_M_Blood_Vasculature.glb',
+      revision: 'b036a91aaf7234f462b1249d4a5f4fb0e982f412',
+      retrievedAt: '2026-09-09',
+      retrievedAtNote: null,
+      introducedAt: '2026-09-15',
+      introducedIn: 'a221a736c6d5d2a03739813bd7a53767b12d744f',
+    },
+    license: {
+      spdx: 'CC-BY-4.0',
+      url: 'https://creativecommons.org/licenses/by/4.0/',
+      attribution:
+        'Kristen Browne and Heidi Schlehlein, HuBMAP Human Reference Atlas, 3D Reference Organ for Blood Vasculature, ' +
+        'Male v1.2 (DOI 10.48539/HBM686.LBDQ.998), CC BY 4.0. Modified: degenerate vertex normals repaired. ' +
+        'Derived from the Visible Human Male dataset, U.S. National Library of Medicine, NIH.',
+      redistribution: LICENSE_DECISION.ALLOWED,
+      commercialUse: LICENSE_DECISION.ALLOWED,
+      assessment: ASSESSMENT_BASIS.ENGINEERING,
+      assessedAt: '2026-09-15',
+      decisionRecord: 'docs/decisions/HEART-ASSET-ADOPTION.md',
+      decisionNote:
+        "Checked against this object's own upstream record, which states CC BY 4.0 and its own DOI and creators — not " +
+        'inferred from the heart file, for the same reason the heart file is not inferred from this one. The same two ' +
+        'limits apply: an engineering reading rather than a legal review, and the underlying Visible Human Male terms ' +
+        'read only through secondary sources.',
+      obligations: [
+        {
+          id: 'attribution',
+          kind: OBLIGATION_KIND.ATTRIBUTION,
+          components: ['hubmap-ccf-vasculature'],
+          requirement: 'Credit the creators, the publisher, the DOI and the licence wherever the model is redistributed.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Served beside the asset; resolved into the scene by attributionForScene.',
+        },
+        {
+          id: 'modification-notice',
+          kind: OBLIGATION_KIND.ATTRIBUTION,
+          components: ['hubmap-ccf-vasculature'],
+          requirement:
+            'CC BY 4.0 requires a derivative to indicate that changes were made. The notice states which normals were ' +
+            'replaced, which triangles were removed, and that nothing else moved.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Same notice as the attribution.',
+        },
+        {
+          id: 'nlm-acknowledgment',
+          kind: OBLIGATION_KIND.ACKNOWLEDGMENT,
+          components: ['nlm-visible-human-male'],
+          requirement:
+            'Acknowledge the Visible Human Male dataset of the U.S. National Library of Medicine, NIH, as the source ' +
+            'the reference organ derives from. Assumed to be owed rather than concluded absent.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: 'public/assets/heart/ATTRIBUTION.md',
+          displayedVia: 'Same notice as the attribution.',
+        },
+      ],
+    },
+    components: [
+      {
+        id: 'hubmap-ccf-vasculature',
+        name: 'HuBMAP CCF — 3D Reference Organ for Blood Vasculature, Male v1.2',
+        url: 'https://doi.org/10.48539/HBM686.LBDQ.998',
+        license: 'CC-BY-4.0',
+        role: 'Every vessel surface in the file; this scene draws the 37 meshes of VH_M_blood_vasculature_of_heart.',
+        additionalTerms:
+          'Creators Kristen Browne (ORCID 0000-0003-4066-7531) and Heidi Schlehlein (ORCID 0000-0002-3333-5646); ' +
+          'reviewers Marc Halushka and Shin Lin; publisher HuBMAP; funder NIH OT2OD026671.',
+      },
+      {
+        id: 'nlm-visible-human-male',
+        name: 'Visible Human Male (U.S. National Library of Medicine, NIH)',
+        url: 'https://www.nlm.nih.gov/research/visible/visible_human.html',
+        license: 'NLM Terms and Conditions',
+        role: 'The cadaveric imaging the reference organ was modelled from.',
+        additionalTerms:
+          'NLM replaced the Visible Human Data License with Terms and Conditions in July 2019 and no licence agreement ' +
+          'is required to obtain the data. Recorded from secondary sources: nlm.nih.gov was not reachable when this was ' +
+          'assessed, so the acknowledgment is given rather than reasoned away.',
+      },
+    ],
+    sources: [
+      {
+        path: 'https://raw.githubusercontent.com/hubmapconsortium/ccf-releases/b036a91aaf7234f462b1249d4a5f4fb0e982f412/v1.2/models/VH_M_Blood_Vasculature.glb',
+        sha256: 'a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d',
+        gitBlobSha: null,
+        bytes: 7436204,
+        verifiedAt: '2026-09-15T10:41:09Z',
+        note:
+          'Pinned and fetched by npm run assets:dev; the hash was re-verified on disk before the repair ran, and the ' +
+          'source is opened read-only by it. Not redistributed: what ships is the derived file below.',
+      },
+    ],
+    output: {
+      path: 'public/assets/heart/VH_M_Blood_Vasculature.glb',
+      sha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+      bytes: 7436176,
+    },
+    geometry: {
+      coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); measured to share the whole-body frame with the heart file',
+      units: 'glTF metres; the file spans x 0.236, y 0.872, z 0.187 because it reaches from the head to the pelvis',
+      extent: 'x -0.112 to 0.124, y -0.043 to 0.829, z -0.091 to 0.097',
+      scaleNote:
+        'The scale is taken from the heart file and applied to both together; the two are not normalised separately, ' +
+        'which is what keeps the vessels where they meet the heart.',
+    },
+    pipeline: {
+      tools: ['Node (scripts/repair-candidate-gltf.mjs)'],
+      generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
+      steps: [
+        'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
+        'Here: 26 zero-area triangles and 5 exact duplicate faces removed, then the 33 degenerate vertex normals ' +
+          'replaced the same way as in the heart file. Vertex positions, vertex count, node names, hierarchy, ontology ' +
+          'ids and materials are unchanged. Reproducible: npm run assets:repair:verify.',
+      ],
+    },
+    semanticParts: {
+      partIdSource: 'glTF node names carrying UBERON/FMA ontology ids, as published upstream',
+      mappingModule: 'src/data/heartAnatomy.js',
+      partCount: 104,
+    },
+    acceptedSimplifications: [
+      'The 67 meshes outside the heart subtree are loaded and not drawn; the scene reports how many rather than pretending they are absent.',
+      'Whether each vessel surface is a lumen or an outer wall is not established by the file, and is not asserted.',
+    ],
+    knownDefects: [
+      'One node disagrees with itself: VH_M_left_anterior_descending_artery carries FMA:8636, which names a branch of ' +
+        'the pulmonary artery. Left unchanged and surfaced to the reader in both languages rather than silently relabelled.',
+      'No mesh is named "circumflex"; two meshes share FMA:3860, which is a vocabulary collision rather than a duplicated structure.',
+    ],
+    budget: {
+      triangles: 359567,
+      materials: 3,
+      textures: 0,
+      bytes: 7436176,
+      targetDevices:
+        'Desktop and current phones. 7.4 MB to serve 37 drawn meshes is the cost of not modifying the file further; ' +
+        'trimming the unused subtree would be a second, larger change to a third party\'s data and was deliberately not made.',
+    },
+    qa: {
+      formatValidation: {
+        status: QA_STATUS.PASSED,
+        tool: 'Khronos glTF Validator (npm gltf-validator)',
+        toolVersion: '2.0.0-dev.3.10',
+        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        checkedAt: '2026-09-15T10:42:00Z',
+        errors: 0,
+        warnings: 0,
+        infos: 0,
+        scope:
+          'The derived file, not the source. The source is INVALID with 33 ACCESSOR_VECTOR3_NON_UNIT errors, recorded ' +
+          'in docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md.',
+        reference: 'docs/asset-qa/measurements/normal-repair.json',
+      },
+      semanticIntegrity: {
+        status: QA_STATUS.PASSED,
+        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        reference: 'tests/heart-anatomy.test.js',
+        scope:
+          'The 37 heart-vessel meshes the adapter names, their ontology ids, and the node names and hierarchy held ' +
+          'identical across the repair. A test of the file and the adapter, not of the anatomy.',
+      },
+      anatomyExpertReview: {
+        status: QA_STATUS.PENDING,
+        reference: 'docs/clinical-reviews/registry.json',
+        scope:
+          'No anatomist has judged these surfaces or their labels — including the FMA:8636 disagreement above, which ' +
+          'is reported to the reader rather than resolved.',
+      },
+      visualReview: {
+        status: QA_STATUS.PASSED,
+        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+        browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
+        viewport: '1280x800',
+        scene: 'heart-anatomy',
+        commit: '9f3c7769b25677452f699c91f431f8f18f9739fc',
+        reviewedAt: '2026-09-15',
+        scope:
+          'Rendered with the heart file at all six fixed viewpoints in both colour modes; the vessels sit where they ' +
+          'meet the heart and the derived file is not distinguishable from the source on screen.',
+      },
+      clinicianReview: {
+        status: QA_STATUS.PENDING,
+        reference: 'docs/clinical-reviews/registry.json',
+        scope: 'No clinician has reviewed this scene; the registry records it as pending and every surface says so.',
+      },
+    },
+    replacement: {
+      replaces: null,
+      rollback:
+        'git revert of the commit that added this file. The source stays pinned in src/catalog/devAssets.js and ' +
+        'npm run assets:repair rebuilds these exact bytes from it.',
+    },
+    release: {
+      status: RELEASE_STATUS.RELEASED,
+      note:
+        'Adopted on 2026-09-15 with the heart file, as a derived file, per docs/decisions/HEART-ASSET-ADOPTION.md. ' +
+        'Releasable for an alpha scene only: the expert and clinician reviews are pending.',
+    },
+    atlas: {
+      sourceObjectId:
+        'hubmapconsortium/ccf-releases: v1.2/models/VH_M_Blood_Vasculature.glb @ b036a91aaf7234f462b1249d4a5f4fb0e982f412 (HuBMAP HBM686.LBDQ.998)',
+      derivativeTerms:
+        'CC BY 4.0: derivatives are permitted and must indicate that changes were made. No ShareAlike. The change is ' +
+        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json.',
+    },
+  },
 ]);
 
 const BY_ID = new Map(ASSET_MANIFEST.map((asset) => [asset.assetId, asset]));

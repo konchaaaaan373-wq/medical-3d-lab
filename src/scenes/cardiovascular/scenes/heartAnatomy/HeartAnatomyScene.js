@@ -4,7 +4,6 @@ import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { damp } from '../../../../utils/math.js';
-import { devAssetUrl } from '../../../../catalog/devAssets.js';
 import {
   HEART_ANATOMY_META,
   HEART_AXES,
@@ -66,9 +65,22 @@ const PORTRAIT_ASPECT = 0.85;
 const HEART_PART_IDS = new Set(HEART_PARTS.map((part) => part.id));
 
 const BASE_URL = import.meta.env?.BASE_URL ?? './';
-/** Candidates, fetched by `npm run assets:dev` and served in dev and preview only. */
-const HEART_URL = devAssetUrl('hubmap-vh-m-heart', BASE_URL);
-const VESSEL_URL = devAssetUrl('hubmap-vh-m-blood-vasculature', BASE_URL);
+/**
+ * The adopted files, served from `public/` like the brain atlas.
+ *
+ * These are **derivatives**, not the publisher's bytes: the sources fail glTF
+ * validation on degenerate vertex normals, and that gate takes zero errors at
+ * every scene status, so shipping them was never possible however carefully the
+ * failure was written down. `scripts/repair-candidate-gltf.mjs` replaced those
+ * normals and nothing else; `src/catalog/assetManifest.js` pins the hashes of
+ * what is here and `public/assets/heart/ATTRIBUTION.md` states the change.
+ *
+ * The sources stay pinned in `src/catalog/devAssets.js` — the record of what
+ * was examined is not deleted by adopting a file derived from it, and the
+ * repair rebuilds these exact bytes from them.
+ */
+const HEART_URL = `${BASE_URL}assets/heart/VH_M_Heart.glb`;
+const VESSEL_URL = `${BASE_URL}assets/heart/VH_M_Blood_Vasculature.glb`;
 
 /**
  * The subtree of the vasculature file this scene takes.
