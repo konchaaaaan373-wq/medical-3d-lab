@@ -25,7 +25,11 @@ import {
   isSceneReleased,
   resolveDevUnlock,
 } from '../src/catalog/release.js';
-import { PUBLIC_MANIFEST, publicManifestProblems } from '../src/catalog/publicManifest.js';
+import {
+  PUBLIC_MANIFEST,
+  openModelDestination,
+  publicManifestProblems,
+} from '../src/catalog/publicManifest.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
@@ -495,9 +499,13 @@ test('beta release: a locked deep link still answers as a page', () => {
     const surface = createLockedSurface({ ui, route: resolveRoute('#/copd') });
     const text = collect(surface.element).join(' ');
 
-    assert.match(text, /TO BE UPDATED/);
-    assert.match(text, /準備中/);
+    assert.match(text, /開発中/);
+    assert.match(text, /In development/);
     assert.match(text, /COPD/, 'the page says what the link pointed at');
+
+    // Two sentences, addressed to the reader — not the release process
+    // explained to itself.
+    assert.match(text, /このモデルは現在開発中です。医学的内容と素材ライセンスの確認後に公開します。/);
 
     // Every link it offers has to be a route the beta actually opens.
     const hrefs = links(surface.element);
@@ -505,7 +513,15 @@ test('beta release: a locked deep link still answers as a page', () => {
     for (const href of hrefs) {
       assert.equal(isRouteReleased(resolveRoute(href)), true, href);
     }
-    assert.ok(hrefs.includes('#/organs'), 'the way out is the open catalogue');
+
+    // One way out, plus home, plus the brand. The page used to offer the
+    // Explorer, "Home" and a list headed "Open now" — three controls reaching
+    // two destinations, one of them via a catalogue of a single entry.
+    assert.deepEqual(
+      [...new Set(hrefs)].sort(),
+      [openModelDestination().route, '#/'].sort(),
+      'exactly one model destination and home'
+    );
   } finally {
     restoreDocument();
   }
@@ -519,7 +535,7 @@ test('beta release: the locked route names the surface even when it is not a sce
     const ui = new FakeElement('div');
     const surface = createLockedSurface({ ui, route: resolveRoute('#/lab') });
     const text = collect(surface.element).join(' ');
-    assert.match(text, /TO BE UPDATED/);
+    assert.match(text, /開発中/);
     assert.match(text, /Experimental Lab/);
   } finally {
     restoreDocument();

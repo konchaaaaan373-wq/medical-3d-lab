@@ -158,50 +158,6 @@
   background: var(--accent-hover);
 }
 
-.locked-suggestions {
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-
-.locked-suggestions-title {
-  display: flex;
-  flex-direction: column;
-  margin: 0 0 10px;
-  color: var(--ink-faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.locked-suggestion-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.locked-suggestion {
-  display: inline-flex;
-  flex-direction: column;
-  min-height: 38px;
-  justify-content: center;
-  padding: 6px 11px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  color: var(--ink-dim);
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.locked-suggestion:hover {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
-}
-
 .locked-surface a:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;

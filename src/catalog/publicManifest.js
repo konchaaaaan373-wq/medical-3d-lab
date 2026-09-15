@@ -22,7 +22,7 @@
  *
  * Pure data derived from pure data: no DOM, no `three`, no filesystem.
  */
-import { SCENES, sceneRoute } from './index.js';
+import { EXPLORER_ROUTE, SCENES, sceneRoute } from './index.js';
 import { modelCardForScene } from './clinicalReview.js';
 import { RELEASE_CHANNEL, RELEASED_SCENES } from './release.js';
 import { organById } from './taxonomy.js';
@@ -115,6 +115,38 @@ export const PUBLIC_MANIFEST = Object.freeze({
   organs: PUBLIC_ORGANS,
   count: PUBLIC_MODELS.length,
 });
+
+/**
+ * Where "show me a model that is open" has to go, and what to call it.
+ *
+ * The Explorer is the natural answer and is the wrong one while the release
+ * opens a single model: a list of one is a page whose only job is to be passed
+ * through, and a visitor who has just been told "not this one, but something
+ * is" should arrive at the something. So one open model links straight to it,
+ * named by its organ; two or more and the choice is real, so it goes to the
+ * Explorer.
+ *
+ * Derived, never written down. The day `heart-anatomy` opens, this becomes the
+ * Explorer on its own and no surface is edited — which is the point, because
+ * the surface that used to answer this question did it by naming the brain and
+ * the heart in a sentence, and the sentence was wrong for as long as only one
+ * of them was open.
+ *
+ * @param {typeof PUBLIC_MANIFEST} [manifest]
+ * @returns {{route:string, en:string, ja:string}}
+ */
+export function openModelDestination(manifest = PUBLIC_MANIFEST) {
+  const [only] = manifest.models;
+  if (manifest.count !== 1 || !only) {
+    return { route: EXPLORER_ROUTE, en: 'See the models that are open', ja: '公開中のモデルを見る' };
+  }
+  const organ = organById(only.organId);
+  return {
+    route: only.route,
+    en: `Open the 3D ${(organ?.label ?? only.titleEn).toLowerCase()} model`,
+    ja: `${organ?.labelJa ?? only.titleJa}の3Dモデルを見る`,
+  };
+}
 
 /** @param {string} sceneId */
 export const publicModelById = (sceneId) =>
