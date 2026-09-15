@@ -180,7 +180,12 @@ try {
       await context.close();
     }
   }
-  await driveKeyboard();
+  // Once per published organ, not once. The hero opens on the first organ in
+  // the rotation, so a single run only ever exercised that one — and on
+  // 2026-09-15 that let a published heart reach the hero without
+  // `selectAtCanvasPoint`, which is the method Enter here calls. The drive was
+  // green the whole time because it never opened the heart. F-121.
+  for (const organ of await publishedOrgans()) await driveKeyboard(organ);
 } finally {
   await browser.close();
   closeServer();
@@ -195,13 +200,45 @@ try {
  * page, that Enter names something, that Escape lets go of it, and that the aim
  * is actually drawn — an aim nobody can see is not an aim.
  */
-async function driveKeyboard() {
+/**
+ * The organs the hero actually offers, read off the page rather than assumed.
+ *
+ * With one published model the chooser is not drawn at all — there is nothing
+ * to choose between — so an empty list means "one organ, whichever the hero
+ * opened on", and the keyboard runs once against that.
+ */
+async function publishedOrgans() {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
-  page.on('pageerror', (error) => problems.push(`keyboard: page error: ${error.message}`));
   try {
     await page.goto(base, { waitUntil: 'load' });
     await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
+    const organs = await page.$$eval('.landing-demo-state', (nodes) =>
+      nodes.map((node) => node.dataset.organ).filter(Boolean)
+    );
+    return organs.length ? organs : [null];
+  } finally {
+    await context.close();
+  }
+}
+
+/** @param {string|null} organ which organ to put up first, or null for the default */
+async function driveKeyboard(organ) {
+  const who = organ ? `keyboard (desktop, ${organ})` : 'keyboard (desktop)';
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await context.newPage();
+  page.on('pageerror', (error) => problems.push(`${who}: page error: ${error.message}`));
+  try {
+    await page.goto(base, { waitUntil: 'load' });
+    await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
+    if (organ) {
+      const chooser = page.locator(`.landing-demo-state[data-organ="${organ}"]`);
+      if (await chooser.count()) {
+        await chooser.first().click();
+        // The viewport goes back to loading while the other organ arrives.
+        await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
+      }
+    }
     await sleep(600);
 
     const card = page.locator('.landing-demo-structure').first();
@@ -220,7 +257,7 @@ async function driveKeyboard() {
         document.activeElement?.classList?.contains('landing-demo-viewport') ?? false);
     }
     if (!reached) {
-      problems.push('keyboard: the 3D viewport is not reachable with the Tab key');
+      problems.push(`${who}: the 3D viewport is not reachable with the Tab key`);
       return;
     }
 
@@ -230,21 +267,21 @@ async function driveKeyboard() {
       const style = getComputedStyle(node, '::after');
       return { content: style.content, width: style.width };
     });
-    if (aim.content === 'none') problems.push('keyboard: the focused viewport draws no aim');
+    if (aim.content === 'none') problems.push(`${who}: the focused viewport draws no aim`);
 
     await page.keyboard.press('Enter');
     await sleep(400);
     const pinned = await named();
     const state = await card.getAttribute('data-state');
     if (state !== 'pinned') {
-      problems.push(`keyboard: Enter did not name the structure in the middle (${state})`);
+      problems.push(`${who}: Enter did not name the structure in the middle (${state})`);
     }
     if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-1-enter.png') });
 
     await page.keyboard.press('Escape');
     await sleep(400);
     if ((await card.getAttribute('data-state')) !== 'hint') {
-      problems.push('keyboard: Escape did not clear the name Enter gave');
+      problems.push(`${who}: Escape did not clear the name Enter gave`);
     }
 
     // Turning the model with the arrows and asking again is the whole loop: a
@@ -256,7 +293,7 @@ async function driveKeyboard() {
     await sleep(400);
     const afterTurning = await named();
     if ((await card.getAttribute('data-state')) !== 'pinned') {
-      problems.push('keyboard: Enter named nothing after the model was turned');
+      problems.push(`${who}: Enter named nothing after the model was turned`);
     }
     if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-2-turned.png') });
 
@@ -285,7 +322,7 @@ async function driveKeyboard() {
     if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-3-handoff.png') });
 
     observed.push({
-      device: 'keyboard (desktop)',
+      device: who,
       handedOver: arrivedAt,
       tapped: pinned,
       afterRotate: afterTurning,

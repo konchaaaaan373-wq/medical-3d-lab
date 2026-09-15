@@ -611,27 +611,6 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
 
-### F-121 hero の入力検証は、rotation の 1 つ目しか触らない — P2（2026-09-15）
-
-`npm run verify:hero-input` は 4 通り（iPhone 13 / Pixel 5 / iPad Mini / keyboard）を
-回しますが、**出力の全行が脳の構造名です**（`中側頭回 …`）。
-`featuredHeroOrgan` が `models[0]` を返し、hero はそこで開くので、
-**ドライブは 2 つ目の臓器に決して到達しません**。
-
-これが実害を出しました。心臓は `selectAtCanvasPoint` を持たないまま公開され、
-同日に hero rotation に入りました。hero の Enter は
-`scene.selectAtCanvasPoint?.(…)` という optional call なので、
-**心臓が出る日は Enter が何もせず、何も言いません**でした。
-`verify:hero-input` は緑のままです——触っていないからです。
-
-- やること: rotation の各臓器に対して繰り返す。hero には chooser があるので
-  （2 モデル公開で初めて描画された）、選んでから同じ検証を回せます
-- いまの代替: `tests/heart-anatomy.test.js` と
-  `tests/organ-anatomy-scenes.test.js` が「全シーンがこのメソッドを持つ」を
-  固定しています（**修正前のコードで落ちることを確認済み**）。
-  ただしこれは存在の検査であって、ブラウザでの挙動の検査ではありません
-- 完了の定義: `verify:hero-input` の出力に、公開中の各臓器の構造名が現れること
-
 ### F-120 `introducedIn` は squash merge の repo では誰も到達できない — P2（2026-09-15）
 
 PR #99 のレビュー（Codex, P2）が心臓の `source.introducedIn` を「到達不能」と
@@ -2481,6 +2460,22 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 ---
 
 ## Resolved
+
+- **F-121 hero の入力検証は rotation の 1 つ目しか触らない** — 解決（2026-09-15）。
+  `scripts/check-hero-input.mjs` が hero の chooser を読んで
+  **公開中の臓器ごとに 1 回ずつ**キーボード操作を回すようにしました
+  （`publishedOrgans()` が `.landing-demo-state[data-organ]` を列挙し、
+  chooser が無い＝公開 1 件なら従来どおり 1 回）。問題文にも撮影ファイル名にも
+  臓器名が入るので、どちらで落ちたか出力だけで分かります。
+  実測: **4 run → 5 run**。心臓の行が初めて現れました——
+  `keyboard (desktop, heart): Tab reaches the model, Enter named "右心室 …",
+  Escape cleared it, after turning Enter named "左心室 …", and the card's link
+  opened the full model on "左心室"`。
+  **計器が目的のバグを捕まえることを確認済み**: `HeartAnatomyScene` の
+  `selectAtCanvasPoint` を改名して build し直すと、心臓の Enter 2 件だけが赤くなり
+  （脳は緑のまま）、元に戻すと 5 run すべて緑に戻ります。
+  これで `docs/beta-publication/heart-anatomy.md` のキーボード項目は
+  実ブラウザの結果になりました（それまでは存在検査のみ）。
 
 - **F-119 39 の臓器シーンに「隠す」が無い** — 解決（2026-09-15）。
   `OrganAnatomyScene` に `manualHidden` を足し、`_applyLayers` の
