@@ -896,3 +896,49 @@ test('beta gap: what is left is read from the gate, not guessed from a substring
     'a row with no remaining problems claimed the decision is what is missing'
   );
 });
+
+test("a decision's scope names exactly what the browser drive is held to", () => {
+  // Three times on 2026-09-15 a publication record was corrected while the
+  // matching `scope.structures` in BETA_PUBLICATION_DECISIONS was left behind,
+  // still asserting structures a browser run had just disproved. The claim
+  // lives in two places, so the two are tied together here.
+  //
+  // **Not to the record's prose.** The first version of this test asked that
+  // every scope entry appear somewhere in the decision's markdown, and it could
+  // not fail: the corrected record *quotes the old names* while explaining that
+  // they were wrong, so the stale scope matched it word for word. Proved by
+  // restoring the stale scope — the test stayed green.
+  //
+  // So it ties to `SCENE_POINTS` instead, the authored tour that
+  // `verify:anatomy` holds the drive to: a named point fails the run if it
+  // names anything else. That makes this the same claim checked in a browser,
+  // rather than a second copy of it in prose. The script opens a browser at
+  // import, so its source is read as text — the same shape
+  // `tests/derived-asset-pipeline.test.js` uses for the repair script.
+  const source = readFileSync('scripts/check-anatomy-interaction.mjs', 'utf8');
+
+  /** The names authored for one scene's tour, or null when it has none. */
+  const tourNames = (sceneId) => {
+    const open = source.indexOf(`'${sceneId}': [`);
+    if (open === -1) return null;
+    const block = source.slice(open, source.indexOf('\n  ],', open));
+    const names = [...block.matchAll(/\[\s*[\d.]+\s*,\s*[\d.]+\s*,\s*'([^']+)'/g)].map((m) => m[1]);
+    return names.length ? names : null;
+  };
+
+  let tied = 0;
+  for (const decision of BETA_PUBLICATION_DECISIONS) {
+    const names = tourNames(decision.sceneId);
+    // A scene with no named tour is exactly the gap F-123 records; it is not
+    // asserted here, because there is nothing machine-checked to assert against.
+    if (!names) continue;
+    tied += 1;
+    assert.deepEqual(
+      [...(decision.scope?.structures ?? [])].sort(),
+      [...names].sort(),
+      `${decision.sceneId}: the publication decision's scope and the tour verify:anatomy holds ` +
+        'the drive to name different structures'
+    );
+  }
+  assert.ok(tied > 0, 'no published scene has a named tour to tie the scope to');
+});
