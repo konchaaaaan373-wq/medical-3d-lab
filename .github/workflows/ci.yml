@@ -75,6 +75,14 @@ jobs:
       # attempt spent four review rounds on exactly them. About 40 seconds, most
       # of it waiting out a 12-second backstop on purpose.
       - run: npm run verify:departure
+      # The paid surfaces, which nobody could look at until now. A second build,
+      # because the entitlements are granted by `VITE_ALLOW_PREVIEW=1` and a
+      # production bundle has no such capability — see
+      # `src/access/previewGrants.js`. What it guards is the sentences saying
+      # what a model may be used for: one of them shipped at 9.5px on the
+      # education guide, and it was invisible because the surface was.
+      - run: npm run build:preview
+      - run: npm run verify:gated -- --dist dist-preview
       - uses: actions/upload-artifact@v4
         if: always()
         with:
