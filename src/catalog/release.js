@@ -699,11 +699,26 @@ function publicationRecordProblems(id, {
  */
 export function betaPublicationGap(options = {}) {
   const { scenes = SCENES } = options;
+  // A supplied catalogue has to be the one the gate is asked about too.
+  //
+  // It was not: rows were filtered and labelled from `scenes` while
+  // `publicationRecordProblems` resolved the id through the global catalogue.
+  // Hand it a clone of `lung-anatomy` marked `prototype` and the row said
+  // `status: 'prototype'` and `decisionIsAllThatIsLeft: true` — the prototype
+  // refusal missing, because the gate had been asked about the real alpha
+  // scene. A survey whose own injection point disagrees with its answers is
+  // worse than one that has none.
+  //
+  // `resolveScene` passed by the caller still wins; this only supplies the
+  // default that matches `scenes`.
+  const supplied = new Map(scenes.map((scene) => [scene.id, scene]));
+  const resolveScene =
+    options.resolveScene ?? ((id) => supplied.get(id) ?? sceneById(id));
   return scenes
     .filter((scene) => !BETA_ANATOMY_CANDIDATES.includes(scene.id))
     .filter((scene) => anatomyClaimProblems(scene, options).length === 0)
     .map((scene) => {
-      const remaining = publicationRecordProblems(scene.id, options);
+      const remaining = publicationRecordProblems(scene.id, { ...options, resolveScene });
       return {
         sceneId: scene.id,
         status: scene.status,

@@ -942,3 +942,35 @@ test("a decision's scope names exactly what the browser drive is held to", () =>
   }
   assert.ok(tied > 0, 'no published scene has a named tour to tie the scope to');
 });
+
+test('beta gap: a supplied catalogue is the one the gate is asked about', () => {
+  // The bug: rows were filtered and labelled from `scenes`, but the gate
+  // resolved the id through the global catalogue. So a scene supplied as a
+  // prototype was labelled `prototype` in the row and judged as the real alpha
+  // scene in the same row — the prototype refusal missing, and "the decision is
+  // all that is left" reported for something that is also a prototype.
+  const real = sceneById(betaPublicationGap()[0].sceneId);
+  const [row] = betaPublicationGap({ scenes: [{ ...real, status: 'prototype' }] });
+
+  assert.equal(row.status, 'prototype', 'the row is labelled from the supplied scene');
+  assert.ok(
+    row.remaining.some((line) => /Prototype/.test(line)),
+    `the supplied prototype status did not reach the gate: ${JSON.stringify(row.remaining)}`
+  );
+  assert.equal(
+    row.decisionIsAllThatIsLeft,
+    false,
+    'a prototype was reported as needing only a decision'
+  );
+
+  // And the injection is a default, not an override: an explicit resolveScene
+  // still decides, which is what the gate's other tests rely on.
+  const [explicit] = betaPublicationGap({
+    scenes: [{ ...real, status: 'prototype' }],
+    resolveScene: () => real,
+  });
+  assert.ok(
+    !explicit.remaining.some((line) => /Prototype/.test(line)),
+    'an explicitly supplied resolveScene was ignored'
+  );
+});

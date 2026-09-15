@@ -225,6 +225,10 @@ async function publishedOrgans() {
 /** @param {string|null} organ which organ to put up first, or null for the default */
 async function driveKeyboard(organ) {
   const who = organ ? `keyboard (desktop, ${organ})` : 'keyboard (desktop)';
+  // Evidence from one organ must not overwrite another's. Without this every
+  // iteration wrote `keyboard-1-enter.png`, so with two published organs only
+  // the last organ's frames survived — and the F-121 record said the opposite.
+  const shotName = (step) => (organ ? `keyboard-${organ}-${step}.png` : `keyboard-${step}.png`);
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();
   page.on('pageerror', (error) => problems.push(`${who}: page error: ${error.message}`));
@@ -235,7 +239,25 @@ async function driveKeyboard(organ) {
       const chooser = page.locator(`.landing-demo-state[data-organ="${organ}"]`);
       if (await chooser.count()) {
         await chooser.first().click();
-        // The viewport goes back to loading while the other organ arrives.
+        // Wait for *this* organ to be ready, not for "something is ready".
+        //
+        // The first version waited on `.landing-demo[data-viewport='ready']`
+        // again, which the organ that was already on screen still satisfies:
+        // the swap is asynchronous, so the wait could return before the click
+        // had taken effect at all and the fixed delay below was the only thing
+        // standing between the check and pressing Enter on the previous organ.
+        // A check that names the wrong organ's structures, or a slower build
+        // that makes it flaky, is exactly what F-121 was about — and CLAUDE.md
+        // already says to wait for the state rather than for a duration.
+        //
+        // `data-organ` is written on the viewport only once a build has
+        // succeeded, so the conjunction cannot be satisfied by the outgoing
+        // organ: either the attribute still names the old one and this blocks,
+        // or it names the new one and the frame really is showing it.
+        await page.waitForSelector(
+          `.landing-demo-viewport[data-organ="${organ}"]`,
+          { timeout: 120_000 }
+        );
         await page.waitForSelector(".landing-demo[data-viewport='ready']", { timeout: 120_000 });
       }
     }
@@ -276,7 +298,7 @@ async function driveKeyboard(organ) {
     if (state !== 'pinned') {
       problems.push(`${who}: Enter did not name the structure in the middle (${state})`);
     }
-    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-1-enter.png') });
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, shotName('1-enter')) });
 
     await page.keyboard.press('Escape');
     await sleep(400);
@@ -295,7 +317,7 @@ async function driveKeyboard(organ) {
     if ((await card.getAttribute('data-state')) !== 'pinned') {
       problems.push(`${who}: Enter named nothing after the model was turned`);
     }
-    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-2-turned.png') });
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, shotName('2-turned')) });
 
     // The way out. A reader who found a part on the small model arrives at the
     // full one already looking at it — or the hand-off is a link that opens a
@@ -319,7 +341,7 @@ async function driveKeyboard(organ) {
         `hand-off: the hero named "${carried}" and the full model opened on "${arrivedAt}"`
       );
     }
-    if (shotsDir) await page.screenshot({ path: join(shotsDir, 'keyboard-3-handoff.png') });
+    if (shotsDir) await page.screenshot({ path: join(shotsDir, shotName('3-handoff')) });
 
     observed.push({
       device: who,
