@@ -67,3 +67,38 @@ test('derived assets: the amount removed is recorded, because it is the whole ar
     assert.ok(share < 0.01, `${file.assetId}: ${(share * 100).toFixed(2)}% of triangles removed — too much to call it a repair`);
   }
 });
+
+test('derived assets: --dry-run writes nothing and measures everything', () => {
+  // The bug this exists for: stage 1 prunes the zero-area triangles and stage 2
+  // recomputes the normals, and stage 1's result was written back only when
+  // `--dry-run` was off. So the preview ran stage 2 against the triangles
+  // stage 1 was about to remove, and the vertices whose only neighbours were
+  // those triangles came back with no face to average. It reported the heart as
+  // `repaired: 200, unrepairable: 168` where the real run reports 203 and 0 —
+  // and 168 normals left degenerate reads as "this repair cannot reach a gate
+  // that needs zero errors", which is the opposite of the truth.
+  //
+  // The binaries are git-ignored, so this cannot run the script. It fixes the
+  // shape instead: `DRY` may only decide whether a *file* is written. Any other
+  // use of it is the work being skipped rather than the writing.
+  const lines = readFileSync('scripts/repair-candidate-gltf.mjs', 'utf8').split('\n');
+  const guards = lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => /(^|[^A-Za-z])!DRY\b/.test(line));
+  assert.equal(
+    guards.length,
+    2,
+    `!DRY guards ${guards.length} place(s); it may guard only the two file writes:\n  ` +
+      guards.map(({ line }) => line.trim()).join('\n  ')
+  );
+  for (const { line, index } of guards) {
+    // The write is on the guard's line or inside the short block it opens, so
+    // the block is what gets read rather than the one line.
+    const block = lines.slice(index, index + 6).join('\n');
+    assert.match(
+      block,
+      /writeFileSync/,
+      `"${line.trim()}" gates something other than writing a file — a dry run must do the same work`
+    );
+  }
+});

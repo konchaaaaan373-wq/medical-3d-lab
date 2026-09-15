@@ -63,6 +63,24 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
+/**
+ * `--dry-run` means **write no files**, not "do less work".
+ *
+ * It used to mean the second: stage 1's pruned triangle list was only written
+ * back when this was off, so on a dry run stage 2 recomputed normals against
+ * the triangles stage 1 was about to remove — and the vertices whose only
+ * neighbours were those zero-area triangles came back with no face to average.
+ * The preview therefore reported the heart as `repaired: 200, unrepairable:
+ * 168` where the real run reports `203` and **`0`**, and anyone reading the
+ * preview would conclude the repair could not reach a gate that needs zero
+ * errors. A dry run that answers a different question than the run it previews
+ * is worse than no dry run.
+ *
+ * Nothing here writes to `dev-assets/`: the source is read once into this
+ * process's own buffers, the derived file goes to `dev-assets/derived/` and
+ * the report to `docs/asset-qa/measurements/`. Those two writes are what the
+ * flag turns off, and they are the only ones.
+ */
 const DRY = process.argv.includes('--dry-run');
 /**
  * `--verify` runs the whole thing twice, validates the output, and checks that
@@ -226,12 +244,13 @@ for (const candidate of CANDIDATES) {
           kept.push(a, b, c);
         }
         if (kept.length === idx.accessor.count) continue;
-        if (!DRY) {
-          // Written back over the same bytes, with the accessor's count reduced.
-          // The buffer keeps its length; the tail is simply no longer indexed.
-          for (let i = 0; i < kept.length; i += 1) idx.array[i] = kept[i];
-          idx.accessor.count = kept.length;
-        }
+        // Written back over the same bytes, with the accessor's count reduced.
+        // The buffer keeps its length; the tail is simply no longer indexed.
+        // This happens on a dry run too — see `DRY` above: the buffer here is
+        // this process's own copy, and stage 2 has to see the pruned triangle
+        // list or it measures geometry that is about to stop existing.
+        for (let i = 0; i < kept.length; i += 1) idx.array[i] = kept[i];
+        idx.accessor.count = kept.length;
       }
     }
   }
@@ -307,7 +326,7 @@ for (const candidate of CANDIDATES) {
           // to get right, and the validator checks the value regardless of use,
           // so it is given one and counted separately.
           if (PRUNE && !used.has(v)) {
-            if (!DRY) { n[v * 3] = 0; n[v * 3 + 1] = 1; n[v * 3 + 2] = 0; }
+            n[v * 3] = 0; n[v * 3 + 1] = 1; n[v * 3 + 2] = 0;
             unusedGivenUnit += 1;
             continue;
           }
@@ -318,18 +337,16 @@ for (const candidate of CANDIDATES) {
           // separately because it is a choice, not a reconstruction.
           const biggest = largestFaceNormal(v, faceIndex.get(v) ?? [], p);
           if (biggest) {
-            if (!DRY) { n[v * 3] = biggest[0]; n[v * 3 + 1] = biggest[1]; n[v * 3 + 2] = biggest[2]; }
+            n[v * 3] = biggest[0]; n[v * 3 + 1] = biggest[1]; n[v * 3 + 2] = biggest[2];
             cancelled += 1;
             continue;
           }
           unrepairable += 1;
           continue;
         }
-        if (!DRY) {
-          n[v * 3] = x / length;
-          n[v * 3 + 1] = y / length;
-          n[v * 3 + 2] = z / length;
-        }
+        n[v * 3] = x / length;
+        n[v * 3 + 1] = y / length;
+        n[v * 3 + 2] = z / length;
         repaired += 1;
         touched.set(mesh.name, (touched.get(mesh.name) ?? 0) + 1);
       }
