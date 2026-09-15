@@ -521,8 +521,8 @@
       "src/scenes/sensory/scenes/earAnatomy/EarAnatomyScene.js",
       "src/scenes/shared/anatomy/OrganAnatomyScene.js"
     ],
-    "cardRevision": 7,
-    "modelDigest": "fb12fc5240203bc5",
+    "cardRevision": 9,
+    "modelDigest": "737c6c5aedb9d88f",
     "cardUpdatedAt": "2026-09-15"
   },
   {

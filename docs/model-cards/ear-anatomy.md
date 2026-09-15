@@ -36,7 +36,18 @@ medially. **12 structures are selectable.**
   off this model**.
 - **No length, calibre, angle or turn-count is a measurement.** That there are
   about two and a half turns is a fact about cochleas; how large the spiral is
-  drawn is not.
+  drawn is not. **How far it climbs is now a consequence rather than a
+  choice**: the turns of a cochlea touch, so the climb is the canal's own
+  calibre, two and a half times over. It used to climb far enough to leave
+  daylight between every whorl, and the render was a coil spring.
+- **The three canals are drawn as whole circles about the vestibule**, which
+  reads as a cage with the chamber suspended inside it rather than as three
+  loops leaving it and coming back. That is not a drawing choice left
+  unexamined: **the loop is shared with the BPPV model**, which treats a canal
+  as a circle about the vestibule of a stated radius and puts a particle at an
+  angle on it, and `tests/calibration.test.js` holds the atlas to it. The
+  picture improves when the model and the atlas move together, and that is a
+  change to a medical model rather than to a drawing.
 - **Not present:** the temporal bone and mastoid air cells, the facial nerve
   crossing the middle ear, the two ossicular muscles, the ampullae, the round
   window membrane, the scalae and the organ of Corti.
