@@ -179,10 +179,35 @@ const INTERACTIVE_SELECTOR =
  * A hard stop on the Tab walk.
  *
  * The walk normally ends by itself — focus leaves the document, or comes back
- * to a stop it has already marked. This is the guard for the case it does not,
- * which is the focus trap the walk exists to find.
+ * to a stop it has already marked. This is the guard against pressing Tab
+ * forever in a real trap, and **nothing else**: reaching it is not evidence of
+ * one.
+ *
+ * It used to be both, at 240, and that was a bug rather than a threshold. The
+ * budget is `controls + 8` clamped to this number, so once a page grew past
+ * 232 focusable controls the clamp bit on every run and the walk was reported
+ * as "focus is trapped or looping" no matter how good the tab order was. The
+ * Trust page has 295 — every citation in every model's source list is a link —
+ * so it failed this check on `phone-320` and `desktop-1280` for being large,
+ * and took 46 links and the feedback button down with it as "never reached",
+ * which they were not: the walk had simply stopped 63 steps early.
+ *
+ * Now the budget is twice the controls plus a margin (see `tabBudget`), and
+ * this is the ceiling on that. A ring that has not closed after visiting every
+ * control twice is not going to.
  */
-const MAX_TAB_STEPS = 240;
+const MAX_TAB_STEPS = 1200;
+
+/**
+ * How many Tab presses a surface is worth.
+ *
+ * Twice the controls, because a ring that closes does so on its second visit
+ * to its first stop, plus a margin for the browser chrome the ring passes
+ * through on the way out.
+ *
+ * @param {number} controls visible focusable elements on the page
+ */
+const tabBudget = (controls) => Math.min(controls * 2 + 8, MAX_TAB_STEPS);
 
 
 /**
@@ -639,12 +664,24 @@ const resetFocus = (page) =>
  * so the measurement afterwards can name the elements the ring missed. The
  * walk ends when focus leaves the document (the browser chrome has it) or
  * returns to something already marked (the ring has closed).
+ *
+ * It reports **which of the three endings it got**, because they mean
+ * different things and conflating two of them is what made this check lie for
+ * a while:
+ *
+ * - `closed` — the ring came back to a stop it had already marked. Normal.
+ * - `left`   — focus went to the browser chrome. Also normal, and the usual
+ *              ending on a page whose last control is its last element.
+ * - `cut`    — the budget ran out. **Not a finding about the page.** Either
+ *              the ring really is looping without repeating (which the budget
+ *              above is set high enough to make implausible) or the budget is
+ *              wrong. Either way it says nothing about a control being
+ *              unreachable, so the caller must not read the marks afterwards.
  */
 async function walkTabOrder(page, { steps }) {
   await resetFocus(page);
   let stops = 0;
-  let closed = false;
-  let stuck = false;
+  let ending = 'cut';
   for (let step = 0; step < steps; step += 1) {
     await page.keyboard.press('Tab');
     const stop = await page.evaluate(() => {
@@ -654,15 +691,17 @@ async function walkTabOrder(page, { steps }) {
       active.setAttribute('data-vp-focus', '');
       return { already };
     });
-    if (!stop) break;
+    if (!stop) {
+      ending = 'left';
+      break;
+    }
     if (stop.already) {
-      closed = true;
+      ending = 'closed';
       break;
     }
     stops += 1;
   }
-  if (stops >= steps) stuck = true;
-  return { stops, closed, stuck };
+  return { stops, steps, ending, closed: ending === 'closed', complete: ending !== 'cut' };
 }
 
 
@@ -1377,10 +1416,14 @@ try {
             (selector) => document.querySelectorAll(selector).length,
             INTERACTIVE_SELECTOR,
           );
-          tab = await walkTabOrder(page, { steps: Math.min(controls + 8, MAX_TAB_STEPS) });
-          if (tab.stuck) {
+          tab = await walkTabOrder(page, { steps: tabBudget(controls) });
+          if (tab.ending === 'cut') {
+            // Only reachable now if a ring cycles without ever repeating a
+            // stop, which is what a trap looks like from the outside. Said as
+            // what was actually observed rather than as a diagnosis.
             problems.push(
-              `${where}: the focus ring never closed in ${tab.stops} Tab presses — focus is trapped or looping`,
+              `${where}: the focus ring visited ${tab.stops} stops without closing or leaving the ` +
+                `document, on a page with ${controls} control(s) — focus is trapped or looping`,
             );
           }
         }
@@ -1502,13 +1545,19 @@ try {
               ` (${measured.scrolledOut.slice(0, 3).join('; ')})`,
           );
         }
-        if (fullTabWalk && measured.unreachable.length) {
+        // Only when the walk finished. A walk that ran out of budget marked
+        // the stops it got to and no more, so every control after that point
+        // reads as "never reached" when the truth is "never visited". That is
+        // how 46 links and the feedback button were reported as unreachable on
+        // a page whose tab order is fine.
+        const tabWalkTrustworthy = fullTabWalk && tab?.complete;
+        if (tabWalkTrustworthy && measured.unreachable.length) {
           problems.push(
             `${where}: ${measured.unreachable.length} visible control(s) the Tab key never reached` +
               `\n    ${measured.unreachable.slice(0, 6).join('\n    ')}`,
           );
         }
-        if (fullTabWalk && measured.unreachableLinks.length) {
+        if (tabWalkTrustworthy && measured.unreachableLinks.length) {
           if (measured.engineSkipsLinks) {
             // Not this page's defect and not silently dropped: link reachability
             // is simply not measurable on an engine that does not tab to links,
@@ -1577,7 +1626,7 @@ try {
           belowIntent: measured.belowIntent.length,
           covered: measured.covered.length,
           controls: measured.interactiveCount,
-          unreachable: fullTabWalk
+          unreachable: tabWalkTrustworthy
             ? measured.unreachable.length + (measured.engineSkipsLinks ? 0 : measured.unreachableLinks.length)
             : null,
           tabStops: tab?.stops ?? null,

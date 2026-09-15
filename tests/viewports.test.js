@@ -367,8 +367,52 @@ test('an engine that does not tab to links is told apart from a page that lost o
   assert.match(check, /Tabbing to links: \$\{engine\} does not, so this run could not measure it\./);
 
   // Where the engine does tab to links, an unreachable one still fails.
-  const branch = check.slice(check.indexOf('if (fullTabWalk && measured.unreachableLinks.length)'));
-  assert.match(branch.slice(0, 900), /visible link\(s\) the Tab key never reached/);
+  const at = check.indexOf('if (tabWalkTrustworthy && measured.unreachableLinks.length)');
+  assert.ok(at > 0, 'the unreachable-links branch was renamed; this test no longer reads it');
+  assert.match(check.slice(at, at + 900), /visible link\(s\) the Tab key never reached/);
+});
+
+test('the Tab walk: running out of budget is not a focus trap', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // The bug this pins: the budget was `controls + 8` clamped to 240, and
+  // hitting the clamp set `stuck`, which was reported as "focus is trapped or
+  // looping". Any page with more than 232 focusable controls therefore failed
+  // for being large. The Trust page has 295 — one link per citation — so it
+  // failed on two viewports, and took 46 links and the feedback button with it
+  // as "never reached", which they were not: the walk stopped 63 steps early.
+  assert.doesNotMatch(check, /stuck = true/, 'reaching the step cap is not a diagnosis');
+  assert.doesNotMatch(
+    check,
+    /Math\.min\(controls \+ 8, MAX_TAB_STEPS\)/,
+    'the budget is no longer one Tab press per control',
+  );
+
+  // Three endings, told apart, because two of them are normal and the third is
+  // not about the page at all.
+  assert.match(check, /ending = 'cut'/);
+  assert.match(check, /ending = 'left'/);
+  assert.match(check, /ending = 'closed'/);
+  assert.match(check, /complete: ending !== 'cut'/);
+
+  // The budget is generous relative to the page: a ring that closes does so on
+  // the second visit to its first stop.
+  assert.match(check, /const tabBudget = \(controls\) => Math\.min\(controls \* 2 \+ 8, MAX_TAB_STEPS\)/);
+  const cap = check.match(/const MAX_TAB_STEPS = (\d+);/);
+  assert.ok(cap, 'the walk has no ceiling at all');
+  // Above twice the largest surface this product has, so the ceiling is the
+  // infinite-loop guard it claims to be rather than a threshold in disguise.
+  assert.ok(Number(cap[1]) > 295 * 2 + 8, `${cap[1]} is below what the Trust page alone needs`);
+
+  // And a walk that was cut short leaves marks that mean nothing, so the
+  // findings built on those marks must not be read.
+  assert.match(check, /const tabWalkTrustworthy = fullTabWalk && tab\?\.complete/);
+  for (const finding of [
+    'if (tabWalkTrustworthy && measured.unreachable.length)',
+    'if (tabWalkTrustworthy && measured.unreachableLinks.length)',
+  ]) {
+    assert.ok(check.includes(finding), `"${finding}" no longer waits for a complete walk`);
+  }
 });
 
 test('an engine with no WebGL2 is told apart from a renderer that failed', () => {
