@@ -146,7 +146,10 @@ try {
 
   const box = await page.locator('canvas').first().boundingBox();
   if (!box) die('the scene rendered no canvas');
-  const hideUi = () => page.locator('.ui-toggle[title^="Hide interface"]').click({ noWaitAfter: true });
+  // By its stable name, not by its title: the title is prose and prose follows
+  // the reader's language, so this used to stop finding the button whenever the
+  // interface was in Japanese — which is the default.
+  const hideUi = () => page.locator('[data-control="hideUi"]').click({ noWaitAfter: true });
 
   /**
    * Shoot until the frame stops changing, and stop either way.
