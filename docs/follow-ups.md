@@ -16,7 +16,7 @@ Last updated: 2026-09-15
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-120 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-119 は
+  次に追加する番号は F-121 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-120 は
   09-15 に採番済み）。⚠ **F-107 / F-108 も 2 回ずつ出ます。** 未マージの PR #73 と
   PR #75 がその 2 つを先に確保しており、main 側が同じ番号を使いました。
   **どちらの branch も採番し直してからマージしてください。**
@@ -610,6 +610,30 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 パネルからはみ出して操作不能、`phone-430` の `.global-nav-brand` が
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
+
+### F-120 `introducedIn` は squash merge の repo では誰も到達できない — P2（2026-09-15）
+
+PR #99 のレビュー（Codex, P2）が心臓の `source.introducedIn` を「到達不能」と
+指摘しました。**正しく、しかも心臓だけの話ではありません**——脳も同じです:
+
+```
+$ git merge-base --is-ancestor e344d465de416d5a40a0cbb8b9d6b8d0c2850185 origin/main
+NO
+```
+
+この repo は squash merge なので、**branch の commit は決して main の祖先に
+なりません**。`introducedIn` は「ファイルが repo に入った commit」を求めますが、
+それに答えられるのは squash commit だけで、それはその commit を記録するはずの
+merge が済むまで存在しません。**仕様として充足不可能**です。
+
+- 到達可能に見える別の SHA を入れて指摘を消すことはしていません（同じく不到達なので）
+- 直し方は 2 つ: ①merge 後に squash commit を後から記録する
+  ②`source.retrievedAt` と同じ形（`null` ＋ `retrievedAtNote`）を許す。
+  この manifest 自身が「知り得ないことは、知り得ない理由とともに書く」の
+  先例を持っています
+- **いま provenance を支えているのは commit ではなく hash です**——
+  `sources[].sha256` が publisher のバイト列を、`output.sha256` が配信物を pin し、
+  `npm run assets:repair:verify` が前者から後者を再生成します
 
 ### F-117 グループ非表示は「見えている 1 段」しか畳まない — P3（2026-09-15）
 

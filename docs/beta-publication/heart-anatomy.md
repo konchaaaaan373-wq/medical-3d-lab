@@ -11,7 +11,7 @@ clinician has judged this geometry or these labels**, and every surface says so
 | **Decided at** | 2026-09-15 |
 | **Decided by** | Repository owner's approval of 2026-09-15; implemented by Claude Opus 5 |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
-| **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb` |
+| **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
 | **Scene revision** | model card revision **22**, source digest `7128d8f57c861bfc` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |

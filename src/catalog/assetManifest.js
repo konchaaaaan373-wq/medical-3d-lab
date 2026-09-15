@@ -901,8 +901,8 @@ export const ASSET_MANIFEST = Object.freeze([
     ],
     output: {
       path: 'public/assets/heart/VH_M_Blood_Vasculature.glb',
-      sha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
-      bytes: 7436176,
+      sha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+      bytes: 2838396,
     },
     geometry: {
       coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); measured to share the whole-body frame with the heart file',
@@ -917,18 +917,21 @@ export const ASSET_MANIFEST = Object.freeze([
       generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
       steps: [
         'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
-        'Here: 26 zero-area triangles and 5 exact duplicate faces removed, then the 33 degenerate vertex normals ' +
-          'replaced the same way as in the heart file. Vertex positions, vertex count, node names, hierarchy, ontology ' +
-          'ids and materials are unchanged. Reproducible: npm run assets:repair:verify.',
+        'Here, in order: the 67 meshes outside VH_M_blood_vasculature_of_heart removed — the publisher\'s own ' +
+          'grouping, and the branches this scene has never drawn — then 24 zero-area triangles and 5 exact duplicate ' +
+          'faces, then the 33 degenerate vertex normals replaced as in the heart file. The trim comes first so that ' +
+          'every later count is about what ships. **Every mesh still drawn keeps its vertex positions byte for byte**, ' +
+          'with its node name, its place in the hierarchy and its ontology id; the report checks that by hashing ' +
+          'positions per mesh rather than asserting it. Reproducible: npm run assets:repair:verify.',
       ],
     },
     semanticParts: {
       partIdSource: 'glTF node names carrying UBERON/FMA ontology ids, as published upstream',
       mappingModule: 'src/data/heartAnatomy.js',
-      partCount: 104,
+      partCount: 37,
     },
     acceptedSimplifications: [
-      'The 67 meshes outside the heart subtree are loaded and not drawn; the scene reports how many rather than pretending they are absent.',
+      'The 67 meshes outside the heart subtree are gone: eye, abdominal and pelvic vessels this scene never drew, removed rather than shipped unseen.',
       'Whether each vessel surface is a lumen or an outer wall is not established by the file, and is not asserted.',
     ],
     knownDefects: [
@@ -937,20 +940,22 @@ export const ASSET_MANIFEST = Object.freeze([
       'No mesh is named "circumflex"; two meshes share FMA:3860, which is a vocabulary collision rather than a duplicated structure.',
     ],
     budget: {
-      triangles: 359567,
+      triangles: 153476,
       materials: 3,
       textures: 0,
-      bytes: 7436176,
+      bytes: 2838396,
       targetDevices:
-        'Desktop and current phones. 7.4 MB to serve 37 drawn meshes is the cost of not modifying the file further; ' +
-        'trimming the unused subtree would be a second, larger change to a third party\'s data and was deliberately not made.',
+        'Desktop and current phones. This entry used to read "7.4 MB to serve 37 drawn meshes is the cost of not ' +
+        'modifying the file further" — and the ship-weight budget is what made that cost no longer worth paying: ' +
+        '5.24 MB gzipped of it was geometry no reader ever saw. Trimming was chosen over compressing because Draco ' +
+        'quantizes vertex positions and would have traded away the one claim this adoption rests on.',
     },
     qa: {
       formatValidation: {
         status: QA_STATUS.PASSED,
         tool: 'Khronos glTF Validator (npm gltf-validator)',
         toolVersion: '2.0.0-dev.3.10',
-        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
         checkedAt: '2026-09-15T10:42:00Z',
         errors: 0,
         warnings: 0,
@@ -962,7 +967,7 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       semanticIntegrity: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
         reference: 'tests/heart-anatomy.test.js',
         scope:
           'The 37 heart-vessel meshes the adapter names, their ontology ids, and the node names and hierarchy held ' +
@@ -977,7 +982,7 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       visualReview: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
         reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
         browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
         viewport: '1280x800',

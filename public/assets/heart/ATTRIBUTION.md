@@ -7,7 +7,7 @@ requires that a derivative say so.
 | File | Derived from | SHA-256 of the file here | Bytes |
 | --- | --- | --- | --- |
 | `VH_M_Heart.glb` | `v1.2/models/VH_M_Heart.glb` (SHA-256 `b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70`) | `46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d` | 4 071 496 |
-| `VH_M_Blood_Vasculature.glb` | `v1.2/models/VH_M_Blood_Vasculature.glb` (SHA-256 `a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d`) | `b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb` | 7 436 176 |
+| `VH_M_Blood_Vasculature.glb` | `v1.2/models/VH_M_Blood_Vasculature.glb` (SHA-256 `a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d`) | `a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` | 2 838 396 |
 
 Both sources were taken from
 [`hubmapconsortium/ccf-releases`](https://github.com/hubmapconsortium/ccf-releases)
@@ -38,7 +38,20 @@ kind: `ACCESSOR_VECTOR3_NON_UNIT`, a vertex normal of zero or near-zero length.
 24 068 vertices) and 33 across two meshes of the vasculature. A degenerate normal
 carries no direction, so there is nothing in it to preserve.
 
-`scripts/repair-candidate-gltf.mjs` replaces each one, and only those:
+**The vasculature file also has 67 of its 104 meshes removed.** They are the
+eye, abdominal and pelvic vessels: everything outside
+`VH_M_blood_vasculature_of_heart`, which is the publisher's own grouping and the
+only part this application has ever drawn. They were being downloaded by every
+reader who opened the heart and shown to none of them — 5.24 MB gzipped. Nothing
+under that node was touched, and no vertex of anything on screen moved.
+
+This was chosen over compressing the file instead. Draco would have squeezed
+harder without removing anything, but it quantizes vertex positions; dropping
+branches nobody draws leaves every drawn position byte-identical to the
+publisher's, which is what the rest of this notice claims.
+
+`scripts/repair-candidate-gltf.mjs` replaces each degenerate normal, and only
+those:
 
 - A normal that already had unit length is not rewritten, not even re-normalised.
 - Replacements are the area-weighted mean of the adjacent face normals — what
@@ -52,9 +65,11 @@ carries no direction, so there is nothing in it to preserve.
   largest adjacent face's normal is taken — deterministically, because there is
   no correct answer at a fold.
 
-**Nothing else was touched.** Vertex positions, vertex counts, node names, node
-hierarchy, ontology ids (`extras`) and materials are identical on both sides, and
-the drop in triangle count equals exactly the number removed. The measurements
+**Nothing else was touched.** For every mesh that ships, the vertex positions,
+vertex count, node name, place in the hierarchy, ontology id (`extras`) and
+material are identical to the publisher's, and the drop in triangle count equals
+exactly the number of degenerate triangles removed. The report checks this by
+hashing each mesh's positions on both sides rather than asserting it. The measurements
 are in [`docs/asset-qa/measurements/normal-repair.json`](../../../docs/asset-qa/measurements/normal-repair.json);
 `npm run assets:repair:verify` reproduces these hashes from the sources and
 reports the validator clean at 0 errors and 0 warnings on both files.

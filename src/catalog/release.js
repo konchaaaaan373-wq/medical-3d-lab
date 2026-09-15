@@ -258,7 +258,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
      */
     assetRevisions: Object.freeze({
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
-      'hubmap-vh-m-blood-vasculature': 'b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb',
+      'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
     sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: '7128d8f57c861bfc' }),
     scope: Object.freeze({
