@@ -68,6 +68,13 @@ jobs:
       - run: npm i --no-save playwright@1.62.1
       - run: npx playwright install --with-deps chromium
       - run: npm run verify:ui -- --json viewport-report-chromium.json
+      # The same browser, already installed, for the paths a stand-in `window`
+      # can only pretend to have: a Back press that never left the document, and
+      # a reload that was asked for and never arrived. Both were unit-tested and
+      # undriven (F-114) through two attempts at this feature, and the second
+      # attempt spent four review rounds on exactly them. About 40 seconds, most
+      # of it waiting out a 12-second backstop on purpose.
+      - run: npm run verify:departure
       - uses: actions/upload-artifact@v4
         if: always()
         with:
