@@ -734,9 +734,12 @@ html[data-route='landing'] {
   background: rgba(2, 4, 8, 0.44);
 }
 
+/* The hero's own boundary statement — what the model it is showing does and
+   does not claim. Same reason as `.disclaimer`: a caveat set below the floor is
+   a caveat the reader is being invited to skip. */
 .landing-demo-boundary {
   color: var(--ink-dim);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.45;
 }
 

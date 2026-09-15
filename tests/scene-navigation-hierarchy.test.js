@@ -83,6 +83,13 @@ test('system accordions expose the missing top level to heading navigation', () 
 });
 
 test('compact navigation and safety copy do not regress below twelve pixels', () => {
+  // This used to read these two sheets directly. It still does — they must stay
+  // *entirely* clear of the floor, which is stricter than the product-wide
+  // ratchet and is the state they are already in. What changed is that the
+  // floor is no longer only theirs: `tests/type-floor.test.js` walks all 33
+  // sheets and refuses anything new below 12px, which is where a new sheet's
+  // small type is now caught. These two were the only ones covered for as long
+  // as this was the only guard.
   const typography = readFileSync(
     new URL('../src/styles/ui-hierarchy-typography.css', import.meta.url),
     'utf8'
@@ -97,4 +104,10 @@ test('compact navigation and safety copy do not regress below twelve pixels', ()
     /font-size:\s*(?:[0-9](?:\.\d+)?|1[01](?:\.\d+)?)px/,
     'model navigation and persistent medical caveats must remain readable on compact screens'
   );
+
+  // And neither sheet may quietly acquire an entry in the product-wide baseline.
+  const baseline = JSON.parse(readFileSync(new URL('./type-floor-baseline.json', import.meta.url), 'utf8'));
+  for (const sheet of ['ui-hierarchy-typography.css', 'browser-first-release-polish.css']) {
+    assert.equal(sheet in baseline.below, false, `${sheet} is meant to be entirely above the floor`);
+  }
 });

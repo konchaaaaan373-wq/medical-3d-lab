@@ -2867,12 +2867,16 @@
   display: inline-flex;
 }
 
+/* "⚠︎ 教育用肉眼解剖 — 臨床使用不可". This is the sentence that says what the
+   model on screen is not, so it is the last thing that should be the smallest
+   type in the panel — it was 10.5px, under the product's 12px floor, beneath a
+   model rendered at full size. */
 .disclaimer {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--ink-faint);
 }
