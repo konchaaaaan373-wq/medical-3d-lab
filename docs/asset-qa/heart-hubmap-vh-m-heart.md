@@ -196,17 +196,38 @@ are reproducible without being stored.
 - **Both files register to each other.** The vessels meet the chambers where
   they should; the two candidates share a coordinate frame.
 
-### What they do not establish, and one thing they raise
+### The interior, rendered — the ten parts no viewpoint shows
 
-- **Nothing about the interior.** The valves, the septum and the papillary
-  muscles are inside; no exterior viewpoint shows them, so the parts that
-  carry the acceptance list are still unseen. An interior view or a cutaway is
-  what would settle it.
-- **Named-structure quality is not shown.** From outside, four surfaces are
-  distinguishable (left ventricle, right ventricle, right atrium, an
-  auricle). A2 asks that a named part be *separable and visibly bounded*; six
-  exterior views cannot answer that for fourteen parts, ten of which never
-  appear in them.
+The scene's `inside-the-chambers` fixed view hides the four chamber surfaces
+whole and leaves what the source puts inside them. It is not a section and
+nothing is cut; `npm run shots:anatomy -- --scene heart-anatomy --preview
+--recipe all` now shoots it, so this is reproducible rather than a one-off.
+
+**All ten interior parts are real geometry, and they read as what they are.**
+
+- **The aortic valve has three cusps**, distinguishable as three.
+- **The mitral valve has leaflets** with an annular form, not a disc.
+- **The interventricular septum is a continuous sheet**, correctly placed
+  between the ventricles.
+- **The five papillary muscles are separate stubs**, each its own mesh.
+- The coronary arteries and cardiac veins from the vasculature candidate sit
+  on the surface where the chambers were, so the two files' interiors and
+  exteriors agree.
+
+**The fidelity limit this makes visible, and it is the important one:** the
+septum renders as a *sheet*, because this file has surfaces around spaces and
+no myocardial free wall anywhere. Anatomically the interventricular septum is
+a thick muscular wall. The model can say where it is and what it separates; it
+cannot say how thick it is, and a scene built on it must not imply that it can.
+The same is true of every chamber "wall". This is the file's nature, recorded
+in `HeartAnatomyScene.js` before this render and confirmed by it.
+
+### What they still do not establish
+
+- **Named-structure quality (A2) is shown for the interior, not the exterior.**
+  Inside, ten parts are separable and visibly bounded. From outside only four
+  surfaces are distinguishable, and whether that is the file or the scene's
+  palette is not established here.
 - **The subject sits left of centre with roughly a third of the frame empty
   on the right, in every view.** Not investigated here and not necessarily the
   asset's: the capture hides the interface *after* the scene has framed
