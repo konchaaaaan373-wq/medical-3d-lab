@@ -4,7 +4,8 @@ import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './scene
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
-import { isInPageAnchor, sameRoute, structureOf } from './router.js';
+import { structureOf } from './router.js';
+import { installDeparture } from './departure.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1673,16 +1674,15 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   viewer.start();
 
   // Switching scenes via the URL hash is rare enough that a reload is fine —
-  // and it guarantees a clean GPU state. Compared as *routes* rather than as
-  // scene ids: leaving for the organ explorer is a navigation too, and
-  // resolving it to a scene id would have made that link do nothing.
-  let currentHash = window.location.hash;
-  window.addEventListener('hashchange', () => {
-    // An in-page anchor is not navigation. Reloading a 3D scene because
-    // somebody used a skip link would throw away the camera, the progression
-    // and any model controls they had set.
-    if (isInPageAnchor(window.location.hash)) return;
-    if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
+  // and it guarantees a clean GPU state. `installDeparture` owns the rest:
+  // comparing as *routes* rather than scene ids (leaving for the organ explorer
+  // is a navigation too), ignoring in-page anchors, and covering the canvas
+  // while the next document is on its way. Without that last part the renderer
+  // keeps painting this scene under the new URL for as long as the reload takes,
+  // which reads as "that link opened this model".
+  installDeparture({
+    shownHash: window.location.hash,
+    language: ui.dataset.lang === 'en' ? 'en' : 'ja',
   });
 
   // Exposed for debugging and for automated screenshots.
