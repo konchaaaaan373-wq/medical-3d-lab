@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-15 (re-taken as a branch of the tree gained a way to be hidden whole) |
+| **Decided at** | 2026-09-15 (re-taken twice: a branch of the tree gained a way to be hidden whole, and then what a hide announces was corrected) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **19**, source digest `df84477b92cc2917` |
+| **Scene revision** | model card revision **20**, source digest `2ab8c472db1731bc` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -134,6 +134,18 @@ overrides it while it lasts. Nothing about the atlas changed — no id, no label
 no geometry, no colour — but what a reader can take off the screen did, and the
 scene's visibility surface is exactly what this record is a decision about.
 
+**Revision 19 → 20.** Review of revision 19 found two things a hide had never
+said, both older than the group control and inherited by it. Hiding the isolated
+structure drops the isolation, but only the visibility event was sent — and the
+part tree learns about isolation from `onAnatomyIsolation` and nowhere else, so
+it went on drawing a row as isolated after the scene had stopped isolating it.
+And `restoreDisplay()` puts back the *whole* hidden set from the snapshot a
+reveal left, so a hide or show the reader made afterwards was silently undone by
+a control that says it undoes the reveal. Both are now one place:
+`_visibilityChanged()` applies the pass, announces the hidden set, announces an
+isolation it ended, and throws the stale snapshot away.
+`tests/brain-anatomy.test.js` fails on the old behaviour for both.
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -218,6 +230,12 @@ a rendering check, not an anatomical one.
 - **Isolate** shows one structure alone; a click where a hidden structure used
   to be does not select it; **Show all** restores the model and the structures
   that were on screen before are clickable again.
+- **A hide says everything it changed.** Isolating a structure and then hiding
+  it leaves the scene reporting no isolation and the tree agreeing, because the
+  isolation event is sent as well as the visibility one; a hide that ends
+  nothing stays quiet. After any hide or show of the reader's own, "Back to how
+  it was" is withdrawn rather than left pointing at a snapshot that would undo
+  their change.
 - **A branch comes off in one press.** The drive finds the branch with the most
   structures under it — on this atlas, *Left cerebral hemisphere*, 77 — presses
   its visibility control, and reads the scene's own hidden set: 77 structures

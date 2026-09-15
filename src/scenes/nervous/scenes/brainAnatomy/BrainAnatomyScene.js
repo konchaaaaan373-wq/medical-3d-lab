@@ -686,6 +686,32 @@ export class BrainAnatomyScene {
   getAnatomyIsolation() { return this.isolatedId; }
 
   /**
+   * A visibility change the reader made themselves, applied and announced.
+   *
+   * Two things every hide and show has to do, and none of them did:
+   *
+   * 1. **Announce an isolation it ended.** Hiding the isolated structure drops
+   *    the isolation — "only this one" and "not this one" cannot both be true —
+   *    but only the visibility event was sent, so `AnatomyTreePanel`, which
+   *    learns about isolation from `onAnatomyIsolation` and nowhere else, went
+   *    on drawing the row as isolated while the scene reported none.
+   * 2. **Throw away the reveal snapshot.** `displayBeforeReveal` is "the
+   *    display the reveal moved away from", and "Back to how it was" restores
+   *    `hidden` wholesale from it. Once the reader has hidden or shown
+   *    something themselves, going back would take *their* change away rather
+   *    than the reveal's — silently, since nothing says a snapshot is stale.
+   *
+   * @param {boolean} droppedIsolation
+   */
+  _visibilityChanged(droppedIsolation) {
+    this.hiddenVersion += 1;
+    this.displayBeforeReveal = null;
+    this._applyProgress(1 / 60, true);
+    this._emitVisibility();
+    if (droppedIsolation) this._emitIsolation();
+  }
+
+  /**
    * Hide, or bring back, one structure — every mesh it is drawn from.
    *
    * Structure-wide because a structure is what a reader means: hiding the piece
@@ -705,25 +731,20 @@ export class BrainAnatomyScene {
     const key = meshes[0].userData.atlasId;
     const had = this.manualHidden.has(key);
     if (had === Boolean(hidden)) return false;
+    let droppedIsolation = false;
     if (hidden) {
-      if (this.isolatedId === key) this.isolatedId = null;
+      if (this.isolatedId === key) {
+        this.isolatedId = null;
+        droppedIsolation = true;
+      }
       this.manualHidden.add(key);
     } else {
       this.manualHidden.delete(key);
     }
-    this.hiddenVersion += 1;
-    this._applyProgress(1 / 60, true);
-    this._emitVisibility();
+    this._visibilityChanged(droppedIsolation);
     return true;
   }
 
-  /**
-   * Bring back everything hidden by hand.
-   *
-   * The camera is not touched. "Show the ones I hid" and "look at the whole
-   * model again" are two requests, and answering both when one was asked is how
-   * a reader loses the view they had set up.
-   */
   /**
    * Hide or show many structures as one change.
    *
@@ -743,13 +764,17 @@ export class BrainAnatomyScene {
    */
   setStructuresHidden(ids, hidden) {
     let changed = false;
+    let droppedIsolation = false;
     for (const id of ids) {
       const meshes = this._meshesFor(id);
       if (!meshes.length) continue;
       const key = meshes[0].userData.atlasId;
       if (this.manualHidden.has(key) === Boolean(hidden)) continue;
       if (hidden) {
-        if (this.isolatedId === key) this.isolatedId = null;
+        if (this.isolatedId === key) {
+          this.isolatedId = null;
+          droppedIsolation = true;
+        }
         this.manualHidden.add(key);
       } else {
         this.manualHidden.delete(key);
@@ -757,18 +782,22 @@ export class BrainAnatomyScene {
       changed = true;
     }
     if (!changed) return false;
-    this.hiddenVersion += 1;
-    this._applyProgress(1 / 60, true);
-    this._emitVisibility();
+    this._visibilityChanged(droppedIsolation);
     return true;
   }
 
+  /**
+   * Bring back everything hidden by hand.
+   *
+   * The camera is not touched. "Show the ones I hid" and "look at the whole
+   * model again" are two requests, and answering both when one was asked is how
+   * a reader loses the view they had set up.
+   */
   showAllHiddenStructures() {
     if (!this.manualHidden.size) return false;
     this.manualHidden.clear();
-    this.hiddenVersion += 1;
-    this._applyProgress(1 / 60, true);
-    this._emitVisibility();
+    // No isolation to drop: showing never ends one.
+    this._visibilityChanged(false);
     return true;
   }
 
