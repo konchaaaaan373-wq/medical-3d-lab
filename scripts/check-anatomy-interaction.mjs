@@ -112,6 +112,15 @@ const shotsDir = value('--shots');
  * those measured points instead and says in a note that it did.
  */
 const SCENE_POINTS = {
+  // Across the front of the heart, right to left as the screen shows it: the
+  // right atrium, the right ventricle that makes up most of the anterior
+  // surface, a coronary artery on it, and a great vessel leaving above. Chosen
+  // to name four *different* parts — the right ventricle answers for most of
+  // the middle of the organ, so a tour picked by spreading points evenly names
+  // it three times and says little. It also crosses both adopted files: the
+  // chambers come from VH_M_Heart, the artery and the aorta from
+  // VH_M_Blood_Vasculature, so a run proves each of them is drawn and named.
+  'heart-anatomy': [[0.22, 0.45], [0.38, 0.50], [0.42, 0.40], [0.30, 0.30]],
   // The brain's own tour. These four were the script's `DEFAULT_POINTS` — the
   // cluster every other scene inherited and most of them missed with — and they
   // are kept here because for *this* scene they are a calibration: a lateral
@@ -471,6 +480,17 @@ try {
         'the model. Add an entry to SCENE_POINTS to name what each click is on.'
     );
   }
+  // Where the model was found, in the form a SCENE_POINTS entry takes. Writing
+  // a tour otherwise means guessing at fractions and reading back "only 1 of 4
+  // resolved" — which is how the first attempt at the heart's went. The drive
+  // already knows; this is it saying so.
+  notes.push(
+    `points measured over the model: ${modelPoints.map(([x, y]) => `${x},${y}`).join(' ')}` +
+      ` (pass them to --points, or paste into SCENE_POINTS as [[${modelPoints
+        .slice(0, 4)
+        .map(([x, y]) => `${x}, ${y}`)
+        .join('], [')}]])`
+  );
 
   let lastHitPoint = null;
   for (const [fx, fy] of clickPoints) {
