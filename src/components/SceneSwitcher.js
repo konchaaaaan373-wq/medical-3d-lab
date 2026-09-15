@@ -201,6 +201,10 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     ]
   );
 
+  // The brand is the way home, so it has to look like one. A wordmark in the
+  // top-left corner reads as the page's title; an arrow and the word "Home /
+  // ホーム" are what make it an offer. The accessible name leads with where it
+  // goes rather than with what the product is called, for the same reason.
   const brand = el(
     'a',
     {
@@ -208,15 +212,19 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       href: LANDING_ROUTE,
       // The brand itself is a proper noun and stays as it is in both; what
       // follows it is a word, and a word belongs in the language on screen.
-      title: inLanguage('Medical 3D Lab — Home', 'Medical 3D Lab — トップ'),
-      'aria-label': inLanguage('Medical 3D Lab — Home', 'Medical 3D Lab — トップ'),
+      // The destination leads: what a screen reader announces first should be
+      // where the link goes, not what the product is called.
+      title: inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
+      'aria-label': inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
     },
     [
+      el('span', { class: 'global-nav-brand-back', 'aria-hidden': 'true', text: '←' }),
       el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
       el('span', { class: 'global-nav-brand-name' }, [
         el('span', { class: 'global-nav-brand-full', text: 'Medical 3D Lab' }),
         el('span', { class: 'global-nav-brand-compact', text: 'Medical 3D' }),
       ]),
+      bilingual('Home', 'ホーム', 'global-nav-brand-home'),
     ]
   );
 
@@ -241,6 +249,11 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   const element = el(
     'nav',
     {
+      // `is-single` narrows the header when there is nothing to choose between.
+      // It used to hide the drawer's trigger as well, which in the public beta
+      // — one open model — left a 3D scene with no navigation control on it at
+      // all, and the shelf links inside the drawer unreachable. The class is a
+      // layout hint; it is not a reason to take the way out away.
       class: `global-scene-nav${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}`,
       // Names the landmark, rather than repeating the brand: a screen reader
       // reading a list of landmarks needs to hear what this one is.
@@ -248,10 +261,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     },
     [brand, currentLocation, trigger, backdrop, panel]
   );
-
-  if (!hasChoices) {
-    trigger.hidden = true;
-  }
 
   // One body system is open at a time on every viewport. This keeps a fourteen-
   // system catalogue scannable on desktop and prevents scroll fatigue on a
@@ -332,7 +341,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   }
 
   function setOpen(next, { restoreFocus = false } = {}) {
-    if (!hasChoices && next) return;
     if (open === next) return;
     open = next;
     element.classList.toggle('is-open', open);
