@@ -1027,6 +1027,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const uiToggle = el('button', {
     class: 'ui-toggle',
     type: 'button',
+    // A stable name, for the same reason the console's buttons have one: the
+    // label and the title are prose, and prose is now in the reader's language.
+    // `capture-anatomy-views.mjs` addressed this button as
+    // `.ui-toggle[title^="Hide interface"]` and stopped finding it the moment
+    // the title started answering in Japanese — a screenshot tool that cannot
+    // hide the interface is a screenshot tool that does not run.
+    dataset: { control: 'hideUi' },
     on: {
       click: () => {
         paintUiToggle(ui.classList.toggle('is-hidden'));
