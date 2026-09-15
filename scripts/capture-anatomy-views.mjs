@@ -32,6 +32,8 @@
  *   --out <dir>      where to write the images (default: shots)
  *   --view <id>      only this viewpoint (repeatable)
  *   --mode <id>      only this colour mode (repeatable)
+ *   --recipe <id>    also shoot each of the scene's fixed views (repeatable;
+ *                    `--recipe all` for every one it offers)
  *   --width <px>     viewport width (default: 1280)
  *   --height <px>    viewport height (default: 720)
  *   --no-labels      turn the structure labels off before rendering
@@ -59,6 +61,7 @@ const sceneSlug = value('--scene', 'brain-anatomy');
 const outDir = value('--out', 'shots');
 const onlyViews = values('--view');
 const onlyModes = values('--mode');
+const onlyRecipes = values('--recipe');
 const width = Number(value('--width', '1280'));
 const height = Number(value('--height', '720'));
 
@@ -151,6 +154,21 @@ try {
   // interface was in Japanese — which is the default.
   const hideUi = () => page.locator('[data-control="hideUi"]').click({ noWaitAfter: true });
 
+  /** The interface has to be back before a recipe button can be pressed. */
+  const showUi = async (target) => {
+    const hidden = await target.evaluate(() => document.getElementById('ui')?.classList.contains('is-hidden'));
+    if (hidden) await hideUi();
+  };
+
+  /** The recipes this scene offers, narrowed to what was asked for. */
+  const recipesOnOffer = async (target, asked) => {
+    const offered = await target.$$eval('[data-recipe]', (nodes) => nodes.map((node) => node.dataset.recipe));
+    if (asked.includes('all')) return offered;
+    const missing = asked.filter((id) => !offered.includes(id));
+    if (missing.length) die(`this scene offers no recipe "${missing.join('", "')}" (it has: ${offered.join(', ') || 'none'})`);
+    return asked;
+  };
+
   /**
    * Shoot until the frame stops changing, and stop either way.
    *
@@ -194,7 +212,43 @@ try {
     return null;
   };
 
+  /**
+   * The scene's fixed views — "inside the chambers" and its siblings.
+   *
+   * A viewpoint turns the model; a recipe changes what is *there*, which for an
+   * organ whose interesting parts are inside its chambers is the only way to
+   * see them at all. The heart's ten interior parts — four valves, five
+   * papillary muscles, the septum — appear in no viewpoint, so a run that shot
+   * only viewpoints photographed the outside and called it the model.
+   *
+   * By `data-recipe`, which the panel already carries, rather than by the
+   * button's prose.
+   */
   let unsettled = 0;
+  for (const recipe of onlyRecipes.length ? await recipesOnOffer(page, onlyRecipes) : []) {
+    for (const mode of modes) {
+      if (onlyModes.length && !onlyModes.includes(mode)) continue;
+      await showUi(page);
+      await page.locator('.inspection-choice.inspection-mode').nth(modes.indexOf(mode)).click({ noWaitAfter: true });
+      await page.waitForTimeout(300);
+      // Every recipe here declares `resets: true`, so each starts from the
+      // whole model rather than from whatever the last one left hidden.
+      await page.locator(`[data-recipe="${recipe}"]`).click({ noWaitAfter: true });
+      await page.waitForTimeout(700);
+      await page.mouse.move(4, 4);
+      await hideUi();
+      const name = `recipe-${recipe}--${mode}`;
+      const frames = await captureSettled(join(outDir, `${name}.png`));
+      if (frames == null) {
+        console.error(`  ${name}: no painted frame repeated within ${ATTEMPTS} shots / ${PATIENCE} ms`);
+        unsettled += 1;
+      } else {
+        console.log(`  ${name}.png (settled after ${frames} frame(s))`);
+      }
+      await hideUi();
+    }
+  }
+
   for (const mode of modes) {
     if (onlyModes.length && !onlyModes.includes(mode)) continue;
     await page.locator('.inspection-choice.inspection-mode').nth(modes.indexOf(mode)).click({ noWaitAfter: true });
