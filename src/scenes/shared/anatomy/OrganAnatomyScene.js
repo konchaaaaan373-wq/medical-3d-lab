@@ -769,15 +769,26 @@ export class OrganAnatomyScene {
   _applyLayers(dt, snap) {
     const p = this.displayProgress;
     for (const structure of this.structures) {
-      const hiddenByView = structure.tags.some((tag) => this.hiddenTags.has(tag));
-      const isolatedAway = this.isolatedId != null && structure.id !== this.isolatedId;
-      // The reader's own hide is the third input, and it joins the other two
-      // here rather than anywhere else — architecture rule 3: one place decides
-      // whether a structure is on screen. `_isPickable` reads the same flag, so
-      // a structure the reader hid stops being clickable without a second rule
+      // Three things want a say in whether this structure is on screen, and
+      // they are resolved in an order rather than OR'd together — architecture
+      // rule 3: one place decides. `_isPickable` reads the same flag, so a
+      // structure that is not drawn stops being clickable without a second rule
       // saying so.
-      const hiddenByReader = this.manualHidden.has(structure.id);
-      structure.hidden = hiddenByView || isolatedAway || hiddenByReader;
+      //
+      // **Isolation wins outright**, which is the order the brain atlas already
+      // resolves and its model card already states: "only this one" means only
+      // this one, whatever the viewpoint or the reader's own hide had to say.
+      // OR'ing them instead blanks the model — isolate a structure the active
+      // viewpoint hides and every structure is hidden, the isolated one by the
+      // viewpoint and the rest by the isolation. That was reachable before
+      // hiding existed here, through `right-mediastinal` on the lung: 0 of 83
+      // structures drawn. Isolation writes nothing down, so clearing it hands
+      // the viewpoint and the reader's hidden set back exactly as they were.
+      if (this.isolatedId != null) structure.hidden = structure.id !== this.isolatedId;
+      else {
+        const hiddenByView = structure.tags.some((tag) => this.hiddenTags.has(tag));
+        structure.hidden = hiddenByView || this.manualHidden.has(structure.id);
+      }
 
       let target;
       if (structure.hidden) target = 0;

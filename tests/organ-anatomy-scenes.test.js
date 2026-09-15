@@ -656,3 +656,49 @@ test('hiding the isolated structure ends the isolation and says so', () => {
     scene.showAllHiddenStructures();
   }
 });
+
+test('isolation wins outright, and never leaves the model blank', () => {
+  // Found by review on PR #96, and older than the hiding it was found in.
+  // The three inputs to "is this on screen" used to be OR'd together, so
+  // isolating a structure that something else was already hiding hid *every*
+  // structure: the isolated one by the viewpoint or the reader's hide, and all
+  // the rest by the isolation. On the lung the viewpoint route was reachable
+  // before hiding existed at all — `right-mediastinal` plus isolate gave 0 of
+  // 83 structures drawn.
+  //
+  // Isolation is resolved first now, which is the order the brain atlas already
+  // used and its model card already stated. It writes nothing down, so clearing
+  // it hands back the viewpoint and the hidden set untouched.
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    scene.clearIsolation();
+    scene.showAllHiddenStructures();
+    const drawn = () => scene.structures.filter((structure) => structure.currentOpacity > 0).length;
+
+    // Route one: the reader's own hide.
+    const target = scene.structures.find((structure) => structure.revealAt === 0);
+    scene.setStructureHidden(target.id, true);
+    scene.isolateStructure(target.id);
+    assert.equal(drawn(), 1, `${entry.id}: isolating a hidden structure left ${drawn()} structures drawn`);
+    scene.clearIsolation();
+    assert.equal(
+      scene.getAnatomyVisibility().hidden.includes(target.id),
+      true,
+      `${entry.id}: the isolation swallowed the reader's own hide instead of overriding it`
+    );
+    scene.showAllHiddenStructures();
+
+    // Route two: a viewpoint that takes a side or a layer away.
+    for (const view of scene.constructor.views ?? []) {
+      scene.setAnatomyView(view.id);
+      const byView = scene.structures.filter((structure) =>
+        structure.tags.some((tag) => scene.hiddenTags.has(tag))
+      );
+      if (!byView.length) continue;
+      scene.isolateStructure(byView[0].id);
+      assert.equal(drawn(), 1, `${entry.id}/${view.id}: isolating a structure the view hides drew ${drawn()}`);
+      scene.clearIsolation();
+    }
+    scene.setAnatomyView((scene.constructor.views ?? [])[0]?.id ?? null);
+  }
+});
