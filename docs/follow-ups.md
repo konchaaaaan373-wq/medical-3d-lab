@@ -611,30 +611,6 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
 
-### F-120 `introducedIn` は squash merge の repo では誰も到達できない — P2（2026-09-15）
-
-PR #99 のレビュー（Codex, P2）が心臓の `source.introducedIn` を「到達不能」と
-指摘しました。**正しく、しかも心臓だけの話ではありません**——脳も同じです:
-
-```
-$ git merge-base --is-ancestor e344d465de416d5a40a0cbb8b9d6b8d0c2850185 origin/main
-NO
-```
-
-この repo は squash merge なので、**branch の commit は決して main の祖先に
-なりません**。`introducedIn` は「ファイルが repo に入った commit」を求めますが、
-それに答えられるのは squash commit だけで、それはその commit を記録するはずの
-merge が済むまで存在しません。**仕様として充足不可能**です。
-
-- 到達可能に見える別の SHA を入れて指摘を消すことはしていません（同じく不到達なので）
-- 直し方は 2 つ: ①merge 後に squash commit を後から記録する
-  ②`source.retrievedAt` と同じ形（`null` ＋ `retrievedAtNote`）を許す。
-  この manifest 自身が「知り得ないことは、知り得ない理由とともに書く」の
-  先例を持っています
-- **いま provenance を支えているのは commit ではなく hash です**——
-  `sources[].sha256` が publisher のバイト列を、`output.sha256` が配信物を pin し、
-  `npm run assets:repair:verify` が前者から後者を再生成します
-
 ### F-117 グループ非表示は「見えている 1 段」しか畳まない — P3（2026-09-15）
 
 グループの表示/非表示は、そのブランチ配下の**葉をすべて**対象にします
@@ -2460,6 +2436,35 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 ---
 
 ## Resolved
+
+- **F-120 `introducedIn` は squash merge の repo では誰も到達できない** — 解決（2026-09-15）。
+  **ただし F-120 の前提そのものが間違っていました。**
+  この環境の clone は shallow で、`.git/shallow` の境界 commit には親がありません。
+  境界では `git show --diff-filter=A` が **tree 内の全ファイルを「追加」と報告** し、
+  `git merge-base --is-ancestor` も切れた履歴の向こう側に届きません。
+  F-120 の `NO` はこの壊れた計器の出力でした。
+  `git fetch --unshallow` して測り直すと:
+
+  - **脳 `e344d465` は最初から正しい**。origin/main の祖先であり、
+    `public/assets/brain/brain.glb` を実際に追加した commit です。
+    F-120 に従って「到達可能に見える」`345a1e1`（＝shallow 境界）に
+    差し替えていたら、**実際には無関係な commit を記録するところでした**
+  - **心臓 `a221a736` だけが本当に誤り**。branch commit で、main の祖先ではありません。
+    正しくは PR #99 の squash commit `40b64e71`（両ファイルを追加している）。
+    `introducedAt` も commit の **UTC 日付**に揃えました
+    （`40b64e71` は `+0900` で、その zone では翌日に読めます）
+
+  `tests/asset-provenance.test.js` が 3 つ全部を測ります: commit が存在し、
+  default branch の祖先であり、**その asset の `output.path` を追加している**こと
+  （祖先であるだけでは、無関係な commit でも通ってしまいます）。
+  **2 つの失敗を実際に再現して確認済み**——元の心臓の値では
+  `is not an ancestor of origin/main`、shallow 境界の値では
+  `does not add public/assets/brain/brain.glb` で落ちます。
+  そして **shallow clone では skip せず落ちます**。緑のチェックが
+  「走った」と言いながら何も測っていない状態こそ、この一件の原因だからです。
+  CI は `fetch-depth: 0` を持ちました。
+  新規 asset 用に `introducedIn: null` ＋ `introducedInNote` を
+  （`retrievedAt` と同じ形で）許します——merge 前は squash commit が存在しないためです。
 
 - **F-121 hero の入力検証は rotation の 1 つ目しか触らない** — 解決（2026-09-15）。
   `scripts/check-hero-input.mjs` が hero の chooser を読んで

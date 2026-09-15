@@ -229,7 +229,10 @@ export const RELEASE_STATUS_IDS = values(RELEASE_STATUS);
  * @property {string[]} organs taxonomy organ ids the asset covers. `whole-body` marks a systemic context asset
  * @property {string} structureScope what anatomy the asset covers, in words
  * @property {{ name: string, url: string, fileUrl: string | null, revision: string, retrievedAt: string | null,
- *   retrievedAtNote?: string, introducedAt: string, introducedIn: string }} source
+ *   retrievedAtNote?: string, introducedAt: string, introducedIn: string | null,
+ *   introducedInNote?: string }} source `introducedIn` is the commit that brought
+ *   the file into **this repository's default branch**, and `introducedAt` is that
+ *   commit's date — see the note on reachability below.
  * @property {{ spdx: string, url: string, attribution: string, redistribution: string, commercialUse: string,
  *   assessment: string, assessedAt: string, decisionRecord: string | null, decisionNote: string,
  *   obligations: LicenseObligation[] }} license
@@ -577,7 +580,7 @@ export const ASSET_MANIFEST = Object.freeze([
       retrievedAt: '2026-09-09',
       retrievedAtNote: null,
       introducedAt: '2026-09-15',
-      introducedIn: 'a221a736c6d5d2a03739813bd7a53767b12d744f',
+      introducedIn: '40b64e71f5c86a142a558db02135730915418a62',
     },
     license: {
       spdx: 'CC-BY-4.0',
@@ -811,7 +814,7 @@ export const ASSET_MANIFEST = Object.freeze([
       retrievedAt: '2026-09-09',
       retrievedAtNote: null,
       introducedAt: '2026-09-15',
-      introducedIn: 'a221a736c6d5d2a03739813bd7a53767b12d744f',
+      introducedIn: '40b64e71f5c86a142a558db02135730915418a62',
     },
     license: {
       spdx: 'CC-BY-4.0',
@@ -1188,7 +1191,18 @@ export function validateAssetManifest(assets = ASSET_MANIFEST, { organIds } = {}
         problems.push(`${where}: source.retrievedAt must be an ISO date or null`);
       }
       if (!DATE_PATTERN.test(asset.source.introducedAt ?? '')) problems.push(`${where}: source.introducedAt must be an ISO date`);
-      if (!GIT_SHA_PATTERN.test(asset.source.introducedIn ?? '')) problems.push(`${where}: source.introducedIn must be a 40-character commit`);
+      // Null is allowed for exactly one reason and must say so: this
+      // repository squash-merges, so between filing a manifest entry and
+      // merging it there is no commit on the default branch to name yet.
+      // Everything else is a 40-character commit that a reader can resolve —
+      // `tests/asset-provenance.test.js` checks it really is one.
+      if (asset.source.introducedIn === null) {
+        if (!nonEmpty(asset.source.introducedInNote)) {
+          problems.push(`${where}: source.introducedIn is null without an introducedInNote saying why`);
+        }
+      } else if (!GIT_SHA_PATTERN.test(asset.source.introducedIn ?? '')) {
+        problems.push(`${where}: source.introducedIn must be a 40-character commit or null`);
+      }
     }
 
     // Components
