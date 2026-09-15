@@ -58,6 +58,11 @@
   color: var(--ink);
   text-decoration: none;
   flex: none;
+  /* WCAG 2.5.8's floor, on the one control in this bar that is only text: on a
+     phone the brand mark is hidden and the link collapses to a 12 px line of
+     type — a target measured at 64×12 by `verify:ui`, and a link a thumb has to
+     be accurate about. The height is the box, not the type. */
+  min-height: 24px;
 }
 
 .global-nav-brand-mark {

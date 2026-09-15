@@ -6,6 +6,7 @@ import {
   INLINE_LINK_EXEMPTION,
   MEASURED_TARGET,
   OVERFLOW_TOLERANCE_PX,
+  PHONE_TARGET,
   PROMISED_PHONE_WIDTHS,
   SURFACES,
   TARGET_EXEMPTIONS,
@@ -186,6 +187,46 @@ test('thresholds: every target-size exemption is justified in writing', () => {
   // The one exemption the standard itself grants must cite it, because it is
   // the one a reader is most entitled to challenge.
   assert.match(INLINE_LINK_EXEMPTION.why, /2\.5\.8/);
+});
+
+test('thresholds: the phone floor is the palette\'s primary target, not a second 44', () => {
+  // Two copies of a number are two chances to disagree about it. The device
+  // pass asked for 44 on a phone; `TOUCH_TARGET.primary` is where this product
+  // already says what 44 means.
+  assert.equal(PHONE_TARGET.floor, TOUCH_TARGET.primary);
+  // Above the floor every width has to clear, or it would say nothing.
+  assert.ok(PHONE_TARGET.floor > MEASURED_TARGET.floor);
+  assert.ok(PHONE_TARGET.floor > MEASURED_TARGET.intent.scene);
+});
+
+test('thresholds: what a phone is agrees with the stylesheet that lays one out', () => {
+  // `product-shell-b6.css` writes the one-column phone layout at this width and
+  // `App.js` widens the camera framing at it. A check that measured a different
+  // width would be measuring a layout that is not the phone's.
+  const css = readFileSync(new URL('../src/styles/product-shell-b6.css', import.meta.url), 'utf8');
+  assert.ok(
+    css.includes(`max-width: ${PHONE_TARGET.maxWidth}px`),
+    'the phone block in product-shell-b6.css no longer starts at PHONE_TARGET.maxWidth',
+  );
+  const floor = readFileSync(new URL('../src/styles/phone-touch-targets.css', import.meta.url), 'utf8');
+  assert.ok(
+    floor.includes(`max-width: ${PHONE_TARGET.maxWidth}px`),
+    'the touch-target floor applies at a different width from the phone layout',
+  );
+  assert.ok(
+    floor.includes(`min-height: ${PHONE_TARGET.floor}px`),
+    'the touch-target floor stylesheet no longer writes PHONE_TARGET.floor',
+  );
+});
+
+test('thresholds: every phone-target exemption is justified in writing', () => {
+  for (const exemption of PHONE_TARGET.exemptions) {
+    assert.ok(exemption.selector, 'an exemption that names nothing exempts everything');
+    assert.ok(
+      typeof exemption.why === 'string' && exemption.why.length > 20,
+      `"${exemption.selector}" is exempt from the phone floor without saying why`,
+    );
+  }
 });
 
 test('overlays: an ancestor is not something painted over a control', () => {

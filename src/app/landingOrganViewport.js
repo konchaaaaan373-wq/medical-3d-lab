@@ -38,6 +38,7 @@ export function mountLandingOrganViewport(container, {
   detailAllowed = shouldLoadDetail,
   onStateChange = () => {},
   onDetailError = () => {},
+  onStructureChange = () => {},
   detailDelayMs = DETAIL_DELAY_MS,
   detailTimeoutMs = DETAIL_TIMEOUT_MS,
 } = {}) {
@@ -78,6 +79,28 @@ export function mountLandingOrganViewport(container, {
    */
   let loadingDetail = null;
 
+  /**
+   * The named part the reader is pointing at.
+   *
+   * Held here rather than read back out of the scene on demand, because the
+   * rule the surfaces share is about *two* pointers: a pinned selection and a
+   * hover preview, with the pin winning. Keeping both and resolving them in one
+   * place is what stops a pointer crossing the model from rewriting the name
+   * the reader deliberately clicked — the same rule `AnatomyInfoPanel` states.
+   */
+  let pinnedStructure = null;
+  let hoveredStructure = null;
+  /** Unsubscribes from the anatomy surface of the scene now on screen. */
+  let structureBindings = [];
+  /** Assigned once the viewer exists; a no-op before that and after disposal. */
+  let emitStructure = () => {};
+
+  /** What the surfaces are told, pin first. One shape, written once. */
+  const currentStructure = () => {
+    const structure = pinnedStructure ?? hoveredStructure;
+    return structure ? { ...structure, pinned: Boolean(pinnedStructure) } : null;
+  };
+
   const setLifecycle = (state, detail = {}) => {
     if (disposed && state !== 'disposed') return;
     lifecycle = state;
@@ -98,6 +121,8 @@ export function mountLandingOrganViewport(container, {
     targetOrganId = null;
     targetSceneId = null;
     releaseLoadingDetail();
+    // `releaseDetail` lets the structures go: they are only ever bound to a
+    // detail scene, so there is no path where they outlive one.
     releaseDetail();
     releaseModel();
     for (const timer of attemptTimers) clearTimeout(timer);
@@ -138,8 +163,36 @@ export function mountLandingOrganViewport(container, {
     }
   }
 
+  /**
+   * Let go of the scene's anatomy surface.
+   *
+   * `notify` is off only where the caller is about to report something else
+   * about the same change; everywhere else the reader's name card has to be
+   * told that the structure it is naming is no longer on screen.
+   */
+  function releaseStructures({ notify = true } = {}) {
+    const had = Boolean(pinnedStructure || hoveredStructure);
+    for (const off of structureBindings) {
+      try {
+        off();
+      } catch (error) {
+        console.error('landing organ structure unsubscribe', error);
+      }
+    }
+    structureBindings = [];
+    pinnedStructure = null;
+    hoveredStructure = null;
+    if (!notify || !had) return;
+    try {
+      onStructureChange(null);
+    } catch (error) {
+      console.error('landing organ structure', error);
+    }
+  }
+
   function releaseDetail() {
     if (!detail) return;
+    releaseStructures();
     detailFrame?.();
     detailFrame = null;
     try {
@@ -213,6 +266,62 @@ export function mountLandingOrganViewport(container, {
         if (inView && document.visibilityState !== 'hidden') renderOnce();
       }
     };
+
+    /**
+     * Report the named part under the reader's pointer.
+     *
+     * A pinned selection wins over a hover: the hover is a preview, and it
+     * previews only while nothing is pinned.
+     *
+     * The render is not incidental. An anatomy scene opts out of auto-rotation,
+     * and a reader who asked for reduced motion stops the loop entirely — so in
+     * the frame where naming a structure matters most, nothing is drawing. The
+     * highlight the scene just put on the mesh would sit in a buffer nobody
+     * presents, and the name would appear beside an unchanged picture.
+     */
+    emitStructure = () => {
+      if (disposed) return;
+      if (!viewer.running && inView && document.visibilityState !== 'hidden') renderOnce();
+      try {
+        onStructureChange(currentStructure());
+      } catch (error) {
+        console.error('landing organ structure', error);
+      }
+    };
+
+    /**
+     * Subscribe to one scene's anatomy surface, if it has one.
+     *
+     * Optional on purpose: the hero frames whatever the release opens, and a
+     * scene that cannot name its parts is not broken — it simply has no names
+     * to offer, and says so by not implementing the surface. The caller learns
+     * which it got from the return value, because "no structure selected" and
+     * "this model has no selectable structures" are different things to a
+     * reader and must not be shown as the same one.
+     *
+     * @returns {boolean} whether the scene offers selectable named structures
+     */
+    function bindStructures(scene) {
+      releaseStructures({ notify: false });
+      if (typeof scene?.onAnatomySelection !== 'function') return false;
+
+      const bind = (subscribe, apply) => {
+        if (typeof subscribe !== 'function') return;
+        const off = subscribe.call(scene, (info) => {
+          apply(info ?? null);
+          emitStructure();
+        });
+        if (typeof off === 'function') structureBindings.push(off);
+      };
+      bind(scene.onAnatomySelection, (info) => { pinnedStructure = info; });
+      bind(scene.onAnatomyHover, (info) => { hoveredStructure = info; });
+      // Whatever the scene already had pinned before this hooked up — a scene
+      // may open on a structure of its own choosing.
+      pinnedStructure = scene.getAnatomySelection?.() ?? null;
+      hoveredStructure = scene.getAnatomyHover?.() ?? null;
+      if (pinnedStructure || hoveredStructure) emitStructure();
+      return true;
+    }
 
     /**
      * Put the camera where the subject fits.
@@ -308,8 +417,34 @@ export function mountLandingOrganViewport(container, {
         '-',
         '_',
         'Home',
+        'Enter',
+        'Escape',
       ];
       if (!supported.includes(key)) return;
+
+      // Naming a structure without a pointer. The arrows turn the model; this
+      // is how the reader then asks what is in front of them, so the question
+      // is asked of the middle of the frame — the one place a keyboard user can
+      // aim at, and the place the focused viewport marks.
+      //
+      // Deliberately not a camera move: `userMovedCamera` is left alone, so
+      // asking what this is does not quietly give up the opening pose.
+      //
+      // The default is only prevented once there is a model to ask. A page with
+      // no named structures has no business swallowing Escape.
+      if (key === 'Enter' || key === 'Escape') {
+        const canvas = viewer.renderer?.domElement;
+        if (!detail?.scene || !canvas) return;
+        event.preventDefault();
+        if (key === 'Escape') detail.scene.clearSelection?.();
+        else {
+          const rect = canvas.getBoundingClientRect();
+          detail.scene.selectAtCanvasPoint?.(rect.width / 2, rect.height / 2);
+        }
+        renderOnce();
+        return;
+      }
+
       event.preventDefault();
       viewer.controls.autoRotate = false;
 
@@ -468,11 +603,23 @@ export function mountLandingOrganViewport(container, {
         allowAutoRotate = SceneClass.allowAutoRotate !== false;
         detailFrame = viewer.onFrame((dt) => scene.update(dt));
         cleanups.push(() => detailFrame?.());
+        // Its own try: a scene that cannot report its names is a scene without
+        // names, not a failed model. Letting this throw here would land in the
+        // catch below with `detail` and the frame hook already installed, which
+        // unwinds neither — a disposed scene stepped on every frame behind an
+        // error message.
+        let named = false;
+        try {
+          named = bindStructures(scene);
+        } catch (error) {
+          console.error('landing organ structure bind', error);
+          releaseStructures({ notify: false });
+        }
 
         applyOpeningPose();
         renderOnce();
         container.dataset.ready = 'true';
-        setLifecycle('ready');
+        setLifecycle('ready', { named });
         syncActivity();
         return sceneId;
       } catch (error) {
@@ -599,7 +746,7 @@ export function mountLandingOrganViewport(container, {
           void upgrade(gen, upgradeSceneId);
         } else {
           container.dataset.ready = 'true';
-          setLifecycle('ready');
+          setLifecycle('ready', { named: false });
         }
         return organId;
       },
@@ -616,6 +763,10 @@ export function mountLandingOrganViewport(container, {
       },
       get detailScene() {
         return detail?.sceneId ?? null;
+      },
+      /** The named part the reader is pointing at, pin first. */
+      get structure() {
+        return currentStructure();
       },
       get state() {
         return lifecycle;

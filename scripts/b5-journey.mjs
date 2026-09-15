@@ -10,6 +10,9 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { chromium } from 'playwright';
 
+// No server of its own: this drives a site somebody else is already serving —
+// `npm run preview`, or a deployment — which is why it takes a base URL rather
+// than a build directory, and why `lib/serve-dist.mjs` has nothing to do here.
 const base = process.argv[2] || 'http://127.0.0.1:4173/';
 const outDir = process.env.B5_RESULTS_DIR || 'artifacts/b5-journey';
 await fs.mkdir(outDir, { recursive: true });

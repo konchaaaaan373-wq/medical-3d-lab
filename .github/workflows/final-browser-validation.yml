@@ -82,6 +82,51 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
+  # The hero names what a reader picks, and how they pick it is not one thing.
+  # On a phone the model is turned by swiping across it and a structure is named
+  # by tapping it; with a keyboard there is no pointer at all. A press that goes
+  # out and comes back — how a model is turned and turned back — ends where it
+  # started, which is how a rotate once came to pin a structure nobody chose.
+  # None of that is reachable from `node --test`, and the viewport matrix above
+  # measures surfaces at rest rather than under a finger.
+  #
+  # Chromium with touch emulation, for the same reason as the job below: this
+  # repository keeps browsers out of ordinary PR pushes. It is not a device
+  # pass — no iOS Safari, no real hardware — and says so in its own output.
+  hero-input:
+    name: landing hero under a finger and a keyboard (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_HEAD_SHA: ${{ inputs.pr_head_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "${PR_HEAD_SHA}" || "${PR_HEAD_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:hero-input -- --shots hero-input-shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hero-input-shots-attempt-${{ github.run_attempt }}
+          path: hero-input-shots/
+          if-no-files-found: ignore
+          retention-days: 3
+
   # The account dialog is the one surface `npm test` structurally cannot reach:
   # `AccessManager` reads `import.meta.env` at module load, so under
   # `node --test` it is permanently "not configured" and never builds a

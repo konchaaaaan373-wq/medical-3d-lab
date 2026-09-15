@@ -44,9 +44,11 @@
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
  */
-import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
+import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { patientGuideFor } from '../src/data/patientGuides.js';
@@ -91,42 +93,9 @@ if (!chromium) {
   );
 }
 
-// --- serving the build (same shape as check-anatomy-interaction.mjs) --------
+// --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.glb': 'model/gltf-binary',
-  '.wasm': 'application/wasm',
-  '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8',
-};
-
-const root = resolve(distDir);
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-
-const server = createServer((request, response) => {
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
-});
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/`;
+const { base, close: closeServer } = await serveDist(distDir);
 
 // --- the drive --------------------------------------------------------------
 
@@ -145,7 +114,10 @@ const observed = [];
 let axisDrivesControls = false;
 
 const browser = await chromium.launch({
-  executablePath: process.env.CHROMIUM_PATH || undefined,
+  // Through the same resolver every other browser check uses: a machine that
+  // ships a Chromium under a version Playwright does not pin is the case it
+  // exists for, and `CHROMIUM_PATH` still wins inside it.
+  executablePath: chromiumExecutable(chromium),
   headless: !flag('--headed'),
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -494,7 +466,7 @@ if (!(await patientButton.count())) {
 }
 
 await browser.close();
-server.close();
+closeServer();
 
 console.log(`\npatient explanation — ${sceneId}\n`);
 for (const row of observed) {

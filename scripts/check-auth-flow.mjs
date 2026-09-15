@@ -55,11 +55,11 @@
  *                    (default: the first model in the public manifest)
  *   --headed         show the browser
  */
-import { createServer } from 'node:http';
-import { existsSync, readFileSync } from 'node:fs';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { existsSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 import { PUBLIC_MODELS } from '../src/catalog/publicManifest.js';
 
 const argv = process.argv.slice(2);
@@ -72,12 +72,6 @@ const value = (name, fallback) => {
 const DIST = resolve(value('--dist', 'dist'));
 const SCENE = value('--scene', PUBLIC_MODELS[0]?.sceneId ?? 'brain-anatomy');
 
-const TYPES = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-  '.json': 'application/json', '.svg': 'image/svg+xml', '.png': 'image/png',
-  '.webp': 'image/webp', '.jpg': 'image/jpeg', '.woff2': 'font/woff2',
-  '.glb': 'model/gltf-binary', '.txt': 'text/plain', '.xml': 'application/xml',
-};
 
 if (!existsSync(join(DIST, 'index.html'))) {
   console.error(`No build at ${DIST}. Run \`npm run build\` first.`);
@@ -93,22 +87,12 @@ const check = (name, ok, detail = '') => {
   if (!ok) problems.push(`${name}${detail ? ` — ${detail}` : ''}`);
 };
 
-const server = createServer((request, response) => {
-  const url = new URL(request.url, 'http://localhost');
-  // Contain the served path to DIST: this serves whatever is asked for.
-  const wanted = normalize(join(DIST, decodeURIComponent(url.pathname)));
-  const inside = wanted === DIST || wanted.startsWith(`${DIST}${sep}`);
-  const file = inside && existsSync(wanted) && extname(wanted) ? wanted : join(DIST, 'index.html');
-  try {
-    response.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' });
-    response.end(readFileSync(file));
-  } catch {
-    response.writeHead(404);
-    response.end('not found');
-  }
-});
-await new Promise((ready) => server.listen(0, ready));
-const base = `http://127.0.0.1:${server.address().port}/`;
+// The shared static server, so the containment rule and the media types are
+// one thing rather than eight. This file's own copy served an extensionless
+// path as the shell and everything else verbatim; `serveDist` falls back to the
+// shell for anything that is not a file in the build, which is the same answer
+// for every request this check makes.
+const { base, close: closeServer } = await serveDist(DIST);
 
 const browser = await chromium.launch({
   executablePath: chromiumExecutable(),
@@ -852,6 +836,79 @@ try {
       check(`${label}: the mode switch is reachable`,
         box.switchW > 40 && box.switchH >= 20, JSON.stringify(box));
       check(`${label}: no console errors`, errors.length === 0, errors.join(' | '));
+
+      // A device pass on an iPhone read this dialog as an English form in a
+      // Japanese product, with text that sank into the background and a close
+      // button too small to hit. Each of those is measurable, and none of them
+      // was measured.
+      const dialog = await page.evaluate(() => {
+        const root = document.querySelector('.access-dialog');
+        const modal = root?.getBoundingClientRect();
+        const close = document.querySelector('.access-close')?.getBoundingClientRect();
+        const visibleText = (node) => {
+          const out = [];
+          for (const element of node.querySelectorAll('*')) {
+            if (getComputedStyle(element).display === 'none') continue;
+            for (const child of element.childNodes) {
+              if (child.nodeType === 3 && child.textContent.trim()) out.push(child.textContent.trim());
+            }
+          }
+          return out;
+        };
+        const relativeLuminance = (colour) => {
+          const [r, g, b] = colour.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+          const channel = (value) => {
+            const v = value / 255;
+            return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+          };
+          return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+        };
+        const dialogLuminance = relativeLuminance(getComputedStyle(root).backgroundColor);
+        const contrastOf = (selector) => {
+          const element = document.querySelector(selector);
+          if (!element) return null;
+          const ink = relativeLuminance(getComputedStyle(element).color);
+          const [light, dark] = ink > dialogLuminance ? [ink, dialogLuminance] : [dialogLuminance, ink];
+          return Number(((light + 0.05) / (dark + 0.05)).toFixed(2));
+        };
+        return {
+          lang: document.getElementById('ui')?.dataset.lang ?? null,
+          text: visibleText(root),
+          placeholders: [...root.querySelectorAll('input')].map((input) => input.placeholder),
+          modalInside: modal
+            ? modal.left >= -1 && modal.top >= -1 &&
+              modal.right <= window.innerWidth + 1 && modal.bottom <= window.innerHeight + 1
+            : null,
+          closeSize: close ? [Math.round(close.width), Math.round(close.height)] : null,
+          bodyOverflow: getComputedStyle(document.body).overflow,
+          contrast: {
+            copy: contrastOf('.access-copy.lang-ja'),
+            link: contrastOf('.access-text-button'),
+            close: contrastOf('.access-close'),
+          },
+        };
+      });
+
+      // The interface is Japanese unless somebody switched it, and so is this.
+      const bilingual = dialog.text.filter((line) => /[A-Za-z][^/]* \/ [ぁ-んァ-ヶ一-龠]/.test(line));
+      check(`${label}: no label carries both languages joined by a slash`,
+        bilingual.length === 0, bilingual.slice(0, 3).join(' | '));
+      const english = dialog.text.filter((line) => /^[\x20-\x7E]+$/.test(line) && /[A-Za-z]{4}/.test(line));
+      check(`${label}: the Japanese dialog is in Japanese`,
+        dialog.lang !== 'ja' || english.length === 0, english.slice(0, 4).join(' | '));
+      const asciiPlaceholders = dialog.placeholders.filter((value) => /^[\x20-\x7E]+$/.test(value ?? ''));
+      check(`${label}: the fields are labelled in the language on screen`,
+        dialog.lang !== 'ja' || asciiPlaceholders.length === 0, asciiPlaceholders.join(' | '));
+
+      check(`${label}: the dialog is inside the viewport`, dialog.modalInside === true);
+      check(`${label}: the close button is a target a finger can hit`,
+        Boolean(dialog.closeSize) && Math.min(...dialog.closeSize) >= 44, JSON.stringify(dialog.closeSize));
+      check(`${label}: the page behind the dialog does not scroll`,
+        dialog.bodyOverflow === 'hidden', dialog.bodyOverflow);
+      for (const [what, ratio] of Object.entries(dialog.contrast)) {
+        if (ratio == null) continue;
+        check(`${label}: the ${what} is readable (AA 4.5:1)`, ratio >= 4.5, `${ratio}:1`);
+      }
       await page.close();
     }
   }
@@ -860,7 +917,7 @@ try {
   console.error(`\nwhile ${step}:\n${error.message}`);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
 
 console.log(`Auth flow — ${configured ? 'configured build' : 'unconfigured build'}, ${checked} checks`);

@@ -25,6 +25,20 @@ import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const noop = () => {};
 
+/** Every text node under an element, in order. */
+function collectText(node, out = []) {
+  if (node?.textContent) out.push(node.textContent);
+  for (const child of node?.children ?? []) collectText(child, out);
+  return out;
+}
+
+/** The two language spans of a label, as `[en, ja]`. */
+function labelPair(node) {
+  const spans = (node?.children ?? []).filter((child) => child.className?.includes?.('lang-'));
+  const find = (lang) => spans.find((span) => span.className.includes(`lang-${lang}`))?.textContent ?? '';
+  return [find('en'), find('ja')];
+}
+
 /** Build the form under a fake document, and hand back the pieces tests poke. */
 function mount(overrides = {}) {
   const restore = installFakeDocument();
@@ -133,7 +147,45 @@ test('credential form: sign-up mode asks for a new password and drops recovery',
   const { password, forgotButton, submitButton } = mount({ mode: CREDENTIAL_MODE.SIGN_UP });
   assert.equal(password.getAttribute('autocomplete'), 'new-password');
   assert.equal(forgotButton, undefined);
-  assert.match(submitButton.textContent, /新規登録/);
+  assert.deepEqual(labelPair(submitButton), ['Create account', '新規登録']);
+});
+
+/* The dialog is the first thing a reader meets, and on a Japanese interface it
+   was meeting them in English: every label was one string carrying both
+   languages joined by a slash — "Sign in / ログイン" — from a time when the
+   interface had a `both` mode that rendered the two `lang-` spans together. It
+   has not had one for a long time, so the slash was not a bilingual label, it
+   was an English label with a Japanese one appended. A device pass on an
+   iPhone reported it as a Japanese product whose sign-in was in English. */
+test('credential form: each label is one language, not two joined by a slash', () => {
+  const { root, submitButton, switchButton, forgotButton, email, password } = mount();
+
+  for (const [name, node] of [
+    ['submit', submitButton],
+    ['switch', switchButton],
+    ['forgot', forgotButton],
+  ]) {
+    const [en, ja] = labelPair(node);
+    assert.ok(en && ja, `the ${name} button carries a label in each language`);
+    assert.doesNotMatch(en, /[ぁ-んァ-ヶ一-龠]/, `the ${name} button's English label is English`);
+    assert.doesNotMatch(ja, /[A-Za-z]{3}/, `the ${name} button's Japanese label is Japanese`);
+  }
+
+  // Nothing anywhere in the form still joins the two with a slash.
+  for (const text of collectText(root)) {
+    assert.doesNotMatch(
+      text,
+      /[A-Za-z][^/]* \/ [ぁ-んァ-ヶ一-龠]/,
+      `"${text}" carries both languages in one string`
+    );
+  }
+
+  // The attributes cannot hold two languages, so they hold the one on screen.
+  // The fake document has no `#ui`, which is the Japanese default.
+  assert.equal(email.getAttribute('placeholder'), 'メールアドレス');
+  assert.equal(email.getAttribute('aria-label'), 'メールアドレス');
+  assert.match(password.getAttribute('placeholder'), /^パスワード（\d+文字以上）$/);
+  assert.equal(password.getAttribute('aria-label'), 'パスワード');
 });
 
 test('credential form: submitting carries the mode it was shown in', () => {

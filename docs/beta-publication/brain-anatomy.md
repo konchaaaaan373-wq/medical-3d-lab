@@ -12,12 +12,12 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-09 (re-taken after the label layer stopped waiting out a hide) |
+| **Decided at** | 2026-09-14 (re-taken as the press rule changed, was corrected by review, and then gained a way in that needs no pointer) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **14**, source digest `3c3175a6da4b6944` |
-| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
+| **Scene revision** | model card revision **18**, source digest `a6f983478785382e` |
+| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
 [`src/catalog/release.js`](../../src/catalog/release.js). Re-export the mesh and
@@ -74,6 +74,54 @@ structure off the screen. It still closes the gate, because the pin is not a
 judgement of how big a change is — it is a statement that this decision was
 taken about *this* version.
 
+**Revision 14 → 15.** What counts as a click changed, and this one a reader
+does feel. The release was measured against the press by distance alone, so a
+press that went out and came back had gone nowhere and was read as a click on
+whatever had rotated under the pointer in between. That is the ordinary way to
+turn the model on a touch screen — swipe across it, swipe back — and it was
+found by driving the landing hero with emulated touch (iPhone 13 / Pixel 5 /
+iPad Mini viewports, Chromium with `hasTouch` and real touch events): turning
+the brain and letting go pinned the pons, which nobody had chosen. A press is
+now a click only if it ends where it began **and** the pointer did not travel
+far in between, in one rule both anatomy scenes share
+([`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js),
+fixed by [`tests/tap-gesture.test.js`](../../tests/tap-gesture.test.js)). The
+looser bound on travel is deliberate: a finger is never perfectly still, and a
+tap thrown away is the worse failure of the two.
+
+**No physical phone has run this.** Emulated touch is the same event path on
+desktop hardware; it is not a device pass (F-101).
+
+**Revision 15 → 16.** Review of revision 15 found that the first reading of
+"did not travel far" was the *length of the path*, which grows with how long a
+press lasts rather than how far it went: a contact patch rolls a fraction of a
+pixel per event, so a deliberate press on a small structure at 120 Hz totalled
+tens of pixels without the finger leaving a two-pixel neighbourhood, and the tap
+was thrown away. It is the greatest distance from the press point now, which
+does not accumulate. The same review found the brain scene never listened for
+`pointercancel`, so a press the browser took away — a pinch, a swipe the page
+claims — stayed open in the tracker; it is wired, on both scenes. So is
+`pointerleave`, which is the same hole by the other door: a drag that wanders
+off the canvas is released where the canvas never hears it, and the press it
+left open would be what the *next* release was measured against. Nothing is
+lost by closing it, because a tap does not leave the canvas.
+
+**Revision 17 → 18.** Naming a structure was something only a mouse or a
+finger could do: every route into the selection went through a pointer event, so
+a reader with a keyboard could turn the model and never be told what they were
+looking at. `selectAtCanvasPoint()` asks the same question of the same ray from
+a point rather than from an event, and the landing hero asks it of the middle of
+the frame on Enter, clearing on Escape. Nothing about *what* is at a point
+changed — this is a second door into the same room — but the scene's surface
+did, so the record is taken again.
+
+**And the rule itself is now declared as a model source.** Lifting it into
+`tapGesture.js` had moved what a click selects *outside* the digest this record
+is pinned to, so a later change to it would not have closed this gate — the one
+thing the pin exists to do. All 31 anatomy entries in
+[`revisions.json`](../model-cards/revisions.json) declare the shared file, and
+`tests/tap-gesture.test.js` fails if one of them stops.
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -84,6 +132,15 @@ Driven in a real browser (Chromium, 1280×800, production build) by
 [`scripts/check-anatomy-interaction.mjs`](../../scripts/check-anatomy-interaction.mjs)
 — `npm run verify:anatomy`. Re-running it is how this record is re-verified;
 that is why the evidence is a script rather than a stored image.
+
+Since revision 15 a second drive checks the same model **under the inputs that
+are not a mouse** — [`scripts/check-hero-input.mjs`](../../scripts/check-hero-input.mjs),
+`npm run verify:hero-input`: a finger at the iPhone 13, Pixel 5 and iPad Mini
+viewports with touch emulation, and a keyboard on the desktop viewport. It is
+where the out-and-back press was found. It drives the landing hero, which is
+this atlas in a smaller frame. The touch half is **not** a device pass —
+emulated touch on desktop Chromium, no iOS Safari, no hardware; the keyboard
+half is a real keyboard in a real browser.
 
 **Structures** — the scene reports **271 selectable structures** drawn from 397
 meshes. Four clicks on the rendered mesh each resolved to a named structure
@@ -112,6 +169,17 @@ a rendering check, not an anatomical one.
 **Interactions**
 
 - A click on the model pins a structure and the panel names it.
+- **A route can open on a structure**: `#/brain-anatomy?structure=<id>` selects
+  that structure and brings it into view, which is how the landing hero hands a
+  reader over to the full model already looking at the part they found. It
+  deliberately does not *reveal* it — a link may say where to look, not
+  rearrange the model on arrival — and an id this atlas does not have opens the
+  model normally with nothing selected.
+- **So does a keyboard, with no pointer anywhere**: Tab reaches the 3D
+  viewport, the focused viewport draws the spot Enter will ask about, Enter
+  names the structure drawn there, Escape lets go of it, and turning the model
+  with the arrows and asking again names a different one. Driven in
+  `check-hero-input.mjs`, which was watched failing with the keys removed.
 - **A pointer crossing the model does not rewrite the pinned summary** or the
   controls beside it; hover previews only while nothing is pinned.
 - The tree answers the keyboard: one tab stop, arrows move focus without
@@ -127,7 +195,10 @@ a rendering check, not an anatomical one.
 - A click on empty space clears the selection rather than leaving a stale card,
   and a structure can be selected again afterwards.
 - **A drag is not a click**: orbiting from one structure and releasing over
-  another leaves the pinned selection unchanged.
+  another leaves the pinned selection unchanged — and so does orbiting away and
+  back, which releases on the spot it started from. Both are measured now: how
+  far the release is from the press, and how far the pointer ever got from it
+  while it was down.
 - Switching colour mode (Colour map ↔ Natural anatomy) does not change which
   structure is selected.
 - Applying a named viewpoint does not change it either, and neither leaves more

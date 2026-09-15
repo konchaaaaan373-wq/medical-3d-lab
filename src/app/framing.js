@@ -255,3 +255,152 @@ export function distanceToFit({ halfWidth, halfHeight, aspect, fovDegrees, minim
   const tanHorizontal = aspect * tanVertical;
   return Math.max(halfWidth / tanHorizontal, halfHeight / tanVertical, minimum);
 }
+
+/**
+ * Where the band the panels leave has its centre, in normalised device
+ * coordinates.
+ *
+ * The same two numbers `fitPoseToSafeArea` computes for its pan, named and
+ * exported because zooming needs them too: a zoom with no pointer behind it —
+ * the +/− buttons, the +/− keys — has to happen about the middle of what the
+ * reader can actually see, and that is not the middle of the canvas whenever a
+ * header or a panel is over part of it.
+ *
+ * `x` runs right, `y` runs up, both in −1…1, and both are 0 when nothing is
+ * covering the frame.
+ *
+ * @param {{left?: number, right?: number, top?: number, bottom?: number}} insets
+ * @returns {{x: number, y: number}}
+ */
+export function bandCentreNdc(insets = {}) {
+  return {
+    x: clamp01(insets.left) - clamp01(insets.right),
+    y: clamp01(insets.bottom) - clamp01(insets.top),
+  };
+}
+
+/**
+ * Zoom about a point on screen rather than about the orbit centre.
+ *
+ * ## The defect this exists for
+ *
+ * `fitPoseToSafeArea` sits the subject in the band by panning the camera *and*
+ * the target together. That is the right way to compose the shot, and it leaves
+ * the orbit centre somewhere the subject is not: at 1280×800 the target
+ * projected to the middle of the canvas and the brain's centre sat 177 px to
+ * the left of it.
+ *
+ * `OrbitControls` dollies along the line from the camera to the target, so the
+ * target is the one point a zoom holds still. Everything else moves away from
+ * it as the frame narrows: the subject's offset from the target is a fixed
+ * world vector, the frame's half-height shrinks in proportion to the distance,
+ * so the offset **in pixels** grows by exactly the zoom factor. Measured:
+ * halving the distance moved the brain's centre from 177 px off to 354 px off,
+ * and five steps of that walk it under the header and out of the frame.
+ *
+ * So the fix is not to re-centre anything — it is to zoom about the point the
+ * reader is looking at instead of about the orbit centre.
+ *
+ * ## What it does
+ *
+ * Scales the camera and the target uniformly about the world point under
+ * `ndc`, taken at the target's depth. A uniform scale about a point leaves that
+ * point exactly where it is on screen, leaves the view direction untouched
+ * (`target − position` only changes length), and multiplies the orbit radius by
+ * `factor`. No bounding box is read and no framing is recomputed: this is the
+ * same shot, closer.
+ *
+ * Pointer and pinch zooms do not come through here — `OrbitControls`'
+ * `zoomToCursor` handles those, anchoring on the pointer and on the two-finger
+ * midpoint respectively. This is for the zooms that have no pointer behind
+ * them, and it anchors on `bandCentreNdc`.
+ *
+ * `pose.target` doubles as the vector factory, the same borrowing
+ * `fitPoseToSafeArea` does, so this module still imports no `three`.
+ *
+ * @param {{position: any, target: any}} pose
+ * @param {{ndc: {x: number, y: number}, factor: number, aspect: number, fovDegrees: number}} options
+ * @returns {{position: any, target: any}}
+ */
+export function dollyAboutNdc(pose, { ndc, factor, aspect, fovDegrees }) {
+  const unchanged = { position: pose.position.clone(), target: pose.target.clone() };
+  if (!(factor > 0) || !(aspect > 0) || !(fovDegrees > 0)) return unchanged;
+
+  const forward = pose.target.clone().sub(pose.position);
+  const distance = forward.length();
+  if (!(distance > 1e-8)) return unchanged;
+  forward.normalize();
+
+  const rightAxis = forward.clone().cross(pose.target.clone().set(0, 1, 0));
+  if (rightAxis.lengthSq() < 1e-8) return unchanged;
+  rightAxis.normalize();
+  const upAxis = rightAxis.clone().cross(forward).normalize();
+
+  // The anchor, on the plane through the target that faces the camera. Any
+  // plane parallel to the frame would do — the point is fixed on screen either
+  // way — and the target's is the one whose maths cannot divide by zero.
+  const halfHeight = distance * Math.tan((fovDegrees * Math.PI) / 180 / 2);
+  const anchor = pose.target
+    .clone()
+    .addScaledVector(rightAxis, ndc.x * halfHeight * aspect)
+    .addScaledVector(upAxis, ndc.y * halfHeight);
+
+  const scaleAbout = (point) => anchor.clone().add(point.clone().sub(anchor).multiplyScalar(factor));
+  return { position: scaleAbout(pose.position), target: scaleAbout(pose.target) };
+}
+
+/**
+ * The smallest nudge that brings a subject back into view, when it has almost
+ * left it.
+ *
+ * Zooming about the pointer is what a reader means by zooming, and it lets them
+ * walk the subject off the edge — which is also what they mean, right up until
+ * they have lost it. So this is deliberately not a re-centring: it does nothing
+ * at all while any reasonable part of the subject is inside the band, and when
+ * it does act it moves the least it can, on only the axes that are out, to a
+ * modest fraction rather than to the middle. A reader who has zoomed into one
+ * gyrus keeps their gyrus where they put it.
+ *
+ * Both rectangles are in normalised device coordinates — x and y in −1…1, y up
+ * — so this is pure arithmetic with no camera and no `three` in it. The result
+ * is the shift to apply to the *subject* on screen; the camera moves the other
+ * way.
+ *
+ * @param {{x0:number, x1:number, y0:number, y1:number}} subject on-screen box
+ * @param {{x0:number, x1:number, y0:number, y1:number}} band what the panels leave
+ * @param {{rescueBelow?: number, restoreTo?: number}} [thresholds]
+ * @returns {{x:number, y:number}|null} null when nothing needs doing
+ */
+export function shiftIntoBand(subject, band, { rescueBelow = 0.1, restoreTo = 0.3 } = {}) {
+  const sizeX = subject.x1 - subject.x0;
+  const sizeY = subject.y1 - subject.y0;
+  if (!(sizeX > 0) || !(sizeY > 0)) return null;
+  const bandX = band.x1 - band.x0;
+  const bandY = band.y1 - band.y0;
+  if (!(bandX > 0) || !(bandY > 0)) return null;
+
+  const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+  const visible = (shiftX, shiftY) =>
+    (overlap(subject.x0 + shiftX, subject.x1 + shiftX, band.x0, band.x1) / sizeX) *
+    (overlap(subject.y0 + shiftY, subject.y1 + shiftY, band.y0, band.y1) / sizeY);
+
+  if (visible(0, 0) >= rescueBelow) return null;
+
+  // Per axis, the smallest move that gets this much of the subject's extent
+  // inside. `sqrt` because the two axes multiply into the area above, and a
+  // subject larger than the band can never reach the share on that axis — then
+  // the best available is to line the edges up, which `clamp` below does.
+  const want = Math.sqrt(Math.min(1, restoreTo));
+  const axis = (s0, s1, b0, b1, size, bandSize) => {
+    const need = Math.min(size, bandSize) * want;
+    if (overlap(s0, s1, b0, b1) >= need) return 0;
+    // Out past the far edge, or past the near one: take whichever is nearer.
+    const towardStart = b1 - need - s0; // move negative-ward until s0 is inside
+    const towardEnd = b0 + need - s1;
+    return Math.abs(towardStart) <= Math.abs(towardEnd) ? towardStart : towardEnd;
+  };
+
+  const x = axis(subject.x0, subject.x1, band.x0, band.x1, sizeX, bandX);
+  const y = axis(subject.y0, subject.y1, band.y0, band.y1, sizeY, bandY);
+  return x === 0 && y === 0 ? null : { x, y };
+}

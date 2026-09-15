@@ -30,6 +30,7 @@
  */
 
 import { el } from '../utils/dom.js';
+import { inLanguage } from '../utils/language.js';
 
 /** @typedef {'signin'|'signup'} CredentialMode */
 
@@ -55,22 +56,41 @@ export const MIN_PASSWORD_LENGTH = 8;
  *
  * @param {CredentialMode} mode
  */
+/**
+ * A label in both languages, as the pair of spans the stylesheet expects.
+ *
+ * @param {{en: string, ja: string}} label
+ */
+const dual = (label) => [
+  el('span', { class: 'lang-en', text: label.en }),
+  el('span', { class: 'lang-ja', text: label.ja }),
+];
+
 export function credentialModePolicy(mode) {
   const signUp = mode === CREDENTIAL_MODE.SIGN_UP;
   return Object.freeze({
     mode: signUp ? CREDENTIAL_MODE.SIGN_UP : CREDENTIAL_MODE.SIGN_IN,
     /** A new account must never be offered the saved password for an old one. */
     passwordAutocomplete: signUp ? 'new-password' : 'current-password',
-    // Short UI chrome in this product carries both languages in one string.
-    // `lang-en` / `lang-ja` spans are for content: in `data-lang='both'` the
-    // spans both render, which on a button reads "Sign in ログイン".
-    submitLabel: signUp ? 'Create account / 新規登録' : 'Sign in / ログイン',
-    busyLabel: signUp ? 'Creating account… / 登録中…' : 'Signing in… / ログイン中…',
+    // One label per language, not one string carrying both.
+    //
+    // These used to be written "Sign in / ログイン", from a time when the
+    // interface had a `both` mode that rendered the two `lang-` spans together.
+    // It has not had one for a long time — the toggle is Japanese *or* English —
+    // so the slash was showing every Japanese reader an English label with a
+    // Japanese one appended, which is what a device pass on a phone reported:
+    // a Japanese interface whose sign-in dialog was in English.
+    submitLabel: signUp
+      ? { en: 'Create account', ja: '新規登録' }
+      : { en: 'Sign in', ja: 'ログイン' },
+    busyLabel: signUp
+      ? { en: 'Creating account…', ja: '登録中…' }
+      : { en: 'Signing in…', ja: 'ログイン中…' },
     /** The mode the switch link moves to. */
     switchTo: signUp ? CREDENTIAL_MODE.SIGN_IN : CREDENTIAL_MODE.SIGN_UP,
     switchLabel: signUp
-      ? 'Already have an account? Sign in / アカウントをお持ちの方はログイン'
-      : 'New here? Create an account / はじめての方は新規登録',
+      ? { en: 'Already have an account? Sign in', ja: 'アカウントをお持ちの方はログイン' }
+      : { en: 'New here? Create an account', ja: 'はじめての方は新規登録' },
     /** Only a returning visitor can have a password to have forgotten. */
     offersPasswordReset: !signUp,
     /** The fallback when the server gives us no message of its own. */
@@ -124,8 +144,11 @@ export function credentialForm({
     autocomplete: 'email',
     autocapitalize: 'none',
     spellcheck: 'false',
-    placeholder: 'email@example.com',
-    'aria-label': 'Email / メールアドレス',
+    // An attribute cannot carry two languages the way a pair of spans can, so
+    // it is written in the one on screen. The dialog is modal, so the language
+    // cannot change underneath it while it is open.
+    placeholder: inLanguage('email@example.com', 'メールアドレス'),
+    'aria-label': inLanguage('Email', 'メールアドレス'),
     required: '',
     // Deliberately still enabled while a request is in flight. A disabled field
     // cannot hold focus, so disabling it here drops the keyboard out of the
@@ -144,8 +167,11 @@ export function credentialForm({
     type: 'password',
     name: 'password',
     autocomplete: policy.passwordAutocomplete,
-    placeholder: `Password (${MIN_PASSWORD_LENGTH}+ characters)`,
-    'aria-label': 'Password / パスワード',
+    placeholder: inLanguage(
+      `Password (${MIN_PASSWORD_LENGTH}+ characters)`,
+      `パスワード（${MIN_PASSWORD_LENGTH}文字以上）`
+    ),
+    'aria-label': inLanguage('Password', 'パスワード'),
     minlength: String(MIN_PASSWORD_LENGTH),
     required: '',
   });
@@ -171,7 +197,7 @@ export function credentialForm({
     // `novalidate` is deliberately absent too — the browser's own check on
     // `required` / `type=email` is wanted here.
     method: 'post',
-    'aria-label': policy.submitLabel,
+    'aria-label': inLanguage(policy.submitLabel.en, policy.submitLabel.ja),
     on: { submit },
   }, [
     el('p', {
@@ -189,8 +215,7 @@ export function credentialForm({
         class: 'access-primary access-credentials-submit',
         type: 'submit',
         disabled: busy ? '' : null,
-        text: busy ? policy.busyLabel : policy.submitLabel,
-      }),
+      }, dual(busy ? policy.busyLabel : policy.submitLabel)),
     ]),
     // Opened in a new tab, not this one: the app answers a hashchange on the
     // landing route by reloading itself, so following these in place threw
@@ -225,9 +250,8 @@ export function credentialForm({
         class: 'access-text-button access-switch-mode',
         type: 'button',
         disabled: busy ? '' : null,
-        text: policy.switchLabel,
         on: { click: () => onSwitchMode(policy.switchTo) },
-      }),
+      }, dual(policy.switchLabel)),
     ]),
     // Only after a sign-up this browser just made came back without a session —
     // which is only when the project confirms addresses by email. Somebody
@@ -247,9 +271,8 @@ export function credentialForm({
             class: 'access-text-button access-resend-confirmation',
             type: 'button',
             disabled: busy ? '' : null,
-            text: 'Resend confirmation email / 確認メールを再送',
             on: { click: () => onResendConfirmation(pendingConfirmation) },
-          }),
+          }, dual({ en: 'Resend confirmation email', ja: '確認メールを再送' })),
         ])
       : null,
     policy.offersPasswordReset
@@ -257,9 +280,8 @@ export function credentialForm({
           class: 'access-text-button access-forgot',
           type: 'button',
           disabled: busy ? '' : null,
-          text: 'Forgot password? / パスワードを忘れた',
           on: { click: () => onForgotPassword(String(email.value ?? '').trim()) },
-        })
+        }, dual({ en: 'Forgot password?', ja: 'パスワードをお忘れですか？' }))
       : null,
     notice ? el('p', { class: 'access-form-message', role: 'status', text: notice }) : null,
     error ? el('p', { class: 'access-error', role: 'alert', text: error }) : null,

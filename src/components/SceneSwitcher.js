@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
@@ -205,8 +206,10 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     {
       class: 'global-nav-brand',
       href: LANDING_ROUTE,
-      title: 'Medical 3D Lab — Home',
-      'aria-label': 'Medical 3D Lab — Home / トップ',
+      // The brand itself is a proper noun and stays as it is in both; what
+      // follows it is a word, and a word belongs in the language on screen.
+      title: inLanguage('Medical 3D Lab — Home', 'Medical 3D Lab — トップ'),
+      'aria-label': inLanguage('Medical 3D Lab — Home', 'Medical 3D Lab — トップ'),
     },
     [
       el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
@@ -239,7 +242,9 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     'nav',
     {
       class: `global-scene-nav${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}`,
-      'aria-label': 'Medical 3D Lab',
+      // Names the landmark, rather than repeating the brand: a screen reader
+      // reading a list of landmarks needs to hear what this one is.
+      'aria-label': inLanguage('Site navigation', 'サイトナビゲーション'),
     },
     [brand, currentLocation, trigger, backdrop, panel]
   );

@@ -152,9 +152,16 @@ if (!chromium) {
 }
 
 // --- serving the build -----------------------------------------------------
-// Same shape as check-anatomy-interaction.mjs, with one addition: `/dev-assets/`
-// is served from the repository root, because the candidate GLBs are not copied
-// into a build and must never be.
+// **Not** `lib/serve-dist.mjs`, and deliberately so. Every other browser check
+// serves a build and falls back to the shell; this one is a report about what
+// the model *fetched*, so it records every request and answers a miss with a
+// 404 rather than with the shell — a check that cannot tell "served" from
+// "fell back" cannot say what was loaded. Pushing that into the shared server
+// would give it a request log and a not-found policy for one caller.
+//
+// `/dev-assets/` is served from the repository root, because the candidate GLBs
+// are not copied into a build and must never be. That part *is* shared, as
+// `serveDist`'s `mounts`.
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',

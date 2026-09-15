@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { inLanguage } from '../utils/language.js';
 import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
@@ -70,7 +71,12 @@ export function createTitleCard(meta) {
       'span',
       {
         class: `clinical-review-badge is-${review.status}`,
-        title: 'Clinical-review attestation is tracked separately from model maturity.',
+        // A tooltip holds one language, and this one explains a distinction a
+        // reader is entitled to be confused by — so it says it in theirs.
+        title: inLanguage(
+          'Clinical-review attestation is tracked separately from model maturity.',
+          '臨床レビューの記録は、モデルの成熟度とは別に管理しています。'
+        ),
       },
       [
         el('span', { class: 'lang-en', text: review.en }),

@@ -9,7 +9,8 @@ import {
   SCENES,
   systemsWithOrgans,
 } from '../src/catalog/index.js';
-import { resolveRoute, sameRoute } from '../src/app/router.js';
+import { resolveRoute, sameRoute, slugOf, structureOf } from '../src/app/router.js';
+import { resolveSceneId } from '../src/catalog/index.js';
 
 test('product shell: the empty URL opens Landing rather than a medical scene', () => {
   assert.deepEqual(resolveRoute(''), { kind: 'landing' });
@@ -70,4 +71,40 @@ test('product shell: Lab projection can include planned questions without preten
       );
     }
   }
+});
+
+/* A route can carry the structure it opens on: the landing hero names a part on
+   a small model and hands the reader to the full one already looking at it. It
+   is a query rather than another path segment because the address is the same
+   model — `sameRoute` has to agree, or changing structures would reload the
+   page and throw away the model the reader is looking at. */
+test('product shell: a scene route can name the structure it opens on', () => {
+  assert.deepEqual(resolveRoute('#/brain-anatomy'), {
+    kind: 'scene',
+    sceneId: 'brain-anatomy',
+    structureId: null,
+  });
+  assert.deepEqual(resolveRoute('#/brain-anatomy?structure=17'), {
+    kind: 'scene',
+    sceneId: 'brain-anatomy',
+    structureId: '17',
+  });
+
+  // The id is carried as written. Only the scene knows what its ids look like,
+  // and an atlas keyed on strings is the next one along.
+  assert.equal(structureOf('#/brain-anatomy?structure=left-upper-lobe'), 'left-upper-lobe');
+  assert.equal(structureOf('#/brain-anatomy?structure=%E6%B5%B7%E9%A6%AC'), '海馬');
+  assert.equal(structureOf('#/brain-anatomy'), null);
+  assert.equal(structureOf('#/brain-anatomy?structure='), null, 'an empty value names nothing');
+  assert.equal(structureOf('#/brain-anatomy?other=17'), null);
+
+  // The slug is what it always was, or the query would fall through to the
+  // default scene and a deep link would open the wrong model entirely.
+  assert.equal(slugOf('#/brain-anatomy?structure=17'), 'brain-anatomy');
+  assert.equal(resolveSceneId('#/brain-anatomy?structure=17'), 'brain-anatomy');
+
+  // Same place, different state: no reload.
+  assert.equal(sameRoute('#/brain-anatomy', '#/brain-anatomy?structure=17'), true);
+  assert.equal(sameRoute('#/brain-anatomy?structure=17', '#/brain-anatomy?structure=9'), true);
+  assert.equal(sameRoute('#/brain-anatomy?structure=17', '#/heart-failure'), false);
 });

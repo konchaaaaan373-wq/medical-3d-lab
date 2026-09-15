@@ -3,6 +3,7 @@ import { buildAnatomyTree } from '../../../app/anatomyContract.js';
 import { createStudioLights } from '../lighting.js';
 import { disposeObject } from '../../../utils/dispose.js';
 import { clamp, damp, lerp, smoothstep } from '../../../utils/math.js';
+import { createTapTracker } from './tapGesture.js';
 
 /**
  * The machinery every procedurally built organ anatomy scene shares.
@@ -210,34 +211,41 @@ export class OrganAnatomyScene {
     if (!canvas) return;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    let down = null;
+    // A drag is how the reader turns the organ, and it must not also select
+    // whatever the pointer came to rest on. `tapGesture` measures both how far
+    // the release is from the press and how far the pointer went in between —
+    // the second is what a finger needs, because turning the model and turning
+    // it back is one press that ends exactly where it started.
+    const tap = createTapTracker();
 
     this._pointerDown = (event) => {
-      down = [event.clientX, event.clientY];
+      tap.begin(event.clientX, event.clientY);
       this._setHovered(null);
     };
     this._pointerMove = (event) => {
+      tap.move(event.clientX, event.clientY);
       if (event.buttons) return;
       const hit = this._pick(event);
       this._setHovered(hit?.object.userData.structureId ?? null);
       canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
     this._pointerUp = (event) => {
-      // A drag is how the reader turns the organ, and it must not also select
-      // whatever the pointer happened to come to rest on. Seven pixels is the
-      // same threshold the brain scene settled on.
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
-        down = null;
-        return;
-      }
-      down = null;
+      if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
       if (hit) this.selectStructure(hit.object.userData.structureId);
       else this.clearSelection();
     };
-    this._pointerLeave = () => this._setHovered(null);
+    // The press ends here too. A drag that wanders off the canvas is released
+    // where the canvas never hears it, so without this the press stays open and
+    // the next release it does hear — from a press that began somewhere else
+    // entirely — is measured against a point the reader left long ago. Nothing
+    // is lost by closing it: a tap does not leave the canvas.
+    this._pointerLeave = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
     this._pointerCancel = () => {
-      down = null;
+      tap.cancel();
       this._setHovered(null);
     };
 
@@ -247,6 +255,35 @@ export class OrganAnatomyScene {
     canvas.addEventListener('pointerleave', this._pointerLeave);
     canvas.addEventListener('pointercancel', this._pointerCancel);
     canvas.style.cursor = 'grab';
+  }
+
+  /**
+   * Select whatever is drawn at one point of the canvas.
+   *
+   * The pointer path is not the only way a reader arrives at a structure. A
+   * keyboard has no pointer at all, so the surface that asks "what is at the
+   * middle of the frame?" has to exist as a method rather than only as a
+   * response to a click — otherwise naming a structure is something only a
+   * mouse or a finger can do, and the model names nothing for anybody else.
+   *
+   * Coordinates are CSS pixels from the canvas's top-left corner, which is what
+   * a caller measuring its own viewport already has. A point with nothing drawn
+   * under it clears the selection, exactly as clicking the background does.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.structureId);
   }
 
   _pick(event) {

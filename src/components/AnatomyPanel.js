@@ -309,10 +309,32 @@ export function createAnatomyPanel({
     type: 'button',
     'aria-expanded': 'false',
     on: { click: () => openSheet('parts') },
-  }, [
-    el('span', { class: 'lang-en', text: 'Parts' }),
-    el('span', { class: 'lang-ja', text: '部位' }),
-  ]);
+  });
+
+  /**
+   * What this button is called depends on what it is the way into.
+   *
+   * Beside the model it is one control among several and it opens the part
+   * list, so it says so. On a phone the card is the name and this button, and
+   * everything else is behind it — the part list, the display choices, the
+   * description, and what can be done to the structure, because the summary
+   * moves into the sheet along with them. Calling that "Parts" would name a
+   * third of where it goes.
+   */
+  const PHONE_PANEL = '(max-width: 430px)';
+  const phonePanel = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia(PHONE_PANEL)
+    : null;
+
+  function paintPartsLabel() {
+    const phone = Boolean(phonePanel?.matches);
+    partsButton.replaceChildren(
+      el('span', { class: 'lang-en', text: phone ? 'More' : 'Parts' }),
+      el('span', { class: 'lang-ja', text: phone ? '詳しく見る' : '部位' })
+    );
+  }
+  paintPartsLabel();
+  phonePanel?.addEventListener?.('change', paintPartsLabel);
 
   /**
    * The load state, where it can actually be seen.
@@ -927,6 +949,7 @@ export function createAnatomyPanel({
       restoreBackground();
       document.removeEventListener('keydown', onKeydown, true);
       sheetMedia?.removeEventListener?.('change', applyLayout);
+      phonePanel?.removeEventListener?.('change', paintPartsLabel);
       unsubscribeSelection?.();
       unsubscribeHover?.();
       unsubscribeIsolation?.();

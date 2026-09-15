@@ -1,4 +1,5 @@
 import { EXPLORER_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
+import { inLanguage } from '../utils/language.js';
 import { LEGAL_DOCUMENTS, LEGAL_UPDATED, legalDocument } from '../data/legal.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
@@ -93,7 +94,7 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
   const element = el('main', { class: 'legal-page' }, [
     el('header', { class: 'legal-nav' }, [
       el('a', { class: 'legal-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-      el('nav', { class: 'legal-nav-links', 'aria-label': 'Site navigation' }, [
+      el('nav', { class: 'legal-nav-links', 'aria-label': inLanguage('Site navigation', 'サイトナビゲーション') }, [
         el('a', { href: EXPLORER_ROUTE }, [
           el('span', { class: 'lang-en', text: 'Models' }),
           el('span', { class: 'lang-ja', text: 'モデル' }),

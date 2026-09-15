@@ -35,6 +35,7 @@ import { pricePresentation } from './pricing.js';
 import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
 import { emitAppEvent } from '../app/appEvents.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -85,7 +86,8 @@ export function createAccessManager({ ui }) {
   const accountButton = el('button', {
     class: 'account-trigger',
     type: 'button',
-    title: 'Account and access',
+    // Replaced on the first `renderAccountButton()`, in the language on screen.
+    title: inLanguage('Account and access', 'アカウントと利用権'),
     on: { click: () => open() },
   });
 
@@ -658,16 +660,31 @@ export function createAccessManager({ ui }) {
       el('span', { class: 'account-label lang-ja', text: ja })
     );
     accountButton.classList.toggle('has-paid-access', paid);
-    accountButton.setAttribute('aria-label', state.user ? `Account and access — ${access?.en ?? 'free'}` : 'Sign in');
-    accountButton.title = state.user ? `Account and access — ${access?.en ?? 'Free'}` : 'Sign in';
+    // Both languages are in the DOM for the *visible* label, and CSS hides one.
+    // An attribute cannot hold two, so it holds the one on screen. Without this
+    // the Japanese interface announced its login button as "Sign in" to a
+    // screen reader and showed "Sign in" in the tooltip, under a button reading
+    // ログイン.
+    const label = state.user
+      ? inLanguage(`Account and access — ${access?.en ?? 'free'}`, `アカウントと利用権 — ${access?.ja ?? '無料'}`)
+      : inLanguage('Sign in', 'ログイン');
+    accountButton.setAttribute('aria-label', label);
+    accountButton.title = label;
   }
+
+  // `aria-label` and `title` hold one language, so they are repainted when the
+  // interface flips rather than asking each of the seven surfaces that write
+  // `#ui[data-lang]` to remember one more call.
+  onLanguageChange(() => renderAccountButton());
 
   function dialogContent() {
     const recovery = state.recoveryMode;
     const closeButton = el('button', {
       class: 'access-close',
       type: 'button',
-      'aria-label': 'Close',
+      // One language, the one on screen: a screen reader announcing "Close" in
+      // a Japanese interface is the same defect as an English label in it.
+      'aria-label': inLanguage('Close', '閉じる'),
       text: '×',
       on: { click: close },
     });

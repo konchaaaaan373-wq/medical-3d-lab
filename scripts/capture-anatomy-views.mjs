@@ -38,11 +38,12 @@
  *   --preview        unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed         show the browser
  */
-import { createReadStream, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { chromiumExecutable } from './lib/browser.mjs';
+import { serveDist } from './lib/serve-dist.mjs';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -86,50 +87,18 @@ if (!chromium) {
   );
 }
 
-// --- serving the build (same shape as check-anatomy-interaction.mjs) -------
+// --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.glb': 'model/gltf-binary',
-  '.wasm': 'application/wasm',
-  '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8',
-};
-const root = resolve(distDir);
-const repoRoot = resolve('.');
 /**
  * The candidate GLBs are not copied into a build and must never be, so the
- * scene asks for them at `/dev-assets/` and the dev server answers from the
- * repository root. Without the same rule here this could not shoot the heart at
- * all: every frame came back as "Atlas could not be loaded", which is a picture
- * of a 404 rather than of the model. Same addition, same reason, as
- * `check-heart-recipe-report.mjs`.
+ * scene asks for them at `/dev-assets/` and this answers from the repository
+ * root. Without that this could not shoot the heart at all: every frame came
+ * back as "Atlas could not be loaded", which is a picture of a 404 rather than
+ * of the model. The mount is why `serveDist` takes one.
  */
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const base = decoded.startsWith(`/${DEV_ASSET_ROOT}/`) ? repoRoot : root;
-  const candidate = resolve(base, `.${normalize(decoded)}`);
-  if (candidate !== base && !candidate.startsWith(base + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-const server = createServer((request, response) => {
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
+const { base, close: closeServer } = await serveDist(distDir, {
+  mounts: { [`/${DEV_ASSET_ROOT}/`]: '.' },
 });
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/`;
 
 // --- the render ------------------------------------------------------------
 
@@ -248,5 +217,5 @@ try {
   if (unsettled) die(`${unsettled} frame(s) never settled; the set is not comparable.`);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
