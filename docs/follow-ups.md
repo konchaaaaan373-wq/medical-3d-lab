@@ -689,25 +689,49 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
 
 ## D. テスト・CI
 
-### F-113 未公開ページの本文が 11px、リンクが 10.5px — P2（2026-09-15）
+### F-113 12px の床を見るテストが、シート 2 枚しか見ていない — P2（2026-09-15）
 
-`src/styles/locked.css` の `.locked-copy` が **11px**、`.locked-link` が
-**10.5px** です。`tests/scene-navigation-hierarchy.test.js` は
-「12px を下回らない」を `ui-hierarchy-typography.css` と
-`browser-first-release-polish.css` の 2 枚に対してだけ見ており、
-**`locked.css` はその検査の外**にあります。
+`tests/scene-navigation-hierarchy.test.js` の「12px を下回らない」検査は
+`ui-hierarchy-typography.css` と `browser-first-release-polish.css` の
+**2 枚を名前で固定**しています。`src/styles/` には **33 枚**あるので、
+**新しいシートは毎回この検査の外に生まれます**。
 
-このページは**共有リンクの着地点**です——未公開モデルの URL を渡された人が
-最初に読む面で、「なぜ見られないか」の 2 文がいちばん小さい字になっています。
-タッチ標的は 44px を満たしている（`phone-touch-targets.css`）ので、
-これは押しやすさではなく**読みやすさ**の問題です。
+**当初この項目は「走査する形に変えれば済む」と書きましたが、測ったら違いました。**
+12px 未満の `font-size` 宣言は、この PR のあとで **21 シートに 238 件**あります
+（`locked.css` の 2 件を直す前は 240 件）:
 
-- **どう確かめるか**: 390px の実機で `#/copd` を開き、本文 2 文が
-  他の面の本文と同じ大きさで読めるか
-- **完了の定義**: `locked.css` の字が 12px を下回らず、12px の床を見るテストが
-  `locked.css` も対象にしている（シートを列挙するのではなく、
-  `src/styles/*.css` を走査する形が望ましい——いまの 2 枚固定では
-  新しいシートが毎回検査の外に生まれます）
+| シート | 件数 | | シート | 件数 |
+| --- | ---: | --- | --- | ---: |
+| `ui.css` | 93 | | `anatomy-panel.css` | 7 |
+| `landing.css` | 24 | | `telemetry.css` | 6 |
+| `access.css` | 24 | | `subscription-access.css` | 5 |
+| `product-shell-b6.css` | 23 | | `legal.css` | 3 |
+| `navigation.css` | 15 | | `clinical-review.css` | 3 |
+| `scene-library.css` | 8 | | `locked.css` | 2 |
+| `education-access.css` | 8 | | （ほか 8 枚、各 1〜2 件） | 10 |
+| `explorer.css` | 7 | | **計** | **238** |
+
+数え方は `grep -o 'font-size:\s*\([0-9]\|1[01]\)\(\.[0-9]\+\)\?px' src/styles/*.css`
+です（`clamp()` や `em` は含みません）。
+
+つまり**走査に変えた瞬間に 238 件が赤になる**ので、これはテストの直し方ではなく
+**製品のタイポグラフィの判断**です。しかも 240 件は一様ではありません——
+9.5px の大文字 + `letter-spacing` の**ラベル（eyebrow）は別カテゴリ**で、
+本文や操作ラベルと同じ床を当てるべきものではありません。
+
+**`locked.css` については先に直しました**（共有リンクの着地点で、
+「なぜ見られないか」の 2 文がページで一番小さい字だったため）。
+`.locked-copy` 11px → 12px、`.locked-link` 10.5px → 12px。
+バッジと系統ラベルの 9.5px は**触っていません**——それは製品全体の
+ラベル表現なので、このページだけ変えると不揃いになります。
+`tests/locked-surface.test.js` がこの 3 クラスの床を持っています。
+
+- **決めること**: (a) 現状維持（2 枚固定のまま）、(b) 床を「本文と操作ラベル」に
+  限って定義し、ラベル/eyebrow を明示的な例外表にして全シートを走査、
+  (c) 238 件すべてを 12px 以上へ
+- **完了の定義**: (b) なら、例外表が**クラス名で列挙**されていて、
+  そこに無いものは全シートで 12px 未満を許さない。(a) なら、
+  なぜ 2 枚だけなのかがテストのコメントに書いてある
 
 ### F-112 ブラウザ検証 5 本が CI の外にある — P2（2026-09-15）
 
