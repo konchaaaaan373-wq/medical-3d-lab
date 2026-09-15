@@ -262,11 +262,13 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     }),
     sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: '7128d8f57c861bfc' }),
     scope: Object.freeze({
+      // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
+      // named parts at four recorded points, crossing both adopted files.
       structures: Object.freeze([
-        'Right ventricle',
-        'Left ventricle',
         'Right atrium',
-        'Great cardiac vein',
+        'Right ventricle',
+        'Left anterior descending artery',
+        'Ascending aorta',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',

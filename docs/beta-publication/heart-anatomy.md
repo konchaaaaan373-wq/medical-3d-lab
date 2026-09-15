@@ -49,9 +49,14 @@ image.
 - **46 selectable structures** from 51 meshes across the two files, each with an
   English name, a Japanese name and a place in the hierarchy. The part tree
   lists 46 rows and selection agrees in both directions.
-- Clicks on the rendered mesh resolved to named structures — *Right ventricle /
-  右心室*, *Left ventricle / 左心室*, *Right atrium / 右心房*, *Great cardiac vein
-  / 大心臓静脈* across runs.
+- **Four clicks, at four recorded points, name four different structures** —
+  *Right atrium / 右心房*, *Right ventricle / 右心室*, *Left anterior descending
+  artery / 左前下行枝*, *Ascending aorta / 上行大動脈*. The points are authored in
+  `SCENE_POINTS` rather than measured afresh each run, so this list is a claim a
+  later reader can check rather than whichever structures the drive happened to
+  land on. They also cross both files: the chambers come from `VH_M_Heart`, the
+  artery and the aorta from `VH_M_Blood_Vasculature`, so one run shows each
+  adopted asset is drawn and named.
 - **Six authored viewpoints** — anterior, posterior, left and right lateral, from
   the base, from the apex — and two colour modes, neither of which changes the
   selection.
