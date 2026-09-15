@@ -86,6 +86,17 @@ No dimension here is a measurement.
 - **Screen-left is the patient's right** (`docs/architecture-rules.md` rule 5),
   so in this right hip medial is `+x`; every side comes from one `MEDIAL`
   constant.
+- **Taking a structure out of the way is the reader's own way in.** The layer
+  slider, and where this scene has them the cuts and the viewpoints, are its
+  *authored* ways of showing what is inside; hiding is the one the reader
+  chooses — one structure, or a whole branch of the part tree in a single
+  press. It asserts nothing anatomical and moves nothing: a hidden structure is
+  still there, still listed, still findable by name, and **Unhide all** brings
+  every one of them back. While it is off screen it also leaves the picker, so
+  a ray cannot select what the reader cannot see. Hiding the structure that is
+  currently isolated ends the isolation, because "only this one" and "not this
+  one" cannot both be true, and that ending is announced rather than left for a
+  panel to notice.
 
 ## 7. What it must never be used for
 

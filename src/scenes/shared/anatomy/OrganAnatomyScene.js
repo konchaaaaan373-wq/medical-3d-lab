@@ -81,6 +81,7 @@ export class OrganAnatomyScene {
     this.hoverListeners = new Set();
     this.statusListeners = new Set();
     this.isolationListeners = new Set();
+    this.visibilityListeners = new Set();
 
     this.colorMode = this.constructor.colorModes?.[0]?.id ?? 'regions';
     this.activeView = this.constructor.views?.[0]?.id ?? null;
@@ -94,6 +95,8 @@ export class OrganAnatomyScene {
     this.selected = null;
     this.hovered = null;
     this.isolatedId = null;
+    /** Structures the reader took off screen, by id. Their own choice, kept. */
+    this.manualHidden = new Set();
 
     this.built = false;
     this.disposed = false;
@@ -465,6 +468,115 @@ export class OrganAnatomyScene {
     for (const listener of this.isolationListeners) listener(this.isolatedId);
   }
 
+  // --- hiding ---------------------------------------------------------------
+
+  /**
+   * Taking a structure out of the way, which is not the same as isolating one.
+   *
+   * These scenes had isolation, viewpoint tags, cuts and the layer slider, and
+   * no hiding at all — so a reader could say "show me only this" and never
+   * "take this out of the way and let me see behind it". The panel drew a Hide
+   * button anyway and its press reached an optional call that was simply
+   * skipped, so on thirty-nine organs the control did nothing.
+   *
+   * A cut and the layer slider are the organ's own authored ways in; this is
+   * the reader's. It asserts nothing anatomical: a hidden structure is still
+   * there, still in the tree, still selectable by name, and `Unhide all` brings
+   * every one of them back.
+   */
+  _visibilityChanged(droppedIsolation) {
+    this._applyLayers(1 / 60, true);
+    this._emitVisibility();
+    // A hide that ends an isolation has to say so: the tree learns about
+    // isolation from `onAnatomyIsolation` and nowhere else, so without this it
+    // would go on marking a row isolated after the scene had stopped.
+    if (droppedIsolation) this._emitIsolation();
+  }
+
+  /**
+   * @param {string} id
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything changed
+   */
+  setStructureHidden(id, hidden) {
+    if (!this.byId.has(id)) return false;
+    if (this.manualHidden.has(id) === Boolean(hidden)) return false;
+    let droppedIsolation = false;
+    if (hidden) {
+      // "Only this one" and "not this one" cannot both be true.
+      if (this.isolatedId === id) {
+        this.isolatedId = null;
+        droppedIsolation = true;
+      }
+      this.manualHidden.add(id);
+    } else {
+      this.manualHidden.delete(id);
+    }
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Hide or show many structures as one change.
+   *
+   * What a group row in the part tree presses. The single setter applies the
+   * whole opacity pass and announces it on every call, which is right for one
+   * structure and wrong for a branch: a lung's lobes would be one pass and one
+   * repaint each, for one thing the reader asked for once.
+   *
+   * @param {Iterable<string>} ids
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything changed
+   */
+  setStructuresHidden(ids, hidden) {
+    let changed = false;
+    let droppedIsolation = false;
+    for (const id of ids) {
+      if (!this.byId.has(id)) continue;
+      if (this.manualHidden.has(id) === Boolean(hidden)) continue;
+      if (hidden) {
+        if (this.isolatedId === id) {
+          this.isolatedId = null;
+          droppedIsolation = true;
+        }
+        this.manualHidden.add(id);
+      } else {
+        this.manualHidden.delete(id);
+      }
+      changed = true;
+    }
+    if (!changed) return false;
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Bring back everything hidden by hand.
+   *
+   * The camera is not touched, and neither is the layer or the cut: "show the
+   * ones I hid" and "put the organ back the way it opened" are two requests.
+   */
+  showAllHiddenStructures() {
+    if (!this.manualHidden.size) return false;
+    this.manualHidden.clear();
+    // Showing never ends an isolation.
+    this._visibilityChanged(false);
+    return true;
+  }
+
+  /** The structures currently hidden by hand, as ids. */
+  getAnatomyVisibility() { return { hidden: [...this.manualHidden] }; }
+
+  onAnatomyVisibility(listener) {
+    this.visibilityListeners.add(listener);
+    return () => this.visibilityListeners.delete(listener);
+  }
+
+  _emitVisibility() {
+    const hidden = [...this.manualHidden];
+    for (const listener of this.visibilityListeners) listener({ hidden: [...hidden] });
+  }
+
   // --- status ---------------------------------------------------------------
 
   getAnatomyStatus() { return { ...this.status }; }
@@ -659,7 +771,13 @@ export class OrganAnatomyScene {
     for (const structure of this.structures) {
       const hiddenByView = structure.tags.some((tag) => this.hiddenTags.has(tag));
       const isolatedAway = this.isolatedId != null && structure.id !== this.isolatedId;
-      structure.hidden = hiddenByView || isolatedAway;
+      // The reader's own hide is the third input, and it joins the other two
+      // here rather than anywhere else — architecture rule 3: one place decides
+      // whether a structure is on screen. `_isPickable` reads the same flag, so
+      // a structure the reader hid stops being clickable without a second rule
+      // saying so.
+      const hiddenByReader = this.manualHidden.has(structure.id);
+      structure.hidden = hiddenByView || isolatedAway || hiddenByReader;
 
       let target;
       if (structure.hidden) target = 0;
@@ -729,10 +847,12 @@ export class OrganAnatomyScene {
     this.hoverListeners.clear();
     this.statusListeners.clear();
     this.isolationListeners.clear();
+    this.visibilityListeners.clear();
     this.selected = null;
     this.hovered = null;
     this.selection = null;
     this.isolatedId = null;
+    this.manualHidden.clear();
     this.organ?.dispose?.();
     disposeObject(this.root);
   }

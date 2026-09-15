@@ -581,3 +581,78 @@ function settle(scene, progress) {
   for (let step = 0; step < 400; step += 1) scene.update(1 / 60);
   scene._applyLayers(1 / 60, true);
 }
+
+test('a reader can take a structure out of the way, on every organ', () => {
+  // Until F-119 these scenes had isolation, viewpoint tags, cuts and the layer
+  // slider, and no hiding at all — so "show me only this" was possible on all
+  // thirty-nine and "take this out of the way and let me see behind it" was
+  // possible on none. The panel drew a Hide button anyway and its press reached
+  // an optional call that was skipped, so the control did nothing.
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    scene.showAllHiddenStructures();
+    const target = scene.structures.find((structure) => structure.revealAt === 0);
+    assert.ok(target, `${entry.id}: no structure the slider is already showing`);
+
+    assert.equal(scene.setStructureHidden(target.id, true), true, entry.id);
+    assert.deepEqual(scene.getAnatomyVisibility().hidden, [target.id], entry.id);
+    assert.equal(target.currentOpacity, 0, `${entry.id}: a hidden structure is still drawn`);
+    for (const mesh of target.meshes) {
+      assert.equal(mesh.visible, false, `${entry.id}: a hidden mesh is still drawn`);
+      // The same trap isolation has: a ray does not know a mesh is invisible.
+      assert.equal(scene._isPickable(mesh), false, `${entry.id}: a hidden mesh is still pickable`);
+    }
+    // Hidden is not gone: the structure keeps its name and its place.
+    assert.equal(scene.selectStructure(target.id), true, `${entry.id}: a hidden structure lost its name`);
+
+    assert.equal(scene.setStructureHidden(target.id, false), true, entry.id);
+    assert.equal(target.currentOpacity > 0, true, `${entry.id}: unhiding did not bring it back`);
+    assert.deepEqual(scene.getAnatomyVisibility().hidden, [], entry.id);
+  }
+});
+
+test('a branch comes off in one change, and Unhide all brings it back', () => {
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    scene.showAllHiddenStructures();
+    const ids = scene.structures.filter((structure) => structure.revealAt === 0).map((s) => s.id);
+    assert.ok(ids.length > 0, entry.id);
+
+    let announcements = 0;
+    const stop = scene.onAnatomyVisibility(() => { announcements += 1; });
+    assert.equal(scene.setStructuresHidden(ids, true), true, entry.id);
+    // One pass and one announcement for the whole set — the reason the batch
+    // setter exists rather than a loop over the single one.
+    assert.equal(announcements, 1, `${entry.id}: announced once per structure`);
+    assert.deepEqual(
+      [...scene.getAnatomyVisibility().hidden].sort(),
+      [...ids].sort(),
+      entry.id
+    );
+
+    assert.equal(scene.showAllHiddenStructures(), true, entry.id);
+    assert.deepEqual(scene.getAnatomyVisibility().hidden, [], entry.id);
+    assert.equal(scene.showAllHiddenStructures(), false, `${entry.id}: nothing hidden is not a change`);
+    stop();
+  }
+});
+
+test('hiding the isolated structure ends the isolation and says so', () => {
+  for (const entry of SCENES) {
+    const scene = sceneFor(entry);
+    scene.showAllHiddenStructures();
+    const target = scene.structures.find((structure) => structure.revealAt === 0);
+    scene.isolateStructure(target.id);
+    assert.equal(scene.getAnatomyIsolation(), target.id, entry.id);
+
+    let announced = 'unset';
+    const stop = scene.onAnatomyIsolation((value) => { announced = value; });
+    scene.setStructureHidden(target.id, true);
+    // "Only this one" and "not this one" cannot both be true, and the part tree
+    // learns about isolation from this event and nowhere else.
+    assert.equal(scene.getAnatomyIsolation(), null, `${entry.id}: the isolation survived the hide`);
+    assert.equal(announced, null, `${entry.id}: the isolation ended without saying so`);
+    stop();
+    scene.showAllHiddenStructures();
+  }
+});
