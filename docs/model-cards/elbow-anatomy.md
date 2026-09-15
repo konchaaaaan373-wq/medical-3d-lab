@@ -103,6 +103,11 @@ nerve lie in that order from the thumb side inwards.
   stomach, a duct, a loop of bowel — the cut opens it instead: the wall here is
   a surface with no thickness, and facing it would draw a lumen as a lump of
   tissue. Which a part is, is declared by the scene rather than guessed.
+- **Isolating a structure shows it solid.** "Show me only this" used to leave
+  the part at the opacity it has in place, which is right for the opaque ones
+  and useless for the see-through ones — and a structure you cannot see in
+  place is exactly the one a reader isolates. Nothing else is drawn, so there
+  is nothing left for it to be transparent against.
 
 ## 7. What it must never be used for
 

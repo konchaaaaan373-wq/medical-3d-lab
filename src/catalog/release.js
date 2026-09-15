@@ -294,7 +294,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/lung-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'c209c6e201826bd1' }),
+    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: 'a57d5fa1cd8ee730' }),
   }),
 
   Object.freeze({
@@ -303,7 +303,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '7d843562f120b03d' }),
+    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '003e6631f3cdb378' }),
   }),
 
   Object.freeze({
@@ -312,7 +312,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/kidney-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '3a79255a4288c471' }),
+    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '6339df29bd2bd36d' }),
   }),
 
   /**
@@ -330,7 +330,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/stomach-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: '4189ddc2f7a1e73a' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'f89954f144bef0a5' }),
   }),
 
   Object.freeze({
@@ -339,7 +339,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/esophagus-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: 'ef5092fc12deef3c' }),
+    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: 'e1dc531c3dd675b8' }),
   }),
 
   Object.freeze({
@@ -348,7 +348,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/intestine-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '7db4ec7e25cc5140' }),
+    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '061cc72802f5fe5e' }),
   }),
 
   Object.freeze({
@@ -357,7 +357,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/biliary-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: 'ea7cf6f5cca8686c' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '1fc9d2b38617b1da' }),
   }),
 
   Object.freeze({
@@ -366,7 +366,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/pancreas-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 8, modelDigest: '6524d4694ca94e96' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'fa36ee8538a13a3e' }),
   }),
   Object.freeze({
     sceneId: 'skin-anatomy',
@@ -374,7 +374,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B3 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/skin-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: 'a5928ea51c1db190' }),
+    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: 'b28ac8cf2ae32465' }),
   }),
 ]);
 

@@ -181,7 +181,11 @@ test('isolating a structure removes the rest from the model and from the ray', (
     );
     assert.equal(scene.isolateStructure(first.id), true, entry.id);
     assert.equal(scene.getAnatomyIsolation(), first.id, entry.id);
-    assert.equal(first.currentOpacity, first.baseOpacity, `${entry.id}: the isolated structure is solid`);
+    // Solid, not "as solid as it is in situ": the transparent parts — a
+    // cornea, a chamber, a vitreous body — are the ones a reader isolates
+    // because they cannot see them in place, and answering that with the same
+    // eight per cent is an empty frame.
+    assert.equal(first.currentOpacity, 1, `${entry.id}: the isolated structure is solid`);
     assert.equal(second.currentOpacity, 0, `${entry.id}: everything else is gone`);
     for (const mesh of second.meshes) {
       assert.equal(mesh.visible, false, `${entry.id}: a hidden mesh is still drawn`);

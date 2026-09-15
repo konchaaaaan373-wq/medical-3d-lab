@@ -13,8 +13,28 @@ of this model is **pending** and every surface says so — see
 | **Decided by** | Claude Opus 5, acting as B1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Assets** | none. The kidney is procedural: there is no file to hash, and `sceneRevision` is the whole pin |
-| **Scene revision** | model card revision **8**, source digest `b5df5595a0b6aab3` |
+| **Scene revision** | model card revision **10**, source digest `6339df29bd2bd36d` |
 | **Scene sources under that digest** | [`src/data/kidneyAnatomyScene.js`](../../src/data/kidneyAnatomyScene.js), [`src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js`](../../src/scenes/renal/scenes/kidneyAnatomy/KidneyAnatomyScene.js), [`src/scenes/shared/anatomy/OrganAnatomyScene.js`](../../src/scenes/shared/anatomy/OrganAnatomyScene.js) |
+
+## Re-taken on 2026-09-15
+
+**The model changed, so the decision was taken again.** Two shared changes,
+neither of them to this organ's geometry:
+
+- **The scene now opens at the framing it was going to settle on** (F-110).
+  The camera used to rest where a band the shell had not finished laying out
+  put it, and the re-framing that should have corrected that was being
+  discarded by a guard that could not tell a reader apart from a thousandth of
+  a world unit of damping. The model is larger on the opening frame and clears
+  the console. Every viewpoint of this scene was rendered again and looked at.
+- **Isolating a structure now shows it solid.** It used to be shown at the
+  opacity it has in place, which is an empty frame for a see-through part —
+  and a part you cannot see in place is the one a reader isolates.
+
+`npm run verify:anatomy` passes on this scene, and on all thirty-eight, with
+step 0 added: the framing a scene opens at is now measured against the framing
+it resets to, so F-110 cannot come back quietly. **No anatomist has looked at
+this model, and nothing below has changed about that.**
 
 ## What was checked
 

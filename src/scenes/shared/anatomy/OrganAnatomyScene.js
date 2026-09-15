@@ -809,7 +809,14 @@ export class OrganAnatomyScene {
 
       let target;
       if (structure.hidden) target = 0;
-      else if (this.isolatedId === structure.id) target = structure.baseOpacity;
+      // **Isolating shows the structure, whatever it looks like in situ.**
+      // This left it at `baseOpacity`, which is right for the parts that are
+      // opaque and useless for the ones that are not: "show me only this"
+      // answered with a cornea at eight per cent is a blank frame — and a
+      // structure you cannot see in place is exactly the one a reader isolates.
+      // Nothing else is drawn, so there is nothing left for it to be
+      // see-through against.
+      else if (this.isolatedId === structure.id) target = 1;
       else {
         // A cut has already taken the tissue in front away, so what is inside
         // is *there* — gating it on the slider as well would leave the reader

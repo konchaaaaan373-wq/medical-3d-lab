@@ -15,6 +15,7 @@ these pictures did.
 | **`fit/after/`** | three published scenes re-framed by the fit correction (F-108) |
 | **`held/`** | why the eye and the ear are not in this batch |
 | **`framing-at-load/`** | a discrepancy found while fixing the check (F-110) |
+| **`eye-after/`** | three of the eye's four defects, fixed (F-109) |
 | **How** | `npm run shots:anatomy -- --scene <slug> --preview --out <dir>` at 1280×720, interface hidden |
 
 ## 1. The frame was cutting the block in half
@@ -114,7 +115,39 @@ those decisions were taken against; they are not the composition readers have
 today. `verify:anatomy` measures the two framings against each other now, so
 this cannot come back quietly.
 
-## 6. What these images are not
+## 6. The eye, afterwards
+
+`held/eye/` is why the eye was held. `eye-after/` is three of those four
+answered, and it is worth saying how, because none of it was guesswork.
+
+The eye opened as very nearly a white ball. Rather than adjust something and
+look again, the pupil was measured: `#0b080c`, rendering at luminance **161**,
+and **21** with the cornea and the anterior chamber taken away entirely. So the
+washout was those two and nothing else — and the cornea is a shell with a wall,
+so a ray through it crosses two surfaces, and drawn double-sided it crossed
+four. It is single-sided and much thinner now, and the pupil renders at 77 with
+the iris reading brown.
+
+`the-fundus--by-structure.png` has no rectus muscles across it. They are
+outside the sclera and the geometry was right; from in front, looking past the
+front of the eye at the back wall, the near ones simply project over it. A
+correct model and a view that is a view of something are different questions.
+The disc and the macula are patches in the retina rather than beads on it, and
+the fovea is a pit — the warp that made it added to `v.z` in a model where `+z`
+is anterior, so it had been a dome.
+
+`cornea-isolated-before.png` and `-after.png` are the change that made the rest
+possible. Isolating a structure showed it at the opacity it has in place, so
+"show me only this" on the cornea was a blank frame. It shows solid now, which
+is what isolating asks for — and it is why the resting cornea could stop being
+a veil. **That is a shared change, so the nine published models that sit on the
+same scene were re-decided against it** (`docs/beta-publication/`).
+
+What is still open is the sagittal section: the three coats are open shells, so
+the cut declines to face them, which is F-101's rule working correctly on
+geometry that has not been closed yet.
+
+## 7. What these images are not
 
 One engine, headless, on a desktop machine, at one device pixel ratio. They
 show composition, occlusion and whether a surface is closed. **They say
