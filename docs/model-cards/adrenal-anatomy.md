@@ -72,6 +72,23 @@ No dimension here is a measurement.
 - **Colour separates the three zones and the medulla**; "Natural tissue" puts
   cortical colour back and leaves the medulla distinguishable, because it is not
   cortex.
+- **Taking a structure out of the way is the reader's own way in.** The layer
+  slider, and where this scene has them the cuts and the viewpoints, are its
+  *authored* ways of showing what is inside; hiding is the one the reader
+  chooses — one structure, or a whole branch of the part tree in a single
+  press. It asserts nothing anatomical and moves nothing: a hidden structure is
+  still there, still listed, still findable by name, and **Unhide all** brings
+  every one of them back. While it is off screen it also leaves the picker, so
+  a ray cannot select what the reader cannot see. Hiding the structure that is
+  currently isolated ends the isolation, because "only this one" and "not this
+  one" cannot both be true, and that ending is announced rather than left for a
+  panel to notice. In the other order — isolating something already hidden, by
+  the reader or by the viewpoint — **isolation wins outright**: it is a
+  temporary override that writes nothing down, so clearing it hands back the
+  viewpoint and the hidden set exactly as they were. Resolving the three as an
+  order rather than as one "or" is what keeps a model on screen at all; OR'd,
+  isolating a structure the viewpoint was already hiding hid every structure in
+  the scene.
 
 ## 7. What it must never be used for
 

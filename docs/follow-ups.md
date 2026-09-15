@@ -611,34 +611,6 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
 
-### F-119 39 の臓器シーンに「隠す」が無い — P1（2026-09-15）
-
-臓器の解剖シーン 46 件のうち **39 件**が `OrganAnatomyScene` の上に建っており、
-このクラスは isolation・視点タグ・断面・レイヤースライダーを持ちますが
-**「隠す」を一切持ちません**——`setStructureHidden` も `manualHidden` も
-visibility イベントもありません。実装しているのは脳と心臓のアトラス 2 件だけです。
-
-そのためパネルの「非表示」ボタンは、押しても何も起きない状態でした
-（`scene.setStructureHidden?.()` が optional call で素通り）。**ボタン自体は
-PR で隠しました**が、**能力そのものは無いままです**。
-
-- 誰の何を良くするのか: **どの臓器でも、部位やグループを 1 操作で外して
-  内部を見て回れるようにする。** 断面とレイヤーは既にありますが、
-  「これをどけて後ろを見る」は今どの臓器でもできません
-- やること: `OrganAnatomyScene` に `manualHidden` を足し、`_applyLayers` の
-  `structure.hidden = hiddenByView || isolatedAway` に 3 つ目の入力として
-  加える（アーキテクチャ規則 3 のとおり、決める場所は 1 か所のまま）。
-  `setStructureHidden` / `setStructuresHidden` / `showAllHiddenStructures` /
-  `getAnatomyVisibility` / `onAnatomyVisibility` と、PR #92 で決めた 2 規則
-  （終わらせた isolation を告知する・読者自身の変更は snapshot を捨てる）。
-  ピッキングは `_isPickable` が `structure.hidden` を見ているので自動で従います
-- **費用**: `OrganAnatomyScene.js` は **30 件の model card の `modelSources`**
-  に入っているので、`revisions:check` が 30 件の改訂を要求します。
-  公開シーンは含まれない（公開は脳のみ）ので公開判断は閉じませんが、
-  **これは単独の PR にすべき規模**です
-- 完了の定義: 臓器シーンで「非表示」ボタンが実際に構造を消し、`verify:anatomy`
-  が `group hidden in one press` を臓器シーンでも報告すること
-
 ### F-117 グループ非表示は「見えている 1 段」しか畳まない — P3（2026-09-15）
 
 グループの表示/非表示は、そのブランチ配下の**葉をすべて**対象にします
@@ -2464,6 +2436,21 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 ---
 
 ## Resolved
+
+- **F-119 39 の臓器シーンに「隠す」が無い** — 解決（2026-09-15）。
+  `OrganAnatomyScene` に `manualHidden` を足し、`_applyLayers` の
+  `structure.hidden = hiddenByView || isolatedAway` に **3 つ目の入力**として
+  加えました（アーキテクチャ規則 3 のとおり決める場所は 1 か所のまま。
+  `_isPickable` が同じフラグを見ているので、隠した構造は ray からも自動で外れます）。
+  `setStructureHidden` / `setStructuresHidden` / `showAllHiddenStructures` /
+  `getAnatomyVisibility` / `onAnatomyVisibility` と、PR #92 で決めた
+  「終わらせた isolation を告知する」規則。**1 実装で 39 シーン**が得ました。
+  実測（実ブラウザ）: `lung-anatomy` が
+  `group hidden in one press: Pulmonary vessels / 肺血管 (34 structures)` を報告
+  ——肺血管 34 本を 1 操作で外して奥を見られます。
+  `tests/organ-anatomy-scenes.test.js` に 3 件追加（39 シーン全部を回ります）。
+  **3 件とも修正前のコードで落ちます。** 費用として予告どおり 30 件の model card を
+  改訂しました（§6 に 1 項目ずつ。共有基底由来なので挙動は 30 件とも同一です）。
 
 - **F-118 `verify:anatomy --scene heart-anatomy` のクリック点が未較正** — 解決
   （2026-09-15）。dev-assets を mount するようにして（PR #90）**心臓シーンを
