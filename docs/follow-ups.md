@@ -338,6 +338,42 @@ conda-forge には存在しません。したがって CDM のフィールド名
 - 決め方の案: 全部を一度に開けるのではなく、**系統ごとに数件ずつ**。
   hero rotation は公開臓器が増えるとそのまま日替わりの幅が広がります
   （`HERO_ORGANS` が目標順を持っています）
+- **代表 1 件を実ブラウザで確認済み（2026-09-15）**。「37 件が記録待ちなだけ」は
+  ゲートが通ることしか言っていないので、実際に動くかを 1 件測りました。
+  `npm run verify:anatomy -- --scene lung-anatomy --preview` の**出力そのまま**:
+
+  ```
+  Anatomy interaction — lung-anatomy, 83 selectable structures
+    structures named by click: Right upper lobe / 右上葉; Right middle lobe / 右中葉; Left upper lobe / 左上葉
+    viewpoints: Anterior前面, Posterior背面, Right lateral右外側, Left lateral左外側, Right lung, mediastinal surface右肺・縦隔面, Coronal section前額断（切断）
+    colour modes: Lobes and vessels肺葉・血管別, Natural tissue通常解剖色
+    labels on the model: none
+    part tree rows: 83
+    group hidden in one press: Pulmonary vessels / 肺血管 (34 structures)
+    note: points measured over the model: 0.44,0.45 0.38,0.45 0.62,0.45 0.68,0.45 0.5,0.34 0.38,0.34 (pass them to --points, or paste into SCENE_POINTS as [[0.44, 0.45], [0.38, 0.45], [0.62, 0.45], [0.68, 0.45]])
+    note: the pinned structure "右上葉" has no label on the model from this angle (F-40: one anchor point decides for the whole structure).
+    note: this scene loads no atlas, so there is no failed load to recover from
+    ok    the model and the tree name one structure; drag is not click; isolate hides and restores; display choices do not move the selection
+  ```
+
+  脳・心臓と**同じドライブに同じように通ります**。1 件あたりの実測費用は
+  **2 分未満**でした（脳の 10 分は 3.9 MB のアトラス読み込みが理由で、
+  procedural な臓器には無い）。つまり 37 件でも数時間ではなく 1〜2 時間規模です。
+  ただし 2 点、記録に書くべき差があります:
+  - `labels on the model: none` — 脳は選択した構造の**ラベルがモデル上に出ます**が、
+    肺はこのアングルでは出ませんでした（F-40 と同じ「1 つのアンカー点が構造全体を
+    決める」問題）。公開記録の「確認していないこと」に書く対象です
+  - **クリック点は登録済みですが、名前が付いていません。**
+    `SCENE_POINTS['lung-anatomy']` は 4 点を持つので、この run は
+    「たまたま当たった点」を使ってはいません（上の `points measured over the model`
+    は、authored な点の有無にかかわらず出る診断行です）。足りないのは
+    **3 つ目の要素＝その点が何を指すはずかという名前**で、心臓は
+    `[0.22, 0.45, 'Right atrium']` の形で持っています。名前が無いので
+    verifier は同一性を検査せず、**4 点が 3 構造しか生んでいる**ことにも
+    気付きません（2 点が同じ葉に当たっています）。公開する各シーンには
+    F-118 と同じ「名前を付けて固定する」作業が要ります——測り直しではなく、
+    既存の点に名前を足す作業です
+
 - 完了の定義: オーナーが「どこまで開けるか」を決め、開けると決めた各シーンに
   browser 実測つきの `docs/beta-publication/<scene>.md` がある状態
 
