@@ -74,12 +74,14 @@ image.
   rotation the same day, so until the revision this record is pinned to, Enter
   on the heart's day did nothing and said nothing.
 
-  **This one is not a browser result.** `verify:hero-input` passes, but every
-  line it prints names a brain structure: the hero opens on the first organ in
-  the rotation and the drive never reaches the second. What holds this is
-  `tests/heart-anatomy.test.js` and `tests/organ-anatomy-scenes.test.js`, which
-  check every scene has the method — and F-121, which records that the hero
-  drive cannot yet exercise an organ it does not open on.
+  `npm run verify:hero-input` drives this in a browser, once per published
+  organ rather than once for whichever organ the hero happens to open on
+  (F-121). On the heart it reports: Tab reaches the model, Enter named
+  "右心室 心臓 › 心腔・心室中隔", Escape cleared it, after turning Enter named
+  "左心室", and the card's link opened the full model on that structure.
+  The instrument was checked against the bug it exists for: with the method
+  renamed away and the bundle rebuilt, the heart's two Enter presses both went
+  red, and only the heart's — the brain stayed green.
 - The two files were measured to share one whole-body coordinate frame; one
   offset and one uniform scale are applied to the pair.
 - No uncaught errors and no unexpected failed requests during the run.
