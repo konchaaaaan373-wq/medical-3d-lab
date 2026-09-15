@@ -135,16 +135,28 @@ const SCENE_POINTS = {
     [0.42, 0.40, 'Left anterior descending artery'],
     [0.30, 0.30, 'Ascending aorta'],
   ],
-  // The brain's own tour. These four were the script's `DEFAULT_POINTS` — the
-  // cluster every other scene inherited and most of them missed with — and they
-  // are kept here because for *this* scene they are a calibration: a lateral
-  // view of a hemisphere does fill the middle of the frame, and these land on
-  // the frontal operculum, the supramarginal gyrus, the middle temporal gyrus
-  // and the superior temporal sulcus. `brain-anatomy` is the published scene,
-  // and its publication record names the parts this drive clicked, so it keeps
-  // a tour that names the same ones every run rather than whichever four points
-  // the drive happens to measure.
-  'brain-anatomy': [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]],
+  // The brain's own tour, named — which it was not until 2026-09-15, and the
+  // cost of that is the reason these four carry names now.
+  //
+  // The points began as the script's `DEFAULT_POINTS`, and a comment here
+  // claimed they landed on the frontal operculum, the supramarginal gyrus, the
+  // middle temporal gyrus and the superior temporal sulcus. Measured, they did
+  // not: one of the four sat at x=0.60 and hit **nothing**, because this
+  // atlas's silhouette spans about x∈[0.22, 0.56] at mid-height, and two of the
+  // others named structures nobody had written down. The publication record
+  // went on listing the original four for a week while the layout moved under
+  // them (the control bar's height, two type floors, three panel changes) —
+  // none of which touches this scene's own sources, so the model-revision
+  // digest could not notice either.
+  //
+  // A prose comment is not an assertion. These are, and the dead point is
+  // replaced by one the drive itself measured to be over the model.
+  'brain-anatomy': [
+    [0.40, 0.34, 'Supramarginal gyrus'],
+    [0.30, 0.45, 'Circular sulcus of insula'],
+    [0.50, 0.50, 'Middle temporal gyrus'],
+    [0.50, 0.42, 'Angular gyrus'],
+  ],
   // Two lungs and the airway between them, not one mass.
   'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
   // Right lobe, left lobe, the inferior third, and the gallbladder below it.
@@ -1711,6 +1723,14 @@ try {
 
 console.log(`Anatomy interaction — ${sceneSlug}, ${observed.selectableCount} selectable structures`);
 console.log(`  structures named by click: ${observed.structures.map((s) => `${s.en} / ${s.ja}`).join('; ') || 'none'}`);
+// With the place in the hierarchy, because a publication record has to carry it
+// and reading it off a screenshot is how `brain-anatomy`'s record came to list
+// four structures the drive had stopped naming. The drive already reads this to
+// check a structure is not named without a place; printing it means the record
+// can be written from the run.
+for (const structure of observed.structures) {
+  console.log(`    ${structure.en} / ${structure.ja} — ${structure.where}`);
+}
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
 console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
