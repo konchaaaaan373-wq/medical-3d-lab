@@ -30,7 +30,8 @@ import './styles/patient-consultation.css';
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.
 import './styles/phone-touch-targets.css';
-import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
+import { resolveRoute } from './app/router.js';
+import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
@@ -92,6 +93,20 @@ async function boot() {
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
 
+  // Every surface leaves the same way, and every surface needs covering while
+  // it does. Six handlers here used to answer "is this a navigation" in four
+  // different ways. Checked transition by transition they agreed, so nothing
+  // was broken by that — but none of them cleared the screen, which is how a
+  // link to `#/copd` could leave a brain on screen under a COPD URL, and the
+  // fix belongs in one place rather than six. `shownHash` is captured here,
+  // once: it is the route this document rendered, and only a new document
+  // changes it.
+  const shownHash = window.location.hash;
+  const leaveOnRouteChange = () => installDeparture({
+    shownHash,
+    language: readUiLanguagePreference(),
+  });
+
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
   access.accountButton.addEventListener('click', () => {
@@ -107,10 +122,7 @@ async function boot() {
     createLockedSurface({ ui, route, accountButton: access.accountButton });
     void observe({ ui, surface: 'landing' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -133,10 +145,7 @@ async function boot() {
     });
     void observabilityReady;
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'landing') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -146,10 +155,7 @@ async function boot() {
     await createTrust({ ui, accountButton: access.accountButton });
     void observe({ ui, surface: 'trust' }).then((installed) => installed?.telemetry.record('trust.open', {}));
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'trust') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -159,10 +165,7 @@ async function boot() {
     createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
     void observe({ ui, surface: 'landing' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (!sameRoute(window.location.hash, `#/${route.docId}`)) window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -176,11 +179,7 @@ async function boot() {
     });
     void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      const next = resolveRoute(window.location.hash);
-      if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -293,10 +292,7 @@ async function boot() {
       fallback.destroy?.();
     } });
 
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      window.location.reload();
-    });
+    leaveOnRouteChange();
 
     settleOptionalService(
       observe({

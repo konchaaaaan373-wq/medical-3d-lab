@@ -39,21 +39,34 @@ test('anchors: the router would still resolve one to a scene, which is why the g
   assert.equal(isInPageAnchor('#content'), true);
 });
 
-test('anchors: every hashchange handler in the shell checks first', () => {
+test('anchors: no shell can forget the check, because no shell makes it', () => {
+  // This used to read every inline `hashchange` handler in `main.js` and
+  // require each to mention `isInPageAnchor` — six handlers, six chances to
+  // omit it, and a seventh surface would have arrived with no guard at all.
+  // There is one door now, so the assertion is that nobody built a side one.
+  // What the door does with an anchor is `tests/departure.test.js`.
   const main = read('src/main.js');
-  const handlers = main.match(/addEventListener\('hashchange', \(\) => \{[\s\S]*?\n {4}\}\)/g) ?? [];
-  assert.ok(handlers.length >= 5, `expected a handler per surface, found ${handlers.length}`);
-  for (const handler of handlers) {
-    assert.match(handler, /isInPageAnchor/, `a hashchange handler navigates on an in-page anchor:\n${handler}`);
+  const app = read('src/app/App.js');
+
+  for (const [name, source] of [['main.js', main], ['App.js', app]]) {
+    assert.doesNotMatch(
+      source,
+      /addEventListener\('hashchange'/,
+      `${name} decides for itself what a hash change means, so it can get anchors wrong alone`
+    );
+    assert.match(source, /installDeparture\(/, `${name} never installs the shared departure`);
   }
+
+  // Every surface `main.js` can render, each returning right after it installs.
+  const installs = main.match(/leaveOnRouteChange\(\);/g) ?? [];
+  assert.ok(installs.length >= 6, `expected one per surface, found ${installs.length}`);
 });
 
-test('anchors: the scene view checks too, because a reload there costs the session', () => {
+test('anchors: the scene view is covered by the same door, because a reload there costs the session', () => {
   // Reloading a scene throws away the camera, the progression and any model
   // controls the reader had set.
   const app = read('src/app/App.js');
-  const handler = app.slice(app.indexOf("addEventListener('hashchange'"));
-  assert.match(handler.slice(0, 400), /isInPageAnchor/);
+  assert.match(app, /installDeparture\(\{[\s\S]{0,200}shownHash/);
 });
 
 test('anchors: the skip link only points at an element that exists', () => {
@@ -65,9 +78,9 @@ test('anchors: the skip link only points at an element that exists', () => {
 
 test('fallback: the WebGL failure screen can navigate', () => {
   // Its links are the entire reason it exists, and the scene route's own
-  // hashchange listener is registered inside `createApp` — which is what threw.
+  // departure is installed inside `createApp` — which is what threw. So this
+  // branch has to install one of its own.
   const main = read('src/main.js');
   const fallback = main.slice(main.indexOf('createSceneFailureFallback({'));
-  assert.match(fallback, /addEventListener\('hashchange'/, 'the fallback has no navigation listener');
-  assert.match(fallback, /window\.location\.reload\(\)/);
+  assert.match(fallback, /leaveOnRouteChange\(\);/, 'the fallback has no navigation listener');
 });
