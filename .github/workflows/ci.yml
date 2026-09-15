@@ -34,3 +34,43 @@ jobs:
       - run: npm run budget
       - run: npm run verify:site
       - run: npm run cards:check
+
+  # A real browser, on every pull request. Until 2026-09-15 this was kept out of
+  # ordinary pushes because the repository was private and Actions minutes were
+  # the constraint (F-100). It is public now, so the constraint is gone and the
+  # question became the one it should always have been: is the wall clock worth
+  # it? Four defects have reached `main` with `npm test` entirely green and a
+  # browser check the only thing that found them — the `billingNotice` TDZ, a
+  # dialog's focus trap, the zoom pivot, and `walkTabOrder` reporting a large
+  # page as a trap. Two of those are this check's. So, for this one check: yes.
+  #
+  # Chromium only, and `verify:ui` only. `verify:auth`, `verify:anatomy`,
+  # `verify:disease` and `verify:patient`, and Firefox and WebKit, stay at
+  # candidate time in `final-browser-validation.yml`. F-112 records where that
+  # line is drawn and what would move it.
+  #
+  # Its own job rather than another step in `test-and-build`: it takes about
+  # four minutes against that job's one, and a failing unit test should not have
+  # to wait behind a browser download to be reported.
+  verify-ui:
+    name: viewport matrix (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:ui -- --json viewport-report-chromium.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: viewport-report-chromium
+          path: viewport-report-chromium.json
+          if-no-files-found: ignore
+          retention-days: 3
