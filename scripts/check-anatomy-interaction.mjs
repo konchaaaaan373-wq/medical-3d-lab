@@ -306,7 +306,7 @@ const notes = [];
  */
 let step = 'opening the scene';
 const at = (what) => { step = what; };
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
+const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [], openingFraming: null };
 
 const browser = await chromium.launch({
   executablePath: chromiumExecutable(chromium),
@@ -577,6 +577,79 @@ try {
   const emptyPoint = [...(emptyPoints.length
     ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
     : [0.04, 0.94])];
+
+  /**
+   * How far across the frame the model reaches, at one row, asked rather than
+   * measured from a picture: the scene sets the cursor over its own geometry,
+   * which is the same signal the points above were found with.
+   */
+  const modelSpan = async (fy) => {
+    let first = null;
+    let last = null;
+    for (let fx = 0.02; fx <= 0.96; fx += 0.02) {
+      const at = Number(fx.toFixed(3));
+      if (await overModel(at, fy)) {
+        if (first === null) first = at;
+        last = at;
+      }
+    }
+    await restPointer();
+    return first === null ? null : [first, last];
+  };
+
+  // 0. The framing a scene opens at is the framing it returns to.
+  //
+  //    The camera is fitted to the band no panel is covering, and the panels
+  //    are not finished when the app is — the shell releases the console from
+  //    a full-width card to a small one in the corner after `createApp`
+  //    returns, and a fifth of the frame's height comes back. A watcher exists
+  //    to re-frame when that happens, and it was discarding every re-frame:
+  //    it asked for the camera to be within a thousandth of a world unit of
+  //    the shot, and `controls.update()` runs every frame with damping on and
+  //    leaves about a hundred and twenty-five thousandths more than that. So
+  //    the nose opened at 8.96 world units where the settled layout asks for
+  //    7.54, and pressing "reset the display" jumped it.
+  //
+  //    Checked here because it is invisible anywhere else: both framings are
+  //    valid poses, the scene is not broken, and the only symptom is that the
+  //    first thing a reader sees is not the composition the scene meant.
+  const openingSpan = await modelSpan(0.45);
+  if (!openingSpan) {
+    notes.push('the model does not cross the middle of the frame, so the opening framing was not measured');
+  } else {
+    await page.locator('#anatomy-tab-display').click({ noWaitAfter: true }).catch(() => {});
+    await page.waitForTimeout(200);
+    const reset = page.locator('.inspection-reset');
+    if (await reset.count()) {
+      at('resetting the display before anything has changed it');
+      await reset.click({ noWaitAfter: true });
+      await page.waitForTimeout(2500);
+      await settle(8, 250);
+      await page.locator('#anatomy-tab-parts').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(200);
+      const resetSpan = await modelSpan(0.45);
+      if (!resetSpan) {
+        problems.push('resetting the display took the model off the middle of the frame');
+      } else {
+        const moved = Math.max(
+          Math.abs(resetSpan[0] - openingSpan[0]),
+          Math.abs(resetSpan[1] - openingSpan[1])
+        );
+        observed.openingFraming = { opening: openingSpan, reset: resetSpan };
+        // Two sweep steps: a step is 2% of the frame, so anything the sweep can
+        // see at all is at least one, and this is the smallest difference that
+        // cannot be the grid's own resolution.
+        if (moved > 0.04) {
+          problems.push(
+            `the scene opens framed differently from how it resets: the model spans ` +
+              `${openingSpan[0]}..${openingSpan[1]} of the frame at first and ` +
+              `${resetSpan[0]}..${resetSpan[1]} after "reset the display", with nothing ` +
+              'moved in between. The reader sees the first one.'
+          );
+        }
+      }
+    }
+  }
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -1451,6 +1524,13 @@ console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
 console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
 console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
+if (observed.openingFraming) {
+  const { opening, reset } = observed.openingFraming;
+  console.log(
+    `  the model spans ${opening[0]}..${opening[1]} of the frame when the scene opens, ` +
+      `${reset[0]}..${reset[1]} after a display reset`
+  );
+}
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (problems.length) {

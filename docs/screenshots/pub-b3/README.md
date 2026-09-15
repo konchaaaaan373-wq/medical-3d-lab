@@ -87,16 +87,32 @@ Both scenes pass the interaction check. That is the third batch in a row where
 the gate was green and the picture was not — which is why the batches are
 small and why nothing is published before somebody looks.
 
-## 5. One thing these pictures raised and did not settle
+## 5. One thing these pictures raised, and what it turned out to be
 
 `framing-at-load/nose-anatomy-load.png` and `--after-reset.png` are the same
 scene at the same viewpoint, one click and one press of "reset the display"
-apart, with no camera move between them. The model is plainly larger in the
-second. **The reader sees the first**, and so does every render in this
-directory and in `pub-b1/` and `pub-b2/` — the capture never selects anything —
-so what has been looked at is what is shipped. But the frame is being used less
-fully at load than the same framing code manages a moment later, and why is
-recorded rather than guessed at: F-110.
+apart, with no camera move between them, and the model is plainly larger in the
+second. It was two defects on top of each other (F-110), and both are fixed:
+
+- The re-framing that runs when the shell finishes marking itself was being
+  discarded every time, by a guard that asked whether the reader had moved the
+  camera and could not tell a reader apart from the thousandth of a world unit
+  the damped controls leave behind on their own.
+- The console stopped being subtracted from the band the moment it shrank from
+  a full-width card to one in the corner — which is the moment it starts
+  sitting under the subject rather than beside it. Fixing only the first put
+  the lung's lower lobes behind it.
+
+`lung-anatomy-at-load-before.png` and `-after.png` are what that is worth on a
+published model: the same scene, opened, with the interface up. Before, the
+lungs float at about half the height of the band with empty frame all round
+them; after, they fill it and their bases still clear the console card.
+
+**Every render in this directory, and in `pub-b1/` and `pub-b2/`, was taken
+before that.** They are the composition readers had until now, which is what
+those decisions were taken against; they are not the composition readers have
+today. `verify:anatomy` measures the two framings against each other now, so
+this cannot come back quietly.
 
 ## 6. What these images are not
 

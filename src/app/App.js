@@ -197,10 +197,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    *
    * Measured from the elements themselves, because they move: the console grows
    * with its copy, the anatomy panel is docked on a wide window and a sheet on a
-   * narrow one, and the header is there throughout. Only the bands that run the
-   * whole way across an edge are counted — the scene card sits in the top-left
-   * corner and taking it as a full-height inset would shove the model right for
-   * something it clears anyway.
+   * narrow one, and the header is there throughout. Most bands are counted only
+   * when they run the whole way across an edge — the scene card sits in the
+   * top-left corner and taking it as a full-height inset would shove the model
+   * right for something it clears anyway. The console is the exception, and the
+   * reason is below it.
    */
   const safeAreaInsets = () => {
     const width = viewer.container.clientWidth;
@@ -229,13 +230,31 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // why this asks where the element actually is rather than which one it is.
     const railAcrossTop = (rect) =>
       spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
+    const right = band('.rail', spansHeight, (rect) => (width - rect.left) / width);
+    /**
+     * The console is the exception to "it has to cross the middle".
+     *
+     * It is a control bar anchored to the bottom, full-width while the shell is
+     * still marking itself and a card in the bottom-left corner afterwards —
+     * and the subject is framed into the band the rail leaves, whose left half
+     * is exactly where that corner is. So asking it to cross the middle of the
+     * *frame* stopped reserving it at the moment it started overlapping the
+     * subject: with the framing finally reaching the whole band, the lung's
+     * lower lobes came to rest behind an opaque card.
+     *
+     * What it is asked instead is whether it reaches into the band at all. The
+     * rail is not treated this way and must not be: on a phone it is a summary
+     * in the top corner that the model is never behind, which is the case the
+     * crossing test was written for.
+     */
+    const reachesIntoBand = (rect) => rect.left < width * (1 - right) && rect.right > 0;
     return {
       top: Math.max(
         band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
         band('.rail', railAcrossTop, (rect) => rect.bottom / height)
       ),
-      bottom: band('.console', spansWidth, (rect) => (height - rect.top) / height),
-      right: band('.rail', spansHeight, (rect) => (width - rect.left) / width),
+      bottom: band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
+      right,
       left: 0,
     };
   };
@@ -1504,13 +1523,30 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         if (now === applied) return;
         applied = now;
         // Whether the reader has taken the camera since the last framing. If
-        // they have not, the camera is exactly where the framing left it and
-        // should follow the framing to the new band. If they have, it is theirs:
-        // the new framing still applies to the next viewpoint they choose, but
+        // they have not, the camera is where the framing left it and should
+        // follow the framing to the new band. If they have, it is theirs: the
+        // new framing still applies to the next viewpoint they choose, but
         // nothing pulls them out of the view they are in.
+        //
+        // **A tolerance, not an equality.** This asked for the camera to be
+        // within a thousandth of a world unit of the shot, and `update()` runs
+        // every frame with damping on and never leaves it bit-exactly where it
+        // was put. Measured on the nose: a drift of 0.00125 against a threshold
+        // of 0.001, so every re-frame was computed, judged "the reader has
+        // moved it", and discarded — this block defeated by its own guard, and
+        // the defect above went on happening. The scene opened at 8.96 world
+        // units where the settled layout asks for 7.54, and the gap was then
+        // recorded as a reader zoom of 1.19 at the first click, so it survived
+        // until somebody pressed "reset the display".
+        //
+        // Scaled by the distance, because a fixed number means something
+        // different on a scene framed at 3 units and one framed at 40. Half a
+        // percent is far below the smallest deliberate zoom step and further
+        // still below any orbit, and far above what damping leaves behind.
+        const slack = Math.max(1e-3, shot.position.distanceTo(shot.target) * 0.005);
         const untouched =
-          viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
-          viewer.controls.target.distanceToSquared(shot.target) < 1e-6;
+          viewer.camera.position.distanceTo(shot.position) < slack &&
+          viewer.controls.target.distanceTo(shot.target) < slack;
         setShot(shotSource);
         if (!untouched) return;
         viewer.camera.position.copy(shot.position);
