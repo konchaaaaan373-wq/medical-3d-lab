@@ -16,7 +16,7 @@ Last updated: 2026-09-15
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-119 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-118 は
+  次に追加する番号は F-120 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-119 は
   09-15 に採番済み）。⚠ **F-107 / F-108 も 2 回ずつ出ます。** 未マージの PR #73 と
   PR #75 がその 2 つを先に確保しており、main 側が同じ番号を使いました。
   **どちらの branch も採番し直してからマージしてください。**
@@ -610,6 +610,34 @@ tab の巡回が 240 回で閉じないという既存の指摘で、**今回の
 パネルからはみ出して操作不能、`phone-430` の `.global-nav-brand` が
 24px 未満、`desktop-1280` の Scene で tab が届かない 4 件——は
 この branch で解消しています。Trust の tab 巡回は別件として扱います。
+
+### F-119 39 の臓器シーンに「隠す」が無い — P1（2026-09-15）
+
+臓器の解剖シーン 46 件のうち **39 件**が `OrganAnatomyScene` の上に建っており、
+このクラスは isolation・視点タグ・断面・レイヤースライダーを持ちますが
+**「隠す」を一切持ちません**——`setStructureHidden` も `manualHidden` も
+visibility イベントもありません。実装しているのは脳と心臓のアトラス 2 件だけです。
+
+そのためパネルの「非表示」ボタンは、押しても何も起きない状態でした
+（`scene.setStructureHidden?.()` が optional call で素通り）。**ボタン自体は
+PR で隠しました**が、**能力そのものは無いままです**。
+
+- 誰の何を良くするのか: **どの臓器でも、部位やグループを 1 操作で外して
+  内部を見て回れるようにする。** 断面とレイヤーは既にありますが、
+  「これをどけて後ろを見る」は今どの臓器でもできません
+- やること: `OrganAnatomyScene` に `manualHidden` を足し、`_applyLayers` の
+  `structure.hidden = hiddenByView || isolatedAway` に 3 つ目の入力として
+  加える（アーキテクチャ規則 3 のとおり、決める場所は 1 か所のまま）。
+  `setStructureHidden` / `setStructuresHidden` / `showAllHiddenStructures` /
+  `getAnatomyVisibility` / `onAnatomyVisibility` と、PR #92 で決めた 2 規則
+  （終わらせた isolation を告知する・読者自身の変更は snapshot を捨てる）。
+  ピッキングは `_isPickable` が `structure.hidden` を見ているので自動で従います
+- **費用**: `OrganAnatomyScene.js` は **30 件の model card の `modelSources`**
+  に入っているので、`revisions:check` が 30 件の改訂を要求します。
+  公開シーンは含まれない（公開は脳のみ）ので公開判断は閉じませんが、
+  **これは単独の PR にすべき規模**です
+- 完了の定義: 臓器シーンで「非表示」ボタンが実際に構造を消し、`verify:anatomy`
+  が `group hidden in one press` を臓器シーンでも報告すること
 
 ### F-117 グループ非表示は「見えている 1 段」しか畳まない — P3（2026-09-15）
 
