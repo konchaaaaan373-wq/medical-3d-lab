@@ -780,8 +780,12 @@
 
   /* The real atlas already carries strong colour and shape. Keep the first-use
    * gesture hint legible but unboxed, then let the model own the frame. */
+  /* 100px of console here plus the 14px it stands off the bottom. It was 72px,
+     which cleared a bar that did not yet carry the clinical-use notice — the
+     notice was `display: none` below 720px, which is the defect this number
+     moved for. */
   .anatomy-shell-gesture-hint {
-    bottom: max(72px, calc(env(safe-area-inset-bottom) + 66px));
+    bottom: max(126px, calc(env(safe-area-inset-bottom) + 120px));
     padding: 0;
     border: 0;
     border-radius: 0;
@@ -1063,11 +1067,14 @@
      grew to the full width and a taller slider row, and the hint's 72px stayed
      where it was — so the sentence telling somebody how to rotate the model was
      printed across the slider they were meant to be able to see. It belongs
-     above the bar: 111px of console plus the 12px it stands off the bottom,
+     above the bar: the console's height plus the 12px it stands off the bottom,
      and a gap. `check-viewports.mjs` measures the two boxes against each other
-     so a console that grows again fails rather than reprints this. */
+     so a console that grows again fails rather than reprints this — and it did,
+     twice now. It was 136px for a 111px console; the bar is 128px since the
+     clinical-use notice stopped being dropped at this width. F-116 is about
+     stopping this number from being copied by hand a third time. */
   .anatomy-shell-gesture-hint {
-    bottom: max(136px, calc(env(safe-area-inset-bottom) + 130px));
+    bottom: max(152px, calc(env(safe-area-inset-bottom) + 146px));
   }
 }
 
