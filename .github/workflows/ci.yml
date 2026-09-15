@@ -34,6 +34,7 @@ jobs:
       - run: npm run budget
       - run: npm run verify:site
       - run: npm run cards:check
+      - run: npm run type-floor
 
   # A real browser, on every pull request. Until 2026-09-15 this was kept out of
   # ordinary pushes because the repository was private and Actions minutes were
