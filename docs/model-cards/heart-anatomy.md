@@ -286,6 +286,13 @@ the Japanese names are deliberate but unreviewed.
   **Every structure named by a view is one the source contains and this scene
   draws.** No view invents a vessel or a wall to make itself tidier, and
   `tests/heart-anatomy.test.js` holds all four to the part table.
+* **Changing what is drawn says so completely.** A hide that ends an isolation
+  announces the isolation as over, not only the hidden set as changed — they are
+  two events and the tree learns about isolation from one of them alone. And any
+  hide or show the reader makes themselves discards the snapshot behind "Back to
+  how it was", because that snapshot restores the whole hidden set: offering it
+  afterwards would undo *their* change under a label that promises to undo the
+  fixed view's. Both were true of hiding one part before groups existed.
 * **A branch of the Parts tree comes off in one press.** The tree's branches
   are this file's own eight groups — *Chambers and septum*, *Heart valves*,
   *Papillary muscles*, *Great vessels*, *Coronary arteries*, *Cardiac veins*,

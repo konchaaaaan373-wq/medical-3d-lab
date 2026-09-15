@@ -248,7 +248,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 19, modelDigest: 'df84477b92cc2917' }),
+    sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -289,6 +289,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
         'a hidden structure\'s own label goes with it rather than being held over what is behind it',
         'a whole branch of the tree is hidden and shown again in one press, and by V on the focused branch, writing to the same hidden set one structure\'s Hide writes to',
+        'hiding the isolated structure announces the isolation as over, and a hide the reader made themselves withdraws the reveal\'s way back rather than offering to undo their own change',
       ]),
     }),
     evidence: Object.freeze([

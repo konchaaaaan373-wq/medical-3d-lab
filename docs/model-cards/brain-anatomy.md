@@ -234,6 +234,17 @@ The anatomical layer stays owned by the console's slider: the scene reports the
 layer a structure needs and the control that owns the value sets it, so the
 model and the slider never give two answers.
 
+**Changing what is drawn says so completely.** A hide that ends an isolation
+announces the isolation as over, not only the hidden set as changed: the two are
+separate events and the tree learns about isolation from one of them alone, so
+for a while it went on marking a row isolated after the scene had stopped
+isolating it. And any hide or show the reader makes themselves discards the
+"back to how it was" snapshot a reveal left behind, because that snapshot
+restores the whole hidden set: offering it after the reader has hidden something
+of their own would undo *their* change under a label that promises to undo the
+reveal's. Both were true of hiding one structure before groups existed, and both
+are fixed for both.
+
 **A branch of the tree comes off in one action, and that is still hiding.** The
 Parts tree already groups structures by the hierarchy the atlas carries; every
 group now carries its own control, so a hemisphere or the ventricular system
