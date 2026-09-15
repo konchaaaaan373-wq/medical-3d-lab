@@ -76,13 +76,28 @@ test('landing hero: every rotation entry is a real organ that opens a released m
   );
   assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
   const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
-  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene, built or not');
-  // The scene exists now, and the hero still does not show it: what the filter
-  // asks is whether the release *opens* it, not whether it was written. That
-  // distinction is the whole mechanism, and this is where it is checked.
+  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene');
+  // What the filter asks is whether the release *opens* the scene, not whether
+  // it was written. The heart spent weeks on the declared list and off the
+  // rotation for exactly that reason, and joined it on 2026-09-15 without the
+  // hero being edited — which is the mechanism working, in the direction it is
+  // harder to test. The distinction still holds for the organs behind it.
   assert.ok(sceneById(heart.sceneId), 'the scene is registered');
-  assert.equal(isSceneReleased(sceneById(heart.sceneId)), false);
-  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until the release opens it');
+  assert.equal(isSceneReleased(sceneById(heart.sceneId)), true);
+  // By organ, not by identity: `HERO_ROTATION` rebuilds each entry with the
+  // route attached, so `includes(entry)` compares against a different object
+  // and is false whatever the release says. It read as passing while the answer
+  // was meant to be false.
+  const shownOrgans = new Set(HERO_ROTATION.map((entry) => entry.organ));
+  assert.equal(shownOrgans.has('heart'), true, 'the release opened it, so the hero shows it');
+
+  for (const entry of HERO_ORGANS.filter((item) => !isSceneReleased(sceneById(item.sceneId)))) {
+    assert.equal(
+      shownOrgans.has(entry.organ),
+      false,
+      `${entry.organ} is declared and not open, and must not be shown`
+    );
+  }
 
   for (const entry of HERO_ROTATION) {
     // The detailed model that replaces the builder has to be a scene the
@@ -238,7 +253,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: one public model is the live brain, not a one-card index', () => {
+test('landing: the public models are live organs, not a card index', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -250,12 +265,25 @@ test('landing: one public model is the live brain, not a one-card index', () => 
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    assert.equal(PUBLIC_MANIFEST.count, 1);
+    // Two published models since 2026-09-15. What this test is for has not
+    // changed: the landing page shows **one organ, live**, and never turns into
+    // a grid of cards as the published set grows — which is the failure mode a
+    // second model makes possible for the first time.
+    assert.equal(PUBLIC_MANIFEST.count, 2);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
-    assert.equal(viewports.length, 1);
-    assert.equal(controls.length, 0);
-    assert.ok(links.some((link) => link.getAttribute('href') === '#/brain-anatomy'));
-    assert.equal(mounted.organHero.organ, 'brain');
+    assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
+    // The chooser the design always said a second model would bring: with one
+    // published organ there was nothing to choose between and no control was
+    // drawn. There are two now, one per published organ, and they are controls
+    // over the single live viewport rather than cards standing in for it.
+    assert.equal(controls.length, PUBLIC_MANIFEST.count);
+    assert.equal(controls.length, 2);
+    // The link follows whichever organ the rotation put up today, rather than
+    // being pinned to the brain.
+    const shown = mounted.organHero.organ;
+    const entry = HERO_ROTATION.find((item) => item.organ === shown);
+    assert.ok(entry, `${shown} is on screen but not in the rotation`);
+    assert.ok(links.some((link) => link.getAttribute('href') === `#/${entry.sceneId}`));
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -273,15 +301,28 @@ test('landing hero: the open link and the day badge follow the organ on screen',
     const badge = findByClass(hero.element, 'landing-demo-case')[0];
     const link = findByClass(hero.element, 'landing-demo-link')[0];
 
-    assert.equal(hero.organ, 'brain');
+    // On this date the rotation lands where `heroRotationDay` says it does; the
+    // link and the badge follow the organ on screen rather than a fixed slug.
+    const opening = HERO_ROTATION.find((item) => item.organ === hero.organ);
+    assert.ok(opening, 'the hero shows an organ that is in the rotation');
     assert.equal(badge.hidden, false, "the day's own organ is marked as such");
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    assert.equal(link.getAttribute('href'), `#/${opening.sceneId}`);
 
-    // An organ that is not in the rotation cannot be selected into view: the
-    // hero has nothing to show for it and must not fall back to a neighbour.
-    void hero.setOrgan('heart');
-    assert.equal(hero.organ, 'brain');
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    // Selecting an organ that *is* in the rotation moves the hero and the link
+    // together — the case that could not be exercised while one model was
+    // published.
+    const other = HERO_ROTATION.find((item) => item.organ !== hero.organ);
+    if (other) {
+      void hero.setOrgan(other.organ);
+      assert.equal(hero.organ, other.organ);
+      assert.equal(link.getAttribute('href'), `#/${other.sceneId}`);
+    }
+
+    // An organ that is not in the rotation still cannot be selected into view:
+    // the hero has nothing to show for it and must not fall back to a neighbour.
+    const before = hero.organ;
+    void hero.setOrgan('lung');
+    assert.equal(hero.organ, before);
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;

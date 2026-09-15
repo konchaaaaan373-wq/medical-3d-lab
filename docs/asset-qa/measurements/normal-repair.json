@@ -20,6 +20,9 @@
       "foldTookLargestFace": 37,
       "removedZeroAreaTriangles": 820,
       "removedDuplicateFaces": 4,
+      "keptSubtree": null,
+      "removedUndrawnNodes": 0,
+      "removedUndrawnMeshes": 0,
       "meshesTouched": {
         "VH_M_right_cardiac_atrium": 203
       },
@@ -51,15 +54,18 @@
       },
       "derived": {
         "path": "dev-assets/derived/heart/VH_M_Blood_Vasculature.glb",
-        "sha256": "b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb"
+        "sha256": "a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502"
       },
       "degenerateNormals": 33,
       "repaired": 16,
       "unrepairable": 0,
       "unusedGivenUnitNormal": 14,
       "foldTookLargestFace": 3,
-      "removedZeroAreaTriangles": 26,
+      "removedZeroAreaTriangles": 24,
       "removedDuplicateFaces": 5,
+      "keptSubtree": "VH_M_blood_vasculature_of_heart",
+      "removedUndrawnNodes": 101,
+      "removedUndrawnMeshes": 67,
       "meshesTouched": {
         "VH_M_left_coronary_artery": 11,
         "VH_M_superior_vena_cava": 5
@@ -77,10 +83,10 @@
         "vertices": 182788
       },
       "derivedCounts": {
-        "nodes": 153,
-        "meshes": 104,
-        "triangles": 359567,
-        "vertices": 182788
+        "nodes": 52,
+        "meshes": 37,
+        "triangles": 153476,
+        "vertices": 77551
       }
     }
   ]

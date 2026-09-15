@@ -129,7 +129,7 @@
 | asset | derived sha256 |
 | --- | --- |
 | `hubmap-vh-m-heart` | `46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d` |
-| `hubmap-vh-m-blood-vasculature` | `b971eec1fc0d0d6a0fe080c634584c84ab3517239818ca091efc7a0bd0ec13fb` |
+| `hubmap-vh-m-blood-vasculature` | `a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
 
 **見た目の比較**：`docs/screenshots/b15-repair/` に source / derived の実レンダリングがあります。
 選択可能な部位は**どちらも 46 件**、画面は見分けがつきません。

@@ -240,6 +240,73 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
+    sceneId: 'heart-anatomy',
+    decidedAt: '2026-09-15',
+    decidedBy: Object.freeze({
+      name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/heart-anatomy.md',
+    /**
+     * Two files, and **neither hash is the publisher's**.
+     *
+     * Both sources fail glTF validation on degenerate vertex normals, and the
+     * format gate takes zero errors at every scene status — so what is pinned
+     * here is the derivative that repairs them and changes nothing else. The
+     * adoption decision is docs/decisions/HEART-ASSET-ADOPTION.md and the
+     * change is measured in docs/asset-qa/measurements/normal-repair.json.
+     */
+    assetRevisions: Object.freeze({
+      'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+      'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+    }),
+    sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: '7128d8f57c861bfc' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Right ventricle',
+        'Left ventricle',
+        'Right atrium',
+        'Great cardiac vein',
+      ]),
+      views: Object.freeze([
+        'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 46 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press, and by V on the focused branch',
+        'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
+        'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'scripts/repair-candidate-gltf.mjs',
+      'docs/asset-qa/measurements/normal-repair.json',
+      'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+      'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
+      'docs/decisions/HEART-ASSET-ADOPTION.md',
+      'public/assets/heart/ATTRIBUTION.md',
+      'tests/heart-anatomy.test.js',
+      'tests/organ-anatomy-scenes.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain is published on',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '42 of the 46 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'the underlying Visible Human Male terms were read through secondary sources only — nlm.nih.gov was unreachable, so the NLM acknowledgment is given rather than reasoned away',
+      'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
+      'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
+      'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
+    ]),
+  }),
+  Object.freeze({
     sceneId: 'brain-anatomy',
     decidedAt: '2026-09-15',
     /** Who, and in what capacity. A role is a claim, and it is checked. */

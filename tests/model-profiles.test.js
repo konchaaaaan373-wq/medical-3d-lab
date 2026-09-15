@@ -248,22 +248,31 @@ test('the two atlas scenes are the only asset-backed geometry, and each names a 
     );
   }
 
-  // The brain draws a shipped asset; the heart draws a candidate under
-  // examination. Those are different records in different files, and the
-  // difference is the whole reason the heart cannot be published.
-  const brain = modelProfileForScene(sceneById('brain-anatomy'));
-  for (const id of brain.assets) assert.ok(assetById(id), `${id} is in the asset manifest`);
-  assert.deepEqual(profileCandidateAssets(brain), [], 'nothing shipped rests on a candidate');
+  // Both scenes draw shipped assets now. The heart's used to be candidates
+  // under examination, and that difference was the whole reason it could not be
+  // published; it was adopted on 2026-09-15 by moving the records, not by
+  // relaxing the rule. What still has to hold is that **nothing published rests
+  // on a candidate** — the rule the heart used to be the example of.
+  for (const scene of backed) {
+    const profile = modelProfileForScene(scene);
+    for (const id of profile.assets) assert.ok(assetById(id), `${scene.id}: ${id} is in the asset manifest`);
+    assert.deepEqual(profileCandidateAssets(profile), [], `${scene.id}: something published rests on a candidate`);
+  }
 
-  const heart = modelProfileForScene(sceneById('heart-anatomy'));
-  assert.deepEqual(heart.assets, [], 'the heart file is not in the asset manifest, and is not claimed to be');
-  // Both files the scene loads. It draws the heart and the great-vessel
+  // Both files the heart loads. It draws the heart and the great-vessel
   // geometry, and a profile that lists one of them leaves the other on screen
   // with nobody credited for it — `tests/attribution.test.js` holds that end.
-  assert.deepEqual(profileCandidateAssets(heart), ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature']);
-  for (const id of profileCandidateAssets(heart)) {
-    assert.ok(devAssetById(id), `${id} is a pinned candidate in devAssets.js`);
-    assert.equal(assetById(id), null, `${id} must not be in the asset manifest until it is adopted`);
+  const heart = modelProfileForScene(sceneById('heart-anatomy'));
+  assert.deepEqual(heart.assets, ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature']);
+  for (const id of heart.assets) {
+    // The source stays pinned after adoption: the derivative is reproducible
+    // from it, and deleting the candidate would cut the provenance chain.
+    assert.ok(devAssetById(id), `${id}: the source it was derived from is no longer pinned`);
+    assert.notEqual(
+      assetById(id).output.sha256,
+      devAssetById(id).sha256,
+      `${id}: what ships is the repaired file, not the publisher's bytes`
+    );
   }
 });
 

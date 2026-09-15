@@ -361,6 +361,31 @@ export const BUNDLE_BUDGET_KB = {
   css: 120,
   /** All JS and CSS in the build. */
   code: 700,
-  /** Static specimen media, fetched lazily by the scenes that need it. */
+  /**
+   * The heaviest single model's media — the geometry one reader downloads when
+   * they open one scene.
+   *
+   * This line used to be the **sum** of every model's media, while the text
+   * above it argued per-scene: *"fetched only by the one scene that needs it,
+   * and never by a visitor who does not open it."* With one published model the
+   * two were the same number and nothing could tell them apart. Publishing the
+   * heart separated them, and the sum turned out to measure a download nobody
+   * performs — and one that can only grow as organs are published, so it would
+   * have failed on the third model however small each one was.
+   *
+   * The number is unchanged at 6000. What changed is that it now measures what
+   * its own sentence promised.
+   */
   media: 6000,
+  /**
+   * Every model's media together — the repository's total specimen weight.
+   *
+   * Not a download anyone makes, which is why it is not the line that governs;
+   * it is here so that the total cannot grow unwatched. **It is expected to
+   * rise as organs are published, and to be re-judged each time one lands** —
+   * raising it is a decision, and it belongs in the pull request that adds the
+   * organ. Two published models come to 8.7 MB; this leaves room for roughly
+   * one more before somebody has to look again.
+   */
+  mediaTotal: 13000,
 };
