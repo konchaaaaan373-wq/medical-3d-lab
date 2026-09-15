@@ -282,11 +282,12 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
         'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
         'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
-        'the scene implements selectAtCanvasPoint, the pointerless way in the landing hero binds Enter to — held by tests/heart-anatomy.test.js and tests/organ-anatomy-scenes.test.js. **Not driven in a browser for this scene**: verify:hero-input only ever opens the first organ in the rotation, which is the brain',
+        'the landing hero reaches this scene with a keyboard: Tab focuses the model, Enter names the structure in front of it, Escape lets go, Enter after turning names a different one, and the card hands that structure to the full model — driven on the heart by verify:hero-input, which was taught the same day to repeat its keyboard pass for every published organ rather than only the first in the rotation',
       ]),
     }),
     evidence: Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
+      'scripts/check-hero-input.mjs',
       'scripts/repair-candidate-gltf.mjs',
       'docs/asset-qa/measurements/normal-repair.json',
       'docs/asset-qa/heart-hubmap-vh-m-heart.md',
