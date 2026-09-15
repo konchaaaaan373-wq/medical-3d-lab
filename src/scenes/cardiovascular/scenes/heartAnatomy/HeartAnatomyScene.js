@@ -612,6 +612,45 @@ export class HeartAnatomyScene {
     return true;
   }
 
+  /**
+   * Hide or show many structures as one change.
+   *
+   * `setStructureHidden` applies the whole visibility pass and announces the
+   * change on every call, which is right for one structure and wrong for a
+   * group: hiding the brain's frontal lobe is four of those, so four passes over
+   * every mesh in the atlas and four repaints of the panel, for one thing the
+   * reader asked for once.
+   *
+   * Same rules as the single setter, applied to each id — an isolation on a
+   * structure being hidden is dropped, an id the model does not have is
+   * skipped — and then one pass and one announcement at the end.
+   *
+   * @param {Iterable<string|number>} ids
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything actually changed
+   */
+  setStructuresHidden(ids, hidden) {
+    let changed = false;
+    for (const id of ids) {
+      const meshes = this._meshesFor(id);
+      if (!meshes.length) continue;
+      const key = meshes[0].userData.structureId;
+      if (this.manualHidden.has(key) === Boolean(hidden)) continue;
+      if (hidden) {
+        if (this.isolatedId === key) this.isolatedId = null;
+        this.manualHidden.add(key);
+      } else {
+        this.manualHidden.delete(key);
+      }
+      changed = true;
+    }
+    if (!changed) return false;
+    this.hiddenVersion += 1;
+    this._applyVisibility(1 / 60, true);
+    this._emitVisibility();
+    return true;
+  }
+
   showAllHiddenStructures() {
     if (!this.manualHidden.size) return false;
     this.manualHidden.clear();

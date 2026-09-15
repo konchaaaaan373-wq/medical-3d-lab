@@ -78,6 +78,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { join, resolve } from 'node:path';
+import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -247,7 +248,16 @@ if (!chromium) {
 
 // --- serving the build -----------------------------------------------------
 
-const { base, close: closeServer } = await serveDist(distDir);
+// The candidate assets a scene under development fetches are git-ignored and
+// live outside the build, so a static server rooted at `dist` answers 404 for
+// them — and a scene whose atlas 404s never reaches the state this drive waits
+// for. That is why driving `heart-anatomy` here used to end at "the drive
+// stopped while opening the scene", which reads as the scene being broken
+// rather than as the file not being served. `capture-anatomy-views.mjs` had
+// already learnt this; the mount is the same one.
+const { base, close: closeServer } = await serveDist(distDir, {
+  mounts: { [`/${DEV_ASSET_ROOT}/`]: '.' },
+});
 
 // --- the drive -------------------------------------------------------------
 
@@ -619,6 +629,129 @@ try {
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
       problems.push('after Show all, clicking the model selected nothing — it did not come back');
+    }
+  }
+
+  // 5b. A branch comes off in one press, and comes back the same way.
+  //
+  // The point of the control is the *many*: a reader taking the chamber
+  // surfaces off to look inside, or a hemisphere off to see the midline. So
+  // this presses the branch with the most structures under it rather than the
+  // first one, because the first branch on some scenes holds exactly one
+  // structure and hiding one structure would pass a check meant for seventy.
+  //
+  // **Counting the hidden set is the wrong measure**, and this check made that
+  // mistake first: the heart opens with six structures already hidden — the
+  // arch branches and the brachiocephalic veins, which are in the way of the
+  // organ — so "hid 46" came back as "hid 40" and read as the feature being
+  // broken. What matters is which structures, not how many: every leaf of the
+  // branch hidden afterwards, none of them hidden after the press back, and
+  // nothing outside the branch touched either way.
+  //
+  // Scenes whose model cannot hide a set do not draw the control at all
+  // (`setStructuresHidden` is optional in the contract); there the branch is
+  // recorded as absent rather than reported as broken.
+  {
+    const groups = await page.evaluate(() => {
+      const out = [];
+      for (const branch of document.querySelectorAll('.anatomy-tree-branch')) {
+        const control = branch.querySelector(':scope > .anatomy-tree-visibility');
+        if (!control) continue;
+        out.push({
+          node: control.dataset.groupVisibility,
+          label: branch.getAttribute('aria-label') ?? '',
+          leaves: [...branch.querySelectorAll('.anatomy-tree-leaf')].map((row) => row.dataset.structure),
+        });
+      }
+      return out.sort((a, b) => b.leaves.length - a.leaves.length);
+    });
+    if (!groups.length) {
+      notes.push('no group has a visibility control — this scene\'s model cannot hide a set');
+    } else {
+      const biggest = groups[0];
+      const mine = new Set(biggest.leaves);
+      // Ids reach the DOM as strings whatever the scene's own type is, so both
+      // sides are compared as strings.
+      const hiddenSet = async () => page.evaluate(() => {
+        const list = window.__app?.scene?.getAnatomyVisibility?.().hidden;
+        return list ? list.map(String) : null;
+      });
+      const control = page.locator(`[data-group-visibility="${biggest.node}"]`);
+      const branch = page.locator(`[data-node="${biggest.node}"]`);
+      const start = await hiddenSet();
+      if (start === null) {
+        problems.push('the scene does not report its hidden set; group visibility cannot be measured');
+      } else {
+        // What the press must not touch: everything the scene had hidden that
+        // is not under this branch.
+        const elsewhere = start.filter((id) => !mine.has(id));
+        const missing = (set, ids) => ids.filter((id) => !set.has(id));
+
+        const press = async (how, run) => {
+          at(how);
+          await run();
+          await page.waitForTimeout(400);
+          return new Set(await hiddenSet());
+        };
+
+        const hide = await press(
+          `hiding the branch "${biggest.label}" in one press`,
+          // `force`, because the control is quiet until the row is hovered: it
+          // is drawn at zero opacity so a tree of four hundred rows is not four
+          // hundred buttons shouting, and Playwright reads that as not visible.
+          () => control.click({ force: true })
+        );
+        const left = missing(hide, biggest.leaves);
+        if (left.length) {
+          problems.push(
+            `pressing the branch "${biggest.label}" left ${left.length} of its ${biggest.leaves.length} structures on screen`
+          );
+        }
+        const lost = missing(hide, elsewhere);
+        if (lost.length) {
+          problems.push(`pressing the branch "${biggest.label}" un-hid ${lost.length} structure(s) outside it`);
+        }
+        if ((await control.getAttribute('aria-pressed')) !== 'true') {
+          problems.push('a branch whose structures are all hidden does not announce it');
+        }
+        await shot('group-hidden');
+
+        const show = await press('showing the branch again', () => control.click({ force: true }));
+        const stuck = biggest.leaves.filter((id) => show.has(id));
+        if (stuck.length) {
+          problems.push(`showing the branch again left ${stuck.length} of its structures hidden`);
+        }
+        const collateral = missing(show, elsewhere);
+        if (collateral.length) {
+          problems.push(`showing the branch un-hid ${collateral.length} structure(s) outside it`);
+        }
+
+        // And the same action from the keyboard, on the focused branch.
+        const byKey = await press('hiding the branch from the keyboard', async () => {
+          await branch.focus();
+          await page.keyboard.press('v');
+        });
+        const keyLeft = missing(byKey, biggest.leaves);
+        if (keyLeft.length) {
+          problems.push(
+            `V on the focused branch "${biggest.label}" left ${keyLeft.length} of its structures on screen`
+          );
+        }
+        const back = await press('showing it again from the keyboard', () => page.keyboard.press('v'));
+        const keyStuck = biggest.leaves.filter((id) => back.has(id));
+        if (keyStuck.length) problems.push(`V did not put ${keyStuck.length} of the branch's structures back`);
+
+        observed.groupHidden = { label: biggest.label, structures: biggest.leaves.length };
+        // Said rather than assumed: a group press is "show everything under
+        // this branch", so on a scene that opens with some of them hidden it
+        // shows those too — the same thing "Unhide all" does.
+        if (elsewhere.length !== start.length) {
+          notes.push(
+            `${start.length - elsewhere.length} structure(s) under "${biggest.label}" were already hidden when the ` +
+              'scene opened; showing the branch shows those as well, as "Unhide all" does'
+          );
+        }
+      }
     }
   }
 
@@ -1501,6 +1634,13 @@ console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
 console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
 console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
+console.log(
+  `  group hidden in one press: ${
+    observed.groupHidden
+      ? `${observed.groupHidden.label} (${observed.groupHidden.structures} structures)`
+      : 'not offered by this scene'
+  }`
+);
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (problems.length) {

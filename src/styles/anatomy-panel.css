@@ -585,3 +585,83 @@
   background: color-mix(in srgb, currentColor 14%, transparent);
   font-weight: 600;
 }
+
+/* ---------- hiding a whole group -----------------------------------------
+
+   The control sits at the right-hand end of a group row. It is a sibling of
+   the disclosure rather than inside it — a button may not contain a button —
+   so the row is laid out as a grid with the disclosure taking the space it
+   needs and this one a fixed column. */
+.anatomy-tree-branch {
+  display: grid;
+  grid-template-columns: 1fr auto;
+}
+
+.anatomy-tree-branch > .anatomy-tree-children {
+  grid-column: 1 / -1;
+}
+
+.anatomy-tree-visibility {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  align-self: stretch;
+  border: 0;
+  background: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  /* Quiet until wanted. A row of eyes down a four-hundred-row tree competes
+     with the structure names, which are what the tree is for. */
+  opacity: 0;
+  transition: opacity 120ms ease, color 120ms ease;
+}
+
+.anatomy-tree-branch:hover > .anatomy-tree-visibility,
+.anatomy-tree-visibility:focus-visible,
+/* A group that is hidden, or partly so, says so whether or not a pointer is
+   near it: that is state the reader needs in order to know why part of the
+   model is missing. */
+.anatomy-tree-visibility.is-hidden,
+.anatomy-tree-visibility.is-partial {
+  opacity: 1;
+}
+
+.anatomy-tree-visibility:hover { color: var(--ink); }
+
+/* A finger cannot hover, so "quiet until wanted" would read as "not there" on
+   a phone — the one surface where pressing Hide seventy-seven times is least
+   possible. Where the pointer cannot hover the control is simply drawn, and it
+   gets the 44px touch floor while it is at it. */
+@media (hover: none) {
+  .anatomy-tree-visibility {
+    opacity: 1;
+    width: 44px;
+    min-height: 44px;
+  }
+}
+
+.anatomy-tree-visibility:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+/* The mark: a filled bar for "shown", an outlined one for "hidden", and a
+   half-filled one for a group only part of which is. Shape rather than colour
+   alone, so it survives a colour-blind reader and a greyscale print. */
+.anatomy-tree-visibility-mark {
+  width: 13px;
+  height: 13px;
+  border: 1.5px solid currentColor;
+  border-radius: 3px;
+  background: currentColor;
+}
+
+.anatomy-tree-visibility.is-hidden .anatomy-tree-visibility-mark {
+  background: none;
+}
+
+.anatomy-tree-visibility.is-partial .anatomy-tree-visibility-mark {
+  background: linear-gradient(to right, currentColor 50%, transparent 50%);
+}

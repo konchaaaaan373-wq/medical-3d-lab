@@ -1,5 +1,6 @@
 import { el } from '../utils/dom.js';
 import { treeLeaves } from '../app/anatomyContract.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 // The stylesheet is imported by `AnatomyPanel.js`, which owns this surface.
 // Importing it here as well would be harmless in the browser and fatal under
 // `node --test`, which is where these rows are checked.
@@ -54,6 +55,55 @@ export function createAnatomyTreePanel(scene) {
   const parentOf = new Map();
   /** Rows in reading order, so "what is visible" is a filter and not a walk. */
   const ordered = [];
+  /** Each group's visibility control, by node id, so repainting is a lookup. */
+  const groupVisibility = new Map();
+  /**
+   * Whether this scene can hide a group at all.
+   *
+   * Asked of the scene once rather than assumed: hiding a group is hiding its
+   * leaves as a single change, and a scene that has no batched setter would
+   * have to be hidden one structure at a time — which is the thing this is for.
+   * A scene without it simply does not get the control.
+   */
+  const groupsCanHide = typeof scene.setStructuresHidden === 'function';
+
+  /**
+   * Hide everything under a group, or show it again.
+   *
+   * "Anything still visible" decides the direction, so a group a reader has
+   * partly hidden by hand folds the rest of the way rather than springing back
+   * — the press means "get this out of the way", and it should do that whatever
+   * state the group was left in.
+   */
+  function toggleGroupHidden(node) {
+    const ids = treeLeaves(node.children).map((leaf) => leaf.structureId);
+    if (!ids.length) return;
+    const hidden = new Set(scene.getAnatomyVisibility?.().hidden ?? []);
+    const anyVisible = ids.some((id) => !hidden.has(id));
+    scene.setStructuresHidden(ids, anyVisible);
+  }
+
+  /** Which groups are wholly hidden, so their controls say so. */
+  function paintGroupVisibility() {
+    if (!groupVisibility.size) return;
+    const hidden = new Set(scene.getAnatomyVisibility?.().hidden ?? []);
+    for (const { button, node } of groupVisibility.values()) {
+      const ids = treeLeaves(node.children).map((leaf) => leaf.structureId);
+      const allHidden = ids.length > 0 && ids.every((id) => hidden.has(id));
+      const someHidden = ids.some((id) => hidden.has(id));
+      button.setAttribute('aria-pressed', String(allHidden));
+      button.classList.toggle('is-hidden', allHidden);
+      // Partly hidden is its own state: without it a group with one structure
+      // hidden looks identical to one with none, and the next press would be a
+      // surprise in either direction.
+      button.classList.toggle('is-partial', someHidden && !allHidden);
+      const label = allHidden
+        ? inLanguage(`Show ${node.label}`, `${node.labelJa}を表示（V）`)
+        : inLanguage(`Hide ${node.label}`, `${node.labelJa}を非表示（V）`);
+      button.setAttribute('aria-label', label);
+      button.title = label;
+    }
+  }
   let openGroups = null;
   /** The row the Tab key lands on. Exactly one row carries tabindex="0". */
   let focusRow = null;
@@ -84,6 +134,44 @@ export function createAnatomyTreePanel(scene) {
       ]),
     ]);
 
+    /**
+     * Hide or show everything under this group, in one press.
+     *
+     * The reason this exists: the heart's interior is behind four chamber
+     * surfaces, and reaching it meant selecting and hiding four structures one
+     * at a time. A group is exactly the unit a reader means by "take the
+     * chambers off" — and the brain has the same shape, where "hide the frontal
+     * lobe" was forty-one presses.
+     *
+     * A sibling of the toggle, not a child: the toggle is a `<button>` and a
+     * button may not contain one. `tabindex="-1"` keeps the tree's roving
+     * order one stop per row, which is what `role="tree"` promises; `V` on the
+     * focused group is the keyboard path, and the label says so.
+     */
+    const visibility = groupsCanHide
+      ? el('button', {
+          class: 'anatomy-tree-visibility',
+          type: 'button',
+          tabindex: '-1',
+          'aria-pressed': 'false',
+          dataset: { groupVisibility: node.nodeId },
+          on: {
+            click: (event) => {
+              // The control is a sibling of the toggle rather than a child of
+              // it, so this press does not reach the toggle on its own — but
+              // the tree sits inside a panel that may yet delegate, and "hide
+              // the group" must never also mean "fold the group". Optional
+              // because `node --test` builds this component against a document
+              // stand-in whose events carry only what the tests need.
+              event?.stopPropagation?.();
+              toggleGroupHidden(node);
+              focus(toggle);
+            },
+          },
+        }, [el('span', { class: 'anatomy-tree-visibility-mark', 'aria-hidden': 'true' })])
+      : null;
+    if (visibility) groupVisibility.set(node.nodeId, { button: visibility, node });
+
     parentOf.set(toggle, parent);
     ordered.push(toggle);
     // Built after the toggle is registered, so the rows inside land after it in
@@ -104,7 +192,7 @@ export function createAnatomyTreePanel(scene) {
       role: 'treeitem',
       'aria-expanded': 'false',
       'aria-label': `${node.label} / ${node.labelJa}`,
-    }, [toggle, children]);
+    }, visibility ? [toggle, visibility, children] : [toggle, children]);
     branches.set(node.nodeId, { branch, toggle, children, node });
     return branch;
   };
@@ -183,6 +271,7 @@ export function createAnatomyTreePanel(scene) {
     rows.clear();
     branches.clear();
     parentOf.clear();
+    groupVisibility.clear();
     ordered.length = 0;
     element.replaceChildren(...tree.map((node) => row(node)));
     for (const nodeId of branches.keys()) setExpanded(nodeId, openGroups.has(nodeId));
@@ -190,6 +279,7 @@ export function createAnatomyTreePanel(scene) {
     focusRow = null;
     paintSelection(scene.getAnatomySelection());
     paintIsolation(scene.getAnatomyIsolation());
+    paintGroupVisibility();
   }
 
   function paintSelection(selection) {
@@ -287,6 +377,19 @@ export function createAnatomyTreePanel(scene) {
         else scene.selectStructure(Number(current.dataset.structure));
         focus(current);
         break;
+      // The keyboard's way to the group visibility control, which is not in the
+      // roving order because `role="tree"` gives a row one stop. Free: the scene
+      // binds space, R, H, C, the arrows, +/- and Escape on `window`, and this
+      // handler stops propagation before any of them see it.
+      case 'v':
+      case 'V':
+        if (groupsCanHide && isBranchToggle(current)) {
+          toggleGroupHidden(branches.get(nodeIdOf(current)).node);
+          focus(current);
+        } else {
+          handled = false;
+        }
+        break;
       default:
         handled = false;
     }
@@ -300,6 +403,12 @@ export function createAnatomyTreePanel(scene) {
 
   const unsubscribeSelection = scene.onAnatomySelection(paintSelection);
   const unsubscribeIsolation = scene.onAnatomyIsolation(paintIsolation);
+  // Hiding happens in more places than this panel — the card's own control, a
+  // fixed view, `revealStructure` taking a blocker out of the way — so the
+  // group controls follow the scene rather than only their own presses.
+  const unsubscribeVisibility = scene.onAnatomyVisibility?.(paintGroupVisibility);
+  // The labels are one language and the interface can change it under them.
+  const stopLanguageWatch = onLanguageChange(paintGroupVisibility);
   // The atlas may still be loading; rebuild when it says it is ready, so the
   // panel is never a permanently empty list.
   const unsubscribeStatus = scene.onAnatomyStatus?.((status) => {
@@ -320,9 +429,12 @@ export function createAnatomyTreePanel(scene) {
       unsubscribeSelection?.();
       unsubscribeIsolation?.();
       unsubscribeStatus?.();
+      unsubscribeVisibility?.();
+      stopLanguageWatch?.();
       rows.clear();
       branches.clear();
       parentOf.clear();
+      groupVisibility.clear();
       ordered.length = 0;
       element.remove?.();
     },

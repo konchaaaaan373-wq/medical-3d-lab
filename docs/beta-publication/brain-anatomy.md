@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-14 (re-taken as the press rule changed, was corrected by review, and then gained a way in that needs no pointer) |
+| **Decided at** | 2026-09-15 (re-taken as a branch of the tree gained a way to be hidden whole) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **18**, source digest `a6f983478785382e` |
+| **Scene revision** | model card revision **19**, source digest `df84477b92cc2917` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -122,6 +122,18 @@ thing the pin exists to do. All 31 anatomy entries in
 [`revisions.json`](../model-cards/revisions.json) declare the shared file, and
 `tests/tap-gesture.test.js` fails if one of them stops.
 
+**Revision 18 → 19.** Hiding was one structure at a time. A reader who wanted
+to see the midline block, or the ventricular system without the hemisphere
+around it, had to press Hide seventy-seven times — which is to say they did not
+do it, and the interior of the model was reachable in principle and not in
+practice. Every branch of the Parts tree now carries its own visibility control
+and answers `V` when focused, writing to the **same hidden set** a single
+structure's Hide writes to: one pass over the model and one report for the whole
+branch, so Unhide all still brings everything back and an isolation still
+overrides it while it lasts. Nothing about the atlas changed — no id, no label,
+no geometry, no colour — but what a reader can take off the screen did, and the
+scene's visibility surface is exactly what this record is a decision about.
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -206,6 +218,13 @@ a rendering check, not an anatomical one.
 - **Isolate** shows one structure alone; a click where a hidden structure used
   to be does not select it; **Show all** restores the model and the structures
   that were on screen before are clickable again.
+- **A branch comes off in one press.** The drive finds the branch with the most
+  structures under it — on this atlas, *Left cerebral hemisphere*, 77 — presses
+  its visibility control, and reads the scene's own hidden set: 77 structures
+  hidden by one press, and back to none when it is pressed again. `V` on the
+  focused branch does the same thing and undoes it. It presses the **largest**
+  branch deliberately: the first branch on some scenes holds one structure, and
+  hiding one structure would pass a check that exists for seventy.
 - No uncaught errors and no unexpected failed requests during the run.
 - **A hidden structure's label goes with it.** Selecting a structure draws its
   name on the model; hiding it removes the name, and unhiding brings it back.

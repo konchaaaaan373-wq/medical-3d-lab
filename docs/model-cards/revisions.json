@@ -7,9 +7,9 @@
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 18,
-    "modelDigest": "a6f983478785382e",
-    "cardUpdatedAt": "2026-09-14"
+    "cardRevision": 19,
+    "modelDigest": "df84477b92cc2917",
+    "cardUpdatedAt": "2026-09-15"
   },
   {
     "sceneId": "heart-anatomy",
@@ -18,9 +18,9 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 19,
-    "modelDigest": "e70530f01379d8e2",
-    "cardUpdatedAt": "2026-09-10"
+    "cardRevision": 20,
+    "modelDigest": "c7002040898fc20d",
+    "cardUpdatedAt": "2026-09-15"
   },
   {
     "sceneId": "circulation",

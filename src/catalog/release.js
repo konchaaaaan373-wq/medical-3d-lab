@@ -241,14 +241,14 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-14',
+    decidedAt: '2026-09-15',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 18, modelDigest: 'a6f983478785382e' }),
+    sceneRevision: Object.freeze({ cardRevision: 19, modelDigest: 'df84477b92cc2917' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
@@ -288,6 +288,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
         'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
         'a hidden structure\'s own label goes with it rather than being held over what is behind it',
+        'a whole branch of the tree is hidden and shown again in one press, and by V on the focused branch, writing to the same hidden set one structure\'s Hide writes to',
       ]),
     }),
     evidence: Object.freeze([

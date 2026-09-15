@@ -234,6 +234,19 @@ The anatomical layer stays owned by the console's slider: the scene reports the
 layer a structure needs and the control that owns the value sets it, so the
 model and the slider never give two answers.
 
+**A branch of the tree comes off in one action, and that is still hiding.** The
+Parts tree already groups structures by the hierarchy the atlas carries; every
+group now carries its own control, so a hemisphere or the ventricular system
+leaves the screen in one press rather than seventy-seven. It writes to the same
+hidden set a single structure's "Hide" writes to, in one pass over the model and
+one report rather than one of each per structure, so "Unhide all" still brings
+everything back, an isolation still overrides it for as long as it lasts, and
+nothing is removed, cut or thinned. The control states which of three things is
+true of the branch — all shown, all hidden, some of each — by shape as well as
+by colour, and answers `V` on a focused branch. **A group is not a structure**:
+pressing it changes what is drawn and never what is named, and the selection,
+the search index and the labels go on referring to structures only.
+
 **The structure a reader picks is named on the model, not only in the panel.**
 The selection and the hover get a label on the same terms as the four authored
 landmarks: the structure's own names, an anchor on its own outside, and the same

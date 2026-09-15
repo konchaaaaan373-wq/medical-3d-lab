@@ -286,6 +286,23 @@ the Japanese names are deliberate but unreviewed.
   **Every structure named by a view is one the source contains and this scene
   draws.** No view invents a vessel or a wall to make itself tidier, and
   `tests/heart-anatomy.test.js` holds all four to the part table.
+* **A branch of the Parts tree comes off in one press.** The tree's branches
+  are this file's own eight groups — *Chambers and septum*, *Heart valves*,
+  *Papillary muscles*, *Great vessels*, *Coronary arteries*, *Cardiac veins*,
+  *Branches of the aortic arch*, *Tributaries of the superior vena cava* — and
+  each now carries its own control that hides or shows everything beneath it.
+  Note what that means for the first one: *Chambers and septum* takes the
+  septum with the four chamber surfaces, because that is the group the file
+  has. A reader who wants the chambers off and the septum left standing hides
+  the four by hand, as before. It is the same hide a single part's "Hide" performs,
+  applied to the set in one pass over the model — not a section, not a cut, and
+  not a fourth fixed view. The difference from "Inside the chambers" is who
+  chooses the set: the fixed view is one authored destination, this is the
+  reader taking off whatever they want to see behind. A branch showing some of
+  its parts and hiding others says so with its own mark rather than rounding to
+  one of the two, and `V` on a focused branch does what pressing the control
+  does. **A group is not a part**: it has no ontology id, it cannot be selected,
+  searched for or labelled, and hiding one asserts nothing about the anatomy.
 * **What the camera frames is the organ, and it is a composition.** The scene
   reports the fourteen parts of the heart file as its subject, not everything it
   draws: the vessels reach past the chest — the inferior vena cava runs to the
