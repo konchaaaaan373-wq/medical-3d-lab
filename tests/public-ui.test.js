@@ -11,6 +11,7 @@ import {
   heroOrgansForModels,
 } from '../src/data/landingHero.js';
 import { NECO_LINKS } from '../src/data/necoLinks.js';
+import { ORGANS } from '../src/catalog/taxonomy.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -182,5 +183,36 @@ test('public model route: a two-model fixture keeps the selected identity beside
 test('public UI does not consume a link-preview card as model imagery', () => {
   for (const source of [read('src/app/Landing.js')]) {
     assert.doesNotMatch(source, /posterPath|posterKind/);
+  }
+});
+
+test('the beta copy names published organs only through the manifest', () => {
+  // Twice now a surface has written the published list down by hand and then
+  // gone false: the locked page said "the beta is the 3D anatomy of the brain
+  // and the heart" while only the brain was open, and the Explorer said "the
+  // beta is aiming at the brain and the heart" two lines below the comment
+  // warning against exactly that — until the liver was published and a reader
+  // saw "Open now: the brain and heart and liver" above a scope claiming two.
+  //
+  // So this reads the source rather than the render: the beta strings may
+  // interpolate the derived organ names, and may not spell any organ out. A
+  // literal organ name in that copy is a second copy of the published list,
+  // which is what CLAUDE.md forbids and what goes stale.
+  const source = readFileSync('src/app/Explorer.js', 'utf8');
+  const betaCopy = source
+    .split('\n')
+    .filter((line) => /Beta: 3D anatomy|β版：3D解剖モデル/.test(line))
+    .join('\n');
+  assert.ok(betaCopy, 'the beta subtitle was not found, so nothing can be absent from it');
+
+  for (const organ of ORGANS) {
+    for (const name of [organ.label, organ.labelJa]) {
+      if (!name) continue;
+      assert.equal(
+        betaCopy.toLowerCase().includes(name.toLowerCase()),
+        false,
+        `the beta copy spells out "${name}" instead of deriving it from PUBLIC_MANIFEST`
+      );
+    }
   }
 });
