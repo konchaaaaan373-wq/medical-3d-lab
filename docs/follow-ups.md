@@ -315,6 +315,46 @@ conda-forge には存在しません。したがって CDM のフィールド名
 
 ## C. 製品・UI の判断
 
+### F-134 膝と肩は、枠の 1 割ほどの縦の細片として描かれている — P2（2026-09-16）
+
+安全域フィット（#112）のあと、`verify:anatomy` が自分で測った値:
+
+```
+knee-anatomy:     the model spans 0.32..0.42 of the frame when the scene opens
+shoulder-anatomy: the model spans 0.28..0.38 of the frame when the scene opens
+```
+
+**横幅の 1 割です。** 影響は測定の不便にとどまりません:
+
+- 63 点のグリッドが膝を **6 回**、肩を **11 回**しか捉えません。膝の当たりは
+  **全部 `fx=0.3617` の 1 列**に並びます
+- クリックで指せる構造がそれだけ減ります。膝は #115 の時点で
+  「6 点が 6 種類を指す、調べた 6 件で最良の表面」でした。**いま 3 点 3 種類です**
+- 肩は候補 4 点のうち 3 点が同じ「関節唇」に落ちます
+
+これは公開判断にも効きます——F-126（腎・胃はクリックで指せる構造が 2 つだけ）と
+**同じ症状**で、原因が違う可能性があります（あちらは視点、こちらは寸法）。
+
+**肩は、この構図では名前つき tour を持てません。** 同じビルド・同じ座標で、
+連続した 2 run が違う構造を返しました:
+
+```
+(0.3617, 0.34)  "Coracoid process"   → 次の run で "Scapula"
+(0.3017, 0.34)  "Glenoid labrum"     → 次の run で "Articular cartilage"
+```
+
+枠の 1 割の中では、どの点も**どれかの縁**です。そこで肩は、2 run とも同じ名前を
+返した 1 点だけ名前を残し、残りは座標のみにしました——drive は「モデルの上に
+あり、何らかの構造を返す」ことは今も要求します。**この構図が固定できない同一性を
+主張させない**ためで、F-134 が解けたら測り直します。
+
+- やること: この 2 シーンの `cameraPose` / subject bounds が、他の臓器と同じ
+  基準で帯に収まっているか確かめる。関節は長骨の軸を含むので、
+  「骨の全長」を収めようとして関節そのものが小さくなっている疑いがあります
+- 完了の定義: 膝と肩が、他の臓器と同程度に帯を占めること。
+  `verify:anatomy` の `spans` 行が指標になります（この行自体が #112 の産物）。
+  **そのうえで肩の名前つき tour を 3 点以上に戻すところまで**が F-134 です
+
 ### F-126 腎・胃は「開いた視点からクリックで指せる構造」が 2 つしかない — P2（2026-09-16）
 
 β を広げる第 1 陣として lung / liver / kidney / stomach を調べ、**腎と胃を外しました。**
@@ -339,92 +379,6 @@ conda-forge には存在しません。したがって CDM のフィールド名
 - やること: 初期視点で指せる構造を増やす（画角を引く／層の初期値／開いた側の
   内部構造を当たり判定に出す）。そのうえで名前つき tour を付け直す
 - 完了の定義: 開いた視点から 4 点が 4 種類を指し、`verify:anatomy` がそれに固定される
-
-### F-127 肩: Show all のあとモデルをクリックしても何も選べない — P1（2026-09-16）
-
-`npm run verify:anatomy -- --scene shoulder-anatomy --preview` が実測で報告:
-
-```
-1 problem(s):
-  - after Show all, clicking the model selected nothing — it did not come back
-```
-
-**機能不具合です。** 隠した構造を「すべて表示」で戻したあと、モデルが
-ピック不能になります。同じ run の中で lung / liver / knee は同じ検査を通っており、
-`OrganAnatomyScene` 共通の退行ではなさそうですが、**1 回しか観測していません**。
-
-- 肩は名前つき tour（大結節・烏口肩峰靱帯・上腕骨頭・上腕骨骨幹部）を持ちました。
-  tour は正しく、シーンが正しくありません
-- やること: 再現を確認し、`_applyLayers` / `_isPickable` と
-  `showAllHiddenStructures` の相互作用を疑う（F-119 で足した経路）
-- 完了の定義: 再現手順つきで原因を特定し、回帰テストを足したうえで直す
-
-### F-122 完成した臓器 37 件が「決定が無い」だけで公開されていない — P1（2026-09-15）
-
-`betaPublicationGap()` を足して測りました。**β が公開しているのは 2 臓器ですが、
-残りが未完成だからではありません。**
-
-- 解剖のみを主張するシーン **37 件**（model profile から読む。名前では判定しない）
-- 全件 `alpha`。`prototype` は 1 件も無い
-- 全件が外部 asset に依存しない（procedural）ので、asset release gate は素通り
-- レビュー記録が `stale` のものは無い
-- **37 件すべて、ゲートが残す指摘は 1 行だけ**——
-  `has no publication decision on file for this release`
-
-つまり `lung-anatomy` から `pelvis-anatomy` まで、公開までの距離は
-**誰も書いていない記録**であって、誰も作っていないジオメトリではありません。
-`BETA_ANATOMY_CANDIDATES` を眺めているだけではこれは見えません——短いリストは
-「準備できているものが 2 件しかない」ように読めるからです。
-
-- **これは Claude が勝手に決めることではありません。** 公開は製品が何を主張するかの
-  判断で、`BETA_ANATOMY_CANDIDATES` を編集し `docs/beta-publication/<scene>.md` に
-  記録を残して初めて成立します。`betaPublicationGap()` は距離を報告するだけで、
-  どの行も membership の 1 行を必ず持ち、「あとは書類だけ」とは言っても
-  「公開してよい」とは決して言いません（`tests/beta-release.test.js` が固定）
-- 決めるのに要る情報: 1 件あたりの費用は **`verify:anatomy` 1 本（脳で約 10 分、
-  procedural な臓器はもっと速い）＋ 記録 1 本**。並行させられないので
-  （CLAUDE.md「実ブラウザ検証は 1 本ずつ」）、37 件は逐次で数時間規模です
-- 決め方の案: 全部を一度に開けるのではなく、**系統ごとに数件ずつ**。
-  hero rotation は公開臓器が増えるとそのまま日替わりの幅が広がります
-  （`HERO_ORGANS` が目標順を持っています）
-- **代表 1 件を実ブラウザで確認済み（2026-09-15）**。「37 件が記録待ちなだけ」は
-  ゲートが通ることしか言っていないので、実際に動くかを 1 件測りました。
-  `npm run verify:anatomy -- --scene lung-anatomy --preview` の**出力そのまま**:
-
-  ```
-  Anatomy interaction — lung-anatomy, 83 selectable structures
-    structures named by click: Right upper lobe / 右上葉; Right middle lobe / 右中葉; Left upper lobe / 左上葉
-    viewpoints: Anterior前面, Posterior背面, Right lateral右外側, Left lateral左外側, Right lung, mediastinal surface右肺・縦隔面, Coronal section前額断（切断）
-    colour modes: Lobes and vessels肺葉・血管別, Natural tissue通常解剖色
-    labels on the model: none
-    part tree rows: 83
-    group hidden in one press: Pulmonary vessels / 肺血管 (34 structures)
-    note: points measured over the model: 0.44,0.45 0.38,0.45 0.62,0.45 0.68,0.45 0.5,0.34 0.38,0.34 (pass them to --points, or paste into SCENE_POINTS as [[0.44, 0.45], [0.38, 0.45], [0.62, 0.45], [0.68, 0.45]])
-    note: the pinned structure "右上葉" has no label on the model from this angle (F-40: one anchor point decides for the whole structure).
-    note: this scene loads no atlas, so there is no failed load to recover from
-    ok    the model and the tree name one structure; drag is not click; isolate hides and restores; display choices do not move the selection
-  ```
-
-  脳・心臓と**同じドライブに同じように通ります**。1 件あたりの実測費用は
-  **2 分未満**でした（脳の 10 分は 3.9 MB のアトラス読み込みが理由で、
-  procedural な臓器には無い）。つまり 37 件でも数時間ではなく 1〜2 時間規模です。
-  ただし 2 点、記録に書くべき差があります:
-  - `labels on the model: none` — 脳は選択した構造の**ラベルがモデル上に出ます**が、
-    肺はこのアングルでは出ませんでした（F-40 と同じ「1 つのアンカー点が構造全体を
-    決める」問題）。公開記録の「確認していないこと」に書く対象です
-  - **クリック点は登録済みですが、名前が付いていません。**
-    `SCENE_POINTS['lung-anatomy']` は 4 点を持つので、この run は
-    「たまたま当たった点」を使ってはいません（上の `points measured over the model`
-    は、authored な点の有無にかかわらず出る診断行です）。足りないのは
-    **3 つ目の要素＝その点が何を指すはずかという名前**で、心臓は
-    `[0.22, 0.45, 'Right atrium']` の形で持っています。名前が無いので
-    verifier は同一性を検査せず、**4 点が 3 構造しか生んでいる**ことにも
-    気付きません（2 点が同じ葉に当たっています）。公開する各シーンには
-    F-118 と同じ「名前を付けて固定する」作業が要ります——測り直しではなく、
-    既存の点に名前を足す作業です
-
-- 完了の定義: オーナーが「どこまで開けるか」を決め、開けると決めた各シーンに
-  browser 実測つきの `docs/beta-publication/<scene>.md` がある状態
 
 ### F-10 シーンヘッダをカタログ名に統一した影響 — P2（`#42`）
 
@@ -819,43 +773,6 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
   そこで分かる
 
 ## D. テスト・CI
-
-### F-123 名前の無いクリック tour は、記録より先に腐る — P1（2026-09-15）
-
-**公開中の `brain-anatomy` の公開記録が、1 週間ずれたまま「四点とも構造名を返した」と
-主張していました。** 実測（production ビルド、preview でも同じ）:
-
-| 記録（09-08 執筆） | 実際（09-15） |
-| --- | --- |
-| Opercular part of inferior frontal gyrus | Supramarginal gyrus |
-| Supramarginal gyrus (0.60, 0.32) | **何にも当たらない** |
-| Middle temporal gyrus | 一致 |
-| Superior temporal sulcus | Angular gyrus |
-
-原因は scene 側の退行ではありません。クリック点は **canvas の比率**なので、
-control bar の高さ（#88）・type floor 2 件（#85 / #86）・panel 3 件（#90 / #95 / #96）で
-レイアウトが動けば点がずれます。**どれも `brainAnatomy` の sources を触らない**ので
-model-revision digest は気付かず、`revisions:check` は緑のままでした。
-そしてそれを捕まえるはずの `SCENE_POINTS['brain-anatomy']` は座標だけで、
-「4 回のクリックが**何か**を名指した」しか検査していませんでした。
-`heart-anatomy` は F-118 以来 expected name を持っていましたが、
-**基準シーンである脳は持っていませんでした**。
-
-脳は直しました（名前つき tour ＋ 実測で選び直した 4 点目、記録も訂正）。
-残りが本題です:
-
-- **名前つき tour を持つのは 2 件だけ**（`heart-anatomy`, `brain-anatomy`）。
-  `SCENE_POINTS` の**残り 35 件は座標のみ**＝脳が 1 週間いた状態のままです
-- これは F-122 の費用見積もりを具体的にします。公開する各シーンに要るのは
-  「測り直し」ではなく**既存の点に名前を足す作業**で、1 件あたり probe 1 回
-  （procedural な臓器なら 2 分未満）＋ 確認 1 回。やり方は脳で確立しました——
-  4 点すべてに sentinel を入れて 1 回走らせると、mismatch 行が
-  「その点が実際に何を指したか」を全部教えてくれます
-- **公開記録は pin では守られません。** 公開判断は asset hash と scene revision に
-  紐付きますが、記録の本文が現実とずれても pin は動きません。守るのは
-  「記録に書いた主張を、テストが同じ言葉で固定していること」だけです
-- 完了の定義: 公開しているシーンすべてが名前つき tour を持ち、その記録の
-  構造表が `verify:anatomy` の出力から書かれていること（読み直しではなく）
 
 ### F-114 離脱 veil の BFCache 復帰だけが未検証 — P3（2026-09-15）
 
@@ -2318,36 +2235,6 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 
 ---
 
-### F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している — P1（product shell / 所有者未定）
-
-**再現条件.** `origin/main` の `fee3c6d`（"B6: refine product shell UX and consent flow"）を
-そのまま checkout して `node --test tests/feedback.test.js` を実行すると、
-16 件中 2 件が失敗します。**この統合 branch を作る前から赤で、
-正常解剖の取り込みとは無関係です**（同一 SHA の worktree で確認済み）。
-
-```
-not ok - consent: refusing is offered as plainly as accepting
-not ok - consent: the banner appears only while the question is unanswered
-```
-
-**原因.** B6 が `src/components/ConsentBanner.js` を作り替え、テストが
-記述している形と合わなくなりました。
-
-- テストは `button('denied'` / `button('granted'` を探しますが、実装の
-  ヘルパは `choice('denied', …)` / `choice('granted', …)` に改名されています。
-  **保護している規則（拒否が承諾と同じ明確さで提示され、拒否が DOM 上先で、
-  どちらも事前選択されていない）は新実装でも成立**しており、regex を
-  実装に合わせれば済みます
-- もう 1 件は `if (telemetry.consent !== 'unset') return null` の存在を
-  要求しますが、新実装は回答後も `aria-pressed` を持つ設定行として残る
-  設計に変わっています。**これは UX の判断**であり、テストを消すか
-  実装を戻すかは shell の所有者が決めることです
-
-**Claude② はどちらにも手を入れていません。** 外側 UI shell は担当外で、
-片方だけ直すと「半端に手入れされたファイル」が残るためです。
-
----
-
 ### F-90 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（shared Viewer / future integration owner）
 
 **再現条件.** `src/controls/createControls.js` の既定は
@@ -2997,6 +2884,81 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+- **F-123 名前の無いクリック tour は、記録より先に腐る** — 解決（2026-09-16、公開中のシーンについて）。
+  完了の定義は「**公開しているシーンすべて**が名前つき tour を持つこと」でした。
+  公開 4 件はすべて持ちます——`heart-anatomy`（F-118）、`brain-anatomy`（F-123 本体）、
+  `lung-anatomy` と `liver-anatomy`（公開したときに同時に）。
+  さらに `tests/beta-release.test.js` の
+  `a decision's scope names exactly what the browser drive is held to` が、
+  公開判断記録の `scope.structures` と `SCENE_POINTS` の名前を**同じ言葉で**縛ります。
+  記録の本文が現実とずれても pin は動かない、という F-123 の指摘への答えがこれです。
+
+  **未公開の 30 件超は座標のみのままです。** これは残っている事実で、
+  隠していません——ただし名前を足す作業は「公開する」と決めた臓器に対して
+  意味を持つもので、オーナーの判断は当面 4 件（F-122）です。
+  再び広げるときは、そのときの番号で「名前を足す」を費用に含めてください。
+
+- **F-127 肩: Show all のあとモデルをクリックしても何も選べない** — 解決（2026-09-16）。
+  **F-127 の断定が間違っていました。** 元の項目は「**機能不具合です**」
+  「tour は正しく、**シーンが正しくありません**」と書いています。
+  どちらも、1 回の赤を見ただけで原因を名指ししたものです。測った結果は逆で、
+  **シーンは正しく、検査の側が嘘をついていました**。
+
+  切り分けの実測（`window.__app` から直接読んだ値）:
+
+  - Show all の直後、**モデルは完全に戻っています**——
+    `hidden=0 faded=0/20`、opacity は 20 構造すべて `1.00`、
+    `elementFromPoint` は `CANVAS`、section plane 無し
+  - 同じ瞬間にサンプルし直すと、**6 点中 5 点がモデルの上にあります**。
+    当たらないのは検査がクリックしていた 1 点だけ
+  - その点は**ドラッグの前**に測った点です。カメラは
+    `(-3.60, 2.20, 6.60)` から `(-2.23, 3.38, 4.24)` へ移っていました
+
+  原因は「**ドラッグを逆にたどってもビューは戻らない**」こと。controls は damping
+  するので、同じ経路を返しても同じ回転は返りません。肩は関節の 1/3 周ぶん
+  ずれていました。ずれた古い点を後段が使い続けるので、**run ごとに別のステップが
+  赤くなります**——実際に 3 種類出ました。**1 本の古い配列が、3 つの濡れ衣を
+  着せていました。**
+
+  **直したのは #112 です。** 並行して同じ原因に到達し、各クリック地点で
+  `liveModelPoint()` を測り直す形——こちらが書いた `settleCamera` / `remeasure`
+  より局所的で良い——で入っています。**同じ車輪を 2 本持たないので捨てました。**
+  こちらから残したのは 2 つだけです:
+
+  - drag ステップの**嘘のコメント**の訂正。「正確に逆にたどるのでカメラは戻る」と
+    書いてあり、#112 の修正でも文面は残っていました。実測値に置き換えてあります
+  - この項目自身の訂正。教訓は `docs/verification-lessons.md` **L-27**
+
+- **F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している** — 解決（2026-09-16、他者の修正で）。
+  `node --test tests/feedback.test.js` は **17/17 緑**です。
+  F-91 が挙げた 2 件のうち:
+
+  - 「refusing is offered as plainly as accepting」は残っており、
+    regex が実装の改名に追従しています（`/choice\('denied'/`、
+    順序も `choice('denied') < choice('granted')` で見ています）
+  - 「the banner appears only while the question is unanswered」は**無くなり**、
+    `consent: the setting remains available after the question is answered` に
+    置き換わっています。F-91 が「shell の所有者が決めること」とした UX 判断は、
+    **設定として残す**方向で決まったということです
+
+  F-91 は「誰かが決めるまで赤いまま」の項目で、決まったので閉じます。
+  こちらからは何も変更していません——**確かめて記録しただけ**です。
+
+- **F-122 完成した臓器 37 件が「決定が無い」だけで公開されていない** — 決定（2026-09-16）。
+  オーナーの判断: **いまは 4 臓器（脳・心臓・肺・肝）で十分**。加えて
+  **hero に出せない臓器は公開しない**（F-128 と同じ規則、`release.js` が所有）。
+
+  つまり F-122 が測った「37 件は記録待ちなだけ」は事実のまま残りますが、
+  **記録を書く順番は距離ではなく hero が決めます**。次に 1 件開けるときに要るのは
+  「名前つき tour ＋ 公開判断記録」に加えて、その臓器の**軽量 hero モデル**です。
+  現在 `ORGAN_HERO_BUILDERS` にあって未公開なのは kidney だけで、
+  それは F-126（クリックで指せる構造が 2 つしかない）で止まっています。
+
+  この項目は「オーナーが決めるまで動かせない」ものだったので、決まった時点で閉じます。
+  再び広げると決めたときは、**新しい番号で**開き直してください——
+  そのときの費用は F-122 が測った数字（procedural 1 件あたり 2 分未満）と
+  hero モデル 1 本です。
 
 - **F-128 公開できる臓器は hero builder のある 5 つに限られる** — **決定**（2026-09-16）。
   オーナー判断: **「hero に出せない臓器は公開しない。まずその 4 臓器でいい。」**
