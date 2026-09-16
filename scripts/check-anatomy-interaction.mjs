@@ -157,10 +157,23 @@ const SCENE_POINTS = {
     [0.50, 0.50, 'Middle temporal gyrus'],
     [0.50, 0.42, 'Angular gyrus'],
   ],
-  // Two lungs and the airway between them, not one mass.
-  'lung-anatomy': [[0.34, 0.40], [0.36, 0.72], [0.68, 0.55], [0.50, 0.44]],
-  // Right lobe, left lobe, the inferior third, and the gallbladder below it.
-  'liver-anatomy': [[0.35, 0.40], [0.66, 0.45], [0.45, 0.62], [0.42, 0.75]],
+  // Two lungs, a lobe of each, and the airway between them — measured, not
+  // assumed. The fourth point used to sit at (0.50, 0.44) and **hit nothing**,
+  // which is why this scene reported three structures from four clicks.
+  'lung-anatomy': [
+    [0.34, 0.40, 'Right upper lobe'],
+    [0.36, 0.72, 'Right middle lobe'],
+    [0.68, 0.55, 'Left upper lobe'],
+    [0.50, 0.34, 'Left main bronchus'],
+  ],
+  // Three Couinaud segments and the gallbladder under them. These four were
+  // already right: every point named a different structure when measured.
+  'liver-anatomy': [
+    [0.35, 0.40, 'Segment VIII — Right anterior superior'],
+    [0.66, 0.45, 'Segment III — Left lateral inferior'],
+    [0.45, 0.62, 'Segment V — Right anterior inferior'],
+    [0.42, 0.75, 'Gallbladder'],
+  ],
   // One kidney, the other, and twice on the opened one.
   'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
   // Fundus, body, antrum, and the duodenum it empties into.
@@ -188,10 +201,22 @@ const SCENE_POINTS = {
   'prostate-anatomy': [[0.47, 0.52], [0.40, 0.55], [0.57, 0.30], [0.50, 0.74]],
   // The route runs bottom-left to middle and then forward.
   'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
-  // A femoral condyle, the other one, the patella between them, and a plateau.
-  'knee-anatomy': [[0.45, 0.37], [0.56, 0.37], [0.52, 0.44], [0.46, 0.56]],
-  // The head, the scapula behind it, the arch above, and the shaft below.
-  'shoulder-anatomy': [[0.44, 0.46], [0.60, 0.45], [0.48, 0.36], [0.45, 0.62]],
+  // Both femoral condyles, the patella in front of them, and the tibial
+  // plateau below — four bones of the joint from one view.
+  'knee-anatomy': [
+    [0.45, 0.37, 'Lateral femoral condyle'],
+    [0.56, 0.37, 'Medial femoral condyle'],
+    [0.52, 0.44, 'Patella'],
+    [0.46, 0.56, 'Lateral tibial plateau'],
+  ],
+  // The tubercle, the ligament arching over it, the humeral head and the shaft.
+  // The old second point sat at (0.60, 0.45), off the model entirely.
+  'shoulder-anatomy': [
+    [0.44, 0.46, 'Greater tubercle'],
+    [0.48, 0.36, 'Coracoacromial ligament'],
+    [0.45, 0.62, 'Head of the humerus'],
+    [0.48, 0.68, 'Humerus (shaft)'],
+  ],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
   // Into the funnel from in front: the midline, the ring on each side of it, and the floor below.
