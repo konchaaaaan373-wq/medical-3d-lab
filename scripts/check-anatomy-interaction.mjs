@@ -787,6 +787,14 @@ try {
         widestRow = fy;
       }
     }
+    // The coarse pass finds *which* row is widest; it is not allowed to report
+    // how wide, because a 4% grid quantises both ends and can lose 8% of the
+    // frame — on the knee that is two thirds of the answer. So the row it
+    // picked is swept again at the full resolution, for one row's cost.
+    if (widest) {
+      const fine = await modelSpan(widestRow);
+      if (fine) widest = fine;
+    }
     return widest ? { widest, widestRow, rowsOnModel, rows: rows.length } : null;
   };
 
