@@ -95,16 +95,19 @@ No dimension here is a measurement.
   canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
   organ open is framed on what it leaves rather than on the whole model.
 - **The humeral shaft is drawn and is not framed to.** The arm hangs out of the
-  scene, and fitting the whole of it put the joint at a tenth of the frame's
-  width where the published organs sit at 0.26–0.28 (F-134). The shaft is tagged
-  as context, so the camera measures itself against the joint — scapula,
-  clavicle, head, tubercles, socket, cuff and ligaments — and the humerus still
-  runs off the bottom of the frame as it should. **Nothing is hidden and nothing
-  is shortened**; only the box the camera fits to is narrower. Measured: the
-  joint went from 0.10 of the frame's width to 0.18, and where the old framing
-  could hold only one click point's identity still from run to run — three of
-  its four candidates came back "Glenoid labrum" — the tour now names three
-  distinct structures.
+  scene, and fitting the whole of it pushed the camera back far enough that
+  points a reader clicks sat too near the edges of structures to answer the same
+  way twice. The shaft is tagged as context, so the camera measures itself
+  against the joint — scapula, clavicle, head, tubercles, socket, cuff and
+  ligaments — and the humerus still runs off the bottom of the frame as it
+  should. **Nothing is hidden and nothing is shortened**; only the box the
+  camera fits to is narrower. Measured: where the old framing could hold only
+  one click point's identity still from run to run — three of its four
+  candidates came back "Glenoid labrum" — the tour now names three distinct
+  structures, each confirmed by two consecutive runs.
+  Like the knee this is a **tall** subject and is framed as one: it reaches
+  across 7 of 9 sampled rows where the published organs reach 4 or 5, and its
+  widest point is 0.22 of the frame against their 0.28–0.32.
 - **A cut draws the face it leaves, where there is one to draw.** For a solid
   part the cross-section is computed from the triangles the plane crosses and
   drawn in that part's own colour, so a cut segment reads as tissue with a
