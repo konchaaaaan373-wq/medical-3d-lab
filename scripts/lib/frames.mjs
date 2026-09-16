@@ -7,7 +7,7 @@
  * rasteriser: SwiftShader's edge sampling is not stable frame to frame, so a
  * silhouette pixel lands one quantisation step either side of itself for as
  * long as you care to watch. It got away with it while the models were small.
- * When the framing fix (F-129) made them fill the frame there were more edge
+ * When the framing fix (F-133) made them fill the frame there were more edge
  * pixels, and the pancreas seen from above stopped settling at all — measured,
  * about **50 pixels**, every one of them on the outline, in a frame that had
  * otherwise stopped moving. The same scene mid-ease differs by **eleven

@@ -17,33 +17,30 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
-  // The models the beta opens lead, in the order they opened — B1's three,
-  // then B2's five, then B3's one. `heart-anatomy` follows them rather than
-  // sitting second on the strength of its organ: a visitor who stops reading
-  // part way down has then seen only models they can open, which
-  // `tests/landing.test.js` holds.
-  'lung-anatomy',
+  'heart-anatomy',
+  // Published 2026-09-16. The open models lead the page, so it sits above the
+  // lung rather than after it: a visitor who stops reading part way down has
+  // seen only models that open.
   'liver-anatomy',
+  'lung-anatomy',
   'kidney-anatomy',
   'stomach-anatomy',
-  'esophagus-anatomy',
   'intestine-anatomy',
-  'biliary-anatomy',
   'pancreas-anatomy',
-  'skin-anatomy',
-  'heart-anatomy',
   'thyroid-anatomy',
   'spleen-anatomy',
   'bladder-anatomy',
+  'biliary-anatomy',
+  'esophagus-anatomy',
   'adrenal-anatomy',
   'uterus-anatomy',
   'prostate-anatomy',
   'male-tract-anatomy',
-  'knee-anatomy',
   'shoulder-anatomy',
   'hip-anatomy',
   'eye-anatomy',
   'ear-anatomy',
+  'skin-anatomy',
   'lymph-node-anatomy',
   'lymphatic-drainage',
   'breast-anatomy',
@@ -53,6 +50,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'oral-anatomy',
   'pelvic-floor-anatomy',
   'hand-anatomy',
+  'knee-anatomy',
   'foot-anatomy',
   'skeleton-overview',
   'neck-anatomy',

@@ -31,22 +31,7 @@ test('next-beta: registering the policy changes nothing about what is published'
   // it still selects `beta`; a policy that is registered and not selected
   // publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual(
-    RELEASED_SCENES.map((scene) => scene.id),
-    [
-      'brain-anatomy',
-      'heart-anatomy',
-      'lung-anatomy',
-      'stomach-anatomy',
-      'esophagus-anatomy',
-      'intestine-anatomy',
-      'liver-anatomy',
-      'kidney-anatomy',
-      'biliary-anatomy',
-      'pancreas-anatomy',
-      'skin-anatomy',
-    ]
-  );
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
 });
 
 test('next-beta ⊇ beta: switching the channel can only ever add', () => {
@@ -127,11 +112,7 @@ test('next-beta: a name that is not on the allowlist opens nothing', () => {
   assert.equal(asthma.length, 1);
   assert.match(asthma[0], /not one of the scenes the next release opens/);
 
-  // `stomach-anatomy` used to stand here and is now published, which is the
-  // hazard this list has: an example of "not a candidate" stops being one the
-  // day it opens. These are disease and prototype scenes, which the anatomy
-  // beta does not open and this channel's allowlist does not name.
-  for (const id of ['pneumonia', 'renal-filtration', 'breathing-lungs', '', 'undefined']) {
+  for (const id of ['pneumonia', 'renal-filtration', 'stomach-anatomy', '', 'undefined']) {
     assert.match(nextBetaPublicationProblems(id)[0], /not one of the scenes the next release opens/, id);
   }
 });

@@ -9,14 +9,10 @@
  *
  * ## Anatomy, and only anatomy
  *
- * The beta is **3D anatomy**, and nothing else. Looking at an organ and being
- * able to name what you are looking at is the product being published; the
- * disease and physiology models keep being built behind it.
- *
- * The range is not a list of organ names. It is whichever anatomy scenes have
- * passed the gate below, opened a batch at a time as each one is rendered and
- * looked at (ADR 2026-09-14); today that is the brain, the lung, the liver and
- * the kidney.
+ * The beta is the **3D anatomy of the brain and the heart**, and nothing else.
+ * Looking at an organ and being able to name what you are looking at is the
+ * product being published; the disease and physiology models keep being built
+ * behind it.
  *
  * This replaces the earlier rule, which opened every non-prototype scene under
  * the two organs. That rule reasoned: the heart has no anatomy-grade scene, so
@@ -42,13 +38,9 @@
  *  4. no clinical-review record it has is `stale`, so a sign-off that has been
  *     overtaken is never shown as current;
  *  5. a publication decision exists that is complete — who decided, in what
- *     role, on what date, against what record — and that is pinned to the
- *     exact asset revisions **and** the exact scene revision it was taken
- *     against. What that decision *checked* is recorded too, in
- *     `publicationScopes.js`, and verified wherever the filesystem is
- *     readable; it is deliberately not carried here, because the browser
- *     answers this question from the pin and would otherwise download a page
- *     of record per published model (F-103).
+ *     role, on what date, against what record, over what scope — and that is
+ *     pinned to the exact asset revisions **and** the exact scene revision it
+ *     was taken against.
  *
  * A status nobody has defined, a missing model profile, an asset whose licence
  * is unknown, a decision taken against a file that has since changed: each of
@@ -133,35 +125,39 @@ export const RELEASE_CHANNEL = 'beta';
  * because `tests/beta-release.test.js` runs that old rule against the gate, so
  * that restoring it fails loudly rather than quietly.
  */
-export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
+export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'liver']);
 
 /**
  * The scenes the beta would open **if they pass**.
  *
- * `heart-anatomy` is listed and is not open: it exists now, and it loads two
- * candidate GLBs that have passed no asset release gate, so the gate below
- * answers "no" and nothing is quietly substituted for it in the meantime. That
- * is the shape this list is meant to have — the target written down, and the
- * answer computed.
- *
- * The lung, the liver and the kidney were added on 2026-09-14, one batch, each
- * with its own decision below (ADR 2026-09-14). **Being on this list is a
- * statement of intent and nothing else**; adding an organ here does not open
- * it, and the batch that added these three found three defects in the renders
- * after every check had passed, which is the reason batches are small.
+ * `heart-anatomy` is listed and does not exist yet. That is the shape this list
+ * is meant to have: the target is written down, the gate below answers "no"
+ * until the scene is built and its record filed, and nothing is quietly
+ * substituted for it in the meantime.
  */
 export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'brain-anatomy',
   'heart-anatomy',
-  'lung-anatomy',
+  // Added 2026-09-16, on the repository owner's decision to widen the beta a
+  // few organs at a time rather than all at once. These three are procedural:
+  // no external asset, so no licence obligation and nothing but the scene
+  // revision to pin. Three others were examined in the same pass and are *not*
+  // here — kidney and stomach expose only two click-reachable structures from
+  // their opening view, and the shoulder's run reported a real defect. Being
+  // gate-clear was never the bar; see docs/follow-ups.md F-126 and F-127.
+  //
+  // The knee was calibrated and passes its drive, and is still not here: the
+  // landing hero must be able to show every published organ, and only brain,
+  // heart, lungs, liver and kidney have a hero builder. Publishing it would
+  // leave a published organ the chooser cannot draw. F-128.
+  //
+  // The lung is not here either, and it was in this list until the hero drive
+  // was run against it: at its opening pose the centre of the frame falls in
+  // the gap between the two lungs, so the first Enter on the hero selects
+  // nothing and only works after the reader turns the model. That is the
+  // silent-Enter failure F-121 was about, on the surface most visitors meet
+  // first. F-129.
   'liver-anatomy',
-  'kidney-anatomy',
-  'stomach-anatomy',
-  'esophagus-anatomy',
-  'intestine-anatomy',
-  'biliary-anatomy',
-  'pancreas-anatomy',
-  'skin-anatomy',
 ]);
 
 /**
@@ -267,6 +263,50 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
+    sceneId: 'liver-anatomy',
+    decidedAt: '2026-09-16',
+    decidedBy: Object.freeze({
+      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/liver-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Segment VIII \u2014 Right anterior superior',
+        'Segment III \u2014 Left lateral inferior',
+        'Segment V \u2014 Right anterior inferior',
+        'Gallbladder',
+      ]),
+      views: Object.freeze([
+        'the authored viewpoints offered, one applied by the drive',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 27 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press',
+        'isolation wins over a hide and over a viewpoint',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'tests/organ-anatomy-scenes.test.js',
+      'tests/beta-release.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '**the geometry is procedural, not specimen-derived** — the Couinaud segments are drawn as separable volumes in the right arrangement, not reconstructed from a specimen, so segment boundaries carry no measured accuracy',
+      '**a Couinaud segment is a vascular territory, not a visible surface** — the divisions this model draws are a teaching convention; a real liver shows no such lines',
+      '23 of the 27 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+    ]),
+  }),
+  Object.freeze({
     sceneId: 'heart-anatomy',
     decidedAt: '2026-09-15',
     decidedBy: Object.freeze({
@@ -288,6 +328,54 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
     sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
+    scope: Object.freeze({
+      // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
+      // named parts at four recorded points, crossing both adopted files.
+      structures: Object.freeze([
+        'Right atrium',
+        'Right ventricle',
+        'Left anterior descending artery',
+        'Ascending aorta',
+      ]),
+      views: Object.freeze([
+        'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 46 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press, and by V on the focused branch',
+        'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
+        'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
+        'the landing hero reaches this scene with a keyboard: Tab focuses the model, Enter names the structure in front of it, Escape lets go, Enter after turning names a different one, and the card hands that structure to the full model — driven on the heart by verify:hero-input, which was taught the same day to repeat its keyboard pass for every published organ rather than only the first in the rotation',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'scripts/check-hero-input.mjs',
+      'scripts/repair-candidate-gltf.mjs',
+      'docs/asset-qa/measurements/normal-repair.json',
+      'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+      'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
+      'docs/decisions/HEART-ASSET-ADOPTION.md',
+      'public/assets/heart/ATTRIBUTION.md',
+      'tests/heart-anatomy.test.js',
+      'tests/organ-anatomy-scenes.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain is published on',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '42 of the 46 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'the underlying Visible Human Male terms were read through secondary sources only — nlm.nih.gov was unreachable, so the NLM acknowledgment is given rather than reasoned away',
+      'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
+      'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
+      'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
+    ]),
   }),
   Object.freeze({
     sceneId: 'brain-anatomy',
@@ -299,116 +387,85 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
     sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
-  }),
-
-  /**
-   * Batch B1 — the lung, the liver and the kidney, 2026-09-14.
-   *
-   * Three procedural scenes, so `assetRevisions` is empty and means it: there
-   * is no third-party file under them and nothing to hash. What decides what
-   * these models are is their own code, and `sceneRevision` pins it —
-   * including the shared scene, which decides what a click selects and what a
-   * cut draws.
-   *
-   * Every automated check passed before any of this was written. Rendering
-   * them is what found the three defects the records name.
-   *
-   * **Re-taken at revision 9, the same day.** Batch B2 taught the shared scene
-   * to tell a hollow organ from a solid one, which moved the digest these
-   * three are pinned to. None of the three has a hollow part, so the
-   * expectation was that nothing about them changed — and the expectation is
-   * not the evidence: all thirty-four frames were rendered again and compared
-   * against the ones in `docs/screenshots/pub-b1/after/`. Thirty-one came back
-   * byte-identical; the other three differ in at most three pixels on an
-   * anti-aliased edge, which is what a re-render of the same model costs.
-   */
-  Object.freeze({
-    sceneId: 'lung-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/lung-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'liver-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/liver-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'kidney-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/kidney-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '5c2ef04c55869bc5' }),
-  }),
-
-  /**
-   * Batch B2 — the stomach, the oesophagus, the bowel, the biliary tree and
-   * the pancreas, 2026-09-14.
-   *
-   * Four of the five are hollow organs, and that is what this batch is about:
-   * a cut through a bag is not a cut through a liver, and the face that was
-   * right for B1 drew a stomach as a lump of tissue. What a cut leaves is now
-   * declared per structure — `docs/screenshots/pub-b2/` has the pair.
-   */
-  Object.freeze({
-    sceneId: 'stomach-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/stomach-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'fc29311289548550' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'esophagus-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/esophagus-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: 'd998c5ab3aa8eea0' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'intestine-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/intestine-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: 'f6c2b56e92869e80' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'biliary-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/biliary-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: '10f8c97b4fbad32e' }),
-  }),
-
-  Object.freeze({
-    sceneId: 'pancreas-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/pancreas-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'e8223eb91c9f9f91' }),
-  }),
-  Object.freeze({
-    sceneId: 'skin-anatomy',
-    decidedAt: '2026-09-14',
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B3 implementer', role: 'engineering' }),
-    record: 'docs/beta-publication/skin-anatomy.md',
-    assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '949aba58c2e0842c' }),
+    /** What was actually exercised. Not a plan — a list of what was done. */
+    scope: Object.freeze({
+      // Re-measured on 2026-09-15 and corrected. The first two of the four
+      // recorded here were wrong: the tour's points are canvas fractions, the
+      // layout moved under them over the week after they were written, and one
+      // point had come off the model entirely. `SCENE_POINTS` now names these
+      // four and `verify:anatomy` fails if a point names anything else — see
+      // docs/beta-publication/brain-anatomy.md, which states what was wrong
+      // rather than quietly showing the new values.
+      structures: Object.freeze([
+        'Supramarginal gyrus',
+        'Circular sulcus of insula',
+        'Middle temporal gyrus',
+        'Angular gyrus',
+      ]),
+      views: Object.freeze([
+        'left-lateral (applied by the interaction drive)',
+        'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
+      ]),
+      interactions: Object.freeze([
+        'click pins a structure and the panel names it in both languages',
+        'click on empty space clears, and a structure can be selected again',
+        'a drag that ends over another structure does not reselect',
+        'a drag that ends where it began does not select either — the press is measured by how far the pointer ever got from it, not only by where it let go',
+        'a keyboard reaches the model with Tab, names the structure in the middle of the frame with Enter, and lets go of it with Escape; turning the model with the arrows and asking again names a different structure',
+        'a route may carry the structure it opens on, and the model opens selected on it rather than on its authored pose alone',
+        'switching colour mode does not change the selection',
+        'applying a named viewpoint does not change the selection',
+        'the part tree lists 271 structures, and selection agrees in both directions',
+        'isolate shows one structure, hidden structures are not clickable, and Show all restores the model',
+        'a pointer crossing the model does not rewrite the pinned summary or its controls',
+        'the tree answers the keyboard: one tab stop, arrows move focus, Enter commits, and the keys do not reach the scene',
+        'every branch announces the expanded state it is drawn in, including one opened by a 3D selection',
+        'on a 375x667 phone the parts sheet opens, takes focus, closes on Escape, returns focus, and keeps the selection, the open branches and the scroll position',
+        'replacing the atlas clears the panels rather than leaving the old model named in them',
+        'a medial view draws the midline block rather than a hollow shell, and the layer slider still ghosts the enclosing white matter as depth is asked for',
+        'an annotation is drawn only where the structure it names is the first thing on the ray, and hiding one leaves the selection it names untouched',
+        'each annotation is anchored on the outside of its own structure rather than at the centre of its bounding box',
+        'a viewpoint is fitted to the band the header, console and docked panel leave, against the bounds of what is actually drawn',
+        'a structure can be found by either of its names and selected from the result, by the same id the tree and the model use',
+        'the search returns every match and says how many matched; the results answer the keyboard and mark the pinned structure',
+        'the search index is rebuilt when the atlas arrives or is replaced, and on a phone the first Escape clears the search rather than closing the sheet',
+        'the pinned structure is named on the model as well as in the panel, under the same occlusion rule and a per-frame limit',
+        'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
+        'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
+        'a hidden structure\'s own label goes with it rather than being held over what is behind it',
+        'a whole branch of the tree is hidden and shown again in one press, and by V on the focused branch, writing to the same hidden set one structure\'s Hide writes to',
+        'hiding the isolated structure announces the isolation as over, and a hide the reader made themselves withdraws the reveal\'s way back rather than offering to undo their own change',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      // What a finger gets, which is not what a pointer gets: it is where the
+      // out-and-back press was found, and it is re-runnable.
+      'scripts/check-hero-input.mjs',
+      'tests/tap-gesture.test.js',
+      'src/app/anatomyContract.js',
+      'src/components/AnatomyPanel.js',
+      'tests/anatomy-contract.test.js',
+      'tests/brain-anatomy.test.js',
+      'tests/anatomy-colour-ui.test.js',
+      'docs/asset-qa/brain-atlas-glb.md',
+      'public/assets/brain/ATTRIBUTION.md',
+      'docs/screenshots/b3-1/README.md',
+      'docs/screenshots/f37/README.md',
+      'docs/screenshots/x1/README.md',
+      'docs/anatomy-review.md',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      '267 of the 271 selectable structures were not individually opened',
+      'no label was checked against a reference atlas — that is an anatomist\'s judgement',
+      'deep structures behind the anatomical-layer slider were not exercised',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'no clinical review — the registry records this scene as pending',
+      'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
+      'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
+      'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
+    ]),
   }),
 ]);
 
@@ -425,34 +482,12 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  * one that matters most — a record cannot promote itself to a clinical sign-off
  * that the review registry does not have.
  *
- * ## Two tiers, and `scopes` is on the second one
- *
- * A browser can check that a decision exists, that it names somebody in a role
- * the registry supports, and that it is pinned to the revisions being served.
- * It cannot check that the record document exists — that is what `fileExists`
- * is for, and only the build and the tests pass it. **What a decision
- * exercised is on that same tier**: `scopes` carries it, `npm test` and
- * `npm run verify:site` pass it, and the checks below run in full there.
- *
- * Without `scopes` those checks are skipped rather than assumed — the same way
- * a recorded path is taken at its word when nothing can stat it. The reason is
- * weight, not doubt: the prose reaches the browser through the eager entry, it
- * is a kilobyte of first paint per batch of three scenes, and the answer it
- * produces there is one the pin already gives (F-103). A decision with no
- * entry in `scopes`, or with an empty list in it, still fails everywhere that
- * can see the filesystem, which is everywhere that publishes.
- *
  * @param {object|null} decision
  * @param {object} scene
- * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean,
- *   scopes?: Record<string, {scope: object, evidence: string[], unverified: string[]}>}} [options]
+ * @param {{fileExists?: (path:string) => boolean, hasReview?: (scene:object) => boolean}} [options]
  * @returns {string[]}
  */
-export function publicationDecisionProblems(
-  decision,
-  scene,
-  { fileExists, hasReview = hasCurrentClinicalReviewState, scopes } = {}
-) {
+export function publicationDecisionProblems(decision, scene, { fileExists, hasReview = hasCurrentClinicalReviewState } = {}) {
   const problems = [];
   if (!decision) return ['has no publication decision on file for this release'];
 
@@ -485,15 +520,7 @@ export function publicationDecisionProblems(
     problems.push(`the publication decision names the record "${decision.record}", which does not exist`);
   }
 
-  if (!scopes) return problems;
-
-  const recorded = scopes[decision.sceneId] ?? null;
-  if (!recorded) {
-    problems.push('the publication decision has no entry in the scope record, so what was checked is written down nowhere');
-    return problems;
-  }
-
-  const scope = recorded.scope;
+  const scope = decision.scope;
   if (!scope || typeof scope !== 'object') {
     problems.push('the publication decision records no scope — what was checked is not written down');
   } else {
@@ -504,10 +531,10 @@ export function publicationDecisionProblems(
     }
   }
 
-  if (!nonEmptyStrings(recorded.evidence)) {
+  if (!nonEmptyStrings(decision.evidence)) {
     problems.push('the publication decision cites no evidence');
   } else {
-    for (const path of recorded.evidence) {
+    for (const path of decision.evidence) {
       if (!isRepositoryPath(path)) problems.push(`the publication decision cites "${path}", which is not a repository path`);
       else if (!exists(path)) problems.push(`the publication decision cites "${path}", which does not exist`);
     }
@@ -515,7 +542,7 @@ export function publicationDecisionProblems(
 
   // Present, and allowed to be empty only by saying so — an absent field reads
   // as "nothing was left unchecked", which is a claim nobody made.
-  if (!Array.isArray(recorded.unverified) || recorded.unverified.some((line) => !nonEmptyString(line))) {
+  if (!Array.isArray(decision.unverified) || decision.unverified.some((line) => !nonEmptyString(line))) {
     problems.push('the publication decision does not state what it did not check');
   }
 
@@ -609,7 +636,6 @@ export function betaPublicationProblems(candidate, options = {}) {
  */
 function publicationRecordProblems(id, {
   fileExists,
-  scopes,
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
@@ -664,7 +690,7 @@ function publicationRecordProblems(id, {
   }
 
   const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
-  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview, scopes }));
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
   if (decision) {
     const recorded = decision.assetRevisions ?? {};
     for (const assetId of assetIds) {
@@ -821,7 +847,6 @@ const isMissingDecisionLine = (line) => MISSING_DECISION_LINES.includes(line);
  */
 export function nextBetaPublicationProblems(candidate, {
   fileExists,
-  scopes,
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
@@ -838,7 +863,7 @@ export function nextBetaPublicationProblems(candidate, {
 
   // Inherited. Whatever the current release publishes, this one publishes too,
   // on the record it already has — so the switch cannot take anything away.
-  if (inherits(candidate, { fileExists, scopes, profiles, resolveScene, resolveAsset, resolveReview, resolveRevision, hasReview }).length === 0) {
+  if (inherits(candidate, { fileExists, profiles, resolveScene, resolveAsset, resolveReview, resolveRevision, hasReview }).length === 0) {
     return [];
   }
 
@@ -898,7 +923,7 @@ export function nextBetaPublicationProblems(candidate, {
   }
 
   const decision = decisions.find((entry) => entry.sceneId === id) ?? null;
-  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview, scopes }));
+  problems.push(...publicationDecisionProblems(decision, scene, { fileExists, hasReview }));
   if (decision) {
     const recorded = decision.assetRevisions ?? {};
     for (const assetId of assetIds) {

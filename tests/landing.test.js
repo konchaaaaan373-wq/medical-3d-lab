@@ -265,20 +265,21 @@ test('landing: the public models are live organs, not a card index', () => {
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // Eleven published models. What this test is for has not changed: the
-    // landing page shows **one organ, live**, and never turns into a grid of
-    // cards as the published set grows — which is the failure mode the second
-    // model made possible and every one after it makes likelier. The count is
-    // written out so that opening a batch is an edit here too, next to the
-    // picture of the hero it changes.
-    assert.equal(PUBLIC_MANIFEST.count, 11);
+    // Three published models since 2026-09-16 (two from 2026-09-15). What this
+    // test is for has not changed: the landing page shows **one organ, live**,
+    // and never turns into a grid of cards as the published set grows — which
+    // is the failure mode each new model makes more tempting. The literal is
+    // kept rather than read from the manifest on both sides, so that widening
+    // the release has to come here and be looked at.
+    assert.equal(PUBLIC_MANIFEST.count, 3);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
     // The chooser the design always said a second model would bring: with one
     // published organ there was nothing to choose between and no control was
-    // drawn. There are two now, one per published organ, and they are controls
+    // drawn. There is one control per published organ, and they are controls
     // over the single live viewport rather than cards standing in for it.
     assert.equal(controls.length, PUBLIC_MANIFEST.count);
+    assert.equal(controls.length, 3);
     // The link follows whichever organ the rotation put up today, rather than
     // being pinned to the brain.
     const shown = mounted.organHero.organ;

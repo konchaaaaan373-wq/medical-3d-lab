@@ -1,65 +1,25 @@
 {
   "note": "Written by `npm run cards`. Checked by `npm run cards:check`, which needs no browser.",
   "cards": {
-    "biliary-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "1d368d080b8c3092"
-    },
     "brain-anatomy": {
       "bodyChars": 82,
       "titleScale": 1,
       "html": "dc6473d8a13bada7"
-    },
-    "esophagus-anatomy": {
-      "bodyChars": 40,
-      "titleScale": 1,
-      "html": "ff0ceb4b52c797f8"
     },
     "heart-anatomy": {
       "bodyChars": 82,
       "titleScale": 1,
       "html": "ed9c489c1150d979"
     },
-    "intestine-anatomy": {
-      "bodyChars": 40,
-      "titleScale": 0.88,
-      "html": "a0a7c4b0448ab221"
-    },
-    "kidney-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "6149c4b0ea0cf95a"
-    },
     "liver-anatomy": {
       "bodyChars": 82,
       "titleScale": 1,
       "html": "09926ecfb3bddbc6"
     },
-    "lung-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "766a324206c941f0"
-    },
-    "pancreas-anatomy": {
-      "bodyChars": 40,
-      "titleScale": 0.88,
-      "html": "8c7f01356356c376"
-    },
     "site": {
       "bodyChars": 82,
       "titleScale": 1,
-      "html": "7fd183a0fff59954"
-    },
-    "skin-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "8330a8c153c3dd98"
-    },
-    "stomach-anatomy": {
-      "bodyChars": 40,
-      "titleScale": 0.88,
-      "html": "0e3b47c5e75d88af"
+      "html": "06b7b4a47b19e30d"
     }
   }
 }

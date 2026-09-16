@@ -353,15 +353,6 @@ export const BUNDLE_BUDGET_KB = {
    * the guides and the COPD/asthma teaching data in behind them.
    * `tests/eager-entry-graph.test.js` now names the payloads that must stay
    * lazy, so that mistake fails as itself rather than as a number.
-   *
-   * It went to 91 for a day, when publishing three more models put three
-   * publication decisions — scope, evidence and all — into the entry, and came
-   * back when `publicationScopes.js` took the prose out of the browser's half
-   * of that record (F-103). The measurement either side: 90.1 kB with the
-   * essays in `release.js`, 88.0 kB with the pins alone. **Adding a model
-   * should cost the entry a line of pin, not a page of record**, and the
-   * checks did not move — the build and the tests read the scope record and
-   * fail on a decision that has none.
    */
   entry: 90,
   /** The single largest lazily-loaded JS chunk (a scene, or the renderer). */

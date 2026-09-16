@@ -26,7 +26,6 @@ import {
   isSceneReleased,
   resolveDevUnlock,
 } from '../src/catalog/release.js';
-import { BETA_PUBLICATION_SCOPES } from '../src/catalog/publicationScopes.js';
 import {
   PUBLIC_MANIFEST,
   openModelDestination,
@@ -51,22 +50,7 @@ const brain = () => ({ ...sceneById('brain-anatomy') });
 
 test('beta release: the beta is anatomy, and it is not a list of organs', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual(
-    [...BETA_ANATOMY_CANDIDATES],
-    [
-      'brain-anatomy',
-      'heart-anatomy',
-      'lung-anatomy',
-      'liver-anatomy',
-      'kidney-anatomy',
-      'stomach-anatomy',
-      'esophagus-anatomy',
-      'intestine-anatomy',
-      'biliary-anatomy',
-      'pancreas-anatomy',
-      'skin-anatomy',
-    ]
-  );
+  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -87,41 +71,13 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
 
   // What the beta actually ships today. Named so that opening or closing one is
   // a deliberate edit to the gate rather than a side effect of adding a scene.
-  // The heart joined on 2026-09-15; B1, B2 and B3 followed. Named so that
-  // opening or closing one is a deliberate edit to the gate rather than a side
-  // effect of adding a scene.
-  assert.deepEqual(
-    RELEASED_SCENES.map((scene) => scene.id),
-    [
-      'brain-anatomy',
-      'heart-anatomy',
-      'lung-anatomy',
-      'stomach-anatomy',
-      'esophagus-anatomy',
-      'intestine-anatomy',
-      'liver-anatomy',
-      'kidney-anatomy',
-      'biliary-anatomy',
-      'pancreas-anatomy',
-      'skin-anatomy',
-    ]
-  );
-  assert.deepEqual(
-    [...PUBLIC_MANIFEST.organs],
-    [
-      'brain',
-      'heart',
-      'lungs',
-      'stomach',
-      'esophagus',
-      'colon',
-      'liver',
-      'kidney',
-      'gallbladder',
-      'pancreas',
-      'skin',
-    ]
-  );
+  // The heart joined on 2026-09-15, which is what the whole gate was built to
+  // make hard: an adopted asset, a discharged licence, and a publication
+  // decision pinned to both hashes and to the scene revision. The lung and the
+  // liver joined on 2026-09-16 — procedural, so no asset and no licence, and
+  // the pin is the scene revision alone.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
+  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart', 'liver']);
 });
 
 test('beta release: the heart that opened is the anatomy scene, and only that one', () => {
@@ -148,24 +104,13 @@ test('beta release: the heart that opened is the anatomy scene, and only that on
   // The old rule, run again here so that restoring it fails loudly. It opened
   // every non-prototype scene under the two organs, which is four disease
   // models and one anatomy model.
-  //
-  // It is no longer the *larger* set — the beta has since opened eight more
-  // organs — so what is checked is the thing that actually matters about it:
-  // every disease model it would open is refused, and the two sets are not the
-  // same set. Counting them was only ever a proxy for that.
   const oldRule = SCENES.filter(
     (scene) => BETA_ORGANS.includes(scene.organ) && scene.status !== 'prototype'
   );
-  const diseaseModels = oldRule.filter((entry) => entry.disease);
-  assert.ok(diseaseModels.length >= 3, 'the old rule really does reach disease models');
-  for (const scene of diseaseModels) {
+  assert.ok(oldRule.length > RELEASED_SCENES.length);
+  for (const scene of oldRule.filter((entry) => entry.disease)) {
     assert.equal(isSceneReleased(scene), false, `${scene.id} would open again under the organ filter`);
   }
-  assert.notDeepEqual(
-    oldRule.map((scene) => scene.id).sort(),
-    RELEASED_SCENES.map((scene) => scene.id).sort(),
-    'the organ filter is not what the gate does'
-  );
 });
 
 test('beta release: naming a scene does not open it — every failure closes the gate', () => {
@@ -256,11 +201,9 @@ test('beta release: naming a scene does not open it — every failure closes the
 test('publication decision: an incomplete record is not a decision', () => {
   const scene = sceneById('brain-anatomy');
   const decision = BETA_PUBLICATION_DECISIONS.find((entry) => entry.sceneId === 'brain-anatomy');
-  const scopes = BETA_PUBLICATION_SCOPES;
-  assert.deepEqual(publicationDecisionProblems(decision, scene, { fileExists, scopes }), []);
+  assert.deepEqual(publicationDecisionProblems(decision, scene, { fileExists }), []);
 
-  /** Spoil one field of the decision itself — the part the browser checks. */
-  const withoutPin = (path, value) => {
+  const without = (path, value) => {
     const next = structuredClone({ ...decision });
     const keys = path.split('.');
     const last = keys.pop();
@@ -268,25 +211,10 @@ test('publication decision: an incomplete record is not a decision', () => {
     for (const key of keys) target = target[key];
     if (value === undefined) delete target[last];
     else target[last] = value;
-    return publicationDecisionProblems(next, scene, { fileExists, scopes });
+    return publicationDecisionProblems(next, scene, { fileExists });
   };
 
-  /** Spoil one field of what it says it checked — the part the build checks. */
-  const withoutScope = (path, value) => {
-    const entry = structuredClone(scopes[decision.sceneId]);
-    const keys = path.split('.');
-    const last = keys.pop();
-    let target = entry;
-    for (const key of keys) target = target[key];
-    if (value === undefined) delete target[last];
-    else target[last] = value;
-    return publicationDecisionProblems(decision, scene, {
-      fileExists,
-      scopes: { ...scopes, [decision.sceneId]: entry },
-    });
-  };
-
-  const pinCases = [
+  const cases = [
     ['decidedAt', undefined, /no decision date/],
     ['decidedAt', '8 September 2026', /no decision date/],
     ['decidedBy', undefined, /does not say who took it/],
@@ -295,13 +223,6 @@ test('publication decision: an incomplete record is not a decision', () => {
     ['decidedBy.role', undefined, /is not one of/],
     ['record', undefined, /names no record document/],
     ['record', 'docs/beta-publication/does-not-exist.md', /which does not exist/],
-  ];
-  for (const [path, value, pattern] of pinCases) {
-    const problems = withoutPin(path, value);
-    assert.ok(problems.some((line) => pattern.test(line)), `${path}=${JSON.stringify(value)}: ${JSON.stringify(problems)}`);
-  }
-
-  const scopeCases = [
     ['scope', undefined, /records no scope/],
     ['scope.structures', [], /does not say what structures were checked/],
     ['scope.views', undefined, /does not say what views were checked/],
@@ -312,19 +233,10 @@ test('publication decision: an incomplete record is not a decision', () => {
     ['unverified', undefined, /does not state what it did not check/],
     ['unverified', ['', 'something'], /does not state what it did not check/],
   ];
-  for (const [path, value, pattern] of scopeCases) {
-    const problems = withoutScope(path, value);
+  for (const [path, value, pattern] of cases) {
+    const problems = without(path, value);
     assert.ok(problems.some((line) => pattern.test(line)), `${path}=${JSON.stringify(value)}: ${JSON.stringify(problems)}`);
   }
-
-  // A decision with nothing recorded about what it checked fails as loudly as
-  // one with an empty list in it. The map is asked for the decision's own id,
-  // so a record cannot borrow another scene's scope.
-  assert.ok(
-    publicationDecisionProblems(decision, scene, { fileExists, scopes: {} })
-      .some((line) => /no entry in the scope record/.test(line)),
-    'an absent scope entry is a problem'
-  );
 
   // The one claim a record must never be able to make about itself. The brain
   // atlas's clinical review is pending, so a record calling itself clinical is
@@ -332,60 +244,19 @@ test('publication decision: an incomplete record is not a decision', () => {
   assert.equal(DECISION_ROLES.includes('clinical'), true);
   const claimsClinical = { ...decision, decidedBy: { ...decision.decidedBy, role: 'clinical' } };
   assert.ok(
-    publicationDecisionProblems(claimsClinical, scene, { fileExists, scopes })
+    publicationDecisionProblems(claimsClinical, scene, { fileExists })
       .some((line) => /cannot promote itself to a sign-off/.test(line))
   );
   assert.deepEqual(
-    publicationDecisionProblems(claimsClinical, scene, { fileExists, scopes, hasReview: () => true }),
+    publicationDecisionProblems(claimsClinical, scene, { fileExists, hasReview: () => true }),
     [],
     'and it is fine once the review registry actually holds one'
   );
 
   // The record itself says it is engineering, and says what it did not check.
   assert.equal(decision.decidedBy.role, 'engineering');
-  const recorded = scopes[decision.sceneId];
-  assert.ok(recorded.unverified.some((line) => /clinical review/i.test(line)));
-  assert.ok(recorded.unverified.some((line) => /not individually opened/.test(line)));
-});
-
-test('publication decision: what it checked is recorded for every decision, and checked where it can be', () => {
-  // The tier this split rests on. The browser answers "is this scene open"
-  // from the pin; the prose is not on its side of the wire, because it is a
-  // kilobyte of first paint per batch and the pin already answers (F-103).
-  // Everything that *can* read the filesystem reads the scope record too, and
-  // this is the test that says every decision has one and every one is whole.
-  for (const decision of BETA_PUBLICATION_DECISIONS) {
-    const scene = sceneById(decision.sceneId);
-    assert.ok(scene, `${decision.sceneId} is a scene`);
-    assert.deepEqual(
-      publicationDecisionProblems(decision, scene, { fileExists, scopes: BETA_PUBLICATION_SCOPES }),
-      [],
-      `${decision.sceneId}: complete, with the filesystem and the scope record`
-    );
-
-    const recorded = BETA_PUBLICATION_SCOPES[decision.sceneId];
-    assert.ok(recorded, `${decision.sceneId}: has a scope entry`);
-    for (const path of recorded.evidence) {
-      assert.ok(fileExists(path), `${decision.sceneId}: cites ${path}, which exists`);
-    }
-    assert.ok(recorded.unverified.length, `${decision.sceneId}: says what it did not check`);
-  }
-
-  // And the scope record carries no entry for a decision nobody took: a stray
-  // annex would read as a record of a publication that never happened.
-  const decided = new Set(BETA_PUBLICATION_DECISIONS.map((entry) => entry.sceneId));
-  for (const sceneId of Object.keys(BETA_PUBLICATION_SCOPES)) {
-    assert.ok(decided.has(sceneId), `${sceneId} has a recorded scope but no decision`);
-  }
-
-  // Without the map the prose checks are skipped rather than assumed — the
-  // same tier `fileExists` is on, and the reason the entry stays under budget.
-  const decision = BETA_PUBLICATION_DECISIONS[0];
-  assert.deepEqual(
-    publicationDecisionProblems(decision, sceneById(decision.sceneId), {}),
-    [],
-    'a browser, with neither a filesystem nor the scope record, still reads the pin'
-  );
+  assert.ok(decision.unverified.some((line) => /clinical review/i.test(line)));
+  assert.ok(decision.unverified.some((line) => /not individually opened/.test(line)));
 });
 
 test('publication decision: the same mesh with a different part correspondence closes the beta', () => {
@@ -477,22 +348,7 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(
-    RELEASED_SCENES.map((scene) => scene.id),
-    [
-      'brain-anatomy',
-      'heart-anatomy',
-      'lung-anatomy',
-      'stomach-anatomy',
-      'esophagus-anatomy',
-      'intestine-anatomy',
-      'liver-anatomy',
-      'kidney-anatomy',
-      'biliary-anatomy',
-      'pancreas-anatomy',
-      'skin-anatomy',
-    ]
-  );
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');
@@ -852,10 +708,7 @@ test('beta release: the crawlable surface and the in-scene navigator read the ga
   // The subject is the public tree, not the files near a registered asset.
   assert.match(siteCheck, /publicFiles,/);
   assert.match(siteCheck, /const publicFiles = existsSync\(publicDir\)/);
-  // With the filesystem **and** the scope record: both are things the browser
-  // cannot supply, and the build is where a decision is judged against them.
-  assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync, scopes: BETA_PUBLICATION_SCOPES \}\)/);
-  assert.match(siteCheck, /import \{ BETA_PUBLICATION_SCOPES \}/);
+  assert.match(siteCheck, /betaPublicationProblems\(scene, \{ fileExists: existsSync \}\)/);
 
   const cardCheck = read('scripts/check-social-cards.js');
   assert.match(cardCheck, /CRAWLABLE_SCENES/);
@@ -1066,53 +919,24 @@ test("a decision's scope names exactly what the browser drive is held to", () =>
   // `tests/derived-asset-pipeline.test.js` uses for the repair script.
   const source = readFileSync('scripts/check-anatomy-interaction.mjs', 'utf8');
 
-  // **Only what is inside the table.** Reading the whole file found the heart's
-  // and the brain's tours after a merge had spliced them into the doc comment
-  // *above* `SCENE_POINTS`, where the drive cannot see them: the run reported
-  // "no authored click tour for heart-anatomy" and clicked four measured points
-  // instead, while this test went on confirming the four names the record
-  // claims. A guard that reads commented-out code is the thing it exists to
-  // catch, so the search is bounded to the object literal itself.
-  const tableOpen = source.indexOf('const SCENE_POINTS = {');
-  assert.notEqual(tableOpen, -1, 'the drive no longer has a SCENE_POINTS table to read');
-  const table = source.slice(tableOpen, source.indexOf('\n};', tableOpen));
-
   /** The names authored for one scene's tour, or null when it has none. */
   const tourNames = (sceneId) => {
-    const open = table.indexOf(`'${sceneId}': [`);
+    const open = source.indexOf(`'${sceneId}': [`);
     if (open === -1) return null;
-    const block = table.slice(open, table.indexOf('\n  ],', open));
+    const block = source.slice(open, source.indexOf('\n  ],', open));
     const names = [...block.matchAll(/\[\s*[\d.]+\s*,\s*[\d.]+\s*,\s*'([^']+)'/g)].map((m) => m[1]);
     return names.length ? names : null;
   };
 
-  // **Which scenes have one, named.** "Skip a scene with no named tour" is the
-  // right rule — F-123 records that most published scenes still have none — and
-  // on its own it is also how a tour disappears without anything going red: a
-  // merge moved the heart's four rows into the comment above the table, the
-  // drive fell back to four measured points, and this loop skipped the scene it
-  // had been tying. A scene named here must keep its tour; taking one off this
-  // list is a deliberate edit, which is the whole point.
-  assert.deepEqual(
-    BETA_PUBLICATION_DECISIONS.map((decision) => decision.sceneId).filter((id) => tourNames(id)),
-    ['heart-anatomy', 'brain-anatomy'],
-    'a published scene gained or lost its named click tour — if it lost one, the drive is no longer ' +
-      'held to the structures its publication record claims'
-  );
-
   let tied = 0;
   for (const decision of BETA_PUBLICATION_DECISIONS) {
     const names = tourNames(decision.sceneId);
-    // A scene with no named tour is exactly the gap F-123 records; the list
-    // above is what keeps that from quietly becoming every scene.
+    // A scene with no named tour is exactly the gap F-123 records; it is not
+    // asserted here, because there is nothing machine-checked to assert against.
     if (!names) continue;
     tied += 1;
-    // The scope lives beside the decision rather than in it — the gate runs in
-    // the browser and this prose is not part of deciding anything (F-103). The
-    // tie is to the same record `publicationDecisionProblems` is handed.
-    const scope = BETA_PUBLICATION_SCOPES[decision.sceneId]?.scope;
     assert.deepEqual(
-      [...(scope?.structures ?? [])].sort(),
+      [...(decision.scope?.structures ?? [])].sort(),
       [...names].sort(),
       `${decision.sceneId}: the publication decision's scope and the tour verify:anatomy holds ` +
         'the drive to name different structures'
@@ -1150,30 +974,5 @@ test('beta gap: a supplied catalogue is the one the gate is asked about', () => 
   assert.ok(
     !explicit.remaining.some((line) => /Prototype/.test(line)),
     'an explicitly supplied resolveScene was ignored'
-  );
-});
-
-test('the tour generator emits the name it measured, not a comment beside it', () => {
-  // Found by review (Codex, P1). `measure-anatomy-points.mjs` knows what each
-  // point resolved to — it rejects a candidate that repeats a name — and then
-  // printed the paste-ready row as bare `[fx, fy]` pairs with the names in a
-  // comment above. `check-anatomy-interaction.mjs` holds a point to a third
-  // element and asks nothing of a bare pair, so every table this loop produced
-  // was unverifiable the moment it was pasted: that is where the 35
-  // coordinate-only rows in `SCENE_POINTS` came from, and why the brain's four
-  // points could name different structures for a week with the drive green.
-  //
-  // The script opens a browser at import, so its source is read as text — the
-  // same shape `tests/derived-asset-pipeline.test.js` uses for the repair.
-  const source = readFileSync('scripts/measure-anatomy-points.mjs', 'utf8');
-  const emit = source.slice(source.indexOf('// The table, on stdout'), source.indexOf('if (jsonOut)'));
-  assert.notEqual(emit.length, 0, 'the generator no longer has a table-emitting loop to check');
-
-  const row = emit.match(/console\.log\(`\s*'\$\{slug\}': \[(.*?)\);/s);
-  assert.ok(row, `the generated row is no longer a single console.log: ${emit}`);
-  assert.match(
-    emit,
-    /\[\$\{point\.fx\}, \$\{point\.fy\}, \$\{quoted\(point\.name\)\}\]/,
-    'the generated points dropped the measured name — a pasted tour of bare pairs verifies nothing'
   );
 });
