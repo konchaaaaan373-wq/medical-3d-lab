@@ -146,10 +146,18 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // their opening view, and the shoulder's run reported a real defect. Being
   // gate-clear was never the bar; see docs/follow-ups.md F-126 and F-127.
   //
-  // The knee was calibrated and passes its drive, and is still not here: the
-  // landing hero must be able to show every published organ, and only brain,
-  // heart, lungs, liver and kidney have a hero builder. Publishing it would
-  // leave a published organ the chooser cannot draw. F-128.
+  // **An organ the landing hero cannot draw is not published.** Decided
+  // 2026-09-16, after the knee ran into it: six points naming six distinct
+  // structures, the best-measured scene of the six examined, and no hero model.
+  //
+  // It is a product rule, not a technical limit. The hero is the surface most
+  // visitors meet first, and an organ that cannot appear there would be
+  // published into a place nobody arrives at. `ORGAN_HERO_BUILDERS` therefore
+  // bounds the release: brain, heart, lungs, liver and kidney are the organs
+  // that have a model, four of them are open, and the kidney is held by F-126.
+  //
+  // `tests/beta-release.test.js` states it once and fails with the remedy in
+  // the message — add a hero model, or do not publish the organ.
   //
   // The lung is not here either, and it was in this list until the hero drive
   // was run against it: at its opening pose the centre of the frame falls in
