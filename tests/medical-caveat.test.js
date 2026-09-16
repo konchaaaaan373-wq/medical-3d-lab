@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { rulesOf } from '../scripts/lib/css.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -49,11 +51,7 @@ function widthMediaBlocks(css) {
 }
 
 /** `[selectorText, body]` for each rule in a chunk of CSS. */
-const rulesIn = (css) =>
-  [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selectors, body]) => [
-    selectors.trim().replace(/\s+/g, ' '),
-    body,
-  ]);
+const rulesIn = (css) => [...rulesOf(css)].map((rule) => [rule.selectors, rule.body]);
 
 /** Whether a selector list names the notice itself, not one of its two wordings. */
 const namesTheNotice = (selectors) =>

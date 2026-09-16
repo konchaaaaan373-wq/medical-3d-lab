@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { fontSizePx } from '../scripts/lib/css.mjs';
 import { readFileSync } from 'node:fs';
 
 import { createLockedSurface } from '../src/app/LockedSurface.js';
@@ -125,34 +127,20 @@ test('the badge and the copy are written for the reader, not for the release pro
 });
 
 test('the page that answers a shared link is not the page with the smallest type', () => {
-  // Comments out first: a rule preceded by `/* ... *\/` has the comment glued
-  // to the front of its selector chunk, so an exact-name match silently misses
-  // exactly the rules somebody bothered to explain.
-  const sheet = readFileSync(new URL('../src/styles/locked.css', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const sheet = readFileSync(new URL('../src/styles/locked.css', import.meta.url), 'utf8');
 
-  /**
-   * The `font-size` a class ends up with, in source order.
-   *
-   * Every rule whose selector list mentions the class, not the first one that
-   * looks right: `.locked-copy` is declared twice here, once in a group with
-   * `.locked-summary` and once on its own, and a regex anchored on
-   * `\n.locked-copy {` matches the group's second line and reads the wrong
-   * body. Later wins, which is the cascade at equal specificity.
-   */
+  // `fontSizePx` is the shared reader in `scripts/lib/css.mjs`, which exists
+  // because this function and `rulesOf()` in `scripts/type-floor.mjs` were the
+  // same tokenizer written twice, each carrying its own comment about the same
+  // two bugs: a comment above a rule gluing itself to the selector chunk, and
+  // `\n.locked-copy {` matching the second line of the group
+  // `.locked-summary,\n.locked-copy {`. It answers with the *last* rule naming
+  // the class and the *last* `font-size` in that body, which is the cascade at
+  // equal specificity, one level apart.
   const sizeOf = (className) => {
-    const sizes = [];
-    for (const [, selectors, body] of sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      const names = selectors.split(',').map((one) => one.trim());
-      if (!names.some((name) => name === className || name.startsWith(`${className}.`) || name.startsWith(`${className}:`))) continue;
-      // The last in the rule too, not the first: two `font-size` lines in one
-      // body is the same cascade question one level down, and reading the
-      // first of them reports a size the browser never uses.
-      const inRule = [...body.matchAll(/font-size:\s*([0-9.]+)px/g)].at(-1)?.[1];
-      if (inRule) sizes.push(Number(inRule));
-    }
-    assert.ok(sizes.length > 0, `${className}: no px font-size anywhere in the sheet`);
-    return sizes.at(-1);
+    const size = fontSizePx(sheet, className);
+    assert.ok(size !== null, `${className}: no px font-size anywhere in the sheet`);
+    return size;
   };
 
   // Prose and control labels only. The badge and the system eyebrow are 9.5px
