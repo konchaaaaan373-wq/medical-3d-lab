@@ -277,11 +277,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16. These four were measured against a safe-area
+      // fit that approximated a perspective camera with an orthographic sum,
+      // and under the exact solve all four were wrong with three hitting
+      // nothing — the run reported `only 1 of 4 click(s) resolved`. The
+      // fourth is still an airway rather than a fourth lobe, for the reason
+      // the original four were chosen: a tour that crosses the tree between
+      // the lungs says more than one that does not. At this framing the
+      // sweep reaches the trachea rather than the left main bronchus.
       structures: Object.freeze([
+        'Trachea',
         'Right upper lobe',
-        'Right middle lobe',
         'Left upper lobe',
-        'Left main bronchus',
+        'Right middle lobe',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, right and left lateral, the right lung from its mediastinal surface, and a coronal section',

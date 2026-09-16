@@ -191,11 +191,21 @@ const SCENE_POINTS = {
   // Two lungs, a lobe of each, and the airway between them — measured, not
   // assumed. The fourth point used to sit at (0.50, 0.44) and **hit nothing**,
   // which is why this scene reported three structures from four clicks.
+  //
+  // **Re-measured 2026-09-16.** main measured the four above against a
+  // safe-area fit that approximated a perspective camera with an
+  // orthographic sum, and published the lung on them an hour before this
+  // branch merged. Under the exact solve **all four are wrong and three hit
+  // nothing** — the worst of the four published scenes, and the run said so
+  // as `only 1 of 4 click(s) resolved`. The airway is kept as the fourth
+  // structure, per main's reasoning that a tour of four lobes says less
+  // than one that also crosses the tree between the lungs; the sweep
+  // reaches the trachea rather than the left main bronchus at this framing.
   'lung-anatomy': [
-    [0.34, 0.40, 'Right upper lobe'],
-    [0.36, 0.72, 'Right middle lobe'],
-    [0.68, 0.55, 'Left upper lobe'],
-    [0.50, 0.34, 'Left main bronchus'],
+    [0.365, 0.18, 'Trachea'],
+    [0.29, 0.37, 'Right upper lobe'],
+    [0.44, 0.37, 'Left upper lobe'],
+    [0.215, 0.56, 'Right middle lobe'],
   ],
   // Four Couinaud segments, one per click, spanning both livers: two right-sector
   // (VIII anterior superior, VII posterior superior) and two left (II lateral
