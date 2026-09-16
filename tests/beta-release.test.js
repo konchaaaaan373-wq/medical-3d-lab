@@ -33,6 +33,7 @@ import {
 } from '../src/catalog/publicManifest.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
+import { hasOrganModel } from '../src/app/organModels.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { createLockedSurface } from '../src/app/LockedSurface.js';
 import { createSceneFailureFallback } from '../src/app/SceneFailureFallback.js';
@@ -975,4 +976,34 @@ test('beta gap: a supplied catalogue is the one the gate is asked about', () => 
     !explicit.remaining.some((line) => /Prototype/.test(line)),
     'an explicitly supplied resolveScene was ignored'
   );
+});
+
+test('a published organ is one the hero can show', () => {
+  // Decided on 2026-09-16: an organ the landing hero cannot draw is not
+  // published, and the beta stays at the four organs that have a hero model.
+  //
+  // The rule already held, but only as a consequence of two tests that are
+  // about other things — the chooser drawing one control per published organ,
+  // and every rotation entry naming an organ with a builder. Between them a
+  // published organ without a builder fails, but neither says why, and a
+  // reader looking for the rule finds it in neither. It cost the knee its
+  // publication (F-128: six points, six distinct structures, no hero model),
+  // so it is worth stating once, where the release is decided.
+  //
+  // This is a *product* rule, not a technical limit. The hero is the surface
+  // most visitors meet first; an organ that cannot appear there is published
+  // into a place nobody arrives at.
+  for (const organId of PUBLIC_MANIFEST.organs) {
+    assert.equal(
+      hasOrganModel(organId),
+      true,
+      `"${organId}" is published and the hero has no model for it — either add one to ` +
+        'ORGAN_HERO_BUILDERS or do not publish the organ'
+    );
+  }
+
+  // And the other direction is deliberately *not* asserted: a hero model for an
+  // organ the beta does not open is fine — the kidney has had one throughout,
+  // and is held back by F-126 rather than by anything here.
+  assert.ok(hasOrganModel('kidney'), 'the kidney still has its hero model, unpublished');
 });
