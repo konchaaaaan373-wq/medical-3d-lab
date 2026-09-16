@@ -1660,25 +1660,32 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // new framing still applies to the next viewpoint they choose, but
         // nothing pulls them out of the view they are in.
         //
-        // **A tolerance, not an equality.** This asked for the camera to be
-        // within a thousandth of a world unit of the shot, and `update()` runs
-        // every frame with damping on and never leaves it bit-exactly where it
-        // was put. Measured on the nose: a drift of 0.00125 against a threshold
-        // of 0.001, so every re-frame was computed, judged "the reader has
-        // moved it", and discarded — this block defeated by its own guard, and
-        // the defect above went on happening. The scene opened at 8.96 world
-        // units where the settled layout asks for 7.54, and the gap was then
-        // recorded as a reader zoom of 1.19 at the first click, so it survived
-        // until somebody pressed "reset the display".
+        // **This asked for a tolerance once, and the tolerance was worse than
+        // the bug.** The equality below is exact, and `update()` runs every
+        // frame with damping on, so it never leaves the camera bit-exactly
+        // where it was put: measured, a drift of 0.00125 against a threshold of
+        // 0.001, which made every re-frame compute and then discard itself.
+        // That is F-133 and it is real.
         //
-        // Scaled by the distance, because a fixed number means something
-        // different on a scene framed at 3 units and one framed at 40. Half a
-        // percent is far below the smallest deliberate zoom step and further
-        // still below any orbit, and far above what damping leaves behind.
-        const slack = Math.max(1e-3, shot.position.distanceTo(shot.target) * 0.005);
+        // The fix tried here was `max(1e-3, distance * 0.005)`, reasoned as
+        // "far below the smallest deliberate zoom step". Measured, it is not.
+        // A wheel notch moves the camera gradually under damping, so early in a
+        // zoom the camera is still within half a percent of the shot it started
+        // from — and if the band changes at that moment the watcher calls it
+        // untouched and snaps the camera to the new framing, taking the
+        // reader's zoom with it. `verify:anatomy` reads 20px of drift on the
+        // brain at 390x844 where the anchor should hold it at 0, and 17px left
+        // over after zooming back out. `origin/main` is clean, so it was ours.
+        //
+        // So the strict comparison is back and F-133 is open again. The next
+        // attempt needs a test of ownership that is not "how close is the
+        // camera to where we last put it" — that quantity is small for damping
+        // and also small at the start of a zoom, and no threshold separates
+        // them. The zoom checks in `check-anatomy-interaction.mjs` are the
+        // guard any replacement has to pass.
         const untouched =
-          viewer.camera.position.distanceTo(shot.position) < slack &&
-          viewer.controls.target.distanceTo(shot.target) < slack;
+          viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
+          viewer.controls.target.distanceToSquared(shot.target) < 1e-6;
         setShot(shotSource);
         if (!untouched) return;
         viewer.camera.position.copy(shot.position);
