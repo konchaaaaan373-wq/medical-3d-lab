@@ -283,13 +283,21 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/lung-anatomy.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'a3dd5027ef0dcf44' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16. These four were measured against a safe-area
+      // fit that approximated a perspective camera with an orthographic sum,
+      // and under the exact solve all four were wrong with three hitting
+      // nothing — the run reported `only 1 of 4 click(s) resolved`. The
+      // fourth is still an airway rather than a fourth lobe, for the reason
+      // the original four were chosen: a tour that crosses the tree between
+      // the lungs says more than one that does not. At this framing the
+      // sweep reaches the trachea rather than the left main bronchus.
       structures: Object.freeze([
+        'Trachea',
         'Right upper lobe',
-        'Right middle lobe',
         'Left upper lobe',
-        'Left main bronchus',
+        'Right middle lobe',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, right and left lateral, the right lung from its mediastinal surface, and a coronal section',
@@ -330,13 +338,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'bd72a3cc7f8d1479' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16, and the tour changed shape rather than just
+      // moving: the safe-area fit stopped approximating a perspective camera,
+      // which moved the model, and of the four this record was taken over two
+      // then hit nothing and a third named its neighbour. The sweep at the
+      // corrected framing finds four Couinaud segments and no gallbladder, so
+      // this scope no longer claims the biliary system.
       structures: Object.freeze([
         'Segment VIII \u2014 Right anterior superior',
-        'Segment III \u2014 Left lateral inferior',
-        'Segment V \u2014 Right anterior inferior',
-        'Gallbladder',
+        'Segment VII \u2014 Right posterior superior',
+        'Segment II \u2014 Left lateral superior',
+        'Segment IVa \u2014 Left medial superior',
       ]),
       views: Object.freeze([
         'the authored viewpoints offered, one applied by the drive',
@@ -386,7 +400,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: '93a0f4f6cc4d2606' }),
+    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.
@@ -455,11 +469,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // four and `verify:anatomy` fails if a point names anything else — see
       // docs/beta-publication/brain-anatomy.md, which states what was wrong
       // rather than quietly showing the new values.
+      // Re-measured 2026-09-16, the second time this scene's tour has gone
+      // stale. The first was layout drift found a week late; this one is the
+      // safe-area fit being corrected from an orthographic sum to an exact
+      // perspective solve, which moved every model and was caught on the
+      // first run. Three of the four points were wrong and two of those had
+      // come to name the same structure, so the scope below would have
+      // claimed four distinct parts that a run could only show three of.
       structures: Object.freeze([
+        'Precentral gyrus',
         'Supramarginal gyrus',
-        'Circular sulcus of insula',
-        'Middle temporal gyrus',
         'Angular gyrus',
+        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',

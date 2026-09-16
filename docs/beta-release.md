@@ -12,11 +12,39 @@
 
 ## 1. 何を公開しているか
 
-**公開βは「脳と心臓の 3D 解剖」です。解剖モデルだけを出します。**
+**公開βは「3D の解剖」です。解剖モデルだけを出します。**
 病態・生理のモデルは開発を続けますが、このβには出しません。
+範囲は臓器名では固定しません——**ゲートを通った解剖シーンから 1 つずつ**開きます
+（[ADR 2026-09-14](architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
 
-現在公開しているのは **`brain-anatomy` の 1 件**です。
-`heart-anatomy` は候補として登録済みですが、**シーンがまだ存在しません**。
+現在公開しているのは **11 件**です。脳に加えて、B1（肺・肝・腎）、
+B2（胃・食道・腸・胆道・膵）、B3（皮膚）を 2026-09-14 に、
+心臓を 2026-09-15 に開きました。
+記録は [`beta-publication/`](beta-publication/)、レンダーの証跡は
+[`screenshots/pub-b1/`](screenshots/pub-b1/)、
+[`screenshots/pub-b2/`](screenshots/pub-b2/)、
+[`screenshots/pub-b3/`](screenshots/pub-b3/) です。
+
+**B3 は 3 件で始めて 1 件になりました。** 眼・耳・皮膚のどれも
+`verify:anatomy` を通りましたが、絵を見て眼と耳を外しています（F-132）。
+代わりに見つかったのは共有の framing で、**公開済み 9 件のうち 8 件・
+計 10 視点が枠から出ていました**（F-131）。
+
+**B2 が変えたのは「切断の描き方」です。** B1 で入れた断面は、中身のある臓器
+（肝・腎・膵）には正しく、**中空の臓器には嘘**でした——胃の冠状断が胃の輪郭を
+まるごと塗りつぶし、袋を肉の塊として描いていました。壁に厚みが無いモデルで
+断面を描けば、内腔が実質になります。いまは構造ごとに宣言し、中空のものは
+「面を張らず開く」ようにしています。
+
+**`heart-anatomy` は 2026-09-15 に開きました。** 長く止めていた 2 つの理由を、
+順に片付けた日です——2 本の GLB が asset pipeline を通り
+（[`decisions/HEART-ASSET-ADOPTION.md`](decisions/HEART-ASSET-ADOPTION.md)）、
+その hash に結びついた公開判断記録ができました
+（[`beta-publication/heart-anatomy.md`](beta-publication/heart-anatomy.md)）。
+**pin されているのはどちらの配布元の hash でもありません**——2 本とも
+頂点法線の縮退で glTF 検証に落ちるので、そこだけ直した派生を pin しています。
+
+ゲートがいま各候補について何を言うかは、書き写すのではなく訊いてください。
 
 ```
 node -e "import('./src/catalog/release.js').then(m=>console.log(
@@ -53,10 +81,18 @@ node -e "import('./src/catalog/release.js').then(m=>console.log(
 （`decidedBy.role` ∈ engineering / anatomy-expert / clinical）・いつ
 （`decidedAt`）・どの記録文書に対して（`record`）・何を確認したか
 （`scope.structures` / `views` / `interactions`）・証跡はどこか（`evidence`）・
-**何を確認していないか**（`unverified`）。`record` と `evidence` の実在は
-build / CI（`npm run verify:site`）が確認します——ブラウザで動く判定に
-`node:fs` は入れません。
+**何を確認していないか**（`unverified`）。
 実例は [`beta-publication/brain-anatomy.md`](beta-publication/brain-anatomy.md)。
+
+**記録は 2 つのファイルに分かれています**（F-103）。pin——誰が・いつ・どの
+revision に対して——は `release.js`、**何を確認したか**は
+[`../src/catalog/publicationScopes.js`](../src/catalog/publicationScopes.js)。
+ブラウザは pin だけでゲートを再計算し、本文は受け取りません。
+`record` と `evidence` の実在、そして**本文がそもそも在るか**は
+build / CI（`npm run verify:site`・`npm test`）が確認します——
+ブラウザで動く判定に `node:fs` は入れませんし、初回描画に公開 1 件あたり
+1 ページぶんの記録を載せることもしません。**検査は減っていません**：
+本文の無い決定は、ファイルシステムが見える場所すべてで落ちます。
 
 ### 2 つの revision に結びつける
 
@@ -85,9 +121,10 @@ build / CI（`npm run verify:site`）が確認します——ブラウザで動�
 低心拍出・心筋虚血を——数値ごと——公開する、という理由づけでした。
 それは逆です。**病態モデルはラベルを変えた解剖モデルではありません。**
 
-`heart-anatomy` が未登録・不合格のあいだ、βは臓器 1 つを開いてそう言います。
+`heart-anatomy` が不合格のあいだ、βは**心臓を開かず**にそう言います。
 Landing の hero も「心臓を見る」を出しません（`src/data/landingHero.js` の
-`HERO_ROTATION` が公開集合で絞ります）。心臓が戻るのは `heart-anatomy` が
+`HERO_ROTATION` が公開集合で絞ります——肺・肝・腎は公開されたのでローテーションに
+入り、心臓は入りません）。心臓が戻るのは `heart-anatomy` が
 上の 5 条件を通った日で、そのとき hero・カタログ・クロール面・カードは
 **どれも編集不要**です。
 

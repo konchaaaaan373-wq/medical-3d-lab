@@ -47,14 +47,33 @@ hits nothing, or if the four together name fewer than four distinct structures.
 
 | point | English | Japanese | hierarchy |
 | --- | --- | --- | --- |
-| (0.34, 0.40) | Right upper lobe | 右上葉 | Right lung › Lobes › Lobe |
-| (0.36, 0.72) | Right middle lobe | 右中葉 | Right lung › Lobes › Lobe |
-| (0.68, 0.55) | Left upper lobe | 左上葉 | Left lung › Lobes › Lobe |
-| (0.50, 0.34) | Left main bronchus | 左主気管支 | Airways › Trachea and main bronchi › Airway |
+| (0.37, 0.30) | Trachea | 気管 | Airways › Trachea and main bronchi › Airway |
+| (0.25, 0.42) | Right upper lobe | 右上葉 | Right lung › Lobes › Lobe |
+| (0.49, 0.56) | Left upper lobe | 左上葉 | Left lung › Lobes › Lobe |
+| (0.25, 0.68) | Right middle lobe | 右中葉 | Right lung › Lobes › Lobe |
+
+**These four replaced an earlier four on 2026-09-16.** The originals were
+measured against a safe-area fit that approximated a perspective camera with an
+orthographic sum. Solving each corner exactly moved every model, and re-run
+against the corrected fit **all four were wrong and three hit nothing** — the
+run reported `only 1 of 4 click(s) resolved`.
+
+They were then re-measured **with the drive rather than with the sweep**, and
+that distinction is the other thing this scene taught. `points:anatomy` reads a
+scene at the framing it opens at; the drive runs its tour after the framing
+check, which resets the display. This scene opens spanning 0.22..0.50 of the
+frame and rests at 0.20..0.52, so a tour measured by the sweep failed in the
+drive on points the sweep had just confirmed. Every value above is read from
+`--points` output in the frame the tour is held to, including the Japanese
+terms and the hierarchy paths.
+
+The fourth structure is still an airway rather than a fourth lobe, for the
+reason the original four were chosen. At this framing the reachable airway is
+the trachea rather than the left main bronchus.
 
 That the tour is *named* is not incidental. Before this record was taken, these
 points carried bare coordinates, and the run reported only that four clicks
-named *something*. Measured, the fourth point sat off the model and **hit nothing**, which is why this scene used to report three structures from four clicks. It is replaced by a point the drive measured to be on the left main bronchus, so the tour now crosses both lungs *and* the airway between them. `brain-anatomy` spent a week with a
+named *something*. Measured, the fourth point sat off the model and **hit nothing**, which is why this scene used to report three structures from four clicks. It was replaced by a measured one — and then the whole tour had to be measured again when the framing was corrected, which the run reported immediately. Twice now, on this scene, the names are the only reason anybody knew. `brain-anatomy` spent a week with a
 publication record describing structures its clicks had stopped naming, for
 exactly this reason — see [`brain-anatomy.md`](brain-anatomy.md).
 

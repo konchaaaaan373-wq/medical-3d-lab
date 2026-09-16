@@ -76,6 +76,7 @@
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { join, resolve } from 'node:path';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
@@ -98,29 +99,50 @@ const shotsDir = value('--shots');
  * it is on, so the run says "right ventricle, left ventricle, aortic arch,
  * pulmonary trunk" and not just "four structures".
  *
- * A point may carry that name as a third element — `[0.22, 0.45, 'Right
- * atrium']` — and then the drive **holds it to it**, and refuses a tour whose
- * points name the same structure twice. Naming them in a comment is not the
- * same thing: the drive needed only three non-empty answers and never looked at
- * which structures came back, so a layout or opening-camera change could slide
- * the points onto other meshes and leave a publication record claiming parts
- * nothing had clicked. That change need not touch the scene's own sources, so
- * the model-revision digest would not catch it either. They are re-measured when a
- * scene's opening pose or its geometry moves; a point that stops hitting is a
- * question about the render, not a number to nudge.
+ * These are read off a render of each scene's opening view at this script's own
+ * viewport, and each one is named for what the click actually resolved to.
+ * They are re-measured when a scene's opening pose or its geometry moves; a
+ * point that stops hitting is a question about the render, not a number to
+ * nudge.
  *
- * **A scene with no entry is not a scene with a problem.** There used to be a
- * `DEFAULT_POINTS` cluster around the middle of the frame here, which is right
- * for a brain and wrong for most organs — two lungs have a mediastinum between
- * them, a stomach is a J with its own hole in it — so an uncalibrated scene had
- * its clicks land on background and the run reported "the picking may be
- * broken" about picking that was fine. `heart-anatomy` did exactly that the
- * first time this drive could open it at all. The drive already asks the scene
- * where the model is, by moving over a grid and watching the cursor, and it
- * trusts that for its drag and its re-click; when there is no tour it clicks
- * those measured points instead and says in a note that it did.
+ * **The whole table was re-measured twice on 2026-09-14**: once when the organ
+ * scenes started answering `getSubjectBounds()` in the shape the framing reads,
+ * and again when the safe-area fit stopped approximating a perspective camera
+ * (F-131) and every model moved. Re-measuring is a command rather than an
+ * afternoon with a screenshot:
+ *
+ *   VITE_ALLOW_PREVIEW=1 npm run build
+ *   npm run points:anatomy -- --preview
+ *
+ * It sweeps a grid over each scene's opening view and keeps four points that
+ * land on different structures, far enough apart to be four tests, and
+ * **inside** what they hit rather than on its edge — `measure-anatomy-points.mjs`
+ * says why that last one is not optional.
+ *
+ * And a third time when the scene stopped opening at a framing it was about to
+ * abandon (F-133), which moved every model again — this time towards filling
+ * the frame rather than away from it, so the sweep finds more.
+ *
+ * Twenty-five scenes measured four points on the coarse grid; nine more needed
+ * `--dense`, which is what a subject a few frame-percent across is for. Three
+ * kept the points they already had, because the sweep could not better them:
+ * the oesophagus is one thin tube, and `skeleton-overview` and `hand-anatomy`
+ * are the compositions F-104 is about. **A measurement that cannot find a
+ * point is not a licence to nudge one**, so those three are left where they
+ * were and the check says what it finds. `lymphatic-drainage` came back from
+ * that list on this pass: a larger model is a model a grid can hit.
  */
 const SCENE_POINTS = {
+  // **The artery's point was re-measured on 2026-09-16**, at (0.4175, 0.38).
+  // The safe-area fit stopped approximating a perspective camera, which moved
+  // every model, and (0.42, 0.40) came off a vessel a few frame-thousandths
+  // wide onto the left ventricle behind it. A sweep at 0.005 puts the artery
+  // between 0.4125 and 0.4225 at this height, with the great cardiac vein
+  // immediately to its right — the two run together in the anterior
+  // interventricular groove, and the vein is the one in front. This point is
+  // the middle of that band rather than either measured edge, because an edge
+  // is what the last one was. Driven, and it names the artery.
+  //
   // Across the front of the heart, right to left as the screen shows it: the
   // right atrium, the right ventricle that makes up most of the anterior
   // surface, a coronary artery on it, and a great vessel leaving above. Chosen
@@ -132,7 +154,7 @@ const SCENE_POINTS = {
   'heart-anatomy': [
     [0.22, 0.45, 'Right atrium'],
     [0.38, 0.50, 'Right ventricle'],
-    [0.42, 0.40, 'Left anterior descending artery'],
+    [0.4175, 0.38, 'Left anterior descending artery'],
     [0.30, 0.30, 'Ascending aorta'],
   ],
   // The brain's own tour, named — which it was not until 2026-09-15, and the
@@ -151,28 +173,63 @@ const SCENE_POINTS = {
   //
   // A prose comment is not an assertion. These are, and the dead point is
   // replaced by one the drive itself measured to be over the model.
+  //
+  // **Re-measured 2026-09-16, and this is the second time this scene's tour
+  // has gone stale.** The first was layout drift over a week, unnoticed
+  // because the points were bare coordinates. This one is the safe-area fit
+  // being corrected from an orthographic sum to an exact perspective solve,
+  // which moved every model — and it was caught on the first run, because
+  // the points carry the names they must resolve to. Three of the four were
+  // wrong and two of those had come to name the same structure, so the tour
+  // would have shown three distinct parts while claiming four.
   'brain-anatomy': [
-    [0.40, 0.34, 'Supramarginal gyrus'],
-    [0.30, 0.45, 'Circular sulcus of insula'],
-    [0.50, 0.50, 'Middle temporal gyrus'],
-    [0.50, 0.42, 'Angular gyrus'],
+    [0.29, 0.275, 'Precentral gyrus'],
+    [0.365, 0.37, 'Supramarginal gyrus'],
+    [0.515, 0.37, 'Angular gyrus'],
+    [0.215, 0.465, 'Orbital part of inferior frontal gyrus'],
   ],
   // Two lungs, a lobe of each, and the airway between them — measured, not
   // assumed. The fourth point used to sit at (0.50, 0.44) and **hit nothing**,
   // which is why this scene reported three structures from four clicks.
+  //
+  // **Re-measured 2026-09-16.** main measured the four above against a
+  // safe-area fit that approximated a perspective camera with an
+  // orthographic sum, and published the lung on them an hour before this
+  // branch merged. Under the exact solve **all four are wrong and three hit
+  // nothing** — the worst of the four published scenes, and the run said so
+  // as `only 1 of 4 click(s) resolved`. The airway is kept as the fourth
+  // structure, per main's reasoning that a tour of four lobes says less
+  // than one that also crosses the tree between the lungs; the sweep
+  // reaches the trachea rather than the left main bronchus at this framing.
+  // **Measured with the drive itself, not with the sweep.** `points:anatomy`
+  // reads a scene at the framing it opens at; the drive runs its tour after
+  // the framing check, which resets the display. On this scene those two
+  // are not the same — it opens spanning 0.22..0.50 of the frame and rests
+  // at 0.20..0.52 (F-133) — so a tour measured by the sweep failed in the
+  // drive on points the sweep had just confirmed. Every point below was
+  // read from `--points` output in the frame the tour is held to.
   'lung-anatomy': [
-    [0.34, 0.40, 'Right upper lobe'],
-    [0.36, 0.72, 'Right middle lobe'],
-    [0.68, 0.55, 'Left upper lobe'],
-    [0.50, 0.34, 'Left main bronchus'],
+    [0.37, 0.30, 'Trachea'],
+    [0.25, 0.42, 'Right upper lobe'],
+    [0.49, 0.56, 'Left upper lobe'],
+    [0.25, 0.68, 'Right middle lobe'],
   ],
-  // Three Couinaud segments and the gallbladder under them. These four were
-  // already right: every point named a different structure when measured.
+  // Four Couinaud segments, one per click, spanning both livers: two right-sector
+  // (VIII anterior superior, VII posterior superior) and two left (II lateral
+  // superior, IVa medial superior).
+  //
+  // **Re-measured 2026-09-16, and the tour changed shape.** The previous four —
+  // three segments and the gallbladder under them — were measured against a safe-area
+  // fit that approximated a perspective camera with an orthographic sum; this
+  // branch solves each corner exactly, which moved the model, and two of those
+  // four then hit nothing while a third named its neighbour. The names are what
+  // made that loud — under bare coordinates the run would have passed with two
+  // points naming nothing at all.
   'liver-anatomy': [
-    [0.35, 0.40, 'Segment VIII — Right anterior superior'],
-    [0.66, 0.45, 'Segment III — Left lateral inferior'],
-    [0.45, 0.62, 'Segment V — Right anterior inferior'],
-    [0.42, 0.75, 'Gallbladder'],
+    [0.29, 0.227, 'Segment VIII — Right anterior superior'],
+    [0.215, 0.323, 'Segment VII — Right posterior superior'],
+    [0.477, 0.323, 'Segment II — Left lateral superior'],
+    [0.44, 0.417, 'Segment IVa — Left medial superior'],
   ],
   // One kidney, the other, and twice on the opened one.
   'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
@@ -349,7 +406,7 @@ const notes = [];
  */
 let step = 'opening the scene';
 const at = (what) => { step = what; };
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [] };
+const observed = { structures: [], tour: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [], openingFraming: null };
 
 const browser = await chromium.launch({
   executablePath: chromiumExecutable(chromium),
@@ -442,6 +499,40 @@ try {
   if (!box) die('the scene rendered no canvas');
 
   /**
+   * Wait for the model to stop moving before clicking a point on it.
+   *
+   * The part tree exists as soon as the structures do; the camera is still
+   * easing into the viewpoint for about a second after that, and the layer
+   * opacities with it. Clicking through the ease is how a point measured on a
+   * structure lands beside it — which is not a flake, it is two measurements
+   * of different frames, and it produced four failures about selection on the
+   * elbow that were really one about aim.
+   *
+   * The same definition of "settled" the capture uses, and for the same reason
+   * it is a tolerance rather than an equality: SwiftShader's edge sampling
+   * jitters by a few dozen silhouette pixels indefinitely, so byte-equality
+   * reported "the view never stopped changing" about scene after scene that
+   * had (`lib/frames.mjs`). A point measured against a settled frame is
+   * clicked against one.
+   */
+  const settle = async (attempts = 16, gap = 250) => {
+    let previous = null;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const frame = await page.screenshot({ clip: box });
+      if (previous && (await differingPixels(page, previous, frame)) <= settledPixels(box)) return true;
+      previous = frame;
+      await page.waitForTimeout(gap);
+    }
+    return false;
+  };
+  if (!(await settle())) {
+    // Not fatal: a scene with something genuinely moving in it is a scene, not
+    // a defect. It is said out loud because every point below is then measured
+    // against a moving target.
+    notes.push('the view never stopped changing, so the points below were clicked at whatever frame they caught');
+  }
+
+  /**
    * The panel's summary, read without moving the pointer off the model.
    *
    * It used to move the pointer away first, because the card showed whatever
@@ -458,41 +549,6 @@ try {
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.waitForTimeout(250);
   };
-  /**
-   * Wait for the camera to stop, rather than for a number of milliseconds.
-   *
-   * The controls damp: the view keeps moving for seconds after the button comes
-   * up, asymptotically. Measuring on a timeout therefore measures *when* the
-   * measurement happened as much as what is there, and the narrower the subject
-   * the sooner that bites — a shoulder is a few frame-percent across at the
-   * humerus, so a point sampled mid-motion is background a second later.
-   *
-   * Rest is two consecutive samples with the camera and its target in the same
-   * place. A timeout here is not a failure of the product — the caller carries
-   * on and the checks that follow say what they see.
-   */
-  const settleCamera = async () => {
-    await page
-      .waitForFunction(
-        () => {
-          const viewer = window.__app?.viewer;
-          if (!viewer?.camera || !viewer?.controls?.target) return true;
-          const { position } = viewer.camera;
-          const { target } = viewer.controls;
-          const now = [position.x, position.y, position.z, target.x, target.y, target.z];
-          const before = window.__cameraRest;
-          window.__cameraRest = now;
-          return Boolean(before) && now.every((value, index) => Math.abs(value - before[index]) < 1e-4);
-        },
-        null,
-        { timeout: 8000, polling: 150 }
-      )
-      .catch(() => {});
-    await page.evaluate(() => {
-      delete window.__cameraRest;
-    });
-  };
-
   const EMPTY = 'Select a structure on the model or in the list.';
   const clickAt = async (fx, fy) => {
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
@@ -517,38 +573,63 @@ try {
     await page.waitForTimeout(90);
     return (await canvas.evaluate((element) => element.style.cursor)) === 'pointer';
   };
-  // Measured once the view has stopped moving, not while it is still arriving.
-  await settleCamera();
-
   /**
-   * Sample the frame for points that are over the model *right now*.
+   * The middle of the band, which is not the middle of the canvas.
    *
-   * Worked outwards from the middle rather than across a coarse grid. A grid of
-   * five columns spanning 0.30–0.66 is still an assumption — that the subject
-   * is wide — and a spine, a hand or a standing skeleton is not: they are a
-   * couple of frame-percent across at the middle, and every sample missed.
-   * "The model is not drawn" was then reported for a model that was drawn,
-   * centred, and perfectly clickable.
-   *
-   * A function rather than a one-off, because the answer expires: see
-   * `remeasure` below.
+   * The parts panel is an overlay over the right of a wide window, and the
+   * scene frames the model into what it leaves — so "the middle" is at about
+   * 0.37 of the canvas, not 0.5. Sampling from 0.5 outwards found a wide
+   * organ anyway and missed every narrow one: the spine, the oesophagus, the
+   * hand, the standing skeleton and the lymphatic network all reported "the
+   * model is not drawn" for a model that was drawn and perfectly clickable.
+   * The panel is measured rather than assumed, so this follows the layout
+   * instead of being re-tuned behind it.
    */
-  const sample = async () => {
-    const over = [];
-    const off = [];
-    for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
-      for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
-        if (over.length >= 6 && off.length >= 2) break;
-        const hit = await overModel(fx, fy);
-        if (hit && over.length < 6) over.push([fx, fy]);
-        if (!hit && off.length < 6) off.push([fx, fy]);
+  const bandCentre = await page.evaluate(() => {
+    const canvasRect = document.querySelector('canvas')?.getBoundingClientRect();
+    if (!canvasRect?.width) return 0.5;
+    const rail = document.querySelector('.rail')?.getBoundingClientRect();
+    const docked =
+      rail &&
+      rail.width &&
+      rail.left > canvasRect.left + canvasRect.width / 2 &&
+      rail.top < canvasRect.top + canvasRect.height / 2 &&
+      rail.bottom > canvasRect.top + canvasRect.height / 2;
+    const right = docked ? Math.min(rail.left, canvasRect.right) : canvasRect.right;
+    return Math.min(0.9, Math.max(0.1, (right - canvasRect.left) / 2 / canvasRect.width));
+  });
+
+  const modelPoints = [];
+  const emptyPoints = [];
+  // Worked outwards from the middle of that band rather than across a coarse
+  // grid. A grid of five columns spanning 0.30–0.66 is still an assumption —
+  // that the subject is wide — and a spine, a hand or a standing skeleton is
+  // not: they are a couple of frame-percent across at the middle, and every
+  // sample missed.
+  const spread = [0, -0.06, 0.06, -0.12, 0.12, -0.2, 0.2, -0.28];
+  for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+    for (const fx of spread.map((offset) => Math.min(0.96, Math.max(0.02, bandCentre + offset)))) {
+      if (modelPoints.length >= 6 && emptyPoints.length >= 2) break;
+      const hit = await overModel(fx, fy);
+      if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
+      if (!hit && emptyPoints.length < 6) emptyPoints.push([fx, fy]);
+    }
+  }
+  // A model drawn as a thin network — the thoracic duct and three node groups
+  // in a body silhouette — can genuinely fall between samples taken every six
+  // frame-percent. Look harder before concluding it is not there: the coarse
+  // pass is for speed, and speed is not a reason to report a model missing.
+  if (modelPoints.length < 4) {
+    for (let fy = 0.18; fy <= 0.78 && modelPoints.length < 4; fy += 0.03) {
+      for (let fx = bandCentre - 0.3; fx <= bandCentre + 0.3 && modelPoints.length < 4; fx += 0.03) {
+        const at = Math.min(0.96, Math.max(0.02, fx));
+        const hit = await overModel(at, fy);
+        if (hit) modelPoints.push([at, Number(fy.toFixed(3))]);
+        else if (emptyPoints.length < 6) emptyPoints.push([at, Number(fy.toFixed(3))]);
       }
     }
-    await restPointer();
-    return { over, off };
-  };
-
-  let { over: modelPoints, off: emptyPoints } = await sample();
+  }
+  await restPointer();
   if (modelPoints.length < 4) {
     die(
       `only ${modelPoints.length} of the sampled points are over the model. Either the model is not ` +
@@ -557,20 +638,151 @@ try {
     );
   }
   const atModel = (index) => modelPoints[index % modelPoints.length];
+  /**
+   * A point over the model **now**, rather than where it was at the opening.
+   *
+   * `modelPoints` is measured once, on the frame the scene opens at, and the
+   * checks below deliberately move the camera: selecting a structure takes the
+   * scene to that structure's `preferredView`, and a viewpoint may hide whole
+   * tags. On the skin block that is not a corner case — picking the arteriole
+   * from the tree switches to "what goes through it", which puts the three
+   * layers away, and every one of the four opening points is then background.
+   *
+   * A click on background clears the selection, so reusing a stale point does
+   * not merely miss: it empties the panel, and every check after it reads the
+   * instrument's own aim as a product defect. That is what "recolouring left 0
+   * rows marked selected" was on the skin — the recolouring was innocent and
+   * there had been nothing selected for three steps.
+   *
+   * So the point is asked for again. The measured ones are tried first, since
+   * they are usually still good and each costs one pointer move; then the same
+   * outward sweep the opening used, against whatever is on screen now.
+   */
+  const liveModelPoint = async (preferred = 0) => {
+    for (let i = 0; i < modelPoints.length; i += 1) {
+      const point = atModel(preferred + i);
+      if (await overModel(point[0], point[1])) return point;
+    }
+    for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+      for (const fx of spread.map((offset) => Math.min(0.96, Math.max(0.02, bandCentre + offset)))) {
+        if (await overModel(fx, fy)) return [fx, fy];
+      }
+    }
+    return null;
+  };
+  /**
+   * A point that is background **now**, for the check that a click on nothing
+   * clears the card.
+   *
+   * The same staleness as `liveModelPoint`, from the other side. The models got
+   * larger when the framing stopped opening at a band it was about to abandon,
+   * and the foot's recorded empty point turned out to be on the Achilles
+   * tendon — reported as "a click on empty space left it selected", which is
+   * the product doing exactly the right thing with the wrong point.
+   *
+   * Four corners first, because they are where background survives a subject
+   * growing, then the recorded misses, then a sweep. `null` means the model
+   * genuinely covers everywhere this looked, which is a fact about the frame
+   * and not a defect.
+   */
+  const liveEmptyPoint = async () => {
+    const corners = [[0.04, 0.06], [0.04, 0.94], [0.96, 0.06], [0.96, 0.94], [0.5, 0.03], [0.5, 0.97]];
+    for (const point of [...corners, ...emptyPoints]) {
+      if (!(await overModel(point[0], point[1]))) return [point[0], point[1]];
+    }
+    for (let fy = 0.06; fy <= 0.94; fy += 0.08) {
+      for (let fx = 0.04; fx <= 0.96; fx += 0.08) {
+        const at = [Number(fx.toFixed(3)), Number(fy.toFixed(3))];
+        if (!(await overModel(at[0], at[1]))) return at;
+      }
+    }
+    return null;
+  };
+
   // The farthest miss from the middle of what was found, not the first one: a
   // near miss beside a narrow subject is background now and may not be after a
   // drag, and the point is used to check that clicking nothing clears.
-  const farthestMiss = () => {
-    const centre = modelPoints.reduce(
-      (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
-      [0, 0]
-    );
-    const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
-    return [...(emptyPoints.length
-      ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
-      : [0.04, 0.94])];
+  const centre = modelPoints.reduce(
+    (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
+    [0, 0]
+  );
+  const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
+  const emptyPoint = [...(emptyPoints.length
+    ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
+    : [0.04, 0.94])];
+
+  /**
+   * How far across the frame the model reaches, at one row, asked rather than
+   * measured from a picture: the scene sets the cursor over its own geometry,
+   * which is the same signal the points above were found with.
+   */
+  const modelSpan = async (fy) => {
+    let first = null;
+    let last = null;
+    for (let fx = 0.02; fx <= 0.96; fx += 0.02) {
+      const at = Number(fx.toFixed(3));
+      if (await overModel(at, fy)) {
+        if (first === null) first = at;
+        last = at;
+      }
+    }
+    await restPointer();
+    return first === null ? null : [first, last];
   };
-  const emptyPoint = farthestMiss();
+
+  // 0. The framing a scene opens at is the framing it returns to.
+  //
+  //    The camera is fitted to the band no panel is covering, and the panels
+  //    are not finished when the app is — the shell releases the console from
+  //    a full-width card to a small one in the corner after `createApp`
+  //    returns, and a fifth of the frame's height comes back. A watcher exists
+  //    to re-frame when that happens, and it was discarding every re-frame:
+  //    it asked for the camera to be within a thousandth of a world unit of
+  //    the shot, and `controls.update()` runs every frame with damping on and
+  //    leaves about a hundred and twenty-five thousandths more than that. So
+  //    the nose opened at 8.96 world units where the settled layout asks for
+  //    7.54, and pressing "reset the display" jumped it.
+  //
+  //    Checked here because it is invisible anywhere else: both framings are
+  //    valid poses, the scene is not broken, and the only symptom is that the
+  //    first thing a reader sees is not the composition the scene meant.
+  const openingSpan = await modelSpan(0.45);
+  if (!openingSpan) {
+    notes.push('the model does not cross the middle of the frame, so the opening framing was not measured');
+  } else {
+    await page.locator('#anatomy-tab-display').click({ noWaitAfter: true }).catch(() => {});
+    await page.waitForTimeout(200);
+    const reset = page.locator('.inspection-reset');
+    if (await reset.count()) {
+      at('resetting the display before anything has changed it');
+      await reset.click({ noWaitAfter: true });
+      await page.waitForTimeout(2500);
+      await settle(8, 250);
+      await page.locator('#anatomy-tab-parts').click({ noWaitAfter: true }).catch(() => {});
+      await page.waitForTimeout(200);
+      const resetSpan = await modelSpan(0.45);
+      if (!resetSpan) {
+        problems.push('resetting the display took the model off the middle of the frame');
+      } else {
+        const moved = Math.max(
+          Math.abs(resetSpan[0] - openingSpan[0]),
+          Math.abs(resetSpan[1] - openingSpan[1])
+        );
+        observed.openingFraming = { opening: openingSpan, reset: resetSpan };
+        // Two sweep steps: a step is 2% of the frame, so anything the sweep can
+        // see at all is at least one, and this is the smallest difference that
+        // cannot be the grid's own resolution.
+        if (moved > 0.04) {
+          problems.push(
+            `the scene opens framed differently from how it resets: the model spans ` +
+              `${openingSpan[0]}..${openingSpan[1]} of the frame at first and ` +
+              `${resetSpan[0]}..${resetSpan[1]} after "reset the display", with nothing ` +
+              'moved in between. The reader sees the first one.'
+          );
+        }
+      }
+    }
+  }
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -602,6 +814,7 @@ try {
   for (const [fx, fy, expected] of clickPoints) {
     const hit = await clickAt(fx, fy);
     tour.push({ fx, fy, expected: expected ?? null, got: hit.en === EMPTY ? null : hit.en });
+    observed.tour = tour;
     if (hit.en === EMPTY) continue;
     lastHitPoint = [fx, fy];
     observed.structures.push(hit);
@@ -667,79 +880,51 @@ try {
   await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY, { steps: 20 });
   await page.mouse.up();
   await restPointer();
-  // Reversed is not the same as stopped: see `settleCamera`.
-  await settleCamera();
   if (afterDrag.en !== pinned.en) {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
   }
 
-  // Everything below clicks the model, and where the model *is* was measured
-  // before the turn. Reversing the drag was supposed to make that still true
-  // and does not: the controls damp, so a press that is given back its own path
-  // does not give back its own rotation, and the shoulder came back from a
-  // turn-and-return at (-2.23, 3.38, 4.24) having left from (-3.60, 2.20, 6.60)
-  // — a third of the way round the joint. That was measured, after three
-  // separate runs each blamed the product for a different step: "after Show all
-  // … it did not come back", "recolouring left 0 rows marked selected", and a
-  // selection reported lost that the scene still held. One stale array, three
-  // false accusations.
-  //
-  // So the view is measured again instead of being assumed restored. The turn
-  // has already been judged by then — `afterDrag` is read above — and a view
-  // this cannot find the model in is still a finding, from `sample`'s own
-  // floor below.
-  const remeasure = async () => {
-    const fresh = await sample();
-    if (fresh.over.length < 4) {
-      problems.push(
-        `after turning the model and turning it back, only ${fresh.over.length} sampled point(s) are over ` +
-          'it — the checks below click where the model was, so they would be measuring the frame, not the scene'
-      );
-      return false;
-    }
-    modelPoints = fresh.over;
-    emptyPoints = fresh.off;
-    const replacement = farthestMiss();
-    emptyPoint[0] = replacement[0];
-    emptyPoint[1] = replacement[1];
-    // And a point that *names* something, for the steps that need one pinned.
-    for (const point of modelPoints) {
-      if ((await clickAt(point[0], point[1])).en !== EMPTY) {
-        lastHitPoint = point;
-        return true;
-      }
-    }
-    problems.push('after the drag, none of the points over the model named a structure when clicked');
-    return false;
-  };
-  await remeasure();
+  // A drag leaves the controls damping, and they go on moving the model for
+  // most of a second after the button comes up. Without this the point below is
+  // asked about one frame and clicked on another: the foot reported "a click on
+  // empty space left the Achilles tendon selected" about a point the scene had
+  // just said was background, because between the asking and the clicking the
+  // tendon drifted under it.
+  await settle(8, 200);
 
   // 3. Clicking the background clears rather than keeping a stale card.
-  //    Confirmed to still be background first. `remeasure` above chose it from
-  //    the current view, but beside a subject with a large open outline — a
-  //    ring of lips around a mouth — a pixel that read as background during the
-  //    sweep can be over the model by the time it is clicked. Checking it again
-  //    costs one pointer move and stops the check reporting the product for the
-  //    instrument's own staleness.
-  if (await overModel(emptyPoint[0], emptyPoint[1])) {
-    for (const candidate of [[0.04, 0.94], [0.04, 0.06], [0.96, 0.94]]) {
-      if (!(await overModel(candidate[0], candidate[1]))) {
-        emptyPoint[0] = candidate[0];
-        emptyPoint[1] = candidate[1];
-        break;
-      }
-    }
-    await restPointer();
+  //    Confirmed to still be background first. The point was chosen before the
+  //    drag, and beside a subject with a large open outline — a ring of lips
+  //    around a mouth — a pixel that read as background then can be over the
+  //    model now. Checking it again costs one pointer move and stops the check
+  //    reporting the product for the instrument's own staleness.
+  //    The three fallbacks this used were three corners, and it kept the stale
+  //    point when all three were taken — so a subject that had grown was
+  //    reported as the product failing to clear a selection.
+  const emptyNow = (await overModel(emptyPoint[0], emptyPoint[1])) ? await liveEmptyPoint() : emptyPoint;
+  await restPointer();
+  if (!emptyNow) {
+    notes.push('the model covers every point this looked at, so clicking nothing was not checked');
+  } else {
+    const afterEmpty = await clickAt(emptyNow[0], emptyNow[1]);
+    if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   }
-  const afterEmpty = await clickAt(emptyPoint[0], emptyPoint[1]);
-  if (afterEmpty.en !== EMPTY) problems.push(`a click on empty space left "${afterEmpty.en}" selected`);
   // At a point that selected something during the sweep, not at the middle of
   // the frame: not every scene has anything in the middle. The drainage map's
   // centre is a body outline drawn too faint to be clickable, so a centre click
   // there reports the selection failing to come back when nothing is wrong.
+  //
+  //    Asked for again rather than remembered: the click that recorded
+  //    `lastHitPoint` may itself have taken the scene to that structure's
+  //    preferred view, in which case the point it was recorded at is now
+  //    background. That is how the nose came to report "a structure could not
+  //    be selected again after clearing" about a scene that selects perfectly
+  //    well — and then three more failures downstream of the selection it had
+  //    just been denied.
+  const reselectPoint = (await liveModelPoint()) ?? lastHitPoint;
   await page.mouse.click(
-    box.x + box.width * lastHitPoint[0],
-    box.y + box.height * lastHitPoint[1]
+    box.x + box.width * reselectPoint[0],
+    box.y + box.height * reselectPoint[1]
   );
   await page.waitForTimeout(350);
   await restPointer();
@@ -831,34 +1016,22 @@ try {
       problems.push('Show all did not clear the isolation');
     }
     // Back to a whole model: the structures that were on screen before are
-    // clickable again. Clicked at a point that *did* select something earlier
-    // rather than at the middle of the frame — the middle of a drainage map is
-    // a body outline drawn too faint to be clickable at all, and a check that
-    // assumes every scene has something in the centre reports that as the
-    // model failing to come back.
+    // clickable again. Clicked at a point that is over the model *now* rather
+    // than at the middle of the frame — the middle of a drainage map is a body
+    // outline drawn too faint to be clickable at all, and a check that assumes
+    // every scene has something in the centre reports that as the model failing
+    // to come back. Asked for again rather than remembered, for the reason
+    // every other point here is: the clicks between then and now can have taken
+    // the scene to a structure's preferred view.
+    const restorePoint = (await liveModelPoint()) ?? lastHitPoint;
     await page.mouse.click(
-      box.x + box.width * lastHitPoint[0],
-      box.y + box.height * lastHitPoint[1]
+      box.x + box.width * restorePoint[0],
+      box.y + box.height * restorePoint[1]
     );
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
-      // Two different failures wear this symptom, and saying the wrong one
-      // costs a day: the model may not have come back, or it may be there and
-      // no longer under the point this clicked. Asked rather than assumed —
-      // the scene answers for what is under the pointer, so look before
-      // naming it.
-      const stillThere = [];
-      for (const [fx, fy] of modelPoints) {
-        if (await overModel(fx, fy)) stillThere.push([fx, fy]);
-      }
-      await restPointer();
-      problems.push(
-        stillThere.length
-          ? `after Show all, clicking (${lastHitPoint.join(', ')}) selected nothing, but ${stillThere.length} of ` +
-            `${modelPoints.length} points are over the model — the model came back and the view moved`
-          : 'after Show all, no sampled point is over the model — it did not come back'
-      );
+      problems.push('after Show all, clicking the model selected nothing — it did not come back');
     }
   }
 
@@ -1066,7 +1239,15 @@ try {
   const pinnedName = async () =>
     (await page.locator('.anatomy-panel-name.lang-ja').first().textContent()).trim();
 
-  await page.mouse.click(box.x + box.width * atModel(1)[0], box.y + box.height * atModel(1)[1]);
+  const labelPoint = await liveModelPoint(1);
+  if (!labelPoint) {
+    problems.push('nothing on screen is over the model by the time the label check runs');
+  }
+  await restPointer();
+  await page.mouse.click(
+    box.x + box.width * (labelPoint ?? atModel(1))[0],
+    box.y + box.height * (labelPoint ?? atModel(1))[1]
+  );
   await page.waitForTimeout(500);
   const pinnedForLabel = await pinnedName();
   const labelled = await labelTexts();
@@ -1123,6 +1304,12 @@ try {
   let settled = null;
   if (observed.colorModes.length > 1) {
     const beforeMode = await read();
+    // Said out loud, because "recolouring changed nothing" is also true of a
+    // panel that was already empty — and then the tree count below reads as a
+    // recolouring defect when the selection had been lost somewhere earlier.
+    if (beforeMode.en === EMPTY) {
+      problems.push('nothing was selected when the recolouring check ran, so it had nothing to preserve');
+    }
     await page.locator('.inspection-choice.inspection-mode').nth(1).click();
     await page.waitForTimeout(600);
     const afterMode = await read();
@@ -1133,7 +1320,7 @@ try {
     await tab('部位').click();
     await page.waitForTimeout(300);
     const stillOne = await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count();
-    if (observed.treeRows && stillOne !== 1) {
+    if (observed.treeRows && beforeMode.en !== EMPTY && stillOne !== 1) {
       problems.push(`recolouring left ${stillOne} rows marked selected in the tree`);
     }
     await tab('表示').click();
@@ -1868,10 +2055,31 @@ console.log(`  structures named by click: ${observed.structures.map((s) => `${s.
 for (const structure of observed.structures) {
   console.log(`    ${structure.en} / ${structure.ja} — ${structure.where}`);
 }
+// **Every point, including the ones that hit nothing.** The line above lists
+// what was *named*, which silently drops a miss — so a `--points` sweep of
+// twenty-one candidates comes back as eighteen names that cannot be matched to
+// the coordinates that produced them, and the reader is left counting. That is
+// how an hour went into finding one artery. A probe is only an instrument if it
+// says which point gave which answer.
+if (observed.tour.length) {
+  console.log('  point by point:');
+  for (const stop of observed.tour) {
+    const said = stop.got ?? 'nothing';
+    const held = stop.expected && stop.expected !== stop.got ? `  (authored: ${stop.expected})` : '';
+    console.log(`    ${stop.fx}, ${stop.fy} -> ${said}${held}`);
+  }
+}
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
 console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
 console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
+if (observed.openingFraming) {
+  const { opening, reset } = observed.openingFraming;
+  console.log(
+    `  the model spans ${opening[0]}..${opening[1]} of the frame when the scene opens, ` +
+      `${reset[0]}..${reset[1]} after a display reset`
+  );
+}
 console.log(
   `  group hidden in one press: ${
     observed.groupHidden
