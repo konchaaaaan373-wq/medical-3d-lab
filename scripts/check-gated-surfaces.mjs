@@ -37,7 +37,7 @@
  * `--locked` measures what a reader *without* the entitlement meets instead:
  * the lock on the control, and whatever opens when they press it. A reviewer
  * holding the grants never sees those, which is how they came to be the
- * unmeasured half the moment this check existed (F-119). `?entitled=0`
+ * unmeasured half the moment this check existed (F-124). `?entitled=0`
  * withholds the grants and changes nothing else.
  *
  * Options:

@@ -70,6 +70,21 @@ function measure(distPath) {
   // decoders, attribution. It is budgeted separately because it is fetched by
   // one scene rather than by every visitor.
   const media = sized.filter((item) => item.ext !== '.js' && item.ext !== '.css');
+  // Grouped by the folder it sits in, because that is what one reader fetches.
+  // `assets/brain/*` is the brain's whole cost; `assets/heart/*` is the heart's.
+  // Summing them measures a download nobody performs — a visitor opens one
+  // model — and a sum across every organ can only grow as the product does.
+  const byOrgan = new Map();
+  for (const item of media) {
+    const parts = item.name.split('/');
+    const group = parts.length > 1 ? parts.slice(0, -1).join('/') : '(root)';
+    const organ = group.startsWith('assets/') ? group.split('/')[1] : group;
+    byOrgan.set(organ, (byOrgan.get(organ) ?? 0) + item.gzip);
+  }
+  const heaviest = [...byOrgan.entries()].reduce(
+    (worst, [name, bytes]) => (bytes > (worst?.bytes ?? 0) ? { name, bytes } : worst),
+    null
+  );
   const entries = entryChunks(distPath, files);
   const entryBytes = sized
     .filter((item) => entries.includes(item.file) && item.ext === '.js')
@@ -84,6 +99,8 @@ function measure(distPath) {
     cssKb: kb(sum(css)),
     codeKb: kb(sum(js) + sum(css)),
     mediaKb: kb(sum(media)),
+    heaviestOrganKb: kb(heaviest?.bytes ?? 0),
+    heaviestOrganName: heaviest?.name ?? '(none)',
     fileCount: sized.length,
   };
 }
@@ -95,14 +112,15 @@ export function compare(measured, budget = BUNDLE_BUDGET_KB) {
     ['largest chunk', measured.largestChunkKb, budget.largestChunk],
     ['css', measured.cssKb, budget.css],
     ['code (JS + CSS)', measured.codeKb, budget.code],
-    ['specimen media', measured.mediaKb, budget.media],
+    ['specimen media, one model', measured.heaviestOrganKb, budget.media],
+    ['specimen media, all models', measured.mediaKb, budget.mediaTotal],
   ];
   return rows.map(([label, actual, allowed]) => ({
     label,
     actual,
     allowed,
     over: actual > allowed,
-    line: `${actual > allowed ? 'OVER ' : 'ok   '} ${label.padEnd(18)} ${String(actual).padStart(8)} kB / ${allowed} kB`,
+    line: `${actual > allowed ? 'OVER ' : 'ok   '} ${label.padEnd(26)} ${String(actual).padStart(8)} kB / ${allowed} kB`,
   }));
 }
 

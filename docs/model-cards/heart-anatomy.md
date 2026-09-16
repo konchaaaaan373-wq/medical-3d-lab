@@ -3,7 +3,10 @@
 | | |
 | --- | --- |
 | **Scene** | `heart-anatomy` |
-| **Geometry** | `dev-assets/heart/VH_M_Heart.glb` and `dev-assets/heart/VH_M_Blood_Vasculature.glb` — **candidates**, pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js), fetched by `npm run assets:dev`, **not committed and not shipped** |
+| **Geometry** | [`public/assets/heart/VH_M_Heart.glb`](../../public/assets/heart/VH_M_Heart.glb) and [`public/assets/heart/VH_M_Blood_Vasculature.glb`](../../public/assets/heart/VH_M_Blood_Vasculature.glb) — **derivatives** of the HuBMAP files, adopted 2026-09-15 |
+| **Asset provenance and QA** | [`src/catalog/assetManifest.js`](../../src/catalog/assetManifest.js) |
+| **Asset notice** | [`public/assets/heart/ATTRIBUTION.md`](../../public/assets/heart/ATTRIBUTION.md) |
+| **Adoption decision** | [`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 | **Metadata adapter** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js) |
 | **Selection behaviour** | [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js) |
@@ -18,6 +21,41 @@ papillary muscle, a great vessel, a coronary artery, a cardiac vein — relative
 to the rest of the heart, and what is it called in English and Japanese?**
 
 ## 2. What it is
+
+**What ships is a derivative, and that is not a detail.** The publisher's own
+files fail glTF validation — 408 degenerate vertex normals in one mesh of the
+heart, 33 across two meshes of the vasculature, and nothing else — and this
+repository's format gate takes zero errors and zero warnings at every scene
+status. So adopting the publisher's bytes could never have opened the release
+gate, however carefully the failure was recorded. The two honest routes were a
+derived file or no heart in the beta.
+
+The derivative replaces those normals and **nothing else**. A degenerate normal
+has zero length and carries no direction, so there is nothing in it to preserve;
+zero-area triangles were removed first because a vertex whose only neighbours
+are degenerate triangles has no face to average, and **a zero-area triangle
+draws nothing**, so removing one cannot change the rendered surface. 820 of them
+went from the heart (0.50% of its triangles) and 26 from the vasculature
+(0.007%). Vertex positions, vertex counts, node names, hierarchy, ontology ids
+and materials are identical on both sides, and the triangle count falls by
+exactly what was removed — measured, in
+[`docs/asset-qa/measurements/normal-repair.json`](../asset-qa/measurements/normal-repair.json),
+not asserted. `npm run assets:repair:verify` rebuilds these exact hashes from the
+pinned sources and reports the validator clean.
+
+**A structure can be reached without a pointer.** `selectAtCanvasPoint()` names
+whatever is drawn at one point of the canvas, which is how a keyboard asks —
+there being no pointer to put anywhere, the landing hero asks it of the middle
+of the frame on Enter. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there. Until 2026-09-15 this scene was
+the only anatomy scene without it, and the hero's call is optional — so on the
+day the hero showed the heart, Enter did nothing and said nothing.
+
+**No geometry was re-shaped and no anatomical judgement was made.** The sources
+stay pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js):
+adopting a derivative does not delete the record of what was examined.
+
 
 **Forty-six structures from fifty-one meshes, out of two files of one reference
 release.** Fourteen are the heart itself: four chambers, the interventricular

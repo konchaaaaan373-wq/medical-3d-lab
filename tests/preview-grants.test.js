@@ -40,7 +40,7 @@ test('a reviewer can ask to be shown what an unentitled reader meets', () => {
   // The surfaces before paying — the lock on the control, the offer, the copy
   // that says what is behind it — are the ones a reviewer holding the grants
   // never sees, which made them the unmeasured half the moment this file
-  // existed (F-119). `?entitled=0` withholds the grants and changes nothing
+  // existed (F-124). `?entitled=0` withholds the grants and changes nothing
   // else about the build.
   assert.equal(reviewerIsEntitled(''), true, 'entitled unless asked otherwise');
   assert.equal(reviewerIsEntitled('?preview=1'), true);

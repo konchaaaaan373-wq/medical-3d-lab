@@ -240,6 +240,77 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
+    sceneId: 'heart-anatomy',
+    decidedAt: '2026-09-15',
+    decidedBy: Object.freeze({
+      name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/heart-anatomy.md',
+    /**
+     * Two files, and **neither hash is the publisher's**.
+     *
+     * Both sources fail glTF validation on degenerate vertex normals, and the
+     * format gate takes zero errors at every scene status — so what is pinned
+     * here is the derivative that repairs them and changes nothing else. The
+     * adoption decision is docs/decisions/HEART-ASSET-ADOPTION.md and the
+     * change is measured in docs/asset-qa/measurements/normal-repair.json.
+     */
+    assetRevisions: Object.freeze({
+      'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+      'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+    }),
+    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: '93a0f4f6cc4d2606' }),
+    scope: Object.freeze({
+      // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
+      // named parts at four recorded points, crossing both adopted files.
+      structures: Object.freeze([
+        'Right atrium',
+        'Right ventricle',
+        'Left anterior descending artery',
+        'Ascending aorta',
+      ]),
+      views: Object.freeze([
+        'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 46 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press, and by V on the focused branch',
+        'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
+        'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
+        'the landing hero reaches this scene with a keyboard: Tab focuses the model, Enter names the structure in front of it, Escape lets go, Enter after turning names a different one, and the card hands that structure to the full model — driven on the heart by verify:hero-input, which was taught the same day to repeat its keyboard pass for every published organ rather than only the first in the rotation',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'scripts/check-hero-input.mjs',
+      'scripts/repair-candidate-gltf.mjs',
+      'docs/asset-qa/measurements/normal-repair.json',
+      'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+      'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
+      'docs/decisions/HEART-ASSET-ADOPTION.md',
+      'public/assets/heart/ATTRIBUTION.md',
+      'tests/heart-anatomy.test.js',
+      'tests/organ-anatomy-scenes.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain is published on',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '42 of the 46 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'the underlying Visible Human Male terms were read through secondary sources only — nlm.nih.gov was unreachable, so the NLM acknowledgment is given rather than reasoned away',
+      'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
+      'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
+      'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
+    ]),
+  }),
+  Object.freeze({
     sceneId: 'brain-anatomy',
     decidedAt: '2026-09-15',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
@@ -251,11 +322,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
+      // Re-measured on 2026-09-15 and corrected. The first two of the four
+      // recorded here were wrong: the tour's points are canvas fractions, the
+      // layout moved under them over the week after they were written, and one
+      // point had come off the model entirely. `SCENE_POINTS` now names these
+      // four and `verify:anatomy` fails if a point names anything else — see
+      // docs/beta-publication/brain-anatomy.md, which states what was wrong
+      // rather than quietly showing the new values.
       structures: Object.freeze([
-        'Opercular part of inferior frontal gyrus',
         'Supramarginal gyrus',
+        'Circular sulcus of insula',
         'Middle temporal gyrus',
-        'Superior temporal sulcus',
+        'Angular gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
@@ -461,7 +539,35 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
  *   taken at its word, which is all a browser can do.
  * @returns {string[]}
  */
-export function betaPublicationProblems(candidate, {
+export function betaPublicationProblems(candidate, options = {}) {
+  const id = typeof candidate === 'string' ? candidate : candidate?.id;
+
+  // Membership is checked here and nowhere else, and there is no option that
+  // relaxes it. `betaPublicationGap` below reports on scenes that are *not*
+  // members, and it does so by calling the same body with this line prepended
+  // rather than by asking for it to be skipped — so nothing can ever ask this
+  // module whether a scene would be open if only it were listed and receive an
+  // empty answer.
+  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
+    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
+  }
+
+  return publicationRecordProblems(id, options);
+}
+
+/**
+ * The gate minus the one line that says whether the scene is on the list.
+ *
+ * Split out for `betaPublicationGap`, which needs to ask "and what else?" of a
+ * scene the release does not open. It is not exported: answering that question
+ * without the membership line attached is exactly the answer this module must
+ * not hand out.
+ *
+ * @param {string} id
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {string[]}
+ */
+function publicationRecordProblems(id, {
   fileExists,
   profiles,
   resolveScene = sceneById,
@@ -471,12 +577,7 @@ export function betaPublicationProblems(candidate, {
   hasReview = hasCurrentClinicalReviewState,
   decisions = BETA_PUBLICATION_DECISIONS,
 } = {}) {
-  const id = typeof candidate === 'string' ? candidate : candidate?.id;
   const problems = [];
-
-  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
-    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
-  }
 
   const scene = resolveScene(id);
   if (!scene) return [`"${id}" is not registered in the catalogue`];
@@ -565,6 +666,90 @@ export function betaPublicationProblems(candidate, {
 
   return problems;
 }
+
+/**
+ * The finished organ models the beta does not open, and what is left for each.
+ *
+ * **The number this exists to print: the beta publishes two organs, and it is
+ * not because the others are unfinished.** Thirty-seven scenes make an
+ * anatomy-only claim, all are `alpha`, and none rests on an external asset —
+ * so for most of them the entire distance to the public build is a record
+ * nobody has written, not geometry nobody has built. Read off
+ * `BETA_ANATOMY_CANDIDATES` alone that is invisible: a short list looks like a
+ * short list of *ready* scenes. This is the same move `anatomyGap()` makes for
+ * the A-scale — the gap is a number the test suite prints rather than a
+ * paragraph somebody has to remember.
+ *
+ * **Nothing here publishes anything, and nothing here reports a scene as
+ * ready.** Every row keeps the membership line, because being on the list is
+ * itself the decision: opening an organ to the public is a judgement about what
+ * this product claims, and it is taken by editing `BETA_ANATOMY_CANDIDATES`
+ * and filing a record under `docs/beta-publication/`, never by a survey
+ * concluding that the paperwork is the only thing missing. So `remaining`
+ * counts what is left *besides* that decision, and `decisionIsAllThatIsLeft`
+ * says only that — not that the decision should be taken.
+ *
+ * A scene qualifies for a row by making an anatomy claim and no more, read off
+ * its model profile exactly as the gate reads it. Nothing is matched by name:
+ * "it is called `…-anatomy`" is not a claim about what a scene asserts.
+ *
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {Array<{sceneId: string, status: string, problems: string[],
+ *   remaining: string[], decisionIsAllThatIsLeft: boolean}>}
+ */
+export function betaPublicationGap(options = {}) {
+  const { scenes = SCENES } = options;
+  // A supplied catalogue has to be the one the gate is asked about too.
+  //
+  // It was not: rows were filtered and labelled from `scenes` while
+  // `publicationRecordProblems` resolved the id through the global catalogue.
+  // Hand it a clone of `lung-anatomy` marked `prototype` and the row said
+  // `status: 'prototype'` and `decisionIsAllThatIsLeft: true` — the prototype
+  // refusal missing, because the gate had been asked about the real alpha
+  // scene. A survey whose own injection point disagrees with its answers is
+  // worse than one that has none.
+  //
+  // `resolveScene` passed by the caller still wins; this only supplies the
+  // default that matches `scenes`.
+  const supplied = new Map(scenes.map((scene) => [scene.id, scene]));
+  const resolveScene =
+    options.resolveScene ?? ((id) => supplied.get(id) ?? sceneById(id));
+  return scenes
+    .filter((scene) => !BETA_ANATOMY_CANDIDATES.includes(scene.id))
+    .filter((scene) => anatomyClaimProblems(scene, options).length === 0)
+    .map((scene) => {
+      const remaining = publicationRecordProblems(scene.id, { ...options, resolveScene });
+      return {
+        sceneId: scene.id,
+        status: scene.status,
+        problems: [notOnTheListLine(scene.id), ...remaining],
+        remaining,
+        // `[].every()` is true, and an empty `remaining` means the opposite
+        // of what this field would then say: the record is already filed and
+        // the list edit is the whole distance. That cannot happen today —
+        // every decision on file is for a scene on the list — so it is guarded
+        // rather than described, and `problems` still carries the real answer.
+        decisionIsAllThatIsLeft:
+          remaining.length > 0 && remaining.every(isMissingDecisionLine),
+      };
+    });
+}
+
+/** The one line every gap row carries, worded as the gate words it. */
+const notOnTheListLine = (id) => `"${id}" is not one of the scenes this release opens`;
+
+/**
+ * Whether a remaining line is only "no decision has been taken".
+ *
+ * Matched against what `publicationDecisionProblems` says for a missing
+ * record rather than by a substring guess, so that rewording the gate cannot
+ * quietly turn some other failure into "just paperwork".
+ */
+const MISSING_DECISION_LINES = Object.freeze(
+  publicationDecisionProblems(null, { id: '(none)', status: 'alpha' })
+);
+const isMissingDecisionLine = (line) => MISSING_DECISION_LINES.includes(line);
+
 
 /**
  * Why this scene is not open on the **next** release. Empty means open.

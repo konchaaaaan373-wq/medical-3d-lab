@@ -16,7 +16,7 @@ Last updated: 2026-09-15
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は F-120 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-119 は
+  次に追加する番号は F-125 です（F-108〜F-110 は 2026-09-14〜15、F-111〜F-124 は
   09-15 に採番済み）。⚠ **F-107 / F-108 も 2 回ずつ出ます。** 未マージの PR #73 と
   PR #75 がその 2 つを先に確保しており、main 側が同じ番号を使いました。
   **どちらの branch も採番し直してからマージしてください。**
@@ -309,6 +309,73 @@ conda-forge には存在しません。したがって CDM のフィールド名
 ---
 
 ## C. 製品・UI の判断
+
+### F-122 完成した臓器 37 件が「決定が無い」だけで公開されていない — P1（2026-09-15）
+
+`betaPublicationGap()` を足して測りました。**β が公開しているのは 2 臓器ですが、
+残りが未完成だからではありません。**
+
+- 解剖のみを主張するシーン **37 件**（model profile から読む。名前では判定しない）
+- 全件 `alpha`。`prototype` は 1 件も無い
+- 全件が外部 asset に依存しない（procedural）ので、asset release gate は素通り
+- レビュー記録が `stale` のものは無い
+- **37 件すべて、ゲートが残す指摘は 1 行だけ**——
+  `has no publication decision on file for this release`
+
+つまり `lung-anatomy` から `pelvis-anatomy` まで、公開までの距離は
+**誰も書いていない記録**であって、誰も作っていないジオメトリではありません。
+`BETA_ANATOMY_CANDIDATES` を眺めているだけではこれは見えません——短いリストは
+「準備できているものが 2 件しかない」ように読めるからです。
+
+- **これは Claude が勝手に決めることではありません。** 公開は製品が何を主張するかの
+  判断で、`BETA_ANATOMY_CANDIDATES` を編集し `docs/beta-publication/<scene>.md` に
+  記録を残して初めて成立します。`betaPublicationGap()` は距離を報告するだけで、
+  どの行も membership の 1 行を必ず持ち、「あとは書類だけ」とは言っても
+  「公開してよい」とは決して言いません（`tests/beta-release.test.js` が固定）
+- 決めるのに要る情報: 1 件あたりの費用は **`verify:anatomy` 1 本（脳で約 10 分、
+  procedural な臓器はもっと速い）＋ 記録 1 本**。並行させられないので
+  （CLAUDE.md「実ブラウザ検証は 1 本ずつ」）、37 件は逐次で数時間規模です
+- 決め方の案: 全部を一度に開けるのではなく、**系統ごとに数件ずつ**。
+  hero rotation は公開臓器が増えるとそのまま日替わりの幅が広がります
+  （`HERO_ORGANS` が目標順を持っています）
+- **代表 1 件を実ブラウザで確認済み（2026-09-15）**。「37 件が記録待ちなだけ」は
+  ゲートが通ることしか言っていないので、実際に動くかを 1 件測りました。
+  `npm run verify:anatomy -- --scene lung-anatomy --preview` の**出力そのまま**:
+
+  ```
+  Anatomy interaction — lung-anatomy, 83 selectable structures
+    structures named by click: Right upper lobe / 右上葉; Right middle lobe / 右中葉; Left upper lobe / 左上葉
+    viewpoints: Anterior前面, Posterior背面, Right lateral右外側, Left lateral左外側, Right lung, mediastinal surface右肺・縦隔面, Coronal section前額断（切断）
+    colour modes: Lobes and vessels肺葉・血管別, Natural tissue通常解剖色
+    labels on the model: none
+    part tree rows: 83
+    group hidden in one press: Pulmonary vessels / 肺血管 (34 structures)
+    note: points measured over the model: 0.44,0.45 0.38,0.45 0.62,0.45 0.68,0.45 0.5,0.34 0.38,0.34 (pass them to --points, or paste into SCENE_POINTS as [[0.44, 0.45], [0.38, 0.45], [0.62, 0.45], [0.68, 0.45]])
+    note: the pinned structure "右上葉" has no label on the model from this angle (F-40: one anchor point decides for the whole structure).
+    note: this scene loads no atlas, so there is no failed load to recover from
+    ok    the model and the tree name one structure; drag is not click; isolate hides and restores; display choices do not move the selection
+  ```
+
+  脳・心臓と**同じドライブに同じように通ります**。1 件あたりの実測費用は
+  **2 分未満**でした（脳の 10 分は 3.9 MB のアトラス読み込みが理由で、
+  procedural な臓器には無い）。つまり 37 件でも数時間ではなく 1〜2 時間規模です。
+  ただし 2 点、記録に書くべき差があります:
+  - `labels on the model: none` — 脳は選択した構造の**ラベルがモデル上に出ます**が、
+    肺はこのアングルでは出ませんでした（F-40 と同じ「1 つのアンカー点が構造全体を
+    決める」問題）。公開記録の「確認していないこと」に書く対象です
+  - **クリック点は登録済みですが、名前が付いていません。**
+    `SCENE_POINTS['lung-anatomy']` は 4 点を持つので、この run は
+    「たまたま当たった点」を使ってはいません（上の `points measured over the model`
+    は、authored な点の有無にかかわらず出る診断行です）。足りないのは
+    **3 つ目の要素＝その点が何を指すはずかという名前**で、心臓は
+    `[0.22, 0.45, 'Right atrium']` の形で持っています。名前が無いので
+    verifier は同一性を検査せず、**4 点が 3 構造しか生んでいる**ことにも
+    気付きません（2 点が同じ葉に当たっています）。公開する各シーンには
+    F-118 と同じ「名前を付けて固定する」作業が要ります——測り直しではなく、
+    既存の点に名前を足す作業です
+
+- 完了の定義: オーナーが「どこまで開けるか」を決め、開けると決めた各シーンに
+  browser 実測つきの `docs/beta-publication/<scene>.md` がある状態
 
 ### F-10 シーンヘッダをカタログ名に統一した影響 — P2（`#42`）
 
@@ -704,6 +771,43 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
 
 ## D. テスト・CI
 
+### F-123 名前の無いクリック tour は、記録より先に腐る — P1（2026-09-15）
+
+**公開中の `brain-anatomy` の公開記録が、1 週間ずれたまま「四点とも構造名を返した」と
+主張していました。** 実測（production ビルド、preview でも同じ）:
+
+| 記録（09-08 執筆） | 実際（09-15） |
+| --- | --- |
+| Opercular part of inferior frontal gyrus | Supramarginal gyrus |
+| Supramarginal gyrus (0.60, 0.32) | **何にも当たらない** |
+| Middle temporal gyrus | 一致 |
+| Superior temporal sulcus | Angular gyrus |
+
+原因は scene 側の退行ではありません。クリック点は **canvas の比率**なので、
+control bar の高さ（#88）・type floor 2 件（#85 / #86）・panel 3 件（#90 / #95 / #96）で
+レイアウトが動けば点がずれます。**どれも `brainAnatomy` の sources を触らない**ので
+model-revision digest は気付かず、`revisions:check` は緑のままでした。
+そしてそれを捕まえるはずの `SCENE_POINTS['brain-anatomy']` は座標だけで、
+「4 回のクリックが**何か**を名指した」しか検査していませんでした。
+`heart-anatomy` は F-118 以来 expected name を持っていましたが、
+**基準シーンである脳は持っていませんでした**。
+
+脳は直しました（名前つき tour ＋ 実測で選び直した 4 点目、記録も訂正）。
+残りが本題です:
+
+- **名前つき tour を持つのは 2 件だけ**（`heart-anatomy`, `brain-anatomy`）。
+  `SCENE_POINTS` の**残り 35 件は座標のみ**＝脳が 1 週間いた状態のままです
+- これは F-122 の費用見積もりを具体的にします。公開する各シーンに要るのは
+  「測り直し」ではなく**既存の点に名前を足す作業**で、1 件あたり probe 1 回
+  （procedural な臓器なら 2 分未満）＋ 確認 1 回。やり方は脳で確立しました——
+  4 点すべてに sentinel を入れて 1 回走らせると、mismatch 行が
+  「その点が実際に何を指したか」を全部教えてくれます
+- **公開記録は pin では守られません。** 公開判断は asset hash と scene revision に
+  紐付きますが、記録の本文が現実とずれても pin は動きません。守るのは
+  「記録に書いた主張を、テストが同じ言葉で固定していること」だけです
+- 完了の定義: 公開しているシーンすべてが名前つき tour を持ち、その記録の
+  構造表が `verify:anatomy` の出力から書かれていること（読み直しではなく）
+
 ### F-114 離脱 veil の BFCache 復帰だけが未検証 — P3（2026-09-15）
 
 `scripts/check-departure.mjs`（`npm run verify:departure`、PR CI で毎回実行）が
@@ -758,7 +862,7 @@ brand を「押せるもの」に見えるよう枠と `←` と "Home / ホー�
 **課金ゲートの内側は `npm run verify:gated` で見られるようになりました**
 （`scripts/check-gated-surfaces.mjs`、PR CI で毎回実行）。
 `VITE_ALLOW_PREVIEW=1` のビルドが paid entitlement を配り、
-コンテンツはチェック側が `entitledGuide()` を呼んで答えます。見えなくなるものは F-119。
+コンテンツはチェック側が `entitledGuide()` を呼んで答えます。見えなくなるものは F-124。
 
 **そこで実際に 1 件見つかりました。** 教育ガイドの
 「モデルとその限界に沿った教育用ガイドです。個別患者の意思決定ツールでは
@@ -2422,7 +2526,57 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 
 ## Resolved
 
-- **F-119 プレビュー build が見せないもの** — 解決（2026-09-15）。
+- **F-120 `introducedIn` は squash merge の repo では誰も到達できない** — 解決（2026-09-15）。
+  **ただし F-120 の前提そのものが間違っていました。**
+  この環境の clone は shallow で、`.git/shallow` の境界 commit には親がありません。
+  境界では `git show --diff-filter=A` が **tree 内の全ファイルを「追加」と報告** し、
+  `git merge-base --is-ancestor` も切れた履歴の向こう側に届きません。
+  F-120 の `NO` はこの壊れた計器の出力でした。
+  `git fetch --unshallow` して測り直すと:
+
+  - **脳 `e344d465` は最初から正しい**。origin/main の祖先であり、
+    `public/assets/brain/brain.glb` を実際に追加した commit です。
+    F-120 に従って「到達可能に見える」`345a1e1`（＝shallow 境界）に
+    差し替えていたら、**実際には無関係な commit を記録するところでした**
+  - **心臓 `a221a736` だけが本当に誤り**。branch commit で、main の祖先ではありません。
+    正しくは PR #99 の squash commit `40b64e71`（両ファイルを追加している）。
+    `introducedAt` も commit の **UTC 日付**に揃えました
+    （`40b64e71` は `+0900` で、その zone では翌日に読めます）
+
+  `tests/asset-provenance.test.js` が 3 つ全部を測ります: commit が存在し、
+  default branch の祖先であり、**その asset の `output.path` を追加している**こと
+  （祖先であるだけでは、無関係な commit でも通ってしまいます）。
+  **2 つの失敗を実際に再現して確認済み**——元の心臓の値では
+  `is not an ancestor of origin/main`、shallow 境界の値では
+  `does not add public/assets/brain/brain.glb` で落ちます。
+  そして **shallow clone では skip せず落ちます**。緑のチェックが
+  「走った」と言いながら何も測っていない状態こそ、この一件の原因だからです。
+  CI は `fetch-depth: 0` を持ちました。
+  新規 asset 用に `introducedIn: null` ＋ `introducedInNote` を
+  （`retrievedAt` と同じ形で）許します——merge 前は squash commit が存在しないためです。
+
+- **F-121 hero の入力検証は rotation の 1 つ目しか触らない** — 解決（2026-09-15）。
+  `scripts/check-hero-input.mjs` が hero の chooser を読んで
+  **公開中の臓器ごとに 1 回ずつ**キーボード操作を回すようにしました
+  （`publishedOrgans()` が `.landing-demo-state[data-organ]` を列挙し、
+  chooser が無い＝公開 1 件なら従来どおり 1 回）。問題文に臓器名が入るので、
+  どちらで落ちたか出力だけで分かります。
+  **⚠ この項目は当初「撮影ファイル名にも臓器名が入る」と書いていましたが、
+  誤りでした**——`--shots` の 3 枚は臓器によらず同じ名前で、2 つ目の臓器が
+  1 つ目を上書きしていました。レビュー（Codex, P2）が指摘し、PR #107 で
+  実際にそうしました（`keyboard-<organ>-1-enter.png`。実測 3 枚 → 6 枚）。
+  同 PR で、臓器を切り替えたあとの待ちも直しています（下記）。
+  実測: **4 run → 5 run**。心臓の行が初めて現れました——
+  `keyboard (desktop, heart): Tab reaches the model, Enter named "右心室 …",
+  Escape cleared it, after turning Enter named "左心室 …", and the card's link
+  opened the full model on "左心室"`。
+  **計器が目的のバグを捕まえることを確認済み**: `HeartAnatomyScene` の
+  `selectAtCanvasPoint` を改名して build し直すと、心臓の Enter 2 件だけが赤くなり
+  （脳は緑のまま）、元に戻すと 5 run すべて緑に戻ります。
+  これで `docs/beta-publication/heart-anatomy.md` のキーボード項目は
+  実ブラウザの結果になりました（それまでは存在検査のみ）。
+
+- **F-124 プレビュー build が見せないもの** — 解決（2026-09-15）。
   `npm run verify:gated -- --locked` が、**エンタイトルメントを持たない読者が
   見る面**を測ります（PR CI で毎回、entitled 版と 2 本立て）。
 

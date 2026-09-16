@@ -548,16 +548,26 @@ test('heart: what is still absent is listed, and nothing absent is selectable', 
   built.dispose();
 });
 
-test('heart: the file it draws is a candidate, and the release gate is shut on it', () => {
+test('heart: the source stayed pinned when the derivative was adopted', () => {
+  // This test used to end "and the release gate is shut on it", which was the
+  // truth until 2026-09-15. The half worth keeping is the half about the
+  // *source*: adopting a file derived from it must not delete the record of
+  // what was examined, or the repair stops being reproducible and the
+  // provenance chain loses its first link.
   const candidate = devAssetById('hubmap-vh-m-heart');
-  assert.ok(candidate, 'the file is pinned');
+  assert.ok(candidate, 'the source is still pinned');
   assert.match(candidate.url, /^https:\/\/raw\.githubusercontent\.com\/hubmapconsortium\/ccf-releases\/[0-9a-f]{40}\//);
   assert.match(candidate.sha256, /^[0-9a-f]{64}$/);
-  assert.equal(assetById('hubmap-vh-m-heart'), null, 'and it is not in the manifest of what ships');
 
-  const problems = betaPublicationProblems('heart-anatomy');
-  assert.ok(problems.length > 0);
-  assert.ok(problems.some((line) => /candidate asset "hubmap-vh-m-heart"/.test(line)));
+  // What ships is a different file, and the manifest records it as one: same
+  // asset id, a source hash that is the pinned candidate's, and an output hash
+  // that is not.
+  const shipped = assetById('hubmap-vh-m-heart');
+  assert.ok(shipped, 'the adopted asset is in the manifest of what ships');
+  assert.equal(shipped.sources[0].sha256, candidate.sha256, 'the manifest points back at the pinned source');
+  assert.notEqual(shipped.output.sha256, candidate.sha256, 'and what ships is the repaired file, not the source');
+
+  assert.deepEqual(betaPublicationProblems('heart-anatomy'), [], 'the gate is open');
 });
 
 // ---------------------------------------------------------------------------
@@ -1377,4 +1387,17 @@ test('heart: the opening view does not call itself the whole heart', () => {
   }
   // Still names what it shows, in both languages.
   assert.ok(opening.label.length > 3 && opening.labelJa.length > 1);
+});
+
+test('heart: the model can be asked what is at a point, without a pointer', () => {
+  // The landing hero binds Enter to this, through an optional call, so a scene
+  // without the method fails silently. The heart published and joined the hero
+  // rotation on the same day while missing it — see the method's own comment.
+  // `tests/organ-anatomy-scenes.test.js` holds the same line for the thirty-nine
+  // scenes built on OrganAnatomyScene; this is the heart's own.
+  assert.equal(
+    typeof HeartAnatomyScene.prototype.selectAtCanvasPoint,
+    'function',
+    'the heart cannot be asked what is at a point, so the hero keyboard does nothing on its day'
+  );
 });

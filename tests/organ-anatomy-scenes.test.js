@@ -702,3 +702,20 @@ test('isolation wins outright, and never leaves the model blank', () => {
     scene.setAnatomyView((scene.constructor.views ?? [])[0]?.id ?? null);
   }
 });
+
+test('every anatomy scene can be asked what is at a point, without a pointer', () => {
+  // The landing hero binds Enter to `selectAtCanvasPoint`, and the call is
+  // optional — `scene.selectAtCanvasPoint?.(…)` — so a scene without it says
+  // nothing and does nothing. The heart was published on 2026-09-15 and joined
+  // the hero rotation the same day while missing this method, which meant a
+  // reader pressing Enter on the heart's day got silence.
+  //
+  // It is checked here, across every scene, rather than on the heart alone:
+  // the failure is not "the heart forgot", it is "a scene can reach a keyboard
+  // surface without the method that surface needs".
+  const missing = [];
+  for (const entry of SCENES) {
+    if (typeof sceneFor(entry).selectAtCanvasPoint !== 'function') missing.push(entry.id);
+  }
+  assert.deepEqual(missing, [], 'these scenes cannot be asked what is at a point');
+});

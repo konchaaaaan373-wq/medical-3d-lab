@@ -52,7 +52,7 @@ const OFF = new Set(['0', 'off', 'no', 'false']);
  * A reviewer holding the entitlements never sees the surfaces a visitor meets
  * *before* paying — the purchase flow, the lock on the control, the copy that
  * says what is behind it. Those are surfaces too, and they were the ones nobody
- * could measure once this file existed (F-119). `?entitled=0` withholds the
+ * could measure once this file existed (F-124). `?entitled=0` withholds the
  * grants while leaving everything else about the preview build alone.
  *
  * Not a second build-time capability, which is the thing worth not having: it

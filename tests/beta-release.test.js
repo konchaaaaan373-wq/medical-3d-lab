@@ -18,6 +18,7 @@ import {
   DECISION_ROLES,
   RELEASE_POLICIES,
   anatomyClaimProblems,
+  betaPublicationGap,
   betaPublicationProblems,
   publicationDecisionProblems,
   sceneReleaseProblems,
@@ -70,36 +71,32 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
 
   // What the beta actually ships today. Named so that opening or closing one is
   // a deliberate edit to the gate rather than a side effect of adding a scene.
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy']);
-  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain']);
+  // The heart joined on 2026-09-15, which is what the whole gate was built to
+  // make hard: an adopted asset, a discharged licence, and a publication
+  // decision pinned to both hashes and to the scene revision.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart']);
 });
 
-test('beta release: an unfinished heart is not published as a disease model instead', () => {
-  // The decision this release exists to record. `heart-anatomy` now exists as a
-  // scene — built against a candidate asset, with the great vessels missing —
-  // and existing is not the same as being open. Nothing stands in for it.
+test('beta release: the heart that opened is the anatomy scene, and only that one', () => {
+  // This test used to assert that the heart was closed, and it was right to:
+  // the scene existed, drew a candidate asset, and being registered opened
+  // nothing. It opened on 2026-09-15 by going through the gate rather than
+  // around it. What has *not* changed is the thing this test was really for —
+  // no disease model stands in for an anatomy model, whatever the organ.
   const scene = sceneById('heart-anatomy');
   assert.ok(scene, 'the scene is registered in the catalogue');
   assert.equal(scene.disease, null, 'it is an anatomy scene, not a disease model wearing the name');
-  assert.equal(isSceneReleased(scene), false, 'and being registered opens nothing');
+  assert.equal(isSceneReleased(scene), true, 'and it went through the gate');
 
   const heart = BETA_CANDIDATE_STATUS.find((entry) => entry.sceneId === 'heart-anatomy');
-  assert.equal(heart.open, false);
-  assert.ok(heart.problems.length > 0, 'a candidate that is not open says why');
-  // The two reasons, stated separately: the file it draws has passed no asset
-  // release gate, and no publication decision has been taken about it. Either
-  // one alone closes the gate.
-  assert.ok(
-    heart.problems.some((line) => /candidate asset "hubmap-vh-m-heart"/.test(line)),
-    'the candidate asset is named as a reason'
-  );
-  assert.ok(
-    heart.problems.some((line) => /publication decision/.test(line)),
-    'and so is the absence of a publication decision'
-  );
+  assert.equal(heart.open, true);
+  assert.deepEqual(heart.problems, [], 'an open candidate has nothing left to say');
 
-  for (const scene of SCENES.filter((entry) => entry.organ === 'heart')) {
-    assert.equal(isSceneReleased(scene), false, `${scene.id} is a heart scene and the beta has no heart model`);
+  // The rule that has not moved: the heart's *disease* scenes stay shut. An
+  // anatomy model opening is not a licence for the pathology built on it.
+  for (const entry of SCENES.filter((scene) => scene.organ === 'heart' && scene.disease)) {
+    assert.equal(isSceneReleased(entry), false, `${entry.id} is a disease model and the beta is anatomy only`);
   }
 
   // The old rule, run again here so that restoring it fails loudly. It opened
@@ -317,12 +314,19 @@ test('beta release: the public manifest is the projection of the gate, not a sec
     RELEASED_SCENES.map((scene) => scene.id)
   );
 
-  // No placeholder rows. The heart is absent, not present-and-disabled.
+  // No placeholder rows. Every row is a model the gate actually opens — which
+  // was worth asserting when the heart was absent and is worth asserting now
+  // that it is present, because the failure it guards against is a row that is
+  // listed and shut rather than a row that is missing.
   for (const model of PUBLIC_MANIFEST.models) {
     assert.equal(isSceneReleased(sceneById(model.sceneId)), true);
     assert.equal(isRouteReleased(resolveRoute(model.route)), true, model.route);
   }
-  assert.equal(PUBLIC_MANIFEST.models.some((model) => model.organId === 'heart'), false);
+  assert.equal(
+    PUBLIC_MANIFEST.models.filter((model) => model.organId === 'heart').length,
+    1,
+    'the heart is published once, as its anatomy scene'
+  );
   assert.match(PUBLIC_MANIFEST.revision, /^[0-9a-f]{8}$/);
 
   // The manifest is the only public model list. Nobody re-derives it.
@@ -342,7 +346,7 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy']);
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');
@@ -404,13 +408,14 @@ test('beta release: a mistyped URL lands on an open model, not on a withheld one
   assert.equal(isRouteReleased(fallback), true);
   assert.equal(sceneById(DEFAULT_SCENE_ID).disease, null, 'and it is not a disease model');
 
-  // `#/heart-anatomy` is a real scene now, so it is not a typo any more — it
-  // resolves to itself. What it must not do is open: the release answers it
-  // with "to be updated", and never with a heart disease model dressed up as
-  // the heart.
+  // `#/heart-anatomy` resolves to itself and now opens. The half of this that
+  // has not changed is the half that mattered: the heart's *disease* routes
+  // stay shut, so no heart disease model is ever dressed up as the heart.
   const heartLink = resolveRoute('#/heart-anatomy');
   assert.equal(heartLink.sceneId, 'heart-anatomy');
-  assert.equal(isRouteReleased(heartLink), false, 'it resolves, and it does not open');
+  assert.equal(isRouteReleased(heartLink), true, 'it resolves, and the gate opened it');
+  assert.equal(isRouteReleased(resolveRoute('#/heart-failure')), false);
+  assert.equal(isRouteReleased(resolveRoute('#/myocardial-ischemia')), false);
 });
 
 test('beta release: a production build has no unlock at all', () => {
@@ -763,5 +768,209 @@ test('beta release: the crawlable set is what is open AND what is public, in bot
   assert.ok(
     openedUp.every((scene) => scene.status !== 'prototype'),
     'and it never contains a Prototype, whatever the channel'
+  );
+});
+
+/**
+ * The gap survey, and the thing it must never become.
+ *
+ * `betaPublicationGap()` exists to say that the beta publishes two organs while
+ * thirty-seven finished ones wait on a record nobody wrote. That is a useful
+ * number and a dangerous one: a survey that can answer "this scene would be
+ * open if only it were listed" is one careless caller away from being the
+ * thing that decides publication. So the survey is held to reporting, and the
+ * gate is held to having no way to be talked out of the membership check.
+ */
+test('beta gap: the survey reports distance and never opens anything', () => {
+  const rows = betaPublicationGap();
+  assert.ok(rows.length > 0, 'there are finished anatomy scenes the beta does not open');
+
+  for (const row of rows) {
+    // Nothing on the list appears in the gap.
+    assert.ok(
+      !BETA_ANATOMY_CANDIDATES.includes(row.sceneId),
+      `${row.sceneId}: a published candidate is not a gap`
+    );
+
+    // Every row keeps the membership line, worded exactly as the gate words
+    // it, so the two can never drift into describing different refusals.
+    const fromTheGate = betaPublicationProblems(row.sceneId);
+    assert.ok(fromTheGate.length > 0, `${row.sceneId}: the gate opened a scene the survey calls a gap`);
+    assert.equal(
+      row.problems[0],
+      fromTheGate[0],
+      `${row.sceneId}: the survey and the gate word the membership refusal differently`
+    );
+
+    // A row is never empty: "nothing stands between this and publication" is
+    // not an answer this function is allowed to give.
+    assert.ok(row.problems.length > 0, `${row.sceneId}: the survey reported a scene as clear`);
+  }
+});
+
+test('beta gap: no option talks the gate out of the candidate list', () => {
+  // The survey needed the gate's body without its first line. The way that was
+  // *not* done is an injectable candidate list — `betaPublicationProblems(id,
+  // { candidates: [id] })` returning `[]` would be this module handing out the
+  // one answer it must never hand out.
+  //
+  // **The first version of this test could not fail.** It passed unrecognised
+  // options and asserted the answer was non-empty — but every scene in the gap
+  // is missing its decision record, so the gate refuses it twice over and a
+  // relaxed membership check is invisible behind the second refusal. Proved by
+  // giving the gate an injectable `candidates` list: the test stayed green
+  // while the hazard was present.
+  //
+  // So the scene is first given everything else it would need — a complete
+  // decision, pinned to its real scene revision — and the assertion is that
+  // membership alone still refuses it. Now the only thing holding the answer
+  // up is the line this test is about.
+  const subject = betaPublicationGap().find((row) => row.decisionIsAllThatIsLeft);
+  assert.ok(subject, 'a scene whose only remaining problem is the decision');
+
+  const scene = sceneById(subject.sceneId);
+  const decisions = [
+    {
+      sceneId: subject.sceneId,
+      decidedAt: '2026-09-15',
+      decidedBy: { name: 'a test', role: 'engineering' },
+      record: 'docs/beta-publication/heart-anatomy.md',
+      assetRevisions: {},
+      sceneRevision: sceneRevisionPin(scene),
+      scope: {
+        structures: ['a structure'],
+        views: ['a view'],
+        interactions: ['an interaction'],
+      },
+      evidence: ['tests/beta-release.test.js'],
+      unverified: ['everything; this decision is a test fixture'],
+    },
+  ];
+
+  // The fixture is only worth something if it satisfies the rest of the gate,
+  // so that is checked rather than assumed.
+  assert.deepEqual(
+    publicationDecisionProblems(decisions[0], scene, { fileExists: () => true }),
+    [],
+    'the fixture decision does not satisfy the decision check, so this test proves nothing'
+  );
+
+  for (const attempt of [
+    { candidates: [subject.sceneId] },
+    { BETA_ANATOMY_CANDIDATES: [subject.sceneId] },
+    { candidateList: [subject.sceneId] },
+    { scenes: [scene] },
+  ]) {
+    const problems = betaPublicationProblems(subject.sceneId, {
+      ...attempt,
+      decisions,
+      fileExists: () => true,
+    });
+    assert.deepEqual(
+      problems,
+      [`"${subject.sceneId}" is not one of the scenes this release opens`],
+      `${subject.sceneId} was opened by passing ${JSON.stringify(attempt)}`
+    );
+  }
+});
+
+test('beta gap: what is left is read from the gate, not guessed from a substring', () => {
+  const rows = betaPublicationGap();
+  for (const row of rows) {
+    if (!row.decisionIsAllThatIsLeft) continue;
+    // The claim is specific: the only thing the gate still says about this
+    // scene, once membership is set aside, is that nobody has decided. If some
+    // other failure were being folded into "just paperwork" this would catch
+    // it, because the expected line is generated by the decision check itself.
+    assert.deepEqual(
+      row.remaining,
+      publicationDecisionProblems(null, sceneById(row.sceneId)),
+      `${row.sceneId}: "the decision is all that is left" covers something else as well`
+    );
+  }
+
+  // And the survey is not vacuously optimistic: a row with nothing remaining
+  // must not report the decision as the only thing missing.
+  assert.ok(
+    rows.every((row) => !row.decisionIsAllThatIsLeft || row.remaining.length > 0),
+    'a row with no remaining problems claimed the decision is what is missing'
+  );
+});
+
+test("a decision's scope names exactly what the browser drive is held to", () => {
+  // Three times on 2026-09-15 a publication record was corrected while the
+  // matching `scope.structures` in BETA_PUBLICATION_DECISIONS was left behind,
+  // still asserting structures a browser run had just disproved. The claim
+  // lives in two places, so the two are tied together here.
+  //
+  // **Not to the record's prose.** The first version of this test asked that
+  // every scope entry appear somewhere in the decision's markdown, and it could
+  // not fail: the corrected record *quotes the old names* while explaining that
+  // they were wrong, so the stale scope matched it word for word. Proved by
+  // restoring the stale scope — the test stayed green.
+  //
+  // So it ties to `SCENE_POINTS` instead, the authored tour that
+  // `verify:anatomy` holds the drive to: a named point fails the run if it
+  // names anything else. That makes this the same claim checked in a browser,
+  // rather than a second copy of it in prose. The script opens a browser at
+  // import, so its source is read as text — the same shape
+  // `tests/derived-asset-pipeline.test.js` uses for the repair script.
+  const source = readFileSync('scripts/check-anatomy-interaction.mjs', 'utf8');
+
+  /** The names authored for one scene's tour, or null when it has none. */
+  const tourNames = (sceneId) => {
+    const open = source.indexOf(`'${sceneId}': [`);
+    if (open === -1) return null;
+    const block = source.slice(open, source.indexOf('\n  ],', open));
+    const names = [...block.matchAll(/\[\s*[\d.]+\s*,\s*[\d.]+\s*,\s*'([^']+)'/g)].map((m) => m[1]);
+    return names.length ? names : null;
+  };
+
+  let tied = 0;
+  for (const decision of BETA_PUBLICATION_DECISIONS) {
+    const names = tourNames(decision.sceneId);
+    // A scene with no named tour is exactly the gap F-123 records; it is not
+    // asserted here, because there is nothing machine-checked to assert against.
+    if (!names) continue;
+    tied += 1;
+    assert.deepEqual(
+      [...(decision.scope?.structures ?? [])].sort(),
+      [...names].sort(),
+      `${decision.sceneId}: the publication decision's scope and the tour verify:anatomy holds ` +
+        'the drive to name different structures'
+    );
+  }
+  assert.ok(tied > 0, 'no published scene has a named tour to tie the scope to');
+});
+
+test('beta gap: a supplied catalogue is the one the gate is asked about', () => {
+  // The bug: rows were filtered and labelled from `scenes`, but the gate
+  // resolved the id through the global catalogue. So a scene supplied as a
+  // prototype was labelled `prototype` in the row and judged as the real alpha
+  // scene in the same row — the prototype refusal missing, and "the decision is
+  // all that is left" reported for something that is also a prototype.
+  const real = sceneById(betaPublicationGap()[0].sceneId);
+  const [row] = betaPublicationGap({ scenes: [{ ...real, status: 'prototype' }] });
+
+  assert.equal(row.status, 'prototype', 'the row is labelled from the supplied scene');
+  assert.ok(
+    row.remaining.some((line) => /Prototype/.test(line)),
+    `the supplied prototype status did not reach the gate: ${JSON.stringify(row.remaining)}`
+  );
+  assert.equal(
+    row.decisionIsAllThatIsLeft,
+    false,
+    'a prototype was reported as needing only a decision'
+  );
+
+  // And the injection is a default, not an override: an explicit resolveScene
+  // still decides, which is what the gate's other tests rely on.
+  const [explicit] = betaPublicationGap({
+    scenes: [{ ...real, status: 'prototype' }],
+    resolveScene: () => real,
+  });
+  assert.ok(
+    !explicit.remaining.some((line) => /Prototype/.test(line)),
+    'an explicitly supplied resolveScene was ignored'
   );
 });
