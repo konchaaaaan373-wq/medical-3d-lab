@@ -34,15 +34,17 @@
  *   --diagnostics-dir <dir>  record lifecycle/network events for a targeted run
  *   --diagnostics-wait-detail  wait for Explorer detail to settle in a direct-open control
  */
-import { createReadStream, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
 import { chromiumExecutable } from './lib/browser.mjs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { serveDist } from './lib/serve-dist.mjs';
 
 import {
   INLINE_LINK_EXEMPTION,
   MEASURED_TARGET,
   OVERFLOW_TOLERANCE_PX,
+  PHONE_TARGET,
   SURFACES,
   TARGET_EXEMPTIONS,
   TRANSIENT_OVERLAYS,
@@ -61,6 +63,23 @@ const value = (name, fallback = null) => {
 };
 const values = (name) =>
   argv.reduce((all, item, at) => (item === name && argv[at + 1] ? [...all, argv[at + 1]] : all), []);
+
+/**
+ * The width at which this product lays a scene out as one column — the same
+ * number `product-shell-b6.css` and `App.js` use, so a run of this matrix and
+ * the layout it is measuring cannot disagree about what a phone is.
+ */
+const PHONE_LAYOUT_WIDTH = PHONE_TARGET.maxWidth;
+
+/**
+ * What a control in the phone's bottom bar must measure.
+ *
+ * Higher than `MEASURED_TARGET.intent.scene` (32), which is the ambition for
+ * scene chrome at any size. A bar a thumb uses while the other hand holds the
+ * phone is the case that asks for the full 44, and it is what the device pass
+ * asked for by name.
+ */
+const PHONE_CONTROL_TARGET = PHONE_TARGET.floor;
 
 const distDir = value('--dist', 'dist');
 const jsonOut = value('--json');
@@ -139,47 +158,7 @@ if (!browserType) {
 
 // --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.svg': 'image/svg+xml',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.webp': 'image/webp',
-  '.woff2': 'font/woff2',
-  '.txt': 'text/plain; charset=utf-8',
-  '.xml': 'application/xml; charset=utf-8',
-};
-
-const root = resolve(distDir);
-
-/** Resolve a URL path inside the build, refusing anything that escapes it. */
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-
-const server = createServer((request, response) => {
-  // Every route in this product is a hash, so a path that is not a file is the
-  // application shell — the same single-page fallback a static host does.
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
-});
-
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/`;
+const { base, close: closeServer } = await serveDist(distDir);
 
 // --- the measurement, run inside the page ----------------------------------
 
@@ -200,10 +179,35 @@ const INTERACTIVE_SELECTOR =
  * A hard stop on the Tab walk.
  *
  * The walk normally ends by itself — focus leaves the document, or comes back
- * to a stop it has already marked. This is the guard for the case it does not,
- * which is the focus trap the walk exists to find.
+ * to a stop it has already marked. This is the guard against pressing Tab
+ * forever in a real trap, and **nothing else**: reaching it is not evidence of
+ * one.
+ *
+ * It used to be both, at 240, and that was a bug rather than a threshold. The
+ * budget is `controls + 8` clamped to this number, so once a page grew past
+ * 232 focusable controls the clamp bit on every run and the walk was reported
+ * as "focus is trapped or looping" no matter how good the tab order was. The
+ * Trust page has 295 — every citation in every model's source list is a link —
+ * so it failed this check on `phone-320` and `desktop-1280` for being large,
+ * and took 46 links and the feedback button down with it as "never reached",
+ * which they were not: the walk had simply stopped 63 steps early.
+ *
+ * Now the budget is twice the controls plus a margin (see `tabBudget`), and
+ * this is the ceiling on that. A ring that has not closed after visiting every
+ * control twice is not going to.
  */
-const MAX_TAB_STEPS = 240;
+const MAX_TAB_STEPS = 1200;
+
+/**
+ * How many Tab presses a surface is worth.
+ *
+ * Twice the controls, because a ring that closes does so on its second visit
+ * to its first stop, plus a margin for the browser chrome the ring passes
+ * through on the way out.
+ *
+ * @param {number} controls visible focusable elements on the page
+ */
+const tabBudget = (controls) => Math.min(controls * 2 + 8, MAX_TAB_STEPS);
 
 
 /**
@@ -230,9 +234,51 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const visible = (element) => {
     const style = getComputedStyle(element);
     if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') return false;
+    // A closed `<details>` is not on screen, and a browser says so by not
+    // painting it — but Chromium keeps the boxes its content last had, so
+    // `getBoundingClientRect` still answers with a rectangle. Measured as
+    // visible, the consent card inside the scene's information disclosure was
+    // reported as "clipped out of a panel that cannot scroll to it" on every
+    // run, about controls nobody could see at all. Whether that disclosure's
+    // *contents* behave is a question for a run that opens it.
+    if (element.closest('details:not([open])')) return false;
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0;
   };
+
+  /**
+   * Attributes written in English while the interface is in Japanese.
+   *
+   * Everywhere else both languages are in the DOM and CSS hides one. An
+   * `aria-label`, a `title` and a `placeholder` hold one string, so each is a
+   * place where somebody has to remember to ask which language is on screen —
+   * and a device pass found a Japanese interface whose login button announced
+   * itself to a screen reader as "Sign in".
+   *
+   * Latin letters and no kana or kanji at all: a string that mixes them is a
+   * Japanese string containing a product name, which is not the defect.
+   */
+  function englishOnlyAttributes() {
+    if (document.getElementById('ui')?.dataset?.lang !== 'ja') return [];
+    // Proper nouns and file formats are the same word in both languages.
+    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|Medical 3D Lab)$/i;
+    const found = [];
+    const seen = new Set();
+    for (const element of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
+      if (!visible(element)) continue;
+      for (const attribute of ['aria-label', 'title', 'placeholder']) {
+        const value = element.getAttribute(attribute);
+        if (!value || !/[A-Za-z]/.test(value)) continue;
+        if (/[\u3040-\u30ff\u4e00-\u9fff]/.test(value)) continue;
+        if (SAME_IN_BOTH.test(value.trim())) continue;
+        const key = `${attribute}=${value}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push(`${describe(element)} [${attribute}]="${value}"`);
+      }
+    }
+    return found;
+  }
 
   // --- horizontal overflow
   const overflowPx = doc.scrollWidth - doc.clientWidth;
@@ -457,7 +503,135 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
+    englishOnlyAttributes: englishOnlyAttributes(),
   };
+}
+
+/**
+ * The phone layout of a 3D scene, measured rather than looked at.
+ *
+ * A device pass on an iPhone 13 found three things a screenshot shows and no
+ * assertion caught: a console two thirds of the width with its button row
+ * scrolling sideways, so the camera control was off the end of it; a selection
+ * card whose actions wrapped under that console; and the two of them together
+ * leaving the model a strip. The viewport matrix already measures overflow and
+ * target sizes — these are the questions it did not ask, and they are asked
+ * here rather than in a second harness.
+ *
+ * Runs on the scene surface at a phone width, which is where the layout the
+ * stylesheet writes for a phone actually applies.
+ *
+ * The second question it asks is about the whole page, not the scene: at a
+ * phone width **every** visible control has to measure `target` in both
+ * dimensions. The 24px floor `measureInPage` enforces is WCAG 2.5.8 and applies
+ * at every width; this is the ambition for the width where a thumb is the only
+ * pointer, and the shipped CSS was answering it six different ways.
+ *
+ * @param {{phoneWidth: number, target: number, interactiveSelector: string,
+ *   exemptions: string[]}} options
+ */
+function measurePhoneLayoutInPage({ phoneWidth, target, interactiveSelector, exemptions }) {
+  const problems = [];
+  // "Two boxes must not sit on top of each other" and "the bar must be on
+  // screen" are true at every width, and the landscape phone — 844 wide — is
+  // exactly where the console and the gesture hint collided. Only the 44px
+  // sweep is about a phone's *width*, so only that is gated.
+  const narrow = window.innerWidth <= phoneWidth;
+
+  const rect = (selector) => {
+    const node = document.querySelector(selector);
+    if (!node) return null;
+    const box = node.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 ? box : null;
+  };
+  const describe = (node) => {
+    const label = (node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 24);
+    return `${node.tagName.toLowerCase()}.${(node.className || '').toString().split(' ')[0]}${label ? ` "${label}"` : ''}`;
+  };
+  const inside = (box) =>
+    box.left >= -1 && box.top >= -1 &&
+    box.right <= window.innerWidth + 1 && box.bottom <= window.innerHeight + 1;
+
+  const console_ = rect('.console');
+  const row = document.querySelector('.button-row');
+  const card = rect('.anatomy-panel');
+
+  if (console_ && !inside(console_)) {
+    problems.push(`the control bar is not inside the viewport (${Math.round(console_.left)}…${Math.round(console_.right)} of ${window.innerWidth})`);
+  }
+
+  // The first-use gesture hint floats over the model and is `pointer-events:
+  // none`, so no "control is covered" rule sees it — it just prints a sentence
+  // across whatever is behind it, which for one release was the slider.
+  const hint = rect('.anatomy-shell-gesture-hint');
+  if (hint && console_) {
+    const overlap = !(hint.bottom <= console_.top || hint.top >= console_.bottom ||
+      hint.right <= console_.left || hint.left >= console_.right);
+    if (overlap) problems.push('the gesture hint is printed over the control bar');
+  }
+
+  if (row) {
+    // Every control in the bar, not the bar's own box: a row that scrolls
+    // sideways has a box inside the viewport and buttons outside it.
+    for (const button of row.querySelectorAll('button')) {
+      const box = button.getBoundingClientRect();
+      if (box.width === 0 || box.height === 0) continue;
+      // On screen at every width; 44px only at a phone's. A desktop bar draws
+      // the same controls at 36 deliberately — `TOUCH_TARGET.dense` — and
+      // asking a mouse for a thumb's target is how a real rule gets switched
+      // off for being noisy.
+      if (!inside(box)) problems.push(`${describe(button)} is outside the viewport`);
+      else if (narrow && Math.min(box.width, box.height) + 0.5 < target) {
+        problems.push(`${describe(button)} is ${Math.round(box.width)}×${Math.round(box.height)}, under ${target}px`);
+      }
+    }
+    const rowBox = row.getBoundingClientRect();
+    if (row.scrollWidth > row.clientWidth + 1) {
+      problems.push(`the control bar scrolls sideways (${row.scrollWidth}px of content in ${Math.round(rowBox.width)}px)`);
+    }
+  }
+
+  // The selection card and the control bar are the two things that grew into
+  // each other on the device: the card's actions wrapped, and the bottom row
+  // went under the bar.
+  if (card && console_) {
+    const overlap = !(card.bottom <= console_.top || card.top >= console_.bottom ||
+      card.right <= console_.left || card.left >= console_.right);
+    if (overlap) problems.push('the selection card and the control bar overlap');
+  }
+
+  // --- every control on the page, not only the ones in the bar
+  if (!narrow) return { skipped: false, problems };
+  const exempt = (node) => exemptions.some((selector) => node.closest(selector));
+  // The same rule `measureInPage` uses: WCAG 2.5.8 exempts a link inside a
+  // sentence, because the line box already fixes its height and a 44px box
+  // around it would overlap the lines above and below.
+  const inlineInProse = (node) => {
+    if (node.tagName !== 'A') return false;
+    if (!getComputedStyle(node).display.startsWith('inline')) return false;
+    const parent = node.parentElement;
+    if (!parent) return false;
+    const own = (node.textContent ?? '').trim();
+    return (parent.textContent ?? '').trim().length > own.length + 4;
+  };
+  const small = [];
+  for (const node of document.querySelectorAll(interactiveSelector)) {
+    if (node.closest('details:not([open])')) continue;
+    const style = getComputedStyle(node);
+    if (style.visibility === 'hidden' || style.display === 'none' || style.opacity === '0') continue;
+    const box = node.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) continue;
+    if (Math.min(box.width, box.height) + 0.5 >= target) continue;
+    if (exempt(node) || inlineInProse(node)) continue;
+    small.push(`${describe(node)} is ${Math.round(box.width)}×${Math.round(box.height)}`);
+  }
+  if (small.length) {
+    problems.push(
+      `${small.length} control(s) under ${target}px at a phone width\n    ${small.slice(0, 8).join('\n    ')}`
+    );
+  }
+
+  return { skipped: false, problems };
 }
 
 /**
@@ -490,12 +664,24 @@ const resetFocus = (page) =>
  * so the measurement afterwards can name the elements the ring missed. The
  * walk ends when focus leaves the document (the browser chrome has it) or
  * returns to something already marked (the ring has closed).
+ *
+ * It reports **which of the three endings it got**, because they mean
+ * different things and conflating two of them is what made this check lie for
+ * a while:
+ *
+ * - `closed` — the ring came back to a stop it had already marked. Normal.
+ * - `left`   — focus went to the browser chrome. Also normal, and the usual
+ *              ending on a page whose last control is its last element.
+ * - `cut`    — the budget ran out. **Not a finding about the page.** Either
+ *              the ring really is looping without repeating (which the budget
+ *              above is set high enough to make implausible) or the budget is
+ *              wrong. Either way it says nothing about a control being
+ *              unreachable, so the caller must not read the marks afterwards.
  */
 async function walkTabOrder(page, { steps }) {
   await resetFocus(page);
   let stops = 0;
-  let closed = false;
-  let stuck = false;
+  let ending = 'cut';
   for (let step = 0; step < steps; step += 1) {
     await page.keyboard.press('Tab');
     const stop = await page.evaluate(() => {
@@ -505,15 +691,17 @@ async function walkTabOrder(page, { steps }) {
       active.setAttribute('data-vp-focus', '');
       return { already };
     });
-    if (!stop) break;
+    if (!stop) {
+      ending = 'left';
+      break;
+    }
     if (stop.already) {
-      closed = true;
+      ending = 'closed';
       break;
     }
     stops += 1;
   }
-  if (stops >= steps) stuck = true;
-  return { stops, closed, stuck };
+  return { stops, steps, ending, closed: ending === 'closed', complete: ending !== 'cut' };
 }
 
 
@@ -1228,10 +1416,14 @@ try {
             (selector) => document.querySelectorAll(selector).length,
             INTERACTIVE_SELECTOR,
           );
-          tab = await walkTabOrder(page, { steps: Math.min(controls + 8, MAX_TAB_STEPS) });
-          if (tab.stuck) {
+          tab = await walkTabOrder(page, { steps: tabBudget(controls) });
+          if (tab.ending === 'cut') {
+            // Only reachable now if a ring cycles without ever repeating a
+            // stop, which is what a trap looks like from the outside. Said as
+            // what was actually observed rather than as a diagnosis.
             problems.push(
-              `${where}: the focus ring never closed in ${tab.stops} Tab presses — focus is trapped or looping`,
+              `${where}: the focus ring visited ${tab.stops} stops without closing or leaving the ` +
+                `document, on a page with ${controls} control(s) — focus is trapped or looping`,
             );
           }
         }
@@ -1289,6 +1481,32 @@ try {
           overlays: TRANSIENT_OVERLAYS,
         });
 
+        // Every surface, not only the ones with a canvas: the console and the
+        // selection card parts measure nothing when they are not on the page,
+        // and the target sweep is about the landing page and the footers too.
+        {
+          const phone = await page.evaluate(measurePhoneLayoutInPage, {
+            phoneWidth: PHONE_LAYOUT_WIDTH,
+            target: PHONE_CONTROL_TARGET,
+            interactiveSelector: INTERACTIVE_SELECTOR,
+            // Both lists: what is exempt from the 24px floor at any width is
+            // exempt from the 44px ambition on a phone, and `PHONE_TARGET`
+            // adds the ones that are only exempt from the ambition.
+            exemptions: [
+              ...exemptionSelectors,
+              ...PHONE_TARGET.exemptions.map((exemption) => exemption.selector),
+            ],
+          });
+          for (const problem of phone.problems) problems.push(`${where}: ${problem}`);
+        }
+
+        if (measured.englishOnlyAttributes?.length) {
+          problems.push(
+            `${where}: ${measured.englishOnlyAttributes.length} attribute(s) in English while the ` +
+              `interface is Japanese\n    ${measured.englishOnlyAttributes.slice(0, 6).join('\n    ')}`,
+          );
+        }
+
         if (measured.overflowPx > OVERFLOW_TOLERANCE_PX) {
           const what = viewport.reflow
             ? 'reflow (WCAG 1.4.10): content requires two-dimensional scrolling'
@@ -1327,13 +1545,19 @@ try {
               ` (${measured.scrolledOut.slice(0, 3).join('; ')})`,
           );
         }
-        if (fullTabWalk && measured.unreachable.length) {
+        // Only when the walk finished. A walk that ran out of budget marked
+        // the stops it got to and no more, so every control after that point
+        // reads as "never reached" when the truth is "never visited". That is
+        // how 46 links and the feedback button were reported as unreachable on
+        // a page whose tab order is fine.
+        const tabWalkTrustworthy = fullTabWalk && tab?.complete;
+        if (tabWalkTrustworthy && measured.unreachable.length) {
           problems.push(
             `${where}: ${measured.unreachable.length} visible control(s) the Tab key never reached` +
               `\n    ${measured.unreachable.slice(0, 6).join('\n    ')}`,
           );
         }
-        if (fullTabWalk && measured.unreachableLinks.length) {
+        if (tabWalkTrustworthy && measured.unreachableLinks.length) {
           if (measured.engineSkipsLinks) {
             // Not this page's defect and not silently dropped: link reachability
             // is simply not measurable on an engine that does not tab to links,
@@ -1402,7 +1626,7 @@ try {
           belowIntent: measured.belowIntent.length,
           covered: measured.covered.length,
           controls: measured.interactiveCount,
-          unreachable: fullTabWalk
+          unreachable: tabWalkTrustworthy
             ? measured.unreachable.length + (measured.engineSkipsLinks ? 0 : measured.unreachableLinks.length)
             : null,
           tabStops: tab?.stops ?? null,
@@ -1431,7 +1655,7 @@ try {
   await captureB1Evidence(browser);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
 
 // --- report ----------------------------------------------------------------

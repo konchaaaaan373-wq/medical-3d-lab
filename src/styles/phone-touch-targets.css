@@ -1,0 +1,122 @@
+/*
+ * The floor a finger needs, on the widths a phone actually has.
+ *
+ * This file owns one number and nothing else: **44 px**, in both dimensions,
+ * for every control the product shows at 430 px and below. It is imported last
+ * on purpose. The controls it raises are spread over six stylesheets that each
+ * own a surface — the landing nav and footer, the scene header, the explorer
+ * appbar, the legal header, the anatomy title card, the console — and each had
+ * arrived at its own answer (40, 38, 36, 32, 31, 24). Fixing the number in six
+ * places means six places to check, and six places for the next compaction pass
+ * to undo it. One block, read last, is checkable in one read:
+ * `scripts/check-viewports.mjs` measures every visible control at 320 / 390 /
+ * 430 and fails on anything under 44, so this file and that check are a pair.
+ *
+ * Everything is written under `#ui`, and that is load-bearing rather than
+ * decoration: the surface sheets state several of these as
+ * `.landing-nav-actions .account-trigger` and `.public-models-footer-links
+ * .explorer-shell-link`, which outrank a bare class however late they are read.
+ * Every surface the product renders lives inside `#ui`, so one id in front
+ * makes this the last word without having to restate — and then chase — each
+ * owner's own selector.
+ *
+ * It raises hit area only. Font size, colour, padding-inline, icon size and the
+ * order of the row are the surface stylesheets' business and are not touched
+ * here: a control that grows to 44 px keeps the look its own sheet gave it.
+ *
+ * Two deliberate exceptions. `.landing-neco-operator` is a link set inside a
+ * sentence, and giving an inline link a 44 px box makes it overlap the lines
+ * around it — WCAG 2.5.8 exempts exactly this case, and the check applies the
+ * same rule without having to name it. The Trust page's citation lists
+ * (`.trust-source`) are left at their 24 px for a related reason at a larger
+ * scale: they are a reading surface's references, not the product's controls,
+ * and a page of 280 of them at 44 px each is a different page. That one is
+ * named, in `PHONE_TARGET.exemptions`, because it is block-level and the inline
+ * rule does not reach it.
+ *
+ * `.landing-footer-operator` looks like the first of those and is not: it is a
+ * whole line of its own in the footer identity block, not a link inside a
+ * sentence, so it is raised with everything else.
+ */
+
+@media (max-width: 430px) {
+  /* ---------- headers, footers, navigation, account, language ---------- */
+
+  #ui .skip-link,
+  #ui .landing-brand,
+  #ui .landing-nav-link,
+  #ui .landing-footer-link,
+  #ui .global-nav-brand,
+  #ui .public-models-brand,
+  #ui .explorer-shell-link,
+  #ui .trust-brand,
+  #ui .trust-open-model,
+  #ui .legal-brand,
+  #ui .legal-nav-links a,
+  #ui .trust-footer-links a,
+  #ui .locked-brand,
+  #ui .locked-link,
+  #ui .landing-footer-operator,
+  #ui .account-trigger,
+  #ui .ui-toggle {
+    /* `inline-flex`, not `flex`: most of these are anchors inside a row that
+       lays them out, and making one block-level changes where its row puts it.
+       `align-items` because the box is now taller than its text. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* Both dimensions. An icon-only account button clears 44 in height and is
+       still a 38 px sliver to aim at; `min-width` on a link that is already
+       140 px wide costs nothing. */
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* ---------- the anatomy title card's rail ---------- */
+
+  /* The two buttons beside 情報・設定 on a scene. The phone block in
+     `product-shell-b6.css` compacts the card they sit on; what it must not
+     compact is the buttons themselves. */
+  #ui .rail-buttons > button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* ---------- the part sheet's own chrome ---------- */
+
+  /* Everything the sheet puts around the list: the three actions on the
+     selected part, the three tabs, the close, and the search box. Discrete
+     controls, few of them, and on a phone the sheet is the *only* place the
+     actions can be reached at all — the card behind it is one row.
+
+     The list itself is not here. `TOUCH_TARGET.dense` is this product's own
+     answer for dense in-scene chrome — 32 px with spacing — and the part tree
+     is 271 rows of exactly that. It clears the WCAG 2.5.8 floor, and raising
+     it would add four thousand pixels of scroll to a list whose job is to be
+     scannable. `PHONE_TARGET.exemptions` records that decision so the check
+     enforces the rest of the sheet rather than being switched off for it. */
+  #ui .anatomy-panel-action,
+  #ui .anatomy-panel-tab,
+  #ui .anatomy-panel-close,
+  #ui .anatomy-search-input {
+    min-height: 44px;
+  }
+
+  /* Width too, for the short ones: 寄る is 42 px of label and 部位 is 38, both
+     tall enough and both still a sliver to aim at. */
+  #ui .anatomy-panel-action,
+  #ui .anatomy-panel-tab,
+  #ui .anatomy-panel-close {
+    min-width: 44px;
+  }
+
+  /* ---------- the console's slider ---------- */
+
+  /* Already transparent with the track and thumb drawn inside it, so all that
+     changes is how much of the row answers a thumb. 24 px is the WCAG 2.5.8
+     floor the build enforces everywhere; a phone gets the 44. */
+  #ui .slider,
+  #ui .slider-sm {
+    height: 44px;
+  }
+}

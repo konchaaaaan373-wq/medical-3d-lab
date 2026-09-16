@@ -194,9 +194,16 @@ export function systemsWithScenes(scenes = SCENES, systems = SYSTEMS) {
   return grouped;
 }
 
-/** Resolves `#/<slug>` to a scene id, falling back to the historic default scene. */
+/**
+ * Resolves `#/<slug>` to a scene id, falling back to the historic default scene.
+ *
+ * A route may carry state after a `?` — which structure to open on, today — and
+ * that is *where* the reader is going, not *what* they are going to. Stripping
+ * it here is what keeps a deep link from falling through to the default scene:
+ * `brain-anatomy?structure=17` is not a slug anything is registered under.
+ */
 export function resolveSceneId(hash = '') {
-  const slug = String(hash).replace(/^#\/?/, '').trim();
+  const slug = String(hash).replace(/^#\/?/, '').split('?')[0].trim();
   return sceneBySlug(slug)?.id ?? DEFAULT_SCENE_ID;
 }
 

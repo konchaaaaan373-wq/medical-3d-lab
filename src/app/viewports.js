@@ -18,6 +18,7 @@
  * Pure JavaScript — no DOM, no `three`.
  */
 import { PHONE_MAX_WIDTH, deviceClassForViewport } from './performanceBudget.js';
+import { TOUCH_TARGET } from '../styles/palette.js';
 
 /**
  * The sizes that are checked.
@@ -36,6 +37,9 @@ import { PHONE_MAX_WIDTH, deviceClassForViewport } from './performanceBudget.js'
 export const VIEWPORTS = [
   { id: 'phone-320', label: 'Narrowest phone', width: 320, height: 568, reflow: true },
   { id: 'phone-375', label: 'Common phone', width: 375, height: 812 },
+  // The device the F-101 pass was run on, so a report about that phone and a
+  // run of this matrix are about the same width.
+  { id: 'phone-390', label: 'iPhone 13', width: 390, height: 844 },
   { id: 'phone-430', label: 'Large phone', width: 430, height: 932 },
   { id: 'phone-landscape', label: 'Phone, landscape', width: 932, height: 430, short: true },
   { id: 'tablet-768', label: 'Tablet', width: 768, height: 1024 },
@@ -178,6 +182,49 @@ export const TRANSIENT_OVERLAYS = [
  * not about a class — so the browser-side check decides it, and this records
  * what it is deciding and why.
  */
+/**
+ * What a control must measure on a phone.
+ *
+ * `MEASURED_TARGET.floor` is 24 — the WCAG 2.5.8 minimum, which is a floor for
+ * every width and is not an ambition. A device pass on an iPhone 13 asked the
+ * other question: at the width a thumb is the only pointer, and the other hand
+ * is holding the phone, what does a control have to be? 44, everywhere, in both
+ * dimensions — and the shipped CSS was answering 40, 38, 36, 32, 31 and 24 on
+ * six different surfaces.
+ *
+ * `maxWidth` is the same 430 as `PHONE_LAYOUT_WIDTH` in the check and the phone
+ * block in `product-shell-b6.css`: one number for what a phone is.
+ *
+ * Exemptions are the same idea as `TARGET_EXEMPTIONS` and carry the same
+ * obligation — a reason written down, because "it was failing" is not one. The
+ * inline-link rule (`INLINE_LINK_EXEMPTION`) applies here too and catches the
+ * links inside sentences without naming them; what needs naming is a link that
+ * is block-level and still not a control.
+ */
+export const PHONE_TARGET = {
+  maxWidth: 430,
+  // `TOUCH_TARGET.primary`, not a second 44: the palette already states what a
+  // primary control measures, and two copies of a number are two chances to
+  // disagree about it.
+  floor: TOUCH_TARGET.primary,
+  exemptions: [
+    {
+      selector: '.anatomy-tree-group, .anatomy-tree-leaf',
+      why:
+        'A row of the part tree — 271 of them in one scrolling list. `TOUCH_TARGET.dense` is ' +
+        'this product\'s own answer for dense in-scene chrome (32px with spacing); the rows clear ' +
+        'the 24px floor, and 44px each would add four thousand pixels of scroll to a list whose ' +
+        'job is to be scannable. The sheet\'s own chrome around it is held to 44.',
+    },
+    {
+      selector: '.trust-source',
+      why:
+        'A citation in the Trust page\'s source list — a reading surface\'s reference, not a ' +
+        'control of the product. There are ~280 of them on one page and they stay at the 24px floor.',
+    },
+  ],
+};
+
 export const INLINE_LINK_EXEMPTION = {
   id: 'inline-link',
   why: 'WCAG 2.5.8 exempts a link inside a sentence, whose height the line box already fixes.',

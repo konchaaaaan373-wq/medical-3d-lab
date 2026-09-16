@@ -4,11 +4,20 @@ import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './scene
 import { SCENES } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
-import { isInPageAnchor, sameRoute } from './router.js';
+import { structureOf } from './router.js';
+import { installDeparture } from './departure.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
-import { framePose, distanceScaleForAspect, fitPoseToSafeArea, orbitLimitsForSubject } from './framing.js';
+import {
+  bandCentreNdc,
+  distanceScaleForAspect,
+  dollyAboutNdc,
+  fitPoseToSafeArea,
+  framePose,
+  orbitLimitsForSubject,
+  shiftIntoBand,
+} from './framing.js';
 import {
   BACKGROUND_PRESETS,
   DEFAULT_BACKGROUND_ID,
@@ -17,6 +26,7 @@ import {
 } from './inspection.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
 import { el } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
@@ -259,6 +269,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     };
   };
 
+  /**
+   * The width at which this product is one column — the same number the
+   * stylesheet lays the phone out at, so the framing and the layout cannot
+   * come to disagree about what a phone is.
+   */
+  const PHONE_WIDTH = 430;
+
   /** The scene's authored framing for the current view and window, before zoom. */
   const framedPose = (pose) => {
     const framed = framePose(
@@ -285,7 +302,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       // with vessels leaving it in every direction, and filling the band cut
       // every one of them off flush with an edge. It is a composition, so the
       // scene that knows what it is drawing owns it.
-      ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
+      //
+      // On a phone, a scene that does not say takes more of the band than it
+      // would on a desktop. The band is measured from a bounding *box*, and the
+      // box of a subject seen at an angle is larger than its silhouette — a
+      // margin that reads as composition across a window and as a small model
+      // down a 390 px column, where the band is half the screen to begin with.
+      // A scene that states its own coverage still gets it: this is the default
+      // for one that does not, not an override of one that does.
+      ...(bounds.coverage > 0
+        ? { coverage: bounds.coverage }
+        : viewer.container.clientWidth <= PHONE_WIDTH
+          ? { coverage: 0.92 }
+          : {}),
     }) : framed;
   };
 
@@ -320,9 +349,34 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const applied = next / userZoom;
     userZoom = next;
 
-    const offset = viewer.camera.position.clone().sub(viewer.controls.target);
-    const distance = zoomed(offset.length() * applied, 1, viewer.controls);
-    viewer.camera.position.copy(viewer.controls.target).add(offset.setLength(distance));
+    // About the middle of what the reader can see, not about the orbit centre.
+    //
+    // A wheel and a pinch have a point behind them and `zoomToCursor` anchors
+    // on it; a button and a key do not. Dollying toward the target instead —
+    // which is what this did — walks the subject out of the frame, because the
+    // framing deliberately leaves the target where the subject is not: it pans
+    // camera and target together to sit the subject in the band the panels
+    // leave. Measured at 1280x800, the brain's centre sat 177px left of the
+    // target, and each halving of the distance doubled that. See
+    // `dollyAboutNdc`.
+    //
+    // The clamp is applied as a factor rather than by setting a distance, so
+    // camera and target stay on the same scale and the anchor stays fixed: at
+    // the limits the zoom simply stops short.
+    const before = viewer.camera.position.distanceTo(viewer.controls.target);
+    const factor = before > 0 ? zoomed(before * applied, 1, viewer.controls) / before : applied;
+    const insets = safeAreaInsets();
+    const moved = dollyAboutNdc(
+      { position: viewer.camera.position, target: viewer.controls.target },
+      {
+        ndc: bandCentreNdc(insets ?? {}),
+        factor,
+        aspect: viewer.camera.aspect,
+        fovDegrees: viewer.camera.fov,
+      }
+    );
+    viewer.camera.position.copy(moved.position);
+    viewer.controls.target.copy(moved.target);
     viewer.controls.update();
 
     // Keep the pending framing in step, so the next stage change or view toggle
@@ -467,7 +521,66 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     userZoom = clampZoom(actual / base);
     setShot(shotSource);
     syncZoomLimits();
+    rescueSubjectIfLost();
   });
+
+  /**
+   * Bring the subject back only when the reader has actually lost it.
+   *
+   * Zooming about the pointer is what a zoom means, and it lets somebody walk
+   * the subject off the edge — which is also what they mean, right until it is
+   * gone. So: nothing at all while any reasonable part of it is inside the band
+   * the panels leave, and when it does act, the smallest move on only the axes
+   * that are out. Never a re-centring — a reader who zoomed into one gyrus
+   * keeps their gyrus where they put it. `shiftIntoBand` owns that judgement
+   * and is tested on its own.
+   *
+   * Run when a gesture ends, never during one: correcting mid-pinch would fight
+   * the fingers doing it.
+   */
+  function rescueSubjectIfLost() {
+    const bounds = scene.getSubjectBounds?.();
+    const insets = safeAreaInsets();
+    if (!bounds?.corners?.length || !insets) return;
+
+    // The subject's box and the band, both in normalised device coordinates.
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const corner of bounds.corners) {
+      const point = rescueScratch.copy(corner).project(viewer.camera);
+      x0 = Math.min(x0, point.x); x1 = Math.max(x1, point.x);
+      y0 = Math.min(y0, point.y); y1 = Math.max(y1, point.y);
+    }
+    const band = {
+      x0: -1 + 2 * insets.left,
+      x1: 1 - 2 * insets.right,
+      y0: -1 + 2 * insets.bottom,
+      y1: 1 - 2 * insets.top,
+    };
+    const shift = shiftIntoBand({ x0, x1, y0, y1 }, band);
+    if (!shift) return;
+
+    // The shift is where the subject should appear; the camera moves the other
+    // way by the same amount, measured on the plane through the orbit centre.
+    const distance = viewer.camera.position.distanceTo(viewer.controls.target);
+    const halfHeight = distance * Math.tan((viewer.camera.fov * Math.PI) / 180 / 2);
+    const rightAxis = rescueRight.setFromMatrixColumn(viewer.camera.matrixWorld, 0).normalize();
+    const upAxis = rescueUp.setFromMatrixColumn(viewer.camera.matrixWorld, 1).normalize();
+    const pan = rescuePan
+      .copy(rightAxis).multiplyScalar(-shift.x * halfHeight * viewer.camera.aspect)
+      .addScaledVector(upAxis, -shift.y * halfHeight);
+
+    // Through the app's own camera tween, so it arrives the way every other
+    // camera move does rather than snapping. `shot` is set directly and
+    // `shotSource` is left alone: this is a nudge to where the reader already
+    // is, not the authored framing coming back.
+    shot.position.copy(viewer.camera.position).add(pan);
+    shot.target.copy(viewer.controls.target).add(pan);
+    view.active = true;
+  }
+  const rescueScratch = new THREE.Vector3();
+  const rescueRight = new THREE.Vector3();
+  const rescueUp = new THREE.Vector3();
+  const rescuePan = new THREE.Vector3();
 
   // --- UI -------------------------------------------------------------------
   const playback = new Playback({ duration: 26 });
@@ -928,18 +1041,37 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     showLab: betaUnlocked(),
   });
 
+  // Both languages in the DOM, CSS hides one — this button had only the
+  // Japanese, so an English interface carried a button reading UIを隠す. The
+  // `title` is the other half of the same defect and holds the one on screen.
   const uiToggle = el('button', {
     class: 'ui-toggle',
     type: 'button',
-    title: 'Hide interface for capture (H)',
-    text: 'UIを隠す',
+    // A stable name, for the same reason the console's buttons have one: the
+    // label and the title are prose, and prose is now in the reader's language.
+    // `capture-anatomy-views.mjs` addressed this button as
+    // `.ui-toggle[title^="Hide interface"]` and stopped finding it the moment
+    // the title started answering in Japanese — a screenshot tool that cannot
+    // hide the interface is a screenshot tool that does not run.
+    dataset: { control: 'hideUi' },
     on: {
       click: () => {
-        const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
+        paintUiToggle(ui.classList.toggle('is-hidden'));
       },
     },
   });
+
+  function paintUiToggle(hidden) {
+    uiToggle.replaceChildren(
+      el('span', { class: 'lang-en', text: hidden ? 'Show interface' : 'Hide interface' }),
+      el('span', { class: 'lang-ja', text: hidden ? 'UIを表示' : 'UIを隠す' })
+    );
+    uiToggle.title = hidden
+      ? inLanguage('Show the interface again (H)', 'UI を再表示する（H）')
+      : inLanguage('Hide interface for capture (H)', 'キャプチャ用に UI を隠す（H）');
+  }
+
+  onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
 
   // The rail is a shared scroll box: on a short or narrow window its contents
   // genuinely run past its edge, and a clipped panel reads as one that simply
@@ -1465,7 +1597,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     seek,
     resetModel: resetMedicalState,
     ui,
-    uiToggle,
+    paintUiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     zoomBy,
     exitReel: () => {
@@ -1585,16 +1717,15 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   viewer.start();
 
   // Switching scenes via the URL hash is rare enough that a reload is fine —
-  // and it guarantees a clean GPU state. Compared as *routes* rather than as
-  // scene ids: leaving for the organ explorer is a navigation too, and
-  // resolving it to a scene id would have made that link do nothing.
-  let currentHash = window.location.hash;
-  window.addEventListener('hashchange', () => {
-    // An in-page anchor is not navigation. Reloading a 3D scene because
-    // somebody used a skip link would throw away the camera, the progression
-    // and any model controls they had set.
-    if (isInPageAnchor(window.location.hash)) return;
-    if (!sameRoute(window.location.hash, currentHash)) window.location.reload();
+  // and it guarantees a clean GPU state. `installDeparture` owns the rest:
+  // comparing as *routes* rather than scene ids (leaving for the organ explorer
+  // is a navigation too), ignoring in-page anchors, and covering the canvas
+  // while the next document is on its way. Without that last part the renderer
+  // keeps painting this scene under the new URL for as long as the reload takes,
+  // which reads as "that link opened this model".
+  installDeparture({
+    shownHash: window.location.hash,
+    language: ui.dataset.lang === 'en' ? 'en' : 'ja',
   });
 
   // Exposed for debugging and for automated screenshots.
@@ -1651,6 +1782,31 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     },
     charts: chartById,
   };
+
+  /**
+   * The structure the route opened on, if it named one.
+   *
+   * This is the other half of the landing hero's name card: a reader who found
+   * a part on the small model arrives here already looking at it, rather than
+   * being handed a whole brain and asked to find it again.
+   *
+   * Done last, after every panel is subscribed, so the selection is drawn by
+   * all of them rather than by whichever happened to exist yet. Two actions and
+   * no more: **select** it, and **bring it into view** — the same pair the
+   * panel's own "go to" offers. It deliberately does not *reveal* it, which
+   * changes the layer and the viewpoint: a link may say where to look, not
+   * rearrange the model on arrival.
+   *
+   * An id the model does not have is a stale or hand-typed link, and the model
+   * opens normally rather than failing: nothing is selected, and the panel
+   * says what it always says when nothing is.
+   */
+  const openingStructure = isAnatomyScene ? structureOf(window.location.hash) : null;
+  if (openingStructure) {
+    if (scene.selectStructure?.(openingStructure)) focusOnStructure(openingStructure);
+    else console.info('scene: the route named a structure this model does not have', openingStructure);
+  }
+
   return window.__app;
 }
 
@@ -1688,7 +1844,7 @@ function tweenPose(viewer, pose, dt) {
  * Keyboard shortcuts: space = play/pause, R = reset model, H = hide UI, C = compare,
  * arrows = step, +/- = zoom, Escape = leave the social sequence.
  */
-function bindKeyboard({ playback, seek, resetModel, ui, uiToggle, toggleComparison, exitReel, zoomBy }) {
+function bindKeyboard({ playback, seek, resetModel, ui, paintUiToggle, toggleComparison, exitReel, zoomBy }) {
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       exitReel?.();
@@ -1715,11 +1871,11 @@ function bindKeyboard({ playback, seek, resetModel, ui, uiToggle, toggleComparis
         resetModel();
         break;
       case 'h':
-      case 'H': {
-        const hidden = ui.classList.toggle('is-hidden');
-        uiToggle.textContent = hidden ? 'UIを表示' : 'UIを隠す';
+      case 'H':
+        // The button is the one place that knows what it should read; the
+        // shortcut flips the same class and lets it repaint itself.
+        paintUiToggle(ui.classList.toggle('is-hidden'));
         break;
-      }
       case 'c':
       case 'C':
         toggleComparison?.();

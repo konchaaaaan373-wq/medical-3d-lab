@@ -9,7 +9,7 @@ import {
   saveEducationGuideStep,
 } from './educationProgress.js';
 import { authoredFeaturesForScene, featuresForScene } from './features.js';
-import { captureGuideSession, restoreGuideSession } from './guideSession.js';
+import { beginGuideSession, captureGuideSession, restoreGuideSession } from './guideSession.js';
 import { ENTITLEMENT } from './policy.js';
 import { emitAppEvent } from '../app/appEvents.js';
 import { betaUnlocked } from '../app/releaseGate.js';
@@ -149,7 +149,7 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     el('span', { class: 'btn-label lang-ja', text: '患者説明' }),
     lock,
   ]);
-  button.title = 'Patient explanation mode';
+  button.title = 'Patient explanation mode / 患者説明モード';
   button.addEventListener('click', async () => {
     if (!access.has(ENTITLEMENT.PATIENT)) {
       access.open(ENTITLEMENT.PATIENT);
@@ -213,7 +213,11 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
       onExit: closeGuide,
       onPresentationChange: (enabled) => {
         ui.classList.toggle('is-patient-presentation', enabled && open);
-        if (enabled && open) emitAppEvent('guide:open', { fullscreen: true });
+        if (enabled && open) {
+          // The consultation shell is not browser full screen. Record one open
+          // after it is visible, with the actual browser state kept distinct.
+          emitAppEvent('guide:open', { fullscreen: Boolean(document.fullscreenElement) });
+        }
       },
     });
     consolePanel.append(guidePanel.element);
@@ -228,7 +232,10 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     const unlocked = grants.includes(ENTITLEMENT.PATIENT);
     button.classList.toggle('is-locked', !unlocked);
     lock.hidden = unlocked;
-    button.setAttribute('aria-label', unlocked ? 'Patient explanation' : 'Patient explanation — locked');
+    button.setAttribute(
+      'aria-label',
+      unlocked ? 'Patient explanation / 患者説明' : 'Patient explanation — locked / 患者説明 — ロック中'
+    );
     if (!unlocked && open) closeGuide();
   });
 
@@ -237,14 +244,16 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     exitSceneModes(app);
 
     // The paid patient layer temporarily owns only the public progression axis
-    // and presentation density. The clinician's exact model position/play state
-    // and whether they had asked for Data view are both restored on exit.
-    sessionSnapshot = captureGuideSession(app.playback);
+    // and presentation density. Capture before pausing so closing without taking
+    // a step restores the clinician's exact position and play state. While the
+    // guide is open, captions and the model must never drift apart.
+    sessionSnapshot = beginGuideSession(app.playback);
     previousDataView = Boolean(app.isDataView?.());
 
-    // Patient mode is intentionally the same 3D/model in the app's simpler
-    // Learning view. That hides PV/waveform/chart/metric/model-control panels
-    // without inventing a second physiology or a second set of read-outs.
+    // The consultation view keeps the scene's real model and state, while its
+    // shell removes the expert console from the patient's line of sight. Data
+    // view is still left temporarily because its plots and controls belong to
+    // the separate medical-education use case.
     app.setDataView?.(false);
 
     stateSnapshot = app.guideState?.capture?.() ?? null;
@@ -253,7 +262,6 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     );
 
     open = true;
-    emitAppEvent('guide:open', { fullscreen: false });
     // Opened where the model already is, so the explanation describes the state
     // on screen instead of resetting it to the first caption — the controls as
     // well as the position, because two steps can sit at the same place on the
@@ -263,6 +271,11 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
       controls: controlsNow,
     });
     ui.classList.add('is-patient-guide');
+    // Patient explanation is a dedicated consultation-room view, not an
+    // optional enlargement of the education console. Presentation changes only
+    // the shell; the guide continues to drive the same reviewed medical model.
+    // Its callback records the single guide-open event after the view is ready.
+    guidePanel.setPresentation(true);
     button.classList.add('is-on');
     button.setAttribute('aria-pressed', 'true');
     requestAnimationFrame(() => guidePanel.focus());

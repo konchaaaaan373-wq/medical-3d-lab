@@ -40,6 +40,9 @@ import { BLOCK, buildSkinBlock } from '../../organs/skinBlock.js';
  * a reader would read the dent as the injury. The block is still, the load
  * descends to meet it, and what changes is the profile.
  */
+/** Whether a read-out value is a number, and so whether its unit belongs beside it. */
+const reads = (value) => String(value).trim() !== '' && Number.isFinite(Number(value));
+
 export class PressureInjuryScene {
   static meta = {
     id: 'pressure-injury',
@@ -195,7 +198,10 @@ export class PressureInjuryScene {
     // The load comes down to meet the surface. The surface does not move: a
     // dent would be read as the injury, and there is no injury in this model.
     if (this.load) {
-      this.load.visible = solved.loaded || solved.load > 0 || this.controls.ground !== 'none';
+      // Read off the solved ground rather than the raw control: the model is
+      // what resolves an unknown value to "nothing is pressing", and a drawing
+      // property whose final value is decided in two places is rule 3.
+      this.load.visible = solved.ground !== 'none';
       const lift = PressureInjuryScene.LOAD_LIFT * (1 - solved.load);
       this.load.position.set(0, DEPTHS.surface + 0.18 + lift, 0);
       this.loadMaterial.opacity = solved.loaded ? 0.92 : 0.35;
@@ -286,7 +292,9 @@ export class PressureInjuryScene {
       // Printed rather than omitted: the absence is the claim.
       stage: 'not in this model',
     };
-    return METRICS.map((m) => ({ ...m, value: value[m.id] }));
+    // A unit belongs to a number. With nothing pressing this row is "—", and a
+    // multiplication sign beside a dash reads as a measurement of the dash.
+    return METRICS.map((m) => ({ ...m, value: value[m.id], unit: reads(value[m.id]) ? m.unit : '' }));
   }
 
   dispose() {

@@ -6,6 +6,7 @@ import {
   INLINE_LINK_EXEMPTION,
   MEASURED_TARGET,
   OVERFLOW_TOLERANCE_PX,
+  PHONE_TARGET,
   PROMISED_PHONE_WIDTHS,
   SURFACES,
   TARGET_EXEMPTIONS,
@@ -188,6 +189,46 @@ test('thresholds: every target-size exemption is justified in writing', () => {
   assert.match(INLINE_LINK_EXEMPTION.why, /2\.5\.8/);
 });
 
+test('thresholds: the phone floor is the palette\'s primary target, not a second 44', () => {
+  // Two copies of a number are two chances to disagree about it. The device
+  // pass asked for 44 on a phone; `TOUCH_TARGET.primary` is where this product
+  // already says what 44 means.
+  assert.equal(PHONE_TARGET.floor, TOUCH_TARGET.primary);
+  // Above the floor every width has to clear, or it would say nothing.
+  assert.ok(PHONE_TARGET.floor > MEASURED_TARGET.floor);
+  assert.ok(PHONE_TARGET.floor > MEASURED_TARGET.intent.scene);
+});
+
+test('thresholds: what a phone is agrees with the stylesheet that lays one out', () => {
+  // `product-shell-b6.css` writes the one-column phone layout at this width and
+  // `App.js` widens the camera framing at it. A check that measured a different
+  // width would be measuring a layout that is not the phone's.
+  const css = readFileSync(new URL('../src/styles/product-shell-b6.css', import.meta.url), 'utf8');
+  assert.ok(
+    css.includes(`max-width: ${PHONE_TARGET.maxWidth}px`),
+    'the phone block in product-shell-b6.css no longer starts at PHONE_TARGET.maxWidth',
+  );
+  const floor = readFileSync(new URL('../src/styles/phone-touch-targets.css', import.meta.url), 'utf8');
+  assert.ok(
+    floor.includes(`max-width: ${PHONE_TARGET.maxWidth}px`),
+    'the touch-target floor applies at a different width from the phone layout',
+  );
+  assert.ok(
+    floor.includes(`min-height: ${PHONE_TARGET.floor}px`),
+    'the touch-target floor stylesheet no longer writes PHONE_TARGET.floor',
+  );
+});
+
+test('thresholds: every phone-target exemption is justified in writing', () => {
+  for (const exemption of PHONE_TARGET.exemptions) {
+    assert.ok(exemption.selector, 'an exemption that names nothing exempts everything');
+    assert.ok(
+      typeof exemption.why === 'string' && exemption.why.length > 20,
+      `"${exemption.selector}" is exempt from the phone floor without saying why`,
+    );
+  }
+});
+
 test('overlays: an ancestor is not something painted over a control', () => {
   // Not a data assertion — a note about the rule the browser-side check
   // applies, kept here because it is the one part of it a reader is most
@@ -296,7 +337,42 @@ test('the viewport check supports every engine and the explicit final workflow d
     new URL('../.github/workflows/final-browser-validation.yml', import.meta.url),
     'utf8',
   );
-  assert.doesNotMatch(ci, /playwright install/, 'ordinary PR pushes do not start full browsers');
+  // What the workflow *runs*, with its comments off: a comment naming an engine
+  // is not a step starting one, and the comment above this job names the two
+  // that stay out.
+  const ciSteps = ci.replace(/#.*$/gm, '');
+
+  // Until 2026-09-15 this read "ordinary PR pushes do not start full browsers"
+  // and was held by `assert.doesNotMatch(ci, /playwright install/)`. The reason
+  // was Actions minutes on a private repository (F-100), not a view about
+  // browsers, and the repository is public now. The line moved rather than
+  // disappearing: **one engine, one check, on every pull request.**
+  assert.match(ciSteps, /playwright install --with-deps chromium/, 'PR CI drives Chromium');
+
+  // Named anywhere in those steps, not just straight after `--with-deps`: the
+  // first version anchored on that and let `--with-deps chromium firefox
+  // webkit` through untouched.
+  assert.doesNotMatch(
+    ciSteps,
+    /firefox|webkit/i,
+    'the other two engines stay at candidate time — three engines per push is a different decision'
+  );
+  assert.match(ciSteps, /npm run verify:ui/, 'and it is the viewport matrix that runs');
+  for (const other of ['verify:auth', 'verify:anatomy', 'verify:disease', 'verify:patient']) {
+    assert.doesNotMatch(
+      ciSteps,
+      new RegExp(`npm run ${other}`),
+      `${other} stays at candidate time; F-112 holds what would move it`
+    );
+  }
+
+  // The fast job stays fast. A failing unit test has to be reportable without
+  // waiting for a browser to download, which is why this is a second job and
+  // not four more minutes appended to the first.
+  const fastJob = ciSteps.slice(ciSteps.indexOf('  test-and-build:'), ciSteps.indexOf('  verify-ui:'));
+  assert.doesNotMatch(fastJob, /playwright/, 'test-and-build does not install a browser');
+  assert.match(ci, /\n  verify-ui:/, 'the browser check is its own job');
+
   assert.match(final, /workflow_dispatch:/, 'the full matrix requires an explicit candidate run');
   for (const engine of ['chromium', 'firefox', 'webkit']) {
     assert.ok(final.includes(engine), `the final workflow installs and runs ${engine}`);
@@ -326,8 +402,52 @@ test('an engine that does not tab to links is told apart from a page that lost o
   assert.match(check, /Tabbing to links: \$\{engine\} does not, so this run could not measure it\./);
 
   // Where the engine does tab to links, an unreachable one still fails.
-  const branch = check.slice(check.indexOf('if (fullTabWalk && measured.unreachableLinks.length)'));
-  assert.match(branch.slice(0, 900), /visible link\(s\) the Tab key never reached/);
+  const at = check.indexOf('if (tabWalkTrustworthy && measured.unreachableLinks.length)');
+  assert.ok(at > 0, 'the unreachable-links branch was renamed; this test no longer reads it');
+  assert.match(check.slice(at, at + 900), /visible link\(s\) the Tab key never reached/);
+});
+
+test('the Tab walk: running out of budget is not a focus trap', () => {
+  const check = readFileSync(new URL('../scripts/check-viewports.mjs', import.meta.url), 'utf8');
+
+  // The bug this pins: the budget was `controls + 8` clamped to 240, and
+  // hitting the clamp set `stuck`, which was reported as "focus is trapped or
+  // looping". Any page with more than 232 focusable controls therefore failed
+  // for being large. The Trust page has 295 — one link per citation — so it
+  // failed on two viewports, and took 46 links and the feedback button with it
+  // as "never reached", which they were not: the walk stopped 63 steps early.
+  assert.doesNotMatch(check, /stuck = true/, 'reaching the step cap is not a diagnosis');
+  assert.doesNotMatch(
+    check,
+    /Math\.min\(controls \+ 8, MAX_TAB_STEPS\)/,
+    'the budget is no longer one Tab press per control',
+  );
+
+  // Three endings, told apart, because two of them are normal and the third is
+  // not about the page at all.
+  assert.match(check, /ending = 'cut'/);
+  assert.match(check, /ending = 'left'/);
+  assert.match(check, /ending = 'closed'/);
+  assert.match(check, /complete: ending !== 'cut'/);
+
+  // The budget is generous relative to the page: a ring that closes does so on
+  // the second visit to its first stop.
+  assert.match(check, /const tabBudget = \(controls\) => Math\.min\(controls \* 2 \+ 8, MAX_TAB_STEPS\)/);
+  const cap = check.match(/const MAX_TAB_STEPS = (\d+);/);
+  assert.ok(cap, 'the walk has no ceiling at all');
+  // Above twice the largest surface this product has, so the ceiling is the
+  // infinite-loop guard it claims to be rather than a threshold in disguise.
+  assert.ok(Number(cap[1]) > 295 * 2 + 8, `${cap[1]} is below what the Trust page alone needs`);
+
+  // And a walk that was cut short leaves marks that mean nothing, so the
+  // findings built on those marks must not be read.
+  assert.match(check, /const tabWalkTrustworthy = fullTabWalk && tab\?\.complete/);
+  for (const finding of [
+    'if (tabWalkTrustworthy && measured.unreachable.length)',
+    'if (tabWalkTrustworthy && measured.unreachableLinks.length)',
+  ]) {
+    assert.ok(check.includes(finding), `"${finding}" no longer waits for a complete walk`);
+  }
 });
 
 test('an engine with no WebGL2 is told apart from a renderer that failed', () => {

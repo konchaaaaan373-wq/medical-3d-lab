@@ -15,6 +15,7 @@
     "verify:live": "node scripts/check-live-site.mjs",
     "verify:live-auth": "node scripts/check-live-auth.mjs",
     "revisions:check": "node scripts/adopt-revisions.js",
+    "review-states": "node scripts/review-states.js",
     "revisions:adopt": "node scripts/adopt-revisions.js --adopt",
     "verify:ui": "node scripts/check-viewports.mjs",
     "verify:auth": "node scripts/check-auth-flow.mjs",
@@ -22,7 +23,9 @@
     "cards:check": "node scripts/check-social-cards.js",
     "verify:anatomy": "node scripts/check-anatomy-interaction.mjs",
     "points:anatomy": "node scripts/measure-anatomy-points.mjs",
+    "verify:hero-input": "node scripts/check-hero-input.mjs",
     "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
+    "shots:phone": "node scripts/capture-phone-states.mjs",
     "assets:dev": "node scripts/fetch-dev-assets.mjs",
     "assets:measure": "node scripts/measure-candidate-surfaces.mjs",
     "assets:validate": "node scripts/validate-candidate-gltf.mjs",
@@ -32,7 +35,11 @@
     "assets:repair": "node scripts/repair-candidate-gltf.mjs",
     "verify:next-beta": "node scripts/check-next-beta.mjs",
     "review:packets": "node scripts/build-review-packet.mjs amyloid-beta heart-failure copd-hyperinflation myocardial-ischemia",
-    "assets:repair:verify": "node scripts/repair-candidate-gltf.mjs --verify"
+    "assets:repair:verify": "node scripts/repair-candidate-gltf.mjs --verify",
+    "type-floor": "node scripts/type-floor.mjs",
+    "verify:departure": "node scripts/check-departure.mjs",
+    "verify:gated": "node scripts/check-gated-surfaces.mjs",
+    "build:preview": "VITE_ALLOW_PREVIEW=1 vite build --outDir dist-preview"
   },
   "dependencies": {
     "three": "^0.169.0"

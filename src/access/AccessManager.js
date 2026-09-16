@@ -2,9 +2,13 @@ import { el } from '../utils/dom.js';
 import {
   authConfigured,
   authenticatedFetch,
-  consumePasswordRecoveryRedirect,
+  consumeAuthRedirect,
+  loadUser,
+  changeEmail,
+  changePassword,
   isPasswordRecovery,
   isUnconfirmedEmail,
+  onExternalSessionChange,
   getSession,
   requestPasswordReset,
   resendSignUpConfirmation,
@@ -30,10 +34,29 @@ import {
 import { pricePresentation } from './pricing.js';
 import { canSell, saleBlockedNotice } from './legalReadiness.js';
 import { subscriptionPresentation } from './subscriptionView.js';
+import { withPreviewGrants } from './previewGrants.js';
 import { emitAppEvent } from '../app/appEvents.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 const FREE = new Set([ENTITLEMENT.FREE]);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * A fresh grant set, with the reviewer's grants folded in.
+ *
+ * Every path that decides access rebuilds this from scratch — startup, sign-in,
+ * sign-out, a successful entitlement lookup and two different failures — and a
+ * preview build has to survive all of them, so the fold happens at the
+ * assignment rather than once at startup. Written as one function because five
+ * bare `new Set(...)` assignments are five chances to add a sixth and forget;
+ * `tests/preview-grants.test.js` fails if one appears.
+ *
+ * In a production bundle `withPreviewGrants` adds nothing and Vite has already
+ * compiled the branch inside it to dead code.
+ *
+ * @param {Iterable<string>} [from]
+ */
+const grantSet = (from = FREE) => withPreviewGrants(new Set(from));
 
 /**
  * Account + entitlement state for the browser.
@@ -44,7 +67,10 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export function createAccessManager({ ui }) {
   const state = {
     user: null,
-    grants: new Set(FREE),
+    // Through `grantSet` like every later assignment. Missed here first, and
+    // the surfaces stayed locked in a preview build until `init()` happened to
+    // rebuild them — which it does not do when billing is not configured.
+    grants: grantSet(),
     subscriptions: [],
     billingConfigured: false,
     planCatalog: {},
@@ -62,6 +88,9 @@ export function createAccessManager({ ui }) {
     // when Supabase answered a sign-up without a session, which is the only
     // situation where resending is a thing that exists.
     pendingConfirmationEmail: null,
+    // Which account-management form is open, if any: 'password' | 'email'.
+    // Kept as one field because they are alternatives, never both at once.
+    accountEdit: null,
     error: '',
     // Kept apart from `error`: whether a failed entitlement lookup is worth
     // reporting depends on whether there was anything to look up. See
@@ -78,7 +107,8 @@ export function createAccessManager({ ui }) {
   const accountButton = el('button', {
     class: 'account-trigger',
     type: 'button',
-    title: 'Account and access',
+    // Replaced on the first `renderAccountButton()`, in the language on screen.
+    title: inLanguage('Account and access', 'アカウントと利用権'),
     on: { click: () => open() },
   });
 
@@ -94,13 +124,93 @@ export function createAccessManager({ ui }) {
       // persist the temporary recovery session, and scrub the tokens from the
       // visible URL immediately. Which signals count as recovery, and why there
       // are two, is `isPasswordRecovery`.
-      state.recoveryMode = isPasswordRecovery({
-        consumedRecoveryHash: consumePasswordRecoveryRedirect(),
-        search: window.location.search,
-      });
+      // Consumed for every type, not just recovery: a confirmation link is what
+      // a brand-new account follows, and leaving its tokens in the fragment put
+      // them in the address bar of a scene page — and so into history, into any
+      // screenshot, and into the URL somebody copies to share the model.
+      const redirect = consumeAuthRedirect();
+      // A failed link is not a recovery session. Reset mails are sent with
+      // `?account=recovery` in `redirect_to`, so an *expired* one lands on
+      // `/?account=recovery#error=otp_expired` — and the query half of
+      // `isPasswordRecovery` said yes to it. That opened "choose a new
+      // password" with "that link has expired" underneath, and submitting it
+      // failed with "your recovery session has expired": the same
+      // contradiction this notice table was written to remove, in reverse.
+      //
+      // Only a request, at this point. Whether it becomes `state.recoveryMode`
+      // is settled below, once there is an answer about the session — see
+      // `recoveryLapsed`. `authConfigured()` because a deployment with no
+      // account backend has no recovery to be in the middle of.
+      //
+      // A fragment of any other type wins outright, rather than only `error`
+      // doing so. Both signals are read here, and the fragment is the newer
+      // and the more specific of the two: a stale `?account=recovery` left by
+      // an abandoned reset would otherwise make a confirmation link open
+      // "choose a new password", with "your email address is confirmed"
+      // printed underneath it.
+      const recoveryRequested = (!redirect || redirect === 'recovery')
+        && authConfigured()
+        && isPasswordRecovery({
+          consumedRecoveryHash: redirect === 'recovery',
+          search: window.location.search,
+        });
+      // The other types need no dialog of their own: Supabase has already done
+      // the thing the link was for, and the session it handed back is stored.
+      // What is left is to say so — which matters most for `signup`, where the
+      // alternative is arriving on a 3D model with no sign that the address was
+      // ever confirmed. Held until after `open()`, which clears `state.notice`
+      // on the way in.
+      // Looked up rather than chained, because the chain had a catch-all at the
+      // end and `recovery` fell into it: a valid password-reset link told the
+      // person the link could not be used, directly under the form inviting
+      // them to choose a new password. A table makes an unhandled type a
+      // missing row rather than the wrong row.
+      //
+      // `recovery` maps to nothing on purpose — the dialog it opens says what
+      // happened in its own words, and a second sentence would only compete.
+      const REDIRECT_NOTICE = {
+        recovery: '',
+        signup: 'メールアドレスを確認しました。 / Your email address is confirmed.',
+        email_change: 'メールアドレスを変更しました。 / Your email address has been changed.',
+        // Expired, already used, or refused — the commonest ending for an
+        // emailed link. Deliberately says nothing about what to do next beyond
+        // asking again, because the reason is Supabase's and the remedy
+        // depends on which link it was.
+        error: 'このリンクは期限切れか、すでに使用済みです。もう一度お試しください。 / That link has expired or was already used — please request a new one.',
+      };
+      // Not "sign in again": an unadoptable type leaves an existing session
+      // untouched, so telling somebody signed in to sign in is an instruction
+      // they cannot act on and implies a session was destroyed when it was not.
+      const UNHANDLED_REDIRECT = 'このリンクは利用できませんでした。 / That link could not be used.';
+      // `Object.hasOwn`, because the key is a `type` taken straight from the
+      // URL: plain property access reads inherited ones, so `type=constructor`
+      // put `function Object() { [native code] }` on screen as the notice, and
+      // `type=__proto__` put `[object Object]`. `??` never fires on those —
+      // they are not nullish.
+      const redirectNotice = redirect
+        ? (Object.hasOwn(REDIRECT_NOTICE, redirect) ? REDIRECT_NOTICE[redirect] : UNHANDLED_REDIRECT)
+        : '';
 
-      await Promise.all([refresh(), refreshBillingStatus(), refreshPlanCatalog()]);
+      // `refresh()` waits for the identity, because a fragment carries tokens
+      // only and the entitlement lookup and first render both need to know
+      // whose session this is. The billing and catalogue reads do not, so they
+      // overlap it rather than queue behind a round-trip they never use.
+      const identified = redirect ? loadUser() : Promise.resolve();
+      await Promise.all([
+        identified.then(() => refresh()),
+        refreshBillingStatus(),
+        refreshPlanCatalog(),
+      ]);
       installLifecycleRefresh();
+      // Signing out in one tab used to leave every other tab signed in: the
+      // in-memory fallback that keeps the session usable where storage is
+      // denied cannot tell an empty read from another tab having just cleared
+      // it. On a shared machine that made "log out" a promise the product did
+      // not keep.
+      onExternalSessionChange(() => {
+        invalidateSessionState();
+        refresh();
+      });
       const params = new URLSearchParams(window.location.search);
       if (params.get('billing') === 'success') {
         const plan = params.get('billing_plan');
@@ -141,7 +251,47 @@ export function createAccessManager({ ui }) {
         history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
       }
 
-      if (state.recoveryMode) open();
+      // Recovery needs the dialog to set a password. The other two open it only
+      // so the notice above is read rather than written to a panel nobody has
+      // asked for — a confirmation that arrives invisibly is not a confirmation.
+      // Never a pricing view. Somebody who forgot their password is no more
+      // expressing interest in the plans than somebody confirming an address;
+      // the first version of this fix exempted only one of them.
+      //
+      // `recoveryMode` is settled only now, because a form offering to choose
+      // a new password is a promise that there is an account to change it on.
+      // The query flag outlives the session that minted it — it survives in a
+      // bookmark, in a restored tab, and in an hour-old link, and anybody at
+      // all can simply visit `/?account=recovery`. Every one of those got the
+      // form, and every one of them could only be told afterwards that the
+      // recovery session had expired.
+      //
+      // The session, not `state.user`: `updatePassword` needs the access token
+      // and nothing else, and `loadUser` is best-effort by design — one failed
+      // `GET /auth/v1/user` would otherwise turn a perfectly good reset link
+      // into "no longer valid", with the flag cleared so a reload could not
+      // even retry.
+      const recoverySession = recoveryRequested ? await getSession() : null;
+      state.recoveryMode = Boolean(recoverySession?.access_token);
+      const recoveryLapsed = recoveryRequested && !state.recoveryMode;
+      // The flag has to go with it, or the next reload asks the same question
+      // and gets the same answer.
+      //
+      // Not only when it lapsed: *any* fragment that outvoted the flag above
+      // has to take it out of the query too, or the outvoting lasts exactly
+      // one page load. A confirmation link arriving on a stale
+      // `?account=recovery` showed the right thing and left the flag in the
+      // address bar — so the very next reload had nothing but the flag to
+      // read, and put the password form back with a real session behind it,
+      // which is the one combination the session gate cannot catch.
+      if ((redirect && redirect !== 'recovery') || recoveryLapsed) cleanRecoveryQuery();
+      const notice = redirectNotice
+        || (recoveryLapsed ? 'パスワード再設定の有効期限が切れています。もう一度お試しください。 / That password reset is no longer valid — please request a new link.' : '');
+      if (state.recoveryMode || notice) open(null, { asPricingView: false });
+      if (notice) {
+        state.notice = notice;
+        notify();
+      }
       return api;
     },
     has(entitlement) {
@@ -206,6 +356,8 @@ export function createAccessManager({ ui }) {
   function dialogTitle({ recovery, deleting, credentials }) {
     if (recovery) return { en: 'Choose a new password', ja: '新しいパスワードを設定' };
     if (deleting) return { en: 'Delete account', ja: 'アカウントを削除' };
+    if (state.accountEdit === 'password') return { en: 'Change password', ja: 'パスワードを変更' };
+    if (state.accountEdit === 'email') return { en: 'Change email', ja: 'メールアドレスを変更' };
     // Reaching for a specific locked mode: naming it answers the more useful
     // question, which is why they are being asked for anything at all.
     if (required) {
@@ -255,13 +407,22 @@ export function createAccessManager({ ui }) {
     // previous browser session and must never restore its paid grants.
     refreshGeneration += 1;
     state.user = null;
-    state.grants = new Set(FREE);
+    state.grants = grantSet();
     state.subscriptions = [];
     state.loading = false;
     state.deletionMode = false;
+    // A pending recovery is over too. Every caller of this means the same
+    // thing — signed out here, signed out in another tab, account deleted,
+    // recovery cancelled — and there is no session left to set a password on.
+    // Leaving the flag set kept "choose a new password" on screen for somebody
+    // with no identity, where submitting it could only fail; leaving the query
+    // behind put the same form back on the next reload.
+    state.recoveryMode = false;
+    cleanRecoveryQuery();
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
+    state.accountEdit = null;
     state.error = '';
     state.notice = '';
   }
@@ -270,7 +431,19 @@ export function createAccessManager({ ui }) {
     if (lifecycleRefreshInstalled) return;
     lifecycleRefreshInstalled = true;
     const refreshVisibleAccount = () => {
-      if (state.user && document.visibilityState !== 'hidden') void refresh();
+      if (!state.user || document.visibilityState === 'hidden') return;
+      // Not while an account form is open. `refresh()` notifies, `notify()`
+      // rebuilds the dialog, and these forms hold their values nowhere but in
+      // their own inputs — deliberately, since two of the three are passwords.
+      // Without this, alt-tabbing to a password manager and back emptied every
+      // field, and so did the five-minute timer. Entitlements can wait the
+      // minute it takes to fill in a form; they are re-read on close anyway.
+      // `!modal.hidden`, because this is about a form being on screen, not
+      // about a flag being set. `recoveryMode` outlives the dialog on purpose —
+      // an interrupted recovery is still pending — and without this the first
+      // reset link of the page's life switched the refresh off for good.
+      if (!modal.hidden && (state.accountEdit || state.deletionMode || state.recoveryMode)) return;
+      void refresh();
     };
     window.addEventListener('focus', refreshVisibleAccount);
     document.addEventListener('visibilitychange', refreshVisibleAccount);
@@ -314,7 +487,7 @@ export function createAccessManager({ ui }) {
       const session = await getSession();
       if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       state.user = session?.user ?? null;
-      state.grants = new Set(FREE);
+      state.grants = grantSet();
       state.subscriptions = [];
       if (session) {
         const endpoint = reconcile
@@ -329,7 +502,7 @@ export function createAccessManager({ ui }) {
           const data = await response.json().catch(() => ({}));
           if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
           if (!response.ok) throw new Error(data.error || 'Could not load access.');
-          state.grants = new Set(data.entitlements ?? [ENTITLEMENT.FREE]);
+          state.grants = grantSet(data.entitlements ?? [ENTITLEMENT.FREE]);
           state.subscriptions = data.subscriptions ?? [];
           state.user = data.user ?? state.user;
           if (reconcile) reconciliationSucceeded = data.reconciliation === 'succeeded';
@@ -338,14 +511,14 @@ export function createAccessManager({ ui }) {
           // Free access is deliberately resilient to a billing outage: the
           // grant is already `free` and no model depends on this call.
           state.entitlementsError = error.message || 'Could not check access.';
-          state.grants = new Set(FREE);
+          state.grants = grantSet();
         }
       }
     } catch (error) {
       if (generation !== refreshGeneration) return { reconciliationSucceeded: false, stale: true };
       // Free access is deliberately resilient to billing/auth outages.
       state.error = error.message || 'Could not check access.';
-      state.grants = new Set(FREE);
+      state.grants = grantSet();
     } finally {
       if (generation === refreshGeneration) {
         state.loading = false;
@@ -355,12 +528,19 @@ export function createAccessManager({ ui }) {
     return { reconciliationSucceeded };
   }
 
-  function open(entitlement = null) {
+  function open(entitlement = null, { asPricingView = true } = {}) {
     required = entitlement;
     state.notice = '';
     // Where the purchase conversation starts. Which capability was being
     // reached for is the interesting part; who reached for it is not recorded.
-    emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    //
+    // Not every opening is that conversation. The dialog is also how an email
+    // confirmation is acknowledged, and counting those would put the whole of
+    // registration into the denominator of a funnel measuring interest in the
+    // plans — a number that then answers a different question than it claims.
+    if (asPricingView) {
+      emitAppEvent('conversion:step', { step: 'pricing_view', plan: planForEntitlement(entitlement) });
+    }
     returnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : accountButton;
     modal.hidden = false;
     modal.classList.add('is-open');
@@ -382,6 +562,7 @@ export function createAccessManager({ ui }) {
     state.credentialMode = CREDENTIAL_MODE.SIGN_IN;
     state.credentialEmail = '';
     state.pendingConfirmationEmail = null;
+    state.accountEdit = null;
     render();
     requestAnimationFrame(() => {
       if (focusTarget?.isConnected) focusTarget.focus();
@@ -500,16 +681,31 @@ export function createAccessManager({ ui }) {
       el('span', { class: 'account-label lang-ja', text: ja })
     );
     accountButton.classList.toggle('has-paid-access', paid);
-    accountButton.setAttribute('aria-label', state.user ? `Account and access — ${access?.en ?? 'free'}` : 'Sign in');
-    accountButton.title = state.user ? `Account and access — ${access?.en ?? 'Free'}` : 'Sign in';
+    // Both languages are in the DOM for the *visible* label, and CSS hides one.
+    // An attribute cannot hold two, so it holds the one on screen. Without this
+    // the Japanese interface announced its login button as "Sign in" to a
+    // screen reader and showed "Sign in" in the tooltip, under a button reading
+    // ログイン.
+    const label = state.user
+      ? inLanguage(`Account and access — ${access?.en ?? 'free'}`, `アカウントと利用権 — ${access?.ja ?? '無料'}`)
+      : inLanguage('Sign in', 'ログイン');
+    accountButton.setAttribute('aria-label', label);
+    accountButton.title = label;
   }
+
+  // `aria-label` and `title` hold one language, so they are repainted when the
+  // interface flips rather than asking each of the seven surfaces that write
+  // `#ui[data-lang]` to remember one more call.
+  onLanguageChange(() => renderAccountButton());
 
   function dialogContent() {
     const recovery = state.recoveryMode;
     const closeButton = el('button', {
       class: 'access-close',
       type: 'button',
-      'aria-label': 'Close',
+      // One language, the one on screen: a screen reader announcing "Close" in
+      // a Japanese interface is the same defect as an English label in it.
+      'aria-label': inLanguage('Close', '閉じる'),
       text: '×',
       on: { click: close },
     });
@@ -560,6 +756,8 @@ export function createAccessManager({ ui }) {
 
     if (recovery) return [head, passwordRecoveryForm()];
     if (state.deletionMode) return [head, accountDeletionForm()];
+    if (state.user && state.accountEdit === 'password') return [head, passwordChangeForm()];
+    if (state.user && state.accountEdit === 'email') return [head, emailChangeForm()];
     if (!state.user) return [head, authForm()];
 
     return [
@@ -588,7 +786,12 @@ export function createAccessManager({ ui }) {
         ? el('div', { class: 'access-billing-unavailable' }, [
             el('p', { class: 'access-copy lang-en', text: billingNotice().en }),
             el('p', { class: 'access-copy lang-ja', text: billingNotice().ja }),
-            el('a', { class: 'access-legal-link', href: '#/commerce' }, [
+            // New tab, for the same reason the consent links are: following a
+            // hash link reloads the app, which closes this dialog. Reading why
+            // purchases are unavailable should not cost somebody their place
+            // in their own account panel. Left same-tab when the consent links
+            // were changed, which was an oversight rather than a decision.
+            el('a', { class: 'access-legal-link', href: '#/commerce', target: '_blank', rel: 'noopener' }, [
               el('span', { class: 'lang-en', text: 'Commercial disclosure →' }),
               el('span', { class: 'lang-ja', text: '特定商取引法に基づく表記 →' }),
             ]),
@@ -608,6 +811,20 @@ export function createAccessManager({ ui }) {
             on: { click: openPortal },
           })
         : null,
+      el('div', { class: 'access-account-actions' }, [
+        el('button', {
+          class: 'access-text-button access-change-password',
+          type: 'button',
+          text: 'Change password / パスワードを変更',
+          on: { click: () => openAccountEdit('password') },
+        }),
+        el('button', {
+          class: 'access-text-button access-change-email',
+          type: 'button',
+          text: 'Change email / メールアドレスを変更',
+          on: { click: () => openAccountEdit('email') },
+        }),
+      ]),
       el('button', {
         class: 'access-delete-account',
         type: 'button',
@@ -627,6 +844,215 @@ export function createAccessManager({ ui }) {
         ? el('p', { class: 'access-error', text: state.error || visibleAccessError() })
         : null,
     ].filter(Boolean);
+  }
+
+  /**
+   * Refuse a field without re-rendering.
+   *
+   * Reporting these through `state.notice` looked right and was not: `notify()`
+   * rebuilds the dialog, so saying "the passwords do not match" emptied every
+   * field the person had just filled in, including the two that were fine.
+   * They then had to retype all of it to find out whether they had fixed the
+   * one thing that was wrong.
+   *
+   * The browser already has a way to say this in place. Using it also keeps
+   * passwords out of `state` — nothing here is worth remembering across a
+   * render, and a plaintext password is the last thing that should be.
+   */
+  function refuseField(field, message, group = [field]) {
+    field.setCustomValidity?.(message);
+    field.reportValidity?.();
+    // Cleared by editing *any* field involved, not only the one flagged: a
+    // mismatch is as easily fixed by correcting the first password as the
+    // second, and clearing only on the flagged field left it permanently
+    // invalid — native validation then blocked the submit and re-showed "they
+    // do not match" on two fields that now matched.
+    for (const member of group) {
+      member.addEventListener('input', () => field.setCustomValidity?.(''));
+    }
+  }
+
+  function openAccountEdit(mode) {
+    state.accountEdit = mode;
+    state.notice = '';
+    state.error = '';
+    notify();
+  }
+
+  function closeAccountEdit({ notice = '' } = {}) {
+    state.accountEdit = null;
+    state.notice = notice;
+    state.error = '';
+    notify();
+  }
+
+  /** Cancel, shared by both account-management forms. */
+  function cancelEditButton() {
+    return el('button', {
+      class: 'access-secondary',
+      type: 'button',
+      disabled: state.loading ? '' : null,
+      text: 'Cancel / 戻る',
+      on: { click: () => closeAccountEdit() },
+    });
+  }
+
+  /**
+   * Change the password of a signed-in account.
+   *
+   * Reachable only from here. Before this the only way to change a password
+   * was to sign out and use the recovery mail, which is a strange thing to ask
+   * of somebody who is signed in and knows their password.
+   *
+   * The current one is required: `changePassword` proves it before setting the
+   * new one, so a session left open cannot be used to lock its owner out.
+   */
+  function passwordChangeForm() {
+    const current = el('input', {
+      class: 'access-input', type: 'password', name: 'current-password',
+      autocomplete: 'current-password', placeholder: 'Current password',
+      'aria-label': 'Current password / 現在のパスワード', required: '',
+    });
+    const next = el('input', {
+      class: 'access-input', type: 'password', name: 'new-password',
+      autocomplete: 'new-password', placeholder: `New password (${MIN_PASSWORD_LENGTH}+ characters)`,
+      'aria-label': 'New password / 新しいパスワード',
+      minlength: String(MIN_PASSWORD_LENGTH), required: '',
+    });
+    const confirm = el('input', {
+      class: 'access-input', type: 'password', name: 'confirm-password',
+      autocomplete: 'new-password', placeholder: 'Confirm new password',
+      'aria-label': 'Confirm new password / 新しいパスワード（確認）',
+      minlength: String(MIN_PASSWORD_LENGTH), required: '',
+    });
+
+    const submit = async (event) => {
+      event?.preventDefault?.();
+      if (state.loading) return;
+      state.notice = '';
+      state.error = '';
+      if (next.value.length < MIN_PASSWORD_LENGTH) {
+        refuseField(next, `${MIN_PASSWORD_LENGTH}文字以上にしてください。`);
+        return;
+      }
+      if (next.value !== confirm.value) {
+        refuseField(confirm, '入力したパスワードが一致しません。', [next, confirm]);
+        return;
+      }
+      try {
+        state.loading = true;
+        notify();
+        await changePassword(state.user?.email, current.value, next.value);
+        await refresh();
+        closeAccountEdit({ notice: 'Password changed. / パスワードを変更しました。' });
+        return;
+      } catch (error) {
+        state.error = error.message || 'パスワードを変更できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return el('form', {
+      class: 'access-auth access-change-form',
+      method: 'post',
+      'aria-label': 'Change password / パスワードを変更',
+      on: { submit },
+    }, [
+      el('p', { class: 'access-copy lang-en', text: 'Enter your current password, then choose a new one.' }),
+      el('p', { class: 'access-copy lang-ja', text: '現在のパスワードを入力してから、新しいパスワードを設定してください。' }),
+      current,
+      next,
+      confirm,
+      el('div', { class: 'access-auth-actions' }, [
+        cancelEditButton(),
+        el('button', {
+          class: 'access-primary', type: 'submit',
+          disabled: state.loading ? '' : null,
+          text: state.loading ? 'Saving… / 変更中…' : 'Change password / 変更する',
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', role: 'status', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', role: 'alert', text: state.error }) : null,
+    ].filter(Boolean));
+  }
+
+  /**
+   * Move the account to a different address.
+   *
+   * Nothing has changed when this succeeds — Supabase mails the new address
+   * and the move completes when that link is opened. So the wording is "check
+   * your mail", never "done": telling somebody their address had changed when
+   * it had not is how an account becomes unreachable.
+   */
+  function emailChangeForm() {
+    const current = el('input', {
+      class: 'access-input', type: 'password', name: 'current-password',
+      autocomplete: 'current-password', placeholder: 'Current password',
+      'aria-label': 'Current password / 現在のパスワード', required: '',
+    });
+    const address = el('input', {
+      class: 'access-input', type: 'email', name: 'new-email',
+      autocomplete: 'email', autocapitalize: 'none', spellcheck: 'false',
+      placeholder: 'new@example.com',
+      'aria-label': 'New email address / 新しいメールアドレス', required: '',
+    });
+
+    const submit = async (event) => {
+      event?.preventDefault?.();
+      if (state.loading) return;
+      state.notice = '';
+      state.error = '';
+      const wanted = String(address.value ?? '').trim();
+      // In place, for the same reason as the password forms: routing these
+      // through `state.notice` rebuilds the dialog and erases the address that
+      // was just typed, which is the regression `refuseField` exists to stop.
+      if (!wanted) {
+        refuseField(address, '新しいメールアドレスを入力してください。');
+        return;
+      }
+      if (wanted === state.user?.email) {
+        refuseField(address, 'すでにそのアドレスです。');
+        return;
+      }
+      try {
+        state.loading = true;
+        notify();
+        await changeEmail(state.user?.email, current.value, wanted, confirmationRedirect());
+        closeAccountEdit({
+          notice: `${wanted} に確認メールを送信しました。リンクを開くと変更が完了します。 / Confirmation sent — the change completes when you open the link.`,
+        });
+        return;
+      } catch (error) {
+        state.error = error.message || 'メールアドレスを変更できませんでした。';
+      } finally {
+        state.loading = false;
+        notify();
+      }
+    };
+
+    return el('form', {
+      class: 'access-auth access-change-form',
+      method: 'post',
+      'aria-label': 'Change email / メールアドレスを変更',
+      on: { submit },
+    }, [
+      el('p', { class: 'access-copy lang-en', text: `Signed in as ${state.user?.email ?? ''}. The change takes effect when you open the link sent to the new address.` }),
+      el('p', { class: 'access-copy lang-ja', text: `現在のアドレスは ${state.user?.email ?? ''} です。新しいアドレスに届くリンクを開いた時点で変更が完了します。` }),
+      current,
+      address,
+      el('div', { class: 'access-auth-actions' }, [
+        cancelEditButton(),
+        el('button', {
+          class: 'access-primary', type: 'submit',
+          disabled: state.loading ? '' : null,
+          text: state.loading ? 'Sending… / 送信中…' : 'Send confirmation / 確認メールを送信',
+        }),
+      ]),
+      state.notice ? el('p', { class: 'access-form-message', role: 'status', text: state.notice }) : null,
+      state.error ? el('p', { class: 'access-error', role: 'alert', text: state.error }) : null,
+    ].filter(Boolean));
   }
 
   function accountDeletionForm() {
@@ -880,14 +1306,15 @@ export function createAccessManager({ ui }) {
       if (state.loading) return;
       state.notice = '';
       state.error = '';
+      // Refused in place rather than through `state.notice`: a rebuild here
+      // emptied both fields, so being told they did not match cost the person
+      // everything they had typed.
       if (password.value.length < MIN_PASSWORD_LENGTH) {
-        state.notice = `${MIN_PASSWORD_LENGTH}文字以上の新しいパスワードを入力してください。`;
-        notify();
+        refuseField(password, `${MIN_PASSWORD_LENGTH}文字以上にしてください。`);
         return;
       }
       if (password.value !== confirm.value) {
-        state.notice = '入力したパスワードが一致しません。';
-        notify();
+        refuseField(confirm, '入力したパスワードが一致しません。', [password, confirm]);
         return;
       }
 
@@ -909,9 +1336,9 @@ export function createAccessManager({ ui }) {
 
     const cancelRecovery = () => {
       signOut();
-      state.recoveryMode = false;
+      // Clearing the flag and the query is `invalidateSessionState`'s job now,
+      // so that the three other ways a session ends do it as well.
       invalidateSessionState();
-      cleanRecoveryQuery();
       notify();
     };
 
@@ -954,6 +1381,10 @@ export function createAccessManager({ ui }) {
 
   function cleanRecoveryQuery() {
     const clean = new URL(window.location.href);
+    // Called from every path that ends a session, most of which never had the
+    // flag. Rewriting the URL anyway would drop `history.state` on each of
+    // them for no reason.
+    if (!clean.searchParams.has('account')) return;
     clean.searchParams.delete('account');
     history.replaceState(null, '', `${clean.pathname}${clean.search}${clean.hash}`);
   }

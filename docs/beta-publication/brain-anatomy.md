@@ -12,12 +12,12 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-09 (re-taken after the label layer stopped waiting out a hide) |
+| **Decided at** | 2026-09-15 (re-taken twice: a branch of the tree gained a way to be hidden whole, and then what a hide announces was corrected) |
 | **Decided by** | Claude Opus 5, acting as B3-1 implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **14**, source digest `3c3175a6da4b6944` |
-| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js) |
+| **Scene revision** | model card revision **20**, source digest `2ab8c472db1731bc` |
+| **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
 [`src/catalog/release.js`](../../src/catalog/release.js). Re-export the mesh and
@@ -74,6 +74,78 @@ structure off the screen. It still closes the gate, because the pin is not a
 judgement of how big a change is — it is a statement that this decision was
 taken about *this* version.
 
+**Revision 14 → 15.** What counts as a click changed, and this one a reader
+does feel. The release was measured against the press by distance alone, so a
+press that went out and came back had gone nowhere and was read as a click on
+whatever had rotated under the pointer in between. That is the ordinary way to
+turn the model on a touch screen — swipe across it, swipe back — and it was
+found by driving the landing hero with emulated touch (iPhone 13 / Pixel 5 /
+iPad Mini viewports, Chromium with `hasTouch` and real touch events): turning
+the brain and letting go pinned the pons, which nobody had chosen. A press is
+now a click only if it ends where it began **and** the pointer did not travel
+far in between, in one rule both anatomy scenes share
+([`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js),
+fixed by [`tests/tap-gesture.test.js`](../../tests/tap-gesture.test.js)). The
+looser bound on travel is deliberate: a finger is never perfectly still, and a
+tap thrown away is the worse failure of the two.
+
+**No physical phone has run this.** Emulated touch is the same event path on
+desktop hardware; it is not a device pass (F-101).
+
+**Revision 15 → 16.** Review of revision 15 found that the first reading of
+"did not travel far" was the *length of the path*, which grows with how long a
+press lasts rather than how far it went: a contact patch rolls a fraction of a
+pixel per event, so a deliberate press on a small structure at 120 Hz totalled
+tens of pixels without the finger leaving a two-pixel neighbourhood, and the tap
+was thrown away. It is the greatest distance from the press point now, which
+does not accumulate. The same review found the brain scene never listened for
+`pointercancel`, so a press the browser took away — a pinch, a swipe the page
+claims — stayed open in the tracker; it is wired, on both scenes. So is
+`pointerleave`, which is the same hole by the other door: a drag that wanders
+off the canvas is released where the canvas never hears it, and the press it
+left open would be what the *next* release was measured against. Nothing is
+lost by closing it, because a tap does not leave the canvas.
+
+**Revision 17 → 18.** Naming a structure was something only a mouse or a
+finger could do: every route into the selection went through a pointer event, so
+a reader with a keyboard could turn the model and never be told what they were
+looking at. `selectAtCanvasPoint()` asks the same question of the same ray from
+a point rather than from an event, and the landing hero asks it of the middle of
+the frame on Enter, clearing on Escape. Nothing about *what* is at a point
+changed — this is a second door into the same room — but the scene's surface
+did, so the record is taken again.
+
+**And the rule itself is now declared as a model source.** Lifting it into
+`tapGesture.js` had moved what a click selects *outside* the digest this record
+is pinned to, so a later change to it would not have closed this gate — the one
+thing the pin exists to do. All 31 anatomy entries in
+[`revisions.json`](../model-cards/revisions.json) declare the shared file, and
+`tests/tap-gesture.test.js` fails if one of them stops.
+
+**Revision 18 → 19.** Hiding was one structure at a time. A reader who wanted
+to see the midline block, or the ventricular system without the hemisphere
+around it, had to press Hide seventy-seven times — which is to say they did not
+do it, and the interior of the model was reachable in principle and not in
+practice. Every branch of the Parts tree now carries its own visibility control
+and answers `V` when focused, writing to the **same hidden set** a single
+structure's Hide writes to: one pass over the model and one report for the whole
+branch, so Unhide all still brings everything back and an isolation still
+overrides it while it lasts. Nothing about the atlas changed — no id, no label,
+no geometry, no colour — but what a reader can take off the screen did, and the
+scene's visibility surface is exactly what this record is a decision about.
+
+**Revision 19 → 20.** Review of revision 19 found two things a hide had never
+said, both older than the group control and inherited by it. Hiding the isolated
+structure drops the isolation, but only the visibility event was sent — and the
+part tree learns about isolation from `onAnatomyIsolation` and nowhere else, so
+it went on drawing a row as isolated after the scene had stopped isolating it.
+And `restoreDisplay()` puts back the *whole* hidden set from the snapshot a
+reveal left, so a hide or show the reader made afterwards was silently undone by
+a control that says it undoes the reveal. Both are now one place:
+`_visibilityChanged()` applies the pass, announces the hidden set, announces an
+isolation it ended, and throws the stale snapshot away.
+`tests/brain-anatomy.test.js` fails on the old behaviour for both.
+
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
 was about a model that behaved differently, and it is not carried forward.
@@ -85,16 +157,49 @@ Driven in a real browser (Chromium, 1280×800, production build) by
 — `npm run verify:anatomy`. Re-running it is how this record is re-verified;
 that is why the evidence is a script rather than a stored image.
 
+Since revision 15 a second drive checks the same model **under the inputs that
+are not a mouse** — [`scripts/check-hero-input.mjs`](../../scripts/check-hero-input.mjs),
+`npm run verify:hero-input`: a finger at the iPhone 13, Pixel 5 and iPad Mini
+viewports with touch emulation, and a keyboard on the desktop viewport. It is
+where the out-and-back press was found. It drives the landing hero, which is
+this atlas in a smaller frame. The touch half is **not** a device pass —
+emulated touch on desktop Chromium, no iOS Safari, no hardware; the keyboard
+half is a real keyboard in a real browser.
+
 **Structures** — the scene reports **271 selectable structures** drawn from 397
 meshes. Four clicks on the rendered mesh each resolved to a named structure
 carrying an English name, a Japanese name and a place in the hierarchy:
 
 | clicked | English | Japanese | hierarchy |
 | --- | --- | --- | --- |
-| upper left | Opercular part of inferior frontal gyrus | 下前頭回弁蓋部 | Left cerebral hemisphere › Frontal lobe › Inferior frontal gyrus |
-| upper right | Supramarginal gyrus | 縁上回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
-| centre | Middle temporal gyrus | 中側頭回 | Left cerebral hemisphere › Temporal lobe › Cerebral gyri |
-| upper centre | Superior temporal sulcus | 上側頭溝 | Left cerebral hemisphere › Temporal lobe › Cerebral sulci |
+| (0.40, 0.34) | Supramarginal gyrus | 縁上回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
+| (0.30, 0.45) | Circular sulcus of insula | 島輪状溝 | Left cerebral hemisphere › Telencephalon › Insular cortex |
+| (0.50, 0.50) | Middle temporal gyrus | 中側頭回 | Left cerebral hemisphere › Temporal lobe › Cerebral gyri |
+| (0.50, 0.42) | Angular gyrus | 角回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
+
+**This table was wrong for a week, and that is worth stating plainly.** Until
+2026-09-15 it read *Opercular part of inferior frontal gyrus*, *Supramarginal
+gyrus*, *Middle temporal gyrus* and *Superior temporal sulcus* — measured from a
+run on 2026-09-08 and carried forward unchanged when this decision was re-taken.
+Re-measured on the current build, in production and again under preview, one of
+those four was still right; one click had come off the model entirely and named
+**nothing**, so the sentence above it — that four clicks each resolved — was
+false.
+
+Nothing had changed in this scene. The points are fractions of the canvas, and
+the layout moved under them (the control bar's height, two type floors, three
+panel changes), none of which touches this scene's sources — so the
+model-revision digest could not notice and `npm run revisions:check` stayed
+green throughout. The reason it went unseen for a week is narrower still: the
+entry for this scene in `SCENE_POINTS` was bare coordinates, so the drive
+asserted that four clicks named *something*, never which. `heart-anatomy` had
+carried expected names since F-118; the published reference scene had not.
+
+The points above are now **named in `SCENE_POINTS`, and the drive is held to
+them** — a run fails if any point names a different structure, hits nothing, or
+if the four points name fewer than four distinct structures. The dead point is
+replaced by one the drive itself measured to be over the model. So this table is
+re-verified by `npm run verify:anatomy` rather than by anyone re-reading it.
 
 **Part tree** — 271 rows, one per structure, checked to have no two rows with
 the same name under the same branch. Selecting in 3D highlights the matching
@@ -112,6 +217,17 @@ a rendering check, not an anatomical one.
 **Interactions**
 
 - A click on the model pins a structure and the panel names it.
+- **A route can open on a structure**: `#/brain-anatomy?structure=<id>` selects
+  that structure and brings it into view, which is how the landing hero hands a
+  reader over to the full model already looking at the part they found. It
+  deliberately does not *reveal* it — a link may say where to look, not
+  rearrange the model on arrival — and an id this atlas does not have opens the
+  model normally with nothing selected.
+- **So does a keyboard, with no pointer anywhere**: Tab reaches the 3D
+  viewport, the focused viewport draws the spot Enter will ask about, Enter
+  names the structure drawn there, Escape lets go of it, and turning the model
+  with the arrows and asking again names a different one. Driven in
+  `check-hero-input.mjs`, which was watched failing with the keys removed.
 - **A pointer crossing the model does not rewrite the pinned summary** or the
   controls beside it; hover previews only while nothing is pinned.
 - The tree answers the keyboard: one tab stop, arrows move focus without
@@ -127,7 +243,10 @@ a rendering check, not an anatomical one.
 - A click on empty space clears the selection rather than leaving a stale card,
   and a structure can be selected again afterwards.
 - **A drag is not a click**: orbiting from one structure and releasing over
-  another leaves the pinned selection unchanged.
+  another leaves the pinned selection unchanged — and so does orbiting away and
+  back, which releases on the spot it started from. Both are measured now: how
+  far the release is from the press, and how far the pointer ever got from it
+  while it was down.
 - Switching colour mode (Colour map ↔ Natural anatomy) does not change which
   structure is selected.
 - Applying a named viewpoint does not change it either, and neither leaves more
@@ -135,6 +254,19 @@ a rendering check, not an anatomical one.
 - **Isolate** shows one structure alone; a click where a hidden structure used
   to be does not select it; **Show all** restores the model and the structures
   that were on screen before are clickable again.
+- **A hide says everything it changed.** Isolating a structure and then hiding
+  it leaves the scene reporting no isolation and the tree agreeing, because the
+  isolation event is sent as well as the visibility one; a hide that ends
+  nothing stays quiet. After any hide or show of the reader's own, "Back to how
+  it was" is withdrawn rather than left pointing at a snapshot that would undo
+  their change.
+- **A branch comes off in one press.** The drive finds the branch with the most
+  structures under it — on this atlas, *Left cerebral hemisphere*, 77 — presses
+  its visibility control, and reads the scene's own hidden set: 77 structures
+  hidden by one press, and back to none when it is pressed again. `V` on the
+  focused branch does the same thing and undoes it. It presses the **largest**
+  branch deliberately: the first branch on some scenes holds one structure, and
+  hiding one structure would pass a check that exists for seventy.
 - No uncaught errors and no unexpected failed requests during the run.
 - **A hidden structure's label goes with it.** Selecting a structure draws its
   name on the model; hiding it removes the name, and unhiding brings it back.

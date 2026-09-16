@@ -8,6 +8,7 @@ import {
   PUBLIC_MANIFEST,
 } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
+import { inLanguage } from '../utils/language.js';
 import {
   HERO_ORGANS,
   heroOrgansForModels,
@@ -96,7 +97,7 @@ export function createLanding({
 
   const element = el('main', { class: 'landing' }, [
     el('header', { class: 'landing-nav' }, [
-      el('a', { class: 'landing-brand', href: '#/', 'aria-label': 'Medical 3D Lab home' }, [
+      el('a', { class: 'landing-brand', href: '#/', 'aria-label': inLanguage('Medical 3D Lab home', 'Medical 3D Lab トップ') }, [
         el('span', { class: 'landing-brand-mark', 'aria-hidden': 'true' }, [
           el('span', { text: 'M' }),
           el('i'),
@@ -105,7 +106,7 @@ export function createLanding({
         el('span', { class: 'landing-brand-name', text: 'Medical 3D Lab' }),
       ]),
       el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation / 製品ナビゲーション' }, [
-        shellLink(EXPLORER_ROUTE, 'Anatomy models', '解剖モデル', 'landing-nav-link'),
+        shellLink(EXPLORER_ROUTE, '3D models', '3Dモデル', 'landing-nav-link'),
         shellLink(MODEL_INFO_ROUTE, 'Model information', 'モデル情報', 'landing-nav-link'),
         betaUnlocked() ? shellLink(LAB_ROUTE, 'Experimental', '実験モデル', 'landing-nav-link') : null,
       ]),
@@ -160,7 +161,7 @@ export function createLanding({
       ]),
       el('p', { class: 'landing-method-copy' }, dual(
         'See the source, licence, revision, represented structures and known limits for each model.',
-        '各モデルの出典、ライセンス、revision、表現している構造と限界を確認できます。'
+        '各モデルの出典、ライセンス、改訂履歴、収録している構造、既知の限界を確認できます。'
       )),
       el('nav', { class: 'landing-method-links', 'aria-label': 'Model information and support / モデル情報・サポート' }, [
         shellLink(

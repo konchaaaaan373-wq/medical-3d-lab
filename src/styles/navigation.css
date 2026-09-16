@@ -50,14 +50,70 @@
   z-index: 2;
 }
 
+/* A control, not a caption. A wordmark in the corner read as the page's title;
+   the border, the hover state, the arrow and — where the header is wide enough
+   — the word itself are what make it an offer. On a 3D model it is the only
+   way home. */
 .global-nav-brand {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   min-width: 0;
+  padding: 0 11px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.022);
   color: var(--ink);
   text-decoration: none;
   flex: none;
+  /* WCAG 2.5.8's floor is the reason this box has a height at all: on a phone
+     the brand mark is hidden and the link would otherwise collapse to a 12 px
+     line of type — a target measured at 64×12 by `verify:ui`. 38 clears it on
+     every viewport; the ≤720px rule below and `phone-touch-targets.css` take
+     it to 44 where a thumb is the pointer. The height is the box, not the
+     type. */
+  min-height: 38px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.global-nav-brand:hover,
+.global-nav-brand:focus-visible {
+  background: color-mix(in srgb, var(--accent) 9%, rgba(255, 255, 255, 0.02));
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+}
+
+.global-nav-brand-back {
+  flex: none;
+  color: var(--accent);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.global-nav-brand-home {
+  flex: none;
+  padding-left: 9px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+  color: var(--ink-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The word goes when the header narrows; the arrow and the frame carry it. */
+@media (max-width: 980px) {
+  .global-nav-brand-home {
+    display: none;
+  }
+}
+
+/* A thumb's worth of height on a phone, like every other control in this
+   header. The narrow-width `gap` lives with the rule that removes the 3D mark,
+   in `product-shell-b6.css`, so the two stay together. */
+@media (max-width: 720px) {
+  .global-nav-brand {
+    min-height: 44px;
+    padding: 0 7px 0 5px;
+  }
 }
 
 .global-nav-brand-mark {

@@ -744,16 +744,18 @@ export const MODEL_PROFILES = Object.freeze([
     personalization: PERSONALIZATION.REPRESENTATIVE,
     intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
     prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
-    assets: [],
     // Both files the scene loads, because credit has to cover everything drawn:
     // listing only the heart left the vasculature geometry uncredited.
-    candidateAssets: ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature'],
+    assets: ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature'],
     validationRecords: [],
     basis:
-      'A gross-anatomy reference organ (HuBMAP CCF VH_M_Heart, segmented from the Visible Human Male) shown ' +
-      'unchanged: fourteen named parts, no state and no mechanism. The file is a candidate under examination, ' +
-      'not a shipped asset — it is recorded in devAssets.js rather than the asset manifest, and the release ' +
-      'gate refuses the scene for that reason alone, before the missing great vessels are even counted.',
+      'Two gross-anatomy reference organs from the HuBMAP CCF, segmented from the Visible Human Male: fourteen ' +
+      'named cardiac parts and the thirty-seven vessel surfaces of the heart, with no state and no mechanism. ' +
+      'What ships is a **derivative** — the sources fail glTF validation on degenerate vertex normals and could ' +
+      'never pass the format gate, so those normals were repaired and nothing else was touched. The change is ' +
+      'measured in docs/asset-qa/measurements/normal-repair.json, stated in the attribution the licence requires, ' +
+      'and decided in docs/decisions/HEART-ASSET-ADOPTION.md. The great vessels absent from the heart file come ' +
+      'from the vasculature file rather than from anything invented here.',
   },
   {
     profileId: 'heart-failure-elastance-loop',

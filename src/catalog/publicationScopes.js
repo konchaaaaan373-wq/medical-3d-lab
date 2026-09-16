@@ -57,7 +57,7 @@ const B2_EVIDENCE = Object.freeze([
  * What batch B3's one decision cites.
  *
  * B3 opened as three scenes and finished as one: the eye and the ear pass the
- * interaction check and were held on what their renders showed (F-109), which
+ * interaction check and were held on what their renders showed (F-126), which
  * is why the framing fix and the screenshots are part of this batch's evidence
  * rather than a separate change.
  */
@@ -87,13 +87,72 @@ const B1_EVIDENCE = Object.freeze([
  *   interactions: readonly string[]}, evidence: readonly string[], unverified: readonly string[]}>>}
  */
 export const BETA_PUBLICATION_SCOPES = Object.freeze({
-  'brain-anatomy': Object.freeze({
+  'heart-anatomy': Object.freeze({
     scope: Object.freeze({
+      // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
+      // named parts at four recorded points, crossing both adopted files.
       structures: Object.freeze([
-        'Opercular part of inferior frontal gyrus',
+        'Right atrium',
+        'Right ventricle',
+        'Left anterior descending artery',
+        'Ascending aorta',
+      ]),
+      views: Object.freeze([
+        'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 46 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press, and by V on the focused branch',
+        'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
+        'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
+        'the landing hero reaches this scene with a keyboard: Tab focuses the model, Enter names the structure in front of it, Escape lets go, Enter after turning names a different one, and the card hands that structure to the full model — driven on the heart by verify:hero-input, which was taught the same day to repeat its keyboard pass for every published organ rather than only the first in the rotation',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'scripts/check-hero-input.mjs',
+      'scripts/repair-candidate-gltf.mjs',
+      'docs/asset-qa/measurements/normal-repair.json',
+      'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+      'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
+      'docs/decisions/HEART-ASSET-ADOPTION.md',
+      'public/assets/heart/ATTRIBUTION.md',
+      'tests/heart-anatomy.test.js',
+      'tests/organ-anatomy-scenes.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain is published on',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '42 of the 46 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+      'the underlying Visible Human Male terms were read through secondary sources only — nlm.nih.gov was unreachable, so the NLM acknowledgment is given rather than reasoned away',
+      'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
+      'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
+      'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
+    ]),
+  }),
+
+  'brain-anatomy': Object.freeze({
+    /** What was actually exercised. Not a plan — a list of what was done. */
+    scope: Object.freeze({
+      // Re-measured on 2026-09-15 and corrected. The first two of the four
+      // recorded here were wrong: the tour's points are canvas fractions, the
+      // layout moved under them over the week after they were written, and one
+      // point had come off the model entirely. `SCENE_POINTS` now names these
+      // four and `verify:anatomy` fails if a point names anything else — see
+      // docs/beta-publication/brain-anatomy.md, which states what was wrong
+      // rather than quietly showing the new values.
+      structures: Object.freeze([
         'Supramarginal gyrus',
+        'Circular sulcus of insula',
         'Middle temporal gyrus',
-        'Superior temporal sulcus',
+        'Angular gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
@@ -103,6 +162,9 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
         'click pins a structure and the panel names it in both languages',
         'click on empty space clears, and a structure can be selected again',
         'a drag that ends over another structure does not reselect',
+        'a drag that ends where it began does not select either — the press is measured by how far the pointer ever got from it, not only by where it let go',
+        'a keyboard reaches the model with Tab, names the structure in the middle of the frame with Enter, and lets go of it with Escape; turning the model with the arrows and asking again names a different structure',
+        'a route may carry the structure it opens on, and the model opens selected on it rather than on its authored pose alone',
         'switching colour mode does not change the selection',
         'applying a named viewpoint does not change the selection',
         'the part tree lists 271 structures, and selection agrees in both directions',
@@ -123,10 +185,16 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
         'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
         'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
         'a hidden structure\'s own label goes with it rather than being held over what is behind it',
+        'a whole branch of the tree is hidden and shown again in one press, and by V on the focused branch, writing to the same hidden set one structure\'s Hide writes to',
+        'hiding the isolated structure announces the isolation as over, and a hide the reader made themselves withdraws the reveal\'s way back rather than offering to undo their own change',
       ]),
     }),
     evidence: Object.freeze([
       'scripts/check-anatomy-interaction.mjs',
+      // What a finger gets, which is not what a pointer gets: it is where the
+      // out-and-back press was found, and it is re-runnable.
+      'scripts/check-hero-input.mjs',
+      'tests/tap-gesture.test.js',
       'src/app/anatomyContract.js',
       'src/components/AnatomyPanel.js',
       'tests/anatomy-contract.test.js',
@@ -139,6 +207,7 @@ export const BETA_PUBLICATION_SCOPES = Object.freeze({
       'docs/screenshots/x1/README.md',
       'docs/anatomy-review.md',
     ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
     unverified: Object.freeze([
       '267 of the 271 selectable structures were not individually opened',
       'no label was checked against a reference atlas — that is an anatomist\'s judgement',

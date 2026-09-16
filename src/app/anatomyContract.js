@@ -71,6 +71,11 @@ export const ANATOMY_CONTRACT_OPTIONAL_METHODS = Object.freeze([
   'setAnatomyView',
   'getAnatomyColorModes',
   'setAnatomyColorMode',
+  // Hiding a group is hiding its leaves, and a scene that offers it does so as
+  // one change: the per-structure setter applies the whole visibility pass and
+  // announces it each time, which for the brain's frontal lobe would be
+  // forty-one passes over four hundred meshes for one press.
+  'setStructuresHidden',
 ]);
 
 /** The prefix that makes a grouping node unmistakable for a structure. */

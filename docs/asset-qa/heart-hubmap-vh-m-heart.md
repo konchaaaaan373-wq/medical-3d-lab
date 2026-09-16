@@ -170,9 +170,77 @@ than explained. **What these surfaces represent — cavity cast, wall, or
 something in between — is not established by any of it**, and no interior view
 is offered, because there is no measured basis for drawing one.
 
+## Rendered — 2026-09-15
+
+The gap below said "no render". It is closed for the exterior. `npm run
+shots:anatomy -- --scene heart-anatomy --preview` drew the scene at its six
+viewpoints in both colour modes, through the shipping renderer, with the
+candidate fetched by `npm run assets:dev` (both hashes matched).
+
+**The images are deliberately not committed.** They are derivatives of an asset
+that has not been adopted, and this repository does not carry third-party
+binaries (CLAUDE.md). Re-run the command above to reproduce them; the scene,
+the viewpoints and the colour modes are all in the repository, so the renders
+are reproducible without being stored.
+
+### What the images establish
+
+- **The surface reads as a heart.** Smooth shading across the chambers, no
+  visible seams, no inverted normals, no holes at any of the six viewpoints.
+  The 408 validator errors in one mesh do not show as artefacts from outside.
+- **The great vessels are there after all — from the other file.** The scene
+  takes the `VH_M_blood_vasculature_of_heart` subtree of the vasculature
+  candidate, and it supplies the aorta, the arch, the pulmonary trunk and the
+  caval stubs, plus coronary arteries and cardiac veins on the surface. This is
+  the "second sourced asset" route this document named, working.
+- **Both files register to each other.** The vessels meet the chambers where
+  they should; the two candidates share a coordinate frame.
+
+### The interior, rendered — the ten parts no viewpoint shows
+
+The scene's `inside-the-chambers` fixed view hides the four chamber surfaces
+whole and leaves what the source puts inside them. It is not a section and
+nothing is cut; `npm run shots:anatomy -- --scene heart-anatomy --preview
+--recipe all` now shoots it, so this is reproducible rather than a one-off.
+
+**All ten interior parts are real geometry, and they read as what they are.**
+
+- **The aortic valve has three cusps**, distinguishable as three.
+- **The mitral valve has leaflets** with an annular form, not a disc.
+- **The interventricular septum is a continuous sheet**, correctly placed
+  between the ventricles.
+- **The five papillary muscles are separate stubs**, each its own mesh.
+- The coronary arteries and cardiac veins from the vasculature candidate sit
+  on the surface where the chambers were, so the two files' interiors and
+  exteriors agree.
+
+**The fidelity limit this makes visible, and it is the important one:** the
+septum renders as a *sheet*, because this file has surfaces around spaces and
+no myocardial free wall anywhere. Anatomically the interventricular septum is
+a thick muscular wall. The model can say where it is and what it separates; it
+cannot say how thick it is, and a scene built on it must not imply that it can.
+The same is true of every chamber "wall". This is the file's nature, recorded
+in `HeartAnatomyScene.js` before this render and confirmed by it.
+
+### What they still do not establish
+
+- **Named-structure quality (A2) is shown for the interior, not the exterior.**
+  Inside, ten parts are separable and visibly bounded. From outside only four
+  surfaces are distinguishable, and whether that is the file or the scene's
+  palette is not established here.
+- **The subject sits left of centre with roughly a third of the frame empty
+  on the right, in every view.** Not investigated here and not necessarily the
+  asset's: the capture hides the interface *after* the scene has framed
+  itself, so a docked right-hand panel would leave exactly this gap. It is
+  recorded because somebody comparing these images to the brain's will see it,
+  and because if it is not the panel then it is the subject bounds being
+  stretched by the vessels.
+
 ## What this inspection did not do
 
-- **No render.** The file has not been drawn; nothing is known here about seams,
+- **No render.** ~~The file has not been drawn~~ — the exterior was rendered on
+  2026-09-15, see above. Still unrendered: anything inside the myocardium.
+  Nothing is known here about seams,
   holes, inside-out winding, or whether the chambers read as chambers.
 - **No anatomical judgement.** The labels are the publisher's. Whether the
   geometry is a good representation of a normal heart is an anatomist's call and

@@ -74,11 +74,12 @@
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed        show the browser
  */
-import { createReadStream, existsSync, mkdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { differingPixels, settledPixels } from './lib/frames.mjs';
-import { createServer } from 'node:http';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { serveDist } from './lib/serve-dist.mjs';
+import { join, resolve } from 'node:path';
+import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -90,17 +91,50 @@ const value = (name, fallback = null) => {
 const distDir = value('--dist', 'dist');
 const sceneSlug = value('--scene', 'brain-anatomy');
 const shotsDir = value('--shots');
-const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
-
 /**
  * Where to click on each organ, when the caller does not say.
  *
- * `DEFAULT_POINTS` is a cluster around the middle of the frame, which is right
- * for a brain and wrong for most organs: two lungs have a mediastinum between
- * them, two kidneys have the spine, a stomach is a J with its own hole in it.
- * On those, all four default clicks land on background and the run reports
- * "the picking may be broken" — about a scene whose picking is fine.
+ * An authored entry is a **tour**: four points read off a render of that
+ * scene's opening view at this script's own viewport, each named for the part
+ * it is on, so the run says "right ventricle, left ventricle, aortic arch,
+ * pulmonary trunk" and not just "four structures".
  *
+  // Across the front of the heart, right to left as the screen shows it: the
+  // right atrium, the right ventricle that makes up most of the anterior
+  // surface, a coronary artery on it, and a great vessel leaving above. Chosen
+  // to name four *different* parts — the right ventricle answers for most of
+  // the middle of the organ, so a tour picked by spreading points evenly names
+  // it three times and says little. It also crosses both adopted files: the
+  // chambers come from VH_M_Heart, the artery and the aorta from
+  // VH_M_Blood_Vasculature, so a run proves each of them is drawn and named.
+  'heart-anatomy': [
+    [0.22, 0.45, 'Right atrium'],
+    [0.38, 0.50, 'Right ventricle'],
+    [0.42, 0.40, 'Left anterior descending artery'],
+    [0.30, 0.30, 'Ascending aorta'],
+  ],
+  // The brain's own tour, named — which it was not until 2026-09-15, and the
+  // cost of that is the reason these four carry names now.
+  //
+  // The points began as the script's `DEFAULT_POINTS`, and a comment here
+  // claimed they landed on the frontal operculum, the supramarginal gyrus, the
+  // middle temporal gyrus and the superior temporal sulcus. Measured, they did
+  // not: one of the four sat at x=0.60 and hit **nothing**, because this
+  // atlas's silhouette spans about x∈[0.22, 0.56] at mid-height, and two of the
+  // others named structures nobody had written down. The publication record
+  // went on listing the original four for a week while the layout moved under
+  // them (the control bar's height, two type floors, three panel changes) —
+  // none of which touches this scene's own sources, so the model-revision
+  // digest could not notice either.
+  //
+  // A prose comment is not an assertion. These are, and the dead point is
+  // replaced by one the drive itself measured to be over the model.
+  'brain-anatomy': [
+    [0.40, 0.34, 'Supramarginal gyrus'],
+    [0.30, 0.45, 'Circular sulcus of insula'],
+    [0.50, 0.50, 'Middle temporal gyrus'],
+    [0.50, 0.42, 'Angular gyrus'],
+  ],
  * These are read off a render of each scene's opening view at this script's own
  * viewport, and each one is named for what the click actually resolved to.
  * They are re-measured when a scene's opening pose or its geometry moves; a
@@ -110,7 +144,7 @@ const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
  * **The whole table was re-measured twice on 2026-09-14**: once when the organ
  * scenes started answering `getSubjectBounds()` in the shape the framing reads,
  * and again when the safe-area fit stopped approximating a perspective camera
- * (F-108) and every model moved. Re-measuring is a command rather than an
+ * (F-125) and every model moved. Re-measuring is a command rather than an
  * afternoon with a screenshot:
  *
  *   VITE_ALLOW_PREVIEW=1 npm run build
@@ -122,7 +156,7 @@ const DEFAULT_POINTS = [[0.40, 0.34], [0.60, 0.32], [0.50, 0.50], [0.50, 0.42]];
  * says why that last one is not optional.
  *
  * And a third time when the scene stopped opening at a framing it was about to
- * abandon (F-110), which moved every model again — this time towards filling
+ * abandon (F-127), which moved every model again — this time towards filling
  * the frame rather than away from it, so the sweep finds more.
  *
  * Twenty-five scenes measured four points on the coarse grid; nine more needed
@@ -211,9 +245,10 @@ const SCENE_POINTS = {
   'eye-anatomy': [[0.365, 0.275], [0.44, 0.37], [0.29, 0.37], [0.365, 0.465]],
 };
 
-const clickPoints = (() => {
+/** The authored tour, or null when the drive should use what it measures. */
+const authoredPoints = (() => {
   const raw = value('--points');
-  if (!raw) return SCENE_POINTS[sceneSlug] ?? DEFAULT_POINTS;
+  if (!raw) return SCENE_POINTS[sceneSlug] ?? null;
   const points = raw
     .trim()
     .split(/\s+/)
@@ -260,42 +295,18 @@ if (!chromium) {
   );
 }
 
-// --- serving the build (same shape as check-viewports.mjs) -----------------
+// --- serving the build -----------------------------------------------------
 
-const MIME = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.glb': 'model/gltf-binary',
-  '.wasm': 'application/wasm',
-  '.txt': 'text/plain; charset=utf-8',
-  '.md': 'text/markdown; charset=utf-8',
-};
-
-const root = resolve(distDir);
-function fileFor(urlPath) {
-  const decoded = decodeURIComponent(urlPath.split('?')[0]);
-  const candidate = resolve(root, `.${normalize(decoded)}`);
-  if (candidate !== root && !candidate.startsWith(root + sep)) return null;
-  if (existsSync(candidate) && statSync(candidate).isDirectory()) {
-    const index = join(candidate, 'index.html');
-    return existsSync(index) ? index : null;
-  }
-  return existsSync(candidate) ? candidate : null;
-}
-
-const server = createServer((request, response) => {
-  const file = fileFor(request.url ?? '/') ?? join(root, 'index.html');
-  response.writeHead(200, {
-    'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-    'cache-control': 'no-store',
-  });
-  createReadStream(file).pipe(response);
+// The candidate assets a scene under development fetches are git-ignored and
+// live outside the build, so a static server rooted at `dist` answers 404 for
+// them — and a scene whose atlas 404s never reaches the state this drive waits
+// for. That is why driving `heart-anatomy` here used to end at "the drive
+// stopped while opening the scene", which reads as the scene being broken
+// rather than as the file not being served. `capture-anatomy-views.mjs` had
+// already learnt this; the mount is the same one.
+const { base, close: closeServer } = await serveDist(distDir, {
+  mounts: { [`/${DEV_ASSET_ROOT}/`]: '.' },
 });
-await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const base = `http://127.0.0.1:${server.address().port}/`;
 
 // --- the drive -------------------------------------------------------------
 
@@ -694,38 +705,56 @@ try {
   //    clears the selection: with a miss last, everything below was testing
   //    what happens to a selection that is not there, and reporting it as the
   //    scene losing one.
-  //
-  //    A measured point that misses is re-aimed once before it counts against
-  //    the scene. The table is measured on the frame the scene opens at, and
-  //    these clicks move it: selecting a structure that names a
-  //    `preferredView` takes the scene there, so a point measured fourth can
-  //    be background by the time the first three have been pressed. Putting
-  //    the scene back is not available either — the opening frame was fitted
-  //    with the consent banner up, and by now it is gone, so "reset the
-  //    display" re-frames to a composition the points were never measured
-  //    against. The male tract reported two of four that way, on a table
-  //    every point of which had just been measured on the model.
-  //
-  //    What the check is for is whether a click on the organ resolves to the
-  //    structure the panel then names. So a miss is re-aimed at a point the
-  //    scene says is over the model *now*, and the re-aiming is reported: a
-  //    table that has genuinely gone stale still shows up, as four notes.
+  const clickPoints = authoredPoints ?? modelPoints.slice(0, 4);
+  if (!authoredPoints) {
+    notes.push(
+      `no authored click tour for ${sceneSlug}; clicked ${clickPoints.length} point(s) measured to be over ` +
+        'the model. Add an entry to SCENE_POINTS to name what each click is on.'
+    );
+  }
+  // Where the model was found, in the form a SCENE_POINTS entry takes. Writing
+  // a tour otherwise means guessing at fractions and reading back "only 1 of 4
+  // resolved" — which is how the first attempt at the heart's went. The drive
+  // already knows; this is it saying so.
+  notes.push(
+    `points measured over the model: ${modelPoints.map(([x, y]) => `${x},${y}`).join(' ')}` +
+      ` (pass them to --points, or paste into SCENE_POINTS as [[${modelPoints
+        .slice(0, 4)
+        .map(([x, y]) => `${x}, ${y}`)
+        .join('], [')}]])`
+  );
+
   let lastHitPoint = null;
-  for (const [fx, fy] of clickPoints) {
-    let hit = await clickAt(fx, fy);
-    let at = [fx, fy];
-    if (hit.en === EMPTY) {
-      const live = await liveModelPoint();
-      if (!live) continue;
-      notes.push(`the measured point ${fx},${fy} is background now — the scene has moved since it was measured`);
-      at = live;
-      hit = await clickAt(live[0], live[1]);
-      if (hit.en === EMPTY) continue;
-    }
-    lastHitPoint = at;
+  /** What each authored point actually named, so the tour can be held to it. */
+  const tour = [];
+  for (const [fx, fy, expected] of clickPoints) {
+    const hit = await clickAt(fx, fy);
+    tour.push({ fx, fy, expected: expected ?? null, got: hit.en === EMPTY ? null : hit.en });
+    if (hit.en === EMPTY) continue;
+    lastHitPoint = [fx, fy];
     observed.structures.push(hit);
     if (!hit.ja || hit.ja === '部位を選択してください') problems.push(`"${hit.en}" has no Japanese name`);
     if (!hit.where.includes('›')) problems.push(`"${hit.en}" is named without a place in the hierarchy`);
+  }
+
+  // A tour that says which structure each point is on is held to it.
+  //
+  // Without this the drive only needed three non-empty answers and never looked
+  // at *which* structures came back — so a layout or opening-camera change
+  // could slide the points onto other meshes, or onto the same mesh four times,
+  // and everything would stay green while a publication record went on claiming
+  // four named parts across two files. Such a change need not touch the scene's
+  // own sources, so the model-revision digest would not notice either.
+  for (const stop of tour.filter((entry) => entry.expected)) {
+    if (stop.got === null) {
+      problems.push(`the tour's point (${stop.fx}, ${stop.fy}) should be on "${stop.expected}" and hit nothing`);
+    } else if (stop.got !== stop.expected) {
+      problems.push(`the tour's point (${stop.fx}, ${stop.fy}) should be on "${stop.expected}" and named "${stop.got}"`);
+    }
+  }
+  const named = tour.filter((entry) => entry.expected && entry.got).map((entry) => entry.got);
+  if (named.length !== new Set(named).size) {
+    problems.push(`the tour names ${new Set(named).size} distinct structure(s) from ${named.length} point(s)`);
   }
   if (observed.structures.length < 3) {
     problems.push(
@@ -918,6 +947,129 @@ try {
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
       problems.push('after Show all, clicking the model selected nothing — it did not come back');
+    }
+  }
+
+  // 5b. A branch comes off in one press, and comes back the same way.
+  //
+  // The point of the control is the *many*: a reader taking the chamber
+  // surfaces off to look inside, or a hemisphere off to see the midline. So
+  // this presses the branch with the most structures under it rather than the
+  // first one, because the first branch on some scenes holds exactly one
+  // structure and hiding one structure would pass a check meant for seventy.
+  //
+  // **Counting the hidden set is the wrong measure**, and this check made that
+  // mistake first: the heart opens with six structures already hidden — the
+  // arch branches and the brachiocephalic veins, which are in the way of the
+  // organ — so "hid 46" came back as "hid 40" and read as the feature being
+  // broken. What matters is which structures, not how many: every leaf of the
+  // branch hidden afterwards, none of them hidden after the press back, and
+  // nothing outside the branch touched either way.
+  //
+  // Scenes whose model cannot hide a set do not draw the control at all
+  // (`setStructuresHidden` is optional in the contract); there the branch is
+  // recorded as absent rather than reported as broken.
+  {
+    const groups = await page.evaluate(() => {
+      const out = [];
+      for (const branch of document.querySelectorAll('.anatomy-tree-branch')) {
+        const control = branch.querySelector(':scope > .anatomy-tree-visibility');
+        if (!control) continue;
+        out.push({
+          node: control.dataset.groupVisibility,
+          label: branch.getAttribute('aria-label') ?? '',
+          leaves: [...branch.querySelectorAll('.anatomy-tree-leaf')].map((row) => row.dataset.structure),
+        });
+      }
+      return out.sort((a, b) => b.leaves.length - a.leaves.length);
+    });
+    if (!groups.length) {
+      notes.push('no group has a visibility control — this scene\'s model cannot hide a set');
+    } else {
+      const biggest = groups[0];
+      const mine = new Set(biggest.leaves);
+      // Ids reach the DOM as strings whatever the scene's own type is, so both
+      // sides are compared as strings.
+      const hiddenSet = async () => page.evaluate(() => {
+        const list = window.__app?.scene?.getAnatomyVisibility?.().hidden;
+        return list ? list.map(String) : null;
+      });
+      const control = page.locator(`[data-group-visibility="${biggest.node}"]`);
+      const branch = page.locator(`[data-node="${biggest.node}"]`);
+      const start = await hiddenSet();
+      if (start === null) {
+        problems.push('the scene does not report its hidden set; group visibility cannot be measured');
+      } else {
+        // What the press must not touch: everything the scene had hidden that
+        // is not under this branch.
+        const elsewhere = start.filter((id) => !mine.has(id));
+        const missing = (set, ids) => ids.filter((id) => !set.has(id));
+
+        const press = async (how, run) => {
+          at(how);
+          await run();
+          await page.waitForTimeout(400);
+          return new Set(await hiddenSet());
+        };
+
+        const hide = await press(
+          `hiding the branch "${biggest.label}" in one press`,
+          // `force`, because the control is quiet until the row is hovered: it
+          // is drawn at zero opacity so a tree of four hundred rows is not four
+          // hundred buttons shouting, and Playwright reads that as not visible.
+          () => control.click({ force: true })
+        );
+        const left = missing(hide, biggest.leaves);
+        if (left.length) {
+          problems.push(
+            `pressing the branch "${biggest.label}" left ${left.length} of its ${biggest.leaves.length} structures on screen`
+          );
+        }
+        const lost = missing(hide, elsewhere);
+        if (lost.length) {
+          problems.push(`pressing the branch "${biggest.label}" un-hid ${lost.length} structure(s) outside it`);
+        }
+        if ((await control.getAttribute('aria-pressed')) !== 'true') {
+          problems.push('a branch whose structures are all hidden does not announce it');
+        }
+        await shot('group-hidden');
+
+        const show = await press('showing the branch again', () => control.click({ force: true }));
+        const stuck = biggest.leaves.filter((id) => show.has(id));
+        if (stuck.length) {
+          problems.push(`showing the branch again left ${stuck.length} of its structures hidden`);
+        }
+        const collateral = missing(show, elsewhere);
+        if (collateral.length) {
+          problems.push(`showing the branch un-hid ${collateral.length} structure(s) outside it`);
+        }
+
+        // And the same action from the keyboard, on the focused branch.
+        const byKey = await press('hiding the branch from the keyboard', async () => {
+          await branch.focus();
+          await page.keyboard.press('v');
+        });
+        const keyLeft = missing(byKey, biggest.leaves);
+        if (keyLeft.length) {
+          problems.push(
+            `V on the focused branch "${biggest.label}" left ${keyLeft.length} of its structures on screen`
+          );
+        }
+        const back = await press('showing it again from the keyboard', () => page.keyboard.press('v'));
+        const keyStuck = biggest.leaves.filter((id) => back.has(id));
+        if (keyStuck.length) problems.push(`V did not put ${keyStuck.length} of the branch's structures back`);
+
+        observed.groupHidden = { label: biggest.label, structures: biggest.leaves.length };
+        // Said rather than assumed: a group press is "show everything under
+        // this branch", so on a scene that opens with some of them hidden it
+        // shows those too — the same thing "Unhide all" does.
+        if (elsewhere.length !== start.length) {
+          notes.push(
+            `${start.length - elsewhere.length} structure(s) under "${biggest.label}" were already hidden when the ` +
+              'scene opened; showing the branch shows those as well, as "Unhide all" does'
+          );
+        }
+      }
     }
   }
 
@@ -1213,6 +1365,22 @@ try {
         // The close control is above the scrolling body, so a reader four
         // hundred rows down does not have to scroll back to leave.
         closeAboveBody: close.getBoundingClientRect().bottom <= body.getBoundingClientRect().top + 1,
+        // The sheet's own chrome, at a phone width. `check-viewports` measures
+        // the page as it stands and cannot open a dialog; these are the only
+        // controls on a phone that reach the three actions at all, and they
+        // shipped at 32px. The 271-row part tree is deliberately not here —
+        // `PHONE_TARGET.exemptions` says why it stays at the dense 32.
+        smallChrome: window.innerWidth > 430
+          ? []
+          : [...document.querySelectorAll(
+              '.anatomy-panel-action, .anatomy-panel-tab, .anatomy-panel-close, .anatomy-search-input'
+            )]
+            .filter((node) => !node.hidden)
+            .map((node) => [node, node.getBoundingClientRect()])
+            .filter(([, box]) => box.width > 0 && box.height > 0 && Math.min(box.width, box.height) + 0.5 < 44)
+            .map(([node, box]) =>
+              `${(node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 16) || node.className} ` +
+              `${Math.round(box.width)}×${Math.round(box.height)}`),
       };
     });
     if (opened.open !== 'open') problems.push('the Parts button did not open the sheet');
@@ -1222,6 +1390,9 @@ try {
     if (!opened.summaryOutsideBody) problems.push('the selection summary is inside the scrolling body');
     if (!opened.summaryUsable) problems.push('the selection summary is off screen or covered while the sheet is open');
     if (!opened.isolateUsable) problems.push('a main action is off screen or covered while the sheet is open');
+    if (opened.smallChrome?.length) {
+      problems.push(`the sheet's own controls are under 44px on a phone: ${opened.smallChrome.join('; ')}`);
+    }
     if (!opened.closeAboveBody) problems.push('the close control is inside the scrolling list rather than above it');
 
     // And the ring does not run off the end. Tab from the last stop and
@@ -1551,6 +1722,229 @@ try {
     if (shotsDir) await small.screenshot({ path: join(shotsDir, `brain-retry-${size}.png`) });
     await context.close();
   }
+
+  // 14. What a zoom holds still.
+  //
+  //     A device pass reported the brain sliding to a corner and under the
+  //     header as it was zoomed in. The cause was not the zoom but its pivot:
+  //     `fitPoseToSafeArea` pans camera and target together to sit the subject
+  //     in the band the panels leave, which leaves the orbit centre where the
+  //     subject is not — measured at 1280x800, 177px apart — and a dolly toward
+  //     the orbit centre magnifies that gap by the zoom factor.
+  //
+  //     `tests/zoom-anchor.test.js` pins the arithmetic. This drives the real
+  //     thing: a real wheel, a real pointer, the shipped OrbitControls, at the
+  //     two widths the layout differs at.
+  step = 'measuring what a zoom holds still';
+  for (const [width, height] of atlasScene ? [[1280, 800], [390, 844]] : []) {
+    const size = `${width}x${height}`;
+    const context = await browser.newContext({ viewport: { width, height } });
+    const zoomPage = await context.newPage();
+    await zoomPage.goto(url, { waitUntil: 'domcontentloaded' });
+    await zoomPage.waitForFunction(
+      () => window.__app?.scene?.getAnatomyStatus?.().state === 'ready',
+      null,
+      { timeout: 60000 },
+    ).catch(() => {});
+    await zoomPage.locator('.consent-banner button').last().click({ timeout: 4000 }).catch(() => {});
+    await zoomPage.waitForTimeout(600);
+
+    /**
+     * Where the subject, a pinned structure and the subject's box are on
+     * screen, plus how much of that box is inside the band the fixed chrome
+     * leaves. All in page pixels, read from the live camera.
+     */
+    const read = () => zoomPage.evaluate(() => {
+      const app = window.__app;
+      const viewer = app.viewer;
+      const rect = viewer.renderer.domElement.getBoundingClientRect();
+      const to = (v) => {
+        const p = v.clone().project(viewer.camera);
+        return [rect.left + ((p.x + 1) / 2) * rect.width, rect.top + ((1 - p.y) / 2) * rect.height];
+      };
+      const bounds = app.scene.getSubjectBounds();
+      const pinned = window.__zoomProbeId ? app.scene.getStructureBounds(window.__zoomProbeId) : null;
+      const xs = bounds.corners.map((corner) => to(corner)[0]);
+      const ys = bounds.corners.map((corner) => to(corner)[1]);
+      const box = {
+        left: Math.min(...xs), right: Math.max(...xs),
+        top: Math.min(...ys), bottom: Math.max(...ys),
+      };
+      // The band, measured from the chrome itself rather than assumed: only an
+      // element that crosses the middle of the frame is an edge band, which is
+      // the same rule `safeAreaInsets` applies in the app.
+      const boxOf = (selector) => {
+        const node = document.querySelector(selector);
+        return node ? node.getBoundingClientRect() : null;
+      };
+      const w = rect.width;
+      const h = rect.height;
+      const nav = boxOf('.global-scene-nav');
+      const consoleBar = boxOf('.console');
+      const rail = boxOf('.rail');
+      const band = { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+      if (nav && nav.left < w / 2 && nav.right > w / 2) band.top = Math.max(band.top, nav.bottom);
+      if (consoleBar && consoleBar.left < w / 2 && consoleBar.right > w / 2) {
+        band.bottom = Math.min(band.bottom, consoleBar.top);
+      }
+      if (rail && rail.top < h / 2 && rail.bottom > h / 2) band.right = Math.min(band.right, rail.left);
+      const over = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, b0));
+      const area = Math.max(1, (box.right - box.left) * (box.bottom - box.top));
+      return {
+        subject: to(bounds.centre),
+        pinned: pinned ? to(pinned.centre) : null,
+        distance: viewer.camera.position.distanceTo(viewer.controls.target),
+        visible:
+          (over(box.left, box.right, band.left, band.right) *
+            over(box.top, box.bottom, band.top, band.bottom)) / area,
+      };
+    });
+
+    /**
+     * Wait until the camera has actually stopped.
+     *
+     * Every measurement below has to start and end at rest, and "at rest" is
+     * not a length of time. The controls are damped, the app tweens the camera
+     * to a new framing whenever the bands move — answering the usage-data card
+     * moves them — and a reading taken part-way through either reports drift
+     * that is really just the tail of something else finishing. The first
+     * version of this check waited 600ms and reported 124px of drift at
+     * 1280x800 that a settled reading puts at 0.
+     *
+     * The whole pose, not just the distance: a re-frame moves the camera and
+     * the orbit centre together, which a distance alone cannot see.
+     */
+    const settle = async () => {
+      await zoomPage.waitForFunction(() => {
+        const viewer = window.__app.viewer;
+        const now = [...viewer.camera.position.toArray(), ...viewer.controls.target.toArray()];
+        const before = window.__zoomLast;
+        window.__zoomLast = now;
+        return Array.isArray(before) && now.every((value, at) => Math.abs(value - before[at]) < 1e-4);
+      }, null, { timeout: 20000, polling: 150 }).catch(() => {});
+      await zoomPage.evaluate(() => { delete window.__zoomLast; });
+    };
+
+    /** Wheel at a point, then let everything it started finish. */
+    const wheelAt = async (x, y, notches, direction) => {
+      await zoomPage.mouse.move(x, y);
+      for (let notch = 0; notch < notches; notch += 1) {
+        await zoomPage.mouse.wheel(0, direction * 120);
+        await zoomPage.waitForTimeout(90);
+      }
+      await settle();
+    };
+
+    const drift = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    /**
+     * How far the anchor may move, in page pixels.
+     *
+     * Measured, not guessed. Anchored, every case below reads exactly 0 at both
+     * widths; with `zoomToCursor` turned off — the shipped behaviour this
+     * replaces — the same four notches move it 34px at 1280x800 and 9px at
+     * 390x844, and five button steps move it 177px. Six sits clear of both, so
+     * a failure means the anchor is gone rather than that an engine rounds
+     * differently.
+     */
+    const DRIFT_PX = 6;
+
+    // (1) The pointer on the subject: zooming must not translate it.
+    await settle();
+    const start = await read();
+    await wheelAt(start.subject[0], start.subject[1], 4, -1);
+    const zoomedIn = await read();
+    if (zoomedIn.distance >= start.distance) {
+      problems.push(`[${size}] the wheel did not zoom the scene in`);
+    } else if (drift(zoomedIn.subject, start.subject) > DRIFT_PX) {
+      problems.push(
+        `[${size}] zooming on the subject moved it ${Math.round(drift(zoomedIn.subject, start.subject))}px ` +
+          'across the screen; a zoom should not translate what it is zooming',
+      );
+    }
+
+    // (5a) …and it is still in view afterwards, not under the header.
+    if (zoomedIn.visible < 0.25) {
+      problems.push(
+        `[${size}] after zooming in, only ${Math.round(zoomedIn.visible * 100)}% of the model is ` +
+          'outside the fixed chrome',
+      );
+    }
+
+    // (3) The same zoom backwards returns the same shot.
+    await wheelAt(start.subject[0], start.subject[1], 4, 1);
+    const returned = await read();
+    if (drift(returned.subject, start.subject) > DRIFT_PX) {
+      problems.push(
+        `[${size}] zooming out again left the model ${Math.round(drift(returned.subject, start.subject))}px ` +
+          'from where it started',
+      );
+    }
+    if (Math.abs(returned.distance / start.distance - 1) > 0.05) {
+      problems.push(
+        `[${size}] zooming in and back out changed the distance by ` +
+          `${Math.round((returned.distance / start.distance - 1) * 100)}%`,
+      );
+    }
+
+    // (2) A structure under the pointer stays under the pointer. Not the
+    //     subject's centre — a named part off to one side, which is what
+    //     "zoom in on this gyrus" actually is.
+    const pickedId = await zoomPage.evaluate(() => {
+      const app = window.__app;
+      const canvas = document.querySelector('canvas');
+      const box = canvas.getBoundingClientRect();
+      for (let radius = 0; radius <= 140; radius += 14) {
+        for (const [dx, dy] of [[0.9, -0.5], [-0.9, -0.5], [0.9, 0.5], [-0.9, 0.5], [1, 0], [0, 0]]) {
+          if (app.scene.selectAtCanvasPoint(box.width / 2 + dx * radius, box.height / 2 + dy * radius)) {
+            window.__zoomProbeId = app.scene.getAnatomySelection()?.id;
+            return window.__zoomProbeId;
+          }
+        }
+      }
+      return null;
+    });
+    if (pickedId == null) {
+      notes.push(`${size}: no structure could be pinned, so the pointer-anchored zoom was not measured`);
+    } else {
+      await settle();
+      const beforePointer = await read();
+      await wheelAt(beforePointer.pinned[0], beforePointer.pinned[1], 4, -1);
+      const afterPointer = await read();
+      if (drift(afterPointer.pinned, beforePointer.pinned) > DRIFT_PX) {
+        problems.push(
+          `[${size}] the structure under the pointer moved ` +
+            `${Math.round(drift(afterPointer.pinned, beforePointer.pinned))}px while zooming into it`,
+        );
+      }
+
+      // (4) …and nothing puts it back in the middle afterwards. A second
+      //     reading a beat later catches a re-frame, a resize observer or a
+      //     tween that decides to centre the model once the gesture is over.
+      await zoomPage.waitForTimeout(1600);
+      const settled = await read();
+      if (drift(settled.pinned, afterPointer.pinned) > DRIFT_PX) {
+        problems.push(
+          `[${size}] the close-up drifted ${Math.round(drift(settled.pinned, afterPointer.pinned))}px ` +
+            'on its own after the gesture ended — something is re-centring it',
+        );
+      }
+      // (5b) The model is still not entirely behind the chrome, zoomed in on
+      //      one part of it.
+      if (settled.visible < 0.15) {
+        problems.push(
+          `[${size}] zoomed into one structure, only ${Math.round(settled.visible * 100)}% of the model ` +
+            'is outside the fixed chrome',
+        );
+      }
+      notes.push(
+        `${size}: zoom holds its anchor (subject ${Math.round(drift(zoomedIn.subject, start.subject))}px, ` +
+          `pointer ${Math.round(drift(afterPointer.pinned, beforePointer.pinned))}px, ` +
+          `round trip ${Math.round(drift(returned.subject, start.subject))}px)`,
+      );
+    }
+    if (shotsDir) await zoomPage.screenshot({ path: join(shotsDir, `brain-zoom-${size}.png`) });
+    await context.close();
+  }
 } catch (error) {
   // A step that cannot complete is a finding, not a reason to throw away the
   // findings collected before it. Breaking the modal boundary made a later
@@ -1563,11 +1957,19 @@ try {
   console.error(`\nwhile ${step}:\n${error.message}`);
 } finally {
   await browser.close();
-  server.close();
+  closeServer();
 }
 
 console.log(`Anatomy interaction — ${sceneSlug}, ${observed.selectableCount} selectable structures`);
 console.log(`  structures named by click: ${observed.structures.map((s) => `${s.en} / ${s.ja}`).join('; ') || 'none'}`);
+// With the place in the hierarchy, because a publication record has to carry it
+// and reading it off a screenshot is how `brain-anatomy`'s record came to list
+// four structures the drive had stopped naming. The drive already reads this to
+// check a structure is not named without a place; printing it means the record
+// can be written from the run.
+for (const structure of observed.structures) {
+  console.log(`    ${structure.en} / ${structure.ja} — ${structure.where}`);
+}
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
 console.log(`  labels on the model: ${observed.labels.join(', ') || 'none'}`);
@@ -1579,6 +1981,13 @@ if (observed.openingFraming) {
       `${reset[0]}..${reset[1]} after a display reset`
   );
 }
+console.log(
+  `  group hidden in one press: ${
+    observed.groupHidden
+      ? `${observed.groupHidden.label} (${observed.groupHidden.structures} structures)`
+      : 'not offered by this scene'
+  }`
+);
 for (const note of notes) console.log(`  note: ${note}`);
 
 if (problems.length) {

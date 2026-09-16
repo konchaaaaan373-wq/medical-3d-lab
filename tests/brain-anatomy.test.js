@@ -849,3 +849,75 @@ test('brain: a structure the settings are not drawing has no label to wait for',
   assert.equal(label.isDrawn(), true);
   scene.dispose();
 });
+
+test('hiding the isolated structure says the isolation ended, not only that something is hidden', () => {
+  // Found by review on PR #90. Hiding the isolated structure has always dropped
+  // the isolation — "only this one" and "not this one" cannot both be true —
+  // but only the visibility event was sent. `AnatomyTreePanel` learns about
+  // isolation from `onAnatomyIsolation` and nowhere else, so the row went on
+  // wearing its isolated marker while the scene reported no isolation at all.
+  for (const hide of [
+    (scene, id) => scene.setStructureHidden(id, true),
+    (scene, id) => scene.setStructuresHidden([id], true),
+  ]) {
+    const scene = buildScene();
+    const id = scene.selectables[0].userData.atlasId;
+    scene.isolateStructure(id);
+    assert.equal(scene.getAnatomyIsolation(), id);
+
+    let announced = null;
+    let announcements = 0;
+    scene.onAnatomyIsolation((value) => { announced = value; announcements += 1; });
+    assert.equal(hide(scene, id), true);
+
+    assert.equal(scene.getAnatomyIsolation(), null, 'the isolation is over');
+    assert.equal(announcements, 1, 'and it was announced exactly once');
+    assert.equal(announced, null, 'as the isolation being over');
+    scene.dispose();
+  }
+});
+
+test('hiding something the reader did not ask a reveal for is not announced as an isolation', () => {
+  // The other half of the rule: a hide that ends nothing must stay quiet, or
+  // every press repaints every surface that listens for isolation.
+  const scene = buildScene();
+  const [first, second] = scene.selectables.map((mesh) => mesh.userData.atlasId);
+  scene.isolateStructure(first);
+  let announcements = 0;
+  scene.onAnatomyIsolation(() => { announcements += 1; });
+  scene.setStructuresHidden([second], true);
+  assert.equal(scene.getAnatomyIsolation(), first, 'the isolation is untouched');
+  assert.equal(announcements, 0, 'so nothing about it was announced');
+  scene.dispose();
+});
+
+test('a visibility change the reader made themselves discards the reveal snapshot', () => {
+  // Also from PR #90's review. `restoreDisplay()` puts back the *whole* hidden
+  // set from the snapshot, so a hide or show made after a reveal would be
+  // silently thrown away by "Back to how it was" — the reader's own change
+  // undone by a button that says it undoes the reveal's.
+  for (const [what, change] of [
+    ['one structure hidden', (scene, id) => scene.setStructureHidden(id, true)],
+    ['a group hidden', (scene, id) => scene.setStructuresHidden([id], true)],
+    ['everything shown again', (scene) => scene.showAllHiddenStructures()],
+  ]) {
+    const scene = buildScene();
+    const deep = scene.selectables.find((mesh) => mesh.userData.bx_cat === 'deep_grey')
+      ?? scene.selectables[1];
+    const id = deep.userData.atlasId;
+    // Something for `showAllHiddenStructures` to undo, taken before the reveal
+    // so the snapshot records it.
+    scene.setStructureHidden(scene.selectables[0].userData.atlasId, true);
+    const revealed = scene.revealStructure(id);
+    assert.equal(revealed.ok, true, `${what}: the reveal ran`);
+    assert.equal(scene.canRestoreDisplay(), true, `${what}: and left a way back`);
+
+    change(scene, scene.selectables[2].userData.atlasId);
+    assert.equal(
+      scene.canRestoreDisplay(),
+      false,
+      `${what}: the snapshot is stale and must not be offered`
+    );
+    scene.dispose();
+  }
+});

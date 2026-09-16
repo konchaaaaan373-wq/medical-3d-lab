@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { watchConsoleReach } from './consoleReach.js';
 
 const SHELL_VALUE = 'calm';
 
@@ -23,6 +24,8 @@ export function mountAnatomyShellPresentation({
   const subtitle = titleCard?.querySelector?.('.subtitle') ?? null;
   const trustStatus = titleCard?.querySelector?.('.title-trust-badges') ?? null;
   const eyebrow = titleCard?.querySelector?.('.eyebrow') ?? null;
+  const titleEn = titleCard?.querySelector?.('.title') ?? null;
+  const titleJa = titleCard?.querySelector?.('.title-ja') ?? null;
   const maturityBadge = trustStatus?.querySelector?.('.status-badge') ?? null;
   const previousTrustLabel = trustStatus?.getAttribute?.('aria-label') ?? null;
   const subtitleNextSibling = subtitle?.nextSibling ?? null;
@@ -68,6 +71,77 @@ export function mountAnatomyShellPresentation({
     titleCard.append(disclosure);
   }
 
+  /**
+   * On a phone the card stops being a card.
+   *
+   * On a desktop the title and the review state are a heading beside the model.
+   * On a 390 px phone they are a second column taking a fifth of the height,
+   * next to the selection card, above a model that then has nowhere to be —
+   * which is what a device pass found. The same three things a reader needs are
+   * still here: the title is already in the header bar, and the title line and
+   * the review state move *inside* the information disclosure, which is the
+   * affordance that stays.
+   *
+   * Moved rather than duplicated, and moved back when there is room again: two
+   * copies of a review state is how one of them comes to be wrong.
+   */
+  const NARROW = '(max-width: 430px)';
+  const narrow = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia(NARROW)
+    : null;
+  /** Where each moved node sat, so putting it back is putting it back. */
+  const homeOf = new Map();
+  const movable = [titleEn, titleJa, trustStatus].filter(Boolean);
+
+  function applyWidth() {
+    if (destroyed) return;
+    const copy = disclosure?.querySelector?.('.anatomy-shell-about-copy');
+    if (!copy) return;
+    // The language, hide-UI and feedback chips are a row of chrome, and a row
+    // of chrome on a phone is a row the model does not get. They join the
+    // disclosure's own row instead of standing under it — nothing is hidden and
+    // nothing is a second tap away, and the model is 44 px taller for it.
+    // Looked up each time rather than captured once: this adapter can mount
+    // before the rail's own buttons exist, and a reference taken then would be
+    // null for the rest of the session — including the resize that needs it.
+    const railButtons = ui.querySelector?.('.rail-buttons') ?? null;
+    if (railButtons && titleCard) {
+      if (narrow?.matches) {
+        if (!titleCard.contains?.(railButtons)) {
+          if (!homeOf.has(railButtons)) {
+            homeOf.set(railButtons, [railButtons.parentNode, railButtons.nextSibling]);
+          }
+          titleCard.append?.(railButtons);
+        }
+      } else {
+        restoreNode(railButtons);
+      }
+    }
+    if (narrow?.matches) {
+      // Reverse order with `prepend`, so they arrive in the order they are in.
+      for (const node of [...movable].reverse()) {
+        if (copy.contains?.(node)) continue;
+        if (!homeOf.has(node)) homeOf.set(node, [node.parentNode, node.nextSibling]);
+        copy.prepend?.(node);
+      }
+    } else {
+      for (const node of movable) restoreNode(node);
+    }
+  }
+
+  function restoreNode(node) {
+    const home = homeOf.get(node);
+    if (!home) return;
+    const [parent, next] = home;
+    if (!parent) return;
+    if (next?.parentNode === parent && parent.insertBefore) parent.insertBefore(node, next);
+    else parent.append?.(node);
+    homeOf.delete(node);
+  }
+
+  applyWidth();
+  narrow?.addEventListener?.('change', applyWidth);
+
   gestureHint = el('div', {
     class: 'anatomy-shell-gesture-hint',
     'aria-hidden': 'true',
@@ -78,6 +152,12 @@ export function mountAnatomyShellPresentation({
     el('span', { class: 'gesture-touch lang-ja', text: '指で回転 · ピンチで拡大' }),
   ]);
   ui.append?.(gestureHint);
+
+  // The hint floats above the control bar, so it needs the bar's height and CSS
+  // cannot ask for it. Measured into `--console-reach` rather than copied into
+  // a px constant per media query, which is how it came to print across the bar
+  // twice (F-116).
+  const consoleReach = watchConsoleReach({ ui });
 
   const dismissHint = () => gestureHint?.remove?.();
   stage?.addEventListener?.('pointerdown', dismissHint, { once: true });
@@ -94,6 +174,10 @@ export function mountAnatomyShellPresentation({
       stage?.removeEventListener?.('touchstart', dismissHint);
       gestureHint?.remove?.();
       gestureHint = null;
+      consoleReach.destroy();
+      narrow?.removeEventListener?.('change', applyWidth);
+      for (const node of movable) restoreNode(node);
+      for (const node of [...homeOf.keys()]) restoreNode(node);
       if (maturityBadge && trustStatus) {
         if (maturityNextSibling?.parentNode === trustStatus && trustStatus.insertBefore) {
           trustStatus.insertBefore(maturityBadge, maturityNextSibling);

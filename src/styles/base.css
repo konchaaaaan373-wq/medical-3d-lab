@@ -156,6 +156,38 @@ body {
   pointer-events: none;
 }
 
+/* The departure veil covers a document that is being replaced, so it has to be
+   above every other layer this product stacks — the skip link at 100 included,
+   because a skip link over a page that is leaving points at content that is
+   about to stop existing. `tests/departure.test.js` reads every stylesheet and
+   fails if anything ever declares a higher one, rather than trusting this
+   comment to stay true.
+
+   No `transition`: the fade that suits "the model is ready" is exactly wrong
+   here, because the thing it would fade in over is the answer we are trying not
+   to show. */
+.loading[data-leaving] {
+  z-index: 1000;
+  transition: none;
+}
+
+.loading-retry {
+  padding: 9px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.loading-retry:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .loading-bar {
   width: 120px;
   height: 2px;

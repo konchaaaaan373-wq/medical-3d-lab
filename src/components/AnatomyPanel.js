@@ -309,10 +309,32 @@ export function createAnatomyPanel({
     type: 'button',
     'aria-expanded': 'false',
     on: { click: () => openSheet('parts') },
-  }, [
-    el('span', { class: 'lang-en', text: 'Parts' }),
-    el('span', { class: 'lang-ja', text: '部位' }),
-  ]);
+  });
+
+  /**
+   * What this button is called depends on what it is the way into.
+   *
+   * Beside the model it is one control among several and it opens the part
+   * list, so it says so. On a phone the card is the name and this button, and
+   * everything else is behind it — the part list, the display choices, the
+   * description, and what can be done to the structure, because the summary
+   * moves into the sheet along with them. Calling that "Parts" would name a
+   * third of where it goes.
+   */
+  const PHONE_PANEL = '(max-width: 430px)';
+  const phonePanel = typeof window !== 'undefined' && window.matchMedia
+    ? window.matchMedia(PHONE_PANEL)
+    : null;
+
+  function paintPartsLabel() {
+    const phone = Boolean(phonePanel?.matches);
+    partsButton.replaceChildren(
+      el('span', { class: 'lang-en', text: phone ? 'More' : 'Parts' }),
+      el('span', { class: 'lang-ja', text: phone ? '詳しく見る' : '部位' })
+    );
+  }
+  paintPartsLabel();
+  phonePanel?.addEventListener?.('change', paintPartsLabel);
 
   /**
    * The load state, where it can actually be seen.
@@ -784,6 +806,7 @@ export function createAnatomyPanel({
     );
     showAllButton.hidden = isolated == null;
 
+    const canHide = typeof scene.setStructureHidden === 'function';
     const hidden = scene.getAnatomyVisibility?.().hidden ?? [];
     const selectionHidden = Boolean(selection) && hidden.includes(selection.id);
     const drawn = selection ? scene.isStructureVisible?.(selection.id) ?? true : false;
@@ -799,7 +822,15 @@ export function createAnatomyPanel({
     // Offered when the structure is not on screen — which is the only time the
     // question "where is it?" cannot be answered by looking.
     revealButton.hidden = !selection || canSee;
-    hideButton.hidden = !selection;
+    // Offered only by a model that can actually hide. Every other control here
+    // is asked of the scene before it is drawn, and this one was not: it was
+    // shown whenever anything was selected, while `toggleHidden` reaches for
+    // `setStructureHidden` with an optional call. On the thirty-nine organ
+    // scenes built on `OrganAnatomyScene`, which has isolation and cuts but no
+    // hiding, that made "Hide" a button that did nothing at all — the reader
+    // presses it, the model does not change, and nothing says why. A control
+    // the model cannot honour is worse than a missing one.
+    hideButton.hidden = !selection || !canHide;
     hideButton.replaceChildren(
       el('span', { class: 'lang-en', text: selectionHidden ? 'Unhide' : 'Hide' }),
       el('span', { class: 'lang-ja', text: selectionHidden ? '再表示' : '非表示' })
@@ -927,6 +958,7 @@ export function createAnatomyPanel({
       restoreBackground();
       document.removeEventListener('keydown', onKeydown, true);
       sheetMedia?.removeEventListener?.('change', applyLayout);
+      phonePanel?.removeEventListener?.('change', paintPartsLabel);
       unsubscribeSelection?.();
       unsubscribeHover?.();
       unsubscribeIsolation?.();

@@ -28,6 +28,9 @@ import { NASAL, SITES, buildEyeball } from '../../organs/eyeball.js';
  * Because it is the only two-valued thing in the model. Everything else that
  * changes is a shape.
  */
+/** Whether a read-out value is a number, and so whether its unit belongs beside it. */
+const reads = (value) => String(value).trim() !== '' && Number.isFinite(Number(value));
+
 export class RetinalDetachmentScene {
   static meta = {
     id: 'retinal-detachment',
@@ -201,7 +204,10 @@ export class RetinalDetachmentScene {
       // Printed rather than omitted: the absence is the claim.
       vision: 'not in this model',
     };
-    return METRICS.map((m) => ({ ...m, value: value[m.id] }));
+    // A unit belongs to a number. Where a row falls back to a word — "—" when
+    // there is nothing to be short of — the degree sign beside it reads as a
+    // measurement of the dash.
+    return METRICS.map((m) => ({ ...m, value: value[m.id], unit: reads(value[m.id]) ? m.unit : '' }));
   }
 
   dispose() {

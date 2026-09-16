@@ -16,9 +16,10 @@
  * wherever they had been standing ten minutes earlier. So a position the guide
  * moved to is kept, and the mode switch alone changes nothing.
  *
- * This intentionally snapshots only Playback. Patient/Education guides do not
- * edit model controls, comparison, camera, or physiology; broader modes use the
- * app's full sessionState helper instead.
+ * This intentionally snapshots only Playback. The patient guide may also ask
+ * the scene to change controls, comparison, and framing; those changes are
+ * tracked by the guide installer. Broader modes use the app's full sessionState
+ * helper instead.
  */
 
 export function captureGuideSession(playback) {
@@ -26,6 +27,17 @@ export function captureGuideSession(playback) {
     progress: Number.isFinite(playback?.value) ? playback.value : 0,
     playing: Boolean(playback?.playing),
   });
+}
+
+/**
+ * Start a guide without letting its fixed caption drift away from a playing
+ * model. Capture first so a guide closed without taking a step can restore the
+ * clinician's original play state as well as the exact progression value.
+ */
+export function beginGuideSession(playback) {
+  const snapshot = captureGuideSession(playback);
+  playback?.pause?.();
+  return snapshot;
 }
 
 /**

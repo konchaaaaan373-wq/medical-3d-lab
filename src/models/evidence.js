@@ -3084,6 +3084,18 @@ export const BPPV_EVIDENCE = defineEvidence('bppv', [
     layer: LAYER.CALIBRATION,
   },
   {
+    id: 'where-the-ampulla-is-put',
+    claim:
+      'Where on each loop the ampulla sits, which is the end `towardsAmpulla` names a direction against.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'Not measured but chosen so that each loop has a named end: **the ear atlas draws each canal as a plain loop of tube with no ampulla on it**, so there was nothing in the anatomy to take an angle from.',
+    note:
+      '**The body the scene draws at that angle is a structure this layer adds**, and the visual mapping says so. What the angles have to deliver is only that the loop has a named end, so a direction of travel can be a fact about the arc rather than the sign of a subtraction — nothing in the model depends on the ampulla being in one place rather than another, and **no angle here is where an ampulla is in anybody**.',
+    validation: 'calibration: the ampulla is an end this scene names, not one the atlas draws',
+    layer: LAYER.CALIBRATION,
+  },
+  {
     id: 'no-eye-movement-is-derived',
     claim:
       'The direction of any nystagmus is not computed here. Nothing in this model is an eye, a muscle or a direction of gaze.',

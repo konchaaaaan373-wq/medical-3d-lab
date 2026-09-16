@@ -4,7 +4,6 @@ import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { damp } from '../../../../utils/math.js';
-import { devAssetUrl } from '../../../../catalog/devAssets.js';
 import {
   HEART_ANATOMY_META,
   HEART_AXES,
@@ -76,9 +75,22 @@ const PORTRAIT_ASPECT = 0.85;
 const HEART_PART_IDS = new Set(HEART_PARTS.map((part) => part.id));
 
 const BASE_URL = import.meta.env?.BASE_URL ?? './';
-/** Candidates, fetched by `npm run assets:dev` and served in dev and preview only. */
-const HEART_URL = devAssetUrl('hubmap-vh-m-heart', BASE_URL);
-const VESSEL_URL = devAssetUrl('hubmap-vh-m-blood-vasculature', BASE_URL);
+/**
+ * The adopted files, served from `public/` like the brain atlas.
+ *
+ * These are **derivatives**, not the publisher's bytes: the sources fail glTF
+ * validation on degenerate vertex normals, and that gate takes zero errors at
+ * every scene status, so shipping them was never possible however carefully the
+ * failure was written down. `scripts/repair-candidate-gltf.mjs` replaced those
+ * normals and nothing else; `src/catalog/assetManifest.js` pins the hashes of
+ * what is here and `public/assets/heart/ATTRIBUTION.md` states the change.
+ *
+ * The sources stay pinned in `src/catalog/devAssets.js` — the record of what
+ * was examined is not deleted by adopting a file derived from it, and the
+ * repair rebuilds these exact bytes from them.
+ */
+const HEART_URL = `${BASE_URL}assets/heart/VH_M_Heart.glb`;
+const VESSEL_URL = `${BASE_URL}assets/heart/VH_M_Blood_Vasculature.glb`;
 
 /**
  * The subtree of the vasculature file this scene takes.
@@ -443,6 +455,40 @@ export class HeartAnatomyScene {
     canvas.style.cursor = 'grab';
   }
 
+  /**
+   * Name whatever is drawn at one point of the canvas — **the way in that needs
+   * no pointer**.
+   *
+   * The landing hero binds Enter to this, and every other anatomy scene had it:
+   * the brain since its keyboard path was built, and all thirty-nine organ
+   * scenes from `OrganAnatomyScene`. The heart did not, and the call site is
+   * `scene.selectAtCanvasPoint?.(…)` — optional, so it was skipped in silence.
+   * That did not matter while the heart was withheld. It published on
+   * 2026-09-15 and joined the hero rotation the same day, so from then on a
+   * reader pressing Enter on the day the hero showed the heart got nothing, and
+   * nothing said why.
+   *
+   * It answers with the same structure a click at that point would give,
+   * through the same ray and the same visibility rules, so the two ways in
+   * cannot come to disagree about what is there. `x` and `y` are relative to
+   * the canvas, which is what the callers have.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.structureId);
+  }
+
   _pick(event) {
     const canvas = this.viewer?.renderer?.domElement;
     if (!canvas || !this.selectables.length) return null;
@@ -605,29 +651,97 @@ export class HeartAnatomyScene {
     for (const listener of this.isolationListeners) listener(this.isolatedId);
   }
 
+  /**
+   * A visibility change the reader made themselves, applied and announced.
+   *
+   * Two things every hide and show has to do, and none of them did:
+   *
+   * 1. **Announce an isolation it ended.** Hiding the isolated structure drops
+   *    the isolation — "only this one" and "not this one" cannot both be true —
+   *    but only the visibility event was sent, so `AnatomyTreePanel`, which
+   *    learns about isolation from `onAnatomyIsolation` and nowhere else, went
+   *    on drawing the row as isolated while the scene reported none.
+   * 2. **Throw away the reveal snapshot.** `displayBeforeReveal` is "the
+   *    display the reveal moved away from", and "Back to how it was" restores
+   *    `hidden` wholesale from it. Once the reader has hidden or shown
+   *    something themselves, going back would take *their* change away rather
+   *    than the reveal's — silently, since nothing says a snapshot is stale.
+   *
+   * @param {boolean} droppedIsolation
+   */
+  _visibilityChanged(droppedIsolation) {
+    this.hiddenVersion += 1;
+    this.displayBeforeReveal = null;
+    this._applyVisibility(1 / 60, true);
+    this._emitVisibility();
+    if (droppedIsolation) this._emitIsolation();
+  }
+
   setStructureHidden(id, hidden) {
     const meshes = this._meshesFor(id);
     if (!meshes.length) return false;
     const key = meshes[0].userData.structureId;
     if (this.manualHidden.has(key) === Boolean(hidden)) return false;
+    let droppedIsolation = false;
     if (hidden) {
-      if (this.isolatedId === key) this.isolatedId = null;
+      if (this.isolatedId === key) {
+        this.isolatedId = null;
+        droppedIsolation = true;
+      }
       this.manualHidden.add(key);
     } else {
       this.manualHidden.delete(key);
     }
-    this.hiddenVersion += 1;
-    this._applyVisibility(1 / 60, true);
-    this._emitVisibility();
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Hide or show many structures as one change.
+   *
+   * `setStructureHidden` applies the whole visibility pass and announces the
+   * change on every call, which is right for one structure and wrong for a
+   * group: hiding the brain's frontal lobe is four of those, so four passes over
+   * every mesh in the atlas and four repaints of the panel, for one thing the
+   * reader asked for once.
+   *
+   * Same rules as the single setter, applied to each id — an isolation on a
+   * structure being hidden is dropped, an id the model does not have is
+   * skipped — and then one pass and one announcement at the end.
+   *
+   * @param {Iterable<string|number>} ids
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything actually changed
+   */
+  setStructuresHidden(ids, hidden) {
+    let changed = false;
+    let droppedIsolation = false;
+    for (const id of ids) {
+      const meshes = this._meshesFor(id);
+      if (!meshes.length) continue;
+      const key = meshes[0].userData.structureId;
+      if (this.manualHidden.has(key) === Boolean(hidden)) continue;
+      if (hidden) {
+        if (this.isolatedId === key) {
+          this.isolatedId = null;
+          droppedIsolation = true;
+        }
+        this.manualHidden.add(key);
+      } else {
+        this.manualHidden.delete(key);
+      }
+      changed = true;
+    }
+    if (!changed) return false;
+    this._visibilityChanged(droppedIsolation);
     return true;
   }
 
   showAllHiddenStructures() {
     if (!this.manualHidden.size) return false;
     this.manualHidden.clear();
-    this.hiddenVersion += 1;
-    this._applyVisibility(1 / 60, true);
-    this._emitVisibility();
+    // No isolation to drop: showing never ends one.
+    this._visibilityChanged(false);
     return true;
   }
 

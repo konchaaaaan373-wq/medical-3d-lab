@@ -84,8 +84,50 @@ test('every repository path a record points at exists', () => {
   }
 });
 
-test('the manifest contains only the brain atlas, and no binary was added for this contract', () => {
-  assert.deepEqual(ASSET_MANIFEST.map((asset) => asset.assetId), ['brain-atlas-glb']);
+test('the manifest is the whole list of shipped geometry, and it is short', () => {
+  // This used to read "only the brain atlas". The point was never the number —
+  // it is that adding a third-party binary to this repository is a decision
+  // with a record behind it, so the list is written down here and a new entry
+  // has to be argued for in the same commit that appears in this diff.
+  assert.deepEqual(ASSET_MANIFEST.map((asset) => asset.assetId), [
+    'brain-atlas-glb',
+    'hubmap-vh-m-heart',
+    'hubmap-vh-m-blood-vasculature',
+  ]);
+});
+
+test('the heart records a derivative, and does not pass off the publisher\'s bytes as what ships', () => {
+  // The heart is the first asset here whose output is *not* its source: both
+  // HuBMAP files fail glTF validation on degenerate vertex normals, and the
+  // format gate takes zero errors at every scene status, so the publisher's
+  // bytes could not have opened the release gate however the failure was
+  // written down. What must never happen is the repair being recorded as if
+  // nothing changed.
+  for (const id of ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature']) {
+    const asset = assetById(id);
+    assert.equal(asset.sourceType, ASSET_SOURCE_TYPE.REFERENCE_ATLAS, id);
+    assert.equal(asset.license.spdx, 'CC-BY-4.0', id);
+    assert.equal(asset.license.assessment, ASSESSMENT_BASIS.ENGINEERING, `${id}: a licence reading by an engineer says so`);
+    assert.notEqual(
+      asset.output.sha256,
+      asset.sources[0].sha256,
+      `${id}: the output hash equals the source hash, so either the repair was lost or the record is wrong`
+    );
+    assert.match(asset.license.attribution, /Modified/, `${id}: CC BY 4.0 requires a derivative to say so`);
+    // The obligation CC BY attaches to a derivative, and the one assumed owed
+    // to NLM. Both are discharged by a file that actually ships.
+    const ids = asset.license.obligations.map((o) => o.id);
+    assert.ok(ids.includes('modification-notice'), `${id}: no obligation states that changes were made`);
+    assert.ok(ids.includes('nlm-acknowledgment'), `${id}: the Visible Human acknowledgment is not recorded`);
+    for (const obligation of asset.license.obligations) {
+      assert.equal(obligation.satisfiedBy, 'public/assets/heart/ATTRIBUTION.md', `${id}/${obligation.id}`);
+    }
+    assert.equal(asset.qa.formatValidation.errors, 0, `${id}: the derived file is what was validated`);
+    assert.equal(asset.qa.formatValidation.warnings, 0, id);
+    assert.equal(asset.qa.formatValidation.assetSha256, asset.output.sha256, `${id}: validated against a different file`);
+    assert.equal(asset.qa.anatomyExpertReview.status, QA_STATUS.PENDING, `${id}: no anatomist has reviewed it`);
+    assert.equal(asset.qa.clinicianReview.status, QA_STATUS.PENDING, id);
+  }
 });
 
 test('the brain atlas record states what was measured and what was not', () => {
@@ -267,7 +309,22 @@ test('duplicate ids, an output path that is a URL, bad dates and a bad commit ar
   assert.ok(has(validateAssetManifest([meshFixture({ output: { path: 'https://cdn.invalid/x.glb', sha256: FIXTURE_HASH } })]), /output\.path must be repository-relative/));
   assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: 'September' } })]), /retrievedAt must be an ISO date or null/));
   assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, retrievedAt: null } })]), /retrievedAt is null without a retrievedAtNote/));
-  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: 'abc' } })]), /introducedIn must be a 40-character commit/));
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: 'abc' } })]), /introducedIn must be a 40-character commit or null/));
+  // Null is the state between filing an entry and the squash merge that creates
+  // the commit it will name. It is legal only with a reason attached, the same
+  // shape `retrievedAt` uses, so that "we do not know" stays distinct from
+  // "nobody filled this in".
+  assert.ok(has(validateAssetManifest([meshFixture({ source: { ...meshFixture().source, introducedIn: null } })]), /introducedIn is null without an introducedInNote/));
+  assert.equal(
+    has(
+      validateAssetManifest([
+        meshFixture({ source: { ...meshFixture().source, introducedIn: null, introducedInNote: 'filed in PR #123; the squash commit does not exist until it merges' } }),
+      ]),
+      /introducedIn/
+    ),
+    false,
+    'null with a reason is accepted'
+  );
 });
 
 test('repository paths are relative, inside the repository, and never URLs', () => {

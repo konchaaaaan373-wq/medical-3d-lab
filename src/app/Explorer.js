@@ -1,4 +1,5 @@
 import { el, skipLink } from '../utils/dom.js';
+import { inLanguage } from '../utils/language.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
 import { createClinicalReviewDetails } from '../components/ClinicalReviewDetails.js';
@@ -112,7 +113,12 @@ export function createExplorer({
       'span',
       {
         class: `status-badge clinical-review-badge is-${review.status}`,
-        title: 'Clinical-review attestation is tracked separately from model maturity.',
+        // A tooltip holds one language, and this one explains a distinction a
+        // reader is entitled to be confused by — so it says it in theirs.
+        title: inLanguage(
+          'Clinical-review attestation is tracked separately from model maturity.',
+          '臨床レビューの記録は、モデルの成熟度とは別に管理しています。'
+        ),
       },
       [
         el('span', { class: 'lang-en', text: review.en }),

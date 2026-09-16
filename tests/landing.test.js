@@ -76,13 +76,28 @@ test('landing hero: every rotation entry is a real organ that opens a released m
   );
   assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
   const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
-  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene, built or not');
-  // The scene exists now, and the hero still does not show it: what the filter
-  // asks is whether the release *opens* it, not whether it was written. That
-  // distinction is the whole mechanism, and this is where it is checked.
+  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene');
+  // What the filter asks is whether the release *opens* the scene, not whether
+  // it was written. The heart spent weeks on the declared list and off the
+  // rotation for exactly that reason, and joined it on 2026-09-15 without the
+  // hero being edited — which is the mechanism working, in the direction it is
+  // harder to test. The distinction still holds for the organs behind it.
   assert.ok(sceneById(heart.sceneId), 'the scene is registered');
-  assert.equal(isSceneReleased(sceneById(heart.sceneId)), false);
-  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until the release opens it');
+  assert.equal(isSceneReleased(sceneById(heart.sceneId)), true);
+  // By organ, not by identity: `HERO_ROTATION` rebuilds each entry with the
+  // route attached, so `includes(entry)` compares against a different object
+  // and is false whatever the release says. It read as passing while the answer
+  // was meant to be false.
+  const shownOrgans = new Set(HERO_ROTATION.map((entry) => entry.organ));
+  assert.equal(shownOrgans.has('heart'), true, 'the release opened it, so the hero shows it');
+
+  for (const entry of HERO_ORGANS.filter((item) => !isSceneReleased(sceneById(item.sceneId)))) {
+    assert.equal(
+      shownOrgans.has(entry.organ),
+      false,
+      `${entry.organ} is declared and not open, and must not be shown`
+    );
+  }
 
   for (const entry of HERO_ROTATION) {
     // The detailed model that replaces the builder has to be a scene the
@@ -238,7 +253,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: the published models are live organs, not a card index', () => {
+test('landing: the public models are live organs, not a card index', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -250,20 +265,26 @@ test('landing: the published models are live organs, not a card index', () => {
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // Every open model, one viewport, and a chooser — which is the shape the
-    // hero was written for and could not be tested in while one model was
-    // open: "a chooser is drawn only when there is more than one thing to
-    // choose", and until now there was not. The count is written out so that
-    // opening a batch is an edit here too, next to the picture of the hero it
-    // changes.
-    assert.equal(PUBLIC_MANIFEST.count, 10);
+    // Eleven published models. What this test is for has not changed: the
+    // landing page shows **one organ, live**, and never turns into a grid of
+    // cards as the published set grows — which is the failure mode the second
+    // model made possible and every one after it makes likelier. The count is
+    // written out so that opening a batch is an edit here too, next to the
+    // picture of the hero it changes.
+    assert.equal(PUBLIC_MANIFEST.count, 11);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
-    assert.equal(viewports.length, 1);
+    assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
+    // The chooser the design always said a second model would bring: with one
+    // published organ there was nothing to choose between and no control was
+    // drawn. There are two now, one per published organ, and they are controls
+    // over the single live viewport rather than cards standing in for it.
     assert.equal(controls.length, PUBLIC_MANIFEST.count);
-    assert.ok(links.some((link) => link.getAttribute('href') === '#/brain-anatomy'));
-    // The initial model is still the brain: more models add a choice, they do
-    // not change what a returning visitor is shown.
-    assert.equal(mounted.organHero.organ, 'brain');
+    // The link follows whichever organ the rotation put up today, rather than
+    // being pinned to the brain.
+    const shown = mounted.organHero.organ;
+    const entry = HERO_ROTATION.find((item) => item.organ === shown);
+    assert.ok(entry, `${shown} is on screen but not in the rotation`);
+    assert.ok(links.some((link) => link.getAttribute('href') === `#/${entry.sceneId}`));
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -281,15 +302,28 @@ test('landing hero: the open link and the day badge follow the organ on screen',
     const badge = findByClass(hero.element, 'landing-demo-case')[0];
     const link = findByClass(hero.element, 'landing-demo-link')[0];
 
-    assert.equal(hero.organ, 'brain');
+    // On this date the rotation lands where `heroRotationDay` says it does; the
+    // link and the badge follow the organ on screen rather than a fixed slug.
+    const opening = HERO_ROTATION.find((item) => item.organ === hero.organ);
+    assert.ok(opening, 'the hero shows an organ that is in the rotation');
     assert.equal(badge.hidden, false, "the day's own organ is marked as such");
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    assert.equal(link.getAttribute('href'), `#/${opening.sceneId}`);
 
-    // An organ that is not in the rotation cannot be selected into view: the
-    // hero has nothing to show for it and must not fall back to a neighbour.
-    void hero.setOrgan('heart');
-    assert.equal(hero.organ, 'brain');
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    // Selecting an organ that *is* in the rotation moves the hero and the link
+    // together — the case that could not be exercised while one model was
+    // published.
+    const other = HERO_ROTATION.find((item) => item.organ !== hero.organ);
+    if (other) {
+      void hero.setOrgan(other.organ);
+      assert.equal(hero.organ, other.organ);
+      assert.equal(link.getAttribute('href'), `#/${other.sceneId}`);
+    }
+
+    // An organ that is not in the rotation still cannot be selected into view:
+    // the hero has nothing to show for it and must not fall back to a neighbour.
+    const before = hero.organ;
+    void hero.setOrgan('lung');
+    assert.equal(hero.organ, before);
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -449,7 +483,14 @@ function createFakeViewerClass() {
     constructor() {
       FakeViewer.instance = this;
       this.running = false;
-      this.renderer = { domElement: { style: {} } };
+      // A real canvas has a box, and the keyboard path asks it for one: the
+      // middle of the frame is the only place a keyboard user can aim.
+      this.renderer = {
+        domElement: {
+          style: {},
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
+        },
+      };
       this.scene = new THREE.Scene();
       this.camera = new THREE.PerspectiveCamera(42, 1.5, 0.1, 200);
       this.controls = {
@@ -972,5 +1013,447 @@ test('landing hero viewport: leaving the page ends an upgrade that is still load
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
     restoreDocument();
+  }
+});
+
+/* The hero highlights the structure under the pointer and used to say nothing
+   about it. These two tests are the two halves of answering "what did I just
+   click?": the viewport has to carry the scene's answer out, and the hero has
+   to draw it — with a pinned click outranking a hover, because a pointer
+   crossing the model must not rewrite the name the reader chose. */
+test('landing hero viewport: the scene names the structure under the pointer, pin first', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  document.visibilityState = 'visible';
+  document.addEventListener = () => {};
+  document.removeEventListener = () => {};
+  globalThis.window = {
+    innerWidth: 1200,
+    matchMedia: () => ({ matches: false, addEventListener() {}, removeEventListener() {} }),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+
+  const hippocampus = {
+    id: 17,
+    name: 'Hippocampus',
+    nameJa: '海馬',
+    breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+    breadcrumbJa: '左 › 側頭葉 › 海馬体',
+    color: '#8fd4c1',
+  };
+  const thalamus = { id: 9, name: 'Thalamus', nameJa: '視床', breadcrumb: 'Left › Diencephalon' };
+
+  /** A scene shaped like the anatomy scenes: it publishes selection and hover. */
+  class NamedScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    static allowAutoRotate = false;
+    constructor() {
+      this.root = new THREE.Group();
+      this.root.name = 'named-brain';
+      this.ready = Promise.resolve();
+      this.selectionListeners = new Set();
+      this.hoverListeners = new Set();
+      this.released = 0;
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+    getAnatomySelection() { return null; }
+    getAnatomyHover() { return null; }
+    onAnatomySelection(listener) {
+      this.selectionListeners.add(listener);
+      return () => { this.released += 1; this.selectionListeners.delete(listener); };
+    }
+    onAnatomyHover(listener) {
+      this.hoverListeners.add(listener);
+      return () => { this.released += 1; this.hoverListeners.delete(listener); };
+    }
+    emitSelection(info) { for (const listener of this.selectionListeners) listener(info); }
+    emitHover(info) { for (const listener of this.hoverListeners) listener(info); }
+  }
+
+  /** A published scene with no anatomy surface at all — a real possibility. */
+  class UnnamedScene {
+    static cameraPose = { position: new THREE.Vector3(0, 1, 9), target: new THREE.Vector3() };
+    static framing = { minHorizontalAspect: 1 };
+    constructor() {
+      this.root = new THREE.Group();
+      this.root.name = 'unnamed-organ';
+      this.ready = Promise.resolve();
+    }
+    build() { return this.root; }
+    update() {}
+    dispose() {}
+  }
+
+  /** A scene that answers the point the keyboard asks about. */
+  let keyedScene = null;
+  const keyedSeen = [];
+  class KeyedScene extends NamedScene {
+    constructor(options) {
+      super(options);
+      keyedScene = this;
+      this.askedAt = [];
+    }
+    selectAtCanvasPoint(x, y) {
+      this.askedAt.push([x, y]);
+      this.emitSelection(thalamus);
+      return true;
+    }
+    clearSelection() { this.emitSelection(null); }
+  }
+
+  try {
+    const FakeViewer = createFakeViewerClass();
+    const seen = [];
+    const states = [];
+    let scene = null;
+    const keyboardContainer = new FakeElement('div');
+    const mounted = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => {
+        const Scene = NamedScene;
+        return class extends Scene {
+          constructor(options) { super(options); scene = this; }
+        };
+      },
+      onStateChange: (state, detail) => states.push([state, detail]),
+      onStructureChange: (structure) => seen.push(structure),
+    });
+
+    await mounted.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(mounted.detailScene, 'brain-anatomy');
+    assert.deepEqual(
+      states.at(-1),
+      ['ready', { named: true }],
+      'the hero is told the model has parts it can name'
+    );
+    assert.equal(mounted.structure, null, 'nothing is named until the reader points at something');
+
+    // A hover is a preview.
+    scene.emitHover(hippocampus);
+    assert.equal(seen.at(-1).name, 'Hippocampus');
+    assert.equal(seen.at(-1).nameJa, '海馬');
+    assert.equal(seen.at(-1).pinned, false);
+
+    // A click pins it, and a hover crossing something else no longer wins.
+    scene.emitSelection(hippocampus);
+    assert.equal(seen.at(-1).pinned, true);
+    scene.emitHover(thalamus);
+    assert.equal(seen.at(-1).name, 'Hippocampus', 'a pinned name outranks a hover');
+    assert.equal(mounted.structure.pinned, true);
+
+    // An anatomy scene opts out of auto-rotation, so nothing is animating: the
+    // frame that shows the highlight has to be asked for.
+    FakeViewer.instance.running = false;
+    const before = FakeViewer.instance.renderCount;
+
+    // Clicking empty space clears the pin, and the hover shows through again.
+    scene.emitSelection(null);
+    assert.ok(FakeViewer.instance.renderCount > before, 'a pick repaints a still frame');
+    assert.equal(seen.at(-1).name, 'Thalamus');
+    assert.equal(seen.at(-1).pinned, false);
+    scene.emitHover(null);
+    assert.equal(seen.at(-1), null);
+
+    // Swapping organs takes the name with the model it was read off.
+    scene.emitSelection(hippocampus);
+    const released = scene.released;
+    await mounted.setOrgan('heart', { upgradeSceneId: null });
+    assert.equal(seen.at(-1), null, 'the outgoing organ does not label the incoming one');
+    assert.ok(scene.released > released, 'the scene is let go of, not just forgotten');
+    assert.deepEqual(
+      states.at(-1),
+      ['ready', { named: false }],
+      'a lightweight builder has no named parts and must not offer any'
+    );
+
+    // A scene whose anatomy surface throws is a scene without names, not a
+    // failed model — and it must not be left half-installed either, with the
+    // frame hook stepping a scene the error path disposed.
+    class ThrowingScene extends UnnamedScene {
+      onAnatomySelection() { throw new Error('the atlas has no metadata yet'); }
+    }
+    const throwing = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => ThrowingScene,
+      onStateChange: (state, detail) => states.push([state, detail]),
+    });
+    await throwing.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(states.at(-1), ['ready', { named: false }], 'the model still arrives');
+    assert.equal(throwing.detailScene, 'brain-anatomy');
+    assert.equal(throwing.structure, null);
+    throwing.destroy();
+
+    // A keyboard has no pointer, so the model is asked about the middle of the
+    // frame. Without this the card is reachable only by mouse or finger, and
+    // the one question the hero exists to answer has an input requirement.
+    const keyed = mountLandingOrganViewport(keyboardContainer, {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => KeyedScene,
+      onStructureChange: (structure) => keyedSeen.push(structure),
+    });
+    await keyed.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    const press = (key) => {
+      let prevented = false;
+      for (const listener of keyboardContainer.listeners.get('keydown') ?? []) {
+        listener({ key, preventDefault: () => { prevented = true; } });
+      }
+      return prevented;
+    };
+
+    assert.equal(press('Enter'), true, 'Enter is the hero\'s, not the page\'s');
+    assert.deepEqual(
+      keyedScene.askedAt,
+      [[400, 300]],
+      'Enter asks about the middle of the canvas, which is where the aim is drawn'
+    );
+    assert.equal(keyedSeen.at(-1)?.name, 'Thalamus');
+    assert.equal(keyedSeen.at(-1)?.pinned, true);
+
+    assert.equal(press('Escape'), true);
+    assert.equal(keyedSeen.at(-1), null, 'Escape clears what Enter named');
+    keyed.destroy();
+
+    // A published scene without the anatomy surface is not broken; it simply
+    // has no names, and the hero must be able to tell the two apart.
+    const plain = mountLandingOrganViewport(new FakeElement('div'), {
+      ViewerClass: FakeViewer,
+      builders: cubeBuilders,
+      loadSceneClass: async () => UnnamedScene,
+      onStateChange: (state, detail) => states.push([state, detail]),
+    });
+    await plain.setOrgan('brain', { upgradeSceneId: 'brain-anatomy' });
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(states.at(-1), ['ready', { named: false }]);
+    assert.equal(plain.structure, null);
+    plain.destroy();
+
+    mounted.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+/* The hint used to promise "pinch to zoom" to everybody, and a phone cannot
+   keep that promise: the canvas hands pinches back to the page on purpose, so
+   the hero does not trap the scrolling and zooming of the page it sits in. The
+   card had the same problem in the other direction, telling a reader with a
+   finger to "click". */
+test('landing hero: the instructions describe the input the reader actually has', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  try {
+    const listeners = new Set();
+    const coarsePointer = {
+      matches: true,
+      addEventListener: (_type, handler) => listeners.add(handler),
+      removeEventListener: (_type, handler) => listeners.delete(handler),
+    };
+    let options = null;
+    const hero = createLandingOrganHero({
+      compact: true,
+      showOpenLink: false,
+      coarsePointer,
+      loadViewport: async () => ({
+        mountLandingOrganViewport(_container, mountOptions) {
+          options = mountOptions;
+          return { async setOrgan() { options.onStateChange('ready', { named: true }); }, destroy() {} };
+        },
+      }),
+    });
+    await hero.mount();
+
+    const hint = findByClass(hero.element, 'landing-demo-drag-hint')[0];
+    const card = findByClass(hero.element, 'landing-demo-structure')[0];
+    const gestures = () => collectText(hint).join(' ');
+
+    assert.match(gestures(), /タップ/, 'a finger taps');
+    assert.doesNotMatch(gestures(), /ピンチ/, 'a pinch belongs to the page here, and is not promised');
+    assert.match(collectText(card).join(' '), /タップすると/);
+
+    // The same page with a mouse: the wording follows the input, and it can
+    // change without a reload — a tablet gains a keyboard and a trackpad.
+    coarsePointer.matches = false;
+    for (const handler of listeners) handler();
+    assert.match(gestures(), /クリックで部位名/);
+    assert.match(collectText(card).join(' '), /クリックすると/);
+
+    // The screen-reader instructions carry the third input: no pointer at all.
+    const instructions = findByClass(hero.element, 'landing-sr-only')
+      .find((node) => node.getAttribute('id') === 'landing-demo-viewport-instructions');
+    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央の部位/);
+
+    hero.destroy();
+    assert.equal(listeners.size, 0, 'the hero stops listening when it ends');
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('landing hero: the picked structure is named on the model, in both languages', async () => {
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = { requestAnimationFrame() {} };
+
+  try {
+    let options = null;
+    const hero = createLandingOrganHero({
+      compact: true,
+      showOpenLink: false,
+      loadViewport: async () => ({
+        mountLandingOrganViewport(_container, mountOptions) {
+          options = mountOptions;
+          return {
+            async setOrgan() { options.onStateChange('loading', {}); },
+            destroy() {},
+          };
+        },
+      }),
+    });
+    await hero.mount();
+
+    const readout = findByClass(hero.element, 'landing-demo-structure')[0];
+    assert.ok(readout, 'the hero has somewhere to put the name');
+    assert.equal(readout.hidden, true, 'a model that is still loading names nothing');
+
+    // Ready, with named parts: the card invites the click rather than naming.
+    options.onStateChange('ready', { named: true });
+    assert.equal(readout.hidden, false);
+    assert.equal(readout.dataset.state, 'hint');
+    assert.match(collectText(readout).join(' '), /クリックすると、解剖学的な名称/);
+
+    // A hover is a preview of the name.
+    options.onStructureChange({
+      name: 'Hippocampus',
+      nameJa: '海馬',
+      breadcrumb: 'Left › Temporal lobe',
+      breadcrumbJa: '左 › 側頭葉',
+      color: '#8fd4c1',
+      pinned: false,
+    });
+    assert.equal(readout.dataset.state, 'preview');
+    const announcement = findByClass(hero.element, 'landing-sr-only')
+      .find((node) => node.getAttribute('aria-live') === 'polite');
+    assert.ok(announcement, 'a pinned name is announced');
+    assert.equal(
+      collectText(announcement).join(' ').trim(),
+      '',
+      'a hover must not queue an announcement per structure the pointer crosses'
+    );
+
+    // A click pins it. Both languages are in the DOM, tagged, and CSS hides one.
+    options.onStructureChange({
+      name: 'Hippocampus',
+      nameJa: '海馬',
+      breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+      breadcrumbJa: '左 › 側頭葉 › 海馬体',
+      color: '#8fd4c1',
+      pinned: true,
+    });
+    assert.equal(readout.dataset.state, 'pinned');
+    const names = findByClass(readout, 'landing-demo-structure-name');
+    const wheres = findByClass(readout, 'landing-demo-structure-where');
+    assert.equal(names[0].getAttribute('lang'), 'en');
+    assert.equal(names[0].textContent, 'Hippocampus');
+    assert.equal(names[1].textContent, '海馬');
+    assert.equal(names[1].getAttribute('lang'), 'ja');
+    assert.equal(wheres[0].textContent, 'Left › Temporal lobe › Hippocampal formation');
+    assert.equal(wheres[1].textContent, '左 › 側頭葉 › 海馬体');
+    assert.equal(
+      findByClass(readout, 'landing-demo-structure-swatch')[0].style.getPropertyValue('--landing-structure-color'),
+      '#8fd4c1',
+      'the card carries the structure’s own colour in the model'
+    );
+    assert.match(collectText(announcement).join(' '), /選択中: 海馬/);
+
+    // A pointer crossing the model while something is pinned redraws the card
+    // with the same name. Replacing a live region's children announces it
+    // again even when the words are identical, so the announcement has to be
+    // left alone — otherwise a reader hears the pinned name once per structure
+    // the pointer passes over, which is the failure this region was split out
+    // of the card to avoid.
+    const announcementBefore = announcement.children[0];
+    for (let crossing = 0; crossing < 4; crossing += 1) {
+      options.onStructureChange({
+        name: 'Hippocampus',
+        nameJa: '海馬',
+        breadcrumb: 'Left › Temporal lobe › Hippocampal formation',
+        breadcrumbJa: '左 › 側頭葉 › 海馬体',
+        color: '#8fd4c1',
+        pinned: true,
+      });
+    }
+    assert.equal(
+      announcement.children[0],
+      announcementBefore,
+      'the same name is never announced twice'
+    );
+
+    // The way out of the hero, carrying what was picked. A hover offers no
+    // link: one that appears and disappears under a moving pointer is a link
+    // nobody can click.
+    const link = findByClass(hero.element, 'landing-demo-structure-link')[0];
+    assert.ok(link, 'the card has a way into the full model');
+    options.onStructureChange({ id: 17, name: 'Hippocampus', nameJa: '海馬', pinned: false });
+    assert.equal(link.hidden, true, 'a preview is not an offer');
+    options.onStructureChange({ id: 17, name: 'Hippocampus', nameJa: '海馬', pinned: true });
+    assert.equal(link.hidden, false);
+    assert.equal(link.getAttribute('href'), '#/brain-anatomy?structure=17');
+    assert.match(collectText(link).join(' '), /海馬を詳しく見る/, 'the link names what it opens');
+    // Outside the aria-hidden body: a link a keyboard can reach and a screen
+    // reader cannot explain is worse than no link.
+    assert.equal(link.parentElement.getAttribute('aria-hidden'), null);
+
+    // Two structures can carry one name — the atlas has a middle temporal gyrus
+    // in each hemisphere — so pinning the other one is a new announcement.
+    options.onStructureChange({ id: 17, name: 'Middle temporal gyrus', nameJa: '中側頭回', pinned: true });
+    const leftAnnouncement = announcement.children[0];
+    options.onStructureChange({ id: 218, name: 'Middle temporal gyrus', nameJa: '中側頭回', pinned: true });
+    assert.notEqual(
+      announcement.children[0],
+      leftAnnouncement,
+      'the same name on a different structure is announced again'
+    );
+
+    // A structure that reports no colour clears the swatch rather than wearing
+    // the previous structure's: the swatch is what ties the card to the mesh.
+    options.onStructureChange({ name: 'Fornix', nameJa: '脳弓', pinned: true });
+    assert.equal(
+      findByClass(readout, 'landing-demo-structure-swatch')[0]
+        .style.getPropertyValue('--landing-structure-color'),
+      '',
+      'a structure with no colour does not inherit the last one'
+    );
+    assert.match(collectText(announcement).join(' '), /選択中: 脳弓/);
+
+    // Nothing selected: back to the invitation, and the announcement is dropped.
+    options.onStructureChange(null);
+    assert.equal(readout.dataset.state, 'hint');
+    assert.equal(collectText(announcement).join(' ').trim(), '');
+
+    // A model with no named parts offers no card at all — which is a different
+    // thing from a model whose parts are named and none is chosen.
+    options.onStateChange('ready', { named: false });
+    assert.equal(readout.hidden, true);
+    hero.destroy();
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
   }
 });

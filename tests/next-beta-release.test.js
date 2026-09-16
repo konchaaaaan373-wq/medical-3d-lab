@@ -35,6 +35,7 @@ test('next-beta: registering the policy changes nothing about what is published'
     RELEASED_SCENES.map((scene) => scene.id),
     [
       'brain-anatomy',
+      'heart-anatomy',
       'lung-anatomy',
       'stomach-anatomy',
       'esophagus-anatomy',

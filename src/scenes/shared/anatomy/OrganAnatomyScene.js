@@ -4,6 +4,7 @@ import { createStudioLights } from '../lighting.js';
 import { disposeObject } from '../../../utils/dispose.js';
 import { clamp, damp, lerp, smoothstep } from '../../../utils/math.js';
 import { sectionFaceGeometry } from '../geometry/sectionFace.js';
+import { createTapTracker } from './tapGesture.js';
 
 /**
  * The machinery every procedurally built organ anatomy scene shares.
@@ -81,6 +82,7 @@ export class OrganAnatomyScene {
     this.hoverListeners = new Set();
     this.statusListeners = new Set();
     this.isolationListeners = new Set();
+    this.visibilityListeners = new Set();
 
     this.colorMode = this.constructor.colorModes?.[0]?.id ?? 'regions';
     this.activeView = this.constructor.views?.[0]?.id ?? null;
@@ -96,6 +98,8 @@ export class OrganAnatomyScene {
     this.selected = null;
     this.hovered = null;
     this.isolatedId = null;
+    /** Structures the reader took off screen, by id. Their own choice, kept. */
+    this.manualHidden = new Set();
 
     this.built = false;
     this.disposed = false;
@@ -231,34 +235,41 @@ export class OrganAnatomyScene {
     if (!canvas) return;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    let down = null;
+    // A drag is how the reader turns the organ, and it must not also select
+    // whatever the pointer came to rest on. `tapGesture` measures both how far
+    // the release is from the press and how far the pointer went in between —
+    // the second is what a finger needs, because turning the model and turning
+    // it back is one press that ends exactly where it started.
+    const tap = createTapTracker();
 
     this._pointerDown = (event) => {
-      down = [event.clientX, event.clientY];
+      tap.begin(event.clientX, event.clientY);
       this._setHovered(null);
     };
     this._pointerMove = (event) => {
+      tap.move(event.clientX, event.clientY);
       if (event.buttons) return;
       const hit = this._pick(event);
       this._setHovered(hit?.object.userData.structureId ?? null);
       canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
     this._pointerUp = (event) => {
-      // A drag is how the reader turns the organ, and it must not also select
-      // whatever the pointer happened to come to rest on. Seven pixels is the
-      // same threshold the brain scene settled on.
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
-        down = null;
-        return;
-      }
-      down = null;
+      if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
       if (hit) this.selectStructure(hit.object.userData.structureId);
       else this.clearSelection();
     };
-    this._pointerLeave = () => this._setHovered(null);
+    // The press ends here too. A drag that wanders off the canvas is released
+    // where the canvas never hears it, so without this the press stays open and
+    // the next release it does hear — from a press that began somewhere else
+    // entirely — is measured against a point the reader left long ago. Nothing
+    // is lost by closing it: a tap does not leave the canvas.
+    this._pointerLeave = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
     this._pointerCancel = () => {
-      down = null;
+      tap.cancel();
       this._setHovered(null);
     };
 
@@ -268,6 +279,35 @@ export class OrganAnatomyScene {
     canvas.addEventListener('pointerleave', this._pointerLeave);
     canvas.addEventListener('pointercancel', this._pointerCancel);
     canvas.style.cursor = 'grab';
+  }
+
+  /**
+   * Select whatever is drawn at one point of the canvas.
+   *
+   * The pointer path is not the only way a reader arrives at a structure. A
+   * keyboard has no pointer at all, so the surface that asks "what is at the
+   * middle of the frame?" has to exist as a method rather than only as a
+   * response to a click — otherwise naming a structure is something only a
+   * mouse or a finger can do, and the model names nothing for anybody else.
+   *
+   * Coordinates are CSS pixels from the canvas's top-left corner, which is what
+   * a caller measuring its own viewport already has. A point with nothing drawn
+   * under it clears the selection, exactly as clicking the background does.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.structureId);
   }
 
   _pick(event) {
@@ -447,6 +487,115 @@ export class OrganAnatomyScene {
 
   _emitIsolation() {
     for (const listener of this.isolationListeners) listener(this.isolatedId);
+  }
+
+  // --- hiding ---------------------------------------------------------------
+
+  /**
+   * Taking a structure out of the way, which is not the same as isolating one.
+   *
+   * These scenes had isolation, viewpoint tags, cuts and the layer slider, and
+   * no hiding at all — so a reader could say "show me only this" and never
+   * "take this out of the way and let me see behind it". The panel drew a Hide
+   * button anyway and its press reached an optional call that was simply
+   * skipped, so on thirty-nine organs the control did nothing.
+   *
+   * A cut and the layer slider are the organ's own authored ways in; this is
+   * the reader's. It asserts nothing anatomical: a hidden structure is still
+   * there, still in the tree, still selectable by name, and `Unhide all` brings
+   * every one of them back.
+   */
+  _visibilityChanged(droppedIsolation) {
+    this._applyLayers(1 / 60, true);
+    this._emitVisibility();
+    // A hide that ends an isolation has to say so: the tree learns about
+    // isolation from `onAnatomyIsolation` and nowhere else, so without this it
+    // would go on marking a row isolated after the scene had stopped.
+    if (droppedIsolation) this._emitIsolation();
+  }
+
+  /**
+   * @param {string} id
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything changed
+   */
+  setStructureHidden(id, hidden) {
+    if (!this.byId.has(id)) return false;
+    if (this.manualHidden.has(id) === Boolean(hidden)) return false;
+    let droppedIsolation = false;
+    if (hidden) {
+      // "Only this one" and "not this one" cannot both be true.
+      if (this.isolatedId === id) {
+        this.isolatedId = null;
+        droppedIsolation = true;
+      }
+      this.manualHidden.add(id);
+    } else {
+      this.manualHidden.delete(id);
+    }
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Hide or show many structures as one change.
+   *
+   * What a group row in the part tree presses. The single setter applies the
+   * whole opacity pass and announces it on every call, which is right for one
+   * structure and wrong for a branch: a lung's lobes would be one pass and one
+   * repaint each, for one thing the reader asked for once.
+   *
+   * @param {Iterable<string>} ids
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything changed
+   */
+  setStructuresHidden(ids, hidden) {
+    let changed = false;
+    let droppedIsolation = false;
+    for (const id of ids) {
+      if (!this.byId.has(id)) continue;
+      if (this.manualHidden.has(id) === Boolean(hidden)) continue;
+      if (hidden) {
+        if (this.isolatedId === id) {
+          this.isolatedId = null;
+          droppedIsolation = true;
+        }
+        this.manualHidden.add(id);
+      } else {
+        this.manualHidden.delete(id);
+      }
+      changed = true;
+    }
+    if (!changed) return false;
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Bring back everything hidden by hand.
+   *
+   * The camera is not touched, and neither is the layer or the cut: "show the
+   * ones I hid" and "put the organ back the way it opened" are two requests.
+   */
+  showAllHiddenStructures() {
+    if (!this.manualHidden.size) return false;
+    this.manualHidden.clear();
+    // Showing never ends an isolation.
+    this._visibilityChanged(false);
+    return true;
+  }
+
+  /** The structures currently hidden by hand, as ids. */
+  getAnatomyVisibility() { return { hidden: [...this.manualHidden] }; }
+
+  onAnatomyVisibility(listener) {
+    this.visibilityListeners.add(listener);
+    return () => this.visibilityListeners.delete(listener);
+  }
+
+  _emitVisibility() {
+    const hidden = [...this.manualHidden];
+    for (const listener of this.visibilityListeners) listener({ hidden: [...hidden] });
   }
 
   // --- status ---------------------------------------------------------------
@@ -803,9 +952,26 @@ export class OrganAnatomyScene {
   _applyLayers(dt, snap) {
     const p = this.displayProgress;
     for (const structure of this.structures) {
-      const hiddenByView = structure.tags.some((tag) => this.hiddenTags.has(tag));
-      const isolatedAway = this.isolatedId != null && structure.id !== this.isolatedId;
-      structure.hidden = hiddenByView || isolatedAway;
+      // Three things want a say in whether this structure is on screen, and
+      // they are resolved in an order rather than OR'd together — architecture
+      // rule 3: one place decides. `_isPickable` reads the same flag, so a
+      // structure that is not drawn stops being clickable without a second rule
+      // saying so.
+      //
+      // **Isolation wins outright**, which is the order the brain atlas already
+      // resolves and its model card already states: "only this one" means only
+      // this one, whatever the viewpoint or the reader's own hide had to say.
+      // OR'ing them instead blanks the model — isolate a structure the active
+      // viewpoint hides and every structure is hidden, the isolated one by the
+      // viewpoint and the rest by the isolation. That was reachable before
+      // hiding existed here, through `right-mediastinal` on the lung: 0 of 83
+      // structures drawn. Isolation writes nothing down, so clearing it hands
+      // the viewpoint and the reader's hidden set back exactly as they were.
+      if (this.isolatedId != null) structure.hidden = structure.id !== this.isolatedId;
+      else {
+        const hiddenByView = structure.tags.some((tag) => this.hiddenTags.has(tag));
+        structure.hidden = hiddenByView || this.manualHidden.has(structure.id);
+      }
 
       let target;
       if (structure.hidden) target = 0;
@@ -891,10 +1057,12 @@ export class OrganAnatomyScene {
     this.hoverListeners.clear();
     this.statusListeners.clear();
     this.isolationListeners.clear();
+    this.visibilityListeners.clear();
     this.selected = null;
     this.hovered = null;
     this.selection = null;
     this.isolatedId = null;
+    this.manualHidden.clear();
     this.organ?.dispose?.();
     disposeObject(this.root);
   }

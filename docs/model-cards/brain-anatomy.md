@@ -55,7 +55,22 @@ colour inside a recognisable lobe colour family. A one-click **Natural anatomy**
 mode uses low-saturation grey-pink cortex, ivory white matter and muted tissue
 colours, with lower idle emission so lighting describes gyri and sulci more
 clearly. Pointing at a mesh previews its exact name; clicking or tapping pins
-it. The information card reports side, anatomical hierarchy, the exact English
+it.
+
+**A structure can also be reached without a pointer.** `selectAtCanvasPoint()`
+names whatever is drawn at one point of the canvas, which is how a keyboard
+asks — there being no pointer to put anywhere, the question is asked of the
+middle of the frame. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there.
+
+**Turning the model is not choosing a structure.** A release counts as a tap
+only if it lands where the press began *and* the pointer never got far from
+there while it was down. The second half is what a touch screen needs: the model is turned by
+swiping across it, and a swipe out and back ends exactly where it started — so
+measured by distance alone it stood still, and letting go named whatever had
+rotated under the thumb. Until 2026-09-14 that is what happened, on this scene
+and on every organ anatomy scene. The information card reports side, anatomical hierarchy, the exact English
 atlas label, and a deliberate Japanese name for all 147 unique selectable
 labels (271 left/right/midline meshes).
 
@@ -218,6 +233,30 @@ same rule, and hiding one survives a colour change, a viewpoint and a resize.
 The anatomical layer stays owned by the console's slider: the scene reports the
 layer a structure needs and the control that owns the value sets it, so the
 model and the slider never give two answers.
+
+**Changing what is drawn says so completely.** A hide that ends an isolation
+announces the isolation as over, not only the hidden set as changed: the two are
+separate events and the tree learns about isolation from one of them alone, so
+for a while it went on marking a row isolated after the scene had stopped
+isolating it. And any hide or show the reader makes themselves discards the
+"back to how it was" snapshot a reveal left behind, because that snapshot
+restores the whole hidden set: offering it after the reader has hidden something
+of their own would undo *their* change under a label that promises to undo the
+reveal's. Both were true of hiding one structure before groups existed, and both
+are fixed for both.
+
+**A branch of the tree comes off in one action, and that is still hiding.** The
+Parts tree already groups structures by the hierarchy the atlas carries; every
+group now carries its own control, so a hemisphere or the ventricular system
+leaves the screen in one press rather than seventy-seven. It writes to the same
+hidden set a single structure's "Hide" writes to, in one pass over the model and
+one report rather than one of each per structure, so "Unhide all" still brings
+everything back, an isolation still overrides it for as long as it lasts, and
+nothing is removed, cut or thinned. The control states which of three things is
+true of the branch — all shown, all hidden, some of each — by shape as well as
+by colour, and answers `V` on a focused branch. **A group is not a structure**:
+pressing it changes what is drawn and never what is named, and the selection,
+the search index and the labels go on referring to structures only.
 
 **The structure a reader picks is named on the model, not only in the panel.**
 The selection and the hover get a label on the same terms as the four authored

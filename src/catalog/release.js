@@ -82,7 +82,18 @@
 import { SCENES, sceneById } from './index.js';
 import { STATUS_IDS } from './taxonomy.js';
 import { assetById, assetReleaseProblems, isRepositoryPath } from './assetManifest.js';
-import { clinicalReviewForScene, hasCurrentClinicalReview } from './clinicalReview.js';
+// The states, not the notes. This module runs at first paint — `RELEASED_SCENES`
+// is a module constant, so opening any page evaluates the publication rule for
+// every scene — and the gate reads exactly one field, `reviewStatus`. Importing
+// `clinicalReview.js` for it put the whole registry in the entry chunk: every
+// scope, source and unresolved limitation any reviewer has written, 22.8 kB
+// gzipped, in front of a first paint that never shows one of them. The registry
+// is still the source of truth and `clinicalReviewStates.js` is generated from
+// it; see `scripts/review-states.js`.
+import {
+  clinicalReviewStateForScene,
+  hasCurrentClinicalReviewState,
+} from './clinicalReviewStates.js';
 import { sceneRevisionPin } from './modelRevisions.js';
 // The ids only, never the guides themselves: this module is reachable from the
 // browser's eager entry (`main.js` → `releaseGate.js` → here), and importing
@@ -256,15 +267,38 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
+    sceneId: 'heart-anatomy',
+    decidedAt: '2026-09-15',
+    decidedBy: Object.freeze({
+      name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/heart-anatomy.md',
+    /**
+     * Two files, and **neither hash is the publisher's**.
+     *
+     * Both sources fail glTF validation on degenerate vertex normals, and the
+     * format gate takes zero errors at every scene status — so what is pinned
+     * here is the derivative that repairs them and changes nothing else. The
+     * adoption decision is docs/decisions/HEART-ASSET-ADOPTION.md and the
+     * change is measured in docs/asset-qa/measurements/normal-repair.json.
+     */
+    assetRevisions: Object.freeze({
+      'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+      'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+    }),
+    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
+  }),
+  Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-09',
+    decidedAt: '2026-09-15',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '3c3175a6da4b6944' }),
+    sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
   }),
 
   /**
@@ -294,7 +328,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/lung-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: 'a57d5fa1cd8ee730' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
   }),
 
   Object.freeze({
@@ -303,7 +337,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '003e6631f3cdb378' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
   }),
 
   Object.freeze({
@@ -312,7 +346,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B1 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/kidney-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '6339df29bd2bd36d' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '5c2ef04c55869bc5' }),
   }),
 
   /**
@@ -330,7 +364,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/stomach-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'f89954f144bef0a5' }),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'fc29311289548550' }),
   }),
 
   Object.freeze({
@@ -339,7 +373,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/esophagus-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: 'e1dc531c3dd675b8' }),
+    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: 'd998c5ab3aa8eea0' }),
   }),
 
   Object.freeze({
@@ -348,7 +382,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/intestine-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '061cc72802f5fe5e' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: 'f6c2b56e92869e80' }),
   }),
 
   Object.freeze({
@@ -357,7 +391,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/biliary-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '1fc9d2b38617b1da' }),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: '10f8c97b4fbad32e' }),
   }),
 
   Object.freeze({
@@ -366,7 +400,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B2 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/pancreas-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'fa36ee8538a13a3e' }),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'e8223eb91c9f9f91' }),
   }),
   Object.freeze({
     sceneId: 'skin-anatomy',
@@ -374,7 +408,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B3 implementer', role: 'engineering' }),
     record: 'docs/beta-publication/skin-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: 'b28ac8cf2ae32465' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: '949aba58c2e0842c' }),
   }),
 ]);
 
@@ -417,7 +451,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export function publicationDecisionProblems(
   decision,
   scene,
-  { fileExists, hasReview = hasCurrentClinicalReview, scopes } = {}
+  { fileExists, hasReview = hasCurrentClinicalReviewState, scopes } = {}
 ) {
   const problems = [];
   if (!decision) return ['has no publication decision on file for this release'];
@@ -545,23 +579,46 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
  *   taken at its word, which is all a browser can do.
  * @returns {string[]}
  */
-export function betaPublicationProblems(candidate, {
+export function betaPublicationProblems(candidate, options = {}) {
+  const id = typeof candidate === 'string' ? candidate : candidate?.id;
+
+  // Membership is checked here and nowhere else, and there is no option that
+  // relaxes it. `betaPublicationGap` below reports on scenes that are *not*
+  // members, and it does so by calling the same body with this line prepended
+  // rather than by asking for it to be skipped — so nothing can ever ask this
+  // module whether a scene would be open if only it were listed and receive an
+  // empty answer.
+  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
+    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
+  }
+
+  return publicationRecordProblems(id, options);
+}
+
+/**
+ * The gate minus the one line that says whether the scene is on the list.
+ *
+ * Split out for `betaPublicationGap`, which needs to ask "and what else?" of a
+ * scene the release does not open. It is not exported: answering that question
+ * without the membership line attached is exactly the answer this module must
+ * not hand out.
+ *
+ * @param {string} id
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {string[]}
+ */
+function publicationRecordProblems(id, {
   fileExists,
   scopes,
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
-  resolveReview = clinicalReviewForScene,
+  resolveReview = clinicalReviewStateForScene,
   resolveRevision = sceneRevisionPin,
-  hasReview = hasCurrentClinicalReview,
+  hasReview = hasCurrentClinicalReviewState,
   decisions = BETA_PUBLICATION_DECISIONS,
 } = {}) {
-  const id = typeof candidate === 'string' ? candidate : candidate?.id;
   const problems = [];
-
-  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
-    return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
-  }
 
   const scene = resolveScene(id);
   if (!scene) return [`"${id}" is not registered in the catalogue`];
@@ -652,6 +709,90 @@ export function betaPublicationProblems(candidate, {
 }
 
 /**
+ * The finished organ models the beta does not open, and what is left for each.
+ *
+ * **The number this exists to print: the beta publishes two organs, and it is
+ * not because the others are unfinished.** Thirty-seven scenes make an
+ * anatomy-only claim, all are `alpha`, and none rests on an external asset —
+ * so for most of them the entire distance to the public build is a record
+ * nobody has written, not geometry nobody has built. Read off
+ * `BETA_ANATOMY_CANDIDATES` alone that is invisible: a short list looks like a
+ * short list of *ready* scenes. This is the same move `anatomyGap()` makes for
+ * the A-scale — the gap is a number the test suite prints rather than a
+ * paragraph somebody has to remember.
+ *
+ * **Nothing here publishes anything, and nothing here reports a scene as
+ * ready.** Every row keeps the membership line, because being on the list is
+ * itself the decision: opening an organ to the public is a judgement about what
+ * this product claims, and it is taken by editing `BETA_ANATOMY_CANDIDATES`
+ * and filing a record under `docs/beta-publication/`, never by a survey
+ * concluding that the paperwork is the only thing missing. So `remaining`
+ * counts what is left *besides* that decision, and `decisionIsAllThatIsLeft`
+ * says only that — not that the decision should be taken.
+ *
+ * A scene qualifies for a row by making an anatomy claim and no more, read off
+ * its model profile exactly as the gate reads it. Nothing is matched by name:
+ * "it is called `…-anatomy`" is not a claim about what a scene asserts.
+ *
+ * @param {object} [options] as `betaPublicationProblems`
+ * @returns {Array<{sceneId: string, status: string, problems: string[],
+ *   remaining: string[], decisionIsAllThatIsLeft: boolean}>}
+ */
+export function betaPublicationGap(options = {}) {
+  const { scenes = SCENES } = options;
+  // A supplied catalogue has to be the one the gate is asked about too.
+  //
+  // It was not: rows were filtered and labelled from `scenes` while
+  // `publicationRecordProblems` resolved the id through the global catalogue.
+  // Hand it a clone of `lung-anatomy` marked `prototype` and the row said
+  // `status: 'prototype'` and `decisionIsAllThatIsLeft: true` — the prototype
+  // refusal missing, because the gate had been asked about the real alpha
+  // scene. A survey whose own injection point disagrees with its answers is
+  // worse than one that has none.
+  //
+  // `resolveScene` passed by the caller still wins; this only supplies the
+  // default that matches `scenes`.
+  const supplied = new Map(scenes.map((scene) => [scene.id, scene]));
+  const resolveScene =
+    options.resolveScene ?? ((id) => supplied.get(id) ?? sceneById(id));
+  return scenes
+    .filter((scene) => !BETA_ANATOMY_CANDIDATES.includes(scene.id))
+    .filter((scene) => anatomyClaimProblems(scene, options).length === 0)
+    .map((scene) => {
+      const remaining = publicationRecordProblems(scene.id, { ...options, resolveScene });
+      return {
+        sceneId: scene.id,
+        status: scene.status,
+        problems: [notOnTheListLine(scene.id), ...remaining],
+        remaining,
+        // `[].every()` is true, and an empty `remaining` means the opposite
+        // of what this field would then say: the record is already filed and
+        // the list edit is the whole distance. That cannot happen today —
+        // every decision on file is for a scene on the list — so it is guarded
+        // rather than described, and `problems` still carries the real answer.
+        decisionIsAllThatIsLeft:
+          remaining.length > 0 && remaining.every(isMissingDecisionLine),
+      };
+    });
+}
+
+/** The one line every gap row carries, worded as the gate words it. */
+const notOnTheListLine = (id) => `"${id}" is not one of the scenes this release opens`;
+
+/**
+ * Whether a remaining line is only "no decision has been taken".
+ *
+ * Matched against what `publicationDecisionProblems` says for a missing
+ * record rather than by a substring guess, so that rewording the gate cannot
+ * quietly turn some other failure into "just paperwork".
+ */
+const MISSING_DECISION_LINES = Object.freeze(
+  publicationDecisionProblems(null, { id: '(none)', status: 'alpha' })
+);
+const isMissingDecisionLine = (line) => MISSING_DECISION_LINES.includes(line);
+
+
+/**
  * Why this scene is not open on the **next** release. Empty means open.
  *
  * **The beta gate is asked first, and passing it is enough.** That is what
@@ -684,9 +825,9 @@ export function nextBetaPublicationProblems(candidate, {
   profiles,
   resolveScene = sceneById,
   resolveAsset = assetById,
-  resolveReview = clinicalReviewForScene,
+  resolveReview = clinicalReviewStateForScene,
   resolveRevision = sceneRevisionPin,
-  hasReview = hasCurrentClinicalReview,
+  hasReview = hasCurrentClinicalReviewState,
   decisions = NEXT_BETA_PUBLICATION_DECISIONS,
   candidates = NEXT_BETA_DISEASE_CANDIDATES,
   authoredGuideIds = PATIENT_GUIDE_SCENE_IDS,
@@ -737,7 +878,7 @@ export function nextBetaPublicationProblems(candidate, {
     problems.push(...assetReleaseProblems(asset, { sceneStatus: scene.status, fileExists }));
   }
 
-  // The bar this channel adds. `hasCurrentClinicalReview` is the same predicate
+  // The bar this channel adds. `hasCurrentClinicalReviewState` is the same predicate
   // a publication decision's clinical role is checked against, so a scene and a
   // decision cannot disagree about whether a review exists.
   const review = resolveReview(scene);

@@ -24,8 +24,37 @@ const LANDING_ALIASES = new Set(['', 'home']);
 /** One slug per legal document, declared in `src/data/legal.js`. */
 const LEGAL_ALIASES = new Set(LEGAL_SLUGS);
 
-/** The part of a hash that addresses something: `#/heart-failure` -> `heart-failure`. */
-export const slugOf = (hash = '') => String(hash).replace(/^#\/?/, '').trim();
+/**
+ * The part of a hash that addresses something: `#/heart-failure` -> `heart-failure`.
+ *
+ * Anything after a `?` is state carried to that place rather than part of its
+ * address, so it is not part of the slug. See `structureOf`.
+ */
+export const slugOf = (hash = '') => String(hash).replace(/^#\/?/, '').split('?')[0].trim();
+
+/**
+ * The structure a scene route opens on, if it names one.
+ *
+ * `#/brain-anatomy?structure=17` is the landing hero handing a reader over: it
+ * named a structure on a small model, and this is how the full model opens on
+ * the same one instead of making them find it again. It is deliberately a
+ * *query* rather than another path segment — the address is the same model, and
+ * `sameRoute` below agrees, so moving between structures is not a navigation
+ * that reloads the page.
+ *
+ * The id is returned as it was written. Only the scene knows what its ids look
+ * like, and a router that decided they were numbers would be wrong for the next
+ * atlas that keys on a string.
+ *
+ * @param {string} hash
+ * @returns {string|null}
+ */
+export function structureOf(hash = '') {
+  const query = String(hash).split('?')[1];
+  if (!query) return null;
+  const value = new URLSearchParams(query).get('structure');
+  return value?.trim() ? value.trim() : null;
+}
 
 /**
  * Is this hash an in-page anchor rather than a route?
@@ -52,7 +81,7 @@ export function isInPageAnchor(hash = '') {
 /**
  * @param {string} hash
  * @returns {{kind:'landing'}|{kind:'explorer'}|{kind:'lab'}|{kind:'trust'}
- *   |{kind:'legal',docId:string}|{kind:'scene',sceneId:string}}
+ *   |{kind:'legal',docId:string}|{kind:'scene',sceneId:string,structureId:string|null}}
  */
 export function resolveRoute(hash = '') {
   const slug = slugOf(hash);
@@ -61,7 +90,7 @@ export function resolveRoute(hash = '') {
   if (LAB_ALIASES.has(slug)) return { kind: 'lab' };
   if (TRUST_ALIASES.has(slug)) return { kind: 'trust' };
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
-  return { kind: 'scene', sceneId: resolveSceneId(hash) };
+  return { kind: 'scene', sceneId: resolveSceneId(hash), structureId: structureOf(hash) };
 }
 
 /**
@@ -74,7 +103,13 @@ export function resolveRoute(hash = '') {
  */
 export const namesScene = (hash = '') => Boolean(sceneBySlug(slugOf(hash)));
 
-/** True when two hashes address the same thing — used to decide whether to reload. */
+/**
+ * True when two hashes address the same thing — used to decide whether to reload.
+ *
+ * The structure a scene route carries is deliberately not part of the answer: it
+ * is state inside a place, not a different place, and reloading the page to
+ * change it would throw away the model the reader is already looking at.
+ */
 export function sameRoute(a, b) {
   const left = resolveRoute(a);
   const right = resolveRoute(b);

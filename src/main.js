@@ -25,7 +25,14 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
-import { isInPageAnchor, resolveRoute, sameRoute } from './app/router.js';
+import './styles/patient-consultation.css';
+// Last, and deliberately: it is the one place that owns the 44 px touch floor
+// for phone widths, and it has to outrank every surface sheet that compacts —
+// the consultation view above included.
+import './styles/phone-touch-targets.css';
+import { resolveRoute } from './app/router.js';
+import { installDeparture } from './app/departure.js';
+import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { routeOpen } from './app/releaseGate.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
@@ -56,11 +63,49 @@ boot().catch(async (error) => {
 });
 
 async function boot() {
-  const recoveryIntent = new URLSearchParams(window.location.search).get('account') === 'recovery';
-  const route = recoveryIntent ? { kind: 'landing' } : resolveRoute(window.location.hash);
+  // A Supabase redirect carries credentials in the fragment. It is not a route,
+  // and the account layer consumes and scrubs it moments from now — but the
+  // route is resolved here, first, so without this the fragment falls through
+  // to `resolveRoute`, which sends an unknown hash to the default scene.
+  // Somebody who had just confirmed their address therefore landed on a 3D
+  // model, and once the fragment was scrubbed to `#/` the address bar disagreed
+  // with what was on screen, which left the shell's Home link inert.
+  //
+  // The real parser, not a regex that resembles it: the first version of this
+  // approximated the rule and disagreed with `authRedirectFromHash` about
+  // hashes beginning with `/`, which forced such a URL to the landing page
+  // while leaving its token in the address bar. `authRedirect.js` is pure and
+  // dependency-free precisely so this can be asked here, before the account
+  // layer loads, without dragging the account client into the entry chunk.
+  //
+  // Only the fragment. `?account=recovery` — the flag a reload mid-recovery has
+  // to go on — used to force the landing page too, and that turned an
+  // interrupted recovery into a trap: the flag stays in the query until the
+  // password is set or the recovery cancelled, so closing the dialog and
+  // carrying on left every later reload of `#/brain-anatomy` dropping back to
+  // the landing page. A query flag is not a route the way a token fragment is;
+  // the hash beside it is still a perfectly good one, and the recovery dialog
+  // is a modal that opens over whatever it names.
+  const route = looksLikeAuthRedirect(window.location.hash)
+    ? { kind: 'landing' }
+    : resolveRoute(window.location.hash);
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
+
+  // Every surface leaves the same way, and every surface needs covering while
+  // it does. Six handlers here used to answer "is this a navigation" in four
+  // different ways. Checked transition by transition they agreed, so nothing
+  // was broken by that — but none of them cleared the screen, which is how a
+  // link to `#/copd` could leave a brain on screen under a COPD URL, and the
+  // fix belongs in one place rather than six. `shownHash` is captured here,
+  // once: it is the route this document rendered, and only a new document
+  // changes it.
+  const shownHash = window.location.hash;
+  const leaveOnRouteChange = () => installDeparture({
+    shownHash,
+    language: readUiLanguagePreference(),
+  });
 
   const { createAccessManager } = await import('./access/AccessManager.js');
   const access = createAccessManager({ ui });
@@ -77,10 +122,7 @@ async function boot() {
     createLockedSurface({ ui, route, accountButton: access.accountButton });
     void observe({ ui, surface: 'landing' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -103,10 +145,7 @@ async function boot() {
     });
     void observabilityReady;
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'landing') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -116,10 +155,7 @@ async function boot() {
     await createTrust({ ui, accountButton: access.accountButton });
     void observe({ ui, surface: 'trust' }).then((installed) => installed?.telemetry.record('trust.open', {}));
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (resolveRoute(window.location.hash).kind !== 'trust') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -129,10 +165,7 @@ async function boot() {
     createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
     void observe({ ui, surface: 'landing' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      if (!sameRoute(window.location.hash, `#/${route.docId}`)) window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -146,11 +179,7 @@ async function boot() {
     });
     void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
     void accessReady;
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      const next = resolveRoute(window.location.hash);
-      if (next.kind !== route.kind || next.kind === 'scene') window.location.reload();
-    });
+    leaveOnRouteChange();
     return;
   }
 
@@ -263,10 +292,7 @@ async function boot() {
       fallback.destroy?.();
     } });
 
-    window.addEventListener('hashchange', () => {
-      if (isInPageAnchor(window.location.hash)) return;
-      window.location.reload();
-    });
+    leaveOnRouteChange();
 
     settleOptionalService(
       observe({

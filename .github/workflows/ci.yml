@@ -22,7 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Full history, for `tests/asset-provenance.test.js`. It asks where each
+      # adopted binary entered the default branch, which a shallow clone cannot
+      # answer — and answering it wrongly is not hypothetical: read on a shallow
+      # clone, the boundary commit looks like it added every file in its tree,
+      # which is how the brain atlas came to be reported as having an
+      # unreachable provenance commit when its record was right all along. The
+      # test refuses to run shallow rather than passing vacuously, so without
+      # this line it fails here instead of lying.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -34,3 +44,59 @@ jobs:
       - run: npm run budget
       - run: npm run verify:site
       - run: npm run cards:check
+      - run: npm run type-floor
+
+  # A real browser, on every pull request. Until 2026-09-15 this was kept out of
+  # ordinary pushes because the repository was private and Actions minutes were
+  # the constraint (F-100). It is public now, so the constraint is gone and the
+  # question became the one it should always have been: is the wall clock worth
+  # it? Four defects have reached `main` with `npm test` entirely green and a
+  # browser check the only thing that found them — the `billingNotice` TDZ, a
+  # dialog's focus trap, the zoom pivot, and `walkTabOrder` reporting a large
+  # page as a trap. Two of those are this check's. So, for this one check: yes.
+  #
+  # Chromium only, and `verify:ui` only. `verify:auth`, `verify:anatomy`,
+  # `verify:disease` and `verify:patient`, and Firefox and WebKit, stay at
+  # candidate time in `final-browser-validation.yml`. F-112 records where that
+  # line is drawn and what would move it.
+  #
+  # Its own job rather than another step in `test-and-build`: it takes about
+  # four minutes against that job's one, and a failing unit test should not have
+  # to wait behind a browser download to be reported.
+  verify-ui:
+    name: viewport matrix (chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:ui -- --json viewport-report-chromium.json
+      # The same browser, already installed, for the paths a stand-in `window`
+      # can only pretend to have: a Back press that never left the document, and
+      # a reload that was asked for and never arrived. Both were unit-tested and
+      # undriven (F-114) through two attempts at this feature, and the second
+      # attempt spent four review rounds on exactly them. About 40 seconds, most
+      # of it waiting out a 12-second backstop on purpose.
+      - run: npm run verify:departure
+      # The paid surfaces, which nobody could look at until now. A second build,
+      # because the entitlements are granted by `VITE_ALLOW_PREVIEW=1` and a
+      # production bundle has no such capability — see
+      # `src/access/previewGrants.js`. What it guards is the sentences saying
+      # what a model may be used for: one of them shipped at 9.5px on the
+      # education guide, and it was invisible because the surface was.
+      - run: npm run build:preview
+      - run: npm run verify:gated -- --dist dist-preview
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: viewport-report-chromium
+          path: viewport-report-chromium.json
+          if-no-files-found: ignore
+          retention-days: 3

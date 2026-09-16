@@ -1,3 +1,6 @@
+@import './ui-hierarchy-typography.css';
+@import './ui-hierarchy-layout.css';
+
 /*
  * Browser-first release-candidate polish.
  *
@@ -27,13 +30,13 @@
 #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary,
 #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .stage-summary-ja {
   -webkit-line-clamp: 1;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
 #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
   gap: 0;
-  font-size: 9.5px;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -57,7 +60,7 @@
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.35;
 }
 
@@ -71,7 +74,7 @@
 
 #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
   gap: 0;
-  font-size: 9.5px;
+  font-size: 12px;
   line-height: 1.3;
 }
 
@@ -96,7 +99,7 @@
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .disclaimer {
     display: flex;
     gap: 0;
-    font-size: 10px;
+    font-size: 12px;
     line-height: 1.25;
   }
 
@@ -123,11 +126,8 @@
     gap: 8px;
   }
 
-  /* The first browser pass forced one row and hid 137–266px of controls behind
-   * horizontal scrolling. That optimised height at the cost of discoverability.
-   * Let the existing responsive control design wrap instead: every action is
-   * visible without a swipe and the console is still far shallower than before
-   * the text compaction. */
+  /* Do not trade height for hidden actions. Every control remains visible on a
+   * phone; wrapping is cheaper than making people discover horizontal scroll. */
   #ui[data-view='learning']:not([data-anatomy]):not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row,
   #ui[data-scene='amyloid-beta'][data-view='data']:not(.is-patient-guide):not(.is-education-guide):not(.is-learning):not(.is-story):not(.is-story-stepping) .button-row {
     flex-wrap: wrap;

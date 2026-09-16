@@ -252,7 +252,7 @@ export function buildEar({ colors = {}, opacity = 1 } = {}) {
    * snail shell rather than like a spring. This climbed 0.62 over two and a
    * half turns — a quarter of a unit per turn against a canal about 0.15
    * across — so there was daylight between every whorl and the render was a
-   * coil spring with a rod through it (F-109).
+   * coil spring with a rod through it (F-126).
    *
    * So the climb is the canal's own average thickness, two and a half times
    * over: each turn lands on top of the one below it. It is a consequence of
@@ -300,7 +300,7 @@ export function buildEar({ colors = {}, opacity = 1 } = {}) {
   // canal, not a picture of one.
   //
   // So the cage stays until the model and the atlas move together, which is a
-  // change to a medical model and not to a drawing (F-109).
+  // change to a medical model and not to a drawing (F-126).
   const canal = (name, normal) => {
     const centre = new THREE.Vector3(...SITES.vestibule).addScaledVector(new THREE.Vector3(...normal), 0);
     const axis = new THREE.Vector3(...normal).normalize();

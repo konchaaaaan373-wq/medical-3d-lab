@@ -1,6 +1,26 @@
 import registry from '../../docs/clinical-reviews/registry.json' with { type: 'json' };
 
 /**
+ * **This module must only be reached from a lazily-loaded surface.**
+ *
+ * It imports the whole registry, and the registry is mostly the reviewers'
+ * prose — the scope they covered, the sources they read, the limitations they
+ * could not resolve — which is 84 kB of its 98.5 kB. A bundler cannot take one
+ * field out of a JSON import, so anything statically reachable from `main.js`
+ * that imports this ships all of it in the entry chunk: measured at 22.8 kB
+ * gzipped, a quarter of the entry budget, in front of a first paint that shows
+ * none of it.
+ *
+ * The release gate needed one field and used to import this for it. It now
+ * reads `clinicalReviewStates.js`, which is generated from the same registry.
+ * If you need a review *state* on a path that runs at first paint, use that.
+ * If you need anything a reviewer wrote, you are on a surface that can wait for
+ * a chunk, and this is the right module.
+ *
+ * `tests/eager-entry-graph.test.js` fails if the registry becomes eager again.
+ */
+
+/**
  * Clinical-review status is deliberately separate from catalogue maturity.
  *
  * `production` means the software/model surface is mature enough for the public

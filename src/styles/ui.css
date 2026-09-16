@@ -777,9 +777,21 @@
 @media (max-width: 720px) {
   #ui[data-anatomy] .legend { display: none; }
   #ui[data-anatomy] .console { padding: 8px 10px 9px; }
+  /* The long description goes; it is a tap away in the Detail tab and can be
+     read at whatever size the reader has chosen.
+
+     `.disclaimer` used to be listed here with it, which meant the one scene
+     this beta publishes carried no "educational, not clinical" statement at all
+     below 720px — measured at 390px: no 教育用, no 臨床使用不可, nothing.
+     `ControlPanel.js` has always said the notice "must always be visible, so a
+     shorter wording is swapped in on narrow screens rather than the notice
+     being dropped", and `.disclaimer-short` exists for exactly that and is
+     already swapped in at 860px. This rule was the one place that broke the
+     promise. A caveat is not a description of the model; it is what the model
+     is allowed to be used for, and there is no width at which that stops
+     applying. */
   #ui[data-anatomy] .stage-summary,
-  #ui[data-anatomy] .stage-summary-ja,
-  #ui[data-anatomy] .disclaimer { display: none; }
+  #ui[data-anatomy] .stage-summary-ja { display: none; }
 }
 
 .legend-item {
@@ -2867,12 +2879,16 @@
   display: inline-flex;
 }
 
+/* "⚠︎ 教育用肉眼解剖 — 臨床使用不可". This is the sentence that says what the
+   model on screen is not, so it is the last thing that should be the smallest
+   type in the panel — it was 10.5px, under the product's 12px floor, beneath a
+   model rendered at full size. */
 .disclaimer {
   margin: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10.5px;
+  font-size: 12px;
   line-height: 1.45;
   color: var(--ink-faint);
 }

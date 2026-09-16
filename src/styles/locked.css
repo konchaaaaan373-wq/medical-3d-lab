@@ -110,12 +110,17 @@
   line-height: 1.65;
 }
 
+/* The two sentences that answer "why can't I see it". On a page reached by
+   somebody who was sent a link, that is not a footnote — it was 11px, the
+   smallest type here and smaller than the scene description above it. 12px is
+   what `.locked-summary` uses and what the rest of the product treats as the
+   floor for prose. */
 .locked-copy {
   margin: 22px 0 0;
   padding-top: 18px;
   border-top: 1px solid var(--border);
   color: var(--ink-faint);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
 }
 
@@ -137,7 +142,10 @@
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.025);
   color: var(--ink-dim);
-  font-size: 10.5px;
+  /* A control's own label. The box already clears 44px on a phone; a 10.5px
+     word inside it is a target you can hit and a label you have to lean in
+     for. */
+  font-size: 12px;
   font-weight: 650;
   text-decoration: none;
 }
@@ -156,50 +164,6 @@
 .locked-link.primary:hover {
   color: var(--accent-ink);
   background: var(--accent-hover);
-}
-
-.locked-suggestions {
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border);
-}
-
-.locked-suggestions-title {
-  display: flex;
-  flex-direction: column;
-  margin: 0 0 10px;
-  color: var(--ink-faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.locked-suggestion-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.locked-suggestion {
-  display: inline-flex;
-  flex-direction: column;
-  min-height: 38px;
-  justify-content: center;
-  padding: 6px 11px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  color: var(--ink-dim);
-  font-size: 10px;
-  text-decoration: none;
-}
-
-.locked-suggestion:hover {
-  color: var(--accent);
-  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
 }
 
 .locked-surface a:focus-visible {

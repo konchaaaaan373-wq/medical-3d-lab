@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { buildSearchIndex, searchStructures } from '../app/anatomySearch.js';
 
 /**
@@ -80,13 +81,21 @@ export function createAnatomyPartsFinder({
     type: 'search',
     // `search` inputs get a browser clear button; the Escape key below is the
     // keyboard equivalent and both end in the same place.
-    placeholder: '部位を検索 / Search structures',
-    'aria-label': 'Search structures / 部位を検索',
+    // One language, the one on screen. The slash-joined pair is how this
+    // product wrote bilingual strings before the language toggle existed; an
+    // attribute cannot hold two, so it holds the one being read.
+    placeholder: inLanguage('Search structures', '部位を検索'),
+    'aria-label': inLanguage('Search structures', '部位を検索'),
     autocomplete: 'off',
     on: {
       input: () => run(input.value),
       keydown: onKeydown,
     },
+  });
+  onLanguageChange(() => {
+    const label = inLanguage('Search structures', '部位を検索');
+    input.setAttribute('placeholder', label);
+    input.setAttribute('aria-label', label);
   });
   // A fresh input has no value until something is typed into it; starting it at
   // the empty string means every read is a string.

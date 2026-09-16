@@ -3,7 +3,10 @@
 | | |
 | --- | --- |
 | **Scene** | `heart-anatomy` |
-| **Geometry** | `dev-assets/heart/VH_M_Heart.glb` and `dev-assets/heart/VH_M_Blood_Vasculature.glb` — **candidates**, pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js), fetched by `npm run assets:dev`, **not committed and not shipped** |
+| **Geometry** | [`public/assets/heart/VH_M_Heart.glb`](../../public/assets/heart/VH_M_Heart.glb) and [`public/assets/heart/VH_M_Blood_Vasculature.glb`](../../public/assets/heart/VH_M_Blood_Vasculature.glb) — **derivatives** of the HuBMAP files, adopted 2026-09-15 |
+| **Asset provenance and QA** | [`src/catalog/assetManifest.js`](../../src/catalog/assetManifest.js) |
+| **Asset notice** | [`public/assets/heart/ATTRIBUTION.md`](../../public/assets/heart/ATTRIBUTION.md) |
+| **Adoption decision** | [`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 | **Metadata adapter** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js) |
 | **Selection behaviour** | [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js) |
@@ -18,6 +21,41 @@ papillary muscle, a great vessel, a coronary artery, a cardiac vein — relative
 to the rest of the heart, and what is it called in English and Japanese?**
 
 ## 2. What it is
+
+**What ships is a derivative, and that is not a detail.** The publisher's own
+files fail glTF validation — 408 degenerate vertex normals in one mesh of the
+heart, 33 across two meshes of the vasculature, and nothing else — and this
+repository's format gate takes zero errors and zero warnings at every scene
+status. So adopting the publisher's bytes could never have opened the release
+gate, however carefully the failure was recorded. The two honest routes were a
+derived file or no heart in the beta.
+
+The derivative replaces those normals and **nothing else**. A degenerate normal
+has zero length and carries no direction, so there is nothing in it to preserve;
+zero-area triangles were removed first because a vertex whose only neighbours
+are degenerate triangles has no face to average, and **a zero-area triangle
+draws nothing**, so removing one cannot change the rendered surface. 820 of them
+went from the heart (0.50% of its triangles) and 26 from the vasculature
+(0.007%). Vertex positions, vertex counts, node names, hierarchy, ontology ids
+and materials are identical on both sides, and the triangle count falls by
+exactly what was removed — measured, in
+[`docs/asset-qa/measurements/normal-repair.json`](../asset-qa/measurements/normal-repair.json),
+not asserted. `npm run assets:repair:verify` rebuilds these exact hashes from the
+pinned sources and reports the validator clean.
+
+**A structure can be reached without a pointer.** `selectAtCanvasPoint()` names
+whatever is drawn at one point of the canvas, which is how a keyboard asks —
+there being no pointer to put anywhere, the landing hero asks it of the middle
+of the frame on Enter. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there. Until 2026-09-15 this scene was
+the only anatomy scene without it, and the hero's call is optional — so on the
+day the hero showed the heart, Enter did nothing and said nothing.
+
+**No geometry was re-shaped and no anatomical judgement was made.** The sources
+stay pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js):
+adopting a derivative does not delete the record of what was examined.
+
 
 **Forty-six structures from fifty-one meshes, out of two files of one reference
 release.** Fourteen are the heart itself: four chambers, the interventricular
@@ -286,6 +324,30 @@ the Japanese names are deliberate but unreviewed.
   **Every structure named by a view is one the source contains and this scene
   draws.** No view invents a vessel or a wall to make itself tidier, and
   `tests/heart-anatomy.test.js` holds all four to the part table.
+* **Changing what is drawn says so completely.** A hide that ends an isolation
+  announces the isolation as over, not only the hidden set as changed — they are
+  two events and the tree learns about isolation from one of them alone. And any
+  hide or show the reader makes themselves discards the snapshot behind "Back to
+  how it was", because that snapshot restores the whole hidden set: offering it
+  afterwards would undo *their* change under a label that promises to undo the
+  fixed view's. Both were true of hiding one part before groups existed.
+* **A branch of the Parts tree comes off in one press.** The tree's branches
+  are this file's own eight groups — *Chambers and septum*, *Heart valves*,
+  *Papillary muscles*, *Great vessels*, *Coronary arteries*, *Cardiac veins*,
+  *Branches of the aortic arch*, *Tributaries of the superior vena cava* — and
+  each now carries its own control that hides or shows everything beneath it.
+  Note what that means for the first one: *Chambers and septum* takes the
+  septum with the four chamber surfaces, because that is the group the file
+  has. A reader who wants the chambers off and the septum left standing hides
+  the four by hand, as before. It is the same hide a single part's "Hide" performs,
+  applied to the set in one pass over the model — not a section, not a cut, and
+  not a fourth fixed view. The difference from "Inside the chambers" is who
+  chooses the set: the fixed view is one authored destination, this is the
+  reader taking off whatever they want to see behind. A branch showing some of
+  its parts and hiding others says so with its own mark rather than rounding to
+  one of the two, and `V` on a focused branch does what pressing the control
+  does. **A group is not a part**: it has no ontology id, it cannot be selected,
+  searched for or labelled, and hiding one asserts nothing about the anatomy.
 * **What the camera frames is the organ, and it is a composition.** The scene
   reports the fourteen parts of the heart file as its subject, not everything it
   draws: the vessels reach past the chest — the inferior vena cava runs to the
@@ -349,10 +411,13 @@ watertight. It is not a patient's heart and not a surgical reference.
 
 **Catalog status:** `alpha`
 
-**Publication:** closed. The great vessels the beta's list asks for are now in
-the model, and **that is not what opens the gate**: the scene rests on candidate
-assets that have been through no asset pipeline — no manifest record, no licence
-decision, no discharged obligations, none of the five QA gates — and no
-publication decision exists. `betaPublicationProblems('heart-anatomy')` reports
-the candidate by name. No clinical review and no anatomist review exists, and
-none is implied by this card.
+**Publication:** open, as of 2026-09-15. The two candidate files went through
+the asset pipeline — manifest record, licence decision, discharged obligations,
+the QA gates — and a publication decision was taken against the repaired
+derivatives named in
+[`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md);
+the record is [`docs/beta-publication/heart-anatomy.md`](../beta-publication/heart-anatomy.md)
+and the scope it was taken over is in `src/catalog/publicationScopes.js`.
+**What is open is the anatomy scene and nothing more.** No clinical review and
+no anatomist review exists, and none is implied by this card — the registry
+records both as pending, which is the same footing the brain is published on.

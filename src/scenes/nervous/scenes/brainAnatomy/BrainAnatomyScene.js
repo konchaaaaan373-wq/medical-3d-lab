@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
+import { createTapTracker } from '../../../shared/anatomy/tapGesture.js';
 import { clamp, damp, smoothstep } from '../../../../utils/math.js';
 import {
   BRAIN_ANATOMICAL_PALETTE,
@@ -382,34 +383,82 @@ export class BrainAnatomyScene {
     if (!canvas) return;
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    let down = null;
+    // See `tapGesture.js`: a tap is a release near the press *and* a pointer
+    // that did not travel in between. Displacement alone read the out-and-back
+    // drag that turns the model as standing still, which on a touch screen is
+    // how the model is turned.
+    const tap = createTapTracker();
 
     this._pointerDown = (event) => {
-      down = [event.clientX, event.clientY];
+      tap.begin(event.clientX, event.clientY);
       this._setHovered(null);
     };
     this._pointerMove = (event) => {
+      tap.move(event.clientX, event.clientY);
       if (event.buttons) return;
       const hit = this._pick(event);
       this._setHovered(hit?.object ?? null);
       canvas.style.cursor = hit ? 'pointer' : 'grab';
     };
     this._pointerUp = (event) => {
-      if (!down || Math.hypot(event.clientX - down[0], event.clientY - down[1]) > 7) {
-        down = null;
-        return;
-      }
-      down = null;
+      if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
       if (hit) this.selectStructure(hit.object.userData.atlasId);
       else this.clearSelection();
     };
-    this._pointerLeave = () => this._setHovered(null);
+    // The press ends here too. A drag that wanders off the canvas is released
+    // where the canvas never hears it, so without this the press stays open and
+    // the next release it does hear — from a press that began somewhere else
+    // entirely — is measured against a point the reader left long ago. Nothing
+    // is lost by closing it: a tap does not leave the canvas.
+    this._pointerLeave = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
+    // The browser can take a gesture away mid-press — a pinch, or a swipe the
+    // page claims under `touch-action` — and then there is no `pointerup` at
+    // all. Without this the press stays open, and the next release the canvas
+    // sees without a press of its own is measured against a point the reader
+    // touched some time ago.
+    this._pointerCancel = () => {
+      tap.cancel();
+      this._setHovered(null);
+    };
     canvas.addEventListener('pointerdown', this._pointerDown);
     canvas.addEventListener('pointermove', this._pointerMove);
     canvas.addEventListener('pointerup', this._pointerUp);
     canvas.addEventListener('pointerleave', this._pointerLeave);
+    canvas.addEventListener('pointercancel', this._pointerCancel);
     canvas.style.cursor = 'grab';
+  }
+
+  /**
+   * Select whatever is drawn at one point of the canvas.
+   *
+   * The pointer path is not the only way a reader arrives at a structure. A
+   * keyboard has no pointer at all, so the surface that asks "what is at the
+   * middle of the frame?" has to exist as a method rather than only as a
+   * response to a click — otherwise naming a structure is something only a
+   * mouse or a finger can do, and the model names nothing for anybody else.
+   *
+   * Coordinates are CSS pixels from the canvas's top-left corner, which is what
+   * a caller measuring its own viewport already has. A point with nothing drawn
+   * under it clears the selection, exactly as clicking the background does.
+   *
+   * @param {number} x
+   * @param {number} y
+   * @returns {boolean} whether a structure was selected
+   */
+  selectAtCanvasPoint(x, y) {
+    const canvas = this.viewer?.renderer?.domElement;
+    if (!canvas) return false;
+    const rect = canvas.getBoundingClientRect();
+    const hit = this._pick({ clientX: rect.left + x, clientY: rect.top + y });
+    if (!hit) {
+      this.clearSelection();
+      return false;
+    }
+    return this.selectStructure(hit.object.userData.atlasId);
   }
 
   _pick(event) {
@@ -637,6 +686,32 @@ export class BrainAnatomyScene {
   getAnatomyIsolation() { return this.isolatedId; }
 
   /**
+   * A visibility change the reader made themselves, applied and announced.
+   *
+   * Two things every hide and show has to do, and none of them did:
+   *
+   * 1. **Announce an isolation it ended.** Hiding the isolated structure drops
+   *    the isolation — "only this one" and "not this one" cannot both be true —
+   *    but only the visibility event was sent, so `AnatomyTreePanel`, which
+   *    learns about isolation from `onAnatomyIsolation` and nowhere else, went
+   *    on drawing the row as isolated while the scene reported none.
+   * 2. **Throw away the reveal snapshot.** `displayBeforeReveal` is "the
+   *    display the reveal moved away from", and "Back to how it was" restores
+   *    `hidden` wholesale from it. Once the reader has hidden or shown
+   *    something themselves, going back would take *their* change away rather
+   *    than the reveal's — silently, since nothing says a snapshot is stale.
+   *
+   * @param {boolean} droppedIsolation
+   */
+  _visibilityChanged(droppedIsolation) {
+    this.hiddenVersion += 1;
+    this.displayBeforeReveal = null;
+    this._applyProgress(1 / 60, true);
+    this._emitVisibility();
+    if (droppedIsolation) this._emitIsolation();
+  }
+
+  /**
    * Hide, or bring back, one structure — every mesh it is drawn from.
    *
    * Structure-wide because a structure is what a reader means: hiding the piece
@@ -656,15 +731,58 @@ export class BrainAnatomyScene {
     const key = meshes[0].userData.atlasId;
     const had = this.manualHidden.has(key);
     if (had === Boolean(hidden)) return false;
+    let droppedIsolation = false;
     if (hidden) {
-      if (this.isolatedId === key) this.isolatedId = null;
+      if (this.isolatedId === key) {
+        this.isolatedId = null;
+        droppedIsolation = true;
+      }
       this.manualHidden.add(key);
     } else {
       this.manualHidden.delete(key);
     }
-    this.hiddenVersion += 1;
-    this._applyProgress(1 / 60, true);
-    this._emitVisibility();
+    this._visibilityChanged(droppedIsolation);
+    return true;
+  }
+
+  /**
+   * Hide or show many structures as one change.
+   *
+   * `setStructureHidden` applies the whole visibility pass and announces the
+   * change on every call, which is right for one structure and wrong for a
+   * group: hiding the brain's frontal lobe is forty-one of those, so forty-one passes over
+   * every mesh in the atlas and forty-one repaints of the panel, for one thing the
+   * reader asked for once.
+   *
+   * Same rules as the single setter, applied to each id — an isolation on a
+   * structure being hidden is dropped, an id the model does not have is
+   * skipped — and then one pass and one announcement at the end.
+   *
+   * @param {Iterable<string|number>} ids
+   * @param {boolean} hidden
+   * @returns {boolean} whether anything actually changed
+   */
+  setStructuresHidden(ids, hidden) {
+    let changed = false;
+    let droppedIsolation = false;
+    for (const id of ids) {
+      const meshes = this._meshesFor(id);
+      if (!meshes.length) continue;
+      const key = meshes[0].userData.atlasId;
+      if (this.manualHidden.has(key) === Boolean(hidden)) continue;
+      if (hidden) {
+        if (this.isolatedId === key) {
+          this.isolatedId = null;
+          droppedIsolation = true;
+        }
+        this.manualHidden.add(key);
+      } else {
+        this.manualHidden.delete(key);
+      }
+      changed = true;
+    }
+    if (!changed) return false;
+    this._visibilityChanged(droppedIsolation);
     return true;
   }
 
@@ -678,9 +796,8 @@ export class BrainAnatomyScene {
   showAllHiddenStructures() {
     if (!this.manualHidden.size) return false;
     this.manualHidden.clear();
-    this.hiddenVersion += 1;
-    this._applyProgress(1 / 60, true);
-    this._emitVisibility();
+    // No isolation to drop: showing never ends one.
+    this._visibilityChanged(false);
     return true;
   }
 
@@ -1193,6 +1310,7 @@ export class BrainAnatomyScene {
     canvas?.removeEventListener('pointermove', this._pointerMove);
     canvas?.removeEventListener('pointerup', this._pointerUp);
     canvas?.removeEventListener('pointerleave', this._pointerLeave);
+    canvas?.removeEventListener('pointercancel', this._pointerCancel);
     this.listeners.clear();
     this.hoverListeners.clear();
     this.statusListeners.clear();
