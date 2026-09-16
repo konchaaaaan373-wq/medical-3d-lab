@@ -94,6 +94,20 @@ No dimension here is a measurement.
   of the window nothing is covering — the parts panel is an overlay over the
   canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
   organ open is framed on what it leaves rather than on the whole model.
+- **The shafts are drawn and are not framed to.** The femur, the tibia and the
+  fibula run out of the scene, and fitting the whole of them pushed the camera
+  back far enough that the structures a reader can click crowded into a single
+  column. They are tagged as context, so the camera measures itself against the
+  joint — condyles, plateaus, patella, menisci, ligaments and the extensor
+  mechanism — and the bones still run off the edges as they should: a reader
+  tells a knee from an elbow partly by which way its bones go. **Nothing is
+  hidden and nothing is shortened**; only the box the camera fits to is
+  narrower. Measured: a click tour that could name three structures, all in one
+  column, now names four across three columns and three rows.
+  This scene is a **tall** subject and is framed as one — it reaches across 8 of
+  9 sampled rows where the published organs reach 4 or 5, and its widest point
+  is 0.16 of the frame against their 0.28–0.32. That is a shape, not a defect;
+  F-134 was closed on it.
 - **A cut draws the face it leaves, where there is one to draw.** For a solid
   part the cross-section is computed from the triangles the plane crosses and
   drawn in that part's own colour, so a cut segment reads as tissue with a

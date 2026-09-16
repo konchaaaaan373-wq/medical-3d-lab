@@ -54,6 +54,9 @@
  * checked here instead.
  *
  * Options:
+ *   --silhouette    also measure how wide the model gets anywhere down the
+ *                   frame, for comparing one scene with another. Costs about
+ *                   three minutes a scene, so it is off by default.
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
  *   --points <list> where to click, as "fx,fy fx,fy …" in canvas fractions.
@@ -260,49 +263,43 @@ const SCENE_POINTS = {
   'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
   // Both femoral condyles, the patella in front of them, and the tibial
   // plateau below — four bones of the joint from one view.
-  // Three, not four, and every one in the same column: after the safe-area fit
-  // (#112) the knee is drawn as a vertical sliver about a tenth of the frame
-  // wide — the drive reports it spanning 0.32..0.42 — so a fourth point on a
-  // distinct structure is not there to be had. How narrowly this scene is
-  // framed is F-134.
+  // Four points on four structures, spread across the frame — which is new.
+  // Before the shafts were taken out of the framing box (F-134) the knee was a
+  // tenth of the frame wide and a 63-point grid found it six times, every hit
+  // in one column; three names was all it could carry. It is 0.14 wide now.
   //
-  // Named from **the drive's own run**, not from `points:anatomy`. The tool's
-  // answers did not hold here: it named 0.365,0.37 "Patella" and the drive read
-  // "Quadriceps tendon" at the same point, one row off all the way down. Which
-  // of the two is right about a scene is L-26, which the lung hit first; the
-  // drive is the one whose answer this table has to satisfy, so the sentinel
-  // pass it prints is what these names came from. **Do not measure these two
-  // with `points:anatomy`.**
+  // Named from **the drive's own sentinel pass**, not `points:anatomy`, which
+  // disagrees with the drive here (L-26) — and every name confirmed by two
+  // consecutive runs, because a point near a boundary answers differently from
+  // run to run. (0.4217, 0.45) was dropped for exactly that: the sentinel pass
+  // called it "Articular cartilage" and two runs called it "Medial femoral
+  // condyle", which is the cartilage shell against the condyle under it.
   'knee-anatomy': [
+    [0.3017, 0.45, 'Lateral femoral condyle'],
     [0.3617, 0.34, 'Quadriceps tendon'],
     [0.3617, 0.45, 'Patella'],
     [0.3617, 0.56, 'Patellar tendon'],
   ],
-  // **One name, not four — this scene cannot currently carry a named tour.**
+
+
+
+
+  // Three structures, named again. With the humeral shaft in the framing box
+  // (F-134) this scene could hold **one** name still from run to run — three of
+  // its four candidates all came back "Glenoid labrum", and two points swapped
+  // answers between consecutive runs — because at a tenth of the frame every
+  // point is near an edge. At 0.18 wide the three below held across two runs.
   //
-  // The safe-area fit (#112) left the shoulder spanning 0.28..0.38 of the frame
-  // (F-134), and inside a tenth of the frame every point is near an edge. Two
-  // consecutive runs, same build, same coordinates, disagreed:
-  //
-  //   (0.3617, 0.34)  "Coracoid process"   then  "Scapula"
-  //   (0.3017, 0.34)  "Glenoid labrum"     then  "Articular cartilage"
-  //
-  // So those two are left as coordinates: the drive still requires them to land
-  // on the model and to resolve to *a* structure, which is a real check, and it
-  // no longer asserts an identity this framing cannot hold still. The one point
-  // that named the same structure on both runs keeps its name. Re-measure the
-  // rest when F-134 gives the joint a normal share of the frame — the previous
-  // four names (tubercle, coracoacromial ligament, humeral head, shaft) were
-  // measured at the old framing and every one of them now hits nothing.
-  //
-  // Measured through the drive's own sentinel pass, not `points:anatomy`, which
-  // disagrees with it here (L-26).
+  // Same provenance as the knee's: the drive's sentinel pass, not
+  // `points:anatomy` (L-26).
   'shoulder-anatomy': [
-    [0.3617, 0.26, 'Coracoclavicular ligament'],
-    [0.3617, 0.34],
-    [0.3017, 0.34],
-    [0.3617, 0.45],
+    [0.2417, 0.45, 'Head of the humerus'],
+    [0.3617, 0.34, 'Coracoid process'],
+    [0.4217, 0.45, 'Scapula'],
   ],
+
+
+
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
   // Into the funnel from in front: the midline, the ring on each side of it, and the floor below.
@@ -741,14 +738,18 @@ try {
     : [0.04, 0.94])];
 
   /**
-   * How far across the frame the model reaches, at one row, asked rather than
-   * measured from a picture: the scene sets the cursor over its own geometry,
-   * which is the same signal the points above were found with.
+   * How far across the frame the model reaches, **at one row**, asked rather
+   * than measured from a picture: the scene sets the cursor over its own
+   * geometry, which is the same signal the points above were found with.
+   *
+   * One row is the right measure for the check below, which compares the same
+   * row before and after a reset. It is the wrong measure for comparing one
+   * scene with another — see `modelSilhouette`.
    */
-  const modelSpan = async (fy) => {
+  const modelSpan = async (fy, step = 0.02) => {
     let first = null;
     let last = null;
-    for (let fx = 0.02; fx <= 0.96; fx += 0.02) {
+    for (let fx = 0.02; fx <= 0.96; fx += step) {
       const at = Number(fx.toFixed(3));
       if (await overModel(at, fy)) {
         if (first === null) first = at;
@@ -757,6 +758,69 @@ try {
     }
     await restPointer();
     return first === null ? null : [first, last];
+  };
+
+  /**
+   * The widest the model gets anywhere down the frame, and how much of the
+   * frame's height it occupies at all.
+   *
+   * `modelSpan(0.45)` was read across scenes as if it were a width, and it is
+   * not: it is a cross-section at mid-height. A knee is a vertical subject
+   * whose widest part is not at 0.45, a liver is a compact one whose widest
+   * part very nearly is, and comparing the two rows produced "the joints are
+   * 2.6x narrower than the published organs" — a ratio between two quantities
+   * that were never the same quantity, which then became a target for how big
+   * to make the joints. Codex caught it on #117.
+   *
+   * Coarser than `modelSpan` on purpose: 4% of the frame per step over nine
+   * rows costs about a quarter of a minute, and the question it answers —
+   * roughly how much of the frame does this scene use — does not need 2%.
+   */
+  const modelSilhouette = async () => {
+    let widest = null;
+    let widestRow = null;
+    let rowsOnModel = 0;
+    const coarse = [];
+    const rows = [0.15, 0.24, 0.33, 0.42, 0.5, 0.58, 0.67, 0.76, 0.85];
+    for (const fy of rows) {
+      const span = await modelSpan(fy, 0.04);
+      if (!span) continue;
+      rowsOnModel += 1;
+      coarse.push([fy, span]);
+      if (!widest || span[1] - span[0] > widest[1] - widest[0]) {
+        widest = span;
+        widestRow = fy;
+      }
+    }
+    // The coarse pass nominates rows; it does not report a width, and it does
+    // not get the last word on which row is widest either. A 4% grid quantises
+    // both ends, so it can lose 8% of the frame — and it did: on the knee it
+    // called row 0.33 the widest at 0.12 while row 0.45, swept finely, is 0.14.
+    // Re-sweeping only its winner would have published the smaller number as
+    // the model's width.
+    //
+    // So every row within one coarse step of the coarse maximum is swept again
+    // at full resolution, and the widest of those is the answer — two or three
+    // rows in practice rather than nine.
+    if (widest) {
+      const coarseBest = widest[1] - widest[0];
+      let best = null;
+      let bestRow = null;
+      for (const [fy, span] of coarse) {
+        if (span[1] - span[0] < coarseBest - 0.04) continue;
+        const fine = await modelSpan(fy);
+        if (!fine) continue;
+        if (!best || fine[1] - fine[0] > best[1] - best[0]) {
+          best = fine;
+          bestRow = fy;
+        }
+      }
+      if (best) {
+        widest = best;
+        widestRow = bestRow;
+      }
+    }
+    return widest ? { widest, widestRow, rowsOnModel, rows: rows.length } : null;
   };
 
   // 0. The framing a scene opens at is the framing it returns to.
@@ -775,6 +839,23 @@ try {
   //    Checked here because it is invisible anywhere else: both framings are
   //    valid poses, the scene is not broken, and the only symptom is that the
   //    first thing a reader sees is not the composition the scene meant.
+  // Off unless asked for. Measured: the sweep is about three hundred pointer
+  // moves, each one a raycast and a repaint under software GL, and it put three
+  // minutes on a scene that takes two and a half. `verify:anatomy` runs every
+  // scene in series and the brain alone is ten minutes, so a measurement that
+  // answers a cross-scene question — how much of the frame does this one use —
+  // does not belong in every run. Pass `--silhouette` when that is the question.
+  const silhouette = flag('--silhouette') ? await modelSilhouette() : null;
+  if (silhouette) {
+    observed.silhouette = silhouette;
+    notes.push(
+      `silhouette: widest ${silhouette.widest[0]}..${silhouette.widest[1]} ` +
+        `(${(silhouette.widest[1] - silhouette.widest[0]).toFixed(2)} of the frame) at fy=${silhouette.widestRow}; ` +
+        `on the model at ${silhouette.rowsOnModel} of ${silhouette.rows} rows. ` +
+        'Compare scenes with this, not with the mid-height span below.'
+    );
+  }
+
   const openingSpan = await modelSpan(0.45);
   if (!openingSpan) {
     notes.push('the model does not cross the middle of the frame, so the opening framing was not measured');
@@ -803,7 +884,7 @@ try {
         // cannot be the grid's own resolution.
         if (moved > 0.04) {
           problems.push(
-            `the scene opens framed differently from how it resets: the model spans ` +
+            `the scene opens framed differently from how it resets: across the frame's middle row the model spans ` +
               `${openingSpan[0]}..${openingSpan[1]} of the frame at first and ` +
               `${resetSpan[0]}..${resetSpan[1]} after "reset the display", with nothing ` +
               'moved in between. The reader sees the first one.'
@@ -2115,8 +2196,8 @@ console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
 if (observed.openingFraming) {
   const { opening, reset } = observed.openingFraming;
   console.log(
-    `  the model spans ${opening[0]}..${opening[1]} of the frame when the scene opens, ` +
-      `${reset[0]}..${reset[1]} after a display reset`
+    `  across the frame's middle row the model spans ${opening[0]}..${opening[1]} when the scene opens, ` +
+      `${reset[0]}..${reset[1]} after a display reset (one row — for the scene's width see the silhouette note)`
   );
 }
 console.log(

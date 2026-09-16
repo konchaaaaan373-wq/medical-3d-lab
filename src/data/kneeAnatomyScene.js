@@ -98,12 +98,17 @@ export function kneeStructureCopy() {
   ];
 
   const bone = entry('Bones', '骨', 'bone', ['bone']);
+  // The two shafts are drawn — a reader tells a knee from an elbow partly by
+  // which way its bones run — but they are not what the frame is *for*. Tagged
+  // so `contextTags` can keep them out of the box the camera fits to; see
+  // `KneeAnatomyScene.contextTags`.
+  const shaft = entry('Bones', '骨', 'bone', ['bone', 'shaft']);
   const between = entry('Between the surfaces', '関節面の間', 'cushion', ['cushion']);
   const ligament = entry('Ligaments', '靱帯', 'ligament', ['ligament']);
   const extensor = entry('Extensor mechanism', '伸展機構', 'tendon', ['tendon']);
 
   return new Map([
-    bone(
+    shaft(
       'femoral-shaft',
       'Femur (shaft)',
       '大腿骨（骨幹部）',
@@ -148,7 +153,7 @@ export function kneeStructureCopy() {
       SHAPE_NOTE.note,
       SHAPE_NOTE.noteJa
     ),
-    bone(
+    shaft(
       'tibial-shaft',
       'Tibia (shaft)',
       '脛骨（骨幹部）',
@@ -157,7 +162,7 @@ export function kneeStructureCopy() {
       SHAPE_NOTE.note,
       SHAPE_NOTE.noteJa
     ),
-    bone(
+    shaft(
       'fibula',
       'Fibula',
       '腓骨',

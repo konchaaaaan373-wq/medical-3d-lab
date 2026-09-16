@@ -97,6 +97,8 @@ export function shoulderStructureCopy() {
 
   const bone = entry('Bones', '骨', 'bone', ['bone']);
   const humerus = entry('Bones', '骨', 'bone', ['bone', 'humerus']);
+  // Drawn, but not what the frame is for: see `ShoulderAnatomyScene.contextTags`.
+  const humerusShaft = entry('Bones', '骨', 'bone', ['bone', 'humerus', 'shaft']);
   const socket = entry('The socket and what deepens it', '関節窩とそれを深くするもの', 'socket', ['socket']);
   const cuff = entry('The rotator cuff', '回旋筋腱板', 'cuff', ['cuff']);
   const ligament = entry('Ligaments', '靱帯', 'ligament', ['ligament']);
@@ -161,7 +163,7 @@ export function shoulderStructureCopy() {
       'The bump on the front. **Subscapularis ends here**, and the groove between this and the greater tubercle is the one the biceps tendon runs down.',
       '前面にある隆起で、**肩甲下筋がここに停止します**。この結節と大結節の間の溝を、上腕二頭筋長頭腱が下行します。'
     ),
-    humerus(
+    humerusShaft(
       'humeral-shaft',
       'Humerus (shaft)',
       '上腕骨（骨幹部）',
