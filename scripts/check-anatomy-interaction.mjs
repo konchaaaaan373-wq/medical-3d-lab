@@ -141,7 +141,7 @@ const SCENE_POINTS = {
   // immediately to its right — the two run together in the anterior
   // interventricular groove, and the vein is the one in front. This point is
   // the middle of that band rather than either measured edge, because an edge
-  // is what the last one was.
+  // is what the last one was. Driven, and it names the artery.
   //
   // Across the front of the heart, right to left as the screen shows it: the
   // right atrium, the right ventricle that makes up most of the anterior
