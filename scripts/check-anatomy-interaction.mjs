@@ -173,11 +173,20 @@ const SCENE_POINTS = {
   //
   // A prose comment is not an assertion. These are, and the dead point is
   // replaced by one the drive itself measured to be over the model.
+  //
+  // **Re-measured 2026-09-16, and this is the second time this scene's tour
+  // has gone stale.** The first was layout drift over a week, unnoticed
+  // because the points were bare coordinates. This one is the safe-area fit
+  // being corrected from an orthographic sum to an exact perspective solve,
+  // which moved every model — and it was caught on the first run, because
+  // the points carry the names they must resolve to. Three of the four were
+  // wrong and two of those had come to name the same structure, so the tour
+  // would have shown three distinct parts while claiming four.
   'brain-anatomy': [
-    [0.40, 0.34, 'Supramarginal gyrus'],
-    [0.30, 0.45, 'Circular sulcus of insula'],
-    [0.50, 0.50, 'Middle temporal gyrus'],
-    [0.50, 0.42, 'Angular gyrus'],
+    [0.29, 0.275, 'Precentral gyrus'],
+    [0.365, 0.37, 'Supramarginal gyrus'],
+    [0.515, 0.37, 'Angular gyrus'],
+    [0.215, 0.465, 'Orbital part of inferior frontal gyrus'],
   ],
   // Two lungs, a lobe of each, and the airway between them — measured, not
   // assumed. The fourth point used to sit at (0.50, 0.44) and **hit nothing**,

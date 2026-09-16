@@ -402,11 +402,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // four and `verify:anatomy` fails if a point names anything else — see
       // docs/beta-publication/brain-anatomy.md, which states what was wrong
       // rather than quietly showing the new values.
+      // Re-measured 2026-09-16, the second time this scene's tour has gone
+      // stale. The first was layout drift found a week late; this one is the
+      // safe-area fit being corrected from an orthographic sum to an exact
+      // perspective solve, which moved every model and was caught on the
+      // first run. Three of the four points were wrong and two of those had
+      // come to name the same structure, so the scope below would have
+      // claimed four distinct parts that a run could only show three of.
       structures: Object.freeze([
+        'Precentral gyrus',
         'Supramarginal gyrus',
-        'Circular sulcus of insula',
-        'Middle temporal gyrus',
         'Angular gyrus',
+        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
