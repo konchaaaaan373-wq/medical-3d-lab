@@ -87,7 +87,7 @@ to the source meshes.
 | **Claim** | A medial view at the default anatomy layer shows a readable medial surface rather than a hollow shell. |
 | **Source** | Gross-anatomy viewing convention: a medial view of a hemisphere shows the medial cortical surface, the corpus callosum, the diencephalon, the brainstem and the cerebellar vermis. |
 | **Implementation** | `targetOpacity()` treats the midline block as present when a medial side is set, instead of holding it behind the layer slider. |
-| **Assumption** | Presence, not accuracy: this decides which of the atlas's meshes are drawn for a view, and makes no claim about their boundaries. The registration caveats for the deep nuclei (recorded in the asset manifest: MNI-space atlases at roughly 7 mm, approximate) apply to what is now visible. |
+| **Assumption** | Presence, not accuracy: this decides which of the atlas's meshes are drawn for a view, and makes no claim about their boundaries. The registration caveats for the deep nuclei (recorded in the asset manifest: a multi-population-atlas registration approximation; the upstream's frequently cited ~7.2 mm figure is the red nucleus's position difference in a check that excluded it from registration, not a boundary or maximum error for every structure, and not independently verified against the distributed asset) apply to what is now visible. |
 | **Validation** | `a medial view closes the midline instead of showing through a hollow shell`; the before/after pair at one camera in [`docs/screenshots/b3-1/`](../screenshots/b3-1/); the audit in [`docs/anatomy-review.md`](../anatomy-review.md) §3.1. |
 
 ### 7. A label is shown only where its structure can be seen

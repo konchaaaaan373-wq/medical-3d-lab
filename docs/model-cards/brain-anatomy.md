@@ -112,8 +112,13 @@ they do not convert the distributed geometry into a Destrieux atlas.
 ## 5. Accuracy and uncertainty
 
 - Gross surface anatomy is illustration / gross-anatomy grade.
-- Imaging-atlas-derived deep structures are approximate (the upstream project
-  describes their registration resolution as about 7 mm).
+- Imaging-atlas-derived deep structures are a registration approximation
+  across several population atlases, not a patient-specific reconstruction.
+  The upstream project's frequently cited "about 7 mm" figure is the position
+  difference of the red nucleus in a check that excluded the red nucleus from
+  registration itself — it is not a boundary or maximum error figure for
+  every registered structure, and this repository has not independently
+  verified it against the distributed asset.
 - The scene does not assert voxel-level boundaries, population variability or
   patient-specific dimensions.
 - Every one of the 147 unique selectable source labels has an explicit Japanese
@@ -123,7 +128,12 @@ they do not convert the distributed geometry into a Destrieux atlas.
   (ACC) mesh. Its `Middle anterior part` mesh is labelled as anterior
   midcingulate territory (aMCC) and carries an explicit warning that it is not
   ACC. Adding ACC requires a new, source-attributed cortical geometry dataset;
-  renaming the existing mesh would be anatomically false.
+  renaming the existing mesh would be anatomically false. **The absence of a
+  selectable ACC label does not mean ACC tissue is absent from every mesh in
+  this atlas** — only that no mesh here is presented as one. The aMCC naming
+  correspondence itself is a terminology cross-reference and does not assert
+  that the displayed geometry reproduces a cytoarchitectonic or functional
+  boundary.
 - Functional summaries are brief orientation notes. Functions arise from
   distributed networks and should not be read as one-to-one localisation.
 
@@ -166,7 +176,9 @@ the view is meant to teach. Named bundles such as the corpus callosum and fornix
 remain visible.
 
 **A medial view shows the midline block, and that is a display decision, not a
-dissection.** The contralateral hemisphere is hidden and the near hemisphere's
+dissection.** Its name is **medial 3D view (contralateral hemisphere hidden,
+not sectioned)**: nothing is cut, so it must not be read as a midsagittal
+section such as an MRI slice. The contralateral hemisphere is hidden and the near hemisphere's
 midline face — the corpus callosum, the fornix, the thalamus and hypothalamus,
 and the white matter behind them — is present at full opacity, because that is
 what a medial view of a hemisphere is a view *of*. Before this, the layer slider
@@ -301,3 +313,8 @@ interaction and medial visibility path are implemented and tested. Independent
 medical review of the complete label set and Japanese terminology is not yet
 recorded, and the source geometry still lacks a separately selectable ACC, so
 this scene must not be marked reviewed or production.
+
+An AI-assisted terminology/hierarchy/copy check was recorded on 2026-09-16
+with verdict **hold** and 24 findings; it is not a clinical attestation and
+does not change the review status above. See
+[`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md).

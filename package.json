@@ -38,6 +38,7 @@
     "type-floor": "node scripts/type-floor.mjs",
     "verify:departure": "node scripts/check-departure.mjs",
     "verify:gated": "node scripts/check-gated-surfaces.mjs",
+    "review:brain-labels": "node scripts/export-anatomy-labels.mjs",
     "build:preview": "VITE_ALLOW_PREVIEW=1 vite build --outDir dist-preview"
   },
   "dependencies": {

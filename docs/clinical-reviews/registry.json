@@ -11,12 +11,15 @@
     "sources": [
       "docs/model-cards/brain-anatomy.md",
       "tests/brain-anatomy.test.js",
-      "public/assets/brain/ATTRIBUTION.md"
+      "public/assets/brain/ATTRIBUTION.md",
+      "docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md"
     ],
     "unresolvedLimitations": [
-      "Independent medical review of the complete atlas label set and Japanese terminology is not yet recorded.",
-      "Imaging-atlas-derived deep structures are approximate and are not asserted at voxel-level or patient-specific resolution.",
-      "Functional summaries are orientation notes only and must not be read as one-to-one functional localisation.",
+      "Independent human clinical/anatomist review of the complete atlas label set and Japanese terminology is not yet recorded; a 2026-09-16 AI-assisted terminology/hierarchy check found 24 issues and returned a hold verdict, but it is not a clinical attestation (see the record above).",
+      "Imaging-atlas-derived deep structures are a multi-population-atlas registration approximation, not patient-specific or voxel-level boundaries. The upstream ~7 mm figure is a red-nucleus registration check excluded from registration itself, and is not a bound on the positional error of every structure.",
+      "The current source geometry has no independent anterior cingulate cortex (ACC) mesh, but the absence of a selectable ACC label does not mean ACC tissue is absent from the shipped meshes.",
+      "The medial view is a non-sectioned 3D view (the contralateral hemisphere hidden, nothing cut) and must not be read as a midsagittal section.",
+      "Functional summaries are network-orientation notes only and must not be read as one-to-one functional localisation or as a cytoarchitectonic/functional boundary claim.",
       "The scene must not be used for diagnosis, lesion localisation, stereotactic coordinates, operative planning or navigation."
     ]
   },

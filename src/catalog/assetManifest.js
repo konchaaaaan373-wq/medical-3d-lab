@@ -466,7 +466,7 @@ export const ASSET_MANIFEST = Object.freeze([
       partCount: 437,
     },
     acceptedSimplifications: [
-      'Deep nuclei, hypothalamic zones and tracts are registered from MNI-space atlases at roughly 7 mm and are approximate.',
+      'Deep nuclei, hypothalamic zones and tracts are a registration approximation across several MNI-space population atlases. The upstream ~7.2 mm figure often cited for this is the red nucleus\'s position difference in a check that excluded it from registration; it is not a boundary or maximum error for every registered structure, and this repository has not independently verified it against the shipped asset.',
       'Labels are trusted from the upstream metadata; mesh boundaries are not independently validated.',
     ],
     knownDefects: [],
