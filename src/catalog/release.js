@@ -273,11 +273,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({}),
     sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16, and the tour changed shape rather than just
+      // moving: the safe-area fit stopped approximating a perspective camera,
+      // which moved the model, and of the four this record was taken over two
+      // then hit nothing and a third named its neighbour. The sweep at the
+      // corrected framing finds four Couinaud segments and no gallbladder, so
+      // this scope no longer claims the biliary system.
       structures: Object.freeze([
         'Segment VIII \u2014 Right anterior superior',
-        'Segment III \u2014 Left lateral inferior',
-        'Segment V \u2014 Right anterior inferior',
-        'Gallbladder',
+        'Segment VII \u2014 Right posterior superior',
+        'Segment II \u2014 Left lateral superior',
+        'Segment IVa \u2014 Left medial superior',
       ]),
       views: Object.freeze([
         'the authored viewpoints offered, one applied by the drive',

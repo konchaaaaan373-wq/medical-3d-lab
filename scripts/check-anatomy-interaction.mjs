@@ -188,13 +188,22 @@ const SCENE_POINTS = {
     [0.68, 0.55, 'Left upper lobe'],
     [0.50, 0.34, 'Left main bronchus'],
   ],
-  // Three Couinaud segments and the gallbladder under them. These four were
-  // already right: every point named a different structure when measured.
+  // Four Couinaud segments, one per click, spanning both livers: two right-sector
+  // (VIII anterior superior, VII posterior superior) and two left (II lateral
+  // superior, IVa medial superior).
+  //
+  // **Re-measured 2026-09-16, and the tour changed shape.** The previous four —
+  // three segments and the gallbladder under them — were measured against a safe-area
+  // fit that approximated a perspective camera with an orthographic sum; this
+  // branch solves each corner exactly, which moved the model, and two of those
+  // four then hit nothing while a third named its neighbour. The names are what
+  // made that loud — under bare coordinates the run would have passed with two
+  // points naming nothing at all.
   'liver-anatomy': [
-    [0.35, 0.40, 'Segment VIII — Right anterior superior'],
-    [0.66, 0.45, 'Segment III — Left lateral inferior'],
-    [0.45, 0.62, 'Segment V — Right anterior inferior'],
-    [0.42, 0.75, 'Gallbladder'],
+    [0.29, 0.227, 'Segment VIII — Right anterior superior'],
+    [0.215, 0.323, 'Segment VII — Right posterior superior'],
+    [0.477, 0.323, 'Segment II — Left lateral superior'],
+    [0.44, 0.417, 'Segment IVa — Left medial superior'],
   ],
   // One kidney, the other, and twice on the opened one.
   'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
