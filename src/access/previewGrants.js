@@ -30,24 +30,61 @@ import { ENTITLEMENT } from './policy.js';
  * reviewer steps around is the presentation one, and the gate that protects the
  * content is not this file's to open.
  *
- * **It is not a way to see a surface as a customer sees it.** A reviewer with
- * these grants is never shown the purchase flow, the lock states or the "not
- * subscribed" copy, and those are surfaces too. Reading them needs an account
- * without the entitlement, which is what a plain build already gives.
+ * **It is not a way to see a surface as a customer sees it** — unless asked.
+ * A reviewer holding these grants is never shown the purchase flow, the lock on
+ * a paid control, or the copy that says what is behind it, and those are
+ * surfaces too. `?entitled=0` withholds the grants and leaves everything else
+ * alone, so both states are reachable from the same build; see
+ * `reviewerIsEntitled` below.
  */
 
 /** The entitlements a reviewable build hands out. `free` is implicit. */
 export const PREVIEW_ENTITLEMENTS = Object.freeze([ENTITLEMENT.PATIENT, ENTITLEMENT.EDUCATION]);
 
+/** How a reviewer asks to be shown the surfaces they would see unentitled. */
+export const PREVIEW_ENTITLED_PARAM = 'entitled';
+
+const OFF = new Set(['0', 'off', 'no', 'false']);
+
+/**
+ * Whether a reviewer wants the grants, given the query string.
+ *
+ * A reviewer holding the entitlements never sees the surfaces a visitor meets
+ * *before* paying — the purchase flow, the lock on the control, the copy that
+ * says what is behind it. Those are surfaces too, and they were the ones nobody
+ * could measure once this file existed (F-124). `?entitled=0` withholds the
+ * grants while leaving everything else about the preview build alone.
+ *
+ * Not a second build-time capability, which is the thing worth not having: it
+ * only ever narrows what an already-unlocked build hands out, and a production
+ * bundle has no unlock for it to narrow. `?entitled=0` there is a query
+ * parameter on a page that was never going to grant anything.
+ *
+ * Read on every call and never stripped or stored, unlike `?preview=1`. A query
+ * string survives a hash navigation and the reload one causes, so a reviewer
+ * who asked for the unentitled view keeps it while they move around — and gets
+ * out of it by removing the parameter, rather than by remembering that
+ * something was remembered.
+ *
+ * @param {string} search
+ */
+export function reviewerIsEntitled(search = '') {
+  const asked = new URLSearchParams(search).get(PREVIEW_ENTITLED_PARAM);
+  if (asked == null) return true;
+  return !OFF.has(asked.trim().toLowerCase());
+}
+
 /**
  * The grants this visitor gets for being a reviewer, which is normally none.
  *
  * @param {() => boolean} [unlocked] the beta unlock, injectable for tests
+ * @param {() => string} [search] the query string, injectable for tests
  * @returns {string[]}
  */
-export function previewGrants(unlocked = betaUnlocked) {
+export function previewGrants(unlocked = betaUnlocked, search = () => globalThis.location?.search ?? '') {
   try {
-    return unlocked() ? [...PREVIEW_ENTITLEMENTS] : [];
+    if (!unlocked()) return [];
+    return reviewerIsEntitled(search()) ? [...PREVIEW_ENTITLEMENTS] : [];
   } catch {
     // A missing `window` under `node --test`, or storage denied outright. The
     // answer when the unlock cannot be read is the same as when it says no.
@@ -66,7 +103,7 @@ export function previewGrants(unlocked = betaUnlocked) {
  * @param {Set<string>} grants
  * @returns {Set<string>} the same set, for use as an expression
  */
-export function withPreviewGrants(grants, unlocked = betaUnlocked) {
-  for (const entitlement of previewGrants(unlocked)) grants.add(entitlement);
+export function withPreviewGrants(grants, unlocked = betaUnlocked, search) {
+  for (const entitlement of previewGrants(unlocked, search)) grants.add(entitlement);
   return grants;
 }
