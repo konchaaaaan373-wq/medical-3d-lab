@@ -780,23 +780,45 @@ try {
     let widest = null;
     let widestRow = null;
     let rowsOnModel = 0;
+    const coarse = [];
     const rows = [0.15, 0.24, 0.33, 0.42, 0.5, 0.58, 0.67, 0.76, 0.85];
     for (const fy of rows) {
       const span = await modelSpan(fy, 0.04);
       if (!span) continue;
       rowsOnModel += 1;
+      coarse.push([fy, span]);
       if (!widest || span[1] - span[0] > widest[1] - widest[0]) {
         widest = span;
         widestRow = fy;
       }
     }
-    // The coarse pass finds *which* row is widest; it is not allowed to report
-    // how wide, because a 4% grid quantises both ends and can lose 8% of the
-    // frame — on the knee that is two thirds of the answer. So the row it
-    // picked is swept again at the full resolution, for one row's cost.
+    // The coarse pass nominates rows; it does not report a width, and it does
+    // not get the last word on which row is widest either. A 4% grid quantises
+    // both ends, so it can lose 8% of the frame — and it did: on the knee it
+    // called row 0.33 the widest at 0.12 while row 0.45, swept finely, is 0.14.
+    // Re-sweeping only its winner would have published the smaller number as
+    // the model's width.
+    //
+    // So every row within one coarse step of the coarse maximum is swept again
+    // at full resolution, and the widest of those is the answer — two or three
+    // rows in practice rather than nine.
     if (widest) {
-      const fine = await modelSpan(widestRow);
-      if (fine) widest = fine;
+      const coarseBest = widest[1] - widest[0];
+      let best = null;
+      let bestRow = null;
+      for (const [fy, span] of coarse) {
+        if (span[1] - span[0] < coarseBest - 0.04) continue;
+        const fine = await modelSpan(fy);
+        if (!fine) continue;
+        if (!best || fine[1] - fine[0] > best[1] - best[0]) {
+          best = fine;
+          bestRow = fy;
+        }
+      }
+      if (best) {
+        widest = best;
+        widestRow = bestRow;
+      }
     }
     return widest ? { widest, widestRow, rowsOnModel, rows: rows.length } : null;
   };
